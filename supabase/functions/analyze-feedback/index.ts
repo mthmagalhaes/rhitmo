@@ -17,7 +17,7 @@ serve(async (req) => {
     console.log('Received feedback analysis request:', { content, memberId, type });
 
     // Truncar conteúdo muito longo para evitar problemas com tokens
-    const maxContentLength = 8000;
+    const maxContentLength = 6000;
     const truncatedContent = content.length > maxContentLength 
       ? content.substring(0, maxContentLength) + "\n\n[...conteúdo truncado para análise...]"
       : content;

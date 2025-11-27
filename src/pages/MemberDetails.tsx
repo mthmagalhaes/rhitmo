@@ -19,6 +19,7 @@ const MemberDetails = () => {
   const [member, setMember] = useState<any>(null);
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reanalyzingId, setReanalyzingId] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -83,6 +84,46 @@ const MemberDetails = () => {
     }
   };
 
+  const handleReanalyze = async (feedbackId: string) => {
+    setReanalyzingId(feedbackId);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reanalyze-feedback`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.session?.access_token}`
+          },
+          body: JSON.stringify({ feedbackId })
+        }
+      );
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Falha ao reprocessar');
+      }
+      
+      toast({ 
+        title: "Análise gerada!", 
+        description: "A IA processou o feedback com sucesso." 
+      });
+      
+      loadMemberAndFeedbacks();
+    } catch (error: any) {
+      console.error('Erro ao reprocessar:', error);
+      toast({ 
+        title: "Erro ao gerar análise", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    } finally {
+      setReanalyzingId(null);
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -144,7 +185,12 @@ const MemberDetails = () => {
         <div>
           <h2 className="text-2xl font-bold text-foreground mb-6">Histórico de Feedbacks</h2>
           {feedbacks.length > 0 ? (
-            <FeedbackTimeline feedbacks={feedbacks} onDelete={handleDeleteFeedback} />
+            <FeedbackTimeline 
+              feedbacks={feedbacks} 
+              onDelete={handleDeleteFeedback}
+              onReanalyze={handleReanalyze}
+              reanalyzingId={reanalyzingId}
+            />
           ) : (
             <Card className="p-12 text-center">
               <p className="text-muted-foreground mb-4">Nenhum feedback registrado ainda</p>

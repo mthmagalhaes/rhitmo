@@ -3,5 +3,8 @@ project_id = "lybkgujyezzzvbzypxed"
 [functions.analyze-feedback]
 verify_jwt = true
 
+[functions.reanalyze-feedback]
+verify_jwt = true
+
 [functions.send-disc-invite]
 verify_jwt = true
