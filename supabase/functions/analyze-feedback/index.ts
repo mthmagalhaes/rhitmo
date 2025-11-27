@@ -160,8 +160,6 @@ serve(async (req) => {
         bias_alert: "Nenhum viés detectado"
       };
     } else if (message?.tool_calls?.[0]?.function?.arguments) {
-
-    } else if (message?.tool_calls?.[0]?.function?.arguments) {
       try {
         const toolCall = message.tool_calls[0];
         analysis = JSON.parse(toolCall.function.arguments);
