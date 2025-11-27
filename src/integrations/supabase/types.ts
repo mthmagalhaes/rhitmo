@@ -14,7 +14,89 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      feedbacks: {
+        Row: {
+          bias_alert: string | null
+          coaching_tips: string | null
+          content: string
+          created_at: string
+          id: string
+          manager_id: string
+          member_id: string
+          sentiment: string | null
+          summary: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          bias_alert?: string | null
+          coaching_tips?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          manager_id: string
+          member_id: string
+          sentiment?: string | null
+          summary?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          bias_alert?: string | null
+          coaching_tips?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          manager_id?: string
+          member_id?: string
+          sentiment?: string | null
+          summary?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedbacks_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_members: {
+        Row: {
+          avatar: string | null
+          created_at: string
+          id: string
+          name: string
+          performance_score: number | null
+          role: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          avatar?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          performance_score?: number | null
+          role: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          avatar?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          performance_score?: number | null
+          role?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

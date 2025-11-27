@@ -1,21 +1,76 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { FeedbackTimeline } from '@/components/FeedbackTimeline';
 import { NewNoteDialog } from '@/components/NewNoteDialog';
-import { mockTeamMembers, mockFeedbacks } from '@/data/mockData';
-import { ArrowLeft, PenSquare, TrendingUp } from 'lucide-react';
+import { Auth } from '@/components/Auth';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { ArrowLeft, PenSquare, TrendingUp, Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const MemberDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [member, setMember] = useState<any>(null);
+  const [feedbacks, setFeedbacks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
-  const member = mockTeamMembers.find(m => m.id === id);
-  const feedbacks = mockFeedbacks[id || ''] || [];
+  useEffect(() => {
+    if (user && id) {
+      loadMemberAndFeedbacks();
+    }
+  }, [user, id]);
+
+  const loadMemberAndFeedbacks = async () => {
+    try {
+      // Carregar membro
+      const { data: memberData, error: memberError } = await supabase
+        .from('team_members')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (memberError) throw memberError;
+      setMember(memberData);
+
+      // Carregar feedbacks
+      const { data: feedbackData, error: feedbackError } = await supabase
+        .from('feedbacks')
+        .select('*')
+        .eq('member_id', id)
+        .order('created_at', { ascending: false });
+
+      if (feedbackError) throw feedbackError;
+      setFeedbacks(feedbackData || []);
+    } catch (error: any) {
+      toast({
+        title: "Erro ao carregar dados",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (authLoading || loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Auth />;
+  }
 
   if (!member) {
     return (
@@ -49,8 +104,11 @@ const MemberDetails = () => {
         <div className="mb-8">
           <div className="flex items-start gap-6 mb-6">
             <Avatar className="h-24 w-24">
-              <AvatarImage src={member.avatar} alt={member.name} />
-              <AvatarFallback>{member.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+              <AvatarImage 
+                src={member.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${member.name}`} 
+                alt={member.name} 
+              />
+              <AvatarFallback>{member.name.split(' ').map((n: string) => n[0]).join('')}</AvatarFallback>
             </Avatar>
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-foreground mb-2">{member.name}</h1>
@@ -58,9 +116,9 @@ const MemberDetails = () => {
               <div className="flex items-center gap-4">
                 <Badge variant="secondary" className="text-lg px-4 py-1">
                   <TrendingUp className="h-4 w-4 mr-2" />
-                  Performance: {member.performanceScore}%
+                  Performance: {member.performance_score}%
                 </Badge>
-                <span className="text-muted-foreground">{member.feedbackCount} notas registradas</span>
+                <span className="text-muted-foreground">{feedbacks.length} notas registradas</span>
               </div>
             </div>
           </div>
@@ -84,6 +142,7 @@ const MemberDetails = () => {
         onOpenChange={setDialogOpen}
         selectedMemberId={member.id}
         memberName={member.name}
+        onSuccess={loadMemberAndFeedbacks}
       />
     </div>
   );

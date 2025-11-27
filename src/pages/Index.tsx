@@ -1,14 +1,77 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { TeamMemberCard } from '@/components/TeamMemberCard';
 import { NewNoteDialog } from '@/components/NewNoteDialog';
-import { mockTeamMembers } from '@/data/mockData';
-import { PenSquare, Users } from 'lucide-react';
+import { Auth } from '@/components/Auth';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { PenSquare, Users, LogOut, Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+
+interface TeamMember {
+  id: string;
+  name: string;
+  role: string;
+  avatar: string;
+  performance_score: number;
+  created_at: string;
+}
 
 const Index = () => {
   const navigate = useNavigate();
+  const { user, loading: authLoading, signOut } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (user) {
+      loadTeamMembers();
+    }
+  }, [user]);
+
+  const loadTeamMembers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+
+      setTeamMembers(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Erro ao carregar equipe",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast({
+      title: "Logout realizado",
+      description: "Até logo!"
+    });
+  };
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Auth />;
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -19,10 +82,16 @@ const Index = () => {
               <h1 className="text-3xl font-bold text-primary mb-1">Rhitmo</h1>
               <p className="text-muted-foreground">Gestão de Performance Contínua</p>
             </div>
-            <Button onClick={() => setDialogOpen(true)} size="lg" className="gap-2 shadow-md">
-              <PenSquare className="h-5 w-5" />
-              Nova Nota
-            </Button>
+            <div className="flex gap-3">
+              <Button onClick={() => setDialogOpen(true)} size="lg" className="gap-2 shadow-md">
+                <PenSquare className="h-5 w-5" />
+                Nova Nota
+              </Button>
+              <Button onClick={handleSignOut} variant="outline" size="lg" className="gap-2">
+                <LogOut className="h-5 w-5" />
+                Sair
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -34,19 +103,43 @@ const Index = () => {
             <h2 className="text-2xl font-bold text-foreground">Minha Equipe</h2>
           </div>
           <p className="text-muted-foreground">
-            {mockTeamMembers.length} liderados · Clique em um card para ver o histórico
+            {teamMembers.length} liderados · Clique em um card para ver o histórico
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {mockTeamMembers.map((member) => (
-            <TeamMemberCard
-              key={member.id}
-              member={member}
-              onClick={() => navigate(`/member/${member.id}`)}
-            />
-          ))}
-        </div>
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : teamMembers.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground mb-4">Nenhum liderado cadastrado ainda</p>
+            <Button onClick={() => toast({
+              title: "Em breve",
+              description: "Funcionalidade de adicionar liderados em desenvolvimento"
+            })}>
+              Adicionar Primeiro Liderado
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {teamMembers.map((member) => (
+              <TeamMemberCard
+                key={member.id}
+                member={{
+                  id: member.id,
+                  name: member.name,
+                  role: member.role,
+                  avatar: member.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${member.name}`,
+                  lastFeedback: member.created_at,
+                  feedbackCount: 0,
+                  performanceScore: member.performance_score
+                }}
+                onClick={() => navigate(`/member/${member.id}`)}
+              />
+            ))}
+          </div>
+        )}
       </main>
 
       <NewNoteDialog open={dialogOpen} onOpenChange={setDialogOpen} />
