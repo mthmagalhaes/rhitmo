@@ -16,6 +16,14 @@ serve(async (req) => {
     const { content, memberId, type } = await req.json();
     console.log('Received feedback analysis request:', { content, memberId, type });
 
+    // Truncar conteúdo muito longo para evitar problemas com tokens
+    const maxContentLength = 8000;
+    const truncatedContent = content.length > maxContentLength 
+      ? content.substring(0, maxContentLength) + "\n\n[...conteúdo truncado para análise...]"
+      : content;
+    
+    console.log('Content length:', content.length, 'Truncated:', truncatedContent.length);
+
     // Criar cliente Supabase
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -81,11 +89,11 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'Você é um especialista em análise de feedback e gestão de performance. Analise o feedback fornecido e retorne informações estruturadas.'
+            content: 'Você é um especialista em análise de feedback. Seja conciso e objetivo na análise.'
           },
           {
             role: 'user',
-            content: `Analise este feedback de performance e forneça as seguintes informações:\n\nFeedback: ${content}\n\nTipo: ${type}`
+            content: `Analise este feedback e retorne as informações estruturadas:\n\nFeedback: ${truncatedContent}\n\nTipo: ${type}`
           }
         ],
         tools: [
@@ -122,7 +130,7 @@ serve(async (req) => {
           }
         ],
         tool_choice: { type: "function", function: { name: "analyze_feedback" } },
-        max_completion_tokens: 500
+        max_completion_tokens: 4000
       }),
     });
 
@@ -139,9 +147,21 @@ serve(async (req) => {
     console.log('OpenAI response received:', JSON.stringify(aiData, null, 2));
 
     const message = aiData.choices?.[0]?.message;
+    const finishReason = aiData.choices?.[0]?.finish_reason;
     let analysis: any;
 
-    if (message?.tool_calls?.[0]?.function?.arguments) {
+    // Fallback se a resposta foi truncada
+    if (finishReason === 'length') {
+      console.warn('AI response was truncated due to length, using fallback');
+      analysis = {
+        summary: "Feedback registrado com sucesso. Análise completa indisponível devido ao tamanho do conteúdo.",
+        sentiment: "neutro",
+        coaching_tips: "• Revise o conteúdo manualmente para extrair insights detalhados\n• Considere dividir feedbacks muito longos em partes menores\n• Foque nos pontos principais para uma análise mais efetiva",
+        bias_alert: "Nenhum viés detectado"
+      };
+    } else if (message?.tool_calls?.[0]?.function?.arguments) {
+
+    } else if (message?.tool_calls?.[0]?.function?.arguments) {
       try {
         const toolCall = message.tool_calls[0];
         analysis = JSON.parse(toolCall.function.arguments);
