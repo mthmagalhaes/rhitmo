@@ -91,31 +91,33 @@ serve(async (req) => {
         tools: [
           {
             type: "function",
-            name: "analyze_feedback",
-            description: "Analisa um feedback de performance e retorna dados estruturados",
-            parameters: {
-              type: "object",
-              properties: {
-                summary: {
-                  type: "string",
-                  description: "Resumo conciso do feedback em até 2 frases"
+            function: {
+              name: "analyze_feedback",
+              description: "Analisa um feedback de performance e retorna dados estruturados",
+              parameters: {
+                type: "object",
+                properties: {
+                  summary: {
+                    type: "string",
+                    description: "Resumo conciso do feedback em até 2 frases"
+                  },
+                  sentiment: {
+                    type: "string",
+                    enum: ["muito_positivo", "positivo", "neutro", "construtivo", "critico"],
+                    description: "Sentimento geral do feedback"
+                  },
+                  coaching_tips: {
+                    type: "string",
+                    description: "3 dicas práticas de coaching baseadas no feedback (formato de lista com bullets)"
+                  },
+                  bias_alert: {
+                    type: "string",
+                    description: "Alerta sobre possíveis vieses (gênero, idade, culturais) ou 'Nenhum viés detectado'"
+                  }
                 },
-                sentiment: {
-                  type: "string",
-                  enum: ["muito_positivo", "positivo", "neutro", "construtivo", "critico"],
-                  description: "Sentimento geral do feedback"
-                },
-                coaching_tips: {
-                  type: "string",
-                  description: "3 dicas práticas de coaching baseadas no feedback (formato de lista com bullets)"
-                },
-                bias_alert: {
-                  type: "string",
-                  description: "Alerta sobre possíveis vieses (gênero, idade, culturais) ou 'Nenhum viés detectado'"
-                }
-              },
-              required: ["summary", "sentiment", "coaching_tips", "bias_alert"],
-              additionalProperties: false
+                required: ["summary", "sentiment", "coaching_tips", "bias_alert"],
+                additionalProperties: false
+              }
             }
           }
         ],
