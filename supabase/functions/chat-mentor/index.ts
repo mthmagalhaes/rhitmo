@@ -102,14 +102,14 @@ Base suas respostas exclusivamente nestes dados. Se a pergunta não puder ser re
           'Authorization': `Bearer ${openAIApiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          model: 'gpt-5-mini-2025-08-07',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: question }
-          ],
-          max_completion_tokens: 800,
-        }),
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: question }
+        ],
+        max_tokens: 800,
+      }),
         signal: controller.signal,
       });
     } catch (fetchError: any) {
@@ -128,9 +128,10 @@ Base suas respostas exclusivamente nestes dados. Se a pergunta não puder ser re
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('OpenAI error:', response.status, errorText);
+      console.error('OpenAI error status:', response.status);
+      console.error('OpenAI error body:', errorText);
       return new Response(
-        JSON.stringify({ error: `Erro na API de IA (${response.status}). Tente novamente.` }),
+        JSON.stringify({ error: `Erro na API de IA (${response.status}): ${errorText.substring(0, 200)}` }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
