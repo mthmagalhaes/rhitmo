@@ -136,18 +136,40 @@ serve(async (req) => {
     }
 
     const aiData = await openAIResponse.json();
-    console.log('OpenAI response received');
+    console.log('OpenAI response received:', JSON.stringify(aiData, null, 2));
 
-    const toolCall = aiData.choices[0]?.message?.tool_calls?.[0];
-    if (!toolCall) {
-      console.error('No tool call in OpenAI response');
+    const message = aiData.choices?.[0]?.message;
+    let analysis: any;
+
+    if (message?.tool_calls?.[0]?.function?.arguments) {
+      try {
+        const toolCall = message.tool_calls[0];
+        analysis = JSON.parse(toolCall.function.arguments);
+      } catch (e) {
+        console.error('Error parsing tool call arguments:', e);
+        return new Response(
+          JSON.stringify({ error: 'Invalid AI response' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else if (typeof message?.content === 'string' && message.content.trim()) {
+      try {
+        analysis = JSON.parse(message.content);
+      } catch (e) {
+        console.error('Error parsing JSON from message.content:', e, message.content);
+        return new Response(
+          JSON.stringify({ error: 'Invalid AI response' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
+      console.error('No tool call or JSON content in OpenAI response message');
       return new Response(
         JSON.stringify({ error: 'Invalid AI response' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const analysis = JSON.parse(toolCall.function.arguments);
     console.log('Analysis extracted:', analysis);
 
     // Atualizar feedback com análise
