@@ -59,6 +59,30 @@ const MemberDetails = () => {
     }
   };
 
+  const handleDeleteFeedback = async (feedbackId: string) => {
+    try {
+      const { error } = await supabase
+        .from('feedbacks')
+        .delete()
+        .eq('id', feedbackId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Feedback excluído",
+        description: "O feedback foi removido com sucesso.",
+      });
+
+      loadMemberAndFeedbacks();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao excluir",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -120,7 +144,7 @@ const MemberDetails = () => {
         <div>
           <h2 className="text-2xl font-bold text-foreground mb-6">Histórico de Feedbacks</h2>
           {feedbacks.length > 0 ? (
-            <FeedbackTimeline feedbacks={feedbacks} />
+            <FeedbackTimeline feedbacks={feedbacks} onDelete={handleDeleteFeedback} />
           ) : (
             <Card className="p-12 text-center">
               <p className="text-muted-foreground mb-4">Nenhum feedback registrado ainda</p>
