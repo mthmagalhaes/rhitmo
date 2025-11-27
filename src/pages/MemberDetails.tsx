@@ -5,10 +5,11 @@ import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { FeedbackTimeline } from '@/components/FeedbackTimeline';
 import { NewNoteDialog } from '@/components/NewNoteDialog';
+import { MentorChat } from '@/components/MentorChat';
 import { Auth } from '@/components/Auth';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, PenSquare, Loader2 } from 'lucide-react';
+import { ArrowLeft, PenSquare, Loader2, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const MemberDetails = () => {
@@ -16,6 +17,7 @@ const MemberDetails = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const [member, setMember] = useState<any>(null);
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -156,10 +158,16 @@ const MemberDetails = () => {
               <ArrowLeft className="h-4 w-4" />
               Voltar ao Dashboard
             </Button>
-            <Button onClick={() => setDialogOpen(true)} className="gap-2">
-              <PenSquare className="h-4 w-4" />
-              Nova Nota
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setChatOpen(true)} className="gap-2">
+                <Sparkles className="h-4 w-4" />
+                Mentor Chat
+              </Button>
+              <Button onClick={() => setDialogOpen(true)} className="gap-2">
+                <PenSquare className="h-4 w-4" />
+                Nova Nota
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -206,6 +214,13 @@ const MemberDetails = () => {
         selectedMemberId={member.id}
         memberName={member.name}
         onSuccess={loadMemberAndFeedbacks}
+      />
+
+      <MentorChat
+        open={chatOpen}
+        onOpenChange={setChatOpen}
+        memberName={member.name}
+        feedbacks={feedbacks}
       />
     </div>
   );
