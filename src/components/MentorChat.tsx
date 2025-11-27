@@ -46,8 +46,12 @@ export const MentorChat = ({ open, onOpenChange, memberName, feedbacks }: Mentor
 
     const userMessage: Message = { role: 'user', content: input };
     setMessages(prev => [...prev, userMessage]);
+    const currentInput = input;
     setInput('');
     setIsLoading(true);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
     try {
       const { data: session } = await supabase.auth.getSession();
@@ -61,26 +65,57 @@ export const MentorChat = ({ open, onOpenChange, memberName, feedbacks }: Mentor
             'Authorization': `Bearer ${session?.session?.access_token}`
           },
           body: JSON.stringify({
-            question: input,
+            question: currentInput,
             feedbacks: feedbacks,
             memberName: memberName
-          })
+          }),
+          signal: controller.signal
         }
       );
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Falha ao obter resposta');
+        let errorMessage = 'Erro ao conectar com o Mentor. Tente novamente.';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          // Se não conseguir parsear o JSON, usa mensagem padrão
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
+      
+      if (!data.response) {
+        throw new Error('Resposta inválida do servidor.');
+      }
+
       const assistantMessage: Message = { role: 'assistant', content: data.response };
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error: any) {
+      clearTimeout(timeoutId);
       console.error('Erro no chat:', error);
+      
+      let errorMessage = 'Erro ao conectar com o Mentor. Tente novamente.';
+      
+      if (error.name === 'AbortError') {
+        errorMessage = 'Tempo de resposta excedido. Tente novamente.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      // Adicionar mensagem de erro como assistente
+      const errorAssistantMessage: Message = { 
+        role: 'assistant', 
+        content: `⚠️ ${errorMessage}` 
+      };
+      setMessages(prev => [...prev, errorAssistantMessage]);
+
       toast({
         title: "Erro ao consultar mentor",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
