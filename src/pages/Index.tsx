@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { TeamMemberCard } from '@/components/TeamMemberCard';
 import { NewNoteDialog } from '@/components/NewNoteDialog';
+import { NewMemberDialog } from '@/components/NewMemberDialog';
 import { Auth } from '@/components/Auth';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { PenSquare, Users, LogOut, Loader2 } from 'lucide-react';
+import { PenSquare, Users, LogOut, Loader2, UserPlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface TeamMember {
@@ -22,6 +23,7 @@ const Index = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading, signOut } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [memberDialogOpen, setMemberDialogOpen] = useState(false);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -83,6 +85,12 @@ const Index = () => {
               <p className="text-muted-foreground">Gestão de Performance Contínua</p>
             </div>
             <div className="flex gap-3">
+              {teamMembers.length > 0 && (
+                <Button onClick={() => setMemberDialogOpen(true)} size="lg" variant="outline" className="gap-2">
+                  <UserPlus className="h-5 w-5" />
+                  Novo Membro
+                </Button>
+              )}
               <Button onClick={() => setDialogOpen(true)} size="lg" className="gap-2 shadow-md">
                 <PenSquare className="h-5 w-5" />
                 Nova Nota
@@ -114,10 +122,7 @@ const Index = () => {
         ) : teamMembers.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground mb-4">Nenhum liderado cadastrado ainda</p>
-            <Button onClick={() => toast({
-              title: "Em breve",
-              description: "Funcionalidade de adicionar liderados em desenvolvimento"
-            })}>
+            <Button onClick={() => setMemberDialogOpen(true)}>
               Adicionar Primeiro Liderado
             </Button>
           </div>
@@ -143,6 +148,11 @@ const Index = () => {
       </main>
 
       <NewNoteDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      <NewMemberDialog 
+        open={memberDialogOpen} 
+        onOpenChange={setMemberDialogOpen}
+        onSuccess={loadTeamMembers}
+      />
     </div>
   );
 };
