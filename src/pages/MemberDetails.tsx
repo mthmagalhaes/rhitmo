@@ -3,13 +3,12 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { FeedbackTimeline } from '@/components/FeedbackTimeline';
 import { NewNoteDialog } from '@/components/NewNoteDialog';
 import { Auth } from '@/components/Auth';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, PenSquare, TrendingUp, Loader2 } from 'lucide-react';
+import { ArrowLeft, PenSquare, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const MemberDetails = () => {
@@ -113,13 +112,7 @@ const MemberDetails = () => {
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-foreground mb-2">{member.name}</h1>
               <p className="text-lg text-muted-foreground mb-4">{member.role}</p>
-              <div className="flex items-center gap-4">
-                <Badge variant="secondary" className="text-lg px-4 py-1">
-                  <TrendingUp className="h-4 w-4 mr-2" />
-                  Performance: {member.performance_score}%
-                </Badge>
-                <span className="text-muted-foreground">{feedbacks.length} notas registradas</span>
-              </div>
+              <span className="text-muted-foreground">{feedbacks.length} notas registradas</span>
             </div>
           </div>
         </div>
