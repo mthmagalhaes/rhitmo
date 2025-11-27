@@ -1,8 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -19,23 +17,54 @@ serve(async (req) => {
     console.log('Chat mentor request:', { memberName, feedbacksCount: feedbacks?.length });
 
     if (!question || !feedbacks || !memberName) {
-      throw new Error('Parâmetros inválidos: question, feedbacks e memberName são obrigatórios');
+      return new Response(
+        JSON.stringify({ error: 'Parâmetros inválidos: question, feedbacks e memberName são obrigatórios' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // Formatar contexto RAG com feedbacks
-    const contextLines = feedbacks
-      .map((fb: any, idx: number) => {
-        const date = new Date(fb.created_at).toLocaleDateString('pt-BR');
-        const sentiment = fb.sentiment || 'neutro';
-        const summary = fb.summary || fb.content.substring(0, 200);
-        const coaching = fb.coaching_tips || '';
-        
-        return `[Nota ${idx + 1} - ${date} - ${sentiment}]
+    // Verificar API Key
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openAIApiKey) {
+      console.error('OPENAI_API_KEY não configurada');
+      return new Response(
+        JSON.stringify({ error: 'Configuração de API ausente. Contate o administrador.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Limitar a últimas 5 notas e truncar para 5000 caracteres no total
+    const recentFeedbacks = feedbacks.slice(0, 5);
+    
+    let contextLines = '';
+    let totalChars = 0;
+    const maxChars = 5000;
+    
+    for (let idx = 0; idx < recentFeedbacks.length; idx++) {
+      const fb = recentFeedbacks[idx];
+      const date = new Date(fb.created_at).toLocaleDateString('pt-BR');
+      const sentiment = fb.sentiment || 'neutro';
+      const summary = fb.summary || fb.content.substring(0, 200);
+      const coaching = fb.coaching_tips || '';
+      
+      const noteText = `[Nota ${idx + 1} - ${date} - ${sentiment}]
 Resumo: ${summary}
 ${coaching ? `Dicas: ${coaching}` : ''}
----`;
-      })
-      .join('\n\n');
+---\n\n`;
+      
+      if (totalChars + noteText.length > maxChars) {
+        break;
+      }
+      
+      contextLines += noteText;
+      totalChars += noteText.length;
+    }
+
+    if (!contextLines) {
+      contextLines = 'Nenhum histórico disponível ainda.';
+    }
+
+    console.log('Context prepared:', { totalChars, notesIncluded: recentFeedbacks.length });
 
     const systemPrompt = `Você é um Mentor Executivo Sênior especializado em desenvolvimento de liderança. 
 
@@ -62,29 +91,60 @@ Base suas respostas exclusivamente nestes dados. Se a pergunta não puder ser re
 
     console.log('Calling OpenAI with context length:', systemPrompt.length);
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-5-mini-2025-08-07',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: question }
-        ],
-        max_completion_tokens: 800,
-      }),
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
+
+    let response;
+    try {
+      response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-5-mini-2025-08-07',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: question }
+          ],
+          max_completion_tokens: 800,
+        }),
+        signal: controller.signal,
+      });
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        console.error('OpenAI request timeout');
+        return new Response(
+          JSON.stringify({ error: 'Tempo de resposta excedido. Tente novamente.' }),
+          { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      throw fetchError;
+    }
+    
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('OpenAI error:', response.status, errorText);
-      throw new Error(`OpenAI API error: ${response.status}`);
+      return new Response(
+        JSON.stringify({ error: `Erro na API de IA (${response.status}). Tente novamente.` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const data = await response.json();
+    
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      console.error('Invalid OpenAI response structure:', data);
+      return new Response(
+        JSON.stringify({ error: 'Resposta inválida da IA. Tente novamente.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const mentorResponse = data.choices[0].message.content;
 
     console.log('Mentor response generated successfully');
