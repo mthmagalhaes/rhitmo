@@ -1,7 +1,19 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Brain, Heart, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Calendar, Brain, Heart, TrendingUp, AlertTriangle, Trash2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface Feedback {
   id: string;
@@ -16,9 +28,10 @@ interface Feedback {
 
 interface FeedbackTimelineProps {
   feedbacks: Feedback[];
+  onDelete?: (id: string) => void;
 }
 
-export const FeedbackTimeline = ({ feedbacks }: FeedbackTimelineProps) => {
+export const FeedbackTimeline = ({ feedbacks, onDelete }: FeedbackTimelineProps) => {
   const getTypeVariant = (type: string) => {
     switch (type) {
       case 'positive':
@@ -64,6 +77,38 @@ export const FeedbackTimeline = ({ feedbacks }: FeedbackTimelineProps) => {
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Calendar className="h-4 w-4" />
                 <span>{new Date(feedback.created_at).toLocaleDateString('pt-BR')}</span>
+                
+                {onDelete && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Tem certeza que deseja excluir este feedback? 
+                          Esta ação não pode ser desfeita.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction 
+                          onClick={() => onDelete(feedback.id)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Excluir
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
               </div>
             </div>
             
