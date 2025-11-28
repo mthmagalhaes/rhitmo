@@ -75,6 +75,7 @@ export type Database = {
           role: string
           updated_at: string
           user_id: string | null
+          work_style_data: Json | null
         }
         Insert: {
           avatar?: string | null
@@ -86,6 +87,7 @@ export type Database = {
           role: string
           updated_at?: string
           user_id?: string | null
+          work_style_data?: Json | null
         }
         Update: {
           avatar?: string | null
@@ -97,6 +99,7 @@ export type Database = {
           role?: string
           updated_at?: string
           user_id?: string | null
+          work_style_data?: Json | null
         }
         Relationships: []
       }

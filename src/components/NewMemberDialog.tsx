@@ -75,7 +75,11 @@ export const NewMemberDialog = ({ open, onOpenChange, onSuccess }: NewMemberDial
       // Se checkbox DISC marcado, enviar convite
       if (sendDiscInvite) {
         const { data: inviteData, error: inviteError } = await supabase.functions.invoke('send-disc-invite', {
-          body: { name: name.trim(), email: email.trim() }
+          body: { 
+            name: name.trim(), 
+            email: email.trim(),
+            memberId: newMember.id
+          }
         });
 
         if (inviteError) {

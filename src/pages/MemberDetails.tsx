@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { FeedbackTimeline } from '@/components/FeedbackTimeline';
 import { NewNoteDialog } from '@/components/NewNoteDialog';
 import { MentorChat } from '@/components/MentorChat';
+import { WorkStyleCard } from '@/components/WorkStyleCard';
 import { Auth } from '@/components/Auth';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -188,6 +189,18 @@ const MemberDetails = () => {
               <span className="text-muted-foreground">{feedbacks.length} notas registradas</span>
             </div>
           </div>
+
+          {/* Rhitmo Sync Status */}
+          {member.work_style_data ? (
+            <WorkStyleCard data={member.work_style_data} />
+          ) : (
+            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+              <p className="text-amber-700 dark:text-amber-400 text-sm flex items-center gap-2">
+                <span>⏳</span>
+                Aguardando preenchimento do Rhitmo Sync
+              </p>
+            </div>
+          )}
         </div>
 
         <div>
