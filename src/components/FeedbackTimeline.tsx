@@ -143,7 +143,7 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onReanalyze, reanalyzing
                     <div className="mb-4">
                       <p className="text-sm font-semibold text-primary mb-2 flex items-center gap-2">
                         <TrendingUp className="h-4 w-4" />
-                        Dicas de Coaching
+                        Dicas para a liderança
                       </p>
                       <div 
                         className="text-sm text-muted-foreground prose prose-sm max-w-none"
