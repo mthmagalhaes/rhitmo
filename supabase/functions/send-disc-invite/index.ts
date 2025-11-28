@@ -131,11 +131,39 @@ const handler = async (req: Request): Promise<Response> => {
 
       if (!resendResponse.ok) {
         const errorData = await resendResponse.json();
+        console.error('Erro Resend:', errorData);
+        
+        // Detectar erro de validação de domínio (403)
+        if (errorData.statusCode === 403 && errorData.name === 'validation_error') {
+          console.log('⚠️ Resend requer domínio verificado. Simulando envio...');
+          
+          // Simular o envio em vez de falhar
+          console.log('=== EMAIL BLOQUEADO PELO RESEND (domínio não verificado) ===');
+          console.log(`Para: ${email}`);
+          console.log(`Nome: ${name}`);
+          console.log(`Link: ${syncUrl}`);
+          console.log('Ação necessária: Verifique um domínio em https://resend.com/domains');
+          console.log('=============================================================');
+          
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              simulated: true,
+              reason: 'domain_not_verified',
+              message: 'Email não enviado: domínio não verificado no Resend. Verifique um domínio em resend.com/domains'
+            }),
+            {
+              status: 200,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            }
+          );
+        }
+        
         throw new Error(`Resend API error: ${JSON.stringify(errorData)}`);
       }
 
       const emailData = await resendResponse.json();
-      console.log('Email enviado com sucesso via Resend:', emailData);
+      console.log('✅ Email enviado com sucesso via Resend:', emailData);
 
       return new Response(
         JSON.stringify({ 
@@ -149,7 +177,7 @@ const handler = async (req: Request): Promise<Response> => {
         }
       );
     } catch (resendError: any) {
-      console.error('Erro ao enviar via Resend:', resendError);
+      console.error('❌ Erro ao enviar via Resend:', resendError);
       throw resendError;
     }
   } catch (error: any) {
