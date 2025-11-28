@@ -10,7 +10,7 @@ import { WorkStyleCard } from '@/components/WorkStyleCard';
 import { Auth } from '@/components/Auth';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, PenSquare, Loader2, Sparkles } from 'lucide-react';
+import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const MemberDetails = () => {
@@ -23,6 +23,7 @@ const MemberDetails = () => {
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [reanalyzingId, setReanalyzingId] = useState<string | null>(null);
+  const [resendingInvite, setResendingInvite] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -127,6 +128,44 @@ const MemberDetails = () => {
     }
   };
 
+  const handleResendInvite = async () => {
+    if (!member) return;
+    
+    setResendingInvite(true);
+    try {
+      const { data: inviteData, error: inviteError } = await supabase.functions.invoke('send-disc-invite', {
+        body: { 
+          name: member.name, 
+          email: member.email,
+          memberId: member.id
+        }
+      });
+
+      if (inviteError) throw inviteError;
+
+      if (inviteData?.simulated) {
+        toast({
+          title: "Email simulado",
+          description: "Configure RESEND_API_KEY para enviar emails reais.",
+        });
+      } else {
+        toast({
+          title: "Convite reenviado!",
+          description: `Email enviado para ${member.email}`,
+        });
+      }
+    } catch (error: any) {
+      console.error('Erro ao reenviar convite:', error);
+      toast({
+        title: "Erro ao reenviar",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setResendingInvite(false);
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -195,10 +234,26 @@ const MemberDetails = () => {
             <WorkStyleCard data={member.work_style_data} />
           ) : (
             <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-              <p className="text-amber-700 dark:text-amber-400 text-sm flex items-center gap-2">
-                <span>⏳</span>
-                Aguardando preenchimento do Rhitmo Sync
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-amber-700 dark:text-amber-400 text-sm flex items-center gap-2">
+                  <span>⏳</span>
+                  Aguardando preenchimento do Rhitmo Sync
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResendInvite}
+                  disabled={resendingInvite}
+                  className="gap-2"
+                >
+                  {resendingInvite ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Mail className="h-4 w-4" />
+                  )}
+                  Reenviar Convite
+                </Button>
+              </div>
             </div>
           )}
         </div>
