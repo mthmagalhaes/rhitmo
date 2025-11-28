@@ -37,39 +37,11 @@ const handler = async (req: Request): Promise<Response> => {
 
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
     
-    // Se RESEND_API_KEY não estiver configurada, simular envio
     if (!resendApiKey) {
-      console.log('=== SIMULAÇÃO DE ENVIO DE EMAIL ===');
-      console.log(`Para: ${email}`);
-      console.log(`Nome: ${name}`);
-      console.log('Assunto: Complete seu Rhitmo Sync - Apenas 1 minuto! ⚡');
-      console.log('Corpo:');
-      console.log(`Olá ${name},`);
-      console.log('');
-      console.log('Seu gestor convidou você para o Rhitmo.');
-      console.log('Complete seu perfil de trabalho em apenas 1 minuto:');
-      console.log(syncUrl);
-      console.log('');
-      console.log('São apenas 5 perguntas rápidas sobre suas preferências de trabalho.');
-      console.log('');
-      console.log('Atenciosamente,');
-      console.log('Equipe Rhitmo');
-      console.log('===================================');
-
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          simulated: true,
-          message: 'Email simulado com sucesso (RESEND_API_KEY não configurada)'
-        }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
+      throw new Error('RESEND_API_KEY não configurada');
     }
 
-    // Se RESEND_API_KEY estiver configurada, enviar email real via Resend
+    // Enviar email real via Resend
     try {
       const resendResponse = await fetch('https://api.resend.com/emails', {
         method: 'POST',
@@ -78,7 +50,7 @@ const handler = async (req: Request): Promise<Response> => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'Rhitmo <onboarding@resend.dev>',
+          from: 'Rhitmo <noreply@rhitmo.co>',
           to: [email],
           subject: 'Complete seu Rhitmo Sync - Apenas 1 minuto! ⚡',
           html: `
@@ -131,34 +103,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       if (!resendResponse.ok) {
         const errorData = await resendResponse.json();
-        console.error('Erro Resend:', errorData);
-        
-        // Detectar erro de validação de domínio (403)
-        if (errorData.statusCode === 403 && errorData.name === 'validation_error') {
-          console.log('⚠️ Resend requer domínio verificado. Simulando envio...');
-          
-          // Simular o envio em vez de falhar
-          console.log('=== EMAIL BLOQUEADO PELO RESEND (domínio não verificado) ===');
-          console.log(`Para: ${email}`);
-          console.log(`Nome: ${name}`);
-          console.log(`Link: ${syncUrl}`);
-          console.log('Ação necessária: Verifique um domínio em https://resend.com/domains');
-          console.log('=============================================================');
-          
-          return new Response(
-            JSON.stringify({ 
-              success: true, 
-              simulated: true,
-              reason: 'domain_not_verified',
-              message: 'Email não enviado: domínio não verificado no Resend. Verifique um domínio em resend.com/domains'
-            }),
-            {
-              status: 200,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            }
-          );
-        }
-        
+        console.error('❌ Erro Resend:', errorData);
         throw new Error(`Resend API error: ${JSON.stringify(errorData)}`);
       }
 
@@ -167,9 +112,9 @@ const handler = async (req: Request): Promise<Response> => {
 
       return new Response(
         JSON.stringify({ 
-          success: true, 
-          simulated: false,
-          emailId: emailData.id 
+          success: true,
+          emailId: emailData.id,
+          syncUrl: syncUrl
         }),
         {
           status: 200,

@@ -89,15 +89,6 @@ export const NewMemberDialog = ({ open, onOpenChange, onSuccess }: NewMemberDial
             description: `${name.trim()} foi adicionado, mas houve erro ao enviar o convite: ${inviteError.message}`,
             variant: "destructive"
           });
-        } else if (inviteData?.simulated) {
-          const message = inviteData.reason === 'domain_not_verified' 
-            ? `${name.trim()} foi adicionado. Email não enviado: verifique um domínio em resend.com/domains`
-            : `${name.trim()} foi adicionado. Email simulado (configure RESEND_API_KEY para enviar emails reais).`;
-          
-          toast({
-            title: "Membro cadastrado!",
-            description: message,
-          });
         } else {
           toast({
             title: "Sucesso!",

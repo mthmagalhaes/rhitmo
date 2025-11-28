@@ -10,7 +10,7 @@ import { WorkStyleCard } from '@/components/WorkStyleCard';
 import { Auth } from '@/components/Auth';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail } from 'lucide-react';
+import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const MemberDetails = () => {
@@ -143,17 +143,10 @@ const MemberDetails = () => {
 
       if (inviteError) throw inviteError;
 
-      if (inviteData?.simulated) {
-        toast({
-          title: "Email simulado",
-          description: "Configure RESEND_API_KEY para enviar emails reais.",
-        });
-      } else {
-        toast({
-          title: "Convite reenviado!",
-          description: `Email enviado para ${member.email}`,
-        });
-      }
+      toast({
+        title: "Convite enviado!",
+        description: `Email enviado para ${member.email}`,
+      });
     } catch (error: any) {
       console.error('Erro ao reenviar convite:', error);
       toast({
@@ -164,6 +157,19 @@ const MemberDetails = () => {
     } finally {
       setResendingInvite(false);
     }
+  };
+
+  const handleCopyLink = () => {
+    if (!member) return;
+    
+    const origin = window.location.origin;
+    const syncUrl = `${origin}/sync/${member.id}`;
+    
+    navigator.clipboard.writeText(syncUrl);
+    toast({
+      title: "Link copiado!",
+      description: "Cole no WhatsApp ou envie para o membro.",
+    });
   };
 
   if (authLoading || loading) {
@@ -239,20 +245,31 @@ const MemberDetails = () => {
                   <span>⏳</span>
                   Aguardando preenchimento do Rhitmo Sync
                 </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleResendInvite}
-                  disabled={resendingInvite}
-                  className="gap-2"
-                >
-                  {resendingInvite ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Mail className="h-4 w-4" />
-                  )}
-                  Reenviar Convite
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopyLink}
+                    className="gap-2"
+                  >
+                    <Copy className="h-4 w-4" />
+                    Copiar Link
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleResendInvite}
+                    disabled={resendingInvite}
+                    className="gap-2"
+                  >
+                    {resendingInvite ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Mail className="h-4 w-4" />
+                    )}
+                    Reenviar Convite
+                  </Button>
+                </div>
               </div>
             </div>
           )}
