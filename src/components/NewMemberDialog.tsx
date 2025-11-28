@@ -84,12 +84,22 @@ export const NewMemberDialog = ({ open, onOpenChange, onSuccess }: NewMemberDial
 
         if (inviteError) {
           console.error('Erro ao enviar convite DISC:', inviteError);
+          toast({
+            title: "Membro cadastrado",
+            description: `${name.trim()} foi adicionado, mas houve erro ao enviar o convite: ${inviteError.message}`,
+            variant: "destructive"
+          });
+        } else if (inviteData?.simulated) {
+          toast({
+            title: "Membro cadastrado!",
+            description: `${name.trim()} foi adicionado. Email simulado (configure RESEND_API_KEY para enviar emails reais).`,
+          });
+        } else {
+          toast({
+            title: "Sucesso!",
+            description: `Membro cadastrado e convite Rhitmo Sync enviado para ${email.trim()}`,
+          });
         }
-
-        toast({
-          title: "Sucesso!",
-          description: `Membro cadastrado e convite DISC enviado para ${email.trim()}`,
-        });
       } else {
         toast({
           title: "Membro cadastrado!",
