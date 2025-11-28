@@ -90,9 +90,13 @@ export const NewMemberDialog = ({ open, onOpenChange, onSuccess }: NewMemberDial
             variant: "destructive"
           });
         } else if (inviteData?.simulated) {
+          const message = inviteData.reason === 'domain_not_verified' 
+            ? `${name.trim()} foi adicionado. Email não enviado: verifique um domínio em resend.com/domains`
+            : `${name.trim()} foi adicionado. Email simulado (configure RESEND_API_KEY para enviar emails reais).`;
+          
           toast({
             title: "Membro cadastrado!",
-            description: `${name.trim()} foi adicionado. Email simulado (configure RESEND_API_KEY para enviar emails reais).`,
+            description: message,
           });
         } else {
           toast({
