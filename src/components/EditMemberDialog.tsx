@@ -1,12 +1,23 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Settings } from 'lucide-react';
+import { Loader2, Settings, Trash2 } from 'lucide-react';
 import { Team } from '@/types/team';
 
 interface EditMemberDialogProps {
@@ -158,6 +169,39 @@ export const EditMemberDialog = ({
     }
   };
 
+  const handleDelete = async () => {
+    setLoading(true);
+    try {
+      // Primeiro deletar feedbacks do membro
+      await supabase.from('feedbacks').delete().eq('member_id', member?.id);
+      
+      // Depois deletar o membro
+      const { error } = await supabase
+        .from('team_members')
+        .delete()
+        .eq('id', member?.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Membro excluído",
+        description: `${name} foi removido da equipe`,
+      });
+
+      onOpenChange(false);
+      onSuccess?.();
+    } catch (error: any) {
+      console.error('Erro ao excluir membro:', error);
+      toast({
+        title: "Erro ao excluir",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!member) return null;
 
   return (
@@ -230,19 +274,47 @@ export const EditMemberDialog = ({
             </div>
           </div>
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={loading}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Salvar Alterações
-            </Button>
+          <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-between gap-2">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button type="button" variant="destructive" disabled={loading}>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Excluir
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir Membro?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta ação é irreversível. Todas as notas e dados de {name} serão excluídos permanentemente.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={handleDelete} 
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Sim, Excluir
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={loading}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Salvar Alterações
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

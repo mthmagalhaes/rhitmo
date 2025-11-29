@@ -255,6 +255,7 @@ const Index = () => {
                   performanceScore: member.performance_score,
                   teamId: member.teamId
                 }}
+                teamName={teams.find(t => t.id === member.teamId)?.name}
                 onEdit={() => {
                   setSelectedMember({
                     id: member.id,

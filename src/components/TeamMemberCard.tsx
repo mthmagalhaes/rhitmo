@@ -1,16 +1,18 @@
 import { TeamMember } from '@/types/team';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar, MessageSquare, Settings } from 'lucide-react';
 
 interface TeamMemberCardProps {
   member: TeamMember;
+  teamName?: string;
   onClick: () => void;
   onEdit?: () => void;
 }
 
-export const TeamMemberCard = ({ member, onClick, onEdit }: TeamMemberCardProps) => {
+export const TeamMemberCard = ({ member, teamName, onClick, onEdit }: TeamMemberCardProps) => {
   return (
     <Card 
       className="cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] bg-card"
@@ -40,6 +42,11 @@ export const TeamMemberCard = ({ member, onClick, onEdit }: TeamMemberCardProps)
               )}
             </div>
             <p className="text-sm text-muted-foreground">{member.role}</p>
+            {teamName && (
+              <Badge variant="secondary" className="mt-1 text-xs font-normal">
+                {teamName}
+              </Badge>
+            )}
           </div>
         </div>
       </CardHeader>
