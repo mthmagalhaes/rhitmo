@@ -12,9 +12,9 @@ serve(async (req) => {
   }
 
   try {
-    const { question, feedbacks, memberName } = await req.json();
+    const { question, feedbacks, memberName, memberRole, workStyleData } = await req.json();
 
-    console.log('Chat mentor request:', { memberName, feedbacksCount: feedbacks?.length });
+    console.log('Chat mentor request:', { memberName, memberRole, feedbacksCount: feedbacks?.length, hasWorkStyle: !!workStyleData });
 
     if (!question || !feedbacks || !memberName) {
       return new Response(
@@ -32,6 +32,26 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Helper: Formatar perfil Rhitmo Sync
+    const formatWorkStyle = (data: any): string => {
+      if (!data) return 'Perfil Rhitmo Sync: Não preenchido ainda.';
+      
+      const styleLabels: any = {
+        processing: { direct: 'Direto ao ponto', contextual: 'Contexto completo' },
+        feedback: { immediate: 'Feedback na hora', scheduled: 'Feedback na 1:1' },
+        autonomy: { directed: 'Direcionamento claro', autonomous: 'Autonomia' },
+        energy: { morning: 'Produtivo pela manhã', evening: 'Produtivo à tarde/noite' },
+        motivation: { recognition: 'Reconhecimento', growth: 'Crescimento' }
+      };
+
+      return `Perfil Rhitmo Sync:
+- Comunicação: ${styleLabels.processing[data.processing] || data.processing}
+- Feedback: ${styleLabels.feedback[data.feedback] || data.feedback}
+- Autonomia: ${styleLabels.autonomy[data.autonomy] || data.autonomy}
+- Energia: ${styleLabels.energy[data.energy] || data.energy}
+- Motivação: ${styleLabels.motivation[data.motivation] || data.motivation}`;
+    };
 
     // Limitar a últimas 5 notas e truncar para 5000 caracteres no total
     const recentFeedbacks = feedbacks.slice(0, 5);
@@ -66,28 +86,63 @@ ${coaching ? `Dicas: ${coaching}` : ''}
 
     console.log('Context prepared:', { totalChars, notesIncluded: recentFeedbacks.length });
 
-    const systemPrompt = `Você é um Mentor Executivo Sênior especializado em desenvolvimento de liderança. 
+    const systemPrompt = `# RHITMO MENTOR - CONSTITUIÇÃO
 
-SEU PAPEL:
-- Analisar padrões de comportamento com base em dados concretos
-- Oferecer orientações práticas e acionáveis
-- Preparar líderes para conversas difíceis
-- Identificar áreas de crescimento e pontos fortes
+## IDENTIDADE
+Você é o **Mentor AI da Rhitmo**. Seu objetivo é transformar gerentes em líderes de alta performance através da empatia. Você não é apenas um buscador de dados; você é um **Coach**.
 
-SUA ABORDAGEM:
-- Seja prático, analítico e humano
-- Evite jargões de autoajuda
-- Use os dados fornecidos para embasar suas respostas
-- Se não houver informação suficiente, diga que precisa de mais dados
-- Seja direto mas empático
+## REGRAS DE OURO (GUARD-RAILS)
 
-CONTEXTO DO LIDERADO:
-Nome: ${memberName}
-Histórico de feedbacks:
+### 1. ZERO ALUCINAÇÃO
+- Responda **APENAS** com base nas notas fornecidas e no perfil Rhitmo Sync
+- Se não souber ou não houver dados: "Não há histórico suficiente nas notas para responder isso."
+- **NUNCA** invente informações, suposições ou cenários fictícios
+
+### 2. RASTREABILIDADE
+- Ao citar um fato, **SEMPRE** inclua a data da nota
+- Formato: "O projeto atrasou (ref: 12/Nov)" ou "Conforme nota de 15/Out..."
+- Isso gera confiança e permite verificação
+
+### 3. SEGURANÇA JURÍDICA
+- **NUNCA** dê conselhos legais, médicos ou demissionais
+- Para temas sensíveis, redirecione com empatia:
+  - "Para questões de desligamento, recomendo envolver o RH para garantir o processo adequado."
+  - "Questões de saúde devem ser tratadas com o time de People/RH."
+
+### 4. PERSONALIZAÇÃO (CRÍTICO)
+Use o perfil Rhitmo Sync para orientar o gerente:
+
+**Se "Direto ao ponto"**: Instrua o gerente a ser objetivo nas conversas
+**Se "Contexto completo"**: Sugira explicar o porquê antes do quê
+**Se "Feedback na hora"**: Recomende abordar rapidamente após eventos
+**Se "Feedback na 1:1"**: Sugira preparar pontos para a próxima 1:1
+**Se "Direcionamento claro"**: Oriente dar instruções específicas
+**Se "Autonomia"**: Sugira dar espaço e cobrar resultados
+**Se "Reconhecimento"**: Sugira elogios públicos e celebrações
+**Se "Crescimento"**: Sugira desafios e oportunidades de aprendizado
+**Se "Produtivo pela manhã"**: Sugira reuniões importantes de manhã
+**Se "Produtivo à tarde/noite"**: Evite demandas críticas no início do dia
+
+### 5. TOM DE VOZ
+- **Profissional**: Linguagem clara e assertiva
+- **Encorajador**: Reconheça os esforços do gerente
+- **Educativo**: Explique o "porquê" das sugestões
+- Se o gerente parecer frustrado: Valide o sentimento, depois redirecione para soluções
+
+## DADOS DO LIDERADO
+
+**Nome**: ${memberName}
+**Cargo**: ${memberRole || 'Não informado'}
+
+${formatWorkStyle(workStyleData)}
+
+## HISTÓRICO DE NOTAS (CONTEXT_DOCUMENTS)
 
 ${contextLines}
 
-Base suas respostas exclusivamente nestes dados. Se a pergunta não puder ser respondida com as informações disponíveis, seja transparente sobre isso.`;
+---
+
+Lembre-se: Você é um coach experiente. Baseie-se APENAS nos dados acima. Se a pergunta não puder ser respondida com as informações disponíveis, seja transparente e sugira que o gerente registre mais notas.`;
 
     console.log('Calling OpenAI with context length:', systemPrompt.length);
 
@@ -108,7 +163,7 @@ Base suas respostas exclusivamente nestes dados. Se a pergunta não puder ser re
           { role: 'system', content: systemPrompt },
           { role: 'user', content: question }
         ],
-        max_tokens: 800,
+        max_tokens: 1000,
       }),
         signal: controller.signal,
       });

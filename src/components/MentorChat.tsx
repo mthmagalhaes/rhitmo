@@ -17,10 +17,12 @@ interface MentorChatProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   memberName: string;
+  memberRole?: string;
   feedbacks: any[];
+  workStyleData?: any;
 }
 
-export const MentorChat = ({ open, onOpenChange, memberName, feedbacks }: MentorChatProps) => {
+export const MentorChat = ({ open, onOpenChange, memberName, memberRole, feedbacks, workStyleData }: MentorChatProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -68,7 +70,9 @@ export const MentorChat = ({ open, onOpenChange, memberName, feedbacks }: Mentor
           body: JSON.stringify({
             question: currentInput,
             feedbacks: feedbacks,
-            memberName: memberName
+            memberName: memberName,
+            memberRole: memberRole,
+            workStyleData: workStyleData
           }),
           signal: controller.signal
         }
