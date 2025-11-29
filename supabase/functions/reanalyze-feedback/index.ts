@@ -62,12 +62,22 @@ serve(async (req) => {
       );
     }
 
+    // Helper para contar palavras
+    const countWords = (text: string): number => {
+      return text.trim().split(/\s+/).filter(w => w.length > 0).length;
+    };
+
     const maxContentLength = 6000;
     let truncatedContent = feedback.content;
     if (feedback.content.length > maxContentLength) {
       truncatedContent = feedback.content.substring(0, maxContentLength);
       console.log(`Conteúdo truncado de ${feedback.content.length} para ${maxContentLength} caracteres`);
     }
+
+    const wordCount = countWords(truncatedContent);
+    const isShortNote = wordCount < 50;
+    
+    console.log(`Reprocessamento: ${wordCount} palavras - Modo: ${isShortNote ? 'CURTO' : 'COMPLETO'}`);
 
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
@@ -80,6 +90,128 @@ serve(async (req) => {
 
     console.log('Enviando para OpenAI...');
 
+    // System Prompt - Constituição Rhitmo Analyst
+    const systemPrompt = `# RHITMO ANALYST - CONSTITUIÇÃO
+
+## SUA MISSÃO
+Analisar textos de reuniões/notas, extrair resumo e tarefas. Quando apropriado, agir como **Espelho do Líder**, apontando vieses e melhorias de postura.
+
+## REGRA DE CONTEXTO: SILÊNCIO INTELIGENTE
+
+Você receberá uma flag indicando se o texto é curto ou rico.
+
+### CASO A: Texto Curto (< 50 palavras)
+- **AÇÃO**: Apenas resuma e extraia pontos principais
+- **RESTRIÇÃO**: NÃO gere dicas de coaching ou críticas comportamentais
+- **MOTIVO**: Não ser pedante em anotações rápidas
+- **EXCEÇÃO**: Alerte APENAS se houver linguagem ofensiva grave
+
+### CASO B: Texto Rico / Transcrição (≥ 50 palavras)
+- **AÇÃO**: Análise completa com coaching ativo
+- **DETECÇÃO DE VIÉS**: Procure ativamente por:
+  - Linguagem sexista, racista ou etarista
+  - Generalizações absolutas ("Você sempre...", "Você nunca...")
+  - Rótulos limitantes ("Ele é assim mesmo", "Ela não tem perfil")
+  - Microgerenciamento ou controle excessivo
+- **ESPELHO DO LÍDER**: Se identificar que o gerente:
+  - Falou a maior parte do tempo
+  - Interrompeu o liderado
+  - Foi excessivamente diretivo sem escutar
+  → Aponte isso diretamente no campo coaching_tips
+
+## TOM DE VOZ
+- Seja **direto** e use "Você" ao dar feedback ao gerente
+- Exemplos:
+  - "Você interrompeu o liderado 3 vezes. Pratique a escuta ativa."
+  - "A frase 'você sempre atrasa' é uma generalização. Prefira exemplos específicos."
+  - "Você falou 80% do tempo. Nas próximas 1:1, experimente fazer mais perguntas."
+
+## FORMATO DE SAÍDA
+Retorne dados estruturados conforme a função especificada.
+Para texto curto: coaching_tips deve ser null ou vazio.
+Para texto rico: coaching_tips deve conter insights acionáveis.`;
+
+    // Tools dinâmicos baseados no tamanho do texto
+    const toolsShortNote = [
+      {
+        type: "function",
+        function: {
+          name: "analyze_feedback",
+          description: "Análise simplificada para notas curtas",
+          parameters: {
+            type: "object",
+            properties: {
+              summary: {
+                type: "string",
+                description: "Resumo conciso em 1-2 frases"
+              },
+              sentiment: {
+                type: "string",
+                enum: ["muito_positivo", "positivo", "neutro", "construtivo", "critico"]
+              },
+              coaching_tips: {
+                type: "array",
+                items: { type: "string" },
+                description: "Lista VAZIA para notas curtas, a menos que haja ofensa grave"
+              },
+              bias_alert: {
+                type: "string",
+                description: "Alertar APENAS se houver linguagem ofensiva grave, senão 'Nenhum viés detectado'"
+              }
+            },
+            required: ["summary", "sentiment", "coaching_tips", "bias_alert"],
+            additionalProperties: false
+          }
+        }
+      }
+    ];
+
+    const toolsRichText = [
+      {
+        type: "function",
+        function: {
+          name: "analyze_feedback",
+          description: "Análise completa com coaching ativo",
+          parameters: {
+            type: "object",
+            properties: {
+              summary: {
+                type: "string",
+                description: "Resumo conciso em até 2 frases"
+              },
+              sentiment: {
+                type: "string",
+                enum: ["muito_positivo", "positivo", "neutro", "construtivo", "critico"]
+              },
+              coaching_tips: {
+                type: "array",
+                items: { type: "string" },
+                description: "Lista de dicas práticas de coaching. Inclua feedback sobre postura do líder se aplicável. Use 'Você' diretamente."
+              },
+              bias_alert: {
+                type: "string",
+                description: "Alerte sobre: linguagem discriminatória, generalizações ('sempre/nunca'), rótulos limitantes. Se não houver: 'Nenhum viés detectado'"
+              }
+            },
+            required: ["summary", "sentiment", "coaching_tips", "bias_alert"],
+            additionalProperties: false
+          }
+        }
+      }
+    ];
+
+    const userPrompt = isShortNote
+      ? `[MODO: NOTA CURTA - ${wordCount} palavras]
+Analise esta nota de forma SIMPLIFICADA. NÃO gere dicas de coaching.
+
+Nota:
+${truncatedContent}`
+      : `[MODO: TEXTO RICO - ${wordCount} palavras]
+Analise este feedback de forma COMPLETA. Inclua dicas de coaching e seja o "Espelho do Líder".
+
+Feedback:
+${truncatedContent}`;
+
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -91,54 +223,14 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'Você é um especialista em análise de feedbacks corporativos. Analise o feedback fornecido e retorne insights estruturados.'
+            content: systemPrompt
           },
           {
             role: 'user',
-            content: `Analise este feedback e forneça:
-1. Um resumo conciso (máximo 2 frases)
-2. O sentimento predominante (escolha entre: muito_positivo, positivo, neutro, construtivo, critico)
-3. Três dicas práticas de coaching para o gestor
-4. Alerta de viés (se detectar algum viés cognitivo, caso contrário retorne "Nenhum viés detectado")
-
-Feedback:
-${truncatedContent}`
+            content: userPrompt
           }
         ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "analyze_feedback",
-              description: "Retorna análise estruturada do feedback",
-              parameters: {
-                type: "object",
-                properties: {
-                  summary: {
-                    type: "string",
-                    description: "Resumo conciso do feedback em até 2 frases"
-                  },
-                  sentiment: {
-                    type: "string",
-                    enum: ["muito_positivo", "positivo", "neutro", "construtivo", "critico"],
-                    description: "Sentimento predominante do feedback"
-                  },
-                  coaching_tips: {
-                    type: "array",
-                    items: { type: "string" },
-                    description: "Lista de 3 dicas práticas de coaching"
-                  },
-                  bias_alert: {
-                    type: "string",
-                    description: "Alerta sobre possíveis vieses detectados ou 'Nenhum viés detectado'"
-                  }
-                },
-                required: ["summary", "sentiment", "coaching_tips", "bias_alert"],
-                additionalProperties: false
-              }
-            }
-          }
-        ],
+        tools: isShortNote ? toolsShortNote : toolsRichText,
         tool_choice: { type: "function", function: { name: "analyze_feedback" } }
       }),
     });
