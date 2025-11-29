@@ -11,3 +11,6 @@ verify_jwt = true
 
 [functions.chat-mentor]
 verify_jwt = true
+
+[functions.generate-review]
+verify_jwt = true
