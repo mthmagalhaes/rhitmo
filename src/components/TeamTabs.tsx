@@ -15,13 +15,19 @@ export const TeamTabs = ({
   onTeamChange, 
   onNewTeam 
 }: TeamTabsProps) => {
+  // Separar "Sem Time" dos demais e ordenar alfabeticamente
+  const semTimeTeam = teams.find(t => t.name === 'Sem Time');
+  const otherTeams = teams
+    .filter(t => t.name !== 'Sem Time')
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+
   return (
     <div className="mb-8">
       <Tabs 
         value={activeTeamId || 'all'} 
         onValueChange={(value) => onTeamChange(value === 'all' ? null : value)}
       >
-        <TabsList className="h-auto flex-wrap justify-start gap-2 bg-muted/50 p-2">
+        <TabsList className="h-auto flex-nowrap justify-start gap-2 bg-muted/50 p-2 overflow-x-auto max-w-full scrollbar-thin">
           <TabsTrigger 
             value="all"
             className="data-[state=active]:bg-background data-[state=active]:shadow-sm"
@@ -29,7 +35,17 @@ export const TeamTabs = ({
             Todos
           </TabsTrigger>
           
-          {teams.map((team) => (
+          {semTimeTeam && (
+            <TabsTrigger 
+              key={semTimeTeam.id} 
+              value={semTimeTeam.id}
+              className="data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            >
+              {semTimeTeam.name}
+            </TabsTrigger>
+          )}
+          
+          {otherTeams.map((team) => (
             <TabsTrigger 
               key={team.id} 
               value={team.id}
@@ -45,7 +61,7 @@ export const TeamTabs = ({
               e.preventDefault();
               onNewTeam();
             }}
-            className="gap-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-transparent"
+            className="gap-2 border-2 border-dashed border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 hover:border-primary/50 data-[state=active]:bg-transparent"
           >
             <Plus className="h-4 w-4" />
             Novo Time
