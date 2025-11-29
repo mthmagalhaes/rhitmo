@@ -73,6 +73,7 @@ export type Database = {
           name: string
           performance_score: number | null
           role: string
+          team_id: string
           updated_at: string
           user_id: string | null
           work_style_data: Json | null
@@ -85,6 +86,7 @@ export type Database = {
           name: string
           performance_score?: number | null
           role: string
+          team_id: string
           updated_at?: string
           user_id?: string | null
           work_style_data?: Json | null
@@ -97,9 +99,74 @@ export type Database = {
           name?: string
           performance_score?: number | null
           role?: string
+          team_id?: string
           updated_at?: string
           user_id?: string | null
           work_style_data?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teams_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspaces: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          owner_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -108,7 +175,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_workspace_owner: {
+        Args: { _member_id: string; _user_id: string }
+        Returns: boolean
+      }
+      user_owns_team: {
+        Args: { _team_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
