@@ -305,7 +305,9 @@ const MemberDetails = () => {
         open={chatOpen}
         onOpenChange={setChatOpen}
         memberName={member.name}
+        memberRole={member.role}
         feedbacks={feedbacks}
+        workStyleData={member.work_style_data}
       />
     </div>
   );
