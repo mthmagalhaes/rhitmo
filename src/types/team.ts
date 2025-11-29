@@ -13,4 +13,21 @@ export interface TeamMember {
   lastFeedback: string;
   feedbackCount: number;
   performanceScore: number;
+  teamId?: string;
+}
+
+export interface Workspace {
+  id: string;
+  name: string;
+  owner_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Team {
+  id: string;
+  name: string;
+  workspace_id: string;
+  created_at: string;
+  updated_at: string;
 }

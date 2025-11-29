@@ -3,45 +3,51 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, UserPlus } from 'lucide-react';
-import { z } from 'zod';
+import { Loader2, Settings } from 'lucide-react';
 import { Team } from '@/types/team';
 
-interface NewMemberDialogProps {
+interface EditMemberDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  member: {
+    id: string;
+    name: string;
+    role: string;
+    teamId: string;
+  } | null;
   workspaceId: string;
   onSuccess?: () => void;
 }
 
-const memberSchema = z.object({
-  name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
-  role: z.string().min(2, 'Cargo é obrigatório').max(100, 'Cargo muito longo'),
-  email: z.string().email('E-mail inválido').max(255, 'E-mail muito longo'),
-});
-
-export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: NewMemberDialogProps) => {
+export const EditMemberDialog = ({ 
+  open, 
+  onOpenChange, 
+  member,
+  workspaceId,
+  onSuccess 
+}: EditMemberDialogProps) => {
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
-  const [email, setEmail] = useState('');
-  const [sendDiscInvite, setSendDiscInvite] = useState(true);
-  const [teams, setTeams] = useState<Team[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState('');
+  const [teams, setTeams] = useState<Team[]>([]);
   const [newTeamName, setNewTeamName] = useState('');
   const [isCreatingTeam, setIsCreatingTeam] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
   useEffect(() => {
-    if (open) {
+    if (open && member) {
+      setName(member.name);
+      setRole(member.role);
+      setSelectedTeamId(member.teamId);
+      setNewTeamName('');
+      setIsCreatingTeam(false);
       loadTeams();
     }
-  }, [open]);
+  }, [open, member]);
 
   const loadTeams = async () => {
     try {
@@ -53,11 +59,6 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
 
       if (error) throw error;
       setTeams(data || []);
-      
-      // Se houver apenas um time, seleciona automaticamente
-      if (data && data.length === 1) {
-        setSelectedTeamId(data[0].id);
-      }
     } catch (error: any) {
       console.error('Erro ao carregar times:', error);
     }
@@ -76,18 +77,13 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrors({});
-
-    // Validação
-    const result = memberSchema.safeParse({ name, role, email });
-    if (!result.success) {
-      const fieldErrors: Record<string, string> = {};
-      result.error.errors.forEach((err) => {
-        if (err.path[0]) {
-          fieldErrors[err.path[0].toString()] = err.message;
-        }
+    
+    if (!name.trim() || !role.trim()) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Nome e cargo são obrigatórios",
+        variant: "destructive"
       });
-      setErrors(fieldErrors);
       return;
     }
 
@@ -112,12 +108,6 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
     setLoading(true);
 
     try {
-      // Obter sessão do usuário
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Usuário não autenticado');
-      }
-
       let teamId = selectedTeamId;
 
       // Criar novo time se necessário
@@ -135,67 +125,31 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
         teamId = newTeam.id;
       }
 
-      // Inserir novo membro na tabela team_members
-      const { data: newMember, error: insertError } = await supabase
+      // Atualizar membro
+      const { error: updateError } = await supabase
         .from('team_members')
-        .insert({
-          user_id: session.user.id,
+        .update({
           name: name.trim(),
           role: role.trim(),
-          email: email.trim(),
-          team_id: teamId,
-          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name.trim()}`,
-          performance_score: 50
+          team_id: teamId
         })
-        .select()
-        .single();
+        .eq('id', member?.id);
 
-      if (insertError) throw insertError;
+      if (updateError) throw updateError;
 
-      // Se checkbox DISC marcado, enviar convite
-      if (sendDiscInvite) {
-        const { data: inviteData, error: inviteError } = await supabase.functions.invoke('send-disc-invite', {
-          body: { 
-            name: name.trim(), 
-            email: email.trim(),
-            memberId: newMember.id
-          }
-        });
+      toast({
+        title: "Membro atualizado!",
+        description: isCreatingTeam 
+          ? `${name.trim()} movido para o novo time "${newTeamName.trim()}"`
+          : `Dados de ${name.trim()} foram atualizados`,
+      });
 
-        if (inviteError) {
-          console.error('Erro ao enviar convite DISC:', inviteError);
-          toast({
-            title: "Membro cadastrado",
-            description: `${name.trim()} foi adicionado, mas houve erro ao enviar o convite: ${inviteError.message}`,
-            variant: "destructive"
-          });
-        } else {
-          toast({
-            title: "Sucesso!",
-            description: `Membro cadastrado e convite Rhitmo Sync enviado para ${email.trim()}`,
-          });
-        }
-      } else {
-        toast({
-          title: "Membro cadastrado!",
-          description: `${name.trim()} foi adicionado à sua equipe`,
-        });
-      }
-
-      // Resetar formulário
-      setName('');
-      setRole('');
-      setEmail('');
-      setSelectedTeamId('');
-      setNewTeamName('');
-      setIsCreatingTeam(false);
-      setSendDiscInvite(true);
       onOpenChange(false);
       onSuccess?.();
     } catch (error: any) {
-      console.error('Erro ao cadastrar membro:', error);
+      console.error('Erro ao atualizar membro:', error);
       toast({
-        title: "Erro ao cadastrar membro",
+        title: "Erro ao atualizar membro",
         description: error.message,
         variant: "destructive"
       });
@@ -204,72 +158,53 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
     }
   };
 
+  if (!member) return null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <UserPlus className="h-5 w-5 text-primary" />
-            Novo Membro
+            <Settings className="h-5 w-5 text-primary" />
+            Editar Membro
           </DialogTitle>
           <DialogDescription>
-            Cadastre um novo liderado na sua equipe
+            Atualize os dados do membro ou mova para outro time
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Nome Completo *</Label>
+              <Label htmlFor="edit-name">Nome Completo *</Label>
               <Input
-                id="name"
+                id="edit-name"
                 placeholder="Ex: Maria Silva"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 disabled={loading}
               />
-              {errors.name && (
-                <p className="text-sm text-destructive">{errors.name}</p>
-              )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="role">Cargo *</Label>
+              <Label htmlFor="edit-role">Cargo *</Label>
               <Input
-                id="role"
+                id="edit-role"
                 placeholder="Ex: Analista de Marketing"
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
                 disabled={loading}
               />
-              {errors.role && (
-                <p className="text-sm text-destructive">{errors.role}</p>
-              )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">E-mail Corporativo *</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Ex: maria.silva@empresa.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={loading}
-              />
-              {errors.email && (
-                <p className="text-sm text-destructive">{errors.email}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="team">Time *</Label>
+              <Label htmlFor="edit-team">Time *</Label>
               <Select 
                 value={isCreatingTeam ? '__create_new__' : selectedTeamId} 
                 onValueChange={handleTeamChange}
                 disabled={loading}
               >
-                <SelectTrigger id="team">
+                <SelectTrigger id="edit-team">
                   <SelectValue placeholder="Selecione um time" />
                 </SelectTrigger>
                 <SelectContent>
@@ -286,27 +221,12 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
               
               {isCreatingTeam && (
                 <Input
-                  placeholder="Nome do novo time (ex: Marketing)"
+                  placeholder="Nome do novo time"
                   value={newTeamName}
                   onChange={(e) => setNewTeamName(e.target.value)}
                   disabled={loading}
                 />
               )}
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="disc-invite"
-                checked={sendDiscInvite}
-                onCheckedChange={(checked) => setSendDiscInvite(checked as boolean)}
-                disabled={loading}
-              />
-              <Label
-                htmlFor="disc-invite"
-                className="text-sm font-normal cursor-pointer"
-              >
-                Enviar convite para mapeamento de perfil DISC agora?
-              </Label>
             </div>
           </div>
 
@@ -321,7 +241,7 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
             </Button>
             <Button type="submit" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Cadastrar Membro
+              Salvar Alterações
             </Button>
           </DialogFooter>
         </form>

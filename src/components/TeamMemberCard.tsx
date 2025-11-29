@@ -1,14 +1,16 @@
 import { TeamMember } from '@/types/team';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Calendar, MessageSquare } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Calendar, MessageSquare, Settings } from 'lucide-react';
 
 interface TeamMemberCardProps {
   member: TeamMember;
   onClick: () => void;
+  onEdit?: () => void;
 }
 
-export const TeamMemberCard = ({ member, onClick }: TeamMemberCardProps) => {
+export const TeamMemberCard = ({ member, onClick, onEdit }: TeamMemberCardProps) => {
   return (
     <Card 
       className="cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] bg-card"
@@ -21,7 +23,22 @@ export const TeamMemberCard = ({ member, onClick }: TeamMemberCardProps) => {
             <AvatarFallback>{member.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-lg text-foreground truncate">{member.name}</h3>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="font-semibold text-lg text-foreground truncate">{member.name}</h3>
+              {onEdit && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit();
+                  }}
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
             <p className="text-sm text-muted-foreground">{member.role}</p>
           </div>
         </div>
