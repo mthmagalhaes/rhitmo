@@ -17,6 +17,8 @@ interface TeamMember {
   avatar: string;
   performance_score: number;
   created_at: string;
+  feedback_count?: number;
+  last_feedback_date?: string;
 }
 
 const Index = () => {
@@ -36,14 +38,41 @@ const Index = () => {
 
   const loadTeamMembers = async () => {
     try {
-      const { data, error } = await supabase
+      // Query 1: Buscar membros do time
+      const { data: members, error: membersError } = await supabase
         .from('team_members')
         .select('*')
         .order('name');
 
-      if (error) throw error;
+      if (membersError) throw membersError;
 
-      setTeamMembers(data || []);
+      // Query 2: Buscar contagem de feedbacks por membro
+      const { data: feedbackCounts, error: countError } = await supabase
+        .from('feedbacks')
+        .select('member_id, created_at');
+
+      if (countError) throw countError;
+
+      // Combinar os dados: contar feedbacks e pegar o mais recente
+      const membersWithCounts = (members || []).map(member => {
+        const memberFeedbacks = (feedbackCounts || []).filter(
+          f => f.member_id === member.id
+        );
+        
+        const lastFeedback = memberFeedbacks.length > 0
+          ? memberFeedbacks.sort((a, b) => 
+              new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            )[0].created_at
+          : member.created_at;
+
+        return {
+          ...member,
+          feedback_count: memberFeedbacks.length,
+          last_feedback_date: lastFeedback
+        };
+      });
+
+      setTeamMembers(membersWithCounts);
     } catch (error: any) {
       toast({
         title: "Erro ao carregar equipe",
@@ -136,8 +165,8 @@ const Index = () => {
                   name: member.name,
                   role: member.role,
                   avatar: member.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${member.name}`,
-                  lastFeedback: member.created_at,
-                  feedbackCount: 0,
+                  lastFeedback: member.last_feedback_date || member.created_at,
+                  feedbackCount: member.feedback_count || 0,
                   performanceScore: member.performance_score
                 }}
                 onClick={() => navigate(`/member/${member.id}`)}
