@@ -3,10 +3,12 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FeedbackTimeline } from '@/components/FeedbackTimeline';
 import { NewNoteDialog } from '@/components/NewNoteDialog';
 import { MentorChat } from '@/components/MentorChat';
 import { WorkStyleCard } from '@/components/WorkStyleCard';
+import { PerformanceReviewList } from '@/components/PerformanceReviewList';
 import { Auth } from '@/components/Auth';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -275,22 +277,38 @@ const MemberDetails = () => {
           )}
         </div>
 
-        <div>
-          <h2 className="text-2xl font-bold text-foreground mb-6">Histórico de Feedbacks</h2>
-          {feedbacks.length > 0 ? (
-            <FeedbackTimeline 
-              feedbacks={feedbacks} 
-              onDelete={handleDeleteFeedback}
-              onReanalyze={handleReanalyze}
-              reanalyzingId={reanalyzingId}
+        <Tabs defaultValue="diary" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="diary">📓 Diário de Bordo</TabsTrigger>
+            <TabsTrigger value="reviews">📊 Avaliações Formais</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="diary">
+            <div>
+              <h2 className="text-2xl font-bold text-foreground mb-6">Histórico de Feedbacks</h2>
+              {feedbacks.length > 0 ? (
+                <FeedbackTimeline 
+                  feedbacks={feedbacks} 
+                  onDelete={handleDeleteFeedback}
+                  onReanalyze={handleReanalyze}
+                  reanalyzingId={reanalyzingId}
+                />
+              ) : (
+                <Card className="p-12 text-center">
+                  <p className="text-muted-foreground mb-4">Nenhum feedback registrado ainda</p>
+                  <Button onClick={() => setDialogOpen(true)}>Adicionar Primeira Nota</Button>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="reviews">
+            <PerformanceReviewList 
+              memberId={member.id}
+              memberName={member.name}
             />
-          ) : (
-            <Card className="p-12 text-center">
-              <p className="text-muted-foreground mb-4">Nenhum feedback registrado ainda</p>
-              <Button onClick={() => setDialogOpen(true)}>Adicionar Primeira Nota</Button>
-            </Card>
-          )}
-        </div>
+          </TabsContent>
+        </Tabs>
       </main>
 
       <NewNoteDialog 

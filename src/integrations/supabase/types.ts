@@ -64,6 +64,44 @@ export type Database = {
           },
         ]
       }
+      performance_reviews: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          member_id: string
+          period_type: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          member_id: string
+          period_type?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          member_id?: string
+          period_type?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_reviews_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_members: {
         Row: {
           avatar: string | null
