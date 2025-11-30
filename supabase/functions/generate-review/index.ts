@@ -78,48 +78,51 @@ serve(async (req) => {
 
 ## SUA MISSÃO
 Gerar um RASCUNHO de Avaliação de Desempenho profissional com base APENAS 
-nas notas fornecidas dos últimos ${months} meses para ${member.name}.
+nas notas fornecidas dos últimos ${months} meses.
 
-## ESTRUTURA OBRIGATÓRIA DA AVALIAÇÃO (Use HTML básico)
+## FORMATO DE SAÍDA: MARKDOWN PURO
 
-### 1. RESUMO EXECUTIVO
-<h2>📊 Resumo Executivo</h2>
-<p>Visão geral do período avaliado (2-3 frases).</p>
+### RESTRIÇÕES CRÍTICAS DE FORMATAÇÃO
+- **NUNCA** use blocos de código (\`\`\`)
+- **NUNCA** use tags HTML (<h2>, <p>, <ul>, <li>, <strong>, etc.)
+- **NUNCA** inclua o nome do liderado ou data no início (o sistema já mostra isso)
+- Use APENAS sintaxe Markdown padrão:
+  - ## para títulos de seção
+  - ### para subtítulos
+  - **texto** para negrito
+  - *texto* para itálico
+  - - item para listas não ordenadas
+  - 1. item para listas ordenadas
 
-### 2. PONTOS FORTES
-<h2>💪 Pontos Fortes</h2>
-<ul>
-  <li><strong>Ponto 1:</strong> Descrição com evidência (ref: data)</li>
-  <li><strong>Ponto 2:</strong> Descrição com evidência (ref: data)</li>
-</ul>
+## ESTRUTURA OBRIGATÓRIA
+
+## 📊 Resumo Executivo
+Visão geral do período avaliado (2-3 frases).
+
+## 💪 Pontos Fortes
+- **Ponto 1:** Descrição com evidência (ref: data)
+- **Ponto 2:** Descrição com evidência (ref: data)
 
 Liste 3-5 pontos fortes identificados.
 SEMPRE inclua evidências com datas: "Demonstrou liderança no projeto X (ref: 15/Out)"
 Se não houver dados suficientes, seja transparente.
 
-### 3. PONTOS DE ATENÇÃO
-<h2>🎯 Oportunidades de Melhoria</h2>
-<ul>
-  <li><strong>Área 1:</strong> Descrição construtiva</li>
-  <li><strong>Área 2:</strong> Descrição construtiva</li>
-</ul>
+## 🎯 Oportunidades de Melhoria
+- **Área 1:** Descrição construtiva
+- **Área 2:** Descrição construtiva
 
 Liste 2-4 pontos de desenvolvimento.
 Use tom construtivo, não punitivo.
 Inclua evidências quando disponíveis.
 
-### 4. PLANO DE DESENVOLVIMENTO INDIVIDUAL (PDI)
-<h2>🚀 Sugestão de PDI</h2>
-<ol>
-  <li><strong>Ação 1:</strong> Descrição concreta e mensurável (Prazo: X meses)</li>
-  <li><strong>Ação 2:</strong> Descrição concreta e mensurável (Prazo: X meses)</li>
-</ol>
+## 🚀 Sugestão de PDI
+1. **Ação 1:** Descrição concreta e mensurável (Prazo: X meses)
+2. **Ação 2:** Descrição concreta e mensurável (Prazo: X meses)
 
 2-3 ações concretas e mensuráveis com prazos sugeridos.
 
-### 5. NOTA DE CALIBRAÇÃO (CONFIDENCIAL PARA O GESTOR)
-<h2>🎭 Como Apresentar Esta Avaliação</h2>
-<p><em>Baseado no perfil Rhitmo Sync:</em></p>
+## 🎭 Como Apresentar Esta Avaliação
+*Baseado no perfil Rhitmo Sync:*
 
 Use o perfil work_style_data para sugerir COMO apresentar:
 - Se "Direto ao ponto": Vá direto aos fatos, seja objetivo
@@ -131,7 +134,7 @@ Use o perfil work_style_data para sugerir COMO apresentar:
 - NUNCA invente informações que não estão nos feedbacks
 - Se não houver dados suficientes, diga claramente: "Dados insuficientes para avaliar este aspecto"
 - Mantenha tom profissional, respeitoso e construtivo
-- Use HTML básico para formatação (h2, h3, ul, li, ol, strong, em, p)
+- Use APENAS sintaxe Markdown padrão
 - Sempre cite datas quando mencionar eventos específicos`;
 
     const userPrompt = `FEEDBACKS DOS ÚLTIMOS ${months} MESES:\n\n${feedbacksText}${workStyleInfo}\n\nGere a avaliação de desempenho seguindo EXATAMENTE a estrutura indicada.`;
