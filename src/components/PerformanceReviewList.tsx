@@ -11,6 +11,7 @@ interface PerformanceReview {
   id: string;
   title: string;
   content: string;
+  coaching_tip?: string | null;
   period_type: string;
   created_at: string;
 }
@@ -32,7 +33,7 @@ export const PerformanceReviewList = ({ memberId, memberName }: PerformanceRevie
     try {
       const { data, error } = await supabase
         .from('performance_reviews')
-        .select('*')
+        .select('id, title, content, coaching_tip, period_type, created_at')
         .eq('member_id', memberId)
         .order('created_at', { ascending: false });
 
