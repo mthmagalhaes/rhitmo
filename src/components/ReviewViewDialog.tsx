@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Printer, Pencil, Trash2 } from "lucide-react";
+import { Loader2, Printer, Pencil, Trash2, TrendingUp } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,6 +15,7 @@ interface PerformanceReview {
   id: string;
   title: string;
   content: string;
+  coaching_tip?: string | null;
   period_type: string;
   created_at: string;
 }
@@ -261,6 +262,18 @@ export const ReviewViewDialog = ({
               </DialogDescription>
             )}
           </DialogHeader>
+
+          {review.coaching_tip && !editing && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 rounded-lg print:hidden">
+              <p className="text-sm font-semibold text-primary mb-2 flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                💡 Dicas para Apresentação (Visível apenas para você)
+              </p>
+              <div className="text-sm text-muted-foreground prose prose-sm max-w-none">
+                <ReactMarkdown>{review.coaching_tip}</ReactMarkdown>
+              </div>
+            </div>
+          )}
 
           {editing ? (
             <div className="space-y-4">

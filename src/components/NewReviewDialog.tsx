@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles, TrendingUp } from "lucide-react";
+import ReactMarkdown from 'react-markdown';
 
 interface NewReviewDialogProps {
   open: boolean;
@@ -25,6 +26,7 @@ export const NewReviewDialog = ({
 }: NewReviewDialogProps) => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [coachingTip, setCoachingTip] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [generatedMonths, setGeneratedMonths] = useState<number | null>(null);
@@ -48,7 +50,8 @@ export const NewReviewDialog = ({
         throw new Error(data.error);
       }
 
-      setContent(data.content);
+      setContent(data.review_content || data.content || '');
+      setCoachingTip(data.coaching_tip || null);
       
       // Auto-gerar título baseado no período
       const periodLabels: Record<number, string> = {
@@ -104,6 +107,7 @@ export const NewReviewDialog = ({
           member_id: memberId,
           title: title.trim(),
           content: content.trim(),
+          coaching_tip: coachingTip,
           period_type: generatedMonths ? periodTypeMap[generatedMonths] : 'manual'
         });
 
@@ -131,6 +135,7 @@ export const NewReviewDialog = ({
   const handleClose = () => {
     setTitle("");
     setContent("");
+    setCoachingTip(null);
     setGeneratedMonths(null);
     onOpenChange(false);
   };
@@ -214,6 +219,18 @@ export const NewReviewDialog = ({
               </p>
             )}
           </div>
+
+          {coachingTip && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 rounded-lg print:hidden">
+              <p className="text-sm font-semibold text-primary mb-2 flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                💡 Dicas para Apresentação (Visível apenas para você)
+              </p>
+              <div className="text-sm text-muted-foreground prose prose-sm max-w-none">
+                <ReactMarkdown>{coachingTip}</ReactMarkdown>
+              </div>
+            </div>
+          )}
 
           {/* Campos de Edição */}
           <div className="space-y-4">

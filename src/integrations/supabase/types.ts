@@ -66,6 +66,7 @@ export type Database = {
       }
       performance_reviews: {
         Row: {
+          coaching_tip: string | null
           content: string
           created_at: string
           id: string
@@ -75,6 +76,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          coaching_tip?: string | null
           content: string
           created_at?: string
           id?: string
@@ -84,6 +86,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          coaching_tip?: string | null
           content?: string
           created_at?: string
           id?: string

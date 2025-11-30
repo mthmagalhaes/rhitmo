@@ -137,7 +137,10 @@ Use o perfil work_style_data para sugerir COMO apresentar:
 - Use APENAS sintaxe Markdown padrão
 - Sempre cite datas quando mencionar eventos específicos`;
 
-    const userPrompt = `FEEDBACKS DOS ÚLTIMOS ${months} MESES:\n\n${feedbacksText}${workStyleInfo}\n\nGere a avaliação de desempenho seguindo EXATAMENTE a estrutura indicada.`;
+    const userPrompt = `FEEDBACKS DOS ÚLTIMOS ${months} MESES:\n\n${feedbacksText}${workStyleInfo}\n\nGere a avaliação de desempenho seguindo EXATAMENTE a estrutura indicada.
+
+IMPORTANTE: Separe o documento principal das dicas de apresentação usando o delimitador ---COACHING_TIP--- 
+A seção "## 🎭 Como Apresentar Esta Avaliação" deve vir DEPOIS do delimitador.`;
 
     // Chamar Lovable AI
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -191,11 +194,18 @@ Use o perfil work_style_data para sugerir COMO apresentar:
       throw new Error('IA não retornou conteúdo');
     }
 
+    // Separar conteúdo principal das dicas de coaching
+    const parts = generatedContent.split('---COACHING_TIP---');
+    const reviewContent = parts[0]?.trim() || generatedContent;
+    const coachingTip = parts[1]?.trim() || null;
+
     console.log('Avaliação gerada com sucesso');
+    console.log('Coaching tip presente:', !!coachingTip);
 
     return new Response(
       JSON.stringify({ 
-        content: generatedContent,
+        review_content: reviewContent,
+        coaching_tip: coachingTip,
         feedbackCount: feedbacks?.length || 0,
         memberName: member.name
       }),
