@@ -8,6 +8,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import ReactMarkdown from 'react-markdown';
+import { marked } from 'marked';
 
 interface PerformanceReview {
   id: string;
@@ -50,6 +52,9 @@ export const ReviewViewDialog = ({
       });
       return;
     }
+
+    // Convert Markdown to HTML for PDF
+    const htmlContent = marked(review.content);
 
     printWindow.document.write(`
       <html>
@@ -122,7 +127,7 @@ export const ReviewViewDialog = ({
               minute: '2-digit'
             })}</p>
           </div>
-          ${review.content}
+          ${htmlContent}
         </body>
       </html>
     `);
@@ -278,10 +283,9 @@ export const ReviewViewDialog = ({
               </div>
             </div>
           ) : (
-            <div 
-              className="prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{ __html: review.content }}
-            />
+            <div className="prose prose-sm max-w-none">
+              <ReactMarkdown>{review.content}</ReactMarkdown>
+            </div>
           )}
 
           {editing && (
