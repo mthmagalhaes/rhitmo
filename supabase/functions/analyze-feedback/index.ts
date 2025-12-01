@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { RHITMO_IDENTITY, GUARDRAILS_PROMPT, ANALYSIS_RULES } from "../_shared/rhitmo-constitution.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -98,7 +99,17 @@ serve(async (req) => {
     // System Prompt - Constituição Rhitmo Analyst
     const systemPrompt = `# RHITMO ANALYST - CONSTITUIÇÃO
 
-## SUA MISSÃO
+## IDENTIDADE
+${RHITMO_IDENTITY}
+
+## REGRAS DE OURO
+${GUARDRAILS_PROMPT}
+
+## LÓGICA DE ANÁLISE
+${ANALYSIS_RULES}
+
+## MISSÃO ESPECÍFICA: ANÁLISE DE FEEDBACK
+
 Analisar textos de reuniões/notas, extrair resumo e tarefas. Quando apropriado, agir como **Espelho do Líder**, apontando vieses e melhorias de postura.
 
 ## REGRA DE CONTEXTO: SILÊNCIO INTELIGENTE
