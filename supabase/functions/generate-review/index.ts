@@ -61,6 +61,8 @@ serve(async (req) => {
 
     console.log(`Membro encontrado: ${member.name}`);
 
+    const keyObjectives = member.key_objectives;
+
     // Preparar contexto para a IA
     const feedbacksText = feedbacks && feedbacks.length > 0
       ? feedbacks.map(f => {
@@ -137,7 +139,33 @@ Use o perfil work_style_data para sugerir COMO apresentar:
 - Use APENAS sintaxe Markdown padrão
 - Sempre cite datas quando mencionar eventos específicos`;
 
-    const userPrompt = `FEEDBACKS DOS ÚLTIMOS ${months} MESES:\n\n${feedbacksText}${workStyleInfo}\n\nGere a avaliação de desempenho seguindo EXATAMENTE a estrutura indicada.
+    // Seção de Objetivos (condicional)
+    const objectivesSection = keyObjectives && keyObjectives.trim()
+      ? `
+
+## 🎯 OBJETIVOS DO PERÍODO (definidos pelo gestor)
+
+${keyObjectives}
+
+### COMO AVALIAR EM RELAÇÃO AOS OBJETIVOS
+- **Resumo Executivo**: Mencione progresso geral em relação às metas
+- **Pontos Fortes**: Destaque entregas e comportamentos alinhados aos objetivos
+- **Oportunidades**: Aponte gaps entre desempenho atual e metas
+- **PDI**: Sugira ações que aproximem o liderado dos objetivos e prazos
+- Considere os prazos definidos ao avaliar urgência
+`
+      : `
+
+## 🎯 OBJETIVOS DO PERÍODO
+Nenhum objetivo formal foi definido.
+
+### COMPORTAMENTO ESPERADO
+- Foque na análise comportamental e de competências
+- NÃO invente metas ou suposições de negócio
+- Base a avaliação exclusivamente nos feedbacks
+`;
+
+    const userPrompt = `FEEDBACKS DOS ÚLTIMOS ${months} MESES:\n\n${feedbacksText}${workStyleInfo}${objectivesSection}\n\nGere a avaliação de desempenho seguindo EXATAMENTE a estrutura indicada.
 
 IMPORTANTE: Separe o documento principal das dicas de apresentação usando o delimitador ---COACHING_TIP--- 
 A seção "## 🎭 Como Apresentar Esta Avaliação" deve vir DEPOIS do delimitador.`;

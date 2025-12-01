@@ -111,6 +111,7 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          key_objectives: string | null
           name: string
           performance_score: number | null
           role: string
@@ -124,6 +125,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          key_objectives?: string | null
           name: string
           performance_score?: number | null
           role: string
@@ -137,6 +139,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          key_objectives?: string | null
           name?: string
           performance_score?: number | null
           role?: string

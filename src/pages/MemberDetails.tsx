@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Textarea } from '@/components/ui/textarea';
 import { FeedbackTimeline } from '@/components/FeedbackTimeline';
 import { NewNoteDialog } from '@/components/NewNoteDialog';
 import { MentorChat } from '@/components/MentorChat';
@@ -12,7 +14,7 @@ import { PerformanceReviewList } from '@/components/PerformanceReviewList';
 import { Auth } from '@/components/Auth';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy } from 'lucide-react';
+import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const MemberDetails = () => {
@@ -26,6 +28,8 @@ const MemberDetails = () => {
   const [loading, setLoading] = useState(true);
   const [reanalyzingId, setReanalyzingId] = useState<string | null>(null);
   const [resendingInvite, setResendingInvite] = useState(false);
+  const [keyObjectives, setKeyObjectives] = useState<string>('');
+  const [savingObjectives, setSavingObjectives] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -33,6 +37,12 @@ const MemberDetails = () => {
       loadMemberAndFeedbacks();
     }
   }, [user, id]);
+
+  useEffect(() => {
+    if (member?.key_objectives !== undefined) {
+      setKeyObjectives(member.key_objectives || '');
+    }
+  }, [member]);
 
   const loadMemberAndFeedbacks = async () => {
     try {
@@ -174,6 +184,41 @@ const MemberDetails = () => {
     });
   };
 
+  const handleSaveObjectives = async () => {
+    setSavingObjectives(true);
+    try {
+      const { error } = await supabase
+        .from('team_members')
+        .update({ key_objectives: keyObjectives.trim() || null })
+        .eq('id', member.id);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Objetivos salvos!",
+        description: "A IA agora usará essas metas para calibrar análises."
+      });
+      
+      setMember({ ...member, key_objectives: keyObjectives.trim() || null });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao salvar",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setSavingObjectives(false);
+    }
+  };
+
+  const objectivesPlaceholder = `Use o formato: Objetivo | Valor | Prazo
+
+Exemplos:
+• Aumentar SQLs semanais | de 15 para 25 | até 31/out
+• Reduzir tempo de resposta | de 4h para 1h | até 15/dez
+• Concluir certificação AWS | aprovação | até 28/fev
+• Liderar projeto de migração | entrega MVP | até 30/nov`;
+
   if (authLoading || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -275,6 +320,64 @@ const MemberDetails = () => {
               </div>
             </div>
           )}
+
+          {/* Objetivos / Metas (Opcional) */}
+          <Accordion type="single" collapsible className="mb-6">
+            <AccordionItem value="objectives" className="border rounded-lg">
+              <AccordionTrigger className="px-4 hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <Target className="h-5 w-5 text-primary" />
+                  <span className="font-semibold">🎯 Objetivos / Metas (Opcional)</span>
+                  {member.key_objectives && (
+                    <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full ml-2">
+                      Configurado
+                    </span>
+                  )}
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                <div className="space-y-4">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                    <p className="text-sm text-blue-700 dark:text-blue-300 font-medium mb-1">
+                      💡 Formato sugerido: Objetivo | Valor | Prazo
+                    </p>
+                    <p className="text-xs text-blue-600 dark:text-blue-400">
+                      Ex: Aumentar SQLs semanais | de 15 para 25 | até 31/out
+                    </p>
+                  </div>
+                  
+                  <Textarea
+                    value={keyObjectives}
+                    onChange={(e) => setKeyObjectives(e.target.value)}
+                    placeholder={objectivesPlaceholder}
+                    rows={5}
+                    className="resize-none font-mono text-sm"
+                  />
+                  
+                  {!keyObjectives && (
+                    <p className="text-xs text-muted-foreground">
+                      Adicione os objetivos deste período para a IA calibrar feedbacks e avaliações.
+                    </p>
+                  )}
+                  
+                  <div className="flex justify-end">
+                    <Button 
+                      onClick={handleSaveObjectives} 
+                      disabled={savingObjectives}
+                      size="sm"
+                    >
+                      {savingObjectives ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Save className="h-4 w-4 mr-2" />
+                      )}
+                      Salvar Objetivos
+                    </Button>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
 
         <Tabs defaultValue="diary" className="w-full">
@@ -326,6 +429,7 @@ const MemberDetails = () => {
         memberRole={member.role}
         feedbacks={feedbacks}
         workStyleData={member.work_style_data}
+        keyObjectives={member.key_objectives}
       />
     </div>
   );
