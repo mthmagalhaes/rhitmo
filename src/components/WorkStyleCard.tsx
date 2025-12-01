@@ -15,7 +15,7 @@ interface WorkStyleCardProps {
   data: WorkStyleData;
 }
 
-const styleConfig = {
+export const styleConfig = {
   processing: {
     direct: { label: 'Direto ao ponto', icon: Zap, color: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400' },
     contextual: { label: 'Contexto completo', icon: BookOpen, color: 'bg-blue-500/10 text-blue-700 dark:text-blue-400' }
