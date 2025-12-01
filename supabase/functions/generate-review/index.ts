@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { RHITMO_IDENTITY, GUARDRAILS_PROMPT } from "../_shared/rhitmo-constitution.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -78,7 +79,14 @@ serve(async (req) => {
     // System Prompt
     const systemPrompt = `# RHITMO REVIEW GENERATOR
 
-## SUA MISSÃO
+## IDENTIDADE
+${RHITMO_IDENTITY}
+
+## REGRAS DE OURO
+${GUARDRAILS_PROMPT}
+
+## MISSÃO ESPECÍFICA: GERAR AVALIAÇÃO DE DESEMPENHO
+
 Gerar um RASCUNHO de Avaliação de Desempenho profissional com base APENAS 
 nas notas fornecidas dos últimos ${months} meses.
 
