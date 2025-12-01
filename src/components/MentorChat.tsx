@@ -20,9 +20,10 @@ interface MentorChatProps {
   memberRole?: string;
   feedbacks: any[];
   workStyleData?: any;
+  keyObjectives?: string | null;
 }
 
-export const MentorChat = ({ open, onOpenChange, memberName, memberRole, feedbacks, workStyleData }: MentorChatProps) => {
+export const MentorChat = ({ open, onOpenChange, memberName, memberRole, feedbacks, workStyleData, keyObjectives }: MentorChatProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -72,7 +73,8 @@ export const MentorChat = ({ open, onOpenChange, memberName, memberRole, feedbac
             feedbacks: feedbacks,
             memberName: memberName,
             memberRole: memberRole,
-            workStyleData: workStyleData
+            workStyleData: workStyleData,
+            keyObjectives: keyObjectives
           }),
           signal: controller.signal
         }

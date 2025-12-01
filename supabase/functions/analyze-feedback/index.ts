@@ -74,6 +74,15 @@ serve(async (req) => {
 
     console.log('Feedback inserted:', feedback.id);
 
+    // Buscar dados do membro para obter key_objectives
+    const { data: member } = await supabase
+      .from('team_members')
+      .select('key_objectives')
+      .eq('id', memberId)
+      .single();
+
+    const keyObjectives = member?.key_objectives;
+
     // Chamar OpenAI para análise
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
@@ -126,6 +135,20 @@ Você receberá uma flag indicando se o texto é curto ou rico.
 Retorne dados estruturados conforme a função especificada.
 Para texto curto: coaching_tips deve ser null ou vazio.
 Para texto rico: coaching_tips deve conter insights acionáveis.`;
+
+    // Contexto de objetivos (condicional)
+    const objectivesContext = keyObjectives && keyObjectives.trim()
+      ? `
+
+## CONTEXTO DE OBJETIVOS DO LIDERADO
+Objetivos definidos (formato: Objetivo | Valor | Prazo):
+${keyObjectives}
+
+Ao analisar este feedback:
+- Verifique se o comportamento aproxima ou afasta dos objetivos
+- Se houver conexão clara com alguma meta, mencione no coaching_tip
+- Considere os prazos ao avaliar urgência de desenvolvimento`
+      : '';
 
     // Tools dinâmicos baseados no tamanho do texto
     const toolsShortNote = [
@@ -197,11 +220,13 @@ Para texto rico: coaching_tips deve conter insights acionáveis.`;
     const userPrompt = isShortNote
       ? `[MODO: NOTA CURTA - ${wordCount} palavras]
 Analise esta nota de forma SIMPLIFICADA. NÃO gere dicas de coaching.
+${objectivesContext}
 
 Nota:
 ${truncatedContent}`
       : `[MODO: TEXTO RICO - ${wordCount} palavras]
 Analise este feedback de forma COMPLETA. Inclua dicas de coaching e seja o "Espelho do Líder".
+${objectivesContext}
 
 Feedback:
 ${truncatedContent}`;

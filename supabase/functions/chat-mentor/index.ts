@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { question, feedbacks, memberName, memberRole, workStyleData } = await req.json();
+    const { question, feedbacks, memberName, memberRole, workStyleData, keyObjectives } = await req.json();
 
     console.log('Chat mentor request:', { memberName, memberRole, feedbacksCount: feedbacks?.length, hasWorkStyle: !!workStyleData });
 
@@ -85,6 +85,30 @@ ${coaching ? `Dicas: ${coaching}` : ''}
     }
 
     console.log('Context prepared:', { totalChars, notesIncluded: recentFeedbacks.length });
+
+    // Seção de Objetivos (condicional)
+    const objectivesSection = keyObjectives && keyObjectives.trim()
+      ? `## 🎯 OBJETIVOS DE NEGÓCIO DO LIDERADO
+
+O gestor definiu os seguintes objetivos (formato: Objetivo | Valor | Prazo):
+
+${keyObjectives}
+
+### COMO USAR ESTA INFORMAÇÃO
+- Estes objetivos são a BÚSSOLA para calibrar suas análises
+- Ao identificar um comportamento, avalie: aproxima ou afasta das metas?
+- Conecte feedbacks aos objetivos quando relevante
+- Verifique progresso em relação aos prazos definidos
+- Exemplo de resposta calibrada: "Este comportamento está alinhado ao objetivo de aumentar SQLs, pois demonstra proatividade na prospecção"
+`
+      : `## 🎯 OBJETIVOS DE NEGÓCIO
+Nenhum objetivo foi definido pelo gestor.
+
+### COMPORTAMENTO ESPERADO
+- Foque 100% na análise comportamental e de liderança
+- NÃO tente adivinhar metas de negócio
+- Ignore análises de alinhamento a objetivos
+`;
 
     const systemPrompt = `# RHITMO MENTOR - CONSTITUIÇÃO
 
@@ -165,6 +189,8 @@ Use o perfil Rhitmo Sync para orientar o gerente:
 - **Encorajador**: Reconheça os esforços do gerente
 - **Educativo**: Explique o "porquê" das sugestões
 - Se o gerente parecer frustrado: Valide o sentimento, depois redirecione para soluções
+
+${objectivesSection}
 
 ## DADOS DO LIDERADO
 
