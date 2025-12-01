@@ -9,13 +9,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { FeedbackTimeline } from '@/components/FeedbackTimeline';
 import { NewNoteDialog } from '@/components/NewNoteDialog';
 import { MentorChat } from '@/components/MentorChat';
-import { WorkStyleCard } from '@/components/WorkStyleCard';
+import { styleConfig } from '@/components/WorkStyleCard';
 import { PerformanceReviewList } from '@/components/PerformanceReviewList';
 import { Auth } from '@/components/Auth';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Save } from 'lucide-react';
+import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Save, Music, Zap, BookOpen, Waves, Sunrise, Moon, Trophy, TrendingUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
 
 const MemberDetails = () => {
   const { id } = useParams();
@@ -211,6 +212,15 @@ const MemberDetails = () => {
     }
   };
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }).format(date);
+  };
+
   const objectivesPlaceholder = `Use o formato: Objetivo | Valor | Prazo
 
 Exemplos:
@@ -282,47 +292,155 @@ Exemplos:
             </div>
           </div>
 
-          {/* Rhitmo Sync Status */}
-          {member.work_style_data ? (
-            <WorkStyleCard data={member.work_style_data} />
-          ) : (
-            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <p className="text-amber-700 dark:text-amber-400 text-sm flex items-center gap-2">
-                  <span>⏳</span>
-                  Aguardando preenchimento do Rhitmo Sync
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCopyLink}
-                    className="gap-2"
-                  >
-                    <Copy className="h-4 w-4" />
-                    Copiar Link
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleResendInvite}
-                    disabled={resendingInvite}
-                    className="gap-2"
-                  >
-                    {resendingInvite ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Mail className="h-4 w-4" />
-                    )}
-                    Reenviar Convite
-                  </Button>
+          {/* Accordion Unificado */}
+          <Accordion type="multiple" className="mb-6 space-y-2">
+            {/* Item 1: Rhitmo Sync */}
+            <AccordionItem value="rhitmo-sync" className="border rounded-lg">
+              <AccordionTrigger className="px-4 hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <Music className="h-5 w-5 text-primary" />
+                  <span className="font-semibold">🎵 Rhitmo Sync</span>
+                  {member.work_style_data ? (
+                    <span className="text-xs bg-green-500/10 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full ml-2">
+                      Preenchido
+                    </span>
+                  ) : (
+                    <span className="text-xs bg-amber-500/10 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full ml-2">
+                      Pendente
+                    </span>
+                  )}
                 </div>
-              </div>
-            </div>
-          )}
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                {member.work_style_data ? (
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      Preferências de trabalho • Preenchido em {formatDate(member.work_style_data.completed_at)}
+                    </p>
+                    
+                    <div className="space-y-4">
+                      {/* Processing Style */}
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-muted-foreground">Processamento de informações</p>
+                        <div>
+                          {(() => {
+                            const config = styleConfig.processing[member.work_style_data.processing];
+                            const Icon = config.icon;
+                            return (
+                              <Badge variant="secondary" className={`${config.color} gap-2 py-2 px-3`}>
+                                <Icon className="h-4 w-4" />
+                                {config.label}
+                              </Badge>
+                            );
+                          })()}
+                        </div>
+                      </div>
 
-          {/* Objetivos / Metas (Opcional) */}
-          <Accordion type="single" collapsible className="mb-6">
+                      {/* Feedback Style */}
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-muted-foreground">Estilo de feedback</p>
+                        <div>
+                          {(() => {
+                            const config = styleConfig.feedback[member.work_style_data.feedback];
+                            const Icon = config.icon;
+                            return (
+                              <Badge variant="secondary" className={`${config.color} gap-2 py-2 px-3`}>
+                                <Icon className="h-4 w-4" />
+                                {config.label}
+                              </Badge>
+                            );
+                          })()}
+                        </div>
+                      </div>
+
+                      {/* Autonomy Style */}
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-muted-foreground">Estilo de trabalho</p>
+                        <div>
+                          {(() => {
+                            const config = styleConfig.autonomy[member.work_style_data.autonomy];
+                            const Icon = config.icon;
+                            return (
+                              <Badge variant="secondary" className={`${config.color} gap-2 py-2 px-3`}>
+                                <Icon className="h-4 w-4" />
+                                {config.label}
+                              </Badge>
+                            );
+                          })()}
+                        </div>
+                      </div>
+
+                      {/* Energy Style */}
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-muted-foreground">Horário de pico</p>
+                        <div>
+                          {(() => {
+                            const config = styleConfig.energy[member.work_style_data.energy];
+                            const Icon = config.icon;
+                            return (
+                              <Badge variant="secondary" className={`${config.color} gap-2 py-2 px-3`}>
+                                <Icon className="h-4 w-4" />
+                                {config.label}
+                              </Badge>
+                            );
+                          })()}
+                        </div>
+                      </div>
+
+                      {/* Motivation Style */}
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-muted-foreground">Motivação principal</p>
+                        <div>
+                          {(() => {
+                            const config = styleConfig.motivation[member.work_style_data.motivation];
+                            const Icon = config.icon;
+                            return (
+                              <Badge variant="secondary" className={`${config.color} gap-2 py-2 px-3`}>
+                                <Icon className="h-4 w-4" />
+                                {config.label}
+                              </Badge>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                    <p className="text-amber-700 dark:text-amber-400 text-sm mb-3">
+                      ⏳ Aguardando preenchimento do Rhitmo Sync
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCopyLink}
+                        className="gap-2"
+                      >
+                        <Copy className="h-4 w-4" />
+                        Copiar Link
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleResendInvite}
+                        disabled={resendingInvite}
+                        className="gap-2"
+                      >
+                        {resendingInvite ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Mail className="h-4 w-4" />
+                        )}
+                        Reenviar Convite
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Item 2: Objetivos/Metas */}
             <AccordionItem value="objectives" className="border rounded-lg">
               <AccordionTrigger className="px-4 hover:no-underline">
                 <div className="flex items-center gap-2">
