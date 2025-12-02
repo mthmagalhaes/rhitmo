@@ -308,7 +308,7 @@ const Landing = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <Button variant="ghost" asChild>
+            <Button variant="outline" asChild className="border-primary/30 hover:bg-primary/10">
               <Link to="/auth">Log in</Link>
             </Button>
             <Button onClick={() => setWaitlistOpen(true)}>
