@@ -58,7 +58,7 @@ const Index = () => {
   // Redirect if not authenticated
   useEffect(() => {
     if (!user && !authLoading) {
-      navigate('/auth', { replace: true });
+      navigate('/', { replace: true });
     }
   }, [user, authLoading, navigate]);
 

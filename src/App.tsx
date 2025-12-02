@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
+import Landing from "./pages/Landing";
 import Index from "./pages/Index";
 import MemberDetails from "./pages/MemberDetails";
 import Analytics from "./pages/Analytics";
@@ -24,11 +25,14 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          {/* Rota pública - Login sem sidebar */}
+          {/* Landing Page pública com redirect inteligente */}
+          <Route path="/" element={<Landing />} />
+          
+          {/* Auth */}
           <Route path="/auth" element={<AuthPage />} />
           
-          {/* Rotas autenticadas com sidebar */}
-          <Route path="/" element={<AppLayout><Index /></AppLayout>} />
+          {/* Dashboard (antigo Index) - autenticado */}
+          <Route path="/dashboard" element={<AppLayout><Index /></AppLayout>} />
           <Route path="/member/:id" element={<AppLayout><MemberDetails /></AppLayout>} />
           <Route path="/analytics" element={<AppLayout><Analytics /></AppLayout>} />
           <Route path="/billing" element={<AppLayout><Billing /></AppLayout>} />

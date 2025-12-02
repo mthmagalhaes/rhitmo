@@ -246,6 +246,30 @@ export type Database = {
         }
         Relationships: []
       }
+      waitlist_leads: {
+        Row: {
+          created_at: string
+          email: string
+          name: string | null
+          phone: string | null
+          team_size: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          name?: string | null
+          phone?: string | null
+          team_size?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          name?: string | null
+          phone?: string | null
+          team_size?: string | null
+        }
+        Relationships: []
+      }
       workspaces: {
         Row: {
           created_at: string
