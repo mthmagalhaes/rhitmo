@@ -18,6 +18,11 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('overview');
 
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    window.dispatchEvent(new CustomEvent('admin-tab-change', { detail: value }));
+  };
+
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
@@ -39,7 +44,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
         </div>
 
         <nav className="flex-1 p-4">
-          <Tabs value={activeTab} onValueChange={setActiveTab} orientation="vertical" className="w-full">
+          <Tabs value={activeTab} onValueChange={handleTabChange} orientation="vertical" className="w-full">
             <TabsList className="flex flex-col h-auto bg-transparent gap-2 w-full">
               <TabsTrigger 
                 value="overview" 
