@@ -7,31 +7,32 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Check, X, AlertCircle, Rocket, Gem, BarChart3, Brain, Shield, Sparkles } from 'lucide-react';
-
 const Billing = () => {
-  const { user, loading } = useAuth();
+  const {
+    user,
+    loading
+  } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
-
   useEffect(() => {
     if (!user && !loading) {
-      navigate('/auth', { replace: true });
+      navigate('/auth', {
+        replace: true
+      });
     }
   }, [user, loading, navigate]);
-
   const handleJoinWaitlist = () => {
     setUpgradeDialogOpen(false);
     toast({
       title: "🎉 Você está na lista!",
-      description: "Entraremos em contato em breve com seu acesso exclusivo.",
+      description: "Entraremos em contato em breve com seu acesso exclusivo."
     });
   };
-
   if (!user) return null;
-
-  return (
-    <div className="p-6">
+  return <div className="p-6">
       {/* Header */}
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold mb-3">Escolha seu plano</h1>
@@ -87,7 +88,7 @@ const Billing = () => {
               <span className="text-4xl font-bold text-primary">R$ 49,90</span>
               <span className="text-lg font-normal text-muted-foreground">/mês</span>
             </div>
-            <p className="text-sm text-emerald-600 font-medium">💎 Preço de Fundador (Vitalício)</p>
+            
           </CardHeader>
           
           <CardContent>
@@ -140,8 +141,6 @@ const Billing = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
-  );
+    </div>;
 };
-
 export default Billing;
