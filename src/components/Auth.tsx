@@ -58,24 +58,25 @@ export const Auth = () => {
   return (
     <div className="flex min-h-screen">
       {/* LADO ESQUERDO: Hero Image (50%) */}
-      <div className="hidden lg:flex lg:w-1/2 relative">
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         {/* Imagem de fundo */}
         <img 
-          src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&auto=format&fit=crop"
-          alt="Modern office workspace"
+          src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=1200&auto=format&fit=crop"
+          alt="Líder colaborando com sua equipe"
           className="w-full h-full object-cover"
         />
-        {/* Overlay violeta suave */}
-        <div className="absolute inset-0 bg-primary/30" />
+        {/* Overlay duotone violeta pesado (efeito artístico) */}
+        <div className="absolute inset-0 bg-[#7C3AED]/80 mix-blend-multiply" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#7C3AED]/40 to-[#5B21B6]/60" />
         
         {/* Conteúdo do Hero */}
         <div className="absolute inset-0 flex flex-col justify-center items-center text-white p-12">
-          <RhitmoLogo size="lg" className="text-white mb-8" />
-          <h2 className="text-4xl font-bold text-center mb-4">
-            Transforme sua gestão de pessoas
+          <RhitmoLogo size="lg" className="text-white mb-10" />
+          <h2 className="text-4xl lg:text-5xl font-extrabold text-center mb-6 leading-tight max-w-xl">
+            Nunca mais escreva uma avaliação de desempenho do zero.
           </h2>
-          <p className="text-xl text-center opacity-90 max-w-md">
-            Performance contínua com empatia e dados
+          <p className="text-xl text-center text-white/90 max-w-lg leading-relaxed">
+            Substitua o caos, a memória falha e os vieses por feedbacks contínuos e estruturados para construir uma cultura de alta performance.
           </p>
         </div>
       </div>
