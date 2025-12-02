@@ -52,8 +52,7 @@ const HeroMockup = () => <div className="relative w-full aspect-[4/3]">
         
         {/* AI message */}
         <div className="flex justify-start">
-          <div className="bg-muted rounded-2xl rounded-bl-md px-3 py-2 text-xs max-w-[85%]">
-            <span className="text-primary">✨</span> Baseado no perfil DISC do João (alto D), sugiro uma abordagem direta...
+          <div className="bg-muted rounded-2xl rounded-bl-md px-3 py-2 text-xs max-w-[85%]">✨ Baseado no perfil do João (alto D), sugiro uma abordagem direta...<span className="text-primary">✨</span> Baseado no perfil DISC do João (alto D), sugiro uma abordagem direta...
           </div>
         </div>
       </div>
