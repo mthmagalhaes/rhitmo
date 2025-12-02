@@ -60,28 +60,28 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
             <TabsList className="flex flex-col h-auto bg-transparent gap-2 w-full">
               <TabsTrigger 
                 value="overview" 
-                className="w-full justify-start gap-3 data-[state=active]:bg-slate-800 data-[state=active]:text-violet-400"
+                className="w-full justify-start gap-3 text-slate-300 hover:text-white hover:bg-slate-800 data-[state=active]:bg-slate-800 data-[state=active]:text-violet-400"
               >
                 <LayoutDashboard className="h-4 w-4" />
                 Visão Geral
               </TabsTrigger>
               <TabsTrigger 
                 value="support" 
-                className="w-full justify-start gap-3 data-[state=active]:bg-slate-800 data-[state=active]:text-violet-400"
+                className="w-full justify-start gap-3 text-slate-300 hover:text-white hover:bg-slate-800 data-[state=active]:bg-slate-800 data-[state=active]:text-violet-400"
               >
                 <Settings className="h-4 w-4" />
                 Suporte & Edição
               </TabsTrigger>
               <TabsTrigger 
                 value="export" 
-                className="w-full justify-start gap-3 data-[state=active]:bg-slate-800 data-[state=active]:text-violet-400"
+                className="w-full justify-start gap-3 text-slate-300 hover:text-white hover:bg-slate-800 data-[state=active]:bg-slate-800 data-[state=active]:text-violet-400"
               >
                 <FileDown className="h-4 w-4" />
                 Data Export
               </TabsTrigger>
               <TabsTrigger 
                 value="users" 
-                className="w-full justify-start gap-3 data-[state=active]:bg-slate-800 data-[state=active]:text-violet-400"
+                className="w-full justify-start gap-3 text-slate-300 hover:text-white hover:bg-slate-800 data-[state=active]:bg-slate-800 data-[state=active]:text-violet-400"
               >
                 <Users className="h-4 w-4" />
                 Lista de Usuários
