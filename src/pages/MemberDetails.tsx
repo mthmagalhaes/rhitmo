@@ -13,7 +13,7 @@ import { styleConfig } from '@/components/WorkStyleCard';
 import { PerformanceReviewList } from '@/components/PerformanceReviewList';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Save, Music, Zap, BookOpen, Waves, Sunrise, Moon, Trophy, TrendingUp } from 'lucide-react';
+import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Save, Music, Zap, BookOpen, Waves, Sunrise, Moon, Trophy, TrendingUp, FileText, Clock, Lightbulb } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 
@@ -296,8 +296,8 @@ Exemplos:
             <AccordionItem value="rhitmo-sync" className="border rounded-lg">
               <AccordionTrigger className="px-4 hover:no-underline">
                 <div className="flex items-center gap-2">
-                  <Music className="h-5 w-5 text-primary" />
-                  <span className="font-semibold">🎵 Rhitmo Sync</span>
+                  <Music className="h-4 w-4 text-primary" />
+                  <span className="font-semibold">Rhitmo Sync</span>
                   {member.work_style_data ? (
                     <span className="text-xs bg-green-500/10 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full ml-2">
                       Preenchido
@@ -405,8 +405,9 @@ Exemplos:
                   </div>
                 ) : (
                   <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                    <p className="text-amber-700 dark:text-amber-400 text-sm mb-3">
-                      ⏳ Aguardando preenchimento do Rhitmo Sync
+                    <p className="text-amber-700 dark:text-amber-400 text-sm mb-3 flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      Aguardando preenchimento do Rhitmo Sync
                     </p>
                     <div className="flex gap-2">
                       <Button
@@ -442,8 +443,8 @@ Exemplos:
             <AccordionItem value="objectives" className="border rounded-lg">
               <AccordionTrigger className="px-4 hover:no-underline">
                 <div className="flex items-center gap-2">
-                  <Target className="h-5 w-5 text-primary" />
-                  <span className="font-semibold">🎯 Objetivos / Metas (Opcional)</span>
+                  <Target className="h-4 w-4 text-primary" />
+                  <span className="font-semibold">Objetivos / Metas (Opcional)</span>
                   {member.key_objectives && (
                     <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full ml-2">
                       Configurado
@@ -454,8 +455,9 @@ Exemplos:
               <AccordionContent className="px-4 pb-4">
                 <div className="space-y-4">
                   <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-                    <p className="text-sm text-blue-700 dark:text-blue-300 font-medium mb-1">
-                      💡 Formato sugerido: Objetivo | Valor | Prazo
+                    <p className="text-sm text-blue-700 dark:text-blue-300 font-medium mb-1 flex items-center gap-2">
+                      <Lightbulb className="h-4 w-4" />
+                      Formato sugerido: Objetivo | Valor | Prazo
                     </p>
                     <p className="text-xs text-blue-600 dark:text-blue-400">
                       Ex: Aumentar SQLs semanais | de 15 para 25 | até 31/out
@@ -498,8 +500,14 @@ Exemplos:
 
         <Tabs defaultValue="diary" className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="diary">📓 Diário de Bordo</TabsTrigger>
-            <TabsTrigger value="reviews">📊 Avaliações Formais</TabsTrigger>
+            <TabsTrigger value="diary" className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              Diário de Bordo
+            </TabsTrigger>
+            <TabsTrigger value="reviews" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Avaliações Formais
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="diary">
