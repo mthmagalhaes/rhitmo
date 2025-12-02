@@ -254,28 +254,24 @@ Exemplos:
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <Button variant="ghost" onClick={() => navigate('/')} className="gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              Voltar ao Dashboard
+      <main className="container mx-auto px-6 py-8">
+        {/* Breadcrumb e ações */}
+        <div className="flex items-center justify-between mb-6">
+          <Button variant="ghost" onClick={() => navigate('/')} className="gap-2 -ml-3">
+            <ArrowLeft className="h-4 w-4" />
+            Início
+          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setChatOpen(true)} className="gap-2">
+              <Sparkles className="h-4 w-4" />
+              Mentor Chat
             </Button>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setChatOpen(true)} className="gap-2">
-                <Sparkles className="h-4 w-4" />
-                Mentor Chat
-              </Button>
-              <Button onClick={() => setDialogOpen(true)} className="gap-2">
-                <PenSquare className="h-4 w-4" />
-                Nova Nota
-              </Button>
-            </div>
+            <Button onClick={() => setDialogOpen(true)} className="gap-2">
+              <PenSquare className="h-4 w-4" />
+              Nova Nota
+            </Button>
           </div>
         </div>
-      </header>
-
-      <main className="container mx-auto px-6 py-8">
         <div className="mb-8">
           <div className="flex items-start gap-6 mb-6">
             <MemberAvatar 

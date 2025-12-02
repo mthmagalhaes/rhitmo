@@ -13,7 +13,7 @@ import { TeamTabs } from '@/components/TeamTabs';
 import { Auth } from '@/components/Auth';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { PenSquare, Users, LogOut, Loader2, UserPlus, Pencil, Settings, Trash2 } from 'lucide-react';
+import { PenSquare, Users, Loader2, UserPlus, Pencil, Settings, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,7 +23,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { Workspace, Team } from '@/types/team';
-import { RhitmoLogo } from '@/components/RhitmoLogo';
 
 interface TeamMember {
   id: string;
@@ -145,13 +144,6 @@ const Index = () => {
     }
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    toast({
-      title: "Logout realizado",
-      description: "Até logo!"
-    });
-  };
 
   if (authLoading) {
     return (
@@ -181,27 +173,23 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-card shadow-sm">
+      <div className="border-b bg-card">
         <div className="container mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <div className="flex items-center gap-3 mb-1">
-                <RhitmoLogo size="md" className="text-primary" />
-                {workspace && (
-                  <>
-                    <span className="text-lg text-muted-foreground">/</span>
-                    <span className="text-lg font-medium text-foreground">{workspace.name}</span>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={() => setEditWorkspaceOpen(true)}
-                      className="h-8 w-8"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  </>
-                )}
-              </div>
+              {workspace && (
+                <div className="flex items-center gap-3 mb-1">
+                  <h1 className="text-2xl font-bold text-foreground">{workspace.name}</h1>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => setEditWorkspaceOpen(true)}
+                    className="h-8 w-8"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
               <p className="text-muted-foreground">Gestão de Performance Contínua</p>
             </div>
             <div className="flex gap-3">
@@ -215,14 +203,10 @@ const Index = () => {
                 <PenSquare className="h-5 w-5" />
                 Nova Nota
               </Button>
-              <Button onClick={handleSignOut} variant="outline" size="lg" className="gap-2">
-                <LogOut className="h-5 w-5" />
-                Sair
-              </Button>
             </div>
           </div>
         </div>
-      </header>
+      </div>
 
       <main className="container mx-auto px-6 py-8">
         <TeamTabs 
