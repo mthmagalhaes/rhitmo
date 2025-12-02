@@ -12,6 +12,7 @@ import { DeleteTeamDialog } from '@/components/DeleteTeamDialog';
 import { TeamTabs } from '@/components/TeamTabs';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PenSquare, Users, Loader2, UserPlus, Pencil, Settings, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -41,6 +42,7 @@ interface TeamMember {
 
 const Index = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user, loading: authLoading } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
@@ -50,11 +52,7 @@ const Index = () => {
   const [editTeamOpen, setEditTeamOpen] = useState(false);
   const [deleteTeamOpen, setDeleteTeamOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
-  const [workspace, setWorkspace] = useState<Workspace | null>(null);
-  const [teams, setTeams] = useState<Team[]>([]);
   const [activeTeamId, setActiveTeamId] = useState<string | null>(null);
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   // Redirect if not authenticated
@@ -64,45 +62,49 @@ const Index = () => {
     }
   }, [user, authLoading, navigate]);
 
-  useEffect(() => {
-    if (user) {
-      loadWorkspaceAndTeams();
-      loadTeamMembers();
-    }
-  }, [user]);
-
-  const loadWorkspaceAndTeams = async () => {
-    try {
-      // Buscar workspace do usuário
-      const { data: workspaceData, error: workspaceError } = await supabase
+  // Query para workspace
+  const { data: workspace } = useQuery({
+    queryKey: ['workspace', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase
         .from('workspaces')
         .select('*')
         .single();
+      if (error) throw error;
+      return data as Workspace;
+    },
+    enabled: !!user && !authLoading,
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    gcTime: 10 * 60 * 1000, // 10 minutos
+    refetchOnWindowFocus: false,
+  });
 
-      if (workspaceError) throw workspaceError;
-      setWorkspace(workspaceData);
-
-      // Buscar times do workspace
-      const { data: teamsData, error: teamsError } = await supabase
+  // Query para teams
+  const { data: teams = [] } = useQuery({
+    queryKey: ['teams', workspace?.id],
+    queryFn: async () => {
+      if (!workspace) return [];
+      const { data, error } = await supabase
         .from('teams')
         .select('*')
-        .eq('workspace_id', workspaceData.id)
+        .eq('workspace_id', workspace.id)
         .order('name');
+      if (error) throw error;
+      return data as Team[];
+    },
+    enabled: !!workspace,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
 
-      if (teamsError) throw teamsError;
-      setTeams(teamsData || []);
-    } catch (error: any) {
-      console.error('Erro ao carregar workspace e times:', error);
-      toast({
-        title: "Erro ao carregar dados",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  };
+  // Query para team members com feedback info
+  const { data: teamMembers = [], isLoading: loading } = useQuery({
+    queryKey: ['team-members', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
 
-  const loadTeamMembers = async () => {
-    try {
       // Query 1: Buscar membros do time
       const { data: members, error: membersError } = await supabase
         .from('team_members')
@@ -138,18 +140,19 @@ const Index = () => {
         };
       });
 
-      setTeamMembers(membersWithCounts);
-    } catch (error: any) {
-      toast({
-        title: "Erro ao carregar equipe",
-        description: error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+      return membersWithCounts as TeamMember[];
+    },
+    enabled: !!user && !authLoading,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
 
+  const handleSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['workspace'] });
+    queryClient.invalidateQueries({ queryKey: ['teams'] });
+    queryClient.invalidateQueries({ queryKey: ['team-members'] });
+  };
 
   if (authLoading || loading) {
     return (
@@ -315,23 +318,20 @@ const Index = () => {
         open={memberDialogOpen} 
         onOpenChange={setMemberDialogOpen}
         workspaceId={workspace?.id || ''}
-        onSuccess={() => {
-          loadTeamMembers();
-          loadWorkspaceAndTeams();
-        }}
+        onSuccess={handleSuccess}
       />
       <EditWorkspaceDialog
         open={editWorkspaceOpen}
         onOpenChange={setEditWorkspaceOpen}
         workspaceId={workspace?.id || ''}
         currentName={workspace?.name || ''}
-        onSuccess={loadWorkspaceAndTeams}
+        onSuccess={handleSuccess}
       />
       <NewTeamDialog
         open={newTeamOpen}
         onOpenChange={setNewTeamOpen}
         workspaceId={workspace?.id || ''}
-        onSuccess={loadWorkspaceAndTeams}
+        onSuccess={handleSuccess}
       />
       <EditMemberDialog
         open={editMemberOpen}
@@ -343,16 +343,13 @@ const Index = () => {
           teamId: selectedMember.teamId || ''
         } : null}
         workspaceId={workspace?.id || ''}
-        onSuccess={() => {
-          loadTeamMembers();
-          loadWorkspaceAndTeams();
-        }}
+        onSuccess={handleSuccess}
       />
       <EditTeamDialog
         open={editTeamOpen}
         onOpenChange={setEditTeamOpen}
         team={activeTeam}
-        onSuccess={loadWorkspaceAndTeams}
+        onSuccess={handleSuccess}
       />
       <DeleteTeamDialog
         open={deleteTeamOpen}
@@ -361,8 +358,7 @@ const Index = () => {
         workspaceId={workspace?.id || ''}
         onSuccess={() => {
           setActiveTeamId(null);
-          loadWorkspaceAndTeams();
-          loadTeamMembers();
+          handleSuccess();
         }}
       />
     </div>

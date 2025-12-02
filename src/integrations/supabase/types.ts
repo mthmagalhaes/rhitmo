@@ -219,6 +219,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_update_own_sync: { Args: { member_id: string }; Returns: boolean }
+      get_member_for_sync: {
+        Args: { p_member_id: string }
+        Returns: {
+          id: string
+          name: string
+          role: string
+          work_style_data: Json
+        }[]
+      }
       is_workspace_owner: {
         Args: { _member_id: string; _user_id: string }
         Returns: boolean

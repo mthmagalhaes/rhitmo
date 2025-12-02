@@ -143,19 +143,19 @@ export default function RhitmoSync() {
 
     try {
       const { data, error } = await supabase
-        .from('team_members')
-        .select('name, work_style_data')
-        .eq('id', memberId)
-        .single();
+        .rpc('get_member_for_sync', { p_member_id: memberId });
 
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error('Membro não encontrado');
 
-      if (data.work_style_data) {
+      const member = Array.isArray(data) ? data[0] : data;
+
+      if (member.work_style_data) {
         toast.error('Este questionário já foi preenchido');
         setCompleted(true);
       }
 
-      setMemberName(data.name);
+      setMemberName(member.name);
     } catch (error) {
       console.error('Error loading member:', error);
       toast.error('Membro não encontrado');
