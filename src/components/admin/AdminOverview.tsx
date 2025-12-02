@@ -151,7 +151,7 @@ export const AdminOverview = () => {
         <p className="text-muted-foreground">Visão geral do sistema</p>
       </div>
 
-      {/* Big Numbers */}
+      {/* Big Numbers - Clickable Cards */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -165,7 +165,10 @@ export const AdminOverview = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card 
+          className="cursor-pointer hover:bg-accent/50 transition-colors"
+          onClick={() => window.dispatchEvent(new CustomEvent('admin-tab-change', { detail: 'users' }))}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Membros</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
@@ -174,6 +177,7 @@ export const AdminOverview = () => {
             <div className="text-2xl font-bold">
               {statsLoading ? '...' : stats?.members}
             </div>
+            <p className="text-xs text-muted-foreground mt-1">Clique para gerenciar →</p>
           </CardContent>
         </Card>
 
