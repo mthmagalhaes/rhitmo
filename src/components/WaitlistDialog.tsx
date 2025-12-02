@@ -131,10 +131,10 @@ export const WaitlistDialog = ({ open, onOpenChange }: WaitlistDialogProps) => {
                 <SelectValue placeholder="Selecione..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="1-5">1-5 pessoas</SelectItem>
-                <SelectItem value="6-10">6-10 pessoas</SelectItem>
-                <SelectItem value="11-30">11-30 pessoas</SelectItem>
-                <SelectItem value="30+">30+ pessoas</SelectItem>
+                <SelectItem value="1-3">1-3 pessoas</SelectItem>
+                <SelectItem value="4-6">4-6 pessoas</SelectItem>
+                <SelectItem value="7-10">7-10 pessoas</SelectItem>
+                <SelectItem value="10+">10+ pessoas</SelectItem>
               </SelectContent>
             </Select>
           </div>
