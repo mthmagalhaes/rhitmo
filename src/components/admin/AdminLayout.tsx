@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,18 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('overview');
+
+  // Ouvir eventos de mudança de tab vindos de outros componentes
+  useEffect(() => {
+    const handleExternalTabChange = (e: CustomEvent) => {
+      setActiveTab(e.detail);
+    };
+
+    window.addEventListener('admin-tab-change', handleExternalTabChange as EventListener);
+    return () => {
+      window.removeEventListener('admin-tab-change', handleExternalTabChange as EventListener);
+    };
+  }, []);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
