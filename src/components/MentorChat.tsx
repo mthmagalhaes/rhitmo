@@ -1,21 +1,27 @@
 import { useState, useRef, useEffect } from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Loader2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Send, Loader2, MessageCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
 
-interface Message {
+interface MentorMessage {
+  id: string;
   role: 'user' | 'assistant';
   content: string;
+  created_at: string;
 }
 
 interface MentorChatProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   memberName: string;
+  memberId: string;
   memberRole?: string;
   feedbacks: any[];
   workStyleData?: any;
@@ -29,36 +35,84 @@ const quickSuggestions = [
   { emoji: '⚠️', text: 'Identificar riscos' },
 ];
 
-export const MentorChat = ({ open, onOpenChange, memberName, memberRole, feedbacks, workStyleData, keyObjectives }: MentorChatProps) => {
-  const [messages, setMessages] = useState<Message[]>([]);
+export const MentorChat = ({ 
+  open, 
+  onOpenChange, 
+  memberName, 
+  memberId,
+  memberRole, 
+  feedbacks, 
+  workStyleData, 
+  keyObjectives 
+}: MentorChatProps) => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (open && messages.length === 0) {
-      setMessages([{
-        role: 'assistant',
-        content: `Olá! Analisei o histórico do(a) ${memberName}. Quer ajuda para identificar padrões de comportamento ou preparar uma conversa difícil?`
-      }]);
-    }
-  }, [open, memberName, messages.length]);
+  // Buscar histórico de mensagens
+  const { data: messages = [], isLoading: isLoadingHistory } = useQuery({
+    queryKey: ['mentor-messages', memberId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('mentor_messages')
+        .select('*')
+        .eq('member_id', memberId)
+        .order('created_at', { ascending: true });
+      
+      if (error) throw error;
+      return (data || []) as MentorMessage[];
+    },
+    enabled: open && !!memberId && !!user,
+    staleTime: 1000 * 60 * 5, // 5 minutos
+  });
 
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  // Mutation para salvar mensagem
+  const saveMessageMutation = useMutation({
+    mutationFn: async (message: { role: 'user' | 'assistant'; content: string }) => {
+      if (!user) throw new Error('Usuário não autenticado');
+      
+      const { error } = await supabase
+        .from('mentor_messages')
+        .insert({
+          user_id: user.id,
+          member_id: memberId,
+          role: message.role,
+          content: message.content
+        });
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mentor-messages', memberId] });
     }
-  }, [messages]);
+  });
+
+  // Auto-scroll para última mensagem
+  useEffect(() => {
+    if (scrollRef.current && (messages.length > 0 || isLoading)) {
+      setTimeout(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTo({
+            top: scrollRef.current.scrollHeight,
+            behavior: 'smooth'
+          });
+        }
+      }, 100);
+    }
+  }, [messages, isLoading]);
 
   const handleSend = async (messageToSend?: string) => {
     const finalMessage = messageToSend || input;
     if (!finalMessage.trim() || isLoading) return;
 
-    const userMessage: Message = { role: 'user', content: finalMessage };
-    setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
+
+    // Salvar mensagem do usuário
+    await saveMessageMutation.mutateAsync({ role: 'user', content: finalMessage });
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
@@ -105,8 +159,8 @@ export const MentorChat = ({ open, onOpenChange, memberName, memberRole, feedbac
         throw new Error('Resposta inválida do servidor.');
       }
 
-      const assistantMessage: Message = { role: 'assistant', content: data.response };
-      setMessages(prev => [...prev, assistantMessage]);
+      // Salvar resposta do assistente
+      await saveMessageMutation.mutateAsync({ role: 'assistant', content: data.response });
     } catch (error: any) {
       clearTimeout(timeoutId);
       console.error('Erro no chat:', error);
@@ -119,11 +173,8 @@ export const MentorChat = ({ open, onOpenChange, memberName, memberRole, feedbac
         errorMessage = error.message;
       }
 
-      const errorAssistantMessage: Message = { 
-        role: 'assistant', 
-        content: `⚠️ ${errorMessage}` 
-      };
-      setMessages(prev => [...prev, errorAssistantMessage]);
+      // Salvar erro como mensagem do assistente
+      await saveMessageMutation.mutateAsync({ role: 'assistant', content: `⚠️ ${errorMessage}` });
 
       toast({
         title: "Erro ao consultar mentor",
@@ -147,17 +198,41 @@ export const MentorChat = ({ open, onOpenChange, memberName, memberRole, feedbac
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:w-[40%] sm:max-w-none flex flex-col p-0 bg-background">
-        <SheetHeader className="px-6 py-4 border-b border-border">
-          <SheetTitle className="text-foreground">Mentor de Liderança — {memberName}</SheetTitle>
-        </SheetHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 shadow-2xl gap-0">
+        <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+          <DialogTitle className="text-foreground text-lg">
+            🎯 Mentor de Liderança IA
+            <span className="text-muted-foreground font-normal text-base ml-2">
+              — {memberName} {memberRole && `(${memberRole})`}
+            </span>
+          </DialogTitle>
+        </DialogHeader>
 
         <ScrollArea className="flex-1 px-6 py-4" ref={scrollRef}>
           <div className="space-y-4">
-            {messages.map((msg, idx) => (
+            {/* Skeleton loader */}
+            {isLoadingHistory && (
+              <div className="space-y-4">
+                <Skeleton className="h-16 w-3/4" />
+                <Skeleton className="h-12 w-1/2 ml-auto" />
+                <Skeleton className="h-20 w-3/4" />
+              </div>
+            )}
+
+            {/* Empty state */}
+            {!isLoadingHistory && messages.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground">
+                <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="font-medium">Início da conversa sobre {memberName}</p>
+                <p className="text-sm mt-1">Use as sugestões abaixo ou faça uma pergunta</p>
+              </div>
+            )}
+
+            {/* Messages */}
+            {messages.map((msg) => (
               <div
-                key={idx}
+                key={msg.id}
                 className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
@@ -183,6 +258,8 @@ export const MentorChat = ({ open, onOpenChange, memberName, memberRole, feedbac
                 </div>
               </div>
             ))}
+            
+            {/* Loading indicator */}
             {isLoading && (
               <div className="flex justify-start">
                 <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3">
@@ -196,8 +273,8 @@ export const MentorChat = ({ open, onOpenChange, memberName, memberRole, feedbac
           </div>
         </ScrollArea>
 
-        {/* Área de input modernizada */}
-        <div className="px-6 pb-6 pt-3">
+        {/* Área de input */}
+        <div className="px-6 pb-6 pt-3 border-t border-border flex-shrink-0">
           {/* Chips de sugestão rápida */}
           <div className="flex gap-2 mb-3 overflow-x-auto pb-2 scrollbar-hide">
             {quickSuggestions.map((suggestion, idx) => (
@@ -236,7 +313,7 @@ export const MentorChat = ({ open, onOpenChange, memberName, memberRole, feedbac
             </Button>
           </div>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 };
