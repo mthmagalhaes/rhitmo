@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { PenSquare, Users, LogOut, Loader2, UserPlus, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Workspace, Team } from '@/types/team';
+import { RhitmoLogo } from '@/components/RhitmoLogo';
 
 interface TeamMember {
   id: string;
@@ -163,19 +164,21 @@ const Index = () => {
         <div className="container mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <h1 className="text-3xl font-bold text-primary">
-                  {workspace?.name || 'Rhitmo'}
-                </h1>
+              <div className="flex items-center gap-3 mb-1">
+                <RhitmoLogo size="md" className="text-primary" />
                 {workspace && (
-                  <Button 
-                    variant="ghost" 
-                    size="icon"
-                    onClick={() => setEditWorkspaceOpen(true)}
-                    className="h-8 w-8"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
+                  <>
+                    <span className="text-lg text-muted-foreground">/</span>
+                    <span className="text-lg font-medium text-foreground">{workspace.name}</span>
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => setEditWorkspaceOpen(true)}
+                      className="h-8 w-8"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </>
                 )}
               </div>
               <p className="text-muted-foreground">Gestão de Performance Contínua</p>
