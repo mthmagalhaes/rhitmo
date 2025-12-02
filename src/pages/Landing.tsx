@@ -393,12 +393,8 @@ const Landing = () => {
             <div className="inline-block text-xs font-medium bg-primary/10 text-primary px-3 py-1 rounded-full">
               Avaliações Automáticas
             </div>
-            <h2 className="text-3xl font-bold tracking-tight lg:text-4xl">
-              O fim da tela em branco.
-            </h2>
-            <p className="text-lg text-muted-foreground leading-relaxed">
-              Chegou o fim do ciclo? Com um clique, transforme meses de anotações em uma Avaliação de Desempenho formal, estruturada e pronta para apresentar.
-            </p>
+            <h2 className="text-3xl font-bold tracking-tight lg:text-4xl">Chega de avaliação de desempenho feito às pressas e entregue aos 45' do segundo tempo</h2>
+            <p className="text-lg text-muted-foreground leading-relaxed">Chegou o fim do ciclo? Com um clique, transforme meses de anotações em um rascunho de Avaliação de Desempenho formal, estruturada e pronta para você fazer ajustes finos. Chega de muuuiiiito tempo perdido e vieses inconscientes em um momento tão importante.</p>
           </div>
           <div className="order-1 lg:order-2">
             <ReviewMockup />
