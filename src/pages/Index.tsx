@@ -7,11 +7,20 @@ import { NewMemberDialog } from '@/components/NewMemberDialog';
 import { EditWorkspaceDialog } from '@/components/EditWorkspaceDialog';
 import { NewTeamDialog } from '@/components/NewTeamDialog';
 import { EditMemberDialog } from '@/components/EditMemberDialog';
+import { EditTeamDialog } from '@/components/EditTeamDialog';
+import { DeleteTeamDialog } from '@/components/DeleteTeamDialog';
 import { TeamTabs } from '@/components/TeamTabs';
 import { Auth } from '@/components/Auth';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { PenSquare, Users, LogOut, Loader2, UserPlus, Pencil } from 'lucide-react';
+import { PenSquare, Users, LogOut, Loader2, UserPlus, Pencil, Settings, Trash2 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { Workspace, Team } from '@/types/team';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
@@ -40,6 +49,8 @@ const Index = () => {
   const [editWorkspaceOpen, setEditWorkspaceOpen] = useState(false);
   const [newTeamOpen, setNewTeamOpen] = useState(false);
   const [editMemberOpen, setEditMemberOpen] = useState(false);
+  const [editTeamOpen, setEditTeamOpen] = useState(false);
+  const [deleteTeamOpen, setDeleteTeamOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
@@ -158,6 +169,16 @@ const Index = () => {
     ? teamMembers.filter(m => m.teamId === activeTeamId)
     : teamMembers;
 
+  const activeTeam = teams.find(t => t.id === activeTeamId);
+  
+  const getPageTitle = () => {
+    if (!activeTeamId) return 'Todos os Membros';
+    if (activeTeam?.name === 'Sem Time') return 'Membros sem Time';
+    return activeTeam?.name || '';
+  };
+
+  const showTeamSettings = activeTeamId && activeTeam?.name !== 'Sem Time';
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card shadow-sm">
@@ -214,11 +235,31 @@ const Index = () => {
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-2">
             <Users className="h-5 w-5 text-primary" />
-            <h2 className="text-2xl font-bold text-foreground">
-              {activeTeamId 
-                ? teams.find(t => t.id === activeTeamId)?.name 
-                : 'Todos os Membros'}
-            </h2>
+            <h2 className="text-2xl font-bold text-foreground">{getPageTitle()}</h2>
+            
+            {showTeamSettings && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem onClick={() => setEditTeamOpen(true)}>
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Renomear Time
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={() => setDeleteTeamOpen(true)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Excluir Time
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
           <p className="text-muted-foreground">
             {filteredMembers.length} {filteredMembers.length === 1 ? 'liderado' : 'liderados'} · Clique em um card para ver o histórico
@@ -317,6 +358,23 @@ const Index = () => {
         onSuccess={() => {
           loadTeamMembers();
           loadWorkspaceAndTeams();
+        }}
+      />
+      <EditTeamDialog
+        open={editTeamOpen}
+        onOpenChange={setEditTeamOpen}
+        team={activeTeam}
+        onSuccess={loadWorkspaceAndTeams}
+      />
+      <DeleteTeamDialog
+        open={deleteTeamOpen}
+        onOpenChange={setDeleteTeamOpen}
+        team={activeTeam}
+        workspaceId={workspace?.id || ''}
+        onSuccess={() => {
+          setActiveTeamId(null);
+          loadWorkspaceAndTeams();
+          loadTeamMembers();
         }}
       />
     </div>
