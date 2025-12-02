@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
 import { MemberAvatar } from '@/components/MemberAvatar';
@@ -33,14 +34,19 @@ export function AppSidebar() {
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdmin();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
+    
     toast({
       title: "Logout realizado",
       description: "Até logo!"
     });
+    
+    // Redirecionar para página de login
+    navigate('/auth', { replace: true });
   };
 
   const userName = user?.user_metadata?.full_name 
