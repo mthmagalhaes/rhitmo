@@ -86,7 +86,7 @@ export const Auth = () => {
               <span className="text-emerald-400">do zero.</span>
             </h2>
             <p className="text-xl text-left text-white/80 max-w-md leading-relaxed">
-              Rhitmo organiza os fatos, e apoia líderes para focar no que mais importa: desenvolvimento de pessoas e cultura de alta performance.
+              Com o Rhitmo, líderes ganham tempo, memória e organização de forma simples para focar no que realmente importa: desenvolver pessoas e construir uma cultura de resultados.
             </p>
           </div>
         </div>
