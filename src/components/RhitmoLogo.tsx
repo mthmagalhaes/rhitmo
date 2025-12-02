@@ -17,32 +17,32 @@ export const RhitmoLogo = ({ className, size = 'md' }: RhitmoLogoProps) => {
       className={className} 
       width={sizes[size].width}
       height={sizes[size].height}
+      role="img"
+      aria-labelledby="rhitmo-logo-title"
     >
-      {/* Texto "Rhitmo" - fonte Inter bold */}
+      <title id="rhitmo-logo-title">Rhitmo logo</title>
+      
+      {/* Texto "Rhitmo" - fonte system-ui bold */}
       <text 
         x="50%" 
-        y="26" 
+        y="24" 
         textAnchor="middle"
-        fontFamily="Inter, system-ui, sans-serif" 
+        fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" 
         fontWeight="700" 
-        fontSize="30" 
+        fontSize="28" 
         fill="currentColor"
-        style={{ letterSpacing: '-0.02em' }}
       >
         Rhitmo
       </text>
       
-      {/* Onda orgânica - batimento cardíaco suave */}
+      {/* Rhythm line - onda senoidal suave */}
       <path 
-        d="M10 44 
-           C18 44, 25 44, 35 42
-           C45 40, 52 36, 58 30
-           C62 26, 65 24, 70 24
-           C75 24, 78 28, 82 34
-           C88 42, 95 48, 105 48
-           C115 48, 125 46, 130 44"
+        d="M10 44
+           C25 40, 40 48, 55 44
+           S85 40, 100 44
+           S130 48, 140 44"
         stroke="currentColor" 
-        strokeWidth="3" 
+        strokeWidth="4" 
         fill="none" 
         strokeLinecap="round"
         strokeLinejoin="round"
