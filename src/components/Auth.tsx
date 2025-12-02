@@ -69,15 +69,26 @@ export const Auth = () => {
         <div className="absolute inset-0 bg-[#7C3AED]/80 mix-blend-multiply" />
         <div className="absolute inset-0 bg-gradient-to-br from-[#7C3AED]/40 to-[#5B21B6]/60" />
         
-        {/* Conteúdo do Hero */}
-        <div className="absolute inset-0 flex flex-col justify-center items-center text-white p-12">
-          <RhitmoLogo size="lg" className="text-white mb-10" />
-          <h2 className="text-4xl lg:text-5xl font-extrabold text-center mb-6 leading-tight max-w-xl">
-            Nunca mais escreva uma avaliação de desempenho do zero.
-          </h2>
-          <p className="text-xl text-center text-white/90 max-w-lg leading-relaxed">
-            Substitua o caos, a memória falha e os vieses por feedbacks contínuos e estruturados para construir uma cultura de alta performance.
-          </p>
+        {/* Gradiente de legibilidade (escuro embaixo, transparente em cima) */}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-purple-900/50 to-transparent" />
+        
+        {/* Logo no topo esquerdo */}
+        <div className="absolute top-8 left-8">
+          <RhitmoLogo size="lg" className="text-white" />
+        </div>
+        
+        {/* Conteúdo do Hero - Editorial Tech */}
+        <div className="absolute inset-0 flex flex-col justify-end items-start text-white p-16">
+          {/* Bloco de texto com marcador editorial */}
+          <div className="border-l-4 border-emerald-400 pl-6">
+            <h2 className="text-4xl lg:text-5xl font-extrabold text-left mb-4 leading-tight max-w-xl">
+              Nunca mais escreva uma avaliação de desempenho{' '}
+              <span className="text-emerald-400">do zero.</span>
+            </h2>
+            <p className="text-xl text-left text-white/80 max-w-md leading-relaxed">
+              Substitua o caos, a memória falha e os vieses por feedbacks contínuos e estruturados para construir uma cultura de alta performance.
+            </p>
+          </div>
         </div>
       </div>
       
