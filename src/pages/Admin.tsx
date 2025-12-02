@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AdminOverview } from '@/components/admin/AdminOverview';
 import { AdminSupport } from '@/components/admin/AdminSupport';
 import { AdminExport } from '@/components/admin/AdminExport';
+import { AdminUsers } from '@/components/admin/AdminUsers';
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -45,6 +46,7 @@ const Admin = () => {
       {activeTab === 'overview' && <AdminOverview />}
       {activeTab === 'support' && <AdminSupport />}
       {activeTab === 'export' && <AdminExport />}
+      {activeTab === 'users' && <AdminUsers />}
     </>
   );
 };

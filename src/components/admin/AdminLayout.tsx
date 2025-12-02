@@ -3,7 +3,7 @@ import { RhitmoLogo } from '@/components/RhitmoLogo';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LayoutDashboard, Settings, FileDown, LogOut, Home } from 'lucide-react';
+import { LayoutDashboard, Settings, FileDown, LogOut, Home, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -61,6 +61,13 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
               >
                 <FileDown className="h-4 w-4" />
                 Data Export
+              </TabsTrigger>
+              <TabsTrigger 
+                value="users" 
+                className="w-full justify-start gap-3 data-[state=active]:bg-slate-800 data-[state=active]:text-violet-400"
+              >
+                <Users className="h-4 w-4" />
+                Lista de Usuários
               </TabsTrigger>
             </TabsList>
           </Tabs>
