@@ -125,7 +125,7 @@ export const WaitlistDialog = ({ open, onOpenChange }: WaitlistDialogProps) => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="team_size">Quantas pessoas você lidera?</Label>
+            <Label htmlFor="team_size">Você possui quantos reports diretos?</Label>
             <Select value={teamSize} onValueChange={setTeamSize}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione..." />
