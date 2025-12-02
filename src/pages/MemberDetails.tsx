@@ -11,7 +11,6 @@ import { NewNoteDialog } from '@/components/NewNoteDialog';
 import { MentorChat } from '@/components/MentorChat';
 import { styleConfig } from '@/components/WorkStyleCard';
 import { PerformanceReviewList } from '@/components/PerformanceReviewList';
-import { Auth } from '@/components/Auth';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Save, Music, Zap, BookOpen, Waves, Sunrise, Moon, Trophy, TrendingUp } from 'lucide-react';
@@ -32,6 +31,13 @@ const MemberDetails = () => {
   const [keyObjectives, setKeyObjectives] = useState<string>('');
   const [savingObjectives, setSavingObjectives] = useState(false);
   const { toast } = useToast();
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!user && !authLoading) {
+      navigate('/auth', { replace: true });
+    }
+  }, [user, authLoading, navigate]);
 
   useEffect(() => {
     if (user && id) {
@@ -237,9 +243,7 @@ Exemplos:
     );
   }
 
-  if (!user) {
-    return <Auth />;
-  }
+  if (!user) return null;
 
   if (!member) {
     return (

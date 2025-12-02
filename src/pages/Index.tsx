@@ -10,7 +10,6 @@ import { EditMemberDialog } from '@/components/EditMemberDialog';
 import { EditTeamDialog } from '@/components/EditTeamDialog';
 import { DeleteTeamDialog } from '@/components/DeleteTeamDialog';
 import { TeamTabs } from '@/components/TeamTabs';
-import { Auth } from '@/components/Auth';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { PenSquare, Users, Loader2, UserPlus, Pencil, Settings, Trash2 } from 'lucide-react';
@@ -42,7 +41,7 @@ interface TeamMember {
 
 const Index = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
   const [editWorkspaceOpen, setEditWorkspaceOpen] = useState(false);
@@ -57,6 +56,13 @@ const Index = () => {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!user && !authLoading) {
+      navigate('/auth', { replace: true });
+    }
+  }, [user, authLoading, navigate]);
 
   useEffect(() => {
     if (user) {
@@ -145,7 +151,7 @@ const Index = () => {
   };
 
 
-  if (authLoading) {
+  if (authLoading || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -153,9 +159,7 @@ const Index = () => {
     );
   }
 
-  if (!user) {
-    return <Auth />;
-  }
+  if (!user) return null;
 
   const filteredMembers = activeTeamId 
     ? teamMembers.filter(m => m.teamId === activeTeamId)

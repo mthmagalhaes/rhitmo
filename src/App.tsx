@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import MemberDetails from "./pages/MemberDetails";
 import Analytics from "./pages/Analytics";
 import Billing from "./pages/Billing";
+import AuthPage from "./pages/AuthPage";
 import RhitmoSync from "./pages/RhitmoSync";
 import NotFound from "./pages/NotFound";
 
@@ -20,6 +21,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          {/* Rota pública - Login sem sidebar */}
+          <Route path="/auth" element={<AuthPage />} />
+          
           {/* Rotas autenticadas com sidebar */}
           <Route path="/" element={<AppLayout><Index /></AppLayout>} />
           <Route path="/member/:id" element={<AppLayout><MemberDetails /></AppLayout>} />

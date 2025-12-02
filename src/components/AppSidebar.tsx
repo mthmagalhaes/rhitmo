@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { Home, BarChart3, CreditCard, LogOut, Settings } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
+import { MemberAvatar } from '@/components/MemberAvatar';
+import { ProfileSettingsDialog } from '@/components/ProfileSettingsDialog';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -28,6 +31,7 @@ export function AppSidebar() {
   const { open } = useSidebar();
   const { user, signOut } = useAuth();
   const { toast } = useToast();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -37,10 +41,9 @@ export function AppSidebar() {
     });
   };
 
-  // Generate avatar URL using Boring Avatars
-  const avatarUrl = user?.id 
-    ? `https://source.boringavatars.com/beam/40/${user.id}?colors=7C3AED,10B981,F59E0B,3B82F6,EC4899&square=true`
-    : null;
+  const userName = user?.user_metadata?.full_name 
+    || user?.user_metadata?.name 
+    || 'Usuário';
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -77,18 +80,17 @@ export function AppSidebar() {
 
       <SidebarFooter className="border-t border-sidebar-border p-4">
         <div className="flex items-center gap-3">
-          {avatarUrl && open && (
-            <img 
-              src={avatarUrl} 
-              alt="Avatar" 
-              className="h-10 w-10 rounded-lg"
-              loading="lazy"
+          {open && user?.id && (
+            <MemberAvatar 
+              memberId={user.id} 
+              memberName={userName} 
+              size="md"
             />
           )}
           {open && (
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-sidebar-foreground truncate">
-                {user?.email}
+                {userName}
               </p>
             </div>
           )}
@@ -98,6 +100,7 @@ export function AppSidebar() {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent"
+                onClick={() => setSettingsOpen(true)}
                 title="Configurações"
               >
                 <Settings className="h-4 w-4" />
@@ -115,6 +118,11 @@ export function AppSidebar() {
           </div>
         </div>
       </SidebarFooter>
+
+      <ProfileSettingsDialog 
+        open={settingsOpen} 
+        onOpenChange={setSettingsOpen} 
+      />
     </Sidebar>
   );
 }
