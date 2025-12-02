@@ -237,8 +237,32 @@ Lembre-se: Você é um coach experiente. Baseie-se APENAS nos dados acima. Se a 
       const errorText = await response.text();
       console.error('OpenAI error status:', response.status);
       console.error('OpenAI error body:', errorText);
+      
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'O serviço de IA está ocupado. Tente novamente em instantes.',
+            code: 'RATE_LIMIT'
+          }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Créditos de IA esgotados. Adicione créditos em Settings → Workspace.',
+            code: 'INSUFFICIENT_CREDITS'
+          }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       return new Response(
-        JSON.stringify({ error: `Erro na API de IA (${response.status}): ${errorText.substring(0, 200)}` }),
+        JSON.stringify({ 
+          error: `Erro na API de IA (${response.status})`,
+          code: 'AI_ERROR'
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

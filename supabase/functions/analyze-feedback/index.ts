@@ -96,6 +96,9 @@ serve(async (req) => {
 
     console.log('Calling OpenAI for feedback analysis...');
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
+
     // System Prompt - Constituição Rhitmo Analyst
     const systemPrompt = `# RHITMO ANALYST - CONSTITUIÇÃO
 
@@ -242,35 +245,78 @@ ${objectivesContext}
 Feedback:
 ${truncatedContent}`;
 
-    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-5-mini-2025-08-07',
-        messages: [
-          {
-            role: 'system',
-            content: systemPrompt
-          },
-          {
-            role: 'user',
-            content: userPrompt
-          }
-        ],
-        tools: isShortNote ? toolsShortNote : toolsRichText,
-        tool_choice: { type: "function", function: { name: "analyze_feedback" } },
-        max_completion_tokens: 4000
-      }),
-    });
+    let openAIResponse;
+    try {
+      openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-5-mini-2025-08-07',
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt
+            },
+            {
+              role: 'user',
+              content: userPrompt
+            }
+          ],
+          tools: isShortNote ? toolsShortNote : toolsRichText,
+          tool_choice: { type: "function", function: { name: "analyze_feedback" } },
+          max_completion_tokens: 4000
+        }),
+        signal: controller.signal,
+      });
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        console.error('OpenAI request timeout');
+        return new Response(
+          JSON.stringify({ 
+            error: 'O serviço de IA está demorando muito. Tente novamente em instantes.',
+            code: 'TIMEOUT'
+          }),
+          { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      throw fetchError;
+    }
+    
+    clearTimeout(timeoutId);
 
     if (!openAIResponse.ok) {
       const errorText = await openAIResponse.text();
       console.error('OpenAI API error:', openAIResponse.status, errorText);
+      
+      if (openAIResponse.status === 429) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'O serviço de IA está ocupado. Tente novamente em instantes.',
+            code: 'RATE_LIMIT'
+          }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      if (openAIResponse.status === 402) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Créditos de IA esgotados. Adicione créditos em Settings → Workspace.',
+            code: 'INSUFFICIENT_CREDITS'
+          }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       return new Response(
-        JSON.stringify({ error: 'Failed to analyze feedback with AI' }),
+        JSON.stringify({ 
+          error: 'Falha ao analisar feedback com IA',
+          code: 'AI_ERROR'
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
