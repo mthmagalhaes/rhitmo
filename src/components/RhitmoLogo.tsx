@@ -5,45 +5,44 @@ interface RhitmoLogoProps {
 
 export const RhitmoLogo = ({ className, size = 'md' }: RhitmoLogoProps) => {
   const sizes = {
-    sm: { width: 100, height: 40 },
-    md: { width: 140, height: 56 },
-    lg: { width: 180, height: 72 }
+    sm: { width: 100, height: 37 },
+    md: { width: 140, height: 52 },
+    lg: { width: 180, height: 67 }
   };
   
   return (
     <svg 
-      viewBox="0 0 140 56" 
+      viewBox="0 0 140 52" 
       fill="none"
       className={className} 
       width={sizes[size].width}
       height={sizes[size].height}
     >
-      {/* Texto "Rhitmo" - fonte bold arredondada */}
+      {/* Texto "Rhitmo" - fonte Inter bold */}
       <text 
         x="50%" 
-        y="28" 
+        y="26" 
         textAnchor="middle"
         fontFamily="Inter, system-ui, sans-serif" 
         fontWeight="700" 
-        fontSize="32" 
+        fontSize="30" 
         fill="currentColor"
         style={{ letterSpacing: '-0.02em' }}
       >
         Rhitmo
       </text>
       
-      {/* Onda sonora/batimento - padrão do logo oficial */}
+      {/* Onda orgânica - batimento cardíaco suave */}
       <path 
-        d="M20 48 
-           Q30 48, 40 46 
-           Q50 44, 55 38 
-           Q60 32, 65 28 
-           Q70 24, 75 32 
-           Q80 40, 85 46 
-           Q95 52, 105 48 
-           Q115 44, 120 48"
+        d="M10 44 
+           C18 44, 25 44, 35 42
+           C45 40, 52 36, 58 30
+           C62 26, 65 24, 70 24
+           C75 24, 78 28, 82 34
+           C88 42, 95 48, 105 48
+           C115 48, 125 46, 130 44"
         stroke="currentColor" 
-        strokeWidth="4" 
+        strokeWidth="3" 
         fill="none" 
         strokeLinecap="round"
         strokeLinejoin="round"
