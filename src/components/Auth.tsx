@@ -78,12 +78,7 @@ export const Auth = () => {
               Nunca mais escreva uma avaliação de desempenho{' '}
               <span className="text-emerald-400">do zero.</span>
             </h2>
-            <p className="text-lg text-slate-200 leading-relaxed">
-              Com o Rhitmo, líderes ganham tempo, memória e organização de forma simples para focar no que realmente importa: <br />
-              <span className="bg-emerald-500/30 text-white px-1 rounded inline-block mt-1">
-                desenvolver pessoas e <br /> construir uma cultura de resultados.
-              </span>
-            </p>
+            <p className="text-xl text-left text-white/80 max-w-md leading-relaxed">Com o Rhitmo, líderes ganham tempo, memória e organização de forma simples para focar no que realmente importa: <span className="bg-emerald-400 text-white px-1.5 py-0.5 rounded">desenvolver pessoas e construir uma cultura de resultados.</span></p>
           </div>
         </div>
       </div>
