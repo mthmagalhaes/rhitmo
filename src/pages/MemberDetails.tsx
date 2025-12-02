@@ -559,6 +559,7 @@ Exemplos:
         open={chatOpen}
         onOpenChange={setChatOpen}
         memberName={member.name}
+        memberId={member.id}
         memberRole={member.role}
         feedbacks={feedbacks}
         workStyleData={member.work_style_data}
