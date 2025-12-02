@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,6 +21,13 @@ interface MentorChatProps {
   workStyleData?: any;
   keyObjectives?: string | null;
 }
+
+const quickSuggestions = [
+  { emoji: '📊', text: 'Analisar padrões de comportamento' },
+  { emoji: '🗣️', text: 'Roteiro para 1:1' },
+  { emoji: '💡', text: 'Sugerir PDI' },
+  { emoji: '⚠️', text: 'Identificar riscos' },
+];
 
 export const MentorChat = ({ open, onOpenChange, memberName, memberRole, feedbacks, workStyleData, keyObjectives }: MentorChatProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -45,17 +51,17 @@ export const MentorChat = ({ open, onOpenChange, memberName, memberRole, feedbac
     }
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  const handleSend = async (messageToSend?: string) => {
+    const finalMessage = messageToSend || input;
+    if (!finalMessage.trim() || isLoading) return;
 
-    const userMessage: Message = { role: 'user', content: input };
+    const userMessage: Message = { role: 'user', content: finalMessage };
     setMessages(prev => [...prev, userMessage]);
-    const currentInput = input;
     setInput('');
     setIsLoading(true);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     try {
       const { data: session } = await supabase.auth.getSession();
@@ -69,7 +75,7 @@ export const MentorChat = ({ open, onOpenChange, memberName, memberRole, feedbac
             'Authorization': `Bearer ${session?.session?.access_token}`
           },
           body: JSON.stringify({
-            question: currentInput,
+            question: finalMessage,
             feedbacks: feedbacks,
             memberName: memberName,
             memberRole: memberRole,
@@ -113,7 +119,6 @@ export const MentorChat = ({ open, onOpenChange, memberName, memberRole, feedbac
         errorMessage = error.message;
       }
 
-      // Adicionar mensagem de erro como assistente
       const errorAssistantMessage: Message = { 
         role: 'assistant', 
         content: `⚠️ ${errorMessage}` 
@@ -137,11 +142,15 @@ export const MentorChat = ({ open, onOpenChange, memberName, memberRole, feedbac
     }
   };
 
+  const handleSuggestionClick = (text: string) => {
+    handleSend(text);
+  };
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:w-[40%] sm:max-w-none flex flex-col p-0">
-        <SheetHeader className="px-6 py-4 border-b">
-          <SheetTitle>Mentor de Liderança - {memberName}</SheetTitle>
+      <SheetContent side="right" className="w-full sm:w-[40%] sm:max-w-none flex flex-col p-0 bg-background">
+        <SheetHeader className="px-6 py-4 border-b border-border">
+          <SheetTitle className="text-foreground">Mentor de Liderança — {memberName}</SheetTitle>
         </SheetHeader>
 
         <ScrollArea className="flex-1 px-6 py-4" ref={scrollRef}>
@@ -152,10 +161,10 @@ export const MentorChat = ({ open, onOpenChange, memberName, memberRole, feedbac
                 className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[80%] rounded-lg px-4 py-3 ${
+                  className={`max-w-[85%] px-4 py-3 ${
                     msg.role === 'user'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-foreground'
+                      ? 'bg-primary text-primary-foreground rounded-2xl rounded-br-md'
+                      : 'bg-muted text-foreground rounded-2xl rounded-bl-md'
                   }`}
                 >
                   <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
@@ -176,24 +185,53 @@ export const MentorChat = ({ open, onOpenChange, memberName, memberRole, feedbac
             ))}
             {isLoading && (
               <div className="flex justify-start">
-                <div className="bg-muted rounded-lg px-4 py-3">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3">
+                  <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Pensando...</span>
+                  </div>
                 </div>
               </div>
             )}
           </div>
         </ScrollArea>
 
-        <div className="border-t px-6 py-4">
-          <div className="flex gap-2">
-            <Input
+        {/* Área de input modernizada */}
+        <div className="px-6 pb-6 pt-3">
+          {/* Chips de sugestão rápida */}
+          <div className="flex gap-2 mb-3 overflow-x-auto pb-2 scrollbar-hide">
+            {quickSuggestions.map((suggestion, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleSuggestionClick(suggestion.text)}
+                disabled={isLoading}
+                className="flex-shrink-0 px-3 py-1.5 text-sm bg-muted hover:bg-accent 
+                           text-muted-foreground hover:text-accent-foreground rounded-full 
+                           transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {suggestion.emoji} {suggestion.text}
+              </button>
+            ))}
+          </div>
+
+          {/* Cápsula flutuante de input */}
+          <div className="relative flex items-center bg-background border border-border rounded-2xl shadow-lg px-4 py-2">
+            <input
+              type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Digite sua pergunta..."
+              placeholder="Como posso ajudar você hoje?"
               disabled={isLoading}
+              className="flex-1 bg-transparent border-0 outline-none text-sm text-foreground 
+                         placeholder:text-muted-foreground disabled:cursor-not-allowed"
             />
-            <Button onClick={handleSend} disabled={isLoading || !input.trim()}>
+            <Button 
+              onClick={() => handleSend()} 
+              disabled={isLoading || !input.trim()}
+              size="icon"
+              className="h-9 w-9 rounded-full bg-primary hover:bg-primary/90 ml-2 flex-shrink-0"
+            >
               <Send className="h-4 w-4" />
             </Button>
           </div>
