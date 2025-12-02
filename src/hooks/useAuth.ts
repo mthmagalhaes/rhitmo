@@ -24,7 +24,19 @@ export const useAuth = () => {
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    
+    // Se o servidor retornou erro (ex: session_not_found), 
+    // limpar localmente mesmo assim
+    if (error) {
+      console.warn('Erro no logout do servidor, limpando sessão local:', error.message);
+      // Limpar tokens do localStorage manualmente
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      localStorage.removeItem(`sb-${projectId}-auth-token`);
+      setUser(null);
+    }
+    
+    return { error };
   };
 
   return { user, loading, signOut };
