@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { MemberAvatar } from '@/components/MemberAvatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Textarea } from '@/components/ui/textarea';
@@ -278,13 +278,11 @@ Exemplos:
       <main className="container mx-auto px-6 py-8">
         <div className="mb-8">
           <div className="flex items-start gap-6 mb-6">
-            <Avatar className="h-24 w-24">
-              <AvatarImage 
-                src={member.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${member.name}`} 
-                alt={member.name} 
-              />
-              <AvatarFallback>{member.name.split(' ').map((n: string) => n[0]).join('')}</AvatarFallback>
-            </Avatar>
+            <MemberAvatar 
+              memberId={member.id}
+              memberName={member.name}
+              size="xl"
+            />
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-foreground mb-2">{member.name}</h1>
               <p className="text-lg text-muted-foreground mb-4">{member.role}</p>

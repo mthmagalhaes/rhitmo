@@ -1,6 +1,6 @@
 import { TeamMember } from '@/types/team';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { MemberAvatar } from '@/components/MemberAvatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar, MessageSquare, Settings } from 'lucide-react';
@@ -20,10 +20,11 @@ export const TeamMemberCard = ({ member, teamName, onClick, onEdit }: TeamMember
     >
       <CardHeader className="pb-3">
         <div className="flex items-start gap-4">
-          <Avatar className="h-16 w-16">
-            <AvatarImage src={member.avatar} alt={member.name} />
-            <AvatarFallback>{member.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-          </Avatar>
+          <MemberAvatar 
+            memberId={member.id}
+            memberName={member.name}
+            size="lg"
+          />
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
               <h3 className="font-semibold text-lg text-foreground truncate">{member.name}</h3>
