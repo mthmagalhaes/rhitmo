@@ -61,9 +61,9 @@ export const Auth = () => {
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         {/* Imagem de fundo */}
         <img 
-          src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=1200&auto=format&fit=crop"
+          src="https://images.unsplash.com/photo-1573497620053-ea5300f94f21?w=1200&auto=format&fit=crop&q=80"
           alt="Líder colaborando com sua equipe"
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover object-center"
         />
         {/* Overlay duotone violeta pesado (efeito artístico) */}
         <div className="absolute inset-0 bg-[#7C3AED]/80 mix-blend-multiply" />
