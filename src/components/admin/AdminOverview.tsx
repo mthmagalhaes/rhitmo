@@ -4,15 +4,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Users, Building, MessageSquare, FileText, Power, PowerOff } from 'lucide-react';
+import { Users, Building, MessageSquare, FileText, Power, PowerOff, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { useState, useMemo } from 'react';
 
 export const AdminOverview = () => {
   const { toast } = useToast();
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
+  // Stats query
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: async () => {
@@ -32,6 +32,17 @@ export const AdminOverview = () => {
     },
   });
 
+  // Users with metadata query
+  const { data: users, isLoading: usersLoading } = useQuery({
+    queryKey: ['admin-users-metadata'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_all_users_with_metadata');
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Workspaces query
   const { data: workspaces, isLoading: workspacesLoading, refetch } = useQuery({
     queryKey: ['admin-workspaces'],
     queryFn: async () => {
@@ -44,6 +55,45 @@ export const AdminOverview = () => {
       return data;
     },
   });
+
+  // Member counts per owner
+  const { data: memberCounts } = useQuery({
+    queryKey: ['admin-member-counts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('workspaces')
+        .select(`
+          owner_id,
+          teams (
+            team_members (id)
+          )
+        `);
+      
+      if (error) throw error;
+
+      // Aggregate counts by owner_id
+      const counts: Record<string, number> = {};
+      data?.forEach((workspace: any) => {
+        const ownerId = workspace.owner_id;
+        const memberCount = workspace.teams?.reduce((acc: number, team: any) => {
+          return acc + (team.team_members?.length || 0);
+        }, 0) || 0;
+        
+        counts[ownerId] = (counts[ownerId] || 0) + memberCount;
+      });
+
+      return counts;
+    },
+  });
+
+  // Map workspace status by owner
+  const workspaceStatusByOwner = useMemo(() => {
+    const statusMap: Record<string, { is_active: boolean; workspace_id: string }> = {};
+    workspaces?.forEach((ws) => {
+      statusMap[ws.owner_id] = { is_active: ws.is_active, workspace_id: ws.id };
+    });
+    return statusMap;
+  }, [workspaces]);
 
   const toggleWorkspaceStatus = async (workspaceId: string, currentStatus: boolean) => {
     setTogglingId(workspaceId);
@@ -73,6 +123,25 @@ export const AdminOverview = () => {
     } finally {
       setTogglingId(null);
     }
+  };
+
+  // Compare declared vs real team size
+  const getTeamSizeComparison = (declared: string | null, real: number) => {
+    if (!declared) return null;
+    
+    const declaredMap: Record<string, number> = {
+      '1-5': 5,
+      '6-10': 10,
+      '11-30': 30,
+      '30+': 100,
+    };
+    
+    const maxDeclared = declaredMap[declared] || 0;
+    
+    if (real >= maxDeclared * 0.5) {
+      return 'ok';
+    }
+    return 'warning';
   };
 
   return (
@@ -133,13 +202,13 @@ export const AdminOverview = () => {
         </Card>
       </div>
 
-      {/* Workspaces Table */}
+      {/* Users Table with Metadata */}
       <Card>
         <CardHeader>
-          <CardTitle>Todos os Workspaces</CardTitle>
+          <CardTitle>Todos os Usuários</CardTitle>
         </CardHeader>
         <CardContent>
-          {workspacesLoading ? (
+          {usersLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
@@ -148,49 +217,87 @@ export const AdminOverview = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
-                  <TableHead>Owner ID</TableHead>
-                  <TableHead>Criado em</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Cargo</TableHead>
+                  <TableHead>Telefone</TableHead>
+                  <TableHead>Time Declarado</TableHead>
+                  <TableHead>Liderados Reais</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {workspaces?.map((workspace) => (
-                  <TableRow key={workspace.id}>
-                    <TableCell className="font-medium">{workspace.name}</TableCell>
-                    <TableCell className="font-mono text-xs">{workspace.owner_id.slice(0, 8)}...</TableCell>
-                    <TableCell>
-                      {new Date(workspace.created_at).toLocaleDateString('pt-BR')}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={workspace.is_active ? "default" : "destructive"}>
-                        {workspace.is_active ? "Ativo" : "Suspenso"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant={workspace.is_active ? "destructive" : "default"}
-                        size="sm"
-                        onClick={() => toggleWorkspaceStatus(workspace.id, workspace.is_active)}
-                        disabled={togglingId === workspace.id}
-                      >
-                        {togglingId === workspace.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : workspace.is_active ? (
-                          <>
-                            <PowerOff className="h-4 w-4 mr-2" />
-                            Suspender
-                          </>
+                {users?.map((user: any) => {
+                  const wsInfo = workspaceStatusByOwner[user.user_id];
+                  const realCount = memberCounts?.[user.user_id] || 0;
+                  const comparison = getTeamSizeComparison(user.team_size, realCount);
+                  
+                  return (
+                    <TableRow key={user.user_id}>
+                      <TableCell className="font-medium">
+                        {user.full_name || <span className="text-muted-foreground italic">-</span>}
+                      </TableCell>
+                      <TableCell className="text-sm">{user.email}</TableCell>
+                      <TableCell>
+                        {user.job_title || <span className="text-muted-foreground">-</span>}
+                      </TableCell>
+                      <TableCell>
+                        {user.phone || <span className="text-muted-foreground">-</span>}
+                      </TableCell>
+                      <TableCell>
+                        {user.team_size ? (
+                          <Badge variant="outline">{user.team_size}</Badge>
                         ) : (
-                          <>
-                            <Power className="h-4 w-4 mr-2" />
-                            Ativar
-                          </>
+                          <span className="text-muted-foreground">-</span>
                         )}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{realCount}</span>
+                          {comparison === 'ok' && (
+                            <Badge variant="default" className="text-xs">✓</Badge>
+                          )}
+                          {comparison === 'warning' && (
+                            <Badge variant="secondary" className="text-xs">⚠️</Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {wsInfo ? (
+                          <Badge variant={wsInfo.is_active ? "default" : "destructive"}>
+                            {wsInfo.is_active ? "Ativo" : "Suspenso"}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline">Sem workspace</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {wsInfo && (
+                          <Button
+                            variant={wsInfo.is_active ? "destructive" : "default"}
+                            size="sm"
+                            onClick={() => toggleWorkspaceStatus(wsInfo.workspace_id, wsInfo.is_active)}
+                            disabled={togglingId === wsInfo.workspace_id}
+                          >
+                            {togglingId === wsInfo.workspace_id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : wsInfo.is_active ? (
+                              <>
+                                <PowerOff className="h-4 w-4 mr-2" />
+                                Suspender
+                              </>
+                            ) : (
+                              <>
+                                <Power className="h-4 w-4 mr-2" />
+                                Ativar
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}

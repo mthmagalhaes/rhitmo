@@ -245,6 +245,18 @@ export type Database = {
     Functions: {
       can_update_own_sync: { Args: { member_id: string }; Returns: boolean }
       check_is_admin: { Args: never; Returns: boolean }
+      get_all_users_with_metadata: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          full_name: string
+          job_title: string
+          phone: string
+          team_size: string
+          user_id: string
+        }[]
+      }
       get_member_for_sync: {
         Args: { p_member_id: string }
         Returns: {
