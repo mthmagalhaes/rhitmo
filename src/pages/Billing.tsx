@@ -59,19 +59,15 @@ const Billing = () => {
               </li>
               <li className="flex items-center gap-2">
                 <Check className="h-5 w-5 text-emerald-500" />
-                <span>Diário de Bordo (Notas Ilimitadas)</span>
+                <span>Rhitmo Sync</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="h-5 w-5 text-emerald-500" />
-                <span>Rhitmo Sync Básico</span>
+                <span>Diário de Bordo + Insights Automáticos</span>
               </li>
               <li className="flex items-center gap-2">
                 <AlertCircle className="h-5 w-5 text-amber-500" />
-                <span className="text-muted-foreground">1 Avaliação PDF por mês</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <X className="h-5 w-5 text-slate-400" />
-                <span className="text-muted-foreground line-through">Analytics Dashboard</span>
+                <span className="text-muted-foreground">1 Geração de Avaliação (PDF) por mês</span>
               </li>
             </ul>
           </CardContent>
@@ -101,19 +97,19 @@ const Billing = () => {
             <ul className="space-y-3">
               <li className="flex items-center gap-2">
                 <Rocket className="h-5 w-5 text-primary" />
-                <span className="font-medium">Liderados Ilimitados</span>
+                <span className="font-medium">Liderados Ilimitados (Escala para seu time todo)</span>
               </li>
               <li className="flex items-center gap-2">
                 <Gem className="h-5 w-5 text-primary" />
-                <span className="font-medium">Avaliações de Performance Ilimitadas</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-primary" />
-                <span className="font-medium">Analytics Dashboard Completo</span>
+                <span className="font-medium">Avaliações Formais Ilimitadas (Gere PDFs perfeitos em segundos)</span>
               </li>
               <li className="flex items-center gap-2">
                 <Brain className="h-5 w-5 text-primary" />
-                <span className="font-medium">Mentor Chat Avançado (GPT-4o)</span>
+                <span className="font-medium">AI Mentor 24/7 para Liderança</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                <span className="font-medium">Painel de Analytics & Tendências (Visão estratégica do time)</span>
               </li>
               <li className="flex items-center gap-2">
                 <Shield className="h-5 w-5 text-primary" />
