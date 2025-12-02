@@ -4,19 +4,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
 import { WaitlistDialog } from '@/components/WaitlistDialog';
 import { Button } from '@/components/ui/button';
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-} from '@/components/ui/navigation-menu';
+import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, NavigationMenuTrigger } from '@/components/ui/navigation-menu';
 import { Loader2, Users, BarChart3, Sparkles, MessageSquare, Plus, Check, AlertTriangle, Download } from 'lucide-react';
 
 // ============== MOCKUP COMPONENTS ==============
 
-const HeroMockup = () => (
-  <div className="relative w-full aspect-[4/3]">
+const HeroMockup = () => <div className="relative w-full aspect-[4/3]">
     {/* Dashboard Background */}
     <div className="absolute inset-0 rounded-2xl bg-card border shadow-xl overflow-hidden">
       {/* Sidebar hint */}
@@ -31,13 +24,11 @@ const HeroMockup = () => (
       <div className="ml-16 p-4">
         <div className="h-6 w-32 bg-muted rounded mb-4" />
         <div className="grid grid-cols-3 gap-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-muted/50 rounded-lg p-3 space-y-2">
+          {[1, 2, 3].map(i => <div key={i} className="bg-muted/50 rounded-lg p-3 space-y-2">
               <div className="w-10 h-10 rounded-full bg-primary/20" />
               <div className="h-3 w-20 bg-muted rounded" />
               <div className="h-2 w-16 bg-muted-foreground/20 rounded" />
-            </div>
-          ))}
+            </div>)}
         </div>
       </div>
     </div>
@@ -74,11 +65,8 @@ const HeroMockup = () => (
         </div>
       </div>
     </div>
-  </div>
-);
-
-const TimelineMockup = () => (
-  <div className="w-full bg-card rounded-2xl border shadow-xl p-6 space-y-4">
+  </div>;
+const TimelineMockup = () => <div className="w-full bg-card rounded-2xl border shadow-xl p-6 space-y-4">
     {/* Header */}
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-2">
@@ -139,11 +127,8 @@ const TimelineMockup = () => (
         </div>
       </div>
     </div>
-  </div>
-);
-
-const ChatMockup = () => (
-  <div className="w-full bg-card rounded-2xl border shadow-xl overflow-hidden">
+  </div>;
+const ChatMockup = () => <div className="w-full bg-card rounded-2xl border shadow-xl overflow-hidden">
     {/* Header */}
     <div className="bg-primary/10 px-5 py-4 border-b flex items-center gap-3">
       <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
@@ -189,11 +174,8 @@ const ChatMockup = () => (
         </div>
       </div>
     </div>
-  </div>
-);
-
-const ReviewMockup = () => (
-  <div className="w-full bg-card rounded-2xl border shadow-xl overflow-hidden">
+  </div>;
+const ReviewMockup = () => <div className="w-full bg-card rounded-2xl border shadow-xl overflow-hidden">
     {/* Header */}
     <div className="bg-muted/50 px-5 py-4 border-b flex items-center justify-between">
       <div className="flex items-center gap-3">
@@ -247,34 +229,31 @@ const ReviewMockup = () => (
         </Button>
       </div>
     </div>
-  </div>
-);
+  </div>;
 
 // ============== MAIN COMPONENT ==============
 
 const Landing = () => {
-  const { user, loading } = useAuth();
+  const {
+    user,
+    loading
+  } = useAuth();
   const navigate = useNavigate();
   const [waitlistOpen, setWaitlistOpen] = useState(false);
-
   useEffect(() => {
     if (user && !loading) {
-      navigate('/dashboard', { replace: true });
+      navigate('/dashboard', {
+        replace: true
+      });
     }
   }, [user, loading, navigate]);
-
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+    return <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+      </div>;
   }
-
   if (user) return null;
-
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       {/* Navbar */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -399,9 +378,7 @@ const Landing = () => {
             <div className="inline-block text-xs font-medium bg-primary/10 text-primary px-3 py-1 rounded-full">
               Mentor de Liderança IA
             </div>
-            <h2 className="text-3xl font-bold tracking-tight lg:text-4xl">
-              Coaching de nível mundial para cada gestor.
-            </h2>
+            <h2 className="text-3xl font-bold tracking-tight lg:text-4xl">Mentoring de nível mundial para cada gestor.</h2>
             <p className="text-lg text-muted-foreground leading-relaxed">
               Não sabe como dar aquele feedback difícil? O Mentor IA analisa o histórico do colaborador e sugere o roteiro perfeito, livre de vieses e focado em desenvolvimento.
             </p>
@@ -458,8 +435,6 @@ const Landing = () => {
 
       {/* Waitlist Dialog */}
       <WaitlistDialog open={waitlistOpen} onOpenChange={setWaitlistOpen} />
-    </div>
-  );
+    </div>;
 };
-
 export default Landing;
