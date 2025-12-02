@@ -14,7 +14,7 @@ export const RhitmoLogo = ({ className, size = 'md' }: RhitmoLogoProps) => {
     <svg 
       viewBox="0 0 140 52" 
       fill="none"
-      className={className} 
+      className={`group ${className || ''}`}
       width={sizes[size].width}
       height={sizes[size].height}
       role="img"
@@ -46,6 +46,8 @@ export const RhitmoLogo = ({ className, size = 'md' }: RhitmoLogoProps) => {
         fill="none" 
         strokeLinecap="round"
         strokeLinejoin="round"
+        className="origin-center transition-transform duration-300 group-hover:animate-wave-pulse"
+        style={{ transformOrigin: '70px 44px' }}
       />
     </svg>
   );
