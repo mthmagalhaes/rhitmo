@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { MemberAvatar } from '@/components/MemberAvatar';
@@ -17,20 +18,65 @@ import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Save, Musi
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 
+interface WorkStyleData {
+  completed_at: string;
+  processing: string;
+  feedback: string;
+  autonomy: string;
+  energy: string;
+  motivation: string;
+}
+
 const MemberDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
-  const [member, setMember] = useState<any>(null);
-  const [feedbacks, setFeedbacks] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [reanalyzingId, setReanalyzingId] = useState<string | null>(null);
   const [resendingInvite, setResendingInvite] = useState(false);
   const [keyObjectives, setKeyObjectives] = useState<string>('');
   const [savingObjectives, setSavingObjectives] = useState(false);
   const { toast } = useToast();
+
+  // Query para carregar membro
+  const { data: member, isLoading: memberLoading } = useQuery({
+    queryKey: ['member', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('*')
+        .eq('id', id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    gcTime: 10 * 60 * 1000,   // 10 minutos
+    enabled: !!user && !!id,
+    refetchOnWindowFocus: false,
+  });
+
+  // Query para carregar feedbacks
+  const { data: feedbacks = [], isLoading: feedbacksLoading } = useQuery({
+    queryKey: ['feedbacks', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('feedbacks')
+        .select('*')
+        .eq('member_id', id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    enabled: !!user && !!id,
+    refetchOnWindowFocus: false,
+  });
+
+  const loading = memberLoading || feedbacksLoading;
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -39,49 +85,12 @@ const MemberDetails = () => {
     }
   }, [user, authLoading, navigate]);
 
-  useEffect(() => {
-    if (user && id) {
-      loadMemberAndFeedbacks();
-    }
-  }, [user, id]);
-
+  // Sincronizar keyObjectives com member
   useEffect(() => {
     if (member?.key_objectives !== undefined) {
       setKeyObjectives(member.key_objectives || '');
     }
   }, [member]);
-
-  const loadMemberAndFeedbacks = async () => {
-    try {
-      // Carregar membro
-      const { data: memberData, error: memberError } = await supabase
-        .from('team_members')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (memberError) throw memberError;
-      setMember(memberData);
-
-      // Carregar feedbacks
-      const { data: feedbackData, error: feedbackError } = await supabase
-        .from('feedbacks')
-        .select('*')
-        .eq('member_id', id)
-        .order('created_at', { ascending: false });
-
-      if (feedbackError) throw feedbackError;
-      setFeedbacks(feedbackData || []);
-    } catch (error: any) {
-      toast({
-        title: "Erro ao carregar dados",
-        description: error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleDeleteFeedback = async (feedbackId: string) => {
     try {
@@ -97,7 +106,7 @@ const MemberDetails = () => {
         description: "O feedback foi removido com sucesso.",
       });
 
-      loadMemberAndFeedbacks();
+      queryClient.invalidateQueries({ queryKey: ['feedbacks', id] });
     } catch (error: any) {
       toast({
         title: "Erro ao excluir",
@@ -134,7 +143,7 @@ const MemberDetails = () => {
         description: "A IA processou o feedback com sucesso." 
       });
       
-      loadMemberAndFeedbacks();
+      queryClient.invalidateQueries({ queryKey: ['feedbacks', id] });
     } catch (error: any) {
       console.error('Erro ao reprocessar:', error);
       toast({ 
@@ -206,7 +215,7 @@ const MemberDetails = () => {
         description: "A IA agora usará essas metas para calibrar análises."
       });
       
-      setMember({ ...member, key_objectives: keyObjectives.trim() || null });
+      queryClient.invalidateQueries({ queryKey: ['member', id] });
     } catch (error: any) {
       toast({
         title: "Erro ao salvar",
@@ -313,7 +322,7 @@ Exemplos:
                 {member.work_style_data ? (
                   <div className="space-y-4">
                     <p className="text-sm text-muted-foreground">
-                      Preferências de trabalho • Preenchido em {formatDate(member.work_style_data.completed_at)}
+                      Preferências de trabalho • Preenchido em {formatDate((member.work_style_data as unknown as WorkStyleData).completed_at)}
                     </p>
                     
                     <div className="space-y-4">
@@ -322,7 +331,7 @@ Exemplos:
                         <p className="text-sm font-medium text-muted-foreground">Processamento de informações</p>
                         <div>
                           {(() => {
-                            const config = styleConfig.processing[member.work_style_data.processing];
+                            const config = styleConfig.processing[(member.work_style_data as unknown as WorkStyleData).processing];
                             const Icon = config.icon;
                             return (
                               <Badge variant="secondary" className={`${config.color} gap-2 py-2 px-3`}>
@@ -339,7 +348,7 @@ Exemplos:
                         <p className="text-sm font-medium text-muted-foreground">Estilo de feedback</p>
                         <div>
                           {(() => {
-                            const config = styleConfig.feedback[member.work_style_data.feedback];
+                            const config = styleConfig.feedback[(member.work_style_data as unknown as WorkStyleData).feedback];
                             const Icon = config.icon;
                             return (
                               <Badge variant="secondary" className={`${config.color} gap-2 py-2 px-3`}>
@@ -356,7 +365,7 @@ Exemplos:
                         <p className="text-sm font-medium text-muted-foreground">Estilo de trabalho</p>
                         <div>
                           {(() => {
-                            const config = styleConfig.autonomy[member.work_style_data.autonomy];
+                            const config = styleConfig.autonomy[(member.work_style_data as unknown as WorkStyleData).autonomy];
                             const Icon = config.icon;
                             return (
                               <Badge variant="secondary" className={`${config.color} gap-2 py-2 px-3`}>
@@ -373,7 +382,7 @@ Exemplos:
                         <p className="text-sm font-medium text-muted-foreground">Horário de pico</p>
                         <div>
                           {(() => {
-                            const config = styleConfig.energy[member.work_style_data.energy];
+                            const config = styleConfig.energy[(member.work_style_data as unknown as WorkStyleData).energy];
                             const Icon = config.icon;
                             return (
                               <Badge variant="secondary" className={`${config.color} gap-2 py-2 px-3`}>
@@ -390,7 +399,7 @@ Exemplos:
                         <p className="text-sm font-medium text-muted-foreground">Motivação principal</p>
                         <div>
                           {(() => {
-                            const config = styleConfig.motivation[member.work_style_data.motivation];
+                            const config = styleConfig.motivation[(member.work_style_data as unknown as WorkStyleData).motivation];
                             const Icon = config.icon;
                             return (
                               <Badge variant="secondary" className={`${config.color} gap-2 py-2 px-3`}>
@@ -515,7 +524,7 @@ Exemplos:
               <h2 className="text-2xl font-bold text-foreground mb-6">Histórico de Feedbacks</h2>
               {feedbacks.length > 0 ? (
                 <FeedbackTimeline 
-                  feedbacks={feedbacks} 
+                  feedbacks={feedbacks as any} 
                   onDelete={handleDeleteFeedback}
                   onReanalyze={handleReanalyze}
                   reanalyzingId={reanalyzingId}
@@ -543,7 +552,7 @@ Exemplos:
         onOpenChange={setDialogOpen}
         selectedMemberId={member.id}
         memberName={member.name}
-        onSuccess={loadMemberAndFeedbacks}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['feedbacks', id] })}
       />
 
       <MentorChat
