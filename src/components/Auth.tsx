@@ -86,7 +86,7 @@ export const Auth = () => {
               <span className="text-emerald-400">do zero.</span>
             </h2>
             <p className="text-xl text-left text-white/80 max-w-md leading-relaxed">
-              Substitua o caos, a memória falha e os vieses por feedbacks contínuos e estruturados para construir uma cultura de alta performance.
+              Rhitmo organiza os fatos, e apoia líderes para focar no que mais importa: desenvolvimento de pessoas e cultura de alta performance.
             </p>
           </div>
         </div>
