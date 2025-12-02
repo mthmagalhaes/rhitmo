@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Home, BarChart3, CreditCard, LogOut, Settings } from 'lucide-react';
+import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
 import { MemberAvatar } from '@/components/MemberAvatar';
 import { ProfileSettingsDialog } from '@/components/ProfileSettingsDialog';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
+import { useAdmin } from '@/hooks/useAdmin';
 import { useToast } from '@/hooks/use-toast';
 import {
   Sidebar,
@@ -30,6 +31,7 @@ const menuItems = [
 export function AppSidebar() {
   const { open } = useSidebar();
   const { user, signOut } = useAuth();
+  const { isAdmin } = useAdmin();
   const { toast } = useToast();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -76,6 +78,29 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-sidebar-foreground/60">Administração</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Admin">
+                    <NavLink 
+                      to="/admin" 
+                      end
+                      className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      activeClassName="bg-primary text-primary-foreground font-medium"
+                    >
+                      <ShieldCheck className="h-5 w-5" />
+                      <span>Admin</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-4">
