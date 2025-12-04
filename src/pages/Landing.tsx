@@ -100,10 +100,7 @@ const Landing = () => {
 Sem o caos operaconal.</span>
           </h1>
           
-          <p className="text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto">
-            Substitua a memória falha e as planilhas por inteligência contínua. 
-            O Rhitmo transforma anotações do dia a dia em avaliações livres de viés.
-          </p>
+          <p className="text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto">Com Rhitmo, líderes ganham tempo e organização para focar no que mais importa: desenvolver pessoas e construir uma cultura de resultados.</p>
           
           <div className="pt-4">
             <Button size="lg" className="text-base px-8" onClick={() => setWaitlistOpen(true)}>
