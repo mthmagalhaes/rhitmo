@@ -94,9 +94,7 @@ const Landing = () => {
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-20 lg:py-28">
         <div className="max-w-3xl mx-auto text-center space-y-6">
-          <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl xl:text-6xl">
-            Nunca mais escreva avaliação de desempenho do zero.
-          </h1>
+          <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl xl:text-6xl">Nunca mais escreva uma avaliação de desempenho do zero.</h1>
           
           <p className="text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto">Com Rhitmo, líderes ganham tempo e organização para focar no que mais importa: desenvolver pessoas e construir uma cultura de resultados.</p>
           
