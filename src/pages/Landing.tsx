@@ -8,15 +8,14 @@ import { Zap, Heart, BarChart, Sparkles, Send, Loader2 } from "lucide-react";
 
 // ============== MOCKUP SIMPLIFICADO ==============
 
-const SimpleChatMockup = () => (
-  <div className="bg-card rounded-2xl border shadow-xl overflow-hidden">
+const SimpleChatMockup = () => <div className="bg-card rounded-2xl border shadow-xl overflow-hidden">
     {/* Header */}
     <div className="px-5 py-4 border-b flex items-center gap-3">
       <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
         <Sparkles className="h-4 w-4 text-primary" />
       </div>
       <div>
-        <div className="font-medium text-sm">Mentor de Liderança</div>
+        <div className="font-medium text-sm">Mentor Chat</div>
         <div className="text-xs text-muted-foreground">Contexto: Maria Santos</div>
       </div>
     </div>
@@ -49,34 +48,31 @@ const SimpleChatMockup = () => (
         </div>
       </div>
     </div>
-  </div>
-);
+  </div>;
 
 // ============== MAIN COMPONENT ==============
 
 const Landing = () => {
   const [waitlistOpen, setWaitlistOpen] = useState(false);
-  const { user, loading } = useAuth();
+  const {
+    user,
+    loading
+  } = useAuth();
   const navigate = useNavigate();
-
   useEffect(() => {
     if (!loading && user) {
-      navigate("/dashboard", { replace: true });
+      navigate("/dashboard", {
+        replace: true
+      });
     }
   }, [user, loading, navigate]);
-
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+    return <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+      </div>;
   }
-
   if (user) return null;
-
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       {/* Navbar */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
@@ -183,8 +179,6 @@ const Landing = () => {
       </footer>
 
       <WaitlistDialog open={waitlistOpen} onOpenChange={setWaitlistOpen} />
-    </div>
-  );
+    </div>;
 };
-
 export default Landing;
