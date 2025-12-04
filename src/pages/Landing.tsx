@@ -8,8 +8,7 @@ import { Zap, Heart, BarChart, Sparkles, Send, Loader2, Users } from "lucide-rea
 
 // ============== MOCKUP SIMPLIFICADO ==============
 
-const SimpleChatMockup = () => (
-  <div className="bg-card rounded-2xl border shadow-xl overflow-hidden">
+const SimpleChatMockup = () => <div className="bg-card rounded-2xl border shadow-xl overflow-hidden">
     {/* Header */}
     <div className="px-5 py-4 border-b flex items-center gap-3">
       <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
@@ -17,7 +16,7 @@ const SimpleChatMockup = () => (
       </div>
       <div>
         <div className="font-medium text-sm">Mentor Chat</div>
-        <div className="text-xs text-muted-foreground">Contexto: Maria Santos</div>
+        <div className="text-xs text-muted-foreground">Liderada: Maria Santos</div>
       </div>
     </div>
     
@@ -49,13 +48,11 @@ const SimpleChatMockup = () => (
         </div>
       </div>
     </div>
-  </div>
-);
+  </div>;
 
 // ============== MOCKUPS PREMIUM PARA PERSONAS ==============
 
-const DashboardMockup = () => (
-  <div className="relative">
+const DashboardMockup = () => <div className="relative">
     {/* Glow effect */}
     <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 to-emerald-500/20 rounded-3xl blur-2xl opacity-50" />
     
@@ -91,24 +88,19 @@ const DashboardMockup = () => (
         
         {/* Member list */}
         <div className="space-y-2">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
+          {[1, 2, 3].map(i => <div key={i} className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-emerald-500" />
               <div className="flex-1">
                 <div className="h-3 w-24 bg-muted-foreground/20 rounded" />
                 <div className="h-2 w-16 bg-muted-foreground/10 rounded mt-1" />
               </div>
               <div className="h-6 w-16 bg-primary/10 rounded-full" />
-            </div>
-          ))}
+            </div>)}
         </div>
       </div>
     </div>
-  </div>
-);
-
-const FeedbackMockup = () => (
-  <div className="relative">
+  </div>;
+const FeedbackMockup = () => <div className="relative">
     {/* Glow effect */}
     <div className="absolute -inset-4 bg-gradient-to-r from-emerald-500/20 to-primary/20 rounded-3xl blur-2xl opacity-50" />
     
@@ -123,13 +115,9 @@ const FeedbackMockup = () => (
       {/* Evolution chart */}
       <div className="p-4">
         <div className="h-32 flex items-end gap-2 mb-4">
-          {[40, 55, 45, 70, 85, 75, 90].map((h, i) => (
-            <div 
-              key={i} 
-              className="flex-1 bg-gradient-to-t from-emerald-500 to-emerald-300 rounded-t"
-              style={{ height: `${h}%` }}
-            />
-          ))}
+          {[40, 55, 45, 70, 85, 75, 90].map((h, i) => <div key={i} className="flex-1 bg-gradient-to-t from-emerald-500 to-emerald-300 rounded-t" style={{
+          height: `${h}%`
+        }} />)}
         </div>
         <div className="text-center">
           <div className="text-2xl font-bold text-emerald-600">+32%</div>
@@ -140,19 +128,14 @@ const FeedbackMockup = () => (
       {/* Recent feedbacks */}
       <div className="px-4 pb-4 space-y-2">
         <div className="text-xs font-medium text-muted-foreground uppercase">Últimos Feedbacks</div>
-        {[1, 2].map((i) => (
-          <div key={i} className="p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+        {[1, 2].map(i => <div key={i} className="p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
             <div className="h-2 w-full bg-emerald-500/30 rounded mb-1" />
             <div className="h-2 w-3/4 bg-emerald-500/20 rounded" />
-          </div>
-        ))}
+          </div>)}
       </div>
     </div>
-  </div>
-);
-
-const AnalyticsMockup = () => (
-  <div className="relative">
+  </div>;
+const AnalyticsMockup = () => <div className="relative">
     {/* Glow effect */}
     <div className="absolute -inset-4 bg-gradient-to-r from-slate-500/20 to-primary/20 rounded-3xl blur-2xl opacity-50" />
     
@@ -172,8 +155,7 @@ const AnalyticsMockup = () => (
           <div className="relative w-20 h-20 mx-auto">
             <svg className="w-full h-full" viewBox="0 0 36 36">
               <circle cx="18" cy="18" r="15" fill="none" stroke="hsl(var(--muted))" strokeWidth="3" />
-              <circle cx="18" cy="18" r="15" fill="none" stroke="hsl(142.1 76.2% 36.3%)" strokeWidth="3" 
-                strokeDasharray="75 25" strokeDashoffset="25" />
+              <circle cx="18" cy="18" r="15" fill="none" stroke="hsl(142.1 76.2% 36.3%)" strokeWidth="3" strokeDasharray="75 25" strokeDashoffset="25" />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
               <span className="text-sm font-bold">87%</span>
@@ -197,20 +179,17 @@ const AnalyticsMockup = () => (
       {/* Teams bar */}
       <div className="px-4 pb-4">
         <div className="flex gap-2">
-          {['Vendas', 'Tech', 'Marketing'].map((team) => (
-            <div key={team} className="flex-1 p-2 bg-muted/50 rounded-lg text-center">
+          {['Vendas', 'Tech', 'Marketing'].map(team => <div key={team} className="flex-1 p-2 bg-muted/50 rounded-lg text-center">
               <div className="text-xs text-muted-foreground">{team}</div>
               <div className="flex justify-center gap-0.5 mt-1">
                 <Users className="h-3 w-3 text-primary" />
                 <span className="text-xs font-medium">12</span>
               </div>
-            </div>
-          ))}
+            </div>)}
         </div>
       </div>
     </div>
-  </div>
-);
+  </div>;
 
 // ============== MAIN COMPONENT ==============
 
