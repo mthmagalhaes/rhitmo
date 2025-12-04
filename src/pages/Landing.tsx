@@ -135,7 +135,7 @@ const Landing = () => {
             <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center">
               <Heart className="h-6 w-6 text-emerald-500" />
             </div>
-            <h3 className="text-xl font-bold">Para Times</h3>
+            <h3 className="text-xl font-bold">Para Pessoas Lideradas</h3>
             <p className="text-lg font-medium">
               Saiba exatamente onde você está.
             </p>
