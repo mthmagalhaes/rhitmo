@@ -96,7 +96,8 @@ const Landing = () => {
         <div className="max-w-3xl mx-auto text-center space-y-6">
           <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl xl:text-6xl">
             Construa uma cultura de alta performance.{' '}
-            <span className="text-muted-foreground">Sem o caos operacional.</span>
+            <span className="text-muted-foreground">
+Sem o caos operaconal.</span>
           </h1>
           
           <p className="text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto">
