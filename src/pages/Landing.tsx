@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { RhitmoLogo } from "@/components/RhitmoLogo";
 import { WaitlistDialog } from "@/components/WaitlistDialog";
 import { useAuth } from "@/hooks/useAuth";
+import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { Zap, Heart, BarChart, Sparkles, Send, Loader2, Users } from "lucide-react";
 
 // ============== MOCKUP SIMPLIFICADO ==============
@@ -216,24 +217,29 @@ const AnalyticsMockup = () => (
 
 const Landing = () => {
   const [waitlistOpen, setWaitlistOpen] = useState(false);
-  const {
-    user,
-    loading
-  } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
+  
+  // Scroll animations for persona sections
+  const section1Animation = useScrollAnimation({ threshold: 0.15 });
+  const section2Animation = useScrollAnimation({ threshold: 0.15 });
+  const section3Animation = useScrollAnimation({ threshold: 0.15 });
+
   useEffect(() => {
     if (!loading && user) {
-      navigate("/dashboard", {
-        replace: true
-      });
+      navigate("/dashboard", { replace: true });
     }
   }, [user, loading, navigate]);
+
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-background">
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>;
+      </div>
+    );
   }
   if (user) return null;
+
   return <div className="min-h-screen bg-background">
       {/* Navbar */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -274,7 +280,14 @@ const Landing = () => {
       </section>
 
       {/* Seção 1: Para Líderes - Fundo Branco */}
-      <section className="py-24">
+      <section 
+        ref={section1Animation.ref as React.RefObject<HTMLElement>}
+        className={`py-24 transition-all duration-700 ${
+          section1Animation.isVisible 
+            ? 'opacity-100 translate-y-0' 
+            : 'opacity-0 translate-y-8'
+        }`}
+      >
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-16 items-center">
             {/* Texto */}
@@ -305,7 +318,14 @@ const Landing = () => {
       </section>
 
       {/* Seção 2: Para Pessoas Lideradas - Fundo Cinza Suave */}
-      <section className="py-24 bg-muted/30">
+      <section 
+        ref={section2Animation.ref as React.RefObject<HTMLElement>}
+        className={`py-24 bg-muted/30 transition-all duration-700 ${
+          section2Animation.isVisible 
+            ? 'opacity-100 translate-y-0' 
+            : 'opacity-0 translate-y-8'
+        }`}
+      >
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-16 items-center">
             {/* Mockup - Esquerda em desktop */}
@@ -336,7 +356,14 @@ const Landing = () => {
       </section>
 
       {/* Seção 3: Para RH - Fundo Branco */}
-      <section className="py-24">
+      <section 
+        ref={section3Animation.ref as React.RefObject<HTMLElement>}
+        className={`py-24 transition-all duration-700 ${
+          section3Animation.isVisible 
+            ? 'opacity-100 translate-y-0' 
+            : 'opacity-0 translate-y-8'
+        }`}
+      >
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-16 items-center">
             {/* Texto */}
