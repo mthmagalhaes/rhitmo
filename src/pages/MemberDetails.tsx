@@ -14,7 +14,7 @@ import { styleConfig } from '@/components/WorkStyleCard';
 import { PerformanceReviewList } from '@/components/PerformanceReviewList';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Save, Music, Zap, BookOpen, Waves, Sunrise, Moon, Trophy, TrendingUp, FileText, Clock, Lightbulb } from 'lucide-react';
+import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Save, Music, BookOpen, FileText, Clock, Lightbulb } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 

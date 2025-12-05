@@ -308,6 +308,7 @@ export const MentorChat = ({
               disabled={isLoading || !input.trim()}
               size="icon"
               className="h-9 w-9 rounded-full bg-primary hover:bg-primary/90 ml-2 flex-shrink-0"
+              aria-label="Enviar mensagem"
             >
               <Send className="h-4 w-4" />
             </Button>

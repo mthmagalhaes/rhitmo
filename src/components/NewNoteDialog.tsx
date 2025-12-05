@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -33,11 +33,11 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
   const { toast } = useToast();
 
   // Carregar membros quando o dialog abre
-  useState(() => {
+  React.useEffect(() => {
     if (open && !selectedMemberId) {
       loadTeamMembers();
     }
-  });
+  }, [open, selectedMemberId]);
 
   const loadTeamMembers = async () => {
     const { data } = await supabase
