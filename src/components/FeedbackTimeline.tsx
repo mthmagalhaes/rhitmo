@@ -1,6 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Brain, Heart, TrendingUp, AlertTriangle, Trash2, Zap, Loader2, ChevronDown } from 'lucide-react';
+import { Calendar, TrendingUp, AlertTriangle, Trash2, Zap, Loader2, ChevronDown } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import {
@@ -103,6 +103,7 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onReanalyze, reanalyzing
                           variant="ghost" 
                           size="icon" 
                           className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                          aria-label="Excluir feedback"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { RhitmoLogo } from "@/components/RhitmoLogo";
 import { WaitlistDialog } from "@/components/WaitlistDialog";
 import { useAuth } from "@/hooks/useAuth";
-import { Zap, Heart, BarChart, Sparkles, Send, Loader2, Users } from "lucide-react";
+import { Zap, Heart, BarChart, Sparkles, Send, Loader2 } from "lucide-react";
 
 // ============== MOCKUP SIMPLIFICADO ==============
 
@@ -182,8 +182,7 @@ const AnalyticsMockup = () => <div className="relative">
           {['Vendas', 'Tech', 'Marketing'].map(team => <div key={team} className="flex-1 p-2 bg-muted/50 rounded-lg text-center">
               <div className="text-xs text-muted-foreground">{team}</div>
               <div className="flex justify-center gap-0.5 mt-1">
-                <Users className="h-3 w-3 text-primary" />
-                <span className="text-xs font-medium">12</span>
+                <span className="text-xs font-medium">●●●</span>
               </div>
             </div>)}
         </div>

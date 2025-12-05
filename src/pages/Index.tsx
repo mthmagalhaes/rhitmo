@@ -192,6 +192,7 @@ const Index = () => {
                     size="icon"
                     onClick={() => setEditWorkspaceOpen(true)}
                     className="h-8 w-8"
+                    aria-label="Editar workspace"
                   >
                     <Pencil className="h-4 w-4" />
                   </Button>
@@ -231,7 +232,7 @@ const Index = () => {
             {showTeamSettings && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Configurações do time">
                     <Settings className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
