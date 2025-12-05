@@ -212,34 +212,81 @@ Analise este feedback de forma COMPLETA. Inclua dicas de coaching e seja o "Espe
 Feedback:
 ${truncatedContent}`;
 
-    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: systemPrompt
-          },
-          {
-            role: 'user',
-            content: userPrompt
-          }
-        ],
-        tools: isShortNote ? toolsShortNote : toolsRichText,
-        tool_choice: { type: "function", function: { name: "analyze_feedback" } }
-      }),
-    });
+    // Add timeout protection (25s)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
+
+    let openAIResponse;
+    try {
+      openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt
+            },
+            {
+              role: 'user',
+              content: userPrompt
+            }
+          ],
+          tools: isShortNote ? toolsShortNote : toolsRichText,
+          tool_choice: { type: "function", function: { name: "analyze_feedback" } }
+        }),
+        signal: controller.signal,
+      });
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        console.error('OpenAI request timeout');
+        return new Response(
+          JSON.stringify({ 
+            error: 'O serviço de IA está demorando muito. Tente novamente em instantes.',
+            code: 'TIMEOUT'
+          }),
+          { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      throw fetchError;
+    }
+    
+    clearTimeout(timeoutId);
 
     if (!openAIResponse.ok) {
       const errorText = await openAIResponse.text();
       console.error('Erro na API OpenAI:', openAIResponse.status, errorText);
+      
+      if (openAIResponse.status === 429) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'O serviço de IA está ocupado. Tente novamente em instantes.',
+            code: 'RATE_LIMIT'
+          }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      if (openAIResponse.status === 402) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Créditos de IA esgotados. Adicione créditos em Settings → Workspace.',
+            code: 'INSUFFICIENT_CREDITS'
+          }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       return new Response(
-        JSON.stringify({ error: 'Erro ao processar análise de IA' }),
+        JSON.stringify({ 
+          error: 'Falha ao reanalisar feedback com IA',
+          code: 'AI_ERROR'
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
