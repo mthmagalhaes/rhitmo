@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useState } from 'react';
+import DOMPurify from 'dompurify';
 
 interface Feedback {
   id: string;
@@ -149,7 +150,7 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onReanalyze, reanalyzing
                       <div 
                         className="text-sm text-muted-foreground prose prose-sm max-w-none"
                         dangerouslySetInnerHTML={{ 
-                          __html: feedback.coaching_tips.replace(/\n/g, '<br/>') 
+                          __html: DOMPurify.sanitize(feedback.coaching_tips.replace(/\n/g, '<br/>')) 
                         }}
                       />
                     </div>
