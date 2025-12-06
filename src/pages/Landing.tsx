@@ -5,6 +5,7 @@ import { RhitmoLogo } from "@/components/RhitmoLogo";
 import { WaitlistDialog } from "@/components/WaitlistDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon } from "lucide-react";
+import analyticsScreenshot from "@/assets/analytics-screenshot.png";
 import { cn } from "@/lib/utils";
 
 // ============== COMPONENTES DE VISUAL ==============
@@ -254,7 +255,11 @@ const Landing = () => {
             {/* Visual - Browser Frame Wide com Analytics */}
             <div>
               <BrowserFrame wide>
-                <ImagePlaceholder label="Print: Analytics Dashboard" />
+                <img 
+                  src={analyticsScreenshot} 
+                  alt="Analytics Dashboard - Rhitmo" 
+                  className="w-full h-full object-cover object-top"
+                />
               </BrowserFrame>
             </div>
           </div>
