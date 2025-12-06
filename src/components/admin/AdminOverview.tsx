@@ -4,13 +4,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Users, Building, MessageSquare, FileText, Power, PowerOff, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useMemo } from 'react';
+import type { PlanTier } from '@/types/team';
 
 export const AdminOverview = () => {
   const { toast } = useToast();
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [updatingPlanId, setUpdatingPlanId] = useState<string | null>(null);
 
   // Stats query
   const { data: stats, isLoading: statsLoading } = useQuery({
@@ -86,14 +89,52 @@ export const AdminOverview = () => {
     },
   });
 
-  // Map workspace status by owner
-  const workspaceStatusByOwner = useMemo(() => {
-    const statusMap: Record<string, { is_active: boolean; workspace_id: string }> = {};
-    workspaces?.forEach((ws) => {
-      statusMap[ws.owner_id] = { is_active: ws.is_active, workspace_id: ws.id };
+  // Map workspace info by owner
+  const workspaceInfoByOwner = useMemo(() => {
+    const infoMap: Record<string, { is_active: boolean; workspace_id: string; plan_tier: PlanTier }> = {};
+    workspaces?.forEach((ws: any) => {
+      infoMap[ws.owner_id] = { 
+        is_active: ws.is_active, 
+        workspace_id: ws.id,
+        plan_tier: ws.plan_tier || 'pulse'
+      };
     });
-    return statusMap;
+    return infoMap;
   }, [workspaces]);
+
+  const updateWorkspacePlan = async (workspaceId: string, newPlan: PlanTier) => {
+    setUpdatingPlanId(workspaceId);
+    try {
+      const { error } = await supabase
+        .from('workspaces')
+        .update({ plan_tier: newPlan })
+        .eq('id', workspaceId);
+
+      if (error) throw error;
+
+      const planNames: Record<PlanTier, string> = {
+        pulse: '🎵 Pulse',
+        flow: '🌊 Flow',
+        maestro: '🎼 Maestro'
+      };
+
+      toast({
+        title: "Plano atualizado!",
+        description: `Workspace alterado para ${planNames[newPlan]}`,
+      });
+
+      refetch();
+    } catch (error: any) {
+      console.error('Error updating plan:', error);
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingPlanId(null);
+    }
+  };
 
   const toggleWorkspaceStatus = async (workspaceId: string, currentStatus: boolean) => {
     setTogglingId(workspaceId);
@@ -226,13 +267,14 @@ export const AdminOverview = () => {
                   <TableHead>Telefone</TableHead>
                   <TableHead>Time Declarado</TableHead>
                   <TableHead>Liderados Reais</TableHead>
+                  <TableHead>Plano</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {users?.map((user: any) => {
-                  const wsInfo = workspaceStatusByOwner[user.user_id];
+                  const wsInfo = workspaceInfoByOwner[user.user_id];
                   const realCount = memberCounts?.[user.user_id] || 0;
                   const comparison = getTeamSizeComparison(user.team_size, realCount);
                   
@@ -265,6 +307,36 @@ export const AdminOverview = () => {
                             <Badge variant="secondary" className="text-xs">⚠️</Badge>
                           )}
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        {wsInfo ? (
+                          <Select
+                            value={wsInfo.plan_tier}
+                            onValueChange={(value) => updateWorkspacePlan(wsInfo.workspace_id, value as PlanTier)}
+                            disabled={updatingPlanId === wsInfo.workspace_id}
+                          >
+                            <SelectTrigger className="w-[130px]">
+                              {updatingPlanId === wsInfo.workspace_id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <SelectValue />
+                              )}
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pulse">
+                                <span className="flex items-center gap-2">🎵 Pulse</span>
+                              </SelectItem>
+                              <SelectItem value="flow">
+                                <span className="flex items-center gap-2">🌊 Flow</span>
+                              </SelectItem>
+                              <SelectItem value="maestro">
+                                <span className="flex items-center gap-2">🎼 Maestro</span>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         {wsInfo ? (

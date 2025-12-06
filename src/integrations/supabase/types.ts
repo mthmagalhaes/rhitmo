@@ -277,6 +277,7 @@ export type Database = {
           is_active: boolean
           name: string
           owner_id: string
+          plan_tier: string
           updated_at: string
         }
         Insert: {
@@ -285,6 +286,7 @@ export type Database = {
           is_active?: boolean
           name: string
           owner_id: string
+          plan_tier?: string
           updated_at?: string
         }
         Update: {
@@ -293,6 +295,7 @@ export type Database = {
           is_active?: boolean
           name?: string
           owner_id?: string
+          plan_tier?: string
           updated_at?: string
         }
         Relationships: []
