@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Settings, Trash2 } from 'lucide-react';
 import { Team } from '@/types/team';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface EditMemberDialogProps {
   open: boolean;
@@ -48,6 +49,7 @@ export const EditMemberDialog = ({
   const [isCreatingTeam, setIsCreatingTeam] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (open && member) {
@@ -155,6 +157,10 @@ export const EditMemberDialog = ({
           : `Dados de ${name.trim()} foram atualizados`,
       });
 
+      // Invalidar cache do React Query
+      queryClient.invalidateQueries({ queryKey: ['team-members'] });
+      queryClient.invalidateQueries({ queryKey: ['member', member?.id] });
+
       onOpenChange(false);
       onSuccess?.();
     } catch (error: any) {
@@ -187,6 +193,11 @@ export const EditMemberDialog = ({
         title: "Membro excluído",
         description: `${name} foi removido da equipe`,
       });
+
+      // Invalidar cache do React Query
+      queryClient.invalidateQueries({ queryKey: ['team-members'] });
+      queryClient.invalidateQueries({ queryKey: ['member', member?.id] });
+      queryClient.invalidateQueries({ queryKey: ['feedbacks', member?.id] });
 
       onOpenChange(false);
       onSuccess?.();
