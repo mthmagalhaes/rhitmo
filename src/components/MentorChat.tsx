@@ -202,7 +202,7 @@ export const MentorChat = ({
       <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 shadow-2xl gap-0">
         <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
           <DialogTitle className="text-foreground text-lg">
-            🎯 Mentor de Liderança IA
+            🎯 Mentor Chat
             <span className="text-muted-foreground font-normal text-base ml-2">
               — {memberName} {memberRole && `(${memberRole})`}
             </span>
