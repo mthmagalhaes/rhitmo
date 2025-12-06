@@ -51,9 +51,9 @@ const Billing = () => {
         { icon: Users, text: 'Até 3 Liderados', included: true },
         { icon: FileText, text: '2 Avaliações IA por mês', included: true },
         { icon: Gem, text: 'Diário de Bordo + Insights', included: true },
+        { icon: Brain, text: 'Mentor Chat', included: false },
         { icon: Music, text: 'Rhitmo Sync', included: false },
         { icon: BarChart3, text: 'Analytics & Tendências', included: false },
-        { icon: Brain, text: 'Mentor IA Avançado', included: false },
       ]
     },
     {
@@ -66,9 +66,9 @@ const Billing = () => {
         { icon: Users, text: 'Até 10 Liderados', included: true },
         { icon: FileText, text: 'Avaliações IA Ilimitadas', included: true },
         { icon: Gem, text: 'Diário de Bordo + Insights', included: true },
+        { icon: Brain, text: 'Mentor Chat', included: true },
         { icon: Music, text: 'Rhitmo Sync (Perfil Comportamental)', included: true },
         { icon: BarChart3, text: 'Analytics & Tendências', included: false },
-        { icon: Brain, text: 'Mentor IA Avançado', included: false },
       ]
     },
     {
@@ -81,9 +81,9 @@ const Billing = () => {
         { icon: Users, text: 'Liderados Ilimitados', included: true },
         { icon: FileText, text: 'Avaliações IA Ilimitadas', included: true },
         { icon: Gem, text: 'Diário de Bordo + Insights', included: true },
+        { icon: Brain, text: 'Mentor Chat', included: true },
         { icon: Music, text: 'Rhitmo Sync (Perfil Comportamental)', included: true },
         { icon: BarChart3, text: 'Analytics & Tendências Completo', included: true },
-        { icon: Brain, text: 'Mentor IA Avançado (GPT-4o)', included: true },
       ]
     }
   ];
