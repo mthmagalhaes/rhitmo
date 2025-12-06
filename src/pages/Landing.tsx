@@ -6,6 +6,7 @@ import { WaitlistDialog } from "@/components/WaitlistDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon } from "lucide-react";
 import analyticsScreenshot from "@/assets/analytics-screenshot.png";
+import heroLeaderFlow from "@/assets/hero-leader-flow.png";
 import { cn } from "@/lib/utils";
 
 // ============== COMPONENTES DE VISUAL ==============
@@ -144,22 +145,45 @@ const Landing = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-20 lg:py-28">
-        <div className="max-w-3xl mx-auto text-center space-y-6">
-          <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl xl:text-6xl">Nunca mais escreva uma avaliação de desempenho do zero.</h1>
-          
-          <p className="text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto">Com Rhitmo, líderes ganham tempo e organização para focar no que mais importa: desenvolver pessoas e construir uma cultura de resultados.</p>
-          
-          <div className="pt-4">
-            <Button size="lg" className="text-base px-8" onClick={() => setWaitlistOpen(true)}>
-              Entrar na Lista de Espera
-            </Button>
+      <section className="bg-gradient-to-b from-background to-muted/30">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8 py-20 lg:py-28">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+            
+            {/* Coluna Esquerda - Texto */}
+            <div className="space-y-6 text-left">
+              <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl xl:text-6xl">
+                Nunca mais escreva uma avaliação de desempenho do zero.
+              </h1>
+              
+              <p className="text-lg text-muted-foreground leading-relaxed max-w-xl">
+                Com Rhitmo, líderes ganham tempo e organização para focar no que mais importa: desenvolver pessoas e construir uma cultura de resultados.
+              </p>
+              
+              <div className="pt-4">
+                <Button size="lg" className="text-base px-8" onClick={() => setWaitlistOpen(true)}>
+                  Entrar na Lista de Espera
+                </Button>
+              </div>
+            </div>
+            
+            {/* Coluna Direita - Imagem Premium */}
+            <div className="relative">
+              {/* Glow effect roxo/esmeralda */}
+              <div className="absolute -inset-4 bg-gradient-to-r from-primary/30 to-emerald-500/30 rounded-3xl blur-3xl opacity-60" />
+              
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/50 hover:scale-105 transition-transform duration-500">
+                {/* Overlay roxo similar à página de login */}
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/50 to-primary/30 mix-blend-multiply z-10" />
+                
+                <img 
+                  src={heroLeaderFlow} 
+                  alt="Líder trabalhando com calma e controle em ambiente minimalista"
+                  className="w-full h-full object-cover aspect-[4/3]"
+                />
+              </div>
+            </div>
+            
           </div>
-        </div>
-        
-        {/* Mockup Simplificado */}
-        <div className="mt-16 max-w-2xl mx-auto">
-          <SimpleChatMockup />
         </div>
       </section>
 
