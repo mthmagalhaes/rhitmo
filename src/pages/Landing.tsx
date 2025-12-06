@@ -4,11 +4,61 @@ import { Button } from "@/components/ui/button";
 import { RhitmoLogo } from "@/components/RhitmoLogo";
 import { WaitlistDialog } from "@/components/WaitlistDialog";
 import { useAuth } from "@/hooks/useAuth";
-import { Zap, Heart, BarChart, Sparkles, Send, Loader2 } from "lucide-react";
+import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+// ============== COMPONENTES DE VISUAL ==============
+
+// Browser Frame - Janela estilo macOS
+const BrowserFrame = ({ children, wide = false }: { children: React.ReactNode; wide?: boolean }) => (
+  <div className="relative">
+    {/* Glow effect */}
+    <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 to-emerald-500/20 rounded-3xl blur-2xl opacity-50" />
+    
+    <div className={cn(
+      "relative bg-card rounded-xl border shadow-xl overflow-hidden",
+      wide ? "aspect-[16/9] lg:aspect-[2/1]" : "aspect-video"
+    )}>
+      {/* Header macOS */}
+      <div className="px-4 py-2.5 border-b bg-muted/30 flex items-center gap-1.5">
+        <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
+        <div className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
+        <div className="w-2.5 h-2.5 rounded-full bg-green-400" />
+      </div>
+      {/* Content */}
+      <div className="h-[calc(100%-36px)]">
+        {children}
+      </div>
+    </div>
+  </div>
+);
+
+// Image Placeholder - Área para upload de imagem
+const ImagePlaceholder = ({ label }: { label: string }) => (
+  <div className="w-full h-full bg-muted/50 flex items-center justify-center">
+    <div className="text-center space-y-2 px-4">
+      <ImageIcon className="h-10 w-10 mx-auto text-muted-foreground/50" />
+      <p className="text-sm text-muted-foreground">{label}</p>
+    </div>
+  </div>
+);
+
+// Human Image Container - Foto humana com glow
+const HumanImageContainer = ({ children }: { children: React.ReactNode }) => (
+  <div className="relative">
+    {/* Glow suave */}
+    <div className="absolute -inset-4 bg-gradient-to-r from-emerald-500/15 to-primary/15 rounded-3xl blur-2xl opacity-60" />
+    
+    <div className="relative rounded-3xl overflow-hidden shadow-2xl aspect-[4/5] max-w-sm mx-auto">
+      {children}
+    </div>
+  </div>
+);
 
 // ============== MOCKUP SIMPLIFICADO ==============
 
-const SimpleChatMockup = () => <div className="bg-card rounded-2xl border shadow-xl overflow-hidden">
+const SimpleChatMockup = () => (
+  <div className="bg-card rounded-2xl border shadow-xl overflow-hidden">
     {/* Header */}
     <div className="px-5 py-4 border-b flex items-center gap-3">
       <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
@@ -48,147 +98,8 @@ const SimpleChatMockup = () => <div className="bg-card rounded-2xl border shadow
         </div>
       </div>
     </div>
-  </div>;
-
-// ============== MOCKUPS PREMIUM PARA PERSONAS ==============
-
-const DashboardMockup = () => <div className="relative">
-    {/* Glow effect */}
-    <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 to-emerald-500/20 rounded-3xl blur-2xl opacity-50" />
-    
-    {/* Container */}
-    <div className="relative aspect-video bg-card rounded-2xl shadow-2xl border overflow-hidden">
-      {/* Header macOS style */}
-      <div className="px-4 py-3 border-b bg-muted/50 flex items-center gap-2">
-        <div className="flex gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-red-400" />
-          <div className="w-3 h-3 rounded-full bg-yellow-400" />
-          <div className="w-3 h-3 rounded-full bg-green-400" />
-        </div>
-        <span className="text-xs text-muted-foreground ml-2">Dashboard — Rhitmo</span>
-      </div>
-      
-      {/* Content */}
-      <div className="p-4 space-y-3">
-        {/* Metric cards */}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="bg-primary/5 rounded-lg p-3">
-            <div className="text-xs text-muted-foreground">Feedbacks</div>
-            <div className="text-xl font-bold text-primary">24</div>
-          </div>
-          <div className="bg-emerald-500/10 rounded-lg p-3">
-            <div className="text-xs text-muted-foreground">Avaliações</div>
-            <div className="text-xl font-bold text-emerald-600">8</div>
-          </div>
-          <div className="bg-muted rounded-lg p-3">
-            <div className="text-xs text-muted-foreground">Membros</div>
-            <div className="text-xl font-bold text-foreground">12</div>
-          </div>
-        </div>
-        
-        {/* Member list */}
-        <div className="space-y-2">
-          {[1, 2, 3].map(i => <div key={i} className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-emerald-500" />
-              <div className="flex-1">
-                <div className="h-3 w-24 bg-muted-foreground/20 rounded" />
-                <div className="h-2 w-16 bg-muted-foreground/10 rounded mt-1" />
-              </div>
-              <div className="h-6 w-16 bg-primary/10 rounded-full" />
-            </div>)}
-        </div>
-      </div>
-    </div>
-  </div>;
-const FeedbackMockup = () => <div className="relative">
-    {/* Glow effect */}
-    <div className="absolute -inset-4 bg-gradient-to-r from-emerald-500/20 to-primary/20 rounded-3xl blur-2xl opacity-50" />
-    
-    {/* Container - mobile style */}
-    <div className="relative aspect-[4/5] max-w-sm mx-auto bg-card rounded-2xl shadow-2xl border overflow-hidden">
-      {/* Header */}
-      <div className="px-4 py-3 border-b flex items-center justify-between">
-        <span className="font-medium text-sm">Meu Progresso</span>
-        <Heart className="h-5 w-5 text-emerald-500" />
-      </div>
-      
-      {/* Evolution chart */}
-      <div className="p-4">
-        <div className="h-32 flex items-end gap-2 mb-4">
-          {[40, 55, 45, 70, 85, 75, 90].map((h, i) => <div key={i} className="flex-1 bg-gradient-to-t from-emerald-500 to-emerald-300 rounded-t" style={{
-          height: `${h}%`
-        }} />)}
-        </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-emerald-600">+32%</div>
-          <div className="text-sm text-muted-foreground">crescimento este trimestre</div>
-        </div>
-      </div>
-      
-      {/* Recent feedbacks */}
-      <div className="px-4 pb-4 space-y-2">
-        <div className="text-xs font-medium text-muted-foreground uppercase">Últimos Feedbacks</div>
-        {[1, 2].map(i => <div key={i} className="p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
-            <div className="h-2 w-full bg-emerald-500/30 rounded mb-1" />
-            <div className="h-2 w-3/4 bg-emerald-500/20 rounded" />
-          </div>)}
-      </div>
-    </div>
-  </div>;
-const AnalyticsMockup = () => <div className="relative">
-    {/* Glow effect */}
-    <div className="absolute -inset-4 bg-gradient-to-r from-slate-500/20 to-primary/20 rounded-3xl blur-2xl opacity-50" />
-    
-    {/* Container */}
-    <div className="relative aspect-video bg-card rounded-2xl shadow-2xl border overflow-hidden">
-      {/* Header */}
-      <div className="px-4 py-3 border-b bg-muted/50 flex items-center gap-2">
-        <BarChart className="h-4 w-4 text-muted-foreground" />
-        <span className="text-xs text-muted-foreground">Analytics — Visão Geral</span>
-      </div>
-      
-      {/* Analytics grid */}
-      <div className="p-4 grid grid-cols-2 gap-4">
-        {/* Pie chart simulation */}
-        <div className="space-y-2">
-          <div className="text-xs text-muted-foreground">Saúde dos Times</div>
-          <div className="relative w-20 h-20 mx-auto">
-            <svg className="w-full h-full" viewBox="0 0 36 36">
-              <circle cx="18" cy="18" r="15" fill="none" stroke="hsl(var(--muted))" strokeWidth="3" />
-              <circle cx="18" cy="18" r="15" fill="none" stroke="hsl(142.1 76.2% 36.3%)" strokeWidth="3" strokeDasharray="75 25" strokeDashoffset="25" />
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-sm font-bold">87%</span>
-            </div>
-          </div>
-        </div>
-        
-        {/* Metrics */}
-        <div className="space-y-2">
-          <div className="p-2 bg-emerald-500/10 rounded-lg">
-            <div className="text-xs text-muted-foreground">Engajamento</div>
-            <div className="text-lg font-bold text-emerald-600">94%</div>
-          </div>
-          <div className="p-2 bg-primary/5 rounded-lg">
-            <div className="text-xs text-muted-foreground">Avaliações</div>
-            <div className="text-lg font-bold text-primary">156</div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Teams bar */}
-      <div className="px-4 pb-4">
-        <div className="flex gap-2">
-          {['Vendas', 'Tech', 'Marketing'].map(team => <div key={team} className="flex-1 p-2 bg-muted/50 rounded-lg text-center">
-              <div className="text-xs text-muted-foreground">{team}</div>
-              <div className="flex justify-center gap-0.5 mt-1">
-                <span className="text-xs font-medium">●●●</span>
-              </div>
-            </div>)}
-        </div>
-      </div>
-    </div>
-  </div>;
+  </div>
+);
 
 // ============== MAIN COMPONENT ==============
 
@@ -274,9 +185,11 @@ const Landing = () => {
               </div>
             </div>
             
-            {/* Mockup */}
+            {/* Visual - Browser Frame com Mentor Chat */}
             <div>
-              <DashboardMockup />
+              <BrowserFrame>
+                <ImagePlaceholder label="Print: Mentor Chat" />
+              </BrowserFrame>
             </div>
           </div>
         </div>
@@ -286,9 +199,11 @@ const Landing = () => {
       <section className="py-24 bg-muted/30">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-16 items-center">
-            {/* Mockup - Esquerda em desktop */}
+            {/* Visual - Foto Humana (emoção) */}
             <div className="md:order-1 order-2">
-              <FeedbackMockup />
+              <HumanImageContainer>
+                <ImagePlaceholder label="Foto: Colaboradora tranquila" />
+              </HumanImageContainer>
             </div>
             
             {/* Texto - Direita em desktop */}
@@ -336,9 +251,11 @@ const Landing = () => {
               </div>
             </div>
             
-            {/* Mockup */}
+            {/* Visual - Browser Frame Wide com Analytics */}
             <div>
-              <AnalyticsMockup />
+              <BrowserFrame wide>
+                <ImagePlaceholder label="Print: Analytics Dashboard" />
+              </BrowserFrame>
             </div>
           </div>
         </div>
