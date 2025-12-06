@@ -59,7 +59,7 @@ const HumanImageContainer = ({ children }: { children: React.ReactNode }) => (
 // ============== MOCKUP SIMPLIFICADO ==============
 
 const SimpleChatMockup = () => (
-  <div className="bg-card rounded-2xl border shadow-xl overflow-hidden">
+  <div className="bg-card h-full overflow-hidden">
     {/* Header */}
     <div className="px-5 py-4 border-b flex items-center gap-3">
       <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
@@ -189,7 +189,7 @@ const Landing = () => {
             {/* Visual - Browser Frame com Mentor Chat */}
             <div>
               <BrowserFrame>
-                <ImagePlaceholder label="Print: Mentor Chat" />
+                <SimpleChatMockup />
               </BrowserFrame>
             </div>
           </div>
