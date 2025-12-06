@@ -11,6 +11,7 @@ import { EditTeamDialog } from '@/components/EditTeamDialog';
 import { DeleteTeamDialog } from '@/components/DeleteTeamDialog';
 import { TeamTabs } from '@/components/TeamTabs';
 import { useAuth } from '@/hooks/useAuth';
+import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PenSquare, Users, Loader2, UserPlus, Pencil, Settings, Trash2 } from 'lucide-react';
@@ -21,6 +22,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { Workspace, Team } from '@/types/team';
 
@@ -44,6 +51,7 @@ const Index = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, loading: authLoading } = useAuth();
+  const { canAddMember, limits } = usePlanLimits();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
   const [editWorkspaceOpen, setEditWorkspaceOpen] = useState(false);
@@ -202,10 +210,30 @@ const Index = () => {
             </div>
             <div className="flex gap-3">
               {teamMembers.length > 0 && (
-                <Button onClick={() => setMemberDialogOpen(true)} size="lg" variant="outline" className="gap-2">
-                  <UserPlus className="h-5 w-5" />
-                  Novo Membro
-                </Button>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <Button 
+                          onClick={() => setMemberDialogOpen(true)} 
+                          size="lg" 
+                          variant="outline" 
+                          className="gap-2"
+                          disabled={!canAddMember}
+                        >
+                          <UserPlus className="h-5 w-5" />
+                          Novo Membro
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    {!canAddMember && (
+                      <TooltipContent>
+                        <p>Limite atingido ({limits.maxMembers} membros).</p>
+                        <p className="text-primary font-medium">Faça upgrade para adicionar mais.</p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
               )}
               <Button onClick={() => setDialogOpen(true)} size="lg" className="gap-2 shadow-md">
                 <PenSquare className="h-5 w-5" />

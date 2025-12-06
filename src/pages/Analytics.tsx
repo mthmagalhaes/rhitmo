@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, TrendingUp, TrendingDown, FileText, Users, Music } from 'lucide-react';
+import { BarChart3, TrendingUp, TrendingDown, FileText, Users, Music, Lock, Sparkles } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine, PieChart, Pie, Cell, Legend, ResponsiveContainer } from 'recharts';
 
@@ -14,6 +17,7 @@ type PeriodType = '30d' | '90d' | '365d';
 
 const Analytics = () => {
   const { user, loading: authLoading } = useAuth();
+  const { hasAnalytics, limits, isLoading: limitsLoading } = usePlanLimits();
   const navigate = useNavigate();
   const [period, setPeriod] = useState<PeriodType>('30d');
   const [teamFilter, setTeamFilter] = useState<string>('all');
@@ -207,6 +211,41 @@ const Analytics = () => {
   const isLoading = loadingFeedbacks || loadingReviews || loadingMembers;
 
   if (!user) return null;
+
+  // Upsell screen for non-Maestro plans
+  if (!limitsLoading && !hasAnalytics) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[70vh] p-8">
+        <div className="text-center max-w-md space-y-6">
+          <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+            <Lock className="h-10 w-10 text-primary" />
+          </div>
+          
+          <h1 className="text-3xl font-bold text-foreground">Analytics Premium</h1>
+          
+          <p className="text-muted-foreground text-lg">
+            O painel de Analytics está disponível no plano <strong>Maestro</strong>. 
+            Faça upgrade para desbloquear insights avançados sobre seu time.
+          </p>
+          
+          <div className="pt-4">
+            <Button 
+              size="lg" 
+              className="gap-2"
+              onClick={() => navigate('/billing')}
+            >
+              <Sparkles className="h-5 w-5" />
+              Ver Planos
+            </Button>
+          </div>
+          
+          <p className="text-sm text-muted-foreground">
+            Plano atual: <Badge variant="outline">{limits.planName}</Badge>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 space-y-8">
