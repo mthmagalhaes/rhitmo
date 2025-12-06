@@ -13,8 +13,9 @@ import { MentorChat } from '@/components/MentorChat';
 import { styleConfig } from '@/components/WorkStyleCard';
 import { PerformanceReviewList } from '@/components/PerformanceReviewList';
 import { useAuth } from '@/hooks/useAuth';
+import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Save, Music, BookOpen, FileText, Clock, Lightbulb } from 'lucide-react';
+import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Save, Music, BookOpen, FileText, Clock, Lightbulb, Lock, ArrowRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 
@@ -39,6 +40,7 @@ const MemberDetails = () => {
   const [keyObjectives, setKeyObjectives] = useState<string>('');
   const [savingObjectives, setSavingObjectives] = useState(false);
   const { toast } = useToast();
+  const { hasSync } = usePlanLimits();
 
   // Query para carregar membro
   const { data: member, isLoading: memberLoading } = useQuery({
@@ -319,7 +321,48 @@ Exemplos:
                 </div>
               </AccordionTrigger>
               <AccordionContent className="px-4 pb-4">
-                {member.work_style_data ? (
+                {!hasSync ? (
+                  // Bloqueio Premium com Blur
+                  <div className="relative">
+                    {/* Conteúdo com Blur */}
+                    <div className="blur-md pointer-events-none opacity-50">
+                      <div className="space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                          Preferências de trabalho
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <Badge variant="secondary">🧠 Analítico</Badge>
+                          <Badge variant="secondary">💬 Direto</Badge>
+                          <Badge variant="secondary">🎯 Autônomo</Badge>
+                          <Badge variant="secondary">🌅 Manhã</Badge>
+                          <Badge variant="secondary">🏆 Reconhecimento</Badge>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Cadeado Central */}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="text-center space-y-3">
+                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                          <Lock className="h-6 w-6 text-primary" />
+                        </div>
+                        <p className="text-sm font-medium">Recurso Premium</p>
+                        <p className="text-xs text-muted-foreground">
+                          Disponível no plano Flow ou superior
+                        </p>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => navigate('/billing')}
+                          className="gap-2"
+                        >
+                          Desbloquear
+                          <ArrowRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ) : member.work_style_data ? (
                   <div className="space-y-4">
                     <p className="text-sm text-muted-foreground">
                       Preferências de trabalho • Preenchido em {formatDate((member.work_style_data as unknown as WorkStyleData).completed_at)}

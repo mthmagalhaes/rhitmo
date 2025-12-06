@@ -15,6 +15,7 @@ import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PenSquare, Users, Loader2, UserPlus, Pencil, Settings, Trash2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -195,6 +196,24 @@ const Index = () => {
               {workspace && (
                 <div className="flex items-center gap-3 mb-1">
                   <h1 className="text-2xl font-bold text-foreground">{workspace.name}</h1>
+                  <Badge 
+                    variant={
+                      limits.planTier === 'maestro' 
+                        ? 'default' 
+                        : limits.planTier === 'flow' 
+                          ? 'secondary' 
+                          : 'outline'
+                    }
+                    className={
+                      limits.planTier === 'maestro' 
+                        ? '' 
+                        : limits.planTier === 'flow' 
+                          ? 'bg-emerald-500 text-white hover:bg-emerald-600' 
+                          : ''
+                    }
+                  >
+                    {limits.planName}
+                  </Badge>
                   <Button 
                     variant="ghost" 
                     size="icon"

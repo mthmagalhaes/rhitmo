@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, UserPlus } from 'lucide-react';
 import { z } from 'zod';
@@ -36,6 +38,14 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
+  const { hasSync } = usePlanLimits();
+
+  // Desabilitar convite se plano não tem Sync
+  useEffect(() => {
+    if (!hasSync) {
+      setSendDiscInvite(false);
+    }
+  }, [hasSync]);
 
   useEffect(() => {
     if (open) {
@@ -294,19 +304,29 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
               )}
             </div>
 
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="disc-invite"
-                checked={sendDiscInvite}
-                onCheckedChange={(checked) => setSendDiscInvite(checked as boolean)}
-                disabled={loading}
-              />
-              <Label
-                htmlFor="disc-invite"
-                className="text-sm font-normal cursor-pointer"
-              >
-                Enviar convite para mapeamento de perfil DISC agora?
-              </Label>
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="disc-invite"
+                  checked={sendDiscInvite && hasSync}
+                  onCheckedChange={(checked) => setSendDiscInvite(checked as boolean)}
+                  disabled={loading || !hasSync}
+                />
+                <Label
+                  htmlFor="disc-invite"
+                  className={`text-sm font-normal cursor-pointer ${!hasSync ? 'text-muted-foreground' : ''}`}
+                >
+                  Enviar convite para mapeamento de perfil Rhitmo Sync
+                </Label>
+              </div>
+              {!hasSync && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 pl-6">
+                  🔒 Disponível no plano Flow.{' '}
+                  <Link to="/billing" className="underline hover:no-underline">
+                    Ver planos
+                  </Link>
+                </p>
+              )}
             </div>
           </div>
 

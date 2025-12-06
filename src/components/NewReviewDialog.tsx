@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Sparkles, TrendingUp } from "lucide-react";
+import { Loader2, Sparkles, TrendingUp, Lock } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 
 interface NewReviewDialogProps {
@@ -31,6 +33,7 @@ export const NewReviewDialog = ({
   const [saving, setSaving] = useState(false);
   const [generatedMonths, setGeneratedMonths] = useState<number | null>(null);
   const { toast } = useToast();
+  const { canGenerateReview, limits } = usePlanLimits();
 
   const generateReview = async (months: number) => {
     setGenerating(true);
@@ -155,62 +158,45 @@ export const NewReviewDialog = ({
           <div className="space-y-2">
             <Label>Gerar com IA (Máquina do Tempo)</Label>
             <div className="flex gap-2 flex-wrap">
-              <Button 
-                type="button"
-                variant="outline" 
-                onClick={() => generateReview(1)}
-                disabled={generating}
-                className="gap-2"
-              >
-                {generating && generatedMonths === 1 ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Sparkles className="h-4 w-4" />
-                )}
-                Mensal (1 mês)
-              </Button>
-              <Button 
-                type="button"
-                variant="outline" 
-                onClick={() => generateReview(3)}
-                disabled={generating}
-                className="gap-2"
-              >
-                {generating && generatedMonths === 3 ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Sparkles className="h-4 w-4" />
-                )}
-                Trimestral (3 meses)
-              </Button>
-              <Button 
-                type="button"
-                variant="outline" 
-                onClick={() => generateReview(6)}
-                disabled={generating}
-                className="gap-2"
-              >
-                {generating && generatedMonths === 6 ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Sparkles className="h-4 w-4" />
-                )}
-                Semestral (6 meses)
-              </Button>
-              <Button 
-                type="button"
-                variant="outline" 
-                onClick={() => generateReview(12)}
-                disabled={generating}
-                className="gap-2"
-              >
-                {generating && generatedMonths === 12 ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Sparkles className="h-4 w-4" />
-                )}
-                Anual (12 meses)
-              </Button>
+              <TooltipProvider>
+                {[
+                  { months: 1, label: 'Mensal (1 mês)' },
+                  { months: 3, label: 'Trimestral (3 meses)' },
+                  { months: 6, label: 'Semestral (6 meses)' },
+                  { months: 12, label: 'Anual (12 meses)' },
+                ].map(({ months, label }) => (
+                  <Tooltip key={months}>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <Button 
+                          type="button"
+                          variant="outline" 
+                          onClick={() => generateReview(months)}
+                          disabled={generating || !canGenerateReview}
+                          className="gap-2"
+                        >
+                          {!canGenerateReview ? (
+                            <Lock className="h-4 w-4" />
+                          ) : generating && generatedMonths === months ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-4 w-4" />
+                          )}
+                          {label}
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    {!canGenerateReview && (
+                      <TooltipContent className="max-w-xs">
+                        <p className="font-medium">Limite do plano {limits.planName} atingido</p>
+                        <p className="text-sm text-muted-foreground">
+                          {limits.maxReviews} avaliação(ões)/mês. Faça upgrade para Flow.
+                        </p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                ))}
+              </TooltipProvider>
             </div>
             {generating && (
               <p className="text-sm text-muted-foreground flex items-center gap-2">

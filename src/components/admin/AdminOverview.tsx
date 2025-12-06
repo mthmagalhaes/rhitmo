@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import type { PlanTier } from '@/types/team';
 
 export const AdminOverview = () => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [updatingPlanId, setUpdatingPlanId] = useState<string | null>(null);
 
@@ -124,6 +125,10 @@ export const AdminOverview = () => {
       });
 
       refetch();
+      // Invalidar caches globais
+      queryClient.invalidateQueries({ queryKey: ['admin-workspaces'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-plan'] });
     } catch (error: any) {
       console.error('Error updating plan:', error);
       toast({
