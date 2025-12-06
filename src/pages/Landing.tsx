@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon } from "lucide-react";
 import analyticsScreenshot from "@/assets/analytics-screenshot.png";
 import heroLeaderFlow from "@/assets/hero-leader-flow.png";
+import heroDuoFeedback from "@/assets/hero-duo-feedback.png";
 import { cn } from "@/lib/utils";
 
 // ============== COMPONENTES DE VISUAL ==============
@@ -227,7 +228,16 @@ const Landing = () => {
             {/* Visual - Foto Humana (emoção) */}
             <div className="md:order-1 order-2">
               <HumanImageContainer>
-                <ImagePlaceholder label="Foto: Colaboradora tranquila" />
+                <div className="relative w-full h-full">
+                  {/* Overlay esmeralda suave */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/40 to-emerald-600/20 mix-blend-multiply z-10 rounded-2xl" />
+                  
+                  <img 
+                    src={heroDuoFeedback} 
+                    alt="Líder e liderado em conversa de feedback construtivo olhando para tablet"
+                    className="w-full h-full object-cover rounded-2xl"
+                  />
+                </div>
               </HumanImageContainer>
             </div>
             
