@@ -135,9 +135,6 @@ const Landing = () => {
           </Link>
 
           <div className="flex items-center gap-3">
-            <Button variant="outline" asChild className="border-primary/30 hover:bg-primary/10">
-              <Link to="/auth">Log in</Link>
-            </Button>
             <Button onClick={() => setWaitlistOpen(true)}>
               Lista de Espera
             </Button>
@@ -302,10 +299,16 @@ const Landing = () => {
 
       {/* Footer */}
       <footer className="border-t py-8">
-        <div className="container mx-auto px-4 text-center">
+        <div className="container mx-auto px-4 text-center space-y-2">
           <p className="text-sm text-muted-foreground">
             © 2025 Rhitmo. Todos os direitos reservados.
           </p>
+          <Link 
+            to="/auth" 
+            className="text-xs text-muted-foreground/70 hover:text-primary transition-colors inline-block"
+          >
+            Já tem conta? Entrar
+          </Link>
         </div>
       </footer>
 

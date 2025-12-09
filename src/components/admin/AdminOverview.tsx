@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Building, MessageSquare, FileText, Power, PowerOff, Loader2 } from 'lucide-react';
+import { Users, Building, MessageSquare, FileText, Power, PowerOff, Loader2, Mail, ClipboardList } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useMemo } from 'react';
 import type { PlanTier } from '@/types/team';
@@ -15,6 +15,7 @@ export const AdminOverview = () => {
   const queryClient = useQueryClient();
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [updatingPlanId, setUpdatingPlanId] = useState<string | null>(null);
+  const [invitingEmail, setInvitingEmail] = useState<string | null>(null);
 
   // Stats query
   const { data: stats, isLoading: statsLoading } = useQuery({
@@ -41,6 +42,19 @@ export const AdminOverview = () => {
     queryKey: ['admin-users-metadata'],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_all_users_with_metadata');
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Waitlist leads query
+  const { data: leads, isLoading: leadsLoading, refetch: refetchLeads } = useQuery({
+    queryKey: ['admin-waitlist-leads'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('waitlist_leads')
+        .select('*')
+        .order('created_at', { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -171,6 +185,33 @@ export const AdminOverview = () => {
     }
   };
 
+  const inviteUser = async (email: string, name: string | null) => {
+    setInvitingEmail(email);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-invite-user', {
+        body: { email, name }
+      });
+      
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      toast({ 
+        title: "Convite enviado!", 
+        description: `${email} receberá o link de acesso.` 
+      });
+      refetchLeads();
+    } catch (error: any) {
+      console.error('Error inviting user:', error);
+      toast({ 
+        title: "Erro ao convidar", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    } finally {
+      setInvitingEmail(null);
+    }
+  };
+
   // Compare declared vs real team size
   const getTeamSizeComparison = (declared: string | null, real: number) => {
     if (!declared) return null;
@@ -188,6 +229,14 @@ export const AdminOverview = () => {
       return 'ok';
     }
     return 'warning';
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: '2-digit'
+    });
   };
 
   return (
@@ -251,6 +300,87 @@ export const AdminOverview = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Waitlist Leads Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ClipboardList className="h-5 w-5" />
+            Lista de Espera
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {leadsLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : leads && leads.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Telefone</TableHead>
+                  <TableHead>Team Size</TableHead>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {leads.map((lead: any) => (
+                  <TableRow key={lead.email}>
+                    <TableCell className="font-medium">
+                      {lead.name || <span className="text-muted-foreground italic">-</span>}
+                    </TableCell>
+                    <TableCell>{lead.email}</TableCell>
+                    <TableCell>
+                      {lead.phone || <span className="text-muted-foreground">-</span>}
+                    </TableCell>
+                    <TableCell>
+                      {lead.team_size ? (
+                        <Badge variant="outline">{lead.team_size}</Badge>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {formatDate(lead.created_at)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={lead.status === 'invited' ? 'default' : 'secondary'}>
+                        {lead.status === 'invited' ? 'Convidado' : 'Pendente'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {lead.status !== 'invited' && (
+                        <Button 
+                          size="sm" 
+                          onClick={() => inviteUser(lead.email, lead.name)}
+                          disabled={invitingEmail === lead.email}
+                        >
+                          {invitingEmail === lead.email ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <Mail className="h-4 w-4 mr-2" />
+                              Aprovar & Convidar
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              Nenhum lead na lista de espera
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Users Table with Metadata */}
       <Card>
