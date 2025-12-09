@@ -6,42 +6,26 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
+
 export const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
-  const {
-    toast
-  } = useToast();
-  const handleAuth = async (e: React.FormEvent) => {
+  const { toast } = useToast();
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/dashboard`
-          }
-        });
-        if (error) throw error;
-        toast({
-          title: "Conta criada!",
-          description: "Verifique seu email para confirmar o cadastro."
-        });
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
-        if (error) throw error;
-        toast({
-          title: "Login realizado!",
-          description: "Bem-vindo ao Rhitmo."
-        });
-      }
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      if (error) throw error;
+      toast({
+        title: "Login realizado!",
+        description: "Bem-vindo ao Rhitmo."
+      });
     } catch (error: any) {
       toast({
         title: "Erro",
@@ -72,11 +56,17 @@ export const Auth = () => {
       setLoading(false);
     }
   };
-  return <div className="flex min-h-screen">
+
+  return (
+    <div className="flex min-h-screen">
       {/* LADO ESQUERDO: Hero Image (50%) */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         {/* Imagem de fundo */}
-        <img src="https://images.unsplash.com/photo-1573497620053-ea5300f94f21?w=1200&auto=format&fit=crop&q=80" alt="Líder colaborando com sua equipe" className="w-full h-full object-cover object-center" />
+        <img 
+          src="https://images.unsplash.com/photo-1573497620053-ea5300f94f21?w=1200&auto=format&fit=crop&q=80" 
+          alt="Líder colaborando com sua equipe" 
+          className="w-full h-full object-cover object-center" 
+        />
         {/* Overlay duotone violeta pesado (efeito artístico) */}
         <div className="absolute inset-0 bg-[#7C3AED]/80 mix-blend-multiply" />
         <div className="absolute inset-0 bg-gradient-to-br from-[#7C3AED]/40 to-[#5B21B6]/60" />
@@ -97,7 +87,9 @@ export const Auth = () => {
               Nunca mais escreva uma avaliação de desempenho{' '}
               <span className="text-emerald-400">do zero.</span>
             </h2>
-            <p className="text-xl text-left text-white/80 max-w-md leading-relaxed">Com o Rhitmo, líderes ganham tempo, memória e organização de forma simples para focar no que realmente importa: <span className="bg-emerald-400 text-white px-1.5 py-0.5 rounded box-decoration-clone"><span className="whitespace-nowrap">desenvolver pessoas</span> e construir uma cultura de resultados.</span></p>
+            <p className="text-xl text-left text-white/80 max-w-md leading-relaxed">
+              Com o Rhitmo, líderes ganham tempo, memória e organização de forma simples para focar no que realmente importa: <span className="bg-emerald-400 text-white px-1.5 py-0.5 rounded box-decoration-clone"><span className="whitespace-nowrap">desenvolver pessoas</span> e construir uma cultura de resultados.</span>
+            </p>
           </div>
         </div>
       </div>
@@ -113,26 +105,43 @@ export const Auth = () => {
           {/* Título */}
           <div className="space-y-2">
             <h1 className="text-3xl font-bold text-foreground">
-              {isSignUp ? 'Criar Conta' : 'Bem-vindo de volta'}
+              Acesso Restrito
             </h1>
             <p className="text-muted-foreground text-lg">
-              {isSignUp ? 'Comece sua jornada de liderança' : 'Entre para continuar'}
+              Exclusivo para convidados
             </p>
           </div>
           
           {/* Form */}
-          <form onSubmit={handleAuth} className="space-y-6">
+          <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} required disabled={loading} />
+              <Input 
+                id="email" 
+                type="email" 
+                placeholder="seu@email.com" 
+                value={email} 
+                onChange={e => setEmail(e.target.value)} 
+                required 
+                disabled={loading} 
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Senha</Label>
-              <Input id="password" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required disabled={loading} minLength={6} />
+              <Input 
+                id="password" 
+                type="password" 
+                placeholder="••••••••" 
+                value={password} 
+                onChange={e => setPassword(e.target.value)} 
+                required 
+                disabled={loading} 
+                minLength={6} 
+              />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isSignUp ? 'Criar Conta' : 'Entrar'}
+              Entrar
             </Button>
             
             <div className="relative">
@@ -173,12 +182,9 @@ export const Auth = () => {
               </svg>
               Entrar com Google
             </Button>
-            
-            <Button type="button" variant="ghost" className="w-full" onClick={() => setIsSignUp(!isSignUp)} disabled={loading}>
-              {isSignUp ? 'Já tem conta? Faça login' : 'Não tem conta? Cadastre-se'}
-            </Button>
           </form>
         </div>
       </div>
-    </div>;
+    </div>
+  );
 };
