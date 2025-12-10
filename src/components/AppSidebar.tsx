@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck } from 'lucide-react';
+import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
@@ -109,8 +109,22 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-4">
-        <div className="flex items-center gap-3">
+      <SidebarFooter className="border-t border-sidebar-border">
+        {/* Link de Suporte */}
+        <div className="px-4 py-2">
+          <SidebarMenuButton asChild tooltip="Suporte">
+            <a 
+              href="mailto:support@rhitmo.co?subject=Feedback%20Beta%20Rhitmo"
+              className="flex items-center gap-2 text-sm text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors"
+            >
+              <LifeBuoy className="h-4 w-4" />
+              {open && <span>Suporte / Feedback</span>}
+            </a>
+          </SidebarMenuButton>
+        </div>
+
+        {/* Bloco de usuário */}
+        <div className="flex items-center gap-3 px-4 pb-4">
           {open && user?.id && (
             <MemberAvatar 
               memberId={user.id} 
