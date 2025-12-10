@@ -141,8 +141,25 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
           .select()
           .single();
 
-        if (teamError) throw teamError;
+        if (teamError) {
+          // Verificar se é erro de duplicidade (UNIQUE constraint)
+          if (teamError.code === '23505') {
+            throw new Error('Já existe um time com este nome. Selecione-o na lista.');
+          }
+          throw teamError;
+        }
+        
+        if (!newTeam || !newTeam.id) {
+          throw new Error('Erro ao criar o time. Tente novamente.');
+        }
+        
         teamId = newTeam.id;
+      }
+
+      // Validação final: garantir que teamId é um UUID válido
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!teamId || !uuidRegex.test(teamId)) {
+        throw new Error('Time inválido. Selecione um time válido da lista.');
       }
 
       // Inserir novo membro na tabela team_members
