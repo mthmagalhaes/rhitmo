@@ -5,6 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { Users, Building, MessageSquare, FileText, Power, PowerOff, Loader2, Mail, ClipboardList, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useMemo } from 'react';
@@ -16,6 +25,21 @@ export const AdminOverview = () => {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [updatingPlanId, setUpdatingPlanId] = useState<string | null>(null);
   const [invitingEmail, setInvitingEmail] = useState<string | null>(null);
+  
+  // Dialog state for invite with plan selection
+  const [inviteDialog, setInviteDialog] = useState<{
+    open: boolean;
+    email: string;
+    name: string | null;
+    plan: PlanTier;
+    isResend: boolean;
+  }>({
+    open: false,
+    email: '',
+    name: null,
+    plan: 'pulse',
+    isResend: false,
+  });
 
   // Stats query
   const { data: stats, isLoading: statsLoading } = useQuery({
@@ -185,19 +209,38 @@ export const AdminOverview = () => {
     }
   };
 
-  const inviteUser = async (email: string, name: string | null) => {
+  const openInviteDialog = (email: string, name: string | null, isResend: boolean) => {
+    setInviteDialog({
+      open: true,
+      email,
+      name,
+      plan: 'pulse',
+      isResend,
+    });
+  };
+
+  const confirmInvite = async () => {
+    const { email, name, plan } = inviteDialog;
     setInvitingEmail(email);
+    setInviteDialog(prev => ({ ...prev, open: false }));
+    
     try {
       const { data, error } = await supabase.functions.invoke('admin-invite-user', {
-        body: { email, name }
+        body: { email, name, assigned_plan: plan }
       });
       
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       
+      const planNames: Record<PlanTier, string> = {
+        pulse: 'Pulse',
+        flow: 'Flow',
+        maestro: 'Maestro'
+      };
+      
       toast({ 
         title: "Convite enviado!", 
-        description: `${email} receberá o link de acesso.` 
+        description: `${email} receberá o link de acesso com plano ${planNames[plan]}.` 
       });
       refetchLeads();
     } catch (error: any) {
@@ -356,7 +399,7 @@ export const AdminOverview = () => {
                       <Button 
                         size="sm" 
                         variant={lead.status === 'invited' ? 'outline' : 'default'}
-                        onClick={() => inviteUser(lead.email, lead.name)}
+                        onClick={() => openInviteDialog(lead.email, lead.name, lead.status === 'invited')}
                         disabled={invitingEmail === lead.email}
                       >
                         {invitingEmail === lead.email ? (
@@ -518,6 +561,58 @@ export const AdminOverview = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Invite Dialog with Plan Selection */}
+      <Dialog open={inviteDialog.open} onOpenChange={(open) => setInviteDialog(prev => ({ ...prev, open }))}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {inviteDialog.isResend ? 'Reenviar Convite' : 'Aprovar Acesso'}
+            </DialogTitle>
+            <DialogDescription>
+              {inviteDialog.isResend 
+                ? `Reenviar convite para ${inviteDialog.email}`
+                : 'Selecione o plano inicial para este usuário.'
+              }
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Plano Inicial</Label>
+              <Select
+                value={inviteDialog.plan}
+                onValueChange={(value) => setInviteDialog(prev => ({ ...prev, plan: value as PlanTier }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pulse">
+                    <span className="flex items-center gap-2">🎵 Pulse (Gratuito)</span>
+                  </SelectItem>
+                  <SelectItem value="flow">
+                    <span className="flex items-center gap-2">🌊 Flow</span>
+                  </SelectItem>
+                  <SelectItem value="maestro">
+                    <span className="flex items-center gap-2">🎼 Maestro</span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInviteDialog(prev => ({ ...prev, open: false }))}>
+              Cancelar
+            </Button>
+            <Button onClick={confirmInvite}>
+              <Mail className="h-4 w-4 mr-2" />
+              Enviar Convite
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

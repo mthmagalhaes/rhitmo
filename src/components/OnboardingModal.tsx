@@ -29,6 +29,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
+import type { PlanTier } from '@/types/team';
 
 const onboardingSchema = z.object({
   full_name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
@@ -60,7 +61,8 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
   const onSubmit = async (values: OnboardingFormValues) => {
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({
+      // 1. Update user metadata
+      const { error: updateError } = await supabase.auth.updateUser({
         data: {
           full_name: values.full_name,
           phone: values.phone,
@@ -69,7 +71,48 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
         },
       });
 
-      if (error) throw error;
+      if (updateError) throw updateError;
+
+      // 2. Get updated user with assigned_plan from metadata
+      const { data: { user }, error: getUserError } = await supabase.auth.getUser();
+      if (getUserError) throw getUserError;
+      if (!user) throw new Error('Usuário não encontrado');
+
+      const assignedPlan = (user.user_metadata?.assigned_plan as PlanTier) || 'pulse';
+
+      // 3. Check if workspace already exists
+      const { data: existingWorkspace } = await supabase
+        .from('workspaces')
+        .select('id')
+        .eq('owner_id', user.id)
+        .maybeSingle();
+
+      // 4. Create workspace if doesn't exist
+      if (!existingWorkspace) {
+        const { data: newWorkspace, error: wsError } = await supabase
+          .from('workspaces')
+          .insert({
+            owner_id: user.id,
+            name: 'Meu Workspace',
+            plan_tier: assignedPlan,
+          })
+          .select('id')
+          .single();
+
+        if (wsError) throw wsError;
+
+        // 5. Create default "Sem Time" team
+        const { error: teamError } = await supabase
+          .from('teams')
+          .insert({
+            workspace_id: newWorkspace.id,
+            name: 'Sem Time',
+          });
+
+        if (teamError) throw teamError;
+
+        console.log('✅ Workspace created with plan:', assignedPlan);
+      }
 
       toast({
         title: 'Perfil configurado!',
