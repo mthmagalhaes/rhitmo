@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Building, MessageSquare, FileText, Power, PowerOff, Loader2, Mail, ClipboardList } from 'lucide-react';
+import { Users, Building, MessageSquare, FileText, Power, PowerOff, Loader2, Mail, ClipboardList, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useMemo } from 'react';
 import type { PlanTier } from '@/types/team';
@@ -353,22 +353,26 @@ export const AdminOverview = () => {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      {lead.status !== 'invited' && (
-                        <Button 
-                          size="sm" 
-                          onClick={() => inviteUser(lead.email, lead.name)}
-                          disabled={invitingEmail === lead.email}
-                        >
-                          {invitingEmail === lead.email ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <>
-                              <Mail className="h-4 w-4 mr-2" />
-                              Aprovar & Convidar
-                            </>
-                          )}
-                        </Button>
-                      )}
+                      <Button 
+                        size="sm" 
+                        variant={lead.status === 'invited' ? 'outline' : 'default'}
+                        onClick={() => inviteUser(lead.email, lead.name)}
+                        disabled={invitingEmail === lead.email}
+                      >
+                        {invitingEmail === lead.email ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : lead.status === 'invited' ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Reenviar
+                          </>
+                        ) : (
+                          <>
+                            <Mail className="h-4 w-4 mr-2" />
+                            Aprovar & Convidar
+                          </>
+                        )}
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
