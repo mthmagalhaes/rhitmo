@@ -13,13 +13,14 @@ serve(async (req) => {
   }
 
   try {
-    const { email, name } = await req.json();
+    const { email, name, assigned_plan } = await req.json();
     
     if (!email) {
       throw new Error('Email é obrigatório');
     }
 
-    console.log('📧 Invite request for:', email);
+    const plan = assigned_plan || 'pulse';
+    console.log('📧 Invite request for:', email, 'with plan:', plan);
 
     // Admin client com service role
     const supabaseAdmin = createClient(
@@ -52,9 +53,12 @@ serve(async (req) => {
 
     console.log('✅ Admin verified, sending invite...');
 
-    // Convidar usuário via Admin API
+    // Convidar usuário via Admin API com plano atribuído
     const { data: invitation, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-      data: { full_name: name || null },
+      data: { 
+        full_name: name || null,
+        assigned_plan: plan 
+      },
       redirectTo: 'https://rhitmo.lovable.app/dashboard'
     });
 
@@ -63,7 +67,7 @@ serve(async (req) => {
       throw new Error(inviteError.message);
     }
 
-    console.log('✅ Invite sent successfully');
+    console.log('✅ Invite sent successfully with plan:', plan);
 
     // Atualizar status na waitlist
     const { error: updateError } = await supabaseAdmin
@@ -81,7 +85,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: `Convite enviado para ${email}` 
+        message: `Convite enviado para ${email}`,
+        assigned_plan: plan
       }),
       { 
         status: 200, 
