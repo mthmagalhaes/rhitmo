@@ -50,7 +50,9 @@ export const usePlanLimits = () => {
       return data;
     },
     enabled: !!user,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000, // 30 segundos para sincronizar mudanças do admin rapidamente
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 
   const { data: memberCount = 0, isLoading: memberLoading } = useQuery({
@@ -63,7 +65,8 @@ export const usePlanLimits = () => {
       return count || 0;
     },
     enabled: !!user,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
   });
 
   const { data: reviewCount = 0, isLoading: reviewLoading } = useQuery({
@@ -81,7 +84,8 @@ export const usePlanLimits = () => {
       return count || 0;
     },
     enabled: !!user,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
   });
 
   const limits = useMemo<PlanLimits>(() => {
