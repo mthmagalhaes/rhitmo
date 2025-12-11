@@ -75,11 +75,17 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onReanalyze, reanalyzing
     return feedback.summary || feedback.sentiment || feedback.coaching_tips || feedback.bias_alert;
   };
 
+  const isProcessingAnalysis = (feedback: Feedback) => {
+    // Note was just saved but AI hasn't processed it yet
+    return !feedback.summary && !feedback.sentiment;
+  };
+
   return (
     <div className="space-y-6">
       {feedbacks.map((feedback) => {
         const showAnalysis = hasAnalysis(feedback);
         const isReanalyzing = reanalyzingId === feedback.id;
+        const isProcessing = isProcessingAnalysis(feedback);
 
         return (
           <Card key={feedback.id} className="border-l-4 border-l-primary">
@@ -91,6 +97,12 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onReanalyze, reanalyzing
                   </Badge>
                   {feedback.sentiment && (
                     <Badge variant="outline">{getSentimentLabel(feedback.sentiment)}</Badge>
+                  )}
+                  {isProcessing && (
+                    <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <span>Analisando...</span>
+                    </div>
                   )}
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">

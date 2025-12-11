@@ -76,6 +76,12 @@ const MemberDetails = () => {
     gcTime: 10 * 60 * 1000,
     enabled: !!user && !!id,
     refetchOnWindowFocus: false,
+    // Poll every 5 seconds if there are feedbacks being processed (no summary yet)
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      const hasPendingAnalysis = data?.some((f: any) => !f.summary && !f.sentiment);
+      return hasPendingAnalysis ? 5000 : false;
+    },
   });
 
   const loading = memberLoading || feedbacksLoading;
