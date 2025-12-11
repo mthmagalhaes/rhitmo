@@ -1,7 +1,6 @@
-import { BookOpen, Rocket, Users, Sparkles, FileText, Mail } from 'lucide-react';
+import { BookOpen, Rocket, Users, Sparkles, FileText } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Button } from '@/components/ui/button';
 
 const helpTopics = [
   {
@@ -88,13 +87,11 @@ const HelpCenter = () => {
 
       {/* Footer de Suporte */}
       <div className="border-t pt-8 text-center">
-        <p className="text-muted-foreground mb-4">Ainda com dúvidas?</p>
-        <Button asChild variant="outline">
-          <a href="mailto:support@rhitmo.co?subject=Dúvida%20sobre%20o%20Rhitmo">
-            <Mail className="h-4 w-4 mr-2" />
-            Falar com Suporte
-          </a>
-        </Button>
+        <p className="text-muted-foreground">
+          Ainda precisa de ajuda humana? Escreva para{' '}
+          <span className="font-semibold text-foreground">support@rhitmo.co</span>{' '}
+          em caso de dúvidas, reclamações ou feedbacks.
+        </p>
       </div>
     </div>
   );

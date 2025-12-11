@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen } from 'lucide-react';
+import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
@@ -22,6 +22,13 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 
 const menuItems = [
   { title: 'Início', url: '/dashboard', icon: Home },
@@ -37,6 +44,15 @@ export function AppSidebar() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [supportDialogOpen, setSupportDialogOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyEmail = () => {
+    navigator.clipboard.writeText('support@rhitmo.co');
+    setCopied(true);
+    toast({ title: "E-mail copiado!" });
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -114,13 +130,13 @@ export function AppSidebar() {
         {/* Link de Suporte */}
         <div className="px-4 py-2">
           <SidebarMenuButton asChild tooltip="Suporte">
-            <a 
-              href="mailto:support@rhitmo.co?subject=Feedback%20Beta%20Rhitmo"
-              className="flex items-center gap-2 text-sm text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors"
+            <button 
+              onClick={() => setSupportDialogOpen(true)}
+              className="flex items-center gap-2 text-sm text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors w-full"
             >
               <LifeBuoy className="h-4 w-4" />
               {open && <span>Suporte / Feedback</span>}
-            </a>
+            </button>
           </SidebarMenuButton>
         </div>
 
@@ -169,6 +185,34 @@ export function AppSidebar() {
         open={settingsOpen} 
         onOpenChange={setSettingsOpen} 
       />
+
+      {/* Dialog de Suporte */}
+      <Dialog open={supportDialogOpen} onOpenChange={setSupportDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <LifeBuoy className="h-5 w-5 text-primary" />
+              Fale com a gente
+            </DialogTitle>
+            <DialogDescription>
+              Estamos aqui para ajudar. Para dúvidas, reclamações ou feedbacks, envie um e-mail para:
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex items-center gap-2 mt-4">
+            <code className="flex-1 bg-muted px-4 py-2 rounded-md font-mono text-sm text-foreground">
+              support@rhitmo.co
+            </code>
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={handleCopyEmail}
+            >
+              {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Sidebar>
   );
 }
