@@ -14,6 +14,7 @@ import AuthPage from "./pages/AuthPage";
 import RhitmoSync from "./pages/RhitmoSync";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
+import HelpCenter from "./pages/HelpCenter";
 import { AdminGuard } from "./components/admin/AdminGuard";
 import { AdminLayout } from "./components/admin/AdminLayout";
 
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/member/:id" element={<AppLayout><MemberDetails /></AppLayout>} />
             <Route path="/analytics" element={<AppLayout><Analytics /></AppLayout>} />
             <Route path="/billing" element={<AppLayout><Billing /></AppLayout>} />
+            <Route path="/help" element={<AppLayout><HelpCenter /></AppLayout>} />
             
             {/* Rotas públicas (sem sidebar) */}
             <Route path="/sync/:memberId" element={<RhitmoSync />} />
