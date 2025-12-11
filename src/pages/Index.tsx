@@ -84,9 +84,9 @@ const Index = () => {
       return data as Workspace;
     },
     enabled: !!user && !authLoading,
-    staleTime: 5 * 60 * 1000, // 5 minutos
-    gcTime: 10 * 60 * 1000, // 10 minutos
-    refetchOnWindowFocus: false,
+    staleTime: 30 * 1000, // 30 segundos para sincronizar mudanças do admin
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: true,
   });
 
   // Query para teams
@@ -103,9 +103,9 @@ const Index = () => {
       return data as Team[];
     },
     enabled: !!workspace,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000,
     gcTime: 10 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
   });
 
   // Query para team members com feedback info
@@ -152,9 +152,9 @@ const Index = () => {
       return membersWithCounts as TeamMember[];
     },
     enabled: !!user && !authLoading,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000,
     gcTime: 10 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
   });
 
   const handleSuccess = () => {
