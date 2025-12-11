@@ -3,6 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
+// BETA MODE: Libera todas as funcionalidades para todos os usuários
+// Mudar para false quando sair do Beta para respeitar plan_tier do banco
+const BETA_MODE = true;
+
 interface PlanLimits {
   maxMembers: number;
   maxReviews: number;
@@ -88,7 +92,19 @@ export const usePlanLimits = () => {
     refetchOnWindowFocus: true,
   });
 
+  // BETA: Forçar limites do plano Maestro para todos
   const limits = useMemo<PlanLimits>(() => {
+    if (BETA_MODE) {
+      return {
+        maxMembers: 9999,
+        maxReviews: 9999,
+        analytics: true,
+        sync: true,
+        planName: 'Maestro',
+        planTier: 'maestro',
+      };
+    }
+    
     const tier = (workspace?.plan_tier as 'pulse' | 'flow' | 'maestro') || 'pulse';
     return {
       ...PLAN_LIMITS[tier],
@@ -103,13 +119,13 @@ export const usePlanLimits = () => {
     memberCount,
     reviewCount,
     isLoading,
-    // Helpers
-    canAddMember: memberCount < limits.maxMembers,
-    canGenerateReview: reviewCount < limits.maxReviews,
-    hasAnalytics: limits.analytics,
-    hasSync: limits.sync,
-    // Para upgrade messages
-    membersRemaining: limits.maxMembers - memberCount,
-    reviewsRemaining: limits.maxReviews - reviewCount,
+    // BETA: Sempre true para todas as permissões
+    canAddMember: BETA_MODE ? true : memberCount < limits.maxMembers,
+    canGenerateReview: BETA_MODE ? true : reviewCount < limits.maxReviews,
+    hasAnalytics: BETA_MODE ? true : limits.analytics,
+    hasSync: BETA_MODE ? true : limits.sync,
+    // Valores altos para upgrade messages
+    membersRemaining: BETA_MODE ? 9999 : limits.maxMembers - memberCount,
+    reviewsRemaining: BETA_MODE ? 9999 : limits.maxReviews - reviewCount,
   };
 };
