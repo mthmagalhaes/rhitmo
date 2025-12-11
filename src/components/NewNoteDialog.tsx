@@ -168,7 +168,8 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
       return;
     }
 
-    if (!memberId && !selectedMemberId) {
+    const targetMemberId = selectedMemberId || memberId;
+    if (!targetMemberId) {
       toast({
         title: "Campo obrigatório",
         description: "Por favor, selecione um liderado.",
@@ -180,28 +181,37 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
     setLoading(true);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { user } } = await supabase.auth.getUser();
       
-      if (!session) {
+      if (!user) {
         throw new Error('Você precisa estar logado');
       }
 
-      // Chamar edge function para criar e analisar o feedback
-      const { data, error } = await supabase.functions.invoke('analyze-feedback', {
-        body: {
+      // STEP 1: Direct INSERT into Supabase (fast, ~50ms)
+      const { data: feedback, error: insertError } = await supabase
+        .from('feedbacks')
+        .insert({
+          manager_id: user.id,
+          member_id: targetMemberId,
           content: content.trim(),
-          memberId: selectedMemberId || memberId,
-          type: 'neutral'
-        }
-      });
+          type: 'neutral',
+          // Analysis fields empty - will be filled by background function
+          summary: null,
+          sentiment: null,
+          coaching_tips: null,
+          bias_alert: null,
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (insertError) throw insertError;
 
+      // STEP 2: Close modal IMMEDIATELY and show toast
       toast({
-        title: "Nota adicionada com sucesso!",
-        description: "A análise por IA foi concluída."
+        title: "Nota salva! ✓",
+        description: "Processando análise inteligente...",
       });
-
+      
       setContent('');
       setMemberId('');
       onOpenChange(false);
@@ -209,6 +219,15 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
       if (onSuccess) {
         onSuccess();
       }
+
+      // STEP 3: Fire-and-forget background analysis
+      supabase.functions.invoke('analyze-feedback-background', {
+        body: { feedbackId: feedback.id }
+      }).catch(err => {
+        console.error('Background analysis failed:', err);
+        // Silent fail - note is already saved
+      });
+
     } catch (error: any) {
       console.error('Error creating feedback:', error);
       toast({
