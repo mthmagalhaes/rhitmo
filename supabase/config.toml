@@ -23,3 +23,6 @@ verify_jwt = true
 
 [functions.admin-invite-user]
 verify_jwt = true
+
+[functions.notify-admin-new-lead]
+verify_jwt = false
