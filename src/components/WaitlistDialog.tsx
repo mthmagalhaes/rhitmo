@@ -61,6 +61,25 @@ export const WaitlistDialog = ({ open, onOpenChange }: WaitlistDialogProps) => {
         title: "Você está na fila!",
         description: "Avisaremos em breve quando sua conta estiver pronta."
       });
+
+      // Notificar admin de forma assíncrona (fire-and-forget)
+      // Se falhar, não impacta o usuário - o cadastro já foi salvo
+      supabase.functions.invoke('notify-admin-new-lead', {
+        body: {
+          type: 'INSERT',
+          table: 'waitlist_leads',
+          record: {
+            email,
+            name: name || null,
+            phone: phone || null,
+            team_size: teamSize || null,
+            created_at: new Date().toISOString()
+          }
+        }
+      }).catch((err) => {
+        // Falha silenciosa - apenas log para debug
+        console.error('Falha ao notificar admin (não crítico):', err);
+      });
       
       // Reset form and close
       setName('');
