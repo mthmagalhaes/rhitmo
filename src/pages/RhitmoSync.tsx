@@ -185,18 +185,23 @@ export default function RhitmoSync() {
     };
 
     try {
-      const { error } = await supabase
-        .from('team_members')
-        .update({ work_style_data: workStyleData as any })
-        .eq('id', memberId);
+      // Usar RPC com SECURITY DEFINER para permitir update anônimo
+      const { data: success, error } = await (supabase
+        .rpc as any)('submit_rhitmo_sync', {
+          p_member_id: memberId,
+          p_work_style_data: workStyleData
+        });
 
       if (error) throw error;
+      if (!success) {
+        throw new Error('Este questionário já foi preenchido');
+      }
 
       setCompleted(true);
       toast.success('Obrigado! Seu perfil foi sincronizado com sucesso.');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting:', error);
-      toast.error('Erro ao salvar suas respostas. Tente novamente.');
+      toast.error(error.message || 'Erro ao salvar suas respostas. Tente novamente.');
     } finally {
       setSubmitting(false);
     }
