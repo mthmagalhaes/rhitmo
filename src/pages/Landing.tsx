@@ -13,15 +13,17 @@ import { cn } from "@/lib/utils";
 // ============== COMPONENTES DE VISUAL ==============
 
 // Browser Frame - Janela estilo macOS
-const BrowserFrame = ({ children, wide = false }: { children: React.ReactNode; wide?: boolean }) => (
-  <div className="relative">
+const BrowserFrame = ({
+  children,
+  wide = false
+}: {
+  children: React.ReactNode;
+  wide?: boolean;
+}) => <div className="relative">
     {/* Glow effect */}
     <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 to-emerald-500/20 rounded-3xl blur-2xl opacity-50" />
     
-    <div className={cn(
-      "relative bg-card rounded-xl border shadow-xl overflow-hidden",
-      wide ? "aspect-[16/9] lg:aspect-[2/1]" : "aspect-video"
-    )}>
+    <div className={cn("relative bg-card rounded-xl border shadow-xl overflow-hidden", wide ? "aspect-[16/9] lg:aspect-[2/1]" : "aspect-video")}>
       {/* Header macOS */}
       <div className="px-4 py-2.5 border-b bg-muted/30 flex items-center gap-1.5">
         <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
@@ -33,35 +35,37 @@ const BrowserFrame = ({ children, wide = false }: { children: React.ReactNode; w
         {children}
       </div>
     </div>
-  </div>
-);
+  </div>;
 
 // Image Placeholder - Área para upload de imagem
-const ImagePlaceholder = ({ label }: { label: string }) => (
-  <div className="w-full h-full bg-muted/50 flex items-center justify-center">
+const ImagePlaceholder = ({
+  label
+}: {
+  label: string;
+}) => <div className="w-full h-full bg-muted/50 flex items-center justify-center">
     <div className="text-center space-y-2 px-4">
       <ImageIcon className="h-10 w-10 mx-auto text-muted-foreground/50" />
       <p className="text-sm text-muted-foreground">{label}</p>
     </div>
-  </div>
-);
+  </div>;
 
 // Human Image Container - Foto humana com glow
-const HumanImageContainer = ({ children }: { children: React.ReactNode }) => (
-  <div className="relative">
+const HumanImageContainer = ({
+  children
+}: {
+  children: React.ReactNode;
+}) => <div className="relative">
     {/* Glow suave */}
     <div className="absolute -inset-4 bg-gradient-to-r from-emerald-500/15 to-primary/15 rounded-3xl blur-2xl opacity-60" />
     
     <div className="relative rounded-3xl overflow-hidden shadow-2xl aspect-[4/5] max-w-sm mx-auto">
       {children}
     </div>
-  </div>
-);
+  </div>;
 
 // ============== MOCKUP SIMPLIFICADO ==============
 
-const SimpleChatMockup = () => (
-  <div className="bg-card h-full overflow-hidden">
+const SimpleChatMockup = () => <div className="bg-card h-full overflow-hidden">
     {/* Header */}
     <div className="px-5 py-4 border-b flex items-center gap-3">
       <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
@@ -101,8 +105,7 @@ const SimpleChatMockup = () => (
         </div>
       </div>
     </div>
-  </div>
-);
+  </div>;
 
 // ============== MAIN COMPONENT ==============
 
@@ -173,11 +176,7 @@ const Landing = () => {
                 {/* Overlay roxo similar à página de login */}
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/50 to-primary/30 mix-blend-multiply z-10" />
                 
-                <img 
-                  src={heroLeaderFlow} 
-                  alt="Líder trabalhando com calma e controle em ambiente minimalista"
-                  className="w-full h-full object-cover aspect-[4/3]"
-                />
+                <img src={heroLeaderFlow} alt="Líder trabalhando com calma e controle em ambiente minimalista" className="w-full h-full object-cover aspect-[4/3]" />
               </div>
             </div>
             
@@ -192,9 +191,7 @@ const Landing = () => {
             
             {/* Título */}
             <div className="space-y-3">
-              <h2 className="text-3xl lg:text-4xl font-bold text-foreground">
-                Veja o Rhitmo em ação
-              </h2>
+              <h2 className="text-3xl lg:text-4xl font-bold text-foreground">Veja Rhitmo em ação</h2>
               <p className="text-lg text-muted-foreground">
                 Transforme a gestão do seu time em menos de 2 minutos.
               </p>
@@ -206,14 +203,7 @@ const Landing = () => {
               <div className="absolute -inset-4 bg-gradient-to-r from-primary/10 to-emerald-500/10 rounded-3xl blur-2xl opacity-50" />
               
               <div className="relative rounded-2xl overflow-hidden shadow-xl">
-                <iframe
-                  className="w-full aspect-video"
-                  src="https://www.youtube.com/embed/bRQiwrBGlsc"
-                  title="Rhitmo - Tour Completo"
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                />
+                <iframe className="w-full aspect-video" src="https://www.youtube.com/embed/bRQiwrBGlsc" title="Rhitmo - Tour Completo" frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />
               </div>
             </div>
             
@@ -265,11 +255,7 @@ const Landing = () => {
                   {/* Overlay esmeralda suave */}
                   <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/40 to-emerald-600/20 mix-blend-multiply z-10 rounded-2xl" />
                   
-                  <img 
-                    src={heroDuoFeedback} 
-                    alt="Líder e liderado em conversa de feedback construtivo olhando para tablet"
-                    className="w-full h-full object-cover rounded-2xl"
-                  />
+                  <img src={heroDuoFeedback} alt="Líder e liderado em conversa de feedback construtivo olhando para tablet" className="w-full h-full object-cover rounded-2xl" />
                 </div>
               </HumanImageContainer>
             </div>
@@ -322,11 +308,7 @@ const Landing = () => {
             {/* Visual - Browser Frame Wide com Analytics */}
             <div>
               <BrowserFrame wide>
-                <img 
-                  src={analyticsScreenshot} 
-                  alt="Analytics Dashboard - Rhitmo" 
-                  className="w-full h-full object-cover object-top"
-                />
+                <img src={analyticsScreenshot} alt="Analytics Dashboard - Rhitmo" className="w-full h-full object-cover object-top" />
               </BrowserFrame>
             </div>
           </div>
@@ -339,10 +321,7 @@ const Landing = () => {
           <p className="text-sm text-muted-foreground">
             © 2025 Rhitmo. Todos os direitos reservados.
           </p>
-          <Link 
-            to="/auth" 
-            className="text-xs text-muted-foreground/70 hover:text-primary transition-colors inline-block"
-          >
+          <Link to="/auth" className="text-xs text-muted-foreground/70 hover:text-primary transition-colors inline-block">
             Já tem conta? Entrar
           </Link>
         </div>
