@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import type { Json } from '@/integrations/supabase/types';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -186,11 +187,10 @@ export default function RhitmoSync() {
 
     try {
       // Usar RPC com SECURITY DEFINER para permitir update anônimo
-      const { data: success, error } = await (supabase
-        .rpc as any)('submit_rhitmo_sync', {
-          p_member_id: memberId,
-          p_work_style_data: workStyleData
-        });
+      const { data: success, error } = await supabase.rpc('submit_rhitmo_sync', {
+        p_member_id: memberId,
+        p_work_style_data: workStyleData as unknown as Json
+      });
 
       if (error) throw error;
       if (!success) {
