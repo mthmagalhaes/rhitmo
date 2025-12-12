@@ -310,7 +310,21 @@ const Index = () => {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : teamMembers.length === 0 ? (
-          <div className="text-center py-12">
+          <div className="text-center py-12 max-w-2xl mx-auto">
+            <div className="mb-6">
+              <p className="text-muted-foreground mb-3">
+                Veja como gerenciar seu time em 2 minutos
+              </p>
+              <div className="aspect-video w-full rounded-xl shadow-md overflow-hidden border">
+                <iframe
+                  className="w-full h-full"
+                  src="https://www.youtube.com/embed/bRQiwrBGlsc"
+                  title="Demo do Rhitmo"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            </div>
             <p className="text-muted-foreground mb-4">Nenhum liderado cadastrado ainda</p>
             <Button onClick={() => setMemberDialogOpen(true)}>
               Adicionar Primeiro Liderado
