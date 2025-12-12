@@ -98,6 +98,25 @@ const MemberDetails = () => {
       return hasPendingAnalysis ? 5000 : false;
     }
   });
+
+  // Query para workspace - necessário para isolamento de tenant no NewNoteDialog
+  const { data: workspace } = useQuery({
+    queryKey: ['workspace', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from('workspaces')
+        .select('id')
+        .eq('owner_id', user.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+
   const loading = memberLoading || feedbacksLoading;
 
   // Redirect if not authenticated
@@ -516,9 +535,16 @@ Exemplos:
         </Tabs>
       </main>
 
-      <NewNoteDialog open={dialogOpen} onOpenChange={setDialogOpen} selectedMemberId={member.id} memberName={member.name} onSuccess={() => queryClient.invalidateQueries({
-      queryKey: ['feedbacks', id]
-    })} />
+      <NewNoteDialog 
+        open={dialogOpen} 
+        onOpenChange={setDialogOpen} 
+        selectedMemberId={member.id} 
+        memberName={member.name} 
+        workspaceId={workspace?.id}
+        onSuccess={() => queryClient.invalidateQueries({
+          queryKey: ['feedbacks', id]
+        })} 
+      />
 
       <MentorChat open={chatOpen} onOpenChange={setChatOpen} memberName={member.name} memberId={member.id} memberRole={member.role} feedbacks={feedbacks} workStyleData={member.work_style_data} keyObjectives={member.key_objectives} />
     </div>;
