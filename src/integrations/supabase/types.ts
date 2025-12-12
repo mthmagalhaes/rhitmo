@@ -336,6 +336,10 @@ export type Database = {
         Args: { _member_id: string; _user_id: string }
         Returns: boolean
       }
+      submit_rhitmo_sync: {
+        Args: { p_member_id: string; p_work_style_data: Json }
+        Returns: boolean
+      }
       user_owns_team: {
         Args: { _team_id: string; _user_id: string }
         Returns: boolean
