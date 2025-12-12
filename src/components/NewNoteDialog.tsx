@@ -20,9 +20,10 @@ interface NewNoteDialogProps {
   selectedMemberId?: string;
   memberName?: string;
   onSuccess?: () => void;
+  workspaceId?: string; // ✅ Novo prop para isolamento de tenant
 }
 
-export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName, onSuccess }: NewNoteDialogProps) => {
+export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName, onSuccess, workspaceId }: NewNoteDialogProps) => {
   const [content, setContent] = useState('');
   const [memberId, setMemberId] = useState(selectedMemberId || '');
   const [loading, setLoading] = useState(false);
@@ -32,17 +33,21 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  // Carregar membros quando o dialog abre
+  // Carregar membros quando o dialog abre - FILTRO por workspace
   React.useEffect(() => {
-    if (open && !selectedMemberId) {
+    if (open && !selectedMemberId && workspaceId) {
       loadTeamMembers();
     }
-  }, [open, selectedMemberId]);
+  }, [open, selectedMemberId, workspaceId]);
 
   const loadTeamMembers = async () => {
+    if (!workspaceId) return;
+    
+    // ✅ ISOLAMENTO: Buscar apenas membros do workspace via join com teams
     const { data } = await supabase
       .from('team_members')
-      .select('id, name')
+      .select('id, name, teams!inner(workspace_id)')
+      .eq('teams.workspace_id', workspaceId)
       .order('name');
     
     if (data) {

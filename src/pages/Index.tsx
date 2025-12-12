@@ -71,7 +71,7 @@ const Index = () => {
     }
   }, [user, authLoading, navigate]);
 
-  // Query para workspace
+  // Query para workspace - FILTRO EXPLÍCITO por owner_id para isolamento de tenant
   const { data: workspace } = useQuery({
     queryKey: ['workspace', user?.id],
     queryFn: async () => {
@@ -79,12 +79,13 @@ const Index = () => {
       const { data, error } = await supabase
         .from('workspaces')
         .select('*')
-        .single();
+        .eq('owner_id', user.id) // ✅ ISOLAMENTO: Apenas workspace do usuário logado
+        .maybeSingle();
       if (error) throw error;
       return data as Workspace;
     },
     enabled: !!user && !authLoading,
-    staleTime: 30 * 1000, // 30 segundos para sincronizar mudanças do admin
+    staleTime: 30 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: true,
   });
@@ -108,24 +109,27 @@ const Index = () => {
     refetchOnWindowFocus: true,
   });
 
-  // Query para team members com feedback info
+  // Query para team members com feedback info - FILTRO EXPLÍCITO por workspace
   const { data: teamMembers = [], isLoading: loading } = useQuery({
-    queryKey: ['team-members', user?.id],
+    queryKey: ['team-members', workspace?.id],
     queryFn: async () => {
-      if (!user) return [];
+      if (!workspace) return [];
 
-      // Query 1: Buscar membros do time
+      // Query 1: Buscar membros APENAS do workspace atual via join com teams
       const { data: members, error: membersError } = await supabase
         .from('team_members')
-        .select('*')
+        .select('*, teams!inner(workspace_id)')
+        .eq('teams.workspace_id', workspace.id) // ✅ ISOLAMENTO: Apenas membros do workspace
         .order('name');
 
       if (membersError) throw membersError;
 
-      // Query 2: Buscar contagem de feedbacks por membro
+      // Query 2: Buscar feedbacks apenas dos membros deste workspace
+      const memberIds = (members || []).map(m => m.id);
       const { data: feedbackCounts, error: countError } = await supabase
         .from('feedbacks')
-        .select('member_id, created_at');
+        .select('member_id, created_at')
+        .in('member_id', memberIds.length > 0 ? memberIds : ['00000000-0000-0000-0000-000000000000']);
 
       if (countError) throw countError;
 
@@ -151,7 +155,7 @@ const Index = () => {
 
       return membersWithCounts as TeamMember[];
     },
-    enabled: !!user && !authLoading,
+    enabled: !!workspace, // ✅ Só executa após ter workspace
     staleTime: 30 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: true,
@@ -375,7 +379,7 @@ const Index = () => {
         )}
       </main>
 
-      <NewNoteDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      <NewNoteDialog open={dialogOpen} onOpenChange={setDialogOpen} workspaceId={workspace?.id} />
       <NewMemberDialog 
         open={memberDialogOpen} 
         onOpenChange={setMemberDialogOpen}
