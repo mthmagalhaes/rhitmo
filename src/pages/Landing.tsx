@@ -185,6 +185,42 @@ const Landing = () => {
         </div>
       </section>
 
+      {/* Seção: Vídeo Demo */}
+      <section className="py-20 bg-muted/50">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto text-center space-y-8">
+            
+            {/* Título */}
+            <div className="space-y-3">
+              <h2 className="text-3xl lg:text-4xl font-bold text-foreground">
+                Veja o Rhitmo em ação
+              </h2>
+              <p className="text-lg text-muted-foreground">
+                Transforme a gestão do seu time em menos de 2 minutos.
+              </p>
+            </div>
+            
+            {/* Vídeo YouTube Embed */}
+            <div className="relative">
+              {/* Glow effect sutil */}
+              <div className="absolute -inset-4 bg-gradient-to-r from-primary/10 to-emerald-500/10 rounded-3xl blur-2xl opacity-50" />
+              
+              <div className="relative rounded-2xl overflow-hidden shadow-xl">
+                <iframe
+                  className="w-full aspect-video"
+                  src="https://www.youtube.com/embed/bRQiwrBGlsc"
+                  title="Rhitmo - Tour Completo"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+            
+          </div>
+        </div>
+      </section>
+
       {/* Seção 1: Para Líderes - Fundo Branco */}
       <section className="py-24">
         <div className="container mx-auto px-4">
