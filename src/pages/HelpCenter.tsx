@@ -1,4 +1,4 @@
-import { BookOpen, Rocket, Users, Sparkles, FileText } from 'lucide-react';
+import { BookOpen, Rocket, Users, Sparkles, FileText, Play } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
@@ -52,6 +52,23 @@ const HelpCenter = () => {
         <p className="text-muted-foreground mt-2">
           Domine a arte da gestão contínua com nossos tutoriais rápidos
         </p>
+      </div>
+
+      {/* Vídeo de Tour */}
+      <div className="space-y-3">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <Play className="h-5 w-5 text-primary" />
+          Comece por aqui: Tour Completo (1:37)
+        </h2>
+        <div className="aspect-video w-full rounded-xl shadow-lg overflow-hidden border">
+          <iframe
+            className="w-full h-full"
+            src="https://www.youtube.com/embed/bRQiwrBGlsc"
+            title="Tour Completo do Rhitmo"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
       </div>
 
       {/* Grid de Cards */}
