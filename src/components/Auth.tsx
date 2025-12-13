@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -182,6 +183,16 @@ export const Auth = () => {
               </svg>
               Entrar com Google
             </Button>
+            
+            {/* Link de retorno para waitlist */}
+            <div className="text-center pt-6">
+              <p className="text-sm text-muted-foreground">
+                Ainda não tem conta?{' '}
+                <Link to="/" className="text-primary hover:underline font-medium">
+                  Entre na Lista de Espera
+                </Link>
+              </p>
+            </div>
           </form>
         </div>
       </div>

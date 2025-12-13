@@ -138,6 +138,11 @@ const Landing = () => {
           </Link>
 
           <div className="flex items-center gap-3">
+            <Link to="/auth">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                Entrar
+              </Button>
+            </Link>
             <Button onClick={() => setWaitlistOpen(true)}>
               Lista de Espera
             </Button>
