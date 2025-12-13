@@ -192,7 +192,7 @@ const Index = () => {
   const showTeamSettings = activeTeamId && activeTeam?.name !== 'Sem Time';
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20">
       <div className="border-b bg-card">
         <div className="container mx-auto px-6 py-6">
           <div className="flex items-center justify-between">

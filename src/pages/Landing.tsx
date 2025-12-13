@@ -4,11 +4,12 @@ import { Button } from "@/components/ui/button";
 import { RhitmoLogo } from "@/components/RhitmoLogo";
 import { WaitlistDialog } from "@/components/WaitlistDialog";
 import { useAuth } from "@/hooks/useAuth";
-import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon } from "lucide-react";
+import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X } from "lucide-react";
 import analyticsScreenshot from "@/assets/analytics-screenshot.png";
 import heroLeaderFlow from "@/assets/hero-leader-flow.png";
 import heroDuoFeedback from "@/assets/hero-duo-feedback.png";
 import { cn } from "@/lib/utils";
+import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 
 // ============== COMPONENTES DE VISUAL ==============
 
@@ -137,16 +138,46 @@ const Landing = () => {
             <RhitmoLogo size="sm" className="text-primary" />
           </Link>
 
-          <div className="flex items-center gap-3">
+          {/* Desktop: Botões normais */}
+          <div className="hidden md:flex items-center gap-3">
             <Link to="/auth">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground min-h-[44px]">
                 Entrar
               </Button>
             </Link>
-            <Button onClick={() => setWaitlistOpen(true)}>
+            <Button onClick={() => setWaitlistOpen(true)} className="min-h-[44px]">
               Lista de Espera
             </Button>
           </div>
+
+          {/* Mobile: Hamburger menu */}
+          <Sheet>
+            <SheetTrigger asChild className="md:hidden">
+              <Button variant="ghost" size="icon" className="h-11 w-11">
+                <Menu className="h-6 w-6" />
+                <span className="sr-only">Menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[280px] pt-12">
+              <nav className="flex flex-col gap-4">
+                <SheetClose asChild>
+                  <Link to="/auth">
+                    <Button variant="outline" className="w-full justify-start min-h-[44px]">
+                      Entrar
+                    </Button>
+                  </Link>
+                </SheetClose>
+                <SheetClose asChild>
+                  <Button 
+                    onClick={() => setWaitlistOpen(true)} 
+                    className="w-full min-h-[44px]"
+                  >
+                    Lista de Espera
+                  </Button>
+                </SheetClose>
+              </nav>
+            </SheetContent>
+          </Sheet>
         </div>
       </header>
 
@@ -321,7 +352,7 @@ const Landing = () => {
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-8">
+      <footer className="border-t py-8 pb-20">
         <div className="container mx-auto px-4 text-center space-y-2">
           <p className="text-sm text-muted-foreground">
             © 2025 Rhitmo. Todos os direitos reservados.

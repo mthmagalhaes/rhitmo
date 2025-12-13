@@ -19,7 +19,7 @@ const Billing = () => {
   if (!user) return null;
 
   return (
-    <div className="p-6 min-h-[70vh] flex items-center justify-center">
+    <div className="p-4 sm:p-6 min-h-[70vh] flex items-center justify-center pb-20">
       <Card className="max-w-lg w-full relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-emerald-500/5 border-2 border-primary/20 shadow-xl">
         {/* Efeito de brilho sutil */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
