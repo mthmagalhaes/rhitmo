@@ -149,6 +149,10 @@ All colors MUST be HSL.
 }
 
 @layer base {
+  :root {
+    --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
   * {
     @apply border-border;
   }
@@ -156,4 +160,9 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Utility for iOS safe area padding */
+.pb-safe {
+  padding-bottom: calc(1.25rem + var(--safe-area-inset-bottom));
 }
