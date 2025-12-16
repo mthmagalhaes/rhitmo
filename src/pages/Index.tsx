@@ -10,6 +10,7 @@ import { EditMemberDialog } from '@/components/EditMemberDialog';
 import { EditTeamDialog } from '@/components/EditTeamDialog';
 import { DeleteTeamDialog } from '@/components/DeleteTeamDialog';
 import { TeamTabs } from '@/components/TeamTabs';
+import { SetupChecklist } from '@/components/SetupChecklist';
 import { useAuth } from '@/hooks/useAuth';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { supabase } from '@/integrations/supabase/client';
@@ -161,10 +162,65 @@ const Index = () => {
     refetchOnWindowFocus: true,
   });
 
+  // Query para status de onboarding
+  const { data: onboardingStatus } = useQuery({
+    queryKey: ['onboarding-status', workspace?.id, user?.id],
+    queryFn: async () => {
+      if (!workspace || !user) return { hasMembers: false, hasFeedbacks: false, hasAIAnalysis: false, hasMentorChat: false };
+      
+      const memberIds = teamMembers.map(m => m.id);
+      if (memberIds.length === 0) {
+        return { hasMembers: false, hasFeedbacks: false, hasAIAnalysis: false, hasMentorChat: false };
+      }
+
+      // Contar feedbacks
+      const { count: feedbackCount } = await supabase
+        .from('feedbacks')
+        .select('*', { count: 'exact', head: true })
+        .in('member_id', memberIds);
+
+      // Contar feedbacks com análise de IA (summary preenchido)
+      const { count: aiCount } = await supabase
+        .from('feedbacks')
+        .select('*', { count: 'exact', head: true })
+        .in('member_id', memberIds)
+        .not('summary', 'is', null);
+
+      // Contar mensagens do mentor (apenas role='user' para garantir que o usuário interagiu)
+      const { count: mentorCount } = await supabase
+        .from('mentor_messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('role', 'user');
+
+      return {
+        hasMembers: teamMembers.length > 0,
+        hasFeedbacks: (feedbackCount || 0) > 0,
+        hasAIAnalysis: (aiCount || 0) > 0,
+        hasMentorChat: (mentorCount || 0) > 0,
+      };
+    },
+    enabled: !!workspace && !!user && !loading,
+    staleTime: 30 * 1000,
+  });
+
+  const isSetupComplete = onboardingStatus?.hasMembers && 
+    onboardingStatus?.hasFeedbacks && 
+    onboardingStatus?.hasAIAnalysis && 
+    onboardingStatus?.hasMentorChat;
+
   const handleSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ['workspace'] });
     queryClient.invalidateQueries({ queryKey: ['teams'] });
     queryClient.invalidateQueries({ queryKey: ['team-members'] });
+    queryClient.invalidateQueries({ queryKey: ['onboarding-status'] });
+  };
+
+  const handleOpenMentor = () => {
+    // Se tem membros, navega para o primeiro membro para abrir o mentor
+    if (teamMembers.length > 0) {
+      navigate(`/member/${teamMembers[0].id}?openMentor=true`);
+    }
   };
 
   if (authLoading || loading) {
@@ -274,6 +330,19 @@ const Index = () => {
           onTeamChange={setActiveTeamId}
           onNewTeam={() => setNewTeamOpen(true)}
         />
+
+        {/* Setup Checklist - aparece enquanto setup não está completo */}
+        {onboardingStatus && !isSetupComplete && (
+          <SetupChecklist
+            hasMembers={onboardingStatus.hasMembers}
+            hasFeedbacks={onboardingStatus.hasFeedbacks}
+            hasAIAnalysis={onboardingStatus.hasAIAnalysis}
+            hasMentorChat={onboardingStatus.hasMentorChat}
+            onAddMember={() => setMemberDialogOpen(true)}
+            onAddNote={() => setDialogOpen(true)}
+            onOpenMentor={handleOpenMentor}
+          />
+        )}
 
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-2">
