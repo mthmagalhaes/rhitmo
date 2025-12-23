@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
+import { VoiceInput } from './VoiceInput';
 
 interface MentorMessage {
   id: string;
@@ -303,11 +304,16 @@ export const MentorChat = ({
               className="flex-1 bg-transparent border-0 outline-none text-sm text-foreground 
                          placeholder:text-muted-foreground disabled:cursor-not-allowed"
             />
+            <VoiceInput 
+              onTranscription={(text) => setInput(text)}
+              disabled={isLoading}
+              className="mr-1"
+            />
             <Button 
               onClick={() => handleSend()} 
               disabled={isLoading || !input.trim()}
               size="icon"
-              className="h-9 w-9 rounded-full bg-primary hover:bg-primary/90 ml-2 flex-shrink-0"
+              className="h-9 w-9 rounded-full bg-primary hover:bg-primary/90 ml-1 flex-shrink-0"
               aria-label="Enviar mensagem"
             >
               <Send className="h-4 w-4" />

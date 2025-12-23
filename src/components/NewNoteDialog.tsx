@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { PenSquare, Loader2, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { VoiceInput } from './VoiceInput';
 import * as pdfjsLib from 'pdfjs-dist';
 import mammoth from 'mammoth';
 
@@ -315,14 +316,22 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
 
           <div className="space-y-2">
             <Label htmlFor="content">Conteúdo</Label>
-            <Textarea
-              id="content"
-              placeholder="O conteúdo do arquivo aparecerá aqui. Você também pode digitar ou editar manualmente..."
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              className="min-h-[200px] resize-none"
-              disabled={loading || isProcessingFile}
-            />
+            <div className="relative">
+              <Textarea
+                id="content"
+                placeholder="O conteúdo do arquivo aparecerá aqui. Você também pode digitar, gravar áudio ou editar manualmente..."
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                className="min-h-[200px] resize-none pr-12"
+                disabled={loading || isProcessingFile}
+              />
+              <div className="absolute bottom-2 right-2">
+                <VoiceInput 
+                  onTranscription={(text) => setContent(prev => prev + (prev ? '\n' : '') + text)}
+                  disabled={loading || isProcessingFile}
+                />
+              </div>
+            </div>
           </div>
         </div>
         <DialogFooter>
