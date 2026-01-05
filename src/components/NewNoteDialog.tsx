@@ -9,11 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { PenSquare, Loader2, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VoiceInput } from './VoiceInput';
-import * as pdfjsLib from 'pdfjs-dist';
-import mammoth from 'mammoth';
-
-// Configure PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+import { extractTextFromFile, isFileSupported } from '@/lib/fileParser';
 
 interface NewNoteDialogProps {
   open: boolean;
@@ -21,7 +17,7 @@ interface NewNoteDialogProps {
   selectedMemberId?: string;
   memberName?: string;
   onSuccess?: () => void;
-  workspaceId?: string; // ✅ Novo prop para isolamento de tenant
+  workspaceId?: string;
 }
 
 export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName, onSuccess, workspaceId }: NewNoteDialogProps) => {
@@ -44,7 +40,6 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
   const loadTeamMembers = async () => {
     if (!workspaceId) return;
     
-    // ✅ ISOLAMENTO: Buscar apenas membros do workspace via join com teams
     const { data } = await supabase
       .from('team_members')
       .select('id, name, teams!inner(workspace_id)')
@@ -56,61 +51,13 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
     }
   };
 
-  const extractTextFromTxt = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target?.result as string);
-      reader.onerror = reject;
-      reader.readAsText(file);
-    });
-  };
-
-  const extractTextFromPdf = async (file: File): Promise<string> => {
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    let fullText = '';
-    
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items.map((item: any) => item.str).join(' ');
-      fullText += pageText + '\n';
-    }
-    
-    return fullText;
-  };
-
-  const extractTextFromDocx = async (file: File): Promise<string> => {
-    const arrayBuffer = await file.arrayBuffer();
-    const result = await mammoth.extractRawText({ arrayBuffer });
-    return result.value;
-  };
-
-  const extractTextFromFile = async (file: File): Promise<string> => {
-    const extension = file.name.split('.').pop()?.toLowerCase();
-    
-    switch (extension) {
-      case 'txt':
-        return extractTextFromTxt(file);
-      case 'pdf':
-        return extractTextFromPdf(file);
-      case 'docx':
-        return extractTextFromDocx(file);
-      default:
-        throw new Error('Formato de arquivo não suportado');
-    }
-  };
-
   const handleFileSelect = async (file: File) => {
     if (!file) return;
 
-    const validExtensions = ['txt', 'pdf', 'docx'];
-    const extension = file.name.split('.').pop()?.toLowerCase();
-    
-    if (!extension || !validExtensions.includes(extension)) {
+    if (!isFileSupported(file)) {
       toast({
         title: "Formato inválido",
-        description: "Por favor, envie apenas arquivos PDF, DOCX ou TXT.",
+        description: "Por favor, envie apenas arquivos PDF, Word, TXT ou Markdown.",
         variant: "destructive"
       });
       return;
@@ -129,7 +76,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
       console.error('Error extracting text:', error);
       toast({
         title: "Erro ao processar arquivo",
-        description: error.message || "Não foi possível extrair o texto do arquivo.",
+        description: error.message,
         variant: "destructive"
       });
     } finally {
@@ -300,14 +247,14 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
                 <>
                   <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                   <p className="text-sm text-muted-foreground">
-                    Arraste sua transcrição (PDF, Word ou Texto) ou cole abaixo
+                    Arraste sua transcrição (PDF, Word, TXT ou Markdown) ou cole abaixo
                   </p>
                 </>
               )}
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".pdf,.docx,.txt"
+                accept=".pdf,.docx,.txt,.md"
                 className="hidden"
                 onChange={handleFileInputChange}
               />
