@@ -31,10 +31,12 @@ interface MentorChatProps {
 }
 
 const quickSuggestions = [
-  { emoji: '📊', text: 'Analisar padrões de comportamento' },
-  { emoji: '🗣️', text: 'Roteiro para 1:1' },
-  { emoji: '💡', text: 'Sugerir PDI' },
-  { emoji: '⚠️', text: 'Identificar riscos' },
+  { emoji: '📊', text: 'Analisar padrões de comportamento', hiddenMessage: '' },
+  { emoji: '🗣️', text: 'Roteiro para 1:1', hiddenMessage: '' },
+  { emoji: '💡', text: 'Sugerir PDI', hiddenMessage: '' },
+  { emoji: '⚠️', text: 'Identificar riscos', hiddenMessage: '' },
+  { emoji: '📊', text: 'Avaliação Trimestral', hiddenMessage: 'Gere uma avaliação de desempenho estruturada (Pontos Fortes e A Melhorar) baseada estritamente nas notas dos últimos 90 dias.' },
+  { emoji: '📝', text: 'Resumir Histórico', hiddenMessage: 'Resuma cronologicamente os fatos mais relevantes registrados sobre este membro.' },
 ];
 
 export const MentorChat = ({ 
@@ -50,6 +52,7 @@ export const MentorChat = ({
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isExtractingFile, setIsExtractingFile] = useState(false);
+  const [searchPhase, setSearchPhase] = useState<'idle' | 'searching' | 'generating'>('idle');
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -114,6 +117,7 @@ export const MentorChat = ({
 
     setInput('');
     setIsLoading(true);
+    setSearchPhase('searching');
 
     // Salvar mensagem do usuário
     await saveMessageMutation.mutateAsync({ role: 'user', content: finalMessage });
@@ -123,6 +127,8 @@ export const MentorChat = ({
 
     try {
       const { data: session } = await supabase.auth.getSession();
+      
+      setSearchPhase('generating');
       
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-mentor`,
@@ -187,6 +193,7 @@ export const MentorChat = ({
       });
     } finally {
       setIsLoading(false);
+      setSearchPhase('idle');
     }
   };
 
@@ -197,8 +204,9 @@ export const MentorChat = ({
     }
   };
 
-  const handleSuggestionClick = (text: string) => {
-    handleSend(text);
+  const handleSuggestionClick = (suggestion: typeof quickSuggestions[0]) => {
+    const message = suggestion.hiddenMessage || suggestion.text;
+    handleSend(message);
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -320,7 +328,7 @@ export const MentorChat = ({
             {quickSuggestions.map((suggestion, idx) => (
               <button
                 key={idx}
-                onClick={() => handleSuggestionClick(suggestion.text)}
+                onClick={() => handleSuggestionClick(suggestion)}
                 disabled={isLoading}
                 className="flex-shrink-0 px-3 py-1.5 text-sm bg-muted hover:bg-accent 
                            text-muted-foreground hover:text-accent-foreground rounded-full 
@@ -330,6 +338,16 @@ export const MentorChat = ({
               </button>
             ))}
           </div>
+
+          {/* Feedback de status */}
+          {searchPhase !== 'idle' && (
+            <div className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              {searchPhase === 'searching' 
+                ? '🔍 Consultando Diário de Bordo...'
+                : '✨ Gerando resposta...'}
+            </div>
+          )}
 
           {/* Cápsula flutuante de input */}
           <div className="flex items-center gap-2 bg-background border border-border rounded-2xl shadow-lg px-4 py-2">
