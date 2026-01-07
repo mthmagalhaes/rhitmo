@@ -20,6 +20,7 @@ export type Database = {
           coaching_tips: string | null
           content: string
           created_at: string
+          embedding: string | null
           id: string
           manager_id: string
           member_id: string
@@ -33,6 +34,7 @@ export type Database = {
           coaching_tips?: string | null
           content: string
           created_at?: string
+          embedding?: string | null
           id?: string
           manager_id: string
           member_id: string
@@ -46,6 +48,7 @@ export type Database = {
           coaching_tips?: string | null
           content?: string
           created_at?: string
+          embedding?: string | null
           id?: string
           manager_id?: string
           member_id?: string
@@ -335,6 +338,24 @@ export type Database = {
       is_workspace_owner: {
         Args: { _member_id: string; _user_id: string }
         Returns: boolean
+      }
+      match_feedbacks: {
+        Args: {
+          filter_member_id?: string
+          filter_workspace_id?: string
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
+        }
+        Returns: {
+          content: string
+          created_at: string
+          id: string
+          member_id: string
+          similarity: number
+          summary: string
+          type: string
+        }[]
       }
       submit_rhitmo_sync: {
         Args: { p_member_id: string; p_work_style_data: Json }

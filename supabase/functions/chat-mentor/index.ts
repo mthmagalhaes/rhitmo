@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { RHITMO_IDENTITY, GUARDRAILS_PROMPT, ANALYSIS_RULES } from "../_shared/rhitmo-constitution.ts";
 
 const corsHeaders = {
@@ -13,13 +14,13 @@ serve(async (req) => {
   }
 
   try {
-    const { question, feedbacks, memberName, memberRole, workStyleData, keyObjectives } = await req.json();
+    const { question, memberId, memberName, memberRole, workStyleData, keyObjectives } = await req.json();
 
-    console.log('Chat mentor request:', { memberName, memberRole, feedbacksCount: feedbacks?.length, hasWorkStyle: !!workStyleData });
+    console.log('Chat mentor RAG request:', { memberName, memberRole, memberId });
 
-    if (!question || !feedbacks || !memberName) {
+    if (!question || !memberId || !memberName) {
       return new Response(
-        JSON.stringify({ error: 'Parâmetros inválidos: question, feedbacks e memberName são obrigatórios' }),
+        JSON.stringify({ error: 'Parâmetros inválidos: question, memberId e memberName são obrigatórios' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -32,6 +33,81 @@ serve(async (req) => {
         JSON.stringify({ error: 'Configuração de API ausente. Contate o administrador.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Create Supabase client with service role for RPC calls
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Step 1: Generate embedding for the user's question
+    console.log('Generating embedding for question...');
+    
+    let questionEmbedding;
+    try {
+      const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          input: question,
+          model: 'text-embedding-3-small'
+        }),
+      });
+
+      if (!embeddingResponse.ok) {
+        throw new Error(`Embedding API error: ${embeddingResponse.status}`);
+      }
+
+      const embeddingData = await embeddingResponse.json();
+      questionEmbedding = embeddingData.data?.[0]?.embedding;
+
+      if (!questionEmbedding) {
+        throw new Error('No embedding returned');
+      }
+    } catch (err: any) {
+      console.error('Failed to generate question embedding:', err);
+      return new Response(
+        JSON.stringify({ error: 'Falha ao processar pergunta. Tente novamente.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Step 2: Search for similar feedbacks using vector search
+    console.log('Searching for similar feedbacks...');
+    
+    const { data: similarFeedbacks, error: searchError } = await supabase.rpc('match_feedbacks', {
+      query_embedding: `[${questionEmbedding.join(',')}]`,
+      match_threshold: 0.5,
+      match_count: 10,
+      filter_member_id: memberId,
+      filter_workspace_id: null
+    });
+
+    if (searchError) {
+      console.error('Vector search error:', searchError);
+      // Fallback: proceed without context if search fails
+    }
+
+    console.log('Similar feedbacks found:', similarFeedbacks?.length || 0);
+
+    // Step 3: Build context from similar feedbacks
+    let contextLines = '';
+    if (similarFeedbacks && similarFeedbacks.length > 0) {
+      for (let idx = 0; idx < similarFeedbacks.length; idx++) {
+        const fb = similarFeedbacks[idx];
+        const date = new Date(fb.created_at).toLocaleDateString('pt-BR');
+        const similarity = (fb.similarity * 100).toFixed(0);
+        const content = fb.content?.substring(0, 500) || fb.summary || '';
+        
+        contextLines += `[Nota ${idx + 1} - ${date} - Relevância: ${similarity}%]
+${content}
+---\n\n`;
+      }
+    } else {
+      contextLines = 'Nenhum histórico relevante encontrado para esta pergunta.';
     }
 
     // Helper: Formatar perfil Rhitmo Sync
@@ -54,39 +130,6 @@ serve(async (req) => {
 - Motivação: ${styleLabels.motivation[data.motivation] || data.motivation}`;
     };
 
-    // Limitar a últimas 5 notas e truncar para 5000 caracteres no total
-    const recentFeedbacks = feedbacks.slice(0, 5);
-    
-    let contextLines = '';
-    let totalChars = 0;
-    const maxChars = 5000;
-    
-    for (let idx = 0; idx < recentFeedbacks.length; idx++) {
-      const fb = recentFeedbacks[idx];
-      const date = new Date(fb.created_at).toLocaleDateString('pt-BR');
-      const sentiment = fb.sentiment || 'neutro';
-      const summary = fb.summary || fb.content.substring(0, 200);
-      const coaching = fb.coaching_tips || '';
-      
-      const noteText = `[Nota ${idx + 1} - ${date} - ${sentiment}]
-Resumo: ${summary}
-${coaching ? `Dicas: ${coaching}` : ''}
----\n\n`;
-      
-      if (totalChars + noteText.length > maxChars) {
-        break;
-      }
-      
-      contextLines += noteText;
-      totalChars += noteText.length;
-    }
-
-    if (!contextLines) {
-      contextLines = 'Nenhum histórico disponível ainda.';
-    }
-
-    console.log('Context prepared:', { totalChars, notesIncluded: recentFeedbacks.length });
-
     // Seção de Objetivos (condicional)
     const objectivesSection = keyObjectives && keyObjectives.trim()
       ? `## 🎯 OBJETIVOS DE NEGÓCIO DO LIDERADO
@@ -100,15 +143,9 @@ ${keyObjectives}
 - Ao identificar um comportamento, avalie: aproxima ou afasta das metas?
 - Conecte feedbacks aos objetivos quando relevante
 - Verifique progresso em relação aos prazos definidos
-- Exemplo de resposta calibrada: "Este comportamento está alinhado ao objetivo de aumentar SQLs, pois demonstra proatividade na prospecção"
 `
       : `## 🎯 OBJETIVOS DE NEGÓCIO
 Nenhum objetivo foi definido pelo gestor.
-
-### COMPORTAMENTO ESPERADO
-- Foque 100% na análise comportamental e de liderança
-- NÃO tente adivinhar metas de negócio
-- Ignore análises de alinhamento a objetivos
 `;
 
     const systemPrompt = `# RHITMO MENTOR - CONSTITUIÇÃO
@@ -149,16 +186,6 @@ Consulte o perfil work_style_data do liderado e ajuste o tom:
 2. **Texto Pronto Destacado**: Use blockquote (>) ou código
 3. **Formato**: 📱 Sugestão para [WhatsApp/Slack/Email]:
 
-### EXEMPLO DE COMPORTAMENTO ESPERADO
-
-**User**: "Como cobro o relatório do João?"
-
-**Rhitmo Mentor**: 
-"Como o João tem perfil **Analítico/Contexto completo** (Rhitmo Sync), ele responde bem a prazos claros e justificativas. Evite rodeios mas explique o porquê.
-
-📱 **Sugestão para WhatsApp**:
-> Oi João! 👋 Precisamos fechar o relatório para a diretoria até amanhã às 14h. Você consegue me enviar a versão final? Se faltar algum dado ou precisar de apoio, me avise agora que a gente resolve junto."
-
 ## PERSONALIZAÇÃO (CRÍTICO)
 Use o perfil Rhitmo Sync para orientar o gerente:
 
@@ -188,7 +215,9 @@ ${objectivesSection}
 
 ${formatWorkStyle(workStyleData)}
 
-## HISTÓRICO DE NOTAS (CONTEXT_DOCUMENTS)
+## NOTAS RELEVANTES (BUSCA SEMÂNTICA - RAG)
+
+As notas abaixo foram selecionadas por similaridade com a pergunta do usuário:
 
 ${contextLines}
 
@@ -196,10 +225,10 @@ ${contextLines}
 
 Lembre-se: Você é um coach experiente. Baseie-se APENAS nos dados acima. Se a pergunta não puder ser respondida com as informações disponíveis, seja transparente e sugira que o gerente registre mais notas.`;
 
-    console.log('Calling OpenAI with context length:', systemPrompt.length);
+    console.log('Calling OpenAI with RAG context...');
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
 
     let response;
     try {
@@ -209,14 +238,14 @@ Lembre-se: Você é um coach experiente. Baseie-se APENAS nos dados acima. Se a 
           'Authorization': `Bearer ${openAIApiKey}`,
           'Content-Type': 'application/json',
         },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: question }
-        ],
-        max_tokens: 1000,
-      }),
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: question }
+          ],
+          max_tokens: 1000,
+        }),
         signal: controller.signal,
       });
     } catch (fetchError: any) {
@@ -279,7 +308,7 @@ Lembre-se: Você é um coach experiente. Baseie-se APENAS nos dados acima. Se a 
 
     const mentorResponse = data.choices[0].message.content;
 
-    console.log('Mentor response generated successfully');
+    console.log('Mentor RAG response generated successfully');
 
     return new Response(
       JSON.stringify({ response: mentorResponse }),
