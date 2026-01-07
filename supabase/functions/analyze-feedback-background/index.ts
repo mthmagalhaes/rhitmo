@@ -125,7 +125,7 @@ serve(async (req) => {
       .from('feedbacks')
       .update({
         summary: summaryText,
-        sentiment: 'neutro', // Default neutral - RAG doesn't analyze sentiment
+        sentiment: null, // NULL para não exibir badges em notas RAG
         coaching_tips: null,
         bias_alert: null,
         embedding: embeddingString
