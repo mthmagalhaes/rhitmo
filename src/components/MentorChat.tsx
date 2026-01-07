@@ -134,7 +134,7 @@ export const MentorChat = ({
           },
           body: JSON.stringify({
             question: finalMessage,
-            feedbacks: feedbacks,
+            memberId: memberId,
             memberName: memberName,
             memberRole: memberRole,
             workStyleData: workStyleData,

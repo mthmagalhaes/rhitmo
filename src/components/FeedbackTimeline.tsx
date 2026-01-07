@@ -1,6 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, TrendingUp, AlertTriangle, Trash2, Zap, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, Trash2, Zap, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,7 +16,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useState } from 'react';
-import DOMPurify from 'dompurify';
 import { cn } from '@/lib/utils';
 
 interface Feedback {
@@ -191,30 +190,6 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onReanalyze, reanalyzing
                     </div>
                   )}
 
-                  {feedback.coaching_tips && (
-                    <div className="mb-4">
-                      <p className="text-sm font-semibold text-primary mb-2 flex items-center gap-2">
-                        <TrendingUp className="h-4 w-4" />
-                        Dicas para a liderança
-                      </p>
-                      <div 
-                        className="text-sm text-muted-foreground prose prose-sm max-w-none"
-                        dangerouslySetInnerHTML={{ 
-                          __html: DOMPurify.sanitize(feedback.coaching_tips.replace(/\n/g, '<br/>')) 
-                        }}
-                      />
-                    </div>
-                  )}
-
-                  {feedback.bias_alert && feedback.bias_alert !== 'Nenhum viés detectado' && (
-                    <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-3 rounded mb-4">
-                      <p className="text-sm font-medium mb-1 flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
-                        <AlertTriangle className="h-4 w-4" />
-                        Alerta de Viés
-                      </p>
-                      <p className="text-sm text-yellow-700 dark:text-yellow-300">{feedback.bias_alert}</p>
-                    </div>
-                  )}
 
                   <Collapsible 
                     open={openTranscripts[feedback.id]} 
