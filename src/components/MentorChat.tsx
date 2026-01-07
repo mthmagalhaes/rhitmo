@@ -3,13 +3,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Send, Loader2, MessageCircle } from 'lucide-react';
+import { Send, Loader2, MessageCircle, Paperclip } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
 import { VoiceInput } from './VoiceInput';
+import { extractTextFromFile, isFileSupported } from '@/lib/fileParser';
 
 interface MentorMessage {
   id: string;
@@ -48,7 +49,9 @@ export const MentorChat = ({
 }: MentorChatProps) => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isExtractingFile, setIsExtractingFile] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -198,6 +201,42 @@ export const MentorChat = ({
     handleSend(text);
   };
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!isFileSupported(file)) {
+      toast({
+        title: "Formato inválido",
+        description: "Envie PDF, Word, TXT, Markdown ou imagem.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsExtractingFile(true);
+    try {
+      const text = await extractTextFromFile(file);
+      setInput(prev => prev + (prev ? '\n\n' : '') + text);
+      toast({ 
+        title: "Texto extraído!", 
+        description: file.name 
+      });
+    } catch (error: any) {
+      toast({ 
+        title: "Erro ao processar", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsExtractingFile(false);
+      // Reset input so the same file can be selected again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 shadow-2xl gap-0">
@@ -294,23 +333,48 @@ export const MentorChat = ({
 
           {/* Cápsula flutuante de input */}
           <div className="flex items-center gap-2 bg-background border border-border rounded-2xl shadow-lg px-4 py-2">
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp"
+              className="hidden"
+              onChange={handleFileSelect}
+            />
+            
+            {/* Paperclip button for file upload */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading || isExtractingFile}
+              className="h-8 w-8 flex-shrink-0 text-muted-foreground hover:text-foreground"
+              aria-label="Anexar arquivo"
+            >
+              {isExtractingFile ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Paperclip className="h-4 w-4" />
+              )}
+            </Button>
+            
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Como posso ajudar você hoje?"
-              disabled={isLoading}
+              disabled={isLoading || isExtractingFile}
               className="flex-1 bg-transparent border-0 outline-none text-sm text-foreground 
                          placeholder:text-muted-foreground disabled:cursor-not-allowed min-w-0"
             />
             <VoiceInput 
               onTranscription={(text) => setInput(text)}
-              disabled={isLoading}
+              disabled={isLoading || isExtractingFile}
             />
             <Button 
               onClick={() => handleSend()} 
-              disabled={isLoading || !input.trim()}
+              disabled={isLoading || isExtractingFile || !input.trim()}
               size="icon"
               className="h-9 w-9 rounded-full bg-primary hover:bg-primary/90 flex-shrink-0"
               aria-label="Enviar mensagem"

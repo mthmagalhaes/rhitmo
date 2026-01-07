@@ -51,8 +51,8 @@ serve(async (req) => {
       return text.trim().split(/\s+/).filter(w => w.length > 0).length;
     };
 
-    // Truncate very long content
-    const maxContentLength = 6000;
+    // Truncate very long content (increased to 15k for better analysis)
+    const maxContentLength = 15000;
     const truncatedContent = feedback.content.length > maxContentLength 
       ? feedback.content.substring(0, maxContentLength) + "\n\n[...conteúdo truncado para análise...]"
       : feedback.content;

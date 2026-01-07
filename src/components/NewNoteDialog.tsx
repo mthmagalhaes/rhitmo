@@ -57,7 +57,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
     if (!isFileSupported(file)) {
       toast({
         title: "Formato inválido",
-        description: "Por favor, envie apenas arquivos PDF, Word, TXT ou Markdown.",
+        description: "Por favor, envie arquivos PDF, Word, TXT, Markdown ou imagens (PNG, JPG, WebP).",
         variant: "destructive"
       });
       return;
@@ -247,14 +247,14 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
                 <>
                   <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                   <p className="text-sm text-muted-foreground">
-                    Arraste sua transcrição (PDF, Word, TXT ou Markdown) ou cole abaixo
+                    Arraste sua transcrição (PDF, Word, TXT, Markdown ou Imagem) ou cole abaixo
                   </p>
                 </>
               )}
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".pdf,.docx,.txt,.md"
+                accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp"
                 className="hidden"
                 onChange={handleFileInputChange}
               />

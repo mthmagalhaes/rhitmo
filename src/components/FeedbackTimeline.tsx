@@ -1,6 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, TrendingUp, AlertTriangle, Trash2, Zap, Loader2, ChevronDown } from 'lucide-react';
+import { Calendar, TrendingUp, AlertTriangle, Trash2, Zap, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,6 +17,7 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useState } from 'react';
 import DOMPurify from 'dompurify';
+import { cn } from '@/lib/utils';
 
 interface Feedback {
   id: string;
@@ -27,6 +28,7 @@ interface Feedback {
   sentiment?: string;
   coaching_tips?: string;
   bias_alert?: string;
+  _analysisStuck?: boolean; // Internal flag for timeout handling
 }
 
 interface FeedbackTimelineProps {
@@ -38,6 +40,17 @@ interface FeedbackTimelineProps {
 
 export const FeedbackTimeline = ({ feedbacks, onDelete, onReanalyze, reanalyzingId }: FeedbackTimelineProps) => {
   const [openTranscripts, setOpenTranscripts] = useState<Record<string, boolean>>({});
+  const [expandedContent, setExpandedContent] = useState<Record<string, boolean>>({});
+
+  const toggleExpand = (id: string) => {
+    setExpandedContent(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const shouldShowExpandButton = (text: string | undefined) => {
+    if (!text) return false;
+    // Approx 4 lines of text (around 250-300 chars)
+    return text.length > 280;
+  };
   const getTypeVariant = (type: string) => {
     switch (type) {
       case 'positive':
@@ -149,7 +162,32 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onReanalyze, reanalyzing
                   {feedback.summary && (
                     <div className="mb-4">
                       <p className="text-sm font-semibold text-primary mb-1">📝 Resumo</p>
-                      <p className="text-foreground leading-relaxed">{feedback.summary}</p>
+                      <p className={cn(
+                        "text-foreground leading-relaxed",
+                        !expandedContent[feedback.id] && shouldShowExpandButton(feedback.summary) && "line-clamp-4"
+                      )}>
+                        {feedback.summary}
+                      </p>
+                      {shouldShowExpandButton(feedback.summary) && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => toggleExpand(feedback.id)}
+                          className="mt-1 h-auto py-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          {expandedContent[feedback.id] ? (
+                            <>
+                              <ChevronUp className="h-3 w-3 mr-1" />
+                              Ver menos
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="h-3 w-3 mr-1" />
+                              Ver mais
+                            </>
+                          )}
+                        </Button>
+                      )}
                     </div>
                   )}
 
@@ -196,7 +234,32 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onReanalyze, reanalyzing
                 </>
               ) : (
                 <>
-                  <p className="text-foreground leading-relaxed mb-4">{feedback.content}</p>
+                  <p className={cn(
+                    "text-foreground leading-relaxed mb-4",
+                    !expandedContent[feedback.id] && shouldShowExpandButton(feedback.content) && "line-clamp-4"
+                  )}>
+                    {feedback.content}
+                  </p>
+                  {shouldShowExpandButton(feedback.content) && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => toggleExpand(feedback.id)}
+                      className="mb-4 h-auto py-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      {expandedContent[feedback.id] ? (
+                        <>
+                          <ChevronUp className="h-3 w-3 mr-1" />
+                          Ver menos
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-3 w-3 mr-1" />
+                          Ver mais
+                        </>
+                      )}
+                    </Button>
+                  )}
                   
                   {onReanalyze && (
                     <Button

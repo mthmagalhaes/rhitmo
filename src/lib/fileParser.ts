@@ -1,23 +1,29 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import mammoth from 'mammoth';
+import { supabase } from '@/integrations/supabase/client';
 
 // Configure PDF.js worker using unpkg (reliable for all versions)
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 // Supported file types
-export const SUPPORTED_MIME_TYPES: Record<string, 'pdf' | 'docx' | 'txt' | 'md'> = {
+type FileType = 'pdf' | 'docx' | 'txt' | 'md' | 'image';
+
+export const SUPPORTED_MIME_TYPES: Record<string, FileType> = {
   'application/pdf': 'pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
   'text/plain': 'txt',
   'text/markdown': 'md',
+  'image/png': 'image',
+  'image/jpeg': 'image',
+  'image/webp': 'image',
 };
 
-export const SUPPORTED_EXTENSIONS = ['pdf', 'docx', 'txt', 'md'] as const;
+export const SUPPORTED_EXTENSIONS = ['pdf', 'docx', 'txt', 'md', 'png', 'jpg', 'jpeg', 'webp'] as const;
 
 /**
  * Detects file type by MIME type first, with fallback to extension
  */
-function getFileType(file: File): 'pdf' | 'docx' | 'txt' | 'md' | 'unknown' {
+function getFileType(file: File): FileType | 'unknown' {
   // 1. Try MIME type first
   const mimeType = SUPPORTED_MIME_TYPES[file.type];
   if (mimeType) return mimeType;
@@ -25,7 +31,11 @@ function getFileType(file: File): 'pdf' | 'docx' | 'txt' | 'md' | 'unknown' {
   // 2. Fallback to extension
   const extension = file.name.split('.').pop()?.toLowerCase();
   if (extension && SUPPORTED_EXTENSIONS.includes(extension as any)) {
-    return extension as 'pdf' | 'docx' | 'txt' | 'md';
+    // Map jpg to image type
+    if (extension === 'jpg' || extension === 'jpeg' || extension === 'png' || extension === 'webp') {
+      return 'image';
+    }
+    return extension as FileType;
   }
 
   return 'unknown';
@@ -73,6 +83,45 @@ async function extractFromDocx(file: File): Promise<string> {
 }
 
 /**
+ * Convert file to base64
+ */
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error('Falha ao ler imagem'));
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Extract text from images using GPT-4o Vision OCR
+ */
+async function extractFromImage(file: File): Promise<string> {
+  const base64Data = await fileToBase64(file);
+  // Remove the data:image/...;base64, prefix
+  const base64Image = base64Data.split(',')[1];
+
+  const { data, error } = await supabase.functions.invoke('extract-text-vision', {
+    body: { 
+      base64Image,
+      mimeType: file.type 
+    }
+  });
+
+  if (error) {
+    console.error('[fileParser] OCR error:', error);
+    throw new Error('Falha ao extrair texto da imagem');
+  }
+
+  if (!data?.text || data.text === '[Nenhum texto detectado]') {
+    throw new Error('Nenhum texto detectado na imagem');
+  }
+
+  return data.text;
+}
+
+/**
  * Main export: Extract text from file with graceful error handling
  * Throws user-friendly error message if extraction fails
  */
@@ -88,6 +137,8 @@ export async function extractTextFromFile(file: File): Promise<string> {
       case 'txt':
       case 'md':
         return await extractFromText(file);
+      case 'image':
+        return await extractFromImage(file);
       case 'unknown':
       default:
         throw new Error('Formato de arquivo não suportado');
