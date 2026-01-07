@@ -73,7 +73,7 @@ const MemberDetails = () => {
 
   // Query para carregar feedbacks
   const {
-    data: feedbacks = [],
+    data: feedbacksRaw = [],
     isLoading: feedbacksLoading
   } = useQuery({
     queryKey: ['feedbacks', id],
@@ -92,11 +92,30 @@ const MemberDetails = () => {
     enabled: !!user && !!id,
     refetchOnWindowFocus: false,
     // Poll every 5 seconds if there are feedbacks being processed (no summary yet)
+    // But stop polling for items older than 30 seconds
     refetchInterval: query => {
       const data = query.state.data;
-      const hasPendingAnalysis = data?.some((f: any) => !f.summary && !f.sentiment);
+      const now = new Date();
+      const hasPendingAnalysis = data?.some((f: any) => {
+        if (f.summary || f.sentiment) return false;
+        const createdAt = new Date(f.created_at);
+        const diffSeconds = (now.getTime() - createdAt.getTime()) / 1000;
+        return diffSeconds <= 30; // Only poll for recent items
+      });
       return hasPendingAnalysis ? 5000 : false;
     }
+  });
+
+  // Add _analysisStuck flag to feedbacks for timeout handling
+  const feedbacks = feedbacksRaw.map((f: any) => {
+    if (f.summary || f.sentiment) return f;
+    const createdAt = new Date(f.created_at);
+    const now = new Date();
+    const diffSeconds = (now.getTime() - createdAt.getTime()) / 1000;
+    return {
+      ...f,
+      _analysisStuck: diffSeconds > 30
+    };
   });
 
   // Query para workspace - necessário para isolamento de tenant no NewNoteDialog
