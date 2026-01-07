@@ -80,7 +80,7 @@ serve(async (req) => {
     
     const { data: similarFeedbacks, error: searchError } = await supabase.rpc('match_feedbacks', {
       query_embedding: `[${questionEmbedding.join(',')}]`,
-      match_threshold: 0.5,
+      match_threshold: 0.7,
       match_count: 10,
       filter_member_id: memberId,
       filter_workspace_id: null
@@ -107,7 +107,10 @@ ${content}
 ---\n\n`;
       }
     } else {
-      contextLines = 'Nenhum histórico relevante encontrado para esta pergunta.';
+      contextLines = `⚠️ ATENÇÃO: CONTEXTO VAZIO ⚠️
+Nenhuma nota relevante foi encontrada para esta pergunta.
+VOCÊ DEVE responder EXATAMENTE: "Não encontrei registros suficientes no histórico sobre esse tema. Registre mais notas sobre esse assunto para que eu possa ajudá-lo."
+NÃO invente informações.`;
     }
 
     // Helper: Formatar perfil Rhitmo Sync
