@@ -27,6 +27,7 @@ interface Feedback {
   sentiment?: string;
   coaching_tips?: string;
   bias_alert?: string;
+  embedding?: string; // RAG embedding vector
   _analysisStuck?: boolean; // Internal flag for timeout handling
 }
 
@@ -83,32 +84,40 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onReanalyze, reanalyzing
     return labels[sentiment] || sentiment;
   };
 
-  const hasAnalysis = (feedback: Feedback) => {
-    return feedback.summary || feedback.sentiment || feedback.coaching_tips || feedback.bias_alert;
+  // Notas legadas têm coaching_tips preenchido
+  const hasLegacyAnalysis = (feedback: Feedback) => {
+    return feedback.coaching_tips || feedback.bias_alert;
   };
 
   const isProcessingAnalysis = (feedback: Feedback) => {
-    // Note was just saved but AI hasn't processed it yet
-    return !feedback.summary && !feedback.sentiment;
+    // Nota está processando se não tem summary E não tem embedding
+    return !feedback.summary && !feedback.embedding;
   };
 
   return (
     <div className="space-y-6">
       {feedbacks.map((feedback) => {
-        const showAnalysis = hasAnalysis(feedback);
+        const showLegacyAnalysis = hasLegacyAnalysis(feedback);
         const isReanalyzing = reanalyzingId === feedback.id;
         const isProcessing = isProcessingAnalysis(feedback);
+        // Para notas RAG: mostrar summary diretamente, sem seção de transcrição
+        const isRagNote = feedback.summary && !feedback.coaching_tips;
 
         return (
           <Card key={feedback.id} className="border-l-4 border-l-primary">
             <CardContent className="pt-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <Badge variant={getTypeVariant(feedback.type)}>
-                    {getTypeLabel(feedback.type)}
-                  </Badge>
-                  {feedback.sentiment && (
-                    <Badge variant="outline">{getSentimentLabel(feedback.sentiment)}</Badge>
+                  {/* Só mostrar badges de tipo/sentiment para notas legadas (com coaching_tips) */}
+                  {hasLegacyAnalysis(feedback) && (
+                    <>
+                      <Badge variant={getTypeVariant(feedback.type)}>
+                        {getTypeLabel(feedback.type)}
+                      </Badge>
+                      {feedback.sentiment && (
+                        <Badge variant="outline">{getSentimentLabel(feedback.sentiment)}</Badge>
+                      )}
+                    </>
                   )}
                   {isProcessing && (
                     <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
@@ -156,7 +165,8 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onReanalyze, reanalyzing
                 </div>
               </div>
               
-              {showAnalysis ? (
+              {/* Notas legadas (com coaching_tips) - exibir resumo + transcrição */}
+              {showLegacyAnalysis ? (
                 <>
                   {feedback.summary && (
                     <div className="mb-4">
@@ -190,7 +200,6 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onReanalyze, reanalyzing
                     </div>
                   )}
 
-
                   <Collapsible 
                     open={openTranscripts[feedback.id]} 
                     onOpenChange={(open) => setOpenTranscripts(prev => ({ ...prev, [feedback.id]: open }))}
@@ -207,7 +216,38 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onReanalyze, reanalyzing
                     </CollapsibleContent>
                   </Collapsible>
                 </>
+              ) : isRagNote ? (
+                /* Notas RAG - exibir summary diretamente, sem seção de transcrição */
+                <>
+                  <p className={cn(
+                    "text-foreground leading-relaxed mb-4",
+                    !expandedContent[feedback.id] && shouldShowExpandButton(feedback.summary) && "line-clamp-4"
+                  )}>
+                    {feedback.summary}
+                  </p>
+                  {shouldShowExpandButton(feedback.summary) && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => toggleExpand(feedback.id)}
+                      className="mb-4 h-auto py-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      {expandedContent[feedback.id] ? (
+                        <>
+                          <ChevronUp className="h-3 w-3 mr-1" />
+                          Ver menos
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-3 w-3 mr-1" />
+                          Ver mais
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </>
               ) : (
+                /* Notas sem processamento - exibir content bruto */
                 <>
                   <p className={cn(
                     "text-foreground leading-relaxed mb-4",
