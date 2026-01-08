@@ -372,9 +372,18 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
     } catch (error: any) {
       console.error('Error extracting text:', error);
       setAttachedFile(null);
+      
+      // Specific message for OCR errors
+      let description = error.message;
+      if (error.message?.includes('OCR') || error.message?.includes('Falha')) {
+        description = 'Não foi possível extrair texto desta imagem. Verifique se contém texto legível.';
+      } else if (error.message?.includes('texto detectado')) {
+        description = 'Nenhum texto encontrado na imagem. Tente uma imagem com texto visível.';
+      }
+      
       toast({
         title: "Erro ao processar arquivo",
-        description: error.message,
+        description,
         variant: "destructive"
       });
     } finally {
