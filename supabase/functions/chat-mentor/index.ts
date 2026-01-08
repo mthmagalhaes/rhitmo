@@ -14,9 +14,13 @@ serve(async (req) => {
   }
 
   try {
-    const { question, memberId, memberName, memberRole, workStyleData, keyObjectives } = await req.json();
+    const { 
+      question, memberId, memberName, memberRole, workStyleData, keyObjectives,
+      // Novos campos para anexos
+      fileUrl, fileType, fileName
+    } = await req.json();
 
-    console.log('Chat mentor RAG request:', { memberName, memberRole, memberId });
+    console.log('Chat mentor RAG request:', { memberName, memberRole, memberId, hasFile: !!fileUrl });
 
     if (!question || !memberId || !memberName) {
       return new Response(
@@ -39,6 +43,49 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // ===== PROCESSAR ANEXO (Server-Side) =====
+    let fileContext = '';
+    let useVisionModel = false;
+    let imageUrl = '';
+
+    if (fileUrl && fileType) {
+      console.log('Processing attachment:', { fileUrl, fileType, fileName });
+      
+      try {
+        if (fileType.startsWith('image/')) {
+          // IMAGENS: Usar GPT-4o Vision diretamente com URL
+          useVisionModel = true;
+          imageUrl = fileUrl;
+          fileContext = `[IMAGEM ANEXADA: ${fileName}]`;
+          console.log('Image attachment - will use Vision model');
+        } else if (fileType === 'application/pdf') {
+          // PDF: Baixar e converter para base64 para Vision OCR
+          console.log('Processing PDF via Vision OCR...');
+          const pdfText = await extractPdfViaVision(fileUrl, openAIApiKey);
+          fileContext = `\n\n## DOCUMENTO ANEXADO: ${fileName}\n\n${pdfText}`;
+          console.log('PDF extracted:', pdfText.length, 'chars');
+        } else if (fileType.includes('text/') || fileType.includes('markdown')) {
+          // Texto: Baixar conteúdo diretamente
+          console.log('Processing text file...');
+          const textResponse = await fetch(fileUrl);
+          const textContent = await textResponse.text();
+          fileContext = `\n\n## DOCUMENTO ANEXADO: ${fileName}\n\n${textContent}`;
+          console.log('Text file loaded:', textContent.length, 'chars');
+        } else if (fileType.includes('word') || fileType.includes('openxmlformats')) {
+          // DOCX: Converter para base64 e usar Vision para extrair texto
+          console.log('Processing DOCX via Vision OCR...');
+          const docxText = await extractDocxViaVision(fileUrl, openAIApiKey);
+          fileContext = `\n\n## DOCUMENTO ANEXADO: ${fileName}\n\n${docxText}`;
+          console.log('DOCX extracted:', docxText.length, 'chars');
+        } else {
+          fileContext = `\n\n[Arquivo anexado: ${fileName} - formato ${fileType} não processável]`;
+        }
+      } catch (err: any) {
+        console.error('Error processing attachment:', err);
+        fileContext = `\n\n[Erro ao processar arquivo ${fileName}: ${err.message}]`;
+      }
+    }
 
     // Step 1: Generate embedding for the user's question
     console.log('Generating embedding for question...');
@@ -80,7 +127,7 @@ serve(async (req) => {
     
     const { data: similarFeedbacks, error: searchError } = await supabase.rpc('match_feedbacks', {
       query_embedding: `[${questionEmbedding.join(',')}]`,
-      match_threshold: 0.5, // Reduced from 0.7 for better recall
+      match_threshold: 0.5,
       match_count: 10,
       filter_member_id: memberId,
       filter_workspace_id: null
@@ -97,7 +144,6 @@ serve(async (req) => {
     const MIN_VECTOR_RESULTS = 3;
     const vectorResultsCount = similarFeedbacks?.length || 0;
 
-    // ALWAYS fetch recent notes - this is our safety net
     const { data: recentNotes, error: recentError } = await supabase
       .from('feedbacks')
       .select('id, content, summary, created_at')
@@ -110,7 +156,6 @@ serve(async (req) => {
     } else if (recentNotes) {
       console.log(`Member has ${recentNotes.length} total notes in database`);
       
-      // If vector search returned few/no results, use recent notes
       if (vectorResultsCount < MIN_VECTOR_RESULTS) {
         console.log(`Vector search returned ${vectorResultsCount} results (< ${MIN_VECTOR_RESULTS}). Using fallback...`);
         const vectorIds = new Set(similarFeedbacks?.map((f: any) => f.id) || []);
@@ -119,16 +164,13 @@ serve(async (req) => {
       }
     }
 
-    // Calculate total context
     const totalContext = vectorResultsCount + recentFeedbacks.length;
 
-    // SAFETY NET: If we have 0 context but member has notes, force include them
     if (totalContext === 0 && recentNotes && recentNotes.length > 0) {
       console.warn('SAFETY NET ACTIVATED: Vector search failed but member has notes. Forcing inclusion.');
       recentFeedbacks = recentNotes.slice(0, 10);
     }
 
-    // Diagnostic log
     console.log('Search results summary:', {
       vectorResults: vectorResultsCount,
       fallbackResults: recentFeedbacks.length,
@@ -139,7 +181,6 @@ serve(async (req) => {
     // Step 3: Build context from similar feedbacks + recent fallback
     let contextLines = '';
 
-    // First: notes from vector search (with similarity score)
     if (similarFeedbacks && similarFeedbacks.length > 0) {
       contextLines += '### NOTAS POR RELEVÂNCIA SEMÂNTICA\n\n';
       for (let idx = 0; idx < similarFeedbacks.length; idx++) {
@@ -154,7 +195,6 @@ ${content}
       }
     }
 
-    // Second: recent notes from fallback (no similarity score)
     if (recentFeedbacks.length > 0) {
       contextLines += '\n### NOTAS RECENTES ADICIONAIS\n\n';
       contextLines += '⚠️ IMPORTANTE: Estas notas foram incluídas como contexto adicional. USE-AS para responder ao gestor.\n\n';
@@ -169,7 +209,6 @@ ${content}
       }
     }
 
-    // Empty message ONLY if no notes from either source
     if (!contextLines) {
       contextLines = `⚠️ ATENÇÃO: CONTEXTO VAZIO ⚠️
 Nenhuma nota foi encontrada para este liderado.
@@ -196,7 +235,6 @@ Sugira ao gestor que registre observações e notas sobre este liderado para que
 - Motivação: ${styleLabels.motivation[data.motivation] || data.motivation}`;
     };
 
-    // Seção de Objetivos (condicional)
     const objectivesSection = keyObjectives && keyObjectives.trim()
       ? `## 🎯 OBJETIVOS DE NEGÓCIO DO LIDERADO
 
@@ -287,15 +325,42 @@ REGRA CRÍTICA: Se houver notas abaixo, você DEVE usá-las para responder.
 Você SÓ pode dizer "não encontrei registros" se a seção abaixo estiver COMPLETAMENTE VAZIA.
 
 ${contextLines}
+${fileContext}
 
 ---
 
 Lembre-se: Você é um coach experiente. Baseie-se APENAS nos dados acima. Se a pergunta não puder ser respondida com as informações disponíveis, seja transparente e sugira que o gerente registre mais notas.`;
 
-    console.log('Calling OpenAI with RAG context...');
+    console.log('Calling OpenAI...', { useVisionModel, model: useVisionModel ? 'gpt-4o' : 'gpt-4o-mini' });
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000);
+    const timeoutId = setTimeout(() => controller.abort(), 55000); // 55s timeout
+
+    // Construir mensagens (multimodal para imagens)
+    let messages: any[];
+    
+    if (useVisionModel && imageUrl) {
+      // Mensagem multimodal para GPT-4o Vision
+      messages = [
+        { role: 'system', content: systemPrompt },
+        { 
+          role: 'user', 
+          content: [
+            { type: 'text', text: question },
+            { 
+              type: 'image_url', 
+              image_url: { url: imageUrl, detail: 'high' } 
+            }
+          ]
+        }
+      ];
+    } else {
+      // Mensagem de texto normal
+      messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: question }
+      ];
+    }
 
     let response;
     try {
@@ -306,12 +371,9 @@ Lembre-se: Você é um coach experiente. Baseie-se APENAS nos dados acima. Se a 
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: question }
-          ],
-          max_tokens: 1000,
+          model: useVisionModel ? 'gpt-4o' : 'gpt-4o-mini',
+          messages,
+          max_tokens: 1500,
         }),
         signal: controller.signal,
       });
@@ -392,3 +454,112 @@ Lembre-se: Você é um coach experiente. Baseie-se APENAS nos dados acima. Se a 
     );
   }
 });
+
+/**
+ * Extract text from PDF using GPT-4o Vision
+ */
+async function extractPdfViaVision(pdfUrl: string, apiKey: string): Promise<string> {
+  // Fetch PDF and convert to base64
+  const pdfResponse = await fetch(pdfUrl);
+  if (!pdfResponse.ok) {
+    throw new Error(`Failed to fetch PDF: ${pdfResponse.status}`);
+  }
+  
+  const pdfBuffer = await pdfResponse.arrayBuffer();
+  const base64Pdf = btoa(String.fromCharCode(...new Uint8Array(pdfBuffer)));
+  
+  // Use Vision to extract text
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { 
+              type: 'text', 
+              text: 'Extraia todo o texto deste documento PDF. Retorne apenas o texto extraído, sem comentários adicionais.' 
+            },
+            {
+              type: 'image_url',
+              image_url: { 
+                url: `data:application/pdf;base64,${base64Pdf}`,
+                detail: 'high'
+              }
+            }
+          ]
+        }
+      ],
+      max_tokens: 4000,
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error('Vision PDF extraction error:', errText);
+    throw new Error(`Vision extraction failed: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || '[Não foi possível extrair texto do PDF]';
+}
+
+/**
+ * Extract text from DOCX using GPT-4o Vision (converted as image approach)
+ */
+async function extractDocxViaVision(docxUrl: string, apiKey: string): Promise<string> {
+  // For DOCX, we'll try to use Vision with base64
+  const docxResponse = await fetch(docxUrl);
+  if (!docxResponse.ok) {
+    throw new Error(`Failed to fetch DOCX: ${docxResponse.status}`);
+  }
+  
+  const docxBuffer = await docxResponse.arrayBuffer();
+  const base64Docx = btoa(String.fromCharCode(...new Uint8Array(docxBuffer)));
+  
+  // Use Vision to extract text
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { 
+              type: 'text', 
+              text: 'Este é um documento Word (.docx). Extraia todo o texto visível. Retorne apenas o texto extraído, sem comentários.' 
+            },
+            {
+              type: 'image_url',
+              image_url: { 
+                url: `data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,${base64Docx}`,
+                detail: 'high'
+              }
+            }
+          ]
+        }
+      ],
+      max_tokens: 4000,
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error('Vision DOCX extraction error:', errText);
+    // Fallback message
+    return '[Documento Word anexado - extração automática indisponível. O usuário deve copiar o conteúdo relevante.]';
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || '[Não foi possível extrair texto do documento]';
+}
