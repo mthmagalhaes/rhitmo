@@ -92,35 +92,48 @@ serve(async (req) => {
 
     console.log('Vector search results:', similarFeedbacks?.length || 0);
 
-    // Step 2.5: Hybrid Search - Safety Net (fallback to recent notes)
+    // Step 2.5: ALWAYS fetch recent notes as backup (robust fallback)
     let recentFeedbacks: any[] = [];
     const MIN_VECTOR_RESULTS = 3;
+    const vectorResultsCount = similarFeedbacks?.length || 0;
 
-    if (!similarFeedbacks || similarFeedbacks.length < MIN_VECTOR_RESULTS) {
-      console.log(`Vector search returned ${similarFeedbacks?.length || 0} results (< ${MIN_VECTOR_RESULTS}). Activating fallback...`);
+    // ALWAYS fetch recent notes - this is our safety net
+    const { data: recentNotes, error: recentError } = await supabase
+      .from('feedbacks')
+      .select('id, content, summary, created_at')
+      .eq('member_id', memberId)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (recentError) {
+      console.error('Fallback query error:', recentError);
+    } else if (recentNotes) {
+      console.log(`Member has ${recentNotes.length} total notes in database`);
       
-      const { data: recentNotes, error: recentError } = await supabase
-        .from('feedbacks')
-        .select('id, content, summary, created_at')
-        .eq('member_id', memberId)
-        .order('created_at', { ascending: false })
-        .limit(10);
-      
-      if (recentError) {
-        console.error('Fallback query error:', recentError);
-      } else if (recentNotes) {
-        // Filter out notes already found by vector search (avoid duplicates)
+      // If vector search returned few/no results, use recent notes
+      if (vectorResultsCount < MIN_VECTOR_RESULTS) {
+        console.log(`Vector search returned ${vectorResultsCount} results (< ${MIN_VECTOR_RESULTS}). Using fallback...`);
         const vectorIds = new Set(similarFeedbacks?.map((f: any) => f.id) || []);
         recentFeedbacks = recentNotes.filter(note => !vectorIds.has(note.id));
-        console.log(`Fallback added ${recentFeedbacks.length} recent notes`);
+        console.log(`Fallback added ${recentFeedbacks.length} unique recent notes`);
       }
+    }
+
+    // Calculate total context
+    const totalContext = vectorResultsCount + recentFeedbacks.length;
+
+    // SAFETY NET: If we have 0 context but member has notes, force include them
+    if (totalContext === 0 && recentNotes && recentNotes.length > 0) {
+      console.warn('SAFETY NET ACTIVATED: Vector search failed but member has notes. Forcing inclusion.');
+      recentFeedbacks = recentNotes.slice(0, 10);
     }
 
     // Diagnostic log
     console.log('Search results summary:', {
-      vectorResults: similarFeedbacks?.length || 0,
+      vectorResults: vectorResultsCount,
       fallbackResults: recentFeedbacks.length,
-      totalContext: (similarFeedbacks?.length || 0) + recentFeedbacks.length
+      totalContext: vectorResultsCount + recentFeedbacks.length,
+      memberTotalNotes: recentNotes?.length || 0
     });
 
     // Step 3: Build context from similar feedbacks + recent fallback
@@ -143,7 +156,8 @@ ${content}
 
     // Second: recent notes from fallback (no similarity score)
     if (recentFeedbacks.length > 0) {
-      contextLines += '\n### NOTAS RECENTES (FALLBACK)\n\n';
+      contextLines += '\n### NOTAS RECENTES ADICIONAIS\n\n';
+      contextLines += '⚠️ IMPORTANTE: Estas notas foram incluídas como contexto adicional. USE-AS para responder ao gestor.\n\n';
       for (let idx = 0; idx < recentFeedbacks.length; idx++) {
         const fb = recentFeedbacks[idx];
         const date = new Date(fb.created_at).toLocaleDateString('pt-BR');
@@ -267,9 +281,10 @@ ${objectivesSection}
 
 ${formatWorkStyle(workStyleData)}
 
-## NOTAS RELEVANTES (BUSCA SEMÂNTICA - RAG)
+## NOTAS DO LIDERADO (CONTEXTO OBRIGATÓRIO)
 
-As notas abaixo foram selecionadas por similaridade com a pergunta do usuário:
+REGRA CRÍTICA: Se houver notas abaixo, você DEVE usá-las para responder.
+Você SÓ pode dizer "não encontrei registros" se a seção abaixo estiver COMPLETAMENTE VAZIA.
 
 ${contextLines}
 
