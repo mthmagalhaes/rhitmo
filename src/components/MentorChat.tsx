@@ -3,20 +3,25 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Send, Loader2, MessageCircle, Paperclip } from 'lucide-react';
+import { Send, Loader2, MessageCircle, Paperclip, FileText, Image, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
 import { VoiceInput } from './VoiceInput';
-import { extractTextFromFile, isFileSupported } from '@/lib/fileParser';
 
 interface MentorMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   created_at: string;
+}
+
+interface AttachedFile {
+  name: string;
+  url: string;
+  type: string;
 }
 
 interface MentorChatProps {
@@ -29,6 +34,13 @@ interface MentorChatProps {
   workStyleData?: any;
   keyObjectives?: string | null;
 }
+
+const ALLOWED_FILE_TYPES = [
+  'image/png', 'image/jpeg', 'image/webp',
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain', 'text/markdown'
+];
 
 const quickSuggestions = [
   { emoji: '📊', text: 'Analisar padrões de comportamento', hiddenMessage: '' },
@@ -51,7 +63,8 @@ export const MentorChat = ({
 }: MentorChatProps) => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isExtractingFile, setIsExtractingFile] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [attachedFile, setAttachedFile] = useState<AttachedFile | null>(null);
   const [searchPhase, setSearchPhase] = useState<'idle' | 'searching' | 'generating'>('idle');
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -73,7 +86,7 @@ export const MentorChat = ({
       return (data || []) as MentorMessage[];
     },
     enabled: open && !!memberId && !!user,
-    staleTime: 1000 * 60 * 5, // 5 minutos
+    staleTime: 1000 * 60 * 5,
   });
 
   // Mutation para salvar mensagem
@@ -111,19 +124,97 @@ export const MentorChat = ({
     }
   }, [messages, isLoading]);
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    // Validar tipo
+    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+      toast({
+        title: "Formato não suportado",
+        description: "Envie imagem (PNG, JPG, WebP), PDF, Word, TXT ou Markdown.",
+        variant: "destructive"
+      });
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    // Validar tamanho (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "Arquivo muito grande",
+        description: "O arquivo deve ter no máximo 10MB.",
+        variant: "destructive"
+      });
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      // Gerar nome único com user_id como pasta
+      const fileName = `${user.id}/${Date.now()}_${file.name}`;
+      
+      // Upload para Storage
+      const { data, error } = await supabase.storage
+        .from('chat-attachments')
+        .upload(fileName, file);
+      
+      if (error) throw error;
+      
+      // Obter URL pública
+      const { data: urlData } = supabase.storage
+        .from('chat-attachments')
+        .getPublicUrl(data.path);
+      
+      setAttachedFile({
+        name: file.name,
+        url: urlData.publicUrl,
+        type: file.type
+      });
+      
+      toast({ title: "Arquivo anexado!", description: file.name });
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast({ 
+        title: "Erro no upload", 
+        description: error.message || "Falha ao enviar arquivo.", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveAttachment = () => {
+    setAttachedFile(null);
+  };
+
   const handleSend = async (messageToSend?: string) => {
     const finalMessage = messageToSend || input;
     if (!finalMessage.trim() || isLoading) return;
 
+    // Capturar anexo atual antes de limpar
+    const currentAttachment = attachedFile;
+    
     setInput('');
+    setAttachedFile(null);
     setIsLoading(true);
     setSearchPhase('searching');
 
+    // Criar mensagem do usuário com indicação de anexo
+    let userMessage = finalMessage;
+    if (currentAttachment) {
+      const fileLabel = currentAttachment.type.startsWith('image/') ? '📷' : '📎';
+      userMessage = `${fileLabel} [${currentAttachment.name}]\n\n${finalMessage}`;
+    }
+
     // Salvar mensagem do usuário
-    await saveMessageMutation.mutateAsync({ role: 'user', content: finalMessage });
+    await saveMessageMutation.mutateAsync({ role: 'user', content: userMessage });
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s para processar arquivos
 
     try {
       const { data: session } = await supabase.auth.getSession();
@@ -144,7 +235,11 @@ export const MentorChat = ({
             memberName: memberName,
             memberRole: memberRole,
             workStyleData: workStyleData,
-            keyObjectives: keyObjectives
+            keyObjectives: keyObjectives,
+            // Novos campos para anexo
+            fileUrl: currentAttachment?.url || null,
+            fileType: currentAttachment?.type || null,
+            fileName: currentAttachment?.name || null
           }),
           signal: controller.signal
         }
@@ -207,42 +302,6 @@ export const MentorChat = ({
   const handleSuggestionClick = (suggestion: typeof quickSuggestions[0]) => {
     const message = suggestion.hiddenMessage || suggestion.text;
     handleSend(message);
-  };
-
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!isFileSupported(file)) {
-      toast({
-        title: "Formato inválido",
-        description: "Envie PDF, Word, TXT, Markdown ou imagem.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsExtractingFile(true);
-    try {
-      const text = await extractTextFromFile(file);
-      setInput(prev => prev + (prev ? '\n\n' : '') + text);
-      toast({ 
-        title: "Texto extraído!", 
-        description: file.name 
-      });
-    } catch (error: any) {
-      toast({ 
-        title: "Erro ao processar", 
-        description: error.message, 
-        variant: "destructive" 
-      });
-    } finally {
-      setIsExtractingFile(false);
-      // Reset input so the same file can be selected again
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
   };
 
   return (
@@ -313,7 +372,9 @@ export const MentorChat = ({
                 <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3">
                   <div className="flex items-center gap-2 text-muted-foreground text-sm">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Pensando...</span>
+                    <span>
+                      {attachedFile ? 'Processando arquivo...' : 'Pensando...'}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -338,6 +399,27 @@ export const MentorChat = ({
               </button>
             ))}
           </div>
+
+          {/* Card de arquivo anexado */}
+          {attachedFile && (
+            <div className="mb-3 flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2 border border-border">
+              {attachedFile.type.startsWith('image/') ? (
+                <Image className="h-4 w-4 text-blue-500 flex-shrink-0" />
+              ) : (
+                <FileText className="h-4 w-4 text-orange-500 flex-shrink-0" />
+              )}
+              <span className="text-sm truncate flex-1">{attachedFile.name}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 flex-shrink-0"
+                onClick={handleRemoveAttachment}
+                disabled={isLoading}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
 
           {/* Feedback de status */}
           {searchPhase !== 'idle' && (
@@ -365,11 +447,11 @@ export const MentorChat = ({
               variant="ghost"
               size="icon"
               onClick={() => fileInputRef.current?.click()}
-              disabled={isLoading || isExtractingFile}
+              disabled={isLoading || isUploading || !!attachedFile}
               className="h-8 w-8 flex-shrink-0 text-muted-foreground hover:text-foreground"
               aria-label="Anexar arquivo"
             >
-              {isExtractingFile ? (
+              {isUploading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Paperclip className="h-4 w-4" />
@@ -381,18 +463,18 @@ export const MentorChat = ({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Como posso ajudar você hoje?"
-              disabled={isLoading || isExtractingFile}
+              placeholder={attachedFile ? "Adicione uma pergunta sobre o arquivo..." : "Como posso ajudar você hoje?"}
+              disabled={isLoading || isUploading}
               className="flex-1 bg-transparent border-0 outline-none text-sm text-foreground 
                          placeholder:text-muted-foreground disabled:cursor-not-allowed min-w-0"
             />
             <VoiceInput 
               onTranscription={(text) => setInput(text)}
-              disabled={isLoading || isExtractingFile}
+              disabled={isLoading || isUploading}
             />
             <Button 
               onClick={() => handleSend()} 
-              disabled={isLoading || isExtractingFile || !input.trim()}
+              disabled={isLoading || isUploading || !input.trim()}
               size="icon"
               className="h-9 w-9 rounded-full bg-primary hover:bg-primary/90 flex-shrink-0"
               aria-label="Enviar mensagem"
