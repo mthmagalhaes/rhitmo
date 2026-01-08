@@ -32,3 +32,6 @@ verify_jwt = true
 
 [functions.extract-text-vision]
 verify_jwt = true
+
+[functions.backfill-embeddings]
+verify_jwt = false
