@@ -80,7 +80,7 @@ serve(async (req) => {
     
     const { data: similarFeedbacks, error: searchError } = await supabase.rpc('match_feedbacks', {
       query_embedding: `[${questionEmbedding.join(',')}]`,
-      match_threshold: 0.7,
+      match_threshold: 0.5, // Reduced from 0.7 for better recall
       match_count: 10,
       filter_member_id: memberId,
       filter_workspace_id: null
@@ -88,14 +88,47 @@ serve(async (req) => {
 
     if (searchError) {
       console.error('Vector search error:', searchError);
-      // Fallback: proceed without context if search fails
     }
 
-    console.log('Similar feedbacks found:', similarFeedbacks?.length || 0);
+    console.log('Vector search results:', similarFeedbacks?.length || 0);
 
-    // Step 3: Build context from similar feedbacks
+    // Step 2.5: Hybrid Search - Safety Net (fallback to recent notes)
+    let recentFeedbacks: any[] = [];
+    const MIN_VECTOR_RESULTS = 3;
+
+    if (!similarFeedbacks || similarFeedbacks.length < MIN_VECTOR_RESULTS) {
+      console.log(`Vector search returned ${similarFeedbacks?.length || 0} results (< ${MIN_VECTOR_RESULTS}). Activating fallback...`);
+      
+      const { data: recentNotes, error: recentError } = await supabase
+        .from('feedbacks')
+        .select('id, content, summary, created_at')
+        .eq('member_id', memberId)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      
+      if (recentError) {
+        console.error('Fallback query error:', recentError);
+      } else if (recentNotes) {
+        // Filter out notes already found by vector search (avoid duplicates)
+        const vectorIds = new Set(similarFeedbacks?.map((f: any) => f.id) || []);
+        recentFeedbacks = recentNotes.filter(note => !vectorIds.has(note.id));
+        console.log(`Fallback added ${recentFeedbacks.length} recent notes`);
+      }
+    }
+
+    // Diagnostic log
+    console.log('Search results summary:', {
+      vectorResults: similarFeedbacks?.length || 0,
+      fallbackResults: recentFeedbacks.length,
+      totalContext: (similarFeedbacks?.length || 0) + recentFeedbacks.length
+    });
+
+    // Step 3: Build context from similar feedbacks + recent fallback
     let contextLines = '';
+
+    // First: notes from vector search (with similarity score)
     if (similarFeedbacks && similarFeedbacks.length > 0) {
+      contextLines += '### NOTAS POR RELEVÂNCIA SEMÂNTICA\n\n';
       for (let idx = 0; idx < similarFeedbacks.length; idx++) {
         const fb = similarFeedbacks[idx];
         const date = new Date(fb.created_at).toLocaleDateString('pt-BR');
@@ -106,11 +139,27 @@ serve(async (req) => {
 ${content}
 ---\n\n`;
       }
-    } else {
+    }
+
+    // Second: recent notes from fallback (no similarity score)
+    if (recentFeedbacks.length > 0) {
+      contextLines += '\n### NOTAS RECENTES (FALLBACK)\n\n';
+      for (let idx = 0; idx < recentFeedbacks.length; idx++) {
+        const fb = recentFeedbacks[idx];
+        const date = new Date(fb.created_at).toLocaleDateString('pt-BR');
+        const content = fb.content?.substring(0, 500) || fb.summary || '';
+        
+        contextLines += `[Nota Recente ${idx + 1} - ${date}]
+${content}
+---\n\n`;
+      }
+    }
+
+    // Empty message ONLY if no notes from either source
+    if (!contextLines) {
       contextLines = `⚠️ ATENÇÃO: CONTEXTO VAZIO ⚠️
-Nenhuma nota relevante foi encontrada para esta pergunta.
-VOCÊ DEVE responder EXATAMENTE: "Não encontrei registros suficientes no histórico sobre esse tema. Registre mais notas sobre esse assunto para que eu possa ajudá-lo."
-NÃO invente informações.`;
+Nenhuma nota foi encontrada para este liderado.
+Sugira ao gestor que registre observações e notas sobre este liderado para que você possa ajudá-lo melhor.`;
     }
 
     // Helper: Formatar perfil Rhitmo Sync
