@@ -3,19 +3,42 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Send, Loader2, MessageCircle, Paperclip, FileText, Image, X } from 'lucide-react';
+import { 
+  ResizablePanelGroup, 
+  ResizablePanel, 
+  ResizableHandle 
+} from '@/components/ui/resizable';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Send, Loader2, Paperclip, FileText, Image, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
 import { VoiceInput } from './VoiceInput';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  ThreadSidebar, 
+  EmptyThreadState, 
+  RenameThreadDialog,
+  type ChatThread 
+} from './mentor';
 
 interface MentorMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   created_at: string;
+  thread_id: string | null;
 }
 
 interface AttachedFile {
@@ -66,32 +89,135 @@ export const MentorChat = ({
   const [isUploading, setIsUploading] = useState(false);
   const [attachedFile, setAttachedFile] = useState<AttachedFile | null>(null);
   const [searchPhase, setSearchPhase] = useState<'idle' | 'searching' | 'generating'>('idle');
+  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [renameThreadId, setRenameThreadId] = useState<string | null>(null);
+  const [renameThreadTitle, setRenameThreadTitle] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteThreadId, setDeleteThreadId] = useState<string | null>(null);
+  
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  // Buscar histórico de mensagens
-  const { data: messages = [], isLoading: isLoadingHistory } = useQuery({
-    queryKey: ['mentor-messages', memberId],
+  // Reset selected thread when dialog opens
+  useEffect(() => {
+    if (open) {
+      setSelectedThreadId(null);
+    }
+  }, [open]);
+
+  // Buscar threads do membro
+  const { data: threads = [], isLoading: isLoadingThreads } = useQuery({
+    queryKey: ['chat-threads', memberId],
     queryFn: async () => {
+      const { data, error } = await supabase
+        .from('chat_threads')
+        .select('*')
+        .eq('member_id', memberId)
+        .order('updated_at', { ascending: false });
+      
+      if (error) throw error;
+      return (data || []) as ChatThread[];
+    },
+    enabled: open && !!memberId && !!user,
+  });
+
+  // Auto-select first thread if exists and none selected
+  useEffect(() => {
+    if (threads.length > 0 && selectedThreadId === null) {
+      setSelectedThreadId(threads[0].id);
+    }
+  }, [threads, selectedThreadId]);
+
+  // Buscar mensagens da thread selecionada
+  const { data: messages = [], isLoading: isLoadingMessages } = useQuery({
+    queryKey: ['mentor-messages', selectedThreadId],
+    queryFn: async () => {
+      if (!selectedThreadId) return [];
       const { data, error } = await supabase
         .from('mentor_messages')
         .select('*')
-        .eq('member_id', memberId)
+        .eq('thread_id', selectedThreadId)
         .order('created_at', { ascending: true });
       
       if (error) throw error;
       return (data || []) as MentorMessage[];
     },
-    enabled: open && !!memberId && !!user,
-    staleTime: 1000 * 60 * 5,
+    enabled: open && !!selectedThreadId && !!user,
+  });
+
+  // Mutation para criar thread
+  const createThreadMutation = useMutation({
+    mutationFn: async (title: string) => {
+      if (!user) throw new Error('Usuário não autenticado');
+      
+      const { data, error } = await supabase
+        .from('chat_threads')
+        .insert({
+          user_id: user.id,
+          member_id: memberId,
+          title: title.slice(0, 50) + (title.length > 50 ? '...' : '')
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data as ChatThread;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chat-threads', memberId] });
+    }
+  });
+
+  // Mutation para renomear thread
+  const renameThreadMutation = useMutation({
+    mutationFn: async ({ threadId, newTitle }: { threadId: string; newTitle: string }) => {
+      const { error } = await supabase
+        .from('chat_threads')
+        .update({ title: newTitle })
+        .eq('id', threadId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chat-threads', memberId] });
+      toast({ title: 'Conversa renomeada!' });
+    }
+  });
+
+  // Mutation para excluir thread
+  const deleteThreadMutation = useMutation({
+    mutationFn: async (threadId: string) => {
+      const { error } = await supabase
+        .from('chat_threads')
+        .delete()
+        .eq('id', threadId);
+      
+      if (error) throw error;
+    },
+    onSuccess: (_, deletedId) => {
+      queryClient.invalidateQueries({ queryKey: ['chat-threads', memberId] });
+      if (selectedThreadId === deletedId) {
+        setSelectedThreadId(null);
+      }
+      toast({ title: 'Conversa excluída!' });
+    }
   });
 
   // Mutation para salvar mensagem
   const saveMessageMutation = useMutation({
-    mutationFn: async (message: { role: 'user' | 'assistant'; content: string }) => {
+    mutationFn: async ({ 
+      role, 
+      content, 
+      threadId 
+    }: { 
+      role: 'user' | 'assistant'; 
+      content: string; 
+      threadId: string 
+    }) => {
       if (!user) throw new Error('Usuário não autenticado');
       
       const { error } = await supabase
@@ -99,14 +225,22 @@ export const MentorChat = ({
         .insert({
           user_id: user.id,
           member_id: memberId,
-          role: message.role,
-          content: message.content
+          role: role,
+          content: content,
+          thread_id: threadId
         });
       
       if (error) throw error;
+
+      // Update thread's updated_at
+      await supabase
+        .from('chat_threads')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', threadId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['mentor-messages', memberId] });
+      queryClient.invalidateQueries({ queryKey: ['mentor-messages', selectedThreadId] });
+      queryClient.invalidateQueries({ queryKey: ['chat-threads', memberId] });
     }
   });
 
@@ -128,7 +262,6 @@ export const MentorChat = ({
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
-    // Validar tipo
     if (!ALLOWED_FILE_TYPES.includes(file.type)) {
       toast({
         title: "Formato não suportado",
@@ -139,7 +272,6 @@ export const MentorChat = ({
       return;
     }
 
-    // Validar tamanho (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
       toast({
         title: "Arquivo muito grande",
@@ -152,17 +284,14 @@ export const MentorChat = ({
 
     setIsUploading(true);
     try {
-      // Gerar nome único com user_id como pasta
       const fileName = `${user.id}/${Date.now()}_${file.name}`;
       
-      // Upload para Storage
       const { data, error } = await supabase.storage
         .from('chat-attachments')
         .upload(fileName, file);
       
       if (error) throw error;
       
-      // Obter URL pública
       const { data: urlData } = supabase.storage
         .from('chat-attachments')
         .getPublicUrl(data.path);
@@ -195,13 +324,37 @@ export const MentorChat = ({
     const finalMessage = messageToSend || input;
     if (!finalMessage.trim() || isLoading) return;
 
-    // Capturar anexo atual antes de limpar
     const currentAttachment = attachedFile;
     
     setInput('');
     setAttachedFile(null);
     setIsLoading(true);
     setSearchPhase('searching');
+
+    // Gerar título se for nova conversa
+    let activeThreadId = selectedThreadId;
+    
+    if (!activeThreadId) {
+      // Criar nova thread com título baseado na mensagem
+      const title = messageToSend 
+        ? (quickSuggestions.find(s => s.hiddenMessage === messageToSend || s.text === messageToSend)?.text || finalMessage.slice(0, 40))
+        : finalMessage.slice(0, 40);
+      
+      try {
+        const newThread = await createThreadMutation.mutateAsync(title);
+        activeThreadId = newThread.id;
+        setSelectedThreadId(newThread.id);
+      } catch (error) {
+        console.error('Error creating thread:', error);
+        toast({ 
+          title: "Erro ao criar conversa", 
+          variant: "destructive" 
+        });
+        setIsLoading(false);
+        setSearchPhase('idle');
+        return;
+      }
+    }
 
     // Criar mensagem do usuário com indicação de anexo
     let userMessage = finalMessage;
@@ -211,10 +364,14 @@ export const MentorChat = ({
     }
 
     // Salvar mensagem do usuário
-    await saveMessageMutation.mutateAsync({ role: 'user', content: userMessage });
+    await saveMessageMutation.mutateAsync({ 
+      role: 'user', 
+      content: userMessage, 
+      threadId: activeThreadId 
+    });
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s para processar arquivos
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
 
     try {
       const { data: session } = await supabase.auth.getSession();
@@ -236,7 +393,7 @@ export const MentorChat = ({
             memberRole: memberRole,
             workStyleData: workStyleData,
             keyObjectives: keyObjectives,
-            // Novos campos para anexo
+            threadId: activeThreadId,
             fileUrl: currentAttachment?.url || null,
             fileType: currentAttachment?.type || null,
             fileName: currentAttachment?.name || null
@@ -253,7 +410,7 @@ export const MentorChat = ({
           const errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
         } catch {
-          // Se não conseguir parsear o JSON, usa mensagem padrão
+          // If we can't parse JSON, use default message
         }
         throw new Error(errorMessage);
       }
@@ -265,7 +422,11 @@ export const MentorChat = ({
       }
 
       // Salvar resposta do assistente
-      await saveMessageMutation.mutateAsync({ role: 'assistant', content: data.response });
+      await saveMessageMutation.mutateAsync({ 
+        role: 'assistant', 
+        content: data.response, 
+        threadId: activeThreadId 
+      });
     } catch (error: any) {
       clearTimeout(timeoutId);
       console.error('Erro no chat:', error);
@@ -278,8 +439,11 @@ export const MentorChat = ({
         errorMessage = error.message;
       }
 
-      // Salvar erro como mensagem do assistente
-      await saveMessageMutation.mutateAsync({ role: 'assistant', content: `⚠️ ${errorMessage}` });
+      await saveMessageMutation.mutateAsync({ 
+        role: 'assistant', 
+        content: `⚠️ ${errorMessage}`, 
+        threadId: activeThreadId 
+      });
 
       toast({
         title: "Erro ao consultar mentor",
@@ -304,186 +468,282 @@ export const MentorChat = ({
     handleSend(message);
   };
 
+  const handleNewConversation = () => {
+    setSelectedThreadId(null);
+  };
+
+  const handleRenameThread = (threadId: string, currentTitle: string) => {
+    setRenameThreadId(threadId);
+    setRenameThreadTitle(currentTitle);
+    setRenameDialogOpen(true);
+  };
+
+  const handleConfirmRename = (newTitle: string) => {
+    if (renameThreadId) {
+      renameThreadMutation.mutate({ threadId: renameThreadId, newTitle });
+    }
+  };
+
+  const handleDeleteThread = (threadId: string) => {
+    setDeleteThreadId(threadId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteThreadId) {
+      deleteThreadMutation.mutate(deleteThreadId);
+    }
+    setDeleteDialogOpen(false);
+    setDeleteThreadId(null);
+  };
+
+  const isNewConversation = selectedThreadId === null;
+  const showEmptyState = isNewConversation && !isLoading;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 shadow-2xl gap-0">
-        <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-          <DialogTitle className="text-foreground text-lg">
-            🎯 Mentor Chat
-            <span className="text-muted-foreground font-normal text-base ml-2">
-              — {memberName} {memberRole && `(${memberRole})`}
-            </span>
-          </DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 shadow-2xl gap-0">
+          <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+            <DialogTitle className="text-foreground text-lg">
+              🎯 Mentor Chat
+              <span className="text-muted-foreground font-normal text-base ml-2">
+                — {memberName} {memberRole && `(${memberRole})`}
+              </span>
+            </DialogTitle>
+          </DialogHeader>
 
-        <ScrollArea className="flex-1 px-6 py-4" ref={scrollRef}>
-          <div className="space-y-4">
-            {/* Skeleton loader */}
-            {isLoadingHistory && (
-              <div className="space-y-4">
-                <Skeleton className="h-16 w-3/4" />
-                <Skeleton className="h-12 w-1/2 ml-auto" />
-                <Skeleton className="h-20 w-3/4" />
-              </div>
-            )}
+          <ResizablePanelGroup direction="horizontal" className="flex-1">
+            {/* Sidebar */}
+            <ResizablePanel defaultSize={25} minSize={20} maxSize={35}>
+              <ThreadSidebar
+                threads={threads}
+                selectedThreadId={selectedThreadId}
+                isLoading={isLoadingThreads}
+                onNewConversation={handleNewConversation}
+                onSelectThread={setSelectedThreadId}
+                onRenameThread={handleRenameThread}
+                onDeleteThread={handleDeleteThread}
+              />
+            </ResizablePanel>
 
-            {/* Empty state */}
-            {!isLoadingHistory && messages.length === 0 && (
-              <div className="text-center py-12 text-muted-foreground">
-                <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="font-medium">Início da conversa sobre {memberName}</p>
-                <p className="text-sm mt-1">Use as sugestões abaixo ou faça uma pergunta</p>
-              </div>
-            )}
+            <ResizableHandle withHandle />
 
-            {/* Messages */}
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[85%] px-4 py-3 ${
-                    msg.role === 'user'
-                      ? 'bg-primary text-primary-foreground rounded-2xl rounded-br-md'
-                      : 'bg-muted text-foreground rounded-2xl rounded-bl-md'
-                  }`}
-                >
-                  <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
-                    <ReactMarkdown
-                      components={{
-                        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                        ul: ({ children }) => <ul className="list-disc ml-4 mb-2">{children}</ul>,
-                        ol: ({ children }) => <ol className="list-decimal ml-4 mb-2">{children}</ol>,
-                        li: ({ children }) => <li className="mb-1">{children}</li>,
-                        strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-                      }}
+            {/* Main chat area */}
+            <ResizablePanel defaultSize={75}>
+              <div className="h-full flex flex-col">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={selectedThreadId || 'new'}
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    transition={{ duration: 0.15 }}
+                    className="flex-1 flex flex-col min-h-0"
+                  >
+                    {showEmptyState ? (
+                      <EmptyThreadState
+                        memberName={memberName}
+                        suggestions={quickSuggestions}
+                        onSuggestionClick={handleSuggestionClick}
+                        isLoading={isLoading}
+                      />
+                    ) : (
+                      <ScrollArea className="flex-1 px-6 py-4" ref={scrollRef}>
+                        <div className="space-y-4">
+                          {isLoadingMessages && (
+                            <div className="space-y-4">
+                              <Skeleton className="h-16 w-3/4" />
+                              <Skeleton className="h-12 w-1/2 ml-auto" />
+                              <Skeleton className="h-20 w-3/4" />
+                            </div>
+                          )}
+
+                          {!isLoadingMessages && messages.length === 0 && selectedThreadId && (
+                            <div className="text-center py-12 text-muted-foreground">
+                              <p className="text-sm">Nenhuma mensagem nesta conversa ainda</p>
+                            </div>
+                          )}
+
+                          {messages.map((msg) => (
+                            <div
+                              key={msg.id}
+                              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                            >
+                              <div
+                                className={`max-w-[85%] px-4 py-3 ${
+                                  msg.role === 'user'
+                                    ? 'bg-primary text-primary-foreground rounded-2xl rounded-br-md'
+                                    : 'bg-muted text-foreground rounded-2xl rounded-bl-md'
+                                }`}
+                              >
+                                <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
+                                  <ReactMarkdown
+                                    components={{
+                                      p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                                      ul: ({ children }) => <ul className="list-disc ml-4 mb-2">{children}</ul>,
+                                      ol: ({ children }) => <ol className="list-decimal ml-4 mb-2">{children}</ol>,
+                                      li: ({ children }) => <li className="mb-1">{children}</li>,
+                                      strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                                    }}
+                                  >
+                                    {msg.content}
+                                  </ReactMarkdown>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                          
+                          {isLoading && (
+                            <div className="flex justify-start">
+                              <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3">
+                                <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  <span>
+                                    {searchPhase === 'searching' ? '🔍 Consultando histórico...' : '✨ Gerando resposta...'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </ScrollArea>
+                    )}
+                  </motion.div>
+                </AnimatePresence>
+
+                {/* Área de input */}
+                <div className="px-6 pb-6 pt-3 border-t border-border flex-shrink-0">
+                  {/* Quick suggestions - show only for new conversation or when there are no messages */}
+                  {!showEmptyState && (
+                    <div className="flex gap-2 mb-3 overflow-x-auto pb-2 scrollbar-hide">
+                      {quickSuggestions.slice(0, 4).map((suggestion, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => handleSuggestionClick(suggestion)}
+                          disabled={isLoading}
+                          className="flex-shrink-0 px-3 py-1.5 text-sm bg-muted hover:bg-accent 
+                                     text-muted-foreground hover:text-accent-foreground rounded-full 
+                                     transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {suggestion.emoji} {suggestion.text}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Card de arquivo anexado */}
+                  {attachedFile && (
+                    <div className="mb-3 flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2 border border-border">
+                      {attachedFile.type.startsWith('image/') ? (
+                        <Image className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                      ) : (
+                        <FileText className="h-4 w-4 text-orange-500 flex-shrink-0" />
+                      )}
+                      <span className="text-sm truncate flex-1">{attachedFile.name}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 flex-shrink-0"
+                        onClick={handleRemoveAttachment}
+                        disabled={isLoading}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Feedback de status */}
+                  {searchPhase !== 'idle' && (
+                    <div className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      {searchPhase === 'searching' 
+                        ? '🔍 Consultando Diário de Bordo...'
+                        : '✨ Gerando resposta...'}
+                    </div>
+                  )}
+
+                  {/* Cápsula flutuante de input */}
+                  <div className="flex items-center gap-2 bg-background border border-border rounded-2xl shadow-lg px-4 py-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp"
+                      className="hidden"
+                      onChange={handleFileSelect}
+                    />
+                    
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isLoading || isUploading || !!attachedFile}
+                      className="h-8 w-8 flex-shrink-0 text-muted-foreground hover:text-foreground"
+                      aria-label="Anexar arquivo"
                     >
-                      {msg.content}
-                    </ReactMarkdown>
+                      {isUploading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Paperclip className="h-4 w-4" />
+                      )}
+                    </Button>
+                    
+                    <input
+                      type="text"
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      placeholder={attachedFile ? "Adicione uma pergunta sobre o arquivo..." : "Como posso ajudar você hoje?"}
+                      disabled={isLoading || isUploading}
+                      className="flex-1 bg-transparent border-0 outline-none text-sm text-foreground 
+                                 placeholder:text-muted-foreground disabled:cursor-not-allowed min-w-0"
+                    />
+                    <VoiceInput 
+                      onTranscription={(text) => setInput(text)}
+                      disabled={isLoading || isUploading}
+                    />
+                    <Button 
+                      onClick={() => handleSend()} 
+                      disabled={isLoading || isUploading || !input.trim()}
+                      size="icon"
+                      className="h-9 w-9 rounded-full bg-primary hover:bg-primary/90 flex-shrink-0"
+                      aria-label="Enviar mensagem"
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               </div>
-            ))}
-            
-            {/* Loading indicator */}
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3">
-                  <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>
-                      {attachedFile ? 'Processando arquivo...' : 'Pensando...'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </ScrollArea>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        </DialogContent>
+      </Dialog>
 
-        {/* Área de input */}
-        <div className="px-6 pb-6 pt-3 border-t border-border flex-shrink-0">
-          {/* Chips de sugestão rápida */}
-          <div className="flex gap-2 mb-3 overflow-x-auto pb-2 scrollbar-hide">
-            {quickSuggestions.map((suggestion, idx) => (
-              <button
-                key={idx}
-                onClick={() => handleSuggestionClick(suggestion)}
-                disabled={isLoading}
-                className="flex-shrink-0 px-3 py-1.5 text-sm bg-muted hover:bg-accent 
-                           text-muted-foreground hover:text-accent-foreground rounded-full 
-                           transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {suggestion.emoji} {suggestion.text}
-              </button>
-            ))}
-          </div>
+      {/* Rename Dialog */}
+      <RenameThreadDialog
+        open={renameDialogOpen}
+        onOpenChange={setRenameDialogOpen}
+        currentTitle={renameThreadTitle}
+        onConfirm={handleConfirmRename}
+      />
 
-          {/* Card de arquivo anexado */}
-          {attachedFile && (
-            <div className="mb-3 flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2 border border-border">
-              {attachedFile.type.startsWith('image/') ? (
-                <Image className="h-4 w-4 text-blue-500 flex-shrink-0" />
-              ) : (
-                <FileText className="h-4 w-4 text-orange-500 flex-shrink-0" />
-              )}
-              <span className="text-sm truncate flex-1">{attachedFile.name}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 flex-shrink-0"
-                onClick={handleRemoveAttachment}
-                disabled={isLoading}
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            </div>
-          )}
-
-          {/* Feedback de status */}
-          {searchPhase !== 'idle' && (
-            <div className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              {searchPhase === 'searching' 
-                ? '🔍 Consultando Diário de Bordo...'
-                : '✨ Gerando resposta...'}
-            </div>
-          )}
-
-          {/* Cápsula flutuante de input */}
-          <div className="flex items-center gap-2 bg-background border border-border rounded-2xl shadow-lg px-4 py-2">
-            {/* Hidden file input */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp"
-              className="hidden"
-              onChange={handleFileSelect}
-            />
-            
-            {/* Paperclip button for file upload */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isLoading || isUploading || !!attachedFile}
-              className="h-8 w-8 flex-shrink-0 text-muted-foreground hover:text-foreground"
-              aria-label="Anexar arquivo"
-            >
-              {isUploading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Paperclip className="h-4 w-4" />
-              )}
-            </Button>
-            
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder={attachedFile ? "Adicione uma pergunta sobre o arquivo..." : "Como posso ajudar você hoje?"}
-              disabled={isLoading || isUploading}
-              className="flex-1 bg-transparent border-0 outline-none text-sm text-foreground 
-                         placeholder:text-muted-foreground disabled:cursor-not-allowed min-w-0"
-            />
-            <VoiceInput 
-              onTranscription={(text) => setInput(text)}
-              disabled={isLoading || isUploading}
-            />
-            <Button 
-              onClick={() => handleSend()} 
-              disabled={isLoading || isUploading || !input.trim()}
-              size="icon"
-              className="h-9 w-9 rounded-full bg-primary hover:bg-primary/90 flex-shrink-0"
-              aria-label="Enviar mensagem"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir conversa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. Todas as mensagens desta conversa serão excluídas permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
