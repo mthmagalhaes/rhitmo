@@ -16,11 +16,13 @@ serve(async (req) => {
   try {
     const { 
       question, memberId, memberName, memberRole, workStyleData, keyObjectives,
-      // Novos campos para anexos
-      fileUrl, fileType, fileName
+      // Campos para anexos
+      fileUrl, fileType, fileName,
+      // Thread ID (para contexto futuro)
+      threadId
     } = await req.json();
 
-    console.log('Chat mentor RAG request:', { memberName, memberRole, memberId, hasFile: !!fileUrl });
+    console.log('Chat mentor RAG request:', { memberName, memberRole, memberId, hasFile: !!fileUrl, threadId });
 
     if (!question || !memberId || !memberName) {
       return new Response(

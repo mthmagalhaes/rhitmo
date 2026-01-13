@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      chat_threads: {
+        Row: {
+          created_at: string
+          id: string
+          member_id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          member_id: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          member_id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_threads_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feedbacks: {
         Row: {
           bias_alert: string | null
@@ -74,6 +109,7 @@ export type Database = {
           id: string
           member_id: string
           role: string
+          thread_id: string | null
           user_id: string
         }
         Insert: {
@@ -82,6 +118,7 @@ export type Database = {
           id?: string
           member_id: string
           role: string
+          thread_id?: string | null
           user_id: string
         }
         Update: {
@@ -90,6 +127,7 @@ export type Database = {
           id?: string
           member_id?: string
           role?: string
+          thread_id?: string | null
           user_id?: string
         }
         Relationships: [
@@ -98,6 +136,13 @@ export type Database = {
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentor_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "chat_threads"
             referencedColumns: ["id"]
           },
         ]
