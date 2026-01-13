@@ -65,13 +65,37 @@ const ALLOWED_FILE_TYPES = [
   'text/plain', 'text/markdown'
 ];
 
-const quickSuggestions = [
-  { emoji: '📊', text: 'Analisar padrões de comportamento', hiddenMessage: '' },
-  { emoji: '🗣️', text: 'Roteiro para 1:1', hiddenMessage: '' },
-  { emoji: '💡', text: 'Sugerir PDI', hiddenMessage: '' },
-  { emoji: '⚠️', text: 'Identificar riscos', hiddenMessage: '' },
-  { emoji: '📊', text: 'Avaliação Trimestral', hiddenMessage: 'Gere uma avaliação de desempenho estruturada (Pontos Fortes e A Melhorar) baseada estritamente nas notas dos últimos 90 dias.' },
-  { emoji: '📝', text: 'Resumir Histórico', hiddenMessage: 'Resuma cronologicamente os fatos mais relevantes registrados sobre este membro.' },
+const getQuickSuggestions = (memberName: string) => [
+  { 
+    emoji: '📊', 
+    text: 'Analisar padrões de comportamento', 
+    hiddenMessage: `Analise as notas disponíveis sobre ${memberName} e identifique padrões de comportamento, participação em reuniões, temas discutidos e evolução ao longo do tempo. Considere transcrições de reuniões e 1:1s como fontes válidas de observação comportamental.` 
+  },
+  { 
+    emoji: '🗣️', 
+    text: 'Roteiro para 1:1', 
+    hiddenMessage: `Com base nas notas e reuniões recentes de ${memberName}, sugira um roteiro para a próxima 1:1. Inclua tópicos relevantes baseados nos temas discutidos recentemente e possíveis pontos de acompanhamento.` 
+  },
+  { 
+    emoji: '💡', 
+    text: 'Sugerir PDI', 
+    hiddenMessage: `Analise as notas disponíveis sobre ${memberName} e sugira possíveis pontos para um Plano de Desenvolvimento Individual (PDI). Considere as atividades, desafios e temas discutidos nas reuniões.` 
+  },
+  { 
+    emoji: '⚠️', 
+    text: 'Identificar riscos', 
+    hiddenMessage: `Revise as notas e transcrições de reuniões de ${memberName} e identifique possíveis sinais de atenção: mudanças de engajamento, sobrecarga, conflitos ou padrões que merecem acompanhamento do gestor.` 
+  },
+  { 
+    emoji: '📊', 
+    text: 'Avaliação Trimestral', 
+    hiddenMessage: `Gere uma avaliação de desempenho estruturada (Pontos Fortes e A Melhorar) de ${memberName} baseada estritamente nas notas dos últimos 90 dias. Considere transcrições de reuniões como evidências válidas.` 
+  },
+  { 
+    emoji: '📝', 
+    text: 'Resumir Histórico', 
+    hiddenMessage: `Resuma cronologicamente os fatos mais relevantes registrados sobre ${memberName}. Inclua temas de reuniões, projetos mencionados e evolução ao longo do tempo.` 
+  },
 ];
 
 export const MentorChat = ({ 
@@ -338,8 +362,9 @@ export const MentorChat = ({
     
     if (!activeThreadId) {
       // Criar nova thread com título baseado na mensagem
+      const suggestions = getQuickSuggestions(memberName);
       const title = messageToSend 
-        ? (quickSuggestions.find(s => s.hiddenMessage === messageToSend || s.text === messageToSend)?.text || finalMessage.slice(0, 40))
+        ? (suggestions.find(s => s.hiddenMessage === messageToSend || s.text === messageToSend)?.text || finalMessage.slice(0, 40))
         : finalMessage.slice(0, 40);
       
       try {
@@ -466,7 +491,7 @@ export const MentorChat = ({
     }
   };
 
-  const handleSuggestionClick = (suggestion: typeof quickSuggestions[0]) => {
+  const handleSuggestionClick = (suggestion: { emoji: string; text: string; hiddenMessage: string }) => {
     const message = suggestion.hiddenMessage || suggestion.text;
     handleSend(message);
   };
@@ -551,7 +576,7 @@ export const MentorChat = ({
                     {showEmptyState ? (
                       <EmptyThreadState
                         memberName={memberName}
-                        suggestions={quickSuggestions}
+                        suggestions={getQuickSuggestions(memberName)}
                         onSuggestionClick={handleSuggestionClick}
                         isLoading={isLoading}
                       />
@@ -624,7 +649,7 @@ export const MentorChat = ({
                   {/* Quick suggestions - show only for new conversation or when there are no messages */}
                   {!showEmptyState && (
                     <div className="flex gap-2 mb-3 overflow-x-auto pb-2 scrollbar-hide">
-                      {quickSuggestions.slice(0, 4).map((suggestion, idx) => (
+                      {getQuickSuggestions(memberName).slice(0, 4).map((suggestion, idx) => (
                         <button
                           key={idx}
                           onClick={() => handleSuggestionClick(suggestion)}
