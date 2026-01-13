@@ -1,6 +1,6 @@
+import { useEffect, useState } from 'react';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
-import { WorkspaceOnboarding } from '@/components/WorkspaceOnboarding';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const queryClient = useQueryClient();
+  const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
 
   // Query para verificar workspace do usuário
   const { data: workspace, isLoading: workspaceLoading, refetch } = useQuery({
@@ -24,24 +25,63 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     enabled: !!user,
   });
 
-  const needsWorkspaceSetup = !authLoading && !workspaceLoading && user && !workspace;
+  const needsWorkspaceSetup = !authLoading && !workspaceLoading && user && !workspace && !isCreatingWorkspace;
 
-  const handleWorkspaceComplete = () => {
-    refetch();
-    queryClient.invalidateQueries({ queryKey: ['workspace'] });
-    queryClient.invalidateQueries({ queryKey: ['teams'] });
-  };
+  // Auto-criar workspace silenciosamente
+  useEffect(() => {
+    const createWorkspaceAutomatically = async () => {
+      if (!needsWorkspaceSetup || !user) return;
+      
+      setIsCreatingWorkspace(true);
+      
+      try {
+        // Extrair nome do usuário
+        const userName = user.user_metadata?.full_name || 
+                         user.email?.split('@')[0] || 
+                         'Meu';
+        
+        const planTier = user.user_metadata?.assigned_plan || 'pulse';
+        const workspaceName = `Workspace de ${userName}`;
+        
+        // Criar workspace silenciosamente
+        const { data: newWorkspace, error: workspaceError } = await supabase
+          .from('workspaces')
+          .insert({
+            owner_id: user.id,
+            name: workspaceName,
+            plan_tier: planTier,
+          })
+          .select()
+          .single();
+
+        if (workspaceError) throw workspaceError;
+
+        // Criar time padrão "Sem Time"
+        const { error: teamError } = await supabase
+          .from('teams')
+          .insert({
+            workspace_id: newWorkspace.id,
+            name: 'Sem Time',
+          });
+
+        if (teamError) throw teamError;
+
+        // Atualizar queries
+        refetch();
+        queryClient.invalidateQueries({ queryKey: ['workspace'] });
+        queryClient.invalidateQueries({ queryKey: ['teams'] });
+      } catch (error) {
+        console.error('Erro ao criar workspace automaticamente:', error);
+      } finally {
+        setIsCreatingWorkspace(false);
+      }
+    };
+
+    createWorkspaceAutomatically();
+  }, [needsWorkspaceSetup, user, refetch, queryClient]);
 
   return (
     <SidebarProvider>
-      {/* Modal de Workspace Onboarding */}
-      {needsWorkspaceSetup && (
-        <WorkspaceOnboarding 
-          userId={user.id}
-          userMetadata={user.user_metadata}
-          onComplete={handleWorkspaceComplete}
-        />
-      )}
 
       <div className="min-h-screen flex w-full">
         <AppSidebar />

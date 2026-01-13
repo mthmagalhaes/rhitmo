@@ -11,6 +11,7 @@ import { EditTeamDialog } from '@/components/EditTeamDialog';
 import { DeleteTeamDialog } from '@/components/DeleteTeamDialog';
 import { TeamTabs } from '@/components/TeamTabs';
 import { SetupChecklist } from '@/components/SetupChecklist';
+import { FirstMemberOnboarding } from '@/components/FirstMemberOnboarding';
 import { useAuth } from '@/hooks/useAuth';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { supabase } from '@/integrations/supabase/client';
@@ -238,6 +239,12 @@ const Index = () => {
     : teamMembers;
 
   const activeTeam = teams.find(t => t.id === activeTeamId);
+  
+  // Encontrar time padrão "Sem Time" para o onboarding
+  const defaultTeam = teams.find(t => t.name === 'Sem Time');
+  
+  // Verificar se precisa mostrar o modal de primeiro membro
+  const needsFirstMember = workspace && !loading && teamMembers.length === 0 && defaultTeam;
   
   const getPageTitle = () => {
     if (!activeTeamId) return 'Todos os Membros';
@@ -496,6 +503,14 @@ const Index = () => {
           handleSuccess();
         }}
       />
+      
+      {/* Modal obrigatório para primeiro liderado */}
+      {needsFirstMember && (
+        <FirstMemberOnboarding
+          teamId={defaultTeam.id}
+          onComplete={handleSuccess}
+        />
+      )}
     </div>
   );
 };
