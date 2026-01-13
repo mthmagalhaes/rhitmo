@@ -95,6 +95,7 @@ export const MentorChat = ({
   const [renameThreadTitle, setRenameThreadTitle] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteThreadId, setDeleteThreadId] = useState<string | null>(null);
+  const [isCreatingNewThread, setIsCreatingNewThread] = useState(false);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -102,10 +103,11 @@ export const MentorChat = ({
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  // Reset selected thread when dialog opens
+  // Reset state when dialog opens
   useEffect(() => {
     if (open) {
       setSelectedThreadId(null);
+      setIsCreatingNewThread(false);
     }
   }, [open]);
 
@@ -125,12 +127,12 @@ export const MentorChat = ({
     enabled: open && !!memberId && !!user,
   });
 
-  // Auto-select first thread if exists and none selected
+  // Auto-select first thread if exists and none selected (unless creating new)
   useEffect(() => {
-    if (threads.length > 0 && selectedThreadId === null) {
+    if (threads.length > 0 && selectedThreadId === null && !isCreatingNewThread) {
       setSelectedThreadId(threads[0].id);
     }
-  }, [threads, selectedThreadId]);
+  }, [threads, selectedThreadId, isCreatingNewThread]);
 
   // Buscar mensagens da thread selecionada
   const { data: messages = [], isLoading: isLoadingMessages } = useQuery({
@@ -344,6 +346,7 @@ export const MentorChat = ({
         const newThread = await createThreadMutation.mutateAsync(title);
         activeThreadId = newThread.id;
         setSelectedThreadId(newThread.id);
+        setIsCreatingNewThread(false);
       } catch (error) {
         console.error('Error creating thread:', error);
         toast({ 
@@ -470,6 +473,7 @@ export const MentorChat = ({
 
   const handleNewConversation = () => {
     setSelectedThreadId(null);
+    setIsCreatingNewThread(true);
   };
 
   const handleRenameThread = (threadId: string, currentTitle: string) => {
@@ -521,7 +525,10 @@ export const MentorChat = ({
                 selectedThreadId={selectedThreadId}
                 isLoading={isLoadingThreads}
                 onNewConversation={handleNewConversation}
-                onSelectThread={setSelectedThreadId}
+                onSelectThread={(threadId) => {
+                  setSelectedThreadId(threadId);
+                  setIsCreatingNewThread(false);
+                }}
                 onRenameThread={handleRenameThread}
                 onDeleteThread={handleDeleteThread}
               />
