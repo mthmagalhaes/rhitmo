@@ -1,7 +1,7 @@
 import { Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-interface QuickSuggestion {
+export interface QuickSuggestion {
   emoji: string;
   text: string;
   hiddenMessage: string;
