@@ -74,27 +74,27 @@ const getQuickSuggestions = (memberName: string) => [
   { 
     emoji: '🗣️', 
     text: 'Roteiro para 1:1', 
-    hiddenMessage: `Com base nas notas e reuniões recentes de ${memberName}, sugira um roteiro para a próxima 1:1. Inclua tópicos relevantes baseados nos temas discutidos recentemente e possíveis pontos de acompanhamento.` 
+    hiddenMessage: `Com base nas notas e reuniões recentes de ${memberName}, crie um roteiro estruturado para a próxima 1:1. Inclua: (1) tópicos pendentes de acompanhamento, (2) temas discutidos recentemente que merecem follow-up, (3) perguntas abertas para engajamento. Se houver dados do Rhitmo Sync, adapte o formato ao estilo de comunicação preferido.` 
   },
   { 
     emoji: '💡', 
     text: 'Sugerir PDI', 
-    hiddenMessage: `Analise as notas disponíveis sobre ${memberName} e sugira possíveis pontos para um Plano de Desenvolvimento Individual (PDI). Considere as atividades, desafios e temas discutidos nas reuniões.` 
+    hiddenMessage: `Analise as notas disponíveis sobre ${memberName} e sugira um Plano de Desenvolvimento Individual (PDI) estruturado. Identifique: (1) habilidades demonstradas, (2) gaps ou áreas mencionadas como desafio, (3) oportunidades de crescimento baseadas nos projetos e temas das reuniões. Proponha 2-3 ações concretas de desenvolvimento.` 
   },
   { 
     emoji: '⚠️', 
     text: 'Identificar riscos', 
-    hiddenMessage: `Revise as notas e transcrições de reuniões de ${memberName} e identifique possíveis sinais de atenção: mudanças de engajamento, sobrecarga, conflitos ou padrões que merecem acompanhamento do gestor.` 
+    hiddenMessage: `Revise as notas e transcrições de reuniões de ${memberName} e identifique possíveis sinais de atenção: mudanças de engajamento, sobrecarga, conflitos, frustrações mencionadas, ou padrões que merecem acompanhamento. Classifique por nível de urgência (alto/médio/baixo) e sugira ações preventivas.` 
   },
   { 
-    emoji: '📊', 
+    emoji: '📋', 
     text: 'Avaliação Trimestral', 
-    hiddenMessage: `Gere uma avaliação de desempenho estruturada (Pontos Fortes e A Melhorar) de ${memberName} baseada estritamente nas notas dos últimos 90 dias. Considere transcrições de reuniões como evidências válidas.` 
+    hiddenMessage: `Gere uma avaliação de desempenho estruturada de ${memberName} baseada estritamente nas notas dos últimos 90 dias. Organize em: (1) Principais Conquistas, (2) Pontos Fortes demonstrados, (3) Oportunidades de Melhoria, (4) Recomendações para o próximo trimestre. Cite datas das evidências quando possível.` 
   },
   { 
     emoji: '📝', 
     text: 'Resumir Histórico', 
-    hiddenMessage: `Resuma cronologicamente os fatos mais relevantes registrados sobre ${memberName}. Inclua temas de reuniões, projetos mencionados e evolução ao longo do tempo.` 
+    hiddenMessage: `Faça um resumo cronológico completo dos registros sobre ${memberName}. Organize por período (mês/semana), destacando: marcos importantes, projetos mencionados, feedback recebido, temas recorrentes e evolução ao longo do tempo. Inclua timeline com datas.` 
   },
 ];
 
