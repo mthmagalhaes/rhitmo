@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_impersonation: {
+        Row: {
+          admin_user_id: string
+          created_at: string | null
+          id: string
+          impersonated_email: string | null
+          impersonated_user_id: string
+        }
+        Insert: {
+          admin_user_id: string
+          created_at?: string | null
+          id?: string
+          impersonated_email?: string | null
+          impersonated_user_id: string
+        }
+        Update: {
+          admin_user_id?: string
+          created_at?: string | null
+          id?: string
+          impersonated_email?: string | null
+          impersonated_user_id?: string
+        }
+        Relationships: []
+      }
       chat_threads: {
         Row: {
           created_at: string
@@ -358,6 +382,7 @@ export type Database = {
     Functions: {
       can_update_own_sync: { Args: { member_id: string }; Returns: boolean }
       check_is_admin: { Args: never; Returns: boolean }
+      effective_user_id: { Args: never; Returns: string }
       get_all_users_with_metadata: {
         Args: never
         Returns: {

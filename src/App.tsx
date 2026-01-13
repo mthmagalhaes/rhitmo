@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
 import { AuthEventProvider } from "./components/AuthEventProvider";
+import { ImpersonationProvider } from "./contexts/ImpersonationContext";
+import { ImpersonationBar } from "./components/admin/ImpersonationBar";
 import Landing from "./pages/Landing";
 import Index from "./pages/Index";
 import MemberDetails from "./pages/MemberDetails";
@@ -26,40 +28,43 @@ const App = () => (
       <Toaster />
       <Sonner />
       <AuthEventProvider>
-        <BrowserRouter>
-          <Routes>
-            {/* Landing Page pública com redirect inteligente */}
-            <Route path="/" element={<Landing />} />
-            
-            {/* Auth */}
-            <Route path="/auth" element={<AuthPage />} />
-            
-            {/* Dashboard (antigo Index) - autenticado */}
-            <Route path="/dashboard" element={<AppLayout><Index /></AppLayout>} />
-            <Route path="/member/:id" element={<AppLayout><MemberDetails /></AppLayout>} />
-            <Route path="/analytics" element={<AppLayout><Analytics /></AppLayout>} />
-            <Route path="/billing" element={<AppLayout><Billing /></AppLayout>} />
-            <Route path="/help" element={<AppLayout><HelpCenter /></AppLayout>} />
-            
-            {/* Rotas públicas (sem sidebar) */}
-            <Route path="/sync/:memberId" element={<RhitmoSync />} />
-            
-            {/* Rota Admin */}
-            <Route 
-              path="/admin" 
-              element={
-                <AdminGuard>
-                  <AdminLayout>
-                    <Admin />
-                  </AdminLayout>
-                </AdminGuard>
-              } 
-            />
-            
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
+        <ImpersonationProvider>
+          <ImpersonationBar />
+          <BrowserRouter>
+            <Routes>
+              {/* Landing Page pública com redirect inteligente */}
+              <Route path="/" element={<Landing />} />
+              
+              {/* Auth */}
+              <Route path="/auth" element={<AuthPage />} />
+              
+              {/* Dashboard (antigo Index) - autenticado */}
+              <Route path="/dashboard" element={<AppLayout><Index /></AppLayout>} />
+              <Route path="/member/:id" element={<AppLayout><MemberDetails /></AppLayout>} />
+              <Route path="/analytics" element={<AppLayout><Analytics /></AppLayout>} />
+              <Route path="/billing" element={<AppLayout><Billing /></AppLayout>} />
+              <Route path="/help" element={<AppLayout><HelpCenter /></AppLayout>} />
+              
+              {/* Rotas públicas (sem sidebar) */}
+              <Route path="/sync/:memberId" element={<RhitmoSync />} />
+              
+              {/* Rota Admin */}
+              <Route 
+                path="/admin" 
+                element={
+                  <AdminGuard>
+                    <AdminLayout>
+                      <Admin />
+                    </AdminLayout>
+                  </AdminGuard>
+                } 
+              />
+              
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </ImpersonationProvider>
       </AuthEventProvider>
     </TooltipProvider>
   </QueryClientProvider>
