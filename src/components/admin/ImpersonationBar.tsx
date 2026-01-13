@@ -15,7 +15,7 @@ export function ImpersonationBar() {
         <div className="flex items-center gap-2">
           <Eye className="h-4 w-4" />
           <span className="text-sm font-medium">
-            🕵️ Modo Espião: Visualizando como <strong>{impersonatedUser.email}</strong>
+            View Mode: Visualizando como <strong>{impersonatedUser.email}</strong>
           </span>
         </div>
         <Button
@@ -26,7 +26,7 @@ export function ImpersonationBar() {
           className="gap-2"
         >
           <X className="h-4 w-4" />
-          Sair do Modo Admin
+          Exit View Mode
         </Button>
       </div>
     </div>
