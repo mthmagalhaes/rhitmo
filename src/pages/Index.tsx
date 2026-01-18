@@ -455,7 +455,12 @@ const Index = () => {
         )}
       </main>
 
-      <NewNoteDialog open={dialogOpen} onOpenChange={setDialogOpen} workspaceId={workspace?.id} />
+      <NewNoteDialog 
+        open={dialogOpen} 
+        onOpenChange={setDialogOpen} 
+        workspaceId={workspace?.id}
+        onRequestNewMember={() => setMemberDialogOpen(true)}
+      />
       <NewMemberDialog 
         open={memberDialogOpen} 
         onOpenChange={setMemberDialogOpen}
