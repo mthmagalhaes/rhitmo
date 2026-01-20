@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -6,10 +6,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Printer, Pencil, Trash2, TrendingUp } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import ReactMarkdown from 'react-markdown';
 import { marked } from 'marked';
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import DOMPurify from 'dompurify';
 
 interface PerformanceReview {
   id: string;
@@ -37,13 +38,31 @@ export const ReviewViewDialog = ({
 }: ReviewViewDialogProps) => {
   const [editing, setEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState(review.title);
-  const [editedContent, setEditedContent] = useState(review.content);
+  const [editedContent, setEditedContent] = useState('');
   const [saving, setSaving] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const { toast } = useToast();
 
-  const handleExportPDF = () => {
+  // Convert content to HTML when entering edit mode
+  useEffect(() => {
+    if (editing && review.content) {
+      const convertContent = async () => {
+        // Check if content is already HTML (starts with <)
+        const isHtml = review.content.trim().startsWith('<');
+        if (isHtml) {
+          setEditedContent(review.content);
+        } else {
+          // Convert Markdown to HTML
+          const htmlContent = await marked(review.content);
+          setEditedContent(htmlContent);
+        }
+      };
+      convertContent();
+    }
+  }, [editing, review.content]);
+
+  const handleExportPDF = async () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       toast({
@@ -54,8 +73,9 @@ export const ReviewViewDialog = ({
       return;
     }
 
-    // Convert Markdown to HTML for PDF
-    const htmlContent = marked(review.content);
+    // Handle both HTML and Markdown content
+    const isHtml = review.content.trim().startsWith('<');
+    const htmlContent = isHtml ? review.content : await marked(review.content);
 
     printWindow.document.write(`
       <html>
@@ -286,18 +306,21 @@ export const ReviewViewDialog = ({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-content">Conteúdo</Label>
-                <Textarea
-                  id="edit-content"
-                  value={editedContent}
-                  onChange={(e) => setEditedContent(e.target.value)}
-                  className="min-h-[400px] font-mono text-sm"
+                <Label>Conteúdo</Label>
+                <RichTextEditor
+                  content={editedContent}
+                  onChange={setEditedContent}
+                  className="min-h-[400px]"
                 />
               </div>
             </div>
           ) : (
             <div className="prose prose-sm max-w-none">
-              <ReactMarkdown>{review.content}</ReactMarkdown>
+              {review.content.trim().startsWith('<') ? (
+                <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(review.content) }} />
+              ) : (
+                <ReactMarkdown>{review.content}</ReactMarkdown>
+              )}
             </div>
           )}
 
@@ -308,7 +331,7 @@ export const ReviewViewDialog = ({
                 onClick={() => {
                   setEditing(false);
                   setEditedTitle(review.title);
-                  setEditedContent(review.content);
+                  setEditedContent('');
                 }}
                 disabled={saving}
               >
