@@ -18,6 +18,7 @@ export function GoalsManager({ memberId, memberName }: GoalsManagerProps) {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+  const [isReactivating, setIsReactivating] = useState(false);
 
   const { data: goals = [], isLoading } = useQuery({
     queryKey: ["goals", memberId],
@@ -39,12 +40,27 @@ export function GoalsManager({ memberId, memberName }: GoalsManagerProps) {
 
   const handleEdit = (goal: Goal) => {
     setEditingGoal(goal);
+    setIsReactivating(false);
     setDialogOpen(true);
   };
 
   const handleNewGoal = () => {
     setEditingGoal(null);
+    setIsReactivating(false);
     setDialogOpen(true);
+  };
+
+  const handleReactivate = (goal: Goal) => {
+    setEditingGoal(goal);
+    setIsReactivating(true);
+    setDialogOpen(true);
+  };
+
+  const handleDialogClose = (open: boolean) => {
+    setDialogOpen(open);
+    if (!open) {
+      setIsReactivating(false);
+    }
   };
 
   const handleComplete = async (goal: Goal) => {
@@ -205,6 +221,7 @@ export function GoalsManager({ memberId, memberName }: GoalsManagerProps) {
                   onComplete={handleComplete}
                   onArchive={handleArchive}
                   onDelete={handleDelete}
+                  onReactivate={handleReactivate}
                   isHistory
                 />
               ))}
@@ -215,10 +232,11 @@ export function GoalsManager({ memberId, memberName }: GoalsManagerProps) {
 
       <NewGoalDialog
         open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        onOpenChange={handleDialogClose}
         memberId={memberId}
         memberName={memberName}
         editingGoal={editingGoal}
+        isReactivating={isReactivating}
         onGoalSaved={handleGoalSaved}
       />
     </div>
