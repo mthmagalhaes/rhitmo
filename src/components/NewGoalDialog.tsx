@@ -31,6 +31,7 @@ interface NewGoalDialogProps {
   memberId: string;
   memberName: string;
   editingGoal?: Goal | null;
+  isReactivating?: boolean;
   onGoalSaved: () => void;
 }
 
@@ -40,6 +41,7 @@ export function NewGoalDialog({
   memberId,
   memberName,
   editingGoal,
+  isReactivating = false,
   onGoalSaved,
 }: NewGoalDialogProps) {
   const { toast } = useToast();
@@ -95,7 +97,7 @@ export function NewGoalDialog({
     setSaving(true);
 
     try {
-      const goalData = {
+      const goalData: any = {
         member_id: memberId,
         title: title.trim(),
         description: description || null,
@@ -106,6 +108,12 @@ export function NewGoalDialog({
         metric_unit: metricUnit || null,
       };
 
+      // Force active status when reactivating
+      if (isReactivating) {
+        goalData.status = 'active';
+        goalData.completed_at = null;
+      }
+
       if (editingGoal) {
         const { error } = await supabase
           .from("goals")
@@ -115,8 +123,10 @@ export function NewGoalDialog({
         if (error) throw error;
 
         toast({
-          title: "Meta atualizada",
-          description: "A meta foi atualizada com sucesso.",
+          title: isReactivating ? "Meta reativada! 🎯" : "Meta atualizada",
+          description: isReactivating 
+            ? `"${title}" está novamente ativa.`
+            : "A meta foi atualizada com sucesso.",
         });
       } else {
         const { error } = await supabase
@@ -150,12 +160,14 @@ export function NewGoalDialog({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {editingGoal ? "Editar Meta" : "Nova Meta"}
+            {isReactivating ? "Reativar Meta" : editingGoal ? "Editar Meta" : "Nova Meta"}
           </DialogTitle>
           <DialogDescription>
-            {editingGoal 
-              ? `Editando meta de ${memberName}`
-              : `Definir uma nova meta para ${memberName}`
+            {isReactivating
+              ? `Reativando meta de ${memberName}. Ajuste o prazo se necessário.`
+              : editingGoal 
+                ? `Editando meta de ${memberName}`
+                : `Definir uma nova meta para ${memberName}`
             }
           </DialogDescription>
         </DialogHeader>
@@ -247,14 +259,22 @@ export function NewGoalDialog({
                 </Popover>
               </div>
               <div className="space-y-1">
-                <span className="text-xs text-muted-foreground">Prazo</span>
+                <span className={cn(
+                  "text-xs",
+                  isReactivating 
+                    ? "text-primary font-semibold" 
+                    : "text-muted-foreground"
+                )}>
+                  Prazo {isReactivating && "(defina um novo prazo)"}
+                </span>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
                       className={cn(
                         "w-full justify-start text-left font-normal",
-                        !targetDate && "text-muted-foreground"
+                        !targetDate && "text-muted-foreground",
+                        isReactivating && "border-primary ring-1 ring-primary/30"
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
@@ -281,7 +301,14 @@ export function NewGoalDialog({
             Cancelar
           </Button>
           <Button onClick={handleSave} disabled={saving}>
-            {saving ? "Salvando..." : editingGoal ? "Salvar Alterações" : "Criar Meta"}
+            {saving 
+              ? "Salvando..." 
+              : isReactivating 
+                ? "Reativar Meta" 
+                : editingGoal 
+                  ? "Salvar Alterações" 
+                  : "Criar Meta"
+            }
           </Button>
         </DialogFooter>
       </DialogContent>

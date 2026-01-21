@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { format, isPast, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Check, Edit2, Trash2, MoreHorizontal, Archive } from "lucide-react";
+import { Check, Edit2, Trash2, MoreHorizontal, Archive, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -45,6 +45,7 @@ interface GoalCardProps {
   onComplete: (goal: Goal) => void;
   onArchive: (goal: Goal) => void;
   onDelete: (goal: Goal) => void;
+  onReactivate?: (goal: Goal) => void;
   isHistory?: boolean;
 }
 
@@ -54,6 +55,7 @@ export function GoalCard({
   onComplete, 
   onArchive, 
   onDelete,
+  onReactivate,
   isHistory = false 
 }: GoalCardProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -144,6 +146,18 @@ export function GoalCard({
                   <Check className="h-4 w-4" />
                 </Button>
               </>
+            )}
+            
+            {isHistory && onReactivate && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-primary hover:text-primary/80 hover:bg-primary/10"
+                onClick={() => onReactivate(goal)}
+                title="Reativar meta"
+              >
+                <RotateCcw className="h-4 w-4" />
+              </Button>
             )}
             
             <DropdownMenu>
