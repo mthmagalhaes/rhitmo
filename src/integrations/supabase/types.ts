@@ -126,6 +126,62 @@ export type Database = {
           },
         ]
       }
+      goals: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          member_id: string
+          metric_current: number | null
+          metric_target: number | null
+          metric_unit: string | null
+          start_date: string | null
+          status: string
+          target_date: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          member_id: string
+          metric_current?: number | null
+          metric_target?: number | null
+          metric_unit?: string | null
+          start_date?: string | null
+          status?: string
+          target_date?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          member_id?: string
+          metric_current?: number | null
+          metric_target?: number | null
+          metric_unit?: string | null
+          start_date?: string | null
+          status?: string
+          target_date?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goals_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mentor_messages: {
         Row: {
           content: string
