@@ -48,6 +48,21 @@ serve(async (req) => {
 
     console.log(`Encontrados ${feedbacks?.length || 0} feedbacks no período`);
 
+    // Buscar metas do membro (ativas, concluídas e arquivadas)
+    const { data: goals, error: goalsError } = await supabase
+      .from('goals')
+      .select('*')
+      .eq('member_id', memberId)
+      .in('status', ['active', 'completed', 'archived'])
+      .order('created_at', { ascending: false });
+
+    if (goalsError) {
+      console.error('Erro ao buscar metas:', goalsError);
+      // Não interrompe - metas são opcionais
+    }
+
+    console.log(`Encontradas ${goals?.length || 0} metas`);
+
     // Buscar dados do membro (incluindo work_style_data)
     const { data: member, error: memberError } = await supabase
       .from('team_members')
@@ -63,6 +78,41 @@ serve(async (req) => {
     console.log(`Membro encontrado: ${member.name}`);
 
     const keyObjectives = member.key_objectives;
+
+    // Formatar metas para o prompt (contexto opcional)
+    const formatGoalsForPrompt = (goals: any[] | null): string => {
+      if (!goals || goals.length === 0) {
+        return ''; // Retorna vazio - a IA vai ignorar naturalmente
+      }
+
+      const goalsText = goals.map(g => {
+        const progress = g.metric_target && g.metric_current 
+          ? `${g.metric_current}/${g.metric_target} ${g.metric_unit || ''}`.trim()
+          : 'Sem métricas definidas';
+        
+        const statusLabel: Record<string, string> = {
+          'active': '🟡 Em andamento',
+          'completed': '✅ Concluída',
+          'archived': '📦 Arquivada'
+        };
+        
+        const dueDate = g.target_date 
+          ? new Date(g.target_date).toLocaleDateString('pt-BR')
+          : 'Sem prazo';
+        
+        return `- **${g.title}** | Status: ${statusLabel[g.status] || g.status} | Progresso: ${progress} | Prazo: ${dueDate}`;
+      }).join('\n');
+
+      return `
+
+## 📊 CONTEXTO DE ENTREGAS (INFORMATIVO)
+
+${goalsText}
+`;
+    };
+
+    const goalsContext = formatGoalsForPrompt(goals);
+    console.log(`Contexto de metas: ${goals?.length || 0} metas | Has context: ${goalsContext.length > 0}`);
 
     // Preparar contexto para a IA
     const feedbacksText = feedbacks && feedbacks.length > 0
@@ -145,7 +195,31 @@ Use o perfil work_style_data para sugerir COMO apresentar:
 - Se não houver dados suficientes, diga claramente: "Dados insuficientes para avaliar este aspecto"
 - Mantenha tom profissional, respeitoso e construtivo
 - Use APENAS sintaxe Markdown padrão
-- Sempre cite datas quando mencionar eventos específicos`;
+- Sempre cite datas quando mencionar eventos específicos
+
+## 🧭 FILOSOFIA RHITMO: COMPORTAMENTO PRIMEIRO
+
+A cultura da Rhitmo prioriza **Comportamento, Aprendizado e Soft Skills**.
+As Metas (se existirem) servem apenas para dar **contexto sobre capacidade de entrega**.
+
+### REGRAS INEGOCIÁVEIS:
+
+**REGRA 1 - SEM METAS:**
+Se NÃO houver metas listadas na seção "CONTEXTO DE ENTREGAS":
+- Ignore totalmente esse tópico
+- NÃO invente ou mencione "falta de metas"
+- Foque 100% na análise comportamental das notas
+
+**REGRA 2 - COM METAS:**
+Se houver metas, use-as para **enriquecer a análise comportamental**:
+- ✅ CERTO: "Demonstrou resiliência ao recuperar a meta de vendas que estava em risco"
+- ✅ CERTO: "Mostrou proatividade ao antecipar a entrega da meta X"
+- ❌ ERRADO: "Atingiu 80% da meta de vendas" (avaliação apenas pelo número)
+- ❌ ERRADO: "Não cumpriu a meta estabelecida" (tom punitivo)
+
+**REGRA 3 - HIERARQUIA:**
+Comportamento > Entrega. Nunca avalie o colaborador APENAS pelo número.
+Uma meta não atingida com aprendizado vale mais que uma meta atingida sem crescimento.`;
 
     // Seção de Objetivos (condicional)
     const objectivesSection = keyObjectives && keyObjectives.trim()
@@ -173,7 +247,7 @@ Nenhum objetivo formal foi definido.
 - Base a avaliação exclusivamente nos feedbacks
 `;
 
-    const userPrompt = `FEEDBACKS DOS ÚLTIMOS ${months} MESES:\n\n${feedbacksText}${workStyleInfo}${objectivesSection}\n\nGere a avaliação de desempenho seguindo EXATAMENTE a estrutura indicada.
+    const userPrompt = `FEEDBACKS DOS ÚLTIMOS ${months} MESES:\n\n${feedbacksText}${workStyleInfo}${goalsContext}${objectivesSection}\n\nGere a avaliação de desempenho seguindo EXATAMENTE a estrutura indicada.
 
 IMPORTANTE: Separe o documento principal das dicas de apresentação usando o delimitador ---COACHING_TIP--- 
 A seção "## 🎭 Como Apresentar Esta Avaliação" deve vir DEPOIS do delimitador.`;
