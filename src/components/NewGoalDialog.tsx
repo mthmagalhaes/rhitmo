@@ -108,11 +108,14 @@ export function NewGoalDialog({
         metric_unit: metricUnit || null,
       };
 
-      // Force active status when reactivating
+      // Only force active status when explicitly reactivating
+      // Regular edits preserve the original status
       if (isReactivating) {
         goalData.status = 'active';
         goalData.completed_at = null;
       }
+      // Note: When editing without reactivating, we don't set status at all,
+      // so it preserves the existing value in the database
 
       if (editingGoal) {
         const { error } = await supabase

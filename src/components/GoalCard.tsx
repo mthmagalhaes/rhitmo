@@ -125,27 +125,28 @@ export function GoalCard({
           </div>
 
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Edit button - available for all statuses */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => onEdit(goal)}
+              title="Editar"
+            >
+              <Edit2 className="h-4 w-4" />
+            </Button>
+            
+            {/* Complete button - only for active goals */}
             {goal.status === 'active' && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => onEdit(goal)}
-                  title="Editar"
-                >
-                  <Edit2 className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-primary hover:text-primary/80 hover:bg-primary/10"
-                  onClick={() => onComplete(goal)}
-                  title="Marcar como concluída"
-                >
-                  <Check className="h-4 w-4" />
-                </Button>
-              </>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-primary hover:text-primary/80 hover:bg-primary/10"
+                onClick={() => onComplete(goal)}
+                title="Marcar como concluída"
+              >
+                <Check className="h-4 w-4" />
+              </Button>
             )}
             
             {isHistory && onReactivate && (
