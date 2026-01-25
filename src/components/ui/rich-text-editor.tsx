@@ -7,7 +7,7 @@ import {
   Heading1, Heading2, Undo, Redo 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface RichTextEditorProps {
   content: string;
@@ -22,6 +22,9 @@ export function RichTextEditor({
   placeholder = "Digite aqui...",
   className 
 }: RichTextEditorProps) {
+  // Track if change came from user typing (internal) vs external prop update
+  const isInternalChange = useRef(false);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -36,6 +39,8 @@ export function RichTextEditor({
     ],
     content,
     onUpdate: ({ editor }) => {
+      // Mark as internal change before calling onChange
+      isInternalChange.current = true;
       onChange(editor.getHTML());
     },
     editorProps: {
@@ -45,11 +50,13 @@ export function RichTextEditor({
     },
   });
 
-  // Sync external content changes
+  // Sync ONLY external content changes (e.g., AI generation)
   useEffect(() => {
-    if (editor && content !== editor.getHTML()) {
+    if (editor && !isInternalChange.current && content !== editor.getHTML()) {
       editor.commands.setContent(content);
     }
+    // Reset flag after each render cycle
+    isInternalChange.current = false;
   }, [content, editor]);
 
   if (!editor) return null;

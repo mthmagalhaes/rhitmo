@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -43,10 +43,13 @@ export const ReviewViewDialog = ({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const { toast } = useToast();
+  
+  // Track if content has been initialized for current edit session
+  const contentInitialized = useRef(false);
 
-  // Convert content to HTML when entering edit mode
+  // Convert content to HTML when entering edit mode (only once per session)
   useEffect(() => {
-    if (editing && review.content) {
+    if (editing && review.content && !contentInitialized.current) {
       const convertContent = async () => {
         // Check if content is already HTML (starts with <)
         const isHtml = review.content.trim().startsWith('<');
@@ -57,8 +60,14 @@ export const ReviewViewDialog = ({
           const htmlContent = await marked(review.content);
           setEditedContent(htmlContent);
         }
+        contentInitialized.current = true;
       };
       convertContent();
+    }
+    
+    // Reset when exiting edit mode
+    if (!editing) {
+      contentInitialized.current = false;
     }
   }, [editing, review.content]);
 
