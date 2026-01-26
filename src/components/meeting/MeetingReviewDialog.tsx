@@ -15,12 +15,22 @@ export interface ExtractedFeedback {
   content: string;
   evidence: string;
   coaching_tip: string;
+  confidence?: 'high' | 'medium';
+}
+
+export interface SpeakerAnalysis {
+  notes_available: boolean;
+  identification_method: 'notes_plus_heuristics' | 'heuristics_only';
+  high_confidence_count: number;
+  medium_confidence_count: number;
+  discarded_low_confidence: number;
 }
 
 export interface MeetingAnalysis {
   feedbacks: ExtractedFeedback[];
   commitments: string[];
   themes: string[];
+  speaker_analysis?: SpeakerAnalysis;
 }
 
 interface MeetingReviewDialogProps {
@@ -122,17 +132,24 @@ export const MeetingReviewDialog = ({
               feedbacks.map((feedback, index) => (
                 <Card key={feedback.id} className="p-4">
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <Badge 
-                      variant={feedback.type === 'positive' ? 'default' : 'secondary'}
-                      className={cn(
-                        "gap-1",
-                        feedback.type === 'positive' 
-                          ? "bg-success/10 text-success border-success/20" 
-                          : "bg-warning/10 text-warning border-warning/20"
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge 
+                        variant={feedback.type === 'positive' ? 'default' : 'secondary'}
+                        className={cn(
+                          "gap-1",
+                          feedback.type === 'positive' 
+                            ? "bg-success/10 text-success border-success/20" 
+                            : "bg-warning/10 text-warning border-warning/20"
+                        )}
+                      >
+                        {feedback.type === 'positive' ? '💚 Ponto Positivo' : '🟡 Desenvolvimento'}
+                      </Badge>
+                      {feedback.confidence === 'medium' && (
+                        <Badge variant="outline" className="text-xs bg-muted/50">
+                          🔍 Inferido
+                        </Badge>
                       )}
-                    >
-                      {feedback.type === 'positive' ? '💚 Ponto Positivo' : '🟡 Desenvolvimento'}
-                    </Badge>
+                    </div>
                     
                     <div className="flex items-center gap-1">
                       {editingId !== feedback.id && (
@@ -223,6 +240,24 @@ export const MeetingReviewDialog = ({
                     {theme}
                   </Badge>
                 ))}
+              </div>
+            )}
+            {/* Speaker Analysis Info */}
+            {analysis.speaker_analysis && (
+              <div className="bg-muted/30 rounded-md p-3 text-xs text-muted-foreground">
+                <p className="font-medium mb-1">📊 Qualidade da análise:</p>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  <span>✅ Alta confiança: {analysis.speaker_analysis.high_confidence_count}</span>
+                  <span>🔍 Inferidos: {analysis.speaker_analysis.medium_confidence_count}</span>
+                  {analysis.speaker_analysis.discarded_low_confidence > 0 && (
+                    <span>⚠️ Descartados: {analysis.speaker_analysis.discarded_low_confidence}</span>
+                  )}
+                </div>
+                {!analysis.speaker_analysis.notes_available && (
+                  <p className="mt-1 text-primary/80">
+                    💡 Dica: adicionar notas durante a reunião melhora a precisão
+                  </p>
+                )}
               </div>
             )}
           </div>
