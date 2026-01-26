@@ -82,8 +82,10 @@ export type Database = {
           embedding: string | null
           id: string
           manager_id: string
+          meeting_transcript_id: string | null
           member_id: string
           sentiment: string | null
+          source: string
           summary: string | null
           type: string
           updated_at: string
@@ -96,8 +98,10 @@ export type Database = {
           embedding?: string | null
           id?: string
           manager_id: string
+          meeting_transcript_id?: string | null
           member_id: string
           sentiment?: string | null
+          source?: string
           summary?: string | null
           type: string
           updated_at?: string
@@ -110,13 +114,22 @@ export type Database = {
           embedding?: string | null
           id?: string
           manager_id?: string
+          meeting_transcript_id?: string | null
           member_id?: string
           sentiment?: string | null
+          source?: string
           summary?: string | null
           type?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "feedbacks_meeting_transcript_id_fkey"
+            columns: ["meeting_transcript_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_transcripts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "feedbacks_member_id_fkey"
             columns: ["member_id"]
@@ -175,6 +188,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "goals_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_transcripts: {
+        Row: {
+          chunk_count: number | null
+          created_at: string
+          duration_seconds: number | null
+          extracted_commitments: string[] | null
+          extracted_themes: string[] | null
+          id: string
+          leader_notes: string | null
+          manager_id: string
+          member_id: string
+          processing_status: string
+          transcript: string | null
+          updated_at: string
+        }
+        Insert: {
+          chunk_count?: number | null
+          created_at?: string
+          duration_seconds?: number | null
+          extracted_commitments?: string[] | null
+          extracted_themes?: string[] | null
+          id?: string
+          leader_notes?: string | null
+          manager_id: string
+          member_id: string
+          processing_status?: string
+          transcript?: string | null
+          updated_at?: string
+        }
+        Update: {
+          chunk_count?: number | null
+          created_at?: string
+          duration_seconds?: number | null
+          extracted_commitments?: string[] | null
+          extracted_themes?: string[] | null
+          id?: string
+          leader_notes?: string | null
+          manager_id?: string
+          member_id?: string
+          processing_status?: string
+          transcript?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_transcripts_member_id_fkey"
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "team_members"

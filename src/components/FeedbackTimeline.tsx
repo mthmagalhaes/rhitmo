@@ -1,6 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Trash2, Zap, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, Trash2, Zap, Loader2, ChevronDown, ChevronUp, Mic } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,6 +28,7 @@ interface Feedback {
   coaching_tips?: string;
   bias_alert?: string;
   embedding?: string; // RAG embedding vector
+  source?: string; // 'manual' | 'meeting' | 'sync'
   _analysisStuck?: boolean; // Internal flag for timeout handling
 }
 
@@ -108,6 +109,13 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onReanalyze, reanalyzing
             <CardContent className="pt-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-2">
+                  {/* Badge de fonte (meeting) */}
+                  {feedback.source === 'meeting' && (
+                    <Badge variant="outline" className="gap-1 text-xs">
+                      <Mic className="h-3 w-3" />
+                      Reunião
+                    </Badge>
+                  )}
                   {/* Só mostrar badges de tipo/sentiment para notas legadas (com coaching_tips) */}
                   {hasLegacyAnalysis(feedback) && (
                     <>

@@ -15,8 +15,9 @@ import { PerformanceReviewList } from '@/components/PerformanceReviewList';
 import { GoalsManager, useGoalsData } from '@/components/GoalsManager';
 import { useAuth } from '@/hooks/useAuth';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
+import { useMeetingMode } from '@/hooks/useMeetingMode';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Music, BookOpen, FileText, Clock, Lock, ArrowRight } from 'lucide-react';
+import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Music, BookOpen, FileText, Clock, Lock, ArrowRight, Mic } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 interface WorkStyleData {
@@ -261,6 +262,13 @@ const MemberDetails = () => {
   );
   const hasOverdue = overdueGoals.length > 0;
 
+  // Meeting mode hook
+  const { openRecorder, MeetingModeDialogs } = useMeetingMode({
+    memberId: member?.id || '',
+    memberName: member?.name || '',
+    userId: user?.id || '',
+  });
+
   if (authLoading || loading) {
     return <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -284,6 +292,10 @@ const MemberDetails = () => {
             Início
           </Button>
           <div className="flex gap-2">
+            <Button variant="outline" onClick={openRecorder} className="gap-2">
+              <Mic className="h-4 w-4" />
+              Gravar Reunião
+            </Button>
             <Button variant="outline" onClick={() => setChatOpen(true)} className="gap-2">
               <Sparkles className="h-4 w-4" />
               Mentor Chat
@@ -519,6 +531,8 @@ const MemberDetails = () => {
       />
 
       <MentorChat open={chatOpen} onOpenChange={setChatOpen} memberName={member.name} memberId={member.id} memberRole={member.role} feedbacks={feedbacks} workStyleData={member.work_style_data} keyObjectives={member.key_objectives} />
+
+      <MeetingModeDialogs />
     </div>;
 };
 export default MemberDetails;

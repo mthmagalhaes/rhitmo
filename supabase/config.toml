@@ -35,3 +35,9 @@ verify_jwt = true
 
 [functions.backfill-embeddings]
 verify_jwt = false
+
+[functions.transcribe-meeting]
+verify_jwt = true
+
+[functions.process-meeting]
+verify_jwt = true
