@@ -80,13 +80,11 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
 
       const assignedPlan = (user.user_metadata?.assigned_plan as PlanTier) || 'pulse';
 
-      // 3. Check if workspace already exists - CORRIGIDO: usar order().limit(1) para evitar problemas
+      // 3. Check if workspace already exists
       const { data: existingWorkspace } = await supabase
         .from('workspaces')
         .select('id')
         .eq('owner_id', user.id)
-        .order('created_at', { ascending: true })
-        .limit(1)
         .maybeSingle();
 
       // 4. Create workspace if doesn't exist

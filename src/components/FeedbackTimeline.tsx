@@ -1,6 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Trash2, Zap, Loader2, ChevronDown, ChevronUp, Mic } from 'lucide-react';
+import { Calendar, TrendingUp, AlertTriangle, Trash2, Zap, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useState } from 'react';
+import DOMPurify from 'dompurify';
 import { cn } from '@/lib/utils';
 
 interface Feedback {
@@ -27,8 +28,6 @@ interface Feedback {
   sentiment?: string;
   coaching_tips?: string;
   bias_alert?: string;
-  embedding?: string; // RAG embedding vector
-  source?: string; // 'manual' | 'meeting' | 'sync'
   _analysisStuck?: boolean; // Internal flag for timeout handling
 }
 
@@ -85,47 +84,32 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onReanalyze, reanalyzing
     return labels[sentiment] || sentiment;
   };
 
-  // Notas legadas têm coaching_tips preenchido
-  const hasLegacyAnalysis = (feedback: Feedback) => {
-    return feedback.coaching_tips || feedback.bias_alert;
+  const hasAnalysis = (feedback: Feedback) => {
+    return feedback.summary || feedback.sentiment || feedback.coaching_tips || feedback.bias_alert;
   };
 
   const isProcessingAnalysis = (feedback: Feedback) => {
-    // Nota está processando se não tem summary E não tem embedding
-    return !feedback.summary && !feedback.embedding;
+    // Note was just saved but AI hasn't processed it yet
+    return !feedback.summary && !feedback.sentiment;
   };
 
   return (
     <div className="space-y-6">
       {feedbacks.map((feedback) => {
-        const showLegacyAnalysis = hasLegacyAnalysis(feedback);
+        const showAnalysis = hasAnalysis(feedback);
         const isReanalyzing = reanalyzingId === feedback.id;
         const isProcessing = isProcessingAnalysis(feedback);
-        // Para notas RAG: mostrar summary diretamente, sem seção de transcrição
-        const isRagNote = feedback.summary && !feedback.coaching_tips;
 
         return (
           <Card key={feedback.id} className="border-l-4 border-l-primary">
             <CardContent className="pt-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  {/* Badge de fonte (meeting) */}
-                  {feedback.source === 'meeting' && (
-                    <Badge variant="outline" className="gap-1 text-xs">
-                      <Mic className="h-3 w-3" />
-                      Reunião
-                    </Badge>
-                  )}
-                  {/* Só mostrar badges de tipo/sentiment para notas legadas (com coaching_tips) */}
-                  {hasLegacyAnalysis(feedback) && (
-                    <>
-                      <Badge variant={getTypeVariant(feedback.type)}>
-                        {getTypeLabel(feedback.type)}
-                      </Badge>
-                      {feedback.sentiment && (
-                        <Badge variant="outline">{getSentimentLabel(feedback.sentiment)}</Badge>
-                      )}
-                    </>
+                  <Badge variant={getTypeVariant(feedback.type)}>
+                    {getTypeLabel(feedback.type)}
+                  </Badge>
+                  {feedback.sentiment && (
+                    <Badge variant="outline">{getSentimentLabel(feedback.sentiment)}</Badge>
                   )}
                   {isProcessing && (
                     <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
@@ -173,8 +157,7 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onReanalyze, reanalyzing
                 </div>
               </div>
               
-              {/* Notas legadas (com coaching_tips) - exibir resumo + transcrição */}
-              {showLegacyAnalysis ? (
+              {showAnalysis ? (
                 <>
                   {feedback.summary && (
                     <div className="mb-4">
@@ -208,6 +191,31 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onReanalyze, reanalyzing
                     </div>
                   )}
 
+                  {feedback.coaching_tips && (
+                    <div className="mb-4">
+                      <p className="text-sm font-semibold text-primary mb-2 flex items-center gap-2">
+                        <TrendingUp className="h-4 w-4" />
+                        Dicas para a liderança
+                      </p>
+                      <div 
+                        className="text-sm text-muted-foreground prose prose-sm max-w-none"
+                        dangerouslySetInnerHTML={{ 
+                          __html: DOMPurify.sanitize(feedback.coaching_tips.replace(/\n/g, '<br/>')) 
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {feedback.bias_alert && feedback.bias_alert !== 'Nenhum viés detectado' && (
+                    <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-3 rounded mb-4">
+                      <p className="text-sm font-medium mb-1 flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
+                        <AlertTriangle className="h-4 w-4" />
+                        Alerta de Viés
+                      </p>
+                      <p className="text-sm text-yellow-700 dark:text-yellow-300">{feedback.bias_alert}</p>
+                    </div>
+                  )}
+
                   <Collapsible 
                     open={openTranscripts[feedback.id]} 
                     onOpenChange={(open) => setOpenTranscripts(prev => ({ ...prev, [feedback.id]: open }))}
@@ -224,38 +232,7 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onReanalyze, reanalyzing
                     </CollapsibleContent>
                   </Collapsible>
                 </>
-              ) : isRagNote ? (
-                /* Notas RAG - exibir summary diretamente, sem seção de transcrição */
-                <>
-                  <p className={cn(
-                    "text-foreground leading-relaxed mb-4",
-                    !expandedContent[feedback.id] && shouldShowExpandButton(feedback.summary) && "line-clamp-4"
-                  )}>
-                    {feedback.summary}
-                  </p>
-                  {shouldShowExpandButton(feedback.summary) && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => toggleExpand(feedback.id)}
-                      className="mb-4 h-auto py-1 px-2 text-xs text-muted-foreground hover:text-foreground"
-                    >
-                      {expandedContent[feedback.id] ? (
-                        <>
-                          <ChevronUp className="h-3 w-3 mr-1" />
-                          Ver menos
-                        </>
-                      ) : (
-                        <>
-                          <ChevronDown className="h-3 w-3 mr-1" />
-                          Ver mais
-                        </>
-                      )}
-                    </Button>
-                  )}
-                </>
               ) : (
-                /* Notas sem processamento - exibir content bruto */
                 <>
                   <p className={cn(
                     "text-foreground leading-relaxed mb-4",

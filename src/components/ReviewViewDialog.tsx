@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -6,11 +6,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Printer, Pencil, Trash2, TrendingUp } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import ReactMarkdown from 'react-markdown';
 import { marked } from 'marked';
-import { RichTextEditor } from "@/components/ui/rich-text-editor";
-import DOMPurify from 'dompurify';
 
 interface PerformanceReview {
   id: string;
@@ -38,40 +37,13 @@ export const ReviewViewDialog = ({
 }: ReviewViewDialogProps) => {
   const [editing, setEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState(review.title);
-  const [editedContent, setEditedContent] = useState('');
+  const [editedContent, setEditedContent] = useState(review.content);
   const [saving, setSaving] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const { toast } = useToast();
-  
-  // Track if content has been initialized for current edit session
-  const contentInitialized = useRef(false);
 
-  // Convert content to HTML when entering edit mode (only once per session)
-  useEffect(() => {
-    if (editing && review.content && !contentInitialized.current) {
-      const convertContent = async () => {
-        // Check if content is already HTML (starts with <)
-        const isHtml = review.content.trim().startsWith('<');
-        if (isHtml) {
-          setEditedContent(review.content);
-        } else {
-          // Convert Markdown to HTML
-          const htmlContent = await marked(review.content);
-          setEditedContent(htmlContent);
-        }
-        contentInitialized.current = true;
-      };
-      convertContent();
-    }
-    
-    // Reset when exiting edit mode
-    if (!editing) {
-      contentInitialized.current = false;
-    }
-  }, [editing, review.content]);
-
-  const handleExportPDF = async () => {
+  const handleExportPDF = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       toast({
@@ -82,9 +54,8 @@ export const ReviewViewDialog = ({
       return;
     }
 
-    // Handle both HTML and Markdown content
-    const isHtml = review.content.trim().startsWith('<');
-    const htmlContent = isHtml ? review.content : await marked(review.content);
+    // Convert Markdown to HTML for PDF
+    const htmlContent = marked(review.content);
 
     printWindow.document.write(`
       <html>
@@ -315,21 +286,18 @@ export const ReviewViewDialog = ({
                 />
               </div>
               <div className="space-y-2">
-                <Label>Conteúdo</Label>
-                <RichTextEditor
-                  content={editedContent}
-                  onChange={setEditedContent}
-                  className="min-h-[400px]"
+                <Label htmlFor="edit-content">Conteúdo</Label>
+                <Textarea
+                  id="edit-content"
+                  value={editedContent}
+                  onChange={(e) => setEditedContent(e.target.value)}
+                  className="min-h-[400px] font-mono text-sm"
                 />
               </div>
             </div>
           ) : (
             <div className="prose prose-sm max-w-none">
-              {review.content.trim().startsWith('<') ? (
-                <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(review.content) }} />
-              ) : (
-                <ReactMarkdown>{review.content}</ReactMarkdown>
-              )}
+              <ReactMarkdown>{review.content}</ReactMarkdown>
             </div>
           )}
 
@@ -340,7 +308,7 @@ export const ReviewViewDialog = ({
                 onClick={() => {
                   setEditing(false);
                   setEditedTitle(review.title);
-                  setEditedContent('');
+                  setEditedContent(review.content);
                 }}
                 disabled={saving}
               >

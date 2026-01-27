@@ -18,27 +18,6 @@ export const SUPPORTED_MIME_TYPES: Record<string, FileType> = {
   'image/webp': 'image',
 };
 
-/**
- * Infer mimeType from file extension when file.type is empty/invalid
- */
-function inferMimeType(file: File): string {
-  // If file has valid image mimeType, use it
-  if (file.type && file.type.startsWith('image/')) {
-    return file.type;
-  }
-  
-  // Fallback based on extension
-  const ext = file.name.split('.').pop()?.toLowerCase();
-  const mimeMap: Record<string, string> = {
-    'png': 'image/png',
-    'jpg': 'image/jpeg',
-    'jpeg': 'image/jpeg',
-    'webp': 'image/webp',
-  };
-  
-  return mimeMap[ext || ''] || 'image/jpeg'; // Default to jpeg
-}
-
 export const SUPPORTED_EXTENSIONS = ['pdf', 'docx', 'txt', 'md', 'png', 'jpg', 'jpeg', 'webp'] as const;
 
 /**
@@ -119,37 +98,26 @@ function fileToBase64(file: File): Promise<string> {
  * Extract text from images using GPT-4o Vision OCR
  */
 async function extractFromImage(file: File): Promise<string> {
-  console.log('[fileParser] Processando imagem:', {
-    name: file.name,
-    type: file.type,
-    size: file.size
-  });
-
   const base64Data = await fileToBase64(file);
   // Remove the data:image/...;base64, prefix
   const base64Image = base64Data.split(',')[1];
 
-  // Use inferred mimeType if file.type is empty/invalid
-  const mimeType = inferMimeType(file);
-  console.log('[fileParser] MimeType usado:', mimeType);
-
   const { data, error } = await supabase.functions.invoke('extract-text-vision', {
     body: { 
       base64Image,
-      mimeType 
+      mimeType: file.type 
     }
   });
 
   if (error) {
     console.error('[fileParser] OCR error:', error);
-    throw new Error(`Falha no OCR: ${error.message || 'Erro desconhecido'}`);
+    throw new Error('Falha ao extrair texto da imagem');
   }
 
   if (!data?.text || data.text === '[Nenhum texto detectado]') {
     throw new Error('Nenhum texto detectado na imagem');
   }
 
-  console.log('[fileParser] OCR sucesso:', data.text.length, 'caracteres');
   return data.text;
 }
 
@@ -175,16 +143,9 @@ export async function extractTextFromFile(file: File): Promise<string> {
       default:
         throw new Error('Formato de arquivo não suportado');
     }
-  } catch (error: any) {
+  } catch (error) {
     // Log for debugging
     console.error('[fileParser] Erro ao processar arquivo:', error);
-
-    // Propagate specific OCR/image errors
-    if (error.message?.includes('OCR') || 
-        error.message?.includes('texto detectado') ||
-        error.message?.includes('imagem')) {
-      throw error;
-    }
 
     // Rethrow with user-friendly message
     throw new Error(

@@ -3,14 +3,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Sparkles, TrendingUp, Lock } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
-import { RichTextEditor } from "@/components/ui/rich-text-editor";
-import { marked } from 'marked';
 
 interface NewReviewDialogProps {
   open: boolean;
@@ -54,10 +53,7 @@ export const NewReviewDialog = ({
         throw new Error(data.error);
       }
 
-      // Convert Markdown to HTML for the rich text editor
-      const markdownContent = data.review_content || data.content || '';
-      const htmlContent = await marked(markdownContent);
-      setContent(htmlContent);
+      setContent(data.review_content || data.content || '');
       setCoachingTip(data.coaching_tip || null);
       
       // Auto-gerar título baseado no período
@@ -235,12 +231,13 @@ export const NewReviewDialog = ({
             </div>
 
             <div className="space-y-2">
-              <Label>Conteúdo</Label>
-              <RichTextEditor
-                content={content}
-                onChange={setContent}
+              <Label htmlFor="content">Conteúdo</Label>
+              <Textarea
+                id="content"
                 placeholder="Digite ou gere o conteúdo da avaliação usando os botões acima..."
-                className="min-h-[400px]"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                className="min-h-[400px] font-mono text-sm"
               />
               <p className="text-xs text-muted-foreground">
                 Você pode editar livremente o conteúdo gerado pela IA antes de salvar.

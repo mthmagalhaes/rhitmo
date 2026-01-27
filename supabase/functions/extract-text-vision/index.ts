@@ -14,25 +14,9 @@ serve(async (req) => {
   try {
     const { base64Image, mimeType } = await req.json();
 
-    if (!base64Image) {
+    if (!base64Image || !mimeType) {
       return new Response(
-        JSON.stringify({ error: 'base64Image is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Validate and sanitize mimeType - default to image/jpeg if invalid
-    let validMimeType = mimeType;
-    if (!mimeType || !mimeType.startsWith('image/')) {
-      console.warn('Invalid mimeType received:', mimeType, '- defaulting to image/jpeg');
-      validMimeType = 'image/jpeg';
-    }
-
-    // Validate base64 - check if it's not too short (corrupted/empty)
-    if (base64Image.length < 100) {
-      console.error('Invalid base64Image: too short or empty, length:', base64Image.length);
-      return new Response(
-        JSON.stringify({ error: 'Imagem inválida ou corrompida' }),
+        JSON.stringify({ error: 'base64Image and mimeType are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -46,11 +30,7 @@ serve(async (req) => {
       );
     }
 
-    console.log('Processing image for OCR:', {
-      mimeType: validMimeType,
-      base64Length: base64Image.length,
-      estimatedSizeKB: Math.round(base64Image.length * 0.75 / 1024)
-    });
+    console.log('Processing image for OCR, mimeType:', mimeType);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
@@ -79,7 +59,7 @@ REGRAS:
               {
                 type: 'image_url',
                 image_url: { 
-                  url: `data:${validMimeType};base64,${base64Image}`,
+                  url: `data:${mimeType};base64,${base64Image}`,
                   detail: 'high'
                 }
               }
@@ -96,22 +76,9 @@ REGRAS:
     if (!response.ok) {
       const errorText = await response.text();
       console.error('OpenAI API error:', response.status, errorText);
-      
-      // Specific error messages based on status code
-      let userMessage = 'Falha ao processar imagem';
-      if (response.status === 400) {
-        userMessage = 'Formato de imagem não suportado';
-      } else if (response.status === 413) {
-        userMessage = 'Imagem muito grande. Reduza o tamanho.';
-      } else if (response.status === 429) {
-        userMessage = 'Limite de requisições atingido. Tente novamente.';
-      } else if (response.status === 401) {
-        userMessage = 'Erro de autenticação com serviço de OCR';
-      }
-      
       return new Response(
-        JSON.stringify({ error: userMessage }),
-        { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Failed to process image' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 

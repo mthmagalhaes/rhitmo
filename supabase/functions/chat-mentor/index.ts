@@ -1,6 +1,5 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { RHITMO_IDENTITY, GUARDRAILS_PROMPT, ANALYSIS_RULES } from "../_shared/rhitmo-constitution.ts";
 
 const corsHeaders = {
@@ -14,19 +13,13 @@ serve(async (req) => {
   }
 
   try {
-    const { 
-      question, memberId, memberName, memberRole, workStyleData, keyObjectives,
-      // Campos para anexos
-      fileUrl, fileType, fileName,
-      // Thread ID (para contexto futuro)
-      threadId
-    } = await req.json();
+    const { question, feedbacks, memberName, memberRole, workStyleData, keyObjectives } = await req.json();
 
-    console.log('Chat mentor RAG request:', { memberName, memberRole, memberId, hasFile: !!fileUrl, threadId });
+    console.log('Chat mentor request:', { memberName, memberRole, feedbacksCount: feedbacks?.length, hasWorkStyle: !!workStyleData });
 
-    if (!question || !memberId || !memberName) {
+    if (!question || !feedbacks || !memberName) {
       return new Response(
-        JSON.stringify({ error: 'Parâmetros inválidos: question, memberId e memberName são obrigatórios' }),
+        JSON.stringify({ error: 'Parâmetros inválidos: question, feedbacks e memberName são obrigatórios' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -39,182 +32,6 @@ serve(async (req) => {
         JSON.stringify({ error: 'Configuração de API ausente. Contate o administrador.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
-    }
-
-    // Create Supabase client with service role for RPC calls
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // ===== PROCESSAR ANEXO (Server-Side) =====
-    let fileContext = '';
-    let useVisionModel = false;
-    let imageUrl = '';
-
-    if (fileUrl && fileType) {
-      console.log('Processing attachment:', { fileUrl, fileType, fileName });
-      
-      try {
-        if (fileType.startsWith('image/')) {
-          // IMAGENS: Usar GPT-4o Vision diretamente com URL
-          useVisionModel = true;
-          imageUrl = fileUrl;
-          fileContext = `[IMAGEM ANEXADA: ${fileName}]`;
-          console.log('Image attachment - will use Vision model');
-        } else if (fileType === 'application/pdf') {
-          // PDF: Baixar e converter para base64 para Vision OCR
-          console.log('Processing PDF via Vision OCR...');
-          const pdfText = await extractPdfViaVision(fileUrl, openAIApiKey);
-          fileContext = `\n\n## DOCUMENTO ANEXADO: ${fileName}\n\n${pdfText}`;
-          console.log('PDF extracted:', pdfText.length, 'chars');
-        } else if (fileType.includes('text/') || fileType.includes('markdown')) {
-          // Texto: Baixar conteúdo diretamente
-          console.log('Processing text file...');
-          const textResponse = await fetch(fileUrl);
-          const textContent = await textResponse.text();
-          fileContext = `\n\n## DOCUMENTO ANEXADO: ${fileName}\n\n${textContent}`;
-          console.log('Text file loaded:', textContent.length, 'chars');
-        } else if (fileType.includes('word') || fileType.includes('openxmlformats')) {
-          // DOCX: Converter para base64 e usar Vision para extrair texto
-          console.log('Processing DOCX via Vision OCR...');
-          const docxText = await extractDocxViaVision(fileUrl, openAIApiKey);
-          fileContext = `\n\n## DOCUMENTO ANEXADO: ${fileName}\n\n${docxText}`;
-          console.log('DOCX extracted:', docxText.length, 'chars');
-        } else {
-          fileContext = `\n\n[Arquivo anexado: ${fileName} - formato ${fileType} não processável]`;
-        }
-      } catch (err: any) {
-        console.error('Error processing attachment:', err);
-        fileContext = `\n\n[Erro ao processar arquivo ${fileName}: ${err.message}]`;
-      }
-    }
-
-    // Step 1: Generate embedding for the user's question
-    console.log('Generating embedding for question...');
-    
-    let questionEmbedding;
-    try {
-      const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          input: question,
-          model: 'text-embedding-3-small'
-        }),
-      });
-
-      if (!embeddingResponse.ok) {
-        throw new Error(`Embedding API error: ${embeddingResponse.status}`);
-      }
-
-      const embeddingData = await embeddingResponse.json();
-      questionEmbedding = embeddingData.data?.[0]?.embedding;
-
-      if (!questionEmbedding) {
-        throw new Error('No embedding returned');
-      }
-    } catch (err: any) {
-      console.error('Failed to generate question embedding:', err);
-      return new Response(
-        JSON.stringify({ error: 'Falha ao processar pergunta. Tente novamente.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Step 2: Search for similar feedbacks using vector search
-    console.log('Searching for similar feedbacks...');
-    
-    const { data: similarFeedbacks, error: searchError } = await supabase.rpc('match_feedbacks', {
-      query_embedding: `[${questionEmbedding.join(',')}]`,
-      match_threshold: 0.5,
-      match_count: 10,
-      filter_member_id: memberId,
-      filter_workspace_id: null
-    });
-
-    if (searchError) {
-      console.error('Vector search error:', searchError);
-    }
-
-    console.log('Vector search results:', similarFeedbacks?.length || 0);
-
-    // Step 2.5: ALWAYS fetch recent notes as backup (robust fallback)
-    let recentFeedbacks: any[] = [];
-    const MIN_VECTOR_RESULTS = 3;
-    const vectorResultsCount = similarFeedbacks?.length || 0;
-
-    const { data: recentNotes, error: recentError } = await supabase
-      .from('feedbacks')
-      .select('id, content, summary, created_at')
-      .eq('member_id', memberId)
-      .order('created_at', { ascending: false })
-      .limit(10);
-
-    if (recentError) {
-      console.error('Fallback query error:', recentError);
-    } else if (recentNotes) {
-      console.log(`Member has ${recentNotes.length} total notes in database`);
-      
-      if (vectorResultsCount < MIN_VECTOR_RESULTS) {
-        console.log(`Vector search returned ${vectorResultsCount} results (< ${MIN_VECTOR_RESULTS}). Using fallback...`);
-        const vectorIds = new Set(similarFeedbacks?.map((f: any) => f.id) || []);
-        recentFeedbacks = recentNotes.filter(note => !vectorIds.has(note.id));
-        console.log(`Fallback added ${recentFeedbacks.length} unique recent notes`);
-      }
-    }
-
-    const totalContext = vectorResultsCount + recentFeedbacks.length;
-
-    if (totalContext === 0 && recentNotes && recentNotes.length > 0) {
-      console.warn('SAFETY NET ACTIVATED: Vector search failed but member has notes. Forcing inclusion.');
-      recentFeedbacks = recentNotes.slice(0, 10);
-    }
-
-    console.log('Search results summary:', {
-      vectorResults: vectorResultsCount,
-      fallbackResults: recentFeedbacks.length,
-      totalContext: vectorResultsCount + recentFeedbacks.length,
-      memberTotalNotes: recentNotes?.length || 0
-    });
-
-    // Step 3: Build context from similar feedbacks + recent fallback
-    let contextLines = '';
-
-    if (similarFeedbacks && similarFeedbacks.length > 0) {
-      contextLines += '### NOTAS POR RELEVÂNCIA SEMÂNTICA\n\n';
-      for (let idx = 0; idx < similarFeedbacks.length; idx++) {
-        const fb = similarFeedbacks[idx];
-        const date = new Date(fb.created_at).toLocaleDateString('pt-BR');
-        const similarity = (fb.similarity * 100).toFixed(0);
-        const content = fb.content?.substring(0, 500) || fb.summary || '';
-        
-        contextLines += `[Nota ${idx + 1} - ${date} - Relevância: ${similarity}%]
-${content}
----\n\n`;
-      }
-    }
-
-    if (recentFeedbacks.length > 0) {
-      contextLines += '\n### NOTAS RECENTES ADICIONAIS\n\n';
-      contextLines += '⚠️ IMPORTANTE: Estas notas foram incluídas como contexto adicional. USE-AS para responder ao gestor.\n\n';
-      for (let idx = 0; idx < recentFeedbacks.length; idx++) {
-        const fb = recentFeedbacks[idx];
-        const date = new Date(fb.created_at).toLocaleDateString('pt-BR');
-        const content = fb.content?.substring(0, 500) || fb.summary || '';
-        
-        contextLines += `[Nota Recente ${idx + 1} - ${date}]
-${content}
----\n\n`;
-      }
-    }
-
-    if (!contextLines) {
-      contextLines = `⚠️ ATENÇÃO: CONTEXTO VAZIO ⚠️
-Nenhuma nota foi encontrada para este liderado.
-Sugira ao gestor que registre observações e notas sobre este liderado para que você possa ajudá-lo melhor.`;
     }
 
     // Helper: Formatar perfil Rhitmo Sync
@@ -237,6 +54,40 @@ Sugira ao gestor que registre observações e notas sobre este liderado para que
 - Motivação: ${styleLabels.motivation[data.motivation] || data.motivation}`;
     };
 
+    // Limitar a últimas 5 notas e truncar para 5000 caracteres no total
+    const recentFeedbacks = feedbacks.slice(0, 5);
+    
+    let contextLines = '';
+    let totalChars = 0;
+    const maxChars = 5000;
+    
+    for (let idx = 0; idx < recentFeedbacks.length; idx++) {
+      const fb = recentFeedbacks[idx];
+      const date = new Date(fb.created_at).toLocaleDateString('pt-BR');
+      const sentiment = fb.sentiment || 'neutro';
+      const summary = fb.summary || fb.content.substring(0, 200);
+      const coaching = fb.coaching_tips || '';
+      
+      const noteText = `[Nota ${idx + 1} - ${date} - ${sentiment}]
+Resumo: ${summary}
+${coaching ? `Dicas: ${coaching}` : ''}
+---\n\n`;
+      
+      if (totalChars + noteText.length > maxChars) {
+        break;
+      }
+      
+      contextLines += noteText;
+      totalChars += noteText.length;
+    }
+
+    if (!contextLines) {
+      contextLines = 'Nenhum histórico disponível ainda.';
+    }
+
+    console.log('Context prepared:', { totalChars, notesIncluded: recentFeedbacks.length });
+
+    // Seção de Objetivos (condicional)
     const objectivesSection = keyObjectives && keyObjectives.trim()
       ? `## 🎯 OBJETIVOS DE NEGÓCIO DO LIDERADO
 
@@ -249,9 +100,15 @@ ${keyObjectives}
 - Ao identificar um comportamento, avalie: aproxima ou afasta das metas?
 - Conecte feedbacks aos objetivos quando relevante
 - Verifique progresso em relação aos prazos definidos
+- Exemplo de resposta calibrada: "Este comportamento está alinhado ao objetivo de aumentar SQLs, pois demonstra proatividade na prospecção"
 `
       : `## 🎯 OBJETIVOS DE NEGÓCIO
 Nenhum objetivo foi definido pelo gestor.
+
+### COMPORTAMENTO ESPERADO
+- Foque 100% na análise comportamental e de liderança
+- NÃO tente adivinhar metas de negócio
+- Ignore análises de alinhamento a objetivos
 `;
 
     const systemPrompt = `# RHITMO MENTOR - CONSTITUIÇÃO
@@ -292,6 +149,16 @@ Consulte o perfil work_style_data do liderado e ajuste o tom:
 2. **Texto Pronto Destacado**: Use blockquote (>) ou código
 3. **Formato**: 📱 Sugestão para [WhatsApp/Slack/Email]:
 
+### EXEMPLO DE COMPORTAMENTO ESPERADO
+
+**User**: "Como cobro o relatório do João?"
+
+**Rhitmo Mentor**: 
+"Como o João tem perfil **Analítico/Contexto completo** (Rhitmo Sync), ele responde bem a prazos claros e justificativas. Evite rodeios mas explique o porquê.
+
+📱 **Sugestão para WhatsApp**:
+> Oi João! 👋 Precisamos fechar o relatório para a diretoria até amanhã às 14h. Você consegue me enviar a versão final? Se faltar algum dado ou precisar de apoio, me avise agora que a gente resolve junto."
+
 ## PERSONALIZAÇÃO (CRÍTICO)
 Use o perfil Rhitmo Sync para orientar o gerente:
 
@@ -321,48 +188,18 @@ ${objectivesSection}
 
 ${formatWorkStyle(workStyleData)}
 
-## NOTAS DO LIDERADO (CONTEXTO OBRIGATÓRIO)
-
-REGRA CRÍTICA: Se houver notas abaixo, você DEVE usá-las para responder.
-Você SÓ pode dizer "não encontrei registros" se a seção abaixo estiver COMPLETAMENTE VAZIA.
+## HISTÓRICO DE NOTAS (CONTEXT_DOCUMENTS)
 
 ${contextLines}
-${fileContext}
 
 ---
 
 Lembre-se: Você é um coach experiente. Baseie-se APENAS nos dados acima. Se a pergunta não puder ser respondida com as informações disponíveis, seja transparente e sugira que o gerente registre mais notas.`;
 
-    console.log('Calling OpenAI...', { useVisionModel, model: useVisionModel ? 'gpt-4o' : 'gpt-4o-mini' });
+    console.log('Calling OpenAI with context length:', systemPrompt.length);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 55000); // 55s timeout
-
-    // Construir mensagens (multimodal para imagens)
-    let messages: any[];
-    
-    if (useVisionModel && imageUrl) {
-      // Mensagem multimodal para GPT-4o Vision
-      messages = [
-        { role: 'system', content: systemPrompt },
-        { 
-          role: 'user', 
-          content: [
-            { type: 'text', text: question },
-            { 
-              type: 'image_url', 
-              image_url: { url: imageUrl, detail: 'high' } 
-            }
-          ]
-        }
-      ];
-    } else {
-      // Mensagem de texto normal
-      messages = [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: question }
-      ];
-    }
+    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
 
     let response;
     try {
@@ -372,11 +209,14 @@ Lembre-se: Você é um coach experiente. Baseie-se APENAS nos dados acima. Se a 
           'Authorization': `Bearer ${openAIApiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          model: useVisionModel ? 'gpt-4o' : 'gpt-4o-mini',
-          messages,
-          max_tokens: 1500,
-        }),
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: question }
+        ],
+        max_tokens: 1000,
+      }),
         signal: controller.signal,
       });
     } catch (fetchError: any) {
@@ -439,7 +279,7 @@ Lembre-se: Você é um coach experiente. Baseie-se APENAS nos dados acima. Se a 
 
     const mentorResponse = data.choices[0].message.content;
 
-    console.log('Mentor RAG response generated successfully');
+    console.log('Mentor response generated successfully');
 
     return new Response(
       JSON.stringify({ response: mentorResponse }),
@@ -456,112 +296,3 @@ Lembre-se: Você é um coach experiente. Baseie-se APENAS nos dados acima. Se a 
     );
   }
 });
-
-/**
- * Extract text from PDF using GPT-4o Vision
- */
-async function extractPdfViaVision(pdfUrl: string, apiKey: string): Promise<string> {
-  // Fetch PDF and convert to base64
-  const pdfResponse = await fetch(pdfUrl);
-  if (!pdfResponse.ok) {
-    throw new Error(`Failed to fetch PDF: ${pdfResponse.status}`);
-  }
-  
-  const pdfBuffer = await pdfResponse.arrayBuffer();
-  const base64Pdf = btoa(String.fromCharCode(...new Uint8Array(pdfBuffer)));
-  
-  // Use Vision to extract text
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { 
-              type: 'text', 
-              text: 'Extraia todo o texto deste documento PDF. Retorne apenas o texto extraído, sem comentários adicionais.' 
-            },
-            {
-              type: 'image_url',
-              image_url: { 
-                url: `data:application/pdf;base64,${base64Pdf}`,
-                detail: 'high'
-              }
-            }
-          ]
-        }
-      ],
-      max_tokens: 4000,
-    }),
-  });
-
-  if (!response.ok) {
-    const errText = await response.text();
-    console.error('Vision PDF extraction error:', errText);
-    throw new Error(`Vision extraction failed: ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data.choices?.[0]?.message?.content || '[Não foi possível extrair texto do PDF]';
-}
-
-/**
- * Extract text from DOCX using GPT-4o Vision (converted as image approach)
- */
-async function extractDocxViaVision(docxUrl: string, apiKey: string): Promise<string> {
-  // For DOCX, we'll try to use Vision with base64
-  const docxResponse = await fetch(docxUrl);
-  if (!docxResponse.ok) {
-    throw new Error(`Failed to fetch DOCX: ${docxResponse.status}`);
-  }
-  
-  const docxBuffer = await docxResponse.arrayBuffer();
-  const base64Docx = btoa(String.fromCharCode(...new Uint8Array(docxBuffer)));
-  
-  // Use Vision to extract text
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { 
-              type: 'text', 
-              text: 'Este é um documento Word (.docx). Extraia todo o texto visível. Retorne apenas o texto extraído, sem comentários.' 
-            },
-            {
-              type: 'image_url',
-              image_url: { 
-                url: `data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,${base64Docx}`,
-                detail: 'high'
-              }
-            }
-          ]
-        }
-      ],
-      max_tokens: 4000,
-    }),
-  });
-
-  if (!response.ok) {
-    const errText = await response.text();
-    console.error('Vision DOCX extraction error:', errText);
-    // Fallback message
-    return '[Documento Word anexado - extração automática indisponível. O usuário deve copiar o conteúdo relevante.]';
-  }
-
-  const data = await response.json();
-  return data.choices?.[0]?.message?.content || '[Não foi possível extrair texto do documento]';
-}

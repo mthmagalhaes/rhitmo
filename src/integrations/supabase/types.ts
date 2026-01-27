@@ -14,78 +14,16 @@ export type Database = {
   }
   public: {
     Tables: {
-      admin_impersonation: {
-        Row: {
-          admin_user_id: string
-          created_at: string | null
-          id: string
-          impersonated_email: string | null
-          impersonated_user_id: string
-        }
-        Insert: {
-          admin_user_id: string
-          created_at?: string | null
-          id?: string
-          impersonated_email?: string | null
-          impersonated_user_id: string
-        }
-        Update: {
-          admin_user_id?: string
-          created_at?: string | null
-          id?: string
-          impersonated_email?: string | null
-          impersonated_user_id?: string
-        }
-        Relationships: []
-      }
-      chat_threads: {
-        Row: {
-          created_at: string
-          id: string
-          member_id: string
-          title: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          member_id: string
-          title?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          member_id?: string
-          title?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "chat_threads_member_id_fkey"
-            columns: ["member_id"]
-            isOneToOne: false
-            referencedRelation: "team_members"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       feedbacks: {
         Row: {
           bias_alert: string | null
           coaching_tips: string | null
           content: string
           created_at: string
-          embedding: string | null
           id: string
           manager_id: string
-          meeting_transcript_id: string | null
           member_id: string
           sentiment: string | null
-          source: string
           summary: string | null
           type: string
           updated_at: string
@@ -95,13 +33,10 @@ export type Database = {
           coaching_tips?: string | null
           content: string
           created_at?: string
-          embedding?: string | null
           id?: string
           manager_id: string
-          meeting_transcript_id?: string | null
           member_id: string
           sentiment?: string | null
-          source?: string
           summary?: string | null
           type: string
           updated_at?: string
@@ -111,136 +46,17 @@ export type Database = {
           coaching_tips?: string | null
           content?: string
           created_at?: string
-          embedding?: string | null
           id?: string
           manager_id?: string
-          meeting_transcript_id?: string | null
           member_id?: string
           sentiment?: string | null
-          source?: string
           summary?: string | null
           type?: string
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "feedbacks_meeting_transcript_id_fkey"
-            columns: ["meeting_transcript_id"]
-            isOneToOne: false
-            referencedRelation: "meeting_transcripts"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "feedbacks_member_id_fkey"
-            columns: ["member_id"]
-            isOneToOne: false
-            referencedRelation: "team_members"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      goals: {
-        Row: {
-          completed_at: string | null
-          created_at: string | null
-          description: string | null
-          id: string
-          member_id: string
-          metric_current: number | null
-          metric_target: number | null
-          metric_unit: string | null
-          start_date: string | null
-          status: string
-          target_date: string | null
-          title: string
-          updated_at: string | null
-        }
-        Insert: {
-          completed_at?: string | null
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          member_id: string
-          metric_current?: number | null
-          metric_target?: number | null
-          metric_unit?: string | null
-          start_date?: string | null
-          status?: string
-          target_date?: string | null
-          title: string
-          updated_at?: string | null
-        }
-        Update: {
-          completed_at?: string | null
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          member_id?: string
-          metric_current?: number | null
-          metric_target?: number | null
-          metric_unit?: string | null
-          start_date?: string | null
-          status?: string
-          target_date?: string | null
-          title?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "goals_member_id_fkey"
-            columns: ["member_id"]
-            isOneToOne: false
-            referencedRelation: "team_members"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      meeting_transcripts: {
-        Row: {
-          chunk_count: number | null
-          created_at: string
-          duration_seconds: number | null
-          extracted_commitments: string[] | null
-          extracted_themes: string[] | null
-          id: string
-          leader_notes: string | null
-          manager_id: string
-          member_id: string
-          processing_status: string
-          transcript: string | null
-          updated_at: string
-        }
-        Insert: {
-          chunk_count?: number | null
-          created_at?: string
-          duration_seconds?: number | null
-          extracted_commitments?: string[] | null
-          extracted_themes?: string[] | null
-          id?: string
-          leader_notes?: string | null
-          manager_id: string
-          member_id: string
-          processing_status?: string
-          transcript?: string | null
-          updated_at?: string
-        }
-        Update: {
-          chunk_count?: number | null
-          created_at?: string
-          duration_seconds?: number | null
-          extracted_commitments?: string[] | null
-          extracted_themes?: string[] | null
-          id?: string
-          leader_notes?: string | null
-          manager_id?: string
-          member_id?: string
-          processing_status?: string
-          transcript?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "meeting_transcripts_member_id_fkey"
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "team_members"
@@ -255,7 +71,6 @@ export type Database = {
           id: string
           member_id: string
           role: string
-          thread_id: string | null
           user_id: string
         }
         Insert: {
@@ -264,7 +79,6 @@ export type Database = {
           id?: string
           member_id: string
           role: string
-          thread_id?: string | null
           user_id: string
         }
         Update: {
@@ -273,7 +87,6 @@ export type Database = {
           id?: string
           member_id?: string
           role?: string
-          thread_id?: string | null
           user_id?: string
         }
         Relationships: [
@@ -282,13 +95,6 @@ export type Database = {
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "team_members"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mentor_messages_thread_id_fkey"
-            columns: ["thread_id"]
-            isOneToOne: false
-            referencedRelation: "chat_threads"
             referencedColumns: ["id"]
           },
         ]
@@ -504,7 +310,6 @@ export type Database = {
     Functions: {
       can_update_own_sync: { Args: { member_id: string }; Returns: boolean }
       check_is_admin: { Args: never; Returns: boolean }
-      effective_user_id: { Args: never; Returns: string }
       get_all_users_with_metadata: {
         Args: never
         Returns: {
@@ -530,24 +335,6 @@ export type Database = {
       is_workspace_owner: {
         Args: { _member_id: string; _user_id: string }
         Returns: boolean
-      }
-      match_feedbacks: {
-        Args: {
-          filter_member_id?: string
-          filter_workspace_id?: string
-          match_count?: number
-          match_threshold?: number
-          query_embedding: string
-        }
-        Returns: {
-          content: string
-          created_at: string
-          id: string
-          member_id: string
-          similarity: number
-          summary: string
-          type: string
-        }[]
       }
       submit_rhitmo_sync: {
         Args: { p_member_id: string; p_work_style_data: Json }

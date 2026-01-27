@@ -1,23 +1,21 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { isPast, isToday } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { MemberAvatar } from '@/components/MemberAvatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Textarea } from '@/components/ui/textarea';
 import { FeedbackTimeline } from '@/components/FeedbackTimeline';
 import { NewNoteDialog } from '@/components/NewNoteDialog';
 import { MentorChat } from '@/components/MentorChat';
 import { styleConfig } from '@/components/WorkStyleCard';
 import { PerformanceReviewList } from '@/components/PerformanceReviewList';
-import { GoalsManager, useGoalsData } from '@/components/GoalsManager';
 import { useAuth } from '@/hooks/useAuth';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
-import { useMeetingMode } from '@/hooks/useMeetingMode';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Music, BookOpen, FileText, Clock, Lock, ArrowRight, Mic } from 'lucide-react';
+import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Save, Music, BookOpen, FileText, Clock, Lightbulb, Lock, ArrowRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 interface WorkStyleData {
@@ -42,6 +40,8 @@ const MemberDetails = () => {
   const [chatOpen, setChatOpen] = useState(false);
   const [reanalyzingId, setReanalyzingId] = useState<string | null>(null);
   const [resendingInvite, setResendingInvite] = useState(false);
+  const [keyObjectives, setKeyObjectives] = useState<string>('');
+  const [savingObjectives, setSavingObjectives] = useState(false);
   const {
     toast
   } = useToast();
@@ -118,7 +118,7 @@ const MemberDetails = () => {
     };
   });
 
-  // Query para workspace - CORRIGIDO: usar order().limit(1) para evitar problemas com duplicatas
+  // Query para workspace - necessário para isolamento de tenant no NewNoteDialog
   const { data: workspace } = useQuery({
     queryKey: ['workspace', user?.id],
     queryFn: async () => {
@@ -127,8 +127,6 @@ const MemberDetails = () => {
         .from('workspaces')
         .select('id')
         .eq('owner_id', user.id)
-        .order('created_at', { ascending: true })
-        .limit(1)
         .maybeSingle();
       if (error) throw error;
       return data;
@@ -148,6 +146,13 @@ const MemberDetails = () => {
       });
     }
   }, [user, authLoading, navigate]);
+
+  // Sincronizar keyObjectives com member
+  useEffect(() => {
+    if (member?.key_objectives !== undefined) {
+      setKeyObjectives(member.key_objectives || '');
+    }
+  }, [member]);
   const handleDeleteFeedback = async (feedbackId: string) => {
     try {
       const {
@@ -247,6 +252,32 @@ const MemberDetails = () => {
       description: "Cole no WhatsApp ou envie para o membro."
     });
   };
+  const handleSaveObjectives = async () => {
+    setSavingObjectives(true);
+    try {
+      const {
+        error
+      } = await supabase.from('team_members').update({
+        key_objectives: keyObjectives.trim() || null
+      }).eq('id', member.id);
+      if (error) throw error;
+      toast({
+        title: "Objetivos salvos!",
+        description: "A IA agora usará essas metas para calibrar análises."
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['member', id]
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao salvar",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setSavingObjectives(false);
+    }
+  };
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return new Intl.DateTimeFormat('pt-BR', {
@@ -255,22 +286,13 @@ const MemberDetails = () => {
       year: 'numeric'
     }).format(date);
   };
+  const objectivesPlaceholder = `Use o formato: Objetivo | Valor | Prazo
 
-  // Query for goals (for dynamic accordion title)
-  const { data: goals = [] } = useGoalsData(member?.id || '');
-  const activeGoals = goals.filter(g => g.status === 'active');
-  const overdueGoals = activeGoals.filter(g => 
-    g.target_date && isPast(new Date(g.target_date)) && !isToday(new Date(g.target_date))
-  );
-  const hasOverdue = overdueGoals.length > 0;
-
-  // Meeting mode hook
-  const { openRecorder, MeetingModeDialogs } = useMeetingMode({
-    memberId: member?.id || '',
-    memberName: member?.name || '',
-    userId: user?.id || '',
-  });
-
+Exemplos:
+• Aumentar SQLs semanais | de 15 para 25 | até 31/out
+• Reduzir tempo de resposta | de 4h para 1h | até 15/dez
+• Concluir certificação AWS | aprovação | até 28/fev
+• Liderar projeto de migração | entrega MVP | até 30/nov`;
   if (authLoading || loading) {
     return <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -294,10 +316,6 @@ const MemberDetails = () => {
             Início
           </Button>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={openRecorder} className="gap-2">
-              <Mic className="h-4 w-4" />
-              Gravar Reunião
-            </Button>
             <Button variant="outline" onClick={() => setChatOpen(true)} className="gap-2">
               <Sparkles className="h-4 w-4" />
               Mentor Chat
@@ -474,20 +492,35 @@ const MemberDetails = () => {
               <AccordionTrigger className="px-4 hover:no-underline">
                 <div className="flex items-center gap-2">
                   <Target className="h-4 w-4 text-primary" />
-                  <span className="font-semibold">
-                    Objetivos / Metas
-                    {activeGoals.length > 0 
-                      ? ` (${activeGoals.length} Ativa${activeGoals.length > 1 ? 's' : ''})`
-                      : ' (Opcional)'
-                    }
-                  </span>
-                  {hasOverdue && (
-                    <span className="flex h-2 w-2 rounded-full bg-destructive" title={`${overdueGoals.length} meta(s) atrasada(s)`} />
-                  )}
+                  <span className="font-semibold">Objetivos / Metas (Opcional)</span>
+                  {member.key_objectives && <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full ml-2">
+                      Configurado
+                    </span>}
                 </div>
               </AccordionTrigger>
               <AccordionContent className="px-4 pb-4">
-                <GoalsManager memberId={member.id} memberName={member.name} />
+                <div className="space-y-4">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                    <p className="text-sm text-blue-700 dark:text-blue-300 font-medium mb-1 flex items-center gap-2">
+                      <Lightbulb className="h-4 w-4" />
+                      Formato sugerido: Objetivo | Valor | Prazo
+                    </p>
+                    <p className="text-xs text-blue-600 dark:text-blue-400">
+                      Ex: Aumentar SQLs semanais | de 15 para 25 | até 31/out
+                    </p>
+                  </div>
+                  
+                  <Textarea value={keyObjectives} onChange={e => setKeyObjectives(e.target.value)} placeholder={objectivesPlaceholder} rows={5} className="resize-none font-mono text-sm" />
+                  
+                  {!keyObjectives && <p className="text-xs text-muted-foreground">Adicione os objetivos deste período para o Mentor Chat calibrar feedbacks e avaliações.</p>}
+                  
+                  <div className="flex justify-end">
+                    <Button onClick={handleSaveObjectives} disabled={savingObjectives} size="sm">
+                      {savingObjectives ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                      Salvar Objetivos
+                    </Button>
+                  </div>
+                </div>
               </AccordionContent>
             </AccordionItem>
           </Accordion>
@@ -533,8 +566,6 @@ const MemberDetails = () => {
       />
 
       <MentorChat open={chatOpen} onOpenChange={setChatOpen} memberName={member.name} memberId={member.id} memberRole={member.role} feedbacks={feedbacks} workStyleData={member.work_style_data} keyObjectives={member.key_objectives} />
-
-      <MeetingModeDialogs />
     </div>;
 };
 export default MemberDetails;

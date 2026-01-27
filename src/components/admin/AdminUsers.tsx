@@ -17,31 +17,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Users, Power, PowerOff, Trash2, Loader2, Eye } from 'lucide-react';
+import { Users, Power, PowerOff, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useImpersonation } from '@/contexts/ImpersonationContext';
 
 export const AdminUsers = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { startImpersonation, loading: impersonationLoading } = useImpersonation();
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [impersonatingId, setImpersonatingId] = useState<string | null>(null);
-
-  const handleImpersonate = async (userId: string, email: string) => {
-    setImpersonatingId(userId);
-    try {
-      await startImpersonation(userId, email);
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Não foi possível acessar a conta do usuário.",
-        variant: "destructive",
-      });
-      setImpersonatingId(null);
-    }
-  };
 
   // Users with metadata query
   const { data: users, isLoading: usersLoading } = useQuery({
@@ -219,21 +202,6 @@ export const AdminUsers = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          {/* Botão de Impersonation */}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleImpersonate(user.user_id, user.email)}
-                            disabled={impersonatingId === user.user_id || impersonationLoading}
-                            title="Visualizar como este usuário"
-                          >
-                            {impersonatingId === user.user_id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Eye className="h-4 w-4 text-primary" />
-                            )}
-                          </Button>
-
                           {wsInfo && (
                             <Button
                               variant="ghost"
