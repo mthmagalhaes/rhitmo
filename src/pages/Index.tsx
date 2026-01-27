@@ -73,7 +73,7 @@ const Index = () => {
     }
   }, [user, authLoading, navigate]);
 
-  // Query para workspace - FILTRO EXPLÍCITO por owner_id para isolamento de tenant
+  // Query para workspace - CORRIGIDO: usar order().limit(1) para evitar problemas com duplicatas
   const { data: workspace } = useQuery({
     queryKey: ['workspace', user?.id],
     queryFn: async () => {
@@ -81,7 +81,9 @@ const Index = () => {
       const { data, error } = await supabase
         .from('workspaces')
         .select('*')
-        .eq('owner_id', user.id) // ✅ ISOLAMENTO: Apenas workspace do usuário logado
+        .eq('owner_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(1)
         .maybeSingle();
       if (error) throw error;
       return data as Workspace;

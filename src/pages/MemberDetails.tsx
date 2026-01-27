@@ -118,7 +118,7 @@ const MemberDetails = () => {
     };
   });
 
-  // Query para workspace - necessário para isolamento de tenant no NewNoteDialog
+  // Query para workspace - CORRIGIDO: usar order().limit(1) para evitar problemas com duplicatas
   const { data: workspace } = useQuery({
     queryKey: ['workspace', user?.id],
     queryFn: async () => {
@@ -127,6 +127,8 @@ const MemberDetails = () => {
         .from('workspaces')
         .select('id')
         .eq('owner_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(1)
         .maybeSingle();
       if (error) throw error;
       return data;

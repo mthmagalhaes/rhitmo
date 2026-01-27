@@ -43,18 +43,23 @@ const PLAN_LIMITS: Record<string, Omit<PlanLimits, 'planTier'>> = {
 export const usePlanLimits = () => {
   const { user } = useAuth();
 
+  // CORRIGIDO: Adicionar filtro owner_id + order().limit(1) para evitar problemas com duplicatas
   const { data: workspace, isLoading: workspaceLoading } = useQuery({
     queryKey: ['workspace-plan', user?.id],
     queryFn: async () => {
+      if (!user) return null;
       const { data, error } = await supabase
         .from('workspaces')
         .select('id, plan_tier')
+        .eq('owner_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(1)
         .maybeSingle();
       if (error) throw error;
       return data;
     },
     enabled: !!user,
-    staleTime: 30 * 1000, // 30 segundos para sincronizar mudanças do admin rapidamente
+    staleTime: 30 * 1000,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
   });
