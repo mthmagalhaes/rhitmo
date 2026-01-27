@@ -30,10 +30,24 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   const needsWorkspaceSetup = !authLoading && !workspaceLoading && user && !workspace && !isCreatingWorkspace;
 
-  // Auto-criar workspace silenciosamente
+  // Auto-criar workspace silenciosamente - COM PROTEÇÃO CONTRA LOOP
   useEffect(() => {
     const createWorkspaceAutomatically = async () => {
       if (!needsWorkspaceSetup || !user) return;
+      
+      // PROTEÇÃO: Verificar NOVAMENTE se já existe workspace (evita race condition)
+      const { data: existingCheck } = await supabase
+        .from('workspaces')
+        .select('id')
+        .eq('owner_id', user.id)
+        .limit(1)
+        .maybeSingle();
+      
+      if (existingCheck) {
+        console.log('✅ Workspace já existe, pulando criação');
+        refetch();
+        return;
+      }
       
       setIsCreatingWorkspace(true);
       
