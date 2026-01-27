@@ -10,16 +10,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
 
-  // Query para verificar workspace do usuário
+  // Query para verificar workspace do usuário - CORRIGIDO: usar order().limit(1) para evitar loop infinito
   const { data: workspace, isLoading: workspaceLoading, refetch } = useQuery({
     queryKey: ['user-workspace', user?.id],
     queryFn: async () => {
       if (!user) return null;
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('workspaces')
         .select('id')
         .eq('owner_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(1)
         .maybeSingle();
+      if (error) throw error;
       return data;
     },
     enabled: !!user,
