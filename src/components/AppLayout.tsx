@@ -36,10 +36,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       if (!needsWorkspaceSetup || !user) return;
       
       // PROTEÇÃO: Verificar NOVAMENTE se já existe workspace (evita race condition)
+      // Com a constraint UNIQUE no banco, isso é apenas uma verificação extra
       const { data: existingCheck } = await supabase
         .from('workspaces')
         .select('id')
         .eq('owner_id', user.id)
+        .order('created_at', { ascending: true })
         .limit(1)
         .maybeSingle();
       
