@@ -1,6 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, TrendingUp, AlertTriangle, Trash2, Zap, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, TrendingUp, AlertTriangle, Trash2, Zap, Loader2, ChevronDown, ChevronUp, Clock } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import {
@@ -111,10 +111,16 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onReanalyze, reanalyzing
                   {feedback.sentiment && (
                     <Badge variant="outline">{getSentimentLabel(feedback.sentiment)}</Badge>
                   )}
-                  {isProcessing && (
+                  {isProcessing && !feedback._analysisStuck && (
                     <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
                       <Loader2 className="h-3 w-3 animate-spin" />
                       <span>Analisando...</span>
+                    </div>
+                  )}
+                  {isProcessing && feedback._analysisStuck && (
+                    <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 text-xs">
+                      <Clock className="h-3 w-3" />
+                      <span>Em processamento...</span>
                     </div>
                   )}
                 </div>
@@ -157,6 +163,19 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onReanalyze, reanalyzing
                 </div>
               </div>
               
+              {/* Alert for stuck analysis */}
+              {isProcessing && feedback._analysisStuck && (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 rounded-lg mb-4">
+                  <p className="text-sm font-medium flex items-center gap-2 text-amber-800 dark:text-amber-200">
+                    <Clock className="h-4 w-4" />
+                    Análise em processamento
+                  </p>
+                  <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                    A IA está demorando mais que o normal. Você pode atualizar a página em alguns minutos.
+                  </p>
+                </div>
+              )}
+
               {showAnalysis ? (
                 <>
                   {feedback.summary && (

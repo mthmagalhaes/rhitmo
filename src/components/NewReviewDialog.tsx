@@ -39,10 +39,17 @@ export const NewReviewDialog = ({
     setGenerating(true);
     setGeneratedMonths(months);
     
+    // Timeout de 30 segundos para evitar UI travada
+    const timeoutPromise = new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error('TIMEOUT')), 30000)
+    );
+    
+    const fetchPromise = supabase.functions.invoke('generate-review', {
+      body: { memberId, months }
+    });
+    
     try {
-      const { data, error } = await supabase.functions.invoke('generate-review', {
-        body: { memberId, months }
-      });
+      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
 
       if (error) {
         console.error('Erro ao gerar avaliação:', error);
@@ -73,12 +80,19 @@ export const NewReviewDialog = ({
         description: `Analisamos ${data.feedbackCount} feedbacks dos últimos ${months} meses.`,
       });
     } catch (error: any) {
-      console.error('Erro ao gerar avaliação:', error);
-      toast({
-        title: "Erro ao gerar avaliação",
-        description: error.message || "Tente novamente em alguns instantes.",
-        variant: "destructive",
-      });
+      if (error.message === 'TIMEOUT') {
+        toast({
+          title: "Processamento em andamento ⏳",
+          description: "A análise está demorando. Continue editando ou tente novamente em alguns instantes.",
+        });
+      } else {
+        console.error('Erro ao gerar avaliação:', error);
+        toast({
+          title: "Erro ao gerar avaliação",
+          description: error.message || "Tente novamente em alguns instantes.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setGenerating(false);
     }
