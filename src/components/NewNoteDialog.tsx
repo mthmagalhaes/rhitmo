@@ -161,7 +161,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
 
       // STEP 2: Close modal IMMEDIATELY and show toast
       toast({
-        title: "Nota salva! ✓",
+        title: "Nota salva! ✅",
         description: "Processando análise inteligente...",
       });
       
@@ -179,6 +179,23 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
       }).catch(err => {
         console.error('Background analysis failed:', err);
         // Silent fail - note is already saved
+      });
+
+      // STEP 4: Fire-and-forget backup to Storage (Safety Net)
+      supabase.functions.invoke('backup-data', {
+        body: { 
+          type: 'feedback', 
+          data: feedback,
+          userId: user.id 
+        }
+      }).then(() => {
+        toast({
+          title: "Backup Seguro Confirmado 🔒",
+          description: "Cópia salva no armazenamento.",
+        });
+      }).catch(err => {
+        console.warn('Backup failed:', err);
+        // Silent fail - main data is already saved
       });
 
     } catch (error: any) {
