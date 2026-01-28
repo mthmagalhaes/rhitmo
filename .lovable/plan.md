@@ -1,181 +1,210 @@
 
-## Plano: Reativação de Features de UX (Metas, Chat com Threads)
 
-### Diagnóstico Confirmado
+## Plano: Implementação do Editor de Texto Rico (TipTap)
 
-| Feature | Status Atual | Ação Necessária |
-|---------|-------------|-----------------|
-| Metas Estruturadas (Goals 2.0) | Textarea simples | Criar componentes GoalsManager + GoalCard |
-| Formatação Markdown Avaliações | Funcionando | Nenhuma |
-| Mentor Chat com Threads | Dialog simples sem histórico | Redesenhar para split-view |
+### Diagnóstico do Estado Atual
 
----
+| Componente | Estado Atual | Problema |
+|------------|-------------|----------|
+| `NewNoteDialog.tsx` | Textarea simples (linha 283-290) | Usuário precisa digitar Markdown manualmente |
+| `NewReviewDialog.tsx` | Textarea simples (linha 275-281) | IA gera Markdown que aparece como texto cru na edição |
+| `NewGoalDialog.tsx` | Textarea simples (linha 141-147) | Sem formatação na descrição |
+| `ReviewViewDialog.tsx` (edição) | Textarea com fonte mono (linha 290-294) | Usuário edita Markdown cru |
+| `FeedbackTimeline.tsx` | Renderiza com DOMPurify | ✅ Já funciona (exibe HTML formatado) |
+| `ReviewViewDialog.tsx` (visualização) | ReactMarkdown | ✅ Já funciona |
 
-### Parte 1: Sistema de Metas Estruturadas
-
-**Objetivo**: Substituir o Textarea atual por uma interface interativa de cards/tabela usando a tabela `goals`.
-
-**Arquivos a criar:**
-1. `src/components/GoalsManager.tsx` - Componente principal com tabs "Ativas" / "Histórico"
-2. `src/components/GoalCard.tsx` - Card individual com barra de progresso e ações
-3. `src/components/NewGoalDialog.tsx` - Modal para criar/editar metas
-
-**Arquivo a modificar:**
-- `src/pages/MemberDetails.tsx` - Substituir Textarea (linhas 490-525) por `<GoalsManager />`
-
-**Estrutura Visual:**
-```text
-┌─────────────────────────────────────────────────────────────┐
-│ 🎯 Objetivos / Metas                           [+ Nova Meta]│
-├─────────────────────────────────────────────────────────────┤
-│ [Ativas (3)]  [Histórico (5)]                               │
-├─────────────────────────────────────────────────────────────┤
-│ ┌─────────────────────────────────────────────────────────┐ │
-│ │ Aumentar SQLs semanais                    📅 31/out     │ │
-│ │ ████████████░░░░░░░░ 60% (15→25)                        │ │
-│ │ Status: Em Andamento                    [✏️] [🗑️]       │ │
-│ └─────────────────────────────────────────────────────────┘ │
-│ ┌─────────────────────────────────────────────────────────┐ │
-│ │ Concluir certificação AWS                 📅 28/fev     │ │
-│ │ ░░░░░░░░░░░░░░░░░░░░ 0%                                 │ │
-│ │ Status: Não Iniciado                    [✏️] [🗑️]       │ │
-│ └─────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**Funcionalidades do GoalsManager:**
-- Query para buscar goals por `member_id`
-- Tabs para filtrar por status: `active` | `completed` | `archived`
-- Contagem de metas ativas + alerta vermelho para metas vencidas
-- Botão "Nova Meta" abre NewGoalDialog
-
-**Funcionalidades do GoalCard:**
-- Exibir título, prazo (`target_date`), progresso (`metric_current` / `metric_target`)
-- Barra de progresso visual (Progress component)
-- Badge de status com cores (verde=concluída, amarelo=em andamento, vermelho=atrasada)
-- Botões de ação: Editar (abre modal), Excluir (confirma), Concluir (muda status)
-
-**Funcionalidades do NewGoalDialog:**
-- Campos: Título, Descrição (RichTextEditor), Data Alvo, Métricas (opcional)
-- Modo edição: Preenche campos com dados existentes
-- Validação: Título obrigatório, data futura
+**Conclusão**: A renderização está correta, mas a **experiência de edição** precisa de um editor WYSIWYG.
 
 ---
 
-### Parte 2: Mentor Chat com Interface de Threads
+### Solução: TipTap Rich Text Editor
 
-**Objetivo**: Transformar o modal simples em interface split-view com histórico de conversas.
+TipTap é a escolha ideal pois:
+- Framework headless (total controle de estilo)
+- Baseado em ProseMirror (robusto)
+- Exporta HTML nativo (compatível com DOMPurify existente)
+- Extensões modulares (bold, italic, headings, lists)
 
-**Arquivo a modificar:**
-- `src/components/MentorChat.tsx` - Redesign completo
+---
 
-**Nova Estrutura Visual:**
+### Arquivos a Criar
+
+| Arquivo | Propósito |
+|---------|-----------|
+| `src/components/ui/rich-text-editor.tsx` | Componente reutilizável com toolbar |
+
+### Arquivos a Modificar
+
+| Arquivo | Alteração |
+|---------|-----------|
+| `src/components/NewNoteDialog.tsx` | Substituir Textarea por RichTextEditor |
+| `src/components/NewReviewDialog.tsx` | Substituir Textarea por RichTextEditor |
+| `src/components/NewGoalDialog.tsx` | Substituir Textarea por RichTextEditor |
+| `src/components/ReviewViewDialog.tsx` | Substituir Textarea (modo edição) por RichTextEditor |
+
+---
+
+### Estrutura Visual do Editor
+
 ```text
-┌──────────────────────────────────────────────────────────────────┐
-│ 🎯 Mentor Chat — João Silva (Analista)                     [X]   │
-├────────────────────┬─────────────────────────────────────────────┤
-│ Conversas          │ Conversa Atual                              │
-│ ──────────────────│                                              │
-│ [+ Nova Conversa] │ Como posso ajudar?                           │
-│                    │                                              │
-│ 📅 Hoje            │ ┌─────────────────────────────────────────┐ │
-│ > Feedback Q3      │ │ 👤 Analisar padrões de comportamento    │ │
-│                    │ └─────────────────────────────────────────┘ │
-│ 📅 Ontem           │                                              │
-│   Plano de PDI     │ ┌─────────────────────────────────────────┐ │
-│                    │ │ 🤖 Com base nos 15 feedbacks...         │ │
-│ 📅 Semana passada  │ └─────────────────────────────────────────┘ │
-│   Riscos de turnov │                                              │
-│   Roteiro 1:1      │                                              │
-│                    │                                              │
-├────────────────────┴─────────────────────────────────────────────┤
-│ [📎] [Como posso ajudar você hoje?                    ] [🎤] [➤] │
-└──────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│ [B] [I] [H1] [H2] [•] [1.] │                                 │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│ Digite seu conteúdo aqui...                                  │
+│                                                              │
+│ O texto fica **formatado** em tempo real!                    │
+│                                                              │
+│ • Item de lista                                              │
+│ • Outro item                                                 │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-**Mudanças Técnicas:**
-1. Usar `ResizablePanelGroup` para split-view (já instalado)
-2. Query para `chat_threads` filtrado por `member_id` e `user_id`
-3. Query para `mentor_messages` filtrado por `thread_id`
-4. Estado `selectedThreadId` para controlar thread ativa
-5. Auto-criar thread na primeira mensagem (título = primeiras palavras)
-6. Agrupar threads por data (Hoje, Ontem, Semana passada)
+**Botões da Toolbar:**
+- **B** - Negrito (bold)
+- **I** - Itálico (italic)
+- **H1** - Título principal (heading 1)
+- **H2** - Subtítulo (heading 2)
+- **•** - Lista com marcadores (bullet list)
+- **1.** - Lista numerada (ordered list)
 
-**Estado do Componente:**
+---
+
+### Fluxo de Dados
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                    Fluxo de Entrada/Saída                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Usuário Digita → Editor TipTap → Exporta HTML → Salva no DB    │
+│                                                                 │
+│  Carrega do DB → HTML → TipTap (modo edição) → Renderiza WYSIWYG│
+│                                                                 │
+│  Carrega do DB → HTML → DOMPurify/ReactMarkdown → Exibe limpo   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Compatibilidade com Dados Existentes
+
+O sistema precisa suportar dois formatos:
+1. **Markdown Legado**: Conteúdo antigo gerado pela IA (`### Título`, `**negrito**`)
+2. **HTML Novo**: Conteúdo criado pelo TipTap (`<h3>Título</h3>`, `<strong>negrito</strong>`)
+
+**Estratégia de Migração Automática:**
 ```typescript
-const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
-const [isCreatingNewThread, setIsCreatingNewThread] = useState(false);
-
-// Query threads
-const { data: threads } = useQuery({
-  queryKey: ['chat-threads', memberId],
-  queryFn: async () => {
-    const { data } = await supabase
-      .from('chat_threads')
-      .select('*')
-      .eq('member_id', memberId)
-      .eq('user_id', user.id)
-      .order('updated_at', { ascending: false });
-    return data || [];
+// Ao carregar conteúdo para edição:
+const loadContent = (content: string) => {
+  if (content.includes('</') || content.includes('/>')) {
+    // Já é HTML - usar direto
+    return content;
   }
-});
+  // É Markdown - converter para HTML
+  return marked.parse(content);
+};
+```
 
-// Query messages for selected thread
-const { data: messages } = useQuery({
-  queryKey: ['mentor-messages', selectedThreadId],
-  queryFn: async () => {
-    if (!selectedThreadId) return [];
-    const { data } = await supabase
-      .from('mentor_messages')
-      .select('*')
-      .eq('thread_id', selectedThreadId)
-      .order('created_at', { ascending: true });
-    return data || [];
-  },
-  enabled: !!selectedThreadId
-});
+---
+
+### Dependências Necessárias
+
+```json
+{
+  "@tiptap/react": "^2.x",
+  "@tiptap/starter-kit": "^2.x",
+  "@tiptap/extension-placeholder": "^2.x"
+}
+```
+
+---
+
+### Implementação do Componente
+
+**Interface do RichTextEditor:**
+```typescript
+interface RichTextEditorProps {
+  content: string;
+  onChange: (html: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  minHeight?: string;
+}
+```
+
+**Uso nos Dialogs:**
+```typescript
+// Antes (Textarea)
+<Textarea
+  value={content}
+  onChange={(e) => setContent(e.target.value)}
+  placeholder="Digite..."
+/>
+
+// Depois (RichTextEditor)
+<RichTextEditor
+  content={content}
+  onChange={setContent}
+  placeholder="Digite..."
+/>
+```
+
+---
+
+### Integração com VoiceInput
+
+O `NewNoteDialog` possui um componente `VoiceInput` que adiciona texto transcrito ao conteúdo. O TipTap suporta inserção programática:
+
+```typescript
+// Ao receber transcrição de voz
+const handleTranscription = (text: string) => {
+  if (editor) {
+    editor.chain().focus().insertContent(text).run();
+  }
+};
+```
+
+---
+
+### Seção Técnica
+
+**Extensões TipTap a incluir:**
+- `StarterKit` - Bold, Italic, Strike, Heading (1-6), Bullet List, Ordered List, Code, Code Block, Blockquote, History (undo/redo)
+- `Placeholder` - Texto placeholder quando vazio
+
+**Estilização da Toolbar:**
+- Usar Shadcn `Toggle` para botões (mesmo padrão visual do app)
+- Separador visual entre grupos (texto | listas)
+- Estado ativo visualmente destacado
+
+**Estilos do Editor:**
+- Usar classes Tailwind `prose` para renderização consistente
+- Borda arredondada (`rounded-lg`) seguindo brand kit
+- Focus ring igual ao Input padrão
+
+**Conversão Markdown → HTML para IA:**
+A IA do backend (`generate-review`) retorna Markdown. Ao receber:
+```typescript
+const generatedContent = data.review_content;
+// Converter para HTML antes de setar no editor
+const htmlContent = marked.parse(generatedContent);
+setContent(htmlContent);
 ```
 
 ---
 
 ### Resumo das Alterações
 
-| Arquivo | Alteração |
-|---------|-----------|
-| `src/components/GoalsManager.tsx` | CRIAR - Componente de gerenciamento de metas |
-| `src/components/GoalCard.tsx` | CRIAR - Card individual de meta |
-| `src/components/NewGoalDialog.tsx` | CRIAR - Modal para criar/editar metas |
-| `src/pages/MemberDetails.tsx` | MODIFICAR - Substituir Textarea por GoalsManager |
-| `src/components/MentorChat.tsx` | MODIFICAR - Redesign para split-view com threads |
+| Etapa | Descrição |
+|-------|-----------|
+| 1 | Instalar dependências TipTap |
+| 2 | Criar `src/components/ui/rich-text-editor.tsx` |
+| 3 | Atualizar `NewNoteDialog.tsx` - substituir Textarea |
+| 4 | Atualizar `NewReviewDialog.tsx` - substituir Textarea + converter output da IA |
+| 5 | Atualizar `NewGoalDialog.tsx` - substituir Textarea da descrição |
+| 6 | Atualizar `ReviewViewDialog.tsx` - substituir Textarea no modo edição |
+| 7 | Testar compatibilidade com conteúdo Markdown existente |
 
----
-
-### Seção Técnica
-
-**Dependências existentes utilizadas:**
-- `react-resizable-panels` - Split-view (já instalado)
-- `@tanstack/react-query` - Data fetching
-- `date-fns` - Agrupamento por data
-- Shadcn: Progress, Tabs, Badge, Card
-
-**Schema da tabela goals (já existe):**
-```sql
-goals (
-  id uuid PRIMARY KEY,
-  member_id uuid NOT NULL,
-  title text NOT NULL,
-  description text,
-  status text DEFAULT 'active',
-  start_date date,
-  target_date date,
-  metric_current numeric,
-  metric_target numeric,
-  metric_unit text,
-  created_at timestamptz,
-  updated_at timestamptz,
-  completed_at timestamptz
-)
-```
-
-**Migração de dados (keyObjectives → goals):**
-Se desejado, podemos criar uma migração para converter o campo texto `key_objectives` existente em registros estruturados na tabela `goals`. Isso seria opcional e feito via Edge Function ou SQL.
