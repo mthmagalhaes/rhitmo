@@ -75,6 +75,7 @@ export type Database = {
       }
       feedbacks: {
         Row: {
+          action_items: Json | null
           bias_alert: string | null
           coaching_tips: string | null
           content: string
@@ -91,6 +92,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          action_items?: Json | null
           bias_alert?: string | null
           coaching_tips?: string | null
           content: string
@@ -107,6 +109,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          action_items?: Json | null
           bias_alert?: string | null
           coaching_tips?: string | null
           content?: string
@@ -347,6 +350,7 @@ export type Database = {
           team_id: string
           updated_at: string
           user_id: string | null
+          user_manual: Json | null
           work_style_data: Json | null
         }
         Insert: {
@@ -361,6 +365,7 @@ export type Database = {
           team_id: string
           updated_at?: string
           user_id?: string | null
+          user_manual?: Json | null
           work_style_data?: Json | null
         }
         Update: {
@@ -375,6 +380,7 @@ export type Database = {
           team_id?: string
           updated_at?: string
           user_id?: string | null
+          user_manual?: Json | null
           work_style_data?: Json | null
         }
         Relationships: [
