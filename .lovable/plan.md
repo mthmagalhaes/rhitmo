@@ -1,138 +1,181 @@
 
+## Plano: Reativação de Features de UX (Metas, Chat com Threads)
 
-## Análise: Bloqueio de Acesso Anônimo
+### Diagnóstico Confirmado
 
-### Conclusão Principal
-
-**O acesso anônimo já está bloqueado na prática** - as políticas RLS existentes usam `effective_user_id()` que retorna NULL para usuários anônimos, e `NULL = owner_id` sempre avalia como FALSE em SQL. Entretanto, adicionar políticas explícitas de DENY para `anon` é uma boa prática de "defense in depth".
-
----
-
-### Análise Técnica do Estado Atual
-
-| Aspecto | Status |
-|---------|--------|
-| Grants de tabela para `anon` | SIM - `anon=arwdDxtm` (todas permissões) |
-| RLS habilitado | SIM |
-| Políticas verificam auth | SIM - via `effective_user_id()` |
-| `effective_user_id()` para anon | Retorna NULL |
-| NULL = owner_id | Sempre FALSE (bloqueia acesso) |
-
-**Resultado**: Mesmo com grants, RLS bloqueia acesso anônimo porque nenhuma política retorna TRUE para NULL.
+| Feature | Status Atual | Ação Necessária |
+|---------|-------------|-----------------|
+| Metas Estruturadas (Goals 2.0) | Textarea simples | Criar componentes GoalsManager + GoalCard |
+| Formatação Markdown Avaliações | Funcionando | Nenhuma |
+| Mentor Chat com Threads | Dialog simples sem histórico | Redesenhar para split-view |
 
 ---
 
-### Problemas com o SQL Proposto
+### Parte 1: Sistema de Metas Estruturadas
 
-O SQL proposto tem um problema técnico:
+**Objetivo**: Substituir o Textarea atual por uma interface interativa de cards/tabela usando a tabela `goals`.
 
-```sql
--- PROBLEMA: Criar política PERMISSIVE com USING (false) não bloqueia
-CREATE POLICY "Deny anonymous select on team_members" 
-ON team_members FOR SELECT TO anon USING (false);
+**Arquivos a criar:**
+1. `src/components/GoalsManager.tsx` - Componente principal com tabs "Ativas" / "Histórico"
+2. `src/components/GoalCard.tsx` - Card individual com barra de progresso e ações
+3. `src/components/NewGoalDialog.tsx` - Modal para criar/editar metas
+
+**Arquivo a modificar:**
+- `src/pages/MemberDetails.tsx` - Substituir Textarea (linhas 490-525) por `<GoalsManager />`
+
+**Estrutura Visual:**
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ 🎯 Objetivos / Metas                           [+ Nova Meta]│
+├─────────────────────────────────────────────────────────────┤
+│ [Ativas (3)]  [Histórico (5)]                               │
+├─────────────────────────────────────────────────────────────┤
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ Aumentar SQLs semanais                    📅 31/out     │ │
+│ │ ████████████░░░░░░░░ 60% (15→25)                        │ │
+│ │ Status: Em Andamento                    [✏️] [🗑️]       │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ Concluir certificação AWS                 📅 28/fev     │ │
+│ │ ░░░░░░░░░░░░░░░░░░░░ 0%                                 │ │
+│ │ Status: Não Iniciado                    [✏️] [🗑️]       │ │
+│ └─────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-Em PostgreSQL, políticas são **PERMISSIVE por default**. Múltiplas políticas permissivas funcionam como OR - se qualquer uma for TRUE, o acesso é permitido. Adicionar uma política que retorna FALSE não altera o comportamento porque as outras políticas continuam permitindo acesso para authenticated users.
+**Funcionalidades do GoalsManager:**
+- Query para buscar goals por `member_id`
+- Tabs para filtrar por status: `active` | `completed` | `archived`
+- Contagem de metas ativas + alerta vermelho para metas vencidas
+- Botão "Nova Meta" abre NewGoalDialog
+
+**Funcionalidades do GoalCard:**
+- Exibir título, prazo (`target_date`), progresso (`metric_current` / `metric_target`)
+- Barra de progresso visual (Progress component)
+- Badge de status com cores (verde=concluída, amarelo=em andamento, vermelho=atrasada)
+- Botões de ação: Editar (abre modal), Excluir (confirma), Concluir (muda status)
+
+**Funcionalidades do NewGoalDialog:**
+- Campos: Título, Descrição (RichTextEditor), Data Alvo, Métricas (opcional)
+- Modo edição: Preenche campos com dados existentes
+- Validação: Título obrigatório, data futura
 
 ---
 
-### SQL Corrigido (Se Desejar Defesa em Profundidade)
+### Parte 2: Mentor Chat com Interface de Threads
 
-Para bloquear explicitamente anon, precisamos **REVOGAR os grants** em vez de adicionar políticas:
+**Objetivo**: Transformar o modal simples em interface split-view com histórico de conversas.
 
-```sql
-BEGIN;
+**Arquivo a modificar:**
+- `src/components/MentorChat.tsx` - Redesign completo
 
--- Opção 1: Revogar grants diretos para anon (mais seguro)
-REVOKE SELECT, INSERT, UPDATE, DELETE ON public.team_members FROM anon;
-REVOKE SELECT, INSERT, UPDATE, DELETE ON public.feedbacks FROM anon;
+**Nova Estrutura Visual:**
+```text
+┌──────────────────────────────────────────────────────────────────┐
+│ 🎯 Mentor Chat — João Silva (Analista)                     [X]   │
+├────────────────────┬─────────────────────────────────────────────┤
+│ Conversas          │ Conversa Atual                              │
+│ ──────────────────│                                              │
+│ [+ Nova Conversa] │ Como posso ajudar?                           │
+│                    │                                              │
+│ 📅 Hoje            │ ┌─────────────────────────────────────────┐ │
+│ > Feedback Q3      │ │ 👤 Analisar padrões de comportamento    │ │
+│                    │ └─────────────────────────────────────────┘ │
+│ 📅 Ontem           │                                              │
+│   Plano de PDI     │ ┌─────────────────────────────────────────┐ │
+│                    │ │ 🤖 Com base nos 15 feedbacks...         │ │
+│ 📅 Semana passada  │ └─────────────────────────────────────────┘ │
+│   Riscos de turnov │                                              │
+│   Roteiro 1:1      │                                              │
+│                    │                                              │
+├────────────────────┴─────────────────────────────────────────────┤
+│ [📎] [Como posso ajudar você hoje?                    ] [🎤] [➤] │
+└──────────────────────────────────────────────────────────────────┘
+```
 
--- As funções RPC com SECURITY DEFINER continuarão funcionando
--- pois executam como o owner da função (postgres), não como anon
+**Mudanças Técnicas:**
+1. Usar `ResizablePanelGroup` para split-view (já instalado)
+2. Query para `chat_threads` filtrado por `member_id` e `user_id`
+3. Query para `mentor_messages` filtrado por `thread_id`
+4. Estado `selectedThreadId` para controlar thread ativa
+5. Auto-criar thread na primeira mensagem (título = primeiras palavras)
+6. Agrupar threads por data (Hoje, Ontem, Semana passada)
 
-COMMIT;
+**Estado do Componente:**
+```typescript
+const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+const [isCreatingNewThread, setIsCreatingNewThread] = useState(false);
+
+// Query threads
+const { data: threads } = useQuery({
+  queryKey: ['chat-threads', memberId],
+  queryFn: async () => {
+    const { data } = await supabase
+      .from('chat_threads')
+      .select('*')
+      .eq('member_id', memberId)
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false });
+    return data || [];
+  }
+});
+
+// Query messages for selected thread
+const { data: messages } = useQuery({
+  queryKey: ['mentor-messages', selectedThreadId],
+  queryFn: async () => {
+    if (!selectedThreadId) return [];
+    const { data } = await supabase
+      .from('mentor_messages')
+      .select('*')
+      .eq('thread_id', selectedThreadId)
+      .order('created_at', { ascending: true });
+    return data || [];
+  },
+  enabled: !!selectedThreadId
+});
 ```
 
 ---
 
-### Verificação de Impacto no Rhitmo Sync
+### Resumo das Alterações
 
-| Funcionalidade | Usa tabela direta? | Continuará funcionando? |
-|----------------|-------------------|------------------------|
-| `get_member_for_sync` | Não - é RPC SECURITY DEFINER | SIM |
-| `submit_rhitmo_sync` | Não - é RPC SECURITY DEFINER | SIM |
-| Loading member data | Via RPC | SIM |
-| Saving work_style_data | Via RPC | SIM |
-
-**Conclusão**: O Rhitmo Sync não será afetado porque usa exclusivamente funções RPC com SECURITY DEFINER.
-
----
-
-### Recomendação
-
-**Opção A**: Não fazer nada - a segurança já está garantida via RLS.
-
-**Opção B**: Aplicar defense in depth revogando grants para anon:
-
-```sql
-BEGIN;
-
--- Revogar acesso direto do role anon às tabelas sensíveis
-REVOKE ALL ON public.team_members FROM anon;
-REVOKE ALL ON public.feedbacks FROM anon;
-REVOKE ALL ON public.workspaces FROM anon;
-REVOKE ALL ON public.teams FROM anon;
-REVOKE ALL ON public.goals FROM anon;
-REVOKE ALL ON public.performance_reviews FROM anon;
-REVOKE ALL ON public.meeting_transcripts FROM anon;
-REVOKE ALL ON public.mentor_messages FROM anon;
-REVOKE ALL ON public.chat_threads FROM anon;
-
--- Manter acesso para waitlist_leads (INSERT público intencional)
--- Já está restrito por RLS para SELECT
-
-COMMIT;
-```
-
----
-
-### Resumo das Alterações Propostas
-
-| Ação | Arquivo/Local | Descrição |
-|------|--------------|-----------|
-| REVOKE grants | Migration SQL | Remover permissões diretas do role `anon` em tabelas sensíveis |
-| Manter RPC | Sem alteração | Funções SECURITY DEFINER continuam funcionando normalmente |
-| Validar | Teste manual | Acessar `/sync/:memberId` para confirmar que Rhitmo Sync funciona |
+| Arquivo | Alteração |
+|---------|-----------|
+| `src/components/GoalsManager.tsx` | CRIAR - Componente de gerenciamento de metas |
+| `src/components/GoalCard.tsx` | CRIAR - Card individual de meta |
+| `src/components/NewGoalDialog.tsx` | CRIAR - Modal para criar/editar metas |
+| `src/pages/MemberDetails.tsx` | MODIFICAR - Substituir Textarea por GoalsManager |
+| `src/components/MentorChat.tsx` | MODIFICAR - Redesign para split-view com threads |
 
 ---
 
 ### Seção Técnica
 
-**Por que REVOKE em vez de política DENY?**
+**Dependências existentes utilizadas:**
+- `react-resizable-panels` - Split-view (já instalado)
+- `@tanstack/react-query` - Data fetching
+- `date-fns` - Agrupamento por data
+- Shadcn: Progress, Tabs, Badge, Card
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│                     Camadas de Segurança                    │
-├─────────────────────────────────────────────────────────────┤
-│  1. GRANT/REVOKE  →  Permissões base (porta de entrada)     │
-│  2. RLS Policies  →  Filtros por linha (quem vê o quê)      │
-│  3. App Logic     →  Validações adicionais no código        │
-└─────────────────────────────────────────────────────────────┘
-
-REVOKE bloqueia na camada 1 - nem chega a avaliar RLS.
-Política DENY com USING(false) + PERMISSIVE não funciona como esperado.
-```
-
-**Teste de validação pós-aplicação**:
+**Schema da tabela goals (já existe):**
 ```sql
--- Verificar que grants foram removidos
-SELECT 
-  relname,
-  relacl::text 
-FROM pg_class 
-WHERE relnamespace = 'public'::regnamespace 
-  AND relname = 'team_members';
-
--- Esperado: Não conter 'anon=' no resultado
+goals (
+  id uuid PRIMARY KEY,
+  member_id uuid NOT NULL,
+  title text NOT NULL,
+  description text,
+  status text DEFAULT 'active',
+  start_date date,
+  target_date date,
+  metric_current numeric,
+  metric_target numeric,
+  metric_unit text,
+  created_at timestamptz,
+  updated_at timestamptz,
+  completed_at timestamptz
+)
 ```
 
+**Migração de dados (keyObjectives → goals):**
+Se desejado, podemos criar uma migração para converter o campo texto `key_objectives` existente em registros estruturados na tabela `goals`. Isso seria opcional e feito via Edge Function ou SQL.
