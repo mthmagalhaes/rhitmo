@@ -1,146 +1,138 @@
 
-## Análise: Refinamento UX - Status Atual
+
+## Análise: Bloqueio de Acesso Anônimo
 
 ### Conclusão Principal
 
-**A feature "Ver Mais" já está implementada!** O `FeedbackTimeline.tsx` já possui toda a lógica necessária com `line-clamp-4` e botões de expansão. A única melhoria necessária é na experiência de timeout.
+**O acesso anônimo já está bloqueado na prática** - as políticas RLS existentes usam `effective_user_id()` que retorna NULL para usuários anônimos, e `NULL = owner_id` sempre avalia como FALSE em SQL. Entretanto, adicionar políticas explícitas de DENY para `anon` é uma boa prática de "defense in depth".
 
 ---
 
-### Status das Features
+### Análise Técnica do Estado Atual
 
-| Feature | Status | Localização |
-|---------|--------|-------------|
-| Toggle "Ver Mais" (Timeline) | IMPLEMENTADO | `FeedbackTimeline.tsx` linhas 49-53, 165-191, 237-262 |
-| Timeout + Polling 30s | IMPLEMENTADO | `MemberDetails.tsx` linhas 96-119 |
-| Flag `_analysisStuck` | IMPLEMENTADO | `MemberDetails.tsx` linhas 110-119 |
-| Mensagem amigável de timeout | PENDENTE | `FeedbackTimeline.tsx` |
-| Timeout em geração de reviews | PENDENTE | `NewReviewDialog.tsx` |
+| Aspecto | Status |
+|---------|--------|
+| Grants de tabela para `anon` | SIM - `anon=arwdDxtm` (todas permissões) |
+| RLS habilitado | SIM |
+| Políticas verificam auth | SIM - via `effective_user_id()` |
+| `effective_user_id()` para anon | Retorna NULL |
+| NULL = owner_id | Sempre FALSE (bloqueia acesso) |
+
+**Resultado**: Mesmo com grants, RLS bloqueia acesso anônimo porque nenhuma política retorna TRUE para NULL.
 
 ---
 
-### Implementação Necessária
+### Problemas com o SQL Proposto
 
-#### 1. Mensagem Amigável para Análises Lentas
+O SQL proposto tem um problema técnico:
 
-**Arquivo**: `src/components/FeedbackTimeline.tsx`
+```sql
+-- PROBLEMA: Criar política PERMISSIVE com USING (false) não bloqueia
+CREATE POLICY "Deny anonymous select on team_members" 
+ON team_members FOR SELECT TO anon USING (false);
+```
 
-**Modificação**: Quando `feedback._analysisStuck === true`, exibir mensagem informativa em vez de só parar o spinner:
+Em PostgreSQL, políticas são **PERMISSIVE por default**. Múltiplas políticas permissivas funcionam como OR - se qualquer uma for TRUE, o acesso é permitido. Adicionar uma política que retorna FALSE não altera o comportamento porque as outras políticas continuam permitindo acesso para authenticated users.
 
-```text
-┌─────────────────────────────────────────────────┐
-│ [Badge: Neutro]                    📅 28/01/26  │
-│                                                 │
-│ ⏳ A análise está demorando mais que o normal.  │
-│    Estamos processando em segundo plano.        │
-│    Atualize a página em alguns minutos.         │
-│                                                 │
-│ [Conteúdo original da nota...]                  │
-│                                                 │
-│ [Botão: Gerar Análise de IA]                    │
-└─────────────────────────────────────────────────┘
+---
+
+### SQL Corrigido (Se Desejar Defesa em Profundidade)
+
+Para bloquear explicitamente anon, precisamos **REVOGAR os grants** em vez de adicionar políticas:
+
+```sql
+BEGIN;
+
+-- Opção 1: Revogar grants diretos para anon (mais seguro)
+REVOKE SELECT, INSERT, UPDATE, DELETE ON public.team_members FROM anon;
+REVOKE SELECT, INSERT, UPDATE, DELETE ON public.feedbacks FROM anon;
+
+-- As funções RPC com SECURITY DEFINER continuarão funcionando
+-- pois executam como o owner da função (postgres), não como anon
+
+COMMIT;
 ```
 
 ---
 
-#### 2. Timeout Inteligente na Geração de Avaliações
+### Verificação de Impacto no Rhitmo Sync
 
-**Arquivo**: `src/components/NewReviewDialog.tsx`
+| Funcionalidade | Usa tabela direta? | Continuará funcionando? |
+|----------------|-------------------|------------------------|
+| `get_member_for_sync` | Não - é RPC SECURITY DEFINER | SIM |
+| `submit_rhitmo_sync` | Não - é RPC SECURITY DEFINER | SIM |
+| Loading member data | Via RPC | SIM |
+| Saving work_style_data | Via RPC | SIM |
 
-**Problema**: A função `generateReview()` (linha 38-85) não tem timeout - se a Edge Function demorar 60+ segundos, o usuário fica preso.
+**Conclusão**: O Rhitmo Sync não será afetado porque usa exclusivamente funções RPC com SECURITY DEFINER.
 
-**Solução**: Implementar `Promise.race()` com timeout de 30 segundos:
+---
 
-```typescript
-const generateReview = async (months: number) => {
-  setGenerating(true);
-  setGeneratedMonths(months);
-  
-  const timeoutPromise = new Promise((_, reject) => 
-    setTimeout(() => reject(new Error('TIMEOUT')), 30000)
-  );
-  
-  const fetchPromise = supabase.functions.invoke('generate-review', {
-    body: { memberId, months }
-  });
-  
-  try {
-    const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
-    
-    // ... lógica existente de sucesso ...
-    
-  } catch (error: any) {
-    if (error.message === 'TIMEOUT') {
-      toast({
-        title: "Processamento em andamento ⏳",
-        description: "A análise está demorando. Continue editando ou tente novamente.",
-      });
-      // Não mostrar erro destrutivo, apenas informativo
-    } else {
-      toast({
-        title: "Erro ao gerar avaliação",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  } finally {
-    setGenerating(false);
-  }
-};
+### Recomendação
+
+**Opção A**: Não fazer nada - a segurança já está garantida via RLS.
+
+**Opção B**: Aplicar defense in depth revogando grants para anon:
+
+```sql
+BEGIN;
+
+-- Revogar acesso direto do role anon às tabelas sensíveis
+REVOKE ALL ON public.team_members FROM anon;
+REVOKE ALL ON public.feedbacks FROM anon;
+REVOKE ALL ON public.workspaces FROM anon;
+REVOKE ALL ON public.teams FROM anon;
+REVOKE ALL ON public.goals FROM anon;
+REVOKE ALL ON public.performance_reviews FROM anon;
+REVOKE ALL ON public.meeting_transcripts FROM anon;
+REVOKE ALL ON public.mentor_messages FROM anon;
+REVOKE ALL ON public.chat_threads FROM anon;
+
+-- Manter acesso para waitlist_leads (INSERT público intencional)
+-- Já está restrito por RLS para SELECT
+
+COMMIT;
 ```
 
 ---
 
-### Resumo das Alterações
+### Resumo das Alterações Propostas
 
-| Arquivo | Alteração |
-|---------|-----------|
-| `src/components/FeedbackTimeline.tsx` | Adicionar bloco visual para notas com `_analysisStuck === true` |
-| `src/components/NewReviewDialog.tsx` | Implementar timeout de 30s com `Promise.race()` na geração de avaliações |
+| Ação | Arquivo/Local | Descrição |
+|------|--------------|-----------|
+| REVOKE grants | Migration SQL | Remover permissões diretas do role `anon` em tabelas sensíveis |
+| Manter RPC | Sem alteração | Funções SECURITY DEFINER continuam funcionando normalmente |
+| Validar | Teste manual | Acessar `/sync/:memberId` para confirmar que Rhitmo Sync funciona |
 
 ---
 
 ### Seção Técnica
 
-**Lógica de `_analysisStuck` (já existente em MemberDetails.tsx)**:
-```typescript
-// Linhas 110-119: Marca notas sem análise após 30 segundos
-const feedbacks = feedbacksRaw.map((f: any) => {
-  if (f.summary || f.sentiment) return f;
-  const createdAt = new Date(f.created_at);
-  const diffSeconds = (now.getTime() - createdAt.getTime()) / 1000;
-  return {
-    ...f,
-    _analysisStuck: diffSeconds > 30
-  };
-});
+**Por que REVOKE em vez de política DENY?**
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│                     Camadas de Segurança                    │
+├─────────────────────────────────────────────────────────────┤
+│  1. GRANT/REVOKE  →  Permissões base (porta de entrada)     │
+│  2. RLS Policies  →  Filtros por linha (quem vê o quê)      │
+│  3. App Logic     →  Validações adicionais no código        │
+└─────────────────────────────────────────────────────────────┘
+
+REVOKE bloqueia na camada 1 - nem chega a avaliar RLS.
+Política DENY com USING(false) + PERMISSIVE não funciona como esperado.
 ```
 
-**Nova interface para FeedbackTimeline**:
-```typescript
-interface Feedback {
-  // ... campos existentes ...
-  _analysisStuck?: boolean; // Já existe, linha 31
-}
+**Teste de validação pós-aplicação**:
+```sql
+-- Verificar que grants foram removidos
+SELECT 
+  relname,
+  relacl::text 
+FROM pg_class 
+WHERE relnamespace = 'public'::regnamespace 
+  AND relname = 'team_members';
+
+-- Esperado: Não conter 'anon=' no resultado
 ```
 
-**Componente de alerta (novo)**:
-```typescript
-{isProcessing && feedback._analysisStuck && (
-  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 rounded mb-4">
-    <p className="text-sm font-medium flex items-center gap-2 text-amber-800 dark:text-amber-200">
-      <Clock className="h-4 w-4" />
-      Análise em processamento
-    </p>
-    <p className="text-sm text-amber-700 dark:text-amber-300">
-      A IA está demorando mais que o normal. Você pode atualizar a página em alguns minutos.
-    </p>
-  </div>
-)}
-```
-
-**Benefícios**:
-- Usuário não fica "preso" esperando
-- Mensagens claras sobre o que está acontecendo
-- Experiência responsiva mesmo com IA lenta
-- Evita sensação de app travado
