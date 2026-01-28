@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
@@ -10,6 +9,8 @@ import { PenSquare, Loader2, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VoiceInput } from './VoiceInput';
 import { extractTextFromFile, isFileSupported } from '@/lib/fileParser';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { useEditor } from '@tiptap/react';
 
 interface NewNoteDialogProps {
   open: boolean;
@@ -28,6 +29,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
   const [isDragging, setIsDragging] = useState(false);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const editorRef = useRef<ReturnType<typeof useEditor> | null>(null);
   const { toast } = useToast();
 
   // Carregar membros quando o dialog abre - FILTRO por workspace
@@ -280,17 +282,23 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
 
           <div className="space-y-2">
             <Label htmlFor="content">Conteúdo</Label>
-            <Textarea
-              id="content"
+            <RichTextEditor
+              content={content}
+              onChange={setContent}
               placeholder="O conteúdo do arquivo aparecerá aqui. Você também pode digitar ou editar manualmente..."
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              className="min-h-[200px] resize-none"
               disabled={loading || isProcessingFile}
+              minHeight="200px"
+              editorRef={editorRef}
             />
             <div className="flex justify-end">
               <VoiceInput 
-                onTranscription={(text) => setContent(prev => prev + (prev ? '\n' : '') + text)}
+                onTranscription={(text) => {
+                  if (editorRef.current) {
+                    editorRef.current.chain().focus().insertContent(text).run();
+                  } else {
+                    setContent(prev => prev + (prev ? '\n' : '') + text);
+                  }
+                }}
                 disabled={loading || isProcessingFile}
               />
             </div>
