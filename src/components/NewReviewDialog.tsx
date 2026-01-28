@@ -121,6 +121,32 @@ export const NewReviewDialog = ({
         description: "A avaliação foi salva com sucesso.",
       });
 
+      // Fire-and-forget backup to Storage (Safety Net)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        supabase.functions.invoke('backup-data', {
+          body: { 
+            type: 'review', 
+            data: { 
+              member_id: memberId,
+              title: title.trim(),
+              content: content.trim(),
+              coaching_tip: coachingTip,
+              period_type: generatedMonths ? periodTypeMap[generatedMonths] : 'manual'
+            },
+            userId: user.id 
+          }
+        }).then(() => {
+          toast({
+            title: "Backup Seguro Confirmado 🔒",
+            description: "Cópia salva no armazenamento.",
+          });
+        }).catch(err => {
+          console.warn('Backup failed:', err);
+          // Silent fail - main data is already saved
+        });
+      }
+
       onReviewCreated();
       handleClose();
     } catch (error) {
