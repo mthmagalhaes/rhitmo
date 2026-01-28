@@ -1,0 +1,150 @@
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Placeholder from '@tiptap/extension-placeholder';
+import { Toggle } from '@/components/ui/toggle';
+import { Separator } from '@/components/ui/separator';
+import { Bold, Italic, Heading1, Heading2, List, ListOrdered } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useEffect } from 'react';
+
+interface RichTextEditorProps {
+  content: string;
+  onChange: (html: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  minHeight?: string;
+  editorRef?: React.MutableRefObject<ReturnType<typeof useEditor> | null>;
+}
+
+export const RichTextEditor = ({
+  content,
+  onChange,
+  placeholder = 'Digite aqui...',
+  disabled = false,
+  minHeight = '200px',
+  editorRef,
+}: RichTextEditorProps) => {
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        heading: {
+          levels: [1, 2, 3],
+        },
+      }),
+      Placeholder.configure({
+        placeholder,
+        emptyEditorClass: 'is-editor-empty',
+      }),
+    ],
+    content,
+    editable: !disabled,
+    onUpdate: ({ editor }) => {
+      onChange(editor.getHTML());
+    },
+  });
+
+  // Expose editor via ref for external control (e.g., voice input)
+  useEffect(() => {
+    if (editorRef) {
+      editorRef.current = editor;
+    }
+  }, [editor, editorRef]);
+
+  // Sync content when it changes externally
+  useEffect(() => {
+    if (editor && content !== editor.getHTML()) {
+      editor.commands.setContent(content);
+    }
+  }, [content, editor]);
+
+  if (!editor) {
+    return null;
+  }
+
+  return (
+    <div className={cn(
+      "rounded-lg border border-input bg-background ring-offset-background",
+      "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+      disabled && "opacity-50 cursor-not-allowed"
+    )}>
+      {/* Toolbar */}
+      <div className="flex items-center gap-1 p-2 border-b border-input bg-muted/30 rounded-t-lg">
+        <Toggle
+          size="sm"
+          pressed={editor.isActive('bold')}
+          onPressedChange={() => editor.chain().focus().toggleBold().run()}
+          disabled={disabled}
+          aria-label="Negrito"
+        >
+          <Bold className="h-4 w-4" />
+        </Toggle>
+        <Toggle
+          size="sm"
+          pressed={editor.isActive('italic')}
+          onPressedChange={() => editor.chain().focus().toggleItalic().run()}
+          disabled={disabled}
+          aria-label="Itálico"
+        >
+          <Italic className="h-4 w-4" />
+        </Toggle>
+        
+        <Separator orientation="vertical" className="mx-1 h-6" />
+        
+        <Toggle
+          size="sm"
+          pressed={editor.isActive('heading', { level: 1 })}
+          onPressedChange={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+          disabled={disabled}
+          aria-label="Título 1"
+        >
+          <Heading1 className="h-4 w-4" />
+        </Toggle>
+        <Toggle
+          size="sm"
+          pressed={editor.isActive('heading', { level: 2 })}
+          onPressedChange={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+          disabled={disabled}
+          aria-label="Título 2"
+        >
+          <Heading2 className="h-4 w-4" />
+        </Toggle>
+        
+        <Separator orientation="vertical" className="mx-1 h-6" />
+        
+        <Toggle
+          size="sm"
+          pressed={editor.isActive('bulletList')}
+          onPressedChange={() => editor.chain().focus().toggleBulletList().run()}
+          disabled={disabled}
+          aria-label="Lista com marcadores"
+        >
+          <List className="h-4 w-4" />
+        </Toggle>
+        <Toggle
+          size="sm"
+          pressed={editor.isActive('orderedList')}
+          onPressedChange={() => editor.chain().focus().toggleOrderedList().run()}
+          disabled={disabled}
+          aria-label="Lista numerada"
+        >
+          <ListOrdered className="h-4 w-4" />
+        </Toggle>
+      </div>
+
+      {/* Editor Content */}
+      <EditorContent 
+        editor={editor} 
+        className={cn(
+          "prose prose-sm max-w-none p-3",
+          "[&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[inherit]",
+          "[&_.ProseMirror.is-editor-empty]:before:content-[attr(data-placeholder)]",
+          "[&_.ProseMirror.is-editor-empty]:before:text-muted-foreground",
+          "[&_.ProseMirror.is-editor-empty]:before:float-left",
+          "[&_.ProseMirror.is-editor-empty]:before:pointer-events-none",
+          "[&_.ProseMirror.is-editor-empty]:before:h-0",
+        )}
+        style={{ minHeight }}
+      />
+    </div>
+  );
+};

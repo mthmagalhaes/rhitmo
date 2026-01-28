@@ -3,12 +3,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 
 interface Goal {
   id: string;
@@ -138,12 +138,11 @@ export const NewGoalDialog = ({ open, onOpenChange, memberId, editingGoal, react
 
           <div className="space-y-2">
             <Label htmlFor="description">Descrição</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+            <RichTextEditor
+              content={description}
+              onChange={setDescription}
               placeholder="Detalhes adicionais sobre a meta..."
-              rows={3}
+              minHeight="100px"
             />
           </div>
 
