@@ -1,87 +1,146 @@
 
-
-## Análise: RLS Hardening - Status Atual
+## Análise: Refinamento UX - Status Atual
 
 ### Conclusão Principal
 
-**As políticas RLS já estão implementadas corretamente.** O SQL proposto pode causar erros porque tenta dropar políticas que não existem e substituiria a função `effective_user_id()` (que suporta admin impersonation) por `auth.uid()` direto.
+**A feature "Ver Mais" já está implementada!** O `FeedbackTimeline.tsx` já possui toda a lógica necessária com `line-clamp-4` e botões de expansão. A única melhoria necessária é na experiência de timeout.
 
 ---
 
-### Estado Atual das Políticas (Já Seguras)
+### Status das Features
 
-| Tabela | Política | Isolamento |
-|--------|----------|------------|
-| `workspaces` | `effective_user_id() = owner_id` | Cada usuário só vê seu workspace |
-| `teams` | JOIN com workspace + `owner_id = effective_user_id()` | Isolado via hierarquia |
-| `team_members` | JOIN com teams + workspace + `owner_id = effective_user_id()` | Isolado via hierarquia |
-| `feedbacks` | `manager_id = effective_user_id()` + check workspace ativo | Dupla verificação |
-| `waitlist_leads` | SELECT/UPDATE/DELETE: `is_admin() = true` | Apenas super_admin acessa |
-
----
-
-### Warnings do Linter
-
-**WARN 1: RLS Policy Always True**
-- Política: `Anyone can submit to waitlist` (INSERT com `WITH CHECK (true)`)
-- Status: **INTENCIONAL** - Permite submissão pública de leads na landing page
-- Não deve ser alterada
-
-**WARN 2: Leaked Password Protection Disabled**
-- Ação necessária: Habilitar manualmente no dashboard de autenticação do backend
-- Não é resolvido via SQL
+| Feature | Status | Localização |
+|---------|--------|-------------|
+| Toggle "Ver Mais" (Timeline) | IMPLEMENTADO | `FeedbackTimeline.tsx` linhas 49-53, 165-191, 237-262 |
+| Timeout + Polling 30s | IMPLEMENTADO | `MemberDetails.tsx` linhas 96-119 |
+| Flag `_analysisStuck` | IMPLEMENTADO | `MemberDetails.tsx` linhas 110-119 |
+| Mensagem amigável de timeout | PENDENTE | `FeedbackTimeline.tsx` |
+| Timeout em geração de reviews | PENDENTE | `NewReviewDialog.tsx` |
 
 ---
 
-### Por que NÃO executar o SQL proposto
+### Implementação Necessária
 
-1. **Políticas inexistentes**: `"Enable read access for all users"`, `"Users can view teams"`, `"Users can view members"`, `"Users can manage feedbacks"` já foram removidas em migrações anteriores - tentará dropar o que não existe
+#### 1. Mensagem Amigável para Análises Lentas
 
-2. **Quebra de impersonation**: Trocar `effective_user_id()` por `auth.uid()` quebraria a funcionalidade de admin impersonation (tabela `admin_impersonation`)
+**Arquivo**: `src/components/FeedbackTimeline.tsx`
 
-3. **Waitlist já protegida**: A proposta usa `auth.role() = 'service_role'` mas já existe `is_admin() = true` que é mais apropriado
+**Modificação**: Quando `feedback._analysisStuck === true`, exibir mensagem informativa em vez de só parar o spinner:
+
+```text
+┌─────────────────────────────────────────────────┐
+│ [Badge: Neutro]                    📅 28/01/26  │
+│                                                 │
+│ ⏳ A análise está demorando mais que o normal.  │
+│    Estamos processando em segundo plano.        │
+│    Atualize a página em alguns minutos.         │
+│                                                 │
+│ [Conteúdo original da nota...]                  │
+│                                                 │
+│ [Botão: Gerar Análise de IA]                    │
+└─────────────────────────────────────────────────┘
+```
 
 ---
 
-### Recomendação
+#### 2. Timeout Inteligente na Geração de Avaliações
 
-Nenhuma alteração de RLS é necessária. As políticas atuais já garantem:
+**Arquivo**: `src/components/NewReviewDialog.tsx`
 
-- Isolamento total entre workspaces (Cross-Tenant Isolation)
-- Apenas o owner_id do workspace acessa seus dados
-- Suporte a admin impersonation via `effective_user_id()`
-- Waitlist pública para INSERT, restrita para leitura
+**Problema**: A função `generateReview()` (linha 38-85) não tem timeout - se a Edge Function demorar 60+ segundos, o usuário fica preso.
+
+**Solução**: Implementar `Promise.race()` com timeout de 30 segundos:
+
+```typescript
+const generateReview = async (months: number) => {
+  setGenerating(true);
+  setGeneratedMonths(months);
+  
+  const timeoutPromise = new Promise((_, reject) => 
+    setTimeout(() => reject(new Error('TIMEOUT')), 30000)
+  );
+  
+  const fetchPromise = supabase.functions.invoke('generate-review', {
+    body: { memberId, months }
+  });
+  
+  try {
+    const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
+    
+    // ... lógica existente de sucesso ...
+    
+  } catch (error: any) {
+    if (error.message === 'TIMEOUT') {
+      toast({
+        title: "Processamento em andamento ⏳",
+        description: "A análise está demorando. Continue editando ou tente novamente.",
+      });
+      // Não mostrar erro destrutivo, apenas informativo
+    } else {
+      toast({
+        title: "Erro ao gerar avaliação",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  } finally {
+    setGenerating(false);
+  }
+};
+```
+
+---
+
+### Resumo das Alterações
+
+| Arquivo | Alteração |
+|---------|-----------|
+| `src/components/FeedbackTimeline.tsx` | Adicionar bloco visual para notas com `_analysisStuck === true` |
+| `src/components/NewReviewDialog.tsx` | Implementar timeout de 30s com `Promise.race()` na geração de avaliações |
 
 ---
 
 ### Seção Técnica
 
-**Única ação pendente (manual):**
-Habilitar "Leaked Password Protection" nas configurações de autenticação do backend. Isso não é feito via migration SQL.
-
-**Verificação das políticas atuais:**
-```sql
-SELECT tablename, policyname, cmd, qual 
-FROM pg_policies 
-WHERE schemaname = 'public' 
-ORDER BY tablename;
+**Lógica de `_analysisStuck` (já existente em MemberDetails.tsx)**:
+```typescript
+// Linhas 110-119: Marca notas sem análise após 30 segundos
+const feedbacks = feedbacksRaw.map((f: any) => {
+  if (f.summary || f.sentiment) return f;
+  const createdAt = new Date(f.created_at);
+  const diffSeconds = (now.getTime() - createdAt.getTime()) / 1000;
+  return {
+    ...f,
+    _analysisStuck: diffSeconds > 30
+  };
+});
 ```
 
-**Função `effective_user_id()` (já implementada):**
-```sql
--- Retorna o ID do usuário impersonado (se admin) ou auth.uid()
-CREATE FUNCTION public.effective_user_id()
-RETURNS uuid
-LANGUAGE sql STABLE SECURITY DEFINER
-AS $$
-  SELECT COALESCE(
-    (SELECT impersonated_user_id 
-     FROM public.admin_impersonation 
-     WHERE admin_user_id = auth.uid()),
-    auth.uid()
-  )
-$$;
+**Nova interface para FeedbackTimeline**:
+```typescript
+interface Feedback {
+  // ... campos existentes ...
+  _analysisStuck?: boolean; // Já existe, linha 31
+}
 ```
 
-**Conclusão:** O sistema já está protegido. Executar o SQL proposto causaria erros e potencialmente quebraria funcionalidades existentes.
+**Componente de alerta (novo)**:
+```typescript
+{isProcessing && feedback._analysisStuck && (
+  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 rounded mb-4">
+    <p className="text-sm font-medium flex items-center gap-2 text-amber-800 dark:text-amber-200">
+      <Clock className="h-4 w-4" />
+      Análise em processamento
+    </p>
+    <p className="text-sm text-amber-700 dark:text-amber-300">
+      A IA está demorando mais que o normal. Você pode atualizar a página em alguns minutos.
+    </p>
+  </div>
+)}
+```
 
+**Benefícios**:
+- Usuário não fica "preso" esperando
+- Mensagens claras sobre o que está acontecendo
+- Experiência responsiva mesmo com IA lenta
+- Evita sensação de app travado
