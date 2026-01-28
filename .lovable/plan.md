@@ -1,96 +1,57 @@
 
 
-## Plano: Sincronizar Banco de Dados com Frontend Atual
+## Plano: Corrigir Edge Functions com Modelos Inválidos
 
-### Diagnóstico Completo
+### Problema Detectado
 
-| Componente | Estado no Banco | Ação |
-|------------|-----------------|------|
-| Constraint UNIQUE `workspaces.owner_id` | Não existe | **Criar** |
-| Duplicatas de workspaces | 0 encontradas | Limpeza preventiva mantida |
-| Tabela `goals` | Já existe (status como TEXT) | Nenhuma |
-| RLS em `goals` | 4 políticas completas | Nenhuma |
-| Coluna `feedbacks.action_items` | Não existe | **Criar** |
-| Coluna `team_members.user_manual` | Não existe | **Criar** |
-| ENUMs `goal_status`/`goal_type` | Não existem | **Ignorar** (frontend usa TEXT) |
+Duas Edge Functions críticas estão usando um modelo OpenAI que **não existe**:
 
----
+| Função | Modelo Atual (Inválido) | Modelo Correto |
+|--------|------------------------|----------------|
+| `analyze-feedback` | `gpt-5-mini-2025-08-07` | `gpt-4o-mini` |
+| `analyze-feedback-background` | `gpt-5-mini-2025-08-07` | `gpt-4o-mini` |
 
-### SQL Simplificado a Executar
-
-O SQL original será ajustado para evitar erros e conflitos:
-
-```sql
-BEGIN;
-
--- 1. BLINDAGEM DO LOOP INFINITO
--- Limpeza preventiva (não afetará dados pois não há duplicatas)
-DELETE FROM teams
-WHERE workspace_id NOT IN (
-  SELECT DISTINCT ON (owner_id) id
-  FROM workspaces
-  ORDER BY owner_id, created_at ASC
-);
-
-DELETE FROM workspaces
-WHERE id NOT IN (
-  SELECT DISTINCT ON (owner_id) id
-  FROM workspaces
-  ORDER BY owner_id, created_at ASC
-);
-
--- Aplicar constraint UNIQUE (remove se existir para evitar erro)
-ALTER TABLE workspaces DROP CONSTRAINT IF EXISTS workspaces_owner_id_unique;
-ALTER TABLE workspaces ADD CONSTRAINT workspaces_owner_id_unique UNIQUE (owner_id);
-
--- 2. COLUNAS FALTANTES
--- Adiciona suporte a Action Items (IA) nos feedbacks
-ALTER TABLE feedbacks ADD COLUMN IF NOT EXISTS action_items JSONB DEFAULT '[]'::jsonb;
-
--- Adiciona suporte a User Manual (Rhitmo Sync) nos membros
-ALTER TABLE team_members ADD COLUMN IF NOT EXISTS user_manual JSONB DEFAULT '{}'::jsonb;
-
-COMMIT;
-```
+Isso impede que feedbacks sejam analisados corretamente - a OpenAI retornará erro ao receber chamadas com esse modelo inexistente.
 
 ---
 
-### O Que Foi Removido do SQL Original
+### Correção a Implementar
 
-| Item | Motivo |
-|------|--------|
-| Criação da tabela `goals` | Já existe no banco |
-| Criação dos ENUMs `goal_status`/`goal_type` | Frontend usa TEXT, não ENUM |
-| Criação de políticas RLS em `goals` | 4 políticas já existem |
-| `ALTER TABLE goals ENABLE ROW LEVEL SECURITY` | Já está habilitado |
+**Arquivo 1:** `supabase/functions/analyze-feedback/index.ts`
+- Linha 257: Alterar `model: 'gpt-5-mini-2025-08-07'` para `model: 'gpt-4o-mini'`
+
+**Arquivo 2:** `supabase/functions/analyze-feedback-background/index.ts`  
+- Linha 214: Alterar `model: 'gpt-5-mini-2025-08-07'` para `model: 'gpt-4o-mini'`
+
+---
+
+### Por que `gpt-4o-mini`?
+
+1. **Consistência**: Já é usado por `chat-mentor` e `reanalyze-feedback`
+2. **Custo**: Mais barato que `gpt-4o` com qualidade suficiente para análise de texto
+3. **Velocidade**: Resposta mais rápida que modelos maiores
+4. **Disponibilidade**: Modelo estável e amplamente disponível
 
 ---
 
 ### Resultado Esperado
 
-| Ação | Efeito |
-|------|--------|
-| Constraint UNIQUE aplicada | Impede fisicamente workspaces duplicados |
-| Coluna `action_items` criada | Frontend pode salvar action items da IA |
-| Coluna `user_manual` criada | Frontend pode salvar dados do Rhitmo Sync |
+Após a correção:
+- Novos feedbacks serão analisados corretamente pela IA
+- Resumo, sentiment, coaching_tips e bias_alert serão gerados
+- O fluxo de criação de notas no frontend funcionará sem erros
 
 ---
 
 ### Seção Técnica
 
-**Migration Tool**: Será usado para executar o SQL em uma transação atômica.
+**Deploy automático**: As funções serão redeployadas automaticamente após salvar as alterações.
 
-**Arquivos impactados após migration**:
-- `src/integrations/supabase/types.ts` - Será atualizado automaticamente com as novas colunas
-
-**Verificação pós-execução**:
-```sql
--- Confirmar constraint
-SELECT constraint_name FROM information_schema.table_constraints 
-WHERE table_name = 'workspaces' AND constraint_type = 'UNIQUE';
-
--- Confirmar colunas
-SELECT column_name FROM information_schema.columns 
-WHERE table_name = 'feedbacks' AND column_name = 'action_items';
+**Verificação pós-deploy**: Testar criação de nota na interface ou via curl:
+```bash
+# Verificar se a função responde corretamente
+curl -X POST https://lybkgujyezzzvbzypxed.supabase.co/functions/v1/analyze-feedback \
+  -H "Authorization: Bearer <JWT>" \
+  -d '{"content": "Teste de análise", "memberId": "<uuid>", "type": "note"}'
 ```
 
