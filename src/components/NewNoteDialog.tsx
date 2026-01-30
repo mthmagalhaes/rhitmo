@@ -225,7 +225,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <PenSquare className="h-5 w-5" />
-            Nova Nota
+            Nova Anotação
           </DialogTitle>
           <DialogDescription>
             {memberName 
