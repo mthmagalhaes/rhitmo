@@ -279,9 +279,9 @@ const MemberDetails = () => {
               <Sparkles className="h-4 w-4" />
               Mentor Chat
             </Button>
-            <Button onClick={() => setDialogOpen(true)} className="gap-2">
+            <Button onClick={() => setDialogOpen(true)} className="gap-2 px-4">
               <PenSquare className="h-4 w-4" />
-              Nova Nota
+              Nova Anotação
             </Button>
           </div>
         </div>
