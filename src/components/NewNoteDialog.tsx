@@ -5,12 +5,16 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { PenSquare, Loader2, Upload } from 'lucide-react';
+import { PenSquare, Loader2, Upload, CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VoiceInput } from './VoiceInput';
 import { extractTextFromFile, isFileSupported } from '@/lib/fileParser';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { useEditor } from '@tiptap/react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface NewNoteDialogProps {
   open: boolean;
@@ -24,6 +28,7 @@ interface NewNoteDialogProps {
 export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName, onSuccess, workspaceId }: NewNoteDialogProps) => {
   const [content, setContent] = useState('');
   const [memberId, setMemberId] = useState(selectedMemberId || '');
+  const [occurredAt, setOccurredAt] = useState<Date>(new Date());
   const [loading, setLoading] = useState(false);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -150,6 +155,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
           member_id: targetMemberId,
           content: content.trim(),
           type: 'neutral',
+          occurred_at: occurredAt.toISOString(),
           // Analysis fields empty - will be filled by background function
           summary: null,
           sentiment: null,
@@ -169,6 +175,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
       
       setContent('');
       setMemberId('');
+      setOccurredAt(new Date());
       onOpenChange(false);
       
       if (onSuccess) {
@@ -244,6 +251,38 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
               </Select>
             </div>
           )}
+
+          {/* DatePicker - Data do Ocorrido */}
+          <div className="space-y-2">
+            <Label>Data do Ocorrido</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !occurredAt && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {occurredAt ? format(occurredAt, "PPP", { locale: ptBR }) : "Selecione a data"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={occurredAt}
+                  onSelect={(date) => date && setOccurredAt(date)}
+                  disabled={(date) => date > new Date()}
+                  initialFocus
+                  className="p-3 pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+            <p className="text-xs text-muted-foreground">
+              Quando o fato aconteceu (padrão: hoje)
+            </p>
+          </div>
           
           <div className="space-y-2">
             <div

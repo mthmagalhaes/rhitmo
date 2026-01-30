@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils';
 interface Feedback {
   id: string;
   created_at: string;
+  occurred_at?: string;
   content: string;
   type: 'positive' | 'constructive' | 'neutral';
   summary?: string;
@@ -126,7 +127,7 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onReanalyze, reanalyzing
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Calendar className="h-4 w-4" />
-                  <span>{new Date(feedback.created_at).toLocaleDateString('pt-BR')}</span>
+                  <span>{new Date(feedback.occurred_at || feedback.created_at).toLocaleDateString('pt-BR')}</span>
                   
                   {onDelete && (
                     <AlertDialog>

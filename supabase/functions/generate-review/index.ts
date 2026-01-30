@@ -33,13 +33,13 @@ serve(async (req) => {
     console.log(`Gerando avaliação para member ${memberId} dos últimos ${months} meses`);
     console.log(`Data limite: ${limitDate.toISOString()}`);
 
-    // Buscar feedbacks do período
+    // Buscar feedbacks do período (usar occurred_at - "Máquina do Tempo")
     const { data: feedbacks, error: feedbacksError } = await supabase
       .from('feedbacks')
       .select('*')
       .eq('member_id', memberId)
-      .gte('created_at', limitDate.toISOString())
-      .order('created_at', { ascending: true });
+      .gte('occurred_at', limitDate.toISOString())
+      .order('occurred_at', { ascending: true });
 
     if (feedbacksError) {
       console.error('Erro ao buscar feedbacks:', feedbacksError);
@@ -67,7 +67,7 @@ serve(async (req) => {
     // Preparar contexto para a IA
     const feedbacksText = feedbacks && feedbacks.length > 0
       ? feedbacks.map(f => {
-          const date = new Date(f.created_at).toLocaleDateString('pt-BR');
+          const date = new Date(f.occurred_at || f.created_at).toLocaleDateString('pt-BR');
           return `[${date}] Tipo: ${f.type}\n${f.content}\n${f.summary ? `Resumo IA: ${f.summary}` : ''}`;
         }).join('\n\n---\n\n')
       : 'Nenhum feedback registrado neste período.';
