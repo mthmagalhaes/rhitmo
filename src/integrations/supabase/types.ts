@@ -85,6 +85,7 @@ export type Database = {
           manager_id: string
           meeting_transcript_id: string | null
           member_id: string
+          occurred_at: string
           sentiment: string | null
           source: string
           summary: string | null
@@ -102,6 +103,7 @@ export type Database = {
           manager_id: string
           meeting_transcript_id?: string | null
           member_id: string
+          occurred_at?: string
           sentiment?: string | null
           source?: string
           summary?: string | null
@@ -119,6 +121,7 @@ export type Database = {
           manager_id?: string
           meeting_transcript_id?: string | null
           member_id?: string
+          occurred_at?: string
           sentiment?: string | null
           source?: string
           summary?: string | null
