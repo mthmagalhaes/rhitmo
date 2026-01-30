@@ -254,7 +254,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
 
           {/* DatePicker - Data do Ocorrido */}
           <div className="space-y-2">
-            <Label>Data do Ocorrido</Label>
+            <Label>Data registrada</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
