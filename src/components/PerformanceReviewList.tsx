@@ -14,6 +14,8 @@ interface PerformanceReview {
   content: string;
   coaching_tip?: string | null;
   period_type: string;
+  period_start?: string | null;
+  period_end?: string | null;
   created_at: string;
 }
 
@@ -33,7 +35,7 @@ export const PerformanceReviewList = ({ memberId, memberName }: PerformanceRevie
     queryFn: async () => {
       const { data, error } = await supabase
         .from('performance_reviews')
-        .select('id, title, content, coaching_tip, period_type, created_at')
+        .select('id, title, content, coaching_tip, period_type, period_start, period_end, created_at')
         .eq('member_id', memberId)
         .order('created_at', { ascending: false });
 
@@ -152,6 +154,7 @@ export const PerformanceReviewList = ({ memberId, memberName }: PerformanceRevie
           onOpenChange={(open) => !open && setSelectedReview(null)}
           review={selectedReview}
           memberId={memberId}
+          memberName={memberName}
           onReviewUpdated={() => queryClient.invalidateQueries({ queryKey: ['performance-reviews', memberId] })}
           onReviewDeleted={() => {
             queryClient.invalidateQueries({ queryKey: ['performance-reviews', memberId] });
