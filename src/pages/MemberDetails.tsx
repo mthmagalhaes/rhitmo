@@ -40,7 +40,7 @@ const MemberDetails = () => {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
-  const [reanalyzingId, setReanalyzingId] = useState<string | null>(null);
+  
   const [resendingInvite, setResendingInvite] = useState(false);
   const { toast } = useToast();
   const {
@@ -104,17 +104,7 @@ const MemberDetails = () => {
     }
   });
 
-  // Add _analysisStuck flag to feedbacks for timeout handling
-  const feedbacks = feedbacksRaw.map((f: any) => {
-    if (f.summary || f.sentiment) return f;
-    const createdAt = new Date(f.created_at);
-    const now = new Date();
-    const diffSeconds = (now.getTime() - createdAt.getTime()) / 1000;
-    return {
-      ...f,
-      _analysisStuck: diffSeconds > 30
-    };
-  });
+  const feedbacks = feedbacksRaw;
 
   // Query para workspace - necessário para isolamento de tenant no NewNoteDialog
   const { data: workspace } = useQuery({
@@ -164,44 +154,6 @@ const MemberDetails = () => {
         description: error.message,
         variant: "destructive"
       });
-    }
-  };
-  const handleReanalyze = async (feedbackId: string) => {
-    setReanalyzingId(feedbackId);
-    try {
-      const {
-        data: session
-      } = await supabase.auth.getSession();
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reanalyze-feedback`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.session?.access_token}`
-        },
-        body: JSON.stringify({
-          feedbackId
-        })
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Falha ao reprocessar');
-      }
-      toast({
-        title: "Análise gerada!",
-        description: "A IA processou o feedback com sucesso."
-      });
-      queryClient.invalidateQueries({
-        queryKey: ['feedbacks', id]
-      });
-    } catch (error: any) {
-      console.error('Erro ao reprocessar:', error);
-      toast({
-        title: "Erro ao gerar análise",
-        description: error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setReanalyzingId(null);
     }
   };
   const handleResendInvite = async () => {
@@ -476,7 +428,7 @@ const MemberDetails = () => {
           <TabsContent value="diary">
             <div>
               <h2 className="text-2xl font-bold text-foreground mb-6">Histórico de Feedbacks</h2>
-              {feedbacks.length > 0 ? <FeedbackTimeline feedbacks={feedbacks as any} onDelete={handleDeleteFeedback} onReanalyze={handleReanalyze} reanalyzingId={reanalyzingId} /> : <Card className="p-12 text-center">
+              {feedbacks.length > 0 ? <FeedbackTimeline feedbacks={feedbacks as any} onDelete={handleDeleteFeedback} /> : <Card className="p-12 text-center">
                   <p className="text-muted-foreground mb-4">Nenhum feedback registrado ainda</p>
                   <Button onClick={() => setDialogOpen(true)}>Adicionar Primeira Nota</Button>
                 </Card>}
