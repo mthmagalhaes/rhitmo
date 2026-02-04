@@ -11,6 +11,7 @@ import ReactMarkdown from 'react-markdown';
 import { marked } from 'marked';
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import DOMPurify from 'dompurify';
+import { useQueryClient } from "@tanstack/react-query";
 
 interface PerformanceReview {
   id: string;
@@ -25,6 +26,7 @@ interface ReviewViewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   review: PerformanceReview;
+  memberId: string;
   onReviewUpdated: () => void;
   onReviewDeleted: () => void;
 }
@@ -33,6 +35,7 @@ export const ReviewViewDialog = ({
   open, 
   onOpenChange, 
   review,
+  memberId,
   onReviewUpdated,
   onReviewDeleted
 }: ReviewViewDialogProps) => {
@@ -43,6 +46,7 @@ export const ReviewViewDialog = ({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Convert Markdown to HTML for the editor when editing starts
   useEffect(() => {
@@ -65,8 +69,10 @@ export const ReviewViewDialog = ({
       return;
     }
 
-    // Convert Markdown to HTML for PDF
-    const htmlContent = marked(review.content);
+    // Check if content is already HTML (from TipTap) or Markdown
+    const htmlContent = review.content.includes('</')
+      ? review.content
+      : marked(review.content);
 
     printWindow.document.write(`
       <html>
@@ -171,6 +177,9 @@ export const ReviewViewDialog = ({
         .eq('id', review.id);
 
       if (error) throw error;
+
+      // Invalidar cache para forçar refetch com dados novos
+      await queryClient.invalidateQueries({ queryKey: ['performance-reviews', memberId] });
 
       toast({
         title: "Avaliação atualizada! ✅",

@@ -6,6 +6,7 @@ import { Plus, Calendar, FileText, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { NewReviewDialog } from "./NewReviewDialog";
 import { ReviewViewDialog } from "./ReviewViewDialog";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface PerformanceReview {
   id: string;
@@ -22,38 +23,43 @@ interface PerformanceReviewListProps {
 }
 
 export const PerformanceReviewList = ({ memberId, memberName }: PerformanceReviewListProps) => {
-  const [reviews, setReviews] = useState<PerformanceReview[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [selectedReview, setSelectedReview] = useState<PerformanceReview | null>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const loadReviews = async () => {
-    setLoading(true);
-    try {
+  const { data: reviews = [], isLoading: loading } = useQuery({
+    queryKey: ['performance-reviews', memberId],
+    queryFn: async () => {
       const { data, error } = await supabase
         .from('performance_reviews')
         .select('id, title, content, coaching_tip, period_type, created_at')
         .eq('member_id', memberId)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setReviews(data || []);
-    } catch (error) {
-      console.error('Erro ao carregar avaliações:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar as avaliações.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+      if (error) {
+        console.error('Erro ao carregar avaliações:', error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar as avaliações.",
+          variant: "destructive",
+        });
+        throw error;
+      }
+      return data || [];
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
+  // Sincronizar selectedReview quando reviews atualizar
   useEffect(() => {
-    loadReviews();
-  }, [memberId]);
+    if (selectedReview && reviews.length > 0) {
+      const updated = reviews.find(r => r.id === selectedReview.id);
+      if (updated && (updated.content !== selectedReview.content || updated.title !== selectedReview.title)) {
+        setSelectedReview(updated);
+      }
+    }
+  }, [reviews, selectedReview]);
 
   const getPeriodLabel = (periodType: string) => {
     const labels: Record<string, string> = {
@@ -137,7 +143,7 @@ export const PerformanceReviewList = ({ memberId, memberName }: PerformanceRevie
         onOpenChange={setShowNewDialog}
         memberId={memberId}
         memberName={memberName}
-        onReviewCreated={loadReviews}
+        onReviewCreated={() => queryClient.invalidateQueries({ queryKey: ['performance-reviews', memberId] })}
       />
 
       {selectedReview && (
@@ -145,8 +151,12 @@ export const PerformanceReviewList = ({ memberId, memberName }: PerformanceRevie
           open={!!selectedReview}
           onOpenChange={(open) => !open && setSelectedReview(null)}
           review={selectedReview}
-          onReviewUpdated={loadReviews}
-          onReviewDeleted={loadReviews}
+          memberId={memberId}
+          onReviewUpdated={() => queryClient.invalidateQueries({ queryKey: ['performance-reviews', memberId] })}
+          onReviewDeleted={() => {
+            queryClient.invalidateQueries({ queryKey: ['performance-reviews', memberId] });
+            setSelectedReview(null);
+          }}
         />
       )}
     </div>
