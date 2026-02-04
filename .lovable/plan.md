@@ -1,277 +1,155 @@
 
 
-## Plano: Smart Date & Trava de Qualidade
+## Plano: Correcao do Bug Smart Date - Reset de Estado
 
-### Objetivo
+### Problema Identificado
 
-Implementar extração inteligente de datas a partir do conteúdo colado/carregado e criar uma trava de qualidade que obriga o usuário a validar a data antes de salvar.
+O recurso Smart Date funciona apenas no primeiro upload porque o estado nao e limpo corretamente:
+
+| Local | Problema |
+|-------|----------|
+| Linha 246 | Apos submit, `setOccurredAt(new Date())` ao inves de `undefined` |
+| Linha 83 | Guard `if (occurredAt) return;` impede nova extracao |
+| Fechamento | Nao existe reset quando o modal e fechado |
+
+### Fluxo do Bug
+
+```text
+1. Usuario abre modal → occurredAt = undefined ✓
+2. Upload arquivo → Smart Date detecta e preenche ✓
+3. Salvar → setOccurredAt(new Date()) ← ERRADO
+4. Abre modal novamente → occurredAt = Date (nao undefined)
+5. Upload novo arquivo → Guard bloqueia extracao ✗
+```
 
 ---
 
-### Estado Atual
+### Solucao
 
-| Item | Situação |
-|------|----------|
-| Estado `occurredAt` | Inicializado com `new Date()` (hoje) |
-| Botão Salvar | Habilitado sempre que houver conteúdo |
-| Extração de data | Não existe |
-| Persistência `occurred_at` | Já funciona corretamente |
+**1. Criar funcao `resetForm()`**
 
----
-
-### Parte 1: Trava de Qualidade (Estado Inicial Vazio)
-
-**Alterações no Estado:**
+Centralizar a limpeza de todos os estados do formulario:
 
 ```typescript
-// ANTES
-const [occurredAt, setOccurredAt] = useState<Date>(new Date());
-
-// DEPOIS
-const [occurredAt, setOccurredAt] = useState<Date | undefined>(undefined);
-```
-
-**Alterações no Botão Salvar:**
-
-Adicionar `!occurredAt` à condição de disabled:
-
-```typescript
-<Button 
-  onClick={handleSubmit} 
-  disabled={loading || isProcessingFile || !occurredAt}
->
-```
-
-**Alterações na UI:**
-
-- Atualizar o texto de ajuda para indicar obrigatoriedade
-- Adicionar estilo visual indicando campo obrigatório quando vazio
-
----
-
-### Parte 2: Extração Inteligente de Data
-
-**Nova função utilitária `extractDateFromText()`:**
-
-Localização: Dentro do próprio componente (pode ser extraída para `/lib/dateUtils.ts` no futuro)
-
-```typescript
-const extractDateFromText = (text: string): Date | null => {
-  // Analisar apenas as primeiras 20 linhas
-  const lines = text.split('\n').slice(0, 20).join('\n');
-  
-  // Padrões de regex ordenados por prioridade:
-  const patterns = [
-    // Tactiq/Meeting Notes: "Meeting started: 15/01/2025"
-    /Meeting\s+started:?\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/i,
-    
-    // ISO Format: 2025-01-15
-    /(\d{4})-(\d{2})-(\d{2})/,
-    
-    // BR Format: 15/01/2025 ou 15-01-2025
-    /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/,
-    
-    // BR Format curto: 15/01/25
-    /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2})/,
-  ];
-  
-  for (const pattern of patterns) {
-    const match = lines.match(pattern);
-    if (match) {
-      // Parse e validar a data
-      // Retornar Date válido ou continuar tentando
-    }
-  }
-  
-  return null; // Nenhuma data encontrada
-};
-```
-
-**Integração com onDrop (upload de arquivo):**
-
-```typescript
-const handleDrop = async (e: React.DragEvent) => {
-  e.preventDefault();
+const resetForm = () => {
+  setContent('');
+  setMemberId('');
+  setOccurredAt(undefined);
   setIsDragging(false);
+  setIsProcessingFile(false);
   
-  const file = e.dataTransfer.files[0];
-  if (file) {
-    await handleFileSelect(file);
-    // Após extrair texto, tentar detectar data
+  // Limpar input de arquivo
+  if (fileInputRef.current) {
+    fileInputRef.current.value = '';
   }
-};
-
-const handleFileSelect = async (file: File) => {
-  // ... código existente ...
-  const extractedText = await extractTextFromFile(file);
-  setContent(extractedText);
   
-  // NOVO: Tentar extrair data do texto
-  tryExtractDate(extractedText);
-};
-```
-
-**Integração com onPaste:**
-
-Adicionar handler de paste no RichTextEditor ou na área de conteúdo:
-
-```typescript
-const handlePaste = (e: React.ClipboardEvent) => {
-  const pastedText = e.clipboardData.getData('text');
-  if (pastedText) {
-    tryExtractDate(pastedText);
+  // Limpar editor TipTap
+  if (editorRef.current) {
+    editorRef.current.commands.clearContent();
   }
 };
 ```
 
-**Função auxiliar com toast:**
+**2. Corrigir `handleSubmit`**
+
+Substituir os sets individuais pela chamada de `resetForm()`:
 
 ```typescript
-const tryExtractDate = (text: string) => {
-  const detectedDate = extractDateFromText(text);
-  
-  if (detectedDate) {
-    setOccurredAt(detectedDate);
-    toast({
-      title: "📅 Data detectada",
-      description: `Data de ${format(detectedDate, "dd/MM/yyyy")} encontrada no texto.`,
-    });
-  }
-  // Se não encontrar, não faz nada - campo permanece vazio
-};
-```
-
----
-
-### Parte 3: Ajustes de UI
-
-**Campo de Data - Estado Vazio:**
-
-```typescript
-<Button
-  variant="outline"
-  className={cn(
-    "w-full justify-start text-left font-normal",
-    !occurredAt && "text-muted-foreground border-orange-300"
-  )}
->
-  <CalendarIcon className="mr-2 h-4 w-4" />
-  {occurredAt 
-    ? format(occurredAt, "PPP", { locale: ptBR }) 
-    : "Selecione a data do ocorrido *"}
-</Button>
-```
-
-**Texto de Ajuda Atualizado:**
-
-```typescript
-<p className="text-xs text-muted-foreground">
-  {occurredAt 
-    ? "Quando o fato aconteceu" 
-    : "⚠️ Campo obrigatório - selecione quando o fato aconteceu"}
-</p>
-```
-
----
-
-### Parte 4: Reset do Estado
-
-**No handleSubmit (após salvar):**
-
-```typescript
+// ANTES (linha 244-247)
 setContent('');
 setMemberId('');
-setOccurredAt(undefined); // Resetar para undefined
-onOpenChange(false);
+setOccurredAt(new Date()); // ← BUG
+
+// DEPOIS
+resetForm();
 ```
 
----
+**3. Aplicar reset no fechamento do modal**
 
-### Resumo de Alterações
-
-| Arquivo | Alteração |
-|---------|-----------|
-| `NewNoteDialog.tsx` | Estado `occurredAt` inicia `undefined`, botão disabled sem data, extração via regex no upload/paste |
-
----
-
-### Seção Técnica
-
-**Função completa `extractDateFromText`:**
+Criar um wrapper para `onOpenChange` que limpa o estado ao fechar:
 
 ```typescript
-const extractDateFromText = (text: string): Date | null => {
-  const lines = text.split('\n').slice(0, 20).join('\n');
-  
-  // Padrão Tactiq: "Meeting started: 15/01/2025" ou "Meeting started 15-01-2025"
-  const tactiqMatch = lines.match(/Meeting\s+started:?\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/i);
-  if (tactiqMatch) {
-    const [, day, month, year] = tactiqMatch;
-    const fullYear = year.length === 2 ? `20${year}` : year;
-    const date = new Date(parseInt(fullYear), parseInt(month) - 1, parseInt(day));
-    if (!isNaN(date.getTime()) && date <= new Date()) return date;
+const handleOpenChange = (newOpen: boolean) => {
+  if (!newOpen) {
+    resetForm();
   }
-  
-  // ISO Format: 2025-01-15
-  const isoMatch = lines.match(/(\d{4})-(\d{2})-(\d{2})/);
-  if (isoMatch) {
-    const [, year, month, day] = isoMatch;
-    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-    if (!isNaN(date.getTime()) && date <= new Date()) return date;
-  }
-  
-  // BR Format: 15/01/2025
-  const brMatch = lines.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-  if (brMatch) {
-    const [, day, month, year] = brMatch;
-    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-    if (!isNaN(date.getTime()) && date <= new Date()) return date;
-  }
-  
-  // BR Format curto: 15/01/25
-  const brShortMatch = lines.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2})(?!\d)/);
-  if (brShortMatch) {
-    const [, day, month, year] = brShortMatch;
-    const fullYear = parseInt(year) > 50 ? `19${year}` : `20${year}`;
-    const date = new Date(parseInt(fullYear), parseInt(month) - 1, parseInt(day));
-    if (!isNaN(date.getTime()) && date <= new Date()) return date;
-  }
-  
-  return null;
+  onOpenChange(newOpen);
 };
 ```
 
-**Handler de Paste integrado:**
+Atualizar referencias:
+- `<Dialog onOpenChange={handleOpenChange}>` (linha 283)
+- Botao Cancelar: `onClick={() => handleOpenChange(false)}` (linha 423)
 
-O RichTextEditor usa TipTap. Precisamos adicionar um wrapper `onPaste` na div container ou configurar um evento no editor.
+---
+
+### Alteracoes no Arquivo
+
+| Linha | Alteracao |
+|-------|-----------|
+| ~80 | Adicionar funcao `resetForm()` |
+| 244-247 | Substituir sets individuais por `resetForm()` |
+| 283 | Trocar `onOpenChange` por `handleOpenChange` |
+| 423 | Trocar callback do botao Cancelar |
+
+---
+
+### Secao Tecnica
+
+**Implementacao completa do `resetForm`:**
 
 ```typescript
-// No container da área de conteúdo:
-<div 
-  className="space-y-2"
-  onPaste={(e) => {
-    const text = e.clipboardData.getData('text');
-    if (text && !occurredAt) {
-      tryExtractDate(text);
-    }
-  }}
->
+const resetForm = () => {
+  setContent('');
+  setMemberId('');
+  setOccurredAt(undefined);
+  setIsDragging(false);
+  setIsProcessingFile(false);
+  
+  if (fileInputRef.current) {
+    fileInputRef.current.value = '';
+  }
+  
+  if (editorRef.current) {
+    editorRef.current.commands.clearContent();
+  }
+};
+
+const handleOpenChange = (newOpen: boolean) => {
+  if (!newOpen) {
+    resetForm();
+  }
+  onOpenChange(newOpen);
+};
+```
+
+**handleSubmit atualizado:**
+
+```typescript
+toast({
+  title: "Anotacao salva!",
+  description: "Registro adicionado ao historico.",
+});
+
+resetForm();
+onOpenChange(false);
+
+if (onSuccess) {
+  onSuccess();
+}
 ```
 
 ---
 
-### Validação Extra no handleSubmit
+### Resultado Esperado
 
-Adicionar validação explícita caso o botão seja ativado de alguma forma:
+Apos a correcao:
 
-```typescript
-if (!occurredAt) {
-  toast({
-    title: "Campo obrigatório",
-    description: "Por favor, selecione a data do ocorrido.",
-    variant: "destructive"
-  });
-  return;
-}
+```text
+1. Usuario abre modal → occurredAt = undefined ✓
+2. Upload arquivo → Smart Date detecta e preenche ✓
+3. Salvar → resetForm() → occurredAt = undefined ✓
+4. Abre modal novamente → occurredAt = undefined ✓
+5. Upload novo arquivo → Smart Date funciona novamente ✓
 ```
 
