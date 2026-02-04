@@ -147,7 +147,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
         throw new Error('Você precisa estar logado');
       }
 
-      // STEP 1: Direct INSERT into Supabase (fast, ~50ms)
+      // Direct INSERT into Supabase (fast, ~50ms)
       const { data: feedback, error: insertError } = await supabase
         .from('feedbacks')
         .insert({
@@ -156,7 +156,6 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
           content: content.trim(),
           type: 'neutral',
           occurred_at: occurredAt.toISOString(),
-          // Analysis fields empty - will be filled by background function
           summary: null,
           sentiment: null,
           coaching_tips: null,
@@ -167,10 +166,10 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
 
       if (insertError) throw insertError;
 
-      // STEP 2: Close modal IMMEDIATELY and show toast
+      // Close modal IMMEDIATELY and show toast
       toast({
-        title: "Nota salva! ✅",
-        description: "Processando análise inteligente...",
+        title: "Anotação salva! ✅",
+        description: "Registro adicionado ao histórico.",
       });
       
       setContent('');
@@ -182,15 +181,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
         onSuccess();
       }
 
-      // STEP 3: Fire-and-forget background analysis
-      supabase.functions.invoke('analyze-feedback-background', {
-        body: { feedbackId: feedback.id }
-      }).catch(err => {
-        console.error('Background analysis failed:', err);
-        // Silent fail - note is already saved
-      });
-
-      // STEP 4: Fire-and-forget backup to Storage (Safety Net)
+      // Fire-and-forget backup to Storage (Safety Net)
       supabase.functions.invoke('backup-data', {
         body: { 
           type: 'feedback', 
@@ -221,19 +212,21 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[600px] flex flex-col max-h-[85vh] p-0">
+        <DialogHeader className="px-6 pt-6 pb-4">
           <DialogTitle className="flex items-center gap-2">
             <PenSquare className="h-5 w-5" />
             Nova Anotação
           </DialogTitle>
           <DialogDescription>
             {memberName 
-              ? `Adicione uma nota de feedback para ${memberName}`
+              ? `Adicione uma anotação para ${memberName}`
               : 'Cole ou digite a transcrição da reunião ou feedback'}
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4">
+        
+        {/* Scrollable content area */}
+        <div className="flex-1 overflow-y-auto px-6 space-y-4 pb-4">
           {!selectedMemberId && (
             <div className="space-y-2">
               <Label htmlFor="member">Liderado</Label>
@@ -343,13 +336,15 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
             </div>
           </div>
         </div>
-        <DialogFooter>
+        
+        {/* Sticky footer - always visible */}
+        <DialogFooter className="px-6 py-4 border-t bg-background">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
             Cancelar
           </Button>
           <Button onClick={handleSubmit} disabled={loading || isProcessingFile}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Analisar e Salvar
+            Salvar
           </Button>
         </DialogFooter>
       </DialogContent>
