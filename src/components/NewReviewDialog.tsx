@@ -168,7 +168,9 @@ export const NewReviewDialog = ({
           title: title.trim(),
           content: content.trim(),
           coaching_tip: coachingTip,
-          period_type: generatedMonths ? periodTypeMap[generatedMonths] : 'manual'
+          period_type: generatedMonths ? periodTypeMap[generatedMonths] : 'manual',
+          period_start: dateRange?.from?.toISOString(),
+          period_end: dateRange?.to?.toISOString()
         });
 
       if (error) throw error;

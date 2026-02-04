@@ -19,6 +19,8 @@ interface PerformanceReview {
   content: string;
   coaching_tip?: string | null;
   period_type: string;
+  period_start?: string | null;
+  period_end?: string | null;
   created_at: string;
 }
 
@@ -27,6 +29,7 @@ interface ReviewViewDialogProps {
   onOpenChange: (open: boolean) => void;
   review: PerformanceReview;
   memberId: string;
+  memberName?: string;
   onReviewUpdated: () => void;
   onReviewDeleted: () => void;
 }
@@ -36,6 +39,7 @@ export const ReviewViewDialog = ({
   onOpenChange, 
   review,
   memberId,
+  memberName,
   onReviewUpdated,
   onReviewDeleted
 }: ReviewViewDialogProps) => {
@@ -74,85 +78,151 @@ export const ReviewViewDialog = ({
       ? review.content
       : marked(review.content);
 
+    // Formatar período avaliado
+    const periodStart = review.period_start 
+      ? new Date(review.period_start).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+      : null;
+    const periodEnd = review.period_end 
+      ? new Date(review.period_end).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+      : null;
+    
+    const periodText = periodStart && periodEnd 
+      ? `${periodStart} a ${periodEnd}` 
+      : 'Período não especificado';
+
     printWindow.document.write(`
+      <!DOCTYPE html>
       <html>
         <head>
           <title>${review.title}</title>
           <style>
-            body { 
-              font-family: Arial, sans-serif; 
-              padding: 40px; 
+            @page {
+              margin: 0;
+              size: A4;
+            }
+            
+            * {
+              box-sizing: border-box;
+            }
+            
+            html, body {
+              margin: 0;
+              padding: 0;
+              font-family: 'Segoe UI', Arial, sans-serif;
               line-height: 1.6;
               color: #333;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
             }
-            h1 { 
-              color: #222; 
-              border-bottom: 3px solid #eee; 
-              padding-bottom: 10px;
-              margin-bottom: 20px;
+            
+            .document {
+              padding: 2cm;
+              max-width: 100%;
+              height: auto;
             }
+            
+            /* Header */
+            .header {
+              border-bottom: 3px solid #7C3AED;
+              padding-bottom: 20px;
+              margin-bottom: 30px;
+            }
+            
+            h1 {
+              color: #222;
+              margin: 0 0 16px 0;
+              font-size: 24px;
+            }
+            
+            .metadata {
+              color: #666;
+              font-size: 0.9em;
+            }
+            
+            .metadata p {
+              margin: 4px 0;
+            }
+            
+            .period-highlight {
+              background-color: #F3F4F6;
+              padding: 8px 12px;
+              border-radius: 4px;
+              margin-top: 12px;
+              display: inline-block;
+            }
+            
+            /* Content Styles */
             h2 { 
               color: #444; 
-              margin-top: 32px;
-              margin-bottom: 16px;
+              margin-top: 28px;
+              margin-bottom: 12px;
+              font-size: 18px;
             }
+            
             h3 {
               color: #555;
-              margin-top: 24px;
-              margin-bottom: 12px;
+              margin-top: 20px;
+              margin-bottom: 10px;
+              font-size: 16px;
             }
+            
             ul, ol { 
               padding-left: 24px;
               margin: 12px 0;
             }
+            
             li {
-              margin: 8px 0;
+              margin: 6px 0;
             }
+            
             p {
-              margin: 12px 0;
+              margin: 10px 0;
             }
+            
             strong {
               color: #222;
             }
-            em {
-              color: #666;
+            
+            /* Evitar página em branco */
+            .content {
+              height: auto !important;
+              page-break-inside: auto;
             }
-            .metadata {
-              color: #666;
-              font-size: 0.9em;
-              margin-bottom: 30px;
-              padding-bottom: 20px;
-              border-bottom: 1px solid #ddd;
-            }
+            
             @media print {
-              body { padding: 20px; }
+              .document {
+                padding: 1.5cm;
+              }
             }
           </style>
         </head>
         <body>
-          <h1>${review.title}</h1>
-          <div class="metadata">
-            <p><strong>Data:</strong> ${new Date(review.created_at).toLocaleDateString('pt-BR', { 
-              day: '2-digit', 
-              month: 'long', 
-              year: 'numeric' 
-            })}</p>
-            <p><strong>Gerado em:</strong> ${new Date().toLocaleDateString('pt-BR', { 
-              day: '2-digit', 
-              month: 'long', 
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit'
-            })}</p>
+          <div class="document">
+            <div class="header">
+              <h1>${review.title}</h1>
+              <div class="metadata">
+                ${memberName ? `<p><strong>Colaborador:</strong> ${memberName}</p>` : ''}
+                <p><strong>Data de Criação:</strong> ${new Date(review.created_at).toLocaleDateString('pt-BR', { 
+                  day: '2-digit', 
+                  month: 'long', 
+                  year: 'numeric' 
+                })}</p>
+                <div class="period-highlight">
+                  <strong>📅 Período Avaliado:</strong> ${periodText}
+                </div>
+              </div>
+            </div>
+            <div class="content">
+              ${htmlContent}
+            </div>
           </div>
-          ${htmlContent}
         </body>
       </html>
     `);
     printWindow.document.close();
     setTimeout(() => {
       printWindow.print();
-    }, 250);
+    }, 300);
   };
 
   const handleSave = async () => {
