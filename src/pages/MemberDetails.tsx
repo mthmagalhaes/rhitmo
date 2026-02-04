@@ -15,11 +15,13 @@ import { PerformanceReviewList } from '@/components/PerformanceReviewList';
 import { useAuth } from '@/hooks/useAuth';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Music, BookOpen, FileText, Clock, Lock, ArrowRight } from 'lucide-react';
+import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Music, BookOpen, FileText, Clock, Lock, ArrowRight, Briefcase, Heart, Megaphone, Compass, DollarSign, Shield, GraduationCap, Crown, HelpCircle, Sunrise, Moon } from 'lucide-react';
 import { GoalsManager } from '@/components/GoalsManager';
 
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import React from 'react';
+
 interface WorkStyleData {
   completed_at: string;
   processing: string;
@@ -28,6 +30,7 @@ interface WorkStyleData {
   energy: string;
   motivation: string;
 }
+
 const MemberDetails = () => {
   const {
     id
@@ -204,6 +207,30 @@ const MemberDetails = () => {
       year: 'numeric'
     }).format(date);
   };
+
+  // Helper function to render badge with fallback
+  const renderBadge = (configCategory: Record<string, { label: string; icon: React.ComponentType<{ className?: string }>; color: string }> | undefined, key: string | null | undefined) => {
+    if (!key) return null;
+    const config = configCategory?.[key];
+    
+    if (!config) {
+      return (
+        <Badge variant="secondary" className="gap-2 py-2 px-3 bg-gray-500/10 text-gray-600 dark:text-gray-400">
+          <HelpCircle className="h-4 w-4" />
+          {key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ')}
+        </Badge>
+      );
+    }
+    
+    const Icon = config.icon;
+    return (
+      <Badge variant="secondary" className={`${config.color} gap-2 py-2 px-3`}>
+        <Icon className="h-4 w-4" />
+        {config.label}
+      </Badge>
+    );
+  };
+
   if (authLoading || loading) {
     return <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -218,6 +245,13 @@ const MemberDetails = () => {
         </div>
       </div>;
   }
+
+  // Detect if V2 data exists
+  const hasV2Data = !!(member.chronotype || member.feedback_style || member.recognition_style || 
+    (member.motivators && Array.isArray(member.motivators) && (member.motivators as string[]).length > 0));
+  
+  const completedAt = (member.work_style_data as any)?.completed_at;
+
   return <div className="min-h-screen bg-background pb-20">
       <main className="container mx-auto px-4 sm:px-6 py-8">
         {/* Breadcrumb e ações */}
@@ -298,98 +332,128 @@ const MemberDetails = () => {
                         </Button>
                       </div>
                     </div>
-                  </div> : member.work_style_data ? <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      Preferências de trabalho • Preenchido em {formatDate((member.work_style_data as unknown as WorkStyleData).completed_at)}
-                    </p>
-                    
+                  </div> : member.work_style_data ? (
                     <div className="space-y-4">
-                      {/* Processing Style */}
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium text-muted-foreground">Processamento de informações</p>
-                        <div>
-                          {(() => {
-                        const key = (member.work_style_data as unknown as WorkStyleData).processing;
-                        const config = key ? styleConfig.processing[key as keyof typeof styleConfig.processing] : null;
-                        if (!config) return null;
-                        const Icon = config.icon;
-                        return <Badge variant="secondary" className={`${config.color} gap-2 py-2 px-3`}>
-                                <Icon className="h-4 w-4" />
-                                {config.label}
-                              </Badge>;
-                      })()}
-                        </div>
-                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Preferências de trabalho {completedAt && `• Preenchido em ${formatDate(completedAt)}`}
+                      </p>
+                      
+                      <div className="space-y-4">
+                        {hasV2Data ? (
+                          <>
+                            {/* V2: Chronotype */}
+                            {member.chronotype && (
+                              <div className="space-y-2">
+                                <p className="text-sm font-medium text-muted-foreground">Cronotipo</p>
+                                <div>
+                                  {renderBadge(styleConfig.chronotype, member.chronotype)}
+                                </div>
+                              </div>
+                            )}
 
-                      {/* Feedback Style */}
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium text-muted-foreground">Estilo de feedback</p>
-                        <div>
-                          {(() => {
-                        const key = (member.work_style_data as unknown as WorkStyleData).feedback;
-                        const config = key ? styleConfig.feedback[key as keyof typeof styleConfig.feedback] : null;
-                        if (!config) return null;
-                        const Icon = config.icon;
-                        return <Badge variant="secondary" className={`${config.color} gap-2 py-2 px-3`}>
-                                <Icon className="h-4 w-4" />
-                                {config.label}
-                              </Badge>;
-                      })()}
-                        </div>
-                      </div>
+                            {/* V2: Feedback Style */}
+                            {member.feedback_style && (
+                              <div className="space-y-2">
+                                <p className="text-sm font-medium text-muted-foreground">Estilo de Feedback</p>
+                                <div>
+                                  {renderBadge(styleConfig.feedback_style, member.feedback_style)}
+                                </div>
+                              </div>
+                            )}
 
-                      {/* Autonomy Style */}
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium text-muted-foreground">Estilo de trabalho</p>
-                        <div>
-                          {(() => {
-                        const key = (member.work_style_data as unknown as WorkStyleData).autonomy;
-                        const config = key ? styleConfig.autonomy[key as keyof typeof styleConfig.autonomy] : null;
-                        if (!config) return null;
-                        const Icon = config.icon;
-                        return <Badge variant="secondary" className={`${config.color} gap-2 py-2 px-3`}>
-                                <Icon className="h-4 w-4" />
-                                {config.label}
-                              </Badge>;
-                      })()}
-                        </div>
-                      </div>
+                            {/* V2: Recognition Style */}
+                            {member.recognition_style && (
+                              <div className="space-y-2">
+                                <p className="text-sm font-medium text-muted-foreground">Estilo de Reconhecimento</p>
+                                <div>
+                                  {renderBadge(styleConfig.recognition_style, member.recognition_style)}
+                                </div>
+                              </div>
+                            )}
 
-                      {/* Energy Style */}
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium text-muted-foreground">Horário de pico</p>
-                        <div>
-                          {(() => {
-                        const key = (member.work_style_data as unknown as WorkStyleData).energy;
-                        const config = key ? styleConfig.energy[key as keyof typeof styleConfig.energy] : null;
-                        if (!config) return null;
-                        const Icon = config.icon;
-                        return <Badge variant="secondary" className={`${config.color} gap-2 py-2 px-3`}>
-                                <Icon className="h-4 w-4" />
-                                {config.label}
-                              </Badge>;
-                      })()}
-                        </div>
-                      </div>
+                            {/* V2: Motivators (Array) */}
+                            {member.motivators && Array.isArray(member.motivators) && (member.motivators as string[]).length > 0 && (
+                              <div className="space-y-2">
+                                <p className="text-sm font-medium text-muted-foreground">Motivadores Principais</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {(member.motivators as string[]).map((motivator) => {
+                                    const config = styleConfig.motivators?.[motivator as keyof typeof styleConfig.motivators];
+                                    if (!config) {
+                                      return (
+                                        <Badge key={motivator} variant="secondary" className="gap-2 py-2 px-3 bg-gray-500/10 text-gray-700 dark:text-gray-400">
+                                          <HelpCircle className="h-4 w-4" />
+                                          {motivator.charAt(0).toUpperCase() + motivator.slice(1)}
+                                        </Badge>
+                                      );
+                                    }
+                                    const Icon = config.icon;
+                                    return (
+                                      <Badge key={motivator} variant="secondary" className={`${config.color} gap-2 py-2 px-3`}>
+                                        <Icon className="h-4 w-4" />
+                                        {config.label}
+                                      </Badge>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            {/* V1: Processing Style */}
+                            {(member.work_style_data as unknown as WorkStyleData).processing && (
+                              <div className="space-y-2">
+                                <p className="text-sm font-medium text-muted-foreground">Processamento de informações</p>
+                                <div>
+                                  {renderBadge(styleConfig.processing, (member.work_style_data as unknown as WorkStyleData).processing)}
+                                </div>
+                              </div>
+                            )}
 
-                      {/* Motivation Style */}
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium text-muted-foreground">Motivação principal</p>
-                        <div>
-                          {(() => {
-                        const key = (member.work_style_data as unknown as WorkStyleData).motivation;
-                        const config = key ? styleConfig.motivation[key as keyof typeof styleConfig.motivation] : null;
-                        if (!config) return null;
-                        const Icon = config.icon;
-                        return <Badge variant="secondary" className={`${config.color} gap-2 py-2 px-3`}>
-                                <Icon className="h-4 w-4" />
-                                {config.label}
-                              </Badge>;
-                      })()}
-                        </div>
+                            {/* V1: Feedback Style */}
+                            {(member.work_style_data as unknown as WorkStyleData).feedback && (
+                              <div className="space-y-2">
+                                <p className="text-sm font-medium text-muted-foreground">Estilo de feedback</p>
+                                <div>
+                                  {renderBadge(styleConfig.feedback, (member.work_style_data as unknown as WorkStyleData).feedback)}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* V1: Autonomy Style */}
+                            {(member.work_style_data as unknown as WorkStyleData).autonomy && (
+                              <div className="space-y-2">
+                                <p className="text-sm font-medium text-muted-foreground">Estilo de trabalho</p>
+                                <div>
+                                  {renderBadge(styleConfig.autonomy, (member.work_style_data as unknown as WorkStyleData).autonomy)}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* V1: Energy Style */}
+                            {(member.work_style_data as unknown as WorkStyleData).energy && (
+                              <div className="space-y-2">
+                                <p className="text-sm font-medium text-muted-foreground">Horário de pico</p>
+                                <div>
+                                  {renderBadge(styleConfig.energy, (member.work_style_data as unknown as WorkStyleData).energy)}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* V1: Motivation Style */}
+                            {(member.work_style_data as unknown as WorkStyleData).motivation && (
+                              <div className="space-y-2">
+                                <p className="text-sm font-medium text-muted-foreground">Motivação principal</p>
+                                <div>
+                                  {renderBadge(styleConfig.motivation, (member.work_style_data as unknown as WorkStyleData).motivation)}
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
-                  </div> : <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                  ) : <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
                     <p className="text-amber-700 dark:text-amber-400 text-sm mb-3 flex items-center gap-2">
                       <Clock className="h-4 w-4" />
                       Aguardando preenchimento do Rhitmo Sync
