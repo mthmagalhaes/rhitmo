@@ -4,13 +4,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Sparkles, TrendingUp, Lock } from "lucide-react";
+import { Loader2, Sparkles, TrendingUp, Lock, CalendarIcon } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { marked } from 'marked';
+import { format, subMonths } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { DateRange } from "react-day-picker";
+import { cn } from "@/lib/utils";
 
 interface NewReviewDialogProps {
   open: boolean;
@@ -33,12 +39,35 @@ export const NewReviewDialog = ({
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [generatedMonths, setGeneratedMonths] = useState<number | null>(null);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
   const { toast } = useToast();
   const { canGenerateReview, limits } = usePlanLimits();
 
-  const generateReview = async (months: number) => {
+  const handlePresetClick = (months: number) => {
+    const today = new Date();
+    const startDate = subMonths(today, months);
+    setDateRange({ from: startDate, to: today });
+    setSelectedPreset(months);
+  };
+
+  const handleDateRangeChange = (range: DateRange | undefined) => {
+    setDateRange(range);
+    setSelectedPreset(null);
+  };
+
+  const generateReview = async () => {
+    if (!dateRange?.from || !dateRange?.to) {
+      toast({
+        title: "Selecione um período",
+        description: "Escolha um preset ou selecione as datas manualmente.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setGenerating(true);
-    setGeneratedMonths(months);
+    setGeneratedMonths(selectedPreset);
     
     // Timeout de 30 segundos para evitar UI travada
     const timeoutPromise = new Promise<never>((_, reject) => 
@@ -46,7 +75,11 @@ export const NewReviewDialog = ({
     );
     
     const fetchPromise = supabase.functions.invoke('generate-review', {
-      body: { memberId, months }
+      body: { 
+        memberId, 
+        startDate: dateRange.from.toISOString(),
+        endDate: dateRange.to.toISOString()
+      }
     });
     
     try {
@@ -75,13 +108,19 @@ export const NewReviewDialog = ({
         12: 'Anual'
       };
       
-      const periodLabel = periodLabels[months] || `${months} meses`;
       const currentDate = new Date().toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
-      setTitle(`Avaliação ${periodLabel} - ${currentDate}`);
+      
+      if (selectedPreset && periodLabels[selectedPreset]) {
+        setTitle(`Avaliação ${periodLabels[selectedPreset]} - ${currentDate}`);
+      } else {
+        const fromStr = format(dateRange.from, "MMM/yy", { locale: ptBR });
+        const toStr = format(dateRange.to, "MMM/yy", { locale: ptBR });
+        setTitle(`Avaliação ${fromStr} a ${toStr}`);
+      }
 
       toast({
         title: "Avaliação gerada! ✨",
-        description: `Analisamos ${data.feedbackCount} feedbacks dos últimos ${months} meses.`,
+        description: `Analisamos ${data.feedbackCount} feedbacks do período selecionado.`,
       });
     } catch (error: any) {
       if (error.message === 'TIMEOUT') {
@@ -184,6 +223,8 @@ export const NewReviewDialog = ({
     setContent("");
     setCoachingTip(null);
     setGeneratedMonths(null);
+    setDateRange(undefined);
+    setSelectedPreset(null);
     onOpenChange(false);
   };
 
@@ -200,32 +241,25 @@ export const NewReviewDialog = ({
         <div className="space-y-6">
           {/* Chips de Geração Rápida */}
           <div className="space-y-2">
-            <Label>Gerar com IA (Máquina do Tempo)</Label>
+            <Label>Período da Avaliação</Label>
             <div className="flex gap-2 flex-wrap">
               <TooltipProvider>
                 {[
-                  { months: 1, label: 'Mensal (1 mês)' },
-                  { months: 3, label: 'Trimestral (3 meses)' },
-                  { months: 6, label: 'Semestral (6 meses)' },
-                  { months: 12, label: 'Anual (12 meses)' },
+                  { months: 1, label: 'Mensal' },
+                  { months: 3, label: 'Trimestral' },
+                  { months: 6, label: 'Semestral' },
+                  { months: 12, label: 'Anual' },
                 ].map(({ months, label }) => (
                   <Tooltip key={months}>
                     <TooltipTrigger asChild>
                       <span>
                         <Button 
                           type="button"
-                          variant="outline" 
-                          onClick={() => generateReview(months)}
-                          disabled={generating || !canGenerateReview}
+                          variant={selectedPreset === months ? "default" : "outline"}
+                          onClick={() => handlePresetClick(months)}
+                          disabled={generating}
                           className="gap-2"
                         >
-                          {!canGenerateReview ? (
-                            <Lock className="h-4 w-4" />
-                          ) : generating && generatedMonths === months ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Sparkles className="h-4 w-4" />
-                          )}
                           {label}
                         </Button>
                       </span>
@@ -242,10 +276,86 @@ export const NewReviewDialog = ({
                 ))}
               </TooltipProvider>
             </div>
+          </div>
+
+          {/* DateRange Picker */}
+          <div className="space-y-2">
+            <Label>Intervalo da Análise</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !dateRange && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateRange?.from ? (
+                    dateRange.to ? (
+                      <>
+                        {format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })} - {" "}
+                        {format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}
+                      </>
+                    ) : (
+                      format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })
+                    )
+                  ) : (
+                    "Selecione o período"
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="range"
+                  selected={dateRange}
+                  onSelect={handleDateRangeChange}
+                  numberOfMonths={2}
+                  locale={ptBR}
+                  disabled={(date) => date > new Date()}
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* Botão Gerar com IA */}
+          <div className="space-y-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="w-full">
+                    <Button
+                      type="button"
+                      onClick={generateReview}
+                      disabled={generating || !canGenerateReview || !dateRange?.from || !dateRange?.to}
+                      className="gap-2 w-full"
+                    >
+                      {!canGenerateReview ? (
+                        <Lock className="h-4 w-4" />
+                      ) : generating ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-4 w-4" />
+                      )}
+                      Gerar Avaliação com IA
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {!canGenerateReview && (
+                  <TooltipContent className="max-w-xs">
+                    <p className="font-medium">Limite do plano {limits.planName} atingido</p>
+                    <p className="text-sm text-muted-foreground">
+                      {limits.maxReviews} avaliação(ões)/mês. Faça upgrade para Flow.
+                    </p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
             {generating && (
               <p className="text-sm text-muted-foreground flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Analisando histórico dos últimos {generatedMonths} meses...
+                Analisando histórico do período selecionado...
               </p>
             )}
           </div>

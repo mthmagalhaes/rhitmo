@@ -13,11 +13,18 @@ serve(async (req) => {
   }
 
   try {
-    const { memberId, months } = await req.json();
+    const { memberId, months, startDate, endDate } = await req.json();
 
-    if (!memberId || !months) {
+    if (!memberId) {
       return new Response(
-        JSON.stringify({ error: 'memberId e months são obrigatórios' }),
+        JSON.stringify({ error: 'memberId é obrigatório' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!months && (!startDate || !endDate)) {
+      return new Response(
+        JSON.stringify({ error: 'Informe months ou (startDate + endDate)' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -26,12 +33,25 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Calcular data limite (Máquina do Tempo)
-    const limitDate = new Date();
-    limitDate.setMonth(limitDate.getMonth() - months);
+    // Calcular datas limite (suporta custom range ou months)
+    let limitDate: Date;
+    let endLimitDate: Date;
 
-    console.log(`Gerando avaliação para member ${memberId} dos últimos ${months} meses`);
-    console.log(`Data limite: ${limitDate.toISOString()}`);
+    if (startDate && endDate) {
+      // Modo Custom Range
+      limitDate = new Date(startDate);
+      endLimitDate = new Date(endDate);
+      console.log(`Período personalizado: ${limitDate.toISOString()} a ${endLimitDate.toISOString()}`);
+    } else {
+      // Modo Legacy (presets em meses)
+      limitDate = new Date();
+      limitDate.setMonth(limitDate.getMonth() - months);
+      endLimitDate = new Date();
+      console.log(`Gerando avaliação para member ${memberId} dos últimos ${months} meses`);
+    }
+
+    console.log(`Data início: ${limitDate.toISOString()}`);
+    console.log(`Data fim: ${endLimitDate.toISOString()}`);
 
     // Buscar feedbacks do período (usar occurred_at - "Máquina do Tempo")
     const { data: feedbacks, error: feedbacksError } = await supabase
@@ -39,6 +59,7 @@ serve(async (req) => {
       .select('*')
       .eq('member_id', memberId)
       .gte('occurred_at', limitDate.toISOString())
+      .lte('occurred_at', endLimitDate.toISOString())
       .order('occurred_at', { ascending: true });
 
     if (feedbacksError) {
@@ -77,6 +98,11 @@ serve(async (req) => {
       : '\n\nPerfil Rhitmo Sync não disponível.';
 
     // System Prompt
+    // Descrição do período para o prompt
+    const periodDescription = startDate && endDate
+      ? `de ${new Date(startDate).toLocaleDateString('pt-BR')} a ${new Date(endDate).toLocaleDateString('pt-BR')}`
+      : `dos últimos ${months} meses`;
+
     const systemPrompt = `# RHITMO REVIEW GENERATOR
 
 ## IDENTIDADE
@@ -88,7 +114,7 @@ ${GUARDRAILS_PROMPT}
 ## MISSÃO ESPECÍFICA: GERAR AVALIAÇÃO DE DESEMPENHO
 
 Gerar um RASCUNHO de Avaliação de Desempenho profissional com base APENAS 
-nas notas fornecidas dos últimos ${months} meses.
+nas notas fornecidas ${periodDescription}.
 
 ## FORMATO DE SAÍDA: MARKDOWN PURO
 
@@ -173,7 +199,7 @@ Nenhum objetivo formal foi definido.
 - Base a avaliação exclusivamente nos feedbacks
 `;
 
-    const userPrompt = `FEEDBACKS DOS ÚLTIMOS ${months} MESES:\n\n${feedbacksText}${workStyleInfo}${objectivesSection}\n\nGere a avaliação de desempenho seguindo EXATAMENTE a estrutura indicada.
+    const userPrompt = `FEEDBACKS ${periodDescription.toUpperCase()}:\n\n${feedbacksText}${workStyleInfo}${objectivesSection}\n\nGere a avaliação de desempenho seguindo EXATAMENTE a estrutura indicada.
 
 IMPORTANTE: Separe o documento principal das dicas de apresentação usando o delimitador ---COACHING_TIP--- 
 A seção "## 🎭 Como Apresentar Esta Avaliação" deve vir DEPOIS do delimitador.`;
@@ -265,7 +291,9 @@ A seção "## 🎭 Como Apresentar Esta Avaliação" deve vir DEPOIS do delimita
         review_content: reviewContent,
         coaching_tip: coachingTip,
         feedbackCount: feedbacks?.length || 0,
-        memberName: member.name
+        memberName: member.name,
+        periodStart: limitDate.toISOString(),
+        periodEnd: endLimitDate.toISOString()
       }),
       { 
         status: 200, 
