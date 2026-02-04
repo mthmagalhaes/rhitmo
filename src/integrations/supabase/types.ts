@@ -349,12 +349,18 @@ export type Database = {
       team_members: {
         Row: {
           avatar: string | null
+          birth_year: number | null
+          chronotype: string | null
           created_at: string
           email: string | null
+          feedback_style: string | null
+          gender: string | null
           id: string
           key_objectives: string | null
+          motivators: Json | null
           name: string
           performance_score: number | null
+          recognition_style: string | null
           role: string
           team_id: string
           updated_at: string
@@ -364,12 +370,18 @@ export type Database = {
         }
         Insert: {
           avatar?: string | null
+          birth_year?: number | null
+          chronotype?: string | null
           created_at?: string
           email?: string | null
+          feedback_style?: string | null
+          gender?: string | null
           id?: string
           key_objectives?: string | null
+          motivators?: Json | null
           name: string
           performance_score?: number | null
+          recognition_style?: string | null
           role: string
           team_id: string
           updated_at?: string
@@ -379,12 +391,18 @@ export type Database = {
         }
         Update: {
           avatar?: string | null
+          birth_year?: number | null
+          chronotype?: string | null
           created_at?: string
           email?: string | null
+          feedback_style?: string | null
+          gender?: string | null
           id?: string
           key_objectives?: string | null
+          motivators?: Json | null
           name?: string
           performance_score?: number | null
+          recognition_style?: string | null
           role?: string
           team_id?: string
           updated_at?: string
@@ -566,6 +584,20 @@ export type Database = {
       }
       submit_rhitmo_sync: {
         Args: { p_member_id: string; p_work_style_data: Json }
+        Returns: boolean
+      }
+      submit_rhitmo_sync_v2: {
+        Args: {
+          p_birth_year?: number
+          p_chronotype?: string
+          p_feedback_style?: string
+          p_gender?: string
+          p_member_id: string
+          p_motivators?: Json
+          p_recognition_style?: string
+          p_user_manual?: Json
+          p_work_style_data?: Json
+        }
         Returns: boolean
       }
       user_owns_team: {
