@@ -31,6 +31,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 interface MentorMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -84,6 +85,7 @@ export const MentorChat = ({
   const [deletingThread, setDeletingThread] = useState<ChatThread | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -263,11 +265,24 @@ export const MentorChat = ({
     }
   };
 
+  const adjustTextareaHeight = () => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      const newHeight = Math.min(textarea.scrollHeight, 200);
+      textarea.style.height = `${newHeight}px`;
+    }
+  };
+
   const handleSend = async (messageToSend?: string) => {
     const finalMessage = messageToSend || input;
     if (!finalMessage.trim() || isLoading || !user) return;
 
     setInput('');
+    // Reset textarea height
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
     setIsLoading(true);
 
     try {
@@ -377,11 +392,17 @@ export const MentorChat = ({
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
+    // Shift+Enter: comportamento padrão (nova linha)
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    adjustTextareaHeight();
   };
 
   const handleSuggestionClick = (text: string) => {
@@ -635,7 +656,7 @@ export const MentorChat = ({
                   ))}
                 </div>
 
-                <div className="flex items-center gap-2 bg-background border border-border rounded-2xl shadow-lg px-4 py-2">
+                <div className="flex items-end gap-2 bg-background border border-border rounded-2xl shadow-lg px-4 py-2">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -649,7 +670,7 @@ export const MentorChat = ({
                     size="icon"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isLoading || isExtractingFile}
-                    className="h-8 w-8 flex-shrink-0 text-muted-foreground hover:text-foreground"
+                    className="h-8 w-8 flex-shrink-0 text-muted-foreground hover:text-foreground mb-0.5"
                     aria-label="Anexar arquivo"
                   >
                     {isExtractingFile ? (
@@ -659,25 +680,33 @@ export const MentorChat = ({
                     )}
                   </Button>
                   
-                  <input
-                    type="text"
+                  <Textarea
+                    ref={textareaRef}
                     value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyPress={handleKeyPress}
+                    onChange={handleInputChange}
+                    onKeyDown={handleKeyDown}
                     placeholder="Como posso ajudar você hoje?"
                     disabled={isLoading || isExtractingFile}
+                    rows={1}
                     className="flex-1 bg-transparent border-0 outline-none text-sm text-foreground 
-                               placeholder:text-muted-foreground disabled:cursor-not-allowed min-w-0"
+                               placeholder:text-muted-foreground disabled:cursor-not-allowed min-w-0
+                               resize-none min-h-[40px] max-h-[200px] py-2.5
+                               focus-visible:ring-0 focus-visible:ring-offset-0"
                   />
-                  <VoiceInput 
-                    onTranscription={(text) => setInput(text)}
-                    disabled={isLoading || isExtractingFile}
-                  />
+                  <div className="mb-0.5">
+                    <VoiceInput 
+                      onTranscription={(text) => {
+                        setInput(text);
+                        setTimeout(adjustTextareaHeight, 0);
+                      }}
+                      disabled={isLoading || isExtractingFile}
+                    />
+                  </div>
                   <Button 
                     onClick={() => handleSend()} 
                     disabled={isLoading || isExtractingFile || !input.trim()}
                     size="icon"
-                    className="h-9 w-9 rounded-full bg-primary hover:bg-primary/90 flex-shrink-0"
+                    className="h-9 w-9 rounded-full bg-primary hover:bg-primary/90 flex-shrink-0 mb-0.5"
                     aria-label="Enviar mensagem"
                   >
                     <Send className="h-4 w-4" />
