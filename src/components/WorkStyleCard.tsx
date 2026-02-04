@@ -1,6 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Zap, BookOpen, Target, Waves, Sunrise, Moon, Trophy, TrendingUp } from 'lucide-react';
+import { 
+  Zap, BookOpen, Target, Waves, Sunrise, Moon, Trophy, TrendingUp,
+  Briefcase, Heart, FileText, Megaphone, Lock, Compass, DollarSign, Shield, GraduationCap, Crown, HelpCircle
+} from 'lucide-react';
 
 interface WorkStyleData {
   processing: 'direct' | 'contextual';
@@ -16,6 +19,7 @@ interface WorkStyleCardProps {
 }
 
 export const styleConfig = {
+  // V1 fields
   processing: {
     direct: { label: 'Direto ao ponto', icon: Zap, color: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400' },
     contextual: { label: 'Contexto completo', icon: BookOpen, color: 'bg-blue-500/10 text-blue-700 dark:text-blue-400' }
@@ -35,6 +39,30 @@ export const styleConfig = {
   motivation: {
     recognition: { label: 'Reconhecimento', icon: Trophy, color: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400' },
     growth: { label: 'Crescimento', icon: TrendingUp, color: 'bg-green-500/10 text-green-700 dark:text-green-400' }
+  },
+
+  // V2 fields
+  chronotype: {
+    morning: { label: 'Madrugador (5h-14h)', icon: Sunrise, color: 'bg-orange-500/10 text-orange-700 dark:text-orange-400' },
+    commercial: { label: 'Horário Comercial', icon: Briefcase, color: 'bg-blue-500/10 text-blue-700 dark:text-blue-400' },
+    night: { label: 'Noturno / Tarde', icon: Moon, color: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-400' }
+  },
+  feedback_style: {
+    direct: { label: 'Direto ao Ponto', icon: Zap, color: 'bg-red-500/10 text-red-700 dark:text-red-400' },
+    empathetic: { label: 'Empático / Sanduíche', icon: Heart, color: 'bg-pink-500/10 text-pink-700 dark:text-pink-400' },
+    written: { label: 'Por Escrito Primeiro', icon: FileText, color: 'bg-slate-500/10 text-slate-700 dark:text-slate-400' }
+  },
+  recognition_style: {
+    public: { label: 'Reconhecimento Público', icon: Megaphone, color: 'bg-green-500/10 text-green-700 dark:text-green-400' },
+    private: { label: 'Reconhecimento Privado', icon: Lock, color: 'bg-gray-500/10 text-gray-600 dark:text-gray-400' }
+  },
+  motivators: {
+    autonomy: { label: 'Autonomia', icon: Compass, color: 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400' },
+    money: { label: 'Dinheiro', icon: DollarSign, color: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' },
+    stability: { label: 'Estabilidade', icon: Shield, color: 'bg-blue-500/10 text-blue-700 dark:text-blue-400' },
+    learning: { label: 'Aprendizado', icon: GraduationCap, color: 'bg-purple-500/10 text-purple-700 dark:text-purple-400' },
+    purpose: { label: 'Propósito', icon: Heart, color: 'bg-rose-500/10 text-rose-700 dark:text-rose-400' },
+    status: { label: 'Status', icon: Crown, color: 'bg-amber-500/10 text-amber-700 dark:text-amber-400' }
   }
 };
 
