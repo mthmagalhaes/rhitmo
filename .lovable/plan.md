@@ -1,314 +1,248 @@
 
 
-## Plano: Upgrade Mentor Chat 2.0 - Arquitetura de 3 Camadas
+## Plano: Renomear e Excluir Conversas no Mentor Chat
 
 ### Objetivo
 
-Implementar uma arquitetura de 3 camadas no Mentor Chat para otimizar custos e expandir o contexto analisável de 5.000 para 20.000 caracteres, usando roteamento inteligente e o modelo GPT-4o para respostas complexas.
+Adicionar funcionalidade de gerenciamento de conversas na sidebar do MentorChat, permitindo renomear e excluir threads similar ao ChatGPT.
 
 ---
 
-### Arquitetura Atual vs Nova
+### Estado Atual
 
-| Aspecto | Atual | Novo (2.0) |
-|---------|-------|------------|
-| Modelo | gpt-4o-mini fixo | gpt-4o (principal) + gpt-4o-mini (roteador) |
-| Limite de contexto | 5.000 chars | 20.000 chars |
-| Busca de dados | Sempre busca 50 notas | Roteador decide se precisa buscar |
-| Compressão | Usa `summary` ou corta em 200 chars | Usa `summary` ou corta em 800 chars |
-| Custo por mensagem | ~fixo | Variável (menor para perguntas simples) |
+| Item | Situação |
+|------|----------|
+| Lista de threads | Renderiza apenas botão clicável |
+| Ações de contexto | Não existem |
+| Tabela `chat_threads` | Já possui coluna `title` atualizável |
 
 ---
 
-### Camada 1: Roteamento Semântico ("O Porteiro")
+### Parte 1: Adicionar Imports Necessários
 
-Esta camada analisa a mensagem do usuário com GPT-4o-mini para decidir se precisa buscar dados no banco.
-
-**Lógica de Decisão:**
-
-```text
-┌─────────────────────────────────────────────────┐
-│ Mensagem do Usuário                             │
-└────────────────────────┬────────────────────────┘
-                         ▼
-┌─────────────────────────────────────────────────┐
-│ GPT-4o-mini: "Preciso buscar dados? SIM/NAO"    │
-└────────────────────────┬────────────────────────┘
-                         ▼
-         ┌───────────────┴───────────────┐
-         │                               │
-    ┌────▼────┐                    ┌─────▼─────┐
-    │   NAO   │                    │    SIM    │
-    └────┬────┘                    └─────┬─────┘
-         │                               │
-         ▼                               ▼
- Pula busca de dados           Busca + Comprime notas
- contextText = ""              contextText = notas
-         │                               │
-         └───────────────┬───────────────┘
-                         ▼
-              ┌──────────────────────┐
-              │ GPT-4o: Resposta     │
-              └──────────────────────┘
-```
-
-**Prompt do Roteador:**
+Adicionar ao MentorChat.tsx:
 
 ```typescript
-const routerPrompt = `O usuário disse: "${question}".
-
-Para responder isso com qualidade, é OBRIGATÓRIO ler as anotações e feedbacks históricos do liderado?
-
-Exemplos de "NAO":
-- Saudações ("Oi", "Olá", "Bom dia")
-- Pedidos genéricos de formatação ("Formata isso em bullets")
-- Perguntas sobre você ("O que você faz?", "Quem é você?")
-- Continuação de conversa sem mudar de tema
-
-Exemplos de "SIM":
-- Perguntas sobre comportamento ("Como a Gabriela se comporta em reuniões?")
-- Análise de padrões ("Quais são os pontos fortes do João?")
-- Preparação para 1:1 ("Me ajuda a preparar a 1:1")
-- Sugestões de PDI ("O que posso sugerir de desenvolvimento?")
-
-Responda APENAS "SIM" ou "NAO" (sem acento, sem explicação).`;
+import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
 ```
-
-**Otimização para Conversas Longas:**
-
-Se a conversa já tiver mais de 2 turnos e o contexto já foi injetado anteriormente, assume que não precisa buscar novamente (exceto se a intenção mudar).
 
 ---
 
-### Camada 2: Busca e Compressão de Contexto ("A Prensa")
-
-Quando o roteador aprova a busca, aplica-se compressão inteligente:
-
-**Algoritmo de Compressão:**
+### Parte 2: Adicionar Estados de Controle
 
 ```typescript
-const compressContext = (feedbacks: any[]): string => {
-  // Ordenar por occurred_at DESC
-  const sorted = [...feedbacks].sort((a, b) => {
-    const dateA = new Date(a.occurred_at || a.created_at);
-    const dateB = new Date(b.occurred_at || b.created_at);
-    return dateB.getTime() - dateA.getTime();
-  });
+const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
+const [editingTitle, setEditingTitle] = useState('');
+const [deletingThread, setDeletingThread] = useState<ChatThread | null>(null);
+```
+
+---
+
+### Parte 3: Função de Renomear (handleRenameThread)
+
+```typescript
+const handleRenameThread = async (threadId: string, newTitle: string) => {
+  if (!newTitle.trim()) return;
   
-  const limited = sorted.slice(0, 50);
-  let contextLines = '';
-  let totalChars = 0;
-  const maxChars = 20000; // Aumentado de 5000 para 20000
-  
-  for (const fb of limited) {
-    const date = new Date(fb.occurred_at || fb.created_at).toLocaleDateString('pt-BR');
-    const typeLabel = fb.type || 'Nota';
-    
-    // Compressão inteligente: prefere summary, senão corta em 800 chars
-    let text = fb.summary;
-    if (!text || text.length < 20) {
-      text = fb.content.substring(0, 800);
-      if (fb.content.length > 800) text += '...';
-    }
-    
-    const noteText = `[Data: ${date}] [Tipo: ${typeLabel}]\n${text}\n---\n\n`;
-    
-    if (totalChars + noteText.length > maxChars) {
-      break; // Para de adicionar para não estourar
-    }
-    
-    contextLines += noteText;
-    totalChars += noteText.length;
-  }
-  
-  return contextLines || 'Nenhum histórico disponível ainda.';
-};
-```
-
-**Mudanças de Formato:**
-
-| Campo | Antes | Depois |
-|-------|-------|--------|
-| Limite por nota | 200 chars | 800 chars |
-| Limite total | 5.000 chars | 20.000 chars |
-| Formato | `[Nota X - Data - Sentiment]` | `[Data: DD/MM/YYYY] [Tipo: X]` |
-| Coaching tips | Incluído | Removido (economiza tokens) |
-| Sentiment | Incluído | Removido (economiza tokens) |
-
----
-
-### Camada 3: O Cérebro (GPT-4o)
-
-**Mudanças no System Prompt:**
-
-Adicionar instrução específica para análise de fragmentos comprimidos:
-
-```typescript
-const systemPrompt = `# RHITMO MENTOR 2.0 - CONSTITUIÇÃO
-
-## IDENTIDADE
-${RHITMO_IDENTITY}
-
-## CAPACIDADE AVANÇADA
-
-Você é um Mentor de Liderança Sênior com acesso a fragmentos COMPRIMIDOS do histórico do liderado.
-Sua missão é:
-1. CONECTAR PONTOS entre diferentes datas para encontrar padrões comportamentais
-2. IDENTIFICAR RISCOS que não são óbvios em notas isoladas
-3. ANALISAR TENDÊNCIAS ao longo do tempo
-
-## REGRAS ESPECIAIS
-
-- NÃO diga "não encontrei dados" a menos que a lista esteja COMPLETAMENTE vazia
-- Se os dados forem antigos (meses atrás), analise-os mesmo assim como contexto histórico
-- Fragmentos curtos ainda contêm insights valiosos - extraia o máximo possível
-- Quando houver muitas notas, busque padrões recorrentes e exceções
-
-## REGRAS DE OURO (GUARD-RAILS)
-${GUARDRAILS_PROMPT}
-
-... resto do prompt existente ...
-`;
-```
-
-**Mudança de Modelo:**
-
-```typescript
-// ANTES
-model: 'gpt-4o-mini',
-
-// DEPOIS
-model: 'gpt-4o',
-max_tokens: 1500, // Aumentado para respostas mais completas
-```
-
----
-
-### Implementação
-
-Alterar `supabase/functions/chat-mentor/index.ts`:
-
-#### 1. Função de Roteamento
-
-```typescript
-const shouldFetchContext = async (
-  question: string, 
-  openAIApiKey: string
-): Promise<boolean> => {
-  const routerPrompt = `O usuário disse: "${question}".
-
-Para responder isso com qualidade, é OBRIGATÓRIO ler as anotações e feedbacks históricos do liderado?
-
-Exemplos de "NAO": Saudações, formatação, perguntas sobre você, continuação sem mudar tema.
-Exemplos de "SIM": Comportamento, padrões, 1:1, PDI, feedback, riscos.
-
-Responda APENAS "SIM" ou "NAO".`;
-
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: routerPrompt }],
-        max_tokens: 10,
-        temperature: 0,
-      }),
-    });
-
-    if (!response.ok) {
-      console.log('Router failed, defaulting to SIM');
-      return true;
-    }
-
-    const data = await response.json();
-    const answer = data.choices?.[0]?.message?.content?.trim()?.toUpperCase();
-    console.log('Router decision:', answer);
+    const { error } = await supabase
+      .from('chat_threads')
+      .update({ title: newTitle.trim() })
+      .eq('id', threadId);
     
-    return answer !== 'NAO';
+    if (error) throw error;
+    
+    // Atualizar cache local imediatamente
+    queryClient.setQueryData(['chat-threads', memberId], (old: ChatThread[] | undefined) => 
+      old?.map(t => t.id === threadId ? { ...t, title: newTitle.trim() } : t) || []
+    );
+    
+    toast({ title: 'Conversa renomeada' });
   } catch (error) {
-    console.error('Router error, defaulting to SIM:', error);
-    return true;
+    console.error('Erro ao renomear:', error);
+    toast({ 
+      title: 'Erro ao renomear', 
+      description: 'Tente novamente.', 
+      variant: 'destructive' 
+    });
+  } finally {
+    setEditingThreadId(null);
+    setEditingTitle('');
   }
 };
 ```
 
-#### 2. Função de Compressão
+---
+
+### Parte 4: Função de Excluir (handleDeleteThread)
 
 ```typescript
-const compressContext = (feedbacks: any[]): string => {
-  if (!feedbacks?.length) return 'Nenhum histórico disponível ainda.';
-  
-  const sorted = [...feedbacks].sort((a, b) => {
-    const dateA = new Date(a.occurred_at || a.created_at);
-    const dateB = new Date(b.occurred_at || b.created_at);
-    return dateB.getTime() - dateA.getTime();
-  });
-  
-  const limited = sorted.slice(0, 50);
-  let contextLines = '';
-  let totalChars = 0;
-  const maxChars = 20000;
-  
-  for (let idx = 0; idx < limited.length; idx++) {
-    const fb = limited[idx];
-    const date = new Date(fb.occurred_at || fb.created_at).toLocaleDateString('pt-BR');
-    const typeLabel = fb.type || 'Nota';
+const handleDeleteThread = async (thread: ChatThread) => {
+  try {
+    // Primeiro excluir mensagens da thread
+    await supabase
+      .from('mentor_messages')
+      .delete()
+      .eq('thread_id', thread.id);
     
-    // Prefere summary, senão corta content em 800 chars
-    let text = fb.summary;
-    if (!text || text.length < 20) {
-      text = fb.content.substring(0, 800);
-      if (fb.content.length > 800) text += '...';
+    // Depois excluir a thread
+    const { error } = await supabase
+      .from('chat_threads')
+      .delete()
+      .eq('id', thread.id);
+    
+    if (error) throw error;
+    
+    // Se era a thread ativa, limpar seleção
+    if (selectedThreadId === thread.id) {
+      setSelectedThreadId(null);
     }
     
-    const noteText = `[Data: ${date}] [Tipo: ${typeLabel}]\n${text}\n---\n\n`;
+    // Atualizar cache
+    queryClient.invalidateQueries({ queryKey: ['chat-threads', memberId] });
     
-    if (totalChars + noteText.length > maxChars) break;
-    
-    contextLines += noteText;
-    totalChars += noteText.length;
+    toast({ title: 'Conversa excluída' });
+  } catch (error) {
+    console.error('Erro ao excluir:', error);
+    toast({ 
+      title: 'Erro ao excluir', 
+      description: 'Tente novamente.', 
+      variant: 'destructive' 
+    });
+  } finally {
+    setDeletingThread(null);
   }
-  
-  return contextLines || 'Nenhum histórico disponível ainda.';
 };
 ```
 
-#### 3. Fluxo Principal Atualizado
+---
 
-```typescript
-// 1. Roteamento
-const needsContext = await shouldFetchContext(question, openAIApiKey);
-console.log('Needs context:', needsContext);
+### Parte 5: Refatorar Renderização dos Itens da Sidebar
 
-// 2. Compressão (apenas se necessário)
-let contextLines = '';
-if (needsContext) {
-  contextLines = compressContext(feedbacks);
-  console.log('Context compressed:', { 
-    chars: contextLines.length, 
-    notesIncluded: (contextLines.match(/\[Data:/g) || []).length 
-  });
-} else {
-  contextLines = '(Contexto histórico não solicitado para esta pergunta)';
-  console.log('Context skipped by router');
-}
+Substituir o botão simples por um componente com hover actions:
 
-// 3. GPT-4o com contexto (ou sem)
-const response = await fetch('https://api.openai.com/v1/chat/completions', {
-  ...
-  body: JSON.stringify({
-    model: 'gpt-4o',  // Upgrade de modelo
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: question }
-    ],
-    max_tokens: 1500,  // Aumentado
-  }),
-});
+```tsx
+{group.threads.map(thread => (
+  <div 
+    key={thread.id} 
+    className="group relative"
+  >
+    {editingThreadId === thread.id ? (
+      // Modo de edição inline
+      <div className="flex items-center gap-1 px-2 py-1">
+        <Input
+          value={editingTitle}
+          onChange={(e) => setEditingTitle(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleRenameThread(thread.id, editingTitle);
+            if (e.key === 'Escape') {
+              setEditingThreadId(null);
+              setEditingTitle('');
+            }
+          }}
+          onBlur={() => handleRenameThread(thread.id, editingTitle)}
+          autoFocus
+          className="h-8 text-sm"
+        />
+      </div>
+    ) : (
+      // Modo normal com hover menu
+      <button
+        onClick={() => {
+          setSelectedThreadId(thread.id);
+          setIsCreatingNewThread(false);
+        }}
+        className={`w-full text-left px-3 py-2 rounded-lg text-sm truncate transition-colors flex items-center justify-between ${
+          selectedThreadId === thread.id
+            ? 'bg-primary/10 text-primary'
+            : 'hover:bg-muted text-foreground'
+        }`}
+      >
+        <span className="truncate">{thread.title}</span>
+        
+        {/* Botão de ações - aparece no hover */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              onClick={(e) => e.stopPropagation()}
+              className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-accent transition-opacity"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem 
+              onClick={(e) => {
+                e.stopPropagation();
+                setEditingThreadId(thread.id);
+                setEditingTitle(thread.title);
+              }}
+            >
+              <Pencil className="h-4 w-4 mr-2" />
+              Renomear
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={(e) => {
+                e.stopPropagation();
+                setDeletingThread(thread);
+              }}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Excluir
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </button>
+    )}
+  </div>
+))}
+```
+
+---
+
+### Parte 6: Adicionar AlertDialog de Confirmação
+
+Adicionar antes do fechamento do Dialog principal:
+
+```tsx
+{/* Dialog de confirmação de exclusão */}
+<AlertDialog open={!!deletingThread} onOpenChange={() => setDeletingThread(null)}>
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>Excluir conversa?</AlertDialogTitle>
+      <AlertDialogDescription>
+        Esta ação é irreversível. A conversa "{deletingThread?.title}" e todas as mensagens serão excluídas permanentemente.
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <AlertDialogFooter>
+      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+      <AlertDialogAction 
+        onClick={() => deletingThread && handleDeleteThread(deletingThread)}
+        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+      >
+        Excluir
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
 ```
 
 ---
@@ -317,49 +251,54 @@ const response = await fetch('https://api.openai.com/v1/chat/completions', {
 
 | Arquivo | Alteração |
 |---------|-----------|
-| `supabase/functions/chat-mentor/index.ts` | Adicionar roteador, compressão 2.0, upgrade para GPT-4o |
+| `src/components/MentorChat.tsx` | Adicionar imports, estados, funções de rename/delete, UI com DropdownMenu e AlertDialog |
 
 ---
 
 ### Seção Técnica
 
-**Custos Estimados:**
+**Prevenção de Propagação de Eventos:**
 
-| Cenário | Antes (gpt-4o-mini) | Depois (Híbrido) |
-|---------|---------------------|------------------|
-| "Oi, tudo bem?" | ~0.001 USD | ~0.0003 USD (só roteador) |
-| "Analise padrões" | ~0.002 USD | ~0.015 USD (roteador + gpt-4o) |
-| Média 10 msgs | ~0.015 USD | ~0.05 USD |
+O uso de `e.stopPropagation()` em três pontos é crucial:
+1. No `DropdownMenuTrigger` - evita selecionar a thread ao abrir o menu
+2. No `DropdownMenuItem` de renomear - evita selecionar a thread
+3. No `DropdownMenuItem` de excluir - evita selecionar a thread
 
-**Trade-off:** Custo maior para perguntas complexas, mas qualidade MUITO superior e análise de 4x mais contexto.
+**Atualização Otimista do Cache:**
 
-**Timeout Ajustado:**
+Para renomear, usamos `queryClient.setQueryData()` para atualizar imediatamente o estado local sem aguardar nova busca no banco. Isso dá feedback instantâneo ao usuário.
 
-GPT-4o pode demorar mais que gpt-4o-mini. Aumentar timeout:
+Para exclusão, usamos `invalidateQueries()` pois a estrutura da lista muda (item removido).
 
-```typescript
-const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s
-```
+**Edição Inline:**
+
+O modo de edição inline troca o botão por um Input que:
+- Tem autoFocus para começar a digitar imediatamente
+- Salva com Enter ou onBlur
+- Cancela com Escape
 
 **Fluxo Visual:**
 
 ```text
-Usuário: "Como a Gabriela se comporta em reuniões?"
-           │
-           ▼
-    ┌──────────────┐
-    │  Roteador    │ gpt-4o-mini (3 cents)
-    │  "SIM"       │
-    └──────┬───────┘
-           ▼
-    ┌──────────────┐
-    │  Compressor  │ 50 notas → 20.000 chars
-    └──────┬───────┘
-           ▼
-    ┌──────────────┐
-    │  GPT-4o      │ Análise profunda
-    └──────┬───────┘
-           ▼
-    Resposta: "Baseado em 25 notas entre Out/2025 e Jan/2026..."
+Usuário passa mouse sobre thread
+         │
+         ▼
+┌─────────────────────────────────────┐
+│ 📝 Análise de padrões...  [···]     │  ← MoreHorizontal aparece
+└─────────────────────────────────────┘
+         │ click [···]
+         ▼
+    ┌───────────────┐
+    │ ✏️ Renomear   │
+    │ 🗑️ Excluir    │
+    └───────────────┘
+         │
+    ┌────┴────┐
+    │         │
+Renomear   Excluir
+    │         │
+    ▼         ▼
+Input      AlertDialog
+inline     confirmação
 ```
 
