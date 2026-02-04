@@ -1,256 +1,243 @@
 
 
-## Plano: Data Retroativa (Máquina do Tempo)
+## Plano: Registro Historico Limpo e Assincrono
 
 ### Objetivo
 
-Permitir que o gestor indique **quando** o fato ocorreu (`occurred_at`), separando da data de registro (`created_at`). Isso garante que a linha do tempo do colaborador seja fiel aos fatos, independente de quando o gestor parou para digitar.
+Transformar a timeline de feedbacks em um **registro historico estatico e instantaneo**, removendo toda poluicao visual relacionada a IA. A inteligencia sera acionada apenas sob demanda no Mentor Chat, que le os dados brutos do banco.
 
 ---
 
 ### Estado Atual
 
-| Componente | Status |
-|------------|--------|
-| Coluna `occurred_at` | NÃO existe - precisa criar |
-| `NewNoteDialog.tsx` | Sem DatePicker - precisa adicionar |
-| `FeedbackTimeline.tsx` | Usa `created_at` para exibir data - precisa mudar para `occurred_at` |
-| `generate-review` Edge Function | Filtra por `created_at` - precisa mudar para `occurred_at` |
-| `analyze-feedback-background` | Não filtra por data - OK |
-| Componente `Calendar` | Existe e funciona |
-| Componente `Popover` | Existe e funciona |
+| Componente | Problema Identificado |
+|------------|----------------------|
+| `FeedbackTimeline.tsx` | Exibe badges de sentimento, dicas de coaching, botao "Gerar Analise de IA", banners de processamento |
+| `NewNoteDialog.tsx` | Footer some com scroll longo, botao diz "Analisar e Salvar" |
+| Banco de dados | Dados de IA (summary, sentiment, coaching_tips) continuam salvos - **NAO serao deletados** |
 
 ---
 
-### Parte 1: Database (Schema)
+### Parte 1: Limpeza do Feed (FeedbackTimeline.tsx)
 
-**Migração SQL:**
-```sql
--- Adicionar coluna occurred_at com default NOW()
-ALTER TABLE feedbacks 
-ADD COLUMN occurred_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+**Elementos a REMOVER da renderizacao:**
 
--- Migração de dados: Preencher occurred_at com created_at para registros existentes
-UPDATE feedbacks 
-SET occurred_at = created_at 
-WHERE occurred_at IS NULL;
+| Elemento | Linhas | Acao |
+|----------|--------|------|
+| Badge de Tipo (Positivo/Neutro) | 109-111 | Remover |
+| Badge de Sentimento | 112-114 | Remover |
+| Loading "Analisando..." | 115-120 | Remover |
+| Loading "Em processamento..." | 121-126 | Remover |
+| Banner amarelo "Analise em processamento" | 167-178 | Remover |
+| Secao "Resumo" com summary | 182-212 | Remover |
+| Secao "Dicas para lideranca" | 214-227 | Remover |
+| Secao "Alerta de Vies" | 229-237 | Remover |
+| Collapsible "Ver Transcricao Original" | 239-253 | Remover (conteudo ja sera exibido diretamente) |
+| Botao "Gerar Analise de IA" | 284-303 | Remover |
 
--- Tornar coluna NOT NULL após migração
-ALTER TABLE feedbacks 
-ALTER COLUMN occurred_at SET NOT NULL;
+**Elementos a MANTER:**
+
+| Elemento | Descricao |
+|----------|-----------|
+| Data | Exibir `occurred_at` ou `created_at` com icone Calendar |
+| Botao Delete | Manter funcionalidade de exclusao |
+| Conteudo (content) | Exibir texto original com `line-clamp-4` |
+| Toggle "Ver mais/menos" | Expandir conteudo longo |
+
+**Codigo que pode ser REMOVIDO (nao sera mais usado):**
+
+- Props `onReanalyze` e `reanalyzingId`
+- Funcoes `getTypeVariant`, `getTypeLabel`, `getSentimentLabel`
+- Funcao `hasAnalysis`, `isProcessingAnalysis`
+- Estado `openTranscripts`
+- Campos da interface: `summary`, `sentiment`, `coaching_tips`, `bias_alert`, `_analysisStuck`
+
+**Layout Final do Card:**
+
 ```
-
-**Resultado esperado no schema:**
-```text
-feedbacks (
-  ...
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),  -- Quando foi digitado
-  occurred_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),  -- Quando aconteceu (editável)
-  ...
-)
++----------------------------------------------------------+
+|  [Data: 15 de janeiro de 2026]                    [Lixeira]|
+|----------------------------------------------------------|
+|  Lorem ipsum dolor sit amet, consectetur adipiscing...    |
+|  [Ver mais]                                               |
++----------------------------------------------------------+
 ```
 
 ---
 
-### Parte 2: Frontend (NewNoteDialog.tsx)
+### Parte 2: Layout do Modal (NewNoteDialog.tsx)
 
-**Adicionar DatePicker** entre a seleção de liderado e o campo de upload:
+**Problema Atual:**
+- Em telas pequenas ou textos longos, o footer some e o usuario precisa rolar a pagina inteira
+- Botao menciona "Analisar" gerando expectativa de processamento
 
-```text
-┌───────────────────────────────────────────────────────────────┐
-│ 📝 Nova Nota                                              [X] │
-├───────────────────────────────────────────────────────────────┤
-│                                                               │
-│ Liderado                                                      │
-│ ┌─────────────────────────────────────────────────────────┐   │
-│ │ Selecione um liderado                               ▼ │   │
-│ └─────────────────────────────────────────────────────────┘   │
-│                                                               │
-│ Data do Ocorrido                                              │
-│ ┌───────────────────────────────────────┐                     │
-│ │ 📅  30/01/2026                       ▼│  ← NOVO CAMPO      │
-│ └───────────────────────────────────────┘                     │
-│ Quando o fato aconteceu (default: hoje)                       │
-│                                                               │
-│ ┌─────────────────────────────────────────────────────────┐   │
-│ │     Arraste sua transcrição (PDF, Word...)             │   │
-│ └─────────────────────────────────────────────────────────┘   │
-│                                                               │
-│ Conteúdo                                                      │
-│ ┌─────────────────────────────────────────────────────────┐   │
-│ │ [B] [I] [H1] [H2] [•] [1.]                               │   │
-│ │ ...                                                      │   │
-│ └─────────────────────────────────────────────────────────┘   │
-│                                                               │
-│                               [Cancelar]  [Analisar e Salvar] │
-└───────────────────────────────────────────────────────────────┘
+**Solucao - Sticky Footer:**
+
+Refatorar `DialogContent` para usar flex layout com altura controlada:
+
+```
+DialogContent
+├── flex flex-col max-h-[85vh]
+│
+├── DialogHeader (fixo no topo)
+│
+├── div.flex-1.overflow-y-auto (area scrollavel)
+│   ├── Select Liderado
+│   ├── DatePicker Data registrada
+│   ├── Upload Area
+│   └── RichTextEditor
+│
+└── DialogFooter (sticky no rodape, sempre visivel)
+    ├── [Cancelar]
+    └── [Salvar]  ← RENOMEAR de "Analisar e Salvar"
 ```
 
-**Comportamento:**
-- Default: Data de hoje
-- Permite selecionar datas passadas (retroativas)
-- Bloqueia datas futuras (não faz sentido registrar fato que não aconteceu)
-- Formato brasileiro: `dd/MM/yyyy`
+**Alteracoes no handleSubmit:**
 
-**Alterações no código:**
-1. Adicionar estado `occurredAt` (tipo `Date`)
-2. Importar `Calendar`, `Popover`, `PopoverTrigger`, `PopoverContent`
-3. Adicionar componente DatePicker entre seleção de liderado e área de upload
-4. Enviar `occurred_at` no INSERT para a tabela feedbacks
+- Alterar toast de sucesso de "Processando analise inteligente..." para mensagem mais simples
+- Remover chamada ao `analyze-feedback-background` (nao sera mais necessario)
+- Manter backup no Storage como safety net
 
 ---
 
-### Parte 3: Frontend (FeedbackTimeline.tsx)
+### Parte 3: Atualizacao do MemberDetails.tsx
 
-**Alteração na exibição de data:**
+Remover props nao utilizados ao chamar `FeedbackTimeline`:
 
-Mudar de:
 ```typescript
-// Linha 129 - Antes
-<span>{new Date(feedback.created_at).toLocaleDateString('pt-BR')}</span>
+// Antes
+<FeedbackTimeline 
+  feedbacks={feedbacks} 
+  onDelete={handleDeleteFeedback} 
+  onReanalyze={handleReanalyze}  // REMOVER
+  reanalyzingId={reanalyzingId}  // REMOVER
+/>
+
+// Depois
+<FeedbackTimeline 
+  feedbacks={feedbacks} 
+  onDelete={handleDeleteFeedback}
+/>
 ```
 
-Para:
-```typescript
-// Depois - Usar occurred_at como data principal
-<span>{new Date(feedback.occurred_at || feedback.created_at).toLocaleDateString('pt-BR')}</span>
-```
+Remover funcao `handleReanalyze` e estado `reanalyzingId` do componente.
 
-**Adicionar interface `occurred_at`:**
+---
+
+### Resumo das Alteracoes
+
+| Arquivo | Alteracao |
+|---------|-----------|
+| `FeedbackTimeline.tsx` | Remover TODA renderizacao de IA, simplificar para Data + Conteudo + Delete |
+| `NewNoteDialog.tsx` | Sticky footer, renomear botao para "Salvar", simplificar toast |
+| `MemberDetails.tsx` | Remover props e handlers de reanalise |
+
+---
+
+### Impacto no Banco de Dados
+
+**ZERO** - Os dados existentes (`summary`, `sentiment`, `coaching_tips`, `bias_alert`, `embedding`) permanecem no banco. Apenas a **visualizacao** e removida. O Mentor Chat continuara tendo acesso aos dados brutos para analise sob demanda.
+
+---
+
+### Secao Tecnica
+
+**FeedbackTimeline.tsx - Componente Simplificado:**
+
 ```typescript
 interface Feedback {
-  ...
-  occurred_at?: string;  // Nova coluna
+  id: string;
+  created_at: string;
+  occurred_at?: string;
+  content: string;
+  type: 'positive' | 'constructive' | 'neutral';
 }
+
+interface FeedbackTimelineProps {
+  feedbacks: Feedback[];
+  onDelete?: (id: string) => void;
+}
+
+export const FeedbackTimeline = ({ feedbacks, onDelete }: FeedbackTimelineProps) => {
+  const [expandedContent, setExpandedContent] = useState<Record<string, boolean>>({});
+
+  const toggleExpand = (id: string) => {
+    setExpandedContent(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const shouldShowExpandButton = (text: string | undefined) => {
+    if (!text) return false;
+    return text.length > 280;
+  };
+
+  return (
+    <div className="space-y-6">
+      {feedbacks.map((feedback) => (
+        <Card key={feedback.id} className="border-l-4 border-l-primary">
+          <CardContent className="pt-6">
+            {/* Header: Data + Delete */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Calendar className="h-4 w-4" />
+                <span>{new Date(feedback.occurred_at || feedback.created_at).toLocaleDateString('pt-BR')}</span>
+              </div>
+              {onDelete && (
+                <AlertDialog>
+                  {/* ... delete confirmation ... */}
+                </AlertDialog>
+              )}
+            </div>
+            
+            {/* Content with expand toggle */}
+            <p className={cn(
+              "text-foreground leading-relaxed",
+              !expandedContent[feedback.id] && shouldShowExpandButton(feedback.content) && "line-clamp-4"
+            )}>
+              {feedback.content}
+            </p>
+            {shouldShowExpandButton(feedback.content) && (
+              <Button variant="ghost" size="sm" onClick={() => toggleExpand(feedback.id)}>
+                {expandedContent[feedback.id] ? 'Ver menos' : 'Ver mais'}
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+};
 ```
 
----
-
-### Parte 4: Edge Functions (Inteligência)
-
-**generate-review/index.ts (linha 41-42):**
-
-Mudar de:
-```typescript
-// Antes - Filtra por created_at
-.gte('created_at', limitDate.toISOString())
-.order('created_at', { ascending: true });
-```
-
-Para:
-```typescript
-// Depois - Filtra por occurred_at
-.gte('occurred_at', limitDate.toISOString())
-.order('occurred_at', { ascending: true });
-```
-
-**Contexto para IA (linha 68-72):**
-
-Mudar de:
-```typescript
-const date = new Date(f.created_at).toLocaleDateString('pt-BR');
-```
-
-Para:
-```typescript
-const date = new Date(f.occurred_at || f.created_at).toLocaleDateString('pt-BR');
-```
-
----
-
-### Resumo das Alterações
-
-| Arquivo/Local | Alteração |
-|--------------|-----------|
-| **Database** | `ALTER TABLE feedbacks ADD COLUMN occurred_at` |
-| **Database** | Migrar dados: `UPDATE feedbacks SET occurred_at = created_at` |
-| `src/components/NewNoteDialog.tsx` | Adicionar DatePicker com label "Data do Ocorrido" |
-| `src/components/FeedbackTimeline.tsx` | Exibir `occurred_at` em vez de `created_at` |
-| `supabase/functions/generate-review/index.ts` | Filtrar por `occurred_at` |
-
----
-
-### Fluxo de Dados
-
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│                    Máquina do Tempo                             │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  Gestor seleciona data → "15/Jan/2026"                          │
-│                          ↓                                      │
-│  Salva no banco:                                                │
-│    created_at = 30/Jan/2026 (hoje, automático)                  │
-│    occurred_at = 15/Jan/2026 (escolhido pelo gestor)            │
-│                          ↓                                      │
-│  Timeline exibe: "15 de janeiro de 2026"                        │
-│                          ↓                                      │
-│  IA gera avaliação:                                             │
-│    "Trimestral" = feedbacks com occurred_at >= (hoje - 3 meses) │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-### Seção Técnica
-
-**Implementação do DatePicker no NewNoteDialog:**
+**NewNoteDialog.tsx - Layout Sticky:**
 
 ```typescript
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { CalendarIcon } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-
-// Estado
-const [occurredAt, setOccurredAt] = useState<Date>(new Date());
-
-// Componente
-<div className="space-y-2">
-  <Label>Data do Ocorrido</Label>
-  <Popover>
-    <PopoverTrigger asChild>
-      <Button
-        variant="outline"
-        className={cn(
-          "w-full justify-start text-left font-normal",
-          !occurredAt && "text-muted-foreground"
-        )}
-      >
-        <CalendarIcon className="mr-2 h-4 w-4" />
-        {occurredAt ? format(occurredAt, "PPP", { locale: ptBR }) : "Selecione a data"}
-      </Button>
-    </PopoverTrigger>
-    <PopoverContent className="w-auto p-0" align="start">
-      <Calendar
-        mode="single"
-        selected={occurredAt}
-        onSelect={(date) => date && setOccurredAt(date)}
-        disabled={(date) => date > new Date()}
-        initialFocus
-        className="p-3 pointer-events-auto"
-      />
-    </PopoverContent>
-  </Popover>
-  <p className="text-xs text-muted-foreground">
-    Quando o fato aconteceu (padrão: hoje)
-  </p>
-</div>
-
-// No INSERT (handleSubmit)
-.insert({
-  manager_id: user.id,
-  member_id: targetMemberId,
-  content: content.trim(),
-  type: 'neutral',
-  occurred_at: occurredAt.toISOString(), // ← Nova coluna
-  ...
-})
+<DialogContent className="sm:max-w-[600px] flex flex-col max-h-[85vh] p-0">
+  <DialogHeader className="px-6 pt-6 pb-4">
+    {/* ... header ... */}
+  </DialogHeader>
+  
+  {/* Scrollable content area */}
+  <div className="flex-1 overflow-y-auto px-6 space-y-4">
+    {/* Select, DatePicker, Upload, Editor */}
+  </div>
+  
+  {/* Sticky footer - always visible */}
+  <DialogFooter className="px-6 py-4 border-t bg-background">
+    <Button variant="outline">Cancelar</Button>
+    <Button>Salvar</Button>  {/* Renomeado */}
+  </DialogFooter>
+</DialogContent>
 ```
 
-**Fallback para dados antigos:**
+**handleSubmit simplificado:**
 
-O código usa `occurred_at || created_at` para garantir compatibilidade com feedbacks antigos que não tinham a coluna preenchida (embora a migração preencha todos).
+```typescript
+toast({
+  title: "Anotacao salva!",
+  description: "Registro adicionado ao historico.",
+});
+
+// REMOVER chamada analyze-feedback-background
+// MANTER backup-data como safety net
+```
 
