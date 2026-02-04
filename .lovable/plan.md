@@ -1,155 +1,326 @@
 
 
-## Plano: Correcao do Bug Smart Date - Reset de Estado
+## Plano: DateRange Picker para Avaliações Personalizadas
 
-### Problema Identificado
+### Objetivo
 
-O recurso Smart Date funciona apenas no primeiro upload porque o estado nao e limpo corretamente:
+Permitir que o gestor selecione intervalos de datas personalizados para gerar avaliações de desempenho, além dos presets fixos (Mensal, Trimestral, etc.). Isso viabiliza a análise de períodos específicos como "Ciclo do Projeto X".
 
-| Local | Problema |
-|-------|----------|
-| Linha 246 | Apos submit, `setOccurredAt(new Date())` ao inves de `undefined` |
-| Linha 83 | Guard `if (occurredAt) return;` impede nova extracao |
-| Fechamento | Nao existe reset quando o modal e fechado |
+---
 
-### Fluxo do Bug
+### Estado Atual
 
-```text
-1. Usuario abre modal → occurredAt = undefined ✓
-2. Upload arquivo → Smart Date detecta e preenche ✓
-3. Salvar → setOccurredAt(new Date()) ← ERRADO
-4. Abre modal novamente → occurredAt = Date (nao undefined)
-5. Upload novo arquivo → Guard bloqueia extracao ✗
+| Item | Situação |
+|------|----------|
+| NewReviewDialog.tsx | Apenas botões de preset (1, 3, 6, 12 meses) |
+| generate-review Edge Function | Recebe apenas `months`, calcula data limite internamente |
+| Componente DateRangePicker | Não existe no projeto |
+
+---
+
+### Parte 1: Componente DateRangePicker
+
+Não é necessário criar um componente separado. O shadcn Calendar já suporta `mode="range"`. Vamos usar o padrão inline no NewReviewDialog.
+
+**Pattern de uso (react-day-picker):**
+
+```typescript
+import { DateRange } from "react-day-picker";
+
+const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+
+<Calendar
+  mode="range"
+  selected={dateRange}
+  onSelect={setDateRange}
+  numberOfMonths={2}
+/>
 ```
 
 ---
 
-### Solucao
+### Parte 2: Alterações no NewReviewDialog.tsx
 
-**1. Criar funcao `resetForm()`**
-
-Centralizar a limpeza de todos os estados do formulario:
+**Novos imports:**
 
 ```typescript
-const resetForm = () => {
-  setContent('');
-  setMemberId('');
-  setOccurredAt(undefined);
-  setIsDragging(false);
-  setIsProcessingFile(false);
-  
-  // Limpar input de arquivo
-  if (fileInputRef.current) {
-    fileInputRef.current.value = '';
-  }
-  
-  // Limpar editor TipTap
-  if (editorRef.current) {
-    editorRef.current.commands.clearContent();
-  }
+import { format, subMonths } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { DateRange } from "react-day-picker";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
+```
+
+**Novo estado:**
+
+```typescript
+const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
+```
+
+**Comportamento Híbrido:**
+
+1. **Clique no Preset** atualiza o DateRange automaticamente:
+
+```typescript
+const handlePresetClick = (months: number) => {
+  const today = new Date();
+  const startDate = subMonths(today, months);
+  setDateRange({ from: startDate, to: today });
+  setSelectedPreset(months);
 };
 ```
 
-**2. Corrigir `handleSubmit`**
-
-Substituir os sets individuais pela chamada de `resetForm()`:
+2. **Seleção manual no Calendar** desmarca os presets:
 
 ```typescript
-// ANTES (linha 244-247)
-setContent('');
-setMemberId('');
-setOccurredAt(new Date()); // ← BUG
-
-// DEPOIS
-resetForm();
-```
-
-**3. Aplicar reset no fechamento do modal**
-
-Criar um wrapper para `onOpenChange` que limpa o estado ao fechar:
-
-```typescript
-const handleOpenChange = (newOpen: boolean) => {
-  if (!newOpen) {
-    resetForm();
-  }
-  onOpenChange(newOpen);
+const handleDateRangeChange = (range: DateRange | undefined) => {
+  setDateRange(range);
+  setSelectedPreset(null); // Desmarca preset quando manual
 };
 ```
 
-Atualizar referencias:
-- `<Dialog onOpenChange={handleOpenChange}>` (linha 283)
-- Botao Cancelar: `onClick={() => handleOpenChange(false)}` (linha 423)
+**UI - DateRangePicker abaixo dos presets:**
+
+```typescript
+<div className="space-y-2">
+  <Label>Intervalo da Análise</Label>
+  <Popover>
+    <PopoverTrigger asChild>
+      <Button
+        variant="outline"
+        className={cn(
+          "w-full justify-start text-left font-normal",
+          !dateRange && "text-muted-foreground"
+        )}
+      >
+        <CalendarIcon className="mr-2 h-4 w-4" />
+        {dateRange?.from ? (
+          dateRange.to ? (
+            <>
+              {format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })} - {" "}
+              {format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}
+            </>
+          ) : (
+            format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })
+          )
+        ) : (
+          "Selecione o período"
+        )}
+      </Button>
+    </PopoverTrigger>
+    <PopoverContent className="w-auto p-0" align="start">
+      <Calendar
+        mode="range"
+        selected={dateRange}
+        onSelect={handleDateRangeChange}
+        numberOfMonths={2}
+        locale={ptBR}
+        disabled={(date) => date > new Date()}
+        className="pointer-events-auto"
+      />
+    </PopoverContent>
+  </Popover>
+</div>
+```
+
+**Destaque visual do preset selecionado:**
+
+```typescript
+<Button
+  variant={selectedPreset === months ? "default" : "outline"}
+  onClick={() => handlePresetClick(months)}
+  // ...
+>
+```
+
+**Botão "Gerar com IA" separado:**
+
+Adicionar um botão dedicado para gerar a avaliação com o intervalo selecionado:
+
+```typescript
+<Button
+  onClick={handleGenerateWithRange}
+  disabled={generating || !canGenerateReview || !dateRange?.from || !dateRange?.to}
+  className="gap-2 w-full"
+>
+  {generating ? (
+    <Loader2 className="h-4 w-4 animate-spin" />
+  ) : (
+    <Sparkles className="h-4 w-4" />
+  )}
+  Gerar Avaliação com IA
+</Button>
+```
 
 ---
 
-### Alteracoes no Arquivo
+### Parte 3: Integração com Edge Function
 
-| Linha | Alteracao |
-|-------|-----------|
-| ~80 | Adicionar funcao `resetForm()` |
-| 244-247 | Substituir sets individuais por `resetForm()` |
-| 283 | Trocar `onOpenChange` por `handleOpenChange` |
-| 423 | Trocar callback do botao Cancelar |
-
----
-
-### Secao Tecnica
-
-**Implementacao completa do `resetForm`:**
+**Payload atualizado:**
 
 ```typescript
-const resetForm = () => {
-  setContent('');
-  setMemberId('');
-  setOccurredAt(undefined);
-  setIsDragging(false);
-  setIsProcessingFile(false);
+const handleGenerateWithRange = async () => {
+  if (!dateRange?.from || !dateRange?.to) return;
   
-  if (fileInputRef.current) {
-    fileInputRef.current.value = '';
-  }
+  setGenerating(true);
   
-  if (editorRef.current) {
-    editorRef.current.commands.clearContent();
-  }
-};
-
-const handleOpenChange = (newOpen: boolean) => {
-  if (!newOpen) {
-    resetForm();
-  }
-  onOpenChange(newOpen);
+  const fetchPromise = supabase.functions.invoke('generate-review', {
+    body: { 
+      memberId, 
+      startDate: dateRange.from.toISOString(),
+      endDate: dateRange.to.toISOString()
+    }
+  });
+  // ... resto do código
 };
 ```
 
-**handleSubmit atualizado:**
+**Alterações no generate-review/index.ts:**
 
 ```typescript
-toast({
-  title: "Anotacao salva!",
-  description: "Registro adicionado ao historico.",
-});
+// Aceitar startDate/endDate OU months (retrocompatibilidade)
+const { memberId, months, startDate, endDate } = await req.json();
 
-resetForm();
-onOpenChange(false);
+let limitDate: Date;
+let endLimitDate: Date;
 
-if (onSuccess) {
-  onSuccess();
+if (startDate && endDate) {
+  // Modo Custom Range
+  limitDate = new Date(startDate);
+  endLimitDate = new Date(endDate);
+  console.log(`Período personalizado: ${limitDate.toISOString()} a ${endLimitDate.toISOString()}`);
+} else if (months) {
+  // Modo Legacy (presets)
+  limitDate = new Date();
+  limitDate.setMonth(limitDate.getMonth() - months);
+  endLimitDate = new Date(); // Até hoje
+} else {
+  return new Response(
+    JSON.stringify({ error: 'Informe months ou (startDate + endDate)' }),
+    { status: 400 }
+  );
+}
+
+// Query com range completo
+const { data: feedbacks } = await supabase
+  .from('feedbacks')
+  .select('*')
+  .eq('member_id', memberId)
+  .gte('occurred_at', limitDate.toISOString())
+  .lte('occurred_at', endLimitDate.toISOString())
+  .order('occurred_at', { ascending: true });
+```
+
+**Atualizar prompt da IA para refletir o período:**
+
+```typescript
+const periodDescription = startDate && endDate
+  ? `de ${new Date(startDate).toLocaleDateString('pt-BR')} a ${new Date(endDate).toLocaleDateString('pt-BR')}`
+  : `dos últimos ${months} meses`;
+
+const userPrompt = `FEEDBACKS ${periodDescription}:\n\n${feedbacksText}...`;
+```
+
+---
+
+### Parte 4: Título automático para períodos customizados
+
+```typescript
+// No NewReviewDialog após receber resposta:
+if (selectedPreset) {
+  // Usar labels existentes
+  setTitle(`Avaliação ${periodLabels[selectedPreset]} - ${currentDate}`);
+} else if (dateRange?.from && dateRange?.to) {
+  // Período personalizado
+  const fromStr = format(dateRange.from, "MMM/yy", { locale: ptBR });
+  const toStr = format(dateRange.to, "MMM/yy", { locale: ptBR });
+  setTitle(`Avaliação ${fromStr} a ${toStr}`);
 }
 ```
 
 ---
 
-### Resultado Esperado
+### Parte 5: Reset do estado ao fechar
 
-Apos a correcao:
+Adicionar `dateRange` e `selectedPreset` ao `handleClose`:
+
+```typescript
+const handleClose = () => {
+  setTitle("");
+  setContent("");
+  setCoachingTip(null);
+  setGeneratedMonths(null);
+  setDateRange(undefined);
+  setSelectedPreset(null);
+  onOpenChange(false);
+};
+```
+
+---
+
+### Resumo das Alterações
+
+| Arquivo | Alteração |
+|---------|-----------|
+| `NewReviewDialog.tsx` | Adicionar DateRangePicker, estados, lógica híbrida preset/manual |
+| `generate-review/index.ts` | Aceitar startDate/endDate, filtrar com `.lte()` adicional |
+| `calendar.tsx` | Adicionar `pointer-events-auto` (já está no projeto) |
+
+---
+
+### Seção Técnica
+
+**Fluxo de dados:**
 
 ```text
-1. Usuario abre modal → occurredAt = undefined ✓
-2. Upload arquivo → Smart Date detecta e preenche ✓
-3. Salvar → resetForm() → occurredAt = undefined ✓
-4. Abre modal novamente → occurredAt = undefined ✓
-5. Upload novo arquivo → Smart Date funciona novamente ✓
+1. Usuário clica "Trimestral"
+   → setDateRange({ from: 3 meses atrás, to: hoje })
+   → setSelectedPreset(3)
+   → Botões refletem seleção visual
+
+2. Usuário abre calendário e seleciona manualmente
+   → handleDateRangeChange(range)
+   → setSelectedPreset(null)
+   → Presets ficam todos outline
+
+3. Clica "Gerar Avaliação com IA"
+   → Envia startDate + endDate para Edge Function
+   → Edge Function filtra occurred_at >= startDate AND occurred_at <= endDate
+```
+
+**Validação no Edge Function:**
+
+```typescript
+if (!memberId) {
+  return new Response(
+    JSON.stringify({ error: 'memberId é obrigatório' }),
+    { status: 400 }
+  );
+}
+
+if (!months && (!startDate || !endDate)) {
+  return new Response(
+    JSON.stringify({ error: 'Informe months ou (startDate + endDate)' }),
+    { status: 400 }
+  );
+}
+```
+
+**Retorno adicional para o frontend:**
+
+```typescript
+return new Response(
+  JSON.stringify({ 
+    review_content: reviewContent,
+    coaching_tip: coachingTip,
+    feedbackCount: feedbacks?.length || 0,
+    memberName: member.name,
+    periodStart: limitDate.toISOString(),
+    periodEnd: endLimitDate.toISOString()
+  }),
+  { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+);
 ```
 
