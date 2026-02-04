@@ -1,150 +1,106 @@
 
 
-## Plano: Correção de Persistência na Edição de Avaliações
+## Plano: Correção de "Miopia Temporal" no Mentor Chat
 
 ### Problema Identificado
 
-O bug ocorre porque após salvar as edições, o componente `ReviewViewDialog` continua exibindo os dados antigos. A causa raiz está em dois locais:
+O Mentor Chat está ignorando 20 das 25 notas importadas porque a Edge Function limita artificialmente o contexto a apenas 5 notas:
 
-| Local | Problema |
-|-------|----------|
-| `ReviewViewDialog.tsx` | Não invalida cache após salvar, depende apenas de `onReviewUpdated()` |
-| `PerformanceReviewList.tsx` | `selectedReview` mantém dados antigos mesmo após `loadReviews()` atualizar a lista |
+| Localização | Problema |
+|-------------|----------|
+| `chat-mentor/index.ts` linha 58 | `feedbacks.slice(0, 5)` - Limita a 5 notas apenas |
+| `chat-mentor/index.ts` linha 66 | Usa `created_at` (data de inserção) ao invés de `occurred_at` (data real do evento) |
+| System Prompt | Não instrui a IA a considerar histórico antigo |
 
 ### Fluxo Atual (Bug)
 
 ```text
-1. Usuário edita avaliação no TipTap
-2. Clica "Salvar Alterações"
-3. handleSave() → supabase.update() → OK
-4. onReviewUpdated() → loadReviews() → Atualiza array reviews[]
-5. setEditing(false) → Modo visualização
-6. PROBLEMA: selectedReview ainda tem dados antigos!
-7. Usuário vê conteúdo original, não o editado
+1. Usuário importa 25 notas de Out/Nov/Dez 2025
+2. MemberDetails busca todas as 25 (ordenadas por created_at DESC)
+3. MentorChat envia as 25 para Edge Function
+4. Edge Function: feedbacks.slice(0, 5) → Usa só 5 notas!
+5. IA recebe pouco contexto → "Não encontrei registros suficientes"
 ```
 
 ---
 
 ### Solução
 
-#### Parte 1: Migrar PerformanceReviewList para React Query
+#### Parte 1: Aumentar Limite de Notas (5 → 50)
 
-Trocar o estado local por React Query para que a invalidação funcione corretamente:
+Alterar de 5 para 50 notas, mantendo o limite de caracteres para evitar estouro de tokens:
 
-**Estado atual:**
 ```typescript
-const [reviews, setReviews] = useState<PerformanceReview[]>([]);
-const loadReviews = async () => { ... setReviews(data); }
+// ANTES (linha 58):
+const recentFeedbacks = feedbacks.slice(0, 5);
+
+// DEPOIS:
+const recentFeedbacks = feedbacks.slice(0, 50);
 ```
 
-**Novo estado:**
+**Justificativa**: O limite de 5000 caracteres já existe (linha 62), então aumentar para 50 notas permite que o sistema inclua quantas couberem dentro desse limite.
+
+#### Parte 2: Ordenar por occurred_at (Data Real)
+
+Os feedbacks chegam ordenados por `created_at`, mas devemos usar `occurred_at` para contexto temporal correto:
+
 ```typescript
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-
-const queryClient = useQueryClient();
-
-const { data: reviews = [], isLoading } = useQuery({
-  queryKey: ['performance-reviews', memberId],
-  queryFn: async () => {
-    const { data, error } = await supabase
-      .from('performance_reviews')
-      .select('id, title, content, coaching_tip, period_type, created_at')
-      .eq('member_id', memberId)
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return data || [];
-  }
+// Ordenar por occurred_at (mais recentes primeiro)
+const sortedFeedbacks = [...feedbacks].sort((a, b) => {
+  const dateA = new Date(a.occurred_at || a.created_at);
+  const dateB = new Date(b.occurred_at || b.created_at);
+  return dateB.getTime() - dateA.getTime();
 });
+
+const recentFeedbacks = sortedFeedbacks.slice(0, 50);
 ```
 
-#### Parte 2: Atualizar selectedReview após reload
+#### Parte 3: Usar occurred_at na Formatação
 
-Criar efeito para sincronizar `selectedReview` quando os dados mudam:
+Atualizar a formatação do contexto para mostrar a data real do evento:
 
 ```typescript
-// Sincronizar selectedReview quando reviews atualizar
-useEffect(() => {
-  if (selectedReview && reviews.length > 0) {
-    const updated = reviews.find(r => r.id === selectedReview.id);
-    if (updated && updated.content !== selectedReview.content) {
-      setSelectedReview(updated);
-    }
-  }
-}, [reviews, selectedReview]);
+// ANTES (linha 66):
+const date = new Date(fb.created_at).toLocaleDateString('pt-BR');
+
+// DEPOIS:
+const date = new Date(fb.occurred_at || fb.created_at).toLocaleDateString('pt-BR');
 ```
 
-#### Parte 3: Adicionar invalidação no ReviewViewDialog
+#### Parte 4: Adicionar Instrução ao System Prompt
+
+Incluir orientação explícita para a IA considerar histórico antigo:
 
 ```typescript
-import { useQueryClient } from '@tanstack/react-query';
+## IMPORTANTE: HISTÓRICO TEMPORAL
 
-// Dentro do componente
-const queryClient = useQueryClient();
-
-// No handleSave, após sucesso:
-const handleSave = async () => {
-  // ... validação ...
-  
-  try {
-    const { error } = await supabase
-      .from('performance_reviews')
-      .update({ title: editedTitle.trim(), content: editedContent.trim() })
-      .eq('id', review.id);
-
-    if (error) throw error;
-
-    // NOVO: Invalidar cache para forçar refetch
-    await queryClient.invalidateQueries({ queryKey: ['performance-reviews'] });
-
-    toast({ title: "Avaliação atualizada! ✅", ... });
-    
-    onReviewUpdated();
-    setEditing(false);
-  } catch (error) { ... }
-};
+- O gestor pode ter importado notas antigas de sistemas anteriores
+- As datas nas notas podem variar de meses ou anos atrás
+- Considere TODO o histórico fornecido para identificar padrões
+- Mesmo notas antigas são valiosas para análise comportamental
+- Não descarte informações por serem "antigas" - analise tendências ao longo do tempo
 ```
 
-#### Parte 4: Corrigir Export PDF para HTML
+#### Parte 5: Melhorar Log de Debug
 
-O PDF export atualmente usa `marked(review.content)` que converte Markdown para HTML. Se o conteúdo já for HTML (editado pelo TipTap), isso causa problemas.
-
-```typescript
-const handleExportPDF = () => {
-  // ...
-  
-  // ANTES (linha 69):
-  const htmlContent = marked(review.content);
-  
-  // DEPOIS:
-  const htmlContent = review.content.includes('</')
-    ? review.content  // Já é HTML, usar direto
-    : marked(review.content); // É Markdown, converter
-  
-  // ... resto igual ...
-};
-```
-
-#### Parte 5: Atualizar callbacks no PerformanceReviewList
-
-Trocar `loadReviews` por invalidação de cache:
+Adicionar informações sobre o range temporal das notas:
 
 ```typescript
-// Callbacks para os dialogs
-const handleReviewUpdated = () => {
-  queryClient.invalidateQueries({ queryKey: ['performance-reviews', memberId] });
-};
+// Após preparar o contexto
+const oldestDate = recentFeedbacks.length > 0 
+  ? new Date(recentFeedbacks[recentFeedbacks.length - 1].occurred_at || recentFeedbacks[recentFeedbacks.length - 1].created_at)
+  : null;
+const newestDate = recentFeedbacks.length > 0 
+  ? new Date(recentFeedbacks[0].occurred_at || recentFeedbacks[0].created_at)
+  : null;
 
-const handleReviewDeleted = () => {
-  queryClient.invalidateQueries({ queryKey: ['performance-reviews', memberId] });
-  setSelectedReview(null);
-};
-
-// No JSX:
-<ReviewViewDialog
-  // ...
-  onReviewUpdated={handleReviewUpdated}
-  onReviewDeleted={handleReviewDeleted}
-/>
+console.log('Context prepared:', { 
+  totalChars, 
+  notesIncluded: recentFeedbacks.length,
+  dateRange: oldestDate && newestDate 
+    ? `${oldestDate.toISOString().split('T')[0]} a ${newestDate.toISOString().split('T')[0]}`
+    : 'N/A'
+});
 ```
 
 ---
@@ -153,38 +109,72 @@ const handleReviewDeleted = () => {
 
 | Arquivo | Alteração |
 |---------|-----------|
-| `PerformanceReviewList.tsx` | Migrar para React Query, sincronizar selectedReview |
-| `ReviewViewDialog.tsx` | Adicionar invalidateQueries após save, corrigir PDF export |
+| `supabase/functions/chat-mentor/index.ts` | Aumentar limite para 50 notas, ordenar por occurred_at, adicionar instrução no prompt |
 
 ---
 
 ### Seção Técnica
 
-**Query Key consistente:**
+**Código completo da nova lógica de seleção:**
+
 ```typescript
-// Em ambos os arquivos usar:
-queryKey: ['performance-reviews', memberId]
+// Ordenar por occurred_at (mais recentes primeiro) e limitar a 50
+const sortedFeedbacks = [...feedbacks].sort((a, b) => {
+  const dateA = new Date(a.occurred_at || a.created_at);
+  const dateB = new Date(b.occurred_at || b.created_at);
+  return dateB.getTime() - dateA.getTime();
+});
+
+const recentFeedbacks = sortedFeedbacks.slice(0, 50);
+
+let contextLines = '';
+let totalChars = 0;
+const maxChars = 5000;
+
+for (let idx = 0; idx < recentFeedbacks.length; idx++) {
+  const fb = recentFeedbacks[idx];
+  const date = new Date(fb.occurred_at || fb.created_at).toLocaleDateString('pt-BR');
+  const sentiment = fb.sentiment || 'neutro';
+  const summary = fb.summary || fb.content.substring(0, 200);
+  const coaching = fb.coaching_tips || '';
+  
+  const noteText = `[Nota ${idx + 1} - ${date} - ${sentiment}]
+Resumo: ${summary}
+${coaching ? `Dicas: ${coaching}` : ''}
+---\n\n`;
+  
+  if (totalChars + noteText.length > maxChars) {
+    break;
+  }
+  
+  contextLines += noteText;
+  totalChars += noteText.length;
+}
+```
+
+**Nova instrução no System Prompt (após DADOS DO LIDERADO):**
+
+```typescript
+## IMPORTANTE: HISTÓRICO TEMPORAL
+
+- O gestor pode ter importado notas antigas de sistemas anteriores
+- As datas nas notas podem variar de meses ou anos atrás  
+- Considere TODO o histórico fornecido para identificar padrões
+- Mesmo notas antigas são valiosas para análise comportamental
+- Não descarte informações por serem "antigas" - analise tendências ao longo do tempo
+- Ao responder, cite as datas das notas relevantes para dar contexto temporal
 ```
 
 **Novo fluxo (Corrigido):**
+
 ```text
-1. Usuário edita avaliação no TipTap
-2. Clica "Salvar Alterações"
-3. handleSave() → supabase.update() → OK
-4. invalidateQueries(['performance-reviews']) → Cache limpo
-5. onReviewUpdated() → (opcional, backup)
-6. React Query refetch automático → reviews[] atualizado
-7. useEffect detecta mudança → selectedReview atualizado
-8. setEditing(false) → Modo visualização com dados NOVOS ✓
-```
-
-**Imports necessários em ReviewViewDialog.tsx:**
-```typescript
-import { useQueryClient } from '@tanstack/react-query';
-```
-
-**Imports necessários em PerformanceReviewList.tsx:**
-```typescript
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+1. Usuário importa 25 notas de Out/Nov/Dez 2025
+2. MemberDetails busca todas as 25 
+3. MentorChat envia as 25 para Edge Function
+4. Edge Function ordena por occurred_at
+5. Seleciona até 50 notas (ou quantas couberem em 5000 chars)
+6. Formata com datas reais (occurred_at)
+7. System Prompt instrui IA a considerar histórico completo
+8. IA analisa todas as notas disponíveis ✓
 ```
 
