@@ -1,302 +1,314 @@
 
 
-## Plano: Profissionalização do PDF de Avaliação
+## Plano: Upgrade Mentor Chat 2.0 - Arquitetura de 3 Camadas
 
 ### Objetivo
 
-Gerar um PDF limpo, profissional, com margens brancas, sem artefatos de navegador (URLs, datas de impressão) e com cabeçalho rico mostrando o período avaliado.
+Implementar uma arquitetura de 3 camadas no Mentor Chat para otimizar custos e expandir o contexto analisável de 5.000 para 20.000 caracteres, usando roteamento inteligente e o modelo GPT-4o para respostas complexas.
 
 ---
 
-### Estado Atual
+### Arquitetura Atual vs Nova
 
-| Item | Situação |
-|------|----------|
-| PDF Export | Mostra "about:blank", headers/footers do browser |
-| Período Avaliado | Não é exibido no PDF (não está salvo no banco) |
-| Página em Branco | PDF gera página final vazia |
-| Tabela `performance_reviews` | Não tem colunas `period_start` e `period_end` |
+| Aspecto | Atual | Novo (2.0) |
+|---------|-------|------------|
+| Modelo | gpt-4o-mini fixo | gpt-4o (principal) + gpt-4o-mini (roteador) |
+| Limite de contexto | 5.000 chars | 20.000 chars |
+| Busca de dados | Sempre busca 50 notas | Roteador decide se precisa buscar |
+| Compressão | Usa `summary` ou corta em 200 chars | Usa `summary` ou corta em 800 chars |
+| Custo por mensagem | ~fixo | Variável (menor para perguntas simples) |
 
 ---
 
-### Parte 1: Migração do Banco de Dados
+### Camada 1: Roteamento Semântico ("O Porteiro")
 
-Adicionar colunas para armazenar as datas do período avaliado:
+Esta camada analisa a mensagem do usuário com GPT-4o-mini para decidir se precisa buscar dados no banco.
 
-```sql
-ALTER TABLE performance_reviews
-ADD COLUMN period_start TIMESTAMPTZ,
-ADD COLUMN period_end TIMESTAMPTZ;
+**Lógica de Decisão:**
+
+```text
+┌─────────────────────────────────────────────────┐
+│ Mensagem do Usuário                             │
+└────────────────────────┬────────────────────────┘
+                         ▼
+┌─────────────────────────────────────────────────┐
+│ GPT-4o-mini: "Preciso buscar dados? SIM/NAO"    │
+└────────────────────────┬────────────────────────┘
+                         ▼
+         ┌───────────────┴───────────────┐
+         │                               │
+    ┌────▼────┐                    ┌─────▼─────┐
+    │   NAO   │                    │    SIM    │
+    └────┬────┘                    └─────┬─────┘
+         │                               │
+         ▼                               ▼
+ Pula busca de dados           Busca + Comprime notas
+ contextText = ""              contextText = notas
+         │                               │
+         └───────────────┬───────────────┘
+                         ▼
+              ┌──────────────────────┐
+              │ GPT-4o: Resposta     │
+              └──────────────────────┘
 ```
 
-**Justificativa**: Sem essas colunas, não há como exibir "Período Avaliado: 01/10/2025 a 31/12/2025" no PDF.
+**Prompt do Roteador:**
+
+```typescript
+const routerPrompt = `O usuário disse: "${question}".
+
+Para responder isso com qualidade, é OBRIGATÓRIO ler as anotações e feedbacks históricos do liderado?
+
+Exemplos de "NAO":
+- Saudações ("Oi", "Olá", "Bom dia")
+- Pedidos genéricos de formatação ("Formata isso em bullets")
+- Perguntas sobre você ("O que você faz?", "Quem é você?")
+- Continuação de conversa sem mudar de tema
+
+Exemplos de "SIM":
+- Perguntas sobre comportamento ("Como a Gabriela se comporta em reuniões?")
+- Análise de padrões ("Quais são os pontos fortes do João?")
+- Preparação para 1:1 ("Me ajuda a preparar a 1:1")
+- Sugestões de PDI ("O que posso sugerir de desenvolvimento?")
+
+Responda APENAS "SIM" ou "NAO" (sem acento, sem explicação).`;
+```
+
+**Otimização para Conversas Longas:**
+
+Se a conversa já tiver mais de 2 turnos e o contexto já foi injetado anteriormente, assume que não precisa buscar novamente (exceto se a intenção mudar).
 
 ---
 
-### Parte 2: Alterações no NewReviewDialog.tsx
+### Camada 2: Busca e Compressão de Contexto ("A Prensa")
 
-Salvar as datas do período ao criar a avaliação:
+Quando o roteador aprova a busca, aplica-se compressão inteligente:
+
+**Algoritmo de Compressão:**
 
 ```typescript
-const { error } = await supabase
-  .from('performance_reviews')
-  .insert({
-    member_id: memberId,
-    title: title.trim(),
-    content: content.trim(),
-    coaching_tip: coachingTip,
-    period_type: generatedMonths ? periodTypeMap[generatedMonths] : 'manual',
-    period_start: dateRange?.from?.toISOString(),  // NOVO
-    period_end: dateRange?.to?.toISOString()       // NOVO
+const compressContext = (feedbacks: any[]): string => {
+  // Ordenar por occurred_at DESC
+  const sorted = [...feedbacks].sort((a, b) => {
+    const dateA = new Date(a.occurred_at || a.created_at);
+    const dateB = new Date(b.occurred_at || b.created_at);
+    return dateB.getTime() - dateA.getTime();
   });
-```
-
----
-
-### Parte 3: Alterações na Interface PerformanceReview
-
-Atualizar a interface em ambos os arquivos para incluir as novas propriedades:
-
-```typescript
-interface PerformanceReview {
-  id: string;
-  title: string;
-  content: string;
-  coaching_tip?: string | null;
-  period_type: string;
-  period_start?: string | null;  // NOVO
-  period_end?: string | null;    // NOVO
-  created_at: string;
-}
-```
-
----
-
-### Parte 4: Alterações no PerformanceReviewList.tsx
-
-Adicionar as colunas no SELECT:
-
-```typescript
-const { data, error } = await supabase
-  .from('performance_reviews')
-  .select('id, title, content, coaching_tip, period_type, period_start, period_end, created_at')
-  .eq('member_id', memberId)
-  .order('created_at', { ascending: false });
-```
-
----
-
-### Parte 5: Profissionalização do PDF (ReviewViewDialog.tsx)
-
-**5.1 - Remover Artefatos do Navegador:**
-
-```css
-@page {
-  margin: 0;
-  size: auto;
-}
-
-@media print {
-  html, body {
-    margin: 0;
-    padding: 0;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+  
+  const limited = sorted.slice(0, 50);
+  let contextLines = '';
+  let totalChars = 0;
+  const maxChars = 20000; // Aumentado de 5000 para 20000
+  
+  for (const fb of limited) {
+    const date = new Date(fb.occurred_at || fb.created_at).toLocaleDateString('pt-BR');
+    const typeLabel = fb.type || 'Nota';
+    
+    // Compressão inteligente: prefere summary, senão corta em 800 chars
+    let text = fb.summary;
+    if (!text || text.length < 20) {
+      text = fb.content.substring(0, 800);
+      if (fb.content.length > 800) text += '...';
+    }
+    
+    const noteText = `[Data: ${date}] [Tipo: ${typeLabel}]\n${text}\n---\n\n`;
+    
+    if (totalChars + noteText.length > maxChars) {
+      break; // Para de adicionar para não estourar
+    }
+    
+    contextLines += noteText;
+    totalChars += noteText.length;
   }
   
-  /* Container principal sem quebra forçada */
-  .content-wrapper {
-    height: auto !important;
-    display: block;
-    page-break-after: avoid;
-  }
-}
-```
-
-**5.2 - Cabeçalho Rico com Período Avaliado:**
-
-```typescript
-const handleExportPDF = () => {
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) { /* erro */ }
-
-  const htmlContent = review.content.includes('</')
-    ? review.content
-    : marked(review.content);
-
-  // Formatar período
-  const periodStart = review.period_start 
-    ? new Date(review.period_start).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
-    : null;
-  const periodEnd = review.period_end 
-    ? new Date(review.period_end).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
-    : null;
-  
-  const periodText = periodStart && periodEnd 
-    ? `${periodStart} a ${periodEnd}` 
-    : 'Período não especificado';
-
-  printWindow.document.write(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>${review.title}</title>
-        <style>
-          @page {
-            margin: 0;
-            size: A4;
-          }
-          
-          * {
-            box-sizing: border-box;
-          }
-          
-          html, body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-          }
-          
-          .document {
-            padding: 2cm;
-            max-width: 100%;
-            height: auto;
-          }
-          
-          /* Header */
-          .header {
-            border-bottom: 3px solid #7C3AED;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
-          }
-          
-          h1 {
-            color: #222;
-            margin: 0 0 16px 0;
-            font-size: 24px;
-          }
-          
-          .metadata {
-            color: #666;
-            font-size: 0.9em;
-          }
-          
-          .metadata p {
-            margin: 4px 0;
-          }
-          
-          .period-highlight {
-            background-color: #F3F4F6;
-            padding: 8px 12px;
-            border-radius: 4px;
-            margin-top: 12px;
-            display: inline-block;
-          }
-          
-          /* Content Styles */
-          h2 { 
-            color: #444; 
-            margin-top: 28px;
-            margin-bottom: 12px;
-            font-size: 18px;
-          }
-          
-          h3 {
-            color: #555;
-            margin-top: 20px;
-            margin-bottom: 10px;
-            font-size: 16px;
-          }
-          
-          ul, ol { 
-            padding-left: 24px;
-            margin: 12px 0;
-          }
-          
-          li {
-            margin: 6px 0;
-          }
-          
-          p {
-            margin: 10px 0;
-          }
-          
-          strong {
-            color: #222;
-          }
-          
-          /* Evitar página em branco */
-          .content {
-            height: auto !important;
-            page-break-inside: auto;
-          }
-          
-          @media print {
-            .document {
-              padding: 1.5cm;
-            }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="document">
-          <div class="header">
-            <h1>${review.title}</h1>
-            <div class="metadata">
-              <p><strong>Colaborador:</strong> <!-- Nome se disponível --></p>
-              <p><strong>Data de Criação:</strong> ${new Date(review.created_at).toLocaleDateString('pt-BR', { 
-                day: '2-digit', 
-                month: 'long', 
-                year: 'numeric' 
-              })}</p>
-              <div class="period-highlight">
-                <strong>📅 Período Avaliado:</strong> ${periodText}
-              </div>
-            </div>
-          </div>
-          <div class="content">
-            ${htmlContent}
-          </div>
-        </div>
-      </body>
-    </html>
-  `);
-  
-  printWindow.document.close();
-  setTimeout(() => {
-    printWindow.print();
-  }, 300);
+  return contextLines || 'Nenhum histórico disponível ainda.';
 };
 ```
 
+**Mudanças de Formato:**
+
+| Campo | Antes | Depois |
+|-------|-------|--------|
+| Limite por nota | 200 chars | 800 chars |
+| Limite total | 5.000 chars | 20.000 chars |
+| Formato | `[Nota X - Data - Sentiment]` | `[Data: DD/MM/YYYY] [Tipo: X]` |
+| Coaching tips | Incluído | Removido (economiza tokens) |
+| Sentiment | Incluído | Removido (economiza tokens) |
+
 ---
 
-### Parte 6: Passar o Nome do Membro para o PDF
+### Camada 3: O Cérebro (GPT-4o)
 
-Atualizar as props do `ReviewViewDialog` para receber `memberName`:
+**Mudanças no System Prompt:**
+
+Adicionar instrução específica para análise de fragmentos comprimidos:
 
 ```typescript
-// PerformanceReviewList.tsx
-<ReviewViewDialog
-  ...
-  memberName={memberName}  // NOVO
-/>
+const systemPrompt = `# RHITMO MENTOR 2.0 - CONSTITUIÇÃO
 
-// ReviewViewDialog.tsx
-interface ReviewViewDialogProps {
-  ...
-  memberName?: string;  // NOVO
-}
+## IDENTIDADE
+${RHITMO_IDENTITY}
+
+## CAPACIDADE AVANÇADA
+
+Você é um Mentor de Liderança Sênior com acesso a fragmentos COMPRIMIDOS do histórico do liderado.
+Sua missão é:
+1. CONECTAR PONTOS entre diferentes datas para encontrar padrões comportamentais
+2. IDENTIFICAR RISCOS que não são óbvios em notas isoladas
+3. ANALISAR TENDÊNCIAS ao longo do tempo
+
+## REGRAS ESPECIAIS
+
+- NÃO diga "não encontrei dados" a menos que a lista esteja COMPLETAMENTE vazia
+- Se os dados forem antigos (meses atrás), analise-os mesmo assim como contexto histórico
+- Fragmentos curtos ainda contêm insights valiosos - extraia o máximo possível
+- Quando houver muitas notas, busque padrões recorrentes e exceções
+
+## REGRAS DE OURO (GUARD-RAILS)
+${GUARDRAILS_PROMPT}
+
+... resto do prompt existente ...
+`;
 ```
 
-E usar no cabeçalho:
+**Mudança de Modelo:**
 
-```html
-<p><strong>Colaborador:</strong> ${memberName || 'Não informado'}</p>
+```typescript
+// ANTES
+model: 'gpt-4o-mini',
+
+// DEPOIS
+model: 'gpt-4o',
+max_tokens: 1500, // Aumentado para respostas mais completas
+```
+
+---
+
+### Implementação
+
+Alterar `supabase/functions/chat-mentor/index.ts`:
+
+#### 1. Função de Roteamento
+
+```typescript
+const shouldFetchContext = async (
+  question: string, 
+  openAIApiKey: string
+): Promise<boolean> => {
+  const routerPrompt = `O usuário disse: "${question}".
+
+Para responder isso com qualidade, é OBRIGATÓRIO ler as anotações e feedbacks históricos do liderado?
+
+Exemplos de "NAO": Saudações, formatação, perguntas sobre você, continuação sem mudar tema.
+Exemplos de "SIM": Comportamento, padrões, 1:1, PDI, feedback, riscos.
+
+Responda APENAS "SIM" ou "NAO".`;
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: routerPrompt }],
+        max_tokens: 10,
+        temperature: 0,
+      }),
+    });
+
+    if (!response.ok) {
+      console.log('Router failed, defaulting to SIM');
+      return true;
+    }
+
+    const data = await response.json();
+    const answer = data.choices?.[0]?.message?.content?.trim()?.toUpperCase();
+    console.log('Router decision:', answer);
+    
+    return answer !== 'NAO';
+  } catch (error) {
+    console.error('Router error, defaulting to SIM:', error);
+    return true;
+  }
+};
+```
+
+#### 2. Função de Compressão
+
+```typescript
+const compressContext = (feedbacks: any[]): string => {
+  if (!feedbacks?.length) return 'Nenhum histórico disponível ainda.';
+  
+  const sorted = [...feedbacks].sort((a, b) => {
+    const dateA = new Date(a.occurred_at || a.created_at);
+    const dateB = new Date(b.occurred_at || b.created_at);
+    return dateB.getTime() - dateA.getTime();
+  });
+  
+  const limited = sorted.slice(0, 50);
+  let contextLines = '';
+  let totalChars = 0;
+  const maxChars = 20000;
+  
+  for (let idx = 0; idx < limited.length; idx++) {
+    const fb = limited[idx];
+    const date = new Date(fb.occurred_at || fb.created_at).toLocaleDateString('pt-BR');
+    const typeLabel = fb.type || 'Nota';
+    
+    // Prefere summary, senão corta content em 800 chars
+    let text = fb.summary;
+    if (!text || text.length < 20) {
+      text = fb.content.substring(0, 800);
+      if (fb.content.length > 800) text += '...';
+    }
+    
+    const noteText = `[Data: ${date}] [Tipo: ${typeLabel}]\n${text}\n---\n\n`;
+    
+    if (totalChars + noteText.length > maxChars) break;
+    
+    contextLines += noteText;
+    totalChars += noteText.length;
+  }
+  
+  return contextLines || 'Nenhum histórico disponível ainda.';
+};
+```
+
+#### 3. Fluxo Principal Atualizado
+
+```typescript
+// 1. Roteamento
+const needsContext = await shouldFetchContext(question, openAIApiKey);
+console.log('Needs context:', needsContext);
+
+// 2. Compressão (apenas se necessário)
+let contextLines = '';
+if (needsContext) {
+  contextLines = compressContext(feedbacks);
+  console.log('Context compressed:', { 
+    chars: contextLines.length, 
+    notesIncluded: (contextLines.match(/\[Data:/g) || []).length 
+  });
+} else {
+  contextLines = '(Contexto histórico não solicitado para esta pergunta)';
+  console.log('Context skipped by router');
+}
+
+// 3. GPT-4o com contexto (ou sem)
+const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  ...
+  body: JSON.stringify({
+    model: 'gpt-4o',  // Upgrade de modelo
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: question }
+    ],
+    max_tokens: 1500,  // Aumentado
+  }),
+});
 ```
 
 ---
@@ -305,37 +317,49 @@ E usar no cabeçalho:
 
 | Arquivo | Alteração |
 |---------|-----------|
-| `migrations/` | Adicionar colunas `period_start` e `period_end` |
-| `NewReviewDialog.tsx` | Salvar datas ao criar avaliação |
-| `PerformanceReviewList.tsx` | Buscar novas colunas, passar `memberName` |
-| `ReviewViewDialog.tsx` | Interface atualizada, PDF profissionalizado |
+| `supabase/functions/chat-mentor/index.ts` | Adicionar roteador, compressão 2.0, upgrade para GPT-4o |
 
 ---
 
 ### Seção Técnica
 
-**CSS para Remover Headers/Footers do Browser:**
+**Custos Estimados:**
 
-O problema é que navegadores automaticamente adicionam URL, data e hora em prints. A solução é usar `@page { margin: 0 }` que remove a área onde esses headers são renderizados, e então usar padding interno no documento.
+| Cenário | Antes (gpt-4o-mini) | Depois (Híbrido) |
+|---------|---------------------|------------------|
+| "Oi, tudo bem?" | ~0.001 USD | ~0.0003 USD (só roteador) |
+| "Analise padrões" | ~0.002 USD | ~0.015 USD (roteador + gpt-4o) |
+| Média 10 msgs | ~0.015 USD | ~0.05 USD |
 
-**Prevenção de Página em Branco:**
+**Trade-off:** Custo maior para perguntas complexas, mas qualidade MUITO superior e análise de 4x mais contexto.
 
-A página em branco geralmente é causada por:
-1. `height: 100vh` ou `min-height: 100vh` no container
-2. `flex: 1` que ocupa espaço restante
-3. Margens ou padding excessivos
+**Timeout Ajustado:**
 
-A solução é usar `height: auto !important` no container de conteúdo e evitar `page-break-after` desnecessários.
+GPT-4o pode demorar mais que gpt-4o-mini. Aumentar timeout:
 
-**Fluxo de Dados:**
+```typescript
+const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s
+```
+
+**Fluxo Visual:**
 
 ```text
-1. Usuário seleciona período no DateRangePicker
-2. Clica "Salvar Avaliação"
-3. NewReviewDialog salva period_start/period_end no banco
-4. PerformanceReviewList busca dados incluindo novas colunas
-5. ReviewViewDialog recebe período e memberName
-6. handleExportPDF gera HTML com cabeçalho rico
-7. PDF é gerado sem artefatos de navegador ✓
+Usuário: "Como a Gabriela se comporta em reuniões?"
+           │
+           ▼
+    ┌──────────────┐
+    │  Roteador    │ gpt-4o-mini (3 cents)
+    │  "SIM"       │
+    └──────┬───────┘
+           ▼
+    ┌──────────────┐
+    │  Compressor  │ 50 notas → 20.000 chars
+    └──────┬───────┘
+           ▼
+    ┌──────────────┐
+    │  GPT-4o      │ Análise profunda
+    └──────┬───────┘
+           ▼
+    Resposta: "Baseado em 25 notas entre Out/2025 e Jan/2026..."
 ```
 
