@@ -1,261 +1,150 @@
 
 
-## Plano: DateRange Picker para Avaliações Personalizadas
+## Plano: Correção de Persistência na Edição de Avaliações
 
-### Objetivo
+### Problema Identificado
 
-Permitir que o gestor selecione intervalos de datas personalizados para gerar avaliações de desempenho, além dos presets fixos (Mensal, Trimestral, etc.). Isso viabiliza a análise de períodos específicos como "Ciclo do Projeto X".
+O bug ocorre porque após salvar as edições, o componente `ReviewViewDialog` continua exibindo os dados antigos. A causa raiz está em dois locais:
 
----
+| Local | Problema |
+|-------|----------|
+| `ReviewViewDialog.tsx` | Não invalida cache após salvar, depende apenas de `onReviewUpdated()` |
+| `PerformanceReviewList.tsx` | `selectedReview` mantém dados antigos mesmo após `loadReviews()` atualizar a lista |
 
-### Estado Atual
+### Fluxo Atual (Bug)
 
-| Item | Situação |
-|------|----------|
-| NewReviewDialog.tsx | Apenas botões de preset (1, 3, 6, 12 meses) |
-| generate-review Edge Function | Recebe apenas `months`, calcula data limite internamente |
-| Componente DateRangePicker | Não existe no projeto |
-
----
-
-### Parte 1: Componente DateRangePicker
-
-Não é necessário criar um componente separado. O shadcn Calendar já suporta `mode="range"`. Vamos usar o padrão inline no NewReviewDialog.
-
-**Pattern de uso (react-day-picker):**
-
-```typescript
-import { DateRange } from "react-day-picker";
-
-const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
-
-<Calendar
-  mode="range"
-  selected={dateRange}
-  onSelect={setDateRange}
-  numberOfMonths={2}
-/>
+```text
+1. Usuário edita avaliação no TipTap
+2. Clica "Salvar Alterações"
+3. handleSave() → supabase.update() → OK
+4. onReviewUpdated() → loadReviews() → Atualiza array reviews[]
+5. setEditing(false) → Modo visualização
+6. PROBLEMA: selectedReview ainda tem dados antigos!
+7. Usuário vê conteúdo original, não o editado
 ```
 
 ---
 
-### Parte 2: Alterações no NewReviewDialog.tsx
+### Solução
 
-**Novos imports:**
+#### Parte 1: Migrar PerformanceReviewList para React Query
 
+Trocar o estado local por React Query para que a invalidação funcione corretamente:
+
+**Estado atual:**
 ```typescript
-import { format, subMonths } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { DateRange } from "react-day-picker";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
+const [reviews, setReviews] = useState<PerformanceReview[]>([]);
+const loadReviews = async () => { ... setReviews(data); }
 ```
 
 **Novo estado:**
-
 ```typescript
-const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
-const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+
+const queryClient = useQueryClient();
+
+const { data: reviews = [], isLoading } = useQuery({
+  queryKey: ['performance-reviews', memberId],
+  queryFn: async () => {
+    const { data, error } = await supabase
+      .from('performance_reviews')
+      .select('id, title, content, coaching_tip, period_type, created_at')
+      .eq('member_id', memberId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  }
+});
 ```
 
-**Comportamento Híbrido:**
+#### Parte 2: Atualizar selectedReview após reload
 
-1. **Clique no Preset** atualiza o DateRange automaticamente:
-
-```typescript
-const handlePresetClick = (months: number) => {
-  const today = new Date();
-  const startDate = subMonths(today, months);
-  setDateRange({ from: startDate, to: today });
-  setSelectedPreset(months);
-};
-```
-
-2. **Seleção manual no Calendar** desmarca os presets:
+Criar efeito para sincronizar `selectedReview` quando os dados mudam:
 
 ```typescript
-const handleDateRangeChange = (range: DateRange | undefined) => {
-  setDateRange(range);
-  setSelectedPreset(null); // Desmarca preset quando manual
-};
-```
-
-**UI - DateRangePicker abaixo dos presets:**
-
-```typescript
-<div className="space-y-2">
-  <Label>Intervalo da Análise</Label>
-  <Popover>
-    <PopoverTrigger asChild>
-      <Button
-        variant="outline"
-        className={cn(
-          "w-full justify-start text-left font-normal",
-          !dateRange && "text-muted-foreground"
-        )}
-      >
-        <CalendarIcon className="mr-2 h-4 w-4" />
-        {dateRange?.from ? (
-          dateRange.to ? (
-            <>
-              {format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })} - {" "}
-              {format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}
-            </>
-          ) : (
-            format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })
-          )
-        ) : (
-          "Selecione o período"
-        )}
-      </Button>
-    </PopoverTrigger>
-    <PopoverContent className="w-auto p-0" align="start">
-      <Calendar
-        mode="range"
-        selected={dateRange}
-        onSelect={handleDateRangeChange}
-        numberOfMonths={2}
-        locale={ptBR}
-        disabled={(date) => date > new Date()}
-        className="pointer-events-auto"
-      />
-    </PopoverContent>
-  </Popover>
-</div>
-```
-
-**Destaque visual do preset selecionado:**
-
-```typescript
-<Button
-  variant={selectedPreset === months ? "default" : "outline"}
-  onClick={() => handlePresetClick(months)}
-  // ...
->
-```
-
-**Botão "Gerar com IA" separado:**
-
-Adicionar um botão dedicado para gerar a avaliação com o intervalo selecionado:
-
-```typescript
-<Button
-  onClick={handleGenerateWithRange}
-  disabled={generating || !canGenerateReview || !dateRange?.from || !dateRange?.to}
-  className="gap-2 w-full"
->
-  {generating ? (
-    <Loader2 className="h-4 w-4 animate-spin" />
-  ) : (
-    <Sparkles className="h-4 w-4" />
-  )}
-  Gerar Avaliação com IA
-</Button>
-```
-
----
-
-### Parte 3: Integração com Edge Function
-
-**Payload atualizado:**
-
-```typescript
-const handleGenerateWithRange = async () => {
-  if (!dateRange?.from || !dateRange?.to) return;
-  
-  setGenerating(true);
-  
-  const fetchPromise = supabase.functions.invoke('generate-review', {
-    body: { 
-      memberId, 
-      startDate: dateRange.from.toISOString(),
-      endDate: dateRange.to.toISOString()
+// Sincronizar selectedReview quando reviews atualizar
+useEffect(() => {
+  if (selectedReview && reviews.length > 0) {
+    const updated = reviews.find(r => r.id === selectedReview.id);
+    if (updated && updated.content !== selectedReview.content) {
+      setSelectedReview(updated);
     }
-  });
-  // ... resto do código
+  }
+}, [reviews, selectedReview]);
+```
+
+#### Parte 3: Adicionar invalidação no ReviewViewDialog
+
+```typescript
+import { useQueryClient } from '@tanstack/react-query';
+
+// Dentro do componente
+const queryClient = useQueryClient();
+
+// No handleSave, após sucesso:
+const handleSave = async () => {
+  // ... validação ...
+  
+  try {
+    const { error } = await supabase
+      .from('performance_reviews')
+      .update({ title: editedTitle.trim(), content: editedContent.trim() })
+      .eq('id', review.id);
+
+    if (error) throw error;
+
+    // NOVO: Invalidar cache para forçar refetch
+    await queryClient.invalidateQueries({ queryKey: ['performance-reviews'] });
+
+    toast({ title: "Avaliação atualizada! ✅", ... });
+    
+    onReviewUpdated();
+    setEditing(false);
+  } catch (error) { ... }
 };
 ```
 
-**Alterações no generate-review/index.ts:**
+#### Parte 4: Corrigir Export PDF para HTML
+
+O PDF export atualmente usa `marked(review.content)` que converte Markdown para HTML. Se o conteúdo já for HTML (editado pelo TipTap), isso causa problemas.
 
 ```typescript
-// Aceitar startDate/endDate OU months (retrocompatibilidade)
-const { memberId, months, startDate, endDate } = await req.json();
-
-let limitDate: Date;
-let endLimitDate: Date;
-
-if (startDate && endDate) {
-  // Modo Custom Range
-  limitDate = new Date(startDate);
-  endLimitDate = new Date(endDate);
-  console.log(`Período personalizado: ${limitDate.toISOString()} a ${endLimitDate.toISOString()}`);
-} else if (months) {
-  // Modo Legacy (presets)
-  limitDate = new Date();
-  limitDate.setMonth(limitDate.getMonth() - months);
-  endLimitDate = new Date(); // Até hoje
-} else {
-  return new Response(
-    JSON.stringify({ error: 'Informe months ou (startDate + endDate)' }),
-    { status: 400 }
-  );
-}
-
-// Query com range completo
-const { data: feedbacks } = await supabase
-  .from('feedbacks')
-  .select('*')
-  .eq('member_id', memberId)
-  .gte('occurred_at', limitDate.toISOString())
-  .lte('occurred_at', endLimitDate.toISOString())
-  .order('occurred_at', { ascending: true });
-```
-
-**Atualizar prompt da IA para refletir o período:**
-
-```typescript
-const periodDescription = startDate && endDate
-  ? `de ${new Date(startDate).toLocaleDateString('pt-BR')} a ${new Date(endDate).toLocaleDateString('pt-BR')}`
-  : `dos últimos ${months} meses`;
-
-const userPrompt = `FEEDBACKS ${periodDescription}:\n\n${feedbacksText}...`;
-```
-
----
-
-### Parte 4: Título automático para períodos customizados
-
-```typescript
-// No NewReviewDialog após receber resposta:
-if (selectedPreset) {
-  // Usar labels existentes
-  setTitle(`Avaliação ${periodLabels[selectedPreset]} - ${currentDate}`);
-} else if (dateRange?.from && dateRange?.to) {
-  // Período personalizado
-  const fromStr = format(dateRange.from, "MMM/yy", { locale: ptBR });
-  const toStr = format(dateRange.to, "MMM/yy", { locale: ptBR });
-  setTitle(`Avaliação ${fromStr} a ${toStr}`);
-}
-```
-
----
-
-### Parte 5: Reset do estado ao fechar
-
-Adicionar `dateRange` e `selectedPreset` ao `handleClose`:
-
-```typescript
-const handleClose = () => {
-  setTitle("");
-  setContent("");
-  setCoachingTip(null);
-  setGeneratedMonths(null);
-  setDateRange(undefined);
-  setSelectedPreset(null);
-  onOpenChange(false);
+const handleExportPDF = () => {
+  // ...
+  
+  // ANTES (linha 69):
+  const htmlContent = marked(review.content);
+  
+  // DEPOIS:
+  const htmlContent = review.content.includes('</')
+    ? review.content  // Já é HTML, usar direto
+    : marked(review.content); // É Markdown, converter
+  
+  // ... resto igual ...
 };
+```
+
+#### Parte 5: Atualizar callbacks no PerformanceReviewList
+
+Trocar `loadReviews` por invalidação de cache:
+
+```typescript
+// Callbacks para os dialogs
+const handleReviewUpdated = () => {
+  queryClient.invalidateQueries({ queryKey: ['performance-reviews', memberId] });
+};
+
+const handleReviewDeleted = () => {
+  queryClient.invalidateQueries({ queryKey: ['performance-reviews', memberId] });
+  setSelectedReview(null);
+};
+
+// No JSX:
+<ReviewViewDialog
+  // ...
+  onReviewUpdated={handleReviewUpdated}
+  onReviewDeleted={handleReviewDeleted}
+/>
 ```
 
 ---
@@ -264,63 +153,38 @@ const handleClose = () => {
 
 | Arquivo | Alteração |
 |---------|-----------|
-| `NewReviewDialog.tsx` | Adicionar DateRangePicker, estados, lógica híbrida preset/manual |
-| `generate-review/index.ts` | Aceitar startDate/endDate, filtrar com `.lte()` adicional |
-| `calendar.tsx` | Adicionar `pointer-events-auto` (já está no projeto) |
+| `PerformanceReviewList.tsx` | Migrar para React Query, sincronizar selectedReview |
+| `ReviewViewDialog.tsx` | Adicionar invalidateQueries após save, corrigir PDF export |
 
 ---
 
 ### Seção Técnica
 
-**Fluxo de dados:**
+**Query Key consistente:**
+```typescript
+// Em ambos os arquivos usar:
+queryKey: ['performance-reviews', memberId]
+```
 
+**Novo fluxo (Corrigido):**
 ```text
-1. Usuário clica "Trimestral"
-   → setDateRange({ from: 3 meses atrás, to: hoje })
-   → setSelectedPreset(3)
-   → Botões refletem seleção visual
-
-2. Usuário abre calendário e seleciona manualmente
-   → handleDateRangeChange(range)
-   → setSelectedPreset(null)
-   → Presets ficam todos outline
-
-3. Clica "Gerar Avaliação com IA"
-   → Envia startDate + endDate para Edge Function
-   → Edge Function filtra occurred_at >= startDate AND occurred_at <= endDate
+1. Usuário edita avaliação no TipTap
+2. Clica "Salvar Alterações"
+3. handleSave() → supabase.update() → OK
+4. invalidateQueries(['performance-reviews']) → Cache limpo
+5. onReviewUpdated() → (opcional, backup)
+6. React Query refetch automático → reviews[] atualizado
+7. useEffect detecta mudança → selectedReview atualizado
+8. setEditing(false) → Modo visualização com dados NOVOS ✓
 ```
 
-**Validação no Edge Function:**
-
+**Imports necessários em ReviewViewDialog.tsx:**
 ```typescript
-if (!memberId) {
-  return new Response(
-    JSON.stringify({ error: 'memberId é obrigatório' }),
-    { status: 400 }
-  );
-}
-
-if (!months && (!startDate || !endDate)) {
-  return new Response(
-    JSON.stringify({ error: 'Informe months ou (startDate + endDate)' }),
-    { status: 400 }
-  );
-}
+import { useQueryClient } from '@tanstack/react-query';
 ```
 
-**Retorno adicional para o frontend:**
-
+**Imports necessários em PerformanceReviewList.tsx:**
 ```typescript
-return new Response(
-  JSON.stringify({ 
-    review_content: reviewContent,
-    coaching_tip: coachingTip,
-    feedbackCount: feedbacks?.length || 0,
-    memberName: member.name,
-    periodStart: limitDate.toISOString(),
-    periodEnd: endLimitDate.toISOString()
-  }),
-  { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-);
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 ```
 
