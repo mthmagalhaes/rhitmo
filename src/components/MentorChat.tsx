@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
-import { Send, Loader2, MessageCircle, Paperclip, Plus, MessageSquare } from 'lucide-react';
+import { Send, Loader2, MessageCircle, Paperclip, Plus, MessageSquare, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -14,7 +14,23 @@ import { VoiceInput } from './VoiceInput';
 import { extractTextFromFile, isFileSupported } from '@/lib/fileParser';
 import { format, isToday, isYesterday, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
 interface MentorMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -63,6 +79,9 @@ export const MentorChat = ({
   const [isExtractingFile, setIsExtractingFile] = useState(false);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [isCreatingNewThread, setIsCreatingNewThread] = useState(false);
+  const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
+  const [deletingThread, setDeletingThread] = useState<ChatThread | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -176,6 +195,72 @@ export const MentorChat = ({
   const handleNewThread = () => {
     setSelectedThreadId(null);
     setIsCreatingNewThread(true);
+  };
+
+  const handleRenameThread = async (threadId: string, newTitle: string) => {
+    if (!newTitle.trim()) {
+      setEditingThreadId(null);
+      setEditingTitle('');
+      return;
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('chat_threads')
+        .update({ title: newTitle.trim() })
+        .eq('id', threadId);
+      
+      if (error) throw error;
+      
+      queryClient.setQueryData(['chat-threads', memberId], (old: ChatThread[] | undefined) => 
+        old?.map(t => t.id === threadId ? { ...t, title: newTitle.trim() } : t) || []
+      );
+      
+      toast({ title: 'Conversa renomeada' });
+    } catch (error) {
+      console.error('Erro ao renomear:', error);
+      toast({ 
+        title: 'Erro ao renomear', 
+        description: 'Tente novamente.', 
+        variant: 'destructive' 
+      });
+    } finally {
+      setEditingThreadId(null);
+      setEditingTitle('');
+    }
+  };
+
+  const handleDeleteThread = async (thread: ChatThread) => {
+    try {
+      await supabase
+        .from('mentor_messages')
+        .delete()
+        .eq('thread_id', thread.id);
+      
+      const { error } = await supabase
+        .from('chat_threads')
+        .delete()
+        .eq('id', thread.id);
+      
+      if (error) throw error;
+      
+      if (selectedThreadId === thread.id) {
+        setSelectedThreadId(null);
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ['chat-threads', memberId] });
+      
+      toast({ title: 'Conversa excluída' });
+    } catch (error) {
+      console.error('Erro ao excluir:', error);
+      toast({ 
+        title: 'Erro ao excluir', 
+        description: 'Tente novamente.', 
+        variant: 'destructive' 
+      });
+    } finally {
+      setDeletingThread(null);
+    }
   };
 
   const handleSend = async (messageToSend?: string) => {
@@ -390,20 +475,73 @@ export const MentorChat = ({
                           {group.label}
                         </p>
                         {group.threads.map(thread => (
-                          <button
-                            key={thread.id}
-                            onClick={() => {
-                              setSelectedThreadId(thread.id);
-                              setIsCreatingNewThread(false);
-                            }}
-                            className={`w-full text-left px-3 py-2 rounded-lg text-sm truncate transition-colors ${
-                              selectedThreadId === thread.id
-                                ? 'bg-primary/10 text-primary'
-                                : 'hover:bg-muted text-foreground'
-                            }`}
-                          >
-                            {thread.title}
-                          </button>
+                          <div key={thread.id} className="group relative">
+                            {editingThreadId === thread.id ? (
+                              <div className="flex items-center gap-1 px-2 py-1">
+                                <Input
+                                  value={editingTitle}
+                                  onChange={(e) => setEditingTitle(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleRenameThread(thread.id, editingTitle);
+                                    if (e.key === 'Escape') {
+                                      setEditingThreadId(null);
+                                      setEditingTitle('');
+                                    }
+                                  }}
+                                  onBlur={() => handleRenameThread(thread.id, editingTitle)}
+                                  autoFocus
+                                  className="h-8 text-sm"
+                                />
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setSelectedThreadId(thread.id);
+                                  setIsCreatingNewThread(false);
+                                }}
+                                className={`w-full text-left px-3 py-2 rounded-lg text-sm truncate transition-colors flex items-center justify-between ${
+                                  selectedThreadId === thread.id
+                                    ? 'bg-primary/10 text-primary'
+                                    : 'hover:bg-muted text-foreground'
+                                }`}
+                              >
+                                <span className="truncate flex-1">{thread.title}</span>
+                                
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <button
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-accent transition-opacity flex-shrink-0"
+                                    >
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-40">
+                                    <DropdownMenuItem 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditingThreadId(thread.id);
+                                        setEditingTitle(thread.title);
+                                      }}
+                                    >
+                                      <Pencil className="h-4 w-4 mr-2" />
+                                      Renomear
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setDeletingThread(thread);
+                                      }}
+                                      className="text-destructive focus:text-destructive"
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      Excluir
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </button>
+                            )}
+                          </div>
                         ))}
                       </div>
                     ))
@@ -549,6 +687,26 @@ export const MentorChat = ({
             </div>
           </ResizablePanel>
         </ResizablePanelGroup>
+
+        <AlertDialog open={!!deletingThread} onOpenChange={() => setDeletingThread(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir conversa?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta ação é irreversível. A conversa "{deletingThread?.title}" e todas as mensagens serão excluídas permanentemente.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => deletingThread && handleDeleteThread(deletingThread)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   );
