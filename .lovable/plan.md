@@ -1,57 +1,160 @@
 
 
-## Plano: Correção de Crash no MemberDetails (Ícone Indefinido)
+## Plano: Visualização Unificada Rhitmo Sync (V1 + V2)
 
-### Diagnóstico
+### Problema
 
-O erro `TypeError: Cannot read properties of undefined (reading 'icon')` ocorre quando:
+Perfis com dados V2 do Rhitmo Sync (chronotype, feedback_style, recognition_style, motivators) aparecem com seções vazias, enquanto perfis V1 mostram chips coloridos. Isso ocorre porque:
 
-1. O campo `work_style_data` contém valores que não existem no `styleConfig`
-2. Dados da V2 do Rhitmo Sync têm campos diferentes (ex: `chronotype` ao invés de `energy`)
-3. Dados corrompidos ou incompletos no banco
+1. O `styleConfig` atual só tem mapeamentos para campos V1 (processing, feedback, autonomy, energy, motivation)
+2. Os novos campos V2 são armazenados em colunas separadas (`member.chronotype`, `member.feedback_style`, etc.) e não em `work_style_data`
+3. Não há renderização para arrays (motivators)
 
-**Locais afetados** (linhas 311-378):
+### Estrutura de Dados Atual
 
-| Linha | Acesso sem verificação |
-|-------|------------------------|
-| 312 | `styleConfig.processing[...].icon` |
-| 327 | `styleConfig.feedback[...].icon` |
-| 342 | `styleConfig.autonomy[...].icon` |
-| 357 | `styleConfig.energy[...].icon` |
-| 372 | `styleConfig.motivation[...].icon` |
+| Versão | Campos | Armazenamento |
+|--------|--------|---------------|
+| V1 | processing, feedback, autonomy, energy, motivation | `work_style_data` (JSONB) |
+| V2 | chronotype, feedback_style, recognition_style, motivators | Colunas separadas na tabela |
+| V2 | stress_signs, hobbies, ideal_environment, etc. | `user_manual` (JSONB) |
 
 ---
 
-### Solução
+### Parte 1: Expandir `styleConfig` em WorkStyleCard.tsx
 
-Adicionar **cláusula de guarda** em cada acesso ao `styleConfig`. Se a configuração não existir, não renderizar o badge.
-
----
-
-### Implementação
-
-#### Padrão Atual (Vulnerável)
+Adicionar mapeamentos visuais para os campos V2:
 
 ```typescript
-{(() => {
-  const config = styleConfig.processing[(member.work_style_data as unknown as WorkStyleData).processing];
-  const Icon = config.icon; // ❌ CRASH se config for undefined
-  return (
-    <Badge variant="secondary" className={`${config.color} gap-2 py-2 px-3`}>
-      <Icon className="h-4 w-4" />
-      {config.label}
-    </Badge>
-  );
-})()}
+export const styleConfig = {
+  // ... campos V1 existentes ...
+
+  // V2: Cronotipo
+  chronotype: {
+    morning: { label: 'Madrugador (5h-10h)', icon: Sunrise, color: 'bg-orange-500/10 text-orange-700 dark:text-orange-400' },
+    commercial: { label: 'Horário Comercial', icon: Briefcase, color: 'bg-blue-500/10 text-blue-700 dark:text-blue-400' },
+    night: { label: 'Noturno / Tarde', icon: Moon, color: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-400' }
+  },
+
+  // V2: Estilo de Feedback (diferente do V1 "feedback")
+  feedback_style: {
+    direct: { label: 'Direto ao Ponto', icon: Zap, color: 'bg-red-500/10 text-red-700 dark:text-red-400' },
+    empathetic: { label: 'Empático / Sanduíche', icon: Heart, color: 'bg-pink-500/10 text-pink-700 dark:text-pink-400' },
+    written: { label: 'Por Escrito Primeiro', icon: FileText, color: 'bg-slate-500/10 text-slate-700 dark:text-slate-400' }
+  },
+
+  // V2: Estilo de Reconhecimento
+  recognition_style: {
+    public: { label: 'Reconhecimento Público', icon: Megaphone, color: 'bg-green-500/10 text-green-700 dark:text-green-400' },
+    private: { label: 'Reconhecimento Privado', icon: Lock, color: 'bg-gray-500/10 text-gray-600 dark:text-gray-400' }
+  },
+
+  // V2: Motivadores (array)
+  motivators: {
+    autonomy: { label: 'Autonomia', icon: Compass, color: 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400' },
+    money: { label: 'Dinheiro', icon: DollarSign, color: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' },
+    stability: { label: 'Estabilidade', icon: Shield, color: 'bg-blue-500/10 text-blue-700 dark:text-blue-400' },
+    learning: { label: 'Aprendizado', icon: GraduationCap, color: 'bg-purple-500/10 text-purple-700 dark:text-purple-400' },
+    purpose: { label: 'Propósito', icon: Heart, color: 'bg-rose-500/10 text-rose-700 dark:text-rose-400' },
+    status: { label: 'Status', icon: Crown, color: 'bg-amber-500/10 text-amber-700 dark:text-amber-400' }
+  }
+};
 ```
 
-#### Padrão Corrigido (Seguro)
+---
+
+### Parte 2: Atualizar Renderização em MemberDetails.tsx
+
+#### 2.1 Adicionar Imports de Ícones
 
 ```typescript
-{(() => {
-  const key = (member.work_style_data as unknown as WorkStyleData).processing;
-  const config = key ? styleConfig.processing[key as keyof typeof styleConfig.processing] : null;
-  if (!config) return null; // ✅ Cláusula de guarda
+import { 
+  ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Music, BookOpen, FileText, Clock, Lock, ArrowRight,
+  Briefcase, Heart, Megaphone, Compass, DollarSign, Shield, GraduationCap, Crown, HelpCircle
+} from 'lucide-react';
+```
+
+#### 2.2 Lógica de Renderização Híbrida
+
+Detectar se é V1 ou V2 e renderizar apropriadamente:
+
+```typescript
+// Detectar versão dos dados
+const hasV2Data = member.chronotype || member.feedback_style || member.recognition_style || 
+                  (member.motivators && Array.isArray(member.motivators) && member.motivators.length > 0);
+const hasV1Data = member.work_style_data && 
+                  (member.work_style_data as unknown as WorkStyleData).processing;
+
+// Determinar data de preenchimento
+const completedAt = hasV2Data 
+  ? (member.work_style_data as any)?.completed_at 
+  : (member.work_style_data as unknown as WorkStyleData)?.completed_at;
+```
+
+#### 2.3 Nova Estrutura de Renderização
+
+Se V2 (campos novos existem):
+- Mostrar Cronotipo (chronotype)
+- Mostrar Estilo de Feedback V2 (feedback_style)
+- Mostrar Reconhecimento (recognition_style)
+- Mostrar Motivadores (múltiplos chips)
+
+Se V1 (apenas work_style_data):
+- Mostrar campos antigos (processing, feedback, autonomy, energy, motivation)
+
+#### 2.4 Renderização de Motivadores (Array)
+
+```typescript
+{/* Motivadores - Campo Array */}
+{member.motivators && Array.isArray(member.motivators) && member.motivators.length > 0 && (
+  <div className="space-y-2">
+    <p className="text-sm font-medium text-muted-foreground">Motivadores Principais</p>
+    <div className="flex flex-wrap gap-2">
+      {(member.motivators as string[]).map((motivator) => {
+        const config = styleConfig.motivators?.[motivator as keyof typeof styleConfig.motivators];
+        if (!config) {
+          // Fallback para motivadores desconhecidos
+          return (
+            <Badge key={motivator} variant="secondary" className="gap-2 py-2 px-3 bg-gray-500/10 text-gray-700">
+              <HelpCircle className="h-4 w-4" />
+              {motivator.charAt(0).toUpperCase() + motivator.slice(1)}
+            </Badge>
+          );
+        }
+        const Icon = config.icon;
+        return (
+          <Badge key={motivator} variant="secondary" className={`${config.color} gap-2 py-2 px-3`}>
+            <Icon className="h-4 w-4" />
+            {config.label}
+          </Badge>
+        );
+      })}
+    </div>
+  </div>
+)}
+```
+
+---
+
+### Parte 3: Fallback Visual
+
+Para qualquer campo que exista no banco mas não tenha configuração visual:
+
+```typescript
+// Função helper para renderizar badge com fallback
+const renderBadge = (configCategory: any, key: string | undefined) => {
+  if (!key) return null;
+  const config = configCategory?.[key];
+  
+  if (!config) {
+    // Fallback genérico
+    return (
+      <Badge variant="secondary" className="gap-2 py-2 px-3 bg-gray-500/10 text-gray-600">
+        <HelpCircle className="h-4 w-4" />
+        {key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ')}
+      </Badge>
+    );
+  }
+  
   const Icon = config.icon;
   return (
     <Badge variant="secondary" className={`${config.color} gap-2 py-2 px-3`}>
@@ -59,50 +162,7 @@ Adicionar **cláusula de guarda** em cada acesso ao `styleConfig`. Se a configur
       {config.label}
     </Badge>
   );
-})()}
-```
-
----
-
-### Alterações por Bloco
-
-| Bloco | Campo | Linha Início |
-|-------|-------|--------------|
-| 1 | processing | 311 |
-| 2 | feedback | 326 |
-| 3 | autonomy | 341 |
-| 4 | energy | 356 |
-| 5 | motivation | 371 |
-
----
-
-### Lógica de Segurança
-
-```text
-Usuário acessa /member/:id
-         │
-         ▼
-member.work_style_data existe?
-         │
-    ┌────┴────┐
-    │ NÃO    │ SIM
-    │        ▼
-    │   Para cada campo (processing, feedback, etc):
-    │        │
-    │        ▼
-    │   key = work_style_data[campo]
-    │        │
-    │        ▼
-    │   config = styleConfig[campo][key]
-    │        │
-    │   ┌────┴────┐
-    │   │ NULL   │ EXISTE
-    │   │        │
-    │   ▼        ▼
-    │  return   Renderiza Badge
-    │  null     com Icon e Label
-    │        │
-    └────────┴─────────────────────┘
+};
 ```
 
 ---
@@ -111,38 +171,57 @@ member.work_style_data existe?
 
 | Arquivo | Alteração |
 |---------|-----------|
-| `src/pages/MemberDetails.tsx` | Adicionar cláusula de guarda (`if (!config) return null`) em 5 blocos de renderização de badges (linhas 311-380) |
+| `src/components/WorkStyleCard.tsx` | Expandir `styleConfig` com chronotype, feedback_style, recognition_style, motivators + novos imports de ícones |
+| `src/pages/MemberDetails.tsx` | Adicionar imports de ícones, lógica híbrida V1/V2, renderização de motivadores (array), fallback visual |
 
 ---
 
 ### Seção Técnica
 
-**Por que o erro ocorre?**
+**Fluxo de Decisão na Renderização:**
 
-O `styleConfig` (de `WorkStyleCard.tsx`) tem esta estrutura:
-
-```typescript
-export const styleConfig = {
-  processing: {
-    direct: { label: '...', icon: Zap, color: '...' },
-    contextual: { label: '...', icon: BookOpen, color: '...' }
-  },
-  feedback: {
-    immediate: { ... },
-    scheduled: { ... }
-  },
-  // etc
-};
+```text
+member.work_style_data existe?
+         │
+    ┌────┴────┐
+    │ NÃO    │ SIM
+    │        ▼
+    │   hasV2Data = member.chronotype || member.feedback_style || 
+    │              member.recognition_style || member.motivators.length > 0
+    │        │
+    │   ┌────┴────┐
+    │   │ TRUE   │ FALSE
+    │   │        │
+    │   ▼        ▼
+    │  RENDER   RENDER
+    │  V2       V1
+    │  Fields   Fields
+    │        │
+    └────────┴─────────────────────┘
 ```
 
-Se `work_style_data.processing` for `"morning"` (valor inválido para essa categoria), o acesso `styleConfig.processing["morning"]` retorna `undefined`, e `undefined.icon` causa o crash.
+**Campos V2 a Renderizar:**
 
-**Cenários protegidos após a correção:**
+| Campo | Tipo | Origem | Renderização |
+|-------|------|--------|--------------|
+| chronotype | string | `member.chronotype` | 1 Badge |
+| feedback_style | string | `member.feedback_style` | 1 Badge |
+| recognition_style | string | `member.recognition_style` | 1 Badge |
+| motivators | string[] | `member.motivators` | N Badges (máx 3) |
 
-| Cenário | Antes | Depois |
-|---------|-------|--------|
-| Valor inválido | ❌ Crash | ✅ Não renderiza badge |
-| Campo undefined | ❌ Crash | ✅ Não renderiza badge |
-| Dados V2 com campos novos | ❌ Crash | ✅ Ignora campos desconhecidos |
-| Dados V1 completos | ✅ Funciona | ✅ Funciona |
+**Ícones a Importar:**
+
+| Ícone | Uso |
+|-------|-----|
+| Briefcase | Cronotipo Comercial |
+| Heart | Feedback Empático, Motivador Propósito |
+| FileText | Feedback Escrito |
+| Megaphone | Reconhecimento Público |
+| Lock | Reconhecimento Privado (já importado) |
+| Compass | Motivador Autonomia |
+| DollarSign | Motivador Dinheiro |
+| Shield | Motivador Estabilidade |
+| GraduationCap | Motivador Aprendizado |
+| Crown | Motivador Status |
+| HelpCircle | Fallback genérico |
 
