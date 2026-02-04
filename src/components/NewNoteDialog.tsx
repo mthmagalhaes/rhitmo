@@ -78,6 +78,31 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
   const editorRef = useRef<ReturnType<typeof useEditor> | null>(null);
   const { toast } = useToast();
 
+  // Função centralizada para limpar o formulário
+  const resetForm = () => {
+    setContent('');
+    setMemberId('');
+    setOccurredAt(undefined);
+    setIsDragging(false);
+    setIsProcessingFile(false);
+    
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    
+    if (editorRef.current) {
+      editorRef.current.commands.clearContent();
+    }
+  };
+
+  // Wrapper para limpar estado ao fechar o modal
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
+      resetForm();
+    }
+    onOpenChange(newOpen);
+  };
+
   // Função para tentar extrair data do texto
   const tryExtractDate = (text: string) => {
     if (occurredAt) return; // Não sobrescrever se já tiver data
@@ -241,9 +266,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
         description: "Registro adicionado ao histórico.",
       });
       
-      setContent('');
-      setMemberId('');
-      setOccurredAt(new Date());
+      resetForm();
       onOpenChange(false);
       
       if (onSuccess) {
@@ -280,7 +303,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[600px] flex flex-col max-h-[85vh] p-0">
         <DialogHeader className="px-6 pt-6 pb-4">
           <DialogTitle className="flex items-center gap-2">
@@ -420,7 +443,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
         
         {/* Sticky footer - always visible */}
         <DialogFooter className="px-6 py-4 border-t bg-background">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={loading}>
             Cancelar
           </Button>
           <Button onClick={handleSubmit} disabled={loading || isProcessingFile || !occurredAt}>
