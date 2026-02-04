@@ -54,8 +54,14 @@ serve(async (req) => {
 - Motivação: ${styleLabels.motivation[data.motivation] || data.motivation}`;
     };
 
-    // Limitar a últimas 5 notas e truncar para 5000 caracteres no total
-    const recentFeedbacks = feedbacks.slice(0, 5);
+    // Ordenar por occurred_at (mais recentes primeiro) e limitar a 50 notas
+    const sortedFeedbacks = [...feedbacks].sort((a: any, b: any) => {
+      const dateA = new Date(a.occurred_at || a.created_at);
+      const dateB = new Date(b.occurred_at || b.created_at);
+      return dateB.getTime() - dateA.getTime();
+    });
+
+    const recentFeedbacks = sortedFeedbacks.slice(0, 50);
     
     let contextLines = '';
     let totalChars = 0;
@@ -63,7 +69,7 @@ serve(async (req) => {
     
     for (let idx = 0; idx < recentFeedbacks.length; idx++) {
       const fb = recentFeedbacks[idx];
-      const date = new Date(fb.created_at).toLocaleDateString('pt-BR');
+      const date = new Date(fb.occurred_at || fb.created_at).toLocaleDateString('pt-BR');
       const sentiment = fb.sentiment || 'neutro';
       const summary = fb.summary || fb.content.substring(0, 200);
       const coaching = fb.coaching_tips || '';
@@ -85,7 +91,21 @@ ${coaching ? `Dicas: ${coaching}` : ''}
       contextLines = 'Nenhum histórico disponível ainda.';
     }
 
-    console.log('Context prepared:', { totalChars, notesIncluded: recentFeedbacks.length });
+    // Log com range temporal para debug
+    const oldestDate = recentFeedbacks.length > 0 
+      ? new Date(recentFeedbacks[recentFeedbacks.length - 1].occurred_at || recentFeedbacks[recentFeedbacks.length - 1].created_at)
+      : null;
+    const newestDate = recentFeedbacks.length > 0 
+      ? new Date(recentFeedbacks[0].occurred_at || recentFeedbacks[0].created_at)
+      : null;
+
+    console.log('Context prepared:', { 
+      totalChars, 
+      notesIncluded: recentFeedbacks.length,
+      dateRange: oldestDate && newestDate 
+        ? `${oldestDate.toISOString().split('T')[0]} a ${newestDate.toISOString().split('T')[0]}`
+        : 'N/A'
+    });
 
     // Seção de Objetivos (condicional)
     const objectivesSection = keyObjectives && keyObjectives.trim()
@@ -187,6 +207,15 @@ ${objectivesSection}
 **Cargo**: ${memberRole || 'Não informado'}
 
 ${formatWorkStyle(workStyleData)}
+
+## IMPORTANTE: HISTÓRICO TEMPORAL
+
+- O gestor pode ter importado notas antigas de sistemas anteriores
+- As datas nas notas podem variar de meses ou anos atrás
+- Considere TODO o histórico fornecido para identificar padrões
+- Mesmo notas antigas são valiosas para análise comportamental
+- Não descarte informações por serem "antigas" - analise tendências ao longo do tempo
+- Ao responder, cite as datas das notas relevantes para dar contexto temporal
 
 ## HISTÓRICO DE NOTAS (CONTEXT_DOCUMENTS)
 
