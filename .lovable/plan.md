@@ -1,243 +1,277 @@
 
 
-## Plano: Registro Historico Limpo e Assincrono
+## Plano: Smart Date & Trava de Qualidade
 
 ### Objetivo
 
-Transformar a timeline de feedbacks em um **registro historico estatico e instantaneo**, removendo toda poluicao visual relacionada a IA. A inteligencia sera acionada apenas sob demanda no Mentor Chat, que le os dados brutos do banco.
+Implementar extração inteligente de datas a partir do conteúdo colado/carregado e criar uma trava de qualidade que obriga o usuário a validar a data antes de salvar.
 
 ---
 
 ### Estado Atual
 
-| Componente | Problema Identificado |
-|------------|----------------------|
-| `FeedbackTimeline.tsx` | Exibe badges de sentimento, dicas de coaching, botao "Gerar Analise de IA", banners de processamento |
-| `NewNoteDialog.tsx` | Footer some com scroll longo, botao diz "Analisar e Salvar" |
-| Banco de dados | Dados de IA (summary, sentiment, coaching_tips) continuam salvos - **NAO serao deletados** |
+| Item | Situação |
+|------|----------|
+| Estado `occurredAt` | Inicializado com `new Date()` (hoje) |
+| Botão Salvar | Habilitado sempre que houver conteúdo |
+| Extração de data | Não existe |
+| Persistência `occurred_at` | Já funciona corretamente |
 
 ---
 
-### Parte 1: Limpeza do Feed (FeedbackTimeline.tsx)
+### Parte 1: Trava de Qualidade (Estado Inicial Vazio)
 
-**Elementos a REMOVER da renderizacao:**
-
-| Elemento | Linhas | Acao |
-|----------|--------|------|
-| Badge de Tipo (Positivo/Neutro) | 109-111 | Remover |
-| Badge de Sentimento | 112-114 | Remover |
-| Loading "Analisando..." | 115-120 | Remover |
-| Loading "Em processamento..." | 121-126 | Remover |
-| Banner amarelo "Analise em processamento" | 167-178 | Remover |
-| Secao "Resumo" com summary | 182-212 | Remover |
-| Secao "Dicas para lideranca" | 214-227 | Remover |
-| Secao "Alerta de Vies" | 229-237 | Remover |
-| Collapsible "Ver Transcricao Original" | 239-253 | Remover (conteudo ja sera exibido diretamente) |
-| Botao "Gerar Analise de IA" | 284-303 | Remover |
-
-**Elementos a MANTER:**
-
-| Elemento | Descricao |
-|----------|-----------|
-| Data | Exibir `occurred_at` ou `created_at` com icone Calendar |
-| Botao Delete | Manter funcionalidade de exclusao |
-| Conteudo (content) | Exibir texto original com `line-clamp-4` |
-| Toggle "Ver mais/menos" | Expandir conteudo longo |
-
-**Codigo que pode ser REMOVIDO (nao sera mais usado):**
-
-- Props `onReanalyze` e `reanalyzingId`
-- Funcoes `getTypeVariant`, `getTypeLabel`, `getSentimentLabel`
-- Funcao `hasAnalysis`, `isProcessingAnalysis`
-- Estado `openTranscripts`
-- Campos da interface: `summary`, `sentiment`, `coaching_tips`, `bias_alert`, `_analysisStuck`
-
-**Layout Final do Card:**
-
-```
-+----------------------------------------------------------+
-|  [Data: 15 de janeiro de 2026]                    [Lixeira]|
-|----------------------------------------------------------|
-|  Lorem ipsum dolor sit amet, consectetur adipiscing...    |
-|  [Ver mais]                                               |
-+----------------------------------------------------------+
-```
-
----
-
-### Parte 2: Layout do Modal (NewNoteDialog.tsx)
-
-**Problema Atual:**
-- Em telas pequenas ou textos longos, o footer some e o usuario precisa rolar a pagina inteira
-- Botao menciona "Analisar" gerando expectativa de processamento
-
-**Solucao - Sticky Footer:**
-
-Refatorar `DialogContent` para usar flex layout com altura controlada:
-
-```
-DialogContent
-├── flex flex-col max-h-[85vh]
-│
-├── DialogHeader (fixo no topo)
-│
-├── div.flex-1.overflow-y-auto (area scrollavel)
-│   ├── Select Liderado
-│   ├── DatePicker Data registrada
-│   ├── Upload Area
-│   └── RichTextEditor
-│
-└── DialogFooter (sticky no rodape, sempre visivel)
-    ├── [Cancelar]
-    └── [Salvar]  ← RENOMEAR de "Analisar e Salvar"
-```
-
-**Alteracoes no handleSubmit:**
-
-- Alterar toast de sucesso de "Processando analise inteligente..." para mensagem mais simples
-- Remover chamada ao `analyze-feedback-background` (nao sera mais necessario)
-- Manter backup no Storage como safety net
-
----
-
-### Parte 3: Atualizacao do MemberDetails.tsx
-
-Remover props nao utilizados ao chamar `FeedbackTimeline`:
+**Alterações no Estado:**
 
 ```typescript
-// Antes
-<FeedbackTimeline 
-  feedbacks={feedbacks} 
-  onDelete={handleDeleteFeedback} 
-  onReanalyze={handleReanalyze}  // REMOVER
-  reanalyzingId={reanalyzingId}  // REMOVER
-/>
+// ANTES
+const [occurredAt, setOccurredAt] = useState<Date>(new Date());
 
-// Depois
-<FeedbackTimeline 
-  feedbacks={feedbacks} 
-  onDelete={handleDeleteFeedback}
-/>
+// DEPOIS
+const [occurredAt, setOccurredAt] = useState<Date | undefined>(undefined);
 ```
 
-Remover funcao `handleReanalyze` e estado `reanalyzingId` do componente.
+**Alterações no Botão Salvar:**
 
----
-
-### Resumo das Alteracoes
-
-| Arquivo | Alteracao |
-|---------|-----------|
-| `FeedbackTimeline.tsx` | Remover TODA renderizacao de IA, simplificar para Data + Conteudo + Delete |
-| `NewNoteDialog.tsx` | Sticky footer, renomear botao para "Salvar", simplificar toast |
-| `MemberDetails.tsx` | Remover props e handlers de reanalise |
-
----
-
-### Impacto no Banco de Dados
-
-**ZERO** - Os dados existentes (`summary`, `sentiment`, `coaching_tips`, `bias_alert`, `embedding`) permanecem no banco. Apenas a **visualizacao** e removida. O Mentor Chat continuara tendo acesso aos dados brutos para analise sob demanda.
-
----
-
-### Secao Tecnica
-
-**FeedbackTimeline.tsx - Componente Simplificado:**
+Adicionar `!occurredAt` à condição de disabled:
 
 ```typescript
-interface Feedback {
-  id: string;
-  created_at: string;
-  occurred_at?: string;
-  content: string;
-  type: 'positive' | 'constructive' | 'neutral';
-}
+<Button 
+  onClick={handleSubmit} 
+  disabled={loading || isProcessingFile || !occurredAt}
+>
+```
 
-interface FeedbackTimelineProps {
-  feedbacks: Feedback[];
-  onDelete?: (id: string) => void;
-}
+**Alterações na UI:**
 
-export const FeedbackTimeline = ({ feedbacks, onDelete }: FeedbackTimelineProps) => {
-  const [expandedContent, setExpandedContent] = useState<Record<string, boolean>>({});
+- Atualizar o texto de ajuda para indicar obrigatoriedade
+- Adicionar estilo visual indicando campo obrigatório quando vazio
 
-  const toggleExpand = (id: string) => {
-    setExpandedContent(prev => ({ ...prev, [id]: !prev[id] }));
-  };
+---
 
-  const shouldShowExpandButton = (text: string | undefined) => {
-    if (!text) return false;
-    return text.length > 280;
-  };
+### Parte 2: Extração Inteligente de Data
 
-  return (
-    <div className="space-y-6">
-      {feedbacks.map((feedback) => (
-        <Card key={feedback.id} className="border-l-4 border-l-primary">
-          <CardContent className="pt-6">
-            {/* Header: Data + Delete */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                <span>{new Date(feedback.occurred_at || feedback.created_at).toLocaleDateString('pt-BR')}</span>
-              </div>
-              {onDelete && (
-                <AlertDialog>
-                  {/* ... delete confirmation ... */}
-                </AlertDialog>
-              )}
-            </div>
-            
-            {/* Content with expand toggle */}
-            <p className={cn(
-              "text-foreground leading-relaxed",
-              !expandedContent[feedback.id] && shouldShowExpandButton(feedback.content) && "line-clamp-4"
-            )}>
-              {feedback.content}
-            </p>
-            {shouldShowExpandButton(feedback.content) && (
-              <Button variant="ghost" size="sm" onClick={() => toggleExpand(feedback.id)}>
-                {expandedContent[feedback.id] ? 'Ver menos' : 'Ver mais'}
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
+**Nova função utilitária `extractDateFromText()`:**
+
+Localização: Dentro do próprio componente (pode ser extraída para `/lib/dateUtils.ts` no futuro)
+
+```typescript
+const extractDateFromText = (text: string): Date | null => {
+  // Analisar apenas as primeiras 20 linhas
+  const lines = text.split('\n').slice(0, 20).join('\n');
+  
+  // Padrões de regex ordenados por prioridade:
+  const patterns = [
+    // Tactiq/Meeting Notes: "Meeting started: 15/01/2025"
+    /Meeting\s+started:?\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/i,
+    
+    // ISO Format: 2025-01-15
+    /(\d{4})-(\d{2})-(\d{2})/,
+    
+    // BR Format: 15/01/2025 ou 15-01-2025
+    /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/,
+    
+    // BR Format curto: 15/01/25
+    /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2})/,
+  ];
+  
+  for (const pattern of patterns) {
+    const match = lines.match(pattern);
+    if (match) {
+      // Parse e validar a data
+      // Retornar Date válido ou continuar tentando
+    }
+  }
+  
+  return null; // Nenhuma data encontrada
 };
 ```
 
-**NewNoteDialog.tsx - Layout Sticky:**
+**Integração com onDrop (upload de arquivo):**
 
 ```typescript
-<DialogContent className="sm:max-w-[600px] flex flex-col max-h-[85vh] p-0">
-  <DialogHeader className="px-6 pt-6 pb-4">
-    {/* ... header ... */}
-  </DialogHeader>
+const handleDrop = async (e: React.DragEvent) => {
+  e.preventDefault();
+  setIsDragging(false);
   
-  {/* Scrollable content area */}
-  <div className="flex-1 overflow-y-auto px-6 space-y-4">
-    {/* Select, DatePicker, Upload, Editor */}
-  </div>
+  const file = e.dataTransfer.files[0];
+  if (file) {
+    await handleFileSelect(file);
+    // Após extrair texto, tentar detectar data
+  }
+};
+
+const handleFileSelect = async (file: File) => {
+  // ... código existente ...
+  const extractedText = await extractTextFromFile(file);
+  setContent(extractedText);
   
-  {/* Sticky footer - always visible */}
-  <DialogFooter className="px-6 py-4 border-t bg-background">
-    <Button variant="outline">Cancelar</Button>
-    <Button>Salvar</Button>  {/* Renomeado */}
-  </DialogFooter>
-</DialogContent>
+  // NOVO: Tentar extrair data do texto
+  tryExtractDate(extractedText);
+};
 ```
 
-**handleSubmit simplificado:**
+**Integração com onPaste:**
+
+Adicionar handler de paste no RichTextEditor ou na área de conteúdo:
 
 ```typescript
-toast({
-  title: "Anotacao salva!",
-  description: "Registro adicionado ao historico.",
-});
+const handlePaste = (e: React.ClipboardEvent) => {
+  const pastedText = e.clipboardData.getData('text');
+  if (pastedText) {
+    tryExtractDate(pastedText);
+  }
+};
+```
 
-// REMOVER chamada analyze-feedback-background
-// MANTER backup-data como safety net
+**Função auxiliar com toast:**
+
+```typescript
+const tryExtractDate = (text: string) => {
+  const detectedDate = extractDateFromText(text);
+  
+  if (detectedDate) {
+    setOccurredAt(detectedDate);
+    toast({
+      title: "📅 Data detectada",
+      description: `Data de ${format(detectedDate, "dd/MM/yyyy")} encontrada no texto.`,
+    });
+  }
+  // Se não encontrar, não faz nada - campo permanece vazio
+};
+```
+
+---
+
+### Parte 3: Ajustes de UI
+
+**Campo de Data - Estado Vazio:**
+
+```typescript
+<Button
+  variant="outline"
+  className={cn(
+    "w-full justify-start text-left font-normal",
+    !occurredAt && "text-muted-foreground border-orange-300"
+  )}
+>
+  <CalendarIcon className="mr-2 h-4 w-4" />
+  {occurredAt 
+    ? format(occurredAt, "PPP", { locale: ptBR }) 
+    : "Selecione a data do ocorrido *"}
+</Button>
+```
+
+**Texto de Ajuda Atualizado:**
+
+```typescript
+<p className="text-xs text-muted-foreground">
+  {occurredAt 
+    ? "Quando o fato aconteceu" 
+    : "⚠️ Campo obrigatório - selecione quando o fato aconteceu"}
+</p>
+```
+
+---
+
+### Parte 4: Reset do Estado
+
+**No handleSubmit (após salvar):**
+
+```typescript
+setContent('');
+setMemberId('');
+setOccurredAt(undefined); // Resetar para undefined
+onOpenChange(false);
+```
+
+---
+
+### Resumo de Alterações
+
+| Arquivo | Alteração |
+|---------|-----------|
+| `NewNoteDialog.tsx` | Estado `occurredAt` inicia `undefined`, botão disabled sem data, extração via regex no upload/paste |
+
+---
+
+### Seção Técnica
+
+**Função completa `extractDateFromText`:**
+
+```typescript
+const extractDateFromText = (text: string): Date | null => {
+  const lines = text.split('\n').slice(0, 20).join('\n');
+  
+  // Padrão Tactiq: "Meeting started: 15/01/2025" ou "Meeting started 15-01-2025"
+  const tactiqMatch = lines.match(/Meeting\s+started:?\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/i);
+  if (tactiqMatch) {
+    const [, day, month, year] = tactiqMatch;
+    const fullYear = year.length === 2 ? `20${year}` : year;
+    const date = new Date(parseInt(fullYear), parseInt(month) - 1, parseInt(day));
+    if (!isNaN(date.getTime()) && date <= new Date()) return date;
+  }
+  
+  // ISO Format: 2025-01-15
+  const isoMatch = lines.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
+    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    if (!isNaN(date.getTime()) && date <= new Date()) return date;
+  }
+  
+  // BR Format: 15/01/2025
+  const brMatch = lines.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (brMatch) {
+    const [, day, month, year] = brMatch;
+    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    if (!isNaN(date.getTime()) && date <= new Date()) return date;
+  }
+  
+  // BR Format curto: 15/01/25
+  const brShortMatch = lines.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2})(?!\d)/);
+  if (brShortMatch) {
+    const [, day, month, year] = brShortMatch;
+    const fullYear = parseInt(year) > 50 ? `19${year}` : `20${year}`;
+    const date = new Date(parseInt(fullYear), parseInt(month) - 1, parseInt(day));
+    if (!isNaN(date.getTime()) && date <= new Date()) return date;
+  }
+  
+  return null;
+};
+```
+
+**Handler de Paste integrado:**
+
+O RichTextEditor usa TipTap. Precisamos adicionar um wrapper `onPaste` na div container ou configurar um evento no editor.
+
+```typescript
+// No container da área de conteúdo:
+<div 
+  className="space-y-2"
+  onPaste={(e) => {
+    const text = e.clipboardData.getData('text');
+    if (text && !occurredAt) {
+      tryExtractDate(text);
+    }
+  }}
+>
+```
+
+---
+
+### Validação Extra no handleSubmit
+
+Adicionar validação explícita caso o botão seja ativado de alguma forma:
+
+```typescript
+if (!occurredAt) {
+  toast({
+    title: "Campo obrigatório",
+    description: "Por favor, selecione a data do ocorrido.",
+    variant: "destructive"
+  });
+  return;
+}
 ```
 
