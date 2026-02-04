@@ -16,6 +16,47 @@ import { ptBR } from 'date-fns/locale';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
+// Smart Date Extraction - analisa as primeiras 20 linhas do texto
+const extractDateFromText = (text: string): Date | null => {
+  const lines = text.split('\n').slice(0, 20).join('\n');
+  
+  // Padrão Tactiq: "Meeting started: 15/01/2025" ou "Meeting started 15-01-2025"
+  const tactiqMatch = lines.match(/Meeting\s+started:?\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/i);
+  if (tactiqMatch) {
+    const [, day, month, year] = tactiqMatch;
+    const fullYear = year.length === 2 ? `20${year}` : year;
+    const date = new Date(parseInt(fullYear), parseInt(month) - 1, parseInt(day));
+    if (!isNaN(date.getTime()) && date <= new Date()) return date;
+  }
+  
+  // ISO Format: 2025-01-15
+  const isoMatch = lines.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
+    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    if (!isNaN(date.getTime()) && date <= new Date()) return date;
+  }
+  
+  // BR Format: 15/01/2025
+  const brMatch = lines.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (brMatch) {
+    const [, day, month, year] = brMatch;
+    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    if (!isNaN(date.getTime()) && date <= new Date()) return date;
+  }
+  
+  // BR Format curto: 15/01/25
+  const brShortMatch = lines.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2})(?!\d)/);
+  if (brShortMatch) {
+    const [, day, month, year] = brShortMatch;
+    const fullYear = parseInt(year) > 50 ? `19${year}` : `20${year}`;
+    const date = new Date(parseInt(fullYear), parseInt(month) - 1, parseInt(day));
+    if (!isNaN(date.getTime()) && date <= new Date()) return date;
+  }
+  
+  return null;
+};
+
 interface NewNoteDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -28,7 +69,7 @@ interface NewNoteDialogProps {
 export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName, onSuccess, workspaceId }: NewNoteDialogProps) => {
   const [content, setContent] = useState('');
   const [memberId, setMemberId] = useState(selectedMemberId || '');
-  const [occurredAt, setOccurredAt] = useState<Date>(new Date());
+  const [occurredAt, setOccurredAt] = useState<Date | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -36,6 +77,20 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<ReturnType<typeof useEditor> | null>(null);
   const { toast } = useToast();
+
+  // Função para tentar extrair data do texto
+  const tryExtractDate = (text: string) => {
+    if (occurredAt) return; // Não sobrescrever se já tiver data
+    
+    const detectedDate = extractDateFromText(text);
+    if (detectedDate) {
+      setOccurredAt(detectedDate);
+      toast({
+        title: "📅 Data detectada",
+        description: `Data de ${format(detectedDate, "dd/MM/yyyy")} encontrada no texto.`,
+      });
+    }
+  };
 
   // Carregar membros quando o dialog abre - FILTRO por workspace
   React.useEffect(() => {
@@ -75,6 +130,10 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
     try {
       const extractedText = await extractTextFromFile(file);
       setContent(extractedText);
+      
+      // Tentar extrair data automaticamente do texto
+      tryExtractDate(extractedText);
+      
       toast({
         title: "Arquivo processado!",
         description: `Texto extraído de ${file.name}`,
@@ -133,6 +192,16 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
       toast({
         title: "Campo obrigatório",
         description: "Por favor, selecione um liderado.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validação extra de data obrigatória
+    if (!occurredAt) {
+      toast({
+        title: "Campo obrigatório",
+        description: "Por favor, selecione a data do ocorrido.",
         variant: "destructive"
       });
       return;
@@ -245,20 +314,22 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
             </div>
           )}
 
-          {/* DatePicker - Data do Ocorrido */}
+          {/* DatePicker - Data do Ocorrido (obrigatório) */}
           <div className="space-y-2">
-            <Label>Data registrada</Label>
+            <Label>Data registrada *</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   className={cn(
                     "w-full justify-start text-left font-normal",
-                    !occurredAt && "text-muted-foreground"
+                    !occurredAt && "text-muted-foreground border-orange-300"
                   )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {occurredAt ? format(occurredAt, "PPP", { locale: ptBR }) : "Selecione a data"}
+                  {occurredAt 
+                    ? format(occurredAt, "PPP", { locale: ptBR }) 
+                    : "Selecione a data do ocorrido"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
@@ -273,7 +344,9 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
               </PopoverContent>
             </Popover>
             <p className="text-xs text-muted-foreground">
-              Quando o fato aconteceu (padrão: hoje)
+              {occurredAt 
+                ? "Quando o fato aconteceu" 
+                : "⚠️ Campo obrigatório - selecione quando o fato aconteceu"}
             </p>
           </div>
           
@@ -312,7 +385,15 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div 
+            className="space-y-2"
+            onPaste={(e) => {
+              const text = e.clipboardData.getData('text');
+              if (text && !occurredAt) {
+                tryExtractDate(text);
+              }
+            }}
+          >
             <Label htmlFor="content">Conteúdo</Label>
             <RichTextEditor
               content={content}
@@ -342,7 +423,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
             Cancelar
           </Button>
-          <Button onClick={handleSubmit} disabled={loading || isProcessingFile}>
+          <Button onClick={handleSubmit} disabled={loading || isProcessingFile || !occurredAt}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Salvar
           </Button>
