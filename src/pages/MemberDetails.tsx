@@ -309,7 +309,9 @@ const MemberDetails = () => {
                         <p className="text-sm font-medium text-muted-foreground">Processamento de informações</p>
                         <div>
                           {(() => {
-                        const config = styleConfig.processing[(member.work_style_data as unknown as WorkStyleData).processing];
+                        const key = (member.work_style_data as unknown as WorkStyleData).processing;
+                        const config = key ? styleConfig.processing[key as keyof typeof styleConfig.processing] : null;
+                        if (!config) return null;
                         const Icon = config.icon;
                         return <Badge variant="secondary" className={`${config.color} gap-2 py-2 px-3`}>
                                 <Icon className="h-4 w-4" />
@@ -324,7 +326,9 @@ const MemberDetails = () => {
                         <p className="text-sm font-medium text-muted-foreground">Estilo de feedback</p>
                         <div>
                           {(() => {
-                        const config = styleConfig.feedback[(member.work_style_data as unknown as WorkStyleData).feedback];
+                        const key = (member.work_style_data as unknown as WorkStyleData).feedback;
+                        const config = key ? styleConfig.feedback[key as keyof typeof styleConfig.feedback] : null;
+                        if (!config) return null;
                         const Icon = config.icon;
                         return <Badge variant="secondary" className={`${config.color} gap-2 py-2 px-3`}>
                                 <Icon className="h-4 w-4" />
@@ -339,7 +343,9 @@ const MemberDetails = () => {
                         <p className="text-sm font-medium text-muted-foreground">Estilo de trabalho</p>
                         <div>
                           {(() => {
-                        const config = styleConfig.autonomy[(member.work_style_data as unknown as WorkStyleData).autonomy];
+                        const key = (member.work_style_data as unknown as WorkStyleData).autonomy;
+                        const config = key ? styleConfig.autonomy[key as keyof typeof styleConfig.autonomy] : null;
+                        if (!config) return null;
                         const Icon = config.icon;
                         return <Badge variant="secondary" className={`${config.color} gap-2 py-2 px-3`}>
                                 <Icon className="h-4 w-4" />
@@ -354,7 +360,9 @@ const MemberDetails = () => {
                         <p className="text-sm font-medium text-muted-foreground">Horário de pico</p>
                         <div>
                           {(() => {
-                        const config = styleConfig.energy[(member.work_style_data as unknown as WorkStyleData).energy];
+                        const key = (member.work_style_data as unknown as WorkStyleData).energy;
+                        const config = key ? styleConfig.energy[key as keyof typeof styleConfig.energy] : null;
+                        if (!config) return null;
                         const Icon = config.icon;
                         return <Badge variant="secondary" className={`${config.color} gap-2 py-2 px-3`}>
                                 <Icon className="h-4 w-4" />
@@ -369,7 +377,9 @@ const MemberDetails = () => {
                         <p className="text-sm font-medium text-muted-foreground">Motivação principal</p>
                         <div>
                           {(() => {
-                        const config = styleConfig.motivation[(member.work_style_data as unknown as WorkStyleData).motivation];
+                        const key = (member.work_style_data as unknown as WorkStyleData).motivation;
+                        const config = key ? styleConfig.motivation[key as keyof typeof styleConfig.motivation] : null;
+                        if (!config) return null;
                         const Icon = config.icon;
                         return <Badge variant="secondary" className={`${config.color} gap-2 py-2 px-3`}>
                                 <Icon className="h-4 w-4" />
