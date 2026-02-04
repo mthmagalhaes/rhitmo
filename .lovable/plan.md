@@ -1,106 +1,302 @@
 
 
-## Plano: Correção de "Miopia Temporal" no Mentor Chat
+## Plano: Profissionalização do PDF de Avaliação
 
-### Problema Identificado
+### Objetivo
 
-O Mentor Chat está ignorando 20 das 25 notas importadas porque a Edge Function limita artificialmente o contexto a apenas 5 notas:
+Gerar um PDF limpo, profissional, com margens brancas, sem artefatos de navegador (URLs, datas de impressão) e com cabeçalho rico mostrando o período avaliado.
 
-| Localização | Problema |
-|-------------|----------|
-| `chat-mentor/index.ts` linha 58 | `feedbacks.slice(0, 5)` - Limita a 5 notas apenas |
-| `chat-mentor/index.ts` linha 66 | Usa `created_at` (data de inserção) ao invés de `occurred_at` (data real do evento) |
-| System Prompt | Não instrui a IA a considerar histórico antigo |
+---
 
-### Fluxo Atual (Bug)
+### Estado Atual
 
-```text
-1. Usuário importa 25 notas de Out/Nov/Dez 2025
-2. MemberDetails busca todas as 25 (ordenadas por created_at DESC)
-3. MentorChat envia as 25 para Edge Function
-4. Edge Function: feedbacks.slice(0, 5) → Usa só 5 notas!
-5. IA recebe pouco contexto → "Não encontrei registros suficientes"
+| Item | Situação |
+|------|----------|
+| PDF Export | Mostra "about:blank", headers/footers do browser |
+| Período Avaliado | Não é exibido no PDF (não está salvo no banco) |
+| Página em Branco | PDF gera página final vazia |
+| Tabela `performance_reviews` | Não tem colunas `period_start` e `period_end` |
+
+---
+
+### Parte 1: Migração do Banco de Dados
+
+Adicionar colunas para armazenar as datas do período avaliado:
+
+```sql
+ALTER TABLE performance_reviews
+ADD COLUMN period_start TIMESTAMPTZ,
+ADD COLUMN period_end TIMESTAMPTZ;
+```
+
+**Justificativa**: Sem essas colunas, não há como exibir "Período Avaliado: 01/10/2025 a 31/12/2025" no PDF.
+
+---
+
+### Parte 2: Alterações no NewReviewDialog.tsx
+
+Salvar as datas do período ao criar a avaliação:
+
+```typescript
+const { error } = await supabase
+  .from('performance_reviews')
+  .insert({
+    member_id: memberId,
+    title: title.trim(),
+    content: content.trim(),
+    coaching_tip: coachingTip,
+    period_type: generatedMonths ? periodTypeMap[generatedMonths] : 'manual',
+    period_start: dateRange?.from?.toISOString(),  // NOVO
+    period_end: dateRange?.to?.toISOString()       // NOVO
+  });
 ```
 
 ---
 
-### Solução
+### Parte 3: Alterações na Interface PerformanceReview
 
-#### Parte 1: Aumentar Limite de Notas (5 → 50)
-
-Alterar de 5 para 50 notas, mantendo o limite de caracteres para evitar estouro de tokens:
+Atualizar a interface em ambos os arquivos para incluir as novas propriedades:
 
 ```typescript
-// ANTES (linha 58):
-const recentFeedbacks = feedbacks.slice(0, 5);
-
-// DEPOIS:
-const recentFeedbacks = feedbacks.slice(0, 50);
+interface PerformanceReview {
+  id: string;
+  title: string;
+  content: string;
+  coaching_tip?: string | null;
+  period_type: string;
+  period_start?: string | null;  // NOVO
+  period_end?: string | null;    // NOVO
+  created_at: string;
+}
 ```
 
-**Justificativa**: O limite de 5000 caracteres já existe (linha 62), então aumentar para 50 notas permite que o sistema inclua quantas couberem dentro desse limite.
+---
 
-#### Parte 2: Ordenar por occurred_at (Data Real)
+### Parte 4: Alterações no PerformanceReviewList.tsx
 
-Os feedbacks chegam ordenados por `created_at`, mas devemos usar `occurred_at` para contexto temporal correto:
+Adicionar as colunas no SELECT:
 
 ```typescript
-// Ordenar por occurred_at (mais recentes primeiro)
-const sortedFeedbacks = [...feedbacks].sort((a, b) => {
-  const dateA = new Date(a.occurred_at || a.created_at);
-  const dateB = new Date(b.occurred_at || b.created_at);
-  return dateB.getTime() - dateA.getTime();
-});
-
-const recentFeedbacks = sortedFeedbacks.slice(0, 50);
+const { data, error } = await supabase
+  .from('performance_reviews')
+  .select('id, title, content, coaching_tip, period_type, period_start, period_end, created_at')
+  .eq('member_id', memberId)
+  .order('created_at', { ascending: false });
 ```
 
-#### Parte 3: Usar occurred_at na Formatação
+---
 
-Atualizar a formatação do contexto para mostrar a data real do evento:
+### Parte 5: Profissionalização do PDF (ReviewViewDialog.tsx)
 
-```typescript
-// ANTES (linha 66):
-const date = new Date(fb.created_at).toLocaleDateString('pt-BR');
+**5.1 - Remover Artefatos do Navegador:**
 
-// DEPOIS:
-const date = new Date(fb.occurred_at || fb.created_at).toLocaleDateString('pt-BR');
+```css
+@page {
+  margin: 0;
+  size: auto;
+}
+
+@media print {
+  html, body {
+    margin: 0;
+    padding: 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  /* Container principal sem quebra forçada */
+  .content-wrapper {
+    height: auto !important;
+    display: block;
+    page-break-after: avoid;
+  }
+}
 ```
 
-#### Parte 4: Adicionar Instrução ao System Prompt
-
-Incluir orientação explícita para a IA considerar histórico antigo:
+**5.2 - Cabeçalho Rico com Período Avaliado:**
 
 ```typescript
-## IMPORTANTE: HISTÓRICO TEMPORAL
+const handleExportPDF = () => {
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) { /* erro */ }
 
-- O gestor pode ter importado notas antigas de sistemas anteriores
-- As datas nas notas podem variar de meses ou anos atrás
-- Considere TODO o histórico fornecido para identificar padrões
-- Mesmo notas antigas são valiosas para análise comportamental
-- Não descarte informações por serem "antigas" - analise tendências ao longo do tempo
+  const htmlContent = review.content.includes('</')
+    ? review.content
+    : marked(review.content);
+
+  // Formatar período
+  const periodStart = review.period_start 
+    ? new Date(review.period_start).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+    : null;
+  const periodEnd = review.period_end 
+    ? new Date(review.period_end).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+    : null;
+  
+  const periodText = periodStart && periodEnd 
+    ? `${periodStart} a ${periodEnd}` 
+    : 'Período não especificado';
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>${review.title}</title>
+        <style>
+          @page {
+            margin: 0;
+            size: A4;
+          }
+          
+          * {
+            box-sizing: border-box;
+          }
+          
+          html, body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          
+          .document {
+            padding: 2cm;
+            max-width: 100%;
+            height: auto;
+          }
+          
+          /* Header */
+          .header {
+            border-bottom: 3px solid #7C3AED;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+          }
+          
+          h1 {
+            color: #222;
+            margin: 0 0 16px 0;
+            font-size: 24px;
+          }
+          
+          .metadata {
+            color: #666;
+            font-size: 0.9em;
+          }
+          
+          .metadata p {
+            margin: 4px 0;
+          }
+          
+          .period-highlight {
+            background-color: #F3F4F6;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-top: 12px;
+            display: inline-block;
+          }
+          
+          /* Content Styles */
+          h2 { 
+            color: #444; 
+            margin-top: 28px;
+            margin-bottom: 12px;
+            font-size: 18px;
+          }
+          
+          h3 {
+            color: #555;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 16px;
+          }
+          
+          ul, ol { 
+            padding-left: 24px;
+            margin: 12px 0;
+          }
+          
+          li {
+            margin: 6px 0;
+          }
+          
+          p {
+            margin: 10px 0;
+          }
+          
+          strong {
+            color: #222;
+          }
+          
+          /* Evitar página em branco */
+          .content {
+            height: auto !important;
+            page-break-inside: auto;
+          }
+          
+          @media print {
+            .document {
+              padding: 1.5cm;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="document">
+          <div class="header">
+            <h1>${review.title}</h1>
+            <div class="metadata">
+              <p><strong>Colaborador:</strong> <!-- Nome se disponível --></p>
+              <p><strong>Data de Criação:</strong> ${new Date(review.created_at).toLocaleDateString('pt-BR', { 
+                day: '2-digit', 
+                month: 'long', 
+                year: 'numeric' 
+              })}</p>
+              <div class="period-highlight">
+                <strong>📅 Período Avaliado:</strong> ${periodText}
+              </div>
+            </div>
+          </div>
+          <div class="content">
+            ${htmlContent}
+          </div>
+        </div>
+      </body>
+    </html>
+  `);
+  
+  printWindow.document.close();
+  setTimeout(() => {
+    printWindow.print();
+  }, 300);
+};
 ```
 
-#### Parte 5: Melhorar Log de Debug
+---
 
-Adicionar informações sobre o range temporal das notas:
+### Parte 6: Passar o Nome do Membro para o PDF
+
+Atualizar as props do `ReviewViewDialog` para receber `memberName`:
 
 ```typescript
-// Após preparar o contexto
-const oldestDate = recentFeedbacks.length > 0 
-  ? new Date(recentFeedbacks[recentFeedbacks.length - 1].occurred_at || recentFeedbacks[recentFeedbacks.length - 1].created_at)
-  : null;
-const newestDate = recentFeedbacks.length > 0 
-  ? new Date(recentFeedbacks[0].occurred_at || recentFeedbacks[0].created_at)
-  : null;
+// PerformanceReviewList.tsx
+<ReviewViewDialog
+  ...
+  memberName={memberName}  // NOVO
+/>
 
-console.log('Context prepared:', { 
-  totalChars, 
-  notesIncluded: recentFeedbacks.length,
-  dateRange: oldestDate && newestDate 
-    ? `${oldestDate.toISOString().split('T')[0]} a ${newestDate.toISOString().split('T')[0]}`
-    : 'N/A'
-});
+// ReviewViewDialog.tsx
+interface ReviewViewDialogProps {
+  ...
+  memberName?: string;  // NOVO
+}
+```
+
+E usar no cabeçalho:
+
+```html
+<p><strong>Colaborador:</strong> ${memberName || 'Não informado'}</p>
 ```
 
 ---
@@ -109,72 +305,37 @@ console.log('Context prepared:', {
 
 | Arquivo | Alteração |
 |---------|-----------|
-| `supabase/functions/chat-mentor/index.ts` | Aumentar limite para 50 notas, ordenar por occurred_at, adicionar instrução no prompt |
+| `migrations/` | Adicionar colunas `period_start` e `period_end` |
+| `NewReviewDialog.tsx` | Salvar datas ao criar avaliação |
+| `PerformanceReviewList.tsx` | Buscar novas colunas, passar `memberName` |
+| `ReviewViewDialog.tsx` | Interface atualizada, PDF profissionalizado |
 
 ---
 
 ### Seção Técnica
 
-**Código completo da nova lógica de seleção:**
+**CSS para Remover Headers/Footers do Browser:**
 
-```typescript
-// Ordenar por occurred_at (mais recentes primeiro) e limitar a 50
-const sortedFeedbacks = [...feedbacks].sort((a, b) => {
-  const dateA = new Date(a.occurred_at || a.created_at);
-  const dateB = new Date(b.occurred_at || b.created_at);
-  return dateB.getTime() - dateA.getTime();
-});
+O problema é que navegadores automaticamente adicionam URL, data e hora em prints. A solução é usar `@page { margin: 0 }` que remove a área onde esses headers são renderizados, e então usar padding interno no documento.
 
-const recentFeedbacks = sortedFeedbacks.slice(0, 50);
+**Prevenção de Página em Branco:**
 
-let contextLines = '';
-let totalChars = 0;
-const maxChars = 5000;
+A página em branco geralmente é causada por:
+1. `height: 100vh` ou `min-height: 100vh` no container
+2. `flex: 1` que ocupa espaço restante
+3. Margens ou padding excessivos
 
-for (let idx = 0; idx < recentFeedbacks.length; idx++) {
-  const fb = recentFeedbacks[idx];
-  const date = new Date(fb.occurred_at || fb.created_at).toLocaleDateString('pt-BR');
-  const sentiment = fb.sentiment || 'neutro';
-  const summary = fb.summary || fb.content.substring(0, 200);
-  const coaching = fb.coaching_tips || '';
-  
-  const noteText = `[Nota ${idx + 1} - ${date} - ${sentiment}]
-Resumo: ${summary}
-${coaching ? `Dicas: ${coaching}` : ''}
----\n\n`;
-  
-  if (totalChars + noteText.length > maxChars) {
-    break;
-  }
-  
-  contextLines += noteText;
-  totalChars += noteText.length;
-}
-```
+A solução é usar `height: auto !important` no container de conteúdo e evitar `page-break-after` desnecessários.
 
-**Nova instrução no System Prompt (após DADOS DO LIDERADO):**
-
-```typescript
-## IMPORTANTE: HISTÓRICO TEMPORAL
-
-- O gestor pode ter importado notas antigas de sistemas anteriores
-- As datas nas notas podem variar de meses ou anos atrás  
-- Considere TODO o histórico fornecido para identificar padrões
-- Mesmo notas antigas são valiosas para análise comportamental
-- Não descarte informações por serem "antigas" - analise tendências ao longo do tempo
-- Ao responder, cite as datas das notas relevantes para dar contexto temporal
-```
-
-**Novo fluxo (Corrigido):**
+**Fluxo de Dados:**
 
 ```text
-1. Usuário importa 25 notas de Out/Nov/Dez 2025
-2. MemberDetails busca todas as 25 
-3. MentorChat envia as 25 para Edge Function
-4. Edge Function ordena por occurred_at
-5. Seleciona até 50 notas (ou quantas couberem em 5000 chars)
-6. Formata com datas reais (occurred_at)
-7. System Prompt instrui IA a considerar histórico completo
-8. IA analisa todas as notas disponíveis ✓
+1. Usuário seleciona período no DateRangePicker
+2. Clica "Salvar Avaliação"
+3. NewReviewDialog salva period_start/period_end no banco
+4. PerformanceReviewList busca dados incluindo novas colunas
+5. ReviewViewDialog recebe período e memberName
+6. handleExportPDF gera HTML com cabeçalho rico
+7. PDF é gerado sem artefatos de navegador ✓
 ```
 
