@@ -1,287 +1,194 @@
 
 
-## Plano: Implementar Limpeza de HTML (Text Sanitizer)
+## Plano: File Attachment Chip UI (Estilo ChatGPT)
 
 ### Problema
 
-Transcrições coladas de ferramentas como Tactiq/Google Meet frequentemente contêm lixo HTML (`<strong>`, `<br>`, `&nbsp;`) que:
+Atualmente, ao fazer upload de um arquivo no MentorChat, o conteúdo é colado como texto bruto no campo de input, poluindo a visão do usuário. O benchmark é o ChatGPT, que mostra um ícone/chip elegante do arquivo e mantém o input limpo para a pergunta.
 
-1. Quebra a leitura da IA
-2. Interfere no reconhecimento de falantes (ex: `<strong>Matheus:</strong>` em vez de `Matheus:`)
-3. Polui o banco de dados com markup desnecessário
+---
 
 ### Solução
 
-Criar uma função utilitária `cleanTranscriptText()` que sanitiza o texto antes de salvar, garantindo que a IA receba apenas texto limpo e legível.
+Implementar um sistema de anexo visual que:
+1. Armazena o arquivo em um estado separado
+2. Renderiza um chip elegante com ícone e nome do arquivo
+3. Mantém o input livre para digitação
+4. Concatena tudo silenciosamente no momento do envio
 
 ---
 
-### Parte 1: Criar Função Utilitária (src/lib/textSanitizer.ts)
+### Parte 1: Novo State de Anexo
 
-Novo arquivo com a lógica de limpeza:
+Adicionar estado para armazenar o anexo temporariamente:
 
 ```typescript
-/**
- * Text Sanitizer - Limpa HTML e normaliza texto de transcrições
- * Garante que a IA receba texto puro para o Protocolo de Identidade funcionar
- */
+// Junto aos outros estados (após linha 85)
+const [attachment, setAttachment] = useState<{ name: string; content: string } | null>(null);
+```
 
-// Mapa de entidades HTML comuns
-const HTML_ENTITIES: Record<string, string> = {
-  '&nbsp;': ' ',
-  '&amp;': '&',
-  '&lt;': '<',
-  '&gt;': '>',
-  '&quot;': '"',
-  '&#39;': "'",
-  '&apos;': "'",
-  '&#x27;': "'",
-  '&mdash;': '—',
-  '&ndash;': '–',
-  '&hellip;': '...',
-  '&copy;': '©',
-  '&reg;': '®',
-  '&trade;': '™',
-  '&bull;': '•',
-  '&middot;': '·',
-};
+---
 
-/**
- * Remove todas as tags HTML do texto
- */
-function stripHtmlTags(text: string): string {
-  return text.replace(/<[^>]*>?/gm, '');
-}
+### Parte 2: Atualizar handleFileSelect
 
-/**
- * Decodifica entidades HTML comuns
- */
-function decodeHtmlEntities(text: string): string {
-  let result = text;
-  
-  // Substituir entidades nomeadas
-  for (const [entity, char] of Object.entries(HTML_ENTITIES)) {
-    result = result.replace(new RegExp(entity, 'gi'), char);
+Modificar a função para salvar no estado de anexo em vez de poluir o input:
+
+```typescript
+const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  if (!isFileSupported(file)) {
+    toast({
+      title: "Formato inválido",
+      description: "Envie PDF, Word, TXT, Markdown ou imagem.",
+      variant: "destructive"
+    });
+    return;
   }
-  
-  // Substituir entidades numéricas (ex: &#60;)
-  result = result.replace(/&#(\d+);/g, (_, code) => 
-    String.fromCharCode(parseInt(code, 10))
-  );
-  
-  // Substituir entidades hex (ex: &#x3C;)
-  result = result.replace(/&#x([0-9a-fA-F]+);/g, (_, code) => 
-    String.fromCharCode(parseInt(code, 16))
-  );
-  
-  return result;
-}
 
-/**
- * Normaliza quebras de linha excessivas
- */
-function normalizeLineBreaks(text: string): string {
-  return text
-    .replace(/\r\n/g, '\n')           // Windows → Unix
-    .replace(/\r/g, '\n')             // Mac antigo → Unix
-    .replace(/\n{3,}/g, '\n\n')       // Múltiplas quebras → máximo 2
-    .trim();
-}
-
-/**
- * Normaliza espaços em branco
- */
-function normalizeWhitespace(text: string): string {
-  return text
-    .replace(/[\t ]+/g, ' ')          // Múltiplos espaços/tabs → 1 espaço
-    .replace(/ +\n/g, '\n')           // Remove espaços antes de quebra
-    .replace(/\n +/g, '\n')           // Remove espaços depois de quebra
-    .trim();
-}
-
-/**
- * Função principal: Limpa texto de transcrição
- * 
- * Pipeline de limpeza:
- * 1. Remove tags HTML
- * 2. Decodifica entidades HTML
- * 3. Normaliza quebras de linha
- * 4. Normaliza espaços em branco
- */
-export function cleanTranscriptText(text: string): string {
-  if (!text) return '';
-  
-  let cleaned = text;
-  
-  // Pipeline de limpeza
-  cleaned = stripHtmlTags(cleaned);
-  cleaned = decodeHtmlEntities(cleaned);
-  cleaned = normalizeLineBreaks(cleaned);
-  cleaned = normalizeWhitespace(cleaned);
-  
-  return cleaned;
-}
-
-/**
- * Detecta se o texto contém HTML
- */
-export function containsHtml(text: string): boolean {
-  // Verifica tags HTML
-  if (/<[a-zA-Z][^>]*>/.test(text)) return true;
-  
-  // Verifica entidades HTML comuns
-  if (/&(nbsp|amp|lt|gt|quot|#\d+|#x[0-9a-fA-F]+);/i.test(text)) return true;
-  
-  return false;
-}
+  setIsExtractingFile(true);
+  try {
+    const text = await extractTextFromFile(file);
+    // ✅ NOVO: Salvar no estado de anexo em vez de colar no input
+    setAttachment({ name: file.name, content: text });
+    toast({ 
+      title: "Arquivo anexado!", 
+      description: file.name 
+    });
+  } catch (error: any) {
+    toast({ 
+      title: "Erro ao processar", 
+      description: error.message, 
+      variant: "destructive" 
+    });
+  } finally {
+    setIsExtractingFile(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }
+};
 ```
 
 ---
 
-### Parte 2: Atualizar NewNoteDialog.tsx
+### Parte 3: Atualizar handleSend (Concatenação Silenciosa)
 
-Aplicar a limpeza em dois pontos:
-
-#### 2.1 No processamento de arquivos
+Modificar o início da função para incluir o anexo no envio:
 
 ```typescript
-import { cleanTranscriptText } from '@/lib/textSanitizer';
+const handleSend = async (messageToSend?: string) => {
+  let finalMessage = messageToSend || input;
+  if (!finalMessage.trim() && !attachment) return; // Permite enviar só com anexo
+  if (isLoading || !user) return;
 
-// Dentro de handleFileSelect, após extrair o texto:
-const extractedText = await extractTextFromFile(file);
-const cleanedText = cleanTranscriptText(extractedText);
-setContent(cleanedText);
-```
+  // ✅ NOVO: Concatenar anexo silenciosamente
+  if (attachment) {
+    const attachmentBlock = `\n\n--- ARQUIVO ANEXADO (${attachment.name}) ---\n${attachment.content}`;
+    finalMessage = finalMessage + attachmentBlock;
+  }
 
-#### 2.2 No envio do formulário (handleSubmit)
-
-```typescript
-// Antes de inserir no banco:
-const cleanedContent = cleanTranscriptText(content);
-
-const { data: feedback, error: insertError } = await supabase
-  .from('feedbacks')
-  .insert({
-    manager_id: user.id,
-    member_id: targetMemberId,
-    content: cleanedContent,  // ← Texto limpo
-    type: 'neutral',
-    occurred_at: occurredAt.toISOString(),
-    // ...
-  })
+  setInput('');
+  setAttachment(null); // ✅ Limpar anexo após envio
+  // ... resto da função continua igual
+};
 ```
 
 ---
 
-### Parte 3: Atualizar RichTextEditor para Limpar no Paste
+### Parte 4: Renderizar o Chip de Arquivo (UI)
 
-Adicionar interceptação do paste para limpar HTML antes de inserir no editor:
+Adicionar import do ícone `FileText` e `X`:
 
 ```typescript
-// No RichTextEditor, adicionar extensão para interceptar paste
-const editor = useEditor({
-  extensions: [
-    StarterKit.configure({ ... }),
-    Placeholder.configure({ ... }),
-  ],
-  editorProps: {
-    handlePaste: (view, event) => {
-      const text = event.clipboardData?.getData('text/plain');
-      if (text) {
-        // Limpa o texto antes de inserir
-        const cleanedText = cleanTranscriptText(text);
-        // Insere como texto puro
-        view.dispatch(
-          view.state.tr.insertText(cleanedText)
-        );
-        return true; // Previne comportamento padrão
-      }
-      return false;
-    },
-  },
-  // ...
-});
+import { Send, Loader2, MessageCircle, Paperclip, Plus, MessageSquare, 
+         MoreHorizontal, Pencil, Trash2, FileText, X } from 'lucide-react';
+```
+
+Renderizar o chip acima do Textarea (antes da div de input):
+
+```tsx
+{/* Chip de Arquivo Anexado */}
+{attachment && (
+  <div className="flex items-center gap-2 mb-3">
+    <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border border-border 
+                    rounded-lg text-sm max-w-[300px]">
+      <FileText className="h-4 w-4 text-blue-500 flex-shrink-0" />
+      <span className="truncate text-foreground">{attachment.name}</span>
+      <button
+        onClick={() => setAttachment(null)}
+        className="p-0.5 hover:bg-accent rounded-sm transition-colors flex-shrink-0"
+        aria-label="Remover anexo"
+      >
+        <X className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+      </button>
+    </div>
+  </div>
+)}
 ```
 
 ---
 
 ### Resumo das Alterações
 
-| Arquivo | Alteração |
-|---------|-----------|
-| `src/lib/textSanitizer.ts` | **NOVO** - Função `cleanTranscriptText()` e helpers |
-| `src/components/NewNoteDialog.tsx` | Importar e aplicar limpeza no `handleFileSelect` e `handleSubmit` |
-| `src/components/ui/rich-text-editor.tsx` | Adicionar `handlePaste` para limpar texto colado |
+| Localização | Alteração |
+|-------------|-----------|
+| Estado (linha ~85) | Adicionar `attachment` state |
+| Imports (linha 7) | Adicionar `FileText` e `X` |
+| `handleFileSelect` (linhas 419-452) | Salvar no `attachment` state em vez de concatenar ao input |
+| `handleSend` (linhas 277-400) | Concatenar anexo antes do envio e limpar após |
+| Área de Input (linhas 650-722) | Adicionar chip visual acima do Textarea |
 
 ---
 
-### Exemplos de Transformação
+### UX Final
 
-| Input (Sujo) | Output (Limpo) |
-|--------------|----------------|
-| `<strong>Matheus:</strong> Olá` | `Matheus: Olá` |
-| `Yas:&nbsp;Terminei a tarefa` | `Yas: Terminei a tarefa` |
-| `<br><br><br>Gabi: Oi` | `\n\nGabi: Oi` |
-| `&quot;Projeto A&quot; concluído` | `"Projeto A" concluído` |
-| `<p>Parágrafo 1</p><p>Parágrafo 2</p>` | `Parágrafo 1 Parágrafo 2` |
+```text
+┌─────────────────────────────────────────────┐
+│  📄 Relatorio-Semana.pdf              [X]   │  ← Chip do arquivo
+├─────────────────────────────────────────────┤
+│ 📎 │ Resuma os pontos principais      🎤 ➤ │  ← Input limpo
+└─────────────────────────────────────────────┘
+```
+
+O usuário vê o arquivo como um chip elegante e pode digitar a pergunta livremente. A IA recebe tudo concatenado internamente.
 
 ---
 
 ### Seção Técnica
 
-#### Pipeline de Limpeza
+**Fluxo de Dados:**
 
 ```text
-Texto Colado (HTML sujo)
-         │
-         ▼
-    stripHtmlTags()
-    ├── Remove <strong>, <br>, <p>, etc
-         │
-         ▼
-    decodeHtmlEntities()
-    ├── &nbsp; → espaço
-    ├── &amp; → &
-    ├── &#60; → <
-         │
-         ▼
-    normalizeLineBreaks()
-    ├── \r\n → \n
-    ├── 3+ quebras → 2 quebras
-         │
-         ▼
-    normalizeWhitespace()
-    ├── Múltiplos espaços → 1
-         │
-         ▼
-    Texto Limpo → Banco de Dados
+Usuário faz upload
+       │
+       ▼
+extractTextFromFile()
+       │
+       ▼
+setAttachment({ name, content }) ← Texto armazenado aqui
+       │
+       ▼
+UI renderiza chip [📄 arquivo.pdf X]
+       │
+       ▼
+Usuário digita pergunta no input limpo
+       │
+       ▼
+handleSend() concatena: pergunta + anexo
+       │
+       ▼
+API recebe mensagem completa
+       │
+       ▼
+setAttachment(null) ← Limpa após envio
 ```
 
-#### Por que limpar no Frontend (não no Backend)?
+**Por que esse padrão é melhor:**
 
-1. **Feedback Imediato**: O usuário vê o texto limpo antes de salvar
-2. **Menor Payload**: Menos bytes enviados para o servidor
-3. **Consistência**: Garante que TODAS as notas passem pelo mesmo tratamento
-4. **Performance**: Não sobrecarrega as Edge Functions
-
-#### Integração com Protocolo de Identidade
-
-Após a limpeza, transcrições como:
-
-```html
-<strong>Yas:</strong>&nbsp;Terminei a tarefa<br><br>
-<strong>Matheus:</strong>&nbsp;Ótimo trabalho!
-```
-
-Se tornam:
-
-```text
-Yas: Terminei a tarefa
-
-Matheus: Ótimo trabalho!
-```
-
-Permitindo que a IA identifique corretamente:
-- **Yas** (variação de Yasmin) → Atribui ao membro
-- **Matheus** (gestor) → Ignora como contexto
+1. **UX Clean**: O input fica livre para a pergunta, sem scroll de texto longo
+2. **Feedback Visual**: O usuário sabe que o arquivo está anexado (chip visível)
+3. **Controle**: Botão X permite remover o anexo antes de enviar
+4. **Benchmark**: Segue o padrão do ChatGPT/Claude (referência do usuário)
 
