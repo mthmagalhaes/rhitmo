@@ -1,194 +1,245 @@
 
 
-## Plano: File Attachment Chip UI (Estilo ChatGPT)
+## Plano: Implementar Smart Tags (Auto-Classificação de Notas)
 
-### Problema
+### Visão Geral
 
-Atualmente, ao fazer upload de um arquivo no MentorChat, o conteúdo é colado como texto bruto no campo de input, poluindo a visão do usuário. O benchmark é o ChatGPT, que mostra um ícone/chip elegante do arquivo e mantém o input limpo para a pergunta.
-
----
-
-### Solução
-
-Implementar um sistema de anexo visual que:
-1. Armazena o arquivo em um estado separado
-2. Renderiza um chip elegante com ícone e nome do arquivo
-3. Mantém o input livre para digitação
-4. Concatena tudo silenciosamente no momento do envio
+Adicionar um sistema de classificação automática de notas utilizando IA, permitindo que o líder identifique visualmente o "tipo" de conversa sem precisar ler o conteúdo.
 
 ---
 
-### Parte 1: Novo State de Anexo
+### Parte 1: Banco de Dados
 
-Adicionar estado para armazenar o anexo temporariamente:
+Adicionar coluna `tags` na tabela `feedbacks`:
 
-```typescript
-// Junto aos outros estados (após linha 85)
-const [attachment, setAttachment] = useState<{ name: string; content: string } | null>(null);
+```sql
+ALTER TABLE feedbacks 
+ADD COLUMN tags TEXT[] DEFAULT '{}';
 ```
 
+**Nota**: A tabela é `feedbacks` (não `notes`), conforme identificado no schema existente.
+
 ---
 
-### Parte 2: Atualizar handleFileSelect
+### Parte 2: Nova Edge Function (`classify-note`)
 
-Modificar a função para salvar no estado de anexo em vez de poluir o input:
+Criar função em `supabase/functions/classify-note/index.ts`:
 
+**Configuração de CORS e Autenticação:**
+- `verify_jwt = true` (usuário deve estar autenticado)
+- Recebe: `{ content: string }`
+- Retorna: `{ tags: string[] }`
+
+**System Prompt (Taxonomia de Tags):**
+
+```text
+Você é um classificador de reuniões corporativas. Analise o texto e retorne ATÉ 2 tags desta lista:
+
+🎯 1:1 - Conversas individuais livres, alinhamento semanal, conexão pessoal
+🚀 PDI - Conversas sobre carreira, futuro, promoções, desenvolvimento de skills
+🚨 Feedback Difícil - Correção de rota, performance baixa, comportamento inadequado, demissão
+✅ Check-in - Status report, acompanhamento de projetos, prazos, burocracia do dia a dia
+📢 Reunião Geral - Reuniões com 3+ pessoas, alinhamentos de área, townhalls
+🧠 Brainstorming - Ideação, resolução de problemas complexos sem pauta fixa
+
+REGRAS:
+1. Se não tiver certeza absoluta, use apenas UMA tag
+2. Se for misto (ex: 1:1 que virou PDI), use as DUAS tags relevantes
+3. SEMPRE retorne pelo menos uma tag
+4. Retorne APENAS os nomes das tags, sem emojis
+```
+
+**Tool Calling para Structured Output:**
 ```typescript
-const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-
-  if (!isFileSupported(file)) {
-    toast({
-      title: "Formato inválido",
-      description: "Envie PDF, Word, TXT, Markdown ou imagem.",
-      variant: "destructive"
-    });
-    return;
-  }
-
-  setIsExtractingFile(true);
-  try {
-    const text = await extractTextFromFile(file);
-    // ✅ NOVO: Salvar no estado de anexo em vez de colar no input
-    setAttachment({ name: file.name, content: text });
-    toast({ 
-      title: "Arquivo anexado!", 
-      description: file.name 
-    });
-  } catch (error: any) {
-    toast({ 
-      title: "Erro ao processar", 
-      description: error.message, 
-      variant: "destructive" 
-    });
-  } finally {
-    setIsExtractingFile(false);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+tools: [{
+  type: "function",
+  function: {
+    name: "classify_note",
+    parameters: {
+      type: "object",
+      properties: {
+        tags: {
+          type: "array",
+          items: { 
+            type: "string",
+            enum: ["1:1", "PDI", "Feedback Difícil", "Check-in", "Reunião Geral", "Brainstorming"]
+          },
+          maxItems: 2
+        }
+      },
+      required: ["tags"]
     }
   }
-};
+}]
 ```
 
 ---
 
-### Parte 3: Atualizar handleSend (Concatenação Silenciosa)
+### Parte 3: Interface de Criação (`NewNoteDialog.tsx`)
 
-Modificar o início da função para incluir o anexo no envio:
-
-```typescript
-const handleSend = async (messageToSend?: string) => {
-  let finalMessage = messageToSend || input;
-  if (!finalMessage.trim() && !attachment) return; // Permite enviar só com anexo
-  if (isLoading || !user) return;
-
-  // ✅ NOVO: Concatenar anexo silenciosamente
-  if (attachment) {
-    const attachmentBlock = `\n\n--- ARQUIVO ANEXADO (${attachment.name}) ---\n${attachment.content}`;
-    finalMessage = finalMessage + attachmentBlock;
-  }
-
-  setInput('');
-  setAttachment(null); // ✅ Limpar anexo após envio
-  // ... resto da função continua igual
-};
-```
-
----
-
-### Parte 4: Renderizar o Chip de Arquivo (UI)
-
-Adicionar import do ícone `FileText` e `X`:
+#### 3.1 Novo Estado
 
 ```typescript
-import { Send, Loader2, MessageCircle, Paperclip, Plus, MessageSquare, 
-         MoreHorizontal, Pencil, Trash2, FileText, X } from 'lucide-react';
+const [tags, setTags] = useState<string[]>([]);
+const [isClassifying, setIsClassifying] = useState(false);
 ```
 
-Renderizar o chip acima do Textarea (antes da div de input):
+#### 3.2 Botão "Gerar Tags"
+
+Posição: Abaixo do campo de conteúdo, ao lado do VoiceInput
 
 ```tsx
-{/* Chip de Arquivo Anexado */}
-{attachment && (
-  <div className="flex items-center gap-2 mb-3">
-    <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border border-border 
-                    rounded-lg text-sm max-w-[300px]">
-      <FileText className="h-4 w-4 text-blue-500 flex-shrink-0" />
-      <span className="truncate text-foreground">{attachment.name}</span>
-      <button
-        onClick={() => setAttachment(null)}
-        className="p-0.5 hover:bg-accent rounded-sm transition-colors flex-shrink-0"
-        aria-label="Remover anexo"
-      >
-        <X className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
-      </button>
-    </div>
+<Button
+  variant="outline"
+  size="sm"
+  onClick={handleClassifyNote}
+  disabled={!content.trim() || isClassifying || loading}
+  className="gap-2"
+>
+  {isClassifying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+  Gerar Tags
+</Button>
+```
+
+#### 3.3 Chips de Tags Removíveis
+
+Posição: Acima ou abaixo do campo de Data
+
+```tsx
+{tags.length > 0 && (
+  <div className="flex flex-wrap gap-2">
+    {tags.map((tag) => (
+      <Badge key={tag} variant="secondary" className={getTagColor(tag)}>
+        {getTagEmoji(tag)} {tag}
+        <button onClick={() => removeTag(tag)} className="ml-1">
+          <X className="h-3 w-3" />
+        </button>
+      </Badge>
+    ))}
   </div>
 )}
+```
+
+#### 3.4 Atualizar handleSubmit
+
+Incluir `tags` no INSERT:
+
+```typescript
+const { data: feedback, error: insertError } = await supabase
+  .from('feedbacks')
+  .insert({
+    // ... existing fields
+    tags: tags, // ← NOVO
+  })
+```
+
+---
+
+### Parte 4: Interface de Listagem (`FeedbackTimeline.tsx`)
+
+#### 4.1 Atualizar Interface
+
+```typescript
+interface Feedback {
+  id: string;
+  created_at: string;
+  occurred_at?: string;
+  content: string;
+  type: 'positive' | 'constructive' | 'neutral';
+  tags?: string[]; // ← NOVO
+}
+```
+
+#### 4.2 Renderizar Tags no Card
+
+Posição: No header, ao lado da data
+
+```tsx
+{/* Tags */}
+{feedback.tags && feedback.tags.length > 0 && (
+  <div className="flex flex-wrap gap-1.5">
+    {feedback.tags.map((tag) => (
+      <Badge key={tag} variant="secondary" className={cn("text-xs py-0.5", getTagColor(tag))}>
+        {getTagEmoji(tag)} {tag}
+      </Badge>
+    ))}
+  </div>
+)}
+```
+
+#### 4.3 Mapa de Cores e Emojis
+
+Criar constante compartilhada ou inline:
+
+```typescript
+const TAG_CONFIG: Record<string, { emoji: string; color: string }> = {
+  "1:1": { emoji: "🎯", color: "bg-blue-500/10 text-blue-700 dark:text-blue-400" },
+  "PDI": { emoji: "🚀", color: "bg-violet-500/10 text-violet-700 dark:text-violet-400" },
+  "Feedback Difícil": { emoji: "🚨", color: "bg-red-500/10 text-red-700 dark:text-red-400" },
+  "Check-in": { emoji: "✅", color: "bg-green-500/10 text-green-700 dark:text-green-400" },
+  "Reunião Geral": { emoji: "📢", color: "bg-gray-500/10 text-gray-700 dark:text-gray-400" },
+  "Brainstorming": { emoji: "🧠", color: "bg-amber-500/10 text-amber-700 dark:text-amber-400" },
+};
 ```
 
 ---
 
 ### Resumo das Alterações
 
-| Localização | Alteração |
-|-------------|-----------|
-| Estado (linha ~85) | Adicionar `attachment` state |
-| Imports (linha 7) | Adicionar `FileText` e `X` |
-| `handleFileSelect` (linhas 419-452) | Salvar no `attachment` state em vez de concatenar ao input |
-| `handleSend` (linhas 277-400) | Concatenar anexo antes do envio e limpar após |
-| Área de Input (linhas 650-722) | Adicionar chip visual acima do Textarea |
-
----
-
-### UX Final
-
-```text
-┌─────────────────────────────────────────────┐
-│  📄 Relatorio-Semana.pdf              [X]   │  ← Chip do arquivo
-├─────────────────────────────────────────────┤
-│ 📎 │ Resuma os pontos principais      🎤 ➤ │  ← Input limpo
-└─────────────────────────────────────────────┘
-```
-
-O usuário vê o arquivo como um chip elegante e pode digitar a pergunta livremente. A IA recebe tudo concatenado internamente.
+| Arquivo | Alteração |
+|---------|-----------|
+| **Migration SQL** | Adicionar coluna `tags TEXT[]` na tabela `feedbacks` |
+| `supabase/config.toml` | Registrar função `classify-note` com `verify_jwt = true` |
+| `supabase/functions/classify-note/index.ts` | **NOVO** - Edge function para classificação com IA |
+| `src/components/NewNoteDialog.tsx` | Adicionar estado `tags`, botão "Gerar Tags", chips removíveis, incluir no INSERT |
+| `src/components/FeedbackTimeline.tsx` | Renderizar tags com cores no card de feedback |
+| `src/lib/tagConfig.ts` (opcional) | **NOVO** - Constantes compartilhadas de cores/emojis |
 
 ---
 
 ### Seção Técnica
 
-**Fluxo de Dados:**
+#### Fluxo de Dados
 
 ```text
-Usuário faz upload
-       │
-       ▼
-extractTextFromFile()
-       │
-       ▼
-setAttachment({ name, content }) ← Texto armazenado aqui
-       │
-       ▼
-UI renderiza chip [📄 arquivo.pdf X]
-       │
-       ▼
-Usuário digita pergunta no input limpo
-       │
-       ▼
-handleSend() concatena: pergunta + anexo
-       │
-       ▼
-API recebe mensagem completa
-       │
-       ▼
-setAttachment(null) ← Limpa após envio
+Usuário digita/cola transcrição
+        │
+        ▼
+Clica em "✨ Gerar Tags"
+        │
+        ▼
+Frontend → classify-note Edge Function
+        │
+        ▼
+Edge Function → Lovable AI Gateway
+        │
+        ▼
+IA classifica → ["1:1", "PDI"]
+        │
+        ▼
+Retorna tags → Frontend exibe chips
+        │
+        ▼
+Usuário pode remover/manter
+        │
+        ▼
+Salvar → tags[] vão para o banco
+        │
+        ▼
+Listagem → FeedbackTimeline exibe badges coloridos
 ```
 
-**Por que esse padrão é melhor:**
+#### Por que Gerar Tags sob Demanda (não automático)?
 
-1. **UX Clean**: O input fica livre para a pergunta, sem scroll de texto longo
-2. **Feedback Visual**: O usuário sabe que o arquivo está anexado (chip visível)
-3. **Controle**: Botão X permite remover o anexo antes de enviar
-4. **Benchmark**: Segue o padrão do ChatGPT/Claude (referência do usuário)
+1. **Controle do Usuário**: O líder decide se quer classificar ou não
+2. **Economia de Créditos**: Não gasta IA em notas simples
+3. **Transparência**: O usuário vê e pode ajustar antes de salvar
+4. **Velocidade**: Não bloqueia o fluxo de salvar nota
+
+#### Modelo de IA
+
+Usar Lovable AI Gateway com `google/gemini-2.5-flash` (default) para:
+- Baixo custo
+- Resposta rápida (~1-2s)
+- Suficiente para classificação simples
 
