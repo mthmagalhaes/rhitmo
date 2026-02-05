@@ -1,388 +1,334 @@
 
 
-## Plano: Remoção de Botões Manuais e Processamento em Batch
+## Plano: Classificação Automática no Save (Zero Click)
 
-### Visao Geral
+### Visão Geral
 
-A classificacao por IA sera automatica e invisivel. Removeremos todos os botoes de acao manual dos cards de notas e criaremos um mecanismo de processamento em massa para atualizar o historico existente.
+Remover o botão manual "✨ Gerar Contexto" e integrar a classificação por IA diretamente no fluxo de salvamento. O usuário cola a transcrição, clica em "Salvar" e a nota já nasce com título e tags.
 
 ---
 
-### Parte 1: Limpeza de Interface
+### Parte 1: Remover Elementos Manuais
 
-#### 1.1 FeedbackTimeline.tsx - Remover Botao "Analisar com IA"
+#### 1.1 Remover Botão "Gerar Contexto"
 
-Remover completamente o bloco do botao de analise para notas legado (linhas 147-165):
+Deletar o botão que está nas linhas 483-497:
 
 ```tsx
 // REMOVER ESTE BLOCO INTEIRO:
-{(!feedback.tags || feedback.tags.length === 0) && onAnalyze && (
-  <div className="mt-3 pt-3 border-t border-border/50">
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={() => onAnalyze(feedback.id, feedback.content)}
-      disabled={analyzingId === feedback.id}
-      className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1.5"
-    >
-      ...
-    </Button>
-  </div>
-)}
+<Button
+  type="button"
+  variant="outline"
+  size="sm"
+  onClick={handleGenerateContext}
+  disabled={!content.trim() || content.length < 20 || isClassifying || loading}
+  className="gap-2 h-7 text-xs"
+>
+  {isClassifying ? (
+    <Loader2 className="h-3 w-3 animate-spin" />
+  ) : (
+    <Sparkles className="h-3 w-3" />
+  )}
+  Gerar Contexto
+</Button>
 ```
 
-Remover props nao utilizadas da interface:
+#### 1.2 Simplificar Label de Título
 
-```typescript
-// ANTES:
-interface FeedbackTimelineProps {
-  feedbacks: Feedback[];
-  onDelete?: (id: string) => void;
-  onAnalyze?: (feedbackId: string, content: string) => void;
-  analyzingId?: string | null;
-}
-
-// DEPOIS:
-interface FeedbackTimelineProps {
-  feedbacks: Feedback[];
-  onDelete?: (id: string) => void;
-}
-```
-
-Remover imports nao utilizados: `Loader2`, `Sparkles`
-
-#### 1.2 MemberDetails.tsx - Remover Handler de Analise Legacy
-
-Remover o estado `analyzingFeedbackId` (linha 46):
-
-```typescript
-// REMOVER:
-const [analyzingFeedbackId, setAnalyzingFeedbackId] = useState<string | null>(null);
-```
-
-Remover a funcao `handleAnalyzeLegacyFeedback` (linhas 163-203).
-
-Remover props do FeedbackTimeline:
+Manter apenas o label sem o botão ao lado:
 
 ```tsx
 // ANTES:
-<FeedbackTimeline 
-  feedbacks={feedbacks} 
-  onDelete={handleDeleteFeedback}
-  onAnalyze={handleAnalyzeLegacyFeedback}
-  analyzingId={analyzingFeedbackId}
-/>
-
-// DEPOIS:
-<FeedbackTimeline 
-  feedbacks={feedbacks} 
-  onDelete={handleDeleteFeedback}
-/>
-```
-
-#### 1.3 Exibicao para Notas Sem Titulo/Tags
-
-Para notas ainda nao classificadas, exibir de forma limpa:
-- Se nao tiver titulo: exibir apenas a data e o conteudo (sem placeholder "Processando...")
-- Se nao tiver tags: nao exibir nenhum badge (o espaco fica vazio)
-
-A visualizacao sera apenas leitura - sem botoes de acao.
-
----
-
-### Parte 2: Novo Componente BatchSyncDialog
-
-Criar `src/components/BatchSyncDialog.tsx`:
-
-#### 2.1 Interface e Estados
-
-```typescript
-interface BatchSyncDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}
-
-// Estados principais:
-const [isProcessing, setIsProcessing] = useState(false);
-const [progress, setProgress] = useState({ current: 0, total: 0 });
-const [pendingCount, setPendingCount] = useState<number | null>(null);
-const [status, setStatus] = useState<'idle' | 'loading' | 'processing' | 'done' | 'error'>('idle');
-```
-
-#### 2.2 Logica de Contagem
-
-```typescript
-// Ao abrir o dialog, contar notas pendentes
-const loadPendingCount = async () => {
-  setStatus('loading');
-  
-  const { count, error } = await supabase
-    .from('feedbacks')
-    .select('*', { count: 'exact', head: true })
-    .or('tags.is.null,tags.eq.{},title.is.null');
-  
-  if (error) {
-    setStatus('error');
-    return;
-  }
-  
-  setPendingCount(count || 0);
-  setStatus('idle');
-};
-```
-
-#### 2.3 Logica de Processamento em Batch
-
-```typescript
-const handleSync = async () => {
-  setIsProcessing(true);
-  setStatus('processing');
-  
-  // 1. Buscar todas as notas pendentes (sem limite)
-  const { data: pendingFeedbacks, error } = await supabase
-    .from('feedbacks')
-    .select('id, content')
-    .or('tags.is.null,tags.eq.{},title.is.null')
-    .order('created_at', { ascending: true });
-  
-  if (error || !pendingFeedbacks) {
-    toast({ title: "Erro", description: error?.message, variant: "destructive" });
-    setStatus('error');
-    return;
-  }
-  
-  setProgress({ current: 0, total: pendingFeedbacks.length });
-  
-  let successCount = 0;
-  let errorCount = 0;
-  
-  // 2. Processar uma por uma (evitar rate limiting)
-  for (let i = 0; i < pendingFeedbacks.length; i++) {
-    const feedback = pendingFeedbacks[i];
-    
-    try {
-      // Chamar Edge Function
-      const { data, error: classifyError } = await supabase.functions.invoke('classify-note', {
-        body: { content: feedback.content }
-      });
-      
-      if (classifyError) throw classifyError;
-      
-      // Atualizar no banco
-      const { error: updateError } = await supabase
-        .from('feedbacks')
-        .update({
-          tags: data.tags || [],
-          title: data.suggestedTitle || null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', feedback.id);
-      
-      if (updateError) throw updateError;
-      
-      successCount++;
-    } catch (err) {
-      console.error(`Error processing feedback ${feedback.id}:`, err);
-      errorCount++;
-    }
-    
-    setProgress({ current: i + 1, total: pendingFeedbacks.length });
-    
-    // Delay entre requests (300ms para evitar rate limiting)
-    await new Promise(resolve => setTimeout(resolve, 300));
-  }
-  
-  setStatus('done');
-  setIsProcessing(false);
-  
-  toast({
-    title: "Sincronização concluída! ✨",
-    description: `${successCount} notas classificadas. ${errorCount > 0 ? `${errorCount} erros.` : ''}`,
-  });
-};
-```
-
-#### 2.4 Interface Visual
-
-```tsx
-<Dialog open={open} onOpenChange={onOpenChange}>
-  <DialogContent className="sm:max-w-md">
-    <DialogHeader>
-      <DialogTitle className="flex items-center gap-2">
-        <RefreshCw className="h-5 w-5 text-primary" />
-        Sincronizar Inteligência do Sistema
-      </DialogTitle>
-      <DialogDescription>
-        Esta ação irá processar todas as notas antigas que ainda não possuem
-        classificação por IA (tags e títulos).
-      </DialogDescription>
-    </DialogHeader>
-    
-    <div className="space-y-4 py-4">
-      {status === 'loading' && (
-        <div className="flex items-center justify-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="text-sm text-muted-foreground">Verificando notas...</span>
-        </div>
-      )}
-      
-      {status === 'idle' && pendingCount !== null && (
-        <div className="text-center space-y-2">
-          <div className="text-4xl font-bold text-primary">{pendingCount}</div>
-          <p className="text-sm text-muted-foreground">
-            {pendingCount === 0 
-              ? "Todas as notas já estão classificadas! 🎉"
-              : `nota${pendingCount > 1 ? 's' : ''} pendente${pendingCount > 1 ? 's' : ''} de classificação`}
-          </p>
-        </div>
-      )}
-      
-      {status === 'processing' && (
-        <div className="space-y-3">
-          <Progress value={(progress.current / progress.total) * 100} />
-          <p className="text-sm text-center text-muted-foreground">
-            Otimizando nota {progress.current} de {progress.total}...
-          </p>
-        </div>
-      )}
-      
-      {status === 'done' && (
-        <div className="text-center space-y-2">
-          <div className="text-4xl">✨</div>
-          <p className="text-sm text-muted-foreground">
-            Sincronização concluída com sucesso!
-          </p>
-        </div>
-      )}
-    </div>
-    
-    <DialogFooter>
-      {status === 'idle' && pendingCount !== null && pendingCount > 0 && (
-        <Button onClick={handleSync} disabled={isProcessing} className="gap-2">
-          <RefreshCw className="h-4 w-4" />
-          Iniciar Sincronização
-        </Button>
-      )}
-      
-      {(status === 'done' || (status === 'idle' && pendingCount === 0)) && (
-        <Button onClick={() => onOpenChange(false)}>
-          Fechar
-        </Button>
-      )}
-    </DialogFooter>
-  </DialogContent>
-</Dialog>
-```
-
----
-
-### Parte 3: Integracao com ProfileSettingsDialog
-
-Adicionar o botao de sincronizacao ao dialog de configuracoes do perfil:
-
-#### 3.1 Novo Estado e Import
-
-```typescript
-import { BatchSyncDialog } from '@/components/BatchSyncDialog';
-
-// Estado
-const [batchSyncOpen, setBatchSyncOpen] = useState(false);
-```
-
-#### 3.2 Novo Botao no Dialog
-
-Posicao: Abaixo do campo "Cargo", antes dos botoes de acao
-
-```tsx
-<div className="space-y-4">
-  {/* Campos existentes: Nome, Cargo */}
-  
-  {/* Divisor */}
-  <div className="border-t pt-4">
-    <Label className="text-muted-foreground text-xs uppercase tracking-wide mb-2 block">
-      Manutenção
-    </Label>
-    <Button
-      type="button"
-      variant="outline"
-      onClick={() => setBatchSyncOpen(true)}
-      className="w-full justify-start gap-2"
-    >
-      <RefreshCw className="h-4 w-4" />
-      Sincronizar Inteligência do Sistema
-    </Button>
-    <p className="text-xs text-muted-foreground mt-1">
-      Processa notas antigas sem classificação por IA
-    </p>
-  </div>
+<div className="flex items-center justify-between">
+  <Label htmlFor="title">Título (opcional)</Label>
+  <Button>...</Button>
 </div>
 
-<BatchSyncDialog 
-  open={batchSyncOpen} 
-  onOpenChange={setBatchSyncOpen} 
-/>
+// DEPOIS:
+<Label htmlFor="title">Título (opcional)</Label>
+```
+
+#### 1.3 Atualizar Texto de Tags
+
+Substituir a mensagem que instrui clicar no botão:
+
+```tsx
+// ANTES:
+<p className="text-xs text-muted-foreground">
+  Clique em "Gerar Contexto" para classificar automaticamente esta nota
+</p>
+
+// DEPOIS:
+<p className="text-xs text-muted-foreground">
+  Tags serão geradas automaticamente ao salvar
+</p>
+```
+
+#### 1.4 Remover Função `handleGenerateContext`
+
+Deletar a função completa (linhas 131-176) pois não será mais usada.
+
+#### 1.5 Remover Import `Sparkles`
+
+Atualizar o import para remover o ícone não utilizado:
+
+```tsx
+// ANTES:
+import { PenSquare, Loader2, Upload, CalendarIcon, Sparkles, X } from 'lucide-react';
+
+// DEPOIS:
+import { PenSquare, Loader2, Upload, CalendarIcon, X } from 'lucide-react';
 ```
 
 ---
 
-### Resumo das Alteracoes
+### Parte 2: Integrar Classificação no `handleSubmit`
+
+#### 2.1 Nova Lógica do Submit
+
+Interceptar o salvamento para classificar antes de gravar:
+
+```typescript
+const handleSubmit = async () => {
+  // Validações existentes...
+  if (!content.trim()) { ... }
+  if (!targetMemberId) { ... }
+  if (!occurredAt) { ... }
+
+  setLoading(true);
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Você precisa estar logado');
+
+    const cleanedContent = cleanTranscriptText(content);
+    
+    // =====================================
+    // NOVO: Classificação Automática
+    // =====================================
+    let finalTags = tags;
+    let finalTitle = title.trim();
+    
+    // Só classifica se: conteúdo > 20 chars E (tags vazias OU título vazio)
+    const shouldClassify = cleanedContent.length > 20 && 
+                          (tags.length === 0 || !finalTitle);
+    
+    if (shouldClassify) {
+      try {
+        console.log('[NewNoteDialog] Auto-classifying content...');
+        
+        const { data: classifyData, error: classifyError } = await supabase
+          .functions.invoke('classify-note', {
+            body: { content: cleanedContent }
+          });
+        
+        if (classifyError) {
+          console.warn('[NewNoteDialog] Classification failed, proceeding without:', classifyError);
+          // Não bloqueia o salvamento - apenas loga o erro
+        } else {
+          // Aplicar tags se ainda não tiver
+          if (tags.length === 0 && classifyData?.tags?.length > 0) {
+            finalTags = classifyData.tags;
+          }
+          
+          // Aplicar título se ainda não tiver
+          if (!finalTitle && classifyData?.suggestedTitle) {
+            finalTitle = classifyData.suggestedTitle;
+          }
+          
+          console.log('[NewNoteDialog] Classification result:', { 
+            tags: finalTags, 
+            title: finalTitle 
+          });
+        }
+      } catch (classifyErr) {
+        console.warn('[NewNoteDialog] Classification error (non-blocking):', classifyErr);
+        // Continua sem classificação - salvamento não deve falhar por isso
+      }
+    }
+    // =====================================
+    
+    // INSERT com dados enriquecidos
+    const { data: feedback, error: insertError } = await supabase
+      .from('feedbacks')
+      .insert({
+        manager_id: user.id,
+        member_id: targetMemberId,
+        content: cleanedContent,
+        type: 'neutral',
+        occurred_at: occurredAt.toISOString(),
+        tags: finalTags.length > 0 ? finalTags : [],
+        title: finalTitle || null,
+        summary: null,
+        sentiment: null,
+        coaching_tips: null,
+        bias_alert: null,
+      })
+      .select()
+      .single();
+
+    if (insertError) throw insertError;
+
+    // Toast de sucesso (melhorado para mostrar classificação)
+    const hasClassification = finalTags.length > 0 || finalTitle;
+    toast({
+      title: hasClassification ? "Anotação salva e classificada! ✨" : "Anotação salva! ✅",
+      description: hasClassification 
+        ? `${finalTitle || ''} ${finalTags.length ? `• ${finalTags.join(", ")}` : ''}`.trim()
+        : "Registro adicionado ao histórico.",
+    });
+
+    // ... resto do fluxo (reset, close, backup)
+  } catch (error: any) {
+    // ... tratamento de erro existente
+  } finally {
+    setLoading(false);
+  }
+};
+```
+
+---
+
+### Parte 3: Manter Funcionalidades Existentes
+
+#### 3.1 Campo de Título Manual
+
+O usuário ainda pode digitar um título manualmente. Se ele preencher, a IA não sobrescreve:
+
+```typescript
+// Se usuário já digitou título, usar o dele
+if (!finalTitle && classifyData?.suggestedTitle) {
+  finalTitle = classifyData.suggestedTitle;
+}
+```
+
+#### 3.2 Tags Manuais (Futuro)
+
+Se no futuro adicionarmos seleção manual de tags, a mesma lógica se aplica:
+
+```typescript
+// Se usuário já selecionou tags, não sobrescrever
+if (tags.length === 0 && classifyData?.tags?.length > 0) {
+  finalTags = classifyData.tags;
+}
+```
+
+#### 3.3 Exibição de Tags no Dialog
+
+Manter a seção de tags para visualização (caso o usuário tenha selecionado manualmente):
+
+```tsx
+{/* Smart Tags Section - apenas visualização */}
+<div className="space-y-2">
+  <Label>Tags de Classificação</Label>
+  {tags.length > 0 ? (
+    <div className="flex flex-wrap gap-2">
+      {tags.map((tag) => (
+        <Badge key={tag} variant="outline" className={cn("...", getTagColor(tag))}>
+          {getTagEmoji(tag)} {tag}
+          <button onClick={() => removeTag(tag)}>
+            <X className="h-3 w-3" />
+          </button>
+        </Badge>
+      ))}
+    </div>
+  ) : (
+    <p className="text-xs text-muted-foreground">
+      Tags serão geradas automaticamente ao salvar
+    </p>
+  )}
+</div>
+```
+
+---
+
+### Resumo das Alterações
 
 | Arquivo | Alteração |
 |---------|-----------|
-| `src/components/FeedbackTimeline.tsx` | Remover botão "Analisar com IA", remover props `onAnalyze`/`analyzingId`, limpar imports |
-| `src/pages/MemberDetails.tsx` | Remover estado `analyzingFeedbackId`, remover handler `handleAnalyzeLegacyFeedback`, atualizar props do FeedbackTimeline |
-| `src/components/BatchSyncDialog.tsx` | **NOVO** - Dialog com barra de progresso para processamento em massa |
-| `src/components/ProfileSettingsDialog.tsx` | Adicionar botão "Sincronizar Inteligência do Sistema" |
+| `src/components/NewNoteDialog.tsx` | Remover botão "Gerar Contexto", integrar classificação no `handleSubmit`, atualizar textos e imports |
 
 ---
 
-### Secao Tecnica
+### Seção Técnica
 
-#### Fluxo do Batch Processor
+#### Fluxo: Zero Click Classification
 
 ```text
-Usuario clica em "⚙️ Configurações" na Sidebar
+Usuário cola transcrição
         │
         ▼
-Abre ProfileSettingsDialog → clica em "🔄 Sincronizar Inteligência"
+Preenche data (se não detectada)
         │
         ▼
-Abre BatchSyncDialog → conta notas pendentes (136)
+Clica em "Salvar"
         │
         ▼
-Clica em "Iniciar Sincronização"
+handleSubmit() inicia (loading = true)
         │
         ▼
-Loop sequencial (evita rate limiting):
-┌────────────────────────────────────────┐
-│ Para cada nota pendente:               │
-│   1. Chamar classify-note              │
-│   2. UPDATE feedbacks SET tags, title  │
-│   3. Atualizar barra de progresso      │
-│   4. Delay 300ms                       │
-└────────────────────────────────────────┘
+┌───────────────────────────────────────┐
+│ Verificação:                          │
+│ conteúdo > 20 chars                   │
+│ E (tags vazias OU título vazio)?      │
+└───────────────────────────────────────┘
         │
-        ▼
-Exibe "Sincronização concluída! ✨"
+        ├── NÃO → Pular classificação
         │
-        ▼
-Usuario fecha e ve todas as notas classificadas
+        └── SIM ↓
+                │
+                ▼
+      classify-note Edge Function
+      (~1-2 segundos)
+                │
+                ▼
+      Merge: finalTags + finalTitle
+                │
+                ▼
+      INSERT no Supabase com dados enriquecidos
+                │
+                ▼
+      Toast: "Anotação salva e classificada! ✨"
+                │
+                ▼
+      Modal fecha, lista atualiza
 ```
 
-#### Por que Processamento Sequencial?
+#### Resiliência: Fail-Safe
 
-1. **Rate Limiting**: A API de IA tem limites por minuto
-2. **Visibilidade**: Barra de progresso mostra exatamente o que esta acontecendo
-3. **Resiliencia**: Se uma nota falhar, as outras continuam
-4. **Timeout**: Evita timeout do navegador (cada request e rapido)
+A classificação é non-blocking:
 
-#### Estimativa de Tempo
+```typescript
+try {
+  const { data, error } = await supabase.functions.invoke('classify-note', ...);
+  // Usar resultado se sucesso
+} catch (err) {
+  console.warn('Classification failed, proceeding without:', err);
+  // Continuar salvando sem classificação
+}
+```
 
-Com 136 notas e 300ms de delay + ~1s de processamento por nota:
-- **Tempo estimado**: ~3-4 minutos
-- **Custo**: Minimal (usando gemini-2.5-flash)
+Se a IA falhar por qualquer motivo (timeout, rate limit, etc.), a nota é salva normalmente sem tags/título automáticos. O usuário pode usar o Batch Sync depois para classificar.
 
-#### Alternativa Futura: Background Job
+#### Experiência do Usuário
 
-Para escalabilidade futura, poderiamos criar uma Edge Function `process-legacy-notes` que roda em background. Mas para o caso atual (136 notas), o processamento client-side e suficiente e oferece melhor UX com a barra de progresso.
+| Cenário | Tempo Estimado | Resultado |
+|---------|----------------|-----------|
+| Nota curta (< 20 chars) | ~50ms | Salva sem classificação |
+| Nota normal + IA sucesso | ~2s | Salva com tags e título |
+| Nota normal + IA timeout | ~30s → fallback | Salva sem classificação |
+| Nota com título manual | ~2s | Salva com tags IA + título manual |
+
+#### Estados do Botão "Salvar"
+
+O botão já mostra loading durante todo o processo:
+
+```tsx
+<Button onClick={handleSubmit} disabled={loading || isProcessingFile || !occurredAt}>
+  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+  Salvar
+</Button>
+```
+
+O usuário verá o spinner por ~2 segundos enquanto a classificação acontece em background.
 
