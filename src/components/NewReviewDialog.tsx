@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,22 @@ export const NewReviewDialog = ({
   const { toast } = useToast();
   const { canGenerateReview, limits } = usePlanLimits();
 
+  // Obter nome do gestor logado
+  const [managerName, setManagerName] = useState<string>('Gestor');
+  
+  useEffect(() => {
+    const fetchManagerName = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const name = user.user_metadata?.full_name || user.user_metadata?.name || 'Gestor';
+        setManagerName(name);
+      }
+    };
+    if (open) {
+      fetchManagerName();
+    }
+  }, [open]);
+
   const handlePresetClick = (months: number) => {
     const today = new Date();
     const startDate = subMonths(today, months);
@@ -76,7 +92,9 @@ export const NewReviewDialog = ({
     
     const fetchPromise = supabase.functions.invoke('generate-review', {
       body: { 
-        memberId, 
+        memberId,
+        memberName,
+        managerName,
         startDate: dateRange.from.toISOString(),
         endDate: dateRange.to.toISOString()
       }
