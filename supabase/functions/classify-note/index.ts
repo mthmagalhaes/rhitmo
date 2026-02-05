@@ -63,20 +63,28 @@
      // Truncate content to avoid token limits (first 8000 chars should be enough for classification)
      const truncatedContent = content.slice(0, 8000);
  
-     const systemPrompt = `Você é um classificador de reuniões corporativas. Analise o texto e retorne ATÉ 2 tags desta lista:
+    const systemPrompt = `Você é um classificador de reuniões corporativas. Analise o texto e retorne:
  
- 🎯 1:1 - Conversas individuais livres, alinhamento semanal, conexão pessoal
- 🚀 PDI - Conversas sobre carreira, futuro, promoções, desenvolvimento de skills
- 🚨 Feedback Difícil - Correção de rota, performance baixa, comportamento inadequado, demissão
- ✅ Check-in - Status report, acompanhamento de projetos, prazos, burocracia do dia a dia
- 📢 Reunião Geral - Reuniões com 3+ pessoas, alinhamentos de área, townhalls
- 🧠 Brainstorming - Ideação, resolução de problemas complexos sem pauta fixa
+1. TAGS: Escolha até 2 tags desta lista:
+   - 1:1 (Conversas individuais, alinhamento semanal)
+   - PDI (Carreira, promoções, desenvolvimento)
+   - Feedback Difícil (Correção de rota, demissão)
+   - Check-in (Status report, projetos)
+   - Reunião Geral (3+ pessoas, townhalls)
+   - Brainstorming (Ideação, problemas complexos)
  
- REGRAS:
+2. TÍTULO: Gere um título executivo curto (máximo 6 palavras).
+
+REGRAS DE TAGS:
  1. Se não tiver certeza absoluta, use apenas UMA tag
  2. Se for misto (ex: 1:1 que virou PDI), use as DUAS tags relevantes
  3. SEMPRE retorne pelo menos uma tag
- 4. Retorne APENAS os nomes das tags, sem emojis`;
+
+REGRAS DE TÍTULO:
+- Ignore saudações ("Oi", "Bom dia")
+- Foque na ação/tópico principal
+- Exemplos: "Alinhamento de Contrato", "Feedback sobre Atraso"
+- Se vago, use "Check-in Semanal" ou "Conversa de Alinhamento"`;
  
      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
        method: "POST",
@@ -94,7 +102,7 @@
            type: "function",
            function: {
              name: "classify_note",
-             description: "Retorna as tags de classificação da nota",
+            description: "Retorna as tags de classificação e título sugerido da nota",
              parameters: {
                type: "object",
                properties: {
@@ -105,9 +113,13 @@
                      type: "string",
                      enum: VALID_TAGS
                    }
+                },
+                suggestedTitle: {
+                  type: "string",
+                  description: "Título executivo curto (max 6 palavras)"
                  }
                },
-               required: ["tags"]
+              required: ["tags", "suggestedTitle"]
              }
            }
          }],
@@ -143,6 +155,7 @@
  
      // Extract tags from tool call response
      let tags: string[] = [];
+    let suggestedTitle = "";
      
      const toolCall = aiResponse.choices?.[0]?.message?.tool_calls?.[0];
      if (toolCall?.function?.arguments) {
@@ -154,6 +167,9 @@
              .filter((t: string) => VALID_TAGS.includes(t))
              .slice(0, 2);
          }
+        if (args.suggestedTitle && typeof args.suggestedTitle === "string") {
+          suggestedTitle = args.suggestedTitle.trim().slice(0, 60);
+        }
        } catch (parseError) {
          console.error("Error parsing tool call arguments:", parseError);
        }
@@ -165,10 +181,15 @@
        tags = ["Check-in"];
      }
  
-     console.log(`[classify-note] Final tags: ${JSON.stringify(tags)}`);
+    // Fallback: if no title, default to generic
+    if (!suggestedTitle) {
+      suggestedTitle = "Conversa de Alinhamento";
+    }
+
+    console.log(`[classify-note] Final tags: ${JSON.stringify(tags)}, title: ${suggestedTitle}`);
  
      return new Response(
-       JSON.stringify({ tags }),
+      JSON.stringify({ tags, suggestedTitle }),
        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
      );
  
