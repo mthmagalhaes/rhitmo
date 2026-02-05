@@ -1,250 +1,21 @@
 
 
-## Plano: Smart Context (Auto-Tags + Auto-Title + Tratamento de Legado)
+## Plano: Remoção de Botões Manuais e Processamento em Batch
 
-### Visão Geral
+### Visao Geral
 
-Expandir o sistema de Smart Tags para incluir:
-1. **Auto-Title**: Geração automática de título executivo
-2. **Botão "✨ Gerar Contexto"**: Combina tags + title em uma única chamada
-3. **Tratamento de Legado**: Botão discreto em notas antigas para classificar retroativamente
+A classificacao por IA sera automatica e invisivel. Removeremos todos os botoes de acao manual dos cards de notas e criaremos um mecanismo de processamento em massa para atualizar o historico existente.
 
 ---
 
-### Parte 1: Banco de Dados
+### Parte 1: Limpeza de Interface
 
-Adicionar coluna `title` na tabela `feedbacks`:
+#### 1.1 FeedbackTimeline.tsx - Remover Botao "Analisar com IA"
 
-```sql
-ALTER TABLE public.feedbacks 
-ADD COLUMN title TEXT NULL;
-
-COMMENT ON COLUMN public.feedbacks.title IS 'Título executivo gerado por IA ou inserido manualmente';
-```
-
-**Nota**: Coluna `tags` já existe (implementada anteriormente).
-
----
-
-### Parte 2: Atualizar Edge Function (`classify-note`)
-
-Modificar a função existente para retornar **tags + suggestedTitle**:
-
-**Mudanças no System Prompt:**
-
-```text
-Você é um classificador de reuniões corporativas. Analise o texto e retorne:
-
-1. TAGS: Escolha até 2 tags desta lista:
-   - 1:1 (Conversas individuais, alinhamento semanal)
-   - PDI (Carreira, promoções, desenvolvimento)
-   - Feedback Difícil (Correção de rota, demissão)
-   - Check-in (Status report, projetos)
-   - Reunião Geral (3+ pessoas, townhalls)
-   - Brainstorming (Ideação, problemas complexos)
-
-2. TÍTULO: Gere um título executivo curto (máximo 6 palavras).
-
-REGRAS DE TÍTULO:
-- Ignore saudações ("Oi", "Bom dia")
-- Foque na ação/tópico principal
-- Exemplos: "Alinhamento de Contrato", "Feedback sobre Atraso"
-- Se vago, use "Check-in Semanal" ou "Conversa de Alinhamento"
-```
-
-**Mudanças no Tool Calling:**
-
-```typescript
-tools: [{
-  type: "function",
-  function: {
-    name: "classify_note",
-    parameters: {
-      type: "object",
-      properties: {
-        tags: {
-          type: "array",
-          items: { 
-            type: "string",
-            enum: ["1:1", "PDI", "Feedback Difícil", "Check-in", "Reunião Geral", "Brainstorming"]
-          },
-          maxItems: 2
-        },
-        suggestedTitle: {
-          type: "string",
-          description: "Título executivo curto (max 6 palavras)"
-        }
-      },
-      required: ["tags", "suggestedTitle"]
-    }
-  }
-}]
-```
-
-**Novo Response:**
-
-```json
-{ "tags": ["1:1", "PDI"], "suggestedTitle": "Alinhamento de Carreira" }
-```
-
----
-
-### Parte 3: Interface de Criação (`NewNoteDialog.tsx`)
-
-#### 3.1 Novo Estado para Título
-
-```typescript
-const [title, setTitle] = useState('');
-```
-
-#### 3.2 Renomear Botão para "✨ Gerar Contexto"
-
-Posição: Na seção de Smart Tags, substituindo "Gerar Tags"
+Remover completamente o bloco do botao de analise para notas legado (linhas 147-165):
 
 ```tsx
-<Button
-  variant="outline"
-  size="sm"
-  onClick={handleGenerateContext}
-  disabled={!content.trim() || content.length < 20 || isClassifying || loading}
-  className="gap-2 h-7 text-xs"
->
-  {isClassifying ? (
-    <Loader2 className="h-3 w-3 animate-spin" />
-  ) : (
-    <Sparkles className="h-3 w-3" />
-  )}
-  Gerar Contexto
-</Button>
-```
-
-#### 3.3 Adicionar Campo de Título (Opcional)
-
-Posição: Acima da seção de tags (ou abaixo da data)
-
-```tsx
-<div className="space-y-2">
-  <Label>Título (opcional)</Label>
-  <Input
-    value={title}
-    onChange={(e) => setTitle(e.target.value)}
-    placeholder="Será gerado automaticamente se deixar vazio"
-    maxLength={60}
-  />
-  {title && (
-    <p className="text-xs text-muted-foreground">
-      {title.length}/60 caracteres
-    </p>
-  )}
-</div>
-```
-
-#### 3.4 Atualizar handleGenerateContext
-
-```typescript
-const handleGenerateContext = async () => {
-  if (!content.trim() || content.length < 20) {
-    toast({
-      title: "Conteúdo insuficiente",
-      description: "Adicione mais texto para gerar o contexto.",
-      variant: "destructive"
-    });
-    return;
-  }
-
-  setIsClassifying(true);
-
-  try {
-    const { data, error } = await supabase.functions.invoke('classify-note', {
-      body: { content }
-    });
-
-    if (error) throw error;
-
-    // Atualizar tags
-    if (data?.tags && Array.isArray(data.tags)) {
-      setTags(data.tags);
-    }
-
-    // Atualizar título (apenas se estiver vazio)
-    if (data?.suggestedTitle && !title.trim()) {
-      setTitle(data.suggestedTitle);
-    }
-
-    toast({
-      title: "Contexto gerado! ✨",
-      description: `${data.suggestedTitle} - ${data.tags?.join(", ")}`,
-    });
-  } catch (error: any) {
-    // ... tratamento de erro existente
-  } finally {
-    setIsClassifying(false);
-  }
-};
-```
-
-#### 3.5 Atualizar handleSubmit
-
-Incluir `title` no INSERT:
-
-```typescript
-const { data: feedback, error: insertError } = await supabase
-  .from('feedbacks')
-  .insert({
-    // ... campos existentes
-    tags: tags.length > 0 ? tags : [],
-    title: title.trim() || null, // ← NOVO
-  })
-```
-
----
-
-### Parte 4: Interface de Histórico (`FeedbackTimeline.tsx`)
-
-#### 4.1 Atualizar Interface Feedback
-
-```typescript
-interface Feedback {
-  id: string;
-  created_at: string;
-  occurred_at?: string;
-  content: string;
-  type: 'positive' | 'constructive' | 'neutral';
-  tags?: string[];
-  title?: string | null; // ← NOVO
-}
-```
-
-#### 4.2 Exibir Título no Card
-
-Se existir título, exibir como texto principal antes do conteúdo:
-
-```tsx
-{/* Título (se existir) */}
-{feedback.title && (
-  <h4 className="font-medium text-foreground mb-2">
-    {feedback.title}
-  </h4>
-)}
-```
-
-#### 4.3 Adicionar Props para Análise de Legado
-
-```typescript
-interface FeedbackTimelineProps {
-  feedbacks: Feedback[];
-  onDelete?: (id: string) => void;
-  onAnalyze?: (feedbackId: string, content: string) => void; // ← NOVO
-  analyzingId?: string | null; // ← NOVO (para mostrar loading)
-}
-```
-
-#### 4.4 Botão "✨ Analisar com IA" para Legado
-
-Condição: Mostrar apenas se `tags` for array vazio ou null
-
-```tsx
-{/* Botão de Análise para Notas Legado */}
+// REMOVER ESTE BLOCO INTEIRO:
 {(!feedback.tags || feedback.tags.length === 0) && onAnalyze && (
   <div className="mt-3 pt-3 border-t border-border/50">
     <Button
@@ -254,173 +25,364 @@ Condição: Mostrar apenas se `tags` for array vazio ou null
       disabled={analyzingId === feedback.id}
       className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1.5"
     >
-      {analyzingId === feedback.id ? (
-        <Loader2 className="h-3 w-3 animate-spin" />
-      ) : (
-        <Sparkles className="h-3 w-3" />
-      )}
-      Analisar com IA
+      ...
     </Button>
   </div>
 )}
 ```
 
----
-
-### Parte 5: Página de Detalhes (`MemberDetails.tsx`)
-
-#### 5.1 Novo Estado para Análise
+Remover props nao utilizadas da interface:
 
 ```typescript
+// ANTES:
+interface FeedbackTimelineProps {
+  feedbacks: Feedback[];
+  onDelete?: (id: string) => void;
+  onAnalyze?: (feedbackId: string, content: string) => void;
+  analyzingId?: string | null;
+}
+
+// DEPOIS:
+interface FeedbackTimelineProps {
+  feedbacks: Feedback[];
+  onDelete?: (id: string) => void;
+}
+```
+
+Remover imports nao utilizados: `Loader2`, `Sparkles`
+
+#### 1.2 MemberDetails.tsx - Remover Handler de Analise Legacy
+
+Remover o estado `analyzingFeedbackId` (linha 46):
+
+```typescript
+// REMOVER:
 const [analyzingFeedbackId, setAnalyzingFeedbackId] = useState<string | null>(null);
 ```
 
-#### 5.2 Handler para Análise de Legado
+Remover a funcao `handleAnalyzeLegacyFeedback` (linhas 163-203).
 
-```typescript
-const handleAnalyzeLegacyFeedback = async (feedbackId: string, content: string) => {
-  setAnalyzingFeedbackId(feedbackId);
-  
-  try {
-    // 1. Chamar IA para classificar
-    const { data, error } = await supabase.functions.invoke('classify-note', {
-      body: { content }
-    });
-
-    if (error) throw error;
-
-    // 2. Atualizar feedback no banco
-    const { error: updateError } = await supabase
-      .from('feedbacks')
-      .update({
-        tags: data.tags || [],
-        title: data.suggestedTitle || null,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', feedbackId);
-
-    if (updateError) throw updateError;
-
-    // 3. Invalidar cache para refresh
-    queryClient.invalidateQueries({ queryKey: ['feedbacks', id] });
-
-    toast({
-      title: "Nota classificada! ✨",
-      description: `${data.suggestedTitle} - ${data.tags?.join(", ")}`,
-    });
-  } catch (error: any) {
-    console.error('Error analyzing legacy feedback:', error);
-    toast({
-      title: "Erro na análise",
-      description: error.message || "Tente novamente.",
-      variant: "destructive"
-    });
-  } finally {
-    setAnalyzingFeedbackId(null);
-  }
-};
-```
-
-#### 5.3 Passar Props para FeedbackTimeline
+Remover props do FeedbackTimeline:
 
 ```tsx
+// ANTES:
 <FeedbackTimeline 
   feedbacks={feedbacks} 
   onDelete={handleDeleteFeedback}
   onAnalyze={handleAnalyzeLegacyFeedback}
   analyzingId={analyzingFeedbackId}
 />
+
+// DEPOIS:
+<FeedbackTimeline 
+  feedbacks={feedbacks} 
+  onDelete={handleDeleteFeedback}
+/>
+```
+
+#### 1.3 Exibicao para Notas Sem Titulo/Tags
+
+Para notas ainda nao classificadas, exibir de forma limpa:
+- Se nao tiver titulo: exibir apenas a data e o conteudo (sem placeholder "Processando...")
+- Se nao tiver tags: nao exibir nenhum badge (o espaco fica vazio)
+
+A visualizacao sera apenas leitura - sem botoes de acao.
+
+---
+
+### Parte 2: Novo Componente BatchSyncDialog
+
+Criar `src/components/BatchSyncDialog.tsx`:
+
+#### 2.1 Interface e Estados
+
+```typescript
+interface BatchSyncDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+// Estados principais:
+const [isProcessing, setIsProcessing] = useState(false);
+const [progress, setProgress] = useState({ current: 0, total: 0 });
+const [pendingCount, setPendingCount] = useState<number | null>(null);
+const [status, setStatus] = useState<'idle' | 'loading' | 'processing' | 'done' | 'error'>('idle');
+```
+
+#### 2.2 Logica de Contagem
+
+```typescript
+// Ao abrir o dialog, contar notas pendentes
+const loadPendingCount = async () => {
+  setStatus('loading');
+  
+  const { count, error } = await supabase
+    .from('feedbacks')
+    .select('*', { count: 'exact', head: true })
+    .or('tags.is.null,tags.eq.{},title.is.null');
+  
+  if (error) {
+    setStatus('error');
+    return;
+  }
+  
+  setPendingCount(count || 0);
+  setStatus('idle');
+};
+```
+
+#### 2.3 Logica de Processamento em Batch
+
+```typescript
+const handleSync = async () => {
+  setIsProcessing(true);
+  setStatus('processing');
+  
+  // 1. Buscar todas as notas pendentes (sem limite)
+  const { data: pendingFeedbacks, error } = await supabase
+    .from('feedbacks')
+    .select('id, content')
+    .or('tags.is.null,tags.eq.{},title.is.null')
+    .order('created_at', { ascending: true });
+  
+  if (error || !pendingFeedbacks) {
+    toast({ title: "Erro", description: error?.message, variant: "destructive" });
+    setStatus('error');
+    return;
+  }
+  
+  setProgress({ current: 0, total: pendingFeedbacks.length });
+  
+  let successCount = 0;
+  let errorCount = 0;
+  
+  // 2. Processar uma por uma (evitar rate limiting)
+  for (let i = 0; i < pendingFeedbacks.length; i++) {
+    const feedback = pendingFeedbacks[i];
+    
+    try {
+      // Chamar Edge Function
+      const { data, error: classifyError } = await supabase.functions.invoke('classify-note', {
+        body: { content: feedback.content }
+      });
+      
+      if (classifyError) throw classifyError;
+      
+      // Atualizar no banco
+      const { error: updateError } = await supabase
+        .from('feedbacks')
+        .update({
+          tags: data.tags || [],
+          title: data.suggestedTitle || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', feedback.id);
+      
+      if (updateError) throw updateError;
+      
+      successCount++;
+    } catch (err) {
+      console.error(`Error processing feedback ${feedback.id}:`, err);
+      errorCount++;
+    }
+    
+    setProgress({ current: i + 1, total: pendingFeedbacks.length });
+    
+    // Delay entre requests (300ms para evitar rate limiting)
+    await new Promise(resolve => setTimeout(resolve, 300));
+  }
+  
+  setStatus('done');
+  setIsProcessing(false);
+  
+  toast({
+    title: "Sincronização concluída! ✨",
+    description: `${successCount} notas classificadas. ${errorCount > 0 ? `${errorCount} erros.` : ''}`,
+  });
+};
+```
+
+#### 2.4 Interface Visual
+
+```tsx
+<Dialog open={open} onOpenChange={onOpenChange}>
+  <DialogContent className="sm:max-w-md">
+    <DialogHeader>
+      <DialogTitle className="flex items-center gap-2">
+        <RefreshCw className="h-5 w-5 text-primary" />
+        Sincronizar Inteligência do Sistema
+      </DialogTitle>
+      <DialogDescription>
+        Esta ação irá processar todas as notas antigas que ainda não possuem
+        classificação por IA (tags e títulos).
+      </DialogDescription>
+    </DialogHeader>
+    
+    <div className="space-y-4 py-4">
+      {status === 'loading' && (
+        <div className="flex items-center justify-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm text-muted-foreground">Verificando notas...</span>
+        </div>
+      )}
+      
+      {status === 'idle' && pendingCount !== null && (
+        <div className="text-center space-y-2">
+          <div className="text-4xl font-bold text-primary">{pendingCount}</div>
+          <p className="text-sm text-muted-foreground">
+            {pendingCount === 0 
+              ? "Todas as notas já estão classificadas! 🎉"
+              : `nota${pendingCount > 1 ? 's' : ''} pendente${pendingCount > 1 ? 's' : ''} de classificação`}
+          </p>
+        </div>
+      )}
+      
+      {status === 'processing' && (
+        <div className="space-y-3">
+          <Progress value={(progress.current / progress.total) * 100} />
+          <p className="text-sm text-center text-muted-foreground">
+            Otimizando nota {progress.current} de {progress.total}...
+          </p>
+        </div>
+      )}
+      
+      {status === 'done' && (
+        <div className="text-center space-y-2">
+          <div className="text-4xl">✨</div>
+          <p className="text-sm text-muted-foreground">
+            Sincronização concluída com sucesso!
+          </p>
+        </div>
+      )}
+    </div>
+    
+    <DialogFooter>
+      {status === 'idle' && pendingCount !== null && pendingCount > 0 && (
+        <Button onClick={handleSync} disabled={isProcessing} className="gap-2">
+          <RefreshCw className="h-4 w-4" />
+          Iniciar Sincronização
+        </Button>
+      )}
+      
+      {(status === 'done' || (status === 'idle' && pendingCount === 0)) && (
+        <Button onClick={() => onOpenChange(false)}>
+          Fechar
+        </Button>
+      )}
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
 ```
 
 ---
 
-### Resumo das Alterações
+### Parte 3: Integracao com ProfileSettingsDialog
+
+Adicionar o botao de sincronizacao ao dialog de configuracoes do perfil:
+
+#### 3.1 Novo Estado e Import
+
+```typescript
+import { BatchSyncDialog } from '@/components/BatchSyncDialog';
+
+// Estado
+const [batchSyncOpen, setBatchSyncOpen] = useState(false);
+```
+
+#### 3.2 Novo Botao no Dialog
+
+Posicao: Abaixo do campo "Cargo", antes dos botoes de acao
+
+```tsx
+<div className="space-y-4">
+  {/* Campos existentes: Nome, Cargo */}
+  
+  {/* Divisor */}
+  <div className="border-t pt-4">
+    <Label className="text-muted-foreground text-xs uppercase tracking-wide mb-2 block">
+      Manutenção
+    </Label>
+    <Button
+      type="button"
+      variant="outline"
+      onClick={() => setBatchSyncOpen(true)}
+      className="w-full justify-start gap-2"
+    >
+      <RefreshCw className="h-4 w-4" />
+      Sincronizar Inteligência do Sistema
+    </Button>
+    <p className="text-xs text-muted-foreground mt-1">
+      Processa notas antigas sem classificação por IA
+    </p>
+  </div>
+</div>
+
+<BatchSyncDialog 
+  open={batchSyncOpen} 
+  onOpenChange={setBatchSyncOpen} 
+/>
+```
+
+---
+
+### Resumo das Alteracoes
 
 | Arquivo | Alteração |
 |---------|-----------|
-| **Migration SQL** | Adicionar coluna `title TEXT NULL` na tabela `feedbacks` |
-| `supabase/functions/classify-note/index.ts` | Expandir para retornar `{ tags, suggestedTitle }` |
-| `src/components/NewNoteDialog.tsx` | Adicionar campo título, renomear botão para "Gerar Contexto", incluir `title` no INSERT |
-| `src/components/FeedbackTimeline.tsx` | Exibir título, adicionar botão "Analisar com IA" para notas sem tags |
-| `src/pages/MemberDetails.tsx` | Implementar `handleAnalyzeLegacyFeedback` e passar props para Timeline |
+| `src/components/FeedbackTimeline.tsx` | Remover botão "Analisar com IA", remover props `onAnalyze`/`analyzingId`, limpar imports |
+| `src/pages/MemberDetails.tsx` | Remover estado `analyzingFeedbackId`, remover handler `handleAnalyzeLegacyFeedback`, atualizar props do FeedbackTimeline |
+| `src/components/BatchSyncDialog.tsx` | **NOVO** - Dialog com barra de progresso para processamento em massa |
+| `src/components/ProfileSettingsDialog.tsx` | Adicionar botão "Sincronizar Inteligência do Sistema" |
 
 ---
 
-### Seção Técnica
+### Secao Tecnica
 
-#### Fluxo: Nova Nota
-
-```text
-Usuário cola transcrição
-        │
-        ▼
-Clica em "✨ Gerar Contexto"
-        │
-        ▼
-classify-note Edge Function
-        │
-        ▼
-Gemini analisa → { tags: ["1:1"], suggestedTitle: "Alinhamento de Metas" }
-        │
-        ▼
-Frontend preenche: título + chips de tags
-        │
-        ▼
-Usuário salva → tags[] e title vão para o banco
-```
-
-#### Fluxo: Nota Legado
+#### Fluxo do Batch Processor
 
 ```text
-Card de nota antiga (sem tags)
+Usuario clica em "⚙️ Configurações" na Sidebar
         │
         ▼
-Botão discreto: "✨ Analisar com IA"
+Abre ProfileSettingsDialog → clica em "🔄 Sincronizar Inteligência"
         │
         ▼
-classify-note Edge Function
+Abre BatchSyncDialog → conta notas pendentes (136)
         │
         ▼
-UPDATE no Supabase: tags + title
+Clica em "Iniciar Sincronização"
         │
         ▼
-queryClient.invalidateQueries() → Card atualizado em tempo real
+Loop sequencial (evita rate limiting):
+┌────────────────────────────────────────┐
+│ Para cada nota pendente:               │
+│   1. Chamar classify-note              │
+│   2. UPDATE feedbacks SET tags, title  │
+│   3. Atualizar barra de progresso      │
+│   4. Delay 300ms                       │
+└────────────────────────────────────────┘
+        │
+        ▼
+Exibe "Sincronização concluída! ✨"
+        │
+        ▼
+Usuario fecha e ve todas as notas classificadas
 ```
 
-#### Por que Título é Opcional?
+#### Por que Processamento Sequencial?
 
-1. **Retrocompatibilidade**: Notas antigas não têm título
-2. **Liberdade do Usuário**: Pode digitar título manual ou deixar IA gerar
-3. **Performance**: Se já existe título, não sobrescreve ao gerar contexto
+1. **Rate Limiting**: A API de IA tem limites por minuto
+2. **Visibilidade**: Barra de progresso mostra exatamente o que esta acontecendo
+3. **Resiliencia**: Se uma nota falhar, as outras continuam
+4. **Timeout**: Evita timeout do navegador (cada request e rapido)
 
-#### Exibição do Título no Card
+#### Estimativa de Tempo
 
-O título funciona como um "resumo de uma linha" que aparece em destaque:
+Com 136 notas e 300ms de delay + ~1s de processamento por nota:
+- **Tempo estimado**: ~3-4 minutos
+- **Custo**: Minimal (usando gemini-2.5-flash)
 
-```text
-┌─────────────────────────────────────────────┐
-│ 📅 15/01/2026  🎯 1:1  🚀 PDI          [🗑️] │
-├─────────────────────────────────────────────┤
-│ Alinhamento sobre Promoção                  │  ← Título em destaque
-│                                             │
-│ Conversamos sobre os próximos passos para   │  ← Conteúdo (line-clamp)
-│ a promoção, incluindo certificações...      │
-│                                             │
-│ [Ver mais]                                  │
-└─────────────────────────────────────────────┘
-```
+#### Alternativa Futura: Background Job
 
-Para notas sem tags (legado):
-
-```text
-┌─────────────────────────────────────────────┐
-│ 📅 10/12/2025                          [🗑️] │
-├─────────────────────────────────────────────┤
-│ Conversamos sobre os projetos atuais...     │
-│                                             │
-│ [Ver mais]                                  │
-├─────────────────────────────────────────────┤
-│ ✨ Analisar com IA                          │  ← Botão discreto
-└─────────────────────────────────────────────┘
-```
+Para escalabilidade futura, poderiamos criar uma Edge Function `process-legacy-notes` que roda em background. Mas para o caso atual (136 notas), o processamento client-side e suficiente e oferece melhor UX com a barra de progresso.
 
