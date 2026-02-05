@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -77,6 +78,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
   const [isClassifying, setIsClassifying] = useState(false);
+  const [title, setTitle] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -90,6 +92,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
     setOccurredAt(undefined);
     setTags([]);
     setIsClassifying(false);
+    setTitle('');
     setIsDragging(false);
     setIsProcessingFile(false);
     
@@ -124,12 +127,12 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
     }
   };
 
-  // Classificar nota com IA
-  const handleClassifyNote = async () => {
+  // Gerar Contexto com IA (tags + título)
+  const handleGenerateContext = async () => {
     if (!content.trim() || content.length < 20) {
       toast({
         title: "Conteúdo insuficiente",
-        description: "Adicione mais texto para classificar a nota.",
+        description: "Adicione mais texto para gerar o contexto.",
         variant: "destructive"
       });
       return;
@@ -144,17 +147,26 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
 
       if (error) throw error;
 
+      // Atualizar tags
       if (data?.tags && Array.isArray(data.tags)) {
         setTags(data.tags);
+      }
+
+      // Atualizar título (apenas se estiver vazio)
+      if (data?.suggestedTitle && !title.trim()) {
+        setTitle(data.suggestedTitle);
+      }
+
+      if (data?.tags || data?.suggestedTitle) {
         toast({
-          title: "Tags geradas! ✨",
-          description: data.tags.join(", "),
+          title: "Contexto gerado! ✨",
+          description: `${data.suggestedTitle || ''} ${data.tags?.length ? `- ${data.tags.join(", ")}` : ''}`.trim(),
         });
       }
     } catch (error: any) {
       console.error('Error classifying note:', error);
       toast({
-        title: "Erro ao classificar",
+        title: "Erro ao gerar contexto",
         description: error.message || "Tente novamente.",
         variant: "destructive"
       });
@@ -305,6 +317,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
           type: 'neutral',
           occurred_at: occurredAt.toISOString(),
           tags: tags.length > 0 ? tags : [],
+          title: title.trim() || null,
           summary: null,
           sentiment: null,
           coaching_tips: null,
@@ -463,15 +476,15 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
             </div>
           </div>
 
-          {/* Smart Tags Section */}
+          {/* Campo de Título (opcional) */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>Tags de Classificação</Label>
+              <Label htmlFor="title">Título (opcional)</Label>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={handleClassifyNote}
+                onClick={handleGenerateContext}
                 disabled={!content.trim() || content.length < 20 || isClassifying || loading}
                 className="gap-2 h-7 text-xs"
               >
@@ -480,10 +493,27 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
                 ) : (
                   <Sparkles className="h-3 w-3" />
                 )}
-                Gerar Tags
+                Gerar Contexto
               </Button>
             </div>
-            
+            <Input
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Será gerado automaticamente se deixar vazio"
+              maxLength={60}
+              disabled={loading}
+            />
+            {title && (
+              <p className="text-xs text-muted-foreground">
+                {title.length}/60 caracteres
+              </p>
+            )}
+          </div>
+
+          {/* Smart Tags Section */}
+          <div className="space-y-2">
+            <Label>Tags de Classificação</Label>
             {tags.length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {tags.map((tag) => (
@@ -506,7 +536,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
               </div>
             ) : (
               <p className="text-xs text-muted-foreground">
-                Clique em "Gerar Tags" para classificar automaticamente esta nota
+                Clique em "Gerar Contexto" para classificar automaticamente esta nota
               </p>
             )}
           </div>

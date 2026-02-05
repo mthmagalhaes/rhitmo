@@ -90,6 +90,7 @@ export type Database = {
           source: string
           summary: string | null
           tags: string[] | null
+          title: string | null
           type: string
           updated_at: string
         }
@@ -109,6 +110,7 @@ export type Database = {
           source?: string
           summary?: string | null
           tags?: string[] | null
+          title?: string | null
           type: string
           updated_at?: string
         }
@@ -128,6 +130,7 @@ export type Database = {
           source?: string
           summary?: string | null
           tags?: string[] | null
+          title?: string | null
           type?: string
           updated_at?: string
         }
