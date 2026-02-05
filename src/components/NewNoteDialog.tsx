@@ -9,6 +9,7 @@ import { PenSquare, Loader2, Upload, CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VoiceInput } from './VoiceInput';
 import { extractTextFromFile, isFileSupported } from '@/lib/fileParser';
+ import { cleanTranscriptText } from '@/lib/textSanitizer';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { useEditor } from '@tiptap/react';
 import { format } from 'date-fns';
@@ -154,10 +155,11 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
 
     try {
       const extractedText = await extractTextFromFile(file);
-      setContent(extractedText);
+       const cleanedText = cleanTranscriptText(extractedText);
+       setContent(cleanedText);
       
       // Tentar extrair data automaticamente do texto
-      tryExtractDate(extractedText);
+       tryExtractDate(cleanedText);
       
       toast({
         title: "Arquivo processado!",
@@ -242,12 +244,14 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
       }
 
       // Direct INSERT into Supabase (fast, ~50ms)
+       const cleanedContent = cleanTranscriptText(content);
+       
       const { data: feedback, error: insertError } = await supabase
         .from('feedbacks')
         .insert({
           manager_id: user.id,
           member_id: targetMemberId,
-          content: content.trim(),
+           content: cleanedContent,
           type: 'neutral',
           occurred_at: occurredAt.toISOString(),
           summary: null,
