@@ -1,96 +1,206 @@
 
 
-## Plano: Protocolo de Identidade Blindada (Mentor Chat)
+## Plano: Implementar Limpeza de HTML (Text Sanitizer)
 
 ### Problema
 
-O Mentor Chat atual possui o Protocolo de Flexibilidade de Nomes (reconhece apelidos), mas **NÃO possui o filtro para ignorar falas de outros participantes**. Isso causa alucinações onde a IA atribui ações de outras pessoas (ex: "Matheus fez o deploy") ao liderado.
+Transcrições coladas de ferramentas como Tactiq/Google Meet frequentemente contêm lixo HTML (`<strong>`, `<br>`, `&nbsp;`) que:
 
-### Análise do Gap
+1. Quebra a leitura da IA
+2. Interfere no reconhecimento de falantes (ex: `<strong>Matheus:</strong>` em vez de `Matheus:`)
+3. Polui o banco de dados com markup desnecessário
 
-| Funcionalidade | Status Atual | Ação Necessária |
-|----------------|--------------|-----------------|
-| Reconhece apelidos (Yas → Yasmin) | ✅ Implementado | Manter |
-| Sabe quem é o gestor | ❌ Não recebe `managerName` | Frontend precisa enviar |
-| Ignora falas de outros | ❌ Não implementado | Adicionar protocolo |
-| Tratamento de dúvidas | ❌ Não implementado | Adicionar protocolo |
+### Solução
+
+Criar uma função utilitária `cleanTranscriptText()` que sanitiza o texto antes de salvar, garantindo que a IA receba apenas texto limpo e legível.
 
 ---
 
-### Parte 1: Frontend - Enviar `managerName` (MentorChat.tsx)
+### Parte 1: Criar Função Utilitária (src/lib/textSanitizer.ts)
 
-Atualizar a chamada da API para incluir o nome do gestor logado:
+Novo arquivo com a lógica de limpeza:
 
 ```typescript
-// Antes de fazer o fetch, obter dados do usuário
-const { data: { user: currentUser } } = await supabase.auth.getUser();
-const managerName = currentUser?.user_metadata?.full_name || 
-                    currentUser?.user_metadata?.name || 
-                    'Gestor';
+/**
+ * Text Sanitizer - Limpa HTML e normaliza texto de transcrições
+ * Garante que a IA receba texto puro para o Protocolo de Identidade funcionar
+ */
 
-const response = await fetch(
-  `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-mentor`,
-  {
-    method: 'POST',
-    headers: { ... },
-    body: JSON.stringify({
-      question: finalMessage,
-      feedbacks: feedbacks,
-      memberName: memberName,
-      memberRole: memberRole,
-      managerName: managerName,     // ← NOVO
-      workStyleData: workStyleData,
-      keyObjectives: keyObjectives
-    }),
-    signal: controller.signal
+// Mapa de entidades HTML comuns
+const HTML_ENTITIES: Record<string, string> = {
+  '&nbsp;': ' ',
+  '&amp;': '&',
+  '&lt;': '<',
+  '&gt;': '>',
+  '&quot;': '"',
+  '&#39;': "'",
+  '&apos;': "'",
+  '&#x27;': "'",
+  '&mdash;': '—',
+  '&ndash;': '–',
+  '&hellip;': '...',
+  '&copy;': '©',
+  '&reg;': '®',
+  '&trade;': '™',
+  '&bull;': '•',
+  '&middot;': '·',
+};
+
+/**
+ * Remove todas as tags HTML do texto
+ */
+function stripHtmlTags(text: string): string {
+  return text.replace(/<[^>]*>?/gm, '');
+}
+
+/**
+ * Decodifica entidades HTML comuns
+ */
+function decodeHtmlEntities(text: string): string {
+  let result = text;
+  
+  // Substituir entidades nomeadas
+  for (const [entity, char] of Object.entries(HTML_ENTITIES)) {
+    result = result.replace(new RegExp(entity, 'gi'), char);
   }
-);
+  
+  // Substituir entidades numéricas (ex: &#60;)
+  result = result.replace(/&#(\d+);/g, (_, code) => 
+    String.fromCharCode(parseInt(code, 10))
+  );
+  
+  // Substituir entidades hex (ex: &#x3C;)
+  result = result.replace(/&#x([0-9a-fA-F]+);/g, (_, code) => 
+    String.fromCharCode(parseInt(code, 16))
+  );
+  
+  return result;
+}
+
+/**
+ * Normaliza quebras de linha excessivas
+ */
+function normalizeLineBreaks(text: string): string {
+  return text
+    .replace(/\r\n/g, '\n')           // Windows → Unix
+    .replace(/\r/g, '\n')             // Mac antigo → Unix
+    .replace(/\n{3,}/g, '\n\n')       // Múltiplas quebras → máximo 2
+    .trim();
+}
+
+/**
+ * Normaliza espaços em branco
+ */
+function normalizeWhitespace(text: string): string {
+  return text
+    .replace(/[\t ]+/g, ' ')          // Múltiplos espaços/tabs → 1 espaço
+    .replace(/ +\n/g, '\n')           // Remove espaços antes de quebra
+    .replace(/\n +/g, '\n')           // Remove espaços depois de quebra
+    .trim();
+}
+
+/**
+ * Função principal: Limpa texto de transcrição
+ * 
+ * Pipeline de limpeza:
+ * 1. Remove tags HTML
+ * 2. Decodifica entidades HTML
+ * 3. Normaliza quebras de linha
+ * 4. Normaliza espaços em branco
+ */
+export function cleanTranscriptText(text: string): string {
+  if (!text) return '';
+  
+  let cleaned = text;
+  
+  // Pipeline de limpeza
+  cleaned = stripHtmlTags(cleaned);
+  cleaned = decodeHtmlEntities(cleaned);
+  cleaned = normalizeLineBreaks(cleaned);
+  cleaned = normalizeWhitespace(cleaned);
+  
+  return cleaned;
+}
+
+/**
+ * Detecta se o texto contém HTML
+ */
+export function containsHtml(text: string): boolean {
+  // Verifica tags HTML
+  if (/<[a-zA-Z][^>]*>/.test(text)) return true;
+  
+  // Verifica entidades HTML comuns
+  if (/&(nbsp|amp|lt|gt|quot|#\d+|#x[0-9a-fA-F]+);/i.test(text)) return true;
+  
+  return false;
+}
 ```
 
 ---
 
-### Parte 2: Edge Function - Receber e Usar `managerName` (chat-mentor/index.ts)
+### Parte 2: Atualizar NewNoteDialog.tsx
 
-#### 2.1 Receber o novo parâmetro
+Aplicar a limpeza em dois pontos:
+
+#### 2.1 No processamento de arquivos
 
 ```typescript
-const { question, feedbacks, memberName, memberRole, managerName, workStyleData, keyObjectives } = await req.json();
+import { cleanTranscriptText } from '@/lib/textSanitizer';
 
-// Fallback
-const targetManagerName = managerName || 'o gestor';
-const managerFirstName = targetManagerName.split(' ')[0];
+// Dentro de handleFileSelect, após extrair o texto:
+const extractedText = await extractTextFromFile(file);
+const cleanedText = cleanTranscriptText(extractedText);
+setContent(cleanedText);
 ```
 
-#### 2.2 Substituir o Protocolo Atual pelo "Protocolo de Identidade Blindada"
+#### 2.2 No envio do formulário (handleSubmit)
 
-O bloco atual (linhas 298-313) será substituído por um protocolo mais completo:
+```typescript
+// Antes de inserir no banco:
+const cleanedContent = cleanTranscriptText(content);
 
-```text
-## PROTOCOLO CRÍTICO DE IDENTIDADE E ATRIBUIÇÃO
+const { data: feedback, error: insertError } = await supabase
+  .from('feedbacks')
+  .insert({
+    manager_id: user.id,
+    member_id: targetMemberId,
+    content: cleanedContent,  // ← Texto limpo
+    type: 'neutral',
+    occurred_at: occurredAt.toISOString(),
+    // ...
+  })
+```
 
-### 1. O PROTAGONISTA (QUEM VOCÊ ANALISA)
+---
 
-- **Nome Completo**: ${memberName}
-- **Primeiro Nome**: ${firstName}
-- **Variações Aceitas**: Considere apelidos óbvios derivados de "${firstName}" 
-  (ex: "Yas" para Yasmin, "Gabi" para Gabriela, "Mat" para Matheus) como sendo a MESMA PESSOA.
+### Parte 3: Atualizar RichTextEditor para Limpar no Paste
 
-### 2. O FILTRO DE RUÍDO (QUEM VOCÊ IGNORA)
+Adicionar interceptação do paste para limpar HTML antes de inserir no editor:
 
-As notas contêm transcrições com múltiplas pessoas (incluindo o gestor **${targetManagerName}** e outros colegas).
-
-**Regras de Ouro**:
-- Atribua ações, falas e sentimentos **APENAS** quando a origem for claramente de ${memberName} ou suas variações
-- **Não Roube Créditos**: Se o texto diz "${managerFirstName}: Eu fiz o deploy", NÃO diga que ${memberName} fez o deploy
-- **Tratamento de Contexto**: Falas de outras pessoas são apenas CONTEXTO para entender a reação de ${memberName}
-- **Não confunda**: Se houver "Matheus", "Gabi", "Pedro" etc. que NÃO sejam variações de "${firstName}", ignore as ações deles
-
-### 3. EM CASO DE DÚVIDA
-
-Se a transcrição não tiver identificação clara de quem falou:
-- Assuma que é uma observação do gestor SOBRE o liderado
-- Use linguagem cautelosa: "O registro sugere...", "Há menção de...", "Parece que..."
-- NUNCA afirme com certeza se não houver indicação clara de autoria
+```typescript
+// No RichTextEditor, adicionar extensão para interceptar paste
+const editor = useEditor({
+  extensions: [
+    StarterKit.configure({ ... }),
+    Placeholder.configure({ ... }),
+  ],
+  editorProps: {
+    handlePaste: (view, event) => {
+      const text = event.clipboardData?.getData('text/plain');
+      if (text) {
+        // Limpa o texto antes de inserir
+        const cleanedText = cleanTranscriptText(text);
+        // Insere como texto puro
+        view.dispatch(
+          view.state.tr.insertText(cleanedText)
+        );
+        return true; // Previne comportamento padrão
+      }
+      return false;
+    },
+  },
+  // ...
+});
 ```
 
 ---
@@ -99,49 +209,79 @@ Se a transcrição não tiver identificação clara de quem falou:
 
 | Arquivo | Alteração |
 |---------|-----------|
-| `src/components/MentorChat.tsx` | Obter nome do usuário logado e enviar `managerName` para a Edge Function |
-| `supabase/functions/chat-mentor/index.ts` | Receber `managerName`, substituir protocolo atual pelo "Protocolo de Identidade Blindada" completo |
+| `src/lib/textSanitizer.ts` | **NOVO** - Função `cleanTranscriptText()` e helpers |
+| `src/components/NewNoteDialog.tsx` | Importar e aplicar limpeza no `handleFileSelect` e `handleSubmit` |
+| `src/components/ui/rich-text-editor.tsx` | Adicionar `handlePaste` para limpar texto colado |
 
 ---
 
-### Fluxo de Dados Atualizado
+### Exemplos de Transformação
 
-```text
-MentorChat.tsx
-      │
-      ├── memberName: "Yasmin Nóbrega"
-      ├── managerName: "Matheus Silva" ← NOVO
-      │
-      ▼
-Edge Function (chat-mentor)
-      │
-      ├── firstName = "Yasmin"
-      ├── managerFirstName = "Matheus"
-      │
-      ▼
-System Prompt com Protocolo Blindado
-      │
-      ├── "ANALISA: Yasmin, Yas"
-      ├── "IGNORA: Matheus, Mat, Gabi, Pedro..."
-      │
-      ▼
-IA responde com atribuição correta
-```
+| Input (Sujo) | Output (Limpo) |
+|--------------|----------------|
+| `<strong>Matheus:</strong> Olá` | `Matheus: Olá` |
+| `Yas:&nbsp;Terminei a tarefa` | `Yas: Terminei a tarefa` |
+| `<br><br><br>Gabi: Oi` | `\n\nGabi: Oi` |
+| `&quot;Projeto A&quot; concluído` | `"Projeto A" concluído` |
+| `<p>Parágrafo 1</p><p>Parágrafo 2</p>` | `Parágrafo 1 Parágrafo 2` |
 
 ---
 
 ### Seção Técnica
 
-**Cenários protegidos após a correção:**
+#### Pipeline de Limpeza
 
-| Cenário | Antes | Depois |
-|---------|-------|--------|
-| "Yas entregou o relatório" | ✅ Atribuía a Yasmin | ✅ Continua funcionando |
-| "Matheus: Fiz o deploy" (Gestor) | ❌ Atribuía a Yasmin | ✅ Ignora (ação do gestor) |
-| "Gabi ajudou no projeto" (Colega) | ❌ Atribuía a Yasmin | ✅ Ignora (ação de outra pessoa) |
-| Transcrição sem identificação | ❌ Inventava autoria | ✅ Usa linguagem cautelosa |
+```text
+Texto Colado (HTML sujo)
+         │
+         ▼
+    stripHtmlTags()
+    ├── Remove <strong>, <br>, <p>, etc
+         │
+         ▼
+    decodeHtmlEntities()
+    ├── &nbsp; → espaço
+    ├── &amp; → &
+    ├── &#60; → <
+         │
+         ▼
+    normalizeLineBreaks()
+    ├── \r\n → \n
+    ├── 3+ quebras → 2 quebras
+         │
+         ▼
+    normalizeWhitespace()
+    ├── Múltiplos espaços → 1
+         │
+         ▼
+    Texto Limpo → Banco de Dados
+```
 
-**Integração com generate-review:**
+#### Por que limpar no Frontend (não no Backend)?
 
-O mesmo padrão já foi implementado no `generate-review/index.ts`. Esta alteração garante **consistência** entre as duas funções de IA.
+1. **Feedback Imediato**: O usuário vê o texto limpo antes de salvar
+2. **Menor Payload**: Menos bytes enviados para o servidor
+3. **Consistência**: Garante que TODAS as notas passem pelo mesmo tratamento
+4. **Performance**: Não sobrecarrega as Edge Functions
+
+#### Integração com Protocolo de Identidade
+
+Após a limpeza, transcrições como:
+
+```html
+<strong>Yas:</strong>&nbsp;Terminei a tarefa<br><br>
+<strong>Matheus:</strong>&nbsp;Ótimo trabalho!
+```
+
+Se tornam:
+
+```text
+Yas: Terminei a tarefa
+
+Matheus: Ótimo trabalho!
+```
+
+Permitindo que a IA identifique corretamente:
+- **Yas** (variação de Yasmin) → Atribui ao membro
+- **Matheus** (gestor) → Ignora como contexto
 
