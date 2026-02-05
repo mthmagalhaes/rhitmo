@@ -315,7 +315,13 @@ export const MentorChat = ({
       const timeoutId = setTimeout(() => controller.abort(), 30000);
 
       const { data: session } = await supabase.auth.getSession();
-      
+
+      // Obter nome do gestor logado para o Protocolo de Identidade Blindada
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const managerName = currentUser?.user_metadata?.full_name || 
+                          currentUser?.user_metadata?.name || 
+                          'Gestor';
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-mentor`,
         {
@@ -329,6 +335,7 @@ export const MentorChat = ({
             feedbacks: feedbacks,
             memberName: memberName,
             memberRole: memberRole,
+            managerName: managerName,
             workStyleData: workStyleData,
             keyObjectives: keyObjectives
           }),

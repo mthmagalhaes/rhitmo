@@ -133,12 +133,16 @@ serve(async (req) => {
   }
 
   try {
-    const { question, feedbacks, memberName, memberRole, workStyleData, keyObjectives } = await req.json();
+    const { question, feedbacks, memberName, memberRole, managerName, workStyleData, keyObjectives } = await req.json();
 
-    console.log('Chat mentor 2.0 request:', { memberName, memberRole, feedbacksCount: feedbacks?.length, hasWorkStyle: !!workStyleData });
+    console.log('Chat mentor 2.0 request:', { memberName, memberRole, managerName, feedbacksCount: feedbacks?.length, hasWorkStyle: !!workStyleData });
     
     // Extrair primeiro nome para flexibilidade de apelidos
     const firstName = memberName ? memberName.split(' ')[0] : '';
+    
+    // Extrair dados do gestor para o Protocolo de Identidade Blindada
+    const targetManagerName = managerName || 'o gestor';
+    const managerFirstName = targetManagerName.split(' ')[0];
 
     if (!question || !feedbacks || !memberName) {
       return new Response(
@@ -301,16 +305,31 @@ ${objectivesSection}
 **Primeiro Nome**: ${firstName}
 **Cargo**: ${memberRole || 'Não informado'}
 
-### PROTOCOLO DE FLEXIBILIDADE DE NOMES
+## PROTOCOLO CRÍTICO DE IDENTIDADE E ATRIBUIÇÃO
 
-Nas transcrições e notas, ${memberName} pode ser citado como:
-- Nome Completo: "${memberName}"
-- Primeiro Nome: "${firstName}"
-- Apelidos/Diminutivos: Variações óbvias do primeiro nome (ex: "Yas" para "Yasmin", "Gabi" para "Gabriela", "Mat" para "Matheus")
+### 1. O PROTAGONISTA (QUEM VOCÊ ANALISA)
 
-**IMPORTANTE**: Todas essas variações referem-se à MESMA PESSOA.
-Se uma nota diz "Yas disse que..." e o liderado é Yasmin, considere como fala de Yasmin.
-Se o texto menciona "${firstName}:" ou apelidos comuns, atribua a ${memberName}.
+- **Nome Completo**: ${memberName}
+- **Primeiro Nome**: ${firstName}
+- **Variações Aceitas**: Considere apelidos óbvios derivados de "${firstName}" 
+  (ex: "Yas" para Yasmin, "Gabi" para Gabriela, "Mat" para Matheus) como sendo a MESMA PESSOA.
+
+### 2. O FILTRO DE RUÍDO (QUEM VOCÊ IGNORA)
+
+As notas contêm transcrições com múltiplas pessoas (incluindo o gestor **${targetManagerName}** e outros colegas).
+
+**Regras de Ouro**:
+- Atribua ações, falas e sentimentos **APENAS** quando a origem for claramente de ${memberName} ou suas variações
+- **Não Roube Créditos**: Se o texto diz "${managerFirstName}: Eu fiz o deploy", NÃO diga que ${memberName} fez o deploy
+- **Tratamento de Contexto**: Falas de outras pessoas são apenas CONTEXTO para entender a reação de ${memberName}
+- **Não confunda**: Se houver "Matheus", "Gabi", "Pedro" etc. que NÃO sejam variações de "${firstName}", ignore as ações deles
+
+### 3. EM CASO DE DÚVIDA
+
+Se a transcrição não tiver identificação clara de quem falou:
+- Assuma que é uma observação do gestor SOBRE o liderado
+- Use linguagem cautelosa: "O registro sugere...", "Há menção de...", "Parece que..."
+- NUNCA afirme com certeza se não houver indicação clara de autoria
 
 ${formatWorkStyle(workStyleData)}
 
