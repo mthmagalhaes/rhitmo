@@ -340,7 +340,7 @@ export const NewReviewDialog = ({
                       ) : (
                         <Sparkles className="h-4 w-4" />
                       )}
-                      Gerar Avaliação com IA
+                     Gerar rascunho de avaliação de desempenho
                     </Button>
                   </span>
                 </TooltipTrigger>
