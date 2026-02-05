@@ -43,7 +43,6 @@ const MemberDetails = () => {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
-  const [analyzingFeedbackId, setAnalyzingFeedbackId] = useState<string | null>(null);
   const [resendingInvite, setResendingInvite] = useState(false);
   const { toast } = useToast();
   const {
@@ -157,48 +156,6 @@ const MemberDetails = () => {
         description: error.message,
         variant: "destructive"
       });
-    }
-  };
-
-  const handleAnalyzeLegacyFeedback = async (feedbackId: string, content: string) => {
-    setAnalyzingFeedbackId(feedbackId);
-    
-    try {
-      // 1. Chamar IA para classificar
-      const { data, error } = await supabase.functions.invoke('classify-note', {
-        body: { content }
-      });
-
-      if (error) throw error;
-
-      // 2. Atualizar feedback no banco
-      const { error: updateError } = await supabase
-        .from('feedbacks')
-        .update({
-          tags: data.tags || [],
-          title: data.suggestedTitle || null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', feedbackId);
-
-      if (updateError) throw updateError;
-
-      // 3. Invalidar cache para refresh
-      queryClient.invalidateQueries({ queryKey: ['feedbacks', id] });
-
-      toast({
-        title: "Nota classificada! ✨",
-        description: `${data.suggestedTitle || 'Classificado'} - ${data.tags?.join(", ") || ''}`,
-      });
-    } catch (error: any) {
-      console.error('Error analyzing legacy feedback:', error);
-      toast({
-        title: "Erro na análise",
-        description: error.message || "Tente novamente.",
-        variant: "destructive"
-      });
-    } finally {
-      setAnalyzingFeedbackId(null);
     }
   };
 
@@ -545,7 +502,7 @@ const MemberDetails = () => {
           <TabsContent value="diary">
             <div>
               <h2 className="text-2xl font-bold text-foreground mb-6">Histórico de Feedbacks</h2>
-              {feedbacks.length > 0 ? <FeedbackTimeline feedbacks={feedbacks as any} onDelete={handleDeleteFeedback} onAnalyze={handleAnalyzeLegacyFeedback} analyzingId={analyzingFeedbackId} /> : <Card className="p-12 text-center">
+              {feedbacks.length > 0 ? <FeedbackTimeline feedbacks={feedbacks as any} onDelete={handleDeleteFeedback} /> : <Card className="p-12 text-center">
                   <p className="text-muted-foreground mb-4">Nenhum feedback registrado ainda</p>
                   <Button onClick={() => setDialogOpen(true)}>Adicionar Primeira Nota</Button>
                 </Card>}
