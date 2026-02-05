@@ -1,124 +1,98 @@
 
 
-## Plano: Correção de Identidade em Avaliações (Multi-Speaker Fix)
+## Plano: Suporte a Apelidos e Variações de Nome
 
 ### Problema
 
-Em transcrições de reuniões com múltiplos participantes, a IA está confundindo os falantes e atribuindo ações/falas de outros (como o gestor Matheus) ao avaliado (ex: Yasmin). Isso ocorre porque o prompt atual não tem instruções explícitas de isolamento de entidade.
+As transcrições de reuniões frequentemente usam apelidos ou diminutivos (ex: "Yas" em vez de "Yasmin Nóbrega"). A IA não consegue mapear automaticamente essas variações, perdendo referências importantes.
 
 ---
 
-### Análise do Problema
+### Solução
 
-| Situação | Comportamento Atual | Comportamento Esperado |
-|----------|---------------------|------------------------|
-| Transcrição: "Matheus entregou o projeto" | IA coloca nos Pontos Fortes de Yasmin | IA ignora (não é ação de Yasmin) |
-| Múltiplos participantes na reunião | IA mistura falas de todos | IA filtra apenas falas de Yasmin |
-| Dicas de Apresentação | "Matheus demonstra preferência..." | "Sugira como Matheus deve falar com Yasmin..." |
+Adicionar um **Protocolo de Flexibilidade de Nomes** que extrai o primeiro nome e instrui a IA a aceitar variações comuns.
 
 ---
 
-### Parte 1: Atualizar Frontend (NewReviewDialog.tsx)
+### Parte 1: Lógica de Extração de Nomes (TypeScript)
 
-Passar o nome do gestor logado para a Edge Function:
+Criar uma função helper para extrair variações do nome:
 
 ```typescript
-// Antes de chamar a função, obter nome do usuário
-const { data: { user } } = await supabase.auth.getUser();
-const managerName = user?.user_metadata?.full_name || user?.user_metadata?.name || 'Gestor';
-
-const fetchPromise = supabase.functions.invoke('generate-review', {
-  body: { 
-    memberId, 
-    memberName,         // Nome do avaliado (já existe)
-    managerName,        // NOVO: Nome do gestor
-    startDate: dateRange.from.toISOString(),
-    endDate: dateRange.to.toISOString()
-  }
-});
+// Extrair primeiro nome e possíveis apelidos
+const getNameVariations = (fullName: string) => {
+  const firstName = fullName.split(' ')[0];
+  return {
+    fullName,
+    firstName,
+    // O prompt orientará a IA a inferir diminutivos comuns
+  };
+};
 ```
 
 ---
 
-### Parte 2: Reescrever System Prompt (generate-review/index.ts)
+### Parte 2: Atualizar `generate-review/index.ts`
 
-#### 2.1 Receber novo parâmetro
+#### 2.1 Extrair variações do nome do membro
 
 ```typescript
-const { memberId, memberName, managerName, months, startDate, endDate } = await req.json();
-
-// Fallback se não vier do frontend
-const targetMemberName = memberName || member.name;
-const targetManagerName = managerName || 'o gestor';
+// Após definir targetMemberName
+const firstName = targetMemberName.split(' ')[0];
 ```
 
-#### 2.2 Novo System Prompt com Diretrizes de Atribuição
+#### 2.2 Adicionar Protocolo de Flexibilidade ao System Prompt
 
-O prompt será completamente reescrito para incluir regras explícitas de isolamento de entidade:
+Inserir após as "DIRETRIZES CRÍTICAS DE ATRIBUIÇÃO E ISOLAMENTO":
 
 ```text
-# RHITMO REVIEW GENERATOR
+### PROTOCOLO DE FLEXIBILIDADE DE NOMES
 
-## IDENTIDADE
-[Mantém RHITMO_IDENTITY existente]
+O MEMBRO AVALIADO É: **${targetMemberName}** (Primeiro Nome: **${firstName}**)
 
-## REGRAS DE OURO (PROTOCOLOS DE FILTRAGEM)
-[Mantém GUARDRAILS_PROMPT existente]
+Nas transcrições, este membro pode ser citado como:
+- **Nome Completo**: "${targetMemberName}"
+- **Primeiro Nome**: "${firstName}"
+- **Apelidos/Diminutivos Comuns**: Variações óbvias do primeiro nome (ex: se for "Yasmin", aceite "Yas", "Yasmim"; se for "Gabriela", aceite "Gabi", "Gabs"; se for "Matheus", aceite "Mat", "Theus")
 
-## 🎯 DIRETRIZES CRÍTICAS DE ATRIBUIÇÃO E ISOLAMENTO
+**AÇÃO**: Considere todas essas variações como sendo a MESMA PESSOA. 
+Se o texto diz "Yas: terminei a tarefa", atribua essa ação a ${targetMemberName}.
+Se o texto diz "${firstName}: vou entregar amanhã", atribua a ${targetMemberName}.
 
-VOCÊ É UM AVALIADOR DE DESEMPENHO FOCADO **ESTRITAMENTE** EM: **${targetMemberName}**
-O GESTOR QUE SOLICITOU A AVALIAÇÃO É: **${targetManagerName}**
+**ATENÇÃO**: NÃO confunda variações do nome do gestor (${targetManagerName}) com variações de ${targetMemberName}.
+```
 
-### CONTEXTO CRÍTICO SOBRE OS DADOS
-As notas fornecidas podem conter transcrições de reuniões com **MÚLTIPLOS PARTICIPANTES**.
+---
 
-### PROTOCOLOS DE FILTRAGEM OBRIGATÓRIOS
+### Parte 3: Atualizar `chat-mentor/index.ts`
 
-1. **QUEM É O ALVO**: 
-   Você deve analisar **APENAS** as falas, ações e entregas de **${targetMemberName}**.
+#### 3.1 Extrair primeiro nome no início
 
-2. **IGNORE OS OUTROS**: 
-   Se ${targetManagerName}, "Giovanna", "Gabi", "Matheus" ou qualquer outra pessoa 
-   falou ou fez algo, isso é apenas **CONTEXTO**. 
-   NÃO atribua méritos ou defeitos de outros a ${targetMemberName}.
+```typescript
+// Logo após receber memberName
+const firstName = memberName.split(' ')[0];
+```
 
-3. **DESAMBIGUAÇÃO DE NOMES**: 
-   Se o texto diz "Matheus entregou o projeto" e ${targetMemberName} não é Matheus, 
-   NÃO coloque isso nos Pontos Fortes de ${targetMemberName}.
-   Se houver dúvida sobre quem realizou a ação, IGNORE o item.
+#### 3.2 Adicionar Protocolo de Flexibilidade ao System Prompt
 
-4. **ANÁLISE DE SILÊNCIO**: 
-   Se ${targetMemberName} estava na reunião mas não falou nada ou não teve ações 
-   registradas, note isso como comportamento observável (passividade/escuta ativa), 
-   mas NUNCA invente ações.
+Inserir na seção "DADOS DO LIDERADO":
 
-5. **DADOS INSUFICIENTES**: 
-   Se não houver registros suficientes especificamente sobre ${targetMemberName}, 
-   diga claramente: "Não há registros suficientes da atuação direta de ${targetMemberName} 
-   nas notas fornecidas para avaliar este aspecto."
+```text
+## DADOS DO LIDERADO
 
-## MISSÃO ESPECÍFICA: GERAR AVALIAÇÃO DE DESEMPENHO
+**Nome Completo**: ${memberName}
+**Primeiro Nome**: ${firstName}
+**Cargo**: ${memberRole || 'Não informado'}
 
-Gerar um RASCUNHO de Avaliação de Desempenho profissional com base APENAS 
-nas notas fornecidas ${periodDescription}.
+### PROTOCOLO DE FLEXIBILIDADE DE NOMES
 
-[... resto do formato de saída mantido ...]
+Nas transcrições e notas, ${memberName} pode ser citado como:
+- Nome Completo: "${memberName}"
+- Primeiro Nome: "${firstName}"
+- Apelidos/Diminutivos: Variações óbvias (ex: "Yas" para "Yasmin", "Gabi" para "Gabriela")
 
-## 🎭 Como Apresentar Esta Avaliação
-*Baseado no perfil Rhitmo Sync de ${targetMemberName}:*
-
-Sugira como **${targetManagerName}** deve conduzir a reunião de feedback com **${targetMemberName}**:
-- Se "Direto ao ponto": ${targetManagerName} deve ir direto aos fatos, ser objetivo
-- Se "Contexto completo": ${targetManagerName} deve explicar o processo antes dos resultados
-- Se preferência por "Reconhecimento": ${targetManagerName} deve começar pelos pontos fortes
-- Se preferência por "Crescimento": ${targetManagerName} deve focar nas oportunidades
-
-## REGRAS CRÍTICAS DE VALIDAÇÃO FINAL
-- Antes de finalizar, VERIFIQUE se todas as ações citadas são de ${targetMemberName}
-- Se mencionar qualquer outro nome, confirme que é apenas contexto, não atribuição
-- NUNCA escreva "o gestor demonstra" ou "${targetManagerName} fez X" nos pontos fortes/fracos
-- O documento final é SOBRE ${targetMemberName}, não sobre ${targetManagerName}
+**IMPORTANTE**: Todas essas variações referem-se à MESMA PESSOA.
+Se uma nota diz "Yas disse que..." e o liderado é Yasmin, considere como fala de Yasmin.
 ```
 
 ---
@@ -127,54 +101,41 @@ Sugira como **${targetManagerName}** deve conduzir a reunião de feedback com **
 
 | Arquivo | Alteração |
 |---------|-----------|
-| `src/components/NewReviewDialog.tsx` | Obter nome do usuário logado e passar `memberName` + `managerName` para a Edge Function |
-| `supabase/functions/generate-review/index.ts` | Receber `managerName`, reescrever system prompt com diretrizes de atribuição e isolamento de entidade |
+| `supabase/functions/generate-review/index.ts` | Extrair `firstName`, adicionar Protocolo de Flexibilidade de Nomes no system prompt |
+| `supabase/functions/chat-mentor/index.ts` | Extrair `firstName`, adicionar Protocolo de Flexibilidade de Nomes na seção de dados do liderado |
 
 ---
 
-### Fluxo de Dados
+### Exemplos de Mapeamento Automático
 
-```text
-NewReviewDialog
-      │
-      ├── memberId (já existe)
-      ├── memberName (já existe como prop)
-      ├── managerName ← user.user_metadata.full_name (NOVO)
-      │
-      ▼
-Edge Function (generate-review)
-      │
-      ├── targetMemberName = memberName || member.name
-      ├── targetManagerName = managerName || 'o gestor'
-      │
-      ▼
-System Prompt interpolado
-      │
-      ├── "FOCADO ESTRITAMENTE EM: Yasmin"
-      ├── "O GESTOR É: Matheus"
-      ├── "Se Matheus fez algo, é CONTEXTO, não atribua a Yasmin"
-      │
-      ▼
-IA gera avaliação filtrada
-```
+| Transcrição | Nome Completo | Primeiro Nome | Apelido Aceito | Resultado |
+|-------------|---------------|---------------|----------------|-----------|
+| "Yas: terminei a tarefa" | Yasmin Nóbrega | Yasmin | Yas | ✅ Atribui a Yasmin |
+| "Gabi: preciso de ajuda" | Gabriela Silva | Gabriela | Gabi | ✅ Atribui a Gabriela |
+| "Mat: vou revisar" | Matheus Costa | Matheus | Mat | ✅ Atribui a Matheus |
+| "Pedro: fiz o deploy" | Pedro Santos | Pedro | Pedro | ✅ Atribui a Pedro |
 
 ---
 
 ### Seção Técnica
 
-**Por que essa abordagem funciona?**
+**Por que a IA infere os apelidos?**
 
-1. **Explicit Entity Constraint**: A IA recebe instruções claras sobre QUEM é o alvo da análise
-2. **Negative Examples**: O prompt inclui exemplos do que NÃO fazer (ex: "Se Matheus entregou...")
-3. **Role Separation**: Distinção clara entre avaliado (memberName) e avaliador (managerName)
-4. **Fallback Seguro**: Se não houver dados sobre o membro, a IA é instruída a dizer isso
+Em vez de criar um dicionário fixo de apelidos (que seria incompleto), instruímos a IA a:
 
-**Cenários protegidos após a correção:**
+1. Reconhecer o **primeiro nome** como variação válida
+2. Aplicar **heurística linguística** para diminutivos óbvios:
+   - Truncamentos: "Yasmin" → "Yas"
+   - Sufixos carinhosos: "Gabriela" → "Gabi"
+   - Variações fonéticas: "Matheus" → "Mat", "Theus"
+
+**Vantagem**: A IA consegue lidar com apelidos novos sem precisar de código adicional.
+
+**Cenários protegidos:**
 
 | Cenário | Antes | Depois |
 |---------|-------|--------|
-| "Matheus apresentou bem" (Yasmin é o alvo) | ❌ Colocava em Pontos Fortes de Yasmin | ✅ Ignora (não é Yasmin) |
-| Reunião com 5 pessoas | ❌ Misturava falas | ✅ Filtra apenas Yasmin |
-| Dicas de Apresentação | ❌ "Matheus demonstra..." | ✅ "Sugira como Matheus deve falar com Yasmin..." |
-| Sem dados sobre o membro | ❌ Inventava | ✅ "Não há registros suficientes..." |
+| "Yas falou bem" (Yasmin é o alvo) | ❌ Não reconhecia | ✅ Atribui a Yasmin |
+| "Gabi entregou o projeto" (Gabriela é o alvo) | ❌ Ignorava | ✅ Atribui a Gabriela |
+| Mistura de apelidos e nome completo | ❌ Tratava como pessoas diferentes | ✅ Unifica corretamente |
 
