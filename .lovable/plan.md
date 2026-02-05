@@ -1,55 +1,59 @@
 
 
-## Plano: Implementar Smart Tags (Auto-Classificação de Notas)
+## Plano: Smart Context (Auto-Tags + Auto-Title + Tratamento de Legado)
 
 ### Visão Geral
 
-Adicionar um sistema de classificação automática de notas utilizando IA, permitindo que o líder identifique visualmente o "tipo" de conversa sem precisar ler o conteúdo.
+Expandir o sistema de Smart Tags para incluir:
+1. **Auto-Title**: Geração automática de título executivo
+2. **Botão "✨ Gerar Contexto"**: Combina tags + title em uma única chamada
+3. **Tratamento de Legado**: Botão discreto em notas antigas para classificar retroativamente
 
 ---
 
 ### Parte 1: Banco de Dados
 
-Adicionar coluna `tags` na tabela `feedbacks`:
+Adicionar coluna `title` na tabela `feedbacks`:
 
 ```sql
-ALTER TABLE feedbacks 
-ADD COLUMN tags TEXT[] DEFAULT '{}';
+ALTER TABLE public.feedbacks 
+ADD COLUMN title TEXT NULL;
+
+COMMENT ON COLUMN public.feedbacks.title IS 'Título executivo gerado por IA ou inserido manualmente';
 ```
 
-**Nota**: A tabela é `feedbacks` (não `notes`), conforme identificado no schema existente.
+**Nota**: Coluna `tags` já existe (implementada anteriormente).
 
 ---
 
-### Parte 2: Nova Edge Function (`classify-note`)
+### Parte 2: Atualizar Edge Function (`classify-note`)
 
-Criar função em `supabase/functions/classify-note/index.ts`:
+Modificar a função existente para retornar **tags + suggestedTitle**:
 
-**Configuração de CORS e Autenticação:**
-- `verify_jwt = true` (usuário deve estar autenticado)
-- Recebe: `{ content: string }`
-- Retorna: `{ tags: string[] }`
-
-**System Prompt (Taxonomia de Tags):**
+**Mudanças no System Prompt:**
 
 ```text
-Você é um classificador de reuniões corporativas. Analise o texto e retorne ATÉ 2 tags desta lista:
+Você é um classificador de reuniões corporativas. Analise o texto e retorne:
 
-🎯 1:1 - Conversas individuais livres, alinhamento semanal, conexão pessoal
-🚀 PDI - Conversas sobre carreira, futuro, promoções, desenvolvimento de skills
-🚨 Feedback Difícil - Correção de rota, performance baixa, comportamento inadequado, demissão
-✅ Check-in - Status report, acompanhamento de projetos, prazos, burocracia do dia a dia
-📢 Reunião Geral - Reuniões com 3+ pessoas, alinhamentos de área, townhalls
-🧠 Brainstorming - Ideação, resolução de problemas complexos sem pauta fixa
+1. TAGS: Escolha até 2 tags desta lista:
+   - 1:1 (Conversas individuais, alinhamento semanal)
+   - PDI (Carreira, promoções, desenvolvimento)
+   - Feedback Difícil (Correção de rota, demissão)
+   - Check-in (Status report, projetos)
+   - Reunião Geral (3+ pessoas, townhalls)
+   - Brainstorming (Ideação, problemas complexos)
 
-REGRAS:
-1. Se não tiver certeza absoluta, use apenas UMA tag
-2. Se for misto (ex: 1:1 que virou PDI), use as DUAS tags relevantes
-3. SEMPRE retorne pelo menos uma tag
-4. Retorne APENAS os nomes das tags, sem emojis
+2. TÍTULO: Gere um título executivo curto (máximo 6 palavras).
+
+REGRAS DE TÍTULO:
+- Ignore saudações ("Oi", "Bom dia")
+- Foque na ação/tópico principal
+- Exemplos: "Alinhamento de Contrato", "Feedback sobre Atraso"
+- Se vago, use "Check-in Semanal" ou "Conversa de Alinhamento"
 ```
 
-**Tool Calling para Structured Output:**
+**Mudanças no Tool Calling:**
+
 ```typescript
 tools: [{
   type: "function",
@@ -65,79 +69,139 @@ tools: [{
             enum: ["1:1", "PDI", "Feedback Difícil", "Check-in", "Reunião Geral", "Brainstorming"]
           },
           maxItems: 2
+        },
+        suggestedTitle: {
+          type: "string",
+          description: "Título executivo curto (max 6 palavras)"
         }
       },
-      required: ["tags"]
+      required: ["tags", "suggestedTitle"]
     }
   }
 }]
+```
+
+**Novo Response:**
+
+```json
+{ "tags": ["1:1", "PDI"], "suggestedTitle": "Alinhamento de Carreira" }
 ```
 
 ---
 
 ### Parte 3: Interface de Criação (`NewNoteDialog.tsx`)
 
-#### 3.1 Novo Estado
+#### 3.1 Novo Estado para Título
 
 ```typescript
-const [tags, setTags] = useState<string[]>([]);
-const [isClassifying, setIsClassifying] = useState(false);
+const [title, setTitle] = useState('');
 ```
 
-#### 3.2 Botão "Gerar Tags"
+#### 3.2 Renomear Botão para "✨ Gerar Contexto"
 
-Posição: Abaixo do campo de conteúdo, ao lado do VoiceInput
+Posição: Na seção de Smart Tags, substituindo "Gerar Tags"
 
 ```tsx
 <Button
   variant="outline"
   size="sm"
-  onClick={handleClassifyNote}
-  disabled={!content.trim() || isClassifying || loading}
-  className="gap-2"
+  onClick={handleGenerateContext}
+  disabled={!content.trim() || content.length < 20 || isClassifying || loading}
+  className="gap-2 h-7 text-xs"
 >
-  {isClassifying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-  Gerar Tags
+  {isClassifying ? (
+    <Loader2 className="h-3 w-3 animate-spin" />
+  ) : (
+    <Sparkles className="h-3 w-3" />
+  )}
+  Gerar Contexto
 </Button>
 ```
 
-#### 3.3 Chips de Tags Removíveis
+#### 3.3 Adicionar Campo de Título (Opcional)
 
-Posição: Acima ou abaixo do campo de Data
+Posição: Acima da seção de tags (ou abaixo da data)
 
 ```tsx
-{tags.length > 0 && (
-  <div className="flex flex-wrap gap-2">
-    {tags.map((tag) => (
-      <Badge key={tag} variant="secondary" className={getTagColor(tag)}>
-        {getTagEmoji(tag)} {tag}
-        <button onClick={() => removeTag(tag)} className="ml-1">
-          <X className="h-3 w-3" />
-        </button>
-      </Badge>
-    ))}
-  </div>
-)}
+<div className="space-y-2">
+  <Label>Título (opcional)</Label>
+  <Input
+    value={title}
+    onChange={(e) => setTitle(e.target.value)}
+    placeholder="Será gerado automaticamente se deixar vazio"
+    maxLength={60}
+  />
+  {title && (
+    <p className="text-xs text-muted-foreground">
+      {title.length}/60 caracteres
+    </p>
+  )}
+</div>
 ```
 
-#### 3.4 Atualizar handleSubmit
+#### 3.4 Atualizar handleGenerateContext
 
-Incluir `tags` no INSERT:
+```typescript
+const handleGenerateContext = async () => {
+  if (!content.trim() || content.length < 20) {
+    toast({
+      title: "Conteúdo insuficiente",
+      description: "Adicione mais texto para gerar o contexto.",
+      variant: "destructive"
+    });
+    return;
+  }
+
+  setIsClassifying(true);
+
+  try {
+    const { data, error } = await supabase.functions.invoke('classify-note', {
+      body: { content }
+    });
+
+    if (error) throw error;
+
+    // Atualizar tags
+    if (data?.tags && Array.isArray(data.tags)) {
+      setTags(data.tags);
+    }
+
+    // Atualizar título (apenas se estiver vazio)
+    if (data?.suggestedTitle && !title.trim()) {
+      setTitle(data.suggestedTitle);
+    }
+
+    toast({
+      title: "Contexto gerado! ✨",
+      description: `${data.suggestedTitle} - ${data.tags?.join(", ")}`,
+    });
+  } catch (error: any) {
+    // ... tratamento de erro existente
+  } finally {
+    setIsClassifying(false);
+  }
+};
+```
+
+#### 3.5 Atualizar handleSubmit
+
+Incluir `title` no INSERT:
 
 ```typescript
 const { data: feedback, error: insertError } = await supabase
   .from('feedbacks')
   .insert({
-    // ... existing fields
-    tags: tags, // ← NOVO
+    // ... campos existentes
+    tags: tags.length > 0 ? tags : [],
+    title: title.trim() || null, // ← NOVO
   })
 ```
 
 ---
 
-### Parte 4: Interface de Listagem (`FeedbackTimeline.tsx`)
+### Parte 4: Interface de Histórico (`FeedbackTimeline.tsx`)
 
-#### 4.1 Atualizar Interface
+#### 4.1 Atualizar Interface Feedback
 
 ```typescript
 interface Feedback {
@@ -146,40 +210,126 @@ interface Feedback {
   occurred_at?: string;
   content: string;
   type: 'positive' | 'constructive' | 'neutral';
-  tags?: string[]; // ← NOVO
+  tags?: string[];
+  title?: string | null; // ← NOVO
 }
 ```
 
-#### 4.2 Renderizar Tags no Card
+#### 4.2 Exibir Título no Card
 
-Posição: No header, ao lado da data
+Se existir título, exibir como texto principal antes do conteúdo:
 
 ```tsx
-{/* Tags */}
-{feedback.tags && feedback.tags.length > 0 && (
-  <div className="flex flex-wrap gap-1.5">
-    {feedback.tags.map((tag) => (
-      <Badge key={tag} variant="secondary" className={cn("text-xs py-0.5", getTagColor(tag))}>
-        {getTagEmoji(tag)} {tag}
-      </Badge>
-    ))}
+{/* Título (se existir) */}
+{feedback.title && (
+  <h4 className="font-medium text-foreground mb-2">
+    {feedback.title}
+  </h4>
+)}
+```
+
+#### 4.3 Adicionar Props para Análise de Legado
+
+```typescript
+interface FeedbackTimelineProps {
+  feedbacks: Feedback[];
+  onDelete?: (id: string) => void;
+  onAnalyze?: (feedbackId: string, content: string) => void; // ← NOVO
+  analyzingId?: string | null; // ← NOVO (para mostrar loading)
+}
+```
+
+#### 4.4 Botão "✨ Analisar com IA" para Legado
+
+Condição: Mostrar apenas se `tags` for array vazio ou null
+
+```tsx
+{/* Botão de Análise para Notas Legado */}
+{(!feedback.tags || feedback.tags.length === 0) && onAnalyze && (
+  <div className="mt-3 pt-3 border-t border-border/50">
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={() => onAnalyze(feedback.id, feedback.content)}
+      disabled={analyzingId === feedback.id}
+      className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1.5"
+    >
+      {analyzingId === feedback.id ? (
+        <Loader2 className="h-3 w-3 animate-spin" />
+      ) : (
+        <Sparkles className="h-3 w-3" />
+      )}
+      Analisar com IA
+    </Button>
   </div>
 )}
 ```
 
-#### 4.3 Mapa de Cores e Emojis
+---
 
-Criar constante compartilhada ou inline:
+### Parte 5: Página de Detalhes (`MemberDetails.tsx`)
+
+#### 5.1 Novo Estado para Análise
 
 ```typescript
-const TAG_CONFIG: Record<string, { emoji: string; color: string }> = {
-  "1:1": { emoji: "🎯", color: "bg-blue-500/10 text-blue-700 dark:text-blue-400" },
-  "PDI": { emoji: "🚀", color: "bg-violet-500/10 text-violet-700 dark:text-violet-400" },
-  "Feedback Difícil": { emoji: "🚨", color: "bg-red-500/10 text-red-700 dark:text-red-400" },
-  "Check-in": { emoji: "✅", color: "bg-green-500/10 text-green-700 dark:text-green-400" },
-  "Reunião Geral": { emoji: "📢", color: "bg-gray-500/10 text-gray-700 dark:text-gray-400" },
-  "Brainstorming": { emoji: "🧠", color: "bg-amber-500/10 text-amber-700 dark:text-amber-400" },
+const [analyzingFeedbackId, setAnalyzingFeedbackId] = useState<string | null>(null);
+```
+
+#### 5.2 Handler para Análise de Legado
+
+```typescript
+const handleAnalyzeLegacyFeedback = async (feedbackId: string, content: string) => {
+  setAnalyzingFeedbackId(feedbackId);
+  
+  try {
+    // 1. Chamar IA para classificar
+    const { data, error } = await supabase.functions.invoke('classify-note', {
+      body: { content }
+    });
+
+    if (error) throw error;
+
+    // 2. Atualizar feedback no banco
+    const { error: updateError } = await supabase
+      .from('feedbacks')
+      .update({
+        tags: data.tags || [],
+        title: data.suggestedTitle || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', feedbackId);
+
+    if (updateError) throw updateError;
+
+    // 3. Invalidar cache para refresh
+    queryClient.invalidateQueries({ queryKey: ['feedbacks', id] });
+
+    toast({
+      title: "Nota classificada! ✨",
+      description: `${data.suggestedTitle} - ${data.tags?.join(", ")}`,
+    });
+  } catch (error: any) {
+    console.error('Error analyzing legacy feedback:', error);
+    toast({
+      title: "Erro na análise",
+      description: error.message || "Tente novamente.",
+      variant: "destructive"
+    });
+  } finally {
+    setAnalyzingFeedbackId(null);
+  }
 };
+```
+
+#### 5.3 Passar Props para FeedbackTimeline
+
+```tsx
+<FeedbackTimeline 
+  feedbacks={feedbacks} 
+  onDelete={handleDeleteFeedback}
+  onAnalyze={handleAnalyzeLegacyFeedback}
+  analyzingId={analyzingFeedbackId}
+/>
 ```
 
 ---
@@ -188,58 +338,89 @@ const TAG_CONFIG: Record<string, { emoji: string; color: string }> = {
 
 | Arquivo | Alteração |
 |---------|-----------|
-| **Migration SQL** | Adicionar coluna `tags TEXT[]` na tabela `feedbacks` |
-| `supabase/config.toml` | Registrar função `classify-note` com `verify_jwt = true` |
-| `supabase/functions/classify-note/index.ts` | **NOVO** - Edge function para classificação com IA |
-| `src/components/NewNoteDialog.tsx` | Adicionar estado `tags`, botão "Gerar Tags", chips removíveis, incluir no INSERT |
-| `src/components/FeedbackTimeline.tsx` | Renderizar tags com cores no card de feedback |
-| `src/lib/tagConfig.ts` (opcional) | **NOVO** - Constantes compartilhadas de cores/emojis |
+| **Migration SQL** | Adicionar coluna `title TEXT NULL` na tabela `feedbacks` |
+| `supabase/functions/classify-note/index.ts` | Expandir para retornar `{ tags, suggestedTitle }` |
+| `src/components/NewNoteDialog.tsx` | Adicionar campo título, renomear botão para "Gerar Contexto", incluir `title` no INSERT |
+| `src/components/FeedbackTimeline.tsx` | Exibir título, adicionar botão "Analisar com IA" para notas sem tags |
+| `src/pages/MemberDetails.tsx` | Implementar `handleAnalyzeLegacyFeedback` e passar props para Timeline |
 
 ---
 
 ### Seção Técnica
 
-#### Fluxo de Dados
+#### Fluxo: Nova Nota
 
 ```text
-Usuário digita/cola transcrição
+Usuário cola transcrição
         │
         ▼
-Clica em "✨ Gerar Tags"
+Clica em "✨ Gerar Contexto"
         │
         ▼
-Frontend → classify-note Edge Function
+classify-note Edge Function
         │
         ▼
-Edge Function → Lovable AI Gateway
+Gemini analisa → { tags: ["1:1"], suggestedTitle: "Alinhamento de Metas" }
         │
         ▼
-IA classifica → ["1:1", "PDI"]
+Frontend preenche: título + chips de tags
         │
         ▼
-Retorna tags → Frontend exibe chips
-        │
-        ▼
-Usuário pode remover/manter
-        │
-        ▼
-Salvar → tags[] vão para o banco
-        │
-        ▼
-Listagem → FeedbackTimeline exibe badges coloridos
+Usuário salva → tags[] e title vão para o banco
 ```
 
-#### Por que Gerar Tags sob Demanda (não automático)?
+#### Fluxo: Nota Legado
 
-1. **Controle do Usuário**: O líder decide se quer classificar ou não
-2. **Economia de Créditos**: Não gasta IA em notas simples
-3. **Transparência**: O usuário vê e pode ajustar antes de salvar
-4. **Velocidade**: Não bloqueia o fluxo de salvar nota
+```text
+Card de nota antiga (sem tags)
+        │
+        ▼
+Botão discreto: "✨ Analisar com IA"
+        │
+        ▼
+classify-note Edge Function
+        │
+        ▼
+UPDATE no Supabase: tags + title
+        │
+        ▼
+queryClient.invalidateQueries() → Card atualizado em tempo real
+```
 
-#### Modelo de IA
+#### Por que Título é Opcional?
 
-Usar Lovable AI Gateway com `google/gemini-2.5-flash` (default) para:
-- Baixo custo
-- Resposta rápida (~1-2s)
-- Suficiente para classificação simples
+1. **Retrocompatibilidade**: Notas antigas não têm título
+2. **Liberdade do Usuário**: Pode digitar título manual ou deixar IA gerar
+3. **Performance**: Se já existe título, não sobrescreve ao gerar contexto
+
+#### Exibição do Título no Card
+
+O título funciona como um "resumo de uma linha" que aparece em destaque:
+
+```text
+┌─────────────────────────────────────────────┐
+│ 📅 15/01/2026  🎯 1:1  🚀 PDI          [🗑️] │
+├─────────────────────────────────────────────┤
+│ Alinhamento sobre Promoção                  │  ← Título em destaque
+│                                             │
+│ Conversamos sobre os próximos passos para   │  ← Conteúdo (line-clamp)
+│ a promoção, incluindo certificações...      │
+│                                             │
+│ [Ver mais]                                  │
+└─────────────────────────────────────────────┘
+```
+
+Para notas sem tags (legado):
+
+```text
+┌─────────────────────────────────────────────┐
+│ 📅 10/12/2025                          [🗑️] │
+├─────────────────────────────────────────────┤
+│ Conversamos sobre os projetos atuais...     │
+│                                             │
+│ [Ver mais]                                  │
+├─────────────────────────────────────────────┤
+│ ✨ Analisar com IA                          │  ← Botão discreto
+└─────────────────────────────────────────────┘
+```
 
