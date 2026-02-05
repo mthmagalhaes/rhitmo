@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
-import { Send, Loader2, MessageCircle, Paperclip, Plus, MessageSquare, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { Send, Loader2, MessageCircle, Paperclip, Plus, MessageSquare, MoreHorizontal, Pencil, Trash2, FileText, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -83,6 +83,7 @@ export const MentorChat = ({
   const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [deletingThread, setDeletingThread] = useState<ChatThread | null>(null);
+  const [attachment, setAttachment] = useState<{ name: string; content: string } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -275,10 +276,18 @@ export const MentorChat = ({
   };
 
   const handleSend = async (messageToSend?: string) => {
-    const finalMessage = messageToSend || input;
-    if (!finalMessage.trim() || isLoading || !user) return;
+    let finalMessage = messageToSend || input;
+    if (!finalMessage.trim() && !attachment) return;
+    if (isLoading || !user) return;
+
+    // Concatenar anexo silenciosamente
+    if (attachment) {
+      const attachmentBlock = `\n\n--- ARQUIVO ANEXADO (${attachment.name}) ---\n${attachment.content}`;
+      finalMessage = finalMessage + attachmentBlock;
+    }
 
     setInput('');
+    setAttachment(null);
     // Reset textarea height
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -432,9 +441,9 @@ export const MentorChat = ({
     setIsExtractingFile(true);
     try {
       const text = await extractTextFromFile(file);
-      setInput(prev => prev + (prev ? '\n\n' : '') + text);
+      setAttachment({ name: file.name, content: text });
       toast({ 
-        title: "Texto extraído!", 
+        title: "Arquivo anexado!", 
         description: file.name 
       });
     } catch (error: any) {
@@ -663,6 +672,24 @@ export const MentorChat = ({
                   ))}
                 </div>
 
+                {/* Chip de Arquivo Anexado */}
+                {attachment && (
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border border-border 
+                                    rounded-lg text-sm max-w-[300px]">
+                      <FileText className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                      <span className="truncate text-foreground">{attachment.name}</span>
+                      <button
+                        onClick={() => setAttachment(null)}
+                        className="p-0.5 hover:bg-accent rounded-sm transition-colors flex-shrink-0"
+                        aria-label="Remover anexo"
+                      >
+                        <X className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-end gap-2 bg-background border border-border rounded-2xl shadow-lg px-4 py-2">
                   <input
                     ref={fileInputRef}
@@ -711,7 +738,7 @@ export const MentorChat = ({
                   </div>
                   <Button 
                     onClick={() => handleSend()} 
-                    disabled={isLoading || isExtractingFile || !input.trim()}
+                    disabled={isLoading || isExtractingFile || (!input.trim() && !attachment)}
                     size="icon"
                     className="h-9 w-9 rounded-full bg-primary hover:bg-primary/90 flex-shrink-0 mb-0.5"
                     aria-label="Enviar mensagem"
