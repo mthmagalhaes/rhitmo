@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { PenSquare, Loader2, Upload, CalendarIcon, Sparkles, X } from 'lucide-react';
+ import { PenSquare, Loader2, Upload, CalendarIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VoiceInput } from './VoiceInput';
 import { extractTextFromFile, isFileSupported } from '@/lib/fileParser';
@@ -77,7 +77,6 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
   const [loading, setLoading] = useState(false);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
-  const [isClassifying, setIsClassifying] = useState(false);
   const [title, setTitle] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
@@ -91,7 +90,6 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
     setMemberId('');
     setOccurredAt(undefined);
     setTags([]);
-    setIsClassifying(false);
     setTitle('');
     setIsDragging(false);
     setIsProcessingFile(false);
@@ -124,54 +122,6 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
         title: "📅 Data detectada",
         description: `Data de ${format(detectedDate, "dd/MM/yyyy")} encontrada no texto.`,
       });
-    }
-  };
-
-  // Gerar Contexto com IA (tags + título)
-  const handleGenerateContext = async () => {
-    if (!content.trim() || content.length < 20) {
-      toast({
-        title: "Conteúdo insuficiente",
-        description: "Adicione mais texto para gerar o contexto.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsClassifying(true);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('classify-note', {
-        body: { content }
-      });
-
-      if (error) throw error;
-
-      // Atualizar tags
-      if (data?.tags && Array.isArray(data.tags)) {
-        setTags(data.tags);
-      }
-
-      // Atualizar título (apenas se estiver vazio)
-      if (data?.suggestedTitle && !title.trim()) {
-        setTitle(data.suggestedTitle);
-      }
-
-      if (data?.tags || data?.suggestedTitle) {
-        toast({
-          title: "Contexto gerado! ✨",
-          description: `${data.suggestedTitle || ''} ${data.tags?.length ? `- ${data.tags.join(", ")}` : ''}`.trim(),
-        });
-      }
-    } catch (error: any) {
-      console.error('Error classifying note:', error);
-      toast({
-        title: "Erro ao gerar contexto",
-        description: error.message || "Tente novamente.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsClassifying(false);
     }
   };
 
@@ -305,9 +255,53 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
         throw new Error('Você precisa estar logado');
       }
 
-      // Direct INSERT into Supabase (fast, ~50ms)
        const cleanedContent = cleanTranscriptText(content);
        
+       // =====================================
+       // Classificação Automática (Zero Click)
+       // =====================================
+       let finalTags = tags;
+       let finalTitle = title.trim();
+       
+       // Só classifica se: conteúdo > 20 chars E (tags vazias OU título vazio)
+       const shouldClassify = cleanedContent.length > 20 && 
+                             (tags.length === 0 || !finalTitle);
+       
+       if (shouldClassify) {
+         try {
+           console.log('[NewNoteDialog] Auto-classifying content...');
+           
+           const { data: classifyData, error: classifyError } = await supabase
+             .functions.invoke('classify-note', {
+               body: { content: cleanedContent }
+             });
+           
+           if (classifyError) {
+             console.warn('[NewNoteDialog] Classification failed, proceeding without:', classifyError);
+           } else {
+             // Aplicar tags se ainda não tiver
+             if (tags.length === 0 && classifyData?.tags?.length > 0) {
+               finalTags = classifyData.tags;
+             }
+             
+             // Aplicar título se ainda não tiver
+             if (!finalTitle && classifyData?.suggestedTitle) {
+               finalTitle = classifyData.suggestedTitle;
+             }
+             
+             console.log('[NewNoteDialog] Classification result:', { 
+               tags: finalTags, 
+               title: finalTitle 
+             });
+           }
+         } catch (classifyErr) {
+           console.warn('[NewNoteDialog] Classification error (non-blocking):', classifyErr);
+           // Continua sem classificação - salvamento não deve falhar por isso
+         }
+       }
+       // =====================================
+       
+       // INSERT com dados enriquecidos
       const { data: feedback, error: insertError } = await supabase
         .from('feedbacks')
         .insert({
@@ -316,8 +310,8 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
            content: cleanedContent,
           type: 'neutral',
           occurred_at: occurredAt.toISOString(),
-          tags: tags.length > 0 ? tags : [],
-          title: title.trim() || null,
+           tags: finalTags.length > 0 ? finalTags : [],
+           title: finalTitle || null,
           summary: null,
           sentiment: null,
           coaching_tips: null,
@@ -328,10 +322,13 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
 
       if (insertError) throw insertError;
 
-      // Close modal IMMEDIATELY and show toast
+       // Toast de sucesso (melhorado para mostrar classificação)
+       const hasClassification = finalTags.length > 0 || finalTitle;
       toast({
-        title: "Anotação salva! ✅",
-        description: "Registro adicionado ao histórico.",
+         title: hasClassification ? "Anotação salva e classificada! ✨" : "Anotação salva! ✅",
+         description: hasClassification 
+           ? `${finalTitle || ''} ${finalTags.length ? `• ${finalTags.join(", ")}` : ''}`.trim()
+           : "Registro adicionado ao histórico.",
       });
       
       resetForm();
@@ -478,24 +475,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
 
           {/* Campo de Título (opcional) */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="title">Título (opcional)</Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleGenerateContext}
-                disabled={!content.trim() || content.length < 20 || isClassifying || loading}
-                className="gap-2 h-7 text-xs"
-              >
-                {isClassifying ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Sparkles className="h-3 w-3" />
-                )}
-                Gerar Contexto
-              </Button>
-            </div>
+             <Label htmlFor="title">Título (opcional)</Label>
             <Input
               id="title"
               value={title}
@@ -536,7 +516,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
               </div>
             ) : (
               <p className="text-xs text-muted-foreground">
-                Clique em "Gerar Contexto" para classificar automaticamente esta nota
+                 Tags serão geradas automaticamente ao salvar
               </p>
             )}
           </div>
