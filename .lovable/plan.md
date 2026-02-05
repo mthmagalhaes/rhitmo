@@ -1,243 +1,152 @@
 
 
-## Plano: Classificação Automática no Save (Zero Click)
+## Plano: Padronização Visual Forçada (Global UI Fix)
 
-### Visão Geral
+### Problema Identificado
 
-Remover o botão manual "✨ Gerar Contexto" e integrar a classificação por IA diretamente no fluxo de salvamento. O usuário cola a transcrição, clica em "Salvar" e a nota já nasce com título e tags.
+O componente `FeedbackTimeline.tsx` atual:
+1. **NÃO usa layout Accordion** - renderiza cards abertos com conteúdo sempre visível
+2. **Sem título de fallback** - notas sem `title` simplesmente não mostram nada no cabeçalho
+3. **Exibe HTML cru** - o `feedback.content` é renderizado como texto puro, mostrando tags como `<p>` visíveis
+4. **Layout inconsistente** - notas com/sem tags têm visualizações diferentes
 
----
-
-### Parte 1: Remover Elementos Manuais
-
-#### 1.1 Remover Botão "Gerar Contexto"
-
-Deletar o botão que está nas linhas 483-497:
-
-```tsx
-// REMOVER ESTE BLOCO INTEIRO:
-<Button
-  type="button"
-  variant="outline"
-  size="sm"
-  onClick={handleGenerateContext}
-  disabled={!content.trim() || content.length < 20 || isClassifying || loading}
-  className="gap-2 h-7 text-xs"
->
-  {isClassifying ? (
-    <Loader2 className="h-3 w-3 animate-spin" />
-  ) : (
-    <Sparkles className="h-3 w-3" />
-  )}
-  Gerar Contexto
-</Button>
-```
-
-#### 1.2 Simplificar Label de Título
-
-Manter apenas o label sem o botão ao lado:
-
-```tsx
-// ANTES:
-<div className="flex items-center justify-between">
-  <Label htmlFor="title">Título (opcional)</Label>
-  <Button>...</Button>
-</div>
-
-// DEPOIS:
-<Label htmlFor="title">Título (opcional)</Label>
-```
-
-#### 1.3 Atualizar Texto de Tags
-
-Substituir a mensagem que instrui clicar no botão:
-
-```tsx
-// ANTES:
-<p className="text-xs text-muted-foreground">
-  Clique em "Gerar Contexto" para classificar automaticamente esta nota
-</p>
-
-// DEPOIS:
-<p className="text-xs text-muted-foreground">
-  Tags serão geradas automaticamente ao salvar
-</p>
-```
-
-#### 1.4 Remover Função `handleGenerateContext`
-
-Deletar a função completa (linhas 131-176) pois não será mais usada.
-
-#### 1.5 Remover Import `Sparkles`
-
-Atualizar o import para remover o ícone não utilizado:
-
-```tsx
-// ANTES:
-import { PenSquare, Loader2, Upload, CalendarIcon, Sparkles, X } from 'lucide-react';
-
-// DEPOIS:
-import { PenSquare, Loader2, Upload, CalendarIcon, X } from 'lucide-react';
-```
+### Solução: Reescrever para Layout Accordion Compacto
 
 ---
 
-### Parte 2: Integrar Classificação no `handleSubmit`
+### Parte 1: Reestruturar para Accordion
 
-#### 2.1 Nova Lógica do Submit
+#### 1.1 Novos Imports
 
-Interceptar o salvamento para classificar antes de gravar:
+```tsx
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
+import DOMPurify from 'dompurify';
+import { cleanTranscriptText, containsHtml } from '@/lib/textSanitizer';
+```
 
-```typescript
-const handleSubmit = async () => {
-  // Validações existentes...
-  if (!content.trim()) { ... }
-  if (!targetMemberId) { ... }
-  if (!occurredAt) { ... }
+#### 1.2 Nova Estrutura do Card
 
-  setLoading(true);
+Cada nota será um Collapsible que começa fechado:
 
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Você precisa estar logado');
-
-    const cleanedContent = cleanTranscriptText(content);
-    
-    // =====================================
-    // NOVO: Classificação Automática
-    // =====================================
-    let finalTags = tags;
-    let finalTitle = title.trim();
-    
-    // Só classifica se: conteúdo > 20 chars E (tags vazias OU título vazio)
-    const shouldClassify = cleanedContent.length > 20 && 
-                          (tags.length === 0 || !finalTitle);
-    
-    if (shouldClassify) {
-      try {
-        console.log('[NewNoteDialog] Auto-classifying content...');
+```tsx
+<Collapsible key={feedback.id}>
+  {/* Linha Compacta (sempre visível) */}
+  <CollapsibleTrigger className="w-full">
+    <div className="flex items-center justify-between p-4 hover:bg-muted/50 rounded-lg border">
+      {/* Esquerda: Data + Título + Tags */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className="text-sm text-muted-foreground">
+          📅 {formatDate(feedback.occurred_at || feedback.created_at)}
+        </span>
         
-        const { data: classifyData, error: classifyError } = await supabase
-          .functions.invoke('classify-note', {
-            body: { content: cleanedContent }
-          });
+        {/* Título com Fallback */}
+        <span className={cn(
+          "font-medium",
+          feedback.title ? "text-foreground" : "text-muted-foreground italic"
+        )}>
+          {feedback.title || "📝 Anotação não classificada"}
+        </span>
         
-        if (classifyError) {
-          console.warn('[NewNoteDialog] Classification failed, proceeding without:', classifyError);
-          // Não bloqueia o salvamento - apenas loga o erro
-        } else {
-          // Aplicar tags se ainda não tiver
-          if (tags.length === 0 && classifyData?.tags?.length > 0) {
-            finalTags = classifyData.tags;
-          }
-          
-          // Aplicar título se ainda não tiver
-          if (!finalTitle && classifyData?.suggestedTitle) {
-            finalTitle = classifyData.suggestedTitle;
-          }
-          
-          console.log('[NewNoteDialog] Classification result:', { 
-            tags: finalTags, 
-            title: finalTitle 
-          });
-        }
-      } catch (classifyErr) {
-        console.warn('[NewNoteDialog] Classification error (non-blocking):', classifyErr);
-        // Continua sem classificação - salvamento não deve falhar por isso
-      }
-    }
-    // =====================================
-    
-    // INSERT com dados enriquecidos
-    const { data: feedback, error: insertError } = await supabase
-      .from('feedbacks')
-      .insert({
-        manager_id: user.id,
-        member_id: targetMemberId,
-        content: cleanedContent,
-        type: 'neutral',
-        occurred_at: occurredAt.toISOString(),
-        tags: finalTags.length > 0 ? finalTags : [],
-        title: finalTitle || null,
-        summary: null,
-        sentiment: null,
-        coaching_tips: null,
-        bias_alert: null,
-      })
-      .select()
-      .single();
+        {/* Tags (se existirem) */}
+        {feedback.tags?.length > 0 && (
+          <div className="flex gap-1">
+            {feedback.tags.map(tag => (
+              <Badge key={tag} variant="outline" className="text-xs">
+                {getTagEmoji(tag)} {tag}
+              </Badge>
+            ))}
+          </div>
+        )}
+      </div>
+      
+      {/* Direita: Chevron + Delete */}
+      <div className="flex items-center gap-2">
+        <ChevronDown className="h-4 w-4 transition-transform [data-state=open]&:rotate-180" />
+        {onDelete && <DeleteButton ... />}
+      </div>
+    </div>
+  </CollapsibleTrigger>
+  
+  {/* Conteúdo Expandido (oculto por padrão) */}
+  <CollapsibleContent>
+    <div className="p-4 pt-0 border-x border-b rounded-b-lg">
+      <div className="prose prose-sm max-w-none text-foreground">
+        {renderSanitizedContent(feedback.content)}
+      </div>
+    </div>
+  </CollapsibleContent>
+</Collapsible>
+```
 
-    if (insertError) throw insertError;
+---
 
-    // Toast de sucesso (melhorado para mostrar classificação)
-    const hasClassification = finalTags.length > 0 || finalTitle;
-    toast({
-      title: hasClassification ? "Anotação salva e classificada! ✨" : "Anotação salva! ✅",
-      description: hasClassification 
-        ? `${finalTitle || ''} ${finalTags.length ? `• ${finalTags.join(", ")}` : ''}`.trim()
-        : "Registro adicionado ao histórico.",
-    });
+### Parte 2: Renderização Sanitizada do Conteúdo
 
-    // ... resto do fluxo (reset, close, backup)
-  } catch (error: any) {
-    // ... tratamento de erro existente
-  } finally {
-    setLoading(false);
+#### 2.1 Função de Renderização
+
+```tsx
+const renderSanitizedContent = (content: string) => {
+  if (!content) return null;
+  
+  // Verificar se contém HTML
+  if (containsHtml(content)) {
+    // Sanitizar HTML e renderizar com estilos prose
+    return (
+      <div 
+        className="prose prose-sm max-w-none"
+        dangerouslySetInnerHTML={{ 
+          __html: DOMPurify.sanitize(content, {
+            ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h1', 'h2', 'h3'],
+            ALLOWED_ATTR: []
+          }) 
+        }} 
+      />
+    );
   }
+  
+  // Texto puro: limpar e usar whitespace-pre-wrap
+  const cleanedText = cleanTranscriptText(content);
+  return (
+    <p className="whitespace-pre-wrap text-foreground leading-relaxed">
+      {cleanedText}
+    </p>
+  );
 };
 ```
 
 ---
 
-### Parte 3: Manter Funcionalidades Existentes
+### Parte 3: Estados Visuais
 
-#### 3.1 Campo de Título Manual
+#### Estado Fechado (Padrão)
 
-O usuário ainda pode digitar um título manualmente. Se ele preencher, a IA não sobrescreve:
-
-```typescript
-// Se usuário já digitou título, usar o dele
-if (!finalTitle && classifyData?.suggestedTitle) {
-  finalTitle = classifyData.suggestedTitle;
-}
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│ 📅 15/01/2026  Alinhamento sobre Promoção  🎯 1:1  🚀 PDI  [▼] │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-#### 3.2 Tags Manuais (Futuro)
+#### Estado Fechado (Sem Classificação)
 
-Se no futuro adicionarmos seleção manual de tags, a mesma lógica se aplica:
-
-```typescript
-// Se usuário já selecionou tags, não sobrescrever
-if (tags.length === 0 && classifyData?.tags?.length > 0) {
-  finalTags = classifyData.tags;
-}
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│ 📅 10/12/2025  📝 Anotação não classificada                [▼] │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-#### 3.3 Exibição de Tags no Dialog
+(O texto "Anotação não classificada" aparece em cinza e itálico)
 
-Manter a seção de tags para visualização (caso o usuário tenha selecionado manualmente):
+#### Estado Aberto
 
-```tsx
-{/* Smart Tags Section - apenas visualização */}
-<div className="space-y-2">
-  <Label>Tags de Classificação</Label>
-  {tags.length > 0 ? (
-    <div className="flex flex-wrap gap-2">
-      {tags.map((tag) => (
-        <Badge key={tag} variant="outline" className={cn("...", getTagColor(tag))}>
-          {getTagEmoji(tag)} {tag}
-          <button onClick={() => removeTag(tag)}>
-            <X className="h-3 w-3" />
-          </button>
-        </Badge>
-      ))}
-    </div>
-  ) : (
-    <p className="text-xs text-muted-foreground">
-      Tags serão geradas automaticamente ao salvar
-    </p>
-  )}
-</div>
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│ 📅 15/01/2026  Alinhamento sobre Promoção  🎯 1:1  🚀 PDI  [▲] │
+├─────────────────────────────────────────────────────────────────┤
+│ Conversamos sobre os próximos passos para a promoção,          │
+│ incluindo certificações necessárias e prazos.                   │
+│                                                                 │
+│ O Gui demonstrou interesse em liderar o novo projeto.          │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -246,89 +155,55 @@ Manter a seção de tags para visualização (caso o usuário tenha selecionado 
 
 | Arquivo | Alteração |
 |---------|-----------|
-| `src/components/NewNoteDialog.tsx` | Remover botão "Gerar Contexto", integrar classificação no `handleSubmit`, atualizar textos e imports |
+| `src/components/FeedbackTimeline.tsx` | Reescrever completamente para usar Collapsible, adicionar título de fallback, sanitizar conteúdo HTML |
 
 ---
 
 ### Seção Técnica
 
-#### Fluxo: Zero Click Classification
+#### Dependências Utilizadas
 
-```text
-Usuário cola transcrição
-        │
-        ▼
-Preenche data (se não detectada)
-        │
-        ▼
-Clica em "Salvar"
-        │
-        ▼
-handleSubmit() inicia (loading = true)
-        │
-        ▼
-┌───────────────────────────────────────┐
-│ Verificação:                          │
-│ conteúdo > 20 chars                   │
-│ E (tags vazias OU título vazio)?      │
-└───────────────────────────────────────┘
-        │
-        ├── NÃO → Pular classificação
-        │
-        └── SIM ↓
-                │
-                ▼
-      classify-note Edge Function
-      (~1-2 segundos)
-                │
-                ▼
-      Merge: finalTags + finalTitle
-                │
-                ▼
-      INSERT no Supabase com dados enriquecidos
-                │
-                ▼
-      Toast: "Anotação salva e classificada! ✨"
-                │
-                ▼
-      Modal fecha, lista atualiza
-```
+- `@radix-ui/react-collapsible` (já instalado)
+- `dompurify` (já instalado)
+- `cleanTranscriptText` de `@/lib/textSanitizer` (já existe)
 
-#### Resiliência: Fail-Safe
-
-A classificação é non-blocking:
+#### Lógica de Fallback de Título
 
 ```typescript
-try {
-  const { data, error } = await supabase.functions.invoke('classify-note', ...);
-  // Usar resultado se sucesso
-} catch (err) {
-  console.warn('Classification failed, proceeding without:', err);
-  // Continuar salvando sem classificação
-}
+// Prioridade:
+// 1. feedback.title (se existir)
+// 2. Placeholder "📝 Anotação não classificada" (cinza/itálico)
+
+const displayTitle = feedback.title || "📝 Anotação não classificada";
+const isFallback = !feedback.title;
 ```
 
-Se a IA falhar por qualquer motivo (timeout, rate limit, etc.), a nota é salva normalmente sem tags/título automáticos. O usuário pode usar o Batch Sync depois para classificar.
+#### Lógica de Sanitização de Conteúdo
 
-#### Experiência do Usuário
+```typescript
+// Pipeline de decisão:
+// 1. Verificar se contém HTML (containsHtml)
+// 2. Se sim: DOMPurify.sanitize() + dangerouslySetInnerHTML
+// 3. Se não: cleanTranscriptText() + whitespace-pre-wrap
+```
 
-| Cenário | Tempo Estimado | Resultado |
-|---------|----------------|-----------|
-| Nota curta (< 20 chars) | ~50ms | Salva sem classificação |
-| Nota normal + IA sucesso | ~2s | Salva com tags e título |
-| Nota normal + IA timeout | ~30s → fallback | Salva sem classificação |
-| Nota com título manual | ~2s | Salva com tags IA + título manual |
+#### Por que Collapsible em vez de Accordion?
 
-#### Estados do Botão "Salvar"
+- **Accordion**: Apenas um item aberto por vez
+- **Collapsible**: Múltiplos itens podem estar abertos simultaneamente
 
-O botão já mostra loading durante todo o processo:
+Para uma timeline, Collapsible é mais apropriado pois o usuário pode querer comparar duas notas lado a lado.
+
+#### Botão de Delete
+
+O botão de delete será movido para fora do CollapsibleTrigger para evitar conflito de cliques:
 
 ```tsx
-<Button onClick={handleSubmit} disabled={loading || isProcessingFile || !occurredAt}>
-  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-  Salvar
-</Button>
+<div className="flex items-center gap-2">
+  <CollapsibleTrigger>
+    <ChevronDown />
+  </CollapsibleTrigger>
+  <DeleteButton onClick={stopPropagation} />
+</div>
 ```
-
-O usuário verá o spinner por ~2 segundos enquanto a classificação acontece em background.
 
