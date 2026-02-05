@@ -86,6 +86,10 @@ serve(async (req) => {
     // Nomes para isolamento de entidade
     const targetMemberName = memberName || member.name;
     const targetManagerName = managerName || 'o gestor';
+    
+    // Extrair primeiro nome para flexibilidade de apelidos
+    const firstName = targetMemberName.split(' ')[0];
+    const managerFirstName = targetManagerName.split(' ')[0];
 
     const keyObjectives = member.key_objectives;
 
@@ -126,13 +130,32 @@ Isso significa que falas de outras pessoas (incluindo ${targetManagerName}) pode
 
 ### PROTOCOLOS DE FILTRAGEM OBRIGATÓRIOS
 
+### PROTOCOLO DE FLEXIBILIDADE DE NOMES
+
+O MEMBRO AVALIADO É: **${targetMemberName}** (Primeiro Nome: **${firstName}**)
+
+Nas transcrições, este membro pode ser citado como:
+- **Nome Completo**: "${targetMemberName}"
+- **Primeiro Nome**: "${firstName}"
+- **Apelidos/Diminutivos Comuns**: Variações óbvias do primeiro nome (ex: se for "Yasmin", aceite "Yas", "Yasmim"; se for "Gabriela", aceite "Gabi", "Gabs"; se for "Matheus", aceite "Mat", "Theus")
+
+**AÇÃO**: Considere todas essas variações como sendo a MESMA PESSOA. 
+Se o texto diz "Yas: terminei a tarefa" e ${firstName} é Yasmin, atribua essa ação a ${targetMemberName}.
+Se o texto diz "${firstName}: vou entregar amanhã", atribua a ${targetMemberName}.
+
+**ATENÇÃO**: NÃO confunda variações do nome do gestor (${targetManagerName}/${managerFirstName}) com variações de ${targetMemberName}.
+
+### PROTOCOLOS DE FILTRAGEM
+
 1. **QUEM É O ALVO**: 
    Você deve analisar **APENAS** as falas, ações e entregas de **${targetMemberName}**.
+   Lembre-se: "${firstName}" e apelidos comuns (ex: truncamentos, diminutivos) também são ${targetMemberName}.
 
 2. **IGNORE OS OUTROS**: 
    Se ${targetManagerName}, "Giovanna", "Gabi", "Matheus", "Pedro", "Ana" ou qualquer outra pessoa 
    falou ou fez algo, isso é apenas **CONTEXTO**. 
    NÃO atribua méritos ou defeitos de outros a ${targetMemberName}.
+   EXCETO se o apelido/diminutivo for claramente uma variação de "${firstName}".
 
 3. **DESAMBIGUAÇÃO DE NOMES**: 
    Se o texto diz "Matheus entregou o projeto" e ${targetMemberName} não é Matheus, 

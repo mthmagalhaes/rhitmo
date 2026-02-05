@@ -136,6 +136,9 @@ serve(async (req) => {
     const { question, feedbacks, memberName, memberRole, workStyleData, keyObjectives } = await req.json();
 
     console.log('Chat mentor 2.0 request:', { memberName, memberRole, feedbacksCount: feedbacks?.length, hasWorkStyle: !!workStyleData });
+    
+    // Extrair primeiro nome para flexibilidade de apelidos
+    const firstName = memberName ? memberName.split(' ')[0] : '';
 
     if (!question || !feedbacks || !memberName) {
       return new Response(
@@ -294,8 +297,20 @@ ${objectivesSection}
 
 ## DADOS DO LIDERADO
 
-**Nome**: ${memberName}
+**Nome Completo**: ${memberName}
+**Primeiro Nome**: ${firstName}
 **Cargo**: ${memberRole || 'Não informado'}
+
+### PROTOCOLO DE FLEXIBILIDADE DE NOMES
+
+Nas transcrições e notas, ${memberName} pode ser citado como:
+- Nome Completo: "${memberName}"
+- Primeiro Nome: "${firstName}"
+- Apelidos/Diminutivos: Variações óbvias do primeiro nome (ex: "Yas" para "Yasmin", "Gabi" para "Gabriela", "Mat" para "Matheus")
+
+**IMPORTANTE**: Todas essas variações referem-se à MESMA PESSOA.
+Se uma nota diz "Yas disse que..." e o liderado é Yasmin, considere como fala de Yasmin.
+Se o texto menciona "${firstName}:" ou apelidos comuns, atribua a ${memberName}.
 
 ${formatWorkStyle(workStyleData)}
 
