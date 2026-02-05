@@ -35,3 +35,6 @@ verify_jwt = true
 
 [functions.backup-data]
 verify_jwt = true
+ 
+ [functions.classify-note]
+ verify_jwt = true

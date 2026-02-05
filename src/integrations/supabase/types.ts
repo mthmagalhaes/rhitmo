@@ -89,6 +89,7 @@ export type Database = {
           sentiment: string | null
           source: string
           summary: string | null
+          tags: string[] | null
           type: string
           updated_at: string
         }
@@ -107,6 +108,7 @@ export type Database = {
           sentiment?: string | null
           source?: string
           summary?: string | null
+          tags?: string[] | null
           type: string
           updated_at?: string
         }
@@ -125,6 +127,7 @@ export type Database = {
           sentiment?: string | null
           source?: string
           summary?: string | null
+          tags?: string[] | null
           type?: string
           updated_at?: string
         }
