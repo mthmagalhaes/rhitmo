@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { BatchSyncDialog } from '@/components/BatchSyncDialog';
 
 interface ProfileSettingsDialogProps {
   open: boolean;
@@ -25,6 +26,7 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
   const [loading, setLoading] = useState(false);
+  const [batchSyncOpen, setBatchSyncOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -82,6 +84,25 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
               placeholder="Ex: Tech Lead, PM, etc."
             />
           </div>
+          
+          {/* Seção de Manutenção */}
+          <div className="border-t pt-4">
+            <Label className="text-muted-foreground text-xs uppercase tracking-wide mb-2 block">
+              Manutenção
+            </Label>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setBatchSyncOpen(true)}
+              className="w-full justify-start gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Sincronizar Inteligência do Sistema
+            </Button>
+            <p className="text-xs text-muted-foreground mt-1">
+              Processa notas antigas sem classificação por IA
+            </p>
+          </div>
         </div>
         
         <DialogFooter>
@@ -94,6 +115,11 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
           </Button>
         </DialogFooter>
       </DialogContent>
+      
+      <BatchSyncDialog 
+        open={batchSyncOpen} 
+        onOpenChange={setBatchSyncOpen} 
+      />
     </Dialog>
   );
 }

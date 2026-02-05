@@ -1,5 +1,5 @@
 import { Card, CardContent } from '@/components/ui/card';
-import { Calendar, Trash2, ChevronDown, ChevronUp, Loader2, Sparkles } from 'lucide-react';
+import { Calendar, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -30,11 +30,9 @@ interface Feedback {
 interface FeedbackTimelineProps {
   feedbacks: Feedback[];
   onDelete?: (id: string) => void;
-  onAnalyze?: (feedbackId: string, content: string) => void;
-  analyzingId?: string | null;
 }
 
-export const FeedbackTimeline = ({ feedbacks, onDelete, onAnalyze, analyzingId }: FeedbackTimelineProps) => {
+export const FeedbackTimeline = ({ feedbacks, onDelete }: FeedbackTimelineProps) => {
   const [expandedContent, setExpandedContent] = useState<Record<string, boolean>>({});
 
   const toggleExpand = (id: string) => {
@@ -142,26 +140,6 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onAnalyze, analyzingId }
                   </>
                 )}
               </Button>
-            )}
-
-            {/* Botão de Análise para Notas Legado */}
-            {(!feedback.tags || feedback.tags.length === 0) && onAnalyze && (
-              <div className="mt-3 pt-3 border-t border-border/50">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onAnalyze(feedback.id, feedback.content)}
-                  disabled={analyzingId === feedback.id}
-                  className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1.5"
-                >
-                  {analyzingId === feedback.id ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-3 w-3" />
-                  )}
-                  Analisar com IA
-                </Button>
-              </div>
             )}
           </CardContent>
         </Card>
