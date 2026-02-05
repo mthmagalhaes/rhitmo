@@ -6,6 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { Bold, Italic, Heading1, Heading2, List, ListOrdered } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect } from 'react';
+ import { cleanTranscriptText } from '@/lib/textSanitizer';
 
 interface RichTextEditorProps {
   content: string;
@@ -38,6 +39,21 @@ export const RichTextEditor = ({
     ],
     content,
     editable: !disabled,
+     editorProps: {
+       handlePaste: (view, event) => {
+         const text = event.clipboardData?.getData('text/plain');
+         if (text) {
+           // Limpa o texto antes de inserir (remove HTML, normaliza espaços)
+           const cleanedText = cleanTranscriptText(text);
+           // Insere como texto puro
+           view.dispatch(
+             view.state.tr.insertText(cleanedText)
+           );
+           return true; // Previne comportamento padrão
+         }
+         return false;
+       },
+     },
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
