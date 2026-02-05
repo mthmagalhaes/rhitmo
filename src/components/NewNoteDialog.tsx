@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { PenSquare, Loader2, Upload, CalendarIcon } from 'lucide-react';
+import { PenSquare, Loader2, Upload, CalendarIcon, Sparkles, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VoiceInput } from './VoiceInput';
 import { extractTextFromFile, isFileSupported } from '@/lib/fileParser';
@@ -16,6 +16,8 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Badge } from '@/components/ui/badge';
+import { getTagEmoji, getTagColor, VALID_TAGS } from '@/lib/tagConfig';
 
 // Smart Date Extraction - analisa as primeiras 20 linhas do texto
 const extractDateFromText = (text: string): Date | null => {
@@ -73,6 +75,8 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
   const [occurredAt, setOccurredAt] = useState<Date | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const [tags, setTags] = useState<string[]>([]);
+  const [isClassifying, setIsClassifying] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -84,6 +88,8 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
     setContent('');
     setMemberId('');
     setOccurredAt(undefined);
+    setTags([]);
+    setIsClassifying(false);
     setIsDragging(false);
     setIsProcessingFile(false);
     
@@ -116,6 +122,50 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
         description: `Data de ${format(detectedDate, "dd/MM/yyyy")} encontrada no texto.`,
       });
     }
+  };
+
+  // Classificar nota com IA
+  const handleClassifyNote = async () => {
+    if (!content.trim() || content.length < 20) {
+      toast({
+        title: "Conteúdo insuficiente",
+        description: "Adicione mais texto para classificar a nota.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsClassifying(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('classify-note', {
+        body: { content }
+      });
+
+      if (error) throw error;
+
+      if (data?.tags && Array.isArray(data.tags)) {
+        setTags(data.tags);
+        toast({
+          title: "Tags geradas! ✨",
+          description: data.tags.join(", "),
+        });
+      }
+    } catch (error: any) {
+      console.error('Error classifying note:', error);
+      toast({
+        title: "Erro ao classificar",
+        description: error.message || "Tente novamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsClassifying(false);
+    }
+  };
+
+  // Remover tag
+  const removeTag = (tagToRemove: string) => {
+    setTags(prev => prev.filter(t => t !== tagToRemove));
   };
 
   // Carregar membros quando o dialog abre - FILTRO por workspace
@@ -254,6 +304,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
            content: cleanedContent,
           type: 'neutral',
           occurred_at: occurredAt.toISOString(),
+          tags: tags.length > 0 ? tags : [],
           summary: null,
           sentiment: null,
           coaching_tips: null,
@@ -410,6 +461,54 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
                 onChange={handleFileInputChange}
               />
             </div>
+          </div>
+
+          {/* Smart Tags Section */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Tags de Classificação</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleClassifyNote}
+                disabled={!content.trim() || content.length < 20 || isClassifying || loading}
+                className="gap-2 h-7 text-xs"
+              >
+                {isClassifying ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3 w-3" />
+                )}
+                Gerar Tags
+              </Button>
+            </div>
+            
+            {tags.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {tags.map((tag) => (
+                  <Badge 
+                    key={tag} 
+                    variant="outline" 
+                    className={cn("text-sm py-1 px-3 border gap-2", getTagColor(tag))}
+                  >
+                    {getTagEmoji(tag)} {tag}
+                    <button
+                      type="button"
+                      onClick={() => removeTag(tag)}
+                      className="ml-1 hover:bg-accent rounded-sm p-0.5 transition-colors"
+                      aria-label={`Remover tag ${tag}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Clique em "Gerar Tags" para classificar automaticamente esta nota
+              </p>
+            )}
           </div>
 
           <div 
