@@ -3,14 +3,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
-import { Send, Loader2, MessageCircle, Paperclip, Plus, MessageSquare, MoreHorizontal, Pencil, Trash2, FileText, X } from 'lucide-react';
+import { Send, Loader2, MessageCircle, Paperclip, Plus, MessageSquare, MoreHorizontal, Pencil, Trash2, FileText, X, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
 import { VoiceInput } from './VoiceInput';
+import { ContextPicker } from './ContextPicker';
 import { extractTextFromFile, isFileSupported } from '@/lib/fileParser';
 import { format, isToday, isYesterday, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -59,10 +61,9 @@ interface MentorChatProps {
 }
 
 const quickSuggestions = [
-  { emoji: '📊', text: 'Analisar padrões de comportamento' },
-  { emoji: '🗣️', text: 'Roteiro para 1:1' },
-  { emoji: '💡', text: 'Sugerir PDI' },
-  { emoji: '⚠️', text: 'Identificar riscos' },
+  { emoji: '📝', text: 'Resumir estas notas' },
+  { emoji: '✅', text: 'Extrair Ações' },
+  { emoji: '💡', text: 'Gerar insights' },
 ];
 
 export const MentorChat = ({ 
@@ -84,6 +85,7 @@ export const MentorChat = ({
   const [editingTitle, setEditingTitle] = useState('');
   const [deletingThread, setDeletingThread] = useState<ChatThread | null>(null);
   const [attachment, setAttachment] = useState<{ name: string; content: string } | null>(null);
+  const [selectedContexts, setSelectedContexts] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -331,6 +333,24 @@ export const MentorChat = ({
                           currentUser?.user_metadata?.name || 
                           'Gestor';
 
+      // Preparar contexto baseado no modo híbrido
+      let contextFeedbacks: any[];
+      let contextMode: 'auto' | 'manual';
+      
+      if (selectedContexts.length > 0) {
+        // Modo Manual: usar apenas notas selecionadas
+        contextMode = 'manual';
+        contextFeedbacks = feedbacks.filter(fb => selectedContexts.includes(fb.id));
+      } else {
+        // Modo Automático: usar 10 mais recentes
+        contextMode = 'auto';
+        const sorted = [...feedbacks].sort((a, b) => 
+          new Date(b.occurred_at || b.created_at).getTime() - 
+          new Date(a.occurred_at || a.created_at).getTime()
+        );
+        contextFeedbacks = sorted.slice(0, 10);
+      }
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-mentor`,
         {
@@ -341,12 +361,13 @@ export const MentorChat = ({
           },
           body: JSON.stringify({
             question: finalMessage,
-            feedbacks: feedbacks,
+            feedbacks: contextFeedbacks,
             memberName: memberName,
             memberRole: memberRole,
             managerName: managerName,
             workStyleData: workStyleData,
-            keyObjectives: keyObjectives
+            keyObjectives: keyObjectives,
+            contextMode: contextMode
           }),
           signal: controller.signal
         }
@@ -468,13 +489,59 @@ export const MentorChat = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 shadow-2xl gap-0">
         <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-          <DialogTitle className="text-foreground text-lg">
-            🎯 Mentor Chat
-            <span className="text-muted-foreground font-normal text-base ml-2">
-              — {memberName} {memberRole && `(${memberRole})`}
-            </span>
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-foreground text-lg">
+              🎯 Mentor Chat
+              <span className="text-muted-foreground font-normal text-base ml-2">
+                — {memberName} {memberRole && `(${memberRole})`}
+              </span>
+            </DialogTitle>
+            
+            <ContextPicker 
+              feedbacks={feedbacks}
+              selectedIds={selectedContexts}
+              onSelectionChange={setSelectedContexts}
+            />
+          </div>
         </DialogHeader>
+
+        {/* Context Status Area */}
+        <div className="px-6 py-2 bg-muted/30 border-b border-border">
+          {selectedContexts.length > 0 ? (
+            // Modo Manual: Chips removíveis
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-muted-foreground">Contexto:</span>
+              {selectedContexts.map(id => {
+                const fb = feedbacks.find((f: any) => f.id === id);
+                return (
+                  <Badge 
+                    key={id} 
+                    variant="outline" 
+                    className="gap-1.5 pl-2 pr-1 bg-background"
+                  >
+                    <span className="text-xs truncate max-w-[120px]">
+                      {fb?.title || 'Nota'}
+                    </span>
+                    <button 
+                      onClick={() => setSelectedContexts(prev => prev.filter(x => x !== id))}
+                      className="hover:bg-accent rounded p-0.5 transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                );
+              })}
+            </div>
+          ) : (
+            // Modo Automático: Badge informativo
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
+                <Sparkles className="h-3 w-3 mr-1.5" />
+                Modo Automático: Analisando histórico recente
+              </Badge>
+            </div>
+          )}
+        </div>
 
         <ResizablePanelGroup direction="horizontal" className="flex-1">
           {/* Sidebar de Threads */}
