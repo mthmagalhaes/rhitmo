@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 import { FeedbackTimeline } from '@/components/FeedbackTimeline';
+import { FeedbackFilters } from '@/components/FeedbackFilters';
 import { NewNoteDialog } from '@/components/NewNoteDialog';
 import { MentorChat } from '@/components/MentorChat';
 import { styleConfig } from '@/components/WorkStyleCard';
@@ -15,7 +16,7 @@ import { PerformanceReviewList } from '@/components/PerformanceReviewList';
 import { useAuth } from '@/hooks/useAuth';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Music, BookOpen, FileText, Clock, Lock, ArrowRight, Briefcase, Heart, Megaphone, Compass, DollarSign, Shield, GraduationCap, Crown, HelpCircle, Sunrise, Moon } from 'lucide-react';
+import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Music, BookOpen, FileText, Clock, Lock, ArrowRight, Briefcase, Heart, Megaphone, Compass, DollarSign, Shield, GraduationCap, Crown, HelpCircle, Sunrise, Moon, Search } from 'lucide-react';
 import { GoalsManager } from '@/components/GoalsManager';
 
 import { useToast } from '@/hooks/use-toast';
@@ -44,6 +45,9 @@ const MemberDetails = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [resendingInvite, setResendingInvite] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const { toast } = useToast();
   const {
     hasSync
@@ -107,6 +111,39 @@ const MemberDetails = () => {
   });
 
   const feedbacks = feedbacksRaw;
+
+  // Lógica de filtragem client-side
+  const filteredFeedbacks = useMemo(() => {
+    let result = [...feedbacks];
+
+    // 1. Filtro de Busca (title OU content)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(fb => {
+        const titleMatch = fb.title?.toLowerCase().includes(query);
+        // Para content, remover HTML antes de buscar
+        const plainContent = fb.content.replace(/<[^>]*>/g, '').toLowerCase();
+        const contentMatch = plainContent.includes(query);
+        return titleMatch || contentMatch;
+      });
+    }
+
+    // 2. Filtro de Tags (OR logic - pelo menos uma tag selecionada)
+    if (selectedTags.length > 0) {
+      result = result.filter(fb =>
+        fb.tags?.some(tag => selectedTags.includes(tag))
+      );
+    }
+
+    // 3. Ordenação por data
+    result.sort((a, b) => {
+      const dateA = new Date(a.occurred_at || a.created_at).getTime();
+      const dateB = new Date(b.occurred_at || b.created_at).getTime();
+      return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+    });
+
+    return result;
+  }, [feedbacks, searchQuery, selectedTags, sortOrder]);
 
   // Query para workspace - necessário para isolamento de tenant no NewNoteDialog
   const { data: workspace } = useQuery({
@@ -501,11 +538,39 @@ const MemberDetails = () => {
           
           <TabsContent value="diary">
             <div>
-              <h2 className="text-2xl font-bold text-foreground mb-6">Histórico de Feedbacks</h2>
-              {feedbacks.length > 0 ? <FeedbackTimeline feedbacks={feedbacks as any} onDelete={handleDeleteFeedback} /> : <Card className="p-12 text-center">
+              <h2 className="text-2xl font-bold text-foreground mb-4">Minhas anotações</h2>
+              
+              {feedbacks.length > 0 && (
+                <FeedbackFilters
+                  searchQuery={searchQuery}
+                  onSearchChange={setSearchQuery}
+                  selectedTags={selectedTags}
+                  onTagsChange={setSelectedTags}
+                  sortOrder={sortOrder}
+                  onSortChange={setSortOrder}
+                />
+              )}
+              
+              {feedbacks.length === 0 ? (
+                <Card className="p-12 text-center">
                   <p className="text-muted-foreground mb-4">Nenhum feedback registrado ainda</p>
                   <Button onClick={() => setDialogOpen(true)}>Adicionar Primeira Nota</Button>
-                </Card>}
+                </Card>
+              ) : filteredFeedbacks.length === 0 ? (
+                <Card className="p-8 text-center border-dashed">
+                  <Search className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground">Nenhuma anotação encontrada para estes filtros.</p>
+                  <Button
+                    variant="link"
+                    onClick={() => { setSearchQuery(''); setSelectedTags([]); }}
+                    className="mt-2"
+                  >
+                    Limpar filtros
+                  </Button>
+                </Card>
+              ) : (
+                <FeedbackTimeline feedbacks={filteredFeedbacks as any} onDelete={handleDeleteFeedback} />
+              )}
             </div>
           </TabsContent>
           
