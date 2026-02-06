@@ -10,6 +10,7 @@ import { Loader2, XCircle, Sparkles, UserCheck } from 'lucide-react';
 
 interface InviteData {
   memberName: string;
+  memberEmail: string | null;
   workspaceName: string;
   memberId: string;
 }
@@ -51,6 +52,7 @@ export default function Invite() {
       setInviteData({
         memberId: invite.member_id,
         memberName: invite.member_name,
+        memberEmail: invite.member_email,
         workspaceName: invite.workspace_name,
       });
     } catch (err) {
@@ -71,7 +73,14 @@ export default function Invite() {
     // Scenario A: User not logged in
     if (!user) {
       sessionStorage.setItem('pending_invite', code!);
-      navigate('/auth');
+      
+      // Build URL with signup params
+      const params = new URLSearchParams({ mode: 'signup' });
+      if (inviteData?.memberEmail) {
+        params.set('email', inviteData.memberEmail);
+      }
+      
+      navigate(`/auth?${params.toString()}`);
       return;
     }
 
