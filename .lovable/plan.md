@@ -1,333 +1,58 @@
 
 
-## Plano: Hotfix de Roteamento + Dashboard do Liderado
+## Plano: Remover Workspace Acidental "COO"
 
-### Problema Diagnosticado
+### Estado Atual Identificado
 
-O usuario liderado `mth.magalhaes@gmail.com` esta "preso" porque:
-1. O `Index.tsx` atual verifica workspace ANTES de verificar se e um linked_member
-2. O `DirectReportGuard` so redireciona para onboarding, mas nao impede a exibicao do modal de workspace
-3. Falta um dashboard especifico para liderados que completaram o onboarding
+| Entidade | ID | Status |
+|----------|----|----|
+| **Usuario** | `6f9335e3-03ab-4d48-8ae7-2841db6b6660` | mth.magalhaes@gmail.com |
+| **Workspace Acidental** | `37ca4f2a-b624-4042-901c-c9067a753bcf` | Nome: "COO" (a ser deletado) |
+| **Time do Workspace** | `c74efdcd-45da-4f6f-a088-b72b868d16b7` | "Sem Time" - 0 membros |
+| **Convites existentes** | 2 registros em `team_members` | Ja estao com `pending` e sem vinculo |
 
-### Resumo das Alteracoes
+### Diagnostico
 
-| Arquivo | Alteracao |
-|---------|-----------|
-| `src/pages/Index.tsx` | Inverter logica: verificar `isLinkedMember` ANTES de workspace |
-| `src/components/dashboard/DirectReportDashboard.tsx` | **NOVO** - Home do colaborador |
-| `src/components/AppSidebar.tsx` | Ocultar itens de menu para liderados |
-| `src/components/AppLayout.tsx` | Nao mostrar WorkspaceOnboarding para liderados |
+O usuario `mth.magalhaes@gmail.com` criou acidentalmente o workspace "COO" apos aceitar o convite. Os registros de `team_members` (onde ele deveria ser liderado) ja foram resetados anteriormente - estao com `linked_user_id = NULL` e `invite_status = 'pending'`.
 
----
+**Problema**: Quando ele loga, o sistema encontra um workspace proprio e renderiza o dashboard de lider ao inves de permitir que ele aceite o convite de liderado.
 
-### Parte 1: Refatoracao do Index.tsx
+### Acao Necessaria
 
-A logica atual e:
-```text
-1. authLoading → Spinner
-2. workspace check → (se nao tem, mostra modal no AppLayout)
-3. Renderiza dashboard de lider
+Deletar o workspace "COO" e seu time vazio:
+
+```sql
+-- Passo 1: Deletar o time vazio do workspace acidental
+DELETE FROM public.teams 
+WHERE workspace_id = '37ca4f2a-b624-4042-901c-c9067a753bcf';
+
+-- Passo 2: Deletar o workspace acidental
+DELETE FROM public.workspaces 
+WHERE id = '37ca4f2a-b624-4042-901c-c9067a753bcf';
 ```
 
-A nova logica sera:
-```text
-1. isLoading (auth + linkedMember) → Spinner
-2. SE isLinkedMember:
-   └── needsOnboarding? → Navigate /onboarding
-   └── onboarding completo? → <DirectReportDashboard />
-3. SE NAO isLinkedMember:
-   └── Logica atual de lider (workspace, teams, members)
-```
+### Resultado Esperado
 
-#### Codigo Modificado
+Apos a execucao:
+- Usuario `mth.magalhaes@gmail.com` continuara existindo (login/senha mantidos)
+- Ao logar, nao tera workspace proprio
+- O `AppLayout.tsx` detectara `isLinkedMember = false` e `workspace = null`
+- Podera acessar o link de convite existente e aceitar novamente
+- Sera redirecionado para o fluxo de onboarding de liderado
 
-```typescript
-// src/pages/Index.tsx - Inicio do componente
-import { useLinkedMember } from '@/hooks/useLinkedMember';
-import { Navigate } from 'react-router-dom';
-import DirectReportDashboard from '@/components/dashboard/DirectReportDashboard';
+### Links de Convite Disponiveis
 
-const Index = () => {
-  const { user, loading: authLoading } = useAuth();
-  const { linkedMember, isLinkedMember, needsOnboarding, isLoading: linkedMemberLoading } = useLinkedMember();
-  
-  // Loading combinado: auth + linked member
-  const isLoading = authLoading || linkedMemberLoading;
-  
-  // Renderizacao condicional no inicio
-  if (isLoading) {
-    return <LoadingSpinner />;
-  }
+Dois convites ja existem para este email:
+- **Maria Silva** (Customer Success): `/invite?token=99d0fadc-760c-4e5b-a3cd-7972db16dfbe`
+- **MM** (BizOps): `/invite?token=5986f6b3-c26b-42ad-966c-3c0298bed069`
 
-  // INVERSAO: Priorizar fluxo de liderado
-  if (isLinkedMember) {
-    if (needsOnboarding) {
-      return <Navigate to="/onboarding" replace />;
-    }
-    // Liderado com onboarding completo → Dashboard proprio
-    return <DirectReportDashboard linkedMember={linkedMember} />;
-  }
-
-  // Fluxo de lider (codigo existente)
-  // ... resto do componente atual
-};
-```
-
----
-
-### Parte 2: Novo Componente DirectReportDashboard.tsx
-
-Criar em `src/components/dashboard/DirectReportDashboard.tsx`:
-
-#### Layout Visual
-
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│  Header: "Ola, [Nome]!"                                         │
-│  Subtitle: "Painel do Colaborador"                              │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌──────────────────────────┐  ┌──────────────────────────────┐ │
-│  │  📋 Meu Perfil           │  │  📝 Minhas Anotacoes         │ │
-│  │                          │  │                              │ │
-│  │  Cargo: Analista         │  │  <FeedbackTimeline           │ │
-│  │  Tempo: 1-3 anos         │  │     readonly (sem delete)    │ │
-│  │                          │  │     filtrado por member_id   │ │
-│  │  Responsabilidades:      │  │  />                          │ │
-│  │  • Analise de dados      │  │                              │ │
-│  │  • Reports mensais       │  │  [Empty state se nao houver] │ │
-│  │  • Dashboards            │  │                              │ │
-│  │                          │  │                              │ │
-│  └──────────────────────────┘  └──────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-#### Estrutura do Componente
-
-```typescript
-interface DirectReportDashboardProps {
-  linkedMember: {
-    id: string;
-    name: string;
-    email: string | null;
-    role: string;
-    skills_data: {
-      role_tenure?: string;
-      responsibilities?: string[];
-      aspirations?: string;
-      interests?: string[];
-      onboarding_completed?: boolean;
-      completed_at?: string;
-    } | null;
-  };
-}
-
-export default function DirectReportDashboard({ linkedMember }: DirectReportDashboardProps) {
-  // Query feedbacks do proprio membro (visibility = 'shared' ou sem filtro para MVP)
-  const { data: feedbacks = [], isLoading } = useQuery({
-    queryKey: ['my-feedbacks', linkedMember.id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('feedbacks')
-        .select('*')
-        .eq('member_id', linkedMember.id)
-        .eq('visibility', 'shared') // Apenas feedbacks compartilhados pelo lider
-        .order('created_at', { ascending: false });
-      return data || [];
-    },
-  });
-
-  // Mapear tenure para label legivel
-  const tenureLabels = {
-    'less_than_1': 'Menos de 1 ano',
-    '1_to_3': '1 a 3 anos',
-    '3_to_5': '3 a 5 anos',
-    'more_than_5': 'Mais de 5 anos',
-  };
-
-  return (
-    <div className="min-h-screen bg-background pb-20">
-      {/* Header */}
-      <div className="border-b bg-card">
-        <div className="container mx-auto px-6 py-6">
-          <h1 className="text-2xl font-bold">Ola, {linkedMember.name}!</h1>
-          <p className="text-muted-foreground">Painel do Colaborador</p>
-        </div>
-      </div>
-
-      {/* Grid de Cards */}
-      <main className="container mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Card: Meu Perfil */}
-          <Card className="p-6">
-            <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
-              <User className="h-5 w-5 text-primary" />
-              Meu Perfil
-            </h2>
-            
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Cargo</p>
-                <p className="font-medium">{linkedMember.role}</p>
-              </div>
-              
-              <div>
-                <p className="text-sm text-muted-foreground">Tempo na funcao</p>
-                <p className="font-medium">
-                  {tenureLabels[linkedMember.skills_data?.role_tenure] || '-'}
-                </p>
-              </div>
-              
-              <div>
-                <p className="text-sm text-muted-foreground mb-2">Responsabilidades</p>
-                <ul className="list-disc list-inside space-y-1">
-                  {linkedMember.skills_data?.responsibilities?.map((resp, i) => (
-                    <li key={i} className="text-foreground">{resp}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </Card>
-
-          {/* Card: Minhas Anotacoes */}
-          <Card className="p-6">
-            <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
-              <FileText className="h-5 w-5 text-primary" />
-              Minhas Anotacoes
-            </h2>
-            
-            {isLoading ? (
-              <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-            ) : feedbacks.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p>Nenhuma anotacao compartilhada</p>
-                <p className="text-sm">Seu lider pode compartilhar feedbacks com voce</p>
-              </div>
-            ) : (
-              <FeedbackTimeline feedbacks={feedbacks} />
-            )}
-          </Card>
-        </div>
-      </main>
-    </div>
-  );
-}
-```
-
----
-
-### Parte 3: Limpeza do AppSidebar.tsx
-
-Filtrar itens do menu baseado em `isLinkedMember`:
-
-```typescript
-// AppSidebar.tsx
-import { useLinkedMember } from '@/hooks/useLinkedMember';
-
-const leaderOnlyItems = ['Analytics', 'Assinatura', 'Guia do Rhitmo'];
-
-export function AppSidebar() {
-  const { isLinkedMember } = useLinkedMember();
-  
-  // Filtrar menu para liderados
-  const visibleMenuItems = isLinkedMember 
-    ? menuItems.filter(item => !leaderOnlyItems.includes(item.title))
-    : menuItems;
-
-  // ... resto do componente usando visibleMenuItems
-}
-```
-
-Menu do liderado tera apenas:
-- Inicio (Home icon)
-
-O link de Suporte e Configuracoes permanecem no footer.
-
----
-
-### Parte 4: Correcao do AppLayout.tsx
-
-Impedir que o modal de WorkspaceOnboarding apareca para liderados:
-
-```typescript
-// AppLayout.tsx
-import { useLinkedMember } from '@/hooks/useLinkedMember';
-
-export function AppLayout({ children }: { children: React.ReactNode }) {
-  const { isLinkedMember, isLoading: linkedMemberLoading } = useLinkedMember();
-  
-  // Liderados NAO precisam de workspace
-  const needsWorkspaceSetup = !authLoading 
-    && !workspaceLoading 
-    && !linkedMemberLoading
-    && user 
-    && !workspace 
-    && !isLinkedMember; // <-- ADICIONAR ESTA VERIFICACAO
-
-  // ... resto do componente
-}
-```
-
----
+Matheus podera copiar qualquer um desses links e enviar para o usuario testar o fluxo.
 
 ### Secao Tecnica
 
-#### Diagrama do Fluxo Corrigido
+A ordem de delecao respeita as foreign keys:
+1. `teams` depende de `workspaces` (FK workspace_id)
+2. Deletar teams primeiro, depois workspace
 
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│                    FLUXO DE AUTENTICACAO                        │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  Usuario faz login                                              │
-│     │                                                           │
-│     ▼                                                           │
-│  DirectReportGuard                                              │
-│     │                                                           │
-│     ├── isLoading? → Spinner                                    │
-│     │                                                           │
-│     ├── isLinkedMember && needsOnboarding?                      │
-│     │      └── Redirect → /onboarding                           │
-│     │                                                           │
-│     └── Else → Continua para Index.tsx                          │
-│                                                                 │
-│  Index.tsx                                                      │
-│     │                                                           │
-│     ├── isLinkedMember && !needsOnboarding?                     │
-│     │      └── Renderiza DirectReportDashboard                  │
-│     │                                                           │
-│     └── !isLinkedMember?                                        │
-│            └── Renderiza dashboard de lider (atual)             │
-│                                                                 │
-│  AppLayout.tsx                                                  │
-│     │                                                           │
-│     └── needsWorkspaceSetup && !isLinkedMember?                 │
-│            └── Mostra modal WorkspaceOnboarding                 │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-#### Arquivos Criados
-
-| Arquivo | Descricao |
-|---------|-----------|
-| `src/components/dashboard/DirectReportDashboard.tsx` | Dashboard do liderado com perfil e anotacoes |
-
-#### Arquivos Modificados
-
-| Arquivo | Alteracao |
-|---------|-----------|
-| `src/pages/Index.tsx` | Importar hook e componente, inverter logica de renderizacao |
-| `src/components/AppSidebar.tsx` | Filtrar menu items para liderados |
-| `src/components/AppLayout.tsx` | Nao mostrar modal de workspace para liderados |
-
-#### Dependencias de Query
-
-O `DirectReportDashboard` usara:
-- `useQuery(['my-feedbacks', linkedMember.id])` → buscar feedbacks com visibility='shared'
-- Dados de `skills_data` ja vem do hook `useLinkedMember` (nao precisa de query adicional)
-
-#### Consideracao sobre Feedbacks
-
-Por padrao, feedbacks tem `visibility = 'private_leader'`. Para o liderado ver suas anotacoes, o lider precisara compartilhar (definir `visibility = 'shared'`). Isso sera implementado em uma feature futura. No MVP, o card mostrara empty state se nao houver feedbacks compartilhados.
+Nao ha team_members vinculados ao workspace "COO", entao nao ha risco de perda de dados.
 
