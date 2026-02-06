@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { TeamMemberCard } from '@/components/TeamMemberCard';
 import { NewNoteDialog } from '@/components/NewNoteDialog';
@@ -13,6 +13,8 @@ import { TeamTabs } from '@/components/TeamTabs';
 import { SetupChecklist } from '@/components/SetupChecklist';
 import { useAuth } from '@/hooks/useAuth';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
+import { useLinkedMember } from '@/hooks/useLinkedMember';
+import DirectReportDashboard from '@/components/dashboard/DirectReportDashboard';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PenSquare, Users, Loader2, UserPlus, Pencil, Settings, Trash2 } from 'lucide-react';
@@ -53,6 +55,7 @@ const Index = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, loading: authLoading } = useAuth();
+  const { linkedMember, isLinkedMember, needsOnboarding, isLoading: linkedMemberLoading } = useLinkedMember();
   const { canAddMember, limits } = usePlanLimits();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
@@ -223,7 +226,8 @@ const Index = () => {
     }
   };
 
-  if (authLoading || loading) {
+  // Loading combinado: auth + linked member + dados
+  if (authLoading || linkedMemberLoading || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -232,6 +236,15 @@ const Index = () => {
   }
 
   if (!user) return null;
+
+  // INVERSÃO: Priorizar fluxo de liderado ANTES de verificar workspace
+  if (isLinkedMember) {
+    if (needsOnboarding) {
+      return <Navigate to="/onboarding" replace />;
+    }
+    // Liderado com onboarding completo → Dashboard próprio
+    return <DirectReportDashboard linkedMember={linkedMember!} />;
+  }
 
   const filteredMembers = activeTeamId 
     ? teamMembers.filter(m => m.teamId === activeTeamId)

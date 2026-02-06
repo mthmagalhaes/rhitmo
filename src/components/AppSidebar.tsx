@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useToast } from '@/hooks/use-toast';
+import { useLinkedMember } from '@/hooks/useLinkedMember';
 import {
   Sidebar,
   SidebarContent,
@@ -37,10 +38,14 @@ const menuItems = [
   { title: 'Guia do Rhitmo', url: '/help', icon: BookOpen },
 ];
 
+// Itens que só líderes podem ver
+const leaderOnlyItems = ['Analytics', 'Assinatura', 'Guia do Rhitmo'];
+
 export function AppSidebar() {
   const { open } = useSidebar();
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdmin();
+  const { isLinkedMember } = useLinkedMember();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -83,7 +88,9 @@ export function AppSidebar() {
           <SidebarGroupLabel className="text-sidebar-foreground/60">Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
+              {menuItems
+                .filter(item => !isLinkedMember || !leaderOnlyItems.includes(item.title))
+                .map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild tooltip={item.title}>
                     <NavLink 
