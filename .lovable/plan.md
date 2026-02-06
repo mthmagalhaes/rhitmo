@@ -1,434 +1,444 @@
 
-## Plano: Infraestrutura de Convites e Visibilidade Multi-User
+
+## Plano: Pagina de Aceite de Convite (Visual System)
 
 ### Resumo das Alteracoes
 
 | Arquivo | Alteracao |
 |---------|-----------|
-| Nova migracao SQL | Adicionar colunas `linked_user_id`, `invite_token`, `invite_status`, `skills_data` em `team_members`, coluna `visibility` em `feedbacks`, novas RLS policies |
-| `src/pages/MemberDetails.tsx` | Adicionar botao "Convidar" no header do perfil com logica de estados (none/pending/accepted) |
-| `src/components/InviteMemberDialog.tsx` | **NOVO** - Dialog para gerar/copiar link de convite |
+| `src/pages/Invite.tsx` | **NOVO** - Pagina publica de aceite de convite com visual consistente |
+| `src/App.tsx` | Adicionar rota `/invite` |
+| `src/pages/AuthPage.tsx` | Adicionar logica para processar `pending_invite` apos login |
+| `src/components/AuthEventProvider.tsx` | Adicionar listener para processar convite pendente apos autenticacao |
 
 ---
 
-### Parte 1: Alteracoes no Banco de Dados
+### Parte 1: Nova Pagina Invite.tsx
 
-#### 1.1 Novas Colunas em team_members
+#### 1.1 Layout Visual (Baseado no Auth.tsx e RhitmoSync.tsx)
 
-```sql
--- Colunas para gestao de acesso
-ALTER TABLE public.team_members
-  ADD COLUMN IF NOT EXISTS linked_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  ADD COLUMN IF NOT EXISTS invite_token UUID UNIQUE,
-  ADD COLUMN IF NOT EXISTS invite_status TEXT DEFAULT 'none' CHECK (invite_status IN ('none', 'pending', 'accepted'));
-
--- Coluna para dados futuros (Job Crafting/Skills)
-ALTER TABLE public.team_members
-  ADD COLUMN IF NOT EXISTS skills_data JSONB DEFAULT '{}';
-
--- Indice para busca por token
-CREATE INDEX IF NOT EXISTS idx_team_members_invite_token ON public.team_members(invite_token);
-
--- Indice para busca por linked_user_id
-CREATE INDEX IF NOT EXISTS idx_team_members_linked_user_id ON public.team_members(linked_user_id);
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                 │
+│              ┌─────────────────────────────┐                    │
+│              │     🎵 [RhitmoLogo]         │                    │
+│              │                             │                    │
+│              │    ✨ (Sparkles Icon)       │                    │
+│              │                             │                    │
+│              │  Ola, Lais!                 │                    │
+│              │  Matheus convidou voce      │                    │
+│              │  para colaborar no Rhitmo.  │                    │
+│              │                             │                    │
+│              │  [  Aceitar e Acessar  ]    │                    │
+│              │                             │                    │
+│              └─────────────────────────────┘                    │
+│                                                                 │
+│              bg-background + Card centralizado                  │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-#### 1.2 Nova Coluna em feedbacks
+#### 1.2 Estados da Pagina
 
-```sql
--- Coluna de visibilidade com default para manter notas antigas privadas
-ALTER TABLE public.feedbacks
-  ADD COLUMN IF NOT EXISTS visibility TEXT DEFAULT 'private_leader' 
-    CHECK (visibility IN ('private_leader', 'shared', 'private_member'));
+| Estado | UI |
+|--------|-----|
+| Loading | Spinner centralizado com `bg-background` |
+| Erro (token invalido) | Card com icone de erro + "Convite expirado ou invalido" |
+| Sucesso (token valido) | Card de boas-vindas + botao de acao |
+| Processando | Botao desabilitado com loading spinner |
 
--- Indice para filtragem por visibilidade
-CREATE INDEX IF NOT EXISTS idx_feedbacks_visibility ON public.feedbacks(visibility);
+#### 1.3 Estrutura do Componente
+
+```typescript
+interface InviteData {
+  memberName: string;
+  workspaceName: string;
+  memberId: string;
+}
+
+export default function Invite() {
+  const [searchParams] = useSearchParams();
+  const code = searchParams.get('code');
+  
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [inviteData, setInviteData] = useState<InviteData | null>(null);
+  
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  // Carregar dados do convite
+  useEffect(() => {
+    validateInvite();
+  }, [code]);
+  
+  // Processar convite automaticamente se usuario ja logado
+  useEffect(() => {
+    if (user && inviteData) {
+      handleAcceptInvite();
+    }
+  }, [user, inviteData]);
+  
+  // ...
+}
 ```
 
-#### 1.3 Novas RLS Policies
+---
+
+### Parte 2: Logica de Validacao
+
+#### 2.1 Query para Buscar Dados do Convite
+
+Para permitir acesso publico ao token sem expor dados sensiveis, criaremos uma nova funcao RPC:
 
 ```sql
--- Helper function: verificar se usuario esta vinculado a um membro
-CREATE OR REPLACE FUNCTION public.user_is_linked_member(_user_id uuid, _member_id uuid)
-RETURNS boolean
+CREATE OR REPLACE FUNCTION public.get_invite_details(p_invite_token uuid)
+RETURNS TABLE(
+  member_id uuid,
+  member_name text,
+  workspace_name text
+)
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT EXISTS (
-    SELECT 1
-    FROM public.team_members
-    WHERE id = _member_id
-      AND linked_user_id = _user_id
-  )
+  SELECT 
+    tm.id as member_id,
+    tm.name as member_name,
+    w.name as workspace_name
+  FROM public.team_members tm
+  JOIN public.teams t ON t.id = tm.team_id
+  JOIN public.workspaces w ON w.id = t.workspace_id
+  WHERE tm.invite_token = p_invite_token
+    AND tm.invite_status = 'pending'
+    AND w.is_active = true
 $$;
+```
 
--- TEAM_MEMBERS: Liderado pode ver seu proprio perfil
-CREATE POLICY "Linked users can view own profile"
-ON public.team_members
-FOR SELECT
-TO authenticated
-USING (linked_user_id = auth.uid());
+#### 2.2 Funcao de Validacao no Frontend
 
--- TEAM_MEMBERS: Liderado pode atualizar apenas colunas especificas do seu perfil
--- Nota: Restricao de colunas sera feita via aplicacao, RLS garante acesso a linha
-CREATE POLICY "Linked users can update own sync data"
-ON public.team_members
-FOR UPDATE
-TO authenticated
-USING (linked_user_id = auth.uid())
-WITH CHECK (linked_user_id = auth.uid());
+```typescript
+const validateInvite = async () => {
+  if (!code) {
+    setError('Link de convite invalido');
+    setLoading(false);
+    return;
+  }
 
--- FEEDBACKS: Liderado pode ver feedbacks compartilhados
-CREATE POLICY "Linked users can view shared feedbacks"
-ON public.feedbacks
-FOR SELECT
-TO authenticated
-USING (
-  EXISTS (
-    SELECT 1 FROM public.team_members tm
-    WHERE tm.id = feedbacks.member_id
-      AND tm.linked_user_id = auth.uid()
-  )
-  AND visibility = 'shared'
+  try {
+    const { data, error: rpcError } = await supabase.rpc('get_invite_details', {
+      p_invite_token: code
+    });
+
+    if (rpcError) throw rpcError;
+    if (!data || data.length === 0) {
+      setError('Convite expirado ou ja utilizado');
+      setLoading(false);
+      return;
+    }
+
+    const invite = data[0];
+    setInviteData({
+      memberId: invite.member_id,
+      memberName: invite.member_name,
+      workspaceName: invite.workspace_name,
+    });
+  } catch (err) {
+    console.error('Error validating invite:', err);
+    setError('Erro ao validar convite');
+  } finally {
+    setLoading(false);
+  }
+};
+```
+
+---
+
+### Parte 3: Logica de Handshake
+
+#### 3.1 Funcao de Aceite do Convite
+
+```typescript
+const handleAcceptInvite = async () => {
+  // Cenario A: Usuario nao esta logado
+  if (!user) {
+    // Salvar codigo no sessionStorage
+    sessionStorage.setItem('pending_invite', code!);
+    // Redirecionar para login
+    navigate('/auth');
+    return;
+  }
+
+  // Cenario B: Usuario ja logado - vincular conta
+  setProcessing(true);
+  try {
+    const { error } = await supabase
+      .from('team_members')
+      .update({
+        linked_user_id: user.id,
+        invite_status: 'accepted',
+        invite_token: null  // Limpar token apos uso
+      })
+      .eq('invite_token', code);
+
+    if (error) throw error;
+
+    toast({
+      title: "Convite aceito com sucesso!",
+      description: `Bem-vindo ao ${inviteData?.workspaceName}!`,
+    });
+
+    // Redirecionar para dashboard
+    navigate('/dashboard', { replace: true });
+  } catch (err: any) {
+    console.error('Error accepting invite:', err);
+    toast({
+      title: "Erro ao aceitar convite",
+      description: err.message,
+      variant: "destructive"
+    });
+  } finally {
+    setProcessing(false);
+  }
+};
+```
+
+---
+
+### Parte 4: Integracao com AuthEventProvider
+
+#### 4.1 Processar Convite Pendente Apos Login
+
+Adicionar ao `AuthEventProvider.tsx`:
+
+```typescript
+useEffect(() => {
+  const processPendingInvite = async () => {
+    const pendingCode = sessionStorage.getItem('pending_invite');
+    if (!pendingCode) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('team_members')
+        .update({
+          linked_user_id: user.id,
+          invite_status: 'accepted',
+          invite_token: null
+        })
+        .eq('invite_token', pendingCode);
+
+      if (!error) {
+        toast({
+          title: "Convite aceito com sucesso!",
+          description: "Voce foi vinculado a equipe.",
+        });
+      }
+    } catch (err) {
+      console.error('Error processing pending invite:', err);
+    } finally {
+      sessionStorage.removeItem('pending_invite');
+    }
+  };
+
+  // Escutar evento de login
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_IN') {
+      processPendingInvite();
+    }
+  });
+
+  return () => subscription.unsubscribe();
+}, []);
+```
+
+---
+
+### Parte 5: JSX da Pagina Invite.tsx
+
+```tsx
+return (
+  <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <Card className="w-full max-w-md p-8">
+      {/* Logo */}
+      <div className="flex justify-center mb-6">
+        <RhitmoLogo size="md" className="text-primary" />
+      </div>
+
+      {loading ? (
+        {/* Estado Loading */}
+        <div className="text-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground mt-4">Validando convite...</p>
+        </div>
+      ) : error ? (
+        {/* Estado Erro */}
+        <div className="text-center py-8 space-y-4">
+          <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
+            <XCircle className="h-8 w-8 text-destructive" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Convite Invalido
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              {error}
+            </p>
+          </div>
+          <Button variant="outline" asChild className="mt-4">
+            <Link to="/">Voltar para o inicio</Link>
+          </Button>
+        </div>
+      ) : inviteData && (
+        {/* Estado Sucesso */}
+        <div className="text-center space-y-6">
+          {/* Icone de boas-vindas */}
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+            <Sparkles className="h-8 w-8 text-primary" />
+          </div>
+
+          {/* Titulo e Descricao */}
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Ola, {inviteData.memberName}!
+            </h1>
+            <p className="text-muted-foreground">
+              Voce foi convidado para colaborar no <strong>{inviteData.workspaceName}</strong> atraves do Rhitmo.
+            </p>
+          </div>
+
+          {/* Botao de Acao */}
+          <Button 
+            onClick={handleAcceptInvite}
+            disabled={processing}
+            size="lg"
+            className="w-full"
+          >
+            {processing ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Processando...
+              </>
+            ) : (
+              <>
+                <UserCheck className="mr-2 h-4 w-4" />
+                Aceitar e Acessar
+              </>
+            )}
+          </Button>
+
+          {/* Nota de privacidade */}
+          <p className="text-xs text-muted-foreground">
+            Ao aceitar, voce podera visualizar feedbacks compartilhados pelo seu lider.
+          </p>
+        </div>
+      )}
+    </Card>
+  </div>
 );
 ```
 
 ---
 
-### Parte 2: Novo Componente InviteMemberDialog.tsx
-
-#### 2.1 Interface e Props
-
-```typescript
-interface InviteMemberDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  member: {
-    id: string;
-    name: string;
-    email: string | null;
-    invite_status: string | null;
-    invite_token: string | null;
-  };
-  onSuccess?: () => void;
-}
-```
-
-#### 2.2 Logica do Componente
-
-```typescript
-const InviteMemberDialog = ({ open, onOpenChange, member, onSuccess }) => {
-  const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
-  
-  // Gerar link de convite
-  const inviteUrl = member.invite_token 
-    ? `${window.location.origin}/invite?code=${member.invite_token}`
-    : null;
-
-  const handleGenerateInvite = async () => {
-    setLoading(true);
-    try {
-      // Gerar novo token UUID
-      const newToken = crypto.randomUUID();
-      
-      const { error } = await supabase
-        .from('team_members')
-        .update({ 
-          invite_token: newToken,
-          invite_status: 'pending'
-        })
-        .eq('id', member.id);
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Convite gerado!",
-        description: "Copie o link e envie para o membro.",
-      });
-      
-      onSuccess?.();
-    } catch (error: any) {
-      toast({
-        title: "Erro ao gerar convite",
-        description: error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCopyLink = () => {
-    if (inviteUrl) {
-      navigator.clipboard.writeText(inviteUrl);
-      toast({
-        title: "Link copiado!",
-        description: "Cole no WhatsApp ou envie por e-mail."
-      });
-    }
-  };
-
-  return (
-    <Dialog>
-      {/* Estados visuais baseados em invite_status */}
-    </Dialog>
-  );
-};
-```
-
-#### 2.3 Estados Visuais
-
-| Status | UI |
-|--------|-----|
-| `none` | Botao "Gerar Link de Convite" |
-| `pending` | Input com link + Botao "Copiar" + Badge "Convite enviado" |
-| `accepted` | Badge "Usuario Ativo" + Info do login |
-
----
-
-### Parte 3: Alteracoes em MemberDetails.tsx
-
-#### 3.1 Novo Botao no Header
-
-Adicionar ao lado do nome/cargo do membro:
+### Parte 6: Adicionar Rota no App.tsx
 
 ```tsx
-<div className="flex items-start gap-6 mb-6">
-  <MemberAvatar memberId={member.id} memberName={member.name} size="xl" />
-  <div className="flex-1">
-    <div className="flex items-center gap-3 mb-2">
-      <h1 className="text-3xl font-bold text-foreground">{member.name}</h1>
-      
-      {/* Botao de Convite */}
-      {member.invite_status === 'accepted' ? (
-        <Badge variant="secondary" className="bg-green-500/10 text-green-700 gap-1">
-          <CheckCircle className="h-3 w-3" />
-          Usuario Ativo
-        </Badge>
-      ) : (
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => setInviteDialogOpen(true)}
-          className="gap-2"
-        >
-          <Mail className="h-4 w-4" />
-          {member.invite_status === 'pending' ? 'Ver Convite' : 'Convidar'}
-        </Button>
-      )}
-    </div>
-    <p className="text-lg text-muted-foreground mb-4">{member.role}</p>
-    <span className="text-muted-foreground">{feedbacks.length} notas registradas</span>
-  </div>
-</div>
-```
+// Importar nova pagina
+import Invite from "./pages/Invite";
 
-#### 3.2 Novos Estados
-
-```typescript
-const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
-```
-
----
-
-### Parte 4: Fluxo de Convite
-
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│                      FLUXO DE CONVITE                           │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  1. LIDER clica "Convidar" no perfil do membro                  │
-│     └── Sistema gera UUID em invite_token                       │
-│     └── invite_status = 'pending'                               │
-│                                                                 │
-│  2. LIDER copia link e envia para LIDERADO                      │
-│     └── Link: app.rhitmo.com/invite?code={token}                │
-│                                                                 │
-│  3. LIDERADO acessa link (futuro - nao nesta implementacao)     │
-│     └── Cria conta ou faz login                                 │
-│     └── Sistema vincula linked_user_id = auth.uid()             │
-│     └── invite_status = 'accepted'                              │
-│                                                                 │
-│  4. LIDERADO logado ve:                                         │
-│     └── Seu perfil (via RLS linked_user_id)                     │
-│     └── Feedbacks com visibility = 'shared'                     │
-│     └── NAO ve notas com visibility = 'private_leader'          │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+// Dentro de <Routes>
+{/* Rotas publicas (sem sidebar) */}
+<Route path="/sync/:memberId" element={<RhitmoSync />} />
+<Route path="/invite" element={<Invite />} />
 ```
 
 ---
 
 ### Secao Tecnica
 
-#### Diagrama do Modelo de Dados
+#### Diagrama do Fluxo de Convite
 
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
-│                      team_members                               │
+│                    FLUXO COMPLETO DE CONVITE                    │
 ├─────────────────────────────────────────────────────────────────┤
-│ id                    UUID (PK)                                 │
-│ name                  TEXT                                      │
-│ role                  TEXT                                      │
-│ email                 TEXT                                      │
-│ team_id               UUID (FK → teams)                         │
-│ user_id               UUID (owner/manager - deprecated?)        │
-│ ------- NOVAS COLUNAS -------                                   │
-│ linked_user_id        UUID (FK → auth.users) -- login do membro │
-│ invite_token          UUID (UNIQUE) -- token do convite         │
-│ invite_status         TEXT ('none'|'pending'|'accepted')        │
-│ skills_data           JSONB (default '{}')                      │
-│ work_style_data       JSONB                                     │
-└─────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────┐
-│                        feedbacks                                │
-├─────────────────────────────────────────────────────────────────┤
-│ id                    UUID (PK)                                 │
-│ member_id             UUID (FK → team_members)                  │
-│ manager_id            UUID (owner do feedback)                  │
-│ content               TEXT                                      │
-│ ------- NOVA COLUNA -------                                     │
-│ visibility            TEXT ('private_leader'|'shared'|          │
-│                            'private_member')                    │
-│                       DEFAULT 'private_leader'                  │
+│                                                                 │
+│  1. LIDER gera convite em MemberDetails                         │
+│     └── invite_token = UUID gerado                              │
+│     └── invite_status = 'pending'                               │
+│                                                                 │
+│  2. LIDERADO acessa /invite?code=XYZ                            │
+│     └── RPC get_invite_details valida token                     │
+│     └── Exibe Card de boas-vindas                               │
+│                                                                 │
+│  3a. Se NAO logado:                                             │
+│      └── sessionStorage.set('pending_invite', code)             │
+│      └── Redirect para /auth                                    │
+│      └── Apos login, AuthEventProvider processa convite         │
+│                                                                 │
+│  3b. Se JA logado:                                              │
+│      └── UPDATE team_members SET linked_user_id = auth.uid      │
+│      └── invite_status = 'accepted', invite_token = null        │
+│      └── Redirect para /dashboard                               │
+│                                                                 │
+│  4. LIDERADO logado ve:                                         │
+│     └── Seu perfil (via RLS linked_user_id)                     │
+│     └── Feedbacks com visibility = 'shared'                     │
+│                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-#### Logica de RLS (Resumo)
+#### Nova Funcao RPC Necessaria
 
 ```sql
--- LIDER: Ve TUDO do seu workspace (ja existe)
--- RLS atual: workspace.owner_id = effective_user_id()
-
--- LIDERADO (NOVO): Ve apenas:
--- 1. Seu proprio perfil em team_members
--- 2. Feedbacks onde visibility = 'shared'
--- 3. NAO ve notas privadas do lider
-```
-
-#### Seguranca: Restricao de Colunas no UPDATE
-
-A RLS permite UPDATE na linha inteira quando `linked_user_id = auth.uid()`. Para restringir quais colunas o liderado pode alterar (apenas `work_style_data` e `skills_data`), usaremos validacao na aplicacao:
-
-```typescript
-// Opcao 1: Validar no frontend antes de enviar
-// Opcao 2: Criar funcao RPC que permite apenas colunas especificas
-
-CREATE OR REPLACE FUNCTION public.update_member_own_data(
-  p_work_style_data JSONB DEFAULT NULL,
-  p_skills_data JSONB DEFAULT NULL
+CREATE OR REPLACE FUNCTION public.get_invite_details(p_invite_token uuid)
+RETURNS TABLE(
+  member_id uuid,
+  member_name text,
+  workspace_name text
 )
-RETURNS boolean
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  UPDATE public.team_members
-  SET 
-    work_style_data = COALESCE(p_work_style_data, work_style_data),
-    skills_data = COALESCE(p_skills_data, skills_data),
-    updated_at = now()
-  WHERE linked_user_id = auth.uid();
-  
-  RETURN FOUND;
-END;
-$$;
-```
-
-Esta funcao RPC garante que o liderado so pode alterar as colunas permitidas, mesmo que consiga burlar a validacao do frontend.
-
-#### Valores Default Estrategicos
-
-| Coluna | Default | Motivo |
-|--------|---------|--------|
-| `invite_status` | `'none'` | Nenhum convite gerado ainda |
-| `invite_token` | `NULL` | Token gerado sob demanda |
-| `linked_user_id` | `NULL` | Vinculo criado apos aceite |
-| `visibility` | `'private_leader'` | 130 notas antigas continuam privadas |
-| `skills_data` | `'{}'` | JSONB vazio, pronto para Job Crafting |
-
----
-
-### Migracao Completa
-
-```sql
--- 1. Novas colunas em team_members
-ALTER TABLE public.team_members
-  ADD COLUMN IF NOT EXISTS linked_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  ADD COLUMN IF NOT EXISTS invite_token UUID UNIQUE,
-  ADD COLUMN IF NOT EXISTS invite_status TEXT DEFAULT 'none' CHECK (invite_status IN ('none', 'pending', 'accepted')),
-  ADD COLUMN IF NOT EXISTS skills_data JSONB DEFAULT '{}';
-
--- 2. Indices para performance
-CREATE INDEX IF NOT EXISTS idx_team_members_invite_token ON public.team_members(invite_token);
-CREATE INDEX IF NOT EXISTS idx_team_members_linked_user_id ON public.team_members(linked_user_id);
-
--- 3. Nova coluna em feedbacks
-ALTER TABLE public.feedbacks
-  ADD COLUMN IF NOT EXISTS visibility TEXT DEFAULT 'private_leader' 
-    CHECK (visibility IN ('private_leader', 'shared', 'private_member'));
-
-CREATE INDEX IF NOT EXISTS idx_feedbacks_visibility ON public.feedbacks(visibility);
-
--- 4. Helper function para verificar vinculo
-CREATE OR REPLACE FUNCTION public.user_is_linked_member(_user_id uuid, _member_id uuid)
-RETURNS boolean
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.team_members
-    WHERE id = _member_id AND linked_user_id = _user_id
-  )
+  SELECT 
+    tm.id as member_id,
+    tm.name as member_name,
+    w.name as workspace_name
+  FROM public.team_members tm
+  JOIN public.teams t ON t.id = tm.team_id
+  JOIN public.workspaces w ON w.id = t.workspace_id
+  WHERE tm.invite_token = p_invite_token
+    AND tm.invite_status = 'pending'
+    AND w.is_active = true
 $$;
-
--- 5. RLS: Liderado pode ver seu perfil
-CREATE POLICY "Linked users can view own profile"
-ON public.team_members
-FOR SELECT
-TO authenticated
-USING (linked_user_id = auth.uid());
-
--- 6. RPC segura para liderado atualizar seus dados
-CREATE OR REPLACE FUNCTION public.update_member_own_data(
-  p_work_style_data JSONB DEFAULT NULL,
-  p_skills_data JSONB DEFAULT NULL
-)
-RETURNS boolean
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  UPDATE public.team_members
-  SET 
-    work_style_data = COALESCE(p_work_style_data, work_style_data),
-    skills_data = COALESCE(p_skills_data, skills_data),
-    updated_at = now()
-  WHERE linked_user_id = auth.uid();
-  RETURN FOUND;
-END;
-$$;
-
--- 7. RLS: Liderado pode ver feedbacks compartilhados
-CREATE POLICY "Linked users can view shared feedbacks"
-ON public.feedbacks
-FOR SELECT
-TO authenticated
-USING (
-  EXISTS (
-    SELECT 1 FROM public.team_members tm
-    WHERE tm.id = feedbacks.member_id
-      AND tm.linked_user_id = auth.uid()
-  )
-  AND visibility = 'shared'
-);
 ```
+
+Esta funcao permite consulta publica ao token sem expor dados sensiveis (apenas nome e workspace).
+
+#### Seguranca do Token
+
+- Token e UUID v4 (36 caracteres aleatorios, nao enumeravel)
+- Token e limpo (`invite_token = null`) apos aceite
+- Validacao verifica `invite_status = 'pending'` (nao reutilizavel)
+- Workspace deve estar ativo (`is_active = true`)
+
+#### Dependencias Utilizadas
+
+- `lucide-react`: Sparkles, Loader2, XCircle, UserCheck (ja instaladas)
+- `@/components/ui/card`: Card centralizado (ja existe)
+- `@/components/RhitmoLogo`: Logo consistente (ja existe)
+- `useAuth` hook: Verificar estado de autenticacao (ja existe)
+
+#### SessionStorage vs LocalStorage
+
+Usamos `sessionStorage` para o `pending_invite` porque:
+- Expira quando a aba e fechada (mais seguro)
+- Evita conflitos entre multiplas abas
+- Nao persiste indefinidamente
+
