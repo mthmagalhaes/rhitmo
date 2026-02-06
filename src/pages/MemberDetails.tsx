@@ -198,6 +198,32 @@ const MemberDetails = () => {
     }
   };
 
+  const handleToggleVisibility = async (feedbackId: string, newVisibility: 'shared' | 'private_leader') => {
+    try {
+      const { error } = await supabase
+        .from('feedbacks')
+        .update({ visibility: newVisibility })
+        .eq('id', feedbackId);
+      
+      if (error) throw error;
+      
+      toast({
+        title: newVisibility === 'shared' ? "Anotação compartilhada" : "Anotação tornada privada",
+        description: newVisibility === 'shared' 
+          ? "O colaborador agora pode ver esta anotação."
+          : "Apenas você pode ver esta anotação."
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ['feedbacks', id] });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao atualizar visibilidade",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleResendInvite = async () => {
     if (!member) return;
     setResendingInvite(true);
@@ -591,7 +617,11 @@ const MemberDetails = () => {
                   </Button>
                 </Card>
               ) : (
-                <FeedbackTimeline feedbacks={filteredFeedbacks as any} onDelete={handleDeleteFeedback} />
+                <FeedbackTimeline 
+                  feedbacks={filteredFeedbacks as any} 
+                  onDelete={handleDeleteFeedback}
+                  onToggleVisibility={handleToggleVisibility}
+                />
               )}
             </div>
           </TabsContent>
