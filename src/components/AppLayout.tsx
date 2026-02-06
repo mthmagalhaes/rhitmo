@@ -2,11 +2,13 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/s
 import { AppSidebar } from '@/components/AppSidebar';
 import { WorkspaceOnboarding } from '@/components/WorkspaceOnboarding';
 import { useAuth } from '@/hooks/useAuth';
+import { useLinkedMember } from '@/hooks/useLinkedMember';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
+  const { isLinkedMember, isLoading: linkedMemberLoading } = useLinkedMember();
   const queryClient = useQueryClient();
 
   // Query para verificar workspace do usuário
@@ -24,7 +26,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     enabled: !!user,
   });
 
-  const needsWorkspaceSetup = !authLoading && !workspaceLoading && user && !workspace;
+  // Liderados NÃO precisam de workspace - só líderes
+  const needsWorkspaceSetup = !authLoading 
+    && !workspaceLoading 
+    && !linkedMemberLoading
+    && user 
+    && !workspace 
+    && !isLinkedMember;
 
   const handleWorkspaceComplete = () => {
     refetch();
