@@ -16,11 +16,12 @@ import { PerformanceReviewList } from '@/components/PerformanceReviewList';
 import { useAuth } from '@/hooks/useAuth';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Music, BookOpen, FileText, Clock, Lock, ArrowRight, Briefcase, Heart, Megaphone, Compass, DollarSign, Shield, GraduationCap, Crown, HelpCircle, Sunrise, Moon, Search } from 'lucide-react';
+import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Music, BookOpen, FileText, Clock, Lock, ArrowRight, Briefcase, Heart, Megaphone, Compass, DollarSign, Shield, GraduationCap, Crown, HelpCircle, Sunrise, Moon, Search, CheckCircle } from 'lucide-react';
 import { GoalsManager } from '@/components/GoalsManager';
 
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import { InviteMemberDialog } from '@/components/InviteMemberDialog';
 import React from 'react';
 
 interface WorkStyleData {
@@ -45,6 +46,7 @@ const MemberDetails = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [resendingInvite, setResendingInvite] = useState(false);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
@@ -312,7 +314,27 @@ const MemberDetails = () => {
           <div className="flex items-start gap-6 mb-6">
             <MemberAvatar memberId={member.id} memberName={member.name} size="xl" />
             <div className="flex-1">
-              <h1 className="text-3xl font-bold text-foreground mb-2">{member.name}</h1>
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-3xl font-bold text-foreground">{member.name}</h1>
+                
+                {/* Botão de Convite */}
+                {member.invite_status === 'accepted' ? (
+                  <Badge variant="secondary" className="bg-green-500/10 text-green-700 dark:text-green-400 gap-1">
+                    <CheckCircle className="h-3 w-3" />
+                    Usuário Ativo
+                  </Badge>
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setInviteDialogOpen(true)}
+                    className="gap-2"
+                  >
+                    <Mail className="h-4 w-4" />
+                    {member.invite_status === 'pending' ? 'Ver Convite' : 'Convidar'}
+                  </Button>
+                )}
+              </div>
               <p className="text-lg text-muted-foreground mb-4">{member.role}</p>
               <span className="text-muted-foreground">{feedbacks.length} notas registradas</span>
             </div>
@@ -592,6 +614,19 @@ const MemberDetails = () => {
       />
 
       <MentorChat open={chatOpen} onOpenChange={setChatOpen} memberName={member.name} memberId={member.id} memberRole={member.role} feedbacks={feedbacks} workStyleData={member.work_style_data} keyObjectives={member.key_objectives} />
+
+      <InviteMemberDialog
+        open={inviteDialogOpen}
+        onOpenChange={setInviteDialogOpen}
+        member={{
+          id: member.id,
+          name: member.name,
+          email: member.email,
+          invite_status: member.invite_status,
+          invite_token: member.invite_token
+        }}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['member', id] })}
+      />
     </div>;
 };
 export default MemberDetails;

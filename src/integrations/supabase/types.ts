@@ -93,6 +93,7 @@ export type Database = {
           title: string | null
           type: string
           updated_at: string
+          visibility: string | null
         }
         Insert: {
           action_items?: Json | null
@@ -113,6 +114,7 @@ export type Database = {
           title?: string | null
           type: string
           updated_at?: string
+          visibility?: string | null
         }
         Update: {
           action_items?: Json | null
@@ -133,6 +135,7 @@ export type Database = {
           title?: string | null
           type?: string
           updated_at?: string
+          visibility?: string | null
         }
         Relationships: [
           {
@@ -362,12 +365,16 @@ export type Database = {
           feedback_style: string | null
           gender: string | null
           id: string
+          invite_status: string | null
+          invite_token: string | null
           key_objectives: string | null
+          linked_user_id: string | null
           motivators: Json | null
           name: string
           performance_score: number | null
           recognition_style: string | null
           role: string
+          skills_data: Json | null
           team_id: string
           updated_at: string
           user_id: string | null
@@ -383,12 +390,16 @@ export type Database = {
           feedback_style?: string | null
           gender?: string | null
           id?: string
+          invite_status?: string | null
+          invite_token?: string | null
           key_objectives?: string | null
+          linked_user_id?: string | null
           motivators?: Json | null
           name: string
           performance_score?: number | null
           recognition_style?: string | null
           role: string
+          skills_data?: Json | null
           team_id: string
           updated_at?: string
           user_id?: string | null
@@ -404,12 +415,16 @@ export type Database = {
           feedback_style?: string | null
           gender?: string | null
           id?: string
+          invite_status?: string | null
+          invite_token?: string | null
           key_objectives?: string | null
+          linked_user_id?: string | null
           motivators?: Json | null
           name?: string
           performance_score?: number | null
           recognition_style?: string | null
           role?: string
+          skills_data?: Json | null
           team_id?: string
           updated_at?: string
           user_id?: string | null
@@ -604,6 +619,14 @@ export type Database = {
           p_user_manual?: Json
           p_work_style_data?: Json
         }
+        Returns: boolean
+      }
+      update_member_own_data: {
+        Args: { p_skills_data?: Json; p_work_style_data?: Json }
+        Returns: boolean
+      }
+      user_is_linked_member: {
+        Args: { _member_id: string; _user_id: string }
         Returns: boolean
       }
       user_owns_team: {
