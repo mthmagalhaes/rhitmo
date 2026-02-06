@@ -574,6 +574,7 @@ export type Database = {
       get_invite_details: {
         Args: { p_invite_token: string }
         Returns: {
+          member_email: string
           member_id: string
           member_name: string
           workspace_name: string
