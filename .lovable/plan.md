@@ -1,420 +1,268 @@
 
 
-## Plano: Mentor Chat com Inteligencia Hibrida (Modo Auto vs. Manual)
+## Plano: Ajuste de Titulo e Barra de Filtros (Tactiq Style)
 
-### Visao Geral
-
-O Mentor Chat tera dois modos de operacao:
-1. **Modo Automatico (Padrao)**: A IA analisa automaticamente as ultimas 10 notas do membro
-2. **Modo Manual (Focado)**: O usuario seleciona notas especificas para analise
-
-A interface sera inspirada no Tactiq/MeetRox com um ContextPicker elegante e Quick Action Chips.
-
----
-
-### Arquitetura Atual
-
-| Componente | Localizacao | Funcao |
-|------------|-------------|--------|
-| MentorChat.tsx | Frontend | Dialog com threads e mensagens |
-| chat-mentor Edge Function | Backend | Processa perguntas com contexto |
-| MemberDetails.tsx | Frontend | Passa `feedbacks` para MentorChat |
-
-**Fluxo Atual**:
-```text
-MemberDetails → passa todos os feedbacks → MentorChat → envia para Edge Function → Router decide se usa contexto
-```
-
-**Novo Fluxo**:
-```text
-MemberDetails → passa todos os feedbacks → MentorChat 
-                                            ├── Modo Auto: envia 10 ultimas
-                                            └── Modo Manual: envia apenas selecionados
-                                                      ↓
-                                            Edge Function com instrucoes especificas
-```
-
----
-
-### Parte 1: Novo Componente ContextPicker.tsx
-
-#### 1.1 Interface e Props
-
-```typescript
-// src/components/ContextPicker.tsx
-
-interface ContextPickerProps {
-  feedbacks: Feedback[];
-  selectedIds: string[];
-  onSelectionChange: (ids: string[]) => void;
-  memberId: string;
-}
-```
-
-#### 1.2 UI do Popover
-
-```tsx
-<Popover>
-  <PopoverTrigger asChild>
-    <Button variant="ghost" size="sm" className="gap-2">
-      <BookOpen className="h-4 w-4" />
-      Contexto
-      {selectedIds.length > 0 && (
-        <Badge variant="secondary" className="ml-1">
-          {selectedIds.length}
-        </Badge>
-      )}
-    </Button>
-  </PopoverTrigger>
-  <PopoverContent className="w-[400px] p-0" align="start">
-    <div className="p-3 border-b">
-      <h4 className="font-medium">Selecionar Notas</h4>
-      <p className="text-xs text-muted-foreground">
-        Escolha notas especificas ou deixe vazio para modo automatico
-      </p>
-    </div>
-    <ScrollArea className="h-[300px]">
-      <div className="p-2 space-y-1">
-        {feedbacks.slice(0, 15).map(fb => (
-          <label key={fb.id} className="flex items-center gap-3 p-2 hover:bg-muted/50 rounded cursor-pointer">
-            <Checkbox 
-              checked={selectedIds.includes(fb.id)}
-              onCheckedChange={(checked) => {
-                if (checked) onSelectionChange([...selectedIds, fb.id]);
-                else onSelectionChange(selectedIds.filter(id => id !== fb.id));
-              }}
-            />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">
-                  {format(new Date(fb.occurred_at || fb.created_at), 'dd/MM', { locale: ptBR })}
-                </span>
-                <span className="text-sm truncate">
-                  {fb.title || 'Anotacao nao classificada'}
-                </span>
-              </div>
-              {fb.tags?.length > 0 && (
-                <div className="flex gap-1 mt-1">
-                  {fb.tags.slice(0, 2).map(tag => (
-                    <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0">
-                      {getTagEmoji(tag)} {tag}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </div>
-          </label>
-        ))}
-      </div>
-    </ScrollArea>
-    <div className="p-3 border-t flex justify-between">
-      <Button 
-        variant="ghost" 
-        size="sm"
-        onClick={() => onSelectionChange([])}
-        disabled={selectedIds.length === 0}
-      >
-        Limpar
-      </Button>
-      <Button size="sm" onClick={() => setOpen(false)}>
-        Aplicar
-      </Button>
-    </div>
-  </PopoverContent>
-</Popover>
-```
-
----
-
-### Parte 2: Modificacoes no MentorChat.tsx
-
-#### 2.1 Novos Estados
-
-```typescript
-// Adicionar ao componente MentorChat
-const [selectedContexts, setSelectedContexts] = useState<string[]>([]);
-```
-
-#### 2.2 Area de Status do Contexto (Header do Chat)
-
-Adicionar abaixo do DialogTitle:
-
-```tsx
-{/* Context Status Area */}
-<div className="px-6 py-2 bg-muted/30 border-b">
-  {selectedContexts.length > 0 ? (
-    // Modo Manual: Chips removiveis
-    <div className="flex items-center gap-2 flex-wrap">
-      <span className="text-xs text-muted-foreground">Contexto:</span>
-      {selectedContexts.map(id => {
-        const fb = feedbacks.find(f => f.id === id);
-        return (
-          <Badge 
-            key={id} 
-            variant="outline" 
-            className="gap-1.5 pl-2 pr-1"
-          >
-            <span className="text-xs truncate max-w-[120px]">
-              {fb?.title || 'Nota'}
-            </span>
-            <button 
-              onClick={() => setSelectedContexts(prev => prev.filter(x => x !== id))}
-              className="hover:bg-accent rounded p-0.5"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </Badge>
-        );
-      })}
-    </div>
-  ) : (
-    // Modo Automatico: Badge informativo
-    <div className="flex items-center gap-2">
-      <Badge variant="secondary" className="bg-blue-500/10 text-blue-600 border-blue-200">
-        <Sparkles className="h-3 w-3 mr-1.5" />
-        Modo Automatico: Analisando historico recente
-      </Badge>
-    </div>
-  )}
-</div>
-```
-
-#### 2.3 Botao de Contexto no Header
-
-Adicionar o ContextPicker no header do chat (ao lado do titulo):
-
-```tsx
-<DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
-  <div className="flex items-center justify-between">
-    <DialogTitle className="text-foreground text-lg">
-      🎯 Mentor Chat
-      <span className="text-muted-foreground font-normal text-base ml-2">
-        - {memberName} {memberRole && `(${memberRole})`}
-      </span>
-    </DialogTitle>
-    
-    <ContextPicker 
-      feedbacks={feedbacks}
-      selectedIds={selectedContexts}
-      onSelectionChange={setSelectedContexts}
-      memberId={memberId}
-    />
-  </div>
-</DialogHeader>
-```
-
-#### 2.4 Novos Quick Chips
-
-Substituir os quickSuggestions atuais:
-
-```typescript
-const quickSuggestions = [
-  { emoji: '📝', text: 'Resumir estas notas' },
-  { emoji: '✅', text: 'Extrair Acoes' },
-  { emoji: '💡', text: 'Gerar insights' },
-];
-```
-
-#### 2.5 Modificar handleSend para Modo Hibrido
-
-```typescript
-const handleSend = async (messageToSend?: string) => {
-  // ... validacoes existentes ...
-
-  try {
-    // ... criar thread se necessario ...
-
-    // Preparar contexto baseado no modo
-    let contextFeedbacks: any[];
-    let contextMode: 'auto' | 'manual';
-    
-    if (selectedContexts.length > 0) {
-      // Modo Manual: usar apenas notas selecionadas
-      contextMode = 'manual';
-      contextFeedbacks = feedbacks.filter(fb => selectedContexts.includes(fb.id));
-    } else {
-      // Modo Automatico: usar 10 mais recentes
-      contextMode = 'auto';
-      const sorted = [...feedbacks].sort((a, b) => 
-        new Date(b.occurred_at || b.created_at).getTime() - 
-        new Date(a.occurred_at || a.created_at).getTime()
-      );
-      contextFeedbacks = sorted.slice(0, 10);
-    }
-
-    const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-mentor`,
-      {
-        method: 'POST',
-        headers: { ... },
-        body: JSON.stringify({
-          question: finalMessage,
-          feedbacks: contextFeedbacks,
-          memberName,
-          memberRole,
-          managerName,
-          workStyleData,
-          keyObjectives,
-          contextMode // NOVO: indicar modo ao backend
-        }),
-        signal: controller.signal
-      }
-    );
-    // ... resto do fluxo ...
-  }
-};
-```
-
----
-
-### Parte 3: Modificacoes na Edge Function chat-mentor
-
-#### 3.1 Receber contextMode
-
-```typescript
-serve(async (req) => {
-  // ...
-  const { 
-    question, 
-    feedbacks, 
-    memberName, 
-    memberRole, 
-    managerName, 
-    workStyleData, 
-    keyObjectives,
-    contextMode // NOVO PARAMETRO
-  } = await req.json();
-```
-
-#### 3.2 Instrucoes Diferenciadas no System Prompt
-
-Adicionar secao condicional baseada no modo:
-
-```typescript
-// Construir instrucao de contexto baseada no modo
-let contextInstruction = '';
-
-if (contextMode === 'manual') {
-  contextInstruction = `
-## MODO DE ANALISE: FOCO SELETIVO
-
-O usuario SELECIONOU MANUALMENTE as notas abaixo. Isso significa que ele quer uma analise FOCADA e PROFUNDA apenas neste contexto especifico.
-
-**REGRAS PARA MODO MANUAL:**
-- Ignore qualquer historico que nao esteja listado abaixo
-- Responda a pergunta baseando-se ESTRITAMENTE nestes textos
-- Se a pergunta pedir "resumir estas notas", resuma APENAS as notas selecionadas
-- Seja mais detalhado e profundo na analise deste contexto restrito
-`;
-} else {
-  contextInstruction = `
-## MODO DE ANALISE: VISAO GERAL (AUTOMATICO)
-
-O usuario NAO selecionou notas especificas. Voce deve analisar o HISTORICO RECENTE como contexto geral para responder.
-
-**REGRAS PARA MODO AUTOMATICO:**
-- Estas sao as 10 notas mais recentes do liderado
-- Use-as como "memoria de longo prazo" sobre o comportamento do liderado
-- Se a pergunta pedir "resumir estas notas", resuma as notas do historico recente
-- Busque padroes e tendencias ao longo do tempo
-`;
-}
-
-// Inserir no system prompt antes do HISTORICO DE NOTAS
-const systemPrompt = `# RHITMO MENTOR 2.0 - CONSTITUICAO
-
-${contextInstruction}
-
-... resto do prompt existente ...
-
-## HISTORICO DE NOTAS (CONTEXT_DOCUMENTS)
-
-${contextLines}
-`;
-```
-
----
-
-### Parte 4: Resumo das Alteracoes
+### Resumo das Alteracoes
 
 | Arquivo | Alteracao |
 |---------|-----------|
-| `src/components/ContextPicker.tsx` | **NOVO** - Popover para selecao de notas |
-| `src/components/MentorChat.tsx` | Adicionar estado `selectedContexts`, area de status, integrar ContextPicker, modificar handleSend |
-| `supabase/functions/chat-mentor/index.ts` | Receber `contextMode`, adicionar instrucoes diferenciadas no prompt |
+| `src/pages/MemberDetails.tsx` | Renomear titulo para "Minhas anotacoes", adicionar estados de filtro, logica de filtragem, integrar FeedbackFilters |
+| `src/components/FeedbackFilters.tsx` | **NOVO** - Barra de ferramentas com busca, filtros de tag e ordenacao |
+
+---
+
+### Parte 1: Renomeacao Cirurgica
+
+#### Localizacao Atual (Linha 504)
+```tsx
+<h2 className="text-2xl font-bold text-foreground mb-6">Histórico de Feedbacks</h2>
+```
+
+#### Nova Versao
+```tsx
+<h2 className="text-2xl font-bold text-foreground mb-4">Minhas anotações</h2>
+```
+
+A Tab "Diario de Bordo" (linha 494) permanece inalterada.
+
+---
+
+### Parte 2: Novo Componente FeedbackFilters.tsx
+
+#### 2.1 Interface e Props
+
+```typescript
+interface FeedbackFiltersProps {
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
+  selectedTags: string[];
+  onTagsChange: (tags: string[]) => void;
+  sortOrder: 'newest' | 'oldest';
+  onSortChange: (order: 'newest' | 'oldest') => void;
+}
+```
+
+#### 2.2 Layout Visual (Tactiq Style)
+
+```text
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🔍 Pesquisar por palavras-chave...  │ 🎯1:1 │ 🚀PDI │ ✅Check-in │ 🚨Feedback │ ▼ Mais recentes │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 2.3 Estrutura do Componente
+
+```tsx
+<div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-6 p-3 bg-muted/30 rounded-lg border">
+  {/* Input de Busca */}
+  <div className="relative flex-1 min-w-0 w-full sm:w-auto">
+    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+    <Input 
+      placeholder="Pesquisar por palavras-chave..."
+      value={searchQuery}
+      onChange={(e) => onSearchChange(e.target.value)}
+      className="pl-9 h-9"
+    />
+  </div>
+  
+  {/* Filtros de Tags (Toggle Buttons) */}
+  <div className="flex items-center gap-1.5 flex-wrap">
+    {FILTER_TAGS.map(tag => (
+      <Button
+        key={tag.key}
+        variant={selectedTags.includes(tag.key) ? "default" : "outline"}
+        size="sm"
+        onClick={() => toggleTag(tag.key)}
+        className="h-8 text-xs gap-1"
+      >
+        {tag.emoji} {tag.label}
+      </Button>
+    ))}
+  </div>
+  
+  {/* Select de Ordenacao */}
+  <Select value={sortOrder} onValueChange={onSortChange}>
+    <SelectTrigger className="w-[140px] h-9">
+      <SelectValue />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="newest">Mais recentes</SelectItem>
+      <SelectItem value="oldest">Mais antigos</SelectItem>
+    </SelectContent>
+  </Select>
+</div>
+```
+
+#### 2.4 Tags para Filtro
+
+Conforme solicitado, usar 4 tags principais:
+
+```typescript
+const FILTER_TAGS = [
+  { key: '1:1', emoji: '🎯', label: '1:1' },
+  { key: 'PDI', emoji: '🚀', label: 'PDI' },
+  { key: 'Check-in', emoji: '✅', label: 'Check-in' },
+  { key: 'Feedback Difícil', emoji: '🚨', label: 'Feedback' },
+];
+```
+
+---
+
+### Parte 3: Logica de Filtragem em MemberDetails.tsx
+
+#### 3.1 Novos Estados
+
+```typescript
+const [searchQuery, setSearchQuery] = useState('');
+const [selectedTags, setSelectedTags] = useState<string[]>([]);
+const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+```
+
+#### 3.2 Funcao de Filtragem (useMemo)
+
+```typescript
+const filteredFeedbacks = useMemo(() => {
+  let result = [...feedbacks];
+  
+  // 1. Filtro de Busca (title OU content)
+  if (searchQuery.trim()) {
+    const query = searchQuery.toLowerCase();
+    result = result.filter(fb => {
+      const titleMatch = fb.title?.toLowerCase().includes(query);
+      // Para content, remover HTML antes de buscar
+      const plainContent = fb.content.replace(/<[^>]*>/g, '').toLowerCase();
+      const contentMatch = plainContent.includes(query);
+      return titleMatch || contentMatch;
+    });
+  }
+  
+  // 2. Filtro de Tags (OR logic - pelo menos uma tag selecionada)
+  if (selectedTags.length > 0) {
+    result = result.filter(fb => 
+      fb.tags?.some(tag => selectedTags.includes(tag))
+    );
+  }
+  
+  // 3. Ordenacao por data
+  result.sort((a, b) => {
+    const dateA = new Date(a.occurred_at || a.created_at).getTime();
+    const dateB = new Date(b.occurred_at || b.created_at).getTime();
+    return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+  });
+  
+  return result;
+}, [feedbacks, searchQuery, selectedTags, sortOrder]);
+```
+
+#### 3.3 Integracao no JSX
+
+```tsx
+<TabsContent value="diary">
+  <div>
+    <h2 className="text-2xl font-bold text-foreground mb-4">Minhas anotações</h2>
+    
+    {feedbacks.length > 0 && (
+      <FeedbackFilters
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        selectedTags={selectedTags}
+        onTagsChange={setSelectedTags}
+        sortOrder={sortOrder}
+        onSortChange={setSortOrder}
+      />
+    )}
+    
+    {feedbacks.length === 0 ? (
+      <Card className="p-12 text-center">
+        <p className="text-muted-foreground mb-4">Nenhum feedback registrado ainda</p>
+        <Button onClick={() => setDialogOpen(true)}>Adicionar Primeira Nota</Button>
+      </Card>
+    ) : filteredFeedbacks.length === 0 ? (
+      {/* Estado vazio apos filtragem */}
+      <Card className="p-8 text-center border-dashed">
+        <Search className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+        <p className="text-muted-foreground">Nenhuma anotação encontrada para estes filtros.</p>
+        <Button 
+          variant="link" 
+          onClick={() => { setSearchQuery(''); setSelectedTags([]); }}
+          className="mt-2"
+        >
+          Limpar filtros
+        </Button>
+      </Card>
+    ) : (
+      <FeedbackTimeline feedbacks={filteredFeedbacks} onDelete={handleDeleteFeedback} />
+    )}
+  </div>
+</TabsContent>
+```
+
+---
+
+### Parte 4: Estados Visuais
+
+#### Barra de Filtros (Estado Normal)
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ 🔍 Pesquisar por palavras-chave... │ [🎯 1:1] [🚀 PDI] [✅ Check-in] [🚨 Feedback] │ Mais recentes ▼ │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Barra com Filtro Ativo
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ 🔍 "promoção"                      │ [🎯 1:1]●[🚀 PDI] [✅ Check-in] [🚨 Feedback] │ Mais recentes ▼ │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+(O botao "1:1" fica preenchido/primary quando ativo)
+
+#### Estado Vazio apos Filtro
+
+```text
+┌──────────────────────────────────────┐
+│           🔍                        │
+│  Nenhuma anotação encontrada        │
+│  para estes filtros.                │
+│                                      │
+│  [Limpar filtros]                   │
+└──────────────────────────────────────┘
+```
 
 ---
 
 ### Secao Tecnica
 
-#### Fluxo de Dados
-
-```text
-┌──────────────────────────────────────────────────────────────┐
-│ MentorChat (Frontend)                                        │
-│                                                              │
-│  selectedContexts: string[] (IDs das notas selecionadas)     │
-│                                                              │
-│  ┌─────────────────┐  ┌─────────────────┐                    │
-│  │ selectedContexts│  │ selectedContexts│                    │
-│  │ = []            │  │ = ['id1','id2'] │                    │
-│  │ (Modo Auto)     │  │ (Modo Manual)   │                    │
-│  └────────┬────────┘  └────────┬────────┘                    │
-│           │                    │                             │
-│           ▼                    ▼                             │
-│  feedbacks.slice(0,10)   feedbacks.filter(selected)          │
-│           │                    │                             │
-│           └────────┬───────────┘                             │
-│                    │                                         │
-│                    ▼                                         │
-│           body: {                                            │
-│             feedbacks: contextFeedbacks,                     │
-│             contextMode: 'auto' | 'manual'                   │
-│           }                                                  │
-└──────────────────────────────────────────────────────────────┘
-                         │
-                         ▼
-┌──────────────────────────────────────────────────────────────┐
-│ Edge Function chat-mentor (Backend)                          │
-│                                                              │
-│  if (contextMode === 'manual') {                             │
-│    prompt = "Analise APENAS estas notas selecionadas..."     │
-│  } else {                                                    │
-│    prompt = "Analise o historico recente..."                 │
-│  }                                                           │
-└──────────────────────────────────────────────────────────────┘
-```
-
-#### Quick Chips: Comportamento Inteligente
-
-| Chip | Modo Auto | Modo Manual |
-|------|-----------|-------------|
-| "Resumir estas notas" | Resume as 10 mais recentes | Resume apenas as selecionadas |
-| "Extrair Acoes" | Extrai acoes do historico recente | Extrai acoes das notas selecionadas |
-| "Gerar insights" | Gera insights gerais | Gera insights focados |
-
-A IA entende o contexto porque o `contextMode` modifica as instrucoes do sistema.
-
-#### Estados Visuais da Area de Status
-
-**Modo Automatico (Padrao)**:
-```text
-┌────────────────────────────────────────────────────────────┐
-│ ✨ Modo Automatico: Analisando historico recente          │
-└────────────────────────────────────────────────────────────┘
-```
-
-**Modo Manual (Notas Selecionadas)**:
-```text
-┌────────────────────────────────────────────────────────────┐
-│ Contexto: [📄 Alinhamento Q4 (x)] [📄 1:1 Janeiro (x)]    │
-└────────────────────────────────────────────────────────────┘
-```
-
 #### Dependencias Utilizadas
 
-- `@radix-ui/react-popover` (ja instalado)
-- `@radix-ui/react-checkbox` (ja instalado)
-- `date-fns` (ja instalado)
-- `lucide-react` (ja instalado)
+- `lucide-react`: Search icon (ja instalado)
+- `@/components/ui/input`: Input de busca (ja existe)
+- `@/components/ui/select`: Dropdown de ordenacao (ja existe)
+- `@/components/ui/button`: Toggles de tag (ja existe)
+
+#### Performance
+
+- `useMemo` para evitar re-calcular filteredFeedbacks em cada render
+- Filtragem client-side (dados ja carregados via React Query)
+- Nao impacta chamadas ao banco de dados
+
+#### Logica de Toggle de Tags
+
+```typescript
+const toggleTag = (tag: string) => {
+  setSelectedTags(prev => 
+    prev.includes(tag) 
+      ? prev.filter(t => t !== tag)  // Remove se ja existe
+      : [...prev, tag]               // Adiciona se nao existe
+  );
+};
+```
+
+#### Busca Case-Insensitive com Limpeza de HTML
+
+```typescript
+// Remover tags HTML do content antes de buscar
+const plainContent = fb.content.replace(/<[^>]*>/g, '').toLowerCase();
+```
 
