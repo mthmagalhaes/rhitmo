@@ -571,6 +571,14 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_invite_details: {
+        Args: { p_invite_token: string }
+        Returns: {
+          member_id: string
+          member_name: string
+          workspace_name: string
+        }[]
+      }
       get_member_for_sync: {
         Args: { p_member_id: string }
         Returns: {

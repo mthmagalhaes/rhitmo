@@ -12,6 +12,7 @@ import Analytics from "./pages/Analytics";
 import Billing from "./pages/Billing";
 import AuthPage from "./pages/AuthPage";
 import RhitmoSync from "./pages/RhitmoSync";
+import Invite from "./pages/Invite";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
 import HelpCenter from "./pages/HelpCenter";
@@ -43,6 +44,7 @@ const App = () => (
             
             {/* Rotas públicas (sem sidebar) */}
             <Route path="/sync/:memberId" element={<RhitmoSync />} />
+            <Route path="/invite" element={<Invite />} />
             
             {/* Rota Admin */}
             <Route 
