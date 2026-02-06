@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { FeedbackTimeline } from '@/components/FeedbackTimeline';
 import { User, FileText, Loader2 } from 'lucide-react';
+import { CareerCompassCard, type AIAnalysis } from './CareerCompassCard';
 
 interface LinkedMemberData {
   id: string;
@@ -16,6 +17,7 @@ interface LinkedMemberData {
     interests?: string[];
     onboarding_completed?: boolean;
     completed_at?: string;
+    ai_analysis?: AIAnalysis;
   } | null;
 }
 
@@ -60,6 +62,7 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
 
   const responsibilities = linkedMember.skills_data?.responsibilities || [];
   const tenure = linkedMember.skills_data?.role_tenure;
+  const aiAnalysis = linkedMember.skills_data?.ai_analysis;
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -72,7 +75,12 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
       </div>
 
       {/* Grid de Cards */}
-      <main className="container mx-auto px-6 py-8">
+      <main className="container mx-auto px-6 py-8 space-y-6">
+        {/* Career Compass Card - Destaque */}
+        {aiAnalysis && (
+          <CareerCompassCard aiAnalysis={aiAnalysis} />
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Card: Meu Perfil */}
           <Card className="p-6">
