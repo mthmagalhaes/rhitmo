@@ -133,9 +133,9 @@ serve(async (req) => {
   }
 
   try {
-    const { question, feedbacks, memberName, memberRole, managerName, workStyleData, keyObjectives } = await req.json();
+    const { question, feedbacks, memberName, memberRole, managerName, workStyleData, keyObjectives, contextMode } = await req.json();
 
-    console.log('Chat mentor 2.0 request:', { memberName, memberRole, managerName, feedbacksCount: feedbacks?.length, hasWorkStyle: !!workStyleData });
+    console.log('Chat mentor 2.0 request:', { memberName, memberRole, managerName, feedbacksCount: feedbacks?.length, hasWorkStyle: !!workStyleData, contextMode: contextMode || 'auto' });
     
     // Extrair primeiro nome para flexibilidade de apelidos
     const firstName = memberName ? memberName.split(' ')[0] : '';
@@ -204,7 +204,43 @@ Nenhum objetivo foi definido pelo gestor. Foque na análise comportamental.
     // ============================================
     // CAMADA 3: GPT-4o (O Cérebro)
     // ============================================
+    
+    // Instrução condicional baseada no modo de contexto
+    let contextModeInstruction = '';
+    
+    if (contextMode === 'manual') {
+      contextModeInstruction = `
+## 🎯 MODO DE ANÁLISE: FOCO SELETIVO (MANUAL)
+
+O usuário SELECIONOU MANUALMENTE as notas abaixo. Isso significa que ele quer uma análise FOCADA e PROFUNDA apenas neste contexto específico.
+
+**REGRAS PARA MODO MANUAL:**
+- Ignore qualquer histórico que não esteja listado abaixo
+- Responda a pergunta baseando-se ESTRITAMENTE nestes textos selecionados
+- Se a pergunta pedir "resumir estas notas", resuma APENAS as notas que foram selecionadas
+- Seja mais detalhado e profundo na análise deste contexto restrito
+- Não mencione que existem "outras notas" ou "histórico anterior" - foque 100% no selecionado
+- Trate estas notas como a única fonte de verdade para esta conversa
+`;
+    } else {
+      contextModeInstruction = `
+## 🔄 MODO DE ANÁLISE: VISÃO GERAL (AUTOMÁTICO)
+
+O usuário NÃO selecionou notas específicas. Você está analisando o HISTÓRICO RECENTE automaticamente.
+
+**REGRAS PARA MODO AUTOMÁTICO:**
+- Estas são as 10 notas mais recentes do liderado
+- Use-as como "memória de longo prazo" sobre o comportamento e evolução do liderado
+- Se a pergunta pedir "resumir estas notas", resuma as notas do histórico recente fornecido
+- Busque padrões e tendências ao longo do tempo
+- Identifique conexões entre diferentes notas e momentos
+- Se encontrar lacunas de informação, sugira que o gestor registre mais notas sobre o tema
+`;
+    }
+    
     const systemPrompt = `# RHITMO MENTOR 2.0 - CONSTITUIÇÃO
+
+${contextModeInstruction}
 
 ## IDENTIDADE
 ${RHITMO_IDENTITY}
