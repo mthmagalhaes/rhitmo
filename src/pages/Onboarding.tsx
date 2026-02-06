@@ -11,10 +11,18 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, CheckCircle2, Bot, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
 import type { Json } from '@/integrations/supabase/types';
+
+// AI Analysis response type
+interface AIAnalysis {
+  alignment_score: number;
+  analysis_summary: string;
+  key_gaps: string[];
+  suggested_focus: string[];
+}
 
 // Types
 interface OnboardingFormData {
@@ -147,6 +155,7 @@ export default function Onboarding() {
 
   const [currentStep, setCurrentStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [analyzingWithAI, setAnalyzingWithAI] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [formData, setFormData] = useState<OnboardingFormData>(initialFormData);
 
@@ -223,13 +232,15 @@ export default function Onboarding() {
     
     setSubmitting(true);
 
-    const skillsData = {
+    const responsibilities = [
+      formData.responsibility1,
+      formData.responsibility2,
+      formData.responsibility3,
+    ].filter(Boolean);
+
+    const baseSkillsData = {
       role_tenure: formData.roleTenure,
-      responsibilities: [
-        formData.responsibility1,
-        formData.responsibility2,
-        formData.responsibility3,
-      ].filter(Boolean),
+      responsibilities,
       aspirations: formData.aspirations,
       interests: formData.interests,
       onboarding_completed: true,
@@ -237,9 +248,9 @@ export default function Onboarding() {
     };
 
     try {
-      // Salvar skills_data via RPC
+      // Salvar skills_data inicial via RPC
       const { data: success, error: rpcError } = await supabase.rpc('update_member_own_data', {
-        p_skills_data: skillsData as unknown as Json,
+        p_skills_data: baseSkillsData as unknown as Json,
       });
 
       if (rpcError) throw rpcError;
@@ -255,6 +266,47 @@ export default function Onboarding() {
         if (updateError) {
           console.warn('Could not update role:', updateError);
         }
+      }
+
+      // Agora chamar a IA para análise de carreira
+      setSubmitting(false);
+      setAnalyzingWithAI(true);
+
+      try {
+        const { data: aiData, error: aiError } = await supabase.functions.invoke('analyze-job-crafting', {
+          body: {
+            role: formData.role.trim(),
+            responsibilities,
+            aspirations: formData.aspirations,
+            interests: formData.interests,
+          },
+        });
+
+        if (aiError) throw aiError;
+        if (aiData.error) throw new Error(aiData.error);
+
+        // Salvar análise da IA no skills_data
+        const skillsWithAI = {
+          ...baseSkillsData,
+          ai_analysis: {
+            ...aiData,
+            analyzed_at: new Date().toISOString(),
+          },
+        };
+
+        await supabase.rpc('update_member_own_data', {
+          p_skills_data: skillsWithAI as unknown as Json,
+        });
+
+        console.log('[Onboarding] AI analysis saved successfully');
+      } catch (aiErr) {
+        // IA falhou, mas não bloqueia o fluxo
+        console.error('[Onboarding] AI analysis failed:', aiErr);
+        toast({
+          title: "Análise de carreira indisponível",
+          description: "Seu perfil foi salvo. A análise de IA estará disponível em breve.",
+          variant: "default",
+        });
       }
 
       setCompleted(true);
@@ -276,6 +328,7 @@ export default function Onboarding() {
       });
     } finally {
       setSubmitting(false);
+      setAnalyzingWithAI(false);
     }
   };
 
@@ -287,6 +340,36 @@ export default function Onboarding() {
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
           <p className="mt-4 text-muted-foreground">Carregando...</p>
         </div>
+      </div>
+    );
+  }
+
+  // AI Analyzing state - tela especial de loading
+  if (analyzingWithAI) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
+        <Card className="max-w-md w-full p-8 text-center space-y-6">
+          <div className="flex justify-center">
+            <div className="relative">
+              <div className="rounded-full bg-primary/10 p-6 animate-pulse">
+                <Bot className="h-12 w-12 text-primary" />
+              </div>
+              <Sparkles className="h-5 w-5 text-primary absolute -top-1 -right-1 animate-bounce" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-xl font-bold text-foreground">Analisando seu perfil...</h1>
+            <p className="text-muted-foreground text-sm">
+              A IA está processando suas informações para gerar insights de carreira personalizados
+            </p>
+          </div>
+          <div className="pt-2">
+            <Progress value={66} className="h-2" />
+            <p className="text-xs text-muted-foreground mt-2">
+              Isso pode levar alguns segundos
+            </p>
+          </div>
+        </Card>
       </div>
     );
   }
