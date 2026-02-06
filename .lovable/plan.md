@@ -1,58 +1,73 @@
 
 
-## Plano: Remover Workspace Acidental "COO"
+## Plano: Vinculo Manual de Liderado (Force Link)
 
 ### Estado Atual Identificado
 
-| Entidade | ID | Status |
+| Entidade | ID | Valor |
 |----------|----|----|
-| **Usuario** | `6f9335e3-03ab-4d48-8ae7-2841db6b6660` | mth.magalhaes@gmail.com |
-| **Workspace Acidental** | `37ca4f2a-b624-4042-901c-c9067a753bcf` | Nome: "COO" (a ser deletado) |
-| **Time do Workspace** | `c74efdcd-45da-4f6f-a088-b72b868d16b7` | "Sem Time" - 0 membros |
-| **Convites existentes** | 2 registros em `team_members` | Ja estao com `pending` e sem vinculo |
+| **Usuario Auth** | `6f9335e3-03ab-4d48-8ae7-2841db6b6660` | mth.magalhaes@gmail.com |
+| **Team Member (Matheus)** | `d7da97b1-4427-4e8b-8c6c-0b4c14c6bd66` | Workspace: Faster Ops |
+| **Team Member (MM)** | `7a4c1b65-f145-4d00-8b8e-8e0100cc31c7` | Workspace: Rhitmo Inc. |
+| **Team Member (Maria)** | `1e0dbb69-1389-4770-bfcc-ab1d6d9e0e98` | Workspace: Rhitmo Inc. |
 
-### Diagnostico
+### Problema
 
-O usuario `mth.magalhaes@gmail.com` criou acidentalmente o workspace "COO" apos aceitar o convite. Os registros de `team_members` (onde ele deveria ser liderado) ja foram resetados anteriormente - estao com `linked_user_id = NULL` e `invite_status = 'pending'`.
+Existem **3 convites pendentes** para o mesmo email em workspaces diferentes. O usuario esta logado mas nenhum tem `linked_user_id` preenchido, entao `isLinkedMember` retorna `false` e ele ve o modal de criar workspace.
 
-**Problema**: Quando ele loga, o sistema encontra um workspace proprio e renderiza o dashboard de lider ao inves de permitir que ele aceite o convite de liderado.
+### Decisao Necessaria
 
-### Acao Necessaria
+Qual dos 3 registros deve ser vinculado ao usuario?
 
-Deletar o workspace "COO" e seu time vazio:
+**Opcao A (Recomendada)**: Vincular ao registro mais recente "Matheus" no workspace **Faster Ops**
+- Member ID: `d7da97b1-4427-4e8b-8c6c-0b4c14c6bd66`
+
+**Opcao B**: Vincular ao registro "MM" no workspace **Rhitmo Inc.**
+- Member ID: `7a4c1b65-f145-4d00-8b8e-8e0100cc31c7`
+
+**Opcao C**: Vincular ao registro "Maria Silva" no workspace **Rhitmo Inc.**
+- Member ID: `1e0dbb69-1389-4770-bfcc-ab1d6d9e0e98`
+
+### Acao SQL (Assumindo Opcao A)
 
 ```sql
--- Passo 1: Deletar o time vazio do workspace acidental
-DELETE FROM public.teams 
-WHERE workspace_id = '37ca4f2a-b624-4042-901c-c9067a753bcf';
+-- Vincular usuario ao team_member "Matheus" no Faster Ops
+UPDATE public.team_members
+SET 
+  linked_user_id = '6f9335e3-03ab-4d48-8ae7-2841db6b6660',
+  invite_status = 'accepted',
+  invite_token = NULL
+WHERE id = 'd7da97b1-4427-4e8b-8c6c-0b4c14c6bd66';
+```
 
--- Passo 2: Deletar o workspace acidental
-DELETE FROM public.workspaces 
-WHERE id = '37ca4f2a-b624-4042-901c-c9067a753bcf';
+### Limpeza Opcional
+
+Remover convites duplicados para evitar confusao futura:
+
+```sql
+-- Remover convites duplicados (manter apenas o vinculado)
+DELETE FROM public.team_members
+WHERE email = 'mth.magalhaes@gmail.com'
+  AND id != 'd7da97b1-4427-4e8b-8c6c-0b4c14c6bd66';
 ```
 
 ### Resultado Esperado
 
-Apos a execucao:
-- Usuario `mth.magalhaes@gmail.com` continuara existindo (login/senha mantidos)
-- Ao logar, nao tera workspace proprio
-- O `AppLayout.tsx` detectara `isLinkedMember = false` e `workspace = null`
-- Podera acessar o link de convite existente e aceitar novamente
-- Sera redirecionado para o fluxo de onboarding de liderado
-
-### Links de Convite Disponiveis
-
-Dois convites ja existem para este email:
-- **Maria Silva** (Customer Success): `/invite?token=99d0fadc-760c-4e5b-a3cd-7972db16dfbe`
-- **MM** (BizOps): `/invite?token=5986f6b3-c26b-42ad-966c-3c0298bed069`
-
-Matheus podera copiar qualquer um desses links e enviar para o usuario testar o fluxo.
+Apos execucao:
+- `useLinkedMember` retornara `isLinkedMember = true`
+- `needsOnboarding` dependera se `skills_data.onboarding_completed` esta preenchido
+- Usuario sera redirecionado para onboarding ou DirectReportDashboard
+- Modal de criar workspace nao aparecera mais
 
 ### Secao Tecnica
 
-A ordem de delecao respeita as foreign keys:
-1. `teams` depende de `workspaces` (FK workspace_id)
-2. Deletar teams primeiro, depois workspace
+O hook `useLinkedMember` faz a query:
+```typescript
+.from('team_members')
+.select('id, name, email, role, skills_data')
+.eq('linked_user_id', user.id)
+.maybeSingle()
+```
 
-Nao ha team_members vinculados ao workspace "COO", entao nao ha risco de perda de dados.
+Ao preencher `linked_user_id`, esta query retornara o registro e `isLinkedMember` sera `true`.
 
