@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
 import { AuthEventProvider } from "./components/AuthEventProvider";
+import { DirectReportGuard } from "./components/DirectReportGuard";
 import Landing from "./pages/Landing";
 import Index from "./pages/Index";
 import MemberDetails from "./pages/MemberDetails";
@@ -13,6 +14,7 @@ import Billing from "./pages/Billing";
 import AuthPage from "./pages/AuthPage";
 import RhitmoSync from "./pages/RhitmoSync";
 import Invite from "./pages/Invite";
+import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
 import HelpCenter from "./pages/HelpCenter";
@@ -35,12 +37,35 @@ const App = () => (
             {/* Auth */}
             <Route path="/auth" element={<AuthPage />} />
             
-            {/* Dashboard (antigo Index) - autenticado */}
-            <Route path="/dashboard" element={<AppLayout><Index /></AppLayout>} />
-            <Route path="/member/:id" element={<AppLayout><MemberDetails /></AppLayout>} />
-            <Route path="/analytics" element={<AppLayout><Analytics /></AppLayout>} />
-            <Route path="/billing" element={<AppLayout><Billing /></AppLayout>} />
-            <Route path="/help" element={<AppLayout><HelpCenter /></AppLayout>} />
+            {/* Onboarding para liderados */}
+            <Route path="/onboarding" element={<Onboarding />} />
+            
+            {/* Dashboard (antigo Index) - autenticado com guard para linked members */}
+            <Route path="/dashboard" element={
+              <DirectReportGuard>
+                <AppLayout><Index /></AppLayout>
+              </DirectReportGuard>
+            } />
+            <Route path="/member/:id" element={
+              <DirectReportGuard>
+                <AppLayout><MemberDetails /></AppLayout>
+              </DirectReportGuard>
+            } />
+            <Route path="/analytics" element={
+              <DirectReportGuard>
+                <AppLayout><Analytics /></AppLayout>
+              </DirectReportGuard>
+            } />
+            <Route path="/billing" element={
+              <DirectReportGuard>
+                <AppLayout><Billing /></AppLayout>
+              </DirectReportGuard>
+            } />
+            <Route path="/help" element={
+              <DirectReportGuard>
+                <AppLayout><HelpCenter /></AppLayout>
+              </DirectReportGuard>
+            } />
             
             {/* Rotas públicas (sem sidebar) */}
             <Route path="/sync/:memberId" element={<RhitmoSync />} />
