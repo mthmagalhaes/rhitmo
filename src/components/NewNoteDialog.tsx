@@ -4,13 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
- import { PenSquare, Loader2, Upload, CalendarIcon, X } from 'lucide-react';
+import { PenSquare, Loader2, Upload, CalendarIcon, X, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VoiceInput } from './VoiceInput';
 import { extractTextFromFile, isFileSupported } from '@/lib/fileParser';
- import { cleanTranscriptText } from '@/lib/textSanitizer';
+import { cleanTranscriptText } from '@/lib/textSanitizer';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { useEditor } from '@tiptap/react';
 import { format } from 'date-fns';
@@ -80,6 +81,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
   const [title, setTitle] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [isShared, setIsShared] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<ReturnType<typeof useEditor> | null>(null);
   const { toast } = useToast();
@@ -93,6 +95,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
     setTitle('');
     setIsDragging(false);
     setIsProcessingFile(false);
+    setIsShared(false);
     
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -307,11 +310,12 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
         .insert({
           manager_id: user.id,
           member_id: targetMemberId,
-           content: cleanedContent,
+          content: cleanedContent,
           type: 'neutral',
           occurred_at: occurredAt.toISOString(),
-           tags: finalTags.length > 0 ? finalTags : [],
-           title: finalTitle || null,
+          tags: finalTags.length > 0 ? finalTags : [],
+          title: finalTitle || null,
+          visibility: isShared ? 'shared' : 'private_leader',
           summary: null,
           sentiment: null,
           coaching_tips: null,
@@ -555,14 +559,30 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
         </div>
         
         {/* Sticky footer - always visible */}
-        <DialogFooter className="px-6 py-4 border-t bg-background">
-          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={loading}>
-            Cancelar
-          </Button>
-          <Button onClick={handleSubmit} disabled={loading || isProcessingFile || !occurredAt}>
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Salvar
-          </Button>
+        <DialogFooter className="px-6 py-4 border-t bg-background flex-col sm:flex-row gap-4">
+          {/* Switch de compartilhamento */}
+          <div className="flex items-center gap-3 mr-auto">
+            <Switch
+              id="share-toggle"
+              checked={isShared}
+              onCheckedChange={setIsShared}
+              disabled={loading}
+            />
+            <Label htmlFor="share-toggle" className="flex items-center gap-2 cursor-pointer text-sm">
+              <Eye className="h-4 w-4 text-muted-foreground" />
+              <span>Compartilhar com {memberName || 'colaborador'}?</span>
+            </Label>
+          </div>
+          
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={loading}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSubmit} disabled={loading || isProcessingFile || !occurredAt}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Salvar
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
