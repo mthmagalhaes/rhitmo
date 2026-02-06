@@ -1,73 +1,49 @@
 
 
-## Plano: Vinculo Manual de Liderado (Force Link)
+## Diagnostico: Comportamento Correto Identificado
 
-### Estado Atual Identificado
+### O que foi investigado
 
-| Entidade | ID | Valor |
-|----------|----|----|
-| **Usuario Auth** | `6f9335e3-03ab-4d48-8ae7-2841db6b6660` | mth.magalhaes@gmail.com |
-| **Team Member (Matheus)** | `d7da97b1-4427-4e8b-8c6c-0b4c14c6bd66` | Workspace: Faster Ops |
-| **Team Member (MM)** | `7a4c1b65-f145-4d00-8b8e-8e0100cc31c7` | Workspace: Rhitmo Inc. |
-| **Team Member (Maria)** | `1e0dbb69-1389-4770-bfcc-ab1d6d9e0e98` | Workspace: Rhitmo Inc. |
+Analisei os requests de rede e o banco de dados para entender a situacao.
 
-### Problema
+### Descoberta Principal
 
-Existem **3 convites pendentes** para o mesmo email em workspaces diferentes. O usuario esta logado mas nenhum tem `linked_user_id` preenchido, entao `isLinkedMember` retorna `false` e ele ve o modal de criar workspace.
+A screenshot mostra o usuario **Maga** (`matheus.magalhaes@fstr.co`) logado, que e o **LIDER** do workspace "Faster Ops". Ele esta visualizando a pagina de detalhes do seu liderado "Matheus" - este e o comportamento esperado para um lider.
 
-### Decisao Necessaria
+### Mapa de Usuarios
 
-Qual dos 3 registros deve ser vinculado ao usuario?
+| Email | UUID | Funcao |
+|-------|------|--------|
+| `matheus.magalhaes@fstr.co` | `79a6f679-...` | **Lider** do workspace "Faster Ops" (exibido como "Maga" na sidebar) |
+| `mth.magalhaes@gmail.com` | `6f9335e3-...` | **Liderado** vinculado ao workspace "Faster Ops" |
 
-**Opcao A (Recomendada)**: Vincular ao registro mais recente "Matheus" no workspace **Faster Ops**
-- Member ID: `d7da97b1-4427-4e8b-8c6c-0b4c14c6bd66`
+### Estado Atual do Liderado no Banco
 
-**Opcao B**: Vincular ao registro "MM" no workspace **Rhitmo Inc.**
-- Member ID: `7a4c1b65-f145-4d00-8b8e-8e0100cc31c7`
-
-**Opcao C**: Vincular ao registro "Maria Silva" no workspace **Rhitmo Inc.**
-- Member ID: `1e0dbb69-1389-4770-bfcc-ab1d6d9e0e98`
-
-### Acao SQL (Assumindo Opcao A)
-
-```sql
--- Vincular usuario ao team_member "Matheus" no Faster Ops
-UPDATE public.team_members
-SET 
-  linked_user_id = '6f9335e3-03ab-4d48-8ae7-2841db6b6660',
-  invite_status = 'accepted',
-  invite_token = NULL
-WHERE id = 'd7da97b1-4427-4e8b-8c6c-0b4c14c6bd66';
+```text
+linked_user_id: 6f9335e3-03ab-4d48-8ae7-2841db6b6660 ✓
+invite_status: accepted ✓
+skills_data: {} (vazio)
+workspace proprio: NENHUM ✓
 ```
 
-### Limpeza Opcional
+### Comportamento Esperado
 
-Remover convites duplicados para evitar confusao futura:
+Quando `mth.magalhaes@gmail.com` fizer login:
 
-```sql
--- Remover convites duplicados (manter apenas o vinculado)
-DELETE FROM public.team_members
-WHERE email = 'mth.magalhaes@gmail.com'
-  AND id != 'd7da97b1-4427-4e8b-8c6c-0b4c14c6bd66';
-```
+1. **useLinkedMember** retornara `isLinkedMember = true`
+2. Como `skills_data.onboarding_completed` nao existe, `needsOnboarding = true`
+3. Sistema redirecionara para `/onboarding` (Wizard de Job Crafting)
+4. Apos completar onboarding, vera o `DirectReportDashboard`
 
-### Resultado Esperado
+### Proximo Passo para Validar
 
-Apos execucao:
-- `useLinkedMember` retornara `isLinkedMember = true`
-- `needsOnboarding` dependera se `skills_data.onboarding_completed` esta preenchido
-- Usuario sera redirecionado para onboarding ou DirectReportDashboard
-- Modal de criar workspace nao aparecera mais
+Para testar a experiencia do liderado corretamente:
 
-### Secao Tecnica
+1. Fazer logout do usuario atual ("Maga")
+2. Fazer login como `mth.magalhaes@gmail.com`
+3. Verificar se o fluxo de onboarding de liderado aparece
 
-O hook `useLinkedMember` faz a query:
-```typescript
-.from('team_members')
-.select('id, name, email, role, skills_data')
-.eq('linked_user_id', user.id)
-.maybeSingle()
-```
+### Nenhuma Alteracao de Codigo Necessaria
 
-Ao preencher `linked_user_id`, esta query retornara o registro e `isLinkedMember` sera `true`.
+O sistema esta funcionando conforme projetado. A confusao ocorreu porque os nomes dos usuarios sao similares ("Maga" vs "Matheus") e o lider estava visualizando a pagina `/member/:id` do seu liderado.
 
