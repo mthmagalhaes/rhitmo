@@ -1,209 +1,420 @@
 
 
-## Plano: Padronização Visual Forçada (Global UI Fix)
+## Plano: Mentor Chat com Inteligencia Hibrida (Modo Auto vs. Manual)
 
-### Problema Identificado
+### Visao Geral
 
-O componente `FeedbackTimeline.tsx` atual:
-1. **NÃO usa layout Accordion** - renderiza cards abertos com conteúdo sempre visível
-2. **Sem título de fallback** - notas sem `title` simplesmente não mostram nada no cabeçalho
-3. **Exibe HTML cru** - o `feedback.content` é renderizado como texto puro, mostrando tags como `<p>` visíveis
-4. **Layout inconsistente** - notas com/sem tags têm visualizações diferentes
+O Mentor Chat tera dois modos de operacao:
+1. **Modo Automatico (Padrao)**: A IA analisa automaticamente as ultimas 10 notas do membro
+2. **Modo Manual (Focado)**: O usuario seleciona notas especificas para analise
 
-### Solução: Reescrever para Layout Accordion Compacto
+A interface sera inspirada no Tactiq/MeetRox com um ContextPicker elegante e Quick Action Chips.
 
 ---
 
-### Parte 1: Reestruturar para Accordion
+### Arquitetura Atual
 
-#### 1.1 Novos Imports
+| Componente | Localizacao | Funcao |
+|------------|-------------|--------|
+| MentorChat.tsx | Frontend | Dialog com threads e mensagens |
+| chat-mentor Edge Function | Backend | Processa perguntas com contexto |
+| MemberDetails.tsx | Frontend | Passa `feedbacks` para MentorChat |
 
-```tsx
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
-import DOMPurify from 'dompurify';
-import { cleanTranscriptText, containsHtml } from '@/lib/textSanitizer';
+**Fluxo Atual**:
+```text
+MemberDetails → passa todos os feedbacks → MentorChat → envia para Edge Function → Router decide se usa contexto
 ```
 
-#### 1.2 Nova Estrutura do Card
-
-Cada nota será um Collapsible que começa fechado:
-
-```tsx
-<Collapsible key={feedback.id}>
-  {/* Linha Compacta (sempre visível) */}
-  <CollapsibleTrigger className="w-full">
-    <div className="flex items-center justify-between p-4 hover:bg-muted/50 rounded-lg border">
-      {/* Esquerda: Data + Título + Tags */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <span className="text-sm text-muted-foreground">
-          📅 {formatDate(feedback.occurred_at || feedback.created_at)}
-        </span>
-        
-        {/* Título com Fallback */}
-        <span className={cn(
-          "font-medium",
-          feedback.title ? "text-foreground" : "text-muted-foreground italic"
-        )}>
-          {feedback.title || "📝 Anotação não classificada"}
-        </span>
-        
-        {/* Tags (se existirem) */}
-        {feedback.tags?.length > 0 && (
-          <div className="flex gap-1">
-            {feedback.tags.map(tag => (
-              <Badge key={tag} variant="outline" className="text-xs">
-                {getTagEmoji(tag)} {tag}
-              </Badge>
-            ))}
-          </div>
-        )}
-      </div>
-      
-      {/* Direita: Chevron + Delete */}
-      <div className="flex items-center gap-2">
-        <ChevronDown className="h-4 w-4 transition-transform [data-state=open]&:rotate-180" />
-        {onDelete && <DeleteButton ... />}
-      </div>
-    </div>
-  </CollapsibleTrigger>
-  
-  {/* Conteúdo Expandido (oculto por padrão) */}
-  <CollapsibleContent>
-    <div className="p-4 pt-0 border-x border-b rounded-b-lg">
-      <div className="prose prose-sm max-w-none text-foreground">
-        {renderSanitizedContent(feedback.content)}
-      </div>
-    </div>
-  </CollapsibleContent>
-</Collapsible>
+**Novo Fluxo**:
+```text
+MemberDetails → passa todos os feedbacks → MentorChat 
+                                            ├── Modo Auto: envia 10 ultimas
+                                            └── Modo Manual: envia apenas selecionados
+                                                      ↓
+                                            Edge Function com instrucoes especificas
 ```
 
 ---
 
-### Parte 2: Renderização Sanitizada do Conteúdo
+### Parte 1: Novo Componente ContextPicker.tsx
 
-#### 2.1 Função de Renderização
+#### 1.1 Interface e Props
+
+```typescript
+// src/components/ContextPicker.tsx
+
+interface ContextPickerProps {
+  feedbacks: Feedback[];
+  selectedIds: string[];
+  onSelectionChange: (ids: string[]) => void;
+  memberId: string;
+}
+```
+
+#### 1.2 UI do Popover
 
 ```tsx
-const renderSanitizedContent = (content: string) => {
-  if (!content) return null;
-  
-  // Verificar se contém HTML
-  if (containsHtml(content)) {
-    // Sanitizar HTML e renderizar com estilos prose
-    return (
-      <div 
-        className="prose prose-sm max-w-none"
-        dangerouslySetInnerHTML={{ 
-          __html: DOMPurify.sanitize(content, {
-            ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h1', 'h2', 'h3'],
-            ALLOWED_ATTR: []
-          }) 
-        }} 
-      />
+<Popover>
+  <PopoverTrigger asChild>
+    <Button variant="ghost" size="sm" className="gap-2">
+      <BookOpen className="h-4 w-4" />
+      Contexto
+      {selectedIds.length > 0 && (
+        <Badge variant="secondary" className="ml-1">
+          {selectedIds.length}
+        </Badge>
+      )}
+    </Button>
+  </PopoverTrigger>
+  <PopoverContent className="w-[400px] p-0" align="start">
+    <div className="p-3 border-b">
+      <h4 className="font-medium">Selecionar Notas</h4>
+      <p className="text-xs text-muted-foreground">
+        Escolha notas especificas ou deixe vazio para modo automatico
+      </p>
+    </div>
+    <ScrollArea className="h-[300px]">
+      <div className="p-2 space-y-1">
+        {feedbacks.slice(0, 15).map(fb => (
+          <label key={fb.id} className="flex items-center gap-3 p-2 hover:bg-muted/50 rounded cursor-pointer">
+            <Checkbox 
+              checked={selectedIds.includes(fb.id)}
+              onCheckedChange={(checked) => {
+                if (checked) onSelectionChange([...selectedIds, fb.id]);
+                else onSelectionChange(selectedIds.filter(id => id !== fb.id));
+              }}
+            />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">
+                  {format(new Date(fb.occurred_at || fb.created_at), 'dd/MM', { locale: ptBR })}
+                </span>
+                <span className="text-sm truncate">
+                  {fb.title || 'Anotacao nao classificada'}
+                </span>
+              </div>
+              {fb.tags?.length > 0 && (
+                <div className="flex gap-1 mt-1">
+                  {fb.tags.slice(0, 2).map(tag => (
+                    <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0">
+                      {getTagEmoji(tag)} {tag}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          </label>
+        ))}
+      </div>
+    </ScrollArea>
+    <div className="p-3 border-t flex justify-between">
+      <Button 
+        variant="ghost" 
+        size="sm"
+        onClick={() => onSelectionChange([])}
+        disabled={selectedIds.length === 0}
+      >
+        Limpar
+      </Button>
+      <Button size="sm" onClick={() => setOpen(false)}>
+        Aplicar
+      </Button>
+    </div>
+  </PopoverContent>
+</Popover>
+```
+
+---
+
+### Parte 2: Modificacoes no MentorChat.tsx
+
+#### 2.1 Novos Estados
+
+```typescript
+// Adicionar ao componente MentorChat
+const [selectedContexts, setSelectedContexts] = useState<string[]>([]);
+```
+
+#### 2.2 Area de Status do Contexto (Header do Chat)
+
+Adicionar abaixo do DialogTitle:
+
+```tsx
+{/* Context Status Area */}
+<div className="px-6 py-2 bg-muted/30 border-b">
+  {selectedContexts.length > 0 ? (
+    // Modo Manual: Chips removiveis
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="text-xs text-muted-foreground">Contexto:</span>
+      {selectedContexts.map(id => {
+        const fb = feedbacks.find(f => f.id === id);
+        return (
+          <Badge 
+            key={id} 
+            variant="outline" 
+            className="gap-1.5 pl-2 pr-1"
+          >
+            <span className="text-xs truncate max-w-[120px]">
+              {fb?.title || 'Nota'}
+            </span>
+            <button 
+              onClick={() => setSelectedContexts(prev => prev.filter(x => x !== id))}
+              className="hover:bg-accent rounded p-0.5"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </Badge>
+        );
+      })}
+    </div>
+  ) : (
+    // Modo Automatico: Badge informativo
+    <div className="flex items-center gap-2">
+      <Badge variant="secondary" className="bg-blue-500/10 text-blue-600 border-blue-200">
+        <Sparkles className="h-3 w-3 mr-1.5" />
+        Modo Automatico: Analisando historico recente
+      </Badge>
+    </div>
+  )}
+</div>
+```
+
+#### 2.3 Botao de Contexto no Header
+
+Adicionar o ContextPicker no header do chat (ao lado do titulo):
+
+```tsx
+<DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
+  <div className="flex items-center justify-between">
+    <DialogTitle className="text-foreground text-lg">
+      🎯 Mentor Chat
+      <span className="text-muted-foreground font-normal text-base ml-2">
+        - {memberName} {memberRole && `(${memberRole})`}
+      </span>
+    </DialogTitle>
+    
+    <ContextPicker 
+      feedbacks={feedbacks}
+      selectedIds={selectedContexts}
+      onSelectionChange={setSelectedContexts}
+      memberId={memberId}
+    />
+  </div>
+</DialogHeader>
+```
+
+#### 2.4 Novos Quick Chips
+
+Substituir os quickSuggestions atuais:
+
+```typescript
+const quickSuggestions = [
+  { emoji: '📝', text: 'Resumir estas notas' },
+  { emoji: '✅', text: 'Extrair Acoes' },
+  { emoji: '💡', text: 'Gerar insights' },
+];
+```
+
+#### 2.5 Modificar handleSend para Modo Hibrido
+
+```typescript
+const handleSend = async (messageToSend?: string) => {
+  // ... validacoes existentes ...
+
+  try {
+    // ... criar thread se necessario ...
+
+    // Preparar contexto baseado no modo
+    let contextFeedbacks: any[];
+    let contextMode: 'auto' | 'manual';
+    
+    if (selectedContexts.length > 0) {
+      // Modo Manual: usar apenas notas selecionadas
+      contextMode = 'manual';
+      contextFeedbacks = feedbacks.filter(fb => selectedContexts.includes(fb.id));
+    } else {
+      // Modo Automatico: usar 10 mais recentes
+      contextMode = 'auto';
+      const sorted = [...feedbacks].sort((a, b) => 
+        new Date(b.occurred_at || b.created_at).getTime() - 
+        new Date(a.occurred_at || a.created_at).getTime()
+      );
+      contextFeedbacks = sorted.slice(0, 10);
+    }
+
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-mentor`,
+      {
+        method: 'POST',
+        headers: { ... },
+        body: JSON.stringify({
+          question: finalMessage,
+          feedbacks: contextFeedbacks,
+          memberName,
+          memberRole,
+          managerName,
+          workStyleData,
+          keyObjectives,
+          contextMode // NOVO: indicar modo ao backend
+        }),
+        signal: controller.signal
+      }
     );
+    // ... resto do fluxo ...
   }
-  
-  // Texto puro: limpar e usar whitespace-pre-wrap
-  const cleanedText = cleanTranscriptText(content);
-  return (
-    <p className="whitespace-pre-wrap text-foreground leading-relaxed">
-      {cleanedText}
-    </p>
-  );
 };
 ```
 
 ---
 
-### Parte 3: Estados Visuais
+### Parte 3: Modificacoes na Edge Function chat-mentor
 
-#### Estado Fechado (Padrão)
+#### 3.1 Receber contextMode
 
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│ 📅 15/01/2026  Alinhamento sobre Promoção  🎯 1:1  🚀 PDI  [▼] │
-└─────────────────────────────────────────────────────────────────┘
+```typescript
+serve(async (req) => {
+  // ...
+  const { 
+    question, 
+    feedbacks, 
+    memberName, 
+    memberRole, 
+    managerName, 
+    workStyleData, 
+    keyObjectives,
+    contextMode // NOVO PARAMETRO
+  } = await req.json();
 ```
 
-#### Estado Fechado (Sem Classificação)
+#### 3.2 Instrucoes Diferenciadas no System Prompt
 
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│ 📅 10/12/2025  📝 Anotação não classificada                [▼] │
-└─────────────────────────────────────────────────────────────────┘
-```
+Adicionar secao condicional baseada no modo:
 
-(O texto "Anotação não classificada" aparece em cinza e itálico)
+```typescript
+// Construir instrucao de contexto baseada no modo
+let contextInstruction = '';
 
-#### Estado Aberto
+if (contextMode === 'manual') {
+  contextInstruction = `
+## MODO DE ANALISE: FOCO SELETIVO
 
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│ 📅 15/01/2026  Alinhamento sobre Promoção  🎯 1:1  🚀 PDI  [▲] │
-├─────────────────────────────────────────────────────────────────┤
-│ Conversamos sobre os próximos passos para a promoção,          │
-│ incluindo certificações necessárias e prazos.                   │
-│                                                                 │
-│ O Gui demonstrou interesse em liderar o novo projeto.          │
-└─────────────────────────────────────────────────────────────────┘
+O usuario SELECIONOU MANUALMENTE as notas abaixo. Isso significa que ele quer uma analise FOCADA e PROFUNDA apenas neste contexto especifico.
+
+**REGRAS PARA MODO MANUAL:**
+- Ignore qualquer historico que nao esteja listado abaixo
+- Responda a pergunta baseando-se ESTRITAMENTE nestes textos
+- Se a pergunta pedir "resumir estas notas", resuma APENAS as notas selecionadas
+- Seja mais detalhado e profundo na analise deste contexto restrito
+`;
+} else {
+  contextInstruction = `
+## MODO DE ANALISE: VISAO GERAL (AUTOMATICO)
+
+O usuario NAO selecionou notas especificas. Voce deve analisar o HISTORICO RECENTE como contexto geral para responder.
+
+**REGRAS PARA MODO AUTOMATICO:**
+- Estas sao as 10 notas mais recentes do liderado
+- Use-as como "memoria de longo prazo" sobre o comportamento do liderado
+- Se a pergunta pedir "resumir estas notas", resuma as notas do historico recente
+- Busque padroes e tendencias ao longo do tempo
+`;
+}
+
+// Inserir no system prompt antes do HISTORICO DE NOTAS
+const systemPrompt = `# RHITMO MENTOR 2.0 - CONSTITUICAO
+
+${contextInstruction}
+
+... resto do prompt existente ...
+
+## HISTORICO DE NOTAS (CONTEXT_DOCUMENTS)
+
+${contextLines}
+`;
 ```
 
 ---
 
-### Resumo das Alterações
+### Parte 4: Resumo das Alteracoes
 
-| Arquivo | Alteração |
+| Arquivo | Alteracao |
 |---------|-----------|
-| `src/components/FeedbackTimeline.tsx` | Reescrever completamente para usar Collapsible, adicionar título de fallback, sanitizar conteúdo HTML |
+| `src/components/ContextPicker.tsx` | **NOVO** - Popover para selecao de notas |
+| `src/components/MentorChat.tsx` | Adicionar estado `selectedContexts`, area de status, integrar ContextPicker, modificar handleSend |
+| `supabase/functions/chat-mentor/index.ts` | Receber `contextMode`, adicionar instrucoes diferenciadas no prompt |
 
 ---
 
-### Seção Técnica
+### Secao Tecnica
 
-#### Dependências Utilizadas
+#### Fluxo de Dados
 
-- `@radix-ui/react-collapsible` (já instalado)
-- `dompurify` (já instalado)
-- `cleanTranscriptText` de `@/lib/textSanitizer` (já existe)
-
-#### Lógica de Fallback de Título
-
-```typescript
-// Prioridade:
-// 1. feedback.title (se existir)
-// 2. Placeholder "📝 Anotação não classificada" (cinza/itálico)
-
-const displayTitle = feedback.title || "📝 Anotação não classificada";
-const isFallback = !feedback.title;
+```text
+┌──────────────────────────────────────────────────────────────┐
+│ MentorChat (Frontend)                                        │
+│                                                              │
+│  selectedContexts: string[] (IDs das notas selecionadas)     │
+│                                                              │
+│  ┌─────────────────┐  ┌─────────────────┐                    │
+│  │ selectedContexts│  │ selectedContexts│                    │
+│  │ = []            │  │ = ['id1','id2'] │                    │
+│  │ (Modo Auto)     │  │ (Modo Manual)   │                    │
+│  └────────┬────────┘  └────────┬────────┘                    │
+│           │                    │                             │
+│           ▼                    ▼                             │
+│  feedbacks.slice(0,10)   feedbacks.filter(selected)          │
+│           │                    │                             │
+│           └────────┬───────────┘                             │
+│                    │                                         │
+│                    ▼                                         │
+│           body: {                                            │
+│             feedbacks: contextFeedbacks,                     │
+│             contextMode: 'auto' | 'manual'                   │
+│           }                                                  │
+└──────────────────────────────────────────────────────────────┘
+                         │
+                         ▼
+┌──────────────────────────────────────────────────────────────┐
+│ Edge Function chat-mentor (Backend)                          │
+│                                                              │
+│  if (contextMode === 'manual') {                             │
+│    prompt = "Analise APENAS estas notas selecionadas..."     │
+│  } else {                                                    │
+│    prompt = "Analise o historico recente..."                 │
+│  }                                                           │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-#### Lógica de Sanitização de Conteúdo
+#### Quick Chips: Comportamento Inteligente
 
-```typescript
-// Pipeline de decisão:
-// 1. Verificar se contém HTML (containsHtml)
-// 2. Se sim: DOMPurify.sanitize() + dangerouslySetInnerHTML
-// 3. Se não: cleanTranscriptText() + whitespace-pre-wrap
+| Chip | Modo Auto | Modo Manual |
+|------|-----------|-------------|
+| "Resumir estas notas" | Resume as 10 mais recentes | Resume apenas as selecionadas |
+| "Extrair Acoes" | Extrai acoes do historico recente | Extrai acoes das notas selecionadas |
+| "Gerar insights" | Gera insights gerais | Gera insights focados |
+
+A IA entende o contexto porque o `contextMode` modifica as instrucoes do sistema.
+
+#### Estados Visuais da Area de Status
+
+**Modo Automatico (Padrao)**:
+```text
+┌────────────────────────────────────────────────────────────┐
+│ ✨ Modo Automatico: Analisando historico recente          │
+└────────────────────────────────────────────────────────────┘
 ```
 
-#### Por que Collapsible em vez de Accordion?
-
-- **Accordion**: Apenas um item aberto por vez
-- **Collapsible**: Múltiplos itens podem estar abertos simultaneamente
-
-Para uma timeline, Collapsible é mais apropriado pois o usuário pode querer comparar duas notas lado a lado.
-
-#### Botão de Delete
-
-O botão de delete será movido para fora do CollapsibleTrigger para evitar conflito de cliques:
-
-```tsx
-<div className="flex items-center gap-2">
-  <CollapsibleTrigger>
-    <ChevronDown />
-  </CollapsibleTrigger>
-  <DeleteButton onClick={stopPropagation} />
-</div>
+**Modo Manual (Notas Selecionadas)**:
+```text
+┌────────────────────────────────────────────────────────────┐
+│ Contexto: [📄 Alinhamento Q4 (x)] [📄 1:1 Janeiro (x)]    │
+└────────────────────────────────────────────────────────────┘
 ```
+
+#### Dependencias Utilizadas
+
+- `@radix-ui/react-popover` (ja instalado)
+- `@radix-ui/react-checkbox` (ja instalado)
+- `date-fns` (ja instalado)
+- `lucide-react` (ja instalado)
 
