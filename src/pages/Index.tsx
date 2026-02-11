@@ -261,14 +261,14 @@ const Index = () => {
   const showTeamSettings = activeTeamId && activeTeam?.name !== 'Sem Time';
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      <div className="border-b bg-card">
-        <div className="container mx-auto px-6 py-6">
+    <div className="min-h-screen bg-muted/30 pb-20">
+      <div className="bg-transparent">
+        <div className="container mx-auto px-6 py-8">
           <div className="flex items-center justify-between">
             <div>
               {workspace && (
                 <div className="flex items-center gap-3 mb-1">
-                  <h1 className="text-2xl font-bold text-foreground">{workspace.name}</h1>
+                  <h1 className="text-4xl font-bold tracking-tight text-foreground">{workspace.name}</h1>
                   <Badge 
                     variant={
                       limits.planTier === 'maestro' 
@@ -298,7 +298,7 @@ const Index = () => {
                   </Button>
                 </div>
               )}
-              <p className="text-muted-foreground">Gestão de Performance Contínua</p>
+              <p className="text-sm text-muted-foreground mt-1">Gestão de Performance Contínua</p>
             </div>
             <div className="flex gap-3">
               {teamMembers.length > 0 && (
@@ -310,7 +310,7 @@ const Index = () => {
                           onClick={() => setMemberDialogOpen(true)} 
                           size="lg" 
                           variant="outline" 
-                          className="gap-2"
+                          className="gap-2 rounded-full"
                           disabled={!canAddMember}
                         >
                           <UserPlus className="h-5 w-5" />
@@ -327,7 +327,7 @@ const Index = () => {
                   </Tooltip>
                 </TooltipProvider>
               )}
-              <Button onClick={() => setDialogOpen(true)} size="lg" className="gap-2 shadow-md">
+              <Button onClick={() => setDialogOpen(true)} size="lg" className="gap-2 shadow-md rounded-full">
                 <PenSquare className="h-5 w-5" />
                 Nova Nota
               </Button>
@@ -360,7 +360,7 @@ const Index = () => {
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-2">
             <Users className="h-5 w-5 text-primary" />
-            <h2 className="text-2xl font-bold text-foreground">{getPageTitle()}</h2>
+            <h2 className="text-2xl font-bold tracking-tight text-foreground">{getPageTitle()}</h2>
             
             {showTeamSettings && (
               <DropdownMenu>
@@ -396,30 +396,32 @@ const Index = () => {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : teamMembers.length === 0 ? (
-          <div className="text-center py-12 max-w-2xl mx-auto">
-            <div className="mb-6">
-              <p className="text-muted-foreground mb-3">
-                Veja como gerenciar seu time em 2 minutos
-              </p>
-              <div className="aspect-video w-full rounded-xl shadow-md overflow-hidden border">
-                <iframe
-                  className="w-full h-full"
-                  src="https://www.youtube.com/embed/bRQiwrBGlsc"
-                  title="Demo do Rhitmo"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
+          <div className="col-span-full rounded-3xl bg-gradient-to-br from-primary/5 to-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-12 text-center">
+            <div className="max-w-2xl mx-auto">
+              <div className="mb-6">
+                <p className="text-muted-foreground mb-3">
+                  Veja como gerenciar seu time em 2 minutos
+                </p>
+                <div className="aspect-video w-full rounded-2xl shadow-md overflow-hidden">
+                  <iframe
+                    className="w-full h-full"
+                    src="https://www.youtube.com/embed/bRQiwrBGlsc"
+                    title="Demo do Rhitmo"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
               </div>
+              <p className="text-muted-foreground mb-4">Nenhum liderado cadastrado ainda</p>
+              <Button onClick={() => setMemberDialogOpen(true)} className="rounded-full px-8 py-3 text-lg">
+                Adicionar Primeiro Liderado
+              </Button>
             </div>
-            <p className="text-muted-foreground mb-4">Nenhum liderado cadastrado ainda</p>
-            <Button onClick={() => setMemberDialogOpen(true)}>
-              Adicionar Primeiro Liderado
-            </Button>
           </div>
         ) : filteredMembers.length === 0 ? (
-          <div className="text-center py-12">
+          <div className="col-span-full rounded-2xl bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-12 text-center">
             <p className="text-muted-foreground mb-4">Nenhum membro neste time</p>
-            <Button onClick={() => setActiveTeamId(null)} variant="outline">
+            <Button onClick={() => setActiveTeamId(null)} variant="outline" className="rounded-full">
               Ver Todos os Membros
             </Button>
           </div>
