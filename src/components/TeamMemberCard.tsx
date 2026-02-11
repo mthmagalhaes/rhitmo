@@ -15,24 +15,26 @@ interface TeamMemberCardProps {
 export const TeamMemberCard = ({ member, teamName, onClick, onEdit }: TeamMemberCardProps) => {
   return (
     <Card 
-      className="cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] bg-card"
+      className="group cursor-pointer rounded-3xl border-0 bg-card shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300"
       onClick={onClick}
     >
       <CardHeader className="pb-3">
         <div className="flex items-start gap-4">
-          <MemberAvatar 
-            memberId={member.id}
-            memberName={member.name}
-            size="lg"
-          />
+          <div className="ring-2 ring-offset-2 ring-primary/10 rounded-full">
+            <MemberAvatar 
+              memberId={member.id}
+              memberName={member.name}
+              size="lg"
+            />
+          </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="font-semibold text-lg text-foreground truncate">{member.name}</h3>
+              <h3 className="font-bold tracking-tight text-lg text-foreground truncate">{member.name}</h3>
               {onEdit && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 shrink-0"
+                  className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                   onClick={(e) => {
                     e.stopPropagation();
                     onEdit();
@@ -44,7 +46,7 @@ export const TeamMemberCard = ({ member, teamName, onClick, onEdit }: TeamMember
             </div>
             <p className="text-sm text-muted-foreground">{member.role}</p>
             {teamName && (
-              <Badge variant="secondary" className="mt-1 text-xs font-normal">
+              <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs font-normal mt-1">
                 {teamName}
               </Badge>
             )}
