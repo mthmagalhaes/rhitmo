@@ -65,26 +65,26 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
   const aiAnalysis = linkedMember.skills_data?.ai_analysis;
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-muted/30 pb-20">
       {/* Header */}
-      <div className="border-b bg-card">
-        <div className="container mx-auto px-6 py-6">
-          <h1 className="text-2xl font-bold text-foreground">Olá, {linkedMember.name}!</h1>
-          <p className="text-muted-foreground">Painel do Colaborador</p>
-        </div>
+      <div className="container mx-auto px-6 py-8">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Olá, {linkedMember.name}!</h1>
+        <p className="text-sm text-muted-foreground mt-1">Painel do Colaborador</p>
       </div>
 
-      {/* Grid de Cards */}
-      <main className="container mx-auto px-6 py-8 space-y-6">
-        {/* Career Compass Card - Destaque */}
-        {aiAnalysis && (
-          <CareerCompassCard aiAnalysis={aiAnalysis} />
-        )}
+      {/* Bento Grid */}
+      <main className="container mx-auto px-6 pb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Career Compass Card - Full Width */}
+          {aiAnalysis && (
+            <div className="lg:col-span-3">
+              <CareerCompassCard aiAnalysis={aiAnalysis} />
+            </div>
+          )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Card: Meu Perfil */}
-          <Card className="p-6">
-            <h2 className="text-lg font-semibold flex items-center gap-2 mb-4 text-foreground">
+          {/* Card: Meu Perfil - 1/3 */}
+          <Card className="p-6 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:-translate-y-1 hover:shadow-lg transition-all duration-300 lg:col-span-1">
+            <h2 className="text-lg font-bold tracking-tight flex items-center gap-2 mb-4 text-foreground">
               <User className="h-5 w-5 text-primary" />
               Meu Perfil
             </h2>
@@ -127,7 +127,7 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
                     {linkedMember.skills_data.interests.map((interest, i) => (
                       <span 
                         key={i} 
-                        className="px-2 py-1 bg-muted rounded-md text-sm text-foreground"
+                        className="px-2 py-1 bg-muted rounded-xl text-sm text-foreground"
                       >
                         {interest}
                       </span>
@@ -138,9 +138,9 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
             </div>
           </Card>
 
-          {/* Card: Minhas Anotações */}
-          <Card className="p-6">
-            <h2 className="text-lg font-semibold flex items-center gap-2 mb-4 text-foreground">
+          {/* Card: Minhas Anotações - 2/3 */}
+          <Card className="p-6 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:-translate-y-1 hover:shadow-lg transition-all duration-300 lg:col-span-2">
+            <h2 className="text-lg font-bold tracking-tight flex items-center gap-2 mb-4 text-foreground">
               <FileText className="h-5 w-5 text-primary" />
               Minhas Anotações
             </h2>
