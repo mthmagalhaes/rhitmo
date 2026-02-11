@@ -141,11 +141,11 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
           {/* Bloco de texto com marcador editorial */}
           <div className="border-l-4 border-emerald-400 pl-6">
             <h2 className="text-4xl lg:text-5xl font-extrabold text-left mb-4 leading-tight max-w-xl">
-              Nunca mais escreva uma avaliação de desempenho{' '}
-              <span className="text-emerald-400">do zero.</span>
+              Sua Liderança, em outro{' '}
+              <span className="text-emerald-400">Rhitmo.</span>
             </h2>
             <p className="text-xl text-left text-white/80 max-w-md leading-relaxed">
-              Com o Rhitmo, líderes ganham tempo, memória e organização de forma simples para focar no que realmente importa: <span className="bg-emerald-400 text-white px-1.5 py-0.5 rounded box-decoration-clone"><span className="whitespace-nowrap">desenvolver pessoas</span> e construir uma cultura de resultados.</span>
+              A plataforma que transforma conversas em performance.
             </p>
           </div>
         </div>
@@ -153,7 +153,7 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
       
       {/* LADO DIREITO: Formulário (50%) */}
       <div className="w-full lg:w-1/2 flex items-center justify-center bg-background p-8">
-        <div className="w-full max-w-md space-y-8">
+        <div className="w-full max-w-md space-y-8 animate-fade-in">
           {/* Logo mobile */}
           <div className="flex justify-center lg:hidden">
             <RhitmoLogo size="md" className="text-primary" />
@@ -171,7 +171,7 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
 
           {/* Invite Flow Banner */}
           {isInviteFlow && isSignUp && (
-            <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg text-sm text-primary">
+            <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-xl text-sm text-primary">
               <Sparkles className="h-4 w-4 flex-shrink-0" />
               <span>Cadastre uma senha para acessar sua conta</span>
             </div>
@@ -189,7 +189,7 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
                   value={email} 
                   onChange={e => !emailReadOnly && setEmail(e.target.value)} 
                   readOnly={emailReadOnly}
-                  className={emailReadOnly ? "bg-muted" : ""}
+                  className={`rounded-xl bg-muted/30 border-0 ring-1 ring-input focus-visible:ring-2 focus-visible:ring-primary ${emailReadOnly ? "bg-muted" : ""}`}
                   required 
                   disabled={loading} 
                 />
@@ -202,6 +202,7 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
                   placeholder="••••••••" 
                   value={password} 
                   onChange={e => setPassword(e.target.value)} 
+                  className="rounded-xl bg-muted/30 border-0 ring-1 ring-input focus-visible:ring-2 focus-visible:ring-primary"
                   required 
                   disabled={loading} 
                   minLength={6} 
@@ -215,12 +216,13 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
                   placeholder="••••••••" 
                   value={confirmPassword} 
                   onChange={e => setConfirmPassword(e.target.value)} 
+                  className="rounded-xl bg-muted/30 border-0 ring-1 ring-input focus-visible:ring-2 focus-visible:ring-primary"
                   required 
                   disabled={loading} 
                   minLength={6} 
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button type="submit" className="w-full h-12 rounded-xl font-bold text-base" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Criar Conta
               </Button>
@@ -239,7 +241,7 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
               <Button 
                 type="button" 
                 variant="outline" 
-                className="w-full" 
+                className="w-full rounded-xl h-12" 
                 onClick={handleGoogleSignIn}
                 disabled={loading}
               >
@@ -299,6 +301,7 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
                   placeholder="seu@email.com" 
                   value={email} 
                   onChange={e => setEmail(e.target.value)} 
+                  className="rounded-xl bg-muted/30 border-0 ring-1 ring-input focus-visible:ring-2 focus-visible:ring-primary"
                   required 
                   disabled={loading} 
                 />
@@ -311,12 +314,13 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
                   placeholder="••••••••" 
                   value={password} 
                   onChange={e => setPassword(e.target.value)} 
+                  className="rounded-xl bg-muted/30 border-0 ring-1 ring-input focus-visible:ring-2 focus-visible:ring-primary"
                   required 
                   disabled={loading} 
                   minLength={6} 
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button type="submit" className="w-full h-12 rounded-xl font-bold text-base" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Entrar
               </Button>
@@ -335,7 +339,7 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
               <Button 
                 type="button" 
                 variant="outline" 
-                className="w-full" 
+                className="w-full rounded-xl h-12" 
                 onClick={handleGoogleSignIn}
                 disabled={loading}
               >
