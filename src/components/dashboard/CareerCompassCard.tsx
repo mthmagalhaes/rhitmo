@@ -37,10 +37,10 @@ export function CareerCompassCard({ aiAnalysis }: CareerCompassCardProps) {
   const { alignment_score, analysis_summary, key_gaps, suggested_focus } = aiAnalysis;
 
   return (
-    <Card className="p-6 border-primary/20 bg-gradient-to-br from-card to-primary/5">
+    <Card className="p-6 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] bg-gradient-to-br from-card to-primary/5 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-lg font-semibold flex items-center gap-2 text-foreground">
+        <h2 className="text-xl font-bold tracking-tight flex items-center gap-2 text-foreground">
           <Compass className="h-5 w-5 text-primary" />
           Bússola de Carreira
         </h2>
@@ -68,7 +68,7 @@ export function CareerCompassCard({ aiAnalysis }: CareerCompassCardProps) {
       </div>
 
       {/* Analysis Summary */}
-      <div className="mb-6 p-4 bg-muted/50 rounded-lg border border-border/50">
+      <div className="mb-6 p-4 bg-muted/50 rounded-xl border border-border/50">
         <p className="text-sm text-foreground italic leading-relaxed">
           "{analysis_summary}"
         </p>
