@@ -1,80 +1,63 @@
 
 
-## Plano: Design System Bento na Home do Lider
+## Plano: Refatorar AppSidebar para Design System Bento/Soft
 
-Refatoracao puramente visual (Tailwind + JSX) em dois arquivos. Nenhuma logica de dados sera alterada.
-
----
-
-### 1. `src/pages/Index.tsx`
-
-**Fundo da pagina**
-- `bg-background` muda para `bg-muted/30` (consistente com DirectReportDashboard)
-
-**Header (linhas 265-337)**
-- Remover `border-b bg-card` do container do header
-- Workspace name: `text-4xl font-bold tracking-tight text-foreground` (de `text-2xl`)
-- Subtitulo: `text-sm text-muted-foreground mt-1`
-- Botoes "Nova Nota" e "Novo Membro": adicionar `rounded-full` para consistencia Bento
-
-**Section title (linhas 360-392)**
-- Titulo da secao: `text-2xl font-bold tracking-tight`
-
-**Grid de membros (linha 432)**
-- Manter `grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6` (ja esta correto)
-
-**Empty state (linhas 398-418)**
-- Container: trocar `text-center py-12 max-w-2xl mx-auto` por um card visual estilizado
-- Adicionar `col-span-full rounded-3xl bg-gradient-to-br from-primary/5 to-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-12`
-- Botao CTA: `rounded-full px-8 py-3 text-lg` (grande e arredondado)
-- Video: manter, mas com `rounded-2xl` e remover `border`
-
-**Empty filtered state (linhas 419-425)**
-- Aplicar estilo similar com `rounded-2xl` e shadow soft
+Refatoracao puramente visual do `AppSidebar.tsx`. Nenhuma logica de dados sera alterada.
 
 ---
 
-### 2. `src/components/TeamMemberCard.tsx`
+### Arquivo: `src/components/AppSidebar.tsx`
 
-**Card externo (linha 17-18)**
-- De: `hover:shadow-lg hover:scale-[1.02] bg-card`
-- Para: `rounded-3xl border-0 bg-card shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300`
-- Remover `hover:scale-[1.02]` (substituido pelo translate-y)
+**1. Container da Sidebar (linha 79)**
+- De: `className="border-r border-sidebar-border"`
+- Para: `className="border-0 shadow-[4px_0_24px_rgba(0,0,0,0.02)]"`
 
-**Avatar (linha 23-26)**
-- Adicionar `className="ring-2 ring-offset-2 ring-primary/10"` ao MemberAvatar
+**2. Header / Logo (linhas 80-84)**
+- Remover `border-b border-sidebar-border`
+- Aumentar padding: `px-5 py-6`
+- Logo: `className="text-primary"` (de `text-sidebar-foreground`)
+- Adicionar badge "Beta" ao lado do logo: `<Badge variant="secondary" className="rounded-full text-[10px] px-2 py-0">Beta</Badge>`
 
-**Nome (linha 30)**
-- `font-bold tracking-tight text-lg`
+**3. Group Label (linha 88)**
+- Adicionar `tracking-tight uppercase text-[11px] font-semibold`
 
-**Badge de time (linha 47-49)**
-- `rounded-full px-3 py-1` (de `mt-1 text-xs font-normal`)
+**4. Itens de Menu - NavLink (linhas 96-104 e 119-127)**
+- De: `className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"`
+- Para: `className="rounded-2xl tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-primary/5 hover:text-primary"`
+- Active state de: `activeClassName="bg-primary text-primary-foreground font-medium"`
+- Para: `activeClassName="bg-primary/10 text-primary font-bold"`
+- Icones: `h-5 w-5` (manter)
 
-**Botao Settings (linhas 32-42)**
-- Adicionar `opacity-0 group-hover:opacity-100 transition-opacity` para aparecer apenas no hover
-- Adicionar `group` ao Card pai
+**5. Footer (linhas 136-188)**
+- Remover `border-t border-sidebar-border`
+- Adicionar classe vazia no SidebarFooter
+- Bloco de usuario (linha 151): envolver em card flutuante
+  - De: `className="flex items-center gap-3 px-4 pb-4"`
+  - Para: `className="flex items-center gap-3 p-3 mx-2 mb-4 rounded-2xl bg-muted/30 shadow-sm"`
+- Botao Suporte (linha 138-148): aplicar `rounded-2xl` e hover consistente
 
-**Contadores de notas (linhas 54-62)**
-- Manter iconografia, apenas ajustar spacing
+**6. Botoes de acao no footer (Settings/Logout)**
+- De: `hover:bg-sidebar-accent`
+- Para: `hover:bg-primary/5 rounded-xl`
 
 ---
 
 ### Resumo Visual
 
 ```text
-ANTES:                              DEPOIS:
-+===========================+       +-------------------------------+
-| border-b header           |       |  header sem borda             |
-| text-2xl                  |       |  text-4xl tracking-tight      |
-+===========================+       +-------------------------------+
-| [card] [card] [card]      |       |  [card]    [card]    [card]   |
-| border, scale hover       |       |  rounded-3xl, shadow soft     |
-|                           |       |  hover lift -translate-y-1    |
-+---------------------------+       +-------------------------------+
-
-Empty State:                        Empty State:
-  plain text + button                 gradient card col-span-full
-                                      rounded-full CTA button
+ANTES:                          DEPOIS:
++--border-r-----------------+  +--shadow-suave--------------+
+| [Logo] border-b            |  | [Logo] text-primary        |
+|                            |  |  + Badge "Beta"            |
+| Menu (label cinza)         |  | MENU (tracking-tight)      |
+|  > Inicio  [bg-primary]   |  |  > Inicio [bg-primary/10]  |
+|  > Analytics               |  |  > Analytics hover:x+1    |
+|                            |  |                            |
+| --------border-t---------- |  |                            |
+| [avatar] [nome] [icons]   |  | [card flutuante]           |
++----------------------------+  |  rounded-2xl shadow-sm     |
+                                |  [avatar] [nome] [icons]   |
+                                +----------------------------+
 ```
 
 ---
@@ -83,8 +66,7 @@ Empty State:                        Empty State:
 
 | Arquivo | Tipo | Descricao |
 |---------|------|-----------|
-| `src/pages/Index.tsx` | Modificar | Header sem borda, bg-muted/30, empty state com gradient |
-| `src/components/TeamMemberCard.tsx` | Modificar | rounded-3xl, shadow soft, hover lift, group hover settings |
+| `src/components/AppSidebar.tsx` | Modificar | Shadow soft, rounded-2xl menus, footer flutuante, hover translate-x |
 
-Nenhuma logica de dados, queries ou props sera alterada. Apenas classes Tailwind e estrutura JSX de containers.
+Nenhuma logica de dados, queries ou props sera alterada. Apenas classes Tailwind.
 
