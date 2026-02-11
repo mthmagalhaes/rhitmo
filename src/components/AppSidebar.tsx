@@ -36,11 +36,11 @@ const menuItems = [
   { title: 'Início', url: '/dashboard', icon: Home },
   { title: 'Analytics', url: '/analytics', icon: BarChart3 },
   { title: 'Assinatura', url: '/billing', icon: CreditCard },
-  { title: 'Guia do Rhitmo', url: '/help', icon: BookOpen },
+  { title: 'Guia Rhitmo', url: '/help', icon: BookOpen },
 ];
 
 // Itens que só líderes podem ver
-const leaderOnlyItems = ['Analytics', 'Assinatura', 'Guia do Rhitmo'];
+const leaderOnlyItems = ['Analytics', 'Assinatura', 'Guia Rhitmo'];
 
 export function AppSidebar() {
   const { open } = useSidebar();
