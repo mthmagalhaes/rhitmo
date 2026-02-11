@@ -1,64 +1,36 @@
 
 
-## Plano: Refatorar AppSidebar para Design System Bento/Soft
+## Plano: Refinamento Bento/Soft UI na Tela de Login
 
-Refatoracao puramente visual do `AppSidebar.tsx`. Nenhuma logica de dados sera alterada.
-
----
-
-### Arquivo: `src/components/AppSidebar.tsx`
-
-**1. Container da Sidebar (linha 79)**
-- De: `className="border-r border-sidebar-border"`
-- Para: `className="border-0 shadow-[4px_0_24px_rgba(0,0,0,0.02)]"`
-
-**2. Header / Logo (linhas 80-84)**
-- Remover `border-b border-sidebar-border`
-- Aumentar padding: `px-5 py-6`
-- Logo: `className="text-primary"` (de `text-sidebar-foreground`)
-- Adicionar badge "Beta" ao lado do logo: `<Badge variant="secondary" className="rounded-full text-[10px] px-2 py-0">Beta</Badge>`
-
-**3. Group Label (linha 88)**
-- Adicionar `tracking-tight uppercase text-[11px] font-semibold`
-
-**4. Itens de Menu - NavLink (linhas 96-104 e 119-127)**
-- De: `className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"`
-- Para: `className="rounded-2xl tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-primary/5 hover:text-primary"`
-- Active state de: `activeClassName="bg-primary text-primary-foreground font-medium"`
-- Para: `activeClassName="bg-primary/10 text-primary font-bold"`
-- Icones: `h-5 w-5` (manter)
-
-**5. Footer (linhas 136-188)**
-- Remover `border-t border-sidebar-border`
-- Adicionar classe vazia no SidebarFooter
-- Bloco de usuario (linha 151): envolver em card flutuante
-  - De: `className="flex items-center gap-3 px-4 pb-4"`
-  - Para: `className="flex items-center gap-3 p-3 mx-2 mb-4 rounded-2xl bg-muted/30 shadow-sm"`
-- Botao Suporte (linha 138-148): aplicar `rounded-2xl` e hover consistente
-
-**6. Botoes de acao no footer (Settings/Logout)**
-- De: `hover:bg-sidebar-accent`
-- Para: `hover:bg-primary/5 rounded-xl`
+A tela de login ja possui o split layout 50/50 com hero image e overlay violeta. Este plano aplica os refinamentos Soft UI para alinhar com o design system Bento.
 
 ---
 
-### Resumo Visual
+### Arquivo: `src/components/Auth.tsx`
 
-```text
-ANTES:                          DEPOIS:
-+--border-r-----------------+  +--shadow-suave--------------+
-| [Logo] border-b            |  | [Logo] text-primary        |
-|                            |  |  + Badge "Beta"            |
-| Menu (label cinza)         |  | MENU (tracking-tight)      |
-|  > Inicio  [bg-primary]   |  |  > Inicio [bg-primary/10]  |
-|  > Analytics               |  |  > Analytics hover:x+1    |
-|                            |  |                            |
-| --------border-t---------- |  |                            |
-| [avatar] [nome] [icons]   |  | [card flutuante]           |
-+----------------------------+  |  rounded-2xl shadow-sm     |
-                                |  [avatar] [nome] [icons]   |
-                                +----------------------------+
-```
+**1. Coluna Esquerda - Copy do Hero (linhas 142-150)**
+- Titulo: mudar para "Sua Lideranca, em outro Rhitmo." com destaque emerald em "Rhitmo."
+- Subtitulo: mudar para "A plataforma que transforma conversas em performance."
+
+**2. Coluna Direita - Container do formulario (linha 155)**
+- Adicionar `animate-fade-in` ao wrapper `max-w-md` para entrada suave
+
+**3. Inputs - Estilo Soft (todas as instancias)**
+- Adicionar classe override em cada Input: `rounded-xl bg-muted/30 border-0 ring-1 ring-input focus-visible:ring-2 focus-visible:ring-primary`
+
+**4. Botoes principais (linhas 223, 319)**
+- De: `className="w-full"`
+- Para: `className="w-full h-12 rounded-xl font-bold text-base"`
+
+**5. Botao Google (linhas 239-265, 335-361)**
+- Adicionar: `rounded-xl h-12`
+
+**6. Invite banner (linha 174)**
+- De: `rounded-lg`
+- Para: `rounded-xl`
+
+**7. Divider "ou continue com" (linhas 228-237, 324-333)**
+- Background span: manter `bg-background` (funciona com ambos os temas)
 
 ---
 
@@ -66,7 +38,6 @@ ANTES:                          DEPOIS:
 
 | Arquivo | Tipo | Descricao |
 |---------|------|-----------|
-| `src/components/AppSidebar.tsx` | Modificar | Shadow soft, rounded-2xl menus, footer flutuante, hover translate-x |
+| `src/components/Auth.tsx` | Modificar | Copy hero, inputs rounded-xl, botoes h-12, animate-fade-in |
 
-Nenhuma logica de dados, queries ou props sera alterada. Apenas classes Tailwind.
-
+Nenhuma logica de autenticacao sera alterada. Apenas classes Tailwind e texto de copy.
