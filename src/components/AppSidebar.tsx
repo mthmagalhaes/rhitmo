@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
@@ -76,16 +77,17 @@ export function AppSidebar() {
     || 'Usuário';
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-      <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
+    <Sidebar collapsible="icon" className="border-0 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
+      <SidebarHeader className="px-5 py-6">
         <div className="flex items-center gap-2">
-          <RhitmoLogo size="sm" className="text-sidebar-foreground" />
+          <RhitmoLogo size="sm" className="text-primary" />
+          {open && <Badge variant="secondary" className="rounded-full text-[10px] px-2 py-0">Beta</Badge>}
         </div>
       </SidebarHeader>
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-sidebar-foreground/60">Menu</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems
@@ -96,8 +98,8 @@ export function AppSidebar() {
                     <NavLink 
                       to={item.url} 
                       end
-                      className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                      activeClassName="bg-primary text-primary-foreground font-medium"
+                      className="rounded-2xl tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-primary/5 hover:text-primary"
+                      activeClassName="bg-primary/10 text-primary font-bold"
                     >
                       <item.icon className="h-5 w-5" />
                       <span>{item.title}</span>
@@ -111,7 +113,7 @@ export function AppSidebar() {
 
         {isAdmin && (
           <SidebarGroup>
-            <SidebarGroupLabel className="text-sidebar-foreground/60">Administração</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Administração</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
@@ -119,8 +121,8 @@ export function AppSidebar() {
                     <NavLink 
                       to="/admin" 
                       end
-                      className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                      activeClassName="bg-primary text-primary-foreground font-medium"
+                      className="rounded-2xl tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-primary/5 hover:text-primary"
+                      activeClassName="bg-primary/10 text-primary font-bold"
                     >
                       <ShieldCheck className="h-5 w-5" />
                       <span>Admin</span>
@@ -133,13 +135,13 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border">
+      <SidebarFooter>
         {/* Link de Suporte */}
         <div className="px-4 py-2">
           <SidebarMenuButton asChild tooltip="Suporte">
             <button 
               onClick={() => setSupportDialogOpen(true)}
-              className="flex items-center gap-2 text-sm text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors w-full"
+              className="flex items-center gap-2 text-sm text-sidebar-foreground/70 hover:text-primary rounded-2xl transition-all duration-200 hover:translate-x-1 w-full"
             >
               <LifeBuoy className="h-4 w-4" />
               {open && <span>Suporte / Feedback</span>}
@@ -148,7 +150,7 @@ export function AppSidebar() {
         </div>
 
         {/* Bloco de usuário */}
-        <div className="flex items-center gap-3 px-4 pb-4">
+        <div className="flex items-center gap-3 p-3 mx-2 mb-4 rounded-2xl bg-muted/30 shadow-sm">
           {open && user?.id && (
             <MemberAvatar 
               memberId={user.id} 
@@ -168,7 +170,7 @@ export function AppSidebar() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent"
+                className="h-8 w-8 text-sidebar-foreground hover:bg-primary/5 rounded-xl"
                 onClick={() => setSettingsOpen(true)}
                 title="Configurações"
               >
@@ -178,7 +180,7 @@ export function AppSidebar() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent"
+              className="h-8 w-8 text-sidebar-foreground hover:bg-primary/5 rounded-xl"
               onClick={handleSignOut}
               title="Sair"
             >
