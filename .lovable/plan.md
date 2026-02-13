@@ -1,68 +1,59 @@
 
 
-## Plano: Preparar Backend para Extensao Chrome (Upload de Gravacoes)
+## Plano: Modo Debug para Upload da Extensao
 
-### 1. Storage Bucket `meeting-recordings`
+### Mudanca 1: Tornar `member_id` e `manager_id` nullable na tabela `meeting_transcripts`
 
-Criar bucket publico via SQL migration com politicas RLS para:
-- **Upload (INSERT)**: apenas usuarios autenticados, dentro da pasta do proprio `uid()`
-- **Select (leitura)**: apenas o dono do arquivo
-- **Delete**: apenas o dono do arquivo
-
+**SQL Migration:**
 ```sql
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('meeting-recordings', 'meeting-recordings', true);
-
-CREATE POLICY "Authenticated users can upload recordings"
-ON storage.objects FOR INSERT
-TO authenticated
-WITH CHECK (bucket_id = 'meeting-recordings' AND (storage.foldername(name))[1] = auth.uid()::text);
-
-CREATE POLICY "Users can view own recordings"
-ON storage.objects FOR SELECT
-TO authenticated
-USING (bucket_id = 'meeting-recordings' AND (storage.foldername(name))[1] = auth.uid()::text);
-
-CREATE POLICY "Users can delete own recordings"
-ON storage.objects FOR DELETE
-TO authenticated
-USING (bucket_id = 'meeting-recordings' AND (storage.foldername(name))[1] = auth.uid()::text);
+ALTER TABLE public.meeting_transcripts 
+  ALTER COLUMN member_id DROP NOT NULL,
+  ALTER COLUMN manager_id DROP NOT NULL;
 ```
 
-### 2. Edge Function `upload-meeting`
+Isso permite criar registros sem precisar de um membro ou manager associado durante testes.
 
-Criar `supabase/functions/upload-meeting/index.ts` com:
+---
 
-- **CORS**: Origem `*` (cobre `chrome-extension://*`), handler OPTIONS
-- **Auth**: Extrair token do header Authorization, criar Supabase client autenticado
-- **Fluxo**:
-  1. Parsear multipart form data (`file`, `meeting_title`, `meeting_url`, `member_id`)
-  2. Gerar path: `{user_id}/{timestamp}.webm`
-  3. Upload para bucket `meeting-recordings`
-  4. Criar registro em `meeting_transcripts` com `processing_status = 'pending'` e referencia ao arquivo
-  5. Retornar `{ success: true, message: 'Upload recebido', transcript_id: '...' }`
+### Mudanca 2: Remover exigencia de autenticacao na Edge Function
 
-- **Config**: `verify_jwt = false` no `config.toml` (validacao manual no codigo para flexibilidade com Chrome Extension)
+Modificar `supabase/functions/upload-meeting/index.ts` para:
 
-### 3. Configuracao
+- **Tentar** autenticar se o header Authorization existir, mas **nao bloquear** se estiver ausente
+- Usar o **Service Role Key** para operacoes de storage e banco quando nao houver usuario autenticado
+- Tornar `member_id` opcional (nao retornar erro 400 se ausente)
+- Usar um path generico `anonymous/{timestamp}.webm` quando nao houver usuario
 
-Adicionar ao `supabase/config.toml`:
-```toml
-[functions.upload-meeting]
-verify_jwt = false
+**Logica simplificada:**
+```text
+1. Checar Authorization header
+2. Se existir -> tentar autenticar, usar user.id
+3. Se nao existir -> usar service_role_key, user = null
+4. Parsear formData (file obrigatorio, member_id opcional)
+5. Upload para storage: {user_id ou 'anonymous'}/{timestamp}.webm
+6. Insert em meeting_transcripts com member_id e manager_id podendo ser null
+7. Retornar { success: true }
 ```
 
-### Detalhes Tecnicos
+---
 
-- O campo `member_id` e obrigatorio na tabela `meeting_transcripts`. A extensao precisara enviar esse dado ou usaremos um membro default
-- O arquivo sera salvo no Storage e apenas a URL publica sera armazenada no banco (campo `transcript` ou novo campo se preferido)
-- Nenhuma alteracao no schema da tabela `meeting_transcripts` e necessaria -- usaremos `transcript` para a URL e `processing_status = 'pending'`
+### Mudanca 3: Politica RLS para insercao sem auth
 
-### Arquivos Criados/Modificados
+As policies atuais de `meeting_transcripts` exigem `manager_id = effective_user_id()`. Como usaremos o **service role key** na funcao (que bypassa RLS), nenhuma alteracao de policy e necessaria.
 
-| Arquivo | Acao |
-|---------|------|
-| Migration SQL | Criar bucket + policies |
-| `supabase/functions/upload-meeting/index.ts` | Nova edge function |
-| `supabase/config.toml` | Adicionar config da funcao (automatico) |
+---
+
+### Resumo
+
+| Item | Acao |
+|------|------|
+| `meeting_transcripts` schema | `member_id` e `manager_id` passam a ser nullable |
+| `upload-meeting` edge function | Auth opcional, fallback para service role |
+| RLS policies | Sem alteracao (service role bypassa RLS) |
+
+### Nota de Seguranca
+
+Estas mudancas sao **temporarias para debug**. Antes de ir para producao, devemos:
+- Restaurar `NOT NULL` nas colunas
+- Reativar autenticacao obrigatoria na edge function
 
