@@ -1,92 +1,93 @@
 
 
-## Plano: Hardening RLS da Tabela meeting_transcripts
+## Plano: Corrigir Alertas de Seguranca RLS
 
-Revisao das politicas existentes para aplicar boas praticas de seguranca explicitas.
+### Contexto Importante
 
----
+A funcao `effective_user_id()` **existe e funciona corretamente** no banco de dados. Ela suporta a feature de Admin Impersonation (tabela `admin_impersonation`). Substituir por `auth.uid()` quebraria essa funcionalidade.
 
-### Analise do Estado Atual
-
-As 4 politicas existentes ja usam `manager_id = effective_user_id()`, o que significa que apenas o lider que criou a transcricao pode acessa-la. O `member_id` NAO concede acesso de leitura — ele e usado apenas para fazer join ate a tabela `workspaces` para verificar `is_active`.
-
-**Problemas encontrados:**
-- Politicas nao especificam `TO authenticated` (default e `TO PUBLIC`, inclui usuarios anonimos)
-- Nenhuma brecha via `member_id` — mas vale tornar isso explicito na documentacao
+O problema real e que o scanner nao encontrou a funcao nos arquivos de migracao, gerando um falso positivo. A solucao correta e:
+- Manter `effective_user_id()` nas policies
+- Resolver o alerta do scanner
 
 ---
 
-### Acoes SQL (via migration)
+### Acao 1: Resolver Alerta meeting_transcripts (falso positivo)
 
-**1. Dropar as 4 politicas existentes**
+As policies de `meeting_transcripts` ja estao corretas com `TO authenticated` e `effective_user_id()`. O alerta sera resolvido marcando-o como corrigido no scanner, pois a funcao existe no banco.
+
+Nenhuma alteracao SQL necessaria nesta tabela.
+
+---
+
+### Acao 2: Hardening team_members (TO authenticated)
+
+**Problema real:** 4 policies usam `TO PUBLIC` (default), permitindo acesso anonimo:
+- "Owners podem ver membros do time" (SELECT)
+- "Owners podem criar membros no time" (INSERT)
+- "Owners podem atualizar membros do time" (UPDATE)
+- "Owners podem deletar membros do time" (DELETE)
+
+As outras 2 ("Linked users can view own profile" e "Linked users can update own basic profile") ja usam `TO authenticated`.
+
+**SQL Migration:**
 
 ```sql
-DROP POLICY "Managers can view own meeting transcripts" ON public.meeting_transcripts;
-DROP POLICY "Managers can create meeting transcripts" ON public.meeting_transcripts;
-DROP POLICY "Managers can update own meeting transcripts" ON public.meeting_transcripts;
-DROP POLICY "Managers can delete own meeting transcripts" ON public.meeting_transcripts;
-```
+-- Drop 4 policies com TO PUBLIC
+DROP POLICY "Owners podem ver membros do time" ON public.team_members;
+DROP POLICY "Owners podem criar membros no time" ON public.team_members;
+DROP POLICY "Owners podem atualizar membros do time" ON public.team_members;
+DROP POLICY "Owners podem deletar membros do time" ON public.team_members;
 
-**2. Recriar com `TO authenticated` explicito**
-
-```sql
--- SELECT: apenas o manager que criou
-CREATE POLICY "Managers can view own meeting transcripts"
-ON public.meeting_transcripts FOR SELECT
+-- Recriar com TO authenticated explicito
+CREATE POLICY "Owners podem ver membros do time"
+ON public.team_members FOR SELECT
 TO authenticated
 USING (
-  manager_id = effective_user_id()
-  AND EXISTS (
-    SELECT 1 FROM team_members tm
-    JOIN teams t ON t.id = tm.team_id
+  EXISTS (
+    SELECT 1 FROM teams t
     JOIN workspaces w ON w.id = t.workspace_id
-    WHERE tm.id = meeting_transcripts.member_id
-    AND w.is_active = true
-  )
-);
-
--- INSERT: manager = dono do workspace
-CREATE POLICY "Managers can create meeting transcripts"
-ON public.meeting_transcripts FOR INSERT
-TO authenticated
-WITH CHECK (
-  manager_id = effective_user_id()
-  AND EXISTS (
-    SELECT 1 FROM team_members tm
-    JOIN teams t ON t.id = tm.team_id
-    JOIN workspaces w ON w.id = t.workspace_id
-    WHERE tm.id = meeting_transcripts.member_id
+    WHERE t.id = team_members.team_id
     AND w.owner_id = effective_user_id()
     AND w.is_active = true
   )
 );
 
--- UPDATE: apenas o manager
-CREATE POLICY "Managers can update own meeting transcripts"
-ON public.meeting_transcripts FOR UPDATE
+CREATE POLICY "Owners podem criar membros no time"
+ON public.team_members FOR INSERT
 TO authenticated
-USING (
-  manager_id = effective_user_id()
-  AND EXISTS (
-    SELECT 1 FROM team_members tm
-    JOIN teams t ON t.id = tm.team_id
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM teams t
     JOIN workspaces w ON w.id = t.workspace_id
-    WHERE tm.id = meeting_transcripts.member_id
+    WHERE t.id = team_members.team_id
+    AND w.owner_id = effective_user_id()
     AND w.is_active = true
   )
 );
 
--- DELETE: apenas o manager
-CREATE POLICY "Managers can delete own meeting transcripts"
-ON public.meeting_transcripts FOR DELETE
+CREATE POLICY "Owners podem atualizar membros do time"
+ON public.team_members FOR UPDATE
 TO authenticated
 USING (
-  manager_id = effective_user_id()
-  AND EXISTS (
-    SELECT 1 FROM team_members tm
-    JOIN teams t ON t.id = tm.team_id
+  EXISTS (
+    SELECT 1 FROM teams t
     JOIN workspaces w ON w.id = t.workspace_id
-    WHERE tm.id = meeting_transcripts.member_id
+    WHERE t.id = team_members.team_id
+    AND w.owner_id = effective_user_id()
+    AND w.is_active = true
+  )
+);
+
+CREATE POLICY "Owners podem deletar membros do time"
+ON public.team_members FOR DELETE
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM teams t
+    JOIN workspaces w ON w.id = t.workspace_id
+    WHERE t.id = team_members.team_id
+    AND w.owner_id = effective_user_id()
     AND w.is_active = true
   )
 );
@@ -94,22 +95,20 @@ USING (
 
 ---
 
-### O que muda
+### Acao 3: Resolver alertas no scanner
 
-| Aspecto | Antes | Depois |
-|---------|-------|--------|
-| Target role | `PUBLIC` (default) | `authenticated` (explicito) |
-| Acesso via member_id | Nao concedia (ja seguro) | Nao concede (mantido) |
-| Acesso anonimo | Bloqueado implicitamente | Bloqueado explicitamente |
-| Logica de ownership | `manager_id = effective_user_id()` | Mantida identica |
-
-### Arquivos de codigo
-
-Nenhuma alteracao de codigo e necessaria. As queries existentes no frontend ja usam o usuario autenticado e filtram por `manager_id`.
+Marcar o alerta `meeting_transcripts_function` como resolvido (funcao existe, falso positivo).
 
 ---
 
-### Resumo
+### Resumo de Mudancas
 
-A tabela ja estava segura na pratica. Esta migracao torna a seguranca **explicita** adicionando `TO authenticated` a todas as politicas, garantindo que usuarios anonimos sejam bloqueados por regra e nao por efeito colateral.
+| Tabela | Acao | Detalhe |
+|--------|------|---------|
+| meeting_transcripts | Nenhuma SQL | Alerta e falso positivo, resolver no scanner |
+| team_members | Migration SQL | 4 policies recriadas com `TO authenticated` |
+
+### Por que NAO substituir effective_user_id() por auth.uid()
+
+A funcao `effective_user_id()` retorna `auth.uid()` normalmente, mas quando um admin esta impersonando um usuario (tabela `admin_impersonation`), retorna o ID do usuario impersonado. Substituir quebraria a feature de suporte/admin.
 
