@@ -219,8 +219,8 @@ export type Database = {
           extracted_themes: string[] | null
           id: string
           leader_notes: string | null
-          manager_id: string
-          member_id: string
+          manager_id: string | null
+          member_id: string | null
           processing_status: string
           transcript: string | null
           updated_at: string
@@ -233,8 +233,8 @@ export type Database = {
           extracted_themes?: string[] | null
           id?: string
           leader_notes?: string | null
-          manager_id: string
-          member_id: string
+          manager_id?: string | null
+          member_id?: string | null
           processing_status?: string
           transcript?: string | null
           updated_at?: string
@@ -247,8 +247,8 @@ export type Database = {
           extracted_themes?: string[] | null
           id?: string
           leader_notes?: string | null
-          manager_id?: string
-          member_id?: string
+          manager_id?: string | null
+          member_id?: string | null
           processing_status?: string
           transcript?: string | null
           updated_at?: string
