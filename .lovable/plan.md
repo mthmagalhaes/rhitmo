@@ -1,114 +1,68 @@
 
 
-## Plano: Corrigir Alertas de Seguranca RLS
+## Plano: Preparar Backend para Extensao Chrome (Upload de Gravacoes)
 
-### Contexto Importante
+### 1. Storage Bucket `meeting-recordings`
 
-A funcao `effective_user_id()` **existe e funciona corretamente** no banco de dados. Ela suporta a feature de Admin Impersonation (tabela `admin_impersonation`). Substituir por `auth.uid()` quebraria essa funcionalidade.
-
-O problema real e que o scanner nao encontrou a funcao nos arquivos de migracao, gerando um falso positivo. A solucao correta e:
-- Manter `effective_user_id()` nas policies
-- Resolver o alerta do scanner
-
----
-
-### Acao 1: Resolver Alerta meeting_transcripts (falso positivo)
-
-As policies de `meeting_transcripts` ja estao corretas com `TO authenticated` e `effective_user_id()`. O alerta sera resolvido marcando-o como corrigido no scanner, pois a funcao existe no banco.
-
-Nenhuma alteracao SQL necessaria nesta tabela.
-
----
-
-### Acao 2: Hardening team_members (TO authenticated)
-
-**Problema real:** 4 policies usam `TO PUBLIC` (default), permitindo acesso anonimo:
-- "Owners podem ver membros do time" (SELECT)
-- "Owners podem criar membros no time" (INSERT)
-- "Owners podem atualizar membros do time" (UPDATE)
-- "Owners podem deletar membros do time" (DELETE)
-
-As outras 2 ("Linked users can view own profile" e "Linked users can update own basic profile") ja usam `TO authenticated`.
-
-**SQL Migration:**
+Criar bucket publico via SQL migration com politicas RLS para:
+- **Upload (INSERT)**: apenas usuarios autenticados, dentro da pasta do proprio `uid()`
+- **Select (leitura)**: apenas o dono do arquivo
+- **Delete**: apenas o dono do arquivo
 
 ```sql
--- Drop 4 policies com TO PUBLIC
-DROP POLICY "Owners podem ver membros do time" ON public.team_members;
-DROP POLICY "Owners podem criar membros no time" ON public.team_members;
-DROP POLICY "Owners podem atualizar membros do time" ON public.team_members;
-DROP POLICY "Owners podem deletar membros do time" ON public.team_members;
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('meeting-recordings', 'meeting-recordings', true);
 
--- Recriar com TO authenticated explicito
-CREATE POLICY "Owners podem ver membros do time"
-ON public.team_members FOR SELECT
+CREATE POLICY "Authenticated users can upload recordings"
+ON storage.objects FOR INSERT
 TO authenticated
-USING (
-  EXISTS (
-    SELECT 1 FROM teams t
-    JOIN workspaces w ON w.id = t.workspace_id
-    WHERE t.id = team_members.team_id
-    AND w.owner_id = effective_user_id()
-    AND w.is_active = true
-  )
-);
+WITH CHECK (bucket_id = 'meeting-recordings' AND (storage.foldername(name))[1] = auth.uid()::text);
 
-CREATE POLICY "Owners podem criar membros no time"
-ON public.team_members FOR INSERT
+CREATE POLICY "Users can view own recordings"
+ON storage.objects FOR SELECT
 TO authenticated
-WITH CHECK (
-  EXISTS (
-    SELECT 1 FROM teams t
-    JOIN workspaces w ON w.id = t.workspace_id
-    WHERE t.id = team_members.team_id
-    AND w.owner_id = effective_user_id()
-    AND w.is_active = true
-  )
-);
+USING (bucket_id = 'meeting-recordings' AND (storage.foldername(name))[1] = auth.uid()::text);
 
-CREATE POLICY "Owners podem atualizar membros do time"
-ON public.team_members FOR UPDATE
+CREATE POLICY "Users can delete own recordings"
+ON storage.objects FOR DELETE
 TO authenticated
-USING (
-  EXISTS (
-    SELECT 1 FROM teams t
-    JOIN workspaces w ON w.id = t.workspace_id
-    WHERE t.id = team_members.team_id
-    AND w.owner_id = effective_user_id()
-    AND w.is_active = true
-  )
-);
-
-CREATE POLICY "Owners podem deletar membros do time"
-ON public.team_members FOR DELETE
-TO authenticated
-USING (
-  EXISTS (
-    SELECT 1 FROM teams t
-    JOIN workspaces w ON w.id = t.workspace_id
-    WHERE t.id = team_members.team_id
-    AND w.owner_id = effective_user_id()
-    AND w.is_active = true
-  )
-);
+USING (bucket_id = 'meeting-recordings' AND (storage.foldername(name))[1] = auth.uid()::text);
 ```
 
----
+### 2. Edge Function `upload-meeting`
 
-### Acao 3: Resolver alertas no scanner
+Criar `supabase/functions/upload-meeting/index.ts` com:
 
-Marcar o alerta `meeting_transcripts_function` como resolvido (funcao existe, falso positivo).
+- **CORS**: Origem `*` (cobre `chrome-extension://*`), handler OPTIONS
+- **Auth**: Extrair token do header Authorization, criar Supabase client autenticado
+- **Fluxo**:
+  1. Parsear multipart form data (`file`, `meeting_title`, `meeting_url`, `member_id`)
+  2. Gerar path: `{user_id}/{timestamp}.webm`
+  3. Upload para bucket `meeting-recordings`
+  4. Criar registro em `meeting_transcripts` com `processing_status = 'pending'` e referencia ao arquivo
+  5. Retornar `{ success: true, message: 'Upload recebido', transcript_id: '...' }`
 
----
+- **Config**: `verify_jwt = false` no `config.toml` (validacao manual no codigo para flexibilidade com Chrome Extension)
 
-### Resumo de Mudancas
+### 3. Configuracao
 
-| Tabela | Acao | Detalhe |
-|--------|------|---------|
-| meeting_transcripts | Nenhuma SQL | Alerta e falso positivo, resolver no scanner |
-| team_members | Migration SQL | 4 policies recriadas com `TO authenticated` |
+Adicionar ao `supabase/config.toml`:
+```toml
+[functions.upload-meeting]
+verify_jwt = false
+```
 
-### Por que NAO substituir effective_user_id() por auth.uid()
+### Detalhes Tecnicos
 
-A funcao `effective_user_id()` retorna `auth.uid()` normalmente, mas quando um admin esta impersonando um usuario (tabela `admin_impersonation`), retorna o ID do usuario impersonado. Substituir quebraria a feature de suporte/admin.
+- O campo `member_id` e obrigatorio na tabela `meeting_transcripts`. A extensao precisara enviar esse dado ou usaremos um membro default
+- O arquivo sera salvo no Storage e apenas a URL publica sera armazenada no banco (campo `transcript` ou novo campo se preferido)
+- Nenhuma alteracao no schema da tabela `meeting_transcripts` e necessaria -- usaremos `transcript` para a URL e `processing_status = 'pending'`
+
+### Arquivos Criados/Modificados
+
+| Arquivo | Acao |
+|---------|------|
+| Migration SQL | Criar bucket + policies |
+| `supabase/functions/upload-meeting/index.ts` | Nova edge function |
+| `supabase/config.toml` | Adicionar config da funcao (automatico) |
 
