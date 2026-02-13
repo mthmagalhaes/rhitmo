@@ -7,36 +7,31 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Extract auth token
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Missing Authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Create authenticated Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-    // Verify user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    let userId: string | null = null;
+
+    // Try to authenticate if header is present, but don't block
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader) {
+      const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: { user } } = await authClient.auth.getUser();
+      if (user) {
+        userId = user.id;
+      }
     }
+
+    // Use service role client for storage & DB (bypasses RLS)
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Parse multipart form data
     const formData = await req.formData();
@@ -52,16 +47,10 @@ serve(async (req) => {
       );
     }
 
-    if (!memberId) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'member_id is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     // Upload file to storage
+    const folder = userId || 'anonymous';
     const timestamp = Date.now();
-    const filePath = `${user.id}/${timestamp}.webm`;
+    const filePath = `${folder}/${timestamp}.webm`;
 
     const { error: uploadError } = await supabase.storage
       .from('meeting-recordings')
@@ -83,12 +72,12 @@ serve(async (req) => {
       .from('meeting-recordings')
       .getPublicUrl(filePath);
 
-    // Create meeting_transcripts record
+    // Create meeting_transcripts record (member_id and manager_id are now nullable)
     const { data: transcript, error: dbError } = await supabase
       .from('meeting_transcripts')
       .insert({
-        member_id: memberId,
-        manager_id: user.id,
+        member_id: memberId || null,
+        manager_id: userId || null,
         transcript: urlData.publicUrl,
         processing_status: 'pending',
         leader_notes: meetingTitle
