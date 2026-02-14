@@ -1,89 +1,126 @@
 
+## Plano: MeetingRecorder Resiliente com Captura Hibrida e Deteccao Inteligente
 
-## Plano: Gravador de Reuniao com Captura de Audio de Aba
+### Resumo das Melhorias
 
-### Contexto
+Tornar o gravador mais robusto para cenarios reais de reuniao, distinguindo "silencio normal" de "audio nao compartilhado", adicionando captura hibrida (aba + microfone), e dando feedback visual claro ao lider.
 
-Substituir a extensao do Chrome por um componente nativo que usa `getDisplayMedia` para capturar audio de abas do navegador (ex: Google Meet) e fazer upload para o storage + tabela `meeting_transcripts`.
+---
 
-### Componente: `MeetingRecorder`
+### 1. Deteccao de Canal vs. Volume (Nao confundir silencio com erro)
 
-Criar `src/components/MeetingRecorder.tsx` -- um card/dialog estilo Bento com:
+**Problema atual:** Se o usuario marca "Compartilhar audio" mas a reuniao esta em silencio, o componente pode parecer "morto".
 
-**Estados:**
-- `idle` -- Botao "Iniciar Gravacao"
-- `recording` -- Timer, waveform, botao "Parar"
-- `uploading` -- Spinner + progresso
-- `done` -- Confirmacao com ID do transcript
+**Solucao:**
+- Manter a logica atual que verifica `audioTracks.length === 0` para detectar ausencia real de canal de audio (checkbox nao marcado)
+- Nunca dar erro por volume zero -- silencio e normal (lider mutado, reuniao nao comecou)
+- Adicionar um estado `hasAudioChannel` (boolean) que e `true` quando existem audio tracks, independente do volume
+
+### 2. Indicador "Pronto para Gravar"
+
+**Novo estado visual** no modo `recording`:
+- Quando `hasAudioChannel === true`, exibir uma badge discreta: "Conectado -- Capturando som da aba assim que a conversa comecar"
+- Usar icone `Wifi` ou `Radio` verde ao lado do indicador de gravacao
+- Essa mensagem aparece nos primeiros segundos ou enquanto o volume estiver em zero, e desaparece quando detecta som real (barras do waveform se movem)
+
+**Implementacao:**
+- Novo state: `audioDetected` (boolean) -- muda para `true` quando o analyser detecta volume acima de um threshold (ex: qualquer barra > 0.2)
+- Enquanto `audioDetected === false` e `state === 'recording'`, mostrar a badge de "Conectado"
+
+### 3. Captura Hibrida (Aba + Microfone)
+
+**Objetivo:** Gravar tanto o som da aba (o que o lider ouve) quanto o microfone do lider (o que ele fala), misturando em uma unica faixa.
 
 **Fluxo tecnico:**
-
 ```text
-1. Usuario clica "Iniciar Gravacao"
-2. Chama navigator.mediaDevices.getDisplayMedia({ audio: true, video: true })
-   - video:true e obrigatorio para getDisplayMedia, mas descartamos a faixa de video
-   - O browser exibe o picker de compartilhamento de aba com checkbox "Compartilhar audio"
-3. Extraimos APENAS as audio tracks do stream
-4. Criamos MediaRecorder com as audio tracks
-5. Gravacao em andamento com timer e waveform visual
-6. Usuario clica "Parar"
-7. Blob de audio e criado
-8. Upload via FormData para edge function `upload-meeting` (ja configurada)
-9. Edge function salva no storage e cria registro em meeting_transcripts
-10. Exibe confirmacao
+1. getDisplayMedia({ audio: true, video: true }) -> tabStream
+2. getUserMedia({ audio: true }) -> micStream  
+3. Criar AudioContext
+4. Conectar ambos como MediaStreamSource
+5. Usar createMediaStreamDestination() para mixar em uma saida
+6. Gravar a saida mixada com MediaRecorder
 ```
 
-**Campos opcionais no UI:**
-- Titulo da reuniao (input de texto)
-- Selector de membro (se o usuario quiser associar a um team_member)
+**Tratamento de falhas:**
+- Se o microfone falhar (usuario nega permissao), continuar apenas com audio da aba -- nao bloquear a gravacao
+- Exibir toast informativo: "Microfone nao disponivel. Gravando apenas audio da aba."
+- Novo state `hasMic` (boolean) para indicar no UI se o microfone esta ativo
 
-### Onde colocar na interface
+**UI durante gravacao:**
+- Mostrar dois indicadores discretos:
+  - `Monitor` icon + "Aba" (sempre presente se audio da aba conectado)
+  - `Mic` icon + "Mic" (presente se microfone ativo, cinza se nao)
 
-Adicionar na pagina `MemberDetails.tsx` como um botao/acao ao lado de "Nova Anotacao", e tambem disponibilizar como um Dialog acessivel pelo sidebar ou dashboard.
+### 4. Aviso Visual de "Audio Nao Compartilhado"
 
-Criar uma rota dedicada nao e necessario -- sera um Dialog/Sheet reutilizavel.
+**Cenario:** Usuario compartilhou a aba mas NAO marcou "Compartilhar audio da aba".
+
+**Deteccao:** `stream.getAudioTracks().length === 0` apos getDisplayMedia (ja implementado).
+
+**Melhoria:** Em vez de apenas um toast que desaparece, exibir um **estado visual persistente** no dialog antes de voltar ao idle:
+
+- Novo estado intermediario: `'no-audio-warning'`
+- Card grande com:
+  - Icone `AlertTriangle` em amarelo/amber
+  - Titulo: "Audio da aba nao detectado"
+  - Descricao com instrucoes claras: "Ao compartilhar a aba, marque a caixa 'Compartilhar audio da aba' no canto inferior esquerdo da janela de selecao."
+  - Ilustracao: icone `MonitorSpeaker` ou `Volume2` com seta visual
+  - Botao "Tentar Novamente" que chama `startRecording()` de novo
 
 ### Detalhes Tecnicos
 
-**1. Novo arquivo: `src/components/MeetingRecorder.tsx`**
+**Arquivo editado:** `src/components/MeetingRecorder.tsx`
 
-- Usa `navigator.mediaDevices.getDisplayMedia({ audio: true, video: true })`
-- Descarta video tracks imediatamente: `stream.getVideoTracks().forEach(t => t.stop())`
-- Verifica se ha audio tracks: se nao houver, exibe toast pedindo para marcar "Compartilhar audio da aba"
-- MediaRecorder grava apenas audio
-- AudioContext + AnalyserNode para waveform visual (reutiliza padrao do VoiceInput)
-- Upload via `supabase.functions.invoke('upload-meeting')` com FormData contendo:
-  - `file`: Blob do audio
-  - `meeting_title`: titulo opcional
-  - `member_id`: membro opcional
-- Timer formatado MM:SS
-- Cleanup completo no unmount (stop tracks, close AudioContext)
+**Novos states:**
+```typescript
+type RecorderState = 'idle' | 'recording' | 'uploading' | 'done' | 'no-audio-warning';
 
-**2. Editar `src/pages/MemberDetails.tsx`**
+// Novos states internos:
+const [hasAudioChannel, setHasAudioChannel] = useState(false);
+const [audioDetected, setAudioDetected] = useState(false);
+const [hasMic, setHasMic] = useState(false);
+```
 
-- Importar MeetingRecorder
-- Adicionar botao "Gravar Reuniao" ao lado de "Nova Anotacao" e "Mentor Chat"
-- Botao abre o MeetingRecorder como Dialog
+**Novo ref para mic stream:**
+```typescript
+const micStreamRef = useRef<MediaStream | null>(null);
+```
 
-**3. Edge Function `upload-meeting`**
+**Logica de mixagem de audio (captura hibrida):**
+```typescript
+const audioContext = new AudioContext();
+const destination = audioContext.createMediaStreamDestination();
 
-- Ja esta configurada para aceitar FormData com auth opcional
-- Nenhuma alteracao necessaria
+// Tab audio source
+const tabSource = audioContext.createMediaStreamSource(tabAudioStream);
+tabSource.connect(destination);
 
-**4. Consideracoes do `getDisplayMedia`**
+// Mic audio source (optional)
+try {
+  const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const micSource = audioContext.createMediaStreamSource(micStream);
+  micSource.connect(destination);
+  micStreamRef.current = micStream;
+  setHasMic(true);
+} catch {
+  // Mic not available, continue with tab-only
+  setHasMic(false);
+}
 
-- `getDisplayMedia` requer interacao do usuario (nao pode ser chamado automaticamente)
-- O parametro `{ audio: true }` habilita a opcao de compartilhar audio da aba
-- Em alguns browsers, o usuario precisa **marcar manualmente** o checkbox "Compartilhar audio da aba"
-- Se o usuario compartilhar apenas video sem audio, o componente deve detectar e avisar
-- Compatibilidade: Chrome 74+, Edge 79+, Firefox 66+ (Firefox tem suporte limitado a audio de aba)
+// Connect analyser to mixed output
+const analyser = audioContext.createAnalyser();
+tabSource.connect(analyser); // or destination
 
-### Visual (Design System Creme/Bento)
+// Record the mixed output
+const mediaRecorder = new MediaRecorder(destination.stream, { mimeType });
+```
 
-- Card com `rounded-2xl` e shadow suave
-- Botao principal com variante `default` (primary)
-- Timer com `font-mono`
-- Waveform reutilizando o componente `WaveformBars` do VoiceInput
-- Estados com transicoes suaves (`animate-fade-in`)
-- Icones: `Monitor` (idle), `Square` (parar), `Loader2` (uploading), `CheckCircle` (done)
+**Deteccao de volume real (para badge "Conectado"):**
+- No loop do `WaveformBars`, reportar se alguma barra ultrapassou threshold
+- Alternativamente, verificar no intervalo do timer se o analyser tem dados acima de ~5/255
+- Callback `onAudioDetected` passado ao WaveformBars ou verificado diretamente no componente pai
 
+**Cleanup atualizado:**
+- Adicionar `micStreamRef` ao cleanup para parar tracks do microfone
+
+**Nenhuma alteracao no backend** -- a edge function `upload-meeting` ja aceita o blob de audio normalmente.
