@@ -9,7 +9,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Monitor, Square, Loader2, CheckCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Monitor, Square, Loader2, CheckCircle, Mic, MicOff, Radio, AlertTriangle, Volume2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -21,11 +22,26 @@ interface MeetingRecorderProps {
   memberName?: string;
 }
 
-type RecorderState = 'idle' | 'recording' | 'uploading' | 'done';
+type RecorderState = 'idle' | 'recording' | 'uploading' | 'done' | 'no-audio-warning';
 
-const WaveformBars = ({ isActive, analyserRef }: { isActive: boolean; analyserRef: React.RefObject<AnalyserNode | null> }) => {
+const AUDIO_THRESHOLD = 0.08; // ~20/255
+
+const WaveformBars = ({
+  isActive,
+  analyserRef,
+  onAudioDetected,
+}: {
+  isActive: boolean;
+  analyserRef: React.RefObject<AnalyserNode | null>;
+  onAudioDetected?: () => void;
+}) => {
   const [bars, setBars] = useState<number[]>(Array(16).fill(0.15));
   const animationRef = useRef<number | null>(null);
+  const detectedRef = useRef(false);
+
+  useEffect(() => {
+    detectedRef.current = false;
+  }, [isActive]);
 
   useEffect(() => {
     if (!isActive) {
@@ -43,6 +59,14 @@ const WaveformBars = ({ isActive, analyserRef }: { isActive: boolean; analyserRe
           Math.max(0.15, dataArray[i * step] / 255)
         );
         setBars(newBars);
+
+        if (!detectedRef.current && onAudioDetected) {
+          const hasSound = newBars.some(b => b > AUDIO_THRESHOLD);
+          if (hasSound) {
+            detectedRef.current = true;
+            onAudioDetected();
+          }
+        }
       }
       animationRef.current = requestAnimationFrame(updateBars);
     };
@@ -51,7 +75,7 @@ const WaveformBars = ({ isActive, analyserRef }: { isActive: boolean; analyserRe
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, [isActive, analyserRef]);
+  }, [isActive, analyserRef, onAudioDetected]);
 
   return (
     <div className="flex items-center justify-center gap-0.5 h-12">
@@ -71,10 +95,13 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
   const [duration, setDuration] = useState(0);
   const [meetingTitle, setMeetingTitle] = useState('');
   const [transcriptId, setTranscriptId] = useState<string | null>(null);
+  const [audioDetected, setAudioDetected] = useState(false);
+  const [hasMic, setHasMic] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -95,6 +122,10 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
+    if (micStreamRef.current) {
+      micStreamRef.current.getTracks().forEach(track => track.stop());
+      micStreamRef.current = null;
+    }
     if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
       audioContextRef.current.close();
       audioContextRef.current = null;
@@ -104,47 +135,69 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
     chunksRef.current = [];
   }, []);
 
+  const handleAudioDetected = useCallback(() => {
+    setAudioDetected(true);
+  }, []);
+
   const startRecording = useCallback(async () => {
     try {
-      // getDisplayMedia requires video:true, but we only want audio
       const stream = await navigator.mediaDevices.getDisplayMedia({
         audio: true,
         video: true,
       });
 
-      // Stop video tracks immediately — we only need audio
+      // Stop video tracks — we only need audio
       stream.getVideoTracks().forEach(track => track.stop());
 
       const audioTracks = stream.getAudioTracks();
       if (audioTracks.length === 0) {
-        toast({
-          title: 'Nenhum áudio detectado',
-          description: 'Marque "Compartilhar áudio da aba" ao selecionar a aba do navegador.',
-          variant: 'destructive',
-        });
+        // No audio channel — user forgot the checkbox
         stream.getTracks().forEach(t => t.stop());
+        setState('no-audio-warning');
         return;
       }
 
-      // Create audio-only stream
-      const audioStream = new MediaStream(audioTracks);
-      streamRef.current = audioStream;
+      // Tab audio stream
+      const tabAudioStream = new MediaStream(audioTracks);
+      streamRef.current = tabAudioStream;
       chunksRef.current = [];
 
-      // Setup analyser for waveform
+      // Setup AudioContext with mixer destination
       const audioContext = new AudioContext();
+      const destination = audioContext.createMediaStreamDestination();
       const analyser = audioContext.createAnalyser();
       analyser.fftSize = 256;
-      const source = audioContext.createMediaStreamSource(audioStream);
-      source.connect(analyser);
+
+      // Connect tab audio
+      const tabSource = audioContext.createMediaStreamSource(tabAudioStream);
+      tabSource.connect(destination);
+      tabSource.connect(analyser);
+
       audioContextRef.current = audioContext;
       analyserRef.current = analyser;
+
+      // Try hybrid capture — add mic
+      let micAvailable = false;
+      try {
+        const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const micSource = audioContext.createMediaStreamSource(micStream);
+        micSource.connect(destination);
+        micStreamRef.current = micStream;
+        micAvailable = true;
+      } catch {
+        toast({
+          title: 'Microfone não disponível',
+          description: 'Gravando apenas áudio da aba.',
+        });
+      }
+      setHasMic(micAvailable);
+      setAudioDetected(false);
 
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? 'audio/webm;codecs=opus'
         : 'audio/webm';
 
-      const mediaRecorder = new MediaRecorder(audioStream, { mimeType });
+      const mediaRecorder = new MediaRecorder(destination.stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (e) => {
@@ -153,9 +206,7 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
 
       // Auto-stop if user ends sharing via browser UI
       audioTracks[0].onended = () => {
-        if (state === 'recording') {
-          stopRecording();
-        }
+        stopRecording();
       };
 
       mediaRecorder.start(1000);
@@ -193,6 +244,10 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(t => t.stop());
         streamRef.current = null;
+      }
+      if (micStreamRef.current) {
+        micStreamRef.current.getTracks().forEach(t => t.stop());
+        micStreamRef.current = null;
       }
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close();
@@ -257,6 +312,8 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
       setDuration(0);
       setMeetingTitle('');
       setTranscriptId(null);
+      setAudioDetected(false);
+      setHasMic(false);
     }
   }, [open, cleanup]);
 
@@ -267,7 +324,6 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
   return (
     <Dialog open={open} onOpenChange={(v) => {
       if (state === 'recording') {
-        // Prevent closing while recording — stop first
         stopRecording();
         return;
       }
@@ -314,6 +370,36 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
             </div>
           )}
 
+          {/* No audio warning state */}
+          {state === 'no-audio-warning' && (
+            <div className="space-y-4 animate-fade-in">
+              <div className="bg-destructive/5 border border-destructive/20 rounded-2xl p-6 text-center space-y-4">
+                <div className="w-14 h-14 rounded-2xl bg-destructive/10 flex items-center justify-center mx-auto">
+                  <AlertTriangle className="h-7 w-7 text-destructive" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">Áudio da aba não detectado</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Ao compartilhar a aba, marque a caixa <strong>"Compartilhar áudio da aba"</strong> no canto inferior esquerdo da janela de seleção.
+                  </p>
+                </div>
+                <div className="flex items-center justify-center gap-3 text-muted-foreground">
+                  <Volume2 className="h-8 w-8" />
+                  <span className="text-2xl">→</span>
+                  <div className="flex items-center gap-1.5 border border-border rounded-lg px-3 py-1.5 text-xs font-medium">
+                    <div className="w-3 h-3 rounded-sm border border-primary bg-primary/20" />
+                    Compartilhar áudio
+                  </div>
+                </div>
+              </div>
+
+              <Button onClick={startRecording} className="w-full gap-2 rounded-xl" size="lg">
+                <Monitor className="h-5 w-5" />
+                Tentar Novamente
+              </Button>
+            </div>
+          )}
+
           {/* Recording state */}
           {state === 'recording' && (
             <div className="space-y-4 animate-fade-in">
@@ -325,7 +411,29 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
                 <p className="text-3xl font-mono font-bold tracking-tight text-foreground">
                   {formatDuration(duration)}
                 </p>
-                <WaveformBars isActive analyserRef={analyserRef} />
+                <WaveformBars isActive analyserRef={analyserRef} onAudioDetected={handleAudioDetected} />
+
+                {/* Source indicators */}
+                <div className="flex items-center justify-center gap-3">
+                  <Badge variant="secondary" className="gap-1.5 text-xs">
+                    <Monitor className="h-3 w-3" /> Aba
+                  </Badge>
+                  <Badge
+                    variant={hasMic ? 'secondary' : 'outline'}
+                    className={cn('gap-1.5 text-xs', !hasMic && 'opacity-50')}
+                  >
+                    {hasMic ? <Mic className="h-3 w-3" /> : <MicOff className="h-3 w-3" />}
+                    Mic
+                  </Badge>
+                </div>
+
+                {/* Connected badge — shows until real audio is detected */}
+                {!audioDetected && (
+                  <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground animate-fade-in">
+                    <Radio className="h-3.5 w-3.5 text-primary" />
+                    <span>Conectado — Capturando som assim que a conversa começar</span>
+                  </div>
+                )}
               </div>
 
               <Button
