@@ -284,8 +284,10 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
           setTranscriptId(data.transcript_id);
           setState('done');
           toast({
-            title: 'Gravação enviada!',
-            description: 'O áudio está sendo processado.',
+            title: data.transcribed ? 'Transcrição salva como nota!' : 'Gravação enviada!',
+            description: data.transcribed
+              ? 'A transcrição foi adicionada ao diário de bordo do membro.'
+              : 'O áudio está sendo processado.',
           });
         } else {
           throw new Error(data?.error || 'Falha no upload');
@@ -463,9 +465,9 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
                 <CheckCircle className="h-7 w-7 text-primary" />
               </div>
               <div>
-                <p className="font-semibold text-foreground">Gravação enviada!</p>
+                <p className="font-semibold text-foreground">Transcrição salva!</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  O áudio será processado automaticamente.
+                  O áudio foi transcrito e adicionado como nota ao diário de bordo.
                 </p>
               </div>
               <Button
