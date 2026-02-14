@@ -1,126 +1,113 @@
 
-## Plano: MeetingRecorder Resiliente com Captura Hibrida e Deteccao Inteligente
 
-### Resumo das Melhorias
+## Plano: Transcricao como Nota Unificada na Base de Conhecimento
 
-Tornar o gravador mais robusto para cenarios reais de reuniao, distinguindo "silencio normal" de "audio nao compartilhado", adicionando captura hibrida (aba + microfone), e dando feedback visual claro ao lider.
+### Resumo
+
+Transformar o fluxo pos-upload para que cada transcricao finalizada seja automaticamente inserida como uma nota (feedback) padrao na tabela `feedbacks`, com `source = 'transcription'`. Isso unifica transcrições e notas manuais em uma unica base de conhecimento, sem necessidade de filtros especiais em avaliacoes ou mentor chat.
 
 ---
 
-### 1. Deteccao de Canal vs. Volume (Nao confundir silencio com erro)
+### O que ja existe e funciona a nosso favor
 
-**Problema atual:** Se o usuario marca "Compartilhar audio" mas a reuniao esta em silencio, o componente pode parecer "morto".
+- Tabela `feedbacks` ja possui coluna `source` (valor atual: `'manual'`) e `meeting_transcript_id` (FK opcional)
+- `generate-review` ja busca todos os feedbacks por `member_id` + periodo -- transcrições serao incluidas automaticamente
+- `chat-mentor` (RAG) ja usa feedbacks como base -- transcrições entram sem alteracao
+- `ContextPicker` ja lista feedbacks para selecao manual no Mentor Chat
+- `FeedbackTimeline` ja renderiza feedbacks -- so precisa do icone de microfone
 
-**Solucao:**
-- Manter a logica atual que verifica `audioTracks.length === 0` para detectar ausencia real de canal de audio (checkbox nao marcado)
-- Nunca dar erro por volume zero -- silencio e normal (lider mutado, reuniao nao comecou)
-- Adicionar um estado `hasAudioChannel` (boolean) que e `true` quando existem audio tracks, independente do volume
+---
 
-### 2. Indicador "Pronto para Gravar"
+### Alteracoes Necessarias
 
-**Novo estado visual** no modo `recording`:
-- Quando `hasAudioChannel === true`, exibir uma badge discreta: "Conectado -- Capturando som da aba assim que a conversa comecar"
-- Usar icone `Wifi` ou `Radio` verde ao lado do indicador de gravacao
-- Essa mensagem aparece nos primeiros segundos ou enquanto o volume estiver em zero, e desaparece quando detecta som real (barras do waveform se movem)
+#### 1. Edge Function `upload-meeting` -- Adicionar transcricao + criacao de feedback
 
-**Implementacao:**
-- Novo state: `audioDetected` (boolean) -- muda para `true` quando o analyser detecta volume acima de um threshold (ex: qualquer barra > 0.2)
-- Enquanto `audioDetected === false` e `state === 'recording'`, mostrar a badge de "Conectado"
+Apos o upload do audio e criacao do registro em `meeting_transcripts`, a funcao deve:
 
-### 3. Captura Hibrida (Aba + Microfone)
+1. Baixar o arquivo do storage
+2. Enviar para OpenAI Whisper (reutilizando logica do `transcribe-audio`)
+3. Gerar titulo automatico: se `meeting_title` foi informado, usar ele; senao, `"Transcricao de Audio - DD/MM/YYYY"`
+4. Inserir na tabela `feedbacks` com:
+   - `source`: `'transcription'`
+   - `meeting_transcript_id`: ID do registro criado
+   - `content`: texto transcrito
+   - `title`: titulo gerado
+   - `type`: `'neutral'`
+   - `member_id`, `manager_id`: do contexto
+   - `occurred_at`: timestamp atual
+   - `visibility`: `'private_leader'` (padrao de privacidade)
+5. Atualizar `meeting_transcripts.processing_status` para `'completed'` e salvar o texto em `transcript`
+6. Disparar `analyze-feedback-background` para gerar embedding (RAG) e classificacao
 
-**Objetivo:** Gravar tanto o som da aba (o que o lider ouve) quanto o microfone do lider (o que ele fala), misturando em uma unica faixa.
+**Observacao sobre Whisper:** O arquivo `.webm` pode ser grande. Se exceder 25MB (limite do Whisper), truncar ou segmentar. Para a maioria das reunioes de ate 1h, o `.webm` com opus fica abaixo desse limite.
 
-**Fluxo tecnico:**
-```text
-1. getDisplayMedia({ audio: true, video: true }) -> tabStream
-2. getUserMedia({ audio: true }) -> micStream  
-3. Criar AudioContext
-4. Conectar ambos como MediaStreamSource
-5. Usar createMediaStreamDestination() para mixar em uma saida
-6. Gravar a saida mixada com MediaRecorder
-```
+#### 2. Frontend: `FeedbackTimeline.tsx` -- Icone de microfone
 
-**Tratamento de falhas:**
-- Se o microfone falhar (usuario nega permissao), continuar apenas com audio da aba -- nao bloquear a gravacao
-- Exibir toast informativo: "Microfone nao disponivel. Gravando apenas audio da aba."
-- Novo state `hasMic` (boolean) para indicar no UI se o microfone esta ativo
+- Verificar `feedback.source === 'transcription'` (ou presenca de `meeting_transcript_id`)
+- Se sim, exibir icone `Mic` em vez do icone de visibilidade padrao (Lock/Eye)
+- Manter a mesma estrutura de lista, badge "Compartilhado", etc.
+- Adicionar um `Badge` discreto "Transcrição" ao lado da data para diferenciar visualmente
 
-**UI durante gravacao:**
-- Mostrar dois indicadores discretos:
-  - `Monitor` icon + "Aba" (sempre presente se audio da aba conectado)
-  - `Mic` icon + "Mic" (presente se microfone ativo, cinza se nao)
+**Nota:** A interface `Feedback` no componente precisa incluir `source` como campo opcional.
 
-### 4. Aviso Visual de "Audio Nao Compartilhado"
+#### 3. Frontend: `ContextPicker.tsx` -- Nenhuma alteracao necessaria
 
-**Cenario:** Usuario compartilhou a aba mas NAO marcou "Compartilhar audio da aba".
+O ContextPicker ja lista feedbacks por `member_id`. Transcrições com `source = 'transcription'` aparecerao automaticamente na lista. O titulo gerado ("Transcricao de Audio - DD/MM") sera visivel para selecao.
 
-**Deteccao:** `stream.getAudioTracks().length === 0` apos getDisplayMedia (ja implementado).
+#### 4. Avaliacao Formal (`generate-review`) -- Nenhuma alteracao necessaria
 
-**Melhoria:** Em vez de apenas um toast que desaparece, exibir um **estado visual persistente** no dialog antes de voltar ao idle:
+A funcao ja busca `feedbacks` por `member_id` + periodo (`occurred_at`). Transcrições serao incluidas automaticamente no contexto da IA. Nao ha filtro por `source` ou `type` que precisaria ser removido.
 
-- Novo estado intermediario: `'no-audio-warning'`
-- Card grande com:
-  - Icone `AlertTriangle` em amarelo/amber
-  - Titulo: "Audio da aba nao detectado"
-  - Descricao com instrucoes claras: "Ao compartilhar a aba, marque a caixa 'Compartilhar audio da aba' no canto inferior esquerdo da janela de selecao."
-  - Ilustracao: icone `MonitorSpeaker` ou `Volume2` com seta visual
-  - Botao "Tentar Novamente" que chama `startRecording()` de novo
+#### 5. Mentor Chat (`chat-mentor`) -- Nenhuma alteracao necessaria
+
+O RAG ja indexa embeddings de todos os feedbacks. O `ContextPicker` ja lista todos. Transcrições entram na base de conhecimento automaticamente apos o embedding ser gerado pelo `analyze-feedback-background`.
+
+---
 
 ### Detalhes Tecnicos
 
-**Arquivo editado:** `src/components/MeetingRecorder.tsx`
+**Arquivo: `supabase/functions/upload-meeting/index.ts`**
 
-**Novos states:**
-```typescript
-type RecorderState = 'idle' | 'recording' | 'uploading' | 'done' | 'no-audio-warning';
+Adicionar apos a criacao do `meeting_transcripts`:
 
-// Novos states internos:
-const [hasAudioChannel, setHasAudioChannel] = useState(false);
-const [audioDetected, setAudioDetected] = useState(false);
-const [hasMic, setHasMic] = useState(false);
+```text
+1. Ler o blob do storage (ou usar o proprio File do FormData)
+2. Enviar para Whisper API (OpenAI)
+3. Com o texto retornado:
+   a. Atualizar meeting_transcripts: transcript = texto, processing_status = 'completed'
+   b. Inserir em feedbacks: source='transcription', content=texto, title=auto, type='neutral'
+   c. Chamar analyze-feedback-background (async, sem bloquear resposta)
+4. Retornar sucesso com transcript_id e feedback_id
 ```
 
-**Novo ref para mic stream:**
-```typescript
-const micStreamRef = useRef<MediaStream | null>(null);
+**Arquivo: `src/components/FeedbackTimeline.tsx`**
+
+- Adicionar `source?: string` e `meeting_transcript_id?: string` na interface `Feedback`
+- No render de cada item, antes do icone de visibilidade:
+  - Se `source === 'transcription'`: mostrar `Mic` icon em azul/primary
+  - Senao: manter Lock/Eye atual
+- Adicionar Badge "Transcrição" discreto quando aplicavel
+
+**Arquivo: `src/components/MeetingRecorder.tsx`**
+
+- Atualizar a mensagem de sucesso para refletir que a transcrição sera criada como nota
+- Invalidar queries de feedbacks apos sucesso para que a timeline atualize
+
+**Nenhuma migracao de banco necessaria** -- as colunas `source` e `meeting_transcript_id` ja existem na tabela `feedbacks`.
+
+---
+
+### Fluxo Completo Apos Implementacao
+
+```text
+Lider grava reuniao
+  -> Audio enviado para upload-meeting
+  -> Upload no storage
+  -> Whisper transcreve o audio
+  -> Texto inserido como feedback (source='transcription')
+  -> Embedding gerado (analyze-feedback-background)
+  -> Nota aparece na Timeline com icone de microfone
+  -> Disponivel no Mentor Chat (auto-RAG e ContextPicker)
+  -> Incluida automaticamente em Avaliacoes Formais do periodo
 ```
 
-**Logica de mixagem de audio (captura hibrida):**
-```typescript
-const audioContext = new AudioContext();
-const destination = audioContext.createMediaStreamDestination();
-
-// Tab audio source
-const tabSource = audioContext.createMediaStreamSource(tabAudioStream);
-tabSource.connect(destination);
-
-// Mic audio source (optional)
-try {
-  const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  const micSource = audioContext.createMediaStreamSource(micStream);
-  micSource.connect(destination);
-  micStreamRef.current = micStream;
-  setHasMic(true);
-} catch {
-  // Mic not available, continue with tab-only
-  setHasMic(false);
-}
-
-// Connect analyser to mixed output
-const analyser = audioContext.createAnalyser();
-tabSource.connect(analyser); // or destination
-
-// Record the mixed output
-const mediaRecorder = new MediaRecorder(destination.stream, { mimeType });
-```
-
-**Deteccao de volume real (para badge "Conectado"):**
-- No loop do `WaveformBars`, reportar se alguma barra ultrapassou threshold
-- Alternativamente, verificar no intervalo do timer se o analyser tem dados acima de ~5/255
-- Callback `onAudioDetected` passado ao WaveformBars ou verificado diretamente no componente pai
-
-**Cleanup atualizado:**
-- Adicionar `micStreamRef` ao cleanup para parar tracks do microfone
-
-**Nenhuma alteracao no backend** -- a edge function `upload-meeting` ja aceita o blob de audio normalmente.
