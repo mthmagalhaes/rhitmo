@@ -16,12 +16,13 @@ import { PerformanceReviewList } from '@/components/PerformanceReviewList';
 import { useAuth } from '@/hooks/useAuth';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Music, BookOpen, FileText, Clock, Lock, ArrowRight, Briefcase, Heart, Megaphone, Compass, DollarSign, Shield, GraduationCap, Crown, HelpCircle, Sunrise, Moon, Search, CheckCircle } from 'lucide-react';
+import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Music, BookOpen, FileText, Clock, Lock, ArrowRight, Briefcase, Heart, Megaphone, Compass, DollarSign, Shield, GraduationCap, Crown, HelpCircle, Sunrise, Moon, Search, CheckCircle, Monitor } from 'lucide-react';
 import { GoalsManager } from '@/components/GoalsManager';
 
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { InviteMemberDialog } from '@/components/InviteMemberDialog';
+import { MeetingRecorder } from '@/components/MeetingRecorder';
 import React from 'react';
 
 interface WorkStyleData {
@@ -47,6 +48,7 @@ const MemberDetails = () => {
   const [chatOpen, setChatOpen] = useState(false);
   const [resendingInvite, setResendingInvite] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [recorderOpen, setRecorderOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
@@ -326,6 +328,10 @@ const MemberDetails = () => {
             Início
           </Button>
           <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setRecorderOpen(true)} className="gap-2">
+              <Monitor className="h-4 w-4" />
+              <span className="hidden sm:inline">Gravar Reunião</span>
+            </Button>
             <Button variant="outline" onClick={() => setChatOpen(true)} className="gap-2">
               <Sparkles className="h-4 w-4" />
               Mentor Chat
@@ -656,6 +662,13 @@ const MemberDetails = () => {
           invite_token: member.invite_token
         }}
         onSuccess={() => queryClient.invalidateQueries({ queryKey: ['member', id] })}
+      />
+
+      <MeetingRecorder
+        open={recorderOpen}
+        onOpenChange={setRecorderOpen}
+        memberId={member.id}
+        memberName={member.name}
       />
     </div>;
 };
