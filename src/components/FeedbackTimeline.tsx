@@ -1,4 +1,4 @@
-import { Trash2, ChevronDown, Lock, Eye, MoreVertical } from 'lucide-react';
+import { Trash2, ChevronDown, Lock, Eye, MoreVertical, Mic } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -43,6 +43,8 @@ interface Feedback {
   tags?: string[];
   title?: string | null;
   visibility?: string | null;
+  source?: string | null;
+  meeting_transcript_id?: string | null;
 }
 
 interface FeedbackTimelineProps {
@@ -89,17 +91,20 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onToggleVisibility }: Fe
           const isFallbackTitle = !feedback.title;
           const formattedDate = new Date(feedback.occurred_at || feedback.created_at).toLocaleDateString('pt-BR');
           const isShared = feedback.visibility === 'shared';
+          const isTranscription = feedback.source === 'transcription' || !!feedback.meeting_transcript_id;
           
           return (
             <Collapsible key={feedback.id} className="group">
               <div className="flex items-center rounded-lg border bg-card hover:bg-muted/50 transition-colors">
-                {/* Trigger Area - Data + Visibility Icon + Título + Tags + Chevron */}
+                {/* Trigger Area */}
                 <CollapsibleTrigger className="flex-1 flex items-center gap-3 p-4 text-left">
-                  {/* Visibility Icon */}
+                  {/* Source/Visibility Icon */}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className="shrink-0">
-                        {isShared ? (
+                        {isTranscription ? (
+                          <Mic className="h-4 w-4 text-primary" />
+                        ) : isShared ? (
                           <Eye className="h-4 w-4 text-primary" />
                         ) : (
                           <Lock className="h-4 w-4 text-muted-foreground" />
@@ -107,7 +112,7 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onToggleVisibility }: Fe
                       </span>
                     </TooltipTrigger>
                     <TooltipContent>
-                      {isShared ? 'Compartilhado com colaborador' : 'Visível apenas para você'}
+                      {isTranscription ? 'Transcrição de áudio' : isShared ? 'Compartilhado com colaborador' : 'Visível apenas para você'}
                     </TooltipContent>
                   </Tooltip>
                   
@@ -124,8 +129,15 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onToggleVisibility }: Fe
                     {displayTitle}
                   </span>
                   
+                  {/* Transcription Badge */}
+                  {isTranscription && (
+                    <Badge variant="outline" className="hidden sm:flex text-xs py-0.5 px-2 border-primary/30 text-primary bg-primary/10 gap-1">
+                      <Mic className="h-3 w-3" /> Transcrição
+                    </Badge>
+                  )}
+
                   {/* Shared Badge (visible on shared items) */}
-                  {isShared && (
+                  {isShared && !isTranscription && (
                     <Badge variant="outline" className="hidden sm:flex text-xs py-0.5 px-2 border-primary/30 text-primary bg-primary/10">
                       Compartilhado
                     </Badge>
@@ -225,8 +237,14 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onToggleVisibility }: Fe
               {/* Conteúdo Expandido */}
               <CollapsibleContent>
                 <div className="px-4 py-3 border-x border-b rounded-b-lg bg-muted/30">
+                 {/* Transcription Badge em mobile */}
+                  {isTranscription && (
+                    <Badge variant="outline" className="flex sm:hidden text-xs py-0.5 px-2 mb-3 w-fit border-primary/30 text-primary bg-primary/10 gap-1">
+                      <Mic className="h-3 w-3" /> Transcrição
+                    </Badge>
+                  )}
                   {/* Shared Badge em mobile */}
-                  {isShared && (
+                  {isShared && !isTranscription && (
                     <Badge variant="outline" className="flex sm:hidden text-xs py-0.5 px-2 mb-3 w-fit border-primary/30 text-primary bg-primary/10">
                       Compartilhado
                     </Badge>
