@@ -99,7 +99,7 @@ export const ContextPicker = ({
                         {format(new Date(fb.occurred_at || fb.created_at), 'dd/MM', { locale: ptBR })}
                       </span>
                       <span className={`text-sm truncate ${fb.title ? 'text-foreground' : 'text-muted-foreground italic'}`}>
-                        {fb.title || 'Anotação não classificada'}
+                        {fb.title || `Nota de ${format(new Date(fb.occurred_at || fb.created_at), 'dd/MM/yyyy', { locale: ptBR })}`}
                       </span>
                     </div>
                     {fb.tags && fb.tags.length > 0 && (
