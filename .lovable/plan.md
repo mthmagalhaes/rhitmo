@@ -1,38 +1,46 @@
 
-## Indicador de Saude de Acompanhamento no TeamMemberCard
 
-### Resumo
+## Correção: Truncamento de Nomes nos TeamMemberCards
 
-Adicionar um circulo colorido de 8px no canto superior direito de cada card de membro, indicando ha quantos dias o lider nao registra uma nota. O tooltip mostra a mensagem contextual.
+### Problema
 
-### Implementacao
+A classe `truncate` no `h3` do nome está forçando nomes longos a serem cortados com reticências. A combinação de `min-w-0` no container pai com layout flex contribui para a limitação.
+
+### Solução
+
+Uma edição simples no arquivo `src/components/TeamMemberCard.tsx`:
+
+1. **Remover `truncate`** da classe do `h3` do nome (linha 68)
+2. **Adicionar `break-words`** para permitir quebra de linha natural em nomes longos
+3. **Remover `min-w-0`** do container pai do nome (linha 64), pois essa classe força o encolhimento do conteúdo no flex
+
+### Detalhes Técnicos
 
 **Arquivo: `src/components/TeamMemberCard.tsx`**
 
-1. Importar `differenceInDays` de `date-fns` e os componentes `Tooltip`, `TooltipTrigger`, `TooltipContent`, `TooltipProvider` de `@/components/ui/tooltip`
-
-2. Calcular os dias desde a ultima nota usando `differenceInDays(new Date(), new Date(member.lastFeedback))`
-
-3. Determinar cor e mensagem com base nas regras:
-   - `feedbackCount === 0` -> cinza (`bg-muted-foreground/40`) + "Sem notas registradas"
-   - `dias <= 7` -> verde (`bg-emerald-500`, usando tom de success) + "Ultima nota ha X dias"
-   - `dias 8-14` -> amarelo (`bg-yellow-500`, tom de warning) + "Ultima nota ha X dias"
-   - `dias > 14` -> vermelho (`bg-destructive`) + "Ultima nota ha X dias"
-
-4. Posicionar o indicador com `position: relative` no Card (ja implicito) e o circulo com `absolute top-4 right-4` dentro do Card
-
-5. Envolver o circulo em um Tooltip para mostrar a mensagem no hover
-
-### Detalhes Tecnicos
-
-O Card ja tem `relative` implicito por ser um `div`. O indicador sera um `span` com classes:
-
+Linha 64 -- container do nome e cargo:
 ```text
-absolute top-4 right-4 h-2 w-2 rounded-full
+// Antes:
+<div className="flex-1 min-w-0">
+
+// Depois:
+<div className="flex-1">
 ```
 
-Mais a classe de cor dinamica. O tooltip usa o componente Shadcn ja existente.
+Linha 68 -- titulo do nome:
+```text
+// Antes:
+<h3 className="font-bold tracking-tight text-lg text-foreground truncate">
 
-Para o caso de `dias === 0`, a mensagem sera "Ultima nota hoje". Para `dias === 1`, "Ultima nota ha 1 dia".
+// Depois:
+<h3 className="font-bold tracking-tight text-lg text-foreground break-words">
+```
 
-**Nenhuma alteracao** em outros arquivos. O campo `lastFeedback` e `feedbackCount` ja estao disponiveis na prop `member`.
+O cargo (role) na linha 76 nao tem `truncate`, mas se beneficia da remocao do `min-w-0` para nao ser comprimido.
+
+### O que NAO muda
+
+- Tamanho do card permanece igual
+- Hover lift e sombra continuam funcionando
+- Indicador de saude (circulo colorido) nao e afetado
+- Layout geral do grid de cards permanece intacto
