@@ -186,6 +186,43 @@ serve(async (req) => {
                 } catch (bgErr) {
                   console.error('Background analysis trigger failed (non-critical):', bgErr);
                 }
+
+                // Trigger classify-note for tags and AI title (non-blocking)
+                try {
+                  const classifyResponse = await fetch(
+                    `${supabaseUrl}/functions/v1/classify-note`,
+                    {
+                      method: 'POST',
+                      headers: {
+                        'Authorization': `Bearer ${supabaseServiceKey}`,
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({ content: transcriptionText }),
+                    }
+                  );
+
+                  if (classifyResponse.ok) {
+                    const classifyData = await classifyResponse.json();
+                    const updates: Record<string, unknown> = {};
+
+                    if (classifyData.tags?.length > 0) {
+                      updates.tags = classifyData.tags;
+                    }
+                    if (classifyData.suggestedTitle) {
+                      updates.title = classifyData.suggestedTitle;
+                    }
+
+                    if (Object.keys(updates).length > 0) {
+                      await supabase
+                        .from('feedbacks')
+                        .update(updates)
+                        .eq('id', feedbackData.id);
+                      console.log('Classification applied:', updates);
+                    }
+                  }
+                } catch (classifyErr) {
+                  console.error('Classification failed (non-critical):', classifyErr);
+                }
               }
             }
           }

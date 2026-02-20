@@ -87,7 +87,7 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onToggleVisibility }: Fe
     <TooltipProvider>
       <div className="space-y-2">
         {feedbacks.map((feedback) => {
-          const displayTitle = feedback.title || "📝 Anotação não classificada";
+          const displayTitle = feedback.title || `Nota de ${new Date(feedback.occurred_at || feedback.created_at).toLocaleDateString('pt-BR')}`;
           const isFallbackTitle = !feedback.title;
           const formattedDate = new Date(feedback.occurred_at || feedback.created_at).toLocaleDateString('pt-BR');
           const isShared = feedback.visibility === 'shared';
