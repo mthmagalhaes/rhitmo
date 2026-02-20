@@ -1,70 +1,103 @@
 
 
-## Correcao: Estado Visual do Campo "Data registrada"
+## Pipeline de Classificacao Automatica de Notas
 
-### Problema
+### Diagnostico
 
-O campo de data exibe borda laranja e mensagem de aviso imediatamente ao abrir o modal, antes de qualquer interacao do usuario. Isso acontece porque as condicoes visuais dependem apenas de `!occurredAt`, que e `true` no estado inicial.
+Tres problemas encontrados:
 
-### Solucao
+1. **upload-meeting NAO chama classify-note**: Apos transcrever o audio e inserir o feedback, a edge function `upload-meeting` dispara apenas `analyze-feedback-background` (para embedding), mas nunca chama `classify-note`. Resultado: transcricoes ficam sem tags e sem titulo AI.
 
-Adicionar um flag `hasAttemptedSubmit` que controla a exibicao do estado de erro.
+2. **Fallback de titulo no front usa texto generico ruim**: Tanto `FeedbackTimeline` quanto `ContextPicker` exibem "Anotacao nao classificada" quando `title` e null, em vez de um formato legivel com data.
 
-**Arquivo: `src/components/NewNoteDialog.tsx`**
+3. **NewNoteDialog ja funciona**: O fluxo manual de nova nota ja chama `classify-note` antes do INSERT e persiste o titulo no campo `title`. Nenhuma correcao necessaria aqui.
 
-1. Adicionar estado `hasAttemptedSubmit` inicializado como `false`
-2. Setar `hasAttemptedSubmit = true` no inicio da funcao `handleSubmit`, antes das validacoes
-3. Incluir `setHasAttemptedSubmit(false)` na funcao `resetForm`
-4. Condicionar a borda laranja e a mensagem de aviso a `hasAttemptedSubmit && !occurredAt`
+### Plano de Correcao
+
+**Arquivo 1: `supabase/functions/upload-meeting/index.ts`**
+
+Apos criar o feedback com sucesso (depois do INSERT na tabela feedbacks, ~linha 147), adicionar chamada ao `classify-note` para enriquecer a nota com tags e titulo AI:
+
+- Fazer fetch para `classify-note` passando o `transcriptionText`
+- Se retornar tags e/ou suggestedTitle, fazer UPDATE no feedback recem-criado
+- Chamada non-blocking (try/catch), similar ao pattern ja usado para `analyze-feedback-background`
+- Usar `supabaseServiceKey` no Authorization header para autenticar
+
+**Arquivo 2: `src/components/FeedbackTimeline.tsx`**
+
+Linha 90 -- trocar o fallback:
+```text
+// Antes:
+const displayTitle = feedback.title || "Anotacao nao classificada";
+
+// Depois:
+const displayTitle = feedback.title || `Nota de ${formattedDate}`;
+```
+
+Remover o emoji fixo do fallback (o emoji ja nao faz sentido no novo formato).
+
+**Arquivo 3: `src/components/ContextPicker.tsx`**
+
+Linha 102 -- trocar o fallback:
+```text
+// Antes:
+{fb.title || 'Anotacao nao classificada'}
+
+// Depois:
+{fb.title || `Nota de ${format(new Date(fb.occurred_at || fb.created_at), 'dd/MM/yyyy', { locale: ptBR })}`}
+```
+
+O `format` e `ptBR` ja estao importados neste arquivo.
 
 ### Detalhes Tecnicos
 
-**Novo estado (junto aos outros useState, ~linha 75):**
+**Chamada classify-note no upload-meeting:**
 
 ```text
-const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
-```
-
-**No resetForm (~linha 87), adicionar:**
-
-```text
-setHasAttemptedSubmit(false);
-```
-
-**No handleSubmit (~linha 187), primeira linha da funcao:**
-
-```text
-setHasAttemptedSubmit(true);
-```
-
-**Borda do botao de data (~linha 282):**
-
-```text
-// Antes:
-!occurredAt && "text-muted-foreground border-orange-300"
-
-// Depois:
-!occurredAt && hasAttemptedSubmit && "text-muted-foreground border-orange-300"
-```
-
-**Mensagem de helper (~linha 298):**
-
-```text
-// Antes:
-{occurredAt 
-  ? "Quando o fato aconteceu" 
-  : "⚠️ Campo obrigatório - selecione quando o fato aconteceu"}
-
-// Depois:
-{occurredAt 
-  ? "Quando o fato aconteceu" 
-  : hasAttemptedSubmit 
-    ? "⚠️ Campo obrigatório - selecione quando o fato aconteceu"
-    : "Selecione quando o fato aconteceu"}
+// Apos o bloco que cria o feedback (~linha 155)
+if (transcriptionText && feedbackId) {
+  try {
+    const classifyResponse = await fetch(
+      `${supabaseUrl}/functions/v1/classify-note`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseServiceKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content: transcriptionText }),
+      }
+    );
+    
+    if (classifyResponse.ok) {
+      const classifyData = await classifyResponse.json();
+      const updates: Record<string, unknown> = {};
+      
+      if (classifyData.tags?.length > 0) {
+        updates.tags = classifyData.tags;
+      }
+      if (classifyData.suggestedTitle) {
+        updates.title = classifyData.suggestedTitle;
+      }
+      
+      if (Object.keys(updates).length > 0) {
+        await supabase
+          .from('feedbacks')
+          .update(updates)
+          .eq('id', feedbackId);
+      }
+    }
+  } catch (classifyErr) {
+    console.error('Classification failed (non-critical):', classifyErr);
+  }
+}
 ```
 
 ### O que NAO muda
 
-- Logica de validacao no submit permanece identica
-- Botao "Salvar" continua desabilitado quando `!occurredAt`
-- Nenhuma alteracao em outros componentes ou no backend
+- Nenhuma nota historica sera reprocessada
+- A logica do NewNoteDialog permanece intacta (ja funciona)
+- A edge function classify-note nao precisa de alteracao
+- Nenhuma migracao de banco necessaria
+- O campo `title` na tabela feedbacks ja e o correto
+
