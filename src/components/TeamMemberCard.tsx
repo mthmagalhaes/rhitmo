@@ -62,9 +62,9 @@ export const TeamMemberCard = ({ member, teamName, onClick, onEdit }: TeamMember
               size="lg"
             />
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="font-bold tracking-tight text-lg text-foreground truncate">{member.name}</h3>
+              <h3 className="font-bold tracking-tight text-lg text-foreground break-words">{member.name}</h3>
               {onEdit && (
                 <Button
                   variant="ghost"
