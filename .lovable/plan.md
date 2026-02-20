@@ -1,46 +1,70 @@
 
 
-## Correção: Truncamento de Nomes nos TeamMemberCards
+## Correcao: Estado Visual do Campo "Data registrada"
 
 ### Problema
 
-A classe `truncate` no `h3` do nome está forçando nomes longos a serem cortados com reticências. A combinação de `min-w-0` no container pai com layout flex contribui para a limitação.
+O campo de data exibe borda laranja e mensagem de aviso imediatamente ao abrir o modal, antes de qualquer interacao do usuario. Isso acontece porque as condicoes visuais dependem apenas de `!occurredAt`, que e `true` no estado inicial.
 
-### Solução
+### Solucao
 
-Uma edição simples no arquivo `src/components/TeamMemberCard.tsx`:
+Adicionar um flag `hasAttemptedSubmit` que controla a exibicao do estado de erro.
 
-1. **Remover `truncate`** da classe do `h3` do nome (linha 68)
-2. **Adicionar `break-words`** para permitir quebra de linha natural em nomes longos
-3. **Remover `min-w-0`** do container pai do nome (linha 64), pois essa classe força o encolhimento do conteúdo no flex
+**Arquivo: `src/components/NewNoteDialog.tsx`**
 
-### Detalhes Técnicos
+1. Adicionar estado `hasAttemptedSubmit` inicializado como `false`
+2. Setar `hasAttemptedSubmit = true` no inicio da funcao `handleSubmit`, antes das validacoes
+3. Incluir `setHasAttemptedSubmit(false)` na funcao `resetForm`
+4. Condicionar a borda laranja e a mensagem de aviso a `hasAttemptedSubmit && !occurredAt`
 
-**Arquivo: `src/components/TeamMemberCard.tsx`**
+### Detalhes Tecnicos
 
-Linha 64 -- container do nome e cargo:
+**Novo estado (junto aos outros useState, ~linha 75):**
+
 ```text
-// Antes:
-<div className="flex-1 min-w-0">
-
-// Depois:
-<div className="flex-1">
+const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 ```
 
-Linha 68 -- titulo do nome:
-```text
-// Antes:
-<h3 className="font-bold tracking-tight text-lg text-foreground truncate">
+**No resetForm (~linha 87), adicionar:**
 
-// Depois:
-<h3 className="font-bold tracking-tight text-lg text-foreground break-words">
+```text
+setHasAttemptedSubmit(false);
 ```
 
-O cargo (role) na linha 76 nao tem `truncate`, mas se beneficia da remocao do `min-w-0` para nao ser comprimido.
+**No handleSubmit (~linha 187), primeira linha da funcao:**
+
+```text
+setHasAttemptedSubmit(true);
+```
+
+**Borda do botao de data (~linha 282):**
+
+```text
+// Antes:
+!occurredAt && "text-muted-foreground border-orange-300"
+
+// Depois:
+!occurredAt && hasAttemptedSubmit && "text-muted-foreground border-orange-300"
+```
+
+**Mensagem de helper (~linha 298):**
+
+```text
+// Antes:
+{occurredAt 
+  ? "Quando o fato aconteceu" 
+  : "⚠️ Campo obrigatório - selecione quando o fato aconteceu"}
+
+// Depois:
+{occurredAt 
+  ? "Quando o fato aconteceu" 
+  : hasAttemptedSubmit 
+    ? "⚠️ Campo obrigatório - selecione quando o fato aconteceu"
+    : "Selecione quando o fato aconteceu"}
+```
 
 ### O que NAO muda
 
-- Tamanho do card permanece igual
-- Hover lift e sombra continuam funcionando
-- Indicador de saude (circulo colorido) nao e afetado
-- Layout geral do grid de cards permanece intacto
+- Logica de validacao no submit permanece identica
+- Botao "Salvar" continua desabilitado quando `!occurredAt`
+- Nenhuma alteracao em outros componentes ou no backend
