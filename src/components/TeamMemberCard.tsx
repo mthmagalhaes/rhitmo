@@ -4,6 +4,8 @@ import { MemberAvatar } from '@/components/MemberAvatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar, MessageSquare, Settings } from 'lucide-react';
+import { differenceInDays } from 'date-fns';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 
 interface TeamMemberCardProps {
   member: TeamMember;
@@ -13,11 +15,44 @@ interface TeamMemberCardProps {
 }
 
 export const TeamMemberCard = ({ member, teamName, onClick, onEdit }: TeamMemberCardProps) => {
+  const daysSince = member.lastFeedback ? differenceInDays(new Date(), new Date(member.lastFeedback)) : null;
+
+  let statusColor: string;
+  let statusMessage: string;
+
+  if (member.feedbackCount === 0 || daysSince === null) {
+    statusColor = 'bg-muted-foreground/40';
+    statusMessage = 'Sem notas registradas';
+  } else if (daysSince === 0) {
+    statusColor = 'bg-emerald-500';
+    statusMessage = 'Última nota hoje';
+  } else if (daysSince === 1) {
+    statusColor = 'bg-emerald-500';
+    statusMessage = 'Última nota há 1 dia';
+  } else if (daysSince <= 7) {
+    statusColor = 'bg-emerald-500';
+    statusMessage = `Última nota há ${daysSince} dias`;
+  } else if (daysSince <= 14) {
+    statusColor = 'bg-yellow-500';
+    statusMessage = `Última nota há ${daysSince} dias`;
+  } else {
+    statusColor = 'bg-destructive';
+    statusMessage = `Última nota há ${daysSince} dias`;
+  }
+
   return (
     <Card 
-      className="group cursor-pointer rounded-3xl border-0 bg-card shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300"
+      className="group relative cursor-pointer rounded-3xl border-0 bg-card shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300"
       onClick={onClick}
     >
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className={`absolute top-4 right-4 h-2 w-2 rounded-full ${statusColor}`} />
+          </TooltipTrigger>
+          <TooltipContent>{statusMessage}</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       <CardHeader className="pb-3">
         <div className="flex items-start gap-4">
           <div className="ring-2 ring-offset-2 ring-primary/10 rounded-full">
