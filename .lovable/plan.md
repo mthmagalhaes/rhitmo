@@ -1,42 +1,38 @@
 
+## Indicador de Saude de Acompanhamento no TeamMemberCard
 
-## Correcao: Nome e Avatar do Liderado na Sidebar
+### Resumo
 
-### Problema
+Adicionar um circulo colorido de 8px no canto superior direito de cada card de membro, indicando ha quantos dias o lider nao registra uma nota. O tooltip mostra a mensagem contextual.
 
-No `AppSidebar.tsx`, o nome e exibido a partir de `user.user_metadata.full_name`, que pode estar vazio ou generico para liderados. O hook `useLinkedMember` ja busca o `name` correto da tabela `team_members`, mas o valor nao e usado no footer da sidebar.
+### Implementacao
 
-### Solucao
+**Arquivo: `src/components/TeamMemberCard.tsx`**
 
-Editar apenas o `AppSidebar.tsx` -- uma mudanca de 2 linhas:
+1. Importar `differenceInDays` de `date-fns` e os componentes `Tooltip`, `TooltipTrigger`, `TooltipContent`, `TooltipProvider` de `@/components/ui/tooltip`
 
-**Arquivo: `src/components/AppSidebar.tsx`**
+2. Calcular os dias desde a ultima nota usando `differenceInDays(new Date(), new Date(member.lastFeedback))`
 
-1. Extrair `linkedMember` do hook `useLinkedMember` (ja importado, so nao desestruturado)
-2. Alterar a variavel `userName` para priorizar `linkedMember?.name` quando disponivel
+3. Determinar cor e mensagem com base nas regras:
+   - `feedbackCount === 0` -> cinza (`bg-muted-foreground/40`) + "Sem notas registradas"
+   - `dias <= 7` -> verde (`bg-emerald-500`, usando tom de success) + "Ultima nota ha X dias"
+   - `dias 8-14` -> amarelo (`bg-yellow-500`, tom de warning) + "Ultima nota ha X dias"
+   - `dias > 14` -> vermelho (`bg-destructive`) + "Ultima nota ha X dias"
 
-```text
-// Antes:
-const { isLinkedMember } = useLinkedMember();
-const userName = user?.user_metadata?.full_name || user?.user_metadata?.name || 'Usuario';
+4. Posicionar o indicador com `position: relative` no Card (ja implicito) e o circulo com `absolute top-4 right-4` dentro do Card
 
-// Depois:
-const { isLinkedMember, linkedMember } = useLinkedMember();
-const userName = (isLinkedMember && linkedMember?.name) 
-  || user?.user_metadata?.full_name 
-  || user?.user_metadata?.name 
-  || 'Usuario';
-```
-
-### O que NAO muda
-
-- Fluxo do lider: quando `isLinkedMember` e `false`, o fallback continua sendo `user_metadata`
-- Nenhuma query nova -- o `useLinkedMember` ja faz o SELECT necessario
-- Nenhuma alteracao no backend ou em outros componentes
-- O `MemberAvatar` ja recebe `memberName` como prop, entao as iniciais serao geradas corretamente a partir do nome real
+5. Envolver o circulo em um Tooltip para mostrar a mensagem no hover
 
 ### Detalhes Tecnicos
 
-- Hook `useLinkedMember` ja retorna `linkedMember.name` via query `team_members.select('id, name, email, role, skills_data').eq('linked_user_id', user.id)`
-- A unica edicao e no arquivo `src/components/AppSidebar.tsx`, linhas ~48 e ~70
+O Card ja tem `relative` implicito por ser um `div`. O indicador sera um `span` com classes:
 
+```text
+absolute top-4 right-4 h-2 w-2 rounded-full
+```
+
+Mais a classe de cor dinamica. O tooltip usa o componente Shadcn ja existente.
+
+Para o caso de `dias === 0`, a mensagem sera "Ultima nota hoje". Para `dias === 1`, "Ultima nota ha 1 dia".
+
+**Nenhuma alteracao** em outros arquivos. O campo `lastFeedback` e `feedbackCount` ja estao disponiveis na prop `member`.
