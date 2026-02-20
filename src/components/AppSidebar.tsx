@@ -46,7 +46,7 @@ export function AppSidebar() {
   const { open } = useSidebar();
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdmin();
-  const { isLinkedMember } = useLinkedMember();
+  const { isLinkedMember, linkedMember } = useLinkedMember();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -72,7 +72,8 @@ export function AppSidebar() {
     navigate('/auth', { replace: true });
   };
 
-  const userName = user?.user_metadata?.full_name 
+  const userName = (isLinkedMember && linkedMember?.name) 
+    || user?.user_metadata?.full_name 
     || user?.user_metadata?.name 
     || 'Usuário';
 
