@@ -82,6 +82,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
   const [isDragging, setIsDragging] = useState(false);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [isShared, setIsShared] = useState(false);
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<ReturnType<typeof useEditor> | null>(null);
   const { toast } = useToast();
@@ -96,6 +97,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
     setIsDragging(false);
     setIsProcessingFile(false);
     setIsShared(false);
+    setHasAttemptedSubmit(false);
     
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -220,6 +222,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
   };
 
   const handleSubmit = async () => {
+    setHasAttemptedSubmit(true);
     if (!content.trim()) {
       toast({
         title: "Campo obrigatório",
@@ -415,7 +418,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
                   variant="outline"
                   className={cn(
                     "w-full justify-start text-left font-normal",
-                    !occurredAt && "text-muted-foreground border-orange-300"
+                    !occurredAt && hasAttemptedSubmit && "text-muted-foreground border-orange-300"
                   )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
@@ -438,7 +441,9 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
             <p className="text-xs text-muted-foreground">
               {occurredAt 
                 ? "Quando o fato aconteceu" 
-                : "⚠️ Campo obrigatório - selecione quando o fato aconteceu"}
+                : hasAttemptedSubmit 
+                  ? "⚠️ Campo obrigatório - selecione quando o fato aconteceu"
+                  : "Selecione quando o fato aconteceu"}
             </p>
           </div>
           
