@@ -11,9 +11,11 @@ interface SetupChecklistProps {
   hasFeedbacks: boolean;
   hasAIAnalysis: boolean;
   hasMentorChat: boolean;
+  hasLeaderSync?: boolean;
   onAddMember: () => void;
   onAddNote: () => void;
   onOpenMentor: () => void;
+  onOpenLeaderSync?: () => void;
 }
 
 export const SetupChecklist = ({
@@ -21,9 +23,11 @@ export const SetupChecklist = ({
   hasFeedbacks,
   hasAIAnalysis,
   hasMentorChat,
+  hasLeaderSync = false,
   onAddMember,
   onAddNote,
   onOpenMentor,
+  onOpenLeaderSync,
 }: SetupChecklistProps) => {
   const steps = [
     { 
@@ -31,6 +35,13 @@ export const SetupChecklist = ({
       done: hasMembers, 
       action: onAddMember,
       actionLabel: 'Adicionar →'
+    },
+    { 
+      label: 'Configure seu perfil de liderança', 
+      done: hasLeaderSync, 
+      action: onOpenLeaderSync,
+      actionLabel: '3 min 🧠',
+      disabled: false
     },
     { 
       label: 'Crie uma nota rápida de teste', 

@@ -24,6 +24,8 @@ export interface Workspace {
   plan_tier: 'pulse' | 'flow' | 'maestro';
   created_at: string;
   updated_at: string;
+  leader_sync_data?: Record<string, unknown> | null;
+  leader_sync_completed_at?: string | null;
 }
 
 export interface Team {
