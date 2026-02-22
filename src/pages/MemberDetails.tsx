@@ -156,7 +156,7 @@ const MemberDetails = () => {
       if (!user) return null;
       const { data, error } = await supabase
         .from('workspaces')
-        .select('id')
+        .select('id, leader_sync_data')
         .eq('owner_id', user.id)
         .maybeSingle();
       if (error) throw error;
@@ -649,7 +649,7 @@ const MemberDetails = () => {
         })} 
       />
 
-      <MentorChat open={chatOpen} onOpenChange={setChatOpen} memberName={member.name} memberId={member.id} memberRole={member.role} feedbacks={feedbacks} workStyleData={member.work_style_data} keyObjectives={member.key_objectives} />
+      <MentorChat open={chatOpen} onOpenChange={setChatOpen} memberName={member.name} memberId={member.id} memberRole={member.role} feedbacks={feedbacks} workStyleData={member.work_style_data} keyObjectives={member.key_objectives} leaderSyncData={workspace?.leader_sync_data} />
 
       <InviteMemberDialog
         open={inviteDialogOpen}

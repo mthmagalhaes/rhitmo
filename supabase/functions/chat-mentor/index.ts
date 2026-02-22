@@ -107,7 +107,7 @@ const compressContext = (feedbacks: any[]): string => {
   return contextLines || 'Nenhum histórico disponível ainda.';
 };
 
-// Helper: Formatar perfil Rhitmo Sync
+// Helper: Formatar perfil Rhitmo Sync do liderado
 const formatWorkStyle = (data: any): string => {
   if (!data) return 'Perfil Rhitmo Sync: Não preenchido ainda.';
   
@@ -127,15 +127,54 @@ const formatWorkStyle = (data: any): string => {
 - Motivação: ${styleLabels.motivation[data.motivation] || data.motivation}`;
 };
 
+// Helper: Formatar perfil de liderança do gestor
+const formatLeaderProfile = (data: any): string => {
+  if (!data) return 'Perfil de liderança do gestor: não preenchido ainda.';
+
+  const tenureLabels: any = {
+    less_than_1: 'Menos de 1 ano',
+    '1_to_3': '1 a 3 anos',
+    '3_to_5': '3 a 5 anos',
+    more_than_5: 'Mais de 5 anos'
+  };
+  const sizeLabels: any = {
+    '1_to_3': '1 a 3 pessoas',
+    '4_to_7': '4 a 7 pessoas',
+    '8_to_15': '8 a 15 pessoas',
+    more_than_15: 'Mais de 15 pessoas'
+  };
+
+  return `## PERFIL DE LIDERANÇA DO GESTOR
+
+- Tempo de liderança: ${tenureLabels[data.leadership_tenure] || data.leadership_tenure || 'Não informado'}
+- Tamanho do time: ${sizeLabels[data.team_size] || data.team_size || 'Não informado'}
+- Maior desafio atual: ${data.biggest_challenge || 'Não informado'}
+- O que o energiza: ${(data.energizers || []).join(', ') || 'Não informado'}
+- O que o drena: ${(data.drainers || []).join(', ') || 'Não informado'}
+- Estilo de acompanhamento: ${data.monitoring_style || 'Não informado'}
+- Como dá feedback difícil: ${data.difficult_feedback_style || 'Não informado'}
+- Reação a baixa performance: ${data.low_performance_reaction || 'Não informado'}
+- Tipo de reconhecimento natural: ${data.recognition_type || 'Não informado'}
+- Feedback que recebe sobre si: ${data.feedback_received || 'Não informado'}
+- Objetivo de desenvolvimento: ${data.development_goal || 'Não informado'}
+- Legado desejado: ${data.desired_legacy || 'Não informado'}
+
+### COMO USAR ESTE PERFIL
+1. Calibre o tom das sugestões ao estilo natural do líder
+2. Detecte contradições entre intenção e comportamento (ex: quer dar autonomia mas monitoring_style = close)
+3. Se difficult_feedback_style = avoid, encoraje proativamente conversas difíceis
+4. Personalize sugestões de mensagens ao estilo do líder`;
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { question, feedbacks, memberName, memberRole, managerName, workStyleData, keyObjectives, contextMode } = await req.json();
+    const { question, feedbacks, memberName, memberRole, managerName, workStyleData, keyObjectives, contextMode, leaderSyncData } = await req.json();
 
-    console.log('Chat mentor 2.0 request:', { memberName, memberRole, managerName, feedbacksCount: feedbacks?.length, hasWorkStyle: !!workStyleData, contextMode: contextMode || 'auto' });
+    console.log('Chat mentor 2.0 request:', { memberName, memberRole, managerName, feedbacksCount: feedbacks?.length, hasWorkStyle: !!workStyleData, hasLeaderSync: !!leaderSyncData, contextMode: contextMode || 'auto' });
     
     // Extrair primeiro nome para flexibilidade de apelidos
     const firstName = memberName ? memberName.split(' ')[0] : '';
@@ -418,6 +457,8 @@ Se a transcrição não tiver identificação clara de quem falou:
 - NUNCA afirme com certeza se não houver indicação clara de autoria
 
 ${formatWorkStyle(workStyleData)}
+
+${formatLeaderProfile(leaderSyncData)}
 
 ## IMPORTANTE: HISTÓRICO TEMPORAL
 
