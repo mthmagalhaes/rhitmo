@@ -58,6 +58,7 @@ interface MentorChatProps {
   feedbacks: any[];
   workStyleData?: any;
   keyObjectives?: string | null;
+  leaderSyncData?: any;
 }
 
 const quickSuggestions = [
@@ -74,7 +75,8 @@ export const MentorChat = ({
   memberRole, 
   feedbacks, 
   workStyleData, 
-  keyObjectives 
+  keyObjectives,
+  leaderSyncData 
 }: MentorChatProps) => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -367,7 +369,8 @@ export const MentorChat = ({
             managerName: managerName,
             workStyleData: workStyleData,
             keyObjectives: keyObjectives,
-            contextMode: contextMode
+            contextMode: contextMode,
+            leaderSyncData: leaderSyncData
           }),
           signal: controller.signal
         }
