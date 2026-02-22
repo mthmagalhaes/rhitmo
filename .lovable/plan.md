@@ -1,100 +1,94 @@
 
 
-## Rhitmo Sync do Lider -- Wizard de Autoconhecimento para Gestores
+## Integrar leader_sync_data ao Mentor Chat
 
 ### Resumo
 
-Implementar um wizard de 4 etapas para o lider configurar seu perfil de lideranca, reutilizando o visual do Rhitmo Sync do liderado. O wizard sera acessivel via Configuracoes (ProfileSettingsDialog) e integrado ao SetupChecklist. Inclui lembrete automatico de 6 meses para revisao.
-
-### Arquivos Novos
-
-**1. `src/components/LeaderSyncWizard.tsx`**
-
-Componente principal do wizard com 4 steps, reutilizando os subcomponentes visuais do RhitmoSync (SelectableCard, MultiSelectChips, StepIndicator, Progress bar). Conteudo adaptado para lideranca:
-
-- Step 1 "Seu Cracha de Lider" -- tempo de lideranca, tamanho do time, maior desafio (texto livre)
-- Step 2 "Seu Ritmo como Gestor" -- energizadores (multi-select), drenadores (multi-select), estilo de acompanhamento (single select)
-- Step 3 "Seu Jeito de Dar Feedback" -- como da feedback dificil, reacao a baixa performance, tipo de reconhecimento natural
-- Step 4 "Quem Voce Quer Ser" -- feedback recebido (texto), meta de desenvolvimento (texto), legado desejado (texto)
-
-Ao submeter, faz UPDATE em `workspaces` setando `leader_sync_data` (JSONB) e `leader_sync_completed_at` (timestamp).
-
-**2. `src/components/LeaderSyncReminder.tsx`**
-
-Banner sutil que aparece no dashboard quando `leader_sync_completed_at` tem mais de 180 dias. Botao "Atualizar agora" abre o wizard. Botao "Agora nao" salva dismiss em localStorage por 30 dias.
+Passar o perfil de lideranca do gestor (`leader_sync_data`) como contexto adicional para a Edge Function `chat-mentor`, permitindo que o Mentor calibre sugestoes pelo estilo do proprio lider.
 
 ### Arquivos Modificados
 
-**3. Migration SQL -- novas colunas em `workspaces`**
+**1. `src/pages/MemberDetails.tsx`**
+
+Na query de workspace (~linha 159), adicionar `leader_sync_data` ao select:
 
 ```text
-ALTER TABLE public.workspaces
-  ADD COLUMN IF NOT EXISTS leader_sync_data jsonb DEFAULT NULL,
-  ADD COLUMN IF NOT EXISTS leader_sync_completed_at timestamptz DEFAULT NULL;
+// Antes:
+.select('id')
+
+// Depois:
+.select('id, leader_sync_data')
 ```
 
-**4. `src/components/ProfileSettingsDialog.tsx`**
+Na renderizacao do MentorChat (~linha 652), passar a nova prop:
 
-Adicionar botao "Configurar Perfil de Lideranca" (ou "Atualizar Perfil") que abre o LeaderSyncWizard em um Dialog. Aparece na secao de Manutencao, abaixo do botao de sincronizacao existente.
+```text
+<MentorChat ... leaderSyncData={workspace?.leader_sync_data} />
+```
 
-**5. `src/components/SetupChecklist.tsx`**
+**2. `src/components/MentorChat.tsx`**
 
-- Adicionar nova prop `hasLeaderSync: boolean` e `onOpenLeaderSync: () => void`
-- Inserir novo passo apos "Cadastre seu primeiro liderado" e antes de "Crie uma nota rapida":
-  - Label: "Configure seu perfil de lideranca"
-  - Descricao visual no actionLabel: "3 min"
-  - `done: hasLeaderSync`
-  - `action: onOpenLeaderSync`
+- Adicionar `leaderSyncData?: any` na interface `MentorChatProps`
+- Na chamada fetch ao `chat-mentor`, incluir `leaderSyncData` no body JSON
 
-**6. `src/pages/Index.tsx`**
+**3. `supabase/functions/chat-mentor/index.ts`**
 
-- Na query de `onboardingStatus`, adicionar check se `workspace.leader_sync_data` nao e null
-- Passar `hasLeaderSync` e `onOpenLeaderSync` para o SetupChecklist
-- Adicionar estado para controlar abertura do LeaderSyncWizard
-- Renderizar `LeaderSyncReminder` acima do SetupChecklist (apenas se leader_sync ja foi feito ha mais de 180 dias)
-
-**7. `src/types/team.ts`**
-
-Atualizar interface `Workspace` para incluir `leader_sync_data` e `leader_sync_completed_at` opcionais.
+- Extrair `leaderSyncData` do request body (junto com os outros campos, ~linha 136)
+- Criar helper `formatLeaderProfile(data)` que retorna uma string formatada com todos os campos do perfil, ou uma linha discreta se null
+- Injetar a secao formatada no system prompt, entre o perfil do liderado e o historico de notas
 
 ### Detalhes Tecnicos
 
-**Estrutura do `leader_sync_data` (JSONB):**
+**Helper `formatLeaderProfile`:**
 
 ```text
-{
-  "leadership_tenure": "1_to_3",
-  "team_size": "4_to_7",
-  "biggest_challenge": "texto livre...",
-  "energizers": ["develop_people", "build_culture"],
-  "drainers": ["conflicts", "too_many_meetings"],
-  "monitoring_style": "autonomy_check",
-  "difficult_feedback_style": "direct",
-  "low_performance_reaction": "next_1on1",
-  "recognition_type": "public_praise",
-  "feedback_received": "texto livre...",
-  "development_goal": "texto livre...",
-  "desired_legacy": "texto livre...",
-  "version": 1,
-  "completed_at": "2026-02-22T..."
-}
+const formatLeaderProfile = (data: any): string => {
+  if (!data) return 'Perfil de lideranca do gestor: nao preenchido ainda.';
+
+  const tenureLabels: any = {
+    less_than_1: 'Menos de 1 ano',
+    '1_to_3': '1 a 3 anos',
+    '3_to_5': '3 a 5 anos',
+    more_than_5: 'Mais de 5 anos'
+  };
+  const sizeLabels: any = {
+    '1_to_3': '1 a 3 pessoas',
+    '4_to_7': '4 a 7 pessoas',
+    '8_to_15': '8 a 15 pessoas',
+    more_than_15: 'Mais de 15 pessoas'
+  };
+
+  return `## PERFIL DE LIDERANCA DO GESTOR
+
+- Tempo de lideranca: ${tenureLabels[data.leadership_tenure] || data.leadership_tenure}
+- Tamanho do time: ${sizeLabels[data.team_size] || data.team_size}
+- Maior desafio atual: ${data.biggest_challenge || 'Nao informado'}
+- O que o energiza: ${(data.energizers || []).join(', ') || 'Nao informado'}
+- O que o drena: ${(data.drainers || []).join(', ') || 'Nao informado'}
+- Estilo de acompanhamento: ${data.monitoring_style || 'Nao informado'}
+- Como da feedback dificil: ${data.difficult_feedback_style || 'Nao informado'}
+- Reacao a baixa performance: ${data.low_performance_reaction || 'Nao informado'}
+- Tipo de reconhecimento natural: ${data.recognition_type || 'Nao informado'}
+- Feedback que recebe sobre si: ${data.feedback_received || 'Nao informado'}
+- Objetivo de desenvolvimento: ${data.development_goal || 'Nao informado'}
+- Legado desejado: ${data.desired_legacy || 'Nao informado'}
+
+### COMO USAR ESTE PERFIL
+1. Calibre o tom das sugestoes ao estilo natural do lider
+2. Detecte contradicoes entre intencao e comportamento (ex: quer dar autonomia mas monitoring_style = close)
+3. Se difficult_feedback_style = avoid, encoraje proativamente conversas dificeis
+4. Personalize sugestoes de mensagens ao estilo do lider`;
+};
 ```
 
-**Logica do Lembrete de 6 meses:**
+**Injecao no system prompt:**
 
-- Calcula `daysSinceSync = differenceInDays(now, leader_sync_completed_at)`
-- Se `daysSinceSync >= 180`, verifica localStorage key `leader_sync_dismiss_until`
-- Se dismiss expirou ou nao existe, mostra banner
-- "Agora nao" seta `leader_sync_dismiss_until = addDays(now, 30)` em localStorage
-
-**Fluxo de re-preenchimento:**
-
-Diferente do Sync do liderado (que bloqueia re-submissao), o lider pode atualizar seu perfil a qualquer momento. O UPDATE simplesmente sobrescreve `leader_sync_data` e atualiza `leader_sync_completed_at`.
+A secao sera inserida logo apos `formatWorkStyle(workStyleData)` e antes de `## HISTORICO DE NOTAS`, assim o Mentor tem visao completa de ambos os perfis (liderado + lider).
 
 ### O que NAO muda
 
-- Rhitmo Sync do liderado (`/sync/:memberId`) permanece intacto
-- Nenhuma tabela existente e alterada alem da adicao das 2 colunas em `workspaces`
-- Layout e comportamento existente do SetupChecklist (apenas adiciona 1 passo)
-- Sidebar nao ganha novo link -- o acesso e via Configuracoes (Settings icon) que ja existe
-
+- Camada 1 (roteador semantico)
+- Camada 2 (compressao de feedbacks)
+- Fluxo contextMode manual/auto
+- Nenhum componente de frontend alem da passagem da prop
+- Constituicao Rhitmo (`_shared/rhitmo-constitution.ts`)
