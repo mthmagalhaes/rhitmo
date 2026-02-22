@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Loader2, RefreshCw, Compass } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -14,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { BatchSyncDialog } from '@/components/BatchSyncDialog';
+import { LeaderSyncWizard } from '@/components/LeaderSyncWizard';
 
 interface ProfileSettingsDialogProps {
   open: boolean;
@@ -27,6 +29,21 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
   const [role, setRole] = useState('');
   const [loading, setLoading] = useState(false);
   const [batchSyncOpen, setBatchSyncOpen] = useState(false);
+  const [leaderSyncOpen, setLeaderSyncOpen] = useState(false);
+
+  const { data: workspace } = useQuery({
+    queryKey: ['workspace', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data } = await supabase
+        .from('workspaces')
+        .select('*')
+        .eq('owner_id', user.id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!user && open,
+  });
 
   useEffect(() => {
     if (user) {
@@ -90,6 +107,17 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
             <Label className="text-muted-foreground text-xs uppercase tracking-wide mb-2 block">
               Manutenção
             </Label>
+            {workspace && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setLeaderSyncOpen(true)}
+                className="w-full justify-start gap-2 mb-2"
+              >
+                <Compass className="h-4 w-4" />
+                {(workspace as Record<string, unknown>).leader_sync_data ? 'Atualizar Perfil de Liderança' : 'Configurar Perfil de Liderança'}
+              </Button>
+            )}
             <Button
               type="button"
               variant="outline"
@@ -120,6 +148,14 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
         open={batchSyncOpen} 
         onOpenChange={setBatchSyncOpen} 
       />
+      {workspace && (
+        <LeaderSyncWizard
+          open={leaderSyncOpen}
+          onOpenChange={setLeaderSyncOpen}
+          workspaceId={workspace.id}
+          existingData={(workspace as Record<string, unknown>).leader_sync_data as Record<string, unknown> | null}
+        />
+      )}
     </Dialog>
   );
 }

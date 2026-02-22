@@ -526,6 +526,8 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean
+          leader_sync_completed_at: string | null
+          leader_sync_data: Json | null
           name: string
           owner_id: string
           plan_tier: string
@@ -535,6 +537,8 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          leader_sync_completed_at?: string | null
+          leader_sync_data?: Json | null
           name: string
           owner_id: string
           plan_tier?: string
@@ -544,6 +548,8 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          leader_sync_completed_at?: string | null
+          leader_sync_data?: Json | null
           name?: string
           owner_id?: string
           plan_tier?: string

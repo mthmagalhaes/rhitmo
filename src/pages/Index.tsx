@@ -11,6 +11,8 @@ import { EditTeamDialog } from '@/components/EditTeamDialog';
 import { DeleteTeamDialog } from '@/components/DeleteTeamDialog';
 import { TeamTabs } from '@/components/TeamTabs';
 import { SetupChecklist } from '@/components/SetupChecklist';
+import { LeaderSyncWizard } from '@/components/LeaderSyncWizard';
+import { LeaderSyncReminder } from '@/components/LeaderSyncReminder';
 import { useAuth } from '@/hooks/useAuth';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { useLinkedMember } from '@/hooks/useLinkedMember';
@@ -64,6 +66,7 @@ const Index = () => {
   const [editMemberOpen, setEditMemberOpen] = useState(false);
   const [editTeamOpen, setEditTeamOpen] = useState(false);
   const [deleteTeamOpen, setDeleteTeamOpen] = useState(false);
+  const [leaderSyncOpen, setLeaderSyncOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [activeTeamId, setActiveTeamId] = useState<string | null>(null);
   const { toast } = useToast();
@@ -169,11 +172,13 @@ const Index = () => {
   const { data: onboardingStatus } = useQuery({
     queryKey: ['onboarding-status', workspace?.id, user?.id],
     queryFn: async () => {
-      if (!workspace || !user) return { hasMembers: false, hasFeedbacks: false, hasAIAnalysis: false, hasMentorChat: false };
+      if (!workspace || !user) return { hasMembers: false, hasFeedbacks: false, hasAIAnalysis: false, hasMentorChat: false, hasLeaderSync: false };
+      
+      const hasLeaderSync = !!(workspace as unknown as Record<string, unknown>).leader_sync_data;
       
       const memberIds = teamMembers.map(m => m.id);
       if (memberIds.length === 0) {
-        return { hasMembers: false, hasFeedbacks: false, hasAIAnalysis: false, hasMentorChat: false };
+        return { hasMembers: false, hasFeedbacks: false, hasAIAnalysis: false, hasMentorChat: false, hasLeaderSync };
       }
 
       // Contar feedbacks
@@ -201,6 +206,7 @@ const Index = () => {
         hasFeedbacks: (feedbackCount || 0) > 0,
         hasAIAnalysis: (aiCount || 0) > 0,
         hasMentorChat: (mentorCount || 0) > 0,
+        hasLeaderSync,
       };
     },
     enabled: !!workspace && !!user && !loading,
@@ -210,7 +216,8 @@ const Index = () => {
   const isSetupComplete = onboardingStatus?.hasMembers && 
     onboardingStatus?.hasFeedbacks && 
     onboardingStatus?.hasAIAnalysis && 
-    onboardingStatus?.hasMentorChat;
+    onboardingStatus?.hasMentorChat &&
+    onboardingStatus?.hasLeaderSync;
 
   const handleSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ['workspace'] });
@@ -344,6 +351,14 @@ const Index = () => {
           onNewTeam={() => setNewTeamOpen(true)}
         />
 
+        {/* Leader Sync Reminder */}
+        {workspace && onboardingStatus?.hasLeaderSync && (
+          <LeaderSyncReminder
+            leaderSyncCompletedAt={(workspace as unknown as Record<string, unknown>).leader_sync_completed_at as string | null}
+            onUpdate={() => setLeaderSyncOpen(true)}
+          />
+        )}
+
         {/* Setup Checklist - aparece enquanto setup não está completo */}
         {onboardingStatus && !isSetupComplete && (
           <SetupChecklist
@@ -351,9 +366,11 @@ const Index = () => {
             hasFeedbacks={onboardingStatus.hasFeedbacks}
             hasAIAnalysis={onboardingStatus.hasAIAnalysis}
             hasMentorChat={onboardingStatus.hasMentorChat}
+            hasLeaderSync={onboardingStatus.hasLeaderSync}
             onAddMember={() => setMemberDialogOpen(true)}
             onAddNote={() => setDialogOpen(true)}
             onOpenMentor={handleOpenMentor}
+            onOpenLeaderSync={() => setLeaderSyncOpen(true)}
           />
         )}
 
@@ -511,6 +528,14 @@ const Index = () => {
           handleSuccess();
         }}
       />
+      {workspace && (
+        <LeaderSyncWizard
+          open={leaderSyncOpen}
+          onOpenChange={setLeaderSyncOpen}
+          workspaceId={workspace.id}
+          existingData={(workspace as unknown as Record<string, unknown>).leader_sync_data as Record<string, unknown> | null}
+        />
+      )}
     </div>
   );
 };
