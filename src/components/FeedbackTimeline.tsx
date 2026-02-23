@@ -33,6 +33,7 @@ import { cn } from '@/lib/utils';
 import { getTagEmoji, getTagColor } from '@/lib/tagConfig';
 import { cleanTranscriptText, containsHtml } from '@/lib/textSanitizer';
 import DOMPurify from 'dompurify';
+import { BiasDetectionPanel } from '@/components/BiasDetectionPanel';
 
 interface Feedback {
   id: string;
@@ -45,6 +46,7 @@ interface Feedback {
   visibility?: string | null;
   source?: string | null;
   meeting_transcript_id?: string | null;
+  bias_alert?: string | null;
 }
 
 interface FeedbackTimelineProps {
@@ -267,6 +269,11 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onToggleVisibility }: Fe
                   
                   {/* Conteúdo Sanitizado */}
                   {renderSanitizedContent(feedback.content)}
+                  
+                  {/* Bias Detection Panel - only for notes with 50+ words */}
+                  {feedback.content && feedback.content.trim().split(/\s+/).filter(w => w.length > 0).length >= 50 && (
+                    <BiasDetectionPanel biasAlert={feedback.bias_alert ?? null} />
+                  )}
                 </div>
               </CollapsibleContent>
             </Collapsible>
