@@ -524,6 +524,7 @@ export type Database = {
       workspaces: {
         Row: {
           created_at: string
+          hr_admin_ids: string[] | null
           id: string
           is_active: boolean
           leader_sync_completed_at: string | null
@@ -535,6 +536,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          hr_admin_ids?: string[] | null
           id?: string
           is_active?: boolean
           leader_sync_completed_at?: string | null
@@ -546,6 +548,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          hr_admin_ids?: string[] | null
           id?: string
           is_active?: boolean
           leader_sync_completed_at?: string | null
@@ -577,6 +580,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_hr_dashboard_metrics: {
+        Args: { _workspace_id: string }
+        Returns: Json
+      }
       get_invite_details: {
         Args: { p_invite_token: string }
         Returns: {
@@ -596,9 +603,17 @@ export type Database = {
         }[]
       }
       is_admin: { Args: never; Returns: boolean }
+      is_hr_admin_of_workspace: {
+        Args: { _workspace_id: string }
+        Returns: boolean
+      }
       is_workspace_owner: {
         Args: { _member_id: string; _user_id: string }
         Returns: boolean
+      }
+      manage_hr_admin: {
+        Args: { _action: string; _user_id: string; _workspace_id: string }
+        Returns: undefined
       }
       match_feedbacks: {
         Args: {
