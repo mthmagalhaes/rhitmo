@@ -20,6 +20,8 @@ import Admin from "./pages/Admin";
 import HelpCenter from "./pages/HelpCenter";
 import { AdminGuard } from "./components/admin/AdminGuard";
 import { AdminLayout } from "./components/admin/AdminLayout";
+import { HRAdminGuard } from "./components/HRAdminGuard";
+import HRDashboard from "./pages/HRDashboard";
 
 const queryClient = new QueryClient();
 
@@ -82,6 +84,13 @@ const App = () => (
                 </AdminGuard>
               } 
             />
+            
+            {/* Rota HR Admin */}
+            <Route path="/hr" element={
+              <HRAdminGuard>
+                <HRDashboard />
+              </HRAdminGuard>
+            } />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

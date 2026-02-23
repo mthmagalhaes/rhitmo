@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { email, name, assigned_plan } = await req.json();
+    const { email, name, assigned_plan, role, workspace_id } = await req.json();
     
     if (!email) {
       throw new Error('Email é obrigatório');
@@ -53,13 +53,18 @@ serve(async (req) => {
 
     console.log('✅ Admin verified, sending invite...');
 
+    const isHrAdmin = role === 'hr_admin' && workspace_id;
+    const redirectUrl = isHrAdmin 
+      ? 'https://rhitmo.lovable.app/hr' 
+      : 'https://rhitmo.lovable.app/dashboard';
+
     // Convidar usuário via Admin API com plano atribuído
     const { data: invitation, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
       data: { 
         full_name: name || null,
         assigned_plan: plan 
       },
-      redirectTo: 'https://rhitmo.lovable.app/dashboard'
+      redirectTo: redirectUrl
     });
 
     if (inviteError) {
@@ -68,6 +73,20 @@ serve(async (req) => {
     }
 
     console.log('✅ Invite sent successfully with plan:', plan);
+
+    // Se HR Admin, adicionar ao workspace
+    if (isHrAdmin && invitation?.user?.id) {
+      const { error: hrError } = await supabaseAdmin.rpc('manage_hr_admin', {
+        _workspace_id: workspace_id,
+        _user_id: invitation.user.id,
+        _action: 'add',
+      });
+      if (hrError) {
+        console.warn('⚠️ Could not add HR admin to workspace:', hrError);
+      } else {
+        console.log('✅ HR Admin added to workspace:', workspace_id);
+      }
+    }
 
     // Atualizar status na waitlist
     const { error: updateError } = await supabaseAdmin
