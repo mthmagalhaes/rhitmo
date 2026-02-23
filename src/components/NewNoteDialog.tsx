@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { PenSquare, Loader2, Upload, CalendarIcon, X, Eye } from 'lucide-react';
+import { PenSquare, Loader2, Upload, CalendarIcon, X, Eye, Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VoiceInput } from './VoiceInput';
 import { extractTextFromFile, isFileSupported } from '@/lib/fileParser';
@@ -20,12 +20,13 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { getTagEmoji, getTagColor, VALID_TAGS } from '@/lib/tagConfig';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 
 // Smart Date Extraction - analisa as primeiras 20 linhas do texto
 const extractDateFromText = (text: string): Date | null => {
   const lines = text.split('\n').slice(0, 20).join('\n');
   
-  // Padrão Tactiq: "Meeting started: 15/01/2025" ou "Meeting started 15-01-2025"
   const tactiqMatch = lines.match(/Meeting\s+started:?\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/i);
   if (tactiqMatch) {
     const [, day, month, year] = tactiqMatch;
@@ -34,7 +35,6 @@ const extractDateFromText = (text: string): Date | null => {
     if (!isNaN(date.getTime()) && date <= new Date()) return date;
   }
   
-  // ISO Format: 2025-01-15
   const isoMatch = lines.match(/(\d{4})-(\d{2})-(\d{2})/);
   if (isoMatch) {
     const [, year, month, day] = isoMatch;
@@ -42,7 +42,6 @@ const extractDateFromText = (text: string): Date | null => {
     if (!isNaN(date.getTime()) && date <= new Date()) return date;
   }
   
-  // BR Format: 15/01/2025
   const brMatch = lines.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
   if (brMatch) {
     const [, day, month, year] = brMatch;
@@ -50,7 +49,6 @@ const extractDateFromText = (text: string): Date | null => {
     if (!isNaN(date.getTime()) && date <= new Date()) return date;
   }
   
-  // BR Format curto: 15/01/25
   const brShortMatch = lines.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2})(?!\d)/);
   if (brShortMatch) {
     const [, day, month, year] = brShortMatch;
@@ -74,6 +72,8 @@ interface NewNoteDialogProps {
 export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName, onSuccess, workspaceId }: NewNoteDialogProps) => {
   const [content, setContent] = useState('');
   const [memberId, setMemberId] = useState(selectedMemberId || '');
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+  const [sharedMemberIds, setSharedMemberIds] = useState<string[]>([]);
   const [occurredAt, setOccurredAt] = useState<Date | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
@@ -83,14 +83,18 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [isShared, setIsShared] = useState(false);
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+  const [memberPopoverOpen, setMemberPopoverOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<ReturnType<typeof useEditor> | null>(null);
   const { toast } = useToast();
 
-  // Função centralizada para limpar o formulário
+  const isMultiMode = !selectedMemberId;
+
   const resetForm = () => {
     setContent('');
     setMemberId('');
+    setSelectedMemberIds([]);
+    setSharedMemberIds([]);
     setOccurredAt(undefined);
     setTags([]);
     setTitle('');
@@ -98,6 +102,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
     setIsProcessingFile(false);
     setIsShared(false);
     setHasAttemptedSubmit(false);
+    setMemberPopoverOpen(false);
     
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -108,7 +113,6 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
     }
   };
 
-  // Wrapper para limpar estado ao fechar o modal
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
       resetForm();
@@ -116,9 +120,8 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
     onOpenChange(newOpen);
   };
 
-  // Função para tentar extrair data do texto
   const tryExtractDate = (text: string) => {
-    if (occurredAt) return; // Não sobrescrever se já tiver data
+    if (occurredAt) return;
     
     const detectedDate = extractDateFromText(text);
     if (detectedDate) {
@@ -130,12 +133,10 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
     }
   };
 
-  // Remover tag
   const removeTag = (tagToRemove: string) => {
     setTags(prev => prev.filter(t => t !== tagToRemove));
   };
 
-  // Carregar membros quando o dialog abre - FILTRO por workspace
   React.useEffect(() => {
     if (open && !selectedMemberId && workspaceId) {
       loadTeamMembers();
@@ -154,6 +155,23 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
     if (data) {
       setTeamMembers(data);
     }
+  };
+
+  const toggleMember = (id: string) => {
+    setSelectedMemberIds(prev => 
+      prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]
+    );
+    // Also remove from shared if unchecked
+    setSharedMemberIds(prev => prev.filter(m => m !== id || selectedMemberIds.includes(id)));
+  };
+
+  const removeMember = (id: string) => {
+    setSelectedMemberIds(prev => prev.filter(m => m !== id));
+    setSharedMemberIds(prev => prev.filter(m => m !== id));
+  };
+
+  const getMemberName = (id: string) => {
+    return teamMembers.find(m => m.id === id)?.name || id;
   };
 
   const handleFileSelect = async (file: File) => {
@@ -175,7 +193,6 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
        const cleanedText = cleanTranscriptText(extractedText);
        setContent(cleanedText);
       
-      // Tentar extrair data automaticamente do texto
        tryExtractDate(cleanedText);
       
       toast({
@@ -232,17 +249,20 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
       return;
     }
 
-    const targetMemberId = selectedMemberId || memberId;
-    if (!targetMemberId) {
+    // Determine target members
+    const targetMemberIds = selectedMemberId 
+      ? [selectedMemberId] 
+      : selectedMemberIds;
+
+    if (targetMemberIds.length === 0) {
       toast({
         title: "Campo obrigatório",
-        description: "Por favor, selecione um liderado.",
+        description: "Por favor, selecione ao menos um liderado.",
         variant: "destructive"
       });
       return;
     }
 
-    // Validação extra de data obrigatória
     if (!occurredAt) {
       toast({
         title: "Campo obrigatório",
@@ -261,82 +281,106 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
         throw new Error('Você precisa estar logado');
       }
 
-       const cleanedContent = cleanTranscriptText(content);
+      const cleanedContent = cleanTranscriptText(content);
        
-       // =====================================
-       // Classificação Automática (Zero Click)
-       // =====================================
-       let finalTags = tags;
-       let finalTitle = title.trim();
+      // Classification (once for all members)
+      let finalTags = tags;
+      let finalTitle = title.trim();
+      
+      const shouldClassify = cleanedContent.length > 20 && 
+                            (tags.length === 0 || !finalTitle);
        
-       // Só classifica se: conteúdo > 20 chars E (tags vazias OU título vazio)
-       const shouldClassify = cleanedContent.length > 20 && 
-                             (tags.length === 0 || !finalTitle);
-       
-       if (shouldClassify) {
-         try {
-           console.log('[NewNoteDialog] Auto-classifying content...');
-           
-           const { data: classifyData, error: classifyError } = await supabase
-             .functions.invoke('classify-note', {
-               body: { content: cleanedContent }
-             });
-           
-           if (classifyError) {
-             console.warn('[NewNoteDialog] Classification failed, proceeding without:', classifyError);
-           } else {
-             // Aplicar tags se ainda não tiver
-             if (tags.length === 0 && classifyData?.tags?.length > 0) {
-               finalTags = classifyData.tags;
-             }
-             
-             // Aplicar título se ainda não tiver
-             if (!finalTitle && classifyData?.suggestedTitle) {
-               finalTitle = classifyData.suggestedTitle;
-             }
-             
-             console.log('[NewNoteDialog] Classification result:', { 
-               tags: finalTags, 
-               title: finalTitle 
-             });
-           }
-         } catch (classifyErr) {
-           console.warn('[NewNoteDialog] Classification error (non-blocking):', classifyErr);
-           // Continua sem classificação - salvamento não deve falhar por isso
-         }
-       }
-       // =====================================
-       
-       // INSERT com dados enriquecidos
-      const { data: feedback, error: insertError } = await supabase
-        .from('feedbacks')
-        .insert({
-          manager_id: user.id,
-          member_id: targetMemberId,
-          content: cleanedContent,
-          type: 'neutral',
-          occurred_at: occurredAt.toISOString(),
-          tags: finalTags.length > 0 ? finalTags : [],
-          title: finalTitle || null,
-          visibility: isShared ? 'shared' : 'private_leader',
-          summary: null,
-          sentiment: null,
-          coaching_tips: null,
-          bias_alert: null,
-        })
-        .select()
-        .single();
+      if (shouldClassify) {
+        try {
+          console.log('[NewNoteDialog] Auto-classifying content...');
+          
+          const { data: classifyData, error: classifyError } = await supabase
+            .functions.invoke('classify-note', {
+              body: { content: cleanedContent }
+            });
+          
+          if (classifyError) {
+            console.warn('[NewNoteDialog] Classification failed, proceeding without:', classifyError);
+          } else {
+            if (tags.length === 0 && classifyData?.tags?.length > 0) {
+              finalTags = classifyData.tags;
+            }
+            if (!finalTitle && classifyData?.suggestedTitle) {
+              finalTitle = classifyData.suggestedTitle;
+            }
+            console.log('[NewNoteDialog] Classification result:', { tags: finalTags, title: finalTitle });
+          }
+        } catch (classifyErr) {
+          console.warn('[NewNoteDialog] Classification error (non-blocking):', classifyErr);
+        }
+      }
 
-      if (insertError) throw insertError;
+      // Loop: insert for each member
+      let firstFeedback: any = null;
 
-       // Toast de sucesso (melhorado para mostrar classificação)
-       const hasClassification = finalTags.length > 0 || finalTitle;
-      toast({
-         title: hasClassification ? "Anotação salva e classificada! ✨" : "Anotação salva! ✅",
-         description: hasClassification 
-           ? `${finalTitle || ''} ${finalTags.length ? `• ${finalTags.join(", ")}` : ''}`.trim()
-           : "Registro adicionado ao histórico.",
-      });
+      for (let i = 0; i < targetMemberIds.length; i++) {
+        const mid = targetMemberIds[i];
+        
+        // Determine visibility for this member
+        let visibility: string;
+        if (selectedMemberId) {
+          // Single-member mode (from /member/:id page)
+          visibility = isShared ? 'shared' : 'private_leader';
+        } else {
+          // Multi-member mode
+          visibility = sharedMemberIds.includes(mid) ? 'shared' : 'private_leader';
+        }
+
+        const { data: feedback, error: insertError } = await supabase
+          .from('feedbacks')
+          .insert({
+            manager_id: user.id,
+            member_id: mid,
+            content: cleanedContent,
+            type: 'neutral',
+            occurred_at: occurredAt.toISOString(),
+            tags: finalTags.length > 0 ? finalTags : [],
+            title: finalTitle || null,
+            visibility,
+            summary: null,
+            sentiment: null,
+            coaching_tips: null,
+            bias_alert: null,
+          })
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+
+        if (i === 0) firstFeedback = feedback;
+
+        // Fire-and-forget: trigger AI analysis
+        if (feedback?.id) {
+          supabase.functions.invoke('analyze-feedback-background', {
+            body: { feedbackId: feedback.id }
+          }).catch(err => {
+            console.warn('Background analysis failed (non-critical):', err);
+          });
+        }
+      }
+
+      // Toast
+      const hasClassification = finalTags.length > 0 || finalTitle;
+      if (targetMemberIds.length > 1) {
+        toast({
+          title: `Nota salva para ${targetMemberIds.length} liderados! ✨`,
+          description: hasClassification
+            ? `${finalTitle || ''} ${finalTags.length ? `• ${finalTags.join(", ")}` : ''}`.trim()
+            : "Registros adicionados ao histórico.",
+        });
+      } else {
+        toast({
+          title: hasClassification ? "Anotação salva e classificada! ✨" : "Anotação salva! ✅",
+          description: hasClassification 
+            ? `${finalTitle || ''} ${finalTags.length ? `• ${finalTags.join(", ")}` : ''}`.trim()
+            : "Registro adicionado ao histórico.",
+        });
+      }
       
       resetForm();
       onOpenChange(false);
@@ -345,31 +389,18 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
         onSuccess();
       }
 
-      // Fire-and-forget: trigger AI analysis (bias detection, summary, sentiment)
-      if (feedback?.id) {
-        supabase.functions.invoke('analyze-feedback-background', {
-          body: { feedbackId: feedback.id }
+      // Backup only first feedback (no toast)
+      if (firstFeedback) {
+        supabase.functions.invoke('backup-data', {
+          body: { 
+            type: 'feedback', 
+            data: firstFeedback,
+            userId: user.id 
+          }
         }).catch(err => {
-          console.warn('Background analysis failed (non-critical):', err);
+          console.warn('Backup failed:', err);
         });
       }
-
-      // Fire-and-forget backup to Storage (Safety Net)
-      supabase.functions.invoke('backup-data', {
-        body: { 
-          type: 'feedback', 
-          data: feedback,
-          userId: user.id 
-        }
-      }).then(() => {
-        toast({
-          title: "Backup Seguro Confirmado 🔒",
-          description: "Cópia salva no armazenamento.",
-        });
-      }).catch(err => {
-        console.warn('Backup failed:', err);
-        // Silent fail - main data is already saved
-      });
 
     } catch (error: any) {
       console.error('Error creating feedback:', error);
@@ -382,6 +413,8 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
       setLoading(false);
     }
   };
+
+  const effectiveMemberIds = selectedMemberId ? [selectedMemberId] : selectedMemberIds;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -398,27 +431,71 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
           </DialogDescription>
         </DialogHeader>
         
-        {/* Scrollable content area */}
         <div className="flex-1 overflow-y-auto px-6 space-y-4 pb-4">
+          {/* Member selection */}
           {!selectedMemberId && (
             <div className="space-y-2">
-              <Label htmlFor="member">Liderado</Label>
-              <Select value={memberId} onValueChange={setMemberId}>
-                <SelectTrigger id="member">
-                  <SelectValue placeholder="Selecione um liderado" />
-                </SelectTrigger>
-                <SelectContent>
-                  {teamMembers.map((member) => (
-                    <SelectItem key={member.id} value={member.id}>
-                      {member.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Liderado(s)</Label>
+              <Popover open={memberPopoverOpen} onOpenChange={setMemberPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={memberPopoverOpen}
+                    className={cn(
+                      "w-full justify-between font-normal h-auto min-h-10",
+                      selectedMemberIds.length === 0 && "text-muted-foreground"
+                    )}
+                  >
+                    {selectedMemberIds.length === 0 ? (
+                      "Selecione liderados..."
+                    ) : (
+                      <div className="flex flex-wrap gap-1">
+                        {selectedMemberIds.map(id => (
+                          <Badge key={id} variant="secondary" className="text-xs gap-1">
+                            {getMemberName(id)}
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); removeMember(id); }}
+                              className="ml-0.5 hover:bg-accent rounded-sm"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Buscar liderado..." />
+                    <CommandList>
+                      <CommandEmpty>Nenhum liderado encontrado.</CommandEmpty>
+                      <CommandGroup>
+                        {teamMembers.map((member) => (
+                          <CommandItem
+                            key={member.id}
+                            value={member.name}
+                            onSelect={() => toggleMember(member.id)}
+                          >
+                            <Checkbox
+                              checked={selectedMemberIds.includes(member.id)}
+                              className="mr-2"
+                            />
+                            {member.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
           )}
 
-          {/* DatePicker - Data do Ocorrido (obrigatório) */}
+          {/* DatePicker */}
           <div className="space-y-2">
             <Label>Data registrada *</Label>
             <Popover>
@@ -491,7 +568,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
             </div>
           </div>
 
-          {/* Campo de Título (opcional) */}
+          {/* Title */}
           <div className="space-y-2">
              <Label htmlFor="title">Título (opcional)</Label>
             <Input
@@ -509,7 +586,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
             )}
           </div>
 
-          {/* Smart Tags Section */}
+          {/* Smart Tags */}
           <div className="space-y-2">
             <Label>Tags de Classificação</Label>
             {tags.length > 0 ? (
@@ -572,27 +649,81 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
           </div>
         </div>
         
-        {/* Sticky footer - always visible */}
+        {/* Footer */}
         <DialogFooter className="px-6 py-4 border-t bg-background flex-col sm:flex-row gap-4">
-          {/* Switch de compartilhamento */}
-          <div className="flex items-center gap-3 mr-auto">
-            <Switch
-              id="share-toggle"
-              checked={isShared}
-              onCheckedChange={setIsShared}
-              disabled={loading}
-            />
-            <Label htmlFor="share-toggle" className="flex items-center gap-2 cursor-pointer text-sm">
-              <Eye className="h-4 w-4 text-muted-foreground" />
-              <span>Compartilhar com {memberName || 'colaborador'}?</span>
-            </Label>
+          {/* Visibility control */}
+          <div className="mr-auto space-y-2">
+            {selectedMemberId ? (
+              /* Single member mode: original switch */
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="share-toggle"
+                  checked={isShared}
+                  onCheckedChange={setIsShared}
+                  disabled={loading}
+                />
+                <Label htmlFor="share-toggle" className="flex items-center gap-2 cursor-pointer text-sm">
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                  <span>Compartilhar com {memberName || 'colaborador'}?</span>
+                </Label>
+              </div>
+            ) : selectedMemberIds.length === 1 ? (
+              /* Dashboard with 1 member: simple switch */
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="share-toggle-single"
+                  checked={sharedMemberIds.includes(selectedMemberIds[0])}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setSharedMemberIds([selectedMemberIds[0]]);
+                    } else {
+                      setSharedMemberIds([]);
+                    }
+                  }}
+                  disabled={loading}
+                />
+                <Label htmlFor="share-toggle-single" className="flex items-center gap-2 cursor-pointer text-sm">
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                  <span>Compartilhar com {getMemberName(selectedMemberIds[0])}?</span>
+                </Label>
+              </div>
+            ) : selectedMemberIds.length > 1 ? (
+              /* Dashboard with multiple members: checkboxes */
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-2 text-sm">
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                  Compartilhar com quais liderados?
+                </Label>
+                <div className="flex flex-wrap gap-2">
+                  {selectedMemberIds.map(id => (
+                    <label key={id} className="flex items-center gap-1.5 text-xs cursor-pointer">
+                      <Checkbox
+                        checked={sharedMemberIds.includes(id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSharedMemberIds(prev => [...prev, id]);
+                          } else {
+                            setSharedMemberIds(prev => prev.filter(m => m !== id));
+                          }
+                        }}
+                        disabled={loading}
+                      />
+                      {getMemberName(id)}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
           
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={loading}>
               Cancelar
             </Button>
-            <Button onClick={handleSubmit} disabled={loading || isProcessingFile || !occurredAt}>
+            <Button 
+              onClick={handleSubmit} 
+              disabled={loading || isProcessingFile || !occurredAt || effectiveMemberIds.length === 0}
+            >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Salvar
             </Button>

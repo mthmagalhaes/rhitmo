@@ -249,6 +249,7 @@ serve(async (req) => {
         transcript_id: transcript.id,
         feedback_id: feedbackId,
         transcribed: !!transcriptionText,
+        feedback_content: transcriptionText || null,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

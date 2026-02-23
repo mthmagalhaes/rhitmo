@@ -10,7 +10,9 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Monitor, Square, Loader2, CheckCircle, Mic, MicOff, Radio, AlertTriangle, Volume2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Monitor, Square, Loader2, CheckCircle, Mic, MicOff, Radio, AlertTriangle, Volume2, Copy, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -24,7 +26,7 @@ interface MeetingRecorderProps {
 
 type RecorderState = 'idle' | 'recording' | 'uploading' | 'done' | 'no-audio-warning';
 
-const AUDIO_THRESHOLD = 0.08; // ~20/255
+const AUDIO_THRESHOLD = 0.08;
 
 const WaveformBars = ({
   isActive,
@@ -98,6 +100,16 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
   const [audioDetected, setAudioDetected] = useState(false);
   const [hasMic, setHasMic] = useState(false);
 
+  // Replication states
+  const [feedbackContent, setFeedbackContent] = useState<string | null>(null);
+  const [feedbackId, setFeedbackId] = useState<string | null>(null);
+  const [feedbackTitle, setFeedbackTitle] = useState<string | null>(null);
+  const [allMembers, setAllMembers] = useState<any[]>([]);
+  const [replicateMembers, setReplicateMembers] = useState<string[]>([]);
+  const [replicateShared, setReplicateShared] = useState<Record<string, boolean>>({});
+  const [isReplicating, setIsReplicating] = useState(false);
+  const [replicationDone, setReplicationDone] = useState(false);
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
@@ -139,6 +151,87 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
     setAudioDetected(true);
   }, []);
 
+  // Load workspace members when entering done state
+  const loadWorkspaceMembers = useCallback(async () => {
+    if (!memberId) return;
+    
+    // Get the workspace of the current member
+    const { data: memberData } = await supabase
+      .from('team_members')
+      .select('id, team_id, teams!inner(workspace_id)')
+      .eq('id', memberId)
+      .single();
+
+    if (!memberData?.teams) return;
+
+    const workspaceId = (memberData.teams as any).workspace_id;
+    
+    const { data: members } = await supabase
+      .from('team_members')
+      .select('id, name, role, teams!inner(workspace_id)')
+      .eq('teams.workspace_id', workspaceId)
+      .neq('id', memberId)
+      .order('name');
+
+    if (members) {
+      setAllMembers(members);
+    }
+  }, [memberId]);
+
+  const handleReplicate = async () => {
+    if (replicateMembers.length === 0 || !feedbackContent) return;
+    
+    setIsReplicating(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      for (const mid of replicateMembers) {
+        const { data: feedback, error } = await supabase
+          .from('feedbacks')
+          .insert({
+            member_id: mid,
+            manager_id: user.id,
+            content: feedbackContent,
+            title: feedbackTitle || null,
+            source: 'transcription',
+            type: 'neutral',
+            occurred_at: new Date().toISOString(),
+            visibility: replicateShared[mid] ? 'shared' : 'private_leader',
+          })
+          .select('id')
+          .single();
+
+        if (error) {
+          console.error('Replication insert error:', error);
+          continue;
+        }
+
+        // Fire-and-forget analysis
+        if (feedback?.id) {
+          supabase.functions.invoke('analyze-feedback-background', {
+            body: { feedbackId: feedback.id }
+          }).catch(err => console.warn('Background analysis failed:', err));
+        }
+      }
+
+      toast({
+        title: `Nota replicada para ${replicateMembers.length} liderado(s)! ✨`,
+        description: 'Cada nota receberá análise de IA individual.',
+      });
+      setReplicationDone(true);
+    } catch (err: any) {
+      console.error('Replication error:', err);
+      toast({
+        title: 'Erro na replicação',
+        description: err.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsReplicating(false);
+    }
+  };
+
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
@@ -146,29 +239,24 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
         video: true,
       });
 
-      // Stop video tracks — we only need audio
       stream.getVideoTracks().forEach(track => track.stop());
 
       const audioTracks = stream.getAudioTracks();
       if (audioTracks.length === 0) {
-        // No audio channel — user forgot the checkbox
         stream.getTracks().forEach(t => t.stop());
         setState('no-audio-warning');
         return;
       }
 
-      // Tab audio stream
       const tabAudioStream = new MediaStream(audioTracks);
       streamRef.current = tabAudioStream;
       chunksRef.current = [];
 
-      // Setup AudioContext with mixer destination
       const audioContext = new AudioContext();
       const destination = audioContext.createMediaStreamDestination();
       const analyser = audioContext.createAnalyser();
       analyser.fftSize = 256;
 
-      // Connect tab audio
       const tabSource = audioContext.createMediaStreamSource(tabAudioStream);
       tabSource.connect(destination);
       tabSource.connect(analyser);
@@ -176,7 +264,6 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
       audioContextRef.current = audioContext;
       analyserRef.current = analyser;
 
-      // Try hybrid capture — add mic
       let micAvailable = false;
       try {
         const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -204,7 +291,6 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
 
-      // Auto-stop if user ends sharing via browser UI
       audioTracks[0].onended = () => {
         stopRecording();
       };
@@ -240,7 +326,6 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
     const mediaRecorder = mediaRecorderRef.current;
 
     mediaRecorder.onstop = async () => {
-      // Stop all tracks
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(t => t.stop());
         streamRef.current = null;
@@ -282,7 +367,14 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
 
         if (data?.success) {
           setTranscriptId(data.transcript_id);
+          setFeedbackId(data.feedback_id || null);
+          setFeedbackContent(data.feedback_content || null);
+          setFeedbackTitle(meetingTitle.trim() || null);
           setState('done');
+          
+          // Load members for replication
+          loadWorkspaceMembers();
+
           toast({
             title: data.transcribed ? 'Transcrição salva como nota!' : 'Gravação enviada!',
             description: data.transcribed
@@ -304,7 +396,7 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
     };
 
     mediaRecorder.stop();
-  }, [meetingTitle, memberId, toast]);
+  }, [meetingTitle, memberId, toast, loadWorkspaceMembers]);
 
   // Cleanup on dialog close or unmount
   useEffect(() => {
@@ -316,12 +408,26 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
       setTranscriptId(null);
       setAudioDetected(false);
       setHasMic(false);
+      setFeedbackContent(null);
+      setFeedbackId(null);
+      setFeedbackTitle(null);
+      setAllMembers([]);
+      setReplicateMembers([]);
+      setReplicateShared({});
+      setIsReplicating(false);
+      setReplicationDone(false);
     }
   }, [open, cleanup]);
 
   useEffect(() => {
     return () => cleanup();
   }, [cleanup]);
+
+  const toggleReplicateMember = (id: string) => {
+    setReplicateMembers(prev =>
+      prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]
+    );
+  };
 
   return (
     <Dialog open={open} onOpenChange={(v) => {
@@ -415,7 +521,6 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
                 </p>
                 <WaveformBars isActive analyserRef={analyserRef} onAudioDetected={handleAudioDetected} />
 
-                {/* Source indicators */}
                 <div className="flex items-center justify-center gap-3">
                   <Badge variant="secondary" className="gap-1.5 text-xs">
                     <Monitor className="h-3 w-3" /> Aba
@@ -429,7 +534,6 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
                   </Badge>
                 </div>
 
-                {/* Connected badge — shows until real audio is detected */}
                 {!audioDetected && (
                   <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground animate-fade-in">
                     <Radio className="h-3.5 w-3.5 text-primary" />
@@ -460,20 +564,95 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
 
           {/* Done state */}
           {state === 'done' && (
-            <div className="bg-muted/50 rounded-2xl p-8 text-center space-y-4 animate-fade-in">
-              <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
-                <CheckCircle className="h-7 w-7 text-primary" />
+            <div className="space-y-4 animate-fade-in">
+              <div className="bg-muted/50 rounded-2xl p-6 text-center space-y-3">
+                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
+                  <CheckCircle className="h-7 w-7 text-primary" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">Transcrição salva!</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    O áudio foi transcrito e adicionado como nota ao diário de bordo.
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="font-semibold text-foreground">Transcrição salva!</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  O áudio foi transcrito e adicionado como nota ao diário de bordo.
-                </p>
-              </div>
+
+              {/* Replication section */}
+              {feedbackContent && allMembers.length > 0 && !replicationDone && (
+                <div className="border border-border rounded-2xl p-4 space-y-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground flex items-center gap-2">
+                      <Copy className="h-4 w-4 text-muted-foreground" />
+                      Esta gravação envolve outros liderados?
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      A transcrição será replicada para os selecionados com análise de IA individual.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {allMembers.map((member) => (
+                      <div key={member.id} className="space-y-1">
+                        <label className="flex items-center gap-2 cursor-pointer py-1">
+                          <Checkbox
+                            checked={replicateMembers.includes(member.id)}
+                            onCheckedChange={() => toggleReplicateMember(member.id)}
+                            disabled={isReplicating}
+                          />
+                          <span className="text-sm">{member.name}</span>
+                          <span className="text-xs text-muted-foreground">• {member.role}</span>
+                        </label>
+                        {replicateMembers.includes(member.id) && (
+                          <div className="flex items-center gap-2 ml-6">
+                            <Switch
+                              checked={replicateShared[member.id] || false}
+                              onCheckedChange={(checked) =>
+                                setReplicateShared(prev => ({ ...prev, [member.id]: checked }))
+                              }
+                              disabled={isReplicating}
+                              className="scale-75"
+                            />
+                            <span className="text-xs text-muted-foreground">
+                              Compartilhar com {member.name.split(' ')[0]}?
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {replicateMembers.length > 0 && (
+                    <Button
+                      onClick={handleReplicate}
+                      disabled={isReplicating}
+                      className="w-full rounded-xl gap-2"
+                      size="sm"
+                    >
+                      {isReplicating ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                      Replicar para {replicateMembers.length} selecionado(s)
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              {/* Replication done */}
+              {replicationDone && (
+                <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 text-center">
+                  <div className="flex items-center justify-center gap-2 text-sm font-medium text-primary">
+                    <Check className="h-4 w-4" />
+                    Replicação concluída!
+                  </div>
+                </div>
+              )}
+
               <Button
                 variant="outline"
                 onClick={() => onOpenChange(false)}
-                className="rounded-xl"
+                className="w-full rounded-xl"
               >
                 Fechar
               </Button>
