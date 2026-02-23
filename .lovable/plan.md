@@ -1,74 +1,104 @@
 
+## Anotacao Multi-Liderado
 
-## Diagnostico e Correcao -- Bias Detection
+### Visao Geral
 
-### Diagnostico
-
-Query executada:
-```text
-SELECT id, title, LEFT(content, 50), bias_alert, created_at
-FROM feedbacks ORDER BY created_at DESC LIMIT 5;
-```
-
-**Resultado: CASO A** -- `bias_alert` e NULL em todas as notas recentes, incluindo a nota "Ela sempre se emociona, nunca e objetiva..." que claramente contem vies.
-
-**Causa raiz:** O `NewNoteDialog.tsx` salva a nota no banco mas **nunca chama** a Edge Function `analyze-feedback-background`. Apos o insert, ele so chama `backup-data` (fire-and-forget). A funcao de analise background so e chamada pelo `upload-meeting` (transcricoes de audio). Notas manuais nunca recebem analise de IA.
+Implementar selecao de multiplos liderados ao criar notas (do dashboard) e replicacao de transcricoes para outros liderados apos gravacao. Tres partes: NewNoteDialog multi-select, MeetingRecorder replicacao, e campo extra na Edge Function upload-meeting.
 
 ---
 
-### Correcao
+### Parte 1 -- NewNoteDialog: Multi-Select de Liderados
 
 **Arquivo: `src/components/NewNoteDialog.tsx`**
 
-Apos o insert bem-sucedido e antes do backup, adicionar chamada fire-and-forget para `analyze-feedback-background`:
+**Novos estados:**
+- `selectedMemberIds: string[]` -- inicializado com `[selectedMemberId]` se prop existir, senao `[]`
+- `sharedMemberIds: string[]` -- controla quais membros recebem `visibility: 'shared'`
 
-```text
-// Fire-and-forget: trigger AI analysis (bias detection, summary, sentiment)
-if (feedback?.id) {
-  supabase.functions.invoke('analyze-feedback-background', {
-    body: { feedbackId: feedback.id }
-  }).catch(err => {
-    console.warn('Background analysis failed (non-critical):', err);
-  });
-}
-```
+**Comportamento condicional:**
+- Se `selectedMemberId` vier via prop (contexto /member/:id): manter Select simples atual, fluxo identico
+- Se nao vier (dashboard): substituir Select por Popover + Command com checkboxes (shadcn/ui)
 
-Posicao: logo apos a linha `onSuccess()` e antes do bloco de backup existente.
+**Componente multi-select (apenas quando sem selectedMemberId):**
+- Trigger: botao com badges dos nomes selecionados ou placeholder "Selecione liderados..."
+- Dropdown: Command com CommandInput para busca, CommandItems com Checkbox para cada membro
+- Badges selecionados com X para remover individualmente
+- Minimo 1 liderado para habilitar botao Salvar
 
-**Arquivo: `src/components/FeedbackTimeline.tsx`**
+**Visibilidade multi-liderado:**
+- Quando 1 liderado selecionado: manter Switch original "Compartilhar com colaborador?"
+- Quando multiplos: substituir Switch por lista de checkboxes, um por liderado selecionado, controlando `sharedMemberIds`
 
-Adicionar botao de reprocessamento visivel apenas em desenvolvimento, dentro do `CollapsibleContent`, apos o `BiasDetectionPanel`:
-
-- Botao discreto com icone RefreshCw e texto "Reanalisar"
-- Visivel apenas quando `window.location.hostname` inclui "localhost" ou "preview"
-- Ao clicar, chama `supabase.functions.invoke('analyze-feedback-background', { body: { feedbackId: feedback.id } })`
-- Toast de confirmacao apos sucesso
-
-**Reprocessar notas existentes:**
-
-Executar query SQL para limpar campos de analise das notas recentes, permitindo reprocessamento:
-
-```text
-UPDATE feedbacks 
-SET bias_alert = NULL, summary = NULL, sentiment = NULL, coaching_tips = NULL
-WHERE created_at > NOW() - INTERVAL '2 days'
-AND (bias_alert IS NULL OR bias_alert NOT LIKE '{%}')
-RETURNING id, title;
-```
-
-Apos a limpeza, o botao "Reanalisar" na timeline permitira reprocessar cada nota individualmente.
+**Submit (handleSubmit):**
+1. Chamar `classify-note` uma unica vez (antes do loop)
+2. Loop por cada `memberId` em `selectedMemberIds`:
+   - INSERT em feedbacks com `member_id` iterado, mesmos content/title/tags
+   - `visibility`: `sharedMemberIds.includes(memberId) ? 'shared' : 'private_leader'`
+   - Disparar `analyze-feedback-background` fire-and-forget para cada feedbackId
+3. Toast: 1 membro = comportamento atual; multiplos = "Nota salva para {n} liderados!"
+4. `onSuccess()` chamado uma vez ao final
+5. `backup-data` chamado apenas para o primeiro feedback
+6. Remover toast "Backup Seguro Confirmado" (ruido desnecessario)
 
 ---
 
-### Secao Tecnica
+### Parte 2 -- MeetingRecorder: Replicacao pos-Gravacao
 
-Arquivos alterados:
-- `src/components/NewNoteDialog.tsx` -- adicionar chamada fire-and-forget para analyze-feedback-background
-- `src/components/FeedbackTimeline.tsx` -- adicionar botao de reprocessamento (dev only)
+**Arquivo: `src/components/MeetingRecorder.tsx`**
 
-Nenhuma alteracao em:
-- Edge Functions (ja estao corretas com schema estruturado)
-- Schema do banco
+**Novos estados:**
+- `feedbackContent: string | null` -- texto da transcricao retornado pela Edge Function
+- `feedbackId: string | null` -- id do feedback original
+- `replicateMembers: string[]` -- membros selecionados para replicacao
+- `replicateShared: Record<string, boolean>` -- controle de visibilidade por membro
+- `isReplicating: boolean` -- estado de loading da replicacao
+- `replicationDone: boolean` -- estado final apos replicar
+- `allMembers: array` -- membros do workspace (exceto o atual)
+
+**No estado 'done', apos sucesso:**
+- Buscar `feedbackContent` e `feedbackId` da resposta da Edge Function (novo campo)
+- Buscar team_members do workspace (exceto memberId atual) via query ao Supabase
+- Exibir secao "Esta gravacao envolve outros liderados?" com lista de checkboxes
+- Sub-toggle "Compartilhar com [nome]?" para cada membro selecionado
+- Botao "Replicar para selecionados": INSERT em feedbacks para cada selecionado, disparar analyze-feedback-background
+- Toast: "Nota replicada para {n} liderado(s)!"
+- Apos replicar: mostrar estado "Concluido" em vez da lista
+- Botao "Fechar" sempre visivel
+
+**Query de membros:**
+- Buscar via `supabase.from('team_members').select('id, name, role, teams!inner(workspace_id)')` filtrando pelo workspace do membro atual
+- Excluir o `memberId` da lista
+
+---
+
+### Parte 3 -- Edge Function upload-meeting
+
+**Arquivo: `supabase/functions/upload-meeting/index.ts`**
+
+Unica mudanca: adicionar `feedback_content` na resposta final.
+
+No return JSON, incluir:
+```text
+feedback_content: transcriptionText || null
+```
+
+Nenhuma outra alteracao na Edge Function.
+
+---
+
+### Arquivos Alterados
+
+| Arquivo | Acao |
+|---------|------|
+| `src/components/NewNoteDialog.tsx` | Editar (multi-select, multi-submit, remover toast backup) |
+| `src/components/MeetingRecorder.tsx` | Editar (secao de replicacao no estado done) |
+| `supabase/functions/upload-meeting/index.ts` | Editar (campo feedback_content na resposta) |
+
+### O que NAO muda
+
+- Fluxo de NewNoteDialog quando selectedMemberId vem via prop
+- MeetingRecorder nos estados idle/recording/uploading
 - RLS policies
-- Nenhum outro componente
-
+- FeedbackTimeline, MemberDetails, outras paginas
+- Toast de classificacao automatica existente
+- Nenhuma outra Edge Function
