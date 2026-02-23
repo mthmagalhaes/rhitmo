@@ -1,57 +1,84 @@
 
 
-## Revogar EXECUTE de anon em funções SECURITY DEFINER
+## Bias Detection Visual -- Plano de Implementacao
 
-### Diagnóstico
+### Resumo
 
-Todas as 16 funções RPC do schema `public` possuem EXECUTE granted ao role `anon`. A maioria delas deveria ser acessível apenas por usuários autenticados.
+Tornar visivel o campo `bias_alert` que ja existe no banco, mudando o formato de string simples para objeto JSON estruturado nas Edge Functions, e criando um componente visual no frontend para exibir os alertas de vies.
 
-### Categorização das Funções
+### Parte 1 -- Edge Functions (bias_alert estruturado)
 
-**Grupo A -- DEVEM manter acesso anon (fluxos sem login):**
-- `get_member_for_sync` -- usado no Rhitmo Sync via magic link (sem autenticação)
-- `submit_rhitmo_sync` -- idem
-- `submit_rhitmo_sync_v2` -- idem
-- `get_invite_details` -- usado no fluxo de convite (sem autenticação)
+**Arquivos:** `supabase/functions/analyze-feedback-background/index.ts` e `supabase/functions/analyze-feedback/index.ts`
 
-Estas 4 funções já possuem validação interna (verificam member_id, invite_token, etc.) e são parte do design "Zero Trust" do Rhitmo Sync. Revogar anon quebraria esses fluxos.
+Alteracoes identicas em ambas as funcoes:
 
-**Grupo B -- REVOGAR anon (funções de dados sensíveis):**
-- `match_feedbacks` -- busca semântica de feedbacks
-- `get_all_users_with_metadata` -- lista todos os usuários (admin)
-- `update_member_own_data` -- atualiza perfil do membro
+1. **Tool schema `toolsRichText`**: substituir `bias_alert` de `{ type: "string" }` para o objeto estruturado:
+```text
+bias_alert: {
+  type: "object",
+  properties: {
+    detected: { type: "boolean" },
+    summary: { type: "string" },
+    flags: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          phrase: { type: "string" },
+          type: { type: "string", enum: ["generalizacao","personalidade","genero","comparacao","rotulo"] },
+          suggestion: { type: "string" }
+        },
+        required: ["phrase","type","suggestion"]
+      }
+    }
+  },
+  required: ["detected","summary","flags"]
+}
+```
 
-**Grupo C -- REVOGAR anon (helpers de RLS e utilitários):**
-- `effective_user_id`
-- `is_admin`
-- `check_is_admin`
-- `is_workspace_owner`
-- `user_owns_team`
-- `user_is_linked_member`
-- `workspace_is_active`
-- `can_update_own_sync`
-- `update_updated_at_column` (trigger)
+2. **Tool schema `toolsShortNote`**: substituir `bias_alert` para o mesmo objeto, mas com descricao indicando que deve retornar `{ detected: false, summary: "", flags: [] }` em notas curtas (exceto linguagem ofensiva grave).
 
-Estas funções são usadas internamente em policies RLS e triggers. Como todas as tabelas possuem policies que exigem `authenticated`, o role anon nunca chega a avaliar essas policies na prática -- revogar é seguro.
+3. **System prompt**: adicionar secao "DETECCAO DE VIES ESTRUTURADA" com instrucoes para:
+   - Identificar trechos EXATOS do texto
+   - Categorizar em 5 tipos (generalizacao, personalidade, genero, comparacao, rotulo)
+   - Tom educativo, nunca acusatorio
+   - Exemplos de cada tipo
 
-### Migration SQL
+4. **Salvar no banco**: antes do `supabase.update()`, converter `analysis.bias_alert` para string: `JSON.stringify(analysis.bias_alert)`. O campo continua TEXT no banco.
 
-Uma única migration que:
+5. **Fallback truncado**: atualizar o fallback de `finishReason === 'length'` para usar `JSON.stringify({ detected: false, summary: "", flags: [] })`.
 
-1. Revoga EXECUTE de `anon` nas 12 funções dos Grupos B e C
-2. Garante EXECUTE para `authenticated` em todas elas
-3. Adiciona verificação `auth.uid() IS NULL` nas 3 funções do Grupo B (as que são chamadas diretamente por usuários, não helpers de RLS)
+### Parte 2 -- Componente BiasDetectionPanel
 
-As funções helper de RLS (Grupo C) não precisam da verificação `auth.uid() IS NULL` no corpo porque já são protegidas pelo contexto de execução das policies e pela revogação do grant.
+**Novo arquivo:** `src/components/BiasDetectionPanel.tsx`
+
+- Props: `{ biasAlert: string | null }`
+- Logica interna:
+  1. Tenta `JSON.parse(biasAlert)` -- se falhar, trata como string legada (exibe texto simples se nao for "Nenhum vies detectado")
+  2. Se `detected === false` ou `flags` vazio: nao renderiza nada
+  3. Se `detected === true`: painel colapsavel (Collapsible do Radix) com:
+     - **Header**: icone AlertTriangle amber-500, texto "Atencao ao tipo de linguagem", Badge com count de flags, Chevron (colapsado por padrao)
+     - **Body**: summary em texto muted, cada flag com trecho original (bg-amber-50, border-l-2 amber-400), Badge do tipo, seta e sugestao (bg-green-50)
+     - **Footer**: disclaimer "Sugestoes geradas por IA para apoiar feedback mais objetivo. Revise antes de usar."
+
+### Parte 3 -- Integracao na FeedbackTimeline
+
+**Arquivo:** `src/components/FeedbackTimeline.tsx`
+
+1. Adicionar `bias_alert` a interface `Feedback`
+2. Na area expandida (`CollapsibleContent`), apos `renderSanitizedContent`, adicionar `<BiasDetectionPanel>` condicionalmente:
+   - So exibir se content tiver 50+ palavras (contagem inline)
+   - Passar `feedback.bias_alert`
 
 ### O que NAO muda
 
-- As 4 funções do Grupo A (fluxos anon intencionais)
-- Edge Functions
-- Componentes de frontend
-- Lógica de negócio das funções
+- Schema da tabela feedbacks (bias_alert continua TEXT)
+- Nenhuma outra Edge Function
+- Fluxo de criacao de notas
+- Nenhum outro componente
 
-### Detalhe Tecnico
+### Secao Tecnica -- Backward Compatibility
 
-Para as funções do Grupo B que precisam ser recriadas com a verificação, a migration usará `CREATE OR REPLACE FUNCTION` mantendo a mesma assinatura e corpo, apenas adicionando a checagem de `auth.uid()` no início.
-
+- Notas legadas com bias_alert como string simples (ex: "Nenhum vies detectado") serao tratadas gracefully pelo `JSON.parse` try/catch no componente
+- Notas RAG (com bias_alert null) nao renderizam o painel
+- O formato novo e um superset: o campo TEXT aceita tanto string quanto JSON serializado
