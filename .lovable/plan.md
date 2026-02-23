@@ -1,104 +1,78 @@
 
-## Anotacao Multi-Liderado
+
+## Replicar Nota para Liderados -- Menu da FeedbackTimeline
 
 ### Visao Geral
 
-Implementar selecao de multiplos liderados ao criar notas (do dashboard) e replicacao de transcricoes para outros liderados apos gravacao. Tres partes: NewNoteDialog multi-select, MeetingRecorder replicacao, e campo extra na Edge Function upload-meeting.
+Adicionar opcao "Replicar para liderados" no menu de 3 pontinhos de cada nota na FeedbackTimeline. Ao clicar, abre um Dialog com multi-select de membros do workspace, controle de visibilidade individual, e replica a nota com analise de IA independente para cada liderado selecionado.
 
 ---
 
-### Parte 1 -- NewNoteDialog: Multi-Select de Liderados
+### Alteracoes no arquivo `src/components/FeedbackTimeline.tsx`
 
-**Arquivo: `src/components/NewNoteDialog.tsx`**
+**Novos imports:**
+- `Copy` de lucide-react
+- `Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter` de ui/dialog
+- `Checkbox` de ui/checkbox
+- `Switch` de ui/switch
+- `Label` de ui/label
+- `ScrollArea` de ui/scroll-area
+- `useAuth` de hooks/useAuth
+- `useQuery` de @tanstack/react-query
 
-**Novos estados:**
-- `selectedMemberIds: string[]` -- inicializado com `[selectedMemberId]` se prop existir, senao `[]`
-- `sharedMemberIds: string[]` -- controla quais membros recebem `visibility: 'shared'`
-
-**Comportamento condicional:**
-- Se `selectedMemberId` vier via prop (contexto /member/:id): manter Select simples atual, fluxo identico
-- Se nao vier (dashboard): substituir Select por Popover + Command com checkboxes (shadcn/ui)
-
-**Componente multi-select (apenas quando sem selectedMemberId):**
-- Trigger: botao com badges dos nomes selecionados ou placeholder "Selecione liderados..."
-- Dropdown: Command com CommandInput para busca, CommandItems com Checkbox para cada membro
-- Badges selecionados com X para remover individualmente
-- Minimo 1 liderado para habilitar botao Salvar
-
-**Visibilidade multi-liderado:**
-- Quando 1 liderado selecionado: manter Switch original "Compartilhar com colaborador?"
-- Quando multiplos: substituir Switch por lista de checkboxes, um por liderado selecionado, controlando `sharedMemberIds`
-
-**Submit (handleSubmit):**
-1. Chamar `classify-note` uma unica vez (antes do loop)
-2. Loop por cada `memberId` em `selectedMemberIds`:
-   - INSERT em feedbacks com `member_id` iterado, mesmos content/title/tags
-   - `visibility`: `sharedMemberIds.includes(memberId) ? 'shared' : 'private_leader'`
-   - Disparar `analyze-feedback-background` fire-and-forget para cada feedbackId
-3. Toast: 1 membro = comportamento atual; multiplos = "Nota salva para {n} liderados!"
-4. `onSuccess()` chamado uma vez ao final
-5. `backup-data` chamado apenas para o primeiro feedback
-6. Remover toast "Backup Seguro Confirmado" (ruido desnecessario)
-
----
-
-### Parte 2 -- MeetingRecorder: Replicacao pos-Gravacao
-
-**Arquivo: `src/components/MeetingRecorder.tsx`**
-
-**Novos estados:**
-- `feedbackContent: string | null` -- texto da transcricao retornado pela Edge Function
-- `feedbackId: string | null` -- id do feedback original
-- `replicateMembers: string[]` -- membros selecionados para replicacao
-- `replicateShared: Record<string, boolean>` -- controle de visibilidade por membro
-- `isReplicating: boolean` -- estado de loading da replicacao
-- `replicationDone: boolean` -- estado final apos replicar
-- `allMembers: array` -- membros do workspace (exceto o atual)
-
-**No estado 'done', apos sucesso:**
-- Buscar `feedbackContent` e `feedbackId` da resposta da Edge Function (novo campo)
-- Buscar team_members do workspace (exceto memberId atual) via query ao Supabase
-- Exibir secao "Esta gravacao envolve outros liderados?" com lista de checkboxes
-- Sub-toggle "Compartilhar com [nome]?" para cada membro selecionado
-- Botao "Replicar para selecionados": INSERT em feedbacks para cada selecionado, disparar analyze-feedback-background
-- Toast: "Nota replicada para {n} liderado(s)!"
-- Apos replicar: mostrar estado "Concluido" em vez da lista
-- Botao "Fechar" sempre visivel
-
-**Query de membros:**
-- Buscar via `supabase.from('team_members').select('id, name, role, teams!inner(workspace_id)')` filtrando pelo workspace do membro atual
-- Excluir o `memberId` da lista
-
----
-
-### Parte 3 -- Edge Function upload-meeting
-
-**Arquivo: `supabase/functions/upload-meeting/index.ts`**
-
-Unica mudanca: adicionar `feedback_content` na resposta final.
-
-No return JSON, incluir:
+**Novos estados (dentro do componente, que precisa deixar de ser stateless):**
 ```text
-feedback_content: transcriptionText || null
+replicateDialog: { open: boolean, feedback: Feedback | null }
+replicateTargets: string[]
+replicateShared: Record<string, boolean>
+isReplicating: boolean
 ```
 
-Nenhuma outra alteracao na Edge Function.
+**useAuth:** para obter `user.id` como `manager_id` nos inserts.
+
+**useQuery:** buscar `team_members` do workspace (excluindo o `member_id` da nota selecionada). Query: `supabase.from('team_members').select('id, name, role')` -- a RLS ja filtra pelo workspace do owner.
+
+**Novo item no DropdownMenu (antes do Excluir):**
+- Icone Copy + texto "Replicar para liderados"
+- `onClick`: abre o dialog setando o feedback selecionado
+
+**Dialog de replicacao (renderizado uma vez fora do map):**
+- Titulo: "Replicar nota para outros liderados"
+- Subtitulo com o titulo da nota
+- ScrollArea (max-h-[300px]) com lista de membros:
+  - Checkbox + nome + cargo para cada membro
+  - Quando marcado, sub-linha com Switch "Compartilhar com [nome]?"
+- Footer: Botao Cancelar + Botao Replicar (disabled se nenhum selecionado ou isReplicating)
+
+**Logica de replicacao (ao clicar Replicar):**
+1. setIsReplicating(true)
+2. Para cada memberId em replicateTargets:
+   - INSERT em feedbacks com:
+     - member_id: memberId
+     - manager_id: user.id
+     - content, title, tags, occurred_at, source: copiados da nota original
+     - visibility: replicateShared[memberId] ? 'shared' : 'private_leader'
+     - type: copiado da nota original
+     - summary, sentiment, coaching_tips, bias_alert: null
+   - Apos INSERT: fire-and-forget analyze-feedback-background
+3. Toast: "Nota replicada para {n} liderado(s)!"
+4. Fechar dialog, limpar estados
+5. setIsReplicating(false)
+
+**Estilo do Dialog:**
+- DialogContent com classe `max-w-md`
+- Lista de membros dentro de ScrollArea com max-h-[300px]
+- Seguir padrao visual existente (bg-background, rounded-lg do DialogContent padrao)
 
 ---
-
-### Arquivos Alterados
-
-| Arquivo | Acao |
-|---------|------|
-| `src/components/NewNoteDialog.tsx` | Editar (multi-select, multi-submit, remover toast backup) |
-| `src/components/MeetingRecorder.tsx` | Editar (secao de replicacao no estado done) |
-| `supabase/functions/upload-meeting/index.ts` | Editar (campo feedback_content na resposta) |
 
 ### O que NAO muda
 
-- Fluxo de NewNoteDialog quando selectedMemberId vem via prop
-- MeetingRecorder nos estados idle/recording/uploading
+- Logica de Compartilhar/Tornar privado existente
+- Logica de Excluir existente
+- Botao Reanalisar (dev-only)
+- BiasDetectionPanel
+- Nenhum outro componente ou arquivo
 - RLS policies
-- FeedbackTimeline, MemberDetails, outras paginas
-- Toast de classificacao automatica existente
-- Nenhuma outra Edge Function
+- Edge Functions
+
