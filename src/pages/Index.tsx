@@ -274,8 +274,8 @@ const Index = () => {
           <div className="flex items-center justify-between">
             <div>
               {workspace && (
-                <div className="flex items-center gap-3 mb-1">
-                  <h1 className="text-4xl font-bold tracking-tight text-foreground">{workspace.name}</h1>
+                  <div className="flex flex-wrap items-center gap-3 mb-1">
+                  <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-foreground">{workspace.name}</h1>
                   <Badge 
                     variant={
                       limits.planTier === 'maestro' 
@@ -321,7 +321,7 @@ const Index = () => {
                           disabled={!canAddMember}
                         >
                           <UserPlus className="h-5 w-5" />
-                          Novo Membro
+                          <span className="hidden sm:inline">Novo Membro</span>
                         </Button>
                       </span>
                     </TooltipTrigger>
@@ -336,7 +336,7 @@ const Index = () => {
               )}
               <Button onClick={() => setDialogOpen(true)} size="lg" className="gap-2 shadow-md rounded-full">
                 <PenSquare className="h-5 w-5" />
-                Nova Nota
+                <span className="hidden sm:inline">Nova Nota</span>
               </Button>
             </div>
           </div>

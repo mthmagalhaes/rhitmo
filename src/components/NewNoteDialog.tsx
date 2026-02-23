@@ -536,7 +536,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
           <div className="space-y-2">
             <div
               className={cn(
-                "border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer",
+                "border-2 border-dashed rounded-lg p-4 sm:p-8 text-center transition-colors cursor-pointer",
                 isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-muted-foreground/40",
                 isProcessingFile && "opacity-50 pointer-events-none"
               )}
@@ -631,7 +631,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
               onChange={setContent}
               placeholder="O conteúdo do arquivo aparecerá aqui. Você também pode digitar ou editar manualmente..."
               disabled={loading || isProcessingFile}
-              minHeight="200px"
+              minHeight="150px"
               editorRef={editorRef}
             />
             <div className="flex justify-end">
