@@ -8,6 +8,76 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Structured bias_alert schema for rich text analysis
+const biasAlertSchema = {
+  type: "object",
+  description: "Análise estruturada de viés. Identifique trechos EXATOS do texto.",
+  properties: {
+    detected: { type: "boolean", description: "true se qualquer viés foi detectado" },
+    summary: { type: "string", description: "Resumo do viés detectado em 1 frase. Vazio se não detectado." },
+    flags: {
+      type: "array",
+      description: "Lista de trechos com viés identificados no texto",
+      items: {
+        type: "object",
+        properties: {
+          phrase: { type: "string", description: "Trecho EXATO do texto original que contém viés" },
+          type: { type: "string", enum: ["generalizacao", "personalidade", "genero", "comparacao", "rotulo"], description: "Tipo de viés identificado" },
+          suggestion: { type: "string", description: "Sugestão de reescrita mais objetiva e construtiva" }
+        },
+        required: ["phrase", "type", "suggestion"]
+      }
+    }
+  },
+  required: ["detected", "summary", "flags"]
+};
+
+// Structured bias_alert schema for short notes (always returns detected: false unless severe)
+const biasAlertSchemaShort = {
+  type: "object",
+  description: "Para notas curtas: retorne { detected: false, summary: '', flags: [] } EXCETO se houver linguagem ofensiva grave.",
+  properties: {
+    detected: { type: "boolean" },
+    summary: { type: "string" },
+    flags: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          phrase: { type: "string" },
+          type: { type: "string", enum: ["generalizacao", "personalidade", "genero", "comparacao", "rotulo"] },
+          suggestion: { type: "string" }
+        },
+        required: ["phrase", "type", "suggestion"]
+      }
+    }
+  },
+  required: ["detected", "summary", "flags"]
+};
+
+// Bias detection prompt section
+const BIAS_DETECTION_STRUCTURED = `
+## DETECÇÃO DE VIÉS ESTRUTURADA
+
+Ao analisar bias_alert, retorne um OBJETO JSON estruturado (não uma string).
+
+### REGRAS:
+1. Identifique trechos EXATOS do texto original — copie a frase literal
+2. Categorize cada trecho em um dos 5 tipos abaixo
+3. Sugira uma reescrita mais objetiva e construtiva
+4. Tom EDUCATIVO, nunca acusatório — o objetivo é desenvolver o líder
+
+### TIPOS DE VIÉS:
+- **generalizacao**: Uso de "sempre", "nunca", "todo mundo", "ninguém". Ex: "Você sempre atrasa" → "Nos últimos 3 sprints, houve atraso em 2 entregas"
+- **personalidade**: Adjetivos sobre caráter em vez de comportamento observável. Ex: "Ela é desorganizada" → "O relatório foi entregue sem a seção de métricas"
+- **genero**: Linguagem que seria diferente se o gênero fosse outro. Ex: "Ela é agressiva nas reuniões" → "Ela defende suas ideias com firmeza"
+- **comparacao**: Comparação implícita ou explícita com outro liderado. Ex: "Diferente do João, você não..." → Avaliar com base em critérios objetivos individuais
+- **rotulo**: Rótulos limitantes que definem a pessoa. Ex: "Ele é assim mesmo" → "Esse comportamento pode ser desenvolvido com..."
+
+### FORMATO DE SAÍDA:
+- Se NÃO houver viés: { detected: false, summary: "", flags: [] }
+- Se HOUVER viés: { detected: true, summary: "Frase resumo", flags: [...] }`;
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -24,12 +94,10 @@ serve(async (req) => {
       );
     }
 
-    // Create Supabase client with service role
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch existing feedback
     const { data: feedback, error: fetchError } = await supabase
       .from('feedbacks')
       .select('id, content, member_id')
@@ -46,12 +114,10 @@ serve(async (req) => {
 
     console.log('Feedback found, starting analysis...');
 
-    // Helper to count words
     const countWords = (text: string): number => {
       return text.trim().split(/\s+/).filter(w => w.length > 0).length;
     };
 
-    // Truncate very long content (increased to 15k for better analysis)
     const maxContentLength = 15000;
     const truncatedContent = feedback.content.length > maxContentLength 
       ? feedback.content.substring(0, maxContentLength) + "\n\n[...conteúdo truncado para análise...]"
@@ -62,7 +128,6 @@ serve(async (req) => {
     
     console.log(`Analysis: ${wordCount} words - Mode: ${isShortNote ? 'SHORT' : 'COMPLETE'}`);
 
-    // Fetch member's key objectives
     const { data: member } = await supabase
       .from('team_members')
       .select('key_objectives')
@@ -71,7 +136,6 @@ serve(async (req) => {
 
     const keyObjectives = member?.key_objectives;
 
-    // Call OpenAI for analysis
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
       console.error('OpenAI API key not found');
@@ -84,7 +148,6 @@ serve(async (req) => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 25000);
 
-    // System Prompt - Rhitmo Analyst Constitution
     const systemPrompt = `# RHITMO ANALYST - CONSTITUIÇÃO
 
 ## IDENTIDADE
@@ -126,12 +189,13 @@ Você receberá uma flag indicando se o texto é curto ou rico.
 ## TOM DE VOZ
 - Seja **direto** e use "Você" ao dar feedback ao gerente
 
+${BIAS_DETECTION_STRUCTURED}
+
 ## FORMATO DE SAÍDA
 Retorne dados estruturados conforme a função especificada.
 Para texto curto: coaching_tips deve ser null ou vazio.
 Para texto rico: coaching_tips deve conter insights acionáveis.`;
 
-    // Objectives context (conditional)
     const objectivesContext = keyObjectives && keyObjectives.trim()
       ? `
 
@@ -145,7 +209,6 @@ Ao analisar este feedback:
 - Considere os prazos ao avaliar urgência de desenvolvimento`
       : '';
 
-    // Dynamic tools based on text size
     const toolsShortNote = [
       {
         type: "function",
@@ -158,7 +221,7 @@ Ao analisar este feedback:
               summary: { type: "string", description: "Resumo conciso em 1-2 frases" },
               sentiment: { type: "string", enum: ["muito_positivo", "positivo", "neutro", "construtivo", "critico"] },
               coaching_tips: { type: "string", description: "Deixar VAZIO para notas curtas" },
-              bias_alert: { type: "string", description: "Alertar APENAS se houver linguagem ofensiva grave" }
+              bias_alert: biasAlertSchemaShort
             },
             required: ["summary", "sentiment", "coaching_tips", "bias_alert"],
             additionalProperties: false
@@ -179,7 +242,7 @@ Ao analisar este feedback:
               summary: { type: "string", description: "Resumo conciso em até 2 frases" },
               sentiment: { type: "string", enum: ["muito_positivo", "positivo", "neutro", "construtivo", "critico"] },
               coaching_tips: { type: "string", description: "Dicas práticas de coaching. Use 'Você' diretamente." },
-              bias_alert: { type: "string", description: "Alerte sobre linguagem discriminatória ou generalizações." }
+              bias_alert: biasAlertSchema
             },
             required: ["summary", "sentiment", "coaching_tips", "bias_alert"],
             additionalProperties: false
@@ -255,7 +318,7 @@ ${truncatedContent}`;
         summary: "Feedback registrado. Análise completa indisponível devido ao tamanho.",
         sentiment: "neutro",
         coaching_tips: "",
-        bias_alert: "Nenhum viés detectado"
+        bias_alert: { detected: false, summary: "", flags: [] }
       };
     } else if (message?.tool_calls?.[0]?.function?.arguments) {
       try {
@@ -277,14 +340,18 @@ ${truncatedContent}`;
 
     console.log('Analysis extracted, updating feedback...');
 
-    // Update feedback with analysis
+    // Serialize bias_alert to JSON string for TEXT column
+    const biasAlertValue = typeof analysis.bias_alert === 'object' 
+      ? JSON.stringify(analysis.bias_alert) 
+      : analysis.bias_alert;
+
     const { error: updateError } = await supabase
       .from('feedbacks')
       .update({
         summary: analysis.summary,
         sentiment: analysis.sentiment,
         coaching_tips: analysis.coaching_tips,
-        bias_alert: analysis.bias_alert,
+        bias_alert: biasAlertValue,
       })
       .eq('id', feedbackId);
 

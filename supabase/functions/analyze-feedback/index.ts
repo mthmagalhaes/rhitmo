@@ -8,6 +8,76 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Structured bias_alert schema for rich text analysis
+const biasAlertSchema = {
+  type: "object",
+  description: "Análise estruturada de viés. Identifique trechos EXATOS do texto.",
+  properties: {
+    detected: { type: "boolean", description: "true se qualquer viés foi detectado" },
+    summary: { type: "string", description: "Resumo do viés detectado em 1 frase. Vazio se não detectado." },
+    flags: {
+      type: "array",
+      description: "Lista de trechos com viés identificados no texto",
+      items: {
+        type: "object",
+        properties: {
+          phrase: { type: "string", description: "Trecho EXATO do texto original que contém viés" },
+          type: { type: "string", enum: ["generalizacao", "personalidade", "genero", "comparacao", "rotulo"], description: "Tipo de viés identificado" },
+          suggestion: { type: "string", description: "Sugestão de reescrita mais objetiva e construtiva" }
+        },
+        required: ["phrase", "type", "suggestion"]
+      }
+    }
+  },
+  required: ["detected", "summary", "flags"]
+};
+
+// Structured bias_alert schema for short notes
+const biasAlertSchemaShort = {
+  type: "object",
+  description: "Para notas curtas: retorne { detected: false, summary: '', flags: [] } EXCETO se houver linguagem ofensiva grave.",
+  properties: {
+    detected: { type: "boolean" },
+    summary: { type: "string" },
+    flags: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          phrase: { type: "string" },
+          type: { type: "string", enum: ["generalizacao", "personalidade", "genero", "comparacao", "rotulo"] },
+          suggestion: { type: "string" }
+        },
+        required: ["phrase", "type", "suggestion"]
+      }
+    }
+  },
+  required: ["detected", "summary", "flags"]
+};
+
+// Bias detection prompt section
+const BIAS_DETECTION_STRUCTURED = `
+## DETECÇÃO DE VIÉS ESTRUTURADA
+
+Ao analisar bias_alert, retorne um OBJETO JSON estruturado (não uma string).
+
+### REGRAS:
+1. Identifique trechos EXATOS do texto original — copie a frase literal
+2. Categorize cada trecho em um dos 5 tipos abaixo
+3. Sugira uma reescrita mais objetiva e construtiva
+4. Tom EDUCATIVO, nunca acusatório — o objetivo é desenvolver o líder
+
+### TIPOS DE VIÉS:
+- **generalizacao**: Uso de "sempre", "nunca", "todo mundo", "ninguém". Ex: "Você sempre atrasa" → "Nos últimos 3 sprints, houve atraso em 2 entregas"
+- **personalidade**: Adjetivos sobre caráter em vez de comportamento observável. Ex: "Ela é desorganizada" → "O relatório foi entregue sem a seção de métricas"
+- **genero**: Linguagem que seria diferente se o gênero fosse outro. Ex: "Ela é agressiva nas reuniões" → "Ela defende suas ideias com firmeza"
+- **comparacao**: Comparação implícita ou explícita com outro liderado. Ex: "Diferente do João, você não..." → Avaliar com base em critérios objetivos individuais
+- **rotulo**: Rótulos limitantes que definem a pessoa. Ex: "Ele é assim mesmo" → "Esse comportamento pode ser desenvolvido com..."
+
+### FORMATO DE SAÍDA:
+- Se NÃO houver viés: { detected: false, summary: "", flags: [] }
+- Se HOUVER viés: { detected: true, summary: "Frase resumo", flags: [...] }`;
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -17,12 +87,10 @@ serve(async (req) => {
     const { content, memberId, type } = await req.json();
     console.log('Received feedback analysis request:', { content, memberId, type });
 
-    // Helper para contar palavras
     const countWords = (text: string): number => {
       return text.trim().split(/\s+/).filter(w => w.length > 0).length;
     };
 
-    // Truncar conteúdo muito longo para evitar problemas com tokens
     const maxContentLength = 6000;
     const truncatedContent = content.length > maxContentLength 
       ? content.substring(0, maxContentLength) + "\n\n[...conteúdo truncado para análise...]"
@@ -33,12 +101,10 @@ serve(async (req) => {
     
     console.log(`Análise: ${wordCount} palavras - Modo: ${isShortNote ? 'CURTO' : 'COMPLETO'}`);
 
-    // Criar cliente Supabase
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Obter usuário autenticado
     const authHeader = req.headers.get('Authorization')!;
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
@@ -53,7 +119,6 @@ serve(async (req) => {
 
     console.log('User authenticated:', user.id);
 
-    // Inserir feedback no banco (sem análise ainda)
     const { data: feedback, error: insertError } = await supabase
       .from('feedbacks')
       .insert({
@@ -75,7 +140,6 @@ serve(async (req) => {
 
     console.log('Feedback inserted:', feedback.id);
 
-    // Buscar dados do membro para obter key_objectives
     const { data: member } = await supabase
       .from('team_members')
       .select('key_objectives')
@@ -84,7 +148,6 @@ serve(async (req) => {
 
     const keyObjectives = member?.key_objectives;
 
-    // Chamar OpenAI para análise
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
       console.error('OpenAI API key not found');
@@ -97,9 +160,8 @@ serve(async (req) => {
     console.log('Calling OpenAI for feedback analysis...');
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
 
-    // System Prompt - Constituição Rhitmo Analyst
     const systemPrompt = `# RHITMO ANALYST - CONSTITUIÇÃO
 
 ## IDENTIDADE
@@ -145,12 +207,13 @@ Você receberá uma flag indicando se o texto é curto ou rico.
   - "A frase 'você sempre atrasa' é uma generalização. Prefira exemplos específicos."
   - "Você falou 80% do tempo. Nas próximas 1:1, experimente fazer mais perguntas."
 
+${BIAS_DETECTION_STRUCTURED}
+
 ## FORMATO DE SAÍDA
 Retorne dados estruturados conforme a função especificada.
 Para texto curto: coaching_tips deve ser null ou vazio.
 Para texto rico: coaching_tips deve conter insights acionáveis.`;
 
-    // Contexto de objetivos (condicional)
     const objectivesContext = keyObjectives && keyObjectives.trim()
       ? `
 
@@ -164,7 +227,6 @@ Ao analisar este feedback:
 - Considere os prazos ao avaliar urgência de desenvolvimento`
       : '';
 
-    // Tools dinâmicos baseados no tamanho do texto
     const toolsShortNote = [
       {
         type: "function",
@@ -174,22 +236,10 @@ Ao analisar este feedback:
           parameters: {
             type: "object",
             properties: {
-              summary: {
-                type: "string",
-                description: "Resumo conciso em 1-2 frases"
-              },
-              sentiment: {
-                type: "string",
-                enum: ["muito_positivo", "positivo", "neutro", "construtivo", "critico"]
-              },
-              coaching_tips: {
-                type: "string",
-                description: "Deixar VAZIO para notas curtas, a menos que haja ofensa grave"
-              },
-              bias_alert: {
-                type: "string",
-                description: "Alertar APENAS se houver linguagem ofensiva grave, senão 'Nenhum viés detectado'"
-              }
+              summary: { type: "string", description: "Resumo conciso em 1-2 frases" },
+              sentiment: { type: "string", enum: ["muito_positivo", "positivo", "neutro", "construtivo", "critico"] },
+              coaching_tips: { type: "string", description: "Deixar VAZIO para notas curtas, a menos que haja ofensa grave" },
+              bias_alert: biasAlertSchemaShort
             },
             required: ["summary", "sentiment", "coaching_tips", "bias_alert"],
             additionalProperties: false
@@ -207,22 +257,10 @@ Ao analisar este feedback:
           parameters: {
             type: "object",
             properties: {
-              summary: {
-                type: "string",
-                description: "Resumo conciso em até 2 frases"
-              },
-              sentiment: {
-                type: "string",
-                enum: ["muito_positivo", "positivo", "neutro", "construtivo", "critico"]
-              },
-              coaching_tips: {
-                type: "string",
-                description: "Dicas práticas de coaching (formato bullets). Inclua feedback sobre postura do líder se aplicável. Use 'Você' diretamente."
-              },
-              bias_alert: {
-                type: "string",
-                description: "Alerte sobre: linguagem discriminatória, generalizações ('sempre/nunca'), rótulos limitantes. Se não houver: 'Nenhum viés detectado'"
-              }
+              summary: { type: "string", description: "Resumo conciso em até 2 frases" },
+              sentiment: { type: "string", enum: ["muito_positivo", "positivo", "neutro", "construtivo", "critico"] },
+              coaching_tips: { type: "string", description: "Dicas práticas de coaching (formato bullets). Inclua feedback sobre postura do líder se aplicável. Use 'Você' diretamente." },
+              bias_alert: biasAlertSchema
             },
             required: ["summary", "sentiment", "coaching_tips", "bias_alert"],
             additionalProperties: false
@@ -256,14 +294,8 @@ ${truncatedContent}`;
         body: JSON.stringify({
           model: 'gpt-4o-mini',
           messages: [
-            {
-              role: 'system',
-              content: systemPrompt
-            },
-            {
-              role: 'user',
-              content: userPrompt
-            }
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
           ],
           tools: isShortNote ? toolsShortNote : toolsRichText,
           tool_choice: { type: "function", function: { name: "analyze_feedback" } },
@@ -276,10 +308,7 @@ ${truncatedContent}`;
       if (fetchError.name === 'AbortError') {
         console.error('OpenAI request timeout');
         return new Response(
-          JSON.stringify({ 
-            error: 'O serviço de IA está demorando muito. Tente novamente em instantes.',
-            code: 'TIMEOUT'
-          }),
+          JSON.stringify({ error: 'O serviço de IA está demorando muito. Tente novamente em instantes.', code: 'TIMEOUT' }),
           { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -294,29 +323,20 @@ ${truncatedContent}`;
       
       if (openAIResponse.status === 429) {
         return new Response(
-          JSON.stringify({ 
-            error: 'O serviço de IA está ocupado. Tente novamente em instantes.',
-            code: 'RATE_LIMIT'
-          }),
+          JSON.stringify({ error: 'O serviço de IA está ocupado. Tente novamente em instantes.', code: 'RATE_LIMIT' }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
       if (openAIResponse.status === 402) {
         return new Response(
-          JSON.stringify({ 
-            error: 'Créditos de IA esgotados. Adicione créditos em Settings → Workspace.',
-            code: 'INSUFFICIENT_CREDITS'
-          }),
+          JSON.stringify({ error: 'Créditos de IA esgotados. Adicione créditos em Settings → Workspace.', code: 'INSUFFICIENT_CREDITS' }),
           { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
       return new Response(
-        JSON.stringify({ 
-          error: 'Falha ao analisar feedback com IA',
-          code: 'AI_ERROR'
-        }),
+        JSON.stringify({ error: 'Falha ao analisar feedback com IA', code: 'AI_ERROR' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -328,14 +348,13 @@ ${truncatedContent}`;
     const finishReason = aiData.choices?.[0]?.finish_reason;
     let analysis: any;
 
-    // Fallback se a resposta foi truncada
     if (finishReason === 'length') {
       console.warn('AI response was truncated due to length, using fallback');
       analysis = {
         summary: "Feedback registrado com sucesso. Análise completa indisponível devido ao tamanho do conteúdo.",
         sentiment: "neutro",
         coaching_tips: "• Revise o conteúdo manualmente para extrair insights detalhados\n• Considere dividir feedbacks muito longos em partes menores\n• Foque nos pontos principais para uma análise mais efetiva",
-        bias_alert: "Nenhum viés detectado"
+        bias_alert: { detected: false, summary: "", flags: [] }
       };
     } else if (message?.tool_calls?.[0]?.function?.arguments) {
       try {
@@ -368,14 +387,18 @@ ${truncatedContent}`;
 
     console.log('Analysis extracted:', analysis);
 
-    // Atualizar feedback com análise
+    // Serialize bias_alert to JSON string for TEXT column
+    const biasAlertValue = typeof analysis.bias_alert === 'object' 
+      ? JSON.stringify(analysis.bias_alert) 
+      : analysis.bias_alert;
+
     const { data: updatedFeedback, error: updateError } = await supabase
       .from('feedbacks')
       .update({
         summary: analysis.summary,
         sentiment: analysis.sentiment,
         coaching_tips: analysis.coaching_tips,
-        bias_alert: analysis.bias_alert,
+        bias_alert: biasAlertValue,
       })
       .eq('id', feedback.id)
       .select()
@@ -393,19 +416,13 @@ ${truncatedContent}`;
 
     return new Response(
       JSON.stringify(updatedFeedback),
-      {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: any) {
     console.error('Error in analyze-feedback function:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
