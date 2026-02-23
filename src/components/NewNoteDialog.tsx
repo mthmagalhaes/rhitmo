@@ -345,6 +345,15 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
         onSuccess();
       }
 
+      // Fire-and-forget: trigger AI analysis (bias detection, summary, sentiment)
+      if (feedback?.id) {
+        supabase.functions.invoke('analyze-feedback-background', {
+          body: { feedbackId: feedback.id }
+        }).catch(err => {
+          console.warn('Background analysis failed (non-critical):', err);
+        });
+      }
+
       // Fire-and-forget backup to Storage (Safety Net)
       supabase.functions.invoke('backup-data', {
         body: { 

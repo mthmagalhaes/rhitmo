@@ -1,4 +1,5 @@
-import { Trash2, ChevronDown, Lock, Eye, MoreVertical, Mic } from 'lucide-react';
+import { useState } from 'react';
+import { Trash2, ChevronDown, Lock, Eye, MoreVertical, Mic, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,7 +35,8 @@ import { getTagEmoji, getTagColor } from '@/lib/tagConfig';
 import { cleanTranscriptText, containsHtml } from '@/lib/textSanitizer';
 import DOMPurify from 'dompurify';
 import { BiasDetectionPanel } from '@/components/BiasDetectionPanel';
-
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 interface Feedback {
   id: string;
   created_at: string;
@@ -275,6 +277,30 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onToggleVisibility }: Fe
                     biasAlert={feedback.bias_alert ?? null} 
                     wordCount={feedback.content?.trim().split(/\s+/).filter(w => w.length > 0).length ?? 0}
                   />
+                  
+                  {/* Dev-only: Reanalyze button */}
+                  {(window.location.hostname.includes('localhost') || window.location.hostname.includes('preview')) && (
+                    <div className="mt-2 flex justify-end">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs text-muted-foreground gap-1.5 h-7"
+                        onClick={async () => {
+                          try {
+                            await supabase.functions.invoke('analyze-feedback-background', {
+                              body: { feedbackId: feedback.id }
+                            });
+                            toast.success('Análise enviada! Recarregue em alguns segundos.');
+                          } catch (err) {
+                            toast.error('Falha ao reanalisar.');
+                          }
+                        }}
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                        Reanalisar
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </CollapsibleContent>
             </Collapsible>
