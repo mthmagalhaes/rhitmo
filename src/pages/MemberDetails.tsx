@@ -334,17 +334,19 @@ const MemberDetails = () => {
             </Button>
             <Button variant="outline" onClick={() => setChatOpen(true)} className="gap-2">
               <Sparkles className="h-4 w-4" />
-              Mentor Chat
+              <span className="hidden sm:inline">Mentor Chat</span>
             </Button>
             <Button onClick={() => setDialogOpen(true)} className="gap-2 px-4">
               <PenSquare className="h-4 w-4" />
-              Nova Anotação
+              <span className="hidden sm:inline">Nova Anotação</span>
             </Button>
           </div>
         </div>
         <div className="mb-8">
-          <div className="flex items-start gap-6 mb-6">
-            <MemberAvatar memberId={member.id} memberName={member.name} size="xl" />
+          <div className="flex flex-col sm:flex-row items-start gap-6 mb-6">
+            <div className="mx-auto sm:mx-0">
+              <MemberAvatar memberId={member.id} memberName={member.name} size="xl" />
+            </div>
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-3xl font-bold text-foreground">{member.name}</h1>
