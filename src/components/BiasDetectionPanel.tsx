@@ -23,6 +23,7 @@ interface BiasAlertStructured {
 
 interface BiasDetectionPanelProps {
   biasAlert: string | null;
+  wordCount?: number;
 }
 
 const typeLabels: Record<string, string> = {
@@ -33,37 +34,23 @@ const typeLabels: Record<string, string> = {
   rotulo: 'Rótulo',
 };
 
-export const BiasDetectionPanel = ({ biasAlert }: BiasDetectionPanelProps) => {
+export const BiasDetectionPanel = ({ biasAlert, wordCount }: BiasDetectionPanelProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  const parsed = useMemo((): BiasAlertStructured | string | null => {
+  const parsed = useMemo((): BiasAlertStructured | null => {
     if (!biasAlert) return null;
     try {
       const obj = JSON.parse(biasAlert);
       if (typeof obj === 'object' && 'detected' in obj) {
         return obj as BiasAlertStructured;
       }
-      return biasAlert;
+      return null;
     } catch {
-      return biasAlert;
+      return null;
     }
   }, [biasAlert]);
 
-  // Legacy string handling
-  if (typeof parsed === 'string') {
-    const lower = parsed.toLowerCase();
-    if (lower.includes('nenhum') || lower.includes('não') || lower.includes('none') || lower.trim() === '') {
-      return null;
-    }
-    // Show legacy string as simple alert
-    return (
-      <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-300/50 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-700/30 p-3">
-        <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-        <p className="text-sm text-amber-800 dark:text-amber-300">{parsed}</p>
-      </div>
-    );
-  }
-
+  if (wordCount !== undefined && wordCount < 50) return null;
   if (!parsed || !parsed.detected || !parsed.flags || parsed.flags.length === 0) {
     return null;
   }
@@ -71,12 +58,12 @@ export const BiasDetectionPanel = ({ biasAlert }: BiasDetectionPanelProps) => {
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="mt-3">
       <CollapsibleTrigger className="w-full">
-        <div className="flex items-center gap-2 rounded-xl border border-amber-300/50 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-700/30 p-3 hover:bg-amber-50/80 dark:hover:bg-amber-950/30 transition-colors cursor-pointer">
+        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-2xl p-3 hover:bg-amber-100/60 transition-colors cursor-pointer">
           <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
-          <span className="text-sm font-medium text-amber-800 dark:text-amber-300">
+          <span className="text-sm font-medium text-amber-800">
             Atenção ao tipo de linguagem
           </span>
-          <Badge variant="outline" className="text-xs border-amber-400/50 text-amber-700 dark:text-amber-400 bg-amber-100/50 dark:bg-amber-900/30">
+          <Badge variant="outline" className="text-xs bg-amber-100 text-amber-700 border-amber-300 rounded-full px-2 py-0.5">
             {parsed.flags.length} {parsed.flags.length === 1 ? 'ponto' : 'pontos'}
           </Badge>
           <ChevronDown className={cn(
@@ -87,36 +74,34 @@ export const BiasDetectionPanel = ({ biasAlert }: BiasDetectionPanelProps) => {
       </CollapsibleTrigger>
 
       <CollapsibleContent>
-        <div className="border border-t-0 border-amber-300/50 dark:border-amber-700/30 rounded-b-xl bg-amber-50/30 dark:bg-amber-950/10 px-4 py-3 space-y-3">
+        <div className="border border-t-0 border-amber-200 rounded-b-2xl bg-amber-50/50 px-4 py-3 space-y-2">
           {parsed.summary && (
-            <p className="text-xs text-muted-foreground">{parsed.summary}</p>
+            <p className="text-xs text-amber-700 mb-3">{parsed.summary}</p>
           )}
 
           {parsed.flags.map((flag, index) => (
             <div key={index}>
-              {index > 0 && <Separator className="my-3 bg-amber-200/50 dark:bg-amber-800/30" />}
-              <div className="space-y-2">
-                {/* Original phrase */}
-                <div className="border-l-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-r-lg px-3 py-2">
-                  <p className="text-sm text-amber-800 dark:text-amber-300 italic">"{flag.phrase}"</p>
+              {index > 0 && <Separator className="my-3 bg-amber-200/60" />}
+              <div className="bg-white border-l-2 border-amber-400 rounded-r-xl p-3 space-y-2">
+                <div className="bg-amber-50 rounded px-2 py-1 inline-block">
+                  <p className="text-sm text-amber-900 font-medium italic">"{flag.phrase}"</p>
                 </div>
-                
+
                 <div className="flex items-center gap-2 flex-wrap">
-                  <Badge variant="outline" className="text-xs border-amber-400/50 text-amber-700 dark:text-amber-400 bg-amber-100/50 dark:bg-amber-900/30">
+                  <Badge variant="outline" className="text-xs bg-amber-100 text-amber-600 border-amber-300 rounded-full px-2 py-0.5">
                     {typeLabels[flag.type] || flag.type}
                   </Badge>
                   <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
-                  {/* Suggestion */}
-                  <div className="bg-green-50 dark:bg-green-950/30 border border-green-200/50 dark:border-green-800/30 rounded-lg px-3 py-1.5 flex-1 min-w-0">
-                    <p className="text-sm text-green-800 dark:text-green-300">{flag.suggestion}</p>
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-1.5 flex-1 min-w-0">
+                    <p className="text-sm text-emerald-700">{flag.suggestion}</p>
                   </div>
                 </div>
               </div>
             </div>
           ))}
 
-          <p className="text-[11px] text-muted-foreground/70 pt-1">
-            Sugestões geradas por IA para apoiar feedback mais objetivo. Revise antes de usar.
+          <p className="text-xs text-amber-600/70 mt-3 italic text-center">
+            Sugestões de IA para apoiar feedback mais objetivo. Revise antes de usar.
           </p>
         </div>
       </CollapsibleContent>

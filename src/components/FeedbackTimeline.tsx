@@ -270,10 +270,11 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onToggleVisibility }: Fe
                   {/* Conteúdo Sanitizado */}
                   {renderSanitizedContent(feedback.content)}
                   
-                  {/* Bias Detection Panel - only for notes with 50+ words */}
-                  {feedback.content && feedback.content.trim().split(/\s+/).filter(w => w.length > 0).length >= 50 && (
-                    <BiasDetectionPanel biasAlert={feedback.bias_alert ?? null} />
-                  )}
+                  {/* Bias Detection Panel */}
+                  <BiasDetectionPanel 
+                    biasAlert={feedback.bias_alert ?? null} 
+                    wordCount={feedback.content?.trim().split(/\s+/).filter(w => w.length > 0).length ?? 0}
+                  />
                 </div>
               </CollapsibleContent>
             </Collapsible>
