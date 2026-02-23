@@ -1,78 +1,93 @@
 
 
-## Replicar Nota para Liderados -- Menu da FeedbackTimeline
+## Correcoes de Responsividade Mobile
 
-### Visao Geral
-
-Adicionar opcao "Replicar para liderados" no menu de 3 pontinhos de cada nota na FeedbackTimeline. Ao clicar, abre um Dialog com multi-select de membros do workspace, controle de visibilidade individual, e replica a nota com analise de IA independente para cada liderado selecionado.
+Quatro correcoes pontuais de CSS/classes Tailwind, sem alteracao de logica de negocio.
 
 ---
 
-### Alteracoes no arquivo `src/components/FeedbackTimeline.tsx`
+### BLOCKER 1 -- FeedbackTimeline: menu invisivel em touch
 
-**Novos imports:**
-- `Copy` de lucide-react
-- `Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter` de ui/dialog
-- `Checkbox` de ui/checkbox
-- `Switch` de ui/switch
-- `Label` de ui/label
-- `ScrollArea` de ui/scroll-area
-- `useAuth` de hooks/useAuth
-- `useQuery` de @tanstack/react-query
+**Arquivo:** `src/components/FeedbackTimeline.tsx` (linha 255)
 
-**Novos estados (dentro do componente, que precisa deixar de ser stateless):**
+Atual:
 ```text
-replicateDialog: { open: boolean, feedback: Feedback | null }
-replicateTargets: string[]
-replicateShared: Record<string, boolean>
-isReplicating: boolean
+className="h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
 ```
 
-**useAuth:** para obter `user.id` como `manager_id` nos inserts.
+Novo:
+```text
+className="h-7 w-7 text-muted-foreground sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+```
 
-**useQuery:** buscar `team_members` do workspace (excluindo o `member_id` da nota selecionada). Query: `supabase.from('team_members').select('id, name, role')` -- a RLS ja filtra pelo workspace do owner.
-
-**Novo item no DropdownMenu (antes do Excluir):**
-- Icone Copy + texto "Replicar para liderados"
-- `onClick`: abre o dialog setando o feedback selecionado
-
-**Dialog de replicacao (renderizado uma vez fora do map):**
-- Titulo: "Replicar nota para outros liderados"
-- Subtitulo com o titulo da nota
-- ScrollArea (max-h-[300px]) com lista de membros:
-  - Checkbox + nome + cargo para cada membro
-  - Quando marcado, sub-linha com Switch "Compartilhar com [nome]?"
-- Footer: Botao Cancelar + Botao Replicar (disabled se nenhum selecionado ou isReplicating)
-
-**Logica de replicacao (ao clicar Replicar):**
-1. setIsReplicating(true)
-2. Para cada memberId em replicateTargets:
-   - INSERT em feedbacks com:
-     - member_id: memberId
-     - manager_id: user.id
-     - content, title, tags, occurred_at, source: copiados da nota original
-     - visibility: replicateShared[memberId] ? 'shared' : 'private_leader'
-     - type: copiado da nota original
-     - summary, sentiment, coaching_tips, bias_alert: null
-   - Apos INSERT: fire-and-forget analyze-feedback-background
-3. Toast: "Nota replicada para {n} liderado(s)!"
-4. Fechar dialog, limpar estados
-5. setIsReplicating(false)
-
-**Estilo do Dialog:**
-- DialogContent com classe `max-w-md`
-- Lista de membros dentro de ScrollArea com max-h-[300px]
-- Seguir padrao visual existente (bg-background, rounded-lg do DialogContent padrao)
+Em mobile (< sm) o botao fica sempre visivel. Em desktop, mantem o hover.
 
 ---
 
-### O que NAO muda
+### IMPORTANT 2 -- Index.tsx: header overflow mobile
 
-- Logica de Compartilhar/Tornar privado existente
-- Logica de Excluir existente
-- Botao Reanalisar (dev-only)
-- BiasDetectionPanel
-- Nenhum outro componente ou arquivo
-- RLS policies
-- Edge Functions
+**Arquivo:** `src/pages/Index.tsx`
+
+a) **Titulo H1** (linha 278): trocar `text-4xl` por `text-2xl sm:text-4xl`
+
+b) **Container do titulo** (linha 277): adicionar `flex-wrap` ao `flex items-center gap-3 mb-1`
+
+c) **Botao "Novo Membro"** (linha ~323): envolver texto em `<span className="hidden sm:inline">`:
+```text
+<UserPlus className="h-5 w-5" />
+<span className="hidden sm:inline">Novo Membro</span>
+```
+
+d) **Botao "Nova Nota"** (linhas ~339-340): mesmo padrao:
+```text
+<PenSquare className="h-5 w-5" />
+<span className="hidden sm:inline">Nova Nota</span>
+```
+
+---
+
+### IMPORTANT 3 -- MemberDetails.tsx: header mobile
+
+**Arquivo:** `src/pages/MemberDetails.tsx`
+
+a) **Botao "Mentor Chat"** (linha 336): envolver texto:
+```text
+<Sparkles className="h-4 w-4" />
+<span className="hidden sm:inline">Mentor Chat</span>
+```
+
+b) **Botao "Nova Anotacao"** (linha 339-340): envolver texto:
+```text
+<PenSquare className="h-4 w-4" />
+<span className="hidden sm:inline">Nova Anotacao</span>
+```
+
+c) **Container do perfil** (linha 346): trocar `flex items-start gap-6` por `flex flex-col sm:flex-row items-start gap-6`
+
+d) **MemberAvatar** (linha 347): adicionar `className="mx-auto sm:mx-0"` ao wrapper (ou envolver em div com essas classes)
+
+---
+
+### IMPORTANT 4 -- NewNoteDialog: espaco vertical mobile
+
+**Arquivo:** `src/components/NewNoteDialog.tsx`
+
+a) **Zona de drag-and-drop** (linha 539): trocar `p-8` por `p-4 sm:p-8`
+
+b) **RichTextEditor** (linha 634): trocar `minHeight="200px"` por `minHeight="150px"`
+
+c) **Calendar PopoverContent** (linha 516): adicionar `align="start"` (ja existe) -- nenhuma mudanca necessaria aqui, ja esta correto.
+
+---
+
+### Resumo de alteracoes
+
+| Arquivo | Linhas afetadas | Tipo de mudanca |
+|---------|----------------|-----------------|
+| FeedbackTimeline.tsx | ~255 | Classes CSS do botao 3 pontinhos |
+| Index.tsx | ~277-278, ~323, ~340 | Classes CSS do header e botoes |
+| MemberDetails.tsx | ~335-340, ~346-347 | Classes CSS do header e perfil |
+| NewNoteDialog.tsx | ~539, ~634 | Padding e minHeight |
+
+Nenhuma alteracao de logica, queries, estados ou Edge Functions.
 
