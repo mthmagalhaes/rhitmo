@@ -1,93 +1,122 @@
 
 
-## Correcoes de Responsividade Mobile
+## Google Calendar Integration via Dedicated OAuth
 
-Quatro correcoes pontuais de CSS/classes Tailwind, sem alteracao de logica de negocio.
+### Overview
 
----
-
-### BLOCKER 1 -- FeedbackTimeline: menu invisivel em touch
-
-**Arquivo:** `src/components/FeedbackTimeline.tsx` (linha 255)
-
-Atual:
-```text
-className="h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-```
-
-Novo:
-```text
-className="h-7 w-7 text-muted-foreground sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-```
-
-Em mobile (< sm) o botao fica sempre visivel. Em desktop, mantem o hover.
+Integrate Google Calendar so leaders can connect their account and see upcoming meetings with their direct reports in the next 48h, displayed as a widget on the dashboard.
 
 ---
 
-### IMPORTANT 2 -- Index.tsx: header overflow mobile
+### Prerequisites: Secrets
 
-**Arquivo:** `src/pages/Index.tsx`
+Three new secrets are required before implementation:
+- **GOOGLE_CLIENT_ID** — from Google Cloud Console OAuth credentials
+- **GOOGLE_CLIENT_SECRET** — from Google Cloud Console OAuth credentials
+- **GOOGLE_REDIRECT_URI** — value: `https://lybkgujyezzzvbzypxed.supabase.co/functions/v1/google-calendar-oauth?action=callback`
 
-a) **Titulo H1** (linha 278): trocar `text-4xl` por `text-2xl sm:text-4xl`
-
-b) **Container do titulo** (linha 277): adicionar `flex-wrap` ao `flex items-center gap-3 mb-1`
-
-c) **Botao "Novo Membro"** (linha ~323): envolver texto em `<span className="hidden sm:inline">`:
-```text
-<UserPlus className="h-5 w-5" />
-<span className="hidden sm:inline">Novo Membro</span>
-```
-
-d) **Botao "Nova Nota"** (linhas ~339-340): mesmo padrao:
-```text
-<PenSquare className="h-5 w-5" />
-<span className="hidden sm:inline">Nova Nota</span>
-```
+These must be added via the secrets tool before proceeding.
 
 ---
 
-### IMPORTANT 3 -- MemberDetails.tsx: header mobile
+### Part 1 — Database Migration
 
-**Arquivo:** `src/pages/MemberDetails.tsx`
+Two new tables with RLS:
 
-a) **Botao "Mentor Chat"** (linha 336): envolver texto:
-```text
-<Sparkles className="h-4 w-4" />
-<span className="hidden sm:inline">Mentor Chat</span>
-```
+**google_calendar_tokens** — stores OAuth tokens per user
+- Columns: id, user_id (NOT NULL, references auth.users), access_token, refresh_token, token_expiry, calendar_email, created_at, updated_at
+- UNIQUE(user_id)
+- RLS: all operations restricted to `user_id = effective_user_id()`
 
-b) **Botao "Nova Anotacao"** (linha 339-340): envolver texto:
-```text
-<PenSquare className="h-4 w-4" />
-<span className="hidden sm:inline">Nova Anotacao</span>
-```
-
-c) **Container do perfil** (linha 346): trocar `flex items-start gap-6` por `flex flex-col sm:flex-row items-start gap-6`
-
-d) **MemberAvatar** (linha 347): adicionar `className="mx-auto sm:mx-0"` ao wrapper (ou envolver em div com essas classes)
+**upcoming_meetings** — cached upcoming meetings matched to members
+- Columns: id, user_id (NOT NULL, references auth.users), member_id (references team_members), google_event_id, title, start_time, end_time, meet_link, attendees (JSONB), synced_at
+- UNIQUE(user_id, google_event_id)
+- RLS: SELECT/INSERT/DELETE restricted to `user_id = effective_user_id()`
 
 ---
 
-### IMPORTANT 4 -- NewNoteDialog: espaco vertical mobile
+### Part 2 — Edge Function: google-calendar-oauth
 
-**Arquivo:** `src/components/NewNoteDialog.tsx`
+**File:** `supabase/functions/google-calendar-oauth/index.ts`
 
-a) **Zona de drag-and-drop** (linha 539): trocar `p-8` por `p-4 sm:p-8`
+**Config:** `verify_jwt = false` (callback is a redirect from Google, no JWT available)
 
-b) **RichTextEditor** (linha 634): trocar `minHeight="200px"` por `minHeight="150px"`
+Three actions via query param or body:
 
-c) **Calendar PopoverContent** (linha 516): adicionar `align="start"` (ja existe) -- nenhuma mudanca necessaria aqui, ja esta correto.
+| Action | Auth | Behavior |
+|--------|------|----------|
+| authorize | JWT required | Builds Google OAuth URL with state=user_id, returns `{ authUrl }` |
+| callback | No JWT (redirect) | Exchanges code for tokens, saves to DB, redirects to `/dashboard?calendar=connected` |
+| disconnect | JWT required | Deletes token row, returns `{ success: true }` |
+
+Uses service role client for DB writes in callback (no user JWT available during redirect).
 
 ---
 
-### Resumo de alteracoes
+### Part 3 — Edge Function: fetch-calendar-events
 
-| Arquivo | Linhas afetadas | Tipo de mudanca |
-|---------|----------------|-----------------|
-| FeedbackTimeline.tsx | ~255 | Classes CSS do botao 3 pontinhos |
-| Index.tsx | ~277-278, ~323, ~340 | Classes CSS do header e botoes |
-| MemberDetails.tsx | ~335-340, ~346-347 | Classes CSS do header e perfil |
-| NewNoteDialog.tsx | ~539, ~634 | Padding e minHeight |
+**File:** `supabase/functions/fetch-calendar-events/index.ts`
 
-Nenhuma alteracao de logica, queries, estados ou Edge Functions.
+**Config:** `verify_jwt = false` (manual auth validation)
+
+Flow:
+1. Validate user via Authorization header
+2. Fetch token from google_calendar_tokens
+3. Refresh if expired (POST to Google token endpoint)
+4. GET Google Calendar events for next 48h
+5. Fetch team_members with email from user's workspace
+6. Match event attendees to member emails
+7. Upsert into upcoming_meetings (ON CONFLICT)
+8. Delete past meetings (start_time < now - 1h)
+9. Return matched meetings with member name/role
+
+---
+
+### Part 4 — Hook: useCalendarIntegration
+
+**File:** `src/hooks/useCalendarIntegration.ts` (new)
+
+- `isConnected` query: checks google_calendar_tokens for current user
+- `upcomingMeetings` query: invokes fetch-calendar-events (enabled only if connected, 5min stale, 10min refetch)
+- `connectCalendar()`: invokes authorize action, redirects to Google
+- `disconnectCalendar()`: invokes disconnect action, invalidates queries
+
+---
+
+### Part 5 — CalendarWidget Component
+
+**File:** `src/components/CalendarWidget.tsx` (new)
+
+Four states:
+1. **Not connected**: subtle card with "Connect Google Calendar" button
+2. **Loading**: skeleton
+3. **Connected, no meetings**: "No meetings with reports in next 48h" + disconnect link
+4. **Connected, with meetings**: horizontal scrollable cards showing time, member name, event title, "Today"/"Tomorrow" badge, and disconnect link
+
+Rendered in `Index.tsx` after TeamTabs and before the member cards section (around line 352).
+
+---
+
+### Part 6 — Callback Handler in Index.tsx
+
+Add useEffect in Index.tsx to detect `?calendar=connected` query param, show toast, clean URL, and invalidate calendar queries.
+
+---
+
+### Files Changed
+
+| File | Action |
+|------|--------|
+| supabase/config.toml | Add entries for both new edge functions |
+| supabase/functions/google-calendar-oauth/index.ts | New |
+| supabase/functions/fetch-calendar-events/index.ts | New |
+| src/hooks/useCalendarIntegration.ts | New |
+| src/components/CalendarWidget.tsx | New |
+| src/pages/Index.tsx | Edit (add CalendarWidget + callback useEffect) |
+
+### What Does NOT Change
+
+- Existing auth flow (Google SSO login)
+- Existing tables, RLS, Edge Functions
+- AppSidebar, AppLayout, other components
 
