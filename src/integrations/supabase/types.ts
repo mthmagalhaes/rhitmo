@@ -210,6 +210,39 @@ export type Database = {
           },
         ]
       }
+      google_calendar_tokens: {
+        Row: {
+          access_token: string
+          calendar_email: string | null
+          created_at: string | null
+          id: string
+          refresh_token: string | null
+          token_expiry: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          calendar_email?: string | null
+          created_at?: string | null
+          id?: string
+          refresh_token?: string | null
+          token_expiry?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          calendar_email?: string | null
+          created_at?: string | null
+          id?: string
+          refresh_token?: string | null
+          token_expiry?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       meeting_transcripts: {
         Row: {
           chunk_count: number | null
@@ -469,6 +502,53 @@ export type Database = {
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      upcoming_meetings: {
+        Row: {
+          attendees: Json | null
+          end_time: string | null
+          google_event_id: string
+          id: string
+          meet_link: string | null
+          member_id: string | null
+          start_time: string
+          synced_at: string | null
+          title: string | null
+          user_id: string
+        }
+        Insert: {
+          attendees?: Json | null
+          end_time?: string | null
+          google_event_id: string
+          id?: string
+          meet_link?: string | null
+          member_id?: string | null
+          start_time: string
+          synced_at?: string | null
+          title?: string | null
+          user_id: string
+        }
+        Update: {
+          attendees?: Json | null
+          end_time?: string | null
+          google_event_id?: string
+          id?: string
+          meet_link?: string | null
+          member_id?: string | null
+          start_time?: string
+          synced_at?: string | null
+          title?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "upcoming_meetings_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
             referencedColumns: ["id"]
           },
         ]
