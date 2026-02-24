@@ -1,119 +1,59 @@
 
 
-## Pre-Meeting Brief — Plano de Implementação
+## Correções no CalendarWidget — Plano
 
-### Resumo
+### Correção 1: Badge de dia/data em todos os cards
 
-Nova página `/brief/:meetingId` que gera um briefing pré-reunião usando IA, com pauta sugerida, pendências e contexto do liderado. Inclui uma Edge Function para gerar o brief, uma migração para cache, e um deep link no MemberDetails.
+**Arquivo:** `src/components/CalendarWidget.tsx`
+
+Substituir a lógica condicional de badges (linhas 111-134) por uma função `getDayBadge` que retorna um badge para **todos** os cards:
+- Hoje → `bg-amber-100 text-amber-700`
+- Amanhã → `bg-blue-100 text-blue-700`
+- Outros dias → abreviação do dia (Qui, Sex, etc.) com `bg-slate-100 text-slate-600`
+
+O badge será renderizado incondicionalmente no header de cada card, ao lado do horário.
 
 ---
 
-### Parte 1 — Migração: brief_cache
+### Correção 2: Múltiplos liderados na mesma reunião
 
-Adiciona duas colunas à tabela `upcoming_meetings`:
+**3 partes:**
+
+#### 2a. Migração: alterar unique constraint
 
 ```sql
 ALTER TABLE public.upcoming_meetings
-ADD COLUMN IF NOT EXISTS brief_cache JSONB,
-ADD COLUMN IF NOT EXISTS brief_generated_at TIMESTAMPTZ;
+DROP CONSTRAINT upcoming_meetings_user_id_google_event_id_key;
+
+ALTER TABLE public.upcoming_meetings
+ADD CONSTRAINT upcoming_meetings_user_event_member_key 
+UNIQUE (user_id, google_event_id, member_id);
 ```
 
-Também precisa de uma policy UPDATE para que o service role (via Edge Function) possa atualizar o cache. Como a Edge Function usa `SUPABASE_SERVICE_ROLE_KEY`, o RLS é bypassed — nenhuma policy adicional necessária.
+#### 2b. Edge Function: remover `break`
+
+**Arquivo:** `supabase/functions/fetch-calendar-events/index.ts`
+
+- Remover o `break` na linha 222 para que o loop continue iterando todos os attendees
+- Alterar `onConflict` de `"user_id,google_event_id"` para `"user_id,google_event_id,member_id"`
+
+#### 2c. CalendarWidget: cards separados
+
+Nenhuma mudança adicional necessária — cada meeting já gera um card separado. Com a remoção do `break`, a Edge Function retornará múltiplos entries para o mesmo evento quando houver múltiplos liderados, e cada um será renderizado como card individual.
 
 ---
 
-### Parte 2 — Edge Function: generate-brief
-
-**Arquivo:** `supabase/functions/generate-brief/index.ts`
-
-**Config:** `verify_jwt = false` (validação manual via Authorization header)
-
-**Fluxo:**
-1. Autentica usuário via `getClaims` no token
-2. Busca `upcoming_meetings` por ID, verifica `user_id = auth.uid()`
-3. Busca `team_members` pelo `member_id` da reunião
-4. Busca action_items pendentes dos últimos 10 feedbacks do membro (via service role)
-5. Busca últimas 5 notas para contexto (content + title + occurred_at)
-6. Chama Lovable AI (`LOVABLE_API_KEY`) com tool calling para extrair JSON estruturado:
-   - `suggested_agenda[]` (max 3)
-   - `pending_items[]` (max 5)
-   - `context_summary` (2-3 frases)
-   - `coaching_reminder` (1 dica)
-7. Usa `RHITMO_IDENTITY` + `GUARDRAILS_PROMPT` como system prompt
-8. Salva resultado em `brief_cache` + `brief_generated_at` via service role
-9. Retorna o brief
-
-**Modelo:** `google/gemini-3-flash-preview` (padrão recomendado, via Lovable AI gateway)
-
----
-
-### Parte 3 — Página: BriefPage.tsx
-
-**Arquivo:** `src/pages/BriefPage.tsx` (novo)
-
-**Layout:** Dentro de `AppLayout` + `DirectReportGuard`
-
-**Comportamento ao montar:**
-1. Busca `upcoming_meetings` por `meetingId` (via Supabase client)
-2. Se `brief_cache` existe e `brief_generated_at` < 30min: usa cache
-3. Senão: invoca `generate-brief` e mostra loading
-
-**UI (Design System Creme/Bento):**
-
-- **Header:** Botão voltar, título "Brief — {member_name}", subtítulo com horário, badge Hoje/Amanhã, botão Google Meet
-- **Loading:** Card com Skeleton + Loader2 animado + "Preparando seu brief..."
-- **Grid de conteúdo:**
-  - Pauta Sugerida (📋) — card branco `rounded-2xl`, lista numerada com topic + rationale
-  - Pendências (⏳) — card `bg-amber-50` com border amber, ou "Nenhuma pendência ✓"
-  - Contexto Atual (🧠) — card `bg-violet-50` full-width, com coaching_reminder em badge
-- **Footer:** Botão "Iniciar Anotação" → `/member/{id}?openNote=true`, Botão "Abrir perfil" → `/member/{id}`
-
----
-
-### Parte 4 — Deep link: openNote no MemberDetails
-
-**Arquivo:** `src/pages/MemberDetails.tsx`
-
-Adiciona `useEffect` que verifica `?openNote=true` na URL e abre o dialog de nova nota automaticamente, limpando o param depois.
-
----
-
-### Parte 5 — Rota em App.tsx
-
-Adiciona rota protegida:
-```tsx
-<Route path="/brief/:meetingId" element={
-  <DirectReportGuard>
-    <AppLayout><BriefPage /></AppLayout>
-  </DirectReportGuard>
-} />
-```
-
----
-
-### Parte 6 — Link no CalendarWidget
-
-Atualiza o `onClick` dos cards de reunião no `CalendarWidget` para navegar para `/brief/{meetingId}` em vez de `/member/{memberId}`, quando o meeting tem `id`.
-
----
-
-### Arquivos Alterados
+### Arquivos alterados
 
 | Arquivo | Ação |
 |---------|------|
-| Migration (nova) | ADD brief_cache, brief_generated_at em upcoming_meetings |
-| supabase/functions/generate-brief/index.ts | Novo |
-| supabase/config.toml | Add entry para generate-brief |
-| src/pages/BriefPage.tsx | Novo |
-| src/pages/MemberDetails.tsx | Edit (deep link openNote) |
-| src/App.tsx | Edit (nova rota /brief/:meetingId) |
-| src/components/CalendarWidget.tsx | Edit (link para /brief/) |
+| Migration (nova) | DROP/ADD unique constraint |
+| `supabase/functions/fetch-calendar-events/index.ts` | Remover `break`, atualizar `onConflict` |
+| `src/components/CalendarWidget.tsx` | Nova função `getDayBadge`, badge em todos os cards |
 
 ### O que NÃO muda
-
-- Edge Functions existentes
-- Tabelas existentes (exceto 2 colunas em upcoming_meetings)
-- RLS existente
-- useCalendarIntegration hook
-- Qualquer componente não listado
+- Nenhuma outra Edge Function
+- Nenhuma outra tabela
+- Nenhum outro componente
+- `useCalendarIntegration` hook
 
