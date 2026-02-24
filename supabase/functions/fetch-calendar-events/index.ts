@@ -203,7 +203,7 @@ Deno.serve(async (req) => {
               attendees: JSON.stringify(attendees.map((a: { email: string }) => a.email)),
               synced_at: new Date().toISOString(),
             },
-            { onConflict: "user_id,google_event_id" }
+            { onConflict: "user_id,google_event_id,member_id" }
           )
           .select("id")
           .single();
@@ -219,7 +219,7 @@ Deno.serve(async (req) => {
           member_role: member.role,
         });
 
-        break; // One match per event is enough
+        // Continue iterating to match all team members in this event
       }
     }
 

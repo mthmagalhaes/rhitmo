@@ -7,6 +7,13 @@ import { format, isToday, isTomorrow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 
+const getDayBadge = (startTime: string) => {
+  const date = new Date(startTime);
+  if (isToday(date)) return { label: 'Hoje', color: 'bg-amber-100 text-amber-700' };
+  if (isTomorrow(date)) return { label: 'Amanhã', color: 'bg-blue-100 text-blue-700' };
+  return { label: format(date, 'EEE', { locale: ptBR }), color: 'bg-slate-100 text-slate-600' };
+};
+
 export const CalendarWidget = () => {
   const {
     isConnected,
@@ -108,9 +115,7 @@ export const CalendarWidget = () => {
       </div>
       <div className="flex gap-3 overflow-x-auto pb-1">
         {upcomingMeetings.map((meeting) => {
-          const startDate = new Date(meeting.start_time);
-          const today = isToday(startDate);
-          const tomorrow = isTomorrow(startDate);
+          const badge = getDayBadge(meeting.start_time);
 
           return (
             <div
@@ -120,18 +125,11 @@ export const CalendarWidget = () => {
             >
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs text-muted-foreground">
-                  {format(startDate, 'HH:mm', { locale: ptBR })}
+                  {format(new Date(meeting.start_time), 'HH:mm', { locale: ptBR })}
                 </span>
-                {today && (
-                  <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-600 border-amber-200">
-                    Hoje
-                  </Badge>
-                )}
-                {tomorrow && (
-                  <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 border-blue-200">
-                    Amanhã
-                  </Badge>
-                )}
+                <Badge variant="outline" className={`text-xs border-transparent ${badge.color}`}>
+                  {badge.label}
+                </Badge>
               </div>
               <p className="text-sm font-medium text-foreground truncate">
                 {meeting.member_name}
