@@ -36,6 +36,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { Workspace, Team } from '@/types/team';
+import { CalendarWidget } from '@/components/CalendarWidget';
 
 interface TeamMember {
   id: string;
@@ -77,6 +78,17 @@ const Index = () => {
       navigate('/', { replace: true });
     }
   }, [user, authLoading, navigate]);
+
+  // Handle calendar callback
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('calendar') === 'connected') {
+      toast({ title: 'Google Calendar conectado! 🗓️' });
+      window.history.replaceState({}, '', '/dashboard');
+      queryClient.invalidateQueries({ queryKey: ['calendar-connected'] });
+      queryClient.invalidateQueries({ queryKey: ['upcoming-meetings'] });
+    }
+  }, []);
 
   // Query para workspace - FILTRO EXPLÍCITO por owner_id para isolamento de tenant
   const { data: workspace } = useQuery({
@@ -351,7 +363,10 @@ const Index = () => {
           onNewTeam={() => setNewTeamOpen(true)}
         />
 
-        {/* Leader Sync Reminder */}
+        {/* Calendar Widget */}
+        <CalendarWidget />
+
+
         {workspace && onboardingStatus?.hasLeaderSync && (
           <LeaderSyncReminder
             leaderSyncCompletedAt={(workspace as unknown as Record<string, unknown>).leader_sync_completed_at as string | null}

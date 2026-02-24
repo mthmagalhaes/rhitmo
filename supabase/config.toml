@@ -41,3 +41,9 @@ verify_jwt = true
 
 [functions.analyze-job-crafting]
 verify_jwt = true
+
+[functions.google-calendar-oauth]
+verify_jwt = false
+
+[functions.fetch-calendar-events]
+verify_jwt = false

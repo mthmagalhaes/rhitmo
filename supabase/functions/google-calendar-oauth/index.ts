@@ -1,0 +1,207 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  const url = new URL(req.url);
+  const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID")!;
+  const GOOGLE_CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET")!;
+  const GOOGLE_REDIRECT_URI = Deno.env.get("GOOGLE_REDIRECT_URI")!;
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+  // Determine action from query param or body
+  let action = url.searchParams.get("action");
+
+  if (!action && req.method === "POST") {
+    try {
+      const body = await req.json();
+      action = body.action;
+    } catch {
+      // ignore parse errors
+    }
+  }
+
+  try {
+    // ═══════════════════════════════════
+    // ACTION: authorize
+    // ═══════════════════════════════════
+    if (action === "authorize") {
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader?.startsWith("Bearer ")) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const supabase = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: authHeader } },
+      });
+
+      const token = authHeader.replace("Bearer ", "");
+      const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+      if (claimsError || !claimsData?.claims) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const userId = claimsData.claims.sub;
+
+      const params = new URLSearchParams({
+        client_id: GOOGLE_CLIENT_ID,
+        redirect_uri: GOOGLE_REDIRECT_URI,
+        response_type: "code",
+        scope: "https://www.googleapis.com/auth/calendar.readonly",
+        access_type: "offline",
+        prompt: "consent",
+        state: userId,
+      });
+
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+
+      return new Response(JSON.stringify({ authUrl }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ═══════════════════════════════════
+    // ACTION: callback
+    // ═══════════════════════════════════
+    if (action === "callback") {
+      const code = url.searchParams.get("code");
+      const state = url.searchParams.get("state"); // user_id
+
+      if (!code || !state) {
+        return new Response("Missing code or state", { status: 400, headers: corsHeaders });
+      }
+
+      // Exchange code for tokens
+      const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          code,
+          client_id: GOOGLE_CLIENT_ID,
+          client_secret: GOOGLE_CLIENT_SECRET,
+          redirect_uri: GOOGLE_REDIRECT_URI,
+          grant_type: "authorization_code",
+        }),
+      });
+
+      const tokens = await tokenResponse.json();
+
+      if (!tokenResponse.ok || !tokens.access_token) {
+        console.error("Token exchange failed:", tokens);
+        return new Response("Token exchange failed", { status: 400, headers: corsHeaders });
+      }
+
+      const tokenExpiry = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
+
+      // Fetch calendar email
+      let calendarEmail: string | null = null;
+      try {
+        const calResponse = await fetch(
+          "https://www.googleapis.com/calendar/v3/calendars/primary",
+          { headers: { Authorization: `Bearer ${tokens.access_token}` } }
+        );
+        if (calResponse.ok) {
+          const calData = await calResponse.json();
+          calendarEmail = calData.id || null;
+        }
+      } catch (e) {
+        console.error("Failed to fetch calendar email:", e);
+      }
+
+      // Use service role to write tokens (no user JWT in callback redirect)
+      const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+      const { error: upsertError } = await supabaseAdmin
+        .from("google_calendar_tokens")
+        .upsert(
+          {
+            user_id: state,
+            access_token: tokens.access_token,
+            refresh_token: tokens.refresh_token || null,
+            token_expiry: tokenExpiry,
+            calendar_email: calendarEmail,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id" }
+        );
+
+      if (upsertError) {
+        console.error("Failed to save tokens:", upsertError);
+        return new Response("Failed to save tokens", { status: 500, headers: corsHeaders });
+      }
+
+      // Redirect to dashboard
+      return new Response(null, {
+        status: 302,
+        headers: {
+          ...corsHeaders,
+          Location: "https://rhitmo.lovable.app/dashboard?calendar=connected",
+        },
+      });
+    }
+
+    // ═══════════════════════════════════
+    // ACTION: disconnect
+    // ═══════════════════════════════════
+    if (action === "disconnect") {
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader?.startsWith("Bearer ")) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const supabase = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: authHeader } },
+      });
+
+      const token = authHeader.replace("Bearer ", "");
+      const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+      if (claimsError || !claimsData?.claims) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const userId = claimsData.claims.sub;
+
+      // Use service role to delete
+      const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+      await supabaseAdmin.from("google_calendar_tokens").delete().eq("user_id", userId);
+      await supabaseAdmin.from("upcoming_meetings").delete().eq("user_id", userId);
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify({ error: "Invalid action" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    console.error("Error:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
