@@ -509,6 +509,8 @@ export type Database = {
       upcoming_meetings: {
         Row: {
           attendees: Json | null
+          brief_cache: Json | null
+          brief_generated_at: string | null
           end_time: string | null
           google_event_id: string
           id: string
@@ -521,6 +523,8 @@ export type Database = {
         }
         Insert: {
           attendees?: Json | null
+          brief_cache?: Json | null
+          brief_generated_at?: string | null
           end_time?: string | null
           google_event_id: string
           id?: string
@@ -533,6 +537,8 @@ export type Database = {
         }
         Update: {
           attendees?: Json | null
+          brief_cache?: Json | null
+          brief_generated_at?: string | null
           end_time?: string | null
           google_event_id?: string
           id?: string
