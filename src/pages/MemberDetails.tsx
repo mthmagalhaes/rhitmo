@@ -57,6 +57,15 @@ const MemberDetails = () => {
     hasSync
   } = usePlanLimits();
 
+  // Deep link: open note dialog from ?openNote=true
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('openNote') === 'true') {
+      setDialogOpen(true);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
   // Query para carregar membro
   const {
     data: member,

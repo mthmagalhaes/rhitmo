@@ -18,6 +18,7 @@ import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
 import HelpCenter from "./pages/HelpCenter";
+import BriefPage from "./pages/BriefPage";
 import { AdminGuard } from "./components/admin/AdminGuard";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { HRAdminGuard } from "./components/HRAdminGuard";
@@ -66,6 +67,13 @@ const App = () => (
             <Route path="/help" element={
               <DirectReportGuard>
                 <AppLayout><HelpCenter /></AppLayout>
+              </DirectReportGuard>
+            } />
+            
+            {/* Brief pré-reunião */}
+            <Route path="/brief/:meetingId" element={
+              <DirectReportGuard>
+                <AppLayout><BriefPage /></AppLayout>
               </DirectReportGuard>
             } />
             
