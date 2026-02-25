@@ -1,46 +1,83 @@
 
 
-## Dois Ajustes no DirectReportDashboard
+## Edição do Rhitmo Sync no Portal do Liderado
+
+### Resumo
+
+Implementar um Dialog inline na tab "Meu Perfil" do DirectReportDashboard para que o liderado possa editar seu Rhitmo Sync diretamente, sem redirecionamento. Salvar via update direto na tabela `team_members` (RLS já permite linked users atualizarem seu próprio perfil). Atualizar badges com cores diferenciadas por tipo.
+
+---
 
 ### Arquivo alterado
+
 `src/components/dashboard/DirectReportDashboard.tsx`
 
-### Ajuste 1 — Mover CareerCompassCard para tab "Minha Carreira"
+---
 
-**Tab "Visão Geral" (linhas 130-198):**
-- Remover o bloco do CareerCompassCard (linhas 132-137)
-- Manter apenas o grid com Resumo (col-span-1) e Próximas Ações (col-span-2)
+### Detalhamento
 
-**Tab "Minha Carreira" (linhas 200-211):**
-- Inserir o CareerCompassCard no topo (condicional ao `aiAnalysis`)
-- Manter o card placeholder "Skills map, PDI e Career Coach chegam em breve" abaixo
+#### 1. Novos imports
 
-### Ajuste 2 — TabsList com estilo underline (GitHub/Notion)
+- `Dialog, DialogContent, DialogHeader, DialogTitle` de `@/components/ui/dialog`
+- `Textarea` de `@/components/ui/textarea`
+- `Label` de `@/components/ui/label`
+- `Select, SelectContent, SelectItem, SelectTrigger, SelectValue` de `@/components/ui/select`
+- `useQueryClient` de `@tanstack/react-query`
 
-**Linhas 110-127:** Substituir o `TabsList` pill-style por um wrapper com `border-b` e triggers com `border-b-2` underline ativo.
+#### 2. Novo estado e lógica
 
-Novo markup:
-```tsx
-<div className="border-b border-border bg-background sticky top-0 z-10 -mx-6 px-6 mb-6">
-  <TabsList className="bg-transparent p-0 h-auto gap-1">
-    <TabsTrigger value="..." className="rounded-none border-b-2 border-transparent 
-      data-[state=active]:border-primary data-[state=active]:bg-transparent 
-      data-[state=active]:text-primary data-[state=active]:shadow-none 
-      text-muted-foreground hover:text-foreground px-4 py-3 text-sm font-medium 
-      transition-colors gap-2">
+```typescript
+const [syncDialogOpen, setSyncDialogOpen] = useState(false);
+const [syncSaving, setSyncSaving] = useState(false);
+const [syncForm, setSyncForm] = useState({
+  chronotype: linkedMember.chronotype || '',
+  feedback_style: linkedMember.feedback_style || '',
+  recognition_style: linkedMember.recognition_style || '',
+  stress_signs: (linkedMember.work_style_data as any)?.stress_signs || '',
+  motivators: (linkedMember.work_style_data as any)?.motivators || '',
+});
+const queryClient = useQueryClient();
 ```
 
-### Resumo de edições
+#### 3. Função de save
 
-| Linhas | Alteração |
-|--------|-----------|
-| 110-127 | TabsList: pill → underline style com wrapper border-b |
-| 130-137 | Remover CareerCompassCard da tab Visão Geral |
-| 200-211 | Tab Carreira: adicionar CareerCompassCard + manter placeholder |
+- Update direto via `supabase.from('team_members').update(...)` onde `linked_user_id = auth.uid()` — a RLS policy "Linked users can update own basic profile" já autoriza isso
+- Campos atualizados: `chronotype`, `feedback_style`, `recognition_style`, `work_style_data` (merge com dados existentes, adicionando `stress_signs` e `motivators`)
+- **Não usar** `submit_rhitmo_sync_v2` porque ele bloqueia re-submissões (`WHERE work_style_data IS NULL`)
+- On success: fechar dialog, toast de sucesso, invalidar query `['linked-member', ...]`
+- On error: toast destructive
+- Notificação ao líder: apenas `console.log` + toast (tabela `notifications` não existe)
 
-### O que NÃO muda
-- Toda lógica de queries, feedbacks, estado
-- CareerCompassCard componente intacto
-- Tabs Feedbacks e Meu Perfil intactas
-- Nenhum outro arquivo
+#### 4. Dialog do formulário
+
+Título: "Atualizar meu Rhitmo Sync", max-w-lg
+
+5 campos:
+| Campo | Tipo | Options |
+|-------|------|---------|
+| Cronotipo | Select | matutino, vespertino, noturno, variavel |
+| Estilo de Feedback | Select | direto, contexto, particular, escrito |
+| Estilo de Reconhecimento | Select | publico, particular, resultados, aprendizado |
+| Sinais de estresse | Textarea | max 200 chars |
+| Motivadores | Textarea | max 200 chars |
+
+Pré-populados com dados existentes do `linkedMember`.
+
+#### 5. Badges com cores diferenciadas
+
+Substituir as 3 badges atualmente todas roxas por:
+- `chronotype` → `bg-primary/10 text-primary` (roxo, como está)
+- `feedback_style` → `bg-blue-50 text-blue-700`
+- `recognition_style` → `bg-emerald-50 text-emerald-700`
+
+Expandir labels para incluir novas opções do formulário.
+
+#### 6. Botão "Atualizar Sync"
+
+O `onClick` do botão existente passa a abrir o dialog: `setSyncDialogOpen(true)`.
+
+#### 7. O que NÃO muda
+- Estrutura das tabs, CareerCompassCard, FeedbackTimeline
+- DirectReportGuard, rotas, nenhum outro arquivo
+- Nenhuma migração de banco necessária
 
