@@ -46,28 +46,23 @@ const tenureLabels: Record<string, string> = {
 };
 
 const chronotypeLabels: Record<string, string> = {
-  'madrugador': '🌅 Madrugador',
-  'comercial': '☀️ Comercial',
-  'noturno': '🌙 Noturno',
-  'matutino': '🌅 Matutino',
-  'vespertino': '🌤️ Vespertino',
-  'variavel': '🔄 Variável',
+  'madrugador': 'Madrugador',
+  'comercial': 'Horário Comercial',
+  'noturno': 'Noturno',
 };
 
 const feedbackStyleLabels: Record<string, string> = {
-  'direto': '🎯 Direto e objetivo',
-  'empatico': '💛 Empático',
-  'escrito': '📝 Por escrito primeiro',
-  'contexto': '📖 Com contexto e exemplos',
-  'particular': '🤝 Em particular',
+  'direto': 'Direto',
+  'empatico': 'Empático',
+  'escrito': 'Escrito',
 };
 
 const recognitionStyleLabels: Record<string, string> = {
-  'publico': '📢 Publicamente',
-  'privado': '🤫 Em particular',
-  'resultados': '🏆 Por resultados',
-  'aprendizado': '📚 Por aprendizado',
+  'publico': 'Público',
+  'privado': 'Privado',
 };
+
+const MOTIVATOR_OPTIONS = ['Autonomia', 'Dinheiro', 'Estabilidade', 'Aprendizado', 'Propósito', 'Status'];
 
 export default function DirectReportDashboard({ linkedMember }: DirectReportDashboardProps) {
   const [activeTab, setActiveTab] = useState('visao-geral');
@@ -77,21 +72,32 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
 
   const [syncForm, setSyncForm] = useState({
     chronotype: '',
+    work_environment: '',
+    energy_drains: '',
+    energy_sources: '',
+    stress_signs: '',
+    support_needed: '',
     feedback_style: '',
     recognition_style: '',
-    stress_signs: '',
-    motivators: '',
+    motivators: [] as string[],
+    skill_goal: '',
   });
 
   // Pre-populate form when dialog opens
   useEffect(() => {
     if (syncDialogOpen) {
+      const wsd = linkedMember.work_style_data as any;
       setSyncForm({
         chronotype: linkedMember.chronotype || '',
+        work_environment: wsd?.work_environment || '',
+        energy_drains: wsd?.energy_drains || '',
+        energy_sources: wsd?.energy_sources || '',
+        stress_signs: wsd?.stress_signs || '',
+        support_needed: wsd?.support_needed || '',
         feedback_style: linkedMember.feedback_style || '',
         recognition_style: linkedMember.recognition_style || '',
-        stress_signs: (linkedMember.work_style_data as any)?.stress_signs || '',
-        motivators: (linkedMember.work_style_data as any)?.motivators_text || '',
+        motivators: wsd?.motivators || [],
+        skill_goal: wsd?.skill_goal || '',
       });
     }
   }, [syncDialogOpen, linkedMember]);
@@ -131,6 +137,15 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
   const aiAnalysis = linkedMember.skills_data?.ai_analysis;
   const hasRhitmoSync = !!(linkedMember.work_style_data || linkedMember.chronotype || linkedMember.feedback_style || linkedMember.recognition_style);
 
+  const handleToggleMotivator = (m: string) => {
+    setSyncForm(prev => {
+      const has = prev.motivators.includes(m);
+      if (has) return { ...prev, motivators: prev.motivators.filter(x => x !== m) };
+      if (prev.motivators.length >= 3) return prev;
+      return { ...prev, motivators: [...prev.motivators, m] };
+    });
+  };
+
   const handleSaveSync = async () => {
     setSyncSaving(true);
     try {
@@ -143,8 +158,13 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
           recognition_style: syncForm.recognition_style || null,
           work_style_data: {
             ...existingWsd,
+            work_environment: syncForm.work_environment || null,
+            energy_drains: syncForm.energy_drains || null,
+            energy_sources: syncForm.energy_sources || null,
             stress_signs: syncForm.stress_signs || null,
-            motivators_text: syncForm.motivators || null,
+            support_needed: syncForm.support_needed || null,
+            motivators: syncForm.motivators.length > 0 ? syncForm.motivators : null,
+            skill_goal: syncForm.skill_goal || null,
           },
         })
         .eq('id', linkedMember.id);
@@ -382,6 +402,11 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
                         {recognitionStyleLabels[linkedMember.recognition_style] || linkedMember.recognition_style}
                       </Badge>
                     )}
+                    {(linkedMember.work_style_data as any)?.motivators?.map((m: string) => (
+                      <Badge key={m} variant="secondary" className="rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs px-3 py-1">
+                        {m}
+                      </Badge>
+                    ))}
                   </div>
                 ) : (
                   <div className="text-center py-6 text-muted-foreground">
@@ -409,82 +434,117 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
 
       {/* ═══ Dialog: Editar Rhitmo Sync ═══ */}
       <Dialog open={syncDialogOpen} onOpenChange={setSyncDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Atualizar meu Rhitmo Sync</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-5 mt-2">
-            {/* Cronotipo */}
+          <div className="space-y-4 mt-2">
+            {/* ── Seção: Ritmo e Energia ── */}
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mt-4 mb-2">Ritmo e Energia</p>
+
             <div className="space-y-2">
-              <Label>Qual é o seu ritmo natural de energia?</Label>
+              <Label>Quando você é mais produtivo?</Label>
               <Select value={syncForm.chronotype} onValueChange={(v) => setSyncForm(prev => ({ ...prev, chronotype: v }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="matutino">Matutino</SelectItem>
-                  <SelectItem value="vespertino">Vespertino</SelectItem>
-                  <SelectItem value="noturno">Noturno</SelectItem>
-                  <SelectItem value="variavel">Variável</SelectItem>
+                  <SelectItem value="madrugador">Madrugador (entre 5h e 10h)</SelectItem>
+                  <SelectItem value="comercial">Horário Comercial (9h às 18h)</SelectItem>
+                  <SelectItem value="noturno">Noturno (depois das 18h)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Estilo de Feedback */}
             <div className="space-y-2">
-              <Label>Como você prefere receber feedback?</Label>
-              <Select value={syncForm.feedback_style} onValueChange={(v) => setSyncForm(prev => ({ ...prev, feedback_style: v }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
+              <Label>Ambiente ideal de trabalho</Label>
+              <Select value={syncForm.work_environment} onValueChange={(v) => setSyncForm(prev => ({ ...prev, work_environment: v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="direto">Direto e objetivo</SelectItem>
-                  <SelectItem value="contexto">Com contexto e exemplos</SelectItem>
-                  <SelectItem value="particular">Em particular</SelectItem>
-                  <SelectItem value="escrito">Por escrito primeiro</SelectItem>
+                  <SelectItem value="silencioso">Silencioso e focado</SelectItem>
+                  <SelectItem value="dinamico">Dinâmico e colaborativo</SelectItem>
+                  <SelectItem value="flexivel">Flexível / híbrido</SelectItem>
+                  <SelectItem value="remoto">Remoto</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Estilo de Reconhecimento */}
             <div className="space-y-2">
-              <Label>Como prefere ser reconhecido?</Label>
-              <Select value={syncForm.recognition_style} onValueChange={(v) => setSyncForm(prev => ({ ...prev, recognition_style: v }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="publico">Publicamente</SelectItem>
-                  <SelectItem value="privado">Em particular</SelectItem>
-                  <SelectItem value="resultados">Por resultados</SelectItem>
-                  <SelectItem value="aprendizado">Por aprendizado</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label>O que drena minha energia</Label>
+              <Textarea placeholder="Ex: Reuniões longas sem pauta, interrupções constantes..." maxLength={200} value={syncForm.energy_drains} onChange={(e) => setSyncForm(prev => ({ ...prev, energy_drains: e.target.value }))} />
+              <p className="text-xs text-muted-foreground text-right">{syncForm.energy_drains.length}/200</p>
             </div>
 
-            {/* Sinais de estresse */}
             <div className="space-y-2">
-              <Label>O que indica que você está sobrecarregado?</Label>
-              <Textarea
-                placeholder="Ex: fico quieto, demoro mais para responder..."
-                maxLength={200}
-                value={syncForm.stress_signs}
-                onChange={(e) => setSyncForm(prev => ({ ...prev, stress_signs: e.target.value }))}
-              />
+              <Label>O que carrega minha energia</Label>
+              <Textarea placeholder="Ex: Tempo para trabalho focado, feedback positivo..." maxLength={200} value={syncForm.energy_sources} onChange={(e) => setSyncForm(prev => ({ ...prev, energy_sources: e.target.value }))} />
+              <p className="text-xs text-muted-foreground text-right">{syncForm.energy_sources.length}/200</p>
+            </div>
+
+            {/* ── Seção: Manual de Instruções ── */}
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mt-4 mb-2">Manual de Instruções</p>
+
+            <div className="space-y-2">
+              <Label>Quando estou estressado, eu...</Label>
+              <Textarea placeholder="Ex: Fico quieto, respondo com respostas curtas, evito reuniões..." maxLength={200} value={syncForm.stress_signs} onChange={(e) => setSyncForm(prev => ({ ...prev, stress_signs: e.target.value }))} />
               <p className="text-xs text-muted-foreground text-right">{syncForm.stress_signs.length}/200</p>
             </div>
 
-            {/* Motivadores */}
             <div className="space-y-2">
-              <Label>O que te energiza no trabalho?</Label>
-              <Textarea
-                placeholder="Ex: resolver problemas complexos, ajudar colegas..."
-                maxLength={200}
-                value={syncForm.motivators}
-                onChange={(e) => setSyncForm(prev => ({ ...prev, motivators: e.target.value }))}
-              />
-              <p className="text-xs text-muted-foreground text-right">{syncForm.motivators.length}/200</p>
+              <Label>Em dias ruins, me ajude...</Label>
+              <Textarea placeholder="Ex: Me dando espaço, perguntando se preciso de algo..." maxLength={200} value={syncForm.support_needed} onChange={(e) => setSyncForm(prev => ({ ...prev, support_needed: e.target.value }))} />
+              <p className="text-xs text-muted-foreground text-right">{syncForm.support_needed.length}/200</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Como prefiro receber feedback?</Label>
+              <Select value={syncForm.feedback_style} onValueChange={(v) => setSyncForm(prev => ({ ...prev, feedback_style: v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="direto">Direto (sem rodeios, objetivo)</SelectItem>
+                  <SelectItem value="empatico">Empático (com contexto e cuidado)</SelectItem>
+                  <SelectItem value="escrito">Escrito (prefiro ler e processar)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Como prefiro ser reconhecido?</Label>
+              <Select value={syncForm.recognition_style} onValueChange={(v) => setSyncForm(prev => ({ ...prev, recognition_style: v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="publico">Público (em grupo)</SelectItem>
+                  <SelectItem value="privado">Privado (1:1 com meu líder)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* ── Seção: Futuro ── */}
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mt-4 mb-2">Futuro</p>
+
+            <div className="space-y-2">
+              <Label>O que te motiva? (escolha até 3)</Label>
+              <div className="flex flex-wrap gap-2">
+                {MOTIVATOR_OPTIONS.map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => handleToggleMotivator(m)}
+                    className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+                      syncForm.motivators.includes(m)
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>O que você quer aprender/desenvolver?</Label>
+              <Textarea placeholder="Ex: Apresentações em público, gestão de projetos..." maxLength={200} value={syncForm.skill_goal} onChange={(e) => setSyncForm(prev => ({ ...prev, skill_goal: e.target.value }))} />
+              <p className="text-xs text-muted-foreground text-right">{syncForm.skill_goal.length}/200</p>
             </div>
           </div>
 
