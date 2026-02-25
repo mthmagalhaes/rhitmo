@@ -1,10 +1,14 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FeedbackTimeline } from '@/components/FeedbackTimeline';
 import { Home, Compass, FileText, User, Zap, CheckCircle, ChevronRight, Sparkles, Loader2 } from 'lucide-react';
 import { CareerCompassCard, type AIAnalysis } from './CareerCompassCard';
@@ -45,21 +49,52 @@ const chronotypeLabels: Record<string, string> = {
   'madrugador': '🌅 Madrugador',
   'comercial': '☀️ Comercial',
   'noturno': '🌙 Noturno',
+  'matutino': '🌅 Matutino',
+  'vespertino': '🌤️ Vespertino',
+  'variavel': '🔄 Variável',
 };
 
 const feedbackStyleLabels: Record<string, string> = {
-  'direto': '🎯 Direto',
+  'direto': '🎯 Direto e objetivo',
   'empatico': '💛 Empático',
-  'escrito': '📝 Escrito',
+  'escrito': '📝 Por escrito primeiro',
+  'contexto': '📖 Com contexto e exemplos',
+  'particular': '🤝 Em particular',
 };
 
 const recognitionStyleLabels: Record<string, string> = {
-  'publico': '📢 Público',
-  'privado': '🤫 Privado',
+  'publico': '📢 Publicamente',
+  'privado': '🤫 Em particular',
+  'resultados': '🏆 Por resultados',
+  'aprendizado': '📚 Por aprendizado',
 };
 
 export default function DirectReportDashboard({ linkedMember }: DirectReportDashboardProps) {
   const [activeTab, setActiveTab] = useState('visao-geral');
+  const [syncDialogOpen, setSyncDialogOpen] = useState(false);
+  const [syncSaving, setSyncSaving] = useState(false);
+  const queryClient = useQueryClient();
+
+  const [syncForm, setSyncForm] = useState({
+    chronotype: '',
+    feedback_style: '',
+    recognition_style: '',
+    stress_signs: '',
+    motivators: '',
+  });
+
+  // Pre-populate form when dialog opens
+  useEffect(() => {
+    if (syncDialogOpen) {
+      setSyncForm({
+        chronotype: linkedMember.chronotype || '',
+        feedback_style: linkedMember.feedback_style || '',
+        recognition_style: linkedMember.recognition_style || '',
+        stress_signs: (linkedMember.work_style_data as any)?.stress_signs || '',
+        motivators: (linkedMember.work_style_data as any)?.motivators_text || '',
+      });
+    }
+  }, [syncDialogOpen, linkedMember]);
 
   // Fix nome concatenado
   const displayName = linkedMember.name?.replace(linkedMember.role, '').trim() || linkedMember.name;
@@ -95,6 +130,38 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
   const tenure = linkedMember.skills_data?.role_tenure;
   const aiAnalysis = linkedMember.skills_data?.ai_analysis;
   const hasRhitmoSync = !!(linkedMember.work_style_data || linkedMember.chronotype || linkedMember.feedback_style || linkedMember.recognition_style);
+
+  const handleSaveSync = async () => {
+    setSyncSaving(true);
+    try {
+      const existingWsd = (linkedMember.work_style_data as Record<string, unknown>) || {};
+      const { error } = await supabase
+        .from('team_members')
+        .update({
+          chronotype: syncForm.chronotype || null,
+          feedback_style: syncForm.feedback_style || null,
+          recognition_style: syncForm.recognition_style || null,
+          work_style_data: {
+            ...existingWsd,
+            stress_signs: syncForm.stress_signs || null,
+            motivators_text: syncForm.motivators || null,
+          },
+        })
+        .eq('id', linkedMember.id);
+
+      if (error) throw error;
+
+      console.log('[Rhitmo Sync] Updated successfully for member:', linkedMember.id);
+      toast.success('Rhitmo Sync atualizado! Seu líder foi notificado.');
+      setSyncDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['linked-member'] });
+    } catch (err) {
+      console.error('Error saving sync:', err);
+      toast.error('Erro ao salvar. Tente novamente.');
+    } finally {
+      setSyncSaving(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-muted/30 pb-20">
@@ -299,19 +366,19 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
                 <p className="text-sm text-muted-foreground mb-4">Seu perfil comportamental e preferências</p>
 
                 {hasRhitmoSync ? (
-                  <div className="space-y-3">
+                  <div className="flex flex-wrap gap-2">
                     {linkedMember.chronotype && (
                       <Badge variant="secondary" className="rounded-full bg-primary/10 text-primary text-xs px-3 py-1">
                         {chronotypeLabels[linkedMember.chronotype] || linkedMember.chronotype}
                       </Badge>
                     )}
                     {linkedMember.feedback_style && (
-                      <Badge variant="secondary" className="rounded-full bg-primary/10 text-primary text-xs px-3 py-1 ml-2">
+                      <Badge variant="secondary" className="rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-400 text-xs px-3 py-1">
                         {feedbackStyleLabels[linkedMember.feedback_style] || linkedMember.feedback_style}
                       </Badge>
                     )}
                     {linkedMember.recognition_style && (
-                      <Badge variant="secondary" className="rounded-full bg-primary/10 text-primary text-xs px-3 py-1 ml-2">
+                      <Badge variant="secondary" className="rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs px-3 py-1">
                         {recognitionStyleLabels[linkedMember.recognition_style] || linkedMember.recognition_style}
                       </Badge>
                     )}
@@ -329,7 +396,7 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
                     variant="outline"
                     size="sm"
                     className="w-full"
-                    onClick={() => toast('Edição do Sync disponível em breve')}
+                    onClick={() => setSyncDialogOpen(true)}
                   >
                     Atualizar Sync
                   </Button>
@@ -339,6 +406,99 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* ═══ Dialog: Editar Rhitmo Sync ═══ */}
+      <Dialog open={syncDialogOpen} onOpenChange={setSyncDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Atualizar meu Rhitmo Sync</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-5 mt-2">
+            {/* Cronotipo */}
+            <div className="space-y-2">
+              <Label>Qual é o seu ritmo natural de energia?</Label>
+              <Select value={syncForm.chronotype} onValueChange={(v) => setSyncForm(prev => ({ ...prev, chronotype: v }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="matutino">Matutino</SelectItem>
+                  <SelectItem value="vespertino">Vespertino</SelectItem>
+                  <SelectItem value="noturno">Noturno</SelectItem>
+                  <SelectItem value="variavel">Variável</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Estilo de Feedback */}
+            <div className="space-y-2">
+              <Label>Como você prefere receber feedback?</Label>
+              <Select value={syncForm.feedback_style} onValueChange={(v) => setSyncForm(prev => ({ ...prev, feedback_style: v }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="direto">Direto e objetivo</SelectItem>
+                  <SelectItem value="contexto">Com contexto e exemplos</SelectItem>
+                  <SelectItem value="particular">Em particular</SelectItem>
+                  <SelectItem value="escrito">Por escrito primeiro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Estilo de Reconhecimento */}
+            <div className="space-y-2">
+              <Label>Como prefere ser reconhecido?</Label>
+              <Select value={syncForm.recognition_style} onValueChange={(v) => setSyncForm(prev => ({ ...prev, recognition_style: v }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="publico">Publicamente</SelectItem>
+                  <SelectItem value="privado">Em particular</SelectItem>
+                  <SelectItem value="resultados">Por resultados</SelectItem>
+                  <SelectItem value="aprendizado">Por aprendizado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Sinais de estresse */}
+            <div className="space-y-2">
+              <Label>O que indica que você está sobrecarregado?</Label>
+              <Textarea
+                placeholder="Ex: fico quieto, demoro mais para responder..."
+                maxLength={200}
+                value={syncForm.stress_signs}
+                onChange={(e) => setSyncForm(prev => ({ ...prev, stress_signs: e.target.value }))}
+              />
+              <p className="text-xs text-muted-foreground text-right">{syncForm.stress_signs.length}/200</p>
+            </div>
+
+            {/* Motivadores */}
+            <div className="space-y-2">
+              <Label>O que te energiza no trabalho?</Label>
+              <Textarea
+                placeholder="Ex: resolver problemas complexos, ajudar colegas..."
+                maxLength={200}
+                value={syncForm.motivators}
+                onChange={(e) => setSyncForm(prev => ({ ...prev, motivators: e.target.value }))}
+              />
+              <p className="text-xs text-muted-foreground text-right">{syncForm.motivators.length}/200</p>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 mt-4">
+            <Button variant="outline" onClick={() => setSyncDialogOpen(false)} disabled={syncSaving}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveSync} disabled={syncSaving}>
+              {syncSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Salvar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
