@@ -1,87 +1,46 @@
 
 
-## Portal do Liderado — Estrutura Base com Tabs
+## Dois Ajustes no DirectReportDashboard
 
-### Resumo
+### Arquivo alterado
+`src/components/dashboard/DirectReportDashboard.tsx`
 
-Reestruturar o `DirectReportDashboard` com 4 tabs (Visão Geral, Minha Carreira, Feedbacks, Meu Perfil), corrigir o bug de nome concatenado, e expandir os dados disponíveis do membro vinculado.
+### Ajuste 1 — Mover CareerCompassCard para tab "Minha Carreira"
 
----
+**Tab "Visão Geral" (linhas 130-198):**
+- Remover o bloco do CareerCompassCard (linhas 132-137)
+- Manter apenas o grid com Resumo (col-span-1) e Próximas Ações (col-span-2)
 
-### Arquivos Alterados
+**Tab "Minha Carreira" (linhas 200-211):**
+- Inserir o CareerCompassCard no topo (condicional ao `aiAnalysis`)
+- Manter o card placeholder "Skills map, PDI e Career Coach chegam em breve" abaixo
 
-| Arquivo | Alteração |
-|---------|-----------|
-| `src/hooks/useLinkedMember.ts` | Expandir interface e query para incluir `work_style_data`, `chronotype`, `feedback_style`, `recognition_style`, `ai_analysis` |
-| `src/components/dashboard/DirectReportDashboard.tsx` | Rewrite completo: tabs, fix nome, 4 seções de conteúdo |
+### Ajuste 2 — TabsList com estilo underline (GitHub/Notion)
 
----
+**Linhas 110-127:** Substituir o `TabsList` pill-style por um wrapper com `border-b` e triggers com `border-b-2` underline ativo.
 
-### Detalhamento
-
-#### 1. useLinkedMember.ts — Expandir dados
-
-Adicionar campos à interface `LinkedMemberData`:
-```typescript
-work_style_data?: Record<string, unknown> | null;
-chronotype?: string | null;
-feedback_style?: string | null;
-recognition_style?: string | null;
+Novo markup:
+```tsx
+<div className="border-b border-border bg-background sticky top-0 z-10 -mx-6 px-6 mb-6">
+  <TabsList className="bg-transparent p-0 h-auto gap-1">
+    <TabsTrigger value="..." className="rounded-none border-b-2 border-transparent 
+      data-[state=active]:border-primary data-[state=active]:bg-transparent 
+      data-[state=active]:text-primary data-[state=active]:shadow-none 
+      text-muted-foreground hover:text-foreground px-4 py-3 text-sm font-medium 
+      transition-colors gap-2">
 ```
 
-Adicionar `ai_analysis` dentro de `skills_data`.
+### Resumo de edições
 
-Atualizar o `.select()` para incluir os novos campos:
-```typescript
-.select('id, name, email, role, skills_data, work_style_data, chronotype, feedback_style, recognition_style')
-```
+| Linhas | Alteração |
+|--------|-----------|
+| 110-127 | TabsList: pill → underline style com wrapper border-b |
+| 130-137 | Remover CareerCompassCard da tab Visão Geral |
+| 200-211 | Tab Carreira: adicionar CareerCompassCard + manter placeholder |
 
-#### 2. DirectReportDashboard.tsx — Fix do nome
-
-Calcular `displayName` no topo do componente:
-```typescript
-const displayName = linkedMember.name?.replace(linkedMember.role, '').trim() || linkedMember.name;
-```
-
-Usar `displayName` em vez de `linkedMember.name` na saudação.
-
-#### 3. DirectReportDashboard.tsx — Estrutura de Tabs
-
-Imports adicionados:
-- `Tabs, TabsList, TabsTrigger, TabsContent` de `@/components/ui/tabs`
-- `Home, Compass, Zap, CheckCircle, ChevronRight, Sparkles` de `lucide-react`
-- `toast` de `sonner`
-- `useState` de `react`
-
-Layout:
-- Header com saudação (fora das tabs)
-- `<Tabs defaultValue="visao-geral">` com `TabsList` sticky
-
-**Tab "Visão Geral":**
-- Card Bússola de Carreira (CareerCompassCard, full width, intacto)
-- Card Resumo (1/3): count de feedbacks, links para outras tabs
-- Card Próximas Ações (2/3): 3 itens placeholder com `ChevronRight`
-
-**Tab "Minha Carreira":**
-- Placeholder card centralizado com ícone Compass e texto "em breve"
-
-**Tab "Feedbacks":**
-- Título "Feedbacks do seu líder"
-- FeedbackTimeline com query existente (intacta)
-- Empty state existente (intacto)
-
-**Tab "Meu Perfil":**
-- Seção 1: Informações da função (conteúdo atual do card Meu Perfil)
-  - Botão "Editar" com toast placeholder
-- Seção 2: Card "Meu Rhitmo Sync"
-  - Se `work_style_data` / `chronotype` / `feedback_style` / `recognition_style` existirem: badges coloridos
-  - Se não: empty state com texto
-  - Botão "Atualizar Sync" com toast placeholder
-
-#### 4. O que NÃO muda
-- CareerCompassCard (componente intacto)
-- FeedbackTimeline (componente intacto)
-- Query de feedbacks (mesma lógica, mesma posição no componente)
-- DirectReportGuard, OnboardingModal
-- Nenhum outro arquivo além dos 2 listados
+### O que NÃO muda
+- Toda lógica de queries, feedbacks, estado
+- CareerCompassCard componente intacto
+- Tabs Feedbacks e Meu Perfil intactas
+- Nenhum outro arquivo
 
