@@ -573,7 +573,7 @@ export const MentorChat = ({
                       <div className="flex items-center justify-center h-7 w-7 rounded-full bg-primary/20 text-primary text-[10px] font-semibold flex-shrink-0 mt-0.5">
                         {userInitials}
                       </div>
-                      <div className="rounded-2xl px-4 py-2.5 bg-[hsl(var(--primary)/0.07)] border border-[hsl(var(--primary)/0.15)] text-foreground text-sm leading-relaxed">
+                      <div className="rounded-2xl px-4 py-2.5 bg-muted/60 border border-border/60 text-foreground text-sm leading-relaxed">
                         {msg.content}
                       </div>
                     </div>
@@ -701,7 +701,7 @@ export const MentorChat = ({
                         : 'bg-primary hover:bg-primary/90 text-primary-foreground'
                     }`}
                   >
-                    {isLoading ? <Square className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}
+                    {isLoading ? <Square className="h-4 w-4" /> : <ArrowUp className="h-4 w-4 text-white" />}
                   </button>
                 </div>
               </div>
