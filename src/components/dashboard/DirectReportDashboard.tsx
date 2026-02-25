@@ -107,35 +107,30 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
       {/* Tabs */}
       <main className="container mx-auto px-6 pb-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="bg-muted/50 rounded-xl p-1 sticky top-0 z-10 w-full justify-start">
-            <TabsTrigger value="visao-geral" className="rounded-lg gap-2 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              <Home className="h-4 w-4" />
-              Visão Geral
-            </TabsTrigger>
-            <TabsTrigger value="carreira" className="rounded-lg gap-2 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              <Compass className="h-4 w-4" />
-              Minha Carreira
-            </TabsTrigger>
-            <TabsTrigger value="feedbacks" className="rounded-lg gap-2 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              <FileText className="h-4 w-4" />
-              Feedbacks
-            </TabsTrigger>
-            <TabsTrigger value="perfil" className="rounded-lg gap-2 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              <User className="h-4 w-4" />
-              Meu Perfil
-            </TabsTrigger>
-          </TabsList>
+          <div className="border-b border-border bg-background sticky top-0 z-10 -mx-6 px-6 mb-6">
+            <TabsList className="bg-transparent p-0 h-auto gap-1">
+              <TabsTrigger value="visao-geral" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none text-muted-foreground hover:text-foreground px-4 py-3 text-sm font-medium transition-colors gap-2">
+                <Home className="h-4 w-4" />
+                Visão Geral
+              </TabsTrigger>
+              <TabsTrigger value="carreira" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none text-muted-foreground hover:text-foreground px-4 py-3 text-sm font-medium transition-colors gap-2">
+                <Compass className="h-4 w-4" />
+                Minha Carreira
+              </TabsTrigger>
+              <TabsTrigger value="feedbacks" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none text-muted-foreground hover:text-foreground px-4 py-3 text-sm font-medium transition-colors gap-2">
+                <FileText className="h-4 w-4" />
+                Feedbacks
+              </TabsTrigger>
+              <TabsTrigger value="perfil" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none text-muted-foreground hover:text-foreground px-4 py-3 text-sm font-medium transition-colors gap-2">
+                <User className="h-4 w-4" />
+                Meu Perfil
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* ═══ TAB 1: Visão Geral ═══ */}
           <TabsContent value="visao-geral">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-              {/* Bússola de Carreira - Full Width */}
-              {aiAnalysis && (
-                <div className="lg:col-span-3">
-                  <CareerCompassCard aiAnalysis={aiAnalysis} />
-                </div>
-              )}
-
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Resumo - 1/3 */}
               <Card className="p-6 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:-translate-y-1 hover:shadow-lg transition-all duration-300 lg:col-span-1">
                 <h2 className="text-lg font-bold tracking-tight flex items-center gap-2 mb-4 text-foreground">
@@ -199,7 +194,8 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
 
           {/* ═══ TAB 2: Minha Carreira ═══ */}
           <TabsContent value="carreira">
-            <div className="mt-6">
+            <div className="mt-6 space-y-6">
+              {aiAnalysis && <CareerCompassCard aiAnalysis={aiAnalysis} />}
               <Card className="p-12 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] text-center">
                 <Compass className="h-12 w-12 mx-auto mb-4 text-primary opacity-50" />
                 <h2 className="text-xl font-bold tracking-tight text-foreground mb-2">Minha Carreira</h2>
