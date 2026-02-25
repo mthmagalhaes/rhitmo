@@ -14,7 +14,18 @@ interface LinkedMemberData {
     aspirations?: string;
     interests?: string[];
     completed_at?: string;
+    ai_analysis?: {
+      alignment_score: number;
+      analysis_summary: string;
+      key_gaps: string[];
+      suggested_focus: string[];
+      analyzed_at?: string;
+    };
   } | null;
+  work_style_data?: Record<string, unknown> | null;
+  chronotype?: string | null;
+  feedback_style?: string | null;
+  recognition_style?: string | null;
 }
 
 export function useLinkedMember() {
@@ -27,7 +38,7 @@ export function useLinkedMember() {
       
       const { data, error } = await supabase
         .from('team_members')
-        .select('id, name, email, role, skills_data')
+        .select('id, name, email, role, skills_data, work_style_data, chronotype, feedback_style, recognition_style')
         .eq('linked_user_id', user.id)
         .maybeSingle();
       
