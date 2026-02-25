@@ -172,7 +172,7 @@ serve(async (req) => {
   }
 
   try {
-    const { question, feedbacks, memberName, memberRole, managerName, workStyleData, keyObjectives, contextMode, leaderSyncData } = await req.json();
+    const { question, feedbacks, memberName, memberRole, managerName, workStyleData, keyObjectives, contextMode, leaderSyncData, conversationHistory, imageContent } = await req.json();
 
     console.log('Chat mentor 2.0 request:', { memberName, memberRole, managerName, feedbacksCount: feedbacks?.length, hasWorkStyle: !!workStyleData, hasLeaderSync: !!leaderSyncData, contextMode: contextMode || 'auto' });
     
@@ -476,10 +476,34 @@ ${contextLines}
 
 Lembre-se: Você é um coach experiente. Baseie-se APENAS nos dados acima. Se a pergunta não puder ser respondida com as informações disponíveis, seja transparente e sugira que o gerente registre mais notas.`;
 
-    console.log('Calling GPT-4o with context length:', systemPrompt.length);
+    // Montar conteúdo da mensagem atual (multimodal se imagem)
+    const currentUserContent = imageContent?.isImage
+      ? [
+          {
+            type: "image_url",
+            image_url: { url: `data:${imageContent.mimeType};base64,${imageContent.imageBase64}` }
+          },
+          {
+            type: "text",
+            text: imageContent.textMessage || "Analise esta imagem no contexto do liderado."
+          }
+        ]
+      : question;
+
+    // Montar array de mensagens com histórico da thread
+    const apiMessages: any[] = [
+      { role: 'system', content: systemPrompt },
+      ...(conversationHistory || []).slice(0, -1).map((msg: any) => ({
+        role: msg.role,
+        content: msg.content
+      })),
+      { role: 'user', content: currentUserContent }
+    ];
+
+    console.log('Calling GPT-4o with context length:', systemPrompt.length, 'history messages:', (conversationHistory || []).length);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout para GPT-4o
+    const timeoutId = setTimeout(() => controller.abort(), 45000);
 
     let response;
     try {
@@ -490,12 +514,9 @@ Lembre-se: Você é um coach experiente. Baseie-se APENAS nos dados acima. Se a 
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o', // Upgrade de modelo
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: question }
-          ],
-          max_tokens: 1500, // Aumentado para respostas mais completas
+          model: 'gpt-4o',
+          messages: apiMessages,
+          max_tokens: 1500,
         }),
         signal: controller.signal,
       });
