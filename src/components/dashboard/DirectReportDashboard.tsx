@@ -19,6 +19,7 @@ interface LinkedMemberData {
   name: string;
   email: string | null;
   role: string;
+  updated_at?: string;
   skills_data: {
     role_tenure?: string;
     responsibilities?: string[];
@@ -60,6 +61,41 @@ const feedbackStyleLabels: Record<string, string> = {
 const recognitionStyleLabels: Record<string, string> = {
   'publico': 'Público',
   'privado': 'Privado',
+};
+
+const chronotypeContext: Record<string, string> = {
+  'early_bird': 'Seu líder sabe que você rende melhor de manhã cedo e evita reuniões pesadas no fim do dia.',
+  'madrugador': 'Seu líder sabe que você rende melhor de manhã cedo e evita reuniões pesadas no fim do dia.',
+  'commercial': 'Seu líder sabe que você está no seu melhor dentro do horário comercial.',
+  'comercial': 'Seu líder sabe que você está no seu melhor dentro do horário comercial.',
+  'night_owl': 'Seu líder sabe que sua energia peak é no período noturno.',
+  'noturno': 'Seu líder sabe que sua energia peak é no período noturno.',
+};
+
+const feedbackContext: Record<string, string> = {
+  'direct': 'Seu líder vai direto ao ponto com você, sem rodeios.',
+  'direto': 'Seu líder vai direto ao ponto com você, sem rodeios.',
+  'empathetic': 'Seu líder contextualiza antes de pontos críticos e equilibra positivo e construtivo.',
+  'empatico': 'Seu líder contextualiza antes de pontos críticos e equilibra positivo e construtivo.',
+  'written': 'Seu líder prefere te enviar feedback por escrito para você processar no seu tempo.',
+  'escrito': 'Seu líder prefere te enviar feedback por escrito para você processar no seu tempo.',
+  'private': 'Seu líder reserva feedbacks importantes para conversas privadas.',
+  'privado': 'Seu líder reserva feedbacks importantes para conversas privadas.',
+};
+
+const recognitionContext: Record<string, string> = {
+  'public': 'Seu líder celebra suas conquistas em frente ao time.',
+  'publico': 'Seu líder celebra suas conquistas em frente ao time.',
+  'private': 'Seu líder te reconhece em 1:1, sem holofotes.',
+  'privado': 'Seu líder te reconhece em 1:1, sem holofotes.',
+  'results': 'Seu líder conecta reconhecimento diretamente aos resultados que você entregou.',
+  'learning': 'Seu líder valoriza e destaca seu crescimento e aprendizado.',
+};
+
+const getDaysSince = (dateStr: string | null | undefined): number | null => {
+  if (!dateStr) return null;
+  const diff = Date.now() - new Date(dateStr).getTime();
+  return Math.floor(diff / (1000 * 60 * 60 * 24));
 };
 
 const MOTIVATOR_OPTIONS = ['Autonomia', 'Dinheiro', 'Estabilidade', 'Aprendizado', 'Propósito', 'Status'];
@@ -383,30 +419,86 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
                     Meu Rhitmo Sync
                   </h2>
                 </div>
-                <p className="text-sm text-muted-foreground mb-4">Seu perfil comportamental e preferências</p>
+                <p className="text-sm text-muted-foreground mb-2">Seu perfil comportamental e preferências</p>
+
+                {(() => {
+                  const syncDate = (linkedMember.work_style_data as any)?.completed_at || linkedMember.updated_at;
+                  const days = getDaysSince(syncDate);
+                  if (days !== null && days <= 180) {
+                    return (
+                      <p className="text-xs text-muted-foreground mb-4">
+                        Atualizado {days} dias atrás
+                      </p>
+                    );
+                  }
+                  if (days !== null && days > 180) {
+                    return (
+                      <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-100 mt-1 mb-4">
+                        <span className="text-amber-500 text-sm">⏰</span>
+                        <div>
+                          <p className="text-xs font-medium text-amber-700">Seu perfil pode estar desatualizado</p>
+                          <p className="text-xs text-amber-600 mt-0.5">
+                            Faz mais de 6 meses desde o último sync. Suas preferências podem ter mudado.
+                          </p>
+                          <button
+                            onClick={() => setSyncDialogOpen(true)}
+                            className="text-xs text-amber-700 font-semibold underline mt-1"
+                          >
+                            Atualizar agora
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return <div className="mb-4" />;
+                })()}
 
                 {hasRhitmoSync ? (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="space-y-3">
                     {linkedMember.chronotype && (
-                      <Badge variant="secondary" className="rounded-full bg-primary/10 text-primary text-xs px-3 py-1">
-                        {chronotypeLabels[linkedMember.chronotype] || linkedMember.chronotype}
-                      </Badge>
+                      <div>
+                        <Badge variant="secondary" className="rounded-full bg-primary/10 text-primary text-xs px-3 py-1">
+                          {chronotypeLabels[linkedMember.chronotype] || linkedMember.chronotype}
+                        </Badge>
+                        <p className="text-xs text-muted-foreground italic mt-1">
+                          {chronotypeContext[linkedMember.chronotype] || 'Seu líder considera seu ritmo natural ao agendar reuniões importantes.'}
+                        </p>
+                      </div>
                     )}
                     {linkedMember.feedback_style && (
-                      <Badge variant="secondary" className="rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-400 text-xs px-3 py-1">
-                        {feedbackStyleLabels[linkedMember.feedback_style] || linkedMember.feedback_style}
-                      </Badge>
+                      <div>
+                        <Badge variant="secondary" className="rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-400 text-xs px-3 py-1">
+                          {feedbackStyleLabels[linkedMember.feedback_style] || linkedMember.feedback_style}
+                        </Badge>
+                        <p className="text-xs text-muted-foreground italic mt-1">
+                          {feedbackContext[linkedMember.feedback_style] || 'Seu líder adapta a forma de dar feedback ao seu estilo.'}
+                        </p>
+                      </div>
                     )}
                     {linkedMember.recognition_style && (
-                      <Badge variant="secondary" className="rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs px-3 py-1">
-                        {recognitionStyleLabels[linkedMember.recognition_style] || linkedMember.recognition_style}
-                      </Badge>
+                      <div>
+                        <Badge variant="secondary" className="rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs px-3 py-1">
+                          {recognitionStyleLabels[linkedMember.recognition_style] || linkedMember.recognition_style}
+                        </Badge>
+                        <p className="text-xs text-muted-foreground italic mt-1">
+                          {recognitionContext[linkedMember.recognition_style] || 'Seu líder adapta o reconhecimento ao que mais te motiva.'}
+                        </p>
+                      </div>
                     )}
-                    {(linkedMember.work_style_data as any)?.motivators?.map((m: string) => (
-                      <Badge key={m} variant="secondary" className="rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs px-3 py-1">
-                        {m}
-                      </Badge>
-                    ))}
+                    {(linkedMember.work_style_data as any)?.motivators?.length > 0 && (
+                      <div>
+                        <div className="flex flex-wrap gap-2">
+                          {(linkedMember.work_style_data as any).motivators.map((m: string) => (
+                            <Badge key={m} variant="secondary" className="rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs px-3 py-1">
+                              {m}
+                            </Badge>
+                          ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground italic mt-1">
+                          Seu líder usa isso para conectar desafios e oportunidades ao que realmente te move.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-6 text-muted-foreground">
