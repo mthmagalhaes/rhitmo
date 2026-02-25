@@ -1,83 +1,121 @@
 
 
-## Edição do Rhitmo Sync no Portal do Liderado
-
-### Resumo
-
-Implementar um Dialog inline na tab "Meu Perfil" do DirectReportDashboard para que o liderado possa editar seu Rhitmo Sync diretamente, sem redirecionamento. Salvar via update direto na tabela `team_members` (RLS já permite linked users atualizarem seu próprio perfil). Atualizar badges com cores diferenciadas por tipo.
-
----
+## Ajuste do Dialog Rhitmo Sync — Campos idênticos ao Wizard
 
 ### Arquivo alterado
-
 `src/components/dashboard/DirectReportDashboard.tsx`
+
+### Resumo das alterações
+
+Substituir os 5 campos atuais do Dialog por 10 campos organizados em 3 seções, idênticos ao wizard `/sync/:memberId`. Adicionar multi-select de motivadores com chips. Atualizar badges para incluir motivadores amarelos.
 
 ---
 
-### Detalhamento
+### 1. Estado do formulário (linhas 78-84)
 
-#### 1. Novos imports
-
-- `Dialog, DialogContent, DialogHeader, DialogTitle` de `@/components/ui/dialog`
-- `Textarea` de `@/components/ui/textarea`
-- `Label` de `@/components/ui/label`
-- `Select, SelectContent, SelectItem, SelectTrigger, SelectValue` de `@/components/ui/select`
-- `useQueryClient` de `@tanstack/react-query`
-
-#### 2. Novo estado e lógica
-
+Substituir `syncForm` por:
 ```typescript
-const [syncDialogOpen, setSyncDialogOpen] = useState(false);
-const [syncSaving, setSyncSaving] = useState(false);
 const [syncForm, setSyncForm] = useState({
-  chronotype: linkedMember.chronotype || '',
-  feedback_style: linkedMember.feedback_style || '',
-  recognition_style: linkedMember.recognition_style || '',
-  stress_signs: (linkedMember.work_style_data as any)?.stress_signs || '',
-  motivators: (linkedMember.work_style_data as any)?.motivators || '',
+  chronotype: '',
+  work_environment: '',
+  energy_drains: '',
+  energy_sources: '',
+  stress_signs: '',
+  support_needed: '',
+  feedback_style: '',
+  recognition_style: '',
+  motivators: [] as string[],
+  skill_goal: '',
 });
-const queryClient = useQueryClient();
 ```
 
-#### 3. Função de save
+### 2. Pre-populate (linhas 87-97)
 
-- Update direto via `supabase.from('team_members').update(...)` onde `linked_user_id = auth.uid()` — a RLS policy "Linked users can update own basic profile" já autoriza isso
-- Campos atualizados: `chronotype`, `feedback_style`, `recognition_style`, `work_style_data` (merge com dados existentes, adicionando `stress_signs` e `motivators`)
-- **Não usar** `submit_rhitmo_sync_v2` porque ele bloqueia re-submissões (`WHERE work_style_data IS NULL`)
-- On success: fechar dialog, toast de sucesso, invalidar query `['linked-member', ...]`
-- On error: toast destructive
-- Notificação ao líder: apenas `console.log` + toast (tabela `notifications` não existe)
+Atualizar o `useEffect` para popular os novos campos a partir de `linkedMember.work_style_data`:
+```typescript
+setSyncForm({
+  chronotype: linkedMember.chronotype || '',
+  work_environment: (wsd as any)?.work_environment || '',
+  energy_drains: (wsd as any)?.energy_drains || '',
+  energy_sources: (wsd as any)?.energy_sources || '',
+  stress_signs: (wsd as any)?.stress_signs || '',
+  support_needed: (wsd as any)?.support_needed || '',
+  feedback_style: linkedMember.feedback_style || '',
+  recognition_style: linkedMember.recognition_style || '',
+  motivators: (wsd as any)?.motivators || [],
+  skill_goal: (wsd as any)?.skill_goal || '',
+});
+```
 
-#### 4. Dialog do formulário
+### 3. Save handler (linhas 134-164)
 
-Título: "Atualizar meu Rhitmo Sync", max-w-lg
+Atualizar `handleSaveSync` para fazer merge dos novos campos em `work_style_data`:
+```typescript
+work_style_data: {
+  ...existingWsd,
+  work_environment: syncForm.work_environment || null,
+  energy_drains: syncForm.energy_drains || null,
+  energy_sources: syncForm.energy_sources || null,
+  stress_signs: syncForm.stress_signs || null,
+  support_needed: syncForm.support_needed || null,
+  motivators: syncForm.motivators.length > 0 ? syncForm.motivators : null,
+  skill_goal: syncForm.skill_goal || null,
+}
+```
 
-5 campos:
-| Campo | Tipo | Options |
-|-------|------|---------|
-| Cronotipo | Select | matutino, vespertino, noturno, variavel |
-| Estilo de Feedback | Select | direto, contexto, particular, escrito |
-| Estilo de Reconhecimento | Select | publico, particular, resultados, aprendizado |
-| Sinais de estresse | Textarea | max 200 chars |
-| Motivadores | Textarea | max 200 chars |
+### 4. Dialog body (linhas 417-488)
 
-Pré-populados com dados existentes do `linkedMember`.
+Substituir os 5 campos atuais por 10 campos em 3 seções:
 
-#### 5. Badges com cores diferenciadas
+**Seção "Ritmo e Energia"** — separador `<p>` uppercase tracking-wide
+1. Cronotipo (Select): Madrugador / Horário Comercial / Noturno
+2. Ambiente ideal (Select): Silencioso e focado / Dinâmico e colaborativo / Flexível / híbrido / Remoto
+3. O que drena minha energia (Textarea, 200 chars)
+4. O que carrega minha energia (Textarea, 200 chars)
 
-Substituir as 3 badges atualmente todas roxas por:
-- `chronotype` → `bg-primary/10 text-primary` (roxo, como está)
-- `feedback_style` → `bg-blue-50 text-blue-700`
-- `recognition_style` → `bg-emerald-50 text-emerald-700`
+**Seção "Manual de Instruções"**
+5. Quando estou estressado (Textarea, 200 chars)
+6. Em dias ruins, me ajude... (Textarea, 200 chars)
+7. Feedback (Select): Direto / Empático / Escrito
+8. Reconhecimento (Select): Público / Privado
 
-Expandir labels para incluir novas opções do formulário.
+**Seção "Futuro"**
+9. Motivadores (multi-select chips, max 3): Autonomia | Dinheiro | Estabilidade | Aprendizado | Propósito | Status
+   - Toggle: `bg-primary text-white` selecionado, `bg-muted text-muted-foreground` não selecionado
+   - `rounded-full` chips
+10. O que quer aprender (Textarea, 200 chars)
 
-#### 6. Botão "Atualizar Sync"
+Dialog: `max-w-lg max-h-[80vh] overflow-y-auto`
 
-O `onClick` do botão existente passa a abrir o dialog: `setSyncDialogOpen(true)`.
+### 5. Label maps (linhas 48-70)
 
-#### 7. O que NÃO muda
+Atualizar `chronotypeLabels` para as novas opções:
+- `madrugador` → "Madrugador"
+- `comercial` → "Horário Comercial"
+- `noturno` → "Noturno"
+
+Atualizar `feedbackStyleLabels`:
+- `direto` → "Direto"
+- `empatico` → "Empático"
+- `escrito` → "Escrito"
+
+Atualizar `recognitionStyleLabels`:
+- `publico` → "Público"
+- `privado` → "Privado"
+
+Remover emojis dos labels dos badges (estilo leve).
+
+### 6. Badges na tab Meu Perfil (linhas 368-385)
+
+Adicionar badges amarelos para cada item do array `motivators` em `work_style_data`:
+```tsx
+{(linkedMember.work_style_data as any)?.motivators?.map((m: string) => (
+  <Badge className="rounded-full bg-amber-50 text-amber-700 text-xs px-3 py-1">{m}</Badge>
+))}
+```
+
+### O que NÃO muda
 - Estrutura das tabs, CareerCompassCard, FeedbackTimeline
-- DirectReportGuard, rotas, nenhum outro arquivo
-- Nenhuma migração de banco necessária
+- Lógica de save (supabase update direto + invalidate query)
+- DirectReportGuard, nenhum outro arquivo
 
