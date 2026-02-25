@@ -86,7 +86,7 @@ export const MentorChat = ({
   const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [deletingThread, setDeletingThread] = useState<ChatThread | null>(null);
-  const [attachment, setAttachment] = useState<{ name: string; content: string } | null>(null);
+  const [attachment, setAttachment] = useState<{ name: string; content: string; imageBase64?: string; mimeType?: string; isImage?: boolean } | null>(null);
   const [selectedContexts, setSelectedContexts] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -284,8 +284,16 @@ export const MentorChat = ({
     if (!finalMessage.trim() && !attachment) return;
     if (isLoading || !user) return;
 
-    // Concatenar anexo silenciosamente
-    if (attachment) {
+    // Preparar imageContent ou concatenar documento
+    let imageContent: { isImage: true; imageBase64: string; mimeType: string; textMessage: string } | undefined;
+    if (attachment?.isImage && attachment.imageBase64 && attachment.mimeType) {
+      imageContent = {
+        isImage: true,
+        imageBase64: attachment.imageBase64,
+        mimeType: attachment.mimeType,
+        textMessage: finalMessage || 'Analise esta imagem no contexto do liderado.'
+      };
+    } else if (attachment) {
       const attachmentBlock = `\n\n--- ARQUIVO ANEXADO (${attachment.name}) ---\n${attachment.content}`;
       finalMessage = finalMessage + attachmentBlock;
     }
@@ -310,7 +318,8 @@ export const MentorChat = ({
         queryClient.invalidateQueries({ queryKey: ['chat-threads', memberId] });
       }
 
-      // Salvar mensagem do usuário
+      // Salvar mensagem do usuário (sem base64 para imagens)
+      const savedContent = imageContent ? (imageContent.textMessage || '[Imagem enviada para análise]') : finalMessage;
       await supabase
         .from('mentor_messages')
         .insert({
@@ -318,7 +327,7 @@ export const MentorChat = ({
           member_id: memberId,
           thread_id: currentThreadId,
           role: 'user',
-          content: finalMessage
+          content: savedContent
         });
 
       queryClient.invalidateQueries({ queryKey: ['mentor-messages', currentThreadId] });
@@ -370,7 +379,12 @@ export const MentorChat = ({
             workStyleData: workStyleData,
             keyObjectives: keyObjectives,
             contextMode: contextMode,
-            leaderSyncData: leaderSyncData
+            leaderSyncData: leaderSyncData,
+            conversationHistory: messages.map(msg => ({
+              role: msg.role,
+              content: msg.content
+            })),
+            imageContent: imageContent
           }),
           signal: controller.signal
         }
@@ -453,6 +467,37 @@ export const MentorChat = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Imagens: converter para base64 (vision)
+    if (file.type.startsWith('image/')) {
+      setIsExtractingFile(true);
+      try {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            // Remove data:image/...;base64, prefix
+            resolve(result.split(',')[1]);
+          };
+          reader.onerror = () => reject(new Error('Erro ao ler imagem'));
+          reader.readAsDataURL(file);
+        });
+        setAttachment({ 
+          name: file.name, 
+          content: '', 
+          imageBase64: base64, 
+          mimeType: file.type, 
+          isImage: true 
+        });
+        toast({ title: "Imagem anexada!", description: "O Mentor vai analisar o conteúdo." });
+      } catch (error: any) {
+        toast({ title: "Erro ao processar", description: error.message, variant: "destructive" });
+      } finally {
+        setIsExtractingFile(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+      return;
+    }
+
     if (!isFileSupported(file)) {
       toast({
         title: "Formato inválido",
@@ -466,21 +511,12 @@ export const MentorChat = ({
     try {
       const text = await extractTextFromFile(file);
       setAttachment({ name: file.name, content: text });
-      toast({ 
-        title: "Arquivo anexado!", 
-        description: file.name 
-      });
+      toast({ title: "Arquivo anexado!", description: file.name });
     } catch (error: any) {
-      toast({ 
-        title: "Erro ao processar", 
-        description: error.message, 
-        variant: "destructive" 
-      });
+      toast({ title: "Erro ao processar", description: error.message, variant: "destructive" });
     } finally {
       setIsExtractingFile(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -747,7 +783,15 @@ export const MentorChat = ({
                   <div className="flex items-center gap-2 mb-3">
                     <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border border-border 
                                     rounded-lg text-sm max-w-[300px]">
-                      <FileText className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                      {attachment.isImage && attachment.imageBase64 ? (
+                        <img 
+                          src={`data:${attachment.mimeType};base64,${attachment.imageBase64}`}
+                          className="h-8 w-8 rounded object-cover flex-shrink-0"
+                          alt={attachment.name}
+                        />
+                      ) : (
+                        <FileText className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                      )}
                       <span className="truncate text-foreground">{attachment.name}</span>
                       <button
                         onClick={() => setAttachment(null)}
