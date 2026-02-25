@@ -1,59 +1,135 @@
 
 
-## Correções no CalendarWidget — Plano
+## Correções no MentorChat — Plano de Implementação
 
-### Correção 1: Badge de dia/data em todos os cards
+### Resumo
 
-**Arquivo:** `src/components/CalendarWidget.tsx`
-
-Substituir a lógica condicional de badges (linhas 111-134) por uma função `getDayBadge` que retorna um badge para **todos** os cards:
-- Hoje → `bg-amber-100 text-amber-700`
-- Amanhã → `bg-blue-100 text-blue-700`
-- Outros dias → abreviação do dia (Qui, Sex, etc.) com `bg-slate-100 text-slate-600`
-
-O badge será renderizado incondicionalmente no header de cada card, ao lado do horário.
+Duas correções críticas: (A) incluir histórico de conversa da thread no contexto enviado à IA, e (B) suporte a imagens via vision (base64). Afeta `src/components/MentorChat.tsx` e `supabase/functions/chat-mentor/index.ts`.
 
 ---
 
-### Correção 2: Múltiplos liderados na mesma reunião
+### Correção A — Histórico da thread no contexto
 
-**3 partes:**
+#### A1. Frontend (`src/components/MentorChat.tsx`)
 
-#### 2a. Migração: alterar unique constraint
+No `handleSend` (linha ~356), antes de chamar a Edge Function, montar o array de histórico:
 
-```sql
-ALTER TABLE public.upcoming_meetings
-DROP CONSTRAINT upcoming_meetings_user_id_google_event_id_key;
-
-ALTER TABLE public.upcoming_meetings
-ADD CONSTRAINT upcoming_meetings_user_event_member_key 
-UNIQUE (user_id, google_event_id, member_id);
+```typescript
+const conversationHistory = messages.map(msg => ({
+  role: msg.role,
+  content: msg.content
+}));
 ```
 
-#### 2b. Edge Function: remover `break`
+Incluir `conversationHistory` no body da requisição (linha ~364):
 
-**Arquivo:** `supabase/functions/fetch-calendar-events/index.ts`
+```typescript
+body: JSON.stringify({
+  question: finalMessage,
+  // ... campos existentes ...
+  conversationHistory
+})
+```
 
-- Remover o `break` na linha 222 para que o loop continue iterando todos os attendees
-- Alterar `onConflict` de `"user_id,google_event_id"` para `"user_id,google_event_id,member_id"`
+#### A2. Edge Function (`supabase/functions/chat-mentor/index.ts`)
 
-#### 2c. CalendarWidget: cards separados
+- Extrair `conversationHistory` do body (linha 175)
+- Na chamada ao GPT-4o (linha ~492), substituir o array `messages` fixo por:
 
-Nenhuma mudança adicional necessária — cada meeting já gera um card separado. Com a remoção do `break`, a Edge Function retornará múltiplos entries para o mesmo evento quando houver múltiplos liderados, e cada um será renderizado como card individual.
+```typescript
+const apiMessages = [
+  { role: 'system', content: systemPrompt },
+  ...(conversationHistory || []).slice(0, -1).map(msg => ({
+    role: msg.role,
+    content: msg.content
+  })),
+  { role: 'user', content: currentUserContent }
+];
+```
+
+Onde `currentUserContent` é o conteúdo multimodal (se imagem) ou `question` (string simples).
+
+---
+
+### Correção B — Suporte a imagens (Vision)
+
+#### B1. Frontend: tipo do attachment (`src/components/MentorChat.tsx`)
+
+Alterar o tipo do estado `attachment` (linha 89) para:
+
+```typescript
+interface Attachment {
+  name: string;
+  content: string;
+  imageBase64?: string;
+  mimeType?: string;
+  isImage?: boolean;
+}
+```
+
+#### B2. Frontend: `handleFileSelect` (linhas 452-485)
+
+Detectar se é imagem (`file.type.startsWith('image/')`) antes de chamar `extractTextFromFile`:
+
+- **Se imagem**: converter para base64 via `FileReader`, salvar com `isImage: true`
+- **Se documento**: manter comportamento atual
+
+#### B3. Frontend: `handleSend` (linhas 282-433)
+
+Se `attachment?.isImage`:
+- Não concatenar texto — enviar `imageContent` separado no body
+- Salvar no banco apenas o texto digitado (sem base64)
+
+```typescript
+const imageContent = attachment?.isImage ? {
+  isImage: true,
+  imageBase64: attachment.imageBase64,
+  mimeType: attachment.mimeType,
+  textMessage: finalMessage
+} : undefined;
+```
+
+Se documento: manter concatenação atual.
+
+#### B4. Frontend: UI preview de imagem (linhas 746-761)
+
+Quando `attachment?.isImage`, mostrar thumbnail da imagem em vez do ícone FileText:
+
+```tsx
+<img src={`data:${attachment.mimeType};base64,${attachment.imageBase64}`}
+     className="h-8 w-8 rounded object-cover" />
+```
+
+#### B5. Edge Function: processar imagem
+
+Receber `imageContent` do body. Se presente, montar content multimodal:
+
+```typescript
+const currentUserContent = imageContent?.isImage
+  ? [
+      { type: "image_url", image_url: { url: `data:${imageContent.mimeType};base64,${imageContent.imageBase64}` } },
+      { type: "text", text: imageContent.textMessage || "Analise esta imagem no contexto do liderado." }
+    ]
+  : question;
+```
+
+Usar `currentUserContent` como content da última mensagem do array `apiMessages`.
 
 ---
 
 ### Arquivos alterados
 
-| Arquivo | Ação |
-|---------|------|
-| Migration (nova) | DROP/ADD unique constraint |
-| `supabase/functions/fetch-calendar-events/index.ts` | Remover `break`, atualizar `onConflict` |
-| `src/components/CalendarWidget.tsx` | Nova função `getDayBadge`, badge em todos os cards |
+| Arquivo | Alteração |
+|---------|-----------|
+| `src/components/MentorChat.tsx` | Histórico, attachment tipo, imagem base64, preview UI, imageContent no body |
+| `supabase/functions/chat-mentor/index.ts` | Receber conversationHistory + imageContent, montar apiMessages com histórico + vision |
 
 ### O que NÃO muda
-- Nenhuma outra Edge Function
-- Nenhuma outra tabela
-- Nenhum outro componente
-- `useCalendarIntegration` hook
+
+- Sistema de threads (criação, seleção, renomeação, exclusão)
+- ContextPicker e selectedContexts
+- Lógica de feedbacks e workStyleData
+- Sistema de sugestões rápidas
+- Qualquer outro componente
+- Outras Edge Functions
 
