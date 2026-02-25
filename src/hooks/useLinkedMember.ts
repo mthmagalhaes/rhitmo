@@ -26,6 +26,7 @@ interface LinkedMemberData {
   chronotype?: string | null;
   feedback_style?: string | null;
   recognition_style?: string | null;
+  updated_at?: string;
 }
 
 export function useLinkedMember() {
@@ -38,7 +39,7 @@ export function useLinkedMember() {
       
       const { data, error } = await supabase
         .from('team_members')
-        .select('id, name, email, role, skills_data, work_style_data, chronotype, feedback_style, recognition_style')
+        .select('id, name, email, role, skills_data, work_style_data, chronotype, feedback_style, recognition_style, updated_at')
         .eq('linked_user_id', user.id)
         .maybeSingle();
       
