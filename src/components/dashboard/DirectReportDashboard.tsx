@@ -47,21 +47,38 @@ const tenureLabels: Record<string, string> = {
 };
 
 const chronotypeLabels: Record<string, string> = {
-  'madrugador': 'Madrugador',
+  'early_bird': 'Madrugador (5h-14h)',
+  'madrugador': 'Madrugador (5h-14h)',
+  'commercial': 'Horário Comercial',
   'comercial': 'Horário Comercial',
-  'noturno': 'Noturno',
+  'night_owl': 'Noturno (depois das 18h)',
+  'noturno': 'Noturno (depois das 18h)',
+  'variable': 'Variável',
 };
 
 const feedbackStyleLabels: Record<string, string> = {
+  'direct': 'Direto',
   'direto': 'Direto',
-  'empatico': 'Empático',
+  'empathetic': 'Empático / Sanduíche',
+  'empatico': 'Empático / Sanduíche',
+  'written': 'Escrito',
   'escrito': 'Escrito',
+  'private': 'Em particular',
+  'privado': 'Em particular',
+  'context': 'Com contexto e exemplos',
 };
 
 const recognitionStyleLabels: Record<string, string> = {
-  'publico': 'Público',
-  'privado': 'Privado',
+  'public': 'Reconhecimento Público',
+  'publico': 'Reconhecimento Público',
+  'private': 'Reconhecimento Privado',
+  'privado': 'Reconhecimento Privado',
+  'results': 'Por Resultados',
+  'learning': 'Por Aprendizado',
 };
+
+const getLabel = (map: Record<string, string>, value: string) =>
+  map[value] || value.charAt(0).toUpperCase() + value.slice(1);
 
 const chronotypeContext: Record<string, string> = {
   'early_bird': 'Seu líder sabe que você rende melhor de manhã cedo e evita reuniões pesadas no fim do dia.',
@@ -364,7 +381,7 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => toast('Em breve você poderá editar seu Rhitmo Sync diretamente aqui')}
+                    onClick={() => toast('Edição de perfil', { description: 'Em breve você poderá atualizar suas informações de função diretamente aqui.' })}
                   >
                     Editar
                   </Button>
@@ -458,7 +475,7 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
                     {linkedMember.chronotype && (
                       <div>
                         <Badge variant="secondary" className="rounded-full bg-primary/10 text-primary text-xs px-3 py-1">
-                          {chronotypeLabels[linkedMember.chronotype] || linkedMember.chronotype}
+                          {getLabel(chronotypeLabels, linkedMember.chronotype)}
                         </Badge>
                         <p className="text-xs text-muted-foreground italic mt-1">
                           {chronotypeContext[linkedMember.chronotype] || 'Seu líder considera seu ritmo natural ao agendar reuniões importantes.'}
@@ -468,7 +485,7 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
                     {linkedMember.feedback_style && (
                       <div>
                         <Badge variant="secondary" className="rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-400 text-xs px-3 py-1">
-                          {feedbackStyleLabels[linkedMember.feedback_style] || linkedMember.feedback_style}
+                          {getLabel(feedbackStyleLabels, linkedMember.feedback_style)}
                         </Badge>
                         <p className="text-xs text-muted-foreground italic mt-1">
                           {feedbackContext[linkedMember.feedback_style] || 'Seu líder adapta a forma de dar feedback ao seu estilo.'}
@@ -478,7 +495,7 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
                     {linkedMember.recognition_style && (
                       <div>
                         <Badge variant="secondary" className="rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs px-3 py-1">
-                          {recognitionStyleLabels[linkedMember.recognition_style] || linkedMember.recognition_style}
+                          {getLabel(recognitionStyleLabels, linkedMember.recognition_style)}
                         </Badge>
                         <p className="text-xs text-muted-foreground italic mt-1">
                           {recognitionContext[linkedMember.recognition_style] || 'Seu líder adapta o reconhecimento ao que mais te motiva.'}
