@@ -1,80 +1,73 @@
 
 
-## Melhorias no card "Meu Rhitmo Sync" — Contexto por preferência + Nudge de atualização
+## Correção de dois bugs na tab "Meu Perfil"
 
 ### Arquivo alterado
 `src/components/dashboard/DirectReportDashboard.tsx`
 
-### Melhoria 1 — Linha de contexto por preferência
+### Fix 1 — Toast do botão "Editar" no card Informações da Funcao (linha 367)
 
-Substituir o layout atual de badges em `flex-wrap` (linhas 389-410) por uma lista vertical onde cada preferência tem:
-- O badge existente (com cores já implementadas)
-- Uma linha abaixo: `text-xs text-muted-foreground italic`
+Substituir:
+```typescript
+onClick={() => toast('Em breve você poderá editar seu Rhitmo Sync diretamente aqui')}
+```
+Por:
+```typescript
+onClick={() => toast('Em breve você poderá atualizar suas informações de função diretamente aqui.', { description: 'Edição de perfil' })}
+```
 
-Adicionar 4 mapas de contexto como constantes no topo do arquivo:
+Ou, usando o padrão `toast()` com title/description invertidos para ficar mais claro:
+```typescript
+onClick={() => toast('Edição de perfil', { description: 'Em breve você poderá atualizar suas informações de função diretamente aqui.' })}
+```
+
+### Fix 2 — Labels dos badges traduzidos (linhas 49-64)
+
+Expandir os 3 mapas de labels para cobrir TODAS as keys usadas no banco (incluindo as em ingles que vem do wizard):
 
 ```typescript
-const chronotypeContext: Record<string, string> = {
-  'early_bird': 'Seu líder sabe que você rende melhor de manhã cedo...',
-  'madrugador': 'Seu líder sabe que você rende melhor de manhã cedo...',
-  'commercial': 'Seu líder sabe que você está no seu melhor dentro do horário comercial.',
-  'comercial': 'Seu líder sabe que você está no seu melhor dentro do horário comercial.',
-  'night_owl': 'Seu líder sabe que sua energia peak é no período noturno.',
-  'noturno': 'Seu líder sabe que sua energia peak é no período noturno.',
+const chronotypeLabels: Record<string, string> = {
+  'early_bird': 'Madrugador (5h-14h)',
+  'madrugador': 'Madrugador (5h-14h)',
+  'commercial': 'Horario Comercial',
+  'comercial': 'Horario Comercial',
+  'night_owl': 'Noturno (depois das 18h)',
+  'noturno': 'Noturno (depois das 18h)',
+  'variable': 'Variavel',
 };
-// + feedbackContext, recognitionContext (com todas as keys listadas no prompt)
-// + fallbacks para valores não mapeados
-```
 
-O layout dos badges muda de `flex-wrap` horizontal para `space-y-3` vertical:
+const feedbackStyleLabels: Record<string, string> = {
+  'direct': 'Direto',
+  'direto': 'Direto',
+  'empathetic': 'Empatico / Sanduiche',
+  'empatico': 'Empatico / Sanduiche',
+  'written': 'Escrito',
+  'escrito': 'Escrito',
+  'private': 'Em particular',
+  'privado': 'Em particular',
+  'context': 'Com contexto e exemplos',
+};
 
-```tsx
-<div className="space-y-3">
-  {linkedMember.chronotype && (
-    <div>
-      <Badge ...>Madrugador</Badge>
-      <p className="text-xs text-muted-foreground italic mt-1">
-        {chronotypeContext[linkedMember.chronotype] || chronotypeContextFallback}
-      </p>
-    </div>
-  )}
-  {/* idem para feedback_style, recognition_style */}
-  {motivators.length > 0 && (
-    <div>
-      <div className="flex flex-wrap gap-2">{/* badges amarelos */}</div>
-      <p className="text-xs text-muted-foreground italic mt-1">
-        Seu líder usa isso para conectar desafios e oportunidades ao que realmente te move.
-      </p>
-    </div>
-  )}
-</div>
-```
-
-### Melhoria 2 — Data de preenchimento + nudge
-
-Adicionar helper `getDaysSince` no componente:
-```typescript
-const getDaysSince = (dateStr: string | null | undefined): number | null => {
-  if (!dateStr) return null;
-  const diff = Date.now() - new Date(dateStr).getTime();
-  return Math.floor(diff / (1000 * 60 * 60 * 24));
+const recognitionStyleLabels: Record<string, string> = {
+  'public': 'Reconhecimento Publico',
+  'publico': 'Reconhecimento Publico',
+  'private': 'Reconhecimento Privado',
+  'privado': 'Reconhecimento Privado',
+  'results': 'Por Resultados',
+  'learning': 'Por Aprendizado',
 };
 ```
 
-Calcular dias usando `(linkedMember.work_style_data as any)?.completed_at` ou `linkedMember.updated_at` — o campo que existir.
+Adicionar helper `getLabel`:
+```typescript
+const getLabel = (map: Record<string, string>, value: string) =>
+  map[value] || value.charAt(0).toUpperCase() + value.slice(1);
+```
 
-Inserir entre o subtítulo "Seu perfil comportamental..." (linha 386) e os badges (linha 388):
+Aplicar `getLabel` nos 3 badges (linhas 461, 471, 481) para que valores nao mapeados tambem sejam capitalizados em vez de exibir o valor bruto.
 
-- Se `days !== null && days <= 180`: texto cinza "Atualizado há X dias"
-- Se `days > 180`: card amber com nudge + botão "Atualizar agora" que abre o dialog
-- Se `days === null`: não renderizar nada
-
-### Campos adicionados ao LinkedMemberData interface
-
-Adicionar `updated_at?: string` na interface `LinkedMemberData` (linha 17-35) para poder usar como fallback de data.
-
-### O que NÃO muda
-- Dialog de edição (syncDialog) — intocado
-- Tabs, CareerCompassCard, FeedbackTimeline
+### O que NAO muda
+- Dialog syncDialog, layout das tabs, CareerCompassCard, FeedbackTimeline
+- Linhas de contexto dos badges (ja estao corretas pois os context maps ja cobrem as keys em ingles)
 - Nenhum outro arquivo
 
