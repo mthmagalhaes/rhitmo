@@ -351,6 +351,32 @@ export const ReviewViewDialog = ({
                             if (error) throw error;
                             toast({ title: "Avaliação compartilhada ✅", description: `${memberName || 'O liderado'} agora pode ver esta avaliação no portal dele.` });
                             onReviewUpdated();
+
+                            // Fire-and-forget: send email notification
+                            try {
+                              const { data: memberData } = await supabase
+                                .from('team_members')
+                                .select('name, email')
+                                .eq('id', memberId)
+                                .single();
+
+                              const { data: { user: currentUser } } = await supabase.auth.getUser();
+                              const leaderName = currentUser?.user_metadata?.full_name || 'Seu líder';
+
+                              if (memberData?.email) {
+                                supabase.functions.invoke('notify-review-shared', {
+                                  body: {
+                                    memberName: memberData.name,
+                                    memberEmail: memberData.email,
+                                    leaderName,
+                                    reviewTitle: review.title,
+                                    reviewDate: review.created_at,
+                                  },
+                                }).catch(err => console.error('Email notification failed:', err));
+                              }
+                            } catch (emailErr) {
+                              console.error('Failed to send review notification email:', emailErr);
+                            }
                           } catch { toast({ title: "Erro", variant: "destructive" }); }
                           finally { setSharing(false); }
                         }}

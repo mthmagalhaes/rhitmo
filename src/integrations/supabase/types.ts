@@ -351,6 +351,7 @@ export type Database = {
           created_at: string
           id: string
           member_id: string
+          member_viewed_at: string | null
           period_end: string | null
           period_start: string | null
           period_type: string
@@ -364,6 +365,7 @@ export type Database = {
           created_at?: string
           id?: string
           member_id: string
+          member_viewed_at?: string | null
           period_end?: string | null
           period_start?: string | null
           period_type?: string
@@ -377,6 +379,7 @@ export type Database = {
           created_at?: string
           id?: string
           member_id?: string
+          member_viewed_at?: string | null
           period_end?: string | null
           period_start?: string | null
           period_type?: string
