@@ -47,3 +47,9 @@ verify_jwt = false
 
 [functions.fetch-calendar-events]
 verify_jwt = false
+
+[functions.reprocess-meeting]
+verify_jwt = true
+
+[functions.upload-meeting]
+verify_jwt = true

@@ -24,9 +24,118 @@ interface MeetingRecorderProps {
   memberName?: string;
 }
 
-type RecorderState = 'idle' | 'recording' | 'uploading' | 'done' | 'no-audio-warning';
+type RecorderState = 'idle' | 'recording' | 'converting' | 'uploading' | 'done' | 'no-audio-warning';
 
 const AUDIO_THRESHOLD = 0.08;
+
+// --- Audio conversion helpers ---
+
+function audioBufferToWav(buffer: AudioBuffer): ArrayBuffer {
+  const numChannels = buffer.numberOfChannels;
+  const sampleRate = buffer.sampleRate;
+  const samples = buffer.getChannelData(0);
+  const bytesPerSample = 2;
+  const blockAlign = numChannels * bytesPerSample;
+  const dataSize = samples.length * blockAlign;
+  const headerSize = 44;
+  const arrayBuffer = new ArrayBuffer(headerSize + dataSize);
+  const view = new DataView(arrayBuffer);
+
+  const writeString = (offset: number, str: string) => {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  };
+
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + dataSize, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * blockAlign, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, 16, true);
+  writeString(36, 'data');
+  view.setUint32(40, dataSize, true);
+
+  let offset = 44;
+  for (let i = 0; i < samples.length; i++) {
+    const s = Math.max(-1, Math.min(1, samples[i]));
+    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+    offset += 2;
+  }
+
+  return arrayBuffer;
+}
+
+async function convertToMp3(webmBlob: Blob): Promise<{ blob: Blob; extension: string; mimeType: string }> {
+  // 1. Decode webm
+  const arrayBuffer = await webmBlob.arrayBuffer();
+  const audioContext = new AudioContext();
+  const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+  await audioContext.close();
+
+  // 2. Render to mono 16kHz
+  const targetSampleRate = 16000;
+  const offlineCtx = new OfflineAudioContext(
+    1,
+    Math.ceil(audioBuffer.duration * targetSampleRate),
+    targetSampleRate
+  );
+  const source = offlineCtx.createBufferSource();
+  source.buffer = audioBuffer;
+  source.connect(offlineCtx.destination);
+  source.start();
+  const renderedBuffer = await offlineCtx.startRendering();
+
+  // 3. Try MP3 encoding via lamejs
+  try {
+    const lamejs = await import('lamejs');
+    const mp3Encoder = new lamejs.Mp3Encoder(1, targetSampleRate, 32);
+
+    const samples = renderedBuffer.getChannelData(0);
+    const sampleInt16 = new Int16Array(samples.length);
+    for (let i = 0; i < samples.length; i++) {
+      sampleInt16[i] = Math.max(-32768, Math.min(32767, samples[i] * 32768));
+    }
+
+    const mp3Data: Int16Array[] = [];
+    const blockSize = 1152;
+    for (let i = 0; i < sampleInt16.length; i += blockSize) {
+      const chunk = sampleInt16.subarray(i, i + blockSize);
+      const encoded = mp3Encoder.encodeBuffer(chunk);
+      if (encoded.length > 0) mp3Data.push(encoded);
+    }
+    const finalChunk = mp3Encoder.flush();
+    if (finalChunk.length > 0) mp3Data.push(finalChunk);
+
+    const totalLength = mp3Data.reduce((acc, arr) => acc + arr.length, 0);
+    const result = new Uint8Array(totalLength);
+    let offset = 0;
+    for (const chunk of mp3Data) {
+      result.set(new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength), offset);
+      offset += chunk.byteLength;
+    }
+
+    console.log(`MP3 conversion: ${(webmBlob.size / 1024).toFixed(0)}KB → ${(result.byteLength / 1024).toFixed(0)}KB`);
+    return {
+      blob: new Blob([result], { type: 'audio/mpeg' }),
+      extension: 'mp3',
+      mimeType: 'audio/mpeg',
+    };
+  } catch (err) {
+    console.warn('lamejs failed, falling back to WAV:', err);
+    const wavBuffer = audioBufferToWav(renderedBuffer);
+    return {
+      blob: new Blob([wavBuffer], { type: 'audio/wav' }),
+      extension: 'wav',
+      mimeType: 'audio/wav',
+    };
+  }
+}
+
+// --- Waveform component ---
 
 const WaveformBars = ({
   isActive,
@@ -92,6 +201,8 @@ const WaveformBars = ({
   );
 };
 
+// --- Main component ---
+
 export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: MeetingRecorderProps) => {
   const [state, setState] = useState<RecorderState>('idle');
   const [duration, setDuration] = useState(0);
@@ -155,7 +266,6 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
   const loadWorkspaceMembers = useCallback(async () => {
     if (!memberId) return;
     
-    // Get the workspace of the current member
     const { data: memberData } = await supabase
       .from('team_members')
       .select('id, team_id, teams!inner(workspace_id)')
@@ -207,7 +317,6 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
           continue;
         }
 
-        // Fire-and-forget analysis
         if (feedback?.id) {
           supabase.functions.invoke('analyze-feedback-background', {
             body: { feedbackId: feedback.id }
@@ -317,7 +426,7 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
   const stopRecording = useCallback(() => {
     if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') return;
 
-    setState('uploading');
+    setState('converting');
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -340,10 +449,10 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
       }
       analyserRef.current = null;
 
-      const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+      const webmBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
       chunksRef.current = [];
 
-      if (blob.size < 1000) {
+      if (webmBlob.size < 1000) {
         toast({
           title: 'Gravação muito curta',
           description: 'Grave por mais tempo para gerar conteúdo.',
@@ -353,9 +462,24 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
         return;
       }
 
+      // Convert to MP3 (or WAV fallback)
+      let convertedBlob: Blob;
+      let fileName: string;
+      try {
+        const result = await convertToMp3(webmBlob);
+        convertedBlob = result.blob;
+        fileName = `meeting-${Date.now()}.${result.extension}`;
+      } catch (convErr) {
+        console.warn('Audio conversion failed, uploading original webm:', convErr);
+        convertedBlob = webmBlob;
+        fileName = `meeting-${Date.now()}.webm`;
+      }
+
+      setState('uploading');
+
       try {
         const formData = new FormData();
-        formData.append('file', blob, 'meeting-recording.webm');
+        formData.append('file', convertedBlob, fileName);
         if (meetingTitle.trim()) formData.append('meeting_title', meetingTitle.trim());
         if (memberId) formData.append('member_id', memberId);
 
@@ -372,7 +496,6 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
           setFeedbackTitle(meetingTitle.trim() || null);
           setState('done');
           
-          // Load members for replication
           loadWorkspaceMembers();
 
           toast({
@@ -551,6 +674,19 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
                 <Square className="h-5 w-5" />
                 Parar Gravação
               </Button>
+            </div>
+          )}
+
+          {/* Converting state */}
+          {state === 'converting' && (
+            <div className="bg-muted/50 rounded-2xl p-8 text-center space-y-4 animate-fade-in">
+              <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
+              <div>
+                <p className="text-sm font-medium text-foreground">Processando áudio...</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Isso pode levar alguns segundos para reuniões longas.
+                </p>
+              </div>
             </div>
           )}
 
