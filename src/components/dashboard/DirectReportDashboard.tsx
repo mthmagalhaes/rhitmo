@@ -11,9 +11,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FeedbackTimeline } from '@/components/FeedbackTimeline';
-import { Home, Compass, FileText, User, Zap, CheckCircle, ChevronRight, Sparkles, Loader2 } from 'lucide-react';
+import { Home, Compass, FileText, User, Zap, CheckCircle, ChevronRight, Sparkles, Loader2, Download } from 'lucide-react';
 import SkillsMapCard from './SkillsMapCard';
 import { toast } from 'sonner';
+import ReactMarkdown from 'react-markdown';
+import DOMPurify from 'dompurify';
+import { marked } from 'marked';
 
 interface LinkedMemberData {
   id: string;
@@ -123,12 +126,30 @@ const getDaysSince = (dateStr: string | null | undefined): number | null => {
 
 const MOTIVATOR_OPTIONS = ['Autonomia', 'Dinheiro', 'Estabilidade', 'Aprendizado', 'Propósito', 'Status'];
 
+const filterReviewForMember = (content: string): string => {
+  const lines = content.split('\n');
+  let inDicasBlock = false;
+  const filtered: string[] = [];
+  for (const line of lines) {
+    if (line.includes('Dicas para Apresentação') || line.includes('Como Apresentar Esta')) {
+      inDicasBlock = true;
+      continue;
+    }
+    if (inDicasBlock && (line.startsWith('##') || /^[📊💪🎯🚀]/.test(line))) {
+      inDicasBlock = false;
+    }
+    if (!inDicasBlock) filtered.push(line);
+  }
+  return filtered.join('\n').trim();
+};
+
 export default function DirectReportDashboard({ linkedMember }: DirectReportDashboardProps) {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('visao-geral');
   const [syncDialogOpen, setSyncDialogOpen] = useState(false);
   const [syncSaving, setSyncSaving] = useState(false);
   const [isReanalyzing, setIsReanalyzing] = useState(false);
+  const [selectedReview, setSelectedReview] = useState<any>(null);
   const queryClient = useQueryClient();
 
   const [syncForm, setSyncForm] = useState({
@@ -197,6 +218,21 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
   const tenure = linkedMember.skills_data?.role_tenure;
   const aiAnalysis = linkedMember.skills_data?.ai_analysis;
   const hasRhitmoSync = !!(linkedMember.work_style_data || linkedMember.chronotype || linkedMember.feedback_style || linkedMember.recognition_style);
+
+  // Query shared performance reviews
+  const { data: sharedReviews = [], isLoading: loadingReviews } = useQuery({
+    queryKey: ['shared-reviews', linkedMember.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('performance_reviews')
+        .select('id, title, content, period_type, period_start, period_end, created_at')
+        .eq('member_id', linkedMember.id)
+        .eq('shared_with_member', true)
+        .order('created_at', { ascending: false });
+      if (error) { console.error('Error fetching shared reviews:', error); return []; }
+      return data || [];
+    },
+  });
 
   const handleToggleMotivator = (m: string) => {
     setSyncForm(prev => {
@@ -413,7 +449,90 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
                   <FeedbackTimeline feedbacks={feedbacks} />
                 )}
               </Card>
+
+              {/* Seção de Avaliações Formais */}
+              <div className="mt-8">
+                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-foreground">
+                  <FileText className="h-5 w-5 text-primary" />
+                  Avaliações Formais
+                </h2>
+                {loadingReviews ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  </div>
+                ) : sharedReviews.length === 0 ? (
+                  <Card className="p-8 text-center rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
+                    <FileText className="h-8 w-8 mx-auto mb-3 text-muted-foreground/30" />
+                    <p className="text-sm text-muted-foreground">
+                      Nenhuma avaliação compartilhada ainda
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Seu líder compartilhará avaliações formais quando estiverem prontas.
+                    </p>
+                  </Card>
+                ) : (
+                  <div className="space-y-3">
+                    {sharedReviews.map((review: any) => (
+                      <Card
+                        key={review.id}
+                        className="p-5 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] cursor-pointer hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200"
+                        onClick={() => setSelectedReview(review)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-semibold text-sm text-foreground">{review.title}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {new Date(review.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                            </p>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
+
+            {/* Dialog de leitura da avaliação */}
+            <Dialog open={!!selectedReview} onOpenChange={(open) => !open && setSelectedReview(null)}>
+              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>{selectedReview?.title}</DialogTitle>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedReview && new Date(selectedReview.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                  </p>
+                </DialogHeader>
+                <div className="prose prose-sm max-w-none mt-4">
+                  {(() => {
+                    const filtered = filterReviewForMember(selectedReview?.content || '');
+                    if (filtered.includes('</')) {
+                      return <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(filtered) }} />;
+                    }
+                    return <ReactMarkdown>{filtered}</ReactMarkdown>;
+                  })()}
+                </div>
+                <div className="flex gap-2 mt-6 pt-4 border-t border-border">
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    onClick={() => {
+                      if (!selectedReview) return;
+                      const printWindow = window.open('', '_blank');
+                      if (!printWindow) return;
+                      const filtered = filterReviewForMember(selectedReview.content || '');
+                      const htmlContent = filtered.includes('</') ? filtered : marked(filtered);
+                      printWindow.document.write(`<!DOCTYPE html><html><head><title>${selectedReview.title}</title><style>body{font-family:'Segoe UI',Arial,sans-serif;padding:2cm;line-height:1.6;color:#333}h1{color:#222;border-bottom:3px solid #7C3AED;padding-bottom:16px}h2{color:#444;margin-top:28px}ul,ol{padding-left:24px}li{margin:6px 0}</style></head><body><h1>${selectedReview.title}</h1><p style="color:#666">${new Date(selectedReview.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>${htmlContent}</body></html>`);
+                      printWindow.document.close();
+                      setTimeout(() => printWindow.print(), 300);
+                    }}
+                  >
+                    <Download className="h-4 w-4" />
+                    Exportar PDF
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* ═══ TAB 4: Meu Perfil ═══ */}

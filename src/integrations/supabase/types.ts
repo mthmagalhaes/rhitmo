@@ -354,6 +354,7 @@ export type Database = {
           period_end: string | null
           period_start: string | null
           period_type: string
+          shared_with_member: boolean | null
           title: string
           updated_at: string
         }
@@ -366,6 +367,7 @@ export type Database = {
           period_end?: string | null
           period_start?: string | null
           period_type?: string
+          shared_with_member?: boolean | null
           title: string
           updated_at?: string
         }
@@ -378,6 +380,7 @@ export type Database = {
           period_end?: string | null
           period_start?: string | null
           period_type?: string
+          shared_with_member?: boolean | null
           title?: string
           updated_at?: string
         }

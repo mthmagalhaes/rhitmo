@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Calendar, FileText, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Calendar, FileText, Loader2, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { NewReviewDialog } from "./NewReviewDialog";
 import { ReviewViewDialog } from "./ReviewViewDialog";
@@ -17,6 +18,7 @@ interface PerformanceReview {
   period_start?: string | null;
   period_end?: string | null;
   created_at: string;
+  shared_with_member?: boolean;
 }
 
 interface PerformanceReviewListProps {
@@ -35,7 +37,7 @@ export const PerformanceReviewList = ({ memberId, memberName }: PerformanceRevie
     queryFn: async () => {
       const { data, error } = await supabase
         .from('performance_reviews')
-        .select('id, title, content, coaching_tip, period_type, period_start, period_end, created_at')
+        .select('id, title, content, coaching_tip, period_type, period_start, period_end, created_at, shared_with_member')
         .eq('member_id', memberId)
         .order('created_at', { ascending: false });
 
@@ -133,6 +135,12 @@ export const PerformanceReviewList = ({ memberId, memberName }: PerformanceRevie
                       </span>
                     </CardDescription>
                   </div>
+                  {review.shared_with_member && (
+                    <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 text-xs border border-emerald-100 gap-1 shrink-0">
+                      <Eye className="h-3 w-3" />
+                      Visível para o liderado
+                    </Badge>
+                  )}
                 </div>
               </CardHeader>
             </Card>

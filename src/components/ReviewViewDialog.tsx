@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Printer, Pencil, Trash2, TrendingUp } from "lucide-react";
+import { Loader2, Printer, Pencil, Trash2, TrendingUp, Share2, EyeOff } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +22,7 @@ interface PerformanceReview {
   period_start?: string | null;
   period_end?: string | null;
   created_at: string;
+  shared_with_member?: boolean;
 }
 
 interface ReviewViewDialogProps {
@@ -49,6 +50,7 @@ export const ReviewViewDialog = ({
   const [saving, setSaving] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -311,6 +313,53 @@ export const ReviewViewDialog = ({
               <div className="flex gap-2">
                 {!editing && (
                   <>
+                    {review.shared_with_member ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={sharing}
+                        onClick={async () => {
+                          setSharing(true);
+                          try {
+                            const { error } = await supabase
+                              .from('performance_reviews')
+                              .update({ shared_with_member: false } as any)
+                              .eq('id', review.id);
+                            if (error) throw error;
+                            toast({ title: "Acesso revogado", description: `${memberName || 'O liderado'} não pode mais ver esta avaliação.` });
+                            onReviewUpdated();
+                          } catch { toast({ title: "Erro", variant: "destructive" }); }
+                          finally { setSharing(false); }
+                        }}
+                        className="gap-2 text-muted-foreground"
+                      >
+                        <EyeOff className="h-4 w-4" />
+                        Revogar acesso
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={sharing}
+                        onClick={async () => {
+                          setSharing(true);
+                          try {
+                            const { error } = await supabase
+                              .from('performance_reviews')
+                              .update({ shared_with_member: true } as any)
+                              .eq('id', review.id);
+                            if (error) throw error;
+                            toast({ title: "Avaliação compartilhada ✅", description: `${memberName || 'O liderado'} agora pode ver esta avaliação no portal dele.` });
+                            onReviewUpdated();
+                          } catch { toast({ title: "Erro", variant: "destructive" }); }
+                          finally { setSharing(false); }
+                        }}
+                        className="gap-2 text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                      >
+                        <Share2 className="h-4 w-4" />
+                        Compartilhar com liderado
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
