@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FeedbackTimeline } from '@/components/FeedbackTimeline';
 import { Home, Compass, FileText, User, Zap, CheckCircle, ChevronRight, Sparkles, Loader2 } from 'lucide-react';
-import { CareerCompassCard, type AIAnalysis } from './CareerCompassCard';
+import SkillsMapCard from './SkillsMapCard';
 import { toast } from 'sonner';
 
 interface LinkedMemberData {
@@ -26,8 +27,13 @@ interface LinkedMemberData {
     aspirations?: string;
     interests?: string[];
     onboarding_completed?: boolean;
-    completed_at?: string;
-    ai_analysis?: AIAnalysis;
+    ai_analysis?: {
+      alignment_score?: number;
+      analysis_summary?: string;
+      key_gaps?: string[];
+      suggested_focus?: string[];
+      analyzed_at?: string;
+    };
   } | null;
   work_style_data?: Record<string, unknown> | null;
   chronotype?: string | null;
@@ -118,9 +124,11 @@ const getDaysSince = (dateStr: string | null | undefined): number | null => {
 const MOTIVATOR_OPTIONS = ['Autonomia', 'Dinheiro', 'Estabilidade', 'Aprendizado', 'Propósito', 'Status'];
 
 export default function DirectReportDashboard({ linkedMember }: DirectReportDashboardProps) {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('visao-geral');
   const [syncDialogOpen, setSyncDialogOpen] = useState(false);
   const [syncSaving, setSyncSaving] = useState(false);
+  const [isReanalyzing, setIsReanalyzing] = useState(false);
   const queryClient = useQueryClient();
 
   const [syncForm, setSyncForm] = useState({
@@ -236,6 +244,43 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
     }
   };
 
+  const handleReanalyze = async () => {
+    if (!linkedMember || !user) return;
+    setIsReanalyzing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-job-crafting', {
+        body: {
+          role: linkedMember.role,
+          responsibilities: linkedMember.skills_data?.responsibilities || [],
+          aspirations: linkedMember.skills_data?.aspirations || '',
+          interests: linkedMember.skills_data?.interests || [],
+        },
+      });
+      if (error) throw error;
+
+      await supabase
+        .from('team_members')
+        .update({
+          skills_data: {
+            ...linkedMember.skills_data,
+            ai_analysis: {
+              ...data,
+              analyzed_at: new Date().toISOString(),
+            },
+          },
+        } as any)
+        .eq('linked_user_id', user.id);
+
+      await queryClient.invalidateQueries({ queryKey: ['linked-member'] });
+      toast.success('Análise atualizada! Sua Bússola de Carreira foi regenerada.');
+    } catch (err) {
+      console.error('[handleReanalyze] Error:', err);
+      toast.error('Erro na análise. Tente novamente em alguns instantes.');
+    } finally {
+      setIsReanalyzing(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-muted/30 pb-20">
       {/* Header */}
@@ -335,12 +380,15 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
           {/* ═══ TAB 2: Minha Carreira ═══ */}
           <TabsContent value="carreira">
             <div className="mt-6 space-y-6">
-              {aiAnalysis && <CareerCompassCard aiAnalysis={aiAnalysis} />}
-              <Card className="p-12 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] text-center">
-                <Compass className="h-12 w-12 mx-auto mb-4 text-primary opacity-50" />
-                <h2 className="text-xl font-bold tracking-tight text-foreground mb-2">Minha Carreira</h2>
-                <p className="text-muted-foreground text-sm">
-                  Skills map, PDI e Career Coach chegam em breve.
+              <SkillsMapCard
+                aiAnalysis={aiAnalysis ?? null}
+                memberId={linkedMember.id}
+                onReanalyze={handleReanalyze}
+                isReanalyzing={isReanalyzing}
+              />
+              <Card className="p-8 text-center rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] border-dashed border-2 border-muted">
+                <p className="text-sm text-muted-foreground">
+                  Skills Map detalhado, PDI e Career Coach chegam em breve.
                 </p>
               </Card>
             </div>
