@@ -1,73 +1,43 @@
 
+## Sprint 5.3 — SkillsMapCard na tab "Minha Carreira"
 
-## Correção de dois bugs na tab "Meu Perfil"
+### Arquivos alterados
+1. **`src/components/dashboard/SkillsMapCard.tsx`** (novo)
+2. **`src/components/dashboard/DirectReportDashboard.tsx`** (editado)
 
-### Arquivo alterado
-`src/components/dashboard/DirectReportDashboard.tsx`
+---
 
-### Fix 1 — Toast do botão "Editar" no card Informações da Funcao (linha 367)
+### 1. Criar SkillsMapCard.tsx
 
-Substituir:
-```typescript
-onClick={() => toast('Em breve você poderá editar seu Rhitmo Sync diretamente aqui')}
-```
-Por:
-```typescript
-onClick={() => toast('Em breve você poderá atualizar suas informações de função diretamente aqui.', { description: 'Edição de perfil' })}
-```
+Novo componente com as props `aiAnalysis`, `memberId`, `onReanalyze`, `isReanalyzing`.
 
-Ou, usando o padrão `toast()` com title/description invertidos para ficar mais claro:
-```typescript
-onClick={() => toast('Edição de perfil', { description: 'Em breve você poderá atualizar suas informações de função diretamente aqui.' })}
-```
+Layout:
+- **Cabecalho**: icone Compass + titulo "Bussola de Carreira" + botao "Re-analisar" com RefreshCw/Loader2
+- **Data da analise**: texto com `analyzed_at` formatado em pt-BR, com alerta amber se > 90 dias
+- **Resumo narrativo**: bloco `bg-muted/40 rounded-xl` com texto italico entre aspas
+- **Grid 2 colunas**: "Pontos de Atencao" (fundo orange-50) e "Foco Recomendado" (fundo primary/5), cada um com lista de bullet points coloridos
+- **Empty state**: quando `aiAnalysis` e null, exibir icone + texto + botao "Gerar analise"
+- **SEM score numerico**, sem barra de progresso
 
-### Fix 2 — Labels dos badges traduzidos (linhas 49-64)
+Helpers internos: `formatDate` e `isOlderThan90Days`.
 
-Expandir os 3 mapas de labels para cobrir TODAS as keys usadas no banco (incluindo as em ingles que vem do wizard):
+### 2. Editar DirectReportDashboard.tsx
 
-```typescript
-const chronotypeLabels: Record<string, string> = {
-  'early_bird': 'Madrugador (5h-14h)',
-  'madrugador': 'Madrugador (5h-14h)',
-  'commercial': 'Horario Comercial',
-  'comercial': 'Horario Comercial',
-  'night_owl': 'Noturno (depois das 18h)',
-  'noturno': 'Noturno (depois das 18h)',
-  'variable': 'Variavel',
-};
+**Imports**: Adicionar `SkillsMapCard`, adicionar `RefreshCw` ao import do lucide. Adicionar `useAuth` para acessar `user.id`.
 
-const feedbackStyleLabels: Record<string, string> = {
-  'direct': 'Direto',
-  'direto': 'Direto',
-  'empathetic': 'Empatico / Sanduiche',
-  'empatico': 'Empatico / Sanduiche',
-  'written': 'Escrito',
-  'escrito': 'Escrito',
-  'private': 'Em particular',
-  'privado': 'Em particular',
-  'context': 'Com contexto e exemplos',
-};
+**Estado**: Adicionar `isReanalyzing` state.
 
-const recognitionStyleLabels: Record<string, string> = {
-  'public': 'Reconhecimento Publico',
-  'publico': 'Reconhecimento Publico',
-  'private': 'Reconhecimento Privado',
-  'privado': 'Reconhecimento Privado',
-  'results': 'Por Resultados',
-  'learning': 'Por Aprendizado',
-};
-```
+**Handler `handleReanalyze`**:
+- Chama `supabase.functions.invoke('analyze-job-crafting')` com `role`, `responsibilities`, `aspirations`, `interests` do `linkedMember.skills_data`
+- Salva resultado em `skills_data.ai_analysis` via update na tabela `team_members` (filtro `linked_user_id = user.id`)
+- Invalida query `['linked-member']`
+- Toast de sucesso/erro
 
-Adicionar helper `getLabel`:
-```typescript
-const getLabel = (map: Record<string, string>, value: string) =>
-  map[value] || value.charAt(0).toUpperCase() + value.slice(1);
-```
-
-Aplicar `getLabel` nos 3 badges (linhas 461, 471, 481) para que valores nao mapeados tambem sejam capitalizados em vez de exibir o valor bruto.
+**Tab "Minha Carreira" (linhas 336-347)**: Substituir o conteudo atual (CareerCompassCard + placeholder) por:
+- `SkillsMapCard` com as props conectadas
+- Card placeholder com borda dashed para "Skills Map detalhado, PDI e Career Coach chegam em breve."
 
 ### O que NAO muda
-- Dialog syncDialog, layout das tabs, CareerCompassCard, FeedbackTimeline
-- Linhas de contexto dos badges (ja estao corretas pois os context maps ja cobrem as keys em ingles)
+- `CareerCompassCard.tsx` permanece intacto (usado pelo lider)
+- Tabs, FeedbackTimeline, syncDialog, tab Meu Perfil
 - Nenhum outro arquivo
-
