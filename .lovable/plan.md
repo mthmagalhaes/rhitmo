@@ -1,67 +1,67 @@
 
 
-## Sprint 5.4 — Shared Review Flow
+## Sprint 5.4 Complemento — Notificacao por Email + Secao "Novidades"
 
-O liderado passa a ver avaliacoes formais compartilhadas pelo lider na tab "Feedbacks" do DirectReportDashboard.
+### Visao Geral
+Duas melhorias ao fluxo de avaliacao compartilhada: (1) enviar email ao liderado quando o lider compartilha, (2) mostrar indicador de "nao lido" na tab Visao Geral.
 
 ---
 
-### 1. Migracao de banco
+### 1. Migracao de banco: coluna `member_viewed_at`
 
-Adicionar coluna `shared_with_member` a tabela `performance_reviews`:
+Adicionar coluna a tabela `performance_reviews`:
 
 ```sql
 ALTER TABLE performance_reviews 
-ADD COLUMN IF NOT EXISTS shared_with_member boolean DEFAULT false;
+ADD COLUMN IF NOT EXISTS member_viewed_at timestamptz DEFAULT NULL;
 ```
 
-Adicionar RLS policy para que o liderado (linked_user) possa ler avaliacoes compartilhadas:
+Essa coluna sera atualizada quando o liderado abrir a avaliacao no dialog de leitura. Reviews com `shared_with_member = true` e `member_viewed_at IS NULL` sao consideradas "nao lidas".
 
-```sql
-CREATE POLICY "Linked members can view shared reviews"
-ON performance_reviews FOR SELECT
-USING (
-  shared_with_member = true 
-  AND EXISTS (
-    SELECT 1 FROM team_members tm
-    WHERE tm.id = performance_reviews.member_id
-    AND tm.linked_user_id = auth.uid()
-  )
-);
+---
+
+### 2. Edge Function: `notify-review-shared` (nova)
+
+Seguir exatamente o padrao da `send-disc-invite`:
+- Mesma estrutura de CORS, Resend, HTML
+- Input: `{ memberName, memberEmail, leaderName, reviewTitle, reviewDate }`
+- De: `Rhitmo <noreply@rhitmo.co>`
+- Assunto: `"{leaderName} compartilhou sua avaliacao de desempenho"`
+- HTML com logo Rhitmo, saudacao, bloco cinza com detalhes, botao roxo `#7C3AED` linkando para `https://rhitmo.co/dashboard`, rodape "Equipe Rhitmo"
+- Adicionada ao `supabase/config.toml` com `verify_jwt = true`
+
+---
+
+### 3. ReviewViewDialog.tsx — Disparar email ao compartilhar
+
+No handler do botao "Compartilhar com liderado" (linhas ~344-355), apos o update com sucesso:
+- Buscar `email` e `name` do team_member (member_id do review)
+- Buscar nome do lider via `user_metadata`
+- Invocar `supabase.functions.invoke('notify-review-shared', { body: ... })`
+- Fire-and-forget (nao bloquear o toast de sucesso se o email falhar, apenas log de erro)
+
+---
+
+### 4. DirectReportDashboard.tsx — Secao "Novidades" na Visao Geral
+
+**Dados**: Derivar `unreadReviews` a partir de `sharedReviews` ja existente:
+```
+const unreadReviews = sharedReviews.filter(r => !r.member_viewed_at);
 ```
 
----
+A query `shared-reviews` precisa incluir `member_viewed_at` no select.
 
-### 2. ReviewViewDialog.tsx — Botao Compartilhar/Revogar (painel do lider)
+**Secao "Novidades"**: Renderizar entre o header "Ola, {nome}" e os cards Resumo/Proximas Acoes, APENAS se `unreadReviews.length > 0`. Cada item e clicavel e navega para tab feedbacks + abre o modal.
 
-Adicionar `shared_with_member` a interface `PerformanceReview` e as props do componente.
+**Badge no card "Resumo"**: Na linha de "X feedbacks compartilhados", adicionar badge se `unreadReviews.length > 0`.
 
-No header do dialog, junto aos botoes existentes (Exportar PDF, Editar, Excluir), adicionar:
-- Se `shared_with_member = false`: botao verde "Compartilhar com liderado" (icone Share2)
-- Se `shared_with_member = true`: botao cinza "Revogar acesso" (icone EyeOff)
-
-Handlers `handleShare` e `handleUnshare` fazem update na coluna e invalidam a query.
-
----
-
-### 3. PerformanceReviewList.tsx — Badge de visibilidade
-
-Na lista de avaliacoes do lider, incluir `shared_with_member` no select da query.
-
-Para cada review com `shared_with_member = true`, exibir um Badge verde: "Visivel para o liderado".
-
----
-
-### 4. DirectReportDashboard.tsx — Secao "Avaliacoes Formais" na tab Feedbacks
-
-Abaixo dos feedbacks existentes, adicionar:
-- Query `useQuery(['shared-reviews', linkedMember.id])` buscando `performance_reviews` onde `member_id = linkedMember.id` e `shared_with_member = true`
-- Lista de cards clicaveis com titulo e data
-- Empty state quando nao ha avaliacoes compartilhadas
-- Estado `selectedReview` para abrir Dialog de leitura
-- Dialog read-only com conteudo filtrado (sem "Dicas para Apresentacao") e botao "Exportar PDF"
-
-Funcao `filterReviewForMember` remove blocos de coaching tips do conteudo markdown antes de exibir ao liderado.
+**Marcar como lido**: No dialog de leitura da avaliacao, quando abrir uma review, atualizar `member_viewed_at = now()` se ainda for null:
+```
+await supabase.from('performance_reviews')
+  .update({ member_viewed_at: new Date().toISOString() })
+  .eq('id', review.id)
+  .is('member_viewed_at', null);
+```
 
 ---
 
@@ -69,15 +69,15 @@ Funcao `filterReviewForMember` remove blocos de coaching tips do conteudo markdo
 
 | Arquivo | Acao |
 |---|---|
-| Migracao SQL | Adicionar coluna + RLS policy |
-| `src/components/ReviewViewDialog.tsx` | Adicionar botoes Compartilhar/Revogar |
-| `src/components/PerformanceReviewList.tsx` | Incluir `shared_with_member` na query + Badge |
-| `src/components/dashboard/DirectReportDashboard.tsx` | Secao avaliacoes compartilhadas na tab Feedbacks |
+| Migracao SQL | Adicionar coluna `member_viewed_at` |
+| `supabase/functions/notify-review-shared/index.ts` | Criar Edge Function de email |
+| `supabase/config.toml` | Adicionar configuracao da nova funcao |
+| `src/components/ReviewViewDialog.tsx` | Invocar email ao compartilhar |
+| `src/components/dashboard/DirectReportDashboard.tsx` | Secao Novidades + badge + marcar como lido |
 
 ### O que NAO muda
-
-- Geracao de avaliacoes (NewReviewDialog)
-- FeedbackTimeline, SkillsMapCard, CareerCompassCard
-- Edge Functions existentes
-- Demais componentes e paginas
+- Modal de leitura da avaliacao (estrutura existente)
+- `filterReviewForMember`
+- Badge na tab Feedbacks
+- Demais tabs e componentes
 
