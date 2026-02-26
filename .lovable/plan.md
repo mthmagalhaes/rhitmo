@@ -1,90 +1,67 @@
 
 
-## Gravacao de Reuniao: Compressao MP3 + Reprocessamento
+## Sprint 5.4 — Shared Review Flow
 
-### Visao Geral
-Tres mudancas: (1) converter audio para MP3 32kbps antes do upload no frontend, (2) criar Edge Function para reprocessar gravacoes com erro, (3) tratar o registro do Matheus.
+O liderado passa a ver avaliacoes formais compartilhadas pelo lider na tab "Feedbacks" do DirectReportDashboard.
 
 ---
 
-### 1. Migracao de banco: adicionar coluna `error_message`
+### 1. Migracao de banco
 
-A tabela `meeting_transcripts` nao possui `error_message`. Precisamos adiciona-la para persistir razoes de erro.
+Adicionar coluna `shared_with_member` a tabela `performance_reviews`:
 
 ```sql
-ALTER TABLE public.meeting_transcripts
-ADD COLUMN IF NOT EXISTS error_message text;
+ALTER TABLE performance_reviews 
+ADD COLUMN IF NOT EXISTS shared_with_member boolean DEFAULT false;
+```
+
+Adicionar RLS policy para que o liderado (linked_user) possa ler avaliacoes compartilhadas:
+
+```sql
+CREATE POLICY "Linked members can view shared reviews"
+ON performance_reviews FOR SELECT
+USING (
+  shared_with_member = true 
+  AND EXISTS (
+    SELECT 1 FROM team_members tm
+    WHERE tm.id = performance_reviews.member_id
+    AND tm.linked_user_id = auth.uid()
+  )
+);
 ```
 
 ---
 
-### 2. Instalar `lamejs` (dependencia npm)
+### 2. ReviewViewDialog.tsx — Botao Compartilhar/Revogar (painel do lider)
 
-Adicionar `lamejs` para codificacao MP3 no browser. Nao existe `@types/lamejs` oficial, entao criaremos uma declaracao de tipo minima.
+Adicionar `shared_with_member` a interface `PerformanceReview` e as props do componente.
 
-- `npm install lamejs`
-- Criar `src/types/lamejs.d.ts` com declaracao basica do `Mp3Encoder`
+No header do dialog, junto aos botoes existentes (Exportar PDF, Editar, Excluir), adicionar:
+- Se `shared_with_member = false`: botao verde "Compartilhar com liderado" (icone Share2)
+- Se `shared_with_member = true`: botao cinza "Revogar acesso" (icone EyeOff)
 
----
-
-### 3. MeetingRecorder.tsx — Conversao MP3 antes do upload
-
-**Novo tipo de estado:**
-```text
-'idle' | 'recording' | 'converting' | 'uploading' | 'done' | 'no-audio-warning'
-```
-
-**Novo fluxo no `stopRecording`:**
-1. Estado muda para `'converting'` (UI mostra "Processando audio...")
-2. Chama `convertToMp3(blob)`:
-   - Decodifica webm via `AudioContext.decodeAudioData`
-   - Renderiza em mono 16kHz via `OfflineAudioContext`
-   - Codifica MP3 32kbps via lamejs `Mp3Encoder`
-   - Fallback: se lamejs falhar, gera WAV com sample rate baixo
-3. Estado muda para `'uploading'`
-4. Upload do blob MP3 com filename `meeting-{timestamp}.mp3` e contentType `audio/mpeg`
-
-**Nova UI para estado `converting`:**
-- Spinner + "Processando audio... isso pode levar alguns segundos para reunioes longas."
-
-**Mudanca no upload-meeting Edge Function:**
-- O `filePath` no storage usara a extensao vinda do arquivo (`.mp3` ou `.wav`), nao mais `.webm` hardcoded
-- Ajustar o contentType para usar `file.type` (ja faz isso com fallback)
-
-Impacto: Apenas `upload-meeting/index.ts` precisa de ajuste minimo na extensao do arquivo (trocar `.webm` hardcoded para derivar da extensao do arquivo enviado).
+Handlers `handleShare` e `handleUnshare` fazem update na coluna e invalidam a query.
 
 ---
 
-### 4. Edge Function: `reprocess-meeting/index.ts` (nova)
+### 3. PerformanceReviewList.tsx — Badge de visibilidade
 
-**Input:** `{ transcriptId: string }`
+Na lista de avaliacoes do lider, incluir `shared_with_member` no select da query.
 
-**Fluxo:**
-1. Autenticar usuario via header Authorization
-2. Buscar registro em `meeting_transcripts` pelo `transcriptId`
-3. Validar: `processing_status` deve ser `'error'`; rejeitar se `'completed'`
-4. O campo `transcript` contem a URL do arquivo no Storage
-5. Fazer download do arquivo via fetch da URL publica
-6. Verificar tamanho: se > 20MB, retornar erro com mensagem amigavel
-7. Se <= 20MB: enviar ao Whisper, seguir fluxo identico ao `upload-meeting` (atualizar transcript, criar feedback, trigger classify-note e analyze-feedback-background)
-8. Atualizar `processing_status` para `'completed'` ou manter `'error'` com `error_message`
-
-**Config:** Adicionar ao `supabase/config.toml`:
-```toml
-[functions.reprocess-meeting]
-verify_jwt = true
-```
+Para cada review com `shared_with_member = true`, exibir um Badge verde: "Visivel para o liderado".
 
 ---
 
-### 5. Tratar o registro do Matheus (inline na Edge Function)
+### 4. DirectReportDashboard.tsx — Secao "Avaliacoes Formais" na tab Feedbacks
 
-Apos deploy, invocar `reprocess-meeting` com `transcriptId: '844e0996-...'`. Como o arquivo original e um .webm de ~1h de reuniao (provavelmente > 20MB), a funcao ira:
-- Detectar que excede o limite
-- Atualizar o registro com `error_message: 'Arquivo .webm original excede limite do Whisper. Nova gravacao sera comprimida automaticamente.'`
-- Retornar resposta informativa
+Abaixo dos feedbacks existentes, adicionar:
+- Query `useQuery(['shared-reviews', linkedMember.id])` buscando `performance_reviews` onde `member_id = linkedMember.id` e `shared_with_member = true`
+- Lista de cards clicaveis com titulo e data
+- Empty state quando nao ha avaliacoes compartilhadas
+- Estado `selectedReview` para abrir Dialog de leitura
+- Dialog read-only com conteudo filtrado (sem "Dicas para Apresentacao") e botao "Exportar PDF"
 
-Nao sera possivel reprocessar retroativamente — o .webm original nao pode ser comprimido no servidor.
+Funcao `filterReviewForMember` remove blocos de coaching tips do conteudo markdown antes de exibir ao liderado.
 
 ---
 
@@ -92,15 +69,15 @@ Nao sera possivel reprocessar retroativamente — o .webm original nao pode ser 
 
 | Arquivo | Acao |
 |---|---|
-| `src/components/MeetingRecorder.tsx` | Adicionar estado `converting`, funcao `convertToMp3`, ajustar extensao/mime no upload |
-| `src/types/lamejs.d.ts` | Criar declaracao de tipos para lamejs |
-| `supabase/functions/reprocess-meeting/index.ts` | Criar nova Edge Function |
-| `supabase/functions/upload-meeting/index.ts` | Ajuste minimo: extensao dinamica no filePath |
-| Migracao SQL | Adicionar coluna `error_message` |
-| `package.json` | Adicionar `lamejs` |
+| Migracao SQL | Adicionar coluna + RLS policy |
+| `src/components/ReviewViewDialog.tsx` | Adicionar botoes Compartilhar/Revogar |
+| `src/components/PerformanceReviewList.tsx` | Incluir `shared_with_member` na query + Badge |
+| `src/components/dashboard/DirectReportDashboard.tsx` | Secao avaliacoes compartilhadas na tab Feedbacks |
 
 ### O que NAO muda
-- Nenhum outro componente de UI
-- Demais Edge Functions
-- Schema da tabela (exceto `error_message`)
+
+- Geracao de avaliacoes (NewReviewDialog)
+- FeedbackTimeline, SkillsMapCard, CareerCompassCard
+- Edge Functions existentes
+- Demais componentes e paginas
 
