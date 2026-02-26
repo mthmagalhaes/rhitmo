@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FeedbackTimeline } from '@/components/FeedbackTimeline';
-import { Home, Compass, FileText, User, Zap, CheckCircle, ChevronRight, Sparkles, Loader2, Download } from 'lucide-react';
+import { Home, Compass, FileText, User, Zap, CheckCircle, ChevronRight, Sparkles, Loader2, Download, Bell } from 'lucide-react';
 import SkillsMapCard from './SkillsMapCard';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
@@ -225,7 +225,7 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
     queryFn: async () => {
       const { data, error } = await supabase
         .from('performance_reviews')
-        .select('id, title, content, period_type, period_start, period_end, created_at')
+        .select('id, title, content, period_type, period_start, period_end, created_at, member_viewed_at')
         .eq('member_id', linkedMember.id)
         .eq('shared_with_member', true)
         .order('created_at', { ascending: false });
@@ -233,6 +233,20 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
       return data || [];
     },
   });
+
+  const unreadReviews = sharedReviews.filter((r: any) => !r.member_viewed_at);
+
+  // Mark review as read when opened
+  useEffect(() => {
+    if (selectedReview && !selectedReview.member_viewed_at) {
+      supabase
+        .from('performance_reviews')
+        .update({ member_viewed_at: new Date().toISOString() } as any)
+        .eq('id', selectedReview.id)
+        .is('member_viewed_at', null)
+        .then(() => queryClient.invalidateQueries({ queryKey: ['shared-reviews', linkedMember.id] }));
+    }
+  }, [selectedReview?.id]);
 
   const handleToggleMotivator = (m: string) => {
     setSyncForm(prev => {
@@ -351,6 +365,37 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
 
           {/* ═══ TAB 1: Visão Geral ═══ */}
           <TabsContent value="visao-geral">
+            {/* Seção Novidades — apenas se houver reviews não lidas */}
+            {unreadReviews.length > 0 && (
+              <div className="mb-6">
+                <h2 className="text-lg font-bold tracking-tight flex items-center gap-2 mb-3 text-foreground">
+                  <Bell className="h-5 w-5 text-primary" />
+                  Novidades
+                </h2>
+                {unreadReviews.map((review: any) => (
+                  <div
+                    key={review.id}
+                    onClick={() => {
+                      setActiveTab('feedbacks');
+                      setSelectedReview(review);
+                    }}
+                    className="flex items-start gap-3 p-4 rounded-2xl bg-primary/5 border border-primary/20 cursor-pointer hover:bg-primary/10 transition-colors mb-2"
+                  >
+                    <div className="mt-0.5 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <FileText className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground">Nova avaliação disponível</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                        &ldquo;{review.title}&rdquo; foi compartilhada pelo seu líder
+                      </p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Resumo - 1/3 */}
               <Card className="p-6 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:-translate-y-1 hover:shadow-lg transition-all duration-300 lg:col-span-1">
@@ -360,7 +405,14 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
                 </h2>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">{feedbacks.length} feedbacks compartilhados</span>
+                    <span className="text-sm text-muted-foreground">
+                      {feedbacks.length} feedbacks compartilhados
+                    </span>
+                    {unreadReviews.length > 0 && (
+                      <Badge className="bg-primary/10 text-primary text-xs border-0 ml-2">
+                        {unreadReviews.length} nova{unreadReviews.length > 1 ? 's' : ''}
+                      </Badge>
+                    )}
                     <Button variant="ghost" size="sm" onClick={() => setActiveTab('feedbacks')} className="text-xs text-primary">
                       Ver todos
                     </Button>
