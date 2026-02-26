@@ -48,7 +48,14 @@ serve(async (req) => {
     // Upload file to storage
     const folder = userId || 'anonymous';
     const timestamp = Date.now();
-    const filePath = `${folder}/${timestamp}.webm`;
+    // Derive extension from uploaded file name or type
+    const fileName = (file as File).name || '';
+    let ext = 'webm';
+    if (fileName.endsWith('.mp3')) ext = 'mp3';
+    else if (fileName.endsWith('.wav')) ext = 'wav';
+    else if (file.type?.includes('mpeg')) ext = 'mp3';
+    else if (file.type?.includes('wav')) ext = 'wav';
+    const filePath = `${folder}/${timestamp}.${ext}`;
 
     const { error: uploadError } = await supabase.storage
       .from('meeting-recordings')

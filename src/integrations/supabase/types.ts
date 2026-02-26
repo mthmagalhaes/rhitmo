@@ -248,6 +248,7 @@ export type Database = {
           chunk_count: number | null
           created_at: string
           duration_seconds: number | null
+          error_message: string | null
           extracted_commitments: string[] | null
           extracted_themes: string[] | null
           id: string
@@ -262,6 +263,7 @@ export type Database = {
           chunk_count?: number | null
           created_at?: string
           duration_seconds?: number | null
+          error_message?: string | null
           extracted_commitments?: string[] | null
           extracted_themes?: string[] | null
           id?: string
@@ -276,6 +278,7 @@ export type Database = {
           chunk_count?: number | null
           created_at?: string
           duration_seconds?: number | null
+          error_message?: string | null
           extracted_commitments?: string[] | null
           extracted_themes?: string[] | null
           id?: string
