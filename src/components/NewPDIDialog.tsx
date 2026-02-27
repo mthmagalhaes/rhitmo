@@ -55,7 +55,7 @@ export function NewPDIDialog({ open, onOpenChange, memberId }: NewPDIDialogProps
         .from('development_plans')
         .insert({
           member_id: memberId,
-          status: 'pending_approval',
+          status: 'active',
           proposed_at: new Date().toISOString(),
           period_label: periodLabel || null,
           created_by_member: true,
@@ -81,7 +81,7 @@ export function NewPDIDialog({ open, onOpenChange, memberId }: NewPDIDialogProps
 
       if (itemsError) throw itemsError;
 
-      toast.success('PDI enviado para aprovação! Seu líder será notificado.');
+      toast.success('PDI criado! Seu líder foi notificado.');
       queryClient.invalidateQueries({ queryKey: ['my-dev-plan'] });
       onOpenChange(false);
       setPeriodLabel('');
@@ -106,7 +106,7 @@ export function NewPDIDialog({ open, onOpenChange, memberId }: NewPDIDialogProps
         <DialogHeader>
           <DialogTitle>Propor meu PDI</DialogTitle>
           <DialogDescription>
-            O que você quer desenvolver nos próximos meses? Seja específico — isso vai para revisão do seu líder.
+            O que você quer desenvolver nos próximos meses? Seja específico e objetivo.
           </DialogDescription>
         </DialogHeader>
 
@@ -182,7 +182,7 @@ export function NewPDIDialog({ open, onOpenChange, memberId }: NewPDIDialogProps
           </Button>
           <Button onClick={handleSubmit} disabled={validItems.length === 0 || isLoading} className="gap-2">
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            Enviar para aprovação
+            Criar meu PDI
           </Button>
         </DialogFooter>
       </DialogContent>
