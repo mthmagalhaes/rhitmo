@@ -247,7 +247,7 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
         .from('development_plans')
         .select('*')
         .eq('member_id', linkedMember.id)
-        .in('status', ['draft', 'pending_approval', 'active'])
+        .in('status', ['draft', 'active'])
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -551,27 +551,6 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
                     Propor meu PDI
                   </Button>
                 </Card>
-              ) : devPlan.status === 'pending_approval' ? (
-                <Card className="p-6 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] border-l-4 border-l-amber-400">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <Sprout className="h-5 w-5 text-primary" />
-                      <h2 className="text-lg font-bold tracking-tight text-foreground">Meu Desenvolvimento</h2>
-                    </div>
-                    <Badge className="bg-amber-50 text-amber-600 border-amber-100 text-xs">⏳ Aguardando aprovação</Badge>
-                  </div>
-                  {devPlan.period_label && <p className="text-sm text-muted-foreground mb-3">Período: {devPlan.period_label}</p>}
-                  {(devItems as any[]).map((item: any) => (
-                    <div key={item.id} className="flex items-start gap-3 py-3 border-b border-border last:border-0">
-                      <div className={cn("w-2 h-2 rounded-full mt-1.5 shrink-0", item.category === 'aprender' && "bg-blue-400", item.category === 'praticar' && "bg-purple-400", item.category === 'entregar' && "bg-emerald-400")} />
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{item.title}</p>
-                        {item.description && <p className="text-xs text-muted-foreground mt-0.5">{item.description}</p>}
-                        {item.due_date && <p className="text-xs text-muted-foreground mt-1">Prazo: {formatPDIDate(item.due_date)}</p>}
-                      </div>
-                    </div>
-                  ))}
-                </Card>
               ) : devPlan.status === 'active' ? (
                 <Card className="p-6 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
                   <div className="flex items-center justify-between mb-4">
@@ -579,15 +558,9 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
                       <Sprout className="h-5 w-5 text-primary" />
                       <h2 className="text-lg font-bold tracking-tight text-foreground">Meu Desenvolvimento</h2>
                     </div>
-                    <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 text-xs">✓ Aprovado pelo líder</Badge>
+                    <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 text-xs">✓ Ativo</Badge>
                   </div>
                   {devPlan.period_label && <p className="text-sm text-muted-foreground mb-3">Período: {devPlan.period_label}</p>}
-                  {devPlan.leader_comment && (
-                    <div className="bg-primary/5 rounded-xl p-4 mb-4">
-                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Comentário do líder</p>
-                      <p className="text-sm italic text-foreground">"{devPlan.leader_comment}"</p>
-                    </div>
-                  )}
                   {(devItems as any[]).map((item: any) => (
                     <div key={item.id} className={cn("flex items-start gap-3 py-3 border-b border-border last:border-0", item.status === 'completed' && "opacity-60")}>
                       <div className={cn("w-2 h-2 rounded-full mt-1.5 shrink-0", item.category === 'aprender' && "bg-blue-400", item.category === 'praticar' && "bg-purple-400", item.category === 'entregar' && "bg-emerald-400")} />
