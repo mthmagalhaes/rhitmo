@@ -1,122 +1,41 @@
 
 
-## Sprint 5.5 — PDI Interativo com Protagonismo do Liderado
+## Simplificar PDI — Remover Etapa de Aprovacao
 
-O liderado propoe seus objetivos de desenvolvimento. O lider valida. Nao o contrario.
-
----
-
-### 1. Migracao de banco
-
-**Duas tabelas novas** com RLS:
-
-```sql
--- development_plans
-CREATE TABLE development_plans (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  member_id uuid REFERENCES team_members(id) ON DELETE CASCADE,
-  created_by_member boolean DEFAULT true,
-  status text DEFAULT 'draft',
-  proposed_at timestamptz,
-  approved_at timestamptz,
-  leader_comment text,
-  period_label text,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
-
--- development_items
-CREATE TABLE development_items (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  plan_id uuid REFERENCES development_plans(id) ON DELETE CASCADE,
-  title text NOT NULL,
-  description text,
-  category text,
-  status text DEFAULT 'pending',
-  due_date date,
-  completed_at timestamptz,
-  leader_note text,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
-```
-
-**RLS policies** (6 policies):
-
-- **Liderado SELECT/INSERT/UPDATE** em `development_plans`: via `linked_user_id = auth.uid()` join em `team_members`
-- **Lider SELECT/UPDATE** em `development_plans`: via workspace owner join (padrao existente). Lider NAO pode INSERT (apenas o liderado cria)
-- **Liderado SELECT/INSERT/UPDATE** em `development_items`: via join `development_plans -> team_members` onde `linked_user_id = auth.uid()`
-- **Lider SELECT/UPDATE** em `development_items`: via workspace owner join
+Remover o fluxo de aprovacao do lider. O PDI vai direto para status "active" ao ser criado pelo liderado. O lider ve um card informativo (read-only) com progresso.
 
 ---
 
-### 2. DirectReportDashboard.tsx — Secao PDI na tab "Minha Carreira"
+### 1. NewPDIDialog.tsx
 
-Substituir o card placeholder "Skills Map detalhado, PDI e Career Coach chegam em breve" por secao "Meu Desenvolvimento" com tres estados:
-
-**Estado "sem plano":**
-- Card com icone Sprout, texto motivacional, pre-populate com aspiracoes do Rhitmo Sync
-- Botao "Propor meu PDI" abre dialog de criacao
-
-**Estado "pending_approval":**
-- Card com borda esquerda amber, badge "Aguardando aprovacao do lider"
-- Lista de itens read-only com dots coloridos por categoria (azul=aprender, roxo=praticar, verde=entregar)
-
-**Estado "active":**
-- Card com badge verde "Aprovado pelo lider"
-- Comentario do lider em destaque se existir
-- Botoes de acao por item: "Iniciar" e "Concluir"
-- Itens concluidos com line-through e badge emerald
-
-**Queries necessarias:**
-- `useQuery(['my-dev-plan', linkedMember.id])` busca `development_plans` onde `member_id = linkedMember.id` e status != 'completed', com items via segunda query
-- `useQuery(['my-dev-items', planId])` busca `development_items` onde `plan_id = planId`
-
-**Estado local:** `showPDIDialog` para controlar o dialog de criacao.
+- Linha 58: Mudar `status: 'pending_approval'` para `status: 'active'`
+- Linha 84: Mudar toast para "PDI criado! Seu lider foi notificado."
+- Linha 109: Mudar descricao do dialog para remover "isso vai para revisao do seu lider"
+- Linha 185: Mudar texto do botao de "Enviar para aprovacao" para "Criar meu PDI"
 
 ---
 
-### 3. Componente NewPDIDialog (novo arquivo)
+### 2. DirectReportDashboard.tsx
 
-`src/components/NewPDIDialog.tsx`
-
-Dialog com:
-- Campo `period_label` (input texto)
-- Lista dinamica de itens (max 5), cada um com: `title` (obrigatorio), `category` (select: Aprender/Praticar/Entregar), `description` (textarea opcional), `due_date` (date picker opcional)
-- Botao "+ Adicionar objetivo" e botao de remover item
-- Footer: Cancelar + "Enviar para aprovacao"
-
-Ao submeter:
-1. Insert em `development_plans` com `status: 'pending_approval'`, `proposed_at: now()`
-2. Insert em `development_items` (batch)
-3. Toast de sucesso
-4. Invalidar queries
-5. Fechar dialog
+- Linha 250: Remover `'pending_approval'` do `.in('status', ['draft', 'pending_approval', 'active'])` — fica `['draft', 'active']`
+- Linhas 554-573: Remover bloco inteiro do estado `pending_approval` (card amber com badge "Aguardando aprovacao")
+- Linha 582: Mudar badge de "Aprovado pelo lider" para "Ativo" (remover referencia a aprovacao)
+- Linhas 585-589: Remover bloco do `leader_comment` no estado active
 
 ---
 
-### 4. MemberDetails.tsx — Card de aprovacao do lider
+### 3. MemberDetails.tsx
 
-Na pagina `/member/:id`, adicionar card "PDI Proposto" quando houver plano com `status = 'pending_approval'`.
-
-**Query:** `useQuery(['member-dev-plan', memberId])` busca planos pendentes do membro.
-
-**Card:** Borda esquerda primary, lista de itens com labels de categoria, campo de comentario opcional (Textarea), dois botoes:
-- "Pedir ajuste" — atualiza status para 'draft' com `leader_comment`
-- "Aprovar PDI" — atualiza status para 'active', `approved_at: now()`, salva `leader_comment`
-
-Posicionar este card logo acima das Tabs "Diario de Bordo / Avaliacoes Formais" (abaixo do Accordion e acima do conteudo principal).
-
----
-
-### 5. Notificacoes
-
-Sem tabela `notifications` existente, usar abordagem leve:
-- **Liderado propoe PDI:** `console.log` no lado do lider (visivel quando ele abre o perfil do membro via query)
-- **Liderado conclui item:** toast no lado do liderado apenas
-- **Lider aprova:** toast no lado do liderado (ja que esta no contexto da sessao)
-
-Nao bloquear o fluxo principal com notificacoes.
+- **Remover**: `handleApprovePDI` (linhas 221-238), `handleRequestChanges` (linhas 241-258), estado `leaderComment` (linha 56), `pdiActionLoading` (linha 57)
+- **Remover imports nao mais usados**: `MessageSquare` (se so era usado aqui)
+- Linha 190: Mudar query para buscar apenas `['active']` (remover `'pending_approval'`)
+- Linhas 673-711: **Substituir** o card de aprovacao pelo card informativo read-only com:
+  - Icone Sprout + "PDI de {memberName}" + Badge com period_label
+  - Lista de itens com icones de status (CheckCircle2 verde para completed, Circle primary para in_progress, Circle cinza para pending)
+  - Badges de status por item (Concluido, Em andamento)
+  - Rodape com progresso: "X de Y objetivos concluidos"
+  - **Condicao**: Renderizar quando `memberDevPlan && memberDevPlan.status === 'active'`
+- Adicionar import de `Sprout`, `Circle` se ainda nao importados
 
 ---
 
@@ -124,17 +43,13 @@ Nao bloquear o fluxo principal com notificacoes.
 
 | Arquivo | Acao |
 |---|---|
-| Migracao SQL | Criar tabelas + RLS policies |
-| `src/components/NewPDIDialog.tsx` | Criar dialog de proposta do PDI (novo) |
-| `src/components/dashboard/DirectReportDashboard.tsx` | Secao PDI na tab Minha Carreira (substituir placeholder) |
-| `src/pages/MemberDetails.tsx` | Card de aprovacao do PDI para o lider |
+| `src/components/NewPDIDialog.tsx` | Status direto "active", textos atualizados |
+| `src/components/dashboard/DirectReportDashboard.tsx` | Remover estado pending_approval, ajustar badge |
+| `src/pages/MemberDetails.tsx` | Substituir card de aprovacao por card informativo read-only |
 
 ### O que NAO muda
 
-- SkillsMapCard, CareerCompassCard
-- SharedReviewFlow (Sprint 5.4)
-- FeedbackTimeline
-- Rhitmo Sync dialog
-- Edge Functions existentes
-- Nenhum outro componente
+- Controles de status do liderado (Iniciar/Concluir)
+- Shared Review Flow, Bussola de Carreira, Rhitmo Sync
+- Tabelas do banco (colunas `approved_at` e `leader_comment` ficam, apenas nao sao mais usadas)
 
