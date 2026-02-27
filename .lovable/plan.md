@@ -1,41 +1,68 @@
 
 
-## Simplificar PDI — Remover Etapa de Aprovacao
+## Sprint 5.7 — Meu Rhitmo (Parceiro Pessoal de Desenvolvimento)
 
-Remover o fluxo de aprovacao do lider. O PDI vai direto para status "active" ao ser criado pelo liderado. O lider ve um card informativo (read-only) com progresso.
-
----
-
-### 1. NewPDIDialog.tsx
-
-- Linha 58: Mudar `status: 'pending_approval'` para `status: 'active'`
-- Linha 84: Mudar toast para "PDI criado! Seu lider foi notificado."
-- Linha 109: Mudar descricao do dialog para remover "isso vai para revisao do seu lider"
-- Linha 185: Mudar texto do botao de "Enviar para aprovacao" para "Criar meu PDI"
+Chat AI inline na tab "Minha Carreira" do liderado, com contexto personalizado e Edge Function dedicada.
 
 ---
 
-### 2. DirectReportDashboard.tsx
+### 1. Edge Function: `meu-rhitmo` (novo)
 
-- Linha 250: Remover `'pending_approval'` do `.in('status', ['draft', 'pending_approval', 'active'])` — fica `['draft', 'active']`
-- Linhas 554-573: Remover bloco inteiro do estado `pending_approval` (card amber com badge "Aguardando aprovacao")
-- Linha 582: Mudar badge de "Aprovado pelo lider" para "Ativo" (remover referencia a aprovacao)
-- Linhas 585-589: Remover bloco do `leader_comment` no estado active
+Criar `supabase/functions/meu-rhitmo/index.ts`
+
+Estrutura simplificada vs `chat-mentor` (sem roteador semantico, sem context picker, sem multimodal):
+
+- **Input**: `{ question, memberName, memberRole, workStyleData, aiAnalysis, pdiItems, latestReview, conversationHistory }`
+- **Autenticacao**: Extrair user do token JWT via `createClient` com service role
+- **Thread**: Buscar ou criar thread unica com `title = 'meu-rhitmo'` para o `user_id` + buscar `member_id` via `linked_user_id`
+- **Historico**: Buscar ultimas 20 `mentor_messages` da thread para enviar como `conversationHistory`
+- **System Prompt**: Prompt completo conforme especificado pelo usuario (Mentor de Carreira + Parceiro de Performance), com todas as variaveis de contexto injetadas
+- **API**: Chamar OpenAI `gpt-4o` com max_tokens 1500 (mesmo modelo do chat-mentor)
+- **Persistencia**: Salvar mensagem do usuario e resposta em `mentor_messages` com o `thread_id`
+- **Retorno**: `{ response: string, threadId: string }`
+
+Adicionar ao `supabase/config.toml` com `verify_jwt = true`.
 
 ---
 
-### 3. MemberDetails.tsx
+### 2. Componente: `MeuRhitmo.tsx` (novo)
 
-- **Remover**: `handleApprovePDI` (linhas 221-238), `handleRequestChanges` (linhas 241-258), estado `leaderComment` (linha 56), `pdiActionLoading` (linha 57)
-- **Remover imports nao mais usados**: `MessageSquare` (se so era usado aqui)
-- Linha 190: Mudar query para buscar apenas `['active']` (remover `'pending_approval'`)
-- Linhas 673-711: **Substituir** o card de aprovacao pelo card informativo read-only com:
-  - Icone Sprout + "PDI de {memberName}" + Badge com period_label
-  - Lista de itens com icones de status (CheckCircle2 verde para completed, Circle primary para in_progress, Circle cinza para pending)
-  - Badges de status por item (Concluido, Em andamento)
-  - Rodape com progresso: "X de Y objetivos concluidos"
-  - **Condicao**: Renderizar quando `memberDevPlan && memberDevPlan.status === 'active'`
-- Adicionar import de `Sprout`, `Circle` se ainda nao importados
+Criar `src/components/MeuRhitmo.tsx`
+
+UI inline (Card, nao modal) com:
+- Header com icone Sparkles + "Meu Rhitmo" + Badge "Confidencial"
+- ScrollArea (h-80) com area de mensagens
+- Empty state com saudacao e quick suggestions (5 opcoes de desenvolvimento pessoal)
+- Mensagens do usuario com bolha primary (rounded-br-sm), respostas da IA com bolha muted + avatar Sparkles + ReactMarkdown
+- Loading state com dots animados
+- Input area: Textarea + botao Send (com Loader2 quando loading)
+- Texto de confidencialidade no footer
+
+**Props**: `memberName, memberRole, workStyleData, aiAnalysis, pdiItems, latestReview, userId`
+
+**Logica interna**:
+- `useState` para `messages`, `input`, `isLoading`
+- Ao montar: fetch mensagens existentes da thread `meu-rhitmo` via Supabase query
+- `handleSend`: POST para edge function `meu-rhitmo`, atualizar mensagens localmente, scroll to bottom
+- Quick suggestions: ao clicar, dispara `handleSend` direto
+
+---
+
+### 3. Integracao na tab "Minha Carreira" (`DirectReportDashboard.tsx`)
+
+Na tab `carreira`, apos o bloco do PDI (linha ~593), adicionar:
+
+- Query `activePdiItems`: buscar items ativos do PDI do membro (reutilizar dados ja carregados de `devItems`)
+- Query `latestReview`: buscar `content` da review mais recente compartilhada
+- Renderizar `<MeuRhitmo ... />` com props derivadas dos dados do linkedMember
+
+---
+
+### 4. Renomear referencias na tab "Visao Geral"
+
+- Linha 481: "Career Coach" -> "Meu Rhitmo"
+- Linha 503: "Converse com o Career Coach sobre seu desenvolvimento" -> "Converse com o Meu Rhitmo"
+- Adicionar `onClick` no item "Meu Rhitmo" das Proximas Acoes para navegar para tab `carreira`
 
 ---
 
@@ -43,13 +70,15 @@ Remover o fluxo de aprovacao do lider. O PDI vai direto para status "active" ao 
 
 | Arquivo | Acao |
 |---|---|
-| `src/components/NewPDIDialog.tsx` | Status direto "active", textos atualizados |
-| `src/components/dashboard/DirectReportDashboard.tsx` | Remover estado pending_approval, ajustar badge |
-| `src/pages/MemberDetails.tsx` | Substituir card de aprovacao por card informativo read-only |
+| `supabase/functions/meu-rhitmo/index.ts` | Criar Edge Function com prompt personalizado |
+| `supabase/config.toml` | Registrar nova funcao (automatico) |
+| `src/components/MeuRhitmo.tsx` | Criar componente de chat inline |
+| `src/components/dashboard/DirectReportDashboard.tsx` | Integrar MeuRhitmo + renomear referencias |
 
 ### O que NAO muda
 
-- Controles de status do liderado (Iniciar/Concluir)
-- Shared Review Flow, Bussola de Carreira, Rhitmo Sync
-- Tabelas do banco (colunas `approved_at` e `leader_comment` ficam, apenas nao sao mais usadas)
+- MentorChat.tsx e chat-mentor (lider)
+- SkillsMapCard, PDI, Shared Review Flow
+- Rhitmo Sync dialog
+- Todas as outras tabs e componentes
 
