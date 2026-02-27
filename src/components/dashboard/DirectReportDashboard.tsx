@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import SkillsMapCard from './SkillsMapCard';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
+import MeuRhitmo from '@/components/MeuRhitmo';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 
@@ -271,6 +272,25 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
     enabled: !!devPlan?.id,
   });
 
+  // Active PDI items for MeuRhitmo context
+  const activePdiItems = (devItems as any[]).filter((item: any) => item.status !== 'completed');
+
+  // Latest shared review for MeuRhitmo context
+  const { data: latestReviewContent } = useQuery({
+    queryKey: ['latest-review-content', linkedMember.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('performance_reviews')
+        .select('content')
+        .eq('member_id', linkedMember.id)
+        .eq('shared_with_member', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data?.content || null;
+    },
+  });
+
   const updateItemStatus = async (itemId: string, newStatus: string) => {
     const updates: any = { status: newStatus };
     if (newStatus === 'completed') updates.completed_at = new Date().toISOString();
@@ -478,7 +498,7 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
                     </Badge>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Career Coach</span>
+                    <span className="text-sm text-muted-foreground">Meu Rhitmo</span>
                     <Badge 
                       variant="default" 
                       className="cursor-pointer text-xs"
@@ -498,15 +518,16 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
                 </h2>
                 <div className="space-y-3">
                   {[
-                    '📋 Revise seus feedbacks recentes',
-                    '🎯 Atualize suas aspirações no Rhitmo Sync',
-                    '💬 Converse com o Career Coach sobre seu desenvolvimento',
+                    { text: '📋 Revise seus feedbacks recentes', tab: 'feedbacks' },
+                    { text: '🎯 Atualize suas aspirações no Rhitmo Sync', tab: 'perfil' },
+                    { text: '💬 Converse com o Meu Rhitmo sobre seu desenvolvimento', tab: 'carreira' },
                   ].map((item, i) => (
                     <div
                       key={i}
+                      onClick={() => setActiveTab(item.tab)}
                       className="rounded-lg bg-muted/40 p-3 text-sm text-foreground flex items-center justify-between cursor-pointer hover:bg-muted/60 transition-colors"
                     >
-                      <span>{item}</span>
+                      <span>{item.text}</span>
                       <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     </div>
                   ))}
@@ -591,6 +612,19 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
               ) : null}
 
               <NewPDIDialog open={showPDIDialog} onOpenChange={setShowPDIDialog} memberId={linkedMember.id} />
+
+              {/* Meu Rhitmo — AI Chat */}
+              {user && (
+                <MeuRhitmo
+                  memberName={displayName}
+                  memberRole={linkedMember.role}
+                  workStyleData={linkedMember.work_style_data}
+                  aiAnalysis={aiAnalysis}
+                  pdiItems={activePdiItems}
+                  latestReview={latestReviewContent ?? null}
+                  userId={user.id}
+                />
+              )}
             </div>
           </TabsContent>
 
