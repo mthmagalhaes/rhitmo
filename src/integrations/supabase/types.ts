@@ -73,6 +73,103 @@ export type Database = {
           },
         ]
       }
+      development_items: {
+        Row: {
+          category: string | null
+          completed_at: string | null
+          created_at: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          leader_note: string | null
+          plan_id: string | null
+          status: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          leader_note?: string | null
+          plan_id?: string | null
+          status?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          leader_note?: string | null
+          plan_id?: string | null
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "development_items_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "development_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      development_plans: {
+        Row: {
+          approved_at: string | null
+          created_at: string | null
+          created_by_member: boolean | null
+          id: string
+          leader_comment: string | null
+          member_id: string | null
+          period_label: string | null
+          proposed_at: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          created_at?: string | null
+          created_by_member?: boolean | null
+          id?: string
+          leader_comment?: string | null
+          member_id?: string | null
+          period_label?: string | null
+          proposed_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          created_at?: string | null
+          created_by_member?: boolean | null
+          id?: string
+          leader_comment?: string | null
+          member_id?: string | null
+          period_label?: string | null
+          proposed_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "development_plans_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feedbacks: {
         Row: {
           action_items: Json | null
