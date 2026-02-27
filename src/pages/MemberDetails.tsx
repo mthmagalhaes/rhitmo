@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { MemberAvatar } from '@/components/MemberAvatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Textarea } from '@/components/ui/textarea';
 
 import { FeedbackTimeline } from '@/components/FeedbackTimeline';
 import { FeedbackFilters } from '@/components/FeedbackFilters';
@@ -16,7 +17,7 @@ import { PerformanceReviewList } from '@/components/PerformanceReviewList';
 import { useAuth } from '@/hooks/useAuth';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Music, BookOpen, FileText, Clock, Lock, ArrowRight, Briefcase, Heart, Megaphone, Compass, DollarSign, Shield, GraduationCap, Crown, HelpCircle, Sunrise, Moon, Search, CheckCircle, Monitor } from 'lucide-react';
+import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Music, BookOpen, FileText, Clock, Lock, ArrowRight, Briefcase, Heart, Megaphone, Compass, DollarSign, Shield, GraduationCap, Crown, HelpCircle, Sunrise, Moon, Search, CheckCircle, Monitor, MessageSquare, CheckCircle2 } from 'lucide-react';
 import { GoalsManager } from '@/components/GoalsManager';
 
 import { useToast } from '@/hooks/use-toast';
@@ -52,6 +53,8 @@ const MemberDetails = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  const [leaderComment, setLeaderComment] = useState('');
+  const [pdiActionLoading, setPdiActionLoading] = useState(false);
   const { toast } = useToast();
   const {
     hasSync
@@ -175,6 +178,84 @@ const MemberDetails = () => {
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   });
+
+  // Query PDI pendente do membro
+  const { data: memberDevPlan } = useQuery({
+    queryKey: ['member-dev-plan', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('development_plans')
+        .select('*')
+        .eq('member_id', id!)
+        .in('status', ['pending_approval', 'active'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) { console.error('Error fetching member dev plan:', error); return null; }
+      return data;
+    },
+    enabled: !!user && !!id,
+  });
+
+  const { data: memberDevItems = [] } = useQuery({
+    queryKey: ['member-dev-items', memberDevPlan?.id],
+    queryFn: async () => {
+      if (!memberDevPlan?.id) return [];
+      const { data, error } = await supabase
+        .from('development_items')
+        .select('*')
+        .eq('plan_id', memberDevPlan.id)
+        .order('created_at', { ascending: true });
+      if (error) { console.error('Error fetching member dev items:', error); return []; }
+      return data || [];
+    },
+    enabled: !!memberDevPlan?.id,
+  });
+
+  const categoryLabel: Record<string, string> = {
+    aprender: '🎓 Aprender',
+    praticar: '🏋️ Praticar',
+    entregar: '🚀 Entregar',
+  };
+
+  const handleApprovePDI = async () => {
+    if (!memberDevPlan) return;
+    setPdiActionLoading(true);
+    try {
+      await supabase
+        .from('development_plans')
+        .update({
+          status: 'active',
+          approved_at: new Date().toISOString(),
+          leader_comment: leaderComment || null,
+        } as any)
+        .eq('id', memberDevPlan.id);
+      toast({ title: 'PDI aprovado!', description: 'O liderado será notificado.' });
+      queryClient.invalidateQueries({ queryKey: ['member-dev-plan', id] });
+      setLeaderComment('');
+    } catch (err) {
+      toast({ title: 'Erro', description: 'Não foi possível aprovar o PDI.', variant: 'destructive' });
+    } finally { setPdiActionLoading(false); }
+  };
+
+  const handleRequestChanges = async () => {
+    if (!memberDevPlan) return;
+    setPdiActionLoading(true);
+    try {
+      await supabase
+        .from('development_plans')
+        .update({
+          status: 'draft',
+          leader_comment: leaderComment || null,
+        } as any)
+        .eq('id', memberDevPlan.id);
+      toast({ title: 'Ajuste solicitado', description: 'O liderado poderá revisar e reenviar.' });
+      queryClient.invalidateQueries({ queryKey: ['member-dev-plan', id] });
+      setLeaderComment('');
+    } catch (err) {
+      toast({ title: 'Erro', description: 'Não foi possível solicitar ajuste.', variant: 'destructive' });
+    } finally { setPdiActionLoading(false); }
+  };
 
   const loading = memberLoading || feedbacksLoading;
 
@@ -588,6 +669,46 @@ const MemberDetails = () => {
             </AccordionItem>
           </Accordion>
         </div>
+
+        {/* PDI Card — aprovação do líder */}
+        {memberDevPlan && memberDevPlan.status === 'pending_approval' && (
+          <Card className="p-5 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] border-l-4 border-l-primary mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="font-semibold text-foreground">PDI Proposto</p>
+                <p className="text-xs text-muted-foreground">{member.name} quer seu feedback sobre este plano</p>
+              </div>
+              <Badge className="bg-primary/10 text-primary text-xs">Aguarda sua aprovação</Badge>
+            </div>
+            {memberDevPlan.period_label && (
+              <p className="text-xs text-muted-foreground mb-3">Período: {memberDevPlan.period_label}</p>
+            )}
+            {(memberDevItems as any[]).map((item: any) => (
+              <div key={item.id} className="py-2 border-b border-border last:border-0">
+                <p className="text-sm font-medium text-foreground">{item.title}</p>
+                <p className="text-xs text-muted-foreground">
+                  {categoryLabel[item.category] || item.category}
+                  {item.due_date && ` · Prazo: ${formatDate(item.due_date)}`}
+                </p>
+              </div>
+            ))}
+            <Textarea
+              value={leaderComment}
+              onChange={e => setLeaderComment(e.target.value)}
+              placeholder="Adicione um comentário opcional para o liderado..."
+              className="mt-4 text-sm resize-none"
+              rows={2}
+            />
+            <div className="flex gap-2 mt-4">
+              <Button variant="outline" size="sm" onClick={handleRequestChanges} disabled={pdiActionLoading} className="gap-2">
+                <MessageSquare className="h-4 w-4" /> Pedir ajuste
+              </Button>
+              <Button size="sm" onClick={handleApprovePDI} disabled={pdiActionLoading} className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
+                <CheckCircle2 className="h-4 w-4" /> Aprovar PDI
+              </Button>
+            </div>
+          </Card>
+        )}
 
         <Tabs defaultValue="diary" className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-6">

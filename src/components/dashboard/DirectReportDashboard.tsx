@@ -11,7 +11,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FeedbackTimeline } from '@/components/FeedbackTimeline';
-import { Home, Compass, FileText, User, Zap, CheckCircle, ChevronRight, Sparkles, Loader2, Download, Bell } from 'lucide-react';
+import { Home, Compass, FileText, User, Zap, CheckCircle, ChevronRight, Sparkles, Loader2, Download, Bell, Sprout, Plus, CheckCircle2 } from 'lucide-react';
+import { NewPDIDialog } from '@/components/NewPDIDialog';
+import { cn } from '@/lib/utils';
 import SkillsMapCard from './SkillsMapCard';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
@@ -150,6 +152,7 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
   const [syncSaving, setSyncSaving] = useState(false);
   const [isReanalyzing, setIsReanalyzing] = useState(false);
   const [selectedReview, setSelectedReview] = useState<any>(null);
+  const [showPDIDialog, setShowPDIDialog] = useState(false);
   const queryClient = useQueryClient();
 
   const [syncForm, setSyncForm] = useState({
@@ -235,6 +238,53 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
   });
 
   const unreadReviews = sharedReviews.filter((r: any) => !r.member_viewed_at);
+
+  // Query PDI (development plan)
+  const { data: devPlan } = useQuery({
+    queryKey: ['my-dev-plan', linkedMember.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('development_plans')
+        .select('*')
+        .eq('member_id', linkedMember.id)
+        .in('status', ['draft', 'pending_approval', 'active'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) { console.error('Error fetching dev plan:', error); return null; }
+      return data;
+    },
+  });
+
+  const { data: devItems = [] } = useQuery({
+    queryKey: ['my-dev-items', devPlan?.id],
+    queryFn: async () => {
+      if (!devPlan?.id) return [];
+      const { data, error } = await supabase
+        .from('development_items')
+        .select('*')
+        .eq('plan_id', devPlan.id)
+        .order('created_at', { ascending: true });
+      if (error) { console.error('Error fetching dev items:', error); return []; }
+      return data || [];
+    },
+    enabled: !!devPlan?.id,
+  });
+
+  const updateItemStatus = async (itemId: string, newStatus: string) => {
+    const updates: any = { status: newStatus };
+    if (newStatus === 'completed') updates.completed_at = new Date().toISOString();
+    const { error } = await supabase
+      .from('development_items')
+      .update(updates)
+      .eq('id', itemId);
+    if (error) { toast.error('Erro ao atualizar item.'); return; }
+    toast.success(newStatus === 'completed' ? 'Objetivo concluído! 🎉' : 'Status atualizado.');
+    queryClient.invalidateQueries({ queryKey: ['my-dev-items', devPlan?.id] });
+  };
+
+  const formatPDIDate = (dateStr: string) =>
+    new Date(dateStr).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
 
   // Mark review as read when opened
   useEffect(() => {
@@ -474,11 +524,100 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
                 onReanalyze={handleReanalyze}
                 isReanalyzing={isReanalyzing}
               />
-              <Card className="p-8 text-center rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] border-dashed border-2 border-muted">
-                <p className="text-sm text-muted-foreground">
-                  Skills Map detalhado, PDI e Career Coach chegam em breve.
-                </p>
-              </Card>
+              {/* Seção Meu Desenvolvimento (PDI) */}
+              {!devPlan || devPlan.status === 'draft' ? (
+                <Card className="p-6 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sprout className="h-5 w-5 text-primary" />
+                    <h2 className="text-lg font-bold tracking-tight text-foreground">Meu Desenvolvimento</h2>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-6">
+                    Você está no comando do seu crescimento. Proponha seus objetivos de desenvolvimento e alinhe com seu líder.
+                  </p>
+                  {devPlan?.status === 'draft' && devPlan.leader_comment && (
+                    <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-4">
+                      <p className="text-xs text-amber-600 dark:text-amber-400 uppercase tracking-wide mb-1">Feedback do líder</p>
+                      <p className="text-sm italic text-foreground">"{devPlan.leader_comment}"</p>
+                    </div>
+                  )}
+                  {linkedMember.skills_data?.aspirations && (
+                    <div className="bg-muted/40 rounded-xl p-4 mb-4">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Você disse que quer</p>
+                      <p className="text-sm italic text-foreground">"{linkedMember.skills_data.aspirations}"</p>
+                    </div>
+                  )}
+                  <Button onClick={() => setShowPDIDialog(true)} className="gap-2 w-full sm:w-auto">
+                    <Plus className="h-4 w-4" />
+                    Propor meu PDI
+                  </Button>
+                </Card>
+              ) : devPlan.status === 'pending_approval' ? (
+                <Card className="p-6 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] border-l-4 border-l-amber-400">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Sprout className="h-5 w-5 text-primary" />
+                      <h2 className="text-lg font-bold tracking-tight text-foreground">Meu Desenvolvimento</h2>
+                    </div>
+                    <Badge className="bg-amber-50 text-amber-600 border-amber-100 text-xs">⏳ Aguardando aprovação</Badge>
+                  </div>
+                  {devPlan.period_label && <p className="text-sm text-muted-foreground mb-3">Período: {devPlan.period_label}</p>}
+                  {(devItems as any[]).map((item: any) => (
+                    <div key={item.id} className="flex items-start gap-3 py-3 border-b border-border last:border-0">
+                      <div className={cn("w-2 h-2 rounded-full mt-1.5 shrink-0", item.category === 'aprender' && "bg-blue-400", item.category === 'praticar' && "bg-purple-400", item.category === 'entregar' && "bg-emerald-400")} />
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{item.title}</p>
+                        {item.description && <p className="text-xs text-muted-foreground mt-0.5">{item.description}</p>}
+                        {item.due_date && <p className="text-xs text-muted-foreground mt-1">Prazo: {formatPDIDate(item.due_date)}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </Card>
+              ) : devPlan.status === 'active' ? (
+                <Card className="p-6 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Sprout className="h-5 w-5 text-primary" />
+                      <h2 className="text-lg font-bold tracking-tight text-foreground">Meu Desenvolvimento</h2>
+                    </div>
+                    <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 text-xs">✓ Aprovado pelo líder</Badge>
+                  </div>
+                  {devPlan.period_label && <p className="text-sm text-muted-foreground mb-3">Período: {devPlan.period_label}</p>}
+                  {devPlan.leader_comment && (
+                    <div className="bg-primary/5 rounded-xl p-4 mb-4">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Comentário do líder</p>
+                      <p className="text-sm italic text-foreground">"{devPlan.leader_comment}"</p>
+                    </div>
+                  )}
+                  {(devItems as any[]).map((item: any) => (
+                    <div key={item.id} className={cn("flex items-start gap-3 py-3 border-b border-border last:border-0", item.status === 'completed' && "opacity-60")}>
+                      <div className={cn("w-2 h-2 rounded-full mt-1.5 shrink-0", item.category === 'aprender' && "bg-blue-400", item.category === 'praticar' && "bg-purple-400", item.category === 'entregar' && "bg-emerald-400")} />
+                      <div className="flex-1 min-w-0">
+                        <p className={cn("text-sm font-medium text-foreground", item.status === 'completed' && "line-through")}>{item.title}</p>
+                        {item.description && <p className="text-xs text-muted-foreground mt-0.5">{item.description}</p>}
+                        {item.due_date && <p className="text-xs text-muted-foreground mt-1">Prazo: {formatPDIDate(item.due_date)}</p>}
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {item.status === 'completed' ? (
+                          <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 text-xs">Concluído</Badge>
+                        ) : item.status === 'in_progress' ? (
+                          <Button variant="ghost" size="sm" className="text-emerald-600 text-xs" onClick={() => updateItemStatus(item.id, 'completed')}>
+                            <CheckCircle2 className="h-4 w-4 mr-1" /> Concluir
+                          </Button>
+                        ) : (
+                          <>
+                            <Button variant="ghost" size="sm" className="text-xs" onClick={() => updateItemStatus(item.id, 'in_progress')}>Iniciar</Button>
+                            <Button variant="ghost" size="sm" className="text-emerald-600 text-xs" onClick={() => updateItemStatus(item.id, 'completed')}>
+                              <CheckCircle2 className="h-4 w-4 mr-1" /> Concluir
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </Card>
+              ) : null}
+
+              <NewPDIDialog open={showPDIDialog} onOpenChange={setShowPDIDialog} memberId={linkedMember.id} />
             </div>
           </TabsContent>
 
