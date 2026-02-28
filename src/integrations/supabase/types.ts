@@ -42,24 +42,27 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          member_id: string
+          member_id: string | null
           title: string
+          type: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
-          member_id: string
+          member_id?: string | null
           title?: string
+          type?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
-          member_id?: string
+          member_id?: string | null
           title?: string
+          type?: string | null
           updated_at?: string
           user_id?: string
         }

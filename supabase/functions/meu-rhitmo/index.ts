@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { question, memberName, memberRole, workStyleData, aiAnalysis, pdiItems, latestReview } = await req.json();
+    const { question, threadId, memberName, memberRole, workStyleData, aiAnalysis, pdiItems, latestReview } = await req.json();
 
     if (!question || !memberName) {
       return new Response(
@@ -30,13 +30,11 @@ serve(async (req) => {
       );
     }
 
-    // Auth: extract user from JWT
     const authHeader = req.headers.get('Authorization')!;
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Decode JWT to get user_id
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
       global: { headers: { Authorization: `Bearer ${token}` } }
@@ -58,52 +56,47 @@ serve(async (req) => {
       .eq('linked_user_id', userId)
       .maybeSingle();
 
-    if (!member) {
-      return new Response(
-        JSON.stringify({ error: 'Membro não encontrado' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const memberId = member?.id || null;
 
-    const memberId = member.id;
+    // Use provided threadId or create new thread
+    let currentThreadId = threadId;
 
-    // Find or create persistent thread with title='meu-rhitmo'
-    let { data: thread } = await supabase
-      .from('chat_threads')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('member_id', memberId)
-      .eq('title', 'meu-rhitmo')
-      .maybeSingle();
+    if (!currentThreadId) {
+      // Create new thread with type='career'
+      const title = question.slice(0, 40) + (question.length > 40 ? '...' : '');
+      const insertData: any = {
+        user_id: userId,
+        type: 'career',
+        title,
+      };
+      if (memberId) insertData.member_id = memberId;
 
-    if (!thread) {
       const { data: newThread, error: threadError } = await supabase
         .from('chat_threads')
-        .insert({ user_id: userId, member_id: memberId, title: 'meu-rhitmo' })
+        .insert(insertData)
         .select('id')
         .single();
       if (threadError) throw threadError;
-      thread = newThread;
+      currentThreadId = newThread.id;
     }
-
-    const threadId = thread!.id;
 
     // Fetch last 20 messages for conversation history
     const { data: historyMessages } = await supabase
       .from('mentor_messages')
       .select('role, content')
-      .eq('thread_id', threadId)
+      .eq('thread_id', currentThreadId)
       .order('created_at', { ascending: true })
       .limit(20);
 
     // Save user message
-    await supabase.from('mentor_messages').insert({
+    const msgInsert: any = {
       user_id: userId,
-      member_id: memberId,
-      thread_id: threadId,
+      thread_id: currentThreadId,
       role: 'user',
       content: question,
-    });
+    };
+    if (memberId) msgInsert.member_id = memberId;
+    await supabase.from('mentor_messages').insert(msgInsert);
 
     // Build context from props
     const wsd = workStyleData || {};
@@ -179,8 +172,6 @@ REGRAS DE CONDUTA:
       { role: 'user', content: question },
     ];
 
-    console.log('Meu Rhitmo request:', { memberName, memberRole, historyCount: historyMessages?.length, promptLength: systemPrompt.length });
-
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 45000);
 
@@ -238,21 +229,20 @@ REGRAS DE CONDUTA:
     }
 
     // Save assistant message
-    await supabase.from('mentor_messages').insert({
+    const assistantInsert: any = {
       user_id: userId,
-      member_id: memberId,
-      thread_id: threadId,
+      thread_id: currentThreadId,
       role: 'assistant',
       content: aiResponse,
-    });
+    };
+    if (memberId) assistantInsert.member_id = memberId;
+    await supabase.from('mentor_messages').insert(assistantInsert);
 
     // Update thread timestamp
-    await supabase.from('chat_threads').update({ updated_at: new Date().toISOString() }).eq('id', threadId);
-
-    console.log('Meu Rhitmo response generated:', { responseLength: aiResponse.length });
+    await supabase.from('chat_threads').update({ updated_at: new Date().toISOString() }).eq('id', currentThreadId);
 
     return new Response(
-      JSON.stringify({ response: aiResponse, threadId }),
+      JSON.stringify({ response: aiResponse, threadId: currentThreadId }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: any) {

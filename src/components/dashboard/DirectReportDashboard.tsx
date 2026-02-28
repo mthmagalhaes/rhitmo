@@ -154,6 +154,7 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
   const [isReanalyzing, setIsReanalyzing] = useState(false);
   const [selectedReview, setSelectedReview] = useState<any>(null);
   const [showPDIDialog, setShowPDIDialog] = useState(false);
+  const [meuRhitmoOpen, setMeuRhitmoOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const [syncForm, setSyncForm] = useState({
@@ -404,9 +405,15 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
   return (
     <div className="min-h-screen bg-muted/30 pb-20">
       {/* Header */}
-      <div className="container mx-auto px-6 py-8">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Olá, {displayName}! 👋</h1>
-        <p className="text-sm text-muted-foreground mt-1">Painel do Colaborador · {linkedMember.role}</p>
+      <div className="container mx-auto px-6 py-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Olá, {displayName}! 👋</h1>
+          <p className="text-sm text-muted-foreground mt-1">Painel do Colaborador · {linkedMember.role}</p>
+        </div>
+        <Button onClick={() => setMeuRhitmoOpen(true)} variant="outline" className="gap-2">
+          <Sparkles className="h-4 w-4" />
+          Meu Rhitmo
+        </Button>
       </div>
 
       {/* Tabs */}
@@ -502,7 +509,7 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
                     <Badge 
                       variant="default" 
                       className="cursor-pointer text-xs"
-                      onClick={() => setActiveTab('carreira')}
+                      onClick={() => setMeuRhitmoOpen(true)}
                     >
                       Novo
                     </Badge>
@@ -520,11 +527,11 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
                   {[
                     { text: '📋 Revise seus feedbacks recentes', tab: 'feedbacks' },
                     { text: '🎯 Atualize suas aspirações no Rhitmo Sync', tab: 'perfil' },
-                    { text: '💬 Converse com o Meu Rhitmo sobre seu desenvolvimento', tab: 'carreira' },
+                    { text: '💬 Converse com o Meu Rhitmo sobre seu desenvolvimento', tab: 'meu-rhitmo' },
                   ].map((item, i) => (
                     <div
                       key={i}
-                      onClick={() => setActiveTab(item.tab)}
+                      onClick={() => item.tab === 'meu-rhitmo' ? setMeuRhitmoOpen(true) : setActiveTab(item.tab)}
                       className="rounded-lg bg-muted/40 p-3 text-sm text-foreground flex items-center justify-between cursor-pointer hover:bg-muted/60 transition-colors"
                     >
                       <span>{item.text}</span>
@@ -613,18 +620,7 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
 
               <NewPDIDialog open={showPDIDialog} onOpenChange={setShowPDIDialog} memberId={linkedMember.id} />
 
-              {/* Meu Rhitmo — AI Chat */}
-              {user && (
-                <MeuRhitmo
-                  memberName={displayName}
-                  memberRole={linkedMember.role}
-                  workStyleData={linkedMember.work_style_data}
-                  aiAnalysis={aiAnalysis}
-                  pdiItems={activePdiItems}
-                  latestReview={latestReviewContent ?? null}
-                  userId={user.id}
-                />
-              )}
+              
             </div>
           </TabsContent>
 
@@ -1033,6 +1029,21 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Meu Rhitmo Dialog */}
+      {user && (
+        <MeuRhitmo
+          open={meuRhitmoOpen}
+          onOpenChange={setMeuRhitmoOpen}
+          memberName={displayName}
+          memberRole={linkedMember.role}
+          workStyleData={linkedMember.work_style_data}
+          aiAnalysis={aiAnalysis}
+          pdiItems={activePdiItems}
+          latestReview={latestReviewContent ?? null}
+          userId={user.id}
+        />
+      )}
     </div>
   );
 }
