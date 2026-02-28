@@ -1,68 +1,127 @@
 
 
-## Sprint 5.7 — Meu Rhitmo (Parceiro Pessoal de Desenvolvimento)
+## Refatorar Meu Rhitmo — Dialog com Sidebar de Threads
 
-Chat AI inline na tab "Minha Carreira" do liderado, com contexto personalizado e Edge Function dedicada.
-
----
-
-### 1. Edge Function: `meu-rhitmo` (novo)
-
-Criar `supabase/functions/meu-rhitmo/index.ts`
-
-Estrutura simplificada vs `chat-mentor` (sem roteador semantico, sem context picker, sem multimodal):
-
-- **Input**: `{ question, memberName, memberRole, workStyleData, aiAnalysis, pdiItems, latestReview, conversationHistory }`
-- **Autenticacao**: Extrair user do token JWT via `createClient` com service role
-- **Thread**: Buscar ou criar thread unica com `title = 'meu-rhitmo'` para o `user_id` + buscar `member_id` via `linked_user_id`
-- **Historico**: Buscar ultimas 20 `mentor_messages` da thread para enviar como `conversationHistory`
-- **System Prompt**: Prompt completo conforme especificado pelo usuario (Mentor de Carreira + Parceiro de Performance), com todas as variaveis de contexto injetadas
-- **API**: Chamar OpenAI `gpt-4o` com max_tokens 1500 (mesmo modelo do chat-mentor)
-- **Persistencia**: Salvar mensagem do usuario e resposta em `mentor_messages` com o `thread_id`
-- **Retorno**: `{ response: string, threadId: string }`
-
-Adicionar ao `supabase/config.toml` com `verify_jwt = true`.
+Transformar o Meu Rhitmo de componente inline em um Dialog completo espelhando a estrutura do MentorChat, com botao em destaque no header.
 
 ---
 
-### 2. Componente: `MeuRhitmo.tsx` (novo)
+### 1. Migracao: coluna `type` em `chat_threads`
 
-Criar `src/components/MeuRhitmo.tsx`
+Adicionar coluna `type` para diferenciar threads do lider (mentor) e do liderado (career):
 
-UI inline (Card, nao modal) com:
-- Header com icone Sparkles + "Meu Rhitmo" + Badge "Confidencial"
-- ScrollArea (h-80) com area de mensagens
-- Empty state com saudacao e quick suggestions (5 opcoes de desenvolvimento pessoal)
-- Mensagens do usuario com bolha primary (rounded-br-sm), respostas da IA com bolha muted + avatar Sparkles + ReactMarkdown
-- Loading state com dots animados
-- Input area: Textarea + botao Send (com Loader2 quando loading)
-- Texto de confidencialidade no footer
+```sql
+ALTER TABLE chat_threads ADD COLUMN IF NOT EXISTS type text DEFAULT 'mentor';
+```
 
-**Props**: `memberName, memberRole, workStyleData, aiAnalysis, pdiItems, latestReview, userId`
+Threads existentes ficam como `'mentor'` (default). Meu Rhitmo usara `type = 'career'`.
 
-**Logica interna**:
-- `useState` para `messages`, `input`, `isLoading`
-- Ao montar: fetch mensagens existentes da thread `meu-rhitmo` via Supabase query
-- `handleSend`: POST para edge function `meu-rhitmo`, atualizar mensagens localmente, scroll to bottom
-- Quick suggestions: ao clicar, dispara `handleSend` direto
+A thread antiga com `title = 'meu-rhitmo'` sera ignorada naturalmente pois a nova query filtra por `type = 'career'`.
 
 ---
 
-### 3. Integracao na tab "Minha Carreira" (`DirectReportDashboard.tsx`)
+### 2. Edge Function `meu-rhitmo` — aceitar `threadId`
 
-Na tab `carreira`, apos o bloco do PDI (linha ~593), adicionar:
-
-- Query `activePdiItems`: buscar items ativos do PDI do membro (reutilizar dados ja carregados de `devItems`)
-- Query `latestReview`: buscar `content` da review mais recente compartilhada
-- Renderizar `<MeuRhitmo ... />` com props derivadas dos dados do linkedMember
+Atualizar a edge function para:
+- Aceitar `threadId` opcional no input (quando o usuario ja tem uma thread selecionada)
+- Se `threadId` fornecido: usar diretamente para buscar historico e salvar mensagens
+- Se nao: criar nova thread com `type: 'career'` e `title` baseado na primeira mensagem (truncada em 40 chars)
+- Remover logica antiga de buscar thread por `title = 'meu-rhitmo'`
+- `member_id` na thread pode ser o `memberId` do linked member (manter compatibilidade com a tabela)
 
 ---
 
-### 4. Renomear referencias na tab "Visao Geral"
+### 3. Reescrever `MeuRhitmo.tsx` como Dialog com sidebar
 
-- Linha 481: "Career Coach" -> "Meu Rhitmo"
-- Linha 503: "Converse com o Career Coach sobre seu desenvolvimento" -> "Converse com o Meu Rhitmo"
-- Adicionar `onClick` no item "Meu Rhitmo" das Proximas Acoes para navegar para tab `carreira`
+Copiar a estrutura completa do `MentorChat.tsx` mas com as diferencas especificadas:
+
+**Props:**
+```typescript
+interface MeuRhitmoProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  memberName: string;
+  memberRole: string;
+  workStyleData: any;
+  aiAnalysis: any;
+  pdiItems: any[];
+  latestReview: string | null;
+  userId: string;
+}
+```
+
+**Identico ao MentorChat:**
+- Dialog max-w-5xl h-[85vh] p-0
+- Sidebar colapsavel (240px) com botao "Nova conversa" e collapse
+- Lista de threads agrupadas por data (Hoje, Ontem, Ultima semana, Anteriores)
+- Inline rename (Input ao clicar no icone Pencil)
+- Delete thread com AlertDialog de confirmacao
+- Hover actions nos threads (Pencil + Trash2)
+- ScrollArea para mensagens
+- User bubble com bg-muted/60 e initials
+- Assistant com icone Sparkles (em vez de emoji alvo) e texto direto com ReactMarkdown
+- Copy button no hover das respostas
+- Loading dots animados
+- Input pill com textarea auto-height + botao Send/ArrowUp
+- Enter envia, Shift+Enter quebra linha
+
+**Diferente do MentorChat:**
+- Header: icone Sparkles + titulo "Meu Rhitmo" + Badge "Confidencial" (sem ContextPicker, sem nome de membro)
+- Sem anexo de arquivo (sem Paperclip, sem VoiceInput)
+- Quick suggestions especificas de carreira (5 opcoes)
+- Empty state: saudacao personalizada para o liderado
+- Placeholder: "Pergunte sobre sua carreira ou descreva uma situacao..."
+- Rodape: texto de confidencialidade
+- Edge function: `meu-rhitmo` (nao `chat-mentor`)
+- Query key: `['meu-rhitmo-threads', userId]` — busca threads com `type = 'career'`
+- Ao criar thread: insere com `type: 'career'`
+- `member_id` vem do linked member (buscar via `linked_user_id`)
+- Envio: POST para `meu-rhitmo` com `{ question, threadId, memberName, memberRole, workStyleData, aiAnalysis, pdiItems, latestReview }`
+
+---
+
+### 4. DirectReportDashboard.tsx — botao no header + remover inline
+
+**Header (linhas 407-410):** Adicionar botao "Meu Rhitmo" no canto direito, ao lado do titulo:
+
+```tsx
+<div className="container mx-auto px-6 py-8 flex items-start justify-between">
+  <div>
+    <h1 ...>Ola, {displayName}! ...</h1>
+    <p ...>Painel do Colaborador ...</p>
+  </div>
+  <Button onClick={() => setMeuRhitmoOpen(true)} variant="outline" className="gap-2">
+    <Sparkles className="h-4 w-4" />
+    Meu Rhitmo
+  </Button>
+</div>
+```
+
+**Estado:** Adicionar `const [meuRhitmoOpen, setMeuRhitmoOpen] = useState(false);`
+
+**Tab Carreira (linhas 616-627):** Remover o `<MeuRhitmo ... />` inline.
+
+**Proximas Acoes (linha 523):** Ao clicar em "Converse com o Meu Rhitmo", abrir o dialog (`setMeuRhitmoOpen(true)`) em vez de navegar para tab.
+
+**Resumo card (linhas 501-508):** Ao clicar em "Meu Rhitmo", abrir o dialog.
+
+**Instanciacao do Dialog:** Adicionar no final do JSX (antes do fechamento do `</div>` principal):
+
+```tsx
+<MeuRhitmo
+  open={meuRhitmoOpen}
+  onOpenChange={setMeuRhitmoOpen}
+  memberName={displayName}
+  memberRole={linkedMember.role}
+  workStyleData={linkedMember.work_style_data}
+  aiAnalysis={aiAnalysis}
+  pdiItems={activePdiItems}
+  latestReview={latestReviewContent ?? null}
+  userId={user.id}
+/>
+```
+
+Manter as queries `activePdiItems` e `latestReviewContent` que ja existem.
 
 ---
 
@@ -70,15 +129,15 @@ Na tab `carreira`, apos o bloco do PDI (linha ~593), adicionar:
 
 | Arquivo | Acao |
 |---|---|
-| `supabase/functions/meu-rhitmo/index.ts` | Criar Edge Function com prompt personalizado |
-| `supabase/config.toml` | Registrar nova funcao (automatico) |
-| `src/components/MeuRhitmo.tsx` | Criar componente de chat inline |
-| `src/components/dashboard/DirectReportDashboard.tsx` | Integrar MeuRhitmo + renomear referencias |
+| Migracao SQL | Coluna `type` em `chat_threads` |
+| `supabase/functions/meu-rhitmo/index.ts` | Aceitar threadId, criar threads com type='career' |
+| `src/components/MeuRhitmo.tsx` | Reescrever como Dialog com sidebar de threads |
+| `src/components/dashboard/DirectReportDashboard.tsx` | Botao no header, remover inline, abrir dialog |
 
 ### O que NAO muda
 
-- MentorChat.tsx e chat-mentor (lider)
-- SkillsMapCard, PDI, Shared Review Flow
-- Rhitmo Sync dialog
-- Todas as outras tabs e componentes
+- MentorChat.tsx (zero alteracoes)
+- chat-mentor Edge Function
+- PDI, SkillsMapCard, Shared Review Flow
+- Nenhum outro componente
 
