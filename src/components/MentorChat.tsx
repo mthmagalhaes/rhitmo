@@ -318,7 +318,7 @@ export const MentorChat = ({
       if (error.name === 'AbortError') errorMessage = 'Tempo de resposta excedido. Tente novamente.';
       else if (error.message) errorMessage = error.message;
       toast({ title: "Erro ao consultar mentor", description: errorMessage, variant: "destructive" });
-    } finally { setIsLoading(false); }
+    } finally { setIsLoading(false); setLoadingMessage(''); }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

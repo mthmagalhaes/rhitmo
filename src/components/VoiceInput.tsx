@@ -74,7 +74,7 @@ export const VoiceInput = ({ onTranscription, disabled = false, className }: Voi
   const streamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mimeTypeRef = useRef<string>('audio/webm');
   const { toast } = useToast();
 
