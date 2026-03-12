@@ -265,28 +265,48 @@ export const MentorChat = ({
         contextFeedbacks = sorted.slice(0, 10);
       }
 
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-mentor`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.session?.access_token}` },
-        body: JSON.stringify({
-          question: finalMessage,
-          feedbacks: contextFeedbacks,
-          memberName, memberRole, managerName, workStyleData, keyObjectives, contextMode, leaderSyncData,
-          conversationHistory: messages.map(msg => ({ role: msg.role, content: msg.content })),
-          imageContent
-        }),
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
+      const MAX_RETRIES = 3;
+      let data: any = null;
 
-      if (!response.ok) {
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        if (attempt > 0) {
+          const delay = Math.pow(2, attempt - 1) * 1000;
+          setLoadingMessage(`Reconectando... (tentativa ${attempt}/${MAX_RETRIES})`);
+          await new Promise(r => setTimeout(r, delay));
+        }
+
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-mentor`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.session?.access_token}` },
+          body: JSON.stringify({
+            question: finalMessage,
+            feedbacks: contextFeedbacks,
+            memberName, memberRole, managerName, workStyleData, keyObjectives, contextMode, leaderSyncData,
+            conversationHistory: messages.map(msg => ({ role: msg.role, content: msg.content })),
+            imageContent
+          }),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          setLoadingMessage('');
+          data = await response.json();
+          if (!data.response) throw new Error('Resposta inválida do servidor.');
+          break;
+        }
+
+        if ((response.status === 429 || response.status === 503) && attempt < MAX_RETRIES) {
+          continue;
+        }
+
+        setLoadingMessage('');
         let errorMessage = 'Erro ao conectar com o Mentor. Tente novamente.';
         try { const errorData = await response.json(); errorMessage = errorData.error || errorMessage; } catch {}
         throw new Error(errorMessage);
       }
 
-      const data = await response.json();
-      if (!data.response) throw new Error('Resposta inválida do servidor.');
+      if (!data?.response) throw new Error('Resposta inválida do servidor.');
 
       await supabase.from('mentor_messages').insert({ user_id: user.id, member_id: memberId, thread_id: currentThreadId, role: 'assistant', content: data.response });
       await supabase.from('chat_threads').update({ updated_at: new Date().toISOString() }).eq('id', currentThreadId);
