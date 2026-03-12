@@ -622,17 +622,24 @@ export const MentorChat = ({
                   )
                 ))}
 
-                {/* Loading indicator – bouncing dots */}
+                {/* Loading indicator */}
                 {isLoading && (
                   <div className="flex items-start gap-3">
                     <div className="flex items-center justify-center h-7 w-7 rounded-full bg-primary/10 text-sm flex-shrink-0">
                       🎯
                     </div>
-                    <div className="flex items-center gap-1.5 py-3">
-                      <span className="h-2 w-2 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:0ms]" />
-                      <span className="h-2 w-2 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:200ms]" />
-                      <span className="h-2 w-2 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:400ms]" />
-                    </div>
+                    {loadingMessage ? (
+                      <div className="flex items-center gap-2 py-3">
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">{loadingMessage}</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 py-3">
+                        <span className="h-2 w-2 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:0ms]" />
+                        <span className="h-2 w-2 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:200ms]" />
+                        <span className="h-2 w-2 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:400ms]" />
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
