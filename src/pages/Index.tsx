@@ -421,6 +421,12 @@ const Index = () => {
           <p className="text-muted-foreground">
             {filteredMembers.length} {filteredMembers.length === 1 ? 'liderado' : 'liderados'} · Clique em um card para ver o histórico
           </p>
+          <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mt-3">
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500"></span> Até 7 dias</span>
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-yellow-500"></span> 8 a 14 dias</span>
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-destructive"></span> Mais de 14 dias</span>
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-muted-foreground/40"></span> Sem notas</span>
+          </div>
         </div>
 
         {loading ? (
