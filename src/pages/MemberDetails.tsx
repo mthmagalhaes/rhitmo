@@ -153,7 +153,24 @@ const MemberDetails = () => {
       );
     }
 
-    // 3. Ordenação por data
+    // 3. Filtro de período (date range)
+    if (dateRange?.from) {
+      const from = startOfDay(dateRange.from);
+      if (dateRange.to) {
+        const to = endOfDay(dateRange.to);
+        result = result.filter(fb => {
+          const d = new Date(fb.occurred_at || fb.created_at);
+          return isWithinInterval(d, { start: from, end: to });
+        });
+      } else {
+        result = result.filter(fb => {
+          const d = new Date(fb.occurred_at || fb.created_at);
+          return d >= from;
+        });
+      }
+    }
+
+    // 4. Ordenação por data
     result.sort((a, b) => {
       const dateA = new Date(a.occurred_at || a.created_at).getTime();
       const dateB = new Date(b.occurred_at || b.created_at).getTime();
@@ -161,7 +178,7 @@ const MemberDetails = () => {
     });
 
     return result;
-  }, [feedbacks, searchQuery, selectedTags, sortOrder]);
+  }, [feedbacks, searchQuery, selectedTags, sortOrder, dateRange]);
 
   // Query para workspace - necessário para isolamento de tenant no NewNoteDialog
   const { data: workspace } = useQuery({
