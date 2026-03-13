@@ -56,6 +56,7 @@ const MemberDetails = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const { toast } = useToast();
   const {
     hasSync
