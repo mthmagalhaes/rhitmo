@@ -720,6 +720,8 @@ const MemberDetails = () => {
                   onTagsChange={setSelectedTags}
                   sortOrder={sortOrder}
                   onSortChange={setSortOrder}
+                  dateRange={dateRange}
+                  onDateRangeChange={setDateRange}
                 />
               )}
               
