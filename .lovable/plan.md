@@ -1,5 +1,3 @@
-
-
 ## Relatório Técnico Atualizado — Rhitmo (Março 2026)
 
 Este documento é o estado completo e atualizado da plataforma Rhitmo para uso como contexto por LLMs de apoio.
@@ -347,4 +345,4 @@ Hook: `usePlanLimits.ts`
 - RLS: Todas as tabelas têm RLS habilitado com policies baseadas em `auth.uid()`, `effective_user_id()`, e funções helper (`is_workspace_owner`, `user_is_linked_member`, etc.)
 - Roles: Armazenados em tabela separada `user_roles` (nunca no perfil)
 - `mentor_messages.member_id` é NOT NULL no schema atual do types.ts (mas a edge function meu-rhitmo trata como opcional)
-
+- Dashboard do líder inclui legenda visual dos indicadores de saúde (bolinhas coloridas: verde ≤7d, amarelo 8-14d, vermelho >14d, cinza sem notas)
