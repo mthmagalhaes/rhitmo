@@ -736,7 +736,7 @@ const MemberDetails = () => {
                   <p className="text-muted-foreground">Nenhuma anotação encontrada para estes filtros.</p>
                   <Button
                     variant="link"
-                    onClick={() => { setSearchQuery(''); setSelectedTags([]); }}
+                    onClick={() => { setSearchQuery(''); setSelectedTags([]); setDateRange(undefined); }}
                     className="mt-2"
                   >
                     Limpar filtros

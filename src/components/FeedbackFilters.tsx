@@ -1,4 +1,4 @@
-import { Search } from 'lucide-react';
+import { Search, CalendarIcon, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -8,7 +8,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { getTagEmoji } from '@/lib/tagConfig';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
+import type { DateRange } from 'react-day-picker';
 
 interface FeedbackFiltersProps {
   searchQuery: string;
@@ -17,6 +22,8 @@ interface FeedbackFiltersProps {
   onTagsChange: (tags: string[]) => void;
   sortOrder: 'newest' | 'oldest';
   onSortChange: (order: 'newest' | 'oldest') => void;
+  dateRange?: DateRange;
+  onDateRangeChange?: (range: DateRange | undefined) => void;
 }
 
 const FILTER_TAGS = [
@@ -33,6 +40,8 @@ export const FeedbackFilters = ({
   onTagsChange,
   sortOrder,
   onSortChange,
+  dateRange,
+  onDateRangeChange,
 }: FeedbackFiltersProps) => {
   const toggleTag = (tagKey: string) => {
     if (selectedTags.includes(tagKey)) {
@@ -41,6 +50,16 @@ export const FeedbackFilters = ({
       onTagsChange([...selectedTags, tagKey]);
     }
   };
+
+  const formatDateRange = () => {
+    if (!dateRange?.from) return null;
+    const from = format(dateRange.from, "dd MMM", { locale: ptBR });
+    if (!dateRange.to) return from;
+    const to = format(dateRange.to, "dd MMM", { locale: ptBR });
+    return `${from} – ${to}`;
+  };
+
+  const hasDateFilter = !!dateRange?.from;
 
   return (
     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-6 p-3 bg-muted/30 rounded-lg border">
@@ -69,6 +88,44 @@ export const FeedbackFilters = ({
           </Button>
         ))}
       </div>
+
+      {/* Filtro de Período */}
+      {onDateRangeChange && (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn(
+                "h-9 gap-1.5 shrink-0 text-xs",
+                hasDateFilter && "border-primary text-primary"
+              )}
+            >
+              <CalendarIcon className="h-3.5 w-3.5" />
+              {hasDateFilter ? formatDateRange() : "Filtrar data"}
+              {hasDateFilter && (
+                <X
+                  className="h-3.5 w-3.5 ml-1 hover:text-destructive"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDateRangeChange(undefined);
+                  }}
+                />
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="end">
+            <Calendar
+              mode="range"
+              selected={dateRange}
+              onSelect={onDateRangeChange}
+              numberOfMonths={2}
+              locale={ptBR}
+              className={cn("p-3 pointer-events-auto")}
+            />
+          </PopoverContent>
+        </Popover>
+      )}
 
       {/* Select de Ordenação */}
       <Select value={sortOrder} onValueChange={(value) => onSortChange(value as 'newest' | 'oldest')}>
