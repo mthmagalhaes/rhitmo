@@ -1,10 +1,26 @@
 
 
-## Adicionar STRIPE_WEBHOOK_SECRET
+## Corrigir Billing.tsx — Nome do plano e features
 
-Usar a ferramenta `add_secret` para solicitar ao usuário o valor do `STRIPE_WEBHOOK_SECRET` (o `whsec_...` copiado do Stripe Dashboard). Essa é a única etapa pendente para completar a integração de billing.
+### Alterações no arquivo `src/pages/Billing.tsx`
 
-### Implementação
-1. Chamar `add_secret` com nome `STRIPE_WEBHOOK_SECRET` para o usuário colar o valor
-2. Nenhuma alteração de código necessária — as Edge Functions já referenciam `Deno.env.get("STRIPE_WEBHOOK_SECRET")`
+**1. Renomear "Starter" para "Pulse"**
+- No objeto `PLANS.pulse.name`: `'Starter'` → `'Pulse'`
+- No subtítulo do grid de upgrade: `"Você está no plano Starter (gratuito)."` → `"Você está no plano Pulse (gratuito)."`
+
+**2. Atualizar features dos 3 planos**
+
+**Pulse:**
+- Features: Até 3 liderados, 20 mensagens de Mentor Chat por mês, Notas e anotações ilimitadas, 1 avaliação formal por mês, 1 time
+- Locked: Meu Rhitmo para liderados, Gravação de reuniões, Analytics completo
+
+**Pro:**
+- Features: Até 5 liderados, Mentor Chat ilimitado, Notas e anotações ilimitadas, Avaliações formais ilimitadas, Meu Rhitmo para seus liderados, Gravação de reuniões (até 4h/mês), Analytics completo, Até 3 times
+- Locked: nenhuma
+
+**Business:**
+- Features: Até 8 liderados por líder, Tudo do plano Pro, Times ilimitados, Gravação de reuniões (até 8h/mês), HR Dashboard com métricas agregadas, Onboarding assistido, Suporte prioritário
+- Locked: nenhuma
+
+Nenhuma alteração em lógica de checkout, Stripe ou outras páginas.
 
