@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { RhitmoLogo } from "@/components/RhitmoLogo";
-import { WaitlistDialog } from "@/components/WaitlistDialog";
+
 import { useAuth } from "@/hooks/useAuth";
 import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X } from "lucide-react";
 import analyticsScreenshot from "@/assets/analytics-screenshot.png";
