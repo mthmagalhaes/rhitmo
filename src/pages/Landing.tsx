@@ -116,6 +116,23 @@ const Landing = () => {
     loading
   } = useAuth();
   const navigate = useNavigate();
+
+  const [landingTheme, setLandingTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('theme');
+    return saved === 'dark' ? 'dark' : 'light';
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle('dark', landingTheme === 'dark');
+    localStorage.setItem('theme', landingTheme);
+    return () => {
+      // Let ThemeProvider take over on unmount
+    };
+  }, [landingTheme]);
+
+  const toggleTheme = () => setLandingTheme(prev => prev === 'light' ? 'dark' : 'light');
+
   useEffect(() => {
     if (!loading && user) {
       navigate("/dashboard", {
@@ -123,15 +140,15 @@ const Landing = () => {
       });
     }
   }, [user, loading, navigate]);
+
   if (loading) {
-    return <div className="light" style={{ colorScheme: 'light' }}>
-        <div className="min-h-screen flex items-center justify-center bg-background">
+    return <div className="min-h-screen flex items-center justify-center bg-background">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </div>;
+        </div>;
   }
   if (user) return null;
-  return <div className="light" style={{ colorScheme: 'light' }}>
+
+  return <div className="transition-colors duration-300">
     <div className="min-h-screen bg-background">
       {/* Navbar */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
