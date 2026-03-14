@@ -151,7 +151,7 @@ export function AppSidebar() {
         </div>
 
         {/* Bloco de usuário */}
-        <div className="flex items-center gap-3 p-3 mx-2 mb-4 rounded-2xl bg-muted/30 shadow-sm">
+        <div className="flex items-center gap-3 p-3 mx-2 mb-4 rounded-2xl bg-white/30 shadow-sm">
           {open && user?.id && (
             <MemberAvatar 
               memberId={user.id} 
