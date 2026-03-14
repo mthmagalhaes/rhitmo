@@ -111,7 +111,6 @@ const SimpleChatMockup = () => <div className="bg-card h-full overflow-hidden">
 // ============== MAIN COMPONENT ==============
 
 const Landing = () => {
-  const [waitlistOpen, setWaitlistOpen] = useState(false);
   const {
     user,
     loading
