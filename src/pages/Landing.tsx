@@ -208,6 +208,7 @@ const Landing = () => {
             </SheetContent>
             </Sheet>
           </div>
+        </div>
       </header>
 
       {/* Hero Section */}
