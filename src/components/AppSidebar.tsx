@@ -81,7 +81,6 @@ export function AppSidebar() {
       <SidebarHeader className="px-5 py-6">
         <div className="flex items-center gap-2">
           <RhitmoLogo size="sm" className="text-primary" />
-          {open && <Badge variant="secondary" className="rounded-full text-[10px] px-2 py-0">Beta</Badge>}
         </div>
       </SidebarHeader>
 

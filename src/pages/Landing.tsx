@@ -366,7 +366,7 @@ const Landing = () => {
         </div>
       </footer>
 
-      <WaitlistDialog open={waitlistOpen} onOpenChange={setWaitlistOpen} />
+      
     </div>;
 };
 export default Landing;
