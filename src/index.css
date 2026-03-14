@@ -11,154 +11,114 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 250 24% 96%;
-    --foreground: 263 47% 11%;
+    /* ── Backgrounds ── */
+    --background:   38 25% 95%;   /* #F5F3EE creme quente */
+    --card:          0  0% 100%;  /* #FFFFFF branco puro */
+    --popover:       0  0% 100%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 263 47% 11%;
+    /* ── Foreground / texto ── */
+    --foreground:         258 52% 15%;  /* #1A1035 roxo-preto */
+    --card-foreground:    258 52% 15%;
+    --popover-foreground: 258 52% 15%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 263 47% 11%;
+    /* ── Primária — Roxo Rhitmo ── */
+    --primary:            262 83% 58%;  /* #7C3AED */
+    --primary-foreground:   0  0% 100%;
 
-    --primary: 263 84% 57%;
-    --primary-foreground: 0 0% 100%;
+    /* ── Secundária ── */
+    --secondary:          258 52% 15%;
+    --secondary-foreground: 0  0% 100%;
 
-    --secondary: 215 24% 26%;
-    --secondary-foreground: 210 40% 98%;
+    /* ── Muted — superfícies neutras quentes ── */
+    --muted:              38 20% 91%;   /* creme levemente mais escuro */
+    --muted-foreground:   255 12% 46%; /* #6B6784 */
 
-    --muted: 215 20% 65%;
-    --muted-foreground: 222 47% 11%;
+    /* ── Accent — tint roxo leve ── */
+    --accent:             262 100% 97%; /* #F3F0FF */
+    --accent-foreground:  262  72% 45%;
 
-    --accent: 210 40% 98%;
-    --accent-foreground: 215 19% 34%;
+    /* ── Semânticas ── */
+    --success:            161 73% 33%;  /* #059669 */
+    --success-foreground:   0  0% 100%;
+    --warning:             38 92% 50%;  /* #D97706 */
+    --warning-foreground:   0  0% 100%;
+    --destructive:          0 72% 51%;  /* #DC2626 */
+    --destructive-foreground: 0 0% 100%;
+    --info:               199 89% 48%;  /* #0EA5E9 */
+    --info-foreground:      0  0% 100%;
 
-    --success: 160 84% 39%;
-    --success-foreground: 0 0% 100%;
+    /* ── Borders / inputs ── */
+    --border:  38 18% 84%;  /* #E8E5DF — quente, não azulado */
+    --input:   38 18% 84%;
+    --ring:   262 83% 58%;
 
-    --destructive: 0 72% 50%;
-    --destructive-foreground: 0 85% 97%;
+    /* ── Radius base ── */
+    --radius: 0.75rem;  /* 12px — base do sistema */
 
-    --border: 212 26% 83%;
-    --input: 212 26% 83%;
-    --ring: 263 84% 57%;
+    /* ── Shadows ── */
+    --shadow-2xs: 0 1px 2px rgba(26,16,53,0.03);
+    --shadow-xs:  0 1px 4px rgba(26,16,53,0.04);
+    --shadow-sm:  0 2px 8px rgba(26,16,53,0.05);
+    --shadow-md:  0 2px 20px rgba(26,16,53,0.06);
+    --shadow-lg:  0 8px 30px rgba(26,16,53,0.09);
+    --shadow-xl:  0 16px 48px rgba(26,16,53,0.11);
+    --shadow-2xl: 0 24px 64px rgba(26,16,53,0.13);
 
-    --radius: 0.5rem;
+    /* ── Sidebar ── */
+    --sidebar-background:          0  0% 100%;
+    --sidebar-foreground:        258 52% 15%;
+    --sidebar-primary:           262 83% 58%;
+    --sidebar-primary-foreground:  0  0% 100%;
+    --sidebar-accent:            262 100% 97%;
+    --sidebar-accent-foreground: 262  72% 45%;
+    --sidebar-border:             38 18% 88%;
+    --sidebar-ring:              262 83% 58%;
+    --sidebar:                   210 40% 98%;
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 263 84% 57%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 40% 96%;
-    --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-border: 214 32% 91%;
-    --sidebar-ring: 263 84% 57%;
+    /* ── Charts ── */
+    --chart-1: 262 83% 58%;
+    --chart-2: 199 89% 48%;
+    --chart-3: 161 73% 33%;
+    --chart-4:  38 92% 50%;
+    --chart-5: 258 52% 15%;
 
-    --chart-1: 198 93% 59%;
-
-    --chart-2: 213 93% 67%;
-
-    --chart-3: 215 20% 65%;
-
-    --chart-4: 215 16% 46%;
-
-    --chart-5: 215 19% 34%;
-
-    --sidebar: 210 40% 98%;
-
-    --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
-
-    --font-serif: 'Lora', ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
-
-    --font-mono: 'Space Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-
-    --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-
-    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-
-    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-
-    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-
-    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
-
-    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
-
-    --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
-
-    --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
-
-    --tracking-normal: 0em;
-
-    --spacing: 0.25rem;
+    /* ── Fonts ── */
+    --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system,
+      BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+      Arial, 'Noto Sans', sans-serif;
+    --font-serif: 'Lora', ui-serif, Georgia, Cambria,
+      'Times New Roman', Times, serif;
+    --font-mono: 'Space Mono', ui-monospace, SFMono-Regular,
+      Menlo, Monaco, Consolas, 'Liberation Mono',
+      'Courier New', monospace;
   }
 
-  .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
-
-    --card: 217 32% 17%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 215 24% 26%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 263 70% 65%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 212 26% 83%;
-    --secondary-foreground: 228 84% 4%;
-
-    --muted: 215 16% 46%;
-    --muted-foreground: 210 40% 98%;
-
-    --accent: 228 84% 4%;
-    --accent-foreground: 215 20% 65%;
-
-    --success: 160 60% 50%;
-    --success-foreground: 0 0% 100%;
-
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 85% 97%;
-
-    --border: 215 19% 34%;
-    --input: 215 19% 34%;
-    --ring: 263 70% 65%;
-    --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 263 70% 65%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 33% 17%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 33% 17%;
-    --sidebar-ring: 263 70% 65%;
-    --chart-1: 199 95% 73%;
-    --chart-2: 211 96% 78%;
-    --chart-3: 215 20% 65%;
-    --chart-4: 215 16% 46%;
-    --chart-5: 215 19% 34%;
-    --sidebar: 217 32% 17%;
-    --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
-    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
-    --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
-    --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
-  }
-}
-
-@layer base {
-  :root {
-    --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
-  }
-
+  /* ── Reset base para tipografia ── */
   * {
     @apply border-border;
   }
 
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ── Scrollbar discreta (Apple-style) ── */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.4);
   }
 }
 
