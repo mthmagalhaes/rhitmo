@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { RhitmoLogo } from "@/components/RhitmoLogo";
 
 import { useAuth } from "@/hooks/useAuth";
-import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X } from "lucide-react";
+import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X, Check, Lock } from "lucide-react";
 import analyticsScreenshot from "@/assets/analytics-screenshot.png";
 import heroLeaderFlow from "@/assets/hero-leader-flow.png";
 import heroDuoFeedback from "@/assets/hero-duo-feedback.png";
@@ -350,6 +350,156 @@ const Landing = () => {
                 <img src={analyticsScreenshot} alt="Analytics Dashboard - Rhitmo" className="w-full h-full object-cover object-top" />
               </BrowserFrame>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section id="pricing" className="py-24 bg-muted/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Header */}
+          <div className="text-center space-y-3 mb-16">
+            <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
+              Simples. Transparente.
+            </h2>
+            <p className="text-lg text-muted-foreground">
+              Comece grátis. Evolua quando seu time crescer.
+            </p>
+          </div>
+
+          {/* Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+
+            {/* ── Pulse ── */}
+            <div className="bg-card rounded-2xl shadow-sm p-8 border space-y-6">
+              <div>
+                <h3 className="text-2xl font-bold tracking-tight text-foreground">Pulse</h3>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Para o líder que quer começar a registrar e desenvolver seu time.
+                </p>
+              </div>
+
+              <div>
+                <span className="text-4xl font-bold text-foreground">Grátis</span>
+                <span className="text-sm text-muted-foreground ml-1">· para sempre</span>
+              </div>
+
+              <Button className="w-full min-h-[44px]" onClick={() => navigate('/auth?mode=signup')}>
+                Começar grátis
+              </Button>
+
+              <ul className="space-y-3 pt-2">
+                {[
+                  "Até 3 liderados",
+                  "20 mensagens de Mentor Chat por mês",
+                  "Notas e anotações ilimitadas",
+                  "1 avaliação formal por mês",
+                  "1 time",
+                ].map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-foreground">
+                    <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                    {f}
+                  </li>
+                ))}
+                {[
+                  "Meu Rhitmo para liderados",
+                  "Gravação de reuniões",
+                  "Analytics completo",
+                ].map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-muted-foreground opacity-50">
+                    <Lock className="h-4 w-4 mt-0.5 shrink-0" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* ── Pro (destacado) ── */}
+            <div className="relative md:-translate-y-2">
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
+                <span className="bg-primary text-primary-foreground text-xs font-semibold px-4 py-1 rounded-full">
+                  Mais popular
+                </span>
+              </div>
+              <div className="bg-card rounded-2xl shadow-md p-8 border-2 border-primary space-y-6">
+                <div>
+                  <h3 className="text-2xl font-bold tracking-tight text-foreground">Pro</h3>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Para líderes que gerenciam até 5 pessoas e querem desenvolver cada uma com intenção.
+                  </p>
+                </div>
+
+                <div>
+                  <div>
+                    <span className="text-4xl font-bold text-foreground">R$69</span>
+                    <span className="text-sm text-muted-foreground ml-1">/líder/mês</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">14 dias grátis · cancele quando quiser</p>
+                </div>
+
+                <Button className="w-full min-h-[44px]" onClick={() => navigate('/auth?mode=signup&plan=pro')}>
+                  Começar com 14 dias grátis
+                </Button>
+
+                <ul className="space-y-3 pt-2">
+                  {[
+                    "Até 5 liderados",
+                    "Mentor Chat ilimitado",
+                    "Notas e anotações ilimitadas",
+                    "Avaliações formais ilimitadas",
+                    "Meu Rhitmo para seus liderados",
+                    "Gravação de reuniões (até 4h/mês)",
+                    "Analytics completo",
+                    "Até 3 times",
+                  ].map((f) => (
+                    <li key={f} className="flex items-start gap-2 text-sm text-foreground">
+                      <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {/* ── Business ── */}
+            <div className="bg-card rounded-2xl shadow-sm p-8 border space-y-6">
+              <div>
+                <h3 className="text-2xl font-bold tracking-tight text-foreground">Business</h3>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Para empresas que querem uma cultura de feedback consistente em todos os times.
+                </p>
+              </div>
+
+              <div>
+                <div>
+                  <span className="text-4xl font-bold text-foreground">R$89</span>
+                  <span className="text-sm text-muted-foreground ml-1">/líder/mês</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Mínimo 3 líderes · R$267/mês</p>
+              </div>
+
+              <Button variant="outline" className="w-full min-h-[44px]" asChild>
+                <a href="mailto:matheus@rhitmo.co">Falar com a equipe</a>
+              </Button>
+
+              <ul className="space-y-3 pt-2">
+                {[
+                  "Até 8 liderados por líder",
+                  "Tudo do plano Pro",
+                  "Times ilimitados",
+                  "Gravação de reuniões (até 8h/mês)",
+                  "HR Dashboard com métricas agregadas",
+                  "Onboarding assistido",
+                  "Suporte prioritário",
+                ].map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-foreground">
+                    <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
           </div>
         </div>
       </section>
