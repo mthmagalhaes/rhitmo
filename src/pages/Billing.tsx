@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Check, Lock, CreditCard, ExternalLink } from 'lucide-react';
+import { Check, Lock, CreditCard, ExternalLink, Loader2, AlertTriangle } from 'lucide-react';
 
 const PLANS = {
   pulse: {
@@ -65,16 +65,72 @@ const PLANS = {
 
 type PlanKey = 'pulse' | 'pro' | 'business';
 
+// --- Sub-components ---
+
+function TrialBanner({ trialEndsAt, onManage }: { trialEndsAt: string; onManage: () => void }) {
+  const daysLeft = Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+  return (
+    <div className="rounded-2xl border border-yellow-300/50 bg-yellow-50/80 dark:bg-yellow-900/20 dark:border-yellow-700/50 p-4 flex items-center justify-between gap-4 flex-wrap">
+      <div className="flex items-center gap-2 text-sm font-medium text-yellow-800 dark:text-yellow-200">
+        <AlertTriangle className="h-4 w-4" />
+        Trial ativo — {daysLeft} {daysLeft === 1 ? 'dia restante' : 'dias restantes'}
+      </div>
+      <Button size="sm" variant="outline" className="rounded-xl" onClick={onManage}>
+        Adicionar cartão
+      </Button>
+    </div>
+  );
+}
+
+function PastDueBanner({ onManage }: { onManage: () => void }) {
+  return (
+    <div className="rounded-2xl border border-destructive/50 bg-destructive/10 p-4 flex items-center justify-between gap-4 flex-wrap">
+      <div className="flex items-center gap-2 text-sm font-medium text-destructive">
+        <AlertTriangle className="h-4 w-4" />
+        Pagamento pendente. Atualize seu cartão para continuar.
+      </div>
+      <Button size="sm" variant="destructive" className="rounded-xl" onClick={onManage}>
+        Atualizar cartão
+      </Button>
+    </div>
+  );
+}
+
+function formatDatePtBR(dateStr: string | null) {
+  if (!dateStr) return '—';
+  return new Date(dateStr).toLocaleDateString('pt-BR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+// --- Main Component ---
+
 const Billing = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [upgradeLoading, setUpgradeLoading] = useState<string | null>(null);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   useEffect(() => {
     if (!user && !loading) {
       navigate('/auth', { replace: true });
     }
   }, [user, loading, navigate]);
+
+  // Success toast
+  useEffect(() => {
+    if (searchParams.get('success') === 'true') {
+      toast({
+        title: 'Assinatura ativada! 🎉',
+        description: 'Bem-vindo ao seu novo plano Rhitmo!',
+      });
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, toast, setSearchParams]);
 
   const { data: workspace, isLoading: workspaceLoading } = useQuery({
     queryKey: ['workspace-billing', user?.id],
@@ -89,39 +145,94 @@ const Billing = () => {
     enabled: !!user,
   });
 
+  const { data: subscription, isLoading: subLoading } = useQuery({
+    queryKey: ['subscription', workspace?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('workspace_id', workspace!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!workspace?.id,
+  });
+
   const currentPlan = (workspace?.plan_tier as PlanKey) || 'pulse';
 
-  const handleUpgrade = (plan: string) => {
-    toast({
-      title: 'Em breve',
-      description: `O upgrade para o plano ${plan} estará disponível em breve.`,
-    });
+  const handleUpgrade = async (plan: string) => {
+    setUpgradeLoading(plan);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        body: { plan },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        window.location.href = data.url;
+        return;
+      }
+      throw new Error('No checkout URL returned');
+    } catch (err: any) {
+      console.error('Checkout error:', err);
+      toast({
+        title: 'Erro ao iniciar checkout',
+        description: 'Tente novamente ou entre em contato: support@rhitmo.co',
+        variant: 'destructive',
+      });
+    } finally {
+      setUpgradeLoading(null);
+    }
   };
 
-  const handleManageSubscription = () => {
-    toast({
-      title: 'Em breve',
-      description: 'O portal de gerenciamento estará disponível em breve.',
-    });
+  const handleManageSubscription = async () => {
+    setPortalLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-portal-session', {
+        body: {},
+      });
+      if (error) throw error;
+      if (data?.url) {
+        window.location.href = data.url;
+        return;
+      }
+      throw new Error('No portal URL returned');
+    } catch (err: any) {
+      console.error('Portal error:', err);
+      toast({
+        title: 'Erro ao abrir portal',
+        description: 'Tente novamente ou entre em contato: support@rhitmo.co',
+        variant: 'destructive',
+      });
+    } finally {
+      setPortalLoading(false);
+    }
   };
 
-  if (!user || loading || workspaceLoading) {
+  if (!user || loading || workspaceLoading || subLoading) {
     return (
       <div className="p-6 md:p-8 min-h-[70vh] flex items-center justify-center">
-        <p className="text-muted-foreground">Carregando...</p>
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
-  // Estado 2 — Assinatura ativa (Pro ou Business)
+  // Active subscription (Pro or Business)
   if (currentPlan === 'pro' || currentPlan === 'business') {
     const plan = PLANS[currentPlan];
     return (
-      <div className="p-6 md:p-8 max-w-3xl mx-auto space-y-8 pb-20">
+      <div className="p-6 md:p-8 max-w-3xl mx-auto space-y-6 pb-20">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Seu plano</h1>
           <p className="text-muted-foreground mt-1">Gerencie sua assinatura Rhitmo.</p>
         </div>
+
+        {subscription?.status === 'trialing' && subscription.trial_ends_at && (
+          <TrialBanner trialEndsAt={subscription.trial_ends_at} onManage={handleManageSubscription} />
+        )}
+        {subscription?.status === 'past_due' && (
+          <PastDueBanner onManage={handleManageSubscription} />
+        )}
 
         <Card className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] border">
           <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
@@ -135,7 +246,7 @@ const Billing = () => {
               </Badge>
             </div>
             <Badge variant="outline" className="border-primary/30 text-primary bg-primary/10">
-              Ativo
+              {subscription?.status === 'trialing' ? 'Trial' : subscription?.status === 'past_due' ? 'Pendente' : 'Ativo'}
             </Badge>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -146,11 +257,21 @@ const Billing = () => {
               </div>
               <div>
                 <p className="text-muted-foreground">Próxima cobrança</p>
-                <p className="font-semibold">—</p>
+                <p className="font-semibold">{formatDatePtBR(subscription?.current_period_end ?? null)}</p>
               </div>
+              {(subscription?.quantity ?? 0) > 1 && (
+                <div>
+                  <p className="text-muted-foreground">Seats</p>
+                  <p className="font-semibold">{subscription?.quantity}</p>
+                </div>
+              )}
             </div>
-            <Button onClick={handleManageSubscription} className="rounded-xl">
-              <CreditCard className="h-4 w-4 mr-2" />
+            <Button onClick={handleManageSubscription} className="rounded-xl" disabled={portalLoading}>
+              {portalLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <CreditCard className="h-4 w-4 mr-2" />
+              )}
               Gerenciar assinatura
             </Button>
           </CardContent>
@@ -178,7 +299,7 @@ const Billing = () => {
     );
   }
 
-  // Estado 1 — Pulse (sem assinatura)
+  // Pulse (free) — upgrade grid
   return (
     <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-8 pb-20">
       <div>
@@ -238,9 +359,13 @@ const Billing = () => {
                 )}
                 {isPro && (
                   <Button
-                    onClick={() => handleUpgrade('Pro')}
+                    onClick={() => handleUpgrade('pro')}
                     className="w-full rounded-xl"
+                    disabled={upgradeLoading === 'pro'}
                   >
+                    {upgradeLoading === 'pro' ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : null}
                     Fazer upgrade para Pro
                   </Button>
                 )}
