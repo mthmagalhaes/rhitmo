@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { RhitmoLogo } from "@/components/RhitmoLogo";
-import { WaitlistDialog } from "@/components/WaitlistDialog";
+
 import { useAuth } from "@/hooks/useAuth";
 import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X } from "lucide-react";
 import analyticsScreenshot from "@/assets/analytics-screenshot.png";
@@ -111,7 +111,6 @@ const SimpleChatMockup = () => <div className="bg-card h-full overflow-hidden">
 // ============== MAIN COMPONENT ==============
 
 const Landing = () => {
-  const [waitlistOpen, setWaitlistOpen] = useState(false);
   const {
     user,
     loading
@@ -145,9 +144,11 @@ const Landing = () => {
                 Entrar
               </Button>
             </Link>
-            <Button onClick={() => setWaitlistOpen(true)} className="min-h-[44px]">
-              Lista de Espera
-            </Button>
+            <Link to="/auth?mode=signup">
+              <Button className="min-h-[44px]">
+                Começar grátis
+              </Button>
+            </Link>
           </div>
 
           {/* Mobile: Hamburger menu */}
@@ -168,12 +169,11 @@ const Landing = () => {
                   </Link>
                 </SheetClose>
                 <SheetClose asChild>
-                  <Button 
-                    onClick={() => setWaitlistOpen(true)} 
-                    className="w-full min-h-[44px]"
-                  >
-                    Lista de Espera
-                  </Button>
+                  <Link to="/auth?mode=signup">
+                    <Button className="w-full min-h-[44px]">
+                      Começar grátis
+                    </Button>
+                  </Link>
                 </SheetClose>
               </nav>
             </SheetContent>
@@ -196,9 +196,12 @@ const Landing = () => {
                 Com Rhitmo, líderes ganham tempo e organização para focar no que mais importa: desenvolver pessoas e construir uma cultura de resultados.
               </p>
               
-              <div className="pt-4">
-                <Button size="lg" className="text-base px-8" onClick={() => setWaitlistOpen(true)}>
-                  Entrar na Lista de Espera
+              <div className="pt-4 flex flex-wrap gap-3">
+                <Button size="lg" className="text-base px-8" onClick={() => navigate('/auth?mode=signup')}>
+                  Começar grátis
+                </Button>
+                <Button size="lg" variant="outline" className="text-base px-8" asChild>
+                  <a href="#pricing">Ver planos</a>
                 </Button>
               </div>
             </div>
@@ -363,7 +366,7 @@ const Landing = () => {
         </div>
       </footer>
 
-      <WaitlistDialog open={waitlistOpen} onOpenChange={setWaitlistOpen} />
+      
     </div>;
 };
 export default Landing;
