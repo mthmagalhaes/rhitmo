@@ -169,12 +169,11 @@ const Landing = () => {
                   </Link>
                 </SheetClose>
                 <SheetClose asChild>
-                  <Button 
-                    onClick={() => setWaitlistOpen(true)} 
-                    className="w-full min-h-[44px]"
-                  >
-                    Lista de Espera
-                  </Button>
+                  <Link to="/auth?mode=signup">
+                    <Button className="w-full min-h-[44px]">
+                      Começar grátis
+                    </Button>
+                  </Link>
                 </SheetClose>
               </nav>
             </SheetContent>
