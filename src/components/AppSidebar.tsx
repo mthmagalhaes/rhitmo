@@ -99,8 +99,8 @@ export function AppSidebar() {
                     <NavLink 
                       to={item.url} 
                       end
-                      className="rounded-2xl tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-primary/5 hover:text-primary"
-                      activeClassName="bg-primary/10 text-primary font-bold"
+                      className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
+                      activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
                     >
                       <item.icon className="h-5 w-5" />
                       <span>{item.title}</span>
@@ -122,8 +122,8 @@ export function AppSidebar() {
                     <NavLink 
                       to="/admin" 
                       end
-                      className="rounded-2xl tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-primary/5 hover:text-primary"
-                      activeClassName="bg-primary/10 text-primary font-bold"
+                      className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
+                      activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
                     >
                       <ShieldCheck className="h-5 w-5" />
                       <span>Admin</span>
@@ -151,7 +151,7 @@ export function AppSidebar() {
         </div>
 
         {/* Bloco de usuário */}
-        <div className="flex items-center gap-3 p-3 mx-2 mb-4 rounded-2xl bg-muted/30 shadow-sm">
+        <div className="flex items-center gap-3 p-3 mx-2 mb-4 rounded-2xl bg-white/30 shadow-sm">
           {open && user?.id && (
             <MemberAvatar 
               memberId={user.id} 
