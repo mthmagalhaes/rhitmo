@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, RefreshCw, Compass } from 'lucide-react';
+import { ThemeSelector } from '@/components/ThemeSelector';
 import {
   Dialog,
   DialogContent,
