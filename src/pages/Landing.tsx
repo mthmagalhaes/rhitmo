@@ -144,9 +144,11 @@ const Landing = () => {
                 Entrar
               </Button>
             </Link>
-            <Button onClick={() => setWaitlistOpen(true)} className="min-h-[44px]">
-              Lista de Espera
-            </Button>
+            <Link to="/auth?mode=signup">
+              <Button className="min-h-[44px]">
+                Começar grátis
+              </Button>
+            </Link>
           </div>
 
           {/* Mobile: Hamburger menu */}
