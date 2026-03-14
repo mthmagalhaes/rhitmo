@@ -1,10 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { RhitmoLogo } from "@/components/RhitmoLogo";
 
 import { useAuth } from "@/hooks/useAuth";
-import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X, Check, Lock } from "lucide-react";
+import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X, Check, Lock, Moon, Sun } from "lucide-react";
 import analyticsScreenshot from "@/assets/analytics-screenshot.png";
 import heroLeaderFlow from "@/assets/hero-leader-flow.png";
 import heroDuoFeedback from "@/assets/hero-duo-feedback.png";
@@ -116,6 +116,23 @@ const Landing = () => {
     loading
   } = useAuth();
   const navigate = useNavigate();
+
+  const [landingTheme, setLandingTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('theme');
+    return saved === 'dark' ? 'dark' : 'light';
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle('dark', landingTheme === 'dark');
+    localStorage.setItem('theme', landingTheme);
+    return () => {
+      // Let ThemeProvider take over on unmount
+    };
+  }, [landingTheme]);
+
+  const toggleTheme = () => setLandingTheme(prev => prev === 'light' ? 'dark' : 'light');
+
   useEffect(() => {
     if (!loading && user) {
       navigate("/dashboard", {
@@ -123,15 +140,15 @@ const Landing = () => {
       });
     }
   }, [user, loading, navigate]);
+
   if (loading) {
-    return <div className="light" style={{ colorScheme: 'light' }}>
-        <div className="min-h-screen flex items-center justify-center bg-background">
+    return <div className="min-h-screen flex items-center justify-center bg-background">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </div>;
+        </div>;
   }
   if (user) return null;
-  return <div className="light" style={{ colorScheme: 'light' }}>
+
+  return <div className="transition-colors duration-300">
     <div className="min-h-screen bg-background">
       {/* Navbar */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -142,6 +159,10 @@ const Landing = () => {
 
           {/* Desktop: Botões normais */}
           <div className="hidden md:flex items-center gap-3">
+            <Button variant="ghost" size="icon" className="rounded-full" onClick={toggleTheme}>
+              {landingTheme === 'light' ? <Moon className="h-[18px] w-[18px]" /> : <Sun className="h-[18px] w-[18px]" />}
+              <span className="sr-only">Alternar tema</span>
+            </Button>
             <Link to="/auth">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground min-h-[44px]">
                 Entrar
@@ -155,13 +176,18 @@ const Landing = () => {
           </div>
 
           {/* Mobile: Hamburger menu */}
-          <Sheet>
-            <SheetTrigger asChild className="md:hidden">
-              <Button variant="ghost" size="icon" className="h-11 w-11">
-                <Menu className="h-6 w-6" />
-                <span className="sr-only">Menu</span>
-              </Button>
-            </SheetTrigger>
+          <div className="flex items-center gap-1 md:hidden">
+            <Button variant="ghost" size="icon" className="rounded-full h-11 w-11" onClick={toggleTheme}>
+              {landingTheme === 'light' ? <Moon className="h-[18px] w-[18px]" /> : <Sun className="h-[18px] w-[18px]" />}
+              <span className="sr-only">Alternar tema</span>
+            </Button>
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-11 w-11">
+                  <Menu className="h-6 w-6" />
+                  <span className="sr-only">Menu</span>
+                </Button>
+              </SheetTrigger>
             <SheetContent side="right" className="w-[280px] pt-12">
               <nav className="flex flex-col gap-4">
                 <SheetClose asChild>
@@ -180,8 +206,8 @@ const Landing = () => {
                 </SheetClose>
               </nav>
             </SheetContent>
-          </Sheet>
-        </div>
+            </Sheet>
+          </div>
       </header>
 
       {/* Hero Section */}
