@@ -159,6 +159,10 @@ const Landing = () => {
 
           {/* Desktop: Botões normais */}
           <div className="hidden md:flex items-center gap-3">
+            <Button variant="ghost" size="icon" className="rounded-full" onClick={toggleTheme}>
+              {landingTheme === 'light' ? <Moon className="h-[18px] w-[18px]" /> : <Sun className="h-[18px] w-[18px]" />}
+              <span className="sr-only">Alternar tema</span>
+            </Button>
             <Link to="/auth">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground min-h-[44px]">
                 Entrar
@@ -172,13 +176,18 @@ const Landing = () => {
           </div>
 
           {/* Mobile: Hamburger menu */}
-          <Sheet>
-            <SheetTrigger asChild className="md:hidden">
-              <Button variant="ghost" size="icon" className="h-11 w-11">
-                <Menu className="h-6 w-6" />
-                <span className="sr-only">Menu</span>
-              </Button>
-            </SheetTrigger>
+          <div className="flex items-center gap-1 md:hidden">
+            <Button variant="ghost" size="icon" className="rounded-full h-11 w-11" onClick={toggleTheme}>
+              {landingTheme === 'light' ? <Moon className="h-[18px] w-[18px]" /> : <Sun className="h-[18px] w-[18px]" />}
+              <span className="sr-only">Alternar tema</span>
+            </Button>
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-11 w-11">
+                  <Menu className="h-6 w-6" />
+                  <span className="sr-only">Menu</span>
+                </Button>
+              </SheetTrigger>
             <SheetContent side="right" className="w-[280px] pt-12">
               <nav className="flex flex-col gap-4">
                 <SheetClose asChild>
