@@ -520,6 +520,7 @@ const Landing = () => {
       </footer>
 
       
-    </div>;
+    </div>
+  </div>;
 };
 export default Landing;
