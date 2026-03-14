@@ -196,9 +196,12 @@ const Landing = () => {
                 Com Rhitmo, líderes ganham tempo e organização para focar no que mais importa: desenvolver pessoas e construir uma cultura de resultados.
               </p>
               
-              <div className="pt-4">
-                <Button size="lg" className="text-base px-8" onClick={() => setWaitlistOpen(true)}>
-                  Entrar na Lista de Espera
+              <div className="pt-4 flex flex-wrap gap-3">
+                <Button size="lg" className="text-base px-8" onClick={() => navigate('/auth?mode=signup')}>
+                  Começar grátis
+                </Button>
+                <Button size="lg" variant="outline" className="text-base px-8" asChild>
+                  <a href="#pricing">Ver planos</a>
                 </Button>
               </div>
             </div>
