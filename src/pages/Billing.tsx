@@ -11,20 +11,20 @@ import { Check, Lock, CreditCard, ExternalLink, Loader2, AlertTriangle } from 'l
 
 const PLANS = {
   pulse: {
-    name: 'Starter',
+    name: 'Pulse',
     price: 'Grátis',
     priceDetail: 'para sempre',
     features: [
-      'Até 5 membros',
-      'Registro de feedbacks',
-      'Notas de 1:1',
-      'Timeline por membro',
+      'Até 3 liderados',
+      '20 mensagens de Mentor Chat por mês',
+      'Notas e anotações ilimitadas',
+      '1 avaliação formal por mês',
+      '1 time',
     ],
     lockedFeatures: [
-      'Análise de IA',
-      'Performance Reviews',
-      'Rhitmo Sync',
-      'Analytics avançado',
+      'Meu Rhitmo para liderados',
+      'Gravação de reuniões',
+      'Analytics completo',
     ],
   },
   pro: {
@@ -32,32 +32,29 @@ const PLANS = {
     price: 'R$69',
     priceDetail: '/mês por líder',
     features: [
-      'Membros ilimitados',
-      'Registro de feedbacks',
-      'Notas de 1:1',
-      'Timeline por membro',
-      'Análise de IA com tags e sentimento',
-      'Performance Reviews com IA',
-      'Rhitmo Sync (perfil comportamental)',
-      'Mentor IA por membro',
-      'Importação de transcrições',
+      'Até 5 liderados',
+      'Mentor Chat ilimitado',
+      'Notas e anotações ilimitadas',
+      'Avaliações formais ilimitadas',
+      'Meu Rhitmo para seus liderados',
+      'Gravação de reuniões (até 4h/mês)',
+      'Analytics completo',
+      'Até 3 times',
     ],
-    lockedFeatures: [
-      'Analytics avançado',
-      'Dashboard HR',
-    ],
+    lockedFeatures: [],
   },
   business: {
     name: 'Business',
     price: 'R$89',
     priceDetail: '/mês por líder',
     features: [
-      'Tudo do Pro',
-      'Analytics avançado',
-      'Dashboard HR',
-      'Gestão multi-time',
+      'Até 8 liderados por líder',
+      'Tudo do plano Pro',
+      'Times ilimitados',
+      'Gravação de reuniões (até 8h/mês)',
+      'HR Dashboard com métricas agregadas',
+      'Onboarding assistido',
       'Suporte prioritário',
-      'Onboarding dedicado',
     ],
     lockedFeatures: [],
   },
@@ -305,7 +302,7 @@ const Billing = () => {
       <div>
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Seu plano</h1>
         <p className="text-muted-foreground mt-1">
-          Você está no plano Starter (gratuito). Faça upgrade para desbloquear mais recursos.
+          Você está no plano Pulse (gratuito). Faça upgrade para desbloquear mais recursos.
         </p>
       </div>
 
