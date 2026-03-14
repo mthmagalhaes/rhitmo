@@ -18,6 +18,13 @@
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
   </head>
 
+  <script>
+    (function(){
+      var t = localStorage.getItem('theme') || 'system';
+      if(t === 'system') t = matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light';
+      if(t === 'dark') document.documentElement.classList.add('dark');
+    })();
+  </script>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
