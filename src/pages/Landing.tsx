@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { RhitmoLogo } from "@/components/RhitmoLogo";
 
 import { useAuth } from "@/hooks/useAuth";
-import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X } from "lucide-react";
+import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X, Check, Lock } from "lucide-react";
 import analyticsScreenshot from "@/assets/analytics-screenshot.png";
 import heroLeaderFlow from "@/assets/hero-leader-flow.png";
 import heroDuoFeedback from "@/assets/hero-duo-feedback.png";
