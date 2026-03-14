@@ -302,7 +302,7 @@ const Billing = () => {
       <div>
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Seu plano</h1>
         <p className="text-muted-foreground mt-1">
-          Você está no plano Starter (gratuito). Faça upgrade para desbloquear mais recursos.
+          Você está no plano Pulse (gratuito). Faça upgrade para desbloquear mais recursos.
         </p>
       </div>
 
