@@ -126,6 +126,12 @@ user_roles
 ├── id, user_id (FK auth.users), role (app_role enum)
 └── app_role: 'super_admin' | 'support'
 
+user_preferences
+├── id, user_id (FK auth.users, UNIQUE)
+├── theme_preference (text: 'light' | 'dark' | 'system', default 'system')
+├── created_at, updated_at
+└── RLS: users can only read/write own row
+
 admin_impersonation
 ├── admin_user_id, impersonated_user_id, impersonated_email
 └── effective_user_id() function for transparent impersonation
@@ -258,7 +264,7 @@ waitlist_leads
 | Componente | Descrição |
 |---|---|
 | `AppLayout.tsx` | Layout com sidebar (AppSidebar) |
-| `AppSidebar.tsx` | Navegação lateral (dashboard, analytics, billing, help) |
+| `AppSidebar.tsx` | Navegação lateral com glassmorphism (dashboard, analytics, billing, help) |
 | `DirectReportGuard.tsx` | Guard que redireciona liderados para seu dashboard |
 | `DirectReportDashboard.tsx` | Dashboard completo do liderado (tabs: Visão Geral, Notas, Carreira, Perfil) |
 | `MentorChat.tsx` | Dialog do Mentor IA do líder (sidebar de threads, RAG, attachments, voice input) |
@@ -277,13 +283,47 @@ waitlist_leads
 | `SkillsMapCard.tsx` | Card de bússola de carreira do liderado |
 | `MeetingRecorder.tsx` | Gravador de reuniões |
 | `VoiceInput.tsx` | Input de voz (Whisper) |
-| `ProfileSettingsDialog.tsx` | Configurações de perfil |
+| `ProfileSettingsDialog.tsx` | Configurações de perfil (nome, cargo, aparência, manutenção) |
+| `ThemeProvider.tsx` | Context provider para tema (light/dark/system) |
+| `ThemeSelector.tsx` | Seletor visual de tema com 3 cards (Claro/Escuro/Sistema) |
 | `OnboardingModal.tsx` | Modal de onboarding do liderado |
 | `WorkStyleCard.tsx` | Card do perfil comportamental (Rhitmo Sync) |
 
 ---
 
-### 9. PLANOS E LIMITES
+### 9. SISTEMA DE TEMAS (Dark / Light / System)
+
+**Arquitetura:**
+- `ThemeProvider` (context) → `useThemeManager` hook → persiste em `user_preferences` (Supabase) + `localStorage` (fallback)
+- Script inline no `<head>` do `index.html` aplica classe `.dark` antes do primeiro render (sem flash)
+- Preferência `system` escuta `prefers-color-scheme` via `matchMedia`
+
+**Paleta Light (Creme/Bento):**
+- Background: `#F5F3EE` (38 25% 95%)
+- Primary: `#7C3AED` (262 83% 58%)
+- Foreground: `#1A1035` (258 52% 15%)
+
+**Paleta Dark (cinza escuro suave, não preto):**
+- Background: `#1a1a1f` (240 10% 11%)
+- Primary: `#a78bfa` (263 86% 76%) — roxo mais claro
+- Foreground: `#f0eff4` (250 10% 95%)
+- Card: `#22222a` (240 10% 15%)
+- Muted: `#2c2c36` (240 10% 18%)
+- Border: `#2e2e3a` (240 10% 20%)
+
+**Sidebar Glassmorphism:**
+- Light: `rgba(255, 255, 255, 0.55)` + `blur(16px) saturate(180%)` + `border: rgba(255,255,255,0.3)`
+- Dark: `rgba(26, 26, 31, 0.7)` + `blur(16px) saturate(180%)` + `border: rgba(255,255,255,0.06)`
+- Implementado via utility class `.sidebar-glass` no `index.css` com override `.dark .sidebar-glass`
+
+**Componentes:**
+- `ThemeSelector`: 3 cards lado a lado com preview visual (retângulo claro, escuro, ou dividido), borda primária no selecionado
+- Integrado em `ProfileSettingsDialog` na seção "Aparência"
+- Mudança de tema é imediata (não depende do botão "Salvar")
+
+---
+
+### 10. PLANOS E LIMITES
 
 | Feature | Pulse (free) | Flow | Maestro |
 |---|---|---|---|
@@ -297,7 +337,7 @@ Hook: `usePlanLimits.ts`
 
 ---
 
-### 10. INTEGRAÇÕES EXTERNAS
+### 11. INTEGRAÇÕES EXTERNAS
 
 - **OpenAI** (gpt-4o, gpt-4o-mini, Whisper, text-embedding-3-small, Vision): Mentor Chat, análise de feedback, transcrição, embeddings
 - **Lovable AI Gateway** (Gemini): classify-note, analyze-job-crafting, generate-brief
@@ -306,7 +346,7 @@ Hook: `usePlanLimits.ts`
 
 ---
 
-### 11. STORAGE BUCKETS
+### 12. STORAGE BUCKETS
 
 | Bucket | Público | Uso |
 |---|---|---|
@@ -316,19 +356,20 @@ Hook: `usePlanLimits.ts`
 
 ---
 
-### 12. SECRETS CONFIGURADOS
+### 13. SECRETS CONFIGURADOS
 
 `OPENAI_API_KEY`, `LOVABLE_API_KEY`, `RESEND_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_DB_URL`
 
 ---
 
-### 13. PADRÕES DE CÓDIGO
+### 14. PADRÕES DE CÓDIGO
 
 - **Queries**: TanStack React Query com `useQuery` / `useMutation`
 - **Auth**: `useAuth()` hook customizado com `supabase.auth`
 - **Linked member**: `useLinkedMember()` hook para detectar se user é liderado
 - **Admin**: `useAdmin()` hook para verificar role super_admin
-- **UI**: shadcn/ui + Radix primitives + Tailwind
+- **Theme**: `useTheme()` via `ThemeProvider` (context) — retorna `theme`, `setTheme`, `resolvedTheme`
+- **UI**: shadcn/ui + Radix primitives + Tailwind (tokens semânticos HSL)
 - **Markdown**: `react-markdown` para renderizar respostas de IA
 - **Sanitização**: DOMPurify + marked para conteúdo HTML seguro
 - **Dates**: date-fns com locale pt-BR
@@ -337,7 +378,21 @@ Hook: `usePlanLimits.ts`
 
 ---
 
-### 14. CONVENÇÕES IMPORTANTES
+### 15. DESIGN SYSTEM
+
+**Estética:** "Creme / Bento" — high-end, Soft UI, tátil. Bordas arredondadas (`rounded-2xl`/`rounded-3xl`), sombras ultra-suaves, layouts assimétricos (Bento Grid).
+
+**Sidebar:** Glassmorphism (translúcido com blur) — usa utility `.sidebar-glass` que adapta automaticamente entre light e dark. Menu items com active state `bg-[rgba(124,58,237,0.08)]` e hover `bg-[rgba(124,58,237,0.05)]`, `rounded-[10px]`.
+
+**Sheet overlay (mobile):** `bg-black/40` (reduzido de 80% para combinar com glassmorphism).
+
+**Cores via tokens semânticos:** Todos os componentes usam variáveis CSS HSL (`--background`, `--primary`, `--muted`, etc.) definidas em `index.css`. Nunca usar cores hardcoded em componentes.
+
+**Tipografia:** Inter (sans), Lora (serif), Space Mono (mono). Headlines com `tracking-tight` + `font-bold`.
+
+---
+
+### 16. CONVENÇÕES IMPORTANTES
 
 - Idioma da UI: Português brasileiro
 - Idioma do código: Inglês (variáveis, funções, componentes)
@@ -346,3 +401,4 @@ Hook: `usePlanLimits.ts`
 - Roles: Armazenados em tabela separada `user_roles` (nunca no perfil)
 - `mentor_messages.member_id` é NOT NULL no schema atual do types.ts (mas a edge function meu-rhitmo trata como opcional)
 - Dashboard do líder inclui legenda visual dos indicadores de saúde (bolinhas coloridas: verde ≤7d, amarelo 8-14d, vermelho >14d, cinza sem notas)
+- Tema salvo em `user_preferences` com fallback para `localStorage` quando não autenticado
