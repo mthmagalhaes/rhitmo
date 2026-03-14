@@ -134,7 +134,7 @@ const Billing = () => {
                 {plan.name}
               </Badge>
             </div>
-            <Badge variant="outline" className="border-emerald-500 text-emerald-600 bg-emerald-50">
+            <Badge variant="outline" className="border-primary/30 text-primary bg-primary/10">
               Ativo
             </Badge>
           </CardHeader>
