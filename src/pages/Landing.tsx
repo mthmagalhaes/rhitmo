@@ -206,8 +206,8 @@ const Landing = () => {
                 </SheetClose>
               </nav>
             </SheetContent>
-          </Sheet>
-        </div>
+            </Sheet>
+          </div>
       </header>
 
       {/* Hero Section */}
