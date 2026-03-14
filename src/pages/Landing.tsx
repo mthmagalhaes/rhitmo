@@ -124,8 +124,10 @@ const Landing = () => {
     }
   }, [user, loading, navigate]);
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    return <div className="light" style={{ colorScheme: 'light' }}>
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
       </div>;
   }
   if (user) return null;
