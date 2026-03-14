@@ -93,6 +93,69 @@ All colors MUST be HSL.
       'Courier New', monospace;
   }
 
+  /* ── Dark Theme ── */
+  .dark {
+    --background:   240 10% 11%;    /* #1a1a1f */
+    --card:         240 10% 15%;    /* #22222a */
+    --popover:      240 10% 15%;
+
+    --foreground:         250 10% 95%;   /* #f0eff4 */
+    --card-foreground:    250 10% 95%;
+    --popover-foreground: 250 10% 95%;
+
+    --primary:            263 86% 76%;   /* #a78bfa */
+    --primary-foreground: 240 10% 11%;
+
+    --secondary:          250 10% 95%;
+    --secondary-foreground: 240 10% 11%;
+
+    --muted:              240 10% 18%;   /* #2c2c36 */
+    --muted-foreground:   240 5% 60%;    /* #9898aa */
+
+    --accent:             263 30% 20%;
+    --accent-foreground:  263 86% 76%;
+
+    --success:            161 73% 38%;
+    --success-foreground: 240 10% 11%;
+    --warning:             38 92% 55%;
+    --warning-foreground: 240 10% 11%;
+    --destructive:          0 72% 55%;
+    --destructive-foreground: 250 10% 95%;
+    --info:               199 89% 52%;
+    --info-foreground:    240 10% 11%;
+
+    --border:  240 10% 20%;    /* #2e2e3a */
+    --input:   240 10% 20%;
+    --ring:    263 86% 76%;
+
+    /* ── Shadows (dark) ── */
+    --shadow-2xs: 0 1px 2px rgba(0,0,0,0.15);
+    --shadow-xs:  0 1px 4px rgba(0,0,0,0.2);
+    --shadow-sm:  0 2px 8px rgba(0,0,0,0.25);
+    --shadow-md:  0 2px 20px rgba(0,0,0,0.3);
+    --shadow-lg:  0 8px 30px rgba(0,0,0,0.35);
+    --shadow-xl:  0 16px 48px rgba(0,0,0,0.4);
+    --shadow-2xl: 0 24px 64px rgba(0,0,0,0.45);
+
+    /* ── Sidebar (dark glass) ── */
+    --sidebar-background:          240 10% 11%;
+    --sidebar-foreground:          250 10% 95%;
+    --sidebar-primary:             263 86% 76%;
+    --sidebar-primary-foreground:  240 10% 11%;
+    --sidebar-accent:              263 30% 20%;
+    --sidebar-accent-foreground:   263 86% 76%;
+    --sidebar-border:              240 10% 20%;
+    --sidebar-ring:                263 86% 76%;
+    --sidebar:                     240 10% 13%;
+
+    /* ── Charts (dark) ── */
+    --chart-1: 263 86% 76%;
+    --chart-2: 199 89% 52%;
+    --chart-3: 161 73% 38%;
+    --chart-4:  38 92% 55%;
+    --chart-5: 250 10% 95%;
+  }
+
   /* ── Reset base para tipografia ── */
   * {
     @apply border-border;
@@ -125,4 +188,19 @@ All colors MUST be HSL.
 /* Utility for iOS safe area padding */
 .pb-safe {
   padding-bottom: calc(1.25rem + var(--safe-area-inset-bottom));
+}
+
+/* Sidebar glassmorphism — adapts to light/dark */
+.sidebar-glass {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border-right: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 2px 0 16px rgba(0, 0, 0, 0.04);
+}
+
+.dark .sidebar-glass {
+  background: rgba(26, 26, 31, 0.7);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 2px 0 16px rgba(0, 0, 0, 0.2);
 }

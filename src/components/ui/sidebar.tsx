@@ -141,12 +141,7 @@ const Sidebar = React.forwardRef<
   if (collapsible === "none") {
     return (
       <div
-        className={cn("flex h-full w-[--sidebar-width] flex-col text-sidebar-foreground", className)}
-        style={{
-          background: "rgba(255, 255, 255, 0.55)",
-          backdropFilter: "blur(16px) saturate(180%)",
-          WebkitBackdropFilter: "blur(16px) saturate(180%)",
-        }}
+        className={cn("flex h-full w-[--sidebar-width] flex-col text-sidebar-foreground sidebar-glass", className)}
         ref={ref}
         {...props}
       >
@@ -161,12 +156,9 @@ const Sidebar = React.forwardRef<
         <SheetContent
           data-sidebar="sidebar"
           data-mobile="true"
-          className="w-[--sidebar-width] p-0 text-sidebar-foreground [&>button]:hidden"
+          className="w-[--sidebar-width] p-0 text-sidebar-foreground [&>button]:hidden sidebar-glass"
           style={{
             "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
-            background: "rgba(255, 255, 255, 0.55)",
-            backdropFilter: "blur(16px) saturate(180%)",
-            WebkitBackdropFilter: "blur(16px) saturate(180%)",
           } as React.CSSProperties}
           side={side}
         >
@@ -212,14 +204,7 @@ const Sidebar = React.forwardRef<
       >
         <div
           data-sidebar="sidebar"
-          className="flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow"
-          style={{
-            background: "rgba(255, 255, 255, 0.55)",
-            backdropFilter: "blur(16px) saturate(180%)",
-            WebkitBackdropFilter: "blur(16px) saturate(180%)",
-            borderRight: "1px solid rgba(255, 255, 255, 0.3)",
-            boxShadow: "2px 0 16px rgba(0, 0, 0, 0.04)",
-          }}
+          className="flex h-full w-full flex-col sidebar-glass group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow"
         >
           {children}
         </div>

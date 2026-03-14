@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, RefreshCw, Compass } from 'lucide-react';
+import { ThemeSelector } from '@/components/ThemeSelector';
 import {
   Dialog,
   DialogContent,
@@ -102,6 +103,11 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
             />
           </div>
           
+          {/* Seção de Aparência */}
+          <div className="border-t pt-4">
+            <ThemeSelector />
+          </div>
+
           {/* Seção de Manutenção */}
           <div className="border-t pt-4">
             <Label className="text-muted-foreground text-xs uppercase tracking-wide mb-2 block">
