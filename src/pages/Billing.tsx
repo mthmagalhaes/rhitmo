@@ -245,6 +245,7 @@ const Billing = () => {
         .from('subscriptions')
         .select('*')
         .eq('workspace_id', workspace!.id)
+        .in('status', ['trialing', 'active', 'past_due'])
         .maybeSingle();
       if (error) throw error;
       return data;
