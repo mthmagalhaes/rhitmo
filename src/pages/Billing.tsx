@@ -263,7 +263,7 @@ const Billing = () => {
     enabled: !!subscription,
   });
 
-  const currentPlan = (workspace?.plan_tier as PlanKey) || 'pulse';
+  const currentPlan: PlanKey = subscription ? (subscription.plan_tier as PlanKey) : 'pulse';
   const isCancelScheduled = !!(subscription as any)?.cancel_at_period_end;
 
   const handleUpgrade = async (plan: string) => {
