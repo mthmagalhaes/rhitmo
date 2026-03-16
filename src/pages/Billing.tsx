@@ -1,13 +1,25 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Check, Lock, CreditCard, ExternalLink, Loader2, AlertTriangle } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Check, Lock, CreditCard, ExternalLink, Loader2, AlertTriangle, Download, RotateCcw } from 'lucide-react';
 
 const PLANS = {
   pulse: {
@@ -62,36 +74,17 @@ const PLANS = {
 
 type PlanKey = 'pulse' | 'pro' | 'business';
 
-// --- Sub-components ---
-
-function TrialBanner({ trialEndsAt, onManage }: { trialEndsAt: string; onManage: () => void }) {
-  const daysLeft = Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
-  return (
-    <div className="rounded-2xl border border-yellow-300/50 bg-yellow-50/80 dark:bg-yellow-900/20 dark:border-yellow-700/50 p-4 flex items-center justify-between gap-4 flex-wrap">
-      <div className="flex items-center gap-2 text-sm font-medium text-yellow-800 dark:text-yellow-200">
-        <AlertTriangle className="h-4 w-4" />
-        Trial ativo — {daysLeft} {daysLeft === 1 ? 'dia restante' : 'dias restantes'}
-      </div>
-      <Button size="sm" variant="outline" className="rounded-xl" onClick={onManage}>
-        Adicionar cartão
-      </Button>
-    </div>
-  );
+interface Invoice {
+  id: string;
+  amount: number;
+  status: string;
+  created: number;
+  invoice_pdf: string | null;
+  period_start: number;
+  period_end: number;
 }
 
-function PastDueBanner({ onManage }: { onManage: () => void }) {
-  return (
-    <div className="rounded-2xl border border-destructive/50 bg-destructive/10 p-4 flex items-center justify-between gap-4 flex-wrap">
-      <div className="flex items-center gap-2 text-sm font-medium text-destructive">
-        <AlertTriangle className="h-4 w-4" />
-        Pagamento pendente. Atualize seu cartão para continuar.
-      </div>
-      <Button size="sm" variant="destructive" className="rounded-xl" onClick={onManage}>
-        Atualizar cartão
-      </Button>
-    </div>
-  );
-}
+// --- Helpers ---
 
 function formatDatePtBR(dateStr: string | null) {
   if (!dateStr) return '—';
@@ -102,15 +95,120 @@ function formatDatePtBR(dateStr: string | null) {
   });
 }
 
+function formatTimestamp(ts: number) {
+  return new Date(ts * 1000).toLocaleDateString('pt-BR', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+function formatCentsBRL(cents: number) {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(cents / 100);
+}
+
+// --- Sub-components ---
+
+function TrialBanner({ trialEndsAt, onUpdateCard }: { trialEndsAt: string; onUpdateCard: () => void }) {
+  const daysLeft = Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+  return (
+    <div className="rounded-2xl border border-yellow-300/50 bg-yellow-50/80 dark:bg-yellow-900/20 dark:border-yellow-700/50 p-4 flex items-center justify-between gap-4 flex-wrap">
+      <div className="flex items-center gap-2 text-sm font-medium text-yellow-800 dark:text-yellow-200">
+        <AlertTriangle className="h-4 w-4" />
+        Trial ativo — {daysLeft} {daysLeft === 1 ? 'dia restante' : 'dias restantes'}
+      </div>
+      <Button size="sm" variant="outline" className="rounded-xl" onClick={onUpdateCard}>
+        Adicionar cartão
+      </Button>
+    </div>
+  );
+}
+
+function PastDueBanner({ onUpdateCard }: { onUpdateCard: () => void }) {
+  return (
+    <div className="rounded-2xl border border-destructive/50 bg-destructive/10 p-4 flex items-center justify-between gap-4 flex-wrap">
+      <div className="flex items-center gap-2 text-sm font-medium text-destructive">
+        <AlertTriangle className="h-4 w-4" />
+        Pagamento pendente. Atualize seu cartão para continuar.
+      </div>
+      <Button size="sm" variant="destructive" className="rounded-xl" onClick={onUpdateCard}>
+        Atualizar cartão
+      </Button>
+    </div>
+  );
+}
+
+function InvoiceStatusBadge({ status }: { status: string }) {
+  if (status === 'paid') {
+    return <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border-0 text-[10px]">Pago</Badge>;
+  }
+  if (status === 'open') {
+    return <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300 border-0 text-[10px]">Pendente</Badge>;
+  }
+  return <Badge className="bg-muted text-muted-foreground border-0 text-[10px]">Cancelada</Badge>;
+}
+
+function InvoicesSection({ invoices, isLoading }: { invoices: Invoice[]; isLoading: boolean }) {
+  return (
+    <div className="space-y-4">
+      <h2 className="text-lg font-semibold tracking-tight">Faturas</h2>
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-14 rounded-xl" />
+          ))}
+        </div>
+      ) : invoices.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Nenhuma fatura ainda.</p>
+      ) : (
+        <div className="space-y-2">
+          {invoices.map((inv) => (
+            <div
+              key={inv.id}
+              className="flex items-center justify-between gap-4 rounded-xl border p-3 text-sm"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="text-muted-foreground shrink-0">
+                  {formatTimestamp(inv.created)}
+                </span>
+                <span className="font-medium">{formatCentsBRL(inv.amount)}</span>
+                <InvoiceStatusBadge status={inv.status} />
+              </div>
+              {inv.invoice_pdf && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0"
+                  asChild
+                >
+                  <a href={inv.invoice_pdf} target="_blank" rel="noopener noreferrer">
+                    <Download className="h-4 w-4" />
+                  </a>
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // --- Main Component ---
 
 const Billing = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [upgradeLoading, setUpgradeLoading] = useState<string | null>(null);
-  const [portalLoading, setPortalLoading] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [reactivateLoading, setReactivateLoading] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
 
   useEffect(() => {
     if (!user && !loading) {
@@ -118,13 +216,14 @@ const Billing = () => {
     }
   }, [user, loading, navigate]);
 
-  // Success toast
+  // URL param toasts
   useEffect(() => {
     if (searchParams.get('success') === 'true') {
-      toast({
-        title: 'Assinatura ativada! 🎉',
-        description: 'Bem-vindo ao seu novo plano Rhitmo!',
-      });
+      toast({ title: 'Assinatura ativada! 🎉', description: 'Bem-vindo ao seu novo plano Rhitmo!' });
+      setSearchParams({}, { replace: true });
+    }
+    if (searchParams.get('payment_updated') === 'true') {
+      toast({ title: 'Cartão atualizado com sucesso!' });
       setSearchParams({}, { replace: true });
     }
   }, [searchParams, toast, setSearchParams]);
@@ -132,10 +231,7 @@ const Billing = () => {
   const { data: workspace, isLoading: workspaceLoading } = useQuery({
     queryKey: ['workspace-billing', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('workspaces')
-        .select('id, plan_tier')
-        .maybeSingle();
+      const { data, error } = await supabase.from('workspaces').select('id, plan_tier').maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -156,53 +252,75 @@ const Billing = () => {
     enabled: !!workspace?.id,
   });
 
+  const { data: invoicesData, isLoading: invoicesLoading } = useQuery({
+    queryKey: ['invoices', workspace?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke('get-invoices');
+      if (error) throw error;
+      return (data?.invoices ?? []) as Invoice[];
+    },
+    enabled: !!workspace?.id && (workspace?.plan_tier === 'pro' || workspace?.plan_tier === 'business'),
+  });
+
   const currentPlan = (workspace?.plan_tier as PlanKey) || 'pulse';
+  const isCancelScheduled = !!(subscription as any)?.cancel_at_period_end;
 
   const handleUpgrade = async (plan: string) => {
     setUpgradeLoading(plan);
     try {
-      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-        body: { plan },
-      });
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', { body: { plan } });
       if (error) throw error;
-      if (data?.url) {
-        window.location.href = data.url;
-        return;
-      }
+      if (data?.url) { window.location.href = data.url; return; }
       throw new Error('No checkout URL returned');
-    } catch (err: any) {
-      console.error('Checkout error:', err);
-      toast({
-        title: 'Erro ao iniciar checkout',
-        description: 'Tente novamente ou entre em contato: support@rhitmo.co',
-        variant: 'destructive',
-      });
+    } catch {
+      toast({ title: 'Erro ao iniciar checkout', description: 'Tente novamente ou entre em contato: support@rhitmo.co', variant: 'destructive' });
     } finally {
       setUpgradeLoading(null);
     }
   };
 
-  const handleManageSubscription = async () => {
-    setPortalLoading(true);
+  const handleUpdatePayment = async () => {
+    setPaymentLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('create-portal-session', {
-        body: {},
-      });
+      const { data, error } = await supabase.functions.invoke('update-payment-method');
       if (error) throw error;
-      if (data?.url) {
-        window.location.href = data.url;
-        return;
-      }
-      throw new Error('No portal URL returned');
-    } catch (err: any) {
-      console.error('Portal error:', err);
-      toast({
-        title: 'Erro ao abrir portal',
-        description: 'Tente novamente ou entre em contato: support@rhitmo.co',
-        variant: 'destructive',
-      });
+      if (data?.url) { window.location.href = data.url; return; }
+      throw new Error('No session URL');
+    } catch {
+      toast({ title: 'Erro ao atualizar cartão', description: 'Tente novamente.', variant: 'destructive' });
     } finally {
-      setPortalLoading(false);
+      setPaymentLoading(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    setCancelLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('cancel-subscription');
+      if (error) throw error;
+      toast({
+        title: 'Cancelamento agendado',
+        description: `Você mantém acesso até ${formatDatePtBR(data?.cancel_at ?? subscription?.current_period_end ?? null)}.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['subscription'] });
+    } catch {
+      toast({ title: 'Erro ao cancelar', description: 'Tente novamente.', variant: 'destructive' });
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
+  const handleReactivate = async () => {
+    setReactivateLoading(true);
+    try {
+      const { error } = await supabase.functions.invoke('reactivate-subscription');
+      if (error) throw error;
+      toast({ title: 'Assinatura reativada!' });
+      queryClient.invalidateQueries({ queryKey: ['subscription'] });
+    } catch {
+      toast({ title: 'Erro ao reativar', description: 'Tente novamente.', variant: 'destructive' });
+    } finally {
+      setReactivateLoading(false);
     }
   };
 
@@ -217,6 +335,19 @@ const Billing = () => {
   // Active subscription (Pro or Business)
   if (currentPlan === 'pro' || currentPlan === 'business') {
     const plan = PLANS[currentPlan];
+
+    const statusLabel = isCancelScheduled
+      ? 'Cancelamento agendado'
+      : subscription?.status === 'trialing'
+        ? 'Trial'
+        : subscription?.status === 'past_due'
+          ? 'Pendente'
+          : 'Ativo';
+
+    const statusVariant = isCancelScheduled
+      ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300 border-0'
+      : 'border-primary/30 text-primary bg-primary/10';
+
     return (
       <div className="p-6 md:p-8 max-w-3xl mx-auto space-y-6 pb-20">
         <div>
@@ -225,25 +356,22 @@ const Billing = () => {
         </div>
 
         {subscription?.status === 'trialing' && subscription.trial_ends_at && (
-          <TrialBanner trialEndsAt={subscription.trial_ends_at} onManage={handleManageSubscription} />
+          <TrialBanner trialEndsAt={subscription.trial_ends_at} onUpdateCard={handleUpdatePayment} />
         )}
         {subscription?.status === 'past_due' && (
-          <PastDueBanner onManage={handleManageSubscription} />
+          <PastDueBanner onUpdateCard={handleUpdatePayment} />
         )}
 
         <Card className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] border">
           <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3">
               <CardTitle className="text-xl font-bold tracking-tight">{plan.name}</CardTitle>
-              <Badge className={currentPlan === 'pro'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-foreground text-background'
-              }>
+              <Badge className={currentPlan === 'pro' ? 'bg-primary text-primary-foreground' : 'bg-foreground text-background'}>
                 {plan.name}
               </Badge>
             </div>
-            <Badge variant="outline" className="border-primary/30 text-primary bg-primary/10">
-              {subscription?.status === 'trialing' ? 'Trial' : subscription?.status === 'past_due' ? 'Pendente' : 'Ativo'}
+            <Badge variant="outline" className={statusVariant}>
+              {statusLabel}
             </Badge>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -263,14 +391,30 @@ const Billing = () => {
                 </div>
               )}
             </div>
-            <Button onClick={handleManageSubscription} className="rounded-xl" disabled={portalLoading}>
-              {portalLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <CreditCard className="h-4 w-4 mr-2" />
-              )}
-              Gerenciar assinatura
-            </Button>
+
+            {isCancelScheduled && (
+              <div className="rounded-xl border border-yellow-300/50 bg-yellow-50/60 dark:bg-yellow-900/10 p-3 text-sm text-yellow-800 dark:text-yellow-200">
+                Seu acesso termina em {formatDatePtBR(subscription?.current_period_end ?? null)}. Após essa data, você voltará para o Pulse.
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 flex-wrap">
+              <Button variant="ghost" className="rounded-xl" onClick={handleUpdatePayment} disabled={paymentLoading}>
+                {paymentLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CreditCard className="h-4 w-4 mr-2" />}
+                Trocar cartão
+              </Button>
+              {isCancelScheduled ? (
+                <Button className="rounded-xl" onClick={handleReactivate} disabled={reactivateLoading}>
+                  {reactivateLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RotateCcw className="h-4 w-4 mr-2" />}
+                  Reativar assinatura
+                </Button>
+              ) : currentPlan === 'pro' ? (
+                <Button className="rounded-xl" onClick={() => handleUpgrade('business')} disabled={upgradeLoading === 'business'}>
+                  {upgradeLoading === 'business' && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  Fazer upgrade
+                </Button>
+              ) : null}
+            </div>
           </CardContent>
         </Card>
 
@@ -286,12 +430,38 @@ const Billing = () => {
           </div>
         </div>
 
-        <button
-          onClick={handleManageSubscription}
-          className="text-sm text-muted-foreground hover:underline"
-        >
-          Cancelar assinatura
-        </button>
+        <InvoicesSection invoices={invoicesData ?? []} isLoading={invoicesLoading} />
+
+        {!isCancelScheduled && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button className="text-sm text-muted-foreground hover:underline">
+                Cancelar assinatura
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="rounded-2xl">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Cancelar assinatura?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Seu plano {plan.name} continuará ativo até{' '}
+                  {formatDatePtBR(subscription?.current_period_end ?? null)}.
+                  Após essa data, você voltará automaticamente para o Pulse.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="rounded-xl">Manter assinatura</AlertDialogCancel>
+                <AlertDialogAction
+                  className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={handleCancel}
+                  disabled={cancelLoading}
+                >
+                  {cancelLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  Confirmar cancelamento
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
     );
   }
@@ -360,18 +530,12 @@ const Billing = () => {
                     className="w-full rounded-xl"
                     disabled={upgradeLoading === 'pro'}
                   >
-                    {upgradeLoading === 'pro' ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : null}
+                    {upgradeLoading === 'pro' && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                     Fazer upgrade para Pro
                   </Button>
                 )}
                 {isBusiness && (
-                  <Button
-                    variant="outline"
-                    className="w-full rounded-xl"
-                    asChild
-                  >
+                  <Button variant="outline" className="w-full rounded-xl" asChild>
                     <a href="mailto:matheus@rhitmo.co?subject=Upgrade%20Business%20Rhitmo">
                       <ExternalLink className="h-4 w-4 mr-2" />
                       Falar com a equipe
