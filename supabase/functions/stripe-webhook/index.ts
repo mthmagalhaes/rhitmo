@@ -156,6 +156,7 @@ Deno.serve(async (req) => {
             plan_tier: planTier,
             stripe_price_id: priceId,
             quantity,
+            cancel_at_period_end: sub.cancel_at_period_end ?? false,
             trial_ends_at: sub.trial_end
               ? new Date(sub.trial_end * 1000).toISOString()
               : null,
