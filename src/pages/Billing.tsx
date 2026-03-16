@@ -260,7 +260,7 @@ const Billing = () => {
       if (error) throw error;
       return (data?.invoices ?? []) as Invoice[];
     },
-    enabled: !!workspace?.id && (workspace?.plan_tier === 'pro' || workspace?.plan_tier === 'business'),
+    enabled: !!subscription,
   });
 
   const currentPlan = (workspace?.plan_tier as PlanKey) || 'pulse';
