@@ -109,6 +109,24 @@ const Index = () => {
     refetchOnWindowFocus: true,
   });
 
+  // Query para subscription ativa do workspace (source of truth para badge)
+  const { data: activeSubscription } = useQuery({
+    queryKey: ['active-subscription', workspace?.id],
+    queryFn: async () => {
+      if (!workspace) return null;
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .select('plan_tier, status')
+        .eq('workspace_id', workspace.id)
+        .in('status', ['trialing', 'active', 'past_due'])
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!workspace,
+    staleTime: 30 * 1000,
+  });
+
   // Query para teams
   const { data: teams = [] } = useQuery({
     queryKey: ['teams', workspace?.id],
