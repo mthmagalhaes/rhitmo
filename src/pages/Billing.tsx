@@ -245,6 +245,7 @@ const Billing = () => {
         .from('subscriptions')
         .select('*')
         .eq('workspace_id', workspace!.id)
+        .in('status', ['trialing', 'active', 'past_due'])
         .maybeSingle();
       if (error) throw error;
       return data;
@@ -259,10 +260,10 @@ const Billing = () => {
       if (error) throw error;
       return (data?.invoices ?? []) as Invoice[];
     },
-    enabled: !!workspace?.id && (workspace?.plan_tier === 'pro' || workspace?.plan_tier === 'business'),
+    enabled: !!subscription,
   });
 
-  const currentPlan = (workspace?.plan_tier as PlanKey) || 'pulse';
+  const currentPlan: PlanKey = subscription ? (subscription.plan_tier as PlanKey) : 'pulse';
   const isCancelScheduled = !!(subscription as any)?.cancel_at_period_end;
 
   const handleUpgrade = async (plan: string) => {
