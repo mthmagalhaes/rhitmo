@@ -307,22 +307,19 @@ const Index = () => {
                   <div className="flex flex-wrap items-center gap-3 mb-1">
                   <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-foreground">{workspace.name}</h1>
                   <Badge 
-                    variant={
-                      limits.planTier === 'maestro' 
-                        ? 'default' 
-                        : limits.planTier === 'flow' 
-                          ? 'secondary' 
-                          : 'outline'
-                    }
+                    variant={activeSubscription ? 'default' : 'outline'}
                     className={
-                      limits.planTier === 'maestro' 
-                        ? '' 
-                        : limits.planTier === 'flow' 
-                          ? 'bg-emerald-500 text-white hover:bg-emerald-600' 
+                      activeSubscription?.plan_tier === 'business' 
+                        ? 'bg-foreground text-background hover:bg-foreground/90' 
+                        : activeSubscription?.plan_tier === 'pro'
+                          ? ''
                           : ''
                     }
                   >
-                    {limits.planName}
+                    {activeSubscription 
+                      ? `${activeSubscription.plan_tier.charAt(0).toUpperCase() + activeSubscription.plan_tier.slice(1)}${activeSubscription.status === 'trialing' ? ' · Trial' : ''}`
+                      : 'Pulse'
+                    }
                   </Badge>
                   <Button 
                     variant="ghost" 
