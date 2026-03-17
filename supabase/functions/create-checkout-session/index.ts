@@ -52,8 +52,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    const finalQuantity = plan === "business" ? Math.max(quantity, 3) : quantity;
-
     // Get workspace
     const { data: workspace, error: wsError } = await supabase
       .from("workspaces")
