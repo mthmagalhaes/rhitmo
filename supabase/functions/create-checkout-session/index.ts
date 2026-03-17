@@ -52,8 +52,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    const finalQuantity = plan === "business" ? Math.max(quantity, 3) : quantity;
-
     // Get workspace
     const { data: workspace, error: wsError } = await supabase
       .from("workspaces")
@@ -105,7 +103,6 @@ Deno.serve(async (req) => {
       mode: "subscription",
       customer: customerId,
       "line_items[0][price]": PRICE_IDS[plan],
-      "line_items[0][quantity]": String(finalQuantity),
       allow_promotion_codes: "true",
       success_url: "https://rhitmo.co/billing?success=true",
       cancel_url: "https://rhitmo.co/billing",
