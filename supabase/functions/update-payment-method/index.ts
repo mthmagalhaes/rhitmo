@@ -68,6 +68,7 @@ Deno.serve(async (req) => {
     const session = await stripe.checkout.sessions.create({
       customer: sub.stripe_customer_id,
       mode: "setup",
+      currency: "brl",
       success_url: "https://rhitmo.co/billing?payment_updated=true",
       cancel_url: "https://rhitmo.co/billing",
     });
