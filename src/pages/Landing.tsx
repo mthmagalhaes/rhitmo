@@ -704,8 +704,9 @@ const Landing = () => {
               </div>
 
               <div>
+                <span className="bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400 rounded-full px-3 py-1 text-xs font-medium inline-block mb-2">{t.launchBadge}</span>
                 <div>
-                  <span className="text-4xl font-bold text-foreground">R$89</span>
+                  <span className="text-4xl font-bold text-foreground">R$69</span>
                   <span className="text-sm text-muted-foreground ml-1">{t.businessPerMonth}</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">{t.businessNote}</p>
