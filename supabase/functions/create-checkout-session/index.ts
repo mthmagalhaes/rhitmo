@@ -105,17 +105,20 @@ Deno.serve(async (req) => {
       customerId = createData.id;
     }
 
-    // Create Checkout Session
+    console.log("Creating checkout session:", { plan, quantity, customerId, workspaceId: workspace.id });
+
+    // Create Checkout Session — metered prices don't accept quantity in line_items
     const params = new URLSearchParams({
       mode: "subscription",
       customer: customerId,
       "line_items[0][price]": PRICE_IDS[plan],
-      "line_items[0][quantity]": String(quantity),
       allow_promotion_codes: "true",
       success_url: "https://rhitmo.co/billing?success=true",
       cancel_url: "https://rhitmo.co/billing",
       "metadata[workspace_id]": workspace.id,
+      "metadata[quantity]": String(quantity),
       "subscription_data[metadata][workspace_id]": workspace.id,
+      "subscription_data[metadata][quantity]": String(quantity),
     });
 
     if (plan === "pro") {
