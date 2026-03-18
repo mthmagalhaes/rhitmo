@@ -86,6 +86,16 @@ const HRDashboard = () => {
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-8 space-y-8">
+        {/* Quick Links */}
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            className="gap-2 rounded-xl"
+            onClick={() => navigate('/hr/competency-framework')}
+          >
+            <BookOpen className="h-4 w-4" /> Framework de Competências
+          </Button>
+        </div>
         {/* Seção 1 — Grid 4 cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <MetricCard icon={<Users className="h-5 w-5 text-violet-500" />} label="Líderes Ativos" value={metrics?.total_leaders} loading={isLoading} />

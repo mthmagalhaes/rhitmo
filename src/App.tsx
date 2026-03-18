@@ -106,6 +106,11 @@ const App = () => (
                 <HRDashboard />
               </HRAdminGuard>
             } />
+            <Route path="/hr/competency-framework" element={
+              <HRAdminGuard>
+                <CompetencyFramework />
+              </HRAdminGuard>
+            } />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
