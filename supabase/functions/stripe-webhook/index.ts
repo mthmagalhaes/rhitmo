@@ -1,6 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const PRICE_TO_PLAN: Record<string, string> = {
+  // New launch prices
+  "price_1TC52fIF4fHxJpjHPaJXH14r": "pro",
+  "price_1TCPcjIF4fHxJpjHWtZucdwy": "business",
+  // Legacy prices (backward compat)
   "price_1TB0QgIF4fHxJpjHoIlCeHP6": "pro",
   "price_1TB0QgIF4fHxJpjH032DMzZH": "business",
 };

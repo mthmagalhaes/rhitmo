@@ -86,7 +86,7 @@ const translations = {
     // Business
     businessSubtitle: "Para empresas que querem uma cultura de feedback consistente em todos os times.",
     businessPerMonth: "/líder/mês",
-    businessNote: "Mínimo 3 líderes · R$267/mês",
+    businessNote: "Mínimo 3 líderes · R$207/mês",
     businessCTA: "Falar com a equipe",
     businessFeatures: [
       "Até 8 liderados por líder",
@@ -109,6 +109,8 @@ const translations = {
     // Footer
     footerRights: "© 2025 Rhitmo. Todos os direitos reservados.",
     footerLogin: "Já tem conta? Entrar",
+    launchBadge: "Preço de Lançamento",
+    launchDisclaimer: "Preço de lançamento garantido enquanto sua assinatura estiver ativa.",
   },
   en: {
     signIn: "Sign in",
@@ -166,7 +168,7 @@ const translations = {
     ],
     businessSubtitle: "For companies that want a consistent feedback culture across all teams.",
     businessPerMonth: "/leader/mo",
-    businessNote: "Minimum 3 leaders · R$267/mo",
+    businessNote: "Minimum 3 leaders · R$207/mo",
     businessCTA: "Talk to our team",
     businessFeatures: [
       "Up to 8 direct reports per leader",
@@ -186,6 +188,8 @@ const translations = {
     analyticsAlt: "Analytics Dashboard - Rhitmo",
     footerRights: "© 2025 Rhitmo. All rights reserved.",
     footerLogin: "Already have an account? Sign in",
+    launchBadge: "Launch Price",
+    launchDisclaimer: "Launch price guaranteed while your subscription is active.",
   },
 };
 
@@ -667,8 +671,9 @@ const Landing = () => {
                 </div>
 
                 <div>
+                  <span className="bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400 rounded-full px-3 py-1 text-xs font-medium inline-block mb-2">{t.launchBadge}</span>
                   <div>
-                    <span className="text-4xl font-bold text-foreground">R$69</span>
+                    <span className="text-4xl font-bold text-foreground">R$49</span>
                     <span className="text-sm text-muted-foreground ml-1">{t.proPerMonth}</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">{t.proNote}</p>
@@ -699,8 +704,9 @@ const Landing = () => {
               </div>
 
               <div>
+                <span className="bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400 rounded-full px-3 py-1 text-xs font-medium inline-block mb-2">{t.launchBadge}</span>
                 <div>
-                  <span className="text-4xl font-bold text-foreground">R$89</span>
+                  <span className="text-4xl font-bold text-foreground">R$69</span>
                   <span className="text-sm text-muted-foreground ml-1">{t.businessPerMonth}</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">{t.businessNote}</p>
@@ -721,6 +727,7 @@ const Landing = () => {
             </div>
 
           </div>
+          <p className="text-center text-sm text-muted-foreground mt-6">{t.launchDisclaimer}</p>
         </div>
       </section>
 
