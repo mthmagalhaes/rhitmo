@@ -8,6 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,7 +20,16 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Check, Lock, CreditCard, ExternalLink, Loader2, AlertTriangle, Download, RotateCcw } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
+import { Check, Lock, CreditCard, Loader2, AlertTriangle, Download, RotateCcw, Users, Minus, Plus } from 'lucide-react';
 
 const PLANS = {
   pulse: {
@@ -120,12 +130,12 @@ function formatCentsBRL(cents: number) {
 function TrialBanner({ trialEndsAt, onUpdateCard }: { trialEndsAt: string; onUpdateCard: () => void }) {
   const daysLeft = Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
   return (
-    <div className="rounded-2xl border border-yellow-300/50 bg-yellow-50/80 dark:bg-yellow-900/20 dark:border-yellow-700/50 p-4 flex items-center justify-between gap-4 flex-wrap">
-      <div className="flex items-center gap-2 text-sm font-medium text-yellow-800 dark:text-yellow-200">
+    <div className="rounded-2xl border border-amber-200/60 bg-amber-50/80 dark:bg-amber-900/20 dark:border-amber-700/40 p-5 flex items-center justify-between gap-4 flex-wrap">
+      <div className="flex items-center gap-2.5 text-sm font-medium text-amber-800 dark:text-amber-200">
         <AlertTriangle className="h-4 w-4" />
         Trial ativo — {daysLeft} {daysLeft === 1 ? 'dia restante' : 'dias restantes'}
       </div>
-      <Button size="sm" variant="outline" className="rounded-xl" onClick={onUpdateCard}>
+      <Button size="sm" variant="outline" className="rounded-xl h-9" onClick={onUpdateCard}>
         Adicionar cartão
       </Button>
     </div>
@@ -134,12 +144,12 @@ function TrialBanner({ trialEndsAt, onUpdateCard }: { trialEndsAt: string; onUpd
 
 function PastDueBanner({ onUpdateCard }: { onUpdateCard: () => void }) {
   return (
-    <div className="rounded-2xl border border-destructive/50 bg-destructive/10 p-4 flex items-center justify-between gap-4 flex-wrap">
-      <div className="flex items-center gap-2 text-sm font-medium text-destructive">
+    <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-5 flex items-center justify-between gap-4 flex-wrap">
+      <div className="flex items-center gap-2.5 text-sm font-medium text-destructive">
         <AlertTriangle className="h-4 w-4" />
         Pagamento pendente. Atualize seu cartão para continuar.
       </div>
-      <Button size="sm" variant="destructive" className="rounded-xl" onClick={onUpdateCard}>
+      <Button size="sm" variant="destructive" className="rounded-xl h-9" onClick={onUpdateCard}>
         Atualizar cartão
       </Button>
     </div>
@@ -148,18 +158,18 @@ function PastDueBanner({ onUpdateCard }: { onUpdateCard: () => void }) {
 
 function InvoiceStatusBadge({ status }: { status: string }) {
   if (status === 'paid') {
-    return <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border-0 text-[10px]">Pago</Badge>;
+    return <Badge className="bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 border-0 text-[10px] rounded-full px-2.5 py-0.5">Pago</Badge>;
   }
   if (status === 'open') {
-    return <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300 border-0 text-[10px]">Pendente</Badge>;
+    return <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 border-0 text-[10px] rounded-full px-2.5 py-0.5">Pendente</Badge>;
   }
-  return <Badge className="bg-muted text-muted-foreground border-0 text-[10px]">Cancelada</Badge>;
+  return <Badge className="bg-muted text-muted-foreground border-0 text-[10px] rounded-full px-2.5 py-0.5">Cancelada</Badge>;
 }
 
 function InvoicesSection({ invoices, isLoading }: { invoices: Invoice[]; isLoading: boolean }) {
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-semibold tracking-tight">Faturas</h2>
+    <div className="space-y-5">
+      <h2 className="text-xl font-semibold tracking-tight">Faturas</h2>
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
@@ -167,26 +177,26 @@ function InvoicesSection({ invoices, isLoading }: { invoices: Invoice[]; isLoadi
           ))}
         </div>
       ) : invoices.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nenhuma fatura ainda.</p>
+        <p className="text-base text-muted-foreground">Nenhuma fatura ainda.</p>
       ) : (
         <div className="space-y-2">
           {invoices.map((inv) => (
             <div
               key={inv.id}
-              className="flex items-center justify-between gap-4 rounded-xl border p-3 text-sm"
+              className="flex items-center justify-between gap-4 rounded-xl border p-4 text-sm hover:bg-muted/50 transition-colors"
             >
-              <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center gap-4 min-w-0">
                 <span className="text-muted-foreground shrink-0">
                   {formatTimestamp(inv.created)}
                 </span>
-                <span className="font-medium">{formatCentsBRL(inv.amount)}</span>
+                <span className="font-medium text-base">{formatCentsBRL(inv.amount)}</span>
                 <InvoiceStatusBadge status={inv.status} />
               </div>
               {inv.invoice_pdf && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 shrink-0"
+                  className="h-9 w-9 shrink-0 rounded-xl"
                   asChild
                 >
                   <a href={inv.invoice_pdf} target="_blank" rel="noopener noreferrer">
@@ -202,6 +212,104 @@ function InvoicesSection({ invoices, isLoading }: { invoices: Invoice[]; isLoadi
   );
 }
 
+// --- Business Quantity Dialog ---
+
+function BusinessQuantityDialog({
+  open,
+  onOpenChange,
+  onConfirm,
+  loading,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: (quantity: number) => void;
+  loading: boolean;
+}) {
+  const [quantity, setQuantity] = useState(3);
+
+  const total = quantity * 69;
+  const isValid = quantity >= 3;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="rounded-3xl max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-bold tracking-tight">Upgrade para Business</DialogTitle>
+          <DialogDescription className="text-base text-muted-foreground">
+            Quantos líderes vão usar o Rhitmo?
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-6 py-2">
+          <div className="flex items-center justify-center gap-4">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-11 w-11 rounded-xl"
+              onClick={() => setQuantity(Math.max(3, quantity - 1))}
+              disabled={quantity <= 3}
+            >
+              <Minus className="h-4 w-4" />
+            </Button>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={3}
+                max={50}
+                value={quantity}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  if (!isNaN(val)) setQuantity(Math.max(1, Math.min(50, val)));
+                }}
+                className="w-20 text-center text-2xl font-bold rounded-xl h-14 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <Users className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-11 w-11 rounded-xl"
+              onClick={() => setQuantity(Math.min(50, quantity + 1))}
+              disabled={quantity >= 50}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {!isValid && (
+            <p className="text-sm text-destructive text-center">Mínimo de 3 líderes para o plano Business.</p>
+          )}
+
+          <div className="rounded-2xl bg-muted/50 p-5 text-center space-y-1">
+            <p className="text-sm text-muted-foreground">
+              {quantity} {quantity === 1 ? 'líder' : 'líderes'} × R$69
+            </p>
+            <p className="text-3xl font-bold tracking-tight">
+              R${total}<span className="text-base font-normal text-muted-foreground">/mês</span>
+            </p>
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2 sm:gap-0">
+          <DialogClose asChild>
+            <Button variant="outline" className="rounded-xl h-11">
+              Cancelar
+            </Button>
+          </DialogClose>
+          <Button
+            className="rounded-xl h-11"
+            onClick={() => onConfirm(quantity)}
+            disabled={!isValid || loading}
+          >
+            {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            Continuar para pagamento
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // --- Main Component ---
 
 const Billing = () => {
@@ -214,6 +322,7 @@ const Billing = () => {
   const [cancelLoading, setCancelLoading] = useState(false);
   const [reactivateLoading, setReactivateLoading] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [businessDialogOpen, setBusinessDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!user && !loading) {
@@ -271,10 +380,14 @@ const Billing = () => {
   const currentPlan: PlanKey = subscription ? (subscription.plan_tier as PlanKey) : 'pulse';
   const isCancelScheduled = !!(subscription as any)?.cancel_at_period_end;
 
-  const handleUpgrade = async (plan: string) => {
+  const handleUpgrade = async (plan: string, quantity: number = 1) => {
+    if (plan === 'business' && quantity < 3) {
+      toast({ title: 'Mínimo de 3 líderes', description: 'O plano Business requer no mínimo 3 líderes.', variant: 'destructive' });
+      return;
+    }
     setUpgradeLoading(plan);
     try {
-      const { data, error } = await supabase.functions.invoke('create-checkout-session', { body: { plan } });
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', { body: { plan, quantity } });
       if (error) throw error;
       if (data?.url) { window.location.href = data.url; return; }
       throw new Error('No checkout URL returned');
@@ -350,15 +463,19 @@ const Billing = () => {
           ? 'Pendente'
           : 'Ativo';
 
-    const statusVariant = isCancelScheduled
-      ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300 border-0'
-      : 'border-primary/30 text-primary bg-primary/10';
+    const statusClass = isCancelScheduled
+      ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400 border-0'
+      : subscription?.status === 'trialing'
+        ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 border-0'
+        : subscription?.status === 'past_due'
+          ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400 border-0'
+          : 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 border-0';
 
     return (
-      <div className="p-6 md:p-8 max-w-3xl mx-auto space-y-6 pb-20">
+      <div className="px-4 sm:px-6 lg:px-10 py-8 md:py-10 max-w-4xl mx-auto space-y-8 pb-20">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Seu plano</h1>
-          <p className="text-muted-foreground mt-1">Gerencie sua assinatura Rhitmo.</p>
+          <h1 className="text-3xl font-bold tracking-tight">Seu plano</h1>
+          <p className="text-base text-muted-foreground mt-2">Gerencie sua assinatura Rhitmo.</p>
         </div>
 
         {subscription?.status === 'trialing' && subscription.trial_ends_at && (
@@ -368,73 +485,70 @@ const Billing = () => {
           <PastDueBanner onUpdateCard={handleUpdatePayment} />
         )}
 
-        <Card className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] border">
-          <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
+        <Card className="rounded-3xl shadow-lg border">
+          <CardHeader className="p-8 pb-0 flex flex-row items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3 flex-wrap">
-              <CardTitle className="text-xl font-bold tracking-tight">{plan.name}</CardTitle>
-              <Badge className={currentPlan === 'pro' ? 'bg-primary text-primary-foreground' : 'bg-foreground text-background'}>
-                {plan.name}
-              </Badge>
+              <CardTitle className="text-2xl font-bold tracking-tight">{plan.name}</CardTitle>
               {subscription?.stripe_price_id && LAUNCH_PRICE_IDS.includes(subscription.stripe_price_id) && (
                 <span className="bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400 rounded-full px-3 py-1 text-xs font-medium">
                   Preço de Lançamento
                 </span>
               )}
             </div>
-            <Badge variant="outline" className={statusVariant}>
+            <Badge variant="outline" className={`rounded-full px-3 py-1 text-xs font-medium ${statusClass}`}>
               {statusLabel}
             </Badge>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
+          <CardContent className="p-8 pt-6 space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-sm">
+              <div className="space-y-1">
                 <p className="text-muted-foreground">Valor</p>
-                <p className="font-semibold">{plan.price}<span className="text-muted-foreground font-normal text-xs"> {plan.priceDetail}</span></p>
+                <p className="text-xl font-bold">{plan.price}<span className="text-muted-foreground font-normal text-sm ml-1">{plan.priceDetail}</span></p>
               </div>
-              <div>
+              <div className="space-y-1">
                 <p className="text-muted-foreground">Próxima cobrança</p>
-                <p className="font-semibold">{formatDatePtBR(subscription?.current_period_end ?? null)}</p>
+                <p className="text-xl font-bold">{formatDatePtBR(subscription?.current_period_end ?? null)}</p>
               </div>
               {(subscription?.quantity ?? 0) > 1 && (
-                <div>
+                <div className="space-y-1">
                   <p className="text-muted-foreground">Seats</p>
-                  <p className="font-semibold">{subscription?.quantity}</p>
+                  <p className="text-xl font-bold">{subscription?.quantity}</p>
                 </div>
               )}
             </div>
 
             {isCancelScheduled && (
-              <div className="rounded-xl border border-yellow-300/50 bg-yellow-50/60 dark:bg-yellow-900/10 p-3 text-sm text-yellow-800 dark:text-yellow-200">
+              <div className="rounded-2xl border border-amber-200/50 bg-amber-50/60 dark:bg-amber-900/10 dark:border-amber-700/30 p-4 text-sm text-amber-800 dark:text-amber-200">
                 Seu acesso termina em {formatDatePtBR(subscription?.current_period_end ?? null)}. Após essa data, você voltará para o Pulse.
               </div>
             )}
 
-            <div className="flex items-center gap-3 flex-wrap">
-              <Button variant="ghost" className="rounded-xl" onClick={handleUpdatePayment} disabled={paymentLoading}>
+            <div className="flex items-center gap-3 flex-wrap pt-2">
+              <Button variant="outline" className="rounded-xl h-11" onClick={handleUpdatePayment} disabled={paymentLoading}>
                 {paymentLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CreditCard className="h-4 w-4 mr-2" />}
                 Trocar cartão
               </Button>
               {isCancelScheduled ? (
-                <Button className="rounded-xl" onClick={handleReactivate} disabled={reactivateLoading}>
+                <Button className="rounded-xl h-11" onClick={handleReactivate} disabled={reactivateLoading}>
                   {reactivateLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RotateCcw className="h-4 w-4 mr-2" />}
                   Reativar assinatura
                 </Button>
               ) : currentPlan === 'pro' ? (
-                <Button className="rounded-xl" onClick={() => handleUpgrade('business')} disabled={upgradeLoading === 'business'}>
+                <Button className="rounded-xl h-11" onClick={() => setBusinessDialogOpen(true)} disabled={upgradeLoading === 'business'}>
                   {upgradeLoading === 'business' && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                  Fazer upgrade
+                  Fazer upgrade para Business
                 </Button>
               ) : null}
             </div>
           </CardContent>
         </Card>
 
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold tracking-tight">O que está incluso no seu plano</h2>
-          <div className="grid gap-2">
+        <div className="space-y-5">
+          <h2 className="text-xl font-semibold tracking-tight">O que está incluso no seu plano</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {plan.features.map((f) => (
-              <div key={f} className="flex items-center gap-2 text-sm">
-                <Check className="h-4 w-4 text-primary shrink-0" />
+              <div key={f} className="flex items-center gap-2.5 text-base">
+                <Check className="h-5 w-5 text-primary shrink-0" />
                 <span>{f}</span>
               </div>
             ))}
@@ -450,19 +564,19 @@ const Billing = () => {
                 Cancelar assinatura
               </button>
             </AlertDialogTrigger>
-            <AlertDialogContent className="rounded-2xl">
+            <AlertDialogContent className="rounded-3xl">
               <AlertDialogHeader>
                 <AlertDialogTitle>Cancelar assinatura?</AlertDialogTitle>
-                <AlertDialogDescription>
+                <AlertDialogDescription className="text-base">
                   Seu plano {plan.name} continuará ativo até{' '}
                   {formatDatePtBR(subscription?.current_period_end ?? null)}.
                   Após essa data, você voltará automaticamente para o Pulse.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel className="rounded-xl">Manter assinatura</AlertDialogCancel>
+                <AlertDialogCancel className="rounded-xl h-11">Manter assinatura</AlertDialogCancel>
                 <AlertDialogAction
-                  className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  className="rounded-xl h-11 bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   onClick={handleCancel}
                   disabled={cancelLoading}
                 >
@@ -473,16 +587,26 @@ const Billing = () => {
             </AlertDialogContent>
           </AlertDialog>
         )}
+
+        <BusinessQuantityDialog
+          open={businessDialogOpen}
+          onOpenChange={setBusinessDialogOpen}
+          onConfirm={(qty) => {
+            setBusinessDialogOpen(false);
+            handleUpgrade('business', qty);
+          }}
+          loading={upgradeLoading === 'business'}
+        />
       </div>
     );
   }
 
   // Pulse (free) — upgrade grid
   return (
-    <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-8 pb-20">
+    <div className="px-4 sm:px-6 lg:px-10 py-8 md:py-10 max-w-6xl mx-auto space-y-8 pb-20">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Seu plano</h1>
-        <p className="text-muted-foreground mt-1">
+        <h1 className="text-3xl font-bold tracking-tight">Seu plano</h1>
+        <p className="text-base text-muted-foreground mt-2">
           Você está no plano Pulse (gratuito). Faça upgrade para desbloquear mais recursos.
         </p>
       </div>
@@ -496,56 +620,59 @@ const Billing = () => {
           return (
             <Card
               key={key}
-              className={`rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] border transition-all hover:-translate-y-1 ${
-                isPro ? 'border-primary/40 ring-2 ring-primary/20' : ''
+              className={`rounded-3xl shadow-lg border transition-all duration-300 hover:-translate-y-1 ${
+                isPro ? 'border-2 border-primary/50 ring-2 ring-primary/10 md:-translate-y-2 hover:md:-translate-y-3' : ''
               }`}
             >
-              <CardHeader className="space-y-2">
+              <CardHeader className="p-8 pb-4 space-y-3">
                 <div className="flex items-center justify-between flex-wrap gap-2">
-                  <CardTitle className="text-lg font-bold tracking-tight">{plan.name}</CardTitle>
+                  <CardTitle className="text-2xl font-bold tracking-tight">{plan.name}</CardTitle>
                   <div className="flex items-center gap-2">
                     {(isPro || isBusiness) && (
                       <span className="bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400 rounded-full px-3 py-1 text-xs font-medium">
-                        Preço de Lançamento
+                        Lançamento
                       </span>
                     )}
                     {isPro && (
-                      <Badge className="bg-primary/10 text-primary border-0 text-[10px]">
+                      <span className="bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400 rounded-full px-3 py-1 text-xs font-medium">
                         Recomendado
-                      </Badge>
+                      </span>
                     )}
                   </div>
                 </div>
-                <div>
-                  <span className="text-3xl font-bold tracking-tight">{plan.price}</span>
-                  <span className="text-sm text-muted-foreground ml-1">{plan.priceDetail}</span>
+                <div className="pt-1">
+                  <span className="text-5xl font-bold tracking-tight">{plan.price}</span>
+                  <span className="text-base text-muted-foreground ml-1">{plan.priceDetail}</span>
                 </div>
+                {isBusiness && (
+                  <p className="text-sm text-muted-foreground">Mínimo 3 líderes · R$207/mês</p>
+                )}
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
+              <CardContent className="p-8 pt-0 space-y-5">
+                <div className="space-y-3">
                   {plan.features.map((f) => (
-                    <div key={f} className="flex items-center gap-2 text-sm">
-                      <Check className="h-4 w-4 text-primary shrink-0" />
+                    <div key={f} className="flex items-center gap-2.5 text-base">
+                      <Check className="h-5 w-5 text-primary shrink-0" />
                       <span>{f}</span>
                     </div>
                   ))}
                   {plan.lockedFeatures.map((f) => (
-                    <div key={f} className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Lock className="h-4 w-4 shrink-0" />
+                    <div key={f} className="flex items-center gap-2.5 text-base text-muted-foreground">
+                      <Lock className="h-5 w-5 shrink-0" />
                       <span>{f}</span>
                     </div>
                   ))}
                 </div>
 
                 {isCurrent && (
-                  <Badge variant="outline" className="w-full justify-center py-2 rounded-xl">
+                  <Badge variant="outline" className="w-full justify-center py-2.5 rounded-xl text-sm">
                     Plano atual
                   </Badge>
                 )}
                 {isPro && (
                   <Button
                     onClick={() => handleUpgrade('pro')}
-                    className="w-full rounded-xl"
+                    className="w-full rounded-xl h-11 text-base"
                     disabled={upgradeLoading === 'pro'}
                   >
                     {upgradeLoading === 'pro' && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
@@ -553,11 +680,14 @@ const Billing = () => {
                   </Button>
                 )}
                 {isBusiness && (
-                  <Button variant="outline" className="w-full rounded-xl" asChild>
-                    <a href="mailto:matheus@rhitmo.co?subject=Upgrade%20Business%20Rhitmo">
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      Falar com a equipe
-                    </a>
+                  <Button
+                    variant="outline"
+                    className="w-full rounded-xl h-11 text-base"
+                    onClick={() => setBusinessDialogOpen(true)}
+                    disabled={upgradeLoading === 'business'}
+                  >
+                    {upgradeLoading === 'business' && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                    Fazer upgrade para Business
                   </Button>
                 )}
               </CardContent>
@@ -565,6 +695,16 @@ const Billing = () => {
           );
         })}
       </div>
+
+      <BusinessQuantityDialog
+        open={businessDialogOpen}
+        onOpenChange={setBusinessDialogOpen}
+        onConfirm={(qty) => {
+          setBusinessDialogOpen(false);
+          handleUpgrade('business', qty);
+        }}
+        loading={upgradeLoading === 'business'}
+      />
     </div>
   );
 };

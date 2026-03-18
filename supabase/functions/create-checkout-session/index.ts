@@ -52,6 +52,13 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (plan === "business" && quantity < 3) {
+      return new Response(
+        JSON.stringify({ error: "O plano Business requer no mínimo 3 líderes." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Get workspace
     const { data: workspace, error: wsError } = await supabase
       .from("workspaces")
