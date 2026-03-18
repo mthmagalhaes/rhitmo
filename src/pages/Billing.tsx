@@ -370,11 +370,16 @@ const Billing = () => {
 
         <Card className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] border">
           <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <CardTitle className="text-xl font-bold tracking-tight">{plan.name}</CardTitle>
               <Badge className={currentPlan === 'pro' ? 'bg-primary text-primary-foreground' : 'bg-foreground text-background'}>
                 {plan.name}
               </Badge>
+              {subscription?.stripe_price_id && LAUNCH_PRICE_IDS.includes(subscription.stripe_price_id) && (
+                <span className="bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400 rounded-full px-3 py-1 text-xs font-medium">
+                  Preço de Lançamento
+                </span>
+              )}
             </div>
             <Badge variant="outline" className={statusVariant}>
               {statusLabel}
