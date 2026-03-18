@@ -86,7 +86,7 @@ const translations = {
     // Business
     businessSubtitle: "Para empresas que querem uma cultura de feedback consistente em todos os times.",
     businessPerMonth: "/líder/mês",
-    businessNote: "Mínimo 3 líderes · R$267/mês",
+    businessNote: "Mínimo 3 líderes · R$207/mês",
     businessCTA: "Falar com a equipe",
     businessFeatures: [
       "Até 8 liderados por líder",
