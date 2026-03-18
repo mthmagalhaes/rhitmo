@@ -278,8 +278,8 @@ const Billing = () => {
       if (error) throw error;
       if (data?.url) { window.location.href = data.url; return; }
       throw new Error('No checkout URL returned');
-    } catch {
-      toast({ title: 'Erro ao iniciar checkout', description: 'Tente novamente ou entre em contato: support@rhitmo.co', variant: 'destructive' });
+    } catch (err: any) {
+      toast({ title: 'Erro ao iniciar checkout', description: err?.message || 'Tente novamente ou entre em contato: support@rhitmo.co', variant: 'destructive' });
     } finally {
       setUpgradeLoading(null);
     }
