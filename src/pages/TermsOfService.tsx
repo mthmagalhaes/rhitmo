@@ -51,7 +51,7 @@ const TermsOfService = () => {
           <li>Mentor Chat ilimitado</li>
           <li>Avaliações formais ilimitadas</li>
           <li>Meu Rhitmo para liderados</li>
-          <li>Gravação de reuniões (até 20h/mês)</li>
+          <li>Gravação de reuniões (até 12h/mês)</li>
           <li>Analytics completo</li>
           <li>Até 3 times</li>
         </ul>
