@@ -61,7 +61,7 @@ const TermsOfService = () => {
           <li>Até 8 liderados por líder</li>
           <li>Tudo do plano Pro</li>
           <li>Times ilimitados</li>
-          <li>Gravação de reuniões (até 40h/mês)</li>
+          <li>Gravação de reuniões (até 30h/mês)</li>
           <li>HR Dashboard com métricas agregadas</li>
           <li>Onboarding assistido</li>
           <li>Suporte prioritário</li>

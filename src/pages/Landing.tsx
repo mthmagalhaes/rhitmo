@@ -92,7 +92,7 @@ const translations = {
       "Até 8 liderados por líder",
       "Tudo do plano Pro",
       "Times ilimitados",
-      "Gravação de reuniões (até 8h/mês)",
+      "Gravação de reuniões (até 30h/mês)",
       "HR Dashboard com métricas agregadas",
       "Onboarding assistido",
       "Suporte prioritário",
