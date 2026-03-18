@@ -76,6 +76,117 @@ export type Database = {
           },
         ]
       }
+      competencies: {
+        Row: {
+          created_at: string
+          description: string | null
+          framework_id: string
+          id: string
+          is_active: boolean
+          name: string
+          order: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          framework_id: string
+          id?: string
+          is_active?: boolean
+          name: string
+          order: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          framework_id?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competencies_framework_id_fkey"
+            columns: ["framework_id"]
+            isOneToOne: false
+            referencedRelation: "competency_frameworks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competency_frameworks: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competency_frameworks_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competency_level_descriptions: {
+        Row: {
+          competency_id: string
+          created_at: string
+          description: string
+          examples: Json | null
+          id: string
+          seniority_level: string
+        }
+        Insert: {
+          competency_id: string
+          created_at?: string
+          description: string
+          examples?: Json | null
+          id?: string
+          seniority_level: string
+        }
+        Update: {
+          competency_id?: string
+          created_at?: string
+          description?: string
+          examples?: Json | null
+          id?: string
+          seniority_level?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competency_level_descriptions_competency_id_fkey"
+            columns: ["competency_id"]
+            isOneToOne: false
+            referencedRelation: "competencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       development_items: {
         Row: {
           category: string | null
@@ -842,6 +953,10 @@ export type Database = {
     Functions: {
       can_update_own_sync: { Args: { member_id: string }; Returns: boolean }
       check_is_admin: { Args: never; Returns: boolean }
+      create_default_competency_framework: {
+        Args: { p_workspace_id: string }
+        Returns: undefined
+      }
       effective_user_id: { Args: never; Returns: string }
       get_all_users_with_metadata: {
         Args: never
