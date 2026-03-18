@@ -340,13 +340,21 @@ subscriptions (fonte de verdade para estado de assinatura)
 
 ### 10. PLANOS E LIMITES
 
-| Feature | Pulse (free) | Flow | Maestro |
+| Feature | Pulse (grátis) | Pro (R$49/mês) | Business (R$69/mês por líder) |
 |---|---|---|---|
-| Membros por workspace | 5 | 15 | Ilimitado |
+| Liderados por workspace | 3 | 5 | 8 |
 | Teams | 1 | 3 | Ilimitado |
-| Mentor Chat | Sim | Sim | Sim |
+| Mentor Chat | 20 msgs/mês | Ilimitado | Ilimitado |
+| Meu Rhitmo (liderado) | Não | Sim | Sim |
 | Analytics | Básico | Completo | Completo |
+| Gravação de reuniões | Não | 4h/mês | 8h/mês |
 | HR Dashboard | Não | Não | Sim |
+
+**Notas:**
+- Business requer mínimo 3 líderes (R$207/mês mín.) — self-service via `BusinessQuantityDialog` com validação frontend + edge function
+- Pro inclui 14 dias de trial gratuito
+- Quotas de gravação são apenas marketing (sem validação técnica implementada)
+- `subscriptions` é a fonte de verdade para estado da assinatura (sobrepõe `workspaces.plan_tier`)
 
 Hook: `usePlanLimits.ts`
 
