@@ -107,8 +107,10 @@ const translations = {
     duoAlt: "Líder e liderado em conversa de feedback construtivo olhando para tablet",
     analyticsAlt: "Analytics Dashboard - Rhitmo",
     // Footer
-    footerRights: "© 2025 Rhitmo. Todos os direitos reservados.",
+    footerRights: "© 2026 Rhitmo. Todos os direitos reservados.",
     footerLogin: "Já tem conta? Entrar",
+    footerTerms: "Termos de Serviço",
+    footerPrivacy: "Política de Privacidade",
     launchBadge: "Preço de Lançamento",
     launchDisclaimer: "Preço de lançamento garantido enquanto sua assinatura estiver ativa.",
   },
