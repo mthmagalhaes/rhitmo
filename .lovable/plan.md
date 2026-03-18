@@ -414,6 +414,8 @@ Hook: `usePlanLimits.ts`
 
 **Tipografia:** Inter (sans), Lora (serif), Space Mono (mono). Headlines com `tracking-tight` + `font-bold`.
 
+**Billing page:** Design Creme/Bento com `rounded-3xl`, `shadow-lg`, badges com cores suaves (`bg-amber-50`, `bg-green-50`), tipografia premium (`text-5xl` para preços).
+
 ---
 
 ### 16. CONVENÇÕES IMPORTANTES
