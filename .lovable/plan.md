@@ -139,6 +139,14 @@ admin_impersonation
 waitlist_leads
 ├── email, name, phone, team_size, status
 └── created_at
+
+subscriptions (fonte de verdade para estado de assinatura)
+├── id, workspace_id (FK → workspaces, UNIQUE)
+├── stripe_subscription_id, stripe_customer_id, stripe_price_id
+├── plan_tier (text), status (text), quantity (int)
+├── cancel_at_period_end (bool), trial_ends_at
+├── current_period_end
+└── created_at, updated_at
 ```
 
 ---
