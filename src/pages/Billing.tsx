@@ -501,13 +501,20 @@ const Billing = () => {
               }`}
             >
               <CardHeader className="space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <CardTitle className="text-lg font-bold tracking-tight">{plan.name}</CardTitle>
-                  {isPro && (
-                    <Badge className="bg-primary/10 text-primary border-0 text-[10px]">
-                      Recomendado
-                    </Badge>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {(isPro || isBusiness) && (
+                      <span className="bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400 rounded-full px-3 py-1 text-xs font-medium">
+                        Preço de Lançamento
+                      </span>
+                    )}
+                    {isPro && (
+                      <Badge className="bg-primary/10 text-primary border-0 text-[10px]">
+                        Recomendado
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <span className="text-3xl font-bold tracking-tight">{plan.price}</span>
