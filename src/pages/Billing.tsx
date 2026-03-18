@@ -57,7 +57,7 @@ const PLANS = {
   },
   business: {
     name: 'Business',
-    price: 'R$89',
+    price: 'R$69',
     priceDetail: '/mês por líder',
     features: [
       'Até 8 liderados por líder',
