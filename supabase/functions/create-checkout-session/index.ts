@@ -7,8 +7,8 @@ const corsHeaders = {
 };
 
 const PRICE_IDS: Record<string, string> = {
-  pro: "price_1TB0QgIF4fHxJpjHoIlCeHP6",
-  business: "price_1TB0QgIF4fHxJpjH032DMzZH",
+  pro: "price_1TC52fIF4fHxJpjHPaJXH14r",
+  business: "price_1TCPcjIF4fHxJpjHWtZucdwy",
 };
 
 Deno.serve(async (req) => {

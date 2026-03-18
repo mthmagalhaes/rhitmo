@@ -74,6 +74,11 @@ const PLANS = {
 
 type PlanKey = 'pulse' | 'pro' | 'business';
 
+const LAUNCH_PRICE_IDS = [
+  'price_1TC52fIF4fHxJpjHPaJXH14r', // Pro launch
+  'price_1TCPcjIF4fHxJpjHWtZucdwy', // Business launch
+];
+
 interface Invoice {
   id: string;
   amount: number;
