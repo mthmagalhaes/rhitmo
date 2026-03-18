@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Users, UserCheck, AlertCircle, CheckCircle, FileText,
-  Bell, LogOut, Activity
+  Bell, LogOut, Activity, BookOpen
 } from 'lucide-react';
 
 interface Metrics {
