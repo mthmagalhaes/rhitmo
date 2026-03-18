@@ -24,6 +24,8 @@ import { AdminGuard } from "./components/admin/AdminGuard";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { HRAdminGuard } from "./components/HRAdminGuard";
 import HRDashboard from "./pages/HRDashboard";
+import TermsOfService from "./pages/TermsOfService";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 
 const queryClient = new QueryClient();
 
@@ -82,6 +84,8 @@ const App = () => (
             {/* Rotas públicas (sem sidebar) */}
             <Route path="/sync/:memberId" element={<RhitmoSync />} />
             <Route path="/invite" element={<Invite />} />
+            <Route path="/terms-of-service" element={<TermsOfService />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             
             {/* Rota Admin */}
             <Route 

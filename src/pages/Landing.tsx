@@ -107,8 +107,10 @@ const translations = {
     duoAlt: "Líder e liderado em conversa de feedback construtivo olhando para tablet",
     analyticsAlt: "Analytics Dashboard - Rhitmo",
     // Footer
-    footerRights: "© 2025 Rhitmo. Todos os direitos reservados.",
+    footerRights: "© 2026 Rhitmo. Todos os direitos reservados.",
     footerLogin: "Já tem conta? Entrar",
+    footerTerms: "Termos de Serviço",
+    footerPrivacy: "Política de Privacidade",
     launchBadge: "Preço de Lançamento",
     launchDisclaimer: "Preço de lançamento garantido enquanto sua assinatura estiver ativa.",
   },
@@ -186,8 +188,10 @@ const translations = {
     heroAlt: "Leader working calmly and in control in a minimalist environment",
     duoAlt: "Leader and direct report in a constructive feedback conversation looking at a tablet",
     analyticsAlt: "Analytics Dashboard - Rhitmo",
-    footerRights: "© 2025 Rhitmo. All rights reserved.",
+    footerRights: "© 2026 Rhitmo. All rights reserved.",
     footerLogin: "Already have an account? Sign in",
+    footerTerms: "Terms of Service",
+    footerPrivacy: "Privacy Policy",
     launchBadge: "Launch Price",
     launchDisclaimer: "Launch price guaranteed while your subscription is active.",
   },
@@ -733,7 +737,15 @@ const Landing = () => {
 
       {/* Footer */}
       <footer className="border-t py-8 pb-20">
-        <div className="container mx-auto px-4 text-center space-y-2">
+        <div className="container mx-auto px-4 text-center space-y-4">
+          <div className="flex justify-center gap-6 text-sm text-muted-foreground">
+            <Link to="/terms-of-service" className="hover:text-foreground transition-colors">
+              {t.footerTerms}
+            </Link>
+            <Link to="/privacy-policy" className="hover:text-foreground transition-colors">
+              {t.footerPrivacy}
+            </Link>
+          </div>
           <p className="text-sm text-muted-foreground">
             {t.footerRights}
           </p>
