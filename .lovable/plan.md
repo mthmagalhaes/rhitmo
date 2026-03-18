@@ -428,3 +428,6 @@ Hook: `usePlanLimits.ts`
 - `mentor_messages.member_id` é NOT NULL no schema atual do types.ts (mas a edge function meu-rhitmo trata como opcional)
 - Dashboard do líder inclui legenda visual dos indicadores de saúde (bolinhas coloridas: verde ≤7d, amarelo 8-14d, vermelho >14d, cinza sem notas)
 - Tema salvo em `user_preferences` com fallback para `localStorage` quando não autenticado
+- `subscriptions` é fonte de verdade para estado de assinatura (sobrepõe `workspaces.plan_tier`)
+- Business requer mínimo 3 líderes (validado em frontend via `BusinessQuantityDialog` e em `create-checkout-session` edge function)
+- Trial de 14 dias no plano Pro (configurado via `subscription_data[trial_period_days]` no Stripe Checkout)
