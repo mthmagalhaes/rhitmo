@@ -168,7 +168,7 @@ const translations = {
     ],
     businessSubtitle: "For companies that want a consistent feedback culture across all teams.",
     businessPerMonth: "/leader/mo",
-    businessNote: "Minimum 3 leaders · R$267/mo",
+    businessNote: "Minimum 3 leaders · R$207/mo",
     businessCTA: "Talk to our team",
     businessFeatures: [
       "Up to 8 direct reports per leader",
