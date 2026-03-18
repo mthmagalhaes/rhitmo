@@ -103,6 +103,7 @@ Deno.serve(async (req) => {
       mode: "subscription",
       customer: customerId,
       "line_items[0][price]": PRICE_IDS[plan],
+      "line_items[0][quantity]": String(quantity),
       allow_promotion_codes: "true",
       success_url: "https://rhitmo.co/billing?success=true",
       cancel_url: "https://rhitmo.co/billing",
