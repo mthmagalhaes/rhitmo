@@ -35,27 +35,27 @@ export const CompetencyCard = ({
     <div
       ref={setNodeRef}
       style={style}
-      className={`
-        flex items-center gap-4 rounded-3xl shadow-sm p-6 transition-all
-        ${isDragging ? 'opacity-60 shadow-lg scale-[1.02]' : ''}
-        ${isActive
+      className={`flex items-center gap-4 rounded-3xl shadow-sm p-6 transition-all ${
+        isDragging ? 'opacity-60 shadow-lg scale-[1.02]' : ''
+      } ${
+        isActive
           ? 'bg-white/80 border-l-4 border-violet-500'
-          : 'bg-white/40 border-l-4 border-muted opacity-60'}
-      `}
+          : 'bg-white/40 border-l-4 border-muted opacity-60'
+      }`}
     >
       <button
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch the-none"
-        , aria-label="Reordenar"
+        className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none"
+        aria-label="Reordenar"
       >
         <GripVertical className="h-5 w-5" />
       </button>
 
       <div className="flex-1 min-w-0">
-        <h3 className="text-lg font-semibold tracking-tight text-foreground">{//name}</h3>
+        <h3 className="text-lg font-semibold tracking-tight text-foreground">{name}</h3>
         {description && (
-          <p className    text-sm text-muted-foreground mt-0.5 truncate">{description}</p>
+          <p className="text-sm text-muted-foreground mt-0.5 truncate">{description}</p>
         )}
         <Badge variant="secondary" className="mt-2 text-xs">
           {levelCount} nívei{levelCount !== 1 ? 's' : ''} definido{levelCount !== 1 ? 's' : ''}
