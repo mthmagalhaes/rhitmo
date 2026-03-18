@@ -188,6 +188,8 @@ const translations = {
     analyticsAlt: "Analytics Dashboard - Rhitmo",
     footerRights: "© 2025 Rhitmo. All rights reserved.",
     footerLogin: "Already have an account? Sign in",
+    launchBadge: "Launch Price",
+    launchDisclaimer: "Launch price guaranteed while your subscription is active.",
   },
 };
 
