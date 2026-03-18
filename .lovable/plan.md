@@ -196,6 +196,13 @@ subscriptions (fonte de verdade para estado de assinatura)
 | `admin-delete-user` | sim | — | Deleta usuário (admin) |
 | `notify-admin-new-lead` | não | Resend | Notifica admin sobre novo lead |
 | `notify-review-shared` | sim | Resend | Notifica que avaliação foi compartilhada |
+| `create-checkout-session` | sim | — | Cria sessão Stripe Checkout (Pro/Business) |
+| `stripe-webhook` | não | — | Webhook Stripe (sincroniza subscriptions) |
+| `create-portal-session` | sim | — | Cria sessão Stripe Customer Portal |
+| `cancel-subscription` | sim | — | Agenda cancelamento de assinatura |
+| `reactivate-subscription` | sim | — | Reativa assinatura cancelada |
+| `get-invoices` | sim | — | Lista faturas do Stripe |
+| `update-payment-method` | sim | — | Atualiza método de pagamento (Stripe Setup) |
 | `backup-data` | sim | — | Backup de dados |
 | `google-calendar-oauth` | não | — | OAuth do Google Calendar |
 | `fetch-calendar-events` | não | — | Busca eventos do Google Calendar |
