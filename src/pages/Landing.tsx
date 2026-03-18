@@ -109,6 +109,8 @@ const translations = {
     // Footer
     footerRights: "© 2025 Rhitmo. Todos os direitos reservados.",
     footerLogin: "Já tem conta? Entrar",
+    launchBadge: "Preço de Lançamento",
+    launchDisclaimer: "Preço de lançamento garantido enquanto sua assinatura estiver ativa.",
   },
   en: {
     signIn: "Sign in",
