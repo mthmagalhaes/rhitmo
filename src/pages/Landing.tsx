@@ -737,7 +737,15 @@ const Landing = () => {
 
       {/* Footer */}
       <footer className="border-t py-8 pb-20">
-        <div className="container mx-auto px-4 text-center space-y-2">
+        <div className="container mx-auto px-4 text-center space-y-4">
+          <div className="flex justify-center gap-6 text-sm text-muted-foreground">
+            <Link to="/terms-of-service" className="hover:text-foreground transition-colors">
+              {t.footerTerms}
+            </Link>
+            <Link to="/privacy-policy" className="hover:text-foreground transition-colors">
+              {t.footerPrivacy}
+            </Link>
+          </div>
           <p className="text-sm text-muted-foreground">
             {t.footerRights}
           </p>
