@@ -366,6 +366,7 @@ Hook: `usePlanLimits.ts`
 - **Lovable AI Gateway** (Gemini): classify-note, analyze-job-crafting, generate-brief
 - **Google Calendar** (OAuth2): Sincronização de reuniões, briefs pré-reunião
 - **Resend**: Envio de emails (convites, notificações)
+- **Stripe** (Checkout, Customer Portal, Webhooks, Subscriptions): Pagamentos, gestão de assinaturas, faturas
 
 ---
 
