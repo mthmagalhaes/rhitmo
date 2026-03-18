@@ -7,8 +7,8 @@ const corsHeaders = {
 };
 
 const PRICE_IDS: Record<string, string> = {
-  pro: "price_1TC52fIF4fHxJpjHPaJXH14r",
-  business: "price_1TCPcjIF4fHxJpjHWtZucdwy",
+  pro: "price_1TCQeZIF4fHxJpjH7w0wOhaf",
+  business: "price_1TCQf0IF4fHxJpjH4Bx2aIbg",
 };
 
 Deno.serve(async (req) => {
@@ -112,6 +112,7 @@ Deno.serve(async (req) => {
       mode: "subscription",
       customer: customerId,
       "line_items[0][price]": PRICE_IDS[plan],
+      "line_items[0][quantity]": String(quantity),
       allow_promotion_codes: "true",
       success_url: "https://rhitmo.co/billing?success=true",
       cancel_url: "https://rhitmo.co/billing",
