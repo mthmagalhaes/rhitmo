@@ -59,7 +59,7 @@ const PLANS = {
       'Notas e anotações ilimitadas',
       'Avaliações formais ilimitadas',
       'Meu Rhitmo para seus liderados',
-      'Gravação de reuniões (até 4h/mês)',
+      'Gravação de reuniões (até 12h/mês)',
       'Analytics completo',
       'Até 3 times',
     ],
