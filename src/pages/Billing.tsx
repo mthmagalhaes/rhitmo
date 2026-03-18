@@ -41,7 +41,7 @@ const PLANS = {
   },
   pro: {
     name: 'Pro',
-    price: 'R$69',
+    price: 'R$49',
     priceDetail: '/mês por líder',
     features: [
       'Até 5 liderados',
