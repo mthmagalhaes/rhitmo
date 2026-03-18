@@ -40,7 +40,7 @@ Rhitmo é uma plataforma SaaS de gestão de liderança e desenvolvimento de pess
 
 ```text
 workspaces
-├── id, name, owner_id, is_active, plan_tier (pulse|flow|maestro)
+├── id, name, owner_id, is_active, plan_tier (pulse|pro|business)
 ├── leader_sync_data (JSONB - perfil de liderança)
 ├── leader_sync_completed_at
 └── hr_admin_ids (uuid[])
