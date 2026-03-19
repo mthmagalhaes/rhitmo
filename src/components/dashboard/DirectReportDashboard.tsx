@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FeedbackTimeline } from '@/components/FeedbackTimeline';
-import { Home, Compass, FileText, User, Zap, CheckCircle, ChevronRight, Sparkles, Loader2, Download, Bell, Sprout, Plus, CheckCircle2 } from 'lucide-react';
+import { Home, Compass, FileText, User, Zap, CheckCircle, ChevronRight, Sparkles, Loader2, Download, Bell, Sprout, Plus, CheckCircle2, MessageCircle } from 'lucide-react';
 import { NewPDIDialog } from '@/components/NewPDIDialog';
 import { cn } from '@/lib/utils';
 import SkillsMapCard from './SkillsMapCard';
@@ -155,6 +155,7 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
   const [selectedReview, setSelectedReview] = useState<any>(null);
   const [showPDIDialog, setShowPDIDialog] = useState(false);
   const [meuRhitmoOpen, setMeuRhitmoOpen] = useState(false);
+  const [meuRhitmoInitialPrompt, setMeuRhitmoInitialPrompt] = useState<string | undefined>();
   const queryClient = useQueryClient();
 
   const [syncForm, setSyncForm] = useState({
@@ -402,6 +403,25 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
     }
   };
 
+  const handleAddFocusToPDI = (focusArea: string) => {
+    setShowPDIDialog(true);
+  };
+
+  const handleSuggestOneOnOne = (focusArea: string) => {
+    const text = `Olá, gostaria de conversar sobre o desenvolvimento da minha competência em "${focusArea}". O Skills Map identificou isso como uma área prioritária para meu crescimento. Podemos incluir esse tema na nossa próxima 1:1?`;
+    navigator.clipboard.writeText(text).then(() => {
+      toast.success('💬 Sugestão de pauta copiada! Cole no seu próximo email ou mensagem para seu líder.');
+    }).catch(() => {
+      toast.error('Não foi possível copiar. Tente novamente.');
+    });
+  };
+
+  const handleOpenMeuRhitmoWithContext = (focusArea: string) => {
+    const prompt = `O meu Skills Map identificou "${focusArea}" como foco prioritário para meu desenvolvimento. Como posso desenvolver essa competência de forma prática? Que ações concretas você sugere?`;
+    setMeuRhitmoInitialPrompt(prompt);
+    setMeuRhitmoOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-muted/30 pb-20">
       {/* Header */}
@@ -551,6 +571,9 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
                 memberId={linkedMember.id}
                 onReanalyze={handleReanalyze}
                 isReanalyzing={isReanalyzing}
+                onAddToPDI={handleAddFocusToPDI}
+                onSuggestOneOnOne={handleSuggestOneOnOne}
+                onOpenMeuRhitmo={handleOpenMeuRhitmoWithContext}
               />
               {/* Seção Meu Desenvolvimento (PDI) */}
               {!devPlan || devPlan.status === 'draft' ? (
@@ -1034,7 +1057,10 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
       {user && (
         <MentorChat
           open={meuRhitmoOpen}
-          onOpenChange={setMeuRhitmoOpen}
+          onOpenChange={(open) => {
+            setMeuRhitmoOpen(open);
+            if (!open) setMeuRhitmoInitialPrompt(undefined);
+          }}
           userType="direct_report"
           memberName={displayName}
           memberRole={linkedMember.role}
@@ -1043,6 +1069,7 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
           pdiItems={activePdiItems}
           latestReview={latestReviewContent ?? null}
           userId={user.id}
+          initialPrompt={meuRhitmoInitialPrompt}
         />
       )}
     </div>

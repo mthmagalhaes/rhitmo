@@ -59,6 +59,7 @@ interface MentorChatProps {
   pdiItems?: any[];
   latestReview?: string | null;
   userId?: string;
+  initialPrompt?: string;
 }
 
 const leaderSuggestions = [
@@ -90,6 +91,7 @@ export const MentorChat = ({
   pdiItems,
   latestReview,
   userId,
+  initialPrompt,
 }: MentorChatProps) => {
   const isLeader = userType === 'leader';
   
@@ -186,6 +188,15 @@ export const MentorChat = ({
       }, 100);
     }
   }, [messages, isLoading]);
+
+  // Populate input with initialPrompt when dialog opens
+  useEffect(() => {
+    if (open && initialPrompt) {
+      setInput(initialPrompt);
+      setIsCreatingNewThread(true);
+      setSelectedThreadId(null);
+    }
+  }, [open, initialPrompt]);
 
   // ── Thread helpers ───────────────────────────────────
   const groupThreadsByDate = (threads: ChatThread[]) => {
