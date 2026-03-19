@@ -696,8 +696,17 @@ Com base neste resumo, dê sugestões práticas de liderança, identifique ponto
       responseLength: mentorResponse.length
     });
 
+    const processingTimeMs = Date.now() - startTime;
+
     return new Response(
-      JSON.stringify({ response: mentorResponse }),
+      JSON.stringify({ 
+        response: mentorResponse,
+        metadata: {
+          processed_as_long_transcript: summaryApplied,
+          summary_applied: summaryApplied,
+          processing_time_ms: processingTimeMs
+        }
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: any) {

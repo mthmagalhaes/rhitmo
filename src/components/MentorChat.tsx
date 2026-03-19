@@ -235,6 +235,25 @@ export const MentorChat = ({
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
     setIsLoading(true);
 
+    // Progressive loading for long transcripts
+    const wordCount = finalMessage.split(/\s+/).length;
+    const isLongMessage = wordCount > 800;
+    let loadingInterval: ReturnType<typeof setInterval> | null = null;
+
+    if (isLongMessage) {
+      const loadingSteps = [
+        'Analisando transcrição...',
+        'Extraindo tópicos e decisões...',
+        'Gerando sugestões contextualizadas...',
+      ];
+      let stepIndex = 0;
+      setLoadingMessage(loadingSteps[0]);
+      loadingInterval = setInterval(() => {
+        stepIndex = Math.min(stepIndex + 1, loadingSteps.length - 1);
+        setLoadingMessage(loadingSteps[stepIndex]);
+      }, 3000);
+    }
+
     try {
       let currentThreadId = selectedThreadId;
       if (!currentThreadId || isCreatingNewThread) {
