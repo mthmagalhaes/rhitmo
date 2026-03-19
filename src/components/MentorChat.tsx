@@ -329,6 +329,9 @@ export const MentorChat = ({
 
       if (!data?.response) throw new Error('Resposta inválida do servidor.');
 
+      // Track if summary was applied for badge display
+      setLastSummaryApplied(!!data.metadata?.summary_applied);
+
       await supabase.from('mentor_messages').insert({ user_id: user.id, member_id: memberId, thread_id: currentThreadId, role: 'assistant', content: data.response });
       await supabase.from('chat_threads').update({ updated_at: new Date().toISOString() }).eq('id', currentThreadId);
       queryClient.invalidateQueries({ queryKey: ['mentor-messages', currentThreadId] });
