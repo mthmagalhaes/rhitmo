@@ -46,32 +46,62 @@ interface ChatThread {
 interface MentorChatProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  userType: 'leader' | 'direct_report';
   memberName: string;
-  memberId: string;
+  memberId?: string;
   memberRole?: string;
-  feedbacks: any[];
+  feedbacks?: any[];
   workStyleData?: any;
   keyObjectives?: string | null;
   leaderSyncData?: any;
+  // direct_report-specific
+  aiAnalysis?: any;
+  pdiItems?: any[];
+  latestReview?: string | null;
+  userId?: string;
 }
 
-const quickSuggestions = [
+const leaderSuggestions = [
   { emoji: '📋', text: 'Resumir histórico recente' },
   { emoji: '⚡', text: 'Quais ações estão pendentes?' },
   { emoji: '💬', text: 'Como dar feedback agora?' },
 ];
 
+const directReportSuggestions = [
+  { emoji: '🚀', text: 'Como me preparo para pedir promoção?' },
+  { emoji: '💬', text: 'Me ajuda a processar um feedback difícil' },
+  { emoji: '🔍', text: 'Quais são meus pontos cegos?' },
+  { emoji: '⚡', text: 'Como posso acelerar meu desenvolvimento?' },
+  { emoji: '📋', text: 'Me prepara para minha próxima 1:1' },
+];
+
 export const MentorChat = ({ 
   open, 
   onOpenChange, 
+  userType,
   memberName, 
   memberId,
   memberRole, 
-  feedbacks, 
+  feedbacks = [], 
   workStyleData, 
   keyObjectives,
-  leaderSyncData 
+  leaderSyncData,
+  aiAnalysis,
+  pdiItems,
+  latestReview,
+  userId,
 }: MentorChatProps) => {
+  const isLeader = userType === 'leader';
+  
+  // Derive config from userType
+  const threadType = isLeader ? 'mentor' : 'career';
+  const threadsQueryKey = isLeader ? 'chat-threads' : 'meu-rhitmo-threads';
+  const messagesQueryKey = isLeader ? 'mentor-messages' : 'meu-rhitmo-messages';
+  const edgeFunctionName = isLeader ? 'chat-mentor' : 'meu-rhitmo';
+  const title = isLeader ? 'Mentor Chat' : 'Meu Rhitmo';
+  const quickSuggestions = isLeader ? leaderSuggestions : directReportSuggestions;
+  const placeholder = isLeader ? `Pergunte sobre ${memberName}…` : 'Pergunte sobre sua carreira ou descreva uma situação...';
+
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
@@ -92,21 +122,32 @@ export const MentorChat = ({
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  // ── Queries (unchanged) ──────────────────────────────
+  // Resolve effective owner for queries
+  const effectiveUserId = isLeader ? user?.id : userId;
+  // For threads: leader queries by memberId, direct_report by userId
+  const threadQueryId = isLeader ? memberId : userId;
+
+  // ── Queries ──────────────────────────────────────────
   const { data: threads = [], isLoading: isLoadingThreads } = useQuery({
-    queryKey: ['chat-threads', memberId],
+    queryKey: [threadsQueryKey, threadQueryId],
     queryFn: async () => {
-      if (!user) return [];
-      const { data, error } = await supabase
+      if (!effectiveUserId) return [];
+      let query = supabase
         .from('chat_threads')
         .select('*')
-        .eq('member_id', memberId)
-        .eq('user_id', user.id)
+        .eq('user_id', effectiveUserId)
+        .eq('type', threadType)
         .order('updated_at', { ascending: false });
+      
+      if (isLeader && memberId) {
+        query = query.eq('member_id', memberId);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       return (data || []) as ChatThread[];
     },
-    enabled: open && !!memberId && !!user,
+    enabled: open && !!threadQueryId && !!effectiveUserId,
     staleTime: 1000 * 60 * 5,
   });
 
@@ -117,7 +158,7 @@ export const MentorChat = ({
   }, [threads, isLoadingThreads, selectedThreadId, isCreatingNewThread]);
 
   const { data: messages = [], isLoading: isLoadingMessages } = useQuery({
-    queryKey: ['mentor-messages', selectedThreadId],
+    queryKey: [messagesQueryKey, selectedThreadId],
     queryFn: async () => {
       if (!selectedThreadId) return [];
       const { data, error } = await supabase
@@ -142,7 +183,7 @@ export const MentorChat = ({
     }
   }, [messages, isLoading]);
 
-  // ── Thread helpers (unchanged) ───────────────────────
+  // ── Thread helpers ───────────────────────────────────
   const groupThreadsByDate = (threads: ChatThread[]) => {
     const groups: { label: string; threads: ChatThread[] }[] = [];
     const today: ChatThread[] = [];
@@ -164,11 +205,14 @@ export const MentorChat = ({
   };
 
   const createThread = async (firstMessage: string) => {
-    if (!user) throw new Error('Usuário não autenticado');
-    const title = firstMessage.slice(0, 40) + (firstMessage.length > 40 ? '...' : '');
+    if (!effectiveUserId) throw new Error('Usuário não autenticado');
+    const titleText = firstMessage.slice(0, 40) + (firstMessage.length > 40 ? '...' : '');
+    const insertData: any = { user_id: effectiveUserId, title: titleText, type: threadType };
+    if (isLeader && memberId) insertData.member_id = memberId;
+    
     const { data, error } = await supabase
       .from('chat_threads')
-      .insert({ user_id: user.id, member_id: memberId, title })
+      .insert(insertData)
       .select()
       .single();
     if (error) throw error;
@@ -185,7 +229,7 @@ export const MentorChat = ({
     try {
       const { error } = await supabase.from('chat_threads').update({ title: newTitle.trim() }).eq('id', threadId);
       if (error) throw error;
-      queryClient.setQueryData(['chat-threads', memberId], (old: ChatThread[] | undefined) =>
+      queryClient.setQueryData([threadsQueryKey, threadQueryId], (old: ChatThread[] | undefined) =>
         old?.map(t => t.id === threadId ? { ...t, title: newTitle.trim() } : t) || []
       );
       toast({ title: 'Conversa renomeada' });
@@ -201,7 +245,7 @@ export const MentorChat = ({
       const { error } = await supabase.from('chat_threads').delete().eq('id', thread.id);
       if (error) throw error;
       if (selectedThreadId === thread.id) setSelectedThreadId(null);
-      queryClient.invalidateQueries({ queryKey: ['chat-threads', memberId] });
+      queryClient.invalidateQueries({ queryKey: [threadsQueryKey, threadQueryId] });
       toast({ title: 'Conversa excluída' });
     } catch (error) {
       console.error('Erro ao excluir:', error);
@@ -218,16 +262,16 @@ export const MentorChat = ({
     }
   };
 
-  // ── Send (unchanged logic) ───────────────────────────
+  // ── Send ─────────────────────────────────────────────
   const handleSend = async (messageToSend?: string) => {
     let finalMessage = messageToSend || input;
     if (!finalMessage.trim() && !attachment) return;
-    if (isLoading || !user) return;
+    if (isLoading || !effectiveUserId) return;
 
     let imageContent: { isImage: true; imageBase64: string; mimeType: string; textMessage: string } | undefined;
-    if (attachment?.isImage && attachment.imageBase64 && attachment.mimeType) {
+    if (isLeader && attachment?.isImage && attachment.imageBase64 && attachment.mimeType) {
       imageContent = { isImage: true, imageBase64: attachment.imageBase64, mimeType: attachment.mimeType, textMessage: finalMessage || 'Analise esta imagem no contexto do liderado.' };
-    } else if (attachment) {
+    } else if (isLeader && attachment) {
       finalMessage = finalMessage + `\n\n--- ARQUIVO ANEXADO (${attachment.name}) ---\n${attachment.content}`;
     }
 
@@ -257,91 +301,162 @@ export const MentorChat = ({
 
     try {
       let currentThreadId = selectedThreadId;
-      if (!currentThreadId || isCreatingNewThread) {
-        const newThread = await createThread(finalMessage);
-        currentThreadId = newThread.id;
-        setSelectedThreadId(newThread.id);
-        setIsCreatingNewThread(false);
-        queryClient.invalidateQueries({ queryKey: ['chat-threads', memberId] });
-      }
 
-      const savedContent = imageContent ? (imageContent.textMessage || '[Imagem enviada para análise]') : finalMessage;
-      await supabase.from('mentor_messages').insert({ user_id: user.id, member_id: memberId, thread_id: currentThreadId, role: 'user', content: savedContent });
-      queryClient.invalidateQueries({ queryKey: ['mentor-messages', currentThreadId] });
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
-      const { data: session } = await supabase.auth.getSession();
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      const managerName = currentUser?.user_metadata?.full_name || currentUser?.user_metadata?.name || 'Gestor';
-
-      let contextFeedbacks: any[];
-      let contextMode: 'auto' | 'manual';
-      if (selectedContexts.length > 0) {
-        contextMode = 'manual';
-        contextFeedbacks = feedbacks.filter(fb => selectedContexts.includes(fb.id));
-      } else {
-        contextMode = 'auto';
-        const sorted = [...feedbacks].sort((a, b) => new Date(b.occurred_at || b.created_at).getTime() - new Date(a.occurred_at || a.created_at).getTime());
-        contextFeedbacks = sorted.slice(0, 10);
-      }
-
-      const MAX_RETRIES = 3;
-      let data: any = null;
-
-      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-        if (attempt > 0) {
-          const delay = Math.pow(2, attempt - 1) * 1000;
-          setLoadingMessage(`Reconectando... (tentativa ${attempt}/${MAX_RETRIES})`);
-          await new Promise(r => setTimeout(r, delay));
+      if (isLeader) {
+        // Leader mode: create thread client-side
+        if (!currentThreadId || isCreatingNewThread) {
+          const newThread = await createThread(finalMessage);
+          currentThreadId = newThread.id;
+          setSelectedThreadId(newThread.id);
+          setIsCreatingNewThread(false);
+          queryClient.invalidateQueries({ queryKey: [threadsQueryKey, threadQueryId] });
         }
 
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-mentor`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.session?.access_token}` },
-          body: JSON.stringify({
-            question: finalMessage,
-            feedbacks: contextFeedbacks,
-            memberName, memberRole, managerName, workStyleData, keyObjectives, contextMode, leaderSyncData,
-            conversationHistory: messages.map(msg => ({ role: msg.role, content: msg.content })),
-            imageContent
-          }),
-          signal: controller.signal
-        });
-        clearTimeout(timeoutId);
+        const savedContent = imageContent ? (imageContent.textMessage || '[Imagem enviada para análise]') : finalMessage;
+        await supabase.from('mentor_messages').insert({ user_id: effectiveUserId, member_id: memberId!, thread_id: currentThreadId, role: 'user', content: savedContent });
+        queryClient.invalidateQueries({ queryKey: [messagesQueryKey, currentThreadId] });
 
-        if (response.ok) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+        const { data: session } = await supabase.auth.getSession();
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        const managerName = currentUser?.user_metadata?.full_name || currentUser?.user_metadata?.name || 'Gestor';
+
+        let contextFeedbacks: any[];
+        let contextMode: 'auto' | 'manual';
+        if (selectedContexts.length > 0) {
+          contextMode = 'manual';
+          contextFeedbacks = feedbacks.filter(fb => selectedContexts.includes(fb.id));
+        } else {
+          contextMode = 'auto';
+          const sorted = [...feedbacks].sort((a, b) => new Date(b.occurred_at || b.created_at).getTime() - new Date(a.occurred_at || a.created_at).getTime());
+          contextFeedbacks = sorted.slice(0, 10);
+        }
+
+        const MAX_RETRIES = 3;
+        let data: any = null;
+
+        for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+          if (attempt > 0) {
+            const delay = Math.pow(2, attempt - 1) * 1000;
+            setLoadingMessage(`Reconectando... (tentativa ${attempt}/${MAX_RETRIES})`);
+            await new Promise(r => setTimeout(r, delay));
+          }
+
+          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${edgeFunctionName}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.session?.access_token}` },
+            body: JSON.stringify({
+              question: finalMessage,
+              feedbacks: contextFeedbacks,
+              memberName, memberRole, managerName, workStyleData, keyObjectives, contextMode, leaderSyncData,
+              conversationHistory: messages.map(msg => ({ role: msg.role, content: msg.content })),
+              imageContent
+            }),
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+
+          if (response.ok) {
+            setLoadingMessage('');
+            data = await response.json();
+            if (!data.response) throw new Error('Resposta inválida do servidor.');
+            break;
+          }
+
+          if ((response.status === 429 || response.status === 503) && attempt < MAX_RETRIES) {
+            continue;
+          }
+
           setLoadingMessage('');
-          data = await response.json();
-          if (!data.response) throw new Error('Resposta inválida do servidor.');
-          break;
+          let errorMessage = 'Erro ao conectar com o Mentor. Tente novamente.';
+          try { const errorData = await response.json(); errorMessage = errorData.error || errorMessage; } catch {}
+          throw new Error(errorMessage);
         }
 
-        if ((response.status === 429 || response.status === 503) && attempt < MAX_RETRIES) {
-          continue;
+        if (!data?.response) throw new Error('Resposta inválida do servidor.');
+        setLastSummaryApplied(!!data.metadata?.summary_applied);
+
+        await supabase.from('mentor_messages').insert({ user_id: effectiveUserId, member_id: memberId!, thread_id: currentThreadId, role: 'assistant', content: data.response });
+        await supabase.from('chat_threads').update({ updated_at: new Date().toISOString() }).eq('id', currentThreadId);
+        queryClient.invalidateQueries({ queryKey: [messagesQueryKey, currentThreadId] });
+        queryClient.invalidateQueries({ queryKey: [threadsQueryKey, threadQueryId] });
+
+      } else {
+        // Direct report mode: edge function creates thread
+        if (!currentThreadId || isCreatingNewThread) {
+          currentThreadId = null;
         }
 
-        setLoadingMessage('');
-        let errorMessage = 'Erro ao conectar com o Mentor. Tente novamente.';
-        try { const errorData = await response.json(); errorMessage = errorData.error || errorMessage; } catch {}
-        throw new Error(errorMessage);
+        const { data: session } = await supabase.auth.getSession();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 45000);
+
+        const MAX_RETRIES = 3;
+        let data: any = null;
+
+        for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+          if (attempt > 0) {
+            const delay = Math.pow(2, attempt - 1) * 1000;
+            setLoadingMessage(`Reconectando... (tentativa ${attempt}/${MAX_RETRIES})`);
+            await new Promise(r => setTimeout(r, delay));
+          }
+
+          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${edgeFunctionName}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session?.session?.access_token}`,
+            },
+            body: JSON.stringify({
+              question: finalMessage,
+              threadId: currentThreadId,
+              memberName,
+              memberRole,
+              workStyleData,
+              aiAnalysis,
+              pdiItems,
+              latestReview,
+            }),
+            signal: controller.signal,
+          });
+
+          clearTimeout(timeoutId);
+
+          if (response.ok) {
+            setLoadingMessage('');
+            data = await response.json();
+            if (!data.response) throw new Error('Resposta inválida do servidor.');
+            break;
+          }
+
+          if ((response.status === 429 || response.status === 503) && attempt < MAX_RETRIES) {
+            continue;
+          }
+
+          setLoadingMessage('');
+          let errorMessage = 'Erro ao conectar com o Meu Rhitmo. Tente novamente.';
+          try { const errorData = await response.json(); errorMessage = errorData.error || errorMessage; } catch {}
+          throw new Error(errorMessage);
+        }
+
+        if (!data?.response) throw new Error('Resposta inválida do servidor.');
+
+        if (data.threadId && data.threadId !== selectedThreadId) {
+          setSelectedThreadId(data.threadId);
+          setIsCreatingNewThread(false);
+          queryClient.invalidateQueries({ queryKey: [threadsQueryKey, threadQueryId] });
+        }
+
+        queryClient.invalidateQueries({ queryKey: [messagesQueryKey, data.threadId || currentThreadId] });
+        queryClient.invalidateQueries({ queryKey: [threadsQueryKey, threadQueryId] });
       }
-
-      if (!data?.response) throw new Error('Resposta inválida do servidor.');
-
-      // Track if summary was applied for badge display
-      setLastSummaryApplied(!!data.metadata?.summary_applied);
-
-      await supabase.from('mentor_messages').insert({ user_id: user.id, member_id: memberId, thread_id: currentThreadId, role: 'assistant', content: data.response });
-      await supabase.from('chat_threads').update({ updated_at: new Date().toISOString() }).eq('id', currentThreadId);
-      queryClient.invalidateQueries({ queryKey: ['mentor-messages', currentThreadId] });
-      queryClient.invalidateQueries({ queryKey: ['chat-threads', memberId] });
     } catch (error: any) {
       console.error('Erro no chat:', error);
-      let errorMessage = 'Erro ao conectar com o Mentor. Tente novamente.';
+      let errorMessage = isLeader ? 'Erro ao conectar com o Mentor. Tente novamente.' : 'Erro ao conectar. Tente novamente.';
       if (error.name === 'AbortError') errorMessage = 'Tempo de resposta excedido. Tente novamente.';
       else if (error.message) errorMessage = error.message;
-      toast({ title: "Erro ao consultar mentor", description: errorMessage, variant: "destructive" });
+      toast({ title: isLeader ? "Erro ao consultar mentor" : "Erro no Meu Rhitmo", description: errorMessage, variant: "destructive" });
     } finally { setIsLoading(false); setLoadingMessage(''); if (loadingInterval) clearInterval(loadingInterval); }
   };
 
@@ -398,9 +513,18 @@ export const MentorChat = ({
   const threadGroups = groupThreadsByDate(threads);
   const showEmptyState = !isCreatingNewThread && !selectedThreadId && threads.length === 0;
   const showNewThreadState = isCreatingNewThread || (threads.length === 0 && !isLoadingThreads);
-  const userInitials = user?.user_metadata?.full_name
-    ? user.user_metadata.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
-    : 'EU';
+  const userInitials = isLeader
+    ? (user?.user_metadata?.full_name
+      ? user.user_metadata.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+      : 'EU')
+    : (memberName
+      ? memberName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+      : 'EU');
+
+  // Icon for assistant bubbles
+  const AssistantIcon = () => isLeader
+    ? <div className="flex items-center justify-center h-7 w-7 rounded-full bg-primary/10 text-sm flex-shrink-0 mt-0.5">🎯</div>
+    : <div className="flex items-center justify-center h-7 w-7 rounded-full bg-primary/10 flex-shrink-0 mt-0.5"><Sparkles className="h-3.5 w-3.5 text-primary" /></div>;
 
   // ── Markdown components ──────────────────────────────
   const markdownComponents = {
@@ -459,20 +583,26 @@ export const MentorChat = ({
                 </button>
               )}
               <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-sm">
-                🎯
+                {isLeader ? '🎯' : <Sparkles className="h-4 w-4 text-primary" />}
               </div>
               <DialogTitle className="text-foreground text-base font-semibold tracking-tight">
-                Mentor Chat
-                <span className="text-muted-foreground font-normal text-sm ml-2">
-                  — {memberName} {memberRole && `(${memberRole})`}
-                </span>
+                {title}
+                {isLeader && (
+                  <span className="text-muted-foreground font-normal text-sm ml-2">
+                    — {memberName} {memberRole && `(${memberRole})`}
+                  </span>
+                )}
               </DialogTitle>
             </div>
-            <ContextPicker 
-              feedbacks={feedbacks}
-              selectedIds={selectedContexts}
-              onSelectionChange={setSelectedContexts}
-            />
+            {isLeader ? (
+              <ContextPicker 
+                feedbacks={feedbacks}
+                selectedIds={selectedContexts}
+                onSelectionChange={setSelectedContexts}
+              />
+            ) : (
+              <Badge className="bg-primary/10 text-primary text-xs border-0">Confidencial</Badge>
+            )}
           </div>
         </DialogHeader>
 
@@ -480,7 +610,6 @@ export const MentorChat = ({
         <div className="flex flex-1 min-h-0">
           {/* ── Sidebar ────────────────────────────── */}
           <div className={`flex-shrink-0 border-r border-border flex flex-col bg-muted/20 transition-all duration-200 overflow-hidden ${sidebarOpen ? 'w-[240px]' : 'w-0 border-r-0'}`}>
-            {/* New thread + collapse */}
             <div className="p-3 flex items-center gap-2">
               <Button onClick={handleNewThread} variant="outline" size="sm" className="flex-1 gap-2 rounded-xl text-sm">
                 <Plus className="h-4 w-4" />
@@ -494,7 +623,6 @@ export const MentorChat = ({
               </button>
             </div>
 
-            {/* Thread list */}
             <ScrollArea className="flex-1">
               <div className="px-2 pb-2">
                 {isLoadingThreads ? (
@@ -506,7 +634,7 @@ export const MentorChat = ({
                 ) : threads.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground text-xs">
                     <MessageSquare className="h-6 w-6 mx-auto mb-2 opacity-40" />
-                    <p>Nenhuma conversa</p>
+                    <p>Nenhuma conversa{isLeader ? '' : ' ainda'}</p>
                   </div>
                 ) : (
                   threadGroups.map(group => (
@@ -545,7 +673,6 @@ export const MentorChat = ({
                                   {format(new Date(thread.updated_at), 'dd MMM', { locale: ptBR })}
                                 </p>
                               </div>
-                              {/* Hover actions */}
                               <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 flex-shrink-0 transition-opacity">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setEditingThreadId(thread.id); setEditingTitle(thread.title); }}
@@ -573,7 +700,6 @@ export const MentorChat = ({
 
           {/* ── Chat area ──────────────────────────── */}
           <div className="flex-1 flex flex-col min-w-0">
-            {/* Messages */}
             <ScrollArea className="flex-1" ref={scrollRef}>
               <div className="p-6 md:px-8 space-y-6">
                 {isLoadingMessages && selectedThreadId && (
@@ -587,13 +713,15 @@ export const MentorChat = ({
                 {(showEmptyState || showNewThreadState) && !isLoadingMessages && (
                   <div className="flex flex-col items-center justify-center py-20 text-center">
                     <div className="flex items-center justify-center h-12 w-12 rounded-full bg-primary/10 text-2xl mb-4">
-                      🎯
+                      {isLeader ? '🎯' : <Sparkles className="h-6 w-6 text-primary" />}
                     </div>
                     <h2 className="font-semibold text-xl text-foreground tracking-tight">
-                      Mentor de {memberName}
+                      {isLeader ? `Mentor de ${memberName}` : `Olá, ${memberName.split(' ')[0]}! 👋`}
                     </h2>
                     <p className="text-muted-foreground text-sm max-w-xs mt-2">
-                      Pergunte qualquer coisa sobre o histórico, comportamento e desenvolvimento de {memberName}.
+                      {isLeader
+                        ? `Pergunte qualquer coisa sobre o histórico, comportamento e desenvolvimento de ${memberName}.`
+                        : 'Sou seu parceiro de desenvolvimento. Converse comigo sobre carreira, preparação para reuniões ou qualquer situação do trabalho.'}
                     </p>
                     <div className="flex flex-wrap gap-2 mt-6 justify-center">
                       {quickSuggestions.map((s, idx) => (
@@ -615,7 +743,6 @@ export const MentorChat = ({
                   const isLastAssistant = msg.role === 'assistant' && idx === messages.length - 1;
                   return (
                   msg.role === 'user' ? (
-                    /* ── User bubble ──────────────── */
                     <div key={msg.id} className="flex flex-row-reverse items-start gap-2.5 max-w-[75%] ml-auto">
                       <div className="flex items-center justify-center h-7 w-7 rounded-full bg-primary/20 text-primary text-[10px] font-semibold flex-shrink-0 mt-0.5">
                         {userInitials}
@@ -625,13 +752,10 @@ export const MentorChat = ({
                       </div>
                     </div>
                   ) : (
-                    /* ── Assistant bubble ─────────── */
                     <div key={msg.id} className="flex items-start gap-3 group">
-                      <div className="flex items-center justify-center h-7 w-7 rounded-full bg-primary/10 text-sm flex-shrink-0 mt-0.5">
-                        🎯
-                      </div>
+                      <AssistantIcon />
                       <div className="flex-1 min-w-0 text-sm text-foreground">
-                        {isLastAssistant && lastSummaryApplied && (
+                        {isLeader && isLastAssistant && lastSummaryApplied && (
                           <div className="mb-2">
                             <Badge variant="secondary" className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-[11px] rounded-full px-2.5 py-0.5 border-0 gap-1">
                               <Sparkles className="h-3 w-3" />
@@ -642,7 +766,6 @@ export const MentorChat = ({
                         <ReactMarkdown components={markdownComponents}>
                           {msg.content}
                         </ReactMarkdown>
-                        {/* Copy action */}
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity mt-1.5">
                           <button
                             onClick={() => handleCopyMessage(msg.content)}
@@ -660,9 +783,7 @@ export const MentorChat = ({
                 {/* Loading indicator */}
                 {isLoading && (
                   <div className="flex items-start gap-3">
-                    <div className="flex items-center justify-center h-7 w-7 rounded-full bg-primary/10 text-sm flex-shrink-0">
-                      🎯
-                    </div>
+                    <AssistantIcon />
                     {loadingMessage ? (
                       <div className="flex items-center gap-2 py-3">
                         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -698,8 +819,8 @@ export const MentorChat = ({
                 </div>
               )}
 
-              {/* Attachment preview */}
-              {attachment && (
+              {/* Attachment preview (leader only) */}
+              {isLeader && attachment && (
                 <div className="flex items-center gap-2 mb-2">
                   <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg border border-border/50 text-sm max-w-[300px]">
                     {attachment.isImage && attachment.imageBase64 ? (
@@ -726,33 +847,40 @@ export const MentorChat = ({
                   value={input}
                   onChange={handleInputChange}
                   onKeyDown={handleKeyDown}
-                  placeholder={`Pergunte sobre ${memberName}…`}
+                  placeholder={placeholder}
                   disabled={isLoading || isExtractingFile}
                   rows={1}
                   className="w-full bg-transparent border-0 outline-none text-sm text-foreground placeholder:text-muted-foreground resize-none min-h-[44px] max-h-[160px] px-4 pt-3 pb-1 focus:ring-0 disabled:cursor-not-allowed"
                 />
-                {/* Action bar */}
                 <div className="flex items-center justify-between px-3 py-2 border-t border-border/40">
                   <div className="flex items-center gap-1">
-                    <input ref={fileInputRef} type="file" accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp" className="hidden" onChange={handleFileSelect} />
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isLoading || isExtractingFile}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
-                    >
-                      {isExtractingFile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
-                      <span className="hidden sm:inline">Anexar</span>
-                    </button>
-                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                      <VoiceInput 
-                        onTranscription={(text) => { setInput(text); setTimeout(adjustTextareaHeight, 0); }}
-                        disabled={isLoading || isExtractingFile}
-                      />
-                    </div>
-                    {selectedContexts.length > 0 && (
-                      <Badge variant="secondary" className="bg-primary/10 text-primary text-[11px] rounded-full px-2.5 py-0.5 border-0">
-                        {selectedContexts.length} nota{selectedContexts.length > 1 ? 's' : ''} selecionada{selectedContexts.length > 1 ? 's' : ''}
-                      </Badge>
+                    {isLeader ? (
+                      <>
+                        <input ref={fileInputRef} type="file" accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp" className="hidden" onChange={handleFileSelect} />
+                        <button
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isLoading || isExtractingFile}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                        >
+                          {isExtractingFile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
+                          <span className="hidden sm:inline">Anexar</span>
+                        </button>
+                        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                          <VoiceInput 
+                            onTranscription={(text) => { setInput(text); setTimeout(adjustTextareaHeight, 0); }}
+                            disabled={isLoading || isExtractingFile}
+                          />
+                        </div>
+                        {selectedContexts.length > 0 && (
+                          <Badge variant="secondary" className="bg-primary/10 text-primary text-[11px] rounded-full px-2.5 py-0.5 border-0">
+                            {selectedContexts.length} nota{selectedContexts.length > 1 ? 's' : ''} selecionada{selectedContexts.length > 1 ? 's' : ''}
+                          </Badge>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Suas conversas são confidenciais e não são compartilhadas com seu líder.
+                      </p>
                     )}
                   </div>
                   <button
@@ -764,7 +892,7 @@ export const MentorChat = ({
                         : 'bg-primary hover:bg-primary/90 text-primary-foreground'
                     }`}
                   >
-                    {isLoading ? <Square className="h-4 w-4" /> : <ArrowUp className="h-4 w-4 text-white" />}
+                    {isLoading ? <Square className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}
                   </button>
                 </div>
               </div>

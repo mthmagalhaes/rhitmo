@@ -769,7 +769,7 @@ const MemberDetails = () => {
         })} 
       />
 
-      <MentorChat open={chatOpen} onOpenChange={setChatOpen} memberName={member.name} memberId={member.id} memberRole={member.role} feedbacks={feedbacks} workStyleData={member.work_style_data} keyObjectives={member.key_objectives} leaderSyncData={workspace?.leader_sync_data} />
+      <MentorChat open={chatOpen} onOpenChange={setChatOpen} userType="leader" memberName={member.name} memberId={member.id} memberRole={member.role} feedbacks={feedbacks} workStyleData={member.work_style_data} keyObjectives={member.key_objectives} leaderSyncData={workspace?.leader_sync_data} />
 
       <InviteMemberDialog
         open={inviteDialogOpen}
