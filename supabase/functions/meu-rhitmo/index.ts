@@ -298,7 +298,7 @@ Pergunta do usuário: ${question.slice(0, 300)}`;
     ];
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 45000);
+    const timeoutId = setTimeout(() => controller.abort(), summaryApplied ? 90000 : 45000);
 
     let response;
     try {
