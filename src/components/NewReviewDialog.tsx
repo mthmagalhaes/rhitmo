@@ -436,6 +436,7 @@ export const NewReviewDialog = ({
                 onChange={setContent}
                 placeholder="Digite ou gere o conteúdo da avaliação usando os botões acima..."
                 minHeight="400px"
+                highlightWords={highlightWords}
               />
               <p className="text-xs text-muted-foreground">
                 Você pode editar livremente o conteúdo gerado pela IA antes de salvar.
