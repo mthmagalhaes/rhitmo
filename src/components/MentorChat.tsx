@@ -883,6 +883,7 @@ export const MentorChat = ({
                   value={input}
                   onChange={handleInputChange}
                   onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
                   placeholder={placeholder}
                   disabled={isLoading || isExtractingFile}
                   rows={1}
