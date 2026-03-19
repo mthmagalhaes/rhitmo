@@ -1,31 +1,91 @@
 
 
-## Plan: Add matheus_hr@rhitmo.co as HR Admin
+## Plan: Unify MentorChat and MeuRhitmo into a single component
 
-### Findings
+### Summary
 
-1. **User exists**: `matheus_hr@rhitmo.co` (ID: `e708e033-...`) — email confirmed, password set. The invite flow worked; the user was created successfully.
+MentorChat.tsx (798 lines, leader) and MeuRhitmo.tsx (610 lines) share ~90% identical code (sidebar, threads, messages, markdown rendering, delete dialog). The key differences are:
 
-2. **Workspace "Trabalho" does not exist**. The previous UPDATE that was supposed to add both matheus@rhitmo.co and matheus_hr@rhitmo.co as HR Admins **matched zero rows** because no workspace has that name. Available workspaces:
-   - FAP
-   - Faster Ops
-   - Gabriel - Central do Cliente
-   - Growth Squad Inc
-   - **Rhitmo Inc. 🙂** ← most likely your workspace
+| Aspect | MentorChat (leader) | MeuRhitmo (direct report) |
+|--------|-------------------|--------------------------|
+| Thread type filter | none (implicit 'mentor') | `.eq('type', 'career')` |
+| Edge function | `chat-mentor` | `meu-rhitmo` |
+| Query keys | `chat-threads`, `mentor-messages` | `meu-rhitmo-threads`, `meu-rhitmo-messages` |
+| Header title | "Mentor Chat" + member name | "Meu Rhitmo" |
+| Header badge | ContextPicker | "Confidencial" badge |
+| Quick suggestions | 3 leader-focused | 5 career-focused |
+| Features | File attachment, VoiceInput, ContextPicker, retry logic, loading steps | Simpler (no attachments, no voice, no context picker) |
+| Empty state | "Mentor de {name}" | "Ola, {firstName}!" |
+| Icon | 🎯 emoji | `<Sparkles>` icon |
+| Props | memberName, memberId, feedbacks, workStyleData, etc. | memberName, memberRole, workStyleData, aiAnalysis, pdiItems, latestReview, userId |
 
-3. **No HR Admins exist on any workspace** — all `hr_admin_ids` arrays are empty.
+### Approach
 
-### Action Required
+Create a unified `MentorChat` component with a `userType: 'leader' | 'direct_report'` prop that controls the behavioral differences.
 
-Which workspace should `matheus_hr@rhitmo.co` be added to as HR Admin? Once confirmed, I will:
+### Files to modify
 
-1. Run an UPDATE to add the user ID (`e708e033-7428-4bde-8b03-6c178dc059e4`) to that workspace's `hr_admin_ids` array
-2. Optionally also add `matheus@rhitmo.co` (`032f8a17-...`) if desired
+**1. `src/components/MentorChat.tsx`** - Refactor to accept both modes
 
-### Validation
+- Add `userType` prop to `MentorChatProps`
+- Make leader-only props optional: `feedbacks?`, `memberId?`, `keyObjectives?`, `leaderSyncData?`
+- Add direct-report props as optional: `aiAnalysis?`, `pdiItems?`, `latestReview?`, `userId?`
+- Derive config from `userType`:
+  - `threadType`: `'mentor'` vs `'career'`
+  - `queryKeyPrefix`: `'chat-threads'` vs `'meu-rhitmo-threads'`
+  - `edgeFunctionName`: `'chat-mentor'` vs `'meu-rhitmo'`
+  - `title`: `'Mentor Chat'` vs `'Meu Rhitmo'`
+  - `quickSuggestions`: leader set vs career set
+  - `icon`: emoji vs Sparkles
+  - `placeholder`: leader vs career text
+  - `emptyStateTitle`/`emptyStateDescription`
+- Thread query: add `.eq('type', threadType)` filter (leader currently doesn't filter -- add `'mentor'` type)
+- Thread creation: include `type: threadType` in insert
+- Conditionally render ContextPicker (leader) vs Confidencial badge (direct report)
+- Conditionally render file attachment + VoiceInput (leader only)
+- Send logic: branch on `userType` to call the correct edge function with correct payload
+- Keep retry/loading-steps logic for both (was leader-only, harmless for both)
 
-After the update:
-- Open incognito window → login as `matheus_hr@rhitmo.co`
-- Navigate to `/hr/competency-framework`
-- The `HRAdminGuard` will find the workspace via `.contains('hr_admin_ids', [userId])` and grant access
+**2. `src/components/MeuRhitmo.tsx`** - Delete entirely
+
+**3. `src/components/dashboard/DirectReportDashboard.tsx`** - Update import
+- Replace `import MeuRhitmo` with `import { MentorChat }`
+- Update the JSX call to pass `userType="direct_report"` and map props accordingly
+
+**4. `src/pages/MemberDetails.tsx`** - Add `userType="leader"` prop to existing `<MentorChat>` call (no other changes needed since existing props match)
+
+### Edge functions
+
+No changes needed. Both `chat-mentor` and `meu-rhitmo` edge functions remain as-is. The unified component calls the correct one based on `userType`.
+
+### Risk mitigation
+
+- Thread isolation preserved: queries always filter by `type` column
+- No visual changes: identical CSS, just conditional rendering of badges/icons/text
+- Backward compatible: existing leader usage only needs `userType="leader"` added
+
+### Technical details
+
+The unified props interface:
+
+```typescript
+interface MentorChatProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  userType: 'leader' | 'direct_report';
+  memberName: string;
+  memberId?: string;        // leader mode
+  memberRole?: string;
+  feedbacks?: any[];         // leader mode
+  workStyleData?: any;
+  keyObjectives?: string | null;  // leader mode
+  leaderSyncData?: any;          // leader mode
+  aiAnalysis?: any;              // direct_report mode
+  pdiItems?: any[];              // direct_report mode
+  latestReview?: string | null;  // direct_report mode
+  userId?: string;               // direct_report mode (for thread ownership)
+}
+```
+
+The component internally resolves the effective user ID: in leader mode from `useAuth().user.id`, in direct_report mode from the `userId` prop.
 
