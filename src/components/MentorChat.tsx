@@ -273,9 +273,10 @@ export const MentorChat = ({
     if (isLoading || !effectiveUserId) return;
 
     let imageContent: { isImage: true; imageBase64: string; mimeType: string; textMessage: string } | undefined;
-    if (isLeader && attachment?.isImage && attachment.imageBase64 && attachment.mimeType) {
-      imageContent = { isImage: true, imageBase64: attachment.imageBase64, mimeType: attachment.mimeType, textMessage: finalMessage || 'Analise esta imagem no contexto do liderado.' };
-    } else if (isLeader && attachment) {
+    if (attachment?.isImage && attachment.imageBase64 && attachment.mimeType) {
+      const defaultText = isLeader ? 'Analise esta imagem no contexto do liderado.' : 'Analise esta imagem.';
+      imageContent = { isImage: true, imageBase64: attachment.imageBase64, mimeType: attachment.mimeType, textMessage: finalMessage || defaultText };
+    } else if (attachment) {
       finalMessage = finalMessage + `\n\n--- ARQUIVO ANEXADO (${attachment.name}) ---\n${attachment.content}`;
     }
 
