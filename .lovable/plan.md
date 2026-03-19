@@ -1,51 +1,31 @@
 
 
-## Plan: Add Ctrl+V Image Paste to MentorChat
+## Plan: Add 2-Pass Transcript Summarization to `meu-rhitmo` Edge Function
 
-### Summary
-
-Add clipboard image paste support to the MentorChat textarea for both leader and direct report modes. Currently, image attachment only works via file picker (leader-only). This adds paste support for both user types, reusing the existing `attachment` state and image handling logic.
+### What's already done
+- `chat-mentor/index.ts` already has: `isLongTranscript()`, `isExcessivelyLong()`, `summarizeTranscript()`, and the full 2-pass pipeline (lines 110-588)
+- `MentorChat.tsx` frontend already has: progressive loading stages, `lastSummaryApplied` state, and handles `metadata.summary_applied` from responses
+- The only missing piece: **`meu-rhitmo/index.ts` sends long transcripts raw** without summarization
 
 ### Changes
 
-**`src/components/MentorChat.tsx`** — Single file modification
+**`supabase/functions/meu-rhitmo/index.ts`** — Add the same 2-pass summarization
 
-1. **Add `handlePaste` handler** (~20 lines)
-   - Listen for `paste` events on the textarea
-   - Check `clipboardData.items` for `image/*` types
-   - Validate type (png/jpg/webp) and size (≤5MB)
-   - Convert to base64 via `FileReader`
-   - Set into existing `attachment` state: `{ name: 'imagem-colada.png', content: '', imageBase64, mimeType, isImage: true }`
-   - Show toast: "Imagem colada!"
-
-2. **Attach `onPaste` to textarea** (line ~848)
-   - Add `onPaste={handlePaste}` to the existing `<textarea>` element
-
-3. **Enable image sending for direct_report mode**
-   - Currently `imageContent` is only built when `isLeader` (line 272). Remove that guard so both modes can send images.
-   - In the direct_report fetch body (line 411), add `imageContent` field so the `meu-rhitmo` edge function receives it.
-
-4. **Update placeholder text**
-   - When attachment exists, show "Descreva o que você quer saber sobre a imagem..."
-   - Add "(Ctrl+V para colar imagem)" hint to both leader and direct_report placeholders
-
-5. **Show attachment preview for direct_report mode**
-   - The attachment preview bar (lines ~820-841) currently renders for both modes, so pasted images will show automatically with the existing preview UI.
-
-6. **Update send button disabled logic** (line 888)
-   - Already checks `!input.trim() && !attachment` — no change needed.
-
-**`supabase/functions/meu-rhitmo/index.ts`** — Add multimodal support
-
-- Accept optional `imageContent` in the request body
-- When present, build OpenAI message with `image_url` content part (same pattern as `chat-mentor`)
-- Use the text from `imageContent.textMessage` or fall back to the `question` field
+1. Add `isLongTranscript()` and `isExcessivelyLong()` detection functions (same as chat-mentor)
+2. Add `summarizeTranscript()` function using `gpt-4o-mini` for structured extraction
+3. Before building `apiMessages`, check for long transcripts:
+   - If >15,000 words → return 400 error
+   - If >800 words + timestamps/speakers → run Pass 1 (summarize), then use compressed output for Pass 2
+4. Return `metadata.summary_applied` in the response so the frontend shows the "Resumo inteligente" badge
 
 ### Technical details
 
-- Reuses the existing single-attachment `attachment` state — no new state needed
-- Pasted image replaces any existing attachment (same as file picker behavior)
-- The `handlePaste` only processes the first image item found in clipboard
-- No animation library needed — the existing attachment preview bar handles display
-- Mobile: paste works on Android Chrome, limited on iOS Safari (known platform limitation)
+The three utility functions are identical to what's in `chat-mentor/index.ts`:
+- `isLongTranscript(text)`: checks wordCount > 800 AND (hasTimestamps OR hasMultipleSpeakers)
+- `isExcessivelyLong(text)`: checks wordCount > 15,000
+- `summarizeTranscript(text, apiKey)`: calls gpt-4o-mini to extract JSON with participants, topics, decisions, actions, attention points
+
+The summarization output replaces the raw `question` before it's sent to gpt-4o for the final response, prepending `[TRANSCRIÇÃO DE REUNIÃO PROCESSADA]` with the structured summary.
+
+No frontend changes needed — `MentorChat.tsx` already handles both modes identically for progressive loading and metadata display.
 
