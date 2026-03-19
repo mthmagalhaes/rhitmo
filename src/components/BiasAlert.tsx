@@ -1,4 +1,4 @@
-import { Lightbulb, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Lightbulb, X, ChevronDown, ChevronUp, Highlighter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 
@@ -7,6 +7,7 @@ interface BiasAlertProps {
   suggestions: string[];
   explanation: string;
   onDismiss: () => void;
+  onHighlightWords?: () => void;
 }
 
 export function BiasAlert({ detectedWords, suggestions, explanation, onDismiss }: BiasAlertProps) {
