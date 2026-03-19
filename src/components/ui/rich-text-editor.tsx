@@ -36,6 +36,7 @@ export const RichTextEditor = ({
           levels: [1, 2, 3],
         },
       }),
+      Highlight.configure({ multicolor: true }),
       Placeholder.configure({
         placeholder,
         emptyEditorClass: 'is-editor-empty',
