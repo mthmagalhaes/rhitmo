@@ -548,6 +548,45 @@ ${contextLines}
 
 Lembre-se: Você é um coach experiente. Baseie-se APENAS nos dados acima. Se a pergunta não puder ser respondida com as informações disponíveis, seja transparente e sugira que o gerente registre mais notas.`;
 
+    // ============================================
+    // DETECÇÃO E SUMMARIZAÇÃO DE TRANSCRIÇÃO LONGA
+    // ============================================
+    const startTime = Date.now();
+    let summaryApplied = false;
+    let processedQuestion = question;
+
+    // Apenas para mensagens de texto (não imagens)
+    if (!imageContent?.isImage && typeof question === 'string') {
+      if (isExcessivelyLong(question)) {
+        return new Response(
+          JSON.stringify({ error: 'Transcrição muito longa (mais de 15.000 palavras). Por favor, cole apenas os últimos 30 minutos da reunião.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (isLongTranscript(question)) {
+        console.log('Long transcript detected, running 2-pass summarization...');
+        const summary = await summarizeTranscript(question, openAIApiKey);
+        if (summary) {
+          summaryApplied = true;
+          const preview = question.substring(0, 200) + '...';
+          processedQuestion = `[TRANSCRIÇÃO DE REUNIÃO PROCESSADA]
+
+O usuário colou uma transcrição longa de reunião. Aqui está o resumo estruturado extraído:
+
+${JSON.stringify(summary, null, 2)}
+
+Início da transcrição original (para contexto):
+"${preview}"
+
+Com base neste resumo, dê sugestões práticas de liderança, identifique pontos de atenção e recomende ações concretas.`;
+          console.log('Summarization complete, summary applied.');
+        } else {
+          console.log('Summarization failed, using raw transcript.');
+        }
+      }
+    }
+
     // Montar conteúdo da mensagem atual (multimodal se imagem)
     const currentUserContent = imageContent?.isImage
       ? [
@@ -560,7 +599,7 @@ Lembre-se: Você é um coach experiente. Baseie-se APENAS nos dados acima. Se a 
             text: imageContent.textMessage || "Analise esta imagem no contexto do liderado."
           }
         ]
-      : question;
+      : processedQuestion;
 
     // Montar array de mensagens com histórico da thread
     const apiMessages: any[] = [
