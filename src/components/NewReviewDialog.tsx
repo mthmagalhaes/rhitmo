@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,8 @@ import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
-
+import { detectGenderBias, type BiasDetectionResult } from "@/lib/biasDetection";
+import { BiasAlert } from "@/components/BiasAlert";
 interface NewReviewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
