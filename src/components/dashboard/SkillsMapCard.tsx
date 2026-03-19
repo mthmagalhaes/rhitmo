@@ -1,6 +1,6 @@
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Compass, RefreshCw, Loader2, AlertTriangle, Target } from 'lucide-react';
+import { Compass, RefreshCw, Loader2, AlertTriangle, Target, Plus, MessageCircle, Sparkles } from 'lucide-react';
 
 interface SkillsMapCardProps {
   aiAnalysis: {
@@ -13,6 +13,9 @@ interface SkillsMapCardProps {
   memberId: string;
   onReanalyze: () => void;
   isReanalyzing: boolean;
+  onAddToPDI?: (focusArea: string) => void;
+  onSuggestOneOnOne?: (focusArea: string) => void;
+  onOpenMeuRhitmo?: (focusArea: string) => void;
 }
 
 const formatDate = (dateStr: string) =>
@@ -25,7 +28,10 @@ const isOlderThan90Days = (dateStr: string) => {
   return diff > 90 * 24 * 60 * 60 * 1000;
 };
 
-export default function SkillsMapCard({ aiAnalysis, memberId, onReanalyze, isReanalyzing }: SkillsMapCardProps) {
+export default function SkillsMapCard({ aiAnalysis, memberId, onReanalyze, isReanalyzing, onAddToPDI, onSuggestOneOnOne, onOpenMeuRhitmo }: SkillsMapCardProps) {
+  const focusArea = aiAnalysis?.suggested_focus?.[0];
+  const hasActions = focusArea && (onAddToPDI || onSuggestOneOnOne || onOpenMeuRhitmo);
+
   return (
     <Card className="p-6 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
       {/* Cabeçalho */}
@@ -121,6 +127,43 @@ export default function SkillsMapCard({ aiAnalysis, memberId, onReanalyze, isRea
               </div>
             )}
           </div>
+
+          {/* Action buttons */}
+          {hasActions && (
+            <div className="mt-6 pt-4 border-t border-border space-y-2">
+              <p className="text-xs text-muted-foreground mb-3">📋 Próximos passos para desenvolver esta competência:</p>
+              {onAddToPDI && (
+                <Button
+                  variant="default"
+                  className="w-full justify-start gap-2"
+                  onClick={() => onAddToPDI(focusArea)}
+                >
+                  <Plus className="h-4 w-4" />
+                  Adicionar ao meu PDI
+                </Button>
+              )}
+              {onSuggestOneOnOne && (
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-2"
+                  onClick={() => onSuggestOneOnOne(focusArea)}
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Conversar com meu líder sobre isso
+                </Button>
+              )}
+              {onOpenMeuRhitmo && (
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-2"
+                  onClick={() => onOpenMeuRhitmo(focusArea)}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Pedir ajuda ao Meu Rhitmo
+                </Button>
+              )}
+            </div>
+          )}
         </>
       )}
     </Card>

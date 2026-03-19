@@ -91,6 +91,7 @@ export const MentorChat = ({
   pdiItems,
   latestReview,
   userId,
+  initialPrompt,
 }: MentorChatProps) => {
   const isLeader = userType === 'leader';
   

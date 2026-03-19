@@ -1057,7 +1057,10 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
       {user && (
         <MentorChat
           open={meuRhitmoOpen}
-          onOpenChange={setMeuRhitmoOpen}
+          onOpenChange={(open) => {
+            setMeuRhitmoOpen(open);
+            if (!open) setMeuRhitmoInitialPrompt(undefined);
+          }}
           userType="direct_report"
           memberName={displayName}
           memberRole={linkedMember.role}
@@ -1066,6 +1069,7 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
           pdiItems={activePdiItems}
           latestReview={latestReviewContent ?? null}
           userId={user.id}
+          initialPrompt={meuRhitmoInitialPrompt}
         />
       )}
     </div>
