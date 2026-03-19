@@ -112,6 +112,11 @@ export const MentorChat = ({
   const [editingTitle, setEditingTitle] = useState('');
   const [deletingThread, setDeletingThread] = useState<ChatThread | null>(null);
   const [attachment, setAttachment] = useState<{ name: string; content: string; imageBase64?: string; mimeType?: string; isImage?: boolean } | null>(null);
+  const placeholder = attachment
+    ? 'Descreva o que você quer saber sobre a imagem...'
+    : isLeader
+      ? `Pergunte sobre ${memberName} (Ctrl+V para colar imagem)…`
+      : 'Pergunte sobre sua carreira ou cole uma imagem (Ctrl+V)...';
   const [selectedContexts, setSelectedContexts] = useState<string[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
