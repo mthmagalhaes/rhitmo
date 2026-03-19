@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { WorkspaceOnboarding } from '@/components/WorkspaceOnboarding';
+import { SyncNotificationBadge } from '@/components/SyncNotificationBadge';
+import { SyncNotificationSheet } from '@/components/SyncNotificationSheet';
 import { useAuth } from '@/hooks/useAuth';
 import { useLinkedMember } from '@/hooks/useLinkedMember';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -10,6 +13,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const { isLinkedMember, isLoading: linkedMemberLoading } = useLinkedMember();
   const queryClient = useQueryClient();
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   // Query para verificar workspace do usuário
   const { data: workspace, isLoading: workspaceLoading, refetch } = useQuery({
@@ -34,6 +38,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     && !workspace 
     && !isLinkedMember;
 
+  const isLeader = !isLinkedMember && !!user;
+
   const handleWorkspaceComplete = () => {
     refetch();
     queryClient.invalidateQueries({ queryKey: ['workspace'] });
@@ -57,8 +63,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           {/* Header mobile com trigger */}
           <header className="flex h-14 items-center gap-4 border-b px-4 lg:hidden bg-card">
             <SidebarTrigger />
-            <span className="font-semibold text-foreground">Rhitmo</span>
+            <span className="font-semibold text-foreground flex-1">Rhitmo</span>
+            {isLeader && (
+              <SyncNotificationBadge onClick={() => setNotificationsOpen(true)} />
+            )}
           </header>
+          
+          {/* Header desktop - notification bell */}
+          {isLeader && (
+            <div className="hidden lg:flex h-12 items-center justify-end px-6">
+              <SyncNotificationBadge onClick={() => setNotificationsOpen(true)} />
+            </div>
+          )}
           
           {/* Conteúdo principal */}
           <main className="flex-1">
@@ -66,6 +82,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </main>
         </SidebarInset>
       </div>
+
+      {/* Notification Sheet */}
+      {isLeader && (
+        <SyncNotificationSheet
+          open={notificationsOpen}
+          onOpenChange={setNotificationsOpen}
+        />
+      )}
     </SidebarProvider>
   );
 }
