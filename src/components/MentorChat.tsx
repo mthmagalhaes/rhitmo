@@ -75,6 +75,7 @@ export const MentorChat = ({
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
+  const [lastSummaryApplied, setLastSummaryApplied] = useState(false);
   const [isExtractingFile, setIsExtractingFile] = useState(false);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [isCreatingNewThread, setIsCreatingNewThread] = useState(false);
