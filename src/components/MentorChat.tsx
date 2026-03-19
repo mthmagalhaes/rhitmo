@@ -189,6 +189,15 @@ export const MentorChat = ({
     }
   }, [messages, isLoading]);
 
+  // Populate input with initialPrompt when dialog opens
+  useEffect(() => {
+    if (open && initialPrompt) {
+      setInput(initialPrompt);
+      setIsCreatingNewThread(true);
+      setSelectedThreadId(null);
+    }
+  }, [open, initialPrompt]);
+
   // ── Thread helpers ───────────────────────────────────
   const groupThreadsByDate = (threads: ChatThread[]) => {
     const groups: { label: string; threads: ChatThread[] }[] = [];
