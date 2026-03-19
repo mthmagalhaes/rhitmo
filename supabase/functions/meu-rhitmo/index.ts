@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { question, threadId, memberName, memberRole, workStyleData, aiAnalysis, pdiItems, latestReview } = await req.json();
+    const { question, threadId, memberName, memberRole, workStyleData, aiAnalysis, pdiItems, latestReview, imageContent } = await req.json();
 
     if (!question || !memberName) {
       return new Response(
