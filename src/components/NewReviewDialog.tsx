@@ -266,6 +266,9 @@ export const NewReviewDialog = ({
     setGeneratedMonths(null);
     setDateRange(undefined);
     setSelectedPreset(null);
+    setBiasResult(null);
+    setShowBiasAlert(false);
+    setBiasDismissCount(0);
     onOpenChange(false);
   };
 
