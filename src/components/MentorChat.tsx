@@ -100,7 +100,6 @@ export const MentorChat = ({
   const edgeFunctionName = isLeader ? 'chat-mentor' : 'meu-rhitmo';
   const title = isLeader ? 'Mentor Chat' : 'Meu Rhitmo';
   const quickSuggestions = isLeader ? leaderSuggestions : directReportSuggestions;
-  const placeholder = isLeader ? `Pergunte sobre ${memberName}…` : 'Pergunte sobre sua carreira ou descreva uma situação...';
 
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -113,6 +112,11 @@ export const MentorChat = ({
   const [editingTitle, setEditingTitle] = useState('');
   const [deletingThread, setDeletingThread] = useState<ChatThread | null>(null);
   const [attachment, setAttachment] = useState<{ name: string; content: string; imageBase64?: string; mimeType?: string; isImage?: boolean } | null>(null);
+  const placeholder = attachment
+    ? 'Descreva o que você quer saber sobre a imagem...'
+    : isLeader
+      ? `Pergunte sobre ${memberName} (Ctrl+V para colar imagem)…`
+      : 'Pergunte sobre sua carreira ou cole uma imagem (Ctrl+V)...';
   const [selectedContexts, setSelectedContexts] = useState<string[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -269,9 +273,10 @@ export const MentorChat = ({
     if (isLoading || !effectiveUserId) return;
 
     let imageContent: { isImage: true; imageBase64: string; mimeType: string; textMessage: string } | undefined;
-    if (isLeader && attachment?.isImage && attachment.imageBase64 && attachment.mimeType) {
-      imageContent = { isImage: true, imageBase64: attachment.imageBase64, mimeType: attachment.mimeType, textMessage: finalMessage || 'Analise esta imagem no contexto do liderado.' };
-    } else if (isLeader && attachment) {
+    if (attachment?.isImage && attachment.imageBase64 && attachment.mimeType) {
+      const defaultText = isLeader ? 'Analise esta imagem no contexto do liderado.' : 'Analise esta imagem.';
+      imageContent = { isImage: true, imageBase64: attachment.imageBase64, mimeType: attachment.mimeType, textMessage: finalMessage || defaultText };
+    } else if (attachment) {
       finalMessage = finalMessage + `\n\n--- ARQUIVO ANEXADO (${attachment.name}) ---\n${attachment.content}`;
     }
 
@@ -417,6 +422,7 @@ export const MentorChat = ({
               aiAnalysis,
               pdiItems,
               latestReview,
+              imageContent,
             }),
             signal: controller.signal,
           });
@@ -467,6 +473,36 @@ export const MentorChat = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
     adjustTextareaHeight();
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const imageItem = Array.from(items).find(item => item.type.startsWith('image/'));
+    if (!imageItem) return;
+
+    e.preventDefault();
+    const file = imageItem.getAsFile();
+    if (!file) return;
+
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      toast({ title: 'Formato não suportado', description: 'Use PNG, JPG ou WEBP.', variant: 'destructive' });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: 'Imagem muito grande', description: 'Máximo 5MB.', variant: 'destructive' });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64Full = event.target?.result as string;
+      const base64Data = base64Full.split(',')[1];
+      setAttachment({ name: 'imagem-colada.png', content: '', imageBase64: base64Data, mimeType: file.type, isImage: true });
+      toast({ title: '📋 Imagem colada!', description: 'Descreva o que você quer saber sobre ela.' });
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSuggestionClick = (text: string) => { handleSend(text); };
@@ -819,8 +855,8 @@ export const MentorChat = ({
                 </div>
               )}
 
-              {/* Attachment preview (leader only) */}
-              {isLeader && attachment && (
+              {/* Attachment preview */}
+              {attachment && (
                 <div className="flex items-center gap-2 mb-2">
                   <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg border border-border/50 text-sm max-w-[300px]">
                     {attachment.isImage && attachment.imageBase64 ? (
@@ -847,6 +883,7 @@ export const MentorChat = ({
                   value={input}
                   onChange={handleInputChange}
                   onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
                   placeholder={placeholder}
                   disabled={isLoading || isExtractingFile}
                   rows={1}
@@ -878,9 +915,20 @@ export const MentorChat = ({
                         )}
                       </>
                     ) : (
-                      <p className="text-xs text-muted-foreground">
-                        Suas conversas são confidenciais e não são compartilhadas com seu líder.
-                      </p>
+                      <div className="flex items-center gap-1">
+                        <input ref={fileInputRef} type="file" accept=".png,.jpg,.jpeg,.webp" className="hidden" onChange={handleFileSelect} />
+                        <button
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isLoading || isExtractingFile}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                        >
+                          {isExtractingFile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
+                          <span className="hidden sm:inline">Anexar</span>
+                        </button>
+                        <p className="text-xs text-muted-foreground">
+                          Conversas confidenciais
+                        </p>
+                      </div>
                     )}
                   </div>
                   <button
