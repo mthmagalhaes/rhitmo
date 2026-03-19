@@ -10,7 +10,7 @@ interface BiasAlertProps {
   onHighlightWords?: () => void;
 }
 
-export function BiasAlert({ detectedWords, suggestions, explanation, onDismiss }: BiasAlertProps) {
+export function BiasAlert({ detectedWords, suggestions, explanation, onDismiss, onHighlightWords }: BiasAlertProps) {
   const [expanded, setExpanded] = useState(false);
 
   return (
