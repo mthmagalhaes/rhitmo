@@ -422,6 +422,7 @@ export const MentorChat = ({
               aiAnalysis,
               pdiItems,
               latestReview,
+              imageContent,
             }),
             signal: controller.signal,
           });
