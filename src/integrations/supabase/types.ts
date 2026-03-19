@@ -641,6 +641,44 @@ export type Database = {
           },
         ]
       }
+      rhitmo_sync_notifications: {
+        Row: {
+          change_summary: string
+          changes: Json
+          created_at: string | null
+          id: string
+          leader_user_id: string
+          member_id: string
+          read_at: string | null
+        }
+        Insert: {
+          change_summary: string
+          changes: Json
+          created_at?: string | null
+          id?: string
+          leader_user_id: string
+          member_id: string
+          read_at?: string | null
+        }
+        Update: {
+          change_summary?: string
+          changes?: Json
+          created_at?: string | null
+          id?: string
+          leader_user_id?: string
+          member_id?: string
+          read_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rhitmo_sync_notifications_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscriptions: {
         Row: {
           cancel_at_period_end: boolean | null
