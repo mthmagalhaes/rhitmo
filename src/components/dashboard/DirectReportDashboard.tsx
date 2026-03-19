@@ -155,6 +155,7 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
   const [selectedReview, setSelectedReview] = useState<any>(null);
   const [showPDIDialog, setShowPDIDialog] = useState(false);
   const [meuRhitmoOpen, setMeuRhitmoOpen] = useState(false);
+  const [meuRhitmoInitialPrompt, setMeuRhitmoInitialPrompt] = useState<string | undefined>();
   const queryClient = useQueryClient();
 
   const [syncForm, setSyncForm] = useState({
