@@ -100,7 +100,11 @@ export const MentorChat = ({
   const edgeFunctionName = isLeader ? 'chat-mentor' : 'meu-rhitmo';
   const title = isLeader ? 'Mentor Chat' : 'Meu Rhitmo';
   const quickSuggestions = isLeader ? leaderSuggestions : directReportSuggestions;
-  const placeholder = isLeader ? `Pergunte sobre ${memberName}…` : 'Pergunte sobre sua carreira ou descreva uma situação...';
+  const placeholder = attachment
+    ? 'Descreva o que você quer saber sobre a imagem...'
+    : isLeader
+      ? `Pergunte sobre ${memberName} (Ctrl+V para colar imagem)…`
+      : 'Pergunte sobre sua carreira ou cole uma imagem (Ctrl+V)...';
 
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
