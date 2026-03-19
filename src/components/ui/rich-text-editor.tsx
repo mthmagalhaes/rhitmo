@@ -26,7 +26,9 @@ export const RichTextEditor = ({
   disabled = false,
   minHeight = '200px',
   editorRef,
+  highlightWords,
 }: RichTextEditorProps) => {
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
