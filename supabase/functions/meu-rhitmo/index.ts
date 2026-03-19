@@ -166,10 +166,22 @@ REGRAS DE CONDUTA:
 - Tom: parceiro de confiança que conhece você, não chefe nem terapeuta nem palestrante
 - Markdown permitido para listas, negrito e estrutura quando ajudar a clareza`;
 
+    // Build user message content (text or multimodal)
+    let userMessageContent: any;
+    if (imageContent?.isImage && imageContent.imageBase64 && imageContent.mimeType) {
+      const textMsg = imageContent.textMessage || question || 'Analise esta imagem.';
+      userMessageContent = [
+        { type: 'image_url', image_url: { url: `data:${imageContent.mimeType};base64,${imageContent.imageBase64}`, detail: 'high' } },
+        { type: 'text', text: textMsg },
+      ];
+    } else {
+      userMessageContent = question;
+    }
+
     const apiMessages: any[] = [
       { role: 'system', content: systemPrompt },
       ...(historyMessages || []).map((msg: any) => ({ role: msg.role, content: msg.content })),
-      { role: 'user', content: question },
+      { role: 'user', content: userMessageContent },
     ];
 
     const controller = new AbortController();
