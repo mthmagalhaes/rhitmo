@@ -855,8 +855,8 @@ export const MentorChat = ({
                 </div>
               )}
 
-              {/* Attachment preview (leader only) */}
-              {isLeader && attachment && (
+              {/* Attachment preview */}
+              {attachment && (
                 <div className="flex items-center gap-2 mb-2">
                   <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg border border-border/50 text-sm max-w-[300px]">
                     {attachment.isImage && attachment.imageBase64 ? (
