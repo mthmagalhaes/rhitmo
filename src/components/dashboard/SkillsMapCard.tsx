@@ -27,9 +27,9 @@ const isOlderThan90Days = (dateStr: string) => {
   return diff > 90 * 24 * 60 * 60 * 1000;
 };
 
-export default function SkillsMapCard({ aiAnalysis, memberId, onReanalyze, isReanalyzing, onAddToPDI, onSuggestOneOnOne, onOpenMeuRhitmo }: SkillsMapCardProps) {
+export default function SkillsMapCard({ aiAnalysis, memberId, onReanalyze, isReanalyzing, onSuggestOneOnOne, onOpenMeuRhitmo }: SkillsMapCardProps) {
   const focusArea = aiAnalysis?.suggested_focus?.[0];
-  const hasActions = focusArea && (onAddToPDI || onSuggestOneOnOne || onOpenMeuRhitmo);
+  const hasActions = focusArea && (onSuggestOneOnOne || onOpenMeuRhitmo);
 
   return (
     <Card className="p-6 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
