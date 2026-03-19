@@ -631,6 +631,14 @@ export const MentorChat = ({
                         🎯
                       </div>
                       <div className="flex-1 min-w-0 text-sm text-foreground">
+                        {isLastAssistant && lastSummaryApplied && (
+                          <div className="mb-2">
+                            <Badge variant="secondary" className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-[11px] rounded-full px-2.5 py-0.5 border-0 gap-1">
+                              <Sparkles className="h-3 w-3" />
+                              Resumo inteligente
+                            </Badge>
+                          </div>
+                        )}
                         <ReactMarkdown components={markdownComponents}>
                           {msg.content}
                         </ReactMarkdown>
@@ -646,7 +654,8 @@ export const MentorChat = ({
                       </div>
                     </div>
                   )
-                ))}
+                );
+                })}
 
                 {/* Loading indicator */}
                 {isLoading && (
