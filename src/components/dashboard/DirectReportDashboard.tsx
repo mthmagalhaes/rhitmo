@@ -403,9 +403,7 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
     }
   };
 
-  const handleAddFocusToPDI = (focusArea: string) => {
-    setShowPDIDialog(true);
-  };
+
 
   const handleSuggestOneOnOne = (focusArea: string) => {
     const text = `Olá, gostaria de conversar sobre o desenvolvimento da minha competência em "${focusArea}". O Skills Map identificou isso como uma área prioritária para meu crescimento. Podemos incluir esse tema na nossa próxima 1:1?`;
@@ -571,7 +569,6 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
                 memberId={linkedMember.id}
                 onReanalyze={handleReanalyze}
                 isReanalyzing={isReanalyzing}
-                onAddToPDI={handleAddFocusToPDI}
                 onSuggestOneOnOne={handleSuggestOneOnOne}
                 onOpenMeuRhitmo={handleOpenMeuRhitmoWithContext}
               />
@@ -597,9 +594,9 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
                       <p className="text-sm italic text-foreground">"{linkedMember.skills_data.aspirations}"</p>
                     </div>
                   )}
-                  <Button onClick={() => setShowPDIDialog(true)} className="gap-2 w-full sm:w-auto">
+                  <Button onClick={() => setShowPDIDialog(true)} size="lg" className="gap-2 w-full">
                     <Plus className="h-4 w-4" />
-                    Propor meu PDI
+                    Propor Ação de Desenvolvimento
                   </Button>
                 </Card>
               ) : devPlan.status === 'active' ? (
