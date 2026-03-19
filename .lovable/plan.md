@@ -1,35 +1,31 @@
 
 
-## Plan: Fix HR Admin Access & MentorChat HMR Error
+## Plan: Add matheus_hr@rhitmo.co as HR Admin
 
-### Two Issues Found
+### Findings
 
-**Issue 1: HRAdminGuard redirects to /dashboard**
+1. **User exists**: `matheus_hr@rhitmo.co` (ID: `e708e033-...`) — email confirmed, password set. The invite flow worked; the user was created successfully.
 
-The `HRAdminGuard` (line 29-33) fetches workspaces without a server-side filter for `hr_admin_ids`. It fetches up to 10 workspaces visible via RLS, then does client-side `.includes()` check. The problem: `hr_admin_ids` is a Postgres UUID array — when returned by Supabase JS, it's correctly a JS array of strings. However, the query relies on the RLS policy "HR Admin pode ver workspace" which uses `is_hr_admin_of_workspace(id)`. This should work, but the client-side `.includes()` filter on line 36-38 uses `(w as any).hr_admin_ids?.includes(user?.id)` which is fragile.
+2. **Workspace "Trabalho" does not exist**. The previous UPDATE that was supposed to add both matheus@rhitmo.co and matheus_hr@rhitmo.co as HR Admins **matched zero rows** because no workspace has that name. Available workspaces:
+   - FAP
+   - Faster Ops
+   - Gabriel - Central do Cliente
+   - Growth Squad Inc
+   - **Rhitmo Inc. 🙂** ← most likely your workspace
 
-**Fix**: Replace the generic fetch + client-side filter with a proper server-side `.contains()` filter and use `.maybeSingle()`. Also ensure `enabled` depends on `!authLoading` to avoid race conditions.
+3. **No HR Admins exist on any workspace** — all `hr_admin_ids` arrays are empty.
 
-```typescript
-const { data: workspace, isLoading } = useQuery({
-  queryKey: ['hr-admin-workspace', user?.id],
-  queryFn: async () => {
-    const { data, error } = await supabase
-      .from('workspaces')
-      .select('id, name')
-      .contains('hr_admin_ids', [user!.id])
-      .maybeSingle();
-    if (error) throw error;
-    return data;
-  },
-  enabled: !!user && !authLoading,
-});
-```
+### Action Required
 
-**Issue 2: MentorChat HMR failure**
+Which workspace should `matheus_hr@rhitmo.co` be added to as HR Admin? Once confirmed, I will:
 
-The console shows an HMR reload failure for MentorChat.tsx. The file syntax looks correct on inspection. This is likely a transient HMR issue that will resolve on next save/reload. No code change needed — it will be resolved when we edit and save HRAdminGuard.
+1. Run an UPDATE to add the user ID (`e708e033-7428-4bde-8b03-6c178dc059e4`) to that workspace's `hr_admin_ids` array
+2. Optionally also add `matheus@rhitmo.co` (`032f8a17-...`) if desired
 
-### Files Changed
-1. `src/components/HRAdminGuard.tsx` — fix query to use `.contains()` filter + `!authLoading` in `enabled`
+### Validation
+
+After the update:
+- Open incognito window → login as `matheus_hr@rhitmo.co`
+- Navigate to `/hr/competency-framework`
+- The `HRAdminGuard` will find the workspace via `.contains('hr_admin_ids', [userId])` and grant access
 
