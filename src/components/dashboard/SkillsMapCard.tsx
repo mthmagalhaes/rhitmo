@@ -13,7 +13,6 @@ interface SkillsMapCardProps {
   memberId: string;
   onReanalyze: () => void;
   isReanalyzing: boolean;
-  onAddToPDI?: (focusArea: string) => void;
   onSuggestOneOnOne?: (focusArea: string) => void;
   onOpenMeuRhitmo?: (focusArea: string) => void;
 }
