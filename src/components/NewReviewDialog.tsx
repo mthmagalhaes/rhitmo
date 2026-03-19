@@ -441,6 +441,19 @@ export const NewReviewDialog = ({
               </p>
             </div>
           </div>
+
+          {/* Bias Detection Alert */}
+          {showBiasAlert && biasResult && (
+            <BiasAlert
+              detectedWords={biasResult.detectedWords}
+              suggestions={biasResult.suggestions}
+              explanation={biasResult.explanation}
+              onDismiss={() => {
+                setShowBiasAlert(false);
+                setBiasDismissCount(prev => prev + 1);
+              }}
+            />
+          )}
         </div>
 
         <DialogFooter>
