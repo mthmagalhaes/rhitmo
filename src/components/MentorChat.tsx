@@ -473,6 +473,36 @@ export const MentorChat = ({
     adjustTextareaHeight();
   };
 
+  const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const imageItem = Array.from(items).find(item => item.type.startsWith('image/'));
+    if (!imageItem) return;
+
+    e.preventDefault();
+    const file = imageItem.getAsFile();
+    if (!file) return;
+
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      toast({ title: 'Formato não suportado', description: 'Use PNG, JPG ou WEBP.', variant: 'destructive' });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: 'Imagem muito grande', description: 'Máximo 5MB.', variant: 'destructive' });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64Full = event.target?.result as string;
+      const base64Data = base64Full.split(',')[1];
+      setAttachment({ name: 'imagem-colada.png', content: '', imageBase64: base64Data, mimeType: file.type, isImage: true });
+      toast({ title: '📋 Imagem colada!', description: 'Descreva o que você quer saber sobre ela.' });
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSuggestionClick = (text: string) => { handleSend(text); };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
