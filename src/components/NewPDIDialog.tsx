@@ -104,7 +104,7 @@ export function NewPDIDialog({ open, onOpenChange, memberId }: NewPDIDialogProps
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Propor meu PDI</DialogTitle>
+          <DialogTitle>Propor Ação de Desenvolvimento</DialogTitle>
           <DialogDescription>
             O que você quer desenvolver nos próximos meses? Seja específico e objetivo.
           </DialogDescription>

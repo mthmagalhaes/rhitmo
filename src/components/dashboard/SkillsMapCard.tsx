@@ -131,16 +131,6 @@ export default function SkillsMapCard({ aiAnalysis, memberId, onReanalyze, isRea
           {hasActions && (
             <div className="mt-6 pt-4 border-t border-border space-y-2">
               <p className="text-xs text-muted-foreground mb-3">📋 Próximos passos para desenvolver esta competência:</p>
-              {onAddToPDI && (
-                <Button
-                  variant="default"
-                  className="w-full justify-start gap-2"
-                  onClick={() => onAddToPDI(focusArea)}
-                >
-                  <Plus className="h-4 w-4" />
-                  Adicionar ao meu PDI
-                </Button>
-              )}
               {onSuggestOneOnOne && (
                 <Button
                   variant="outline"
@@ -161,6 +151,12 @@ export default function SkillsMapCard({ aiAnalysis, memberId, onReanalyze, isRea
                   Pedir ajuda ao Meu Rhitmo
                 </Button>
               )}
+              <div className="mt-4 rounded-lg bg-blue-50 dark:bg-blue-900/10 p-3 border-l-4 border-blue-500">
+                <p className="text-sm text-blue-900 dark:text-blue-100">
+                  💡 <strong>Próximo passo:</strong> Adicione esta competência ao seu PDI 
+                  usando o botão "Propor Ação de Desenvolvimento" abaixo.
+                </p>
+              </div>
             </div>
           )}
         </>
