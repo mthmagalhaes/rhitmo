@@ -107,6 +107,78 @@ const compressContext = (feedbacks: any[]): string => {
   return contextLines || 'Nenhum histórico disponível ainda.';
 };
 
+// ============================================
+// DETECÇÃO DE TRANSCRIÇÃO LONGA
+// ============================================
+const isLongTranscript = (text: string): boolean => {
+  const wordCount = text.split(/\s+/).length;
+  if (wordCount <= 800) return false;
+  const hasTimestamps = /\[\d{1,2}h?\d{0,2}\]|\d{1,2}:\d{2}/.test(text);
+  const speakerMatches = text.match(/^[A-ZÀ-Ú][a-zà-ú]+[\s:]|^[A-ZÀ-Ú]+:/gm) || [];
+  const hasMultipleSpeakers = speakerMatches.length > 5;
+  return hasTimestamps || hasMultipleSpeakers;
+};
+
+const isExcessivelyLong = (text: string): boolean => {
+  return text.split(/\s+/).length > 15000;
+};
+
+// ============================================
+// SUMMARIZAÇÃO DE TRANSCRIÇÃO (PASS 1)
+// ============================================
+const summarizeTranscript = async (text: string, openAIApiKey: string): Promise<any> => {
+  const systemPrompt = `Você é um assistente que analisa transcrições de reunião.
+Extraia as informações estruturadas da transcrição a seguir.
+
+Responda APENAS com JSON válido no seguinte formato:
+{
+  "participantes": ["Nome1", "Nome2"],
+  "topicos_principais": ["Tópico 1", "Tópico 2"],
+  "decisoes_tomadas": ["Decisão 1", "Decisão 2"],
+  "acoes_pendentes": ["Ação 1 - Responsável", "Ação 2 - Responsável"],
+  "pontos_de_atencao": ["Conflito ou desalinhamento mencionado"],
+  "resumo_executivo": "Parágrafo breve com o contexto geral da reunião"
+}`;
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: text },
+        ],
+        max_tokens: 2000,
+        temperature: 0.3,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('Summarization pass failed:', response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) return null;
+
+    // Try to parse JSON from the response
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+    return null;
+  } catch (error) {
+    console.error('Summarization error:', error);
+    return null;
+  }
+};
+
 // Helper: Formatar perfil Rhitmo Sync do liderado
 const formatWorkStyle = (data: any): string => {
   if (!data) return 'Perfil Rhitmo Sync: Não preenchido ainda.';
