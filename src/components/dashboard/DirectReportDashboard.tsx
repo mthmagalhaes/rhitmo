@@ -403,6 +403,25 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
     }
   };
 
+  const handleAddFocusToPDI = (focusArea: string) => {
+    setShowPDIDialog(true);
+  };
+
+  const handleSuggestOneOnOne = (focusArea: string) => {
+    const text = `Olá, gostaria de conversar sobre o desenvolvimento da minha competência em "${focusArea}". O Skills Map identificou isso como uma área prioritária para meu crescimento. Podemos incluir esse tema na nossa próxima 1:1?`;
+    navigator.clipboard.writeText(text).then(() => {
+      toast.success('💬 Sugestão de pauta copiada! Cole no seu próximo email ou mensagem para seu líder.');
+    }).catch(() => {
+      toast.error('Não foi possível copiar. Tente novamente.');
+    });
+  };
+
+  const handleOpenMeuRhitmoWithContext = (focusArea: string) => {
+    const prompt = `O meu Skills Map identificou "${focusArea}" como foco prioritário para meu desenvolvimento. Como posso desenvolver essa competência de forma prática? Que ações concretas você sugere?`;
+    setMeuRhitmoInitialPrompt(prompt);
+    setMeuRhitmoOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-muted/30 pb-20">
       {/* Header */}
