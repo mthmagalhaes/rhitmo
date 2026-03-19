@@ -33,6 +33,7 @@ interface MentorMessage {
   content: string;
   created_at: string;
   thread_id: string | null;
+  summaryApplied?: boolean;
 }
 
 interface ChatThread {
@@ -74,6 +75,7 @@ export const MentorChat = ({
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
+  const [lastSummaryApplied, setLastSummaryApplied] = useState(false);
   const [isExtractingFile, setIsExtractingFile] = useState(false);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [isCreatingNewThread, setIsCreatingNewThread] = useState(false);
@@ -234,6 +236,25 @@ export const MentorChat = ({
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
     setIsLoading(true);
 
+    // Progressive loading for long transcripts
+    const wordCount = finalMessage.split(/\s+/).length;
+    const isLongMessage = wordCount > 800;
+    let loadingInterval: ReturnType<typeof setInterval> | null = null;
+
+    if (isLongMessage) {
+      const loadingSteps = [
+        'Analisando transcrição...',
+        'Extraindo tópicos e decisões...',
+        'Gerando sugestões contextualizadas...',
+      ];
+      let stepIndex = 0;
+      setLoadingMessage(loadingSteps[0]);
+      loadingInterval = setInterval(() => {
+        stepIndex = Math.min(stepIndex + 1, loadingSteps.length - 1);
+        setLoadingMessage(loadingSteps[stepIndex]);
+      }, 3000);
+    }
+
     try {
       let currentThreadId = selectedThreadId;
       if (!currentThreadId || isCreatingNewThread) {
@@ -308,6 +329,9 @@ export const MentorChat = ({
 
       if (!data?.response) throw new Error('Resposta inválida do servidor.');
 
+      // Track if summary was applied for badge display
+      setLastSummaryApplied(!!data.metadata?.summary_applied);
+
       await supabase.from('mentor_messages').insert({ user_id: user.id, member_id: memberId, thread_id: currentThreadId, role: 'assistant', content: data.response });
       await supabase.from('chat_threads').update({ updated_at: new Date().toISOString() }).eq('id', currentThreadId);
       queryClient.invalidateQueries({ queryKey: ['mentor-messages', currentThreadId] });
@@ -318,7 +342,7 @@ export const MentorChat = ({
       if (error.name === 'AbortError') errorMessage = 'Tempo de resposta excedido. Tente novamente.';
       else if (error.message) errorMessage = error.message;
       toast({ title: "Erro ao consultar mentor", description: errorMessage, variant: "destructive" });
-    } finally { setIsLoading(false); setLoadingMessage(''); }
+    } finally { setIsLoading(false); setLoadingMessage(''); if (loadingInterval) clearInterval(loadingInterval); }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -587,7 +611,9 @@ export const MentorChat = ({
                 )}
 
                 {/* Messages */}
-                {!isLoadingMessages && messages.map((msg) => (
+                {!isLoadingMessages && messages.map((msg, idx) => {
+                  const isLastAssistant = msg.role === 'assistant' && idx === messages.length - 1;
+                  return (
                   msg.role === 'user' ? (
                     /* ── User bubble ──────────────── */
                     <div key={msg.id} className="flex flex-row-reverse items-start gap-2.5 max-w-[75%] ml-auto">
@@ -605,6 +631,14 @@ export const MentorChat = ({
                         🎯
                       </div>
                       <div className="flex-1 min-w-0 text-sm text-foreground">
+                        {isLastAssistant && lastSummaryApplied && (
+                          <div className="mb-2">
+                            <Badge variant="secondary" className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-[11px] rounded-full px-2.5 py-0.5 border-0 gap-1">
+                              <Sparkles className="h-3 w-3" />
+                              Resumo inteligente
+                            </Badge>
+                          </div>
+                        )}
                         <ReactMarkdown components={markdownComponents}>
                           {msg.content}
                         </ReactMarkdown>
@@ -620,7 +654,8 @@ export const MentorChat = ({
                       </div>
                     </div>
                   )
-                ))}
+                );
+                })}
 
                 {/* Loading indicator */}
                 {isLoading && (
