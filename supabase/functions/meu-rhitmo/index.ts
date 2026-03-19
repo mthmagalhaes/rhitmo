@@ -234,16 +234,61 @@ REGRAS DE CONDUTA:
 - Tom: parceiro de confiança que conhece você, não chefe nem terapeuta nem palestrante
 - Markdown permitido para listas, negrito e estrutura quando ajudar a clareza`;
 
+    // ============================================
+    // DETECÇÃO E PROCESSAMENTO DE TRANSCRIÇÃO LONGA
+    // ============================================
+    let summaryApplied = false;
+
+    // Reject excessively long transcripts
+    if (isExcessivelyLong(question)) {
+      return new Response(
+        JSON.stringify({ error: 'Transcrição muito longa. Por favor, cole apenas os últimos 30 minutos da reunião (máx ~15.000 palavras).' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 2-pass summarization for long transcripts
+    let processedQuestion = question;
+    if (isLongTranscript(question)) {
+      console.log('Long transcript detected, running 2-pass summarization...');
+      const summary = await summarizeTranscript(question, openAIApiKey);
+      if (summary) {
+        processedQuestion = `[TRANSCRIÇÃO DE REUNIÃO PROCESSADA]
+
+Resumo executivo: ${summary.resumo_executivo || 'Não disponível'}
+
+Participantes: ${summary.participantes?.join(', ') || 'não especificado'}
+
+Tópicos principais:
+${summary.topicos_principais?.map((t: string) => `• ${t}`).join('\n') || '• não especificado'}
+
+Decisões tomadas:
+${summary.decisoes_tomadas?.map((d: string) => `• ${d}`).join('\n') || '• nenhuma'}
+
+Ações pendentes:
+${summary.acoes_pendentes?.map((a: string) => `• ${a}`).join('\n') || '• nenhuma'}
+
+Pontos de atenção:
+${summary.pontos_de_atencao?.map((p: string) => `• ${p}`).join('\n') || '• nenhum'}
+
+Pergunta do usuário: ${question.slice(0, 300)}`;
+        summaryApplied = true;
+        console.log('Summary applied successfully');
+      } else {
+        console.log('Summarization failed, using raw transcript');
+      }
+    }
+
     // Build user message content (text or multimodal)
     let userMessageContent: any;
     if (imageContent?.isImage && imageContent.imageBase64 && imageContent.mimeType) {
-      const textMsg = imageContent.textMessage || question || 'Analise esta imagem.';
+      const textMsg = imageContent.textMessage || processedQuestion || 'Analise esta imagem.';
       userMessageContent = [
         { type: 'image_url', image_url: { url: `data:${imageContent.mimeType};base64,${imageContent.imageBase64}`, detail: 'high' } },
         { type: 'text', text: textMsg },
       ];
     } else {
-      userMessageContent = question;
+      userMessageContent = processedQuestion;
     }
 
     const apiMessages: any[] = [
