@@ -33,6 +33,7 @@ interface MentorMessage {
   content: string;
   created_at: string;
   thread_id: string | null;
+  summaryApplied?: boolean;
 }
 
 interface ChatThread {
