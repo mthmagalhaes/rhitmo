@@ -16,6 +16,7 @@ interface RichTextEditorProps {
   disabled?: boolean;
   minHeight?: string;
   editorRef?: React.MutableRefObject<ReturnType<typeof useEditor> | null>;
+  highlightWords?: string[];
 }
 
 export const RichTextEditor = ({
