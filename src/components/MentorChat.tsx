@@ -59,6 +59,7 @@ interface MentorChatProps {
   pdiItems?: any[];
   latestReview?: string | null;
   userId?: string;
+  initialPrompt?: string;
 }
 
 const leaderSuggestions = [
