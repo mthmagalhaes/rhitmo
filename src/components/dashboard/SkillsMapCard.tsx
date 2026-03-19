@@ -1,6 +1,6 @@
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Compass, RefreshCw, Loader2, AlertTriangle, Target, Plus, MessageCircle, Sparkles } from 'lucide-react';
+import { Compass, RefreshCw, Loader2, AlertTriangle, Target, MessageCircle, Sparkles } from 'lucide-react';
 
 interface SkillsMapCardProps {
   aiAnalysis: {
