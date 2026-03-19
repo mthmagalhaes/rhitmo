@@ -366,8 +366,13 @@ Pergunta do usuário: ${question.slice(0, 300)}`;
     // Update thread timestamp
     await supabase.from('chat_threads').update({ updated_at: new Date().toISOString() }).eq('id', currentThreadId);
 
+    const responsePayload: any = { response: aiResponse, threadId: currentThreadId };
+    if (summaryApplied) {
+      responsePayload.metadata = { summary_applied: true };
+    }
+
     return new Response(
-      JSON.stringify({ response: aiResponse, threadId: currentThreadId }),
+      JSON.stringify(responsePayload),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: any) {
