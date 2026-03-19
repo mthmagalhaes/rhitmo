@@ -45,6 +45,7 @@ export const NewReviewDialog = ({
   const [biasResult, setBiasResult] = useState<BiasDetectionResult | null>(null);
   const [showBiasAlert, setShowBiasAlert] = useState(false);
   const [biasDismissCount, setBiasDismissCount] = useState(0);
+  const [highlightWords, setHighlightWords] = useState<string[]>([]);
   const { toast } = useToast();
   const { canGenerateReview, limits } = usePlanLimits();
 
