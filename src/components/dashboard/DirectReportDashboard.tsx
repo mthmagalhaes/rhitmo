@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FeedbackTimeline } from '@/components/FeedbackTimeline';
-import { Home, Compass, FileText, User, Zap, CheckCircle, ChevronRight, Sparkles, Loader2, Download, Bell, Sprout, Plus, CheckCircle2 } from 'lucide-react';
+import { Home, Compass, FileText, User, Zap, CheckCircle, ChevronRight, Sparkles, Loader2, Download, Bell, Sprout, Plus, CheckCircle2, MessageCircle } from 'lucide-react';
 import { NewPDIDialog } from '@/components/NewPDIDialog';
 import { cn } from '@/lib/utils';
 import SkillsMapCard from './SkillsMapCard';
