@@ -78,6 +78,58 @@ export const RichTextEditor = ({
     }
   }, [content, editor]);
 
+  // Apply bias highlights on detected words
+  useEffect(() => {
+    if (!editor || !highlightWords || highlightWords.length === 0) {
+      if (editor) {
+        editor.commands.unsetHighlight();
+      }
+      if (highlightTimerRef.current) {
+        clearTimeout(highlightTimerRef.current);
+        highlightTimerRef.current = null;
+      }
+      return;
+    }
+
+    const { doc } = editor.state;
+    const tr = editor.state.tr;
+    let hasMarks = false;
+
+    doc.descendants((node, pos) => {
+      if (!node.isText || !node.text) return;
+      const text = node.text.toLowerCase();
+      highlightWords.forEach(word => {
+        const lowerWord = word.toLowerCase();
+        let index = text.indexOf(lowerWord);
+        while (index !== -1) {
+          tr.addMark(
+            pos + index,
+            pos + index + lowerWord.length,
+            editor.schema.marks.highlight.create({ color: '#fde68a' })
+          );
+          hasMarks = true;
+          index = text.indexOf(lowerWord, index + 1);
+        }
+      });
+    });
+
+    if (hasMarks) {
+      editor.view.dispatch(tr);
+    }
+
+    // Auto-clear after 8 seconds
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    highlightTimerRef.current = setTimeout(() => {
+      if (editor && !editor.isDestroyed) {
+        editor.commands.unsetHighlight();
+      }
+    }, 8000);
+
+    return () => {
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    };
+  }, [editor, highlightWords]);
+
   if (!editor) {
     return null;
   }

@@ -450,8 +450,12 @@ export const NewReviewDialog = ({
               detectedWords={biasResult.detectedWords}
               suggestions={biasResult.suggestions}
               explanation={biasResult.explanation}
+              onHighlightWords={() => {
+                setHighlightWords(biasResult.detectedWords);
+              }}
               onDismiss={() => {
                 setShowBiasAlert(false);
+                setHighlightWords([]);
                 setBiasDismissCount(prev => prev + 1);
               }}
             />

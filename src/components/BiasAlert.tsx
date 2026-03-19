@@ -63,7 +63,18 @@ export function BiasAlert({ detectedWords, suggestions, explanation, onDismiss, 
         </div>
       )}
 
-      <div className="flex justify-end">
+      <div className="flex items-center justify-end gap-2">
+        {onHighlightWords && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs gap-1.5"
+            onClick={onHighlightWords}
+          >
+            <Highlighter className="h-3.5 w-3.5" />
+            Destacar no texto
+          </Button>
+        )}
         <Button variant="ghost" size="sm" className="text-xs" onClick={onDismiss}>
           Entendi, ignorar
         </Button>
