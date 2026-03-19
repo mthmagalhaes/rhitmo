@@ -915,9 +915,20 @@ export const MentorChat = ({
                         )}
                       </>
                     ) : (
-                      <p className="text-xs text-muted-foreground">
-                        Suas conversas são confidenciais e não são compartilhadas com seu líder.
-                      </p>
+                      <div className="flex items-center gap-1">
+                        <input ref={fileInputRef} type="file" accept=".png,.jpg,.jpeg,.webp" className="hidden" onChange={handleFileSelect} />
+                        <button
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isLoading || isExtractingFile}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                        >
+                          {isExtractingFile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
+                          <span className="hidden sm:inline">Anexar</span>
+                        </button>
+                        <p className="text-xs text-muted-foreground">
+                          Conversas confidenciais
+                        </p>
+                      </div>
                     )}
                   </div>
                   <button
