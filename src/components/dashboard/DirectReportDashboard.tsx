@@ -1032,9 +1032,10 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
 
       {/* Meu Rhitmo Dialog */}
       {user && (
-        <MeuRhitmo
+        <MentorChat
           open={meuRhitmoOpen}
           onOpenChange={setMeuRhitmoOpen}
+          userType="direct_report"
           memberName={displayName}
           memberRole={linkedMember.role}
           workStyleData={linkedMember.work_style_data}
