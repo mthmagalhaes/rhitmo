@@ -7,6 +7,74 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// ============================================
+// DETECÇÃO E SUMMARIZAÇÃO DE TRANSCRIÇÃO LONGA
+// ============================================
+const isLongTranscript = (text: string): boolean => {
+  const wordCount = text.split(/\s+/).length;
+  if (wordCount <= 800) return false;
+  const hasTimestamps = /\[\d{1,2}h?\d{0,2}\]|\d{1,2}:\d{2}/.test(text);
+  const speakerMatches = text.match(/^[A-ZÀ-Ú][a-zà-ú]+[\s:]|^[A-ZÀ-Ú]+:/gm) || [];
+  const hasMultipleSpeakers = speakerMatches.length > 5;
+  return hasTimestamps || hasMultipleSpeakers;
+};
+
+const isExcessivelyLong = (text: string): boolean => {
+  return text.split(/\s+/).length > 15000;
+};
+
+const summarizeTranscript = async (text: string, openAIApiKey: string): Promise<any> => {
+  const summarySystemPrompt = `Você é um assistente que analisa transcrições de reunião.
+Extraia as informações estruturadas da transcrição a seguir.
+
+Responda APENAS com JSON válido no seguinte formato:
+{
+  "participantes": ["Nome1", "Nome2"],
+  "topicos_principais": ["Tópico 1", "Tópico 2"],
+  "decisoes_tomadas": ["Decisão 1", "Decisão 2"],
+  "acoes_pendentes": ["Ação 1 - Responsável", "Ação 2 - Responsável"],
+  "pontos_de_atencao": ["Conflito ou desalinhamento mencionado"],
+  "resumo_executivo": "Parágrafo breve com o contexto geral da reunião"
+}`;
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: summarySystemPrompt },
+          { role: 'user', content: text },
+        ],
+        max_tokens: 2000,
+        temperature: 0.3,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('Summarization pass failed:', response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) return null;
+
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+    return null;
+  } catch (error) {
+    console.error('Summarization error:', error);
+    return null;
+  }
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -166,16 +234,61 @@ REGRAS DE CONDUTA:
 - Tom: parceiro de confiança que conhece você, não chefe nem terapeuta nem palestrante
 - Markdown permitido para listas, negrito e estrutura quando ajudar a clareza`;
 
+    // ============================================
+    // DETECÇÃO E PROCESSAMENTO DE TRANSCRIÇÃO LONGA
+    // ============================================
+    let summaryApplied = false;
+
+    // Reject excessively long transcripts
+    if (isExcessivelyLong(question)) {
+      return new Response(
+        JSON.stringify({ error: 'Transcrição muito longa. Por favor, cole apenas os últimos 30 minutos da reunião (máx ~15.000 palavras).' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 2-pass summarization for long transcripts
+    let processedQuestion = question;
+    if (isLongTranscript(question)) {
+      console.log('Long transcript detected, running 2-pass summarization...');
+      const summary = await summarizeTranscript(question, openAIApiKey);
+      if (summary) {
+        processedQuestion = `[TRANSCRIÇÃO DE REUNIÃO PROCESSADA]
+
+Resumo executivo: ${summary.resumo_executivo || 'Não disponível'}
+
+Participantes: ${summary.participantes?.join(', ') || 'não especificado'}
+
+Tópicos principais:
+${summary.topicos_principais?.map((t: string) => `• ${t}`).join('\n') || '• não especificado'}
+
+Decisões tomadas:
+${summary.decisoes_tomadas?.map((d: string) => `• ${d}`).join('\n') || '• nenhuma'}
+
+Ações pendentes:
+${summary.acoes_pendentes?.map((a: string) => `• ${a}`).join('\n') || '• nenhuma'}
+
+Pontos de atenção:
+${summary.pontos_de_atencao?.map((p: string) => `• ${p}`).join('\n') || '• nenhum'}
+
+Pergunta do usuário: ${question.slice(0, 300)}`;
+        summaryApplied = true;
+        console.log('Summary applied successfully');
+      } else {
+        console.log('Summarization failed, using raw transcript');
+      }
+    }
+
     // Build user message content (text or multimodal)
     let userMessageContent: any;
     if (imageContent?.isImage && imageContent.imageBase64 && imageContent.mimeType) {
-      const textMsg = imageContent.textMessage || question || 'Analise esta imagem.';
+      const textMsg = imageContent.textMessage || processedQuestion || 'Analise esta imagem.';
       userMessageContent = [
         { type: 'image_url', image_url: { url: `data:${imageContent.mimeType};base64,${imageContent.imageBase64}`, detail: 'high' } },
         { type: 'text', text: textMsg },
       ];
     } else {
-      userMessageContent = question;
+      userMessageContent = processedQuestion;
     }
 
     const apiMessages: any[] = [
@@ -185,7 +298,7 @@ REGRAS DE CONDUTA:
     ];
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 45000);
+    const timeoutId = setTimeout(() => controller.abort(), summaryApplied ? 90000 : 45000);
 
     let response;
     try {
@@ -253,8 +366,13 @@ REGRAS DE CONDUTA:
     // Update thread timestamp
     await supabase.from('chat_threads').update({ updated_at: new Date().toISOString() }).eq('id', currentThreadId);
 
+    const responsePayload: any = { response: aiResponse, threadId: currentThreadId };
+    if (summaryApplied) {
+      responsePayload.metadata = { summary_applied: true };
+    }
+
     return new Response(
-      JSON.stringify({ response: aiResponse, threadId: currentThreadId }),
+      JSON.stringify(responsePayload),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: any) {
