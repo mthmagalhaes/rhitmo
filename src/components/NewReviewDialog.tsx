@@ -42,6 +42,9 @@ export const NewReviewDialog = ({
   const [generatedMonths, setGeneratedMonths] = useState<number | null>(null);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
+  const [biasResult, setBiasResult] = useState<BiasDetectionResult | null>(null);
+  const [showBiasAlert, setShowBiasAlert] = useState(false);
+  const [biasDismissCount, setBiasDismissCount] = useState(0);
   const { toast } = useToast();
   const { canGenerateReview, limits } = usePlanLimits();
 
