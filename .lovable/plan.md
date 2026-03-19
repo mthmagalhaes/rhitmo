@@ -1,91 +1,53 @@
 
 
-## Plan: Unify MentorChat and MeuRhitmo into a single component
+## Plan: Bias Detection v1 for Review Creation
 
 ### Summary
 
-MentorChat.tsx (798 lines, leader) and MeuRhitmo.tsx (610 lines) share ~90% identical code (sidebar, threads, messages, markdown rendering, delete dialog). The key differences are:
+Add real-time, client-side gender bias detection to `NewReviewDialog.tsx`. The system detects gendered word patterns as the leader edits review content, shows an educational inline alert with neutral alternatives, and optionally logs detections for HR analytics.
 
-| Aspect | MentorChat (leader) | MeuRhitmo (direct report) |
-|--------|-------------------|--------------------------|
-| Thread type filter | none (implicit 'mentor') | `.eq('type', 'career')` |
-| Edge function | `chat-mentor` | `meu-rhitmo` |
-| Query keys | `chat-threads`, `mentor-messages` | `meu-rhitmo-threads`, `meu-rhitmo-messages` |
-| Header title | "Mentor Chat" + member name | "Meu Rhitmo" |
-| Header badge | ContextPicker | "Confidencial" badge |
-| Quick suggestions | 3 leader-focused | 5 career-focused |
-| Features | File attachment, VoiceInput, ContextPicker, retry logic, loading steps | Simpler (no attachments, no voice, no context picker) |
-| Empty state | "Mentor de {name}" | "Ola, {firstName}!" |
-| Icon | 🎯 emoji | `<Sparkles>` icon |
-| Props | memberName, memberId, feedbacks, workStyleData, etc. | memberName, memberRole, workStyleData, aiAnalysis, pdiItems, latestReview, userId |
+Note: The project already has AI-powered bias detection for **feedbacks** (via `analyze-feedback` edge function + `BiasDetectionPanel`). This new feature adds **client-side, word-list-based** detection specifically for the **review creation** flow, providing instant feedback without waiting for AI.
 
-### Approach
+### Files to create/modify
 
-Create a unified `MentorChat` component with a `userType: 'leader' | 'direct_report'` prop that controls the behavioral differences.
+**1. Create `src/lib/biasDetection.ts`**
+- Feminine-coded word list (organizada, cuidadosa, colaborativa, etc.)
+- Masculine-coded word list (assertivo, decisivo, estratégico, etc.)
+- Neutral alternatives map
+- `detectGenderBias(text)` function returning `{ hasBias, biasType, detectedWords, suggestions, explanation }`
+- Threshold: 2+ words from the same gender category triggers alert
+- Strip HTML tags before analysis (since RichTextEditor produces HTML)
 
-### Files to modify
+**2. Create `src/components/BiasAlert.tsx`**
+- Educational, non-blocking alert card
+- Design: `bg-blue-50` with `border-l-4 border-blue-500`, Lightbulb icon
+- Shows detected words, neutral alternatives, and explanation
+- Two actions: "Entendi, ignorar" (ghost button) and optional "Ver sugestões no MentorChat"
+- Collapsible details section for suggestions list
 
-**1. `src/components/MentorChat.tsx`** - Refactor to accept both modes
+**3. Modify `src/components/NewReviewDialog.tsx`**
+- Import `detectGenderBias` and `BiasAlert`
+- Add state: `biasResult`, `showBiasAlert`, `biasDismissCount`
+- Add debounced effect (2s) on `content` changes to run detection (only when content > 50 words)
+- Render `BiasAlert` between the RichTextEditor and the footer
+- Fatigue prevention: stop alerting after 3 dismissals in the same session
+- Non-blocking: alert does not prevent saving
 
-- Add `userType` prop to `MentorChatProps`
-- Make leader-only props optional: `feedbacks?`, `memberId?`, `keyObjectives?`, `leaderSyncData?`
-- Add direct-report props as optional: `aiAnalysis?`, `pdiItems?`, `latestReview?`, `userId?`
-- Derive config from `userType`:
-  - `threadType`: `'mentor'` vs `'career'`
-  - `queryKeyPrefix`: `'chat-threads'` vs `'meu-rhitmo-threads'`
-  - `edgeFunctionName`: `'chat-mentor'` vs `'meu-rhitmo'`
-  - `title`: `'Mentor Chat'` vs `'Meu Rhitmo'`
-  - `quickSuggestions`: leader set vs career set
-  - `icon`: emoji vs Sparkles
-  - `placeholder`: leader vs career text
-  - `emptyStateTitle`/`emptyStateDescription`
-- Thread query: add `.eq('type', threadType)` filter (leader currently doesn't filter -- add `'mentor'` type)
-- Thread creation: include `type: threadType` in insert
-- Conditionally render ContextPicker (leader) vs Confidencial badge (direct report)
-- Conditionally render file attachment + VoiceInput (leader only)
-- Send logic: branch on `userType` to call the correct edge function with correct payload
-- Keep retry/loading-steps logic for both (was leader-only, harmless for both)
-
-**2. `src/components/MeuRhitmo.tsx`** - Delete entirely
-
-**3. `src/components/dashboard/DirectReportDashboard.tsx`** - Update import
-- Replace `import MeuRhitmo` with `import { MentorChat }`
-- Update the JSX call to pass `userType="direct_report"` and map props accordingly
-
-**4. `src/pages/MemberDetails.tsx`** - Add `userType="leader"` prop to existing `<MentorChat>` call (no other changes needed since existing props match)
-
-### Edge functions
-
-No changes needed. Both `chat-mentor` and `meu-rhitmo` edge functions remain as-is. The unified component calls the correct one based on `userType`.
-
-### Risk mitigation
-
-- Thread isolation preserved: queries always filter by `type` column
-- No visual changes: identical CSS, just conditional rendering of badges/icons/text
-- Backward compatible: existing leader usage only needs `userType="leader"` added
+**4. Database migration (optional analytics table)**
+- Create `bias_detections` table with columns: `id`, `leader_id` (uuid, not FK to auth.users), `member_id` (uuid), `bias_type` (text), `detected_words` (text[]), `dismissed` (boolean), `context` (text: 'review' or 'feedback'), `created_at`
+- RLS: leaders can INSERT own rows; HR Admins can SELECT via `is_hr_admin_of_workspace` function
+- Indexes on `leader_id` and `bias_type`
 
 ### Technical details
 
-The unified props interface:
+- HTML stripping: use a simple regex (`/<[^>]*>/g`) to get plain text from the rich editor before word matching
+- Debounce: 2000ms `setTimeout` in a `useEffect` with cleanup
+- Word matching: case-insensitive, uses `includes()` on lowercased plain text
+- The BiasAlert renders between the content editor and DialogFooter, visually inline with the editing flow
+- No changes to existing `BiasDetectionPanel` (that's for feedback timeline, separate feature)
 
-```typescript
-interface MentorChatProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  userType: 'leader' | 'direct_report';
-  memberName: string;
-  memberId?: string;        // leader mode
-  memberRole?: string;
-  feedbacks?: any[];         // leader mode
-  workStyleData?: any;
-  keyObjectives?: string | null;  // leader mode
-  leaderSyncData?: any;          // leader mode
-  aiAnalysis?: any;              // direct_report mode
-  pdiItems?: any[];              // direct_report mode
-  latestReview?: string | null;  // direct_report mode
-  userId?: string;               // direct_report mode (for thread ownership)
-}
-```
-
-The component internally resolves the effective user ID: in leader mode from `useAuth().user.id`, in direct_report mode from the `userId` prop.
+### What this does NOT include (Sprint 7)
+- Recency bias / Halo effect detection
+- MentorChat integration (the "Ver sugestões" button is a placeholder for now)
+- Aggregated HR dashboard for bias patterns
 
