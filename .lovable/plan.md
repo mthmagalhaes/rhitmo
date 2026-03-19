@@ -1,53 +1,72 @@
 
 
-## Plan: Bias Detection v1 for Review Creation
+## Plan: Highlight Biased Words in Rich Text Editor
 
-### Summary
+### Approach
 
-Add real-time, client-side gender bias detection to `NewReviewDialog.tsx`. The system detects gendered word patterns as the leader edits review content, shows an educational inline alert with neutral alternatives, and optionally logs detections for HR analytics.
+Since the review editor uses **TipTap** (ProseMirror-based), we can use TipTap's native `Highlight` extension to apply yellow background marks directly on detected words. This is far cleaner than textarea overlays — the highlights live inside the editable content naturally.
 
-Note: The project already has AI-powered bias detection for **feedbacks** (via `analyze-feedback` edge function + `BiasDetectionPanel`). This new feature adds **client-side, word-list-based** detection specifically for the **review creation** flow, providing instant feedback without waiting for AI.
+### Files to modify
 
-### Files to create/modify
+**1. `src/components/ui/rich-text-editor.tsx`** — Add highlight support
+- Import and register `@tiptap/extension-highlight` with a custom `biasHighlight` type
+- Add new prop `highlightWords?: string[]`
+- Add a `useEffect` that, when `highlightWords` changes, uses ProseMirror search-and-mark to apply highlight marks on matching words
+- Add CSS for the highlight: `bg-amber-200/60 dark:bg-amber-700/40 rounded px-0.5`
+- Auto-clear highlights after 8 seconds
+- Export a method via `editorRef` or a new prop callback to trigger highlight externally
 
-**1. Create `src/lib/biasDetection.ts`**
-- Feminine-coded word list (organizada, cuidadosa, colaborativa, etc.)
-- Masculine-coded word list (assertivo, decisivo, estratégico, etc.)
-- Neutral alternatives map
-- `detectGenderBias(text)` function returning `{ hasBias, biasType, detectedWords, suggestions, explanation }`
-- Threshold: 2+ words from the same gender category triggers alert
-- Strip HTML tags before analysis (since RichTextEditor produces HTML)
+**2. `src/components/BiasAlert.tsx`** — Add "Destacar no texto" button
+- Add optional `onHighlightWords` prop
+- Add a `Highlighter` icon button between the suggestions toggle and the dismiss button
+- When clicked, calls `onHighlightWords()` which triggers highlighting in the parent
 
-**2. Create `src/components/BiasAlert.tsx`**
-- Educational, non-blocking alert card
-- Design: `bg-blue-50` with `border-l-4 border-blue-500`, Lightbulb icon
-- Shows detected words, neutral alternatives, and explanation
-- Two actions: "Entendi, ignorar" (ghost button) and optional "Ver sugestões no MentorChat"
-- Collapsible details section for suggestions list
+**3. `src/components/NewReviewDialog.tsx`** — Wire everything together
+- Add `highlightWords` state
+- Pass `highlightWords` to `RichTextEditor`
+- Pass `onHighlightWords` callback to `BiasAlert` that sets `highlightWords` from `biasResult.detectedWords`
+- Clear `highlightWords` on dismiss, on dialog close, and auto-clear after timeout
 
-**3. Modify `src/components/NewReviewDialog.tsx`**
-- Import `detectGenderBias` and `BiasAlert`
-- Add state: `biasResult`, `showBiasAlert`, `biasDismissCount`
-- Add debounced effect (2s) on `content` changes to run detection (only when content > 50 words)
-- Render `BiasAlert` between the RichTextEditor and the footer
-- Fatigue prevention: stop alerting after 3 dismissals in the same session
-- Non-blocking: alert does not prevent saving
-
-**4. Database migration (optional analytics table)**
-- Create `bias_detections` table with columns: `id`, `leader_id` (uuid, not FK to auth.users), `member_id` (uuid), `bias_type` (text), `detected_words` (text[]), `dismissed` (boolean), `context` (text: 'review' or 'feedback'), `created_at`
-- RLS: leaders can INSERT own rows; HR Admins can SELECT via `is_hr_admin_of_workspace` function
-- Indexes on `leader_id` and `bias_type`
+**4. `src/index.css`** — Add highlight styling
+- Add `.bias-highlight` class: `background-color: rgb(253 230 138 / 0.6); border-radius: 2px; padding: 0 2px;`
+- Dark mode variant with amber-700/40
 
 ### Technical details
 
-- HTML stripping: use a simple regex (`/<[^>]*>/g`) to get plain text from the rich editor before word matching
-- Debounce: 2000ms `setTimeout` in a `useEffect` with cleanup
-- Word matching: case-insensitive, uses `includes()` on lowercased plain text
-- The BiasAlert renders between the content editor and DialogFooter, visually inline with the editing flow
-- No changes to existing `BiasDetectionPanel` (that's for feedback timeline, separate feature)
+TipTap Highlight extension supports custom types. We configure it with `multicolor: true` and apply marks programmatically:
 
-### What this does NOT include (Sprint 7)
-- Recency bias / Halo effect detection
-- MentorChat integration (the "Ver sugestões" button is a placeholder for now)
-- Aggregated HR dashboard for bias patterns
+```typescript
+import Highlight from '@tiptap/extension-highlight';
+
+// In extensions array:
+Highlight.configure({ multicolor: true })
+
+// To apply highlights:
+const applyBiasHighlights = (editor, words) => {
+  const { doc } = editor.state;
+  const tr = editor.state.tr;
+  
+  doc.descendants((node, pos) => {
+    if (!node.isText) return;
+    const text = node.text.toLowerCase();
+    words.forEach(word => {
+      let index = text.indexOf(word.toLowerCase());
+      while (index !== -1) {
+        tr.addMark(pos + index, pos + index + word.length, 
+          editor.schema.marks.highlight.create({ color: '#fde68a' }));
+        index = text.indexOf(word.toLowerCase(), index + 1);
+      }
+    });
+  });
+  
+  editor.view.dispatch(tr);
+};
+
+// To clear: editor.commands.unsetHighlight()
+```
+
+The highlights are native editor marks — fully compatible with editing, cursor, selection. Auto-clear after 8s via setTimeout.
+
+### Install dependency
+- `@tiptap/extension-highlight` (TipTap highlight extension)
 
