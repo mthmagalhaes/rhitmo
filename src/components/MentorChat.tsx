@@ -611,7 +611,9 @@ export const MentorChat = ({
                 )}
 
                 {/* Messages */}
-                {!isLoadingMessages && messages.map((msg) => (
+                {!isLoadingMessages && messages.map((msg, idx) => {
+                  const isLastAssistant = msg.role === 'assistant' && idx === messages.length - 1;
+                  return (
                   msg.role === 'user' ? (
                     /* ── User bubble ──────────────── */
                     <div key={msg.id} className="flex flex-row-reverse items-start gap-2.5 max-w-[75%] ml-auto">
