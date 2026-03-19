@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 import SkillsMapCard from './SkillsMapCard';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
-import MeuRhitmo from '@/components/MeuRhitmo';
+import { MentorChat } from '@/components/MentorChat';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 
