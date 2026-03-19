@@ -403,9 +403,7 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
     }
   };
 
-  const handleAddFocusToPDI = (focusArea: string) => {
-    setShowPDIDialog(true);
-  };
+
 
   const handleSuggestOneOnOne = (focusArea: string) => {
     const text = `Olá, gostaria de conversar sobre o desenvolvimento da minha competência em "${focusArea}". O Skills Map identificou isso como uma área prioritária para meu crescimento. Podemos incluir esse tema na nossa próxima 1:1?`;
