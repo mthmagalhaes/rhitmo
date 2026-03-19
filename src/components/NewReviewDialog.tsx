@@ -64,6 +64,23 @@ export const NewReviewDialog = ({
     }
   }, [open]);
 
+  // Debounced bias detection (2s after typing stops, min 50 chars)
+  useEffect(() => {
+    if (!content || content.length < 50 || biasDismissCount >= 3) return;
+
+    const timer = setTimeout(() => {
+      const result = detectGenderBias(content);
+      if (result.hasBias) {
+        setBiasResult(result);
+        setShowBiasAlert(true);
+      } else {
+        setShowBiasAlert(false);
+      }
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [content, biasDismissCount]);
+
   const handlePresetClick = (months: number) => {
     const today = new Date();
     const startDate = subMonths(today, months);
