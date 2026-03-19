@@ -38,6 +38,39 @@ export type Database = {
         }
         Relationships: []
       }
+      bias_detections: {
+        Row: {
+          bias_type: string
+          context: string | null
+          created_at: string | null
+          detected_words: string[] | null
+          dismissed: boolean | null
+          id: string
+          leader_id: string
+          member_id: string | null
+        }
+        Insert: {
+          bias_type: string
+          context?: string | null
+          created_at?: string | null
+          detected_words?: string[] | null
+          dismissed?: boolean | null
+          id?: string
+          leader_id: string
+          member_id?: string | null
+        }
+        Update: {
+          bias_type?: string
+          context?: string | null
+          created_at?: string | null
+          detected_words?: string[] | null
+          dismissed?: boolean | null
+          id?: string
+          leader_id?: string
+          member_id?: string | null
+        }
+        Relationships: []
+      }
       chat_threads: {
         Row: {
           created_at: string

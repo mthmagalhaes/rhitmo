@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,8 @@ import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
-
+import { detectGenderBias, type BiasDetectionResult } from "@/lib/biasDetection";
+import { BiasAlert } from "@/components/BiasAlert";
 interface NewReviewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -41,6 +42,9 @@ export const NewReviewDialog = ({
   const [generatedMonths, setGeneratedMonths] = useState<number | null>(null);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
+  const [biasResult, setBiasResult] = useState<BiasDetectionResult | null>(null);
+  const [showBiasAlert, setShowBiasAlert] = useState(false);
+  const [biasDismissCount, setBiasDismissCount] = useState(0);
   const { toast } = useToast();
   const { canGenerateReview, limits } = usePlanLimits();
 
@@ -59,6 +63,23 @@ export const NewReviewDialog = ({
       fetchManagerName();
     }
   }, [open]);
+
+  // Debounced bias detection (2s after typing stops, min 50 chars)
+  useEffect(() => {
+    if (!content || content.length < 50 || biasDismissCount >= 3) return;
+
+    const timer = setTimeout(() => {
+      const result = detectGenderBias(content);
+      if (result.hasBias) {
+        setBiasResult(result);
+        setShowBiasAlert(true);
+      } else {
+        setShowBiasAlert(false);
+      }
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [content, biasDismissCount]);
 
   const handlePresetClick = (months: number) => {
     const today = new Date();
@@ -245,6 +266,9 @@ export const NewReviewDialog = ({
     setGeneratedMonths(null);
     setDateRange(undefined);
     setSelectedPreset(null);
+    setBiasResult(null);
+    setShowBiasAlert(false);
+    setBiasDismissCount(0);
     onOpenChange(false);
   };
 
@@ -417,6 +441,19 @@ export const NewReviewDialog = ({
               </p>
             </div>
           </div>
+
+          {/* Bias Detection Alert */}
+          {showBiasAlert && biasResult && (
+            <BiasAlert
+              detectedWords={biasResult.detectedWords}
+              suggestions={biasResult.suggestions}
+              explanation={biasResult.explanation}
+              onDismiss={() => {
+                setShowBiasAlert(false);
+                setBiasDismissCount(prev => prev + 1);
+              }}
+            />
+          )}
         </div>
 
         <DialogFooter>
