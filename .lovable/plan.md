@@ -1,72 +1,51 @@
 
 
-## Plan: Highlight Biased Words in Rich Text Editor
+## Plan: Add Ctrl+V Image Paste to MentorChat
 
-### Approach
+### Summary
 
-Since the review editor uses **TipTap** (ProseMirror-based), we can use TipTap's native `Highlight` extension to apply yellow background marks directly on detected words. This is far cleaner than textarea overlays — the highlights live inside the editable content naturally.
+Add clipboard image paste support to the MentorChat textarea for both leader and direct report modes. Currently, image attachment only works via file picker (leader-only). This adds paste support for both user types, reusing the existing `attachment` state and image handling logic.
 
-### Files to modify
+### Changes
 
-**1. `src/components/ui/rich-text-editor.tsx`** — Add highlight support
-- Import and register `@tiptap/extension-highlight` with a custom `biasHighlight` type
-- Add new prop `highlightWords?: string[]`
-- Add a `useEffect` that, when `highlightWords` changes, uses ProseMirror search-and-mark to apply highlight marks on matching words
-- Add CSS for the highlight: `bg-amber-200/60 dark:bg-amber-700/40 rounded px-0.5`
-- Auto-clear highlights after 8 seconds
-- Export a method via `editorRef` or a new prop callback to trigger highlight externally
+**`src/components/MentorChat.tsx`** — Single file modification
 
-**2. `src/components/BiasAlert.tsx`** — Add "Destacar no texto" button
-- Add optional `onHighlightWords` prop
-- Add a `Highlighter` icon button between the suggestions toggle and the dismiss button
-- When clicked, calls `onHighlightWords()` which triggers highlighting in the parent
+1. **Add `handlePaste` handler** (~20 lines)
+   - Listen for `paste` events on the textarea
+   - Check `clipboardData.items` for `image/*` types
+   - Validate type (png/jpg/webp) and size (≤5MB)
+   - Convert to base64 via `FileReader`
+   - Set into existing `attachment` state: `{ name: 'imagem-colada.png', content: '', imageBase64, mimeType, isImage: true }`
+   - Show toast: "Imagem colada!"
 
-**3. `src/components/NewReviewDialog.tsx`** — Wire everything together
-- Add `highlightWords` state
-- Pass `highlightWords` to `RichTextEditor`
-- Pass `onHighlightWords` callback to `BiasAlert` that sets `highlightWords` from `biasResult.detectedWords`
-- Clear `highlightWords` on dismiss, on dialog close, and auto-clear after timeout
+2. **Attach `onPaste` to textarea** (line ~848)
+   - Add `onPaste={handlePaste}` to the existing `<textarea>` element
 
-**4. `src/index.css`** — Add highlight styling
-- Add `.bias-highlight` class: `background-color: rgb(253 230 138 / 0.6); border-radius: 2px; padding: 0 2px;`
-- Dark mode variant with amber-700/40
+3. **Enable image sending for direct_report mode**
+   - Currently `imageContent` is only built when `isLeader` (line 272). Remove that guard so both modes can send images.
+   - In the direct_report fetch body (line 411), add `imageContent` field so the `meu-rhitmo` edge function receives it.
+
+4. **Update placeholder text**
+   - When attachment exists, show "Descreva o que você quer saber sobre a imagem..."
+   - Add "(Ctrl+V para colar imagem)" hint to both leader and direct_report placeholders
+
+5. **Show attachment preview for direct_report mode**
+   - The attachment preview bar (lines ~820-841) currently renders for both modes, so pasted images will show automatically with the existing preview UI.
+
+6. **Update send button disabled logic** (line 888)
+   - Already checks `!input.trim() && !attachment` — no change needed.
+
+**`supabase/functions/meu-rhitmo/index.ts`** — Add multimodal support
+
+- Accept optional `imageContent` in the request body
+- When present, build OpenAI message with `image_url` content part (same pattern as `chat-mentor`)
+- Use the text from `imageContent.textMessage` or fall back to the `question` field
 
 ### Technical details
 
-TipTap Highlight extension supports custom types. We configure it with `multicolor: true` and apply marks programmatically:
-
-```typescript
-import Highlight from '@tiptap/extension-highlight';
-
-// In extensions array:
-Highlight.configure({ multicolor: true })
-
-// To apply highlights:
-const applyBiasHighlights = (editor, words) => {
-  const { doc } = editor.state;
-  const tr = editor.state.tr;
-  
-  doc.descendants((node, pos) => {
-    if (!node.isText) return;
-    const text = node.text.toLowerCase();
-    words.forEach(word => {
-      let index = text.indexOf(word.toLowerCase());
-      while (index !== -1) {
-        tr.addMark(pos + index, pos + index + word.length, 
-          editor.schema.marks.highlight.create({ color: '#fde68a' }));
-        index = text.indexOf(word.toLowerCase(), index + 1);
-      }
-    });
-  });
-  
-  editor.view.dispatch(tr);
-};
-
-// To clear: editor.commands.unsetHighlight()
-```
-
-The highlights are native editor marks — fully compatible with editing, cursor, selection. Auto-clear after 8s via setTimeout.
-
-### Install dependency
-- `@tiptap/extension-highlight` (TipTap highlight extension)
+- Reuses the existing single-attachment `attachment` state — no new state needed
+- Pasted image replaces any existing attachment (same as file picker behavior)
+- The `handlePaste` only processes the first image item found in clipboard
+- No animation library needed — the existing attachment preview bar handles display
+- Mobile: paste works on Android Chrome, limited on iOS Safari (known platform limitation)
 
