@@ -571,6 +571,9 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
                 memberId={linkedMember.id}
                 onReanalyze={handleReanalyze}
                 isReanalyzing={isReanalyzing}
+                onAddToPDI={handleAddFocusToPDI}
+                onSuggestOneOnOne={handleSuggestOneOnOne}
+                onOpenMeuRhitmo={handleOpenMeuRhitmoWithContext}
               />
               {/* Seção Meu Desenvolvimento (PDI) */}
               {!devPlan || devPlan.status === 'draft' ? (
