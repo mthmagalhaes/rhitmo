@@ -1,12 +1,13 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import Highlight from '@tiptap/extension-highlight';
 import { Toggle } from '@/components/ui/toggle';
 import { Separator } from '@/components/ui/separator';
 import { Bold, Italic, Heading1, Heading2, List, ListOrdered } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useEffect } from 'react';
- import { cleanTranscriptText } from '@/lib/textSanitizer';
+import { useEffect, useRef, useCallback } from 'react';
+import { cleanTranscriptText } from '@/lib/textSanitizer';
 
 interface RichTextEditorProps {
   content: string;
