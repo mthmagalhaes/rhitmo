@@ -24,20 +24,15 @@ export const HRAdminGuard = ({ children }: { children: React.ReactNode }) => {
   const { data: workspace, isLoading } = useQuery({
     queryKey: ['hr-admin-workspace', user?.id],
     queryFn: async () => {
-      // RLS policy returns only workspaces where user is hr_admin
-      // We also need to exclude workspaces the user owns (they'd see those too via owner policy)
       const { data, error } = await supabase
         .from('workspaces')
-        .select('id, name, hr_admin_ids')
-        .order('name')
-        .limit(10);
+        .select('id, name')
+        .contains('hr_admin_ids', [user!.id])
+        .maybeSingle();
       if (error) throw error;
-      // Find workspace where user is actually in hr_admin_ids
-      return data?.find(w => 
-        (w as any).hr_admin_ids?.includes(user?.id)
-      ) || null;
+      return data;
     },
-    enabled: !!user,
+    enabled: !!user && !authLoading,
   });
 
   if (authLoading || isLoading) {
