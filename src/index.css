@@ -185,6 +185,18 @@ All colors MUST be HSL.
   }
 }
 
+/* Bias detection highlight in TipTap editor */
+.ProseMirror mark[data-color="#fde68a"] {
+  background-color: rgb(253 230 138 / 0.6);
+  border-radius: 2px;
+  padding: 0 2px;
+  transition: background-color 0.3s ease;
+}
+
+.dark .ProseMirror mark[data-color="#fde68a"] {
+  background-color: rgb(180 83 9 / 0.3);
+}
+
 /* Utility for iOS safe area padding */
 .pb-safe {
   padding-bottom: calc(1.25rem + var(--safe-area-inset-bottom));

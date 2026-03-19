@@ -1,4 +1,4 @@
-import { Lightbulb, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Lightbulb, X, ChevronDown, ChevronUp, Highlighter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 
@@ -7,9 +7,10 @@ interface BiasAlertProps {
   suggestions: string[];
   explanation: string;
   onDismiss: () => void;
+  onHighlightWords?: () => void;
 }
 
-export function BiasAlert({ detectedWords, suggestions, explanation, onDismiss }: BiasAlertProps) {
+export function BiasAlert({ detectedWords, suggestions, explanation, onDismiss, onHighlightWords }: BiasAlertProps) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -62,7 +63,18 @@ export function BiasAlert({ detectedWords, suggestions, explanation, onDismiss }
         </div>
       )}
 
-      <div className="flex justify-end">
+      <div className="flex items-center justify-end gap-2">
+        {onHighlightWords && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs gap-1.5"
+            onClick={onHighlightWords}
+          >
+            <Highlighter className="h-3.5 w-3.5" />
+            Destacar no texto
+          </Button>
+        )}
         <Button variant="ghost" size="sm" className="text-xs" onClick={onDismiss}>
           Entendi, ignorar
         </Button>

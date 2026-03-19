@@ -1,12 +1,13 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import Highlight from '@tiptap/extension-highlight';
 import { Toggle } from '@/components/ui/toggle';
 import { Separator } from '@/components/ui/separator';
 import { Bold, Italic, Heading1, Heading2, List, ListOrdered } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useEffect } from 'react';
- import { cleanTranscriptText } from '@/lib/textSanitizer';
+import { useEffect, useRef, useCallback } from 'react';
+import { cleanTranscriptText } from '@/lib/textSanitizer';
 
 interface RichTextEditorProps {
   content: string;
@@ -15,6 +16,7 @@ interface RichTextEditorProps {
   disabled?: boolean;
   minHeight?: string;
   editorRef?: React.MutableRefObject<ReturnType<typeof useEditor> | null>;
+  highlightWords?: string[];
 }
 
 export const RichTextEditor = ({
@@ -24,7 +26,9 @@ export const RichTextEditor = ({
   disabled = false,
   minHeight = '200px',
   editorRef,
+  highlightWords,
 }: RichTextEditorProps) => {
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -32,6 +36,7 @@ export const RichTextEditor = ({
           levels: [1, 2, 3],
         },
       }),
+      Highlight.configure({ multicolor: true }),
       Placeholder.configure({
         placeholder,
         emptyEditorClass: 'is-editor-empty',
@@ -72,6 +77,58 @@ export const RichTextEditor = ({
       editor.commands.setContent(content);
     }
   }, [content, editor]);
+
+  // Apply bias highlights on detected words
+  useEffect(() => {
+    if (!editor || !highlightWords || highlightWords.length === 0) {
+      if (editor) {
+        editor.commands.unsetHighlight();
+      }
+      if (highlightTimerRef.current) {
+        clearTimeout(highlightTimerRef.current);
+        highlightTimerRef.current = null;
+      }
+      return;
+    }
+
+    const { doc } = editor.state;
+    const tr = editor.state.tr;
+    let hasMarks = false;
+
+    doc.descendants((node, pos) => {
+      if (!node.isText || !node.text) return;
+      const text = node.text.toLowerCase();
+      highlightWords.forEach(word => {
+        const lowerWord = word.toLowerCase();
+        let index = text.indexOf(lowerWord);
+        while (index !== -1) {
+          tr.addMark(
+            pos + index,
+            pos + index + lowerWord.length,
+            editor.schema.marks.highlight.create({ color: '#fde68a' })
+          );
+          hasMarks = true;
+          index = text.indexOf(lowerWord, index + 1);
+        }
+      });
+    });
+
+    if (hasMarks) {
+      editor.view.dispatch(tr);
+    }
+
+    // Auto-clear after 8 seconds
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    highlightTimerRef.current = setTimeout(() => {
+      if (editor && !editor.isDestroyed) {
+        editor.commands.unsetHighlight();
+      }
+    }, 8000);
+
+    return () => {
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    };
+  }, [editor, highlightWords]);
 
   if (!editor) {
     return null;

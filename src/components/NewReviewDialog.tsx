@@ -45,6 +45,7 @@ export const NewReviewDialog = ({
   const [biasResult, setBiasResult] = useState<BiasDetectionResult | null>(null);
   const [showBiasAlert, setShowBiasAlert] = useState(false);
   const [biasDismissCount, setBiasDismissCount] = useState(0);
+  const [highlightWords, setHighlightWords] = useState<string[]>([]);
   const { toast } = useToast();
   const { canGenerateReview, limits } = usePlanLimits();
 
@@ -435,6 +436,7 @@ export const NewReviewDialog = ({
                 onChange={setContent}
                 placeholder="Digite ou gere o conteúdo da avaliação usando os botões acima..."
                 minHeight="400px"
+                highlightWords={highlightWords}
               />
               <p className="text-xs text-muted-foreground">
                 Você pode editar livremente o conteúdo gerado pela IA antes de salvar.
@@ -448,8 +450,12 @@ export const NewReviewDialog = ({
               detectedWords={biasResult.detectedWords}
               suggestions={biasResult.suggestions}
               explanation={biasResult.explanation}
+              onHighlightWords={() => {
+                setHighlightWords(biasResult.detectedWords);
+              }}
               onDismiss={() => {
                 setShowBiasAlert(false);
+                setHighlightWords([]);
                 setBiasDismissCount(prev => prev + 1);
               }}
             />
