@@ -38,8 +38,6 @@ const SENTIMENT_LABELS: Record<string, string> = {
 
 const HRDashboard = () => {
   const { workspaceId, workspaceName } = useHRAdmin();
-  const { signOut } = useAuth();
-  const navigate = useNavigate();
 
   const { data: metrics, isLoading } = useQuery<Metrics>({
     queryKey: ['hr-dashboard', workspaceId],
@@ -51,11 +49,6 @@ const HRDashboard = () => {
       return data as unknown as Metrics;
     },
   });
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/auth');
-  };
 
   const noFeedback = metrics?.members_without_recent_feedback ?? 0;
   const noReview = metrics?.members_without_recent_review ?? 0;
