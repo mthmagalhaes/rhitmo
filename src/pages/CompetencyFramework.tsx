@@ -273,6 +273,17 @@ const CompetencyFramework = () => {
         initialData={editingComp ? getEditData(editingComp) : null}
         saving={saving}
       />
+
+      {data && (
+        <AICompetencyDialog
+          open={showAIDialog}
+          onClose={() => setShowAIDialog(false)}
+          frameworkId={data.frameworkId}
+          currentMaxOrder={data.competencies.length ? Math.max(...data.competencies.map(c => c.order)) : 0}
+          onCreatedManually={() => setShowCreateModal(true)}
+          onSaved={() => queryClient.invalidateQueries({ queryKey: ['competency-framework'] })}
+        />
+      )}
     </div>
   );
 };

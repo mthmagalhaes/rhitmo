@@ -77,3 +77,6 @@ verify_jwt = false
 
 [functions.update-payment-method]
 verify_jwt = false
+
+[functions.generate-competencies]
+verify_jwt = false
