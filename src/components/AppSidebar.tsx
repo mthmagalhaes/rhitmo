@@ -172,8 +172,8 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter>
-        {/* Context switch: HR Admin who is also a Leader */}
-        {isHRAdmin && isLeader && open && (
+        {/* Context switch: HR Admin → Leader view */}
+        {isInHRContext && isHRAdmin && isLeader && open && (
           <div className="px-4 py-2">
             <Button
               variant="outline"
@@ -183,6 +183,21 @@ export function AppSidebar() {
             >
               <ArrowRightLeft className="h-4 w-4" />
               Ver como Líder
+            </Button>
+          </div>
+        )}
+
+        {/* Context switch: Leader → HR view */}
+        {!isInHRContext && isHRAdmin && open && (
+          <div className="px-4 py-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-start gap-2 rounded-xl text-muted-foreground hover:text-primary"
+              onClick={() => navigate('/hr')}
+            >
+              <ArrowRightLeft className="h-4 w-4" />
+              Voltar ao Painel RH
             </Button>
           </div>
         )}
