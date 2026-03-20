@@ -369,6 +369,23 @@ const CompetencyFramework = () => {
                               <p className="text-sm font-medium text-foreground">{comp.name}</p>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-primary"
+                                onClick={() => {
+                                  setAdjustingCompetency({
+                                    id: comp.competency_id,
+                                    name: comp.name,
+                                    description: comp.description ?? null,
+                                    roleTitle: role.role_title,
+                                    roleLevel: role.role_level || '',
+                                  });
+                                  setAdjustDialogOpen(true);
+                                }}
+                              >
+                                <Sparkles className="h-3 w-3" /> Ajustar
+                              </Button>
                               <Badge variant="outline" className="text-xs">
                                 {comp.expected_level}
                               </Badge>
