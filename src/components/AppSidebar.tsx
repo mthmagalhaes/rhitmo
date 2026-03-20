@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award, ArrowRightLeft } from 'lucide-react';
+import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award, ArrowRightLeft, UserCheck } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
@@ -45,6 +45,7 @@ const leaderOnlyItems = ['Analytics', 'Assinatura', 'Guia Rhitmo'];
 const hrMenuItems = [
   { title: 'Visão Geral', url: '/hr', icon: LayoutDashboard },
   { title: 'Times e Líderes', url: '/hr/teams', icon: Users },
+  { title: 'Liderados', url: '/hr/members', icon: UserCheck },
   { title: 'Analytics', url: '/hr/analytics', icon: BarChart3 },
   { title: 'Competências', url: '/hr/competency-framework', icon: Award },
 ];

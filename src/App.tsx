@@ -26,6 +26,7 @@ import { HRAdminGuard } from "./components/HRAdminGuard";
 import HRDashboard from "./pages/HRDashboard";
 import CompetencyFramework from "./pages/CompetencyFramework";
 import HRTeams from "./pages/HRTeams";
+import HRMembers from "./pages/HRMembers";
 import HRAnalytics from "./pages/HRAnalytics";
 import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -121,6 +122,13 @@ const App = () => (
               <AppLayout>
                 <HRAdminGuard>
                   <HRAnalytics />
+                </HRAdminGuard>
+              </AppLayout>
+            } />
+            <Route path="/hr/members" element={
+              <AppLayout>
+                <HRAdminGuard>
+                  <HRMembers />
                 </HRAdminGuard>
               </AppLayout>
             } />
