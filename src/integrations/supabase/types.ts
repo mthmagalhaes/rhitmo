@@ -1124,6 +1124,29 @@ export type Database = {
         Args: { _workspace_id: string }
         Returns: Json
       }
+      get_hr_member_profile: {
+        Args: { _member_id: string; _workspace_id: string }
+        Returns: {
+          chronotype: string
+          created_at: string
+          feedback_count: number
+          feedback_style: string
+          last_feedback_date: string
+          leader_id: string
+          leader_name: string
+          member_email: string
+          member_id: string
+          member_name: string
+          member_role: string
+          motivators: Json
+          pdi_items: Json
+          recent_feedbacks: Json
+          recognition_style: string
+          skills_data: Json
+          user_manual: Json
+          work_style_data: Json
+        }[]
+      }
       get_invite_details: {
         Args: { p_invite_token: string }
         Returns: {

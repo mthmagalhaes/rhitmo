@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useHRAdmin } from '@/components/HRAdminGuard';
 import { Input } from '@/components/ui/input';
+import { MemberProfileSheet } from '@/components/hr/MemberProfileSheet';
 import {
   Select,
   SelectContent,
@@ -30,6 +31,8 @@ export default function HRMembers() {
   const [selectedLeader, setSelectedLeader] = useState('all');
   const [pdiFilter, setPdiFilter] = useState('all');
   const [page, setPage] = useState(0);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [profileSheetOpen, setProfileSheetOpen] = useState(false);
 
   const { data: leadersData } = useQuery({
     queryKey: ['hr-leaders', workspaceId],
@@ -175,7 +178,15 @@ export default function HRMembers() {
                       </Badge>
                     )}
 
-                    <Button variant="ghost" size="sm" className="text-xs text-muted-foreground ml-auto">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs text-muted-foreground ml-auto"
+                      onClick={() => {
+                        setSelectedMemberId(member.member_id);
+                        setProfileSheetOpen(true);
+                      }}
+                    >
                       Ver Perfil
                     </Button>
                   </div>
@@ -202,6 +213,12 @@ export default function HRMembers() {
           </div>
         </div>
       )}
+      <MemberProfileSheet
+        open={profileSheetOpen}
+        onOpenChange={setProfileSheetOpen}
+        memberId={selectedMemberId || ''}
+        workspaceId={workspaceId}
+      />
     </div>
   );
 }
