@@ -92,7 +92,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems
-                .filter(item => !isLinkedMember || !leaderOnlyItems.includes(item.title))
+                .filter(item => !isUser || !leaderOnlyItems.includes(item.title))
                 .map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild tooltip={item.title}>
