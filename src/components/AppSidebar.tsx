@@ -57,6 +57,8 @@ export function AppSidebar() {
   const { isLinkedMember, linkedMember } = useLinkedMember();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isInHRContext = location.pathname.startsWith('/hr');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [supportDialogOpen, setSupportDialogOpen] = useState(false);
   const [copied, setCopied] = useState(false);
