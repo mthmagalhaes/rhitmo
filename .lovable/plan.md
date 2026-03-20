@@ -1,60 +1,55 @@
 
 
-## Plan: Unified Role System via `useUserRole` Hook
+## Plan: Enhance HR Dashboard with PDI Coverage KPI and New Alerts
 
-### Why NOT the user's proposed approach
-
-The user's request assumes a `profiles` table exists — it doesn't. The system already differentiates roles through three separate mechanisms:
-- **Leader**: `workspaces.owner_id` matches `auth.uid()`
-- **HR Admin**: `workspaces.hr_admin_ids` array contains `auth.uid()`
-- **Linked member (user)**: `team_members.linked_user_id` matches `auth.uid()`
-- **Super Admin**: `user_roles` table with `app_role` enum
-
-Creating a redundant `role` column on a new `profiles` table would duplicate data already derivable from existing tables, risk inconsistency (what if someone is a workspace owner but their profile says `user`?), and require keeping two sources of truth in sync.
-
-### Recommended approach: Derive roles from existing data
-
-Create a single `useUserRole` hook that queries existing tables to determine the user's role. No schema changes needed.
+### Context
+The HR Dashboard at `/hr` (HRDashboard.tsx) already exists with 4 KPI cards and alerts, powered by the `get_hr_dashboard_metrics` RPC. Rather than creating a separate edge function and page, we enhance the existing RPC and page with the requested new metrics.
 
 ### Changes
 
-**1. `src/hooks/useUserRole.ts`** — New hook (derived role, no new table)
+**1. Database migration** — Extend `get_hr_dashboard_metrics` RPC
 
-```typescript
-export type UserRole = 'hr_admin' | 'leader' | 'user';
-```
+Add two new fields to the returned JSONB:
+- `pdi_coverage_percentage`: Count of members with at least one `development_plans` row / total members
+- `bias_detected_last_7d`: Count of `bias_detections` rows in the last 7 days
 
-Logic:
-- Check if user is in any `workspaces.hr_admin_ids` → `hr_admin`
-- Check if user owns any active workspace → `leader`
-- Otherwise → `user`
+Update the existing function to include these calculations alongside current metrics.
 
-Uses a single query combining both checks. Returns `{ role, isHRAdmin, isLeader, isUser, loading }`. Cached for 5 minutes (`staleTime`).
+**2. `src/pages/HRDashboard.tsx`** — Add PDI KPI card and new alerts
 
-**2. `src/components/AppSidebar.tsx`** — Use `useUserRole` for menu visibility
+- Update `Metrics` interface to include `pdi_coverage_percentage` and `bias_detected_last_7d`
+- Replace one existing KPI card or add a 5th card for "Cobertura de PDI" showing percentage with a `Target` icon
+- Add new alert rows in "Pontos de Atenção" section:
+  - PDI coverage < 50% → amber alert: "X% dos liderados ainda não têm PDI definido"
+  - Bias detected > 0 → blue/info alert: "X detecção(ões) de viés nos últimos 7 dias"
+- Update the "all clear" condition to include new alerts
 
-Replace the current `useAdmin` + `useLinkedMember` filtering logic with `useUserRole` for cleaner conditional rendering (HR Admin sees HR link, Leader sees Analytics/Billing, User sees minimal menu).
+### No new edge function needed
+The existing RPC `get_hr_dashboard_metrics` already runs as `SECURITY DEFINER` with HR admin authorization checks. Adding fields there is simpler and more performant than a separate edge function.
 
-**3. No database migration needed**
-
-All role data already exists in the schema. The `is_hr_admin_of_workspace()` and workspace owner checks in RLS already enforce backend security. This hook just provides a clean frontend API.
+### No new routes needed
+The existing `/hr` page already serves as the HR overview/landing page.
 
 ### Technical details
 
-Hook query pattern:
+New SQL additions to the RPC:
 ```sql
--- Check HR admin
-SELECT id FROM workspaces WHERE auth.uid() = ANY(hr_admin_ids) LIMIT 1
-
--- Check leader (workspace owner)
-SELECT id FROM workspaces WHERE owner_id = auth.uid() AND is_active = true LIMIT 1
+'pdi_coverage_percentage', (
+  SELECT CASE WHEN COUNT(*) = 0 THEN 0
+    ELSE ROUND(COUNT(DISTINCT dp.member_id)::numeric / COUNT(DISTINCT tm.id) * 100)
+  END
+  FROM teams t
+  JOIN team_members tm ON tm.team_id = t.id
+  LEFT JOIN development_plans dp ON dp.member_id = tm.id
+  WHERE t.workspace_id = _workspace_id
+),
+'bias_detected_last_7d', (
+  SELECT COUNT(*)
+  FROM bias_detections bd
+  JOIN team_members tm ON tm.id = bd.member_id
+  JOIN teams t ON t.id = tm.team_id
+  WHERE t.workspace_id = _workspace_id
+  AND bd.created_at > NOW() - INTERVAL '7 days'
+)
 ```
-
-Both can be done in parallel with `Promise.all`. If neither matches and user has a `linked_user_id` in `team_members`, they're a `user`.
-
-### What this does NOT change
-- RLS policies (already correct)
-- Admin system (`user_roles` with `super_admin` — separate concern)
-- `HRAdminGuard` (already works via `hr_admin_ids`)
-- `DirectReportGuard` (already works via `linked_user_id`)
 
