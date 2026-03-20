@@ -69,7 +69,22 @@ const AuthPage = () => {
       return;
     }
 
-    navigate('/dashboard', { replace: true });
+    // Check if user is HR Admin → redirect to /hr
+    const checkAndRedirect = async () => {
+      const { data: hrWorkspace } = await supabase
+        .from('workspaces')
+        .select('id')
+        .contains('hr_admin_ids', [user.id])
+        .limit(1)
+        .maybeSingle();
+      
+      if (hrWorkspace) {
+        navigate('/hr', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
+    };
+    checkAndRedirect();
   }, [user, loading, navigate, planParam]);
 
   if (loading) {

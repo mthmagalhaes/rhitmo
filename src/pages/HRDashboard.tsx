@@ -1,14 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useHRAdmin } from '@/components/HRAdminGuard';
-import { useAuth } from '@/hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
-import { RhitmoLogo } from '@/components/RhitmoLogo';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Users, UserCheck, AlertCircle, CheckCircle, FileText,
-  Bell, LogOut, Activity, BookOpen, Target, ShieldAlert
+  Bell, Activity, Target, ShieldAlert
 } from 'lucide-react';
 
 interface Metrics {
@@ -42,8 +38,6 @@ const SENTIMENT_LABELS: Record<string, string> = {
 
 const HRDashboard = () => {
   const { workspaceId, workspaceName } = useHRAdmin();
-  const { signOut } = useAuth();
-  const navigate = useNavigate();
 
   const { data: metrics, isLoading } = useQuery<Metrics>({
     queryKey: ['hr-dashboard', workspaceId],
@@ -55,11 +49,6 @@ const HRDashboard = () => {
       return data as unknown as Metrics;
     },
   });
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/auth');
-  };
 
   const noFeedback = metrics?.members_without_recent_feedback ?? 0;
   const noReview = metrics?.members_without_recent_review ?? 0;
@@ -74,41 +63,11 @@ const HRDashboard = () => {
   const hasNoAlerts = noFeedback === 0 && noReview === 0 && pdiPct >= 50 && biasCount === 0;
 
   return (
-    <div className="min-h-screen bg-[#F5F0E8]">
-      {/* Header */}
-      <header className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-gray-200 px-6 py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <RhitmoLogo size="sm" />
-            <div>
-              <h1 className="text-lg font-bold tracking-tight text-gray-900">Painel de Liderança</h1>
-              <p className="text-sm text-gray-500">{workspaceName}</p>
-            </div>
-          </div>
-          <Button variant="ghost" onClick={handleSignOut} className="gap-2 text-gray-600">
-            <LogOut className="h-4 w-4" /> Sair
-          </Button>
-        </div>
-      </header>
-
-      <main className="max-w-6xl mx-auto px-6 py-8 space-y-8">
-        {/* Quick Links */}
-        <div className="flex gap-3">
-          <Button
-            variant="outline"
-            className="gap-2 rounded-xl"
-            onClick={() => navigate('/hr/teams')}
-          >
-            <Users className="h-4 w-4" /> Times e Líderes
-          </Button>
-          <Button
-            variant="outline"
-            className="gap-2 rounded-xl"
-            onClick={() => navigate('/hr/competency-framework')}
-          >
-            <BookOpen className="h-4 w-4" /> Framework de Competências
-          </Button>
-        </div>
+    <div className="max-w-6xl mx-auto px-6 py-8 space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Painel de Liderança</h1>
+        <p className="text-sm text-muted-foreground">{workspaceName}</p>
+      </div>
 
         {/* Seção 1 — Grid 5 cards */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
@@ -255,7 +214,6 @@ const HRDashboard = () => {
             )}
           </div>
         </div>
-      </main>
     </div>
   );
 };

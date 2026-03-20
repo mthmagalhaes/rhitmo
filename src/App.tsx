@@ -103,19 +103,25 @@ const App = () => (
             
             {/* Rota HR Admin */}
             <Route path="/hr" element={
-              <HRAdminGuard>
-                <HRDashboard />
-              </HRAdminGuard>
+              <AppLayout>
+                <HRAdminGuard>
+                  <HRDashboard />
+                </HRAdminGuard>
+              </AppLayout>
             } />
             <Route path="/hr/teams" element={
-              <HRAdminGuard>
-                <HRTeams />
-              </HRAdminGuard>
+              <AppLayout>
+                <HRAdminGuard>
+                  <HRTeams />
+                </HRAdminGuard>
+              </AppLayout>
             } />
             <Route path="/hr/competency-framework" element={
-              <HRAdminGuard>
-                <CompetencyFramework />
-              </HRAdminGuard>
+              <AppLayout>
+                <HRAdminGuard>
+                  <CompetencyFramework />
+                </HRAdminGuard>
+              </AppLayout>
             } />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

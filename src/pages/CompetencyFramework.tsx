@@ -3,11 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useHRAdmin } from '@/components/HRAdminGuard';
 import { useNavigate } from 'react-router-dom';
-import { RhitmoLogo } from '@/components/RhitmoLogo';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
   type DragEndEvent,
@@ -222,26 +221,13 @@ const CompetencyFramework = () => {
     }));
 
   return (
-    <div className="min-h-screen bg-[#F5F0E8]">
-      <header className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-border px-6 py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/hr')} className="h-9 w-9">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <RhitmoLogo size="sm" />
-            <div>
-              <h1 className="text-lg font-bold tracking-tight text-foreground">Framework de Competências</h1>
-              <p className="text-sm text-muted-foreground">{workspaceName}</p>
-            </div>
-          </div>
-          <Button onClick={() => setShowCreateModal(true)} className="gap-2">
-            <Plus className="h-4 w-4" /> Adicionar Competência
-          </Button>
-        </div>
-      </header>
-
-      <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
+    <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Framework de Competências</h1>
+        <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+          <Plus className="h-4 w-4" /> Adicionar Competência
+        </Button>
+      </div>
         <p className="text-sm text-muted-foreground">
           Defina as competências comportamentais usadas para avaliar liderados em toda a empresa.
         </p>
@@ -276,7 +262,7 @@ const CompetencyFramework = () => {
         )}
 
         <CompetencyPreviewTable competencies={previewData} />
-      </main>
+      
 
       <EditCompetencyModal
         open={showCreateModal || !!editingComp}

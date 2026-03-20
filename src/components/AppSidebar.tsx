@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users } from 'lucide-react';
+import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
@@ -87,6 +87,55 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
+        {isHRAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Painel RH</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Visão Geral">
+                    <NavLink 
+                      to="/hr" 
+                      end
+                      className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
+                      activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
+                    >
+                      <LayoutDashboard className="h-5 w-5" />
+                      <span>Visão Geral</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Times e Líderes">
+                    <NavLink 
+                      to="/hr/teams" 
+                      end
+                      className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
+                      activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
+                    >
+                      <Users className="h-5 w-5" />
+                      <span>Times e Líderes</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Competências">
+                    <NavLink 
+                      to="/hr/competency-framework" 
+                      end
+                      className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
+                      activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
+                    >
+                      <Award className="h-5 w-5" />
+                      <span>Competências</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
         <SidebarGroup>
           <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Menu</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -127,29 +176,6 @@ export function AppSidebar() {
                     >
                       <ShieldCheck className="h-5 w-5" />
                       <span>Admin</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        {isHRAdmin && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">RH</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Painel RH">
-                    <NavLink 
-                      to="/hr" 
-                      end
-                      className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
-                      activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
-                    >
-                      <Users className="h-5 w-5" />
-                      <span>Painel RH</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
