@@ -24,6 +24,7 @@ import { EditCompetencyModal, type CompetencyFormData } from '@/components/compe
 import { CompetencyPreviewTable } from '@/components/competency/CompetencyPreviewTable';
 import { AICompetencyDialog } from '@/components/competency/AICompetencyDialog';
 import { CreateJobRoleDialog } from '@/components/competency/CreateJobRoleDialog';
+import { AdjustCompetencyDialog } from '@/components/competency/AdjustCompetencyDialog';
 import type { Json } from '@/integrations/supabase/types';
 
 interface Competency {
