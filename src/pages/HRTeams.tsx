@@ -41,9 +41,7 @@ interface TeamMember {
 }
 
 const HRTeams = () => {
-  const { workspaceId, workspaceName } = useHRAdmin();
-  const { signOut } = useAuth();
-  const navigate = useNavigate();
+  const { workspaceId } = useHRAdmin();
   const [search, setSearch] = useState('');
   const [selectedLeader, setSelectedLeader] = useState<Leader | null>(null);
 
