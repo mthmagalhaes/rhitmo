@@ -89,41 +89,8 @@ const HRTeams = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F0E8]">
-      {/* Header */}
-      <header className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-gray-200 px-6 py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate('/hr')}
-              className="mr-1"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <RhitmoLogo size="sm" />
-            <div>
-              <h1 className="text-lg font-bold tracking-tight text-gray-900">
-                Times e Líderes
-              </h1>
-              <p className="text-sm text-gray-500">{workspaceName}</p>
-            </div>
-          </div>
-          <Button
-            variant="ghost"
-            onClick={async () => {
-              await signOut();
-              navigate('/auth');
-            }}
-            className="gap-2 text-gray-600"
-          >
-            <LogOut className="h-4 w-4" /> Sair
-          </Button>
-        </div>
-      </header>
-
-      <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
+    <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
+      <h1 className="text-2xl font-bold tracking-tight text-foreground">Times e Líderes</h1>
         {/* Search */}
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
