@@ -18,6 +18,7 @@ import {
 import { CompetencyCard } from '@/components/competency/CompetencyCard';
 import { EditCompetencyModal, type CompetencyFormData } from '@/components/competency/EditCompetencyModal';
 import { CompetencyPreviewTable } from '@/components/competency/CompetencyPreviewTable';
+import { AICompetencyDialog } from '@/components/competency/AICompetencyDialog';
 import type { Json } from '@/integrations/supabase/types';
 
 interface Competency {
@@ -41,6 +42,7 @@ const CompetencyFramework = () => {
   const queryClient = useQueryClient();
   const [editingComp, setEditingComp] = useState<Competency | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showAIDialog, setShowAIDialog] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const sensors = useSensors(
@@ -224,7 +226,7 @@ const CompetencyFramework = () => {
     <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Framework de Competências</h1>
-        <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+        <Button onClick={() => setShowAIDialog(true)} className="gap-2">
           <Plus className="h-4 w-4" /> Adicionar Competência
         </Button>
       </div>
@@ -271,6 +273,17 @@ const CompetencyFramework = () => {
         initialData={editingComp ? getEditData(editingComp) : null}
         saving={saving}
       />
+
+      {data && (
+        <AICompetencyDialog
+          open={showAIDialog}
+          onClose={() => setShowAIDialog(false)}
+          frameworkId={data.frameworkId}
+          currentMaxOrder={data.competencies.length ? Math.max(...data.competencies.map(c => c.order)) : 0}
+          onCreatedManually={() => setShowCreateModal(true)}
+          onSaved={() => queryClient.invalidateQueries({ queryKey: ['competency-framework'] })}
+        />
+      )}
     </div>
   );
 };
