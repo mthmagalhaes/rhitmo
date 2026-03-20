@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/sheet';
 import {
   Users, Search, AlertTriangle, ChevronRight,
-  LogOut, ArrowLeft, FileText, CheckCircle, XCircle
+  FileText, CheckCircle, XCircle
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
