@@ -18,6 +18,7 @@ import {
 import { CompetencyCard } from '@/components/competency/CompetencyCard';
 import { EditCompetencyModal, type CompetencyFormData } from '@/components/competency/EditCompetencyModal';
 import { CompetencyPreviewTable } from '@/components/competency/CompetencyPreviewTable';
+import { AICompetencyDialog } from '@/components/competency/AICompetencyDialog';
 import type { Json } from '@/integrations/supabase/types';
 
 interface Competency {
