@@ -338,12 +338,22 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
     setSyncSaving(true);
     try {
       const existingWsd = (linkedMember.work_style_data as Record<string, unknown>) || {};
+      const existingUm = (linkedMember.user_manual as Record<string, unknown>) || {};
       const { error } = await supabase
         .from('team_members')
         .update({
           chronotype: syncForm.chronotype || null,
           feedback_style: syncForm.feedback_style || null,
           recognition_style: syncForm.recognition_style || null,
+          motivators: syncForm.motivators.length > 0 ? syncForm.motivators : null,
+          user_manual: {
+            ...existingUm,
+            energy_drainers: syncForm.energy_drains || null,
+            energy_boosters: syncForm.energy_sources || null,
+            stress_signs: syncForm.stress_signs || null,
+            bad_day_support: syncForm.support_needed || null,
+            skill_goal: syncForm.skill_goal || null,
+          },
           work_style_data: {
             ...existingWsd,
             work_environment: syncForm.work_environment || null,
