@@ -221,26 +221,13 @@ const CompetencyFramework = () => {
     }));
 
   return (
-    <div className="min-h-screen bg-[#F5F0E8]">
-      <header className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-border px-6 py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/hr')} className="h-9 w-9">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <RhitmoLogo size="sm" />
-            <div>
-              <h1 className="text-lg font-bold tracking-tight text-foreground">Framework de Competências</h1>
-              <p className="text-sm text-muted-foreground">{workspaceName}</p>
-            </div>
-          </div>
-          <Button onClick={() => setShowCreateModal(true)} className="gap-2">
-            <Plus className="h-4 w-4" /> Adicionar Competência
-          </Button>
-        </div>
-      </header>
-
-      <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
+    <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Framework de Competências</h1>
+        <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+          <Plus className="h-4 w-4" /> Adicionar Competência
+        </Button>
+      </div>
         <p className="text-sm text-muted-foreground">
           Defina as competências comportamentais usadas para avaliar liderados em toda a empresa.
         </p>

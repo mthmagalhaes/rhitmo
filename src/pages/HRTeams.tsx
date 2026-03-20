@@ -163,7 +163,7 @@ const HRTeams = () => {
             ))}
           </div>
         )}
-      </main>
+      
 
       {/* Sheet: Team drill-down */}
       <Sheet open={!!selectedLeader} onOpenChange={() => setSelectedLeader(null)}>
