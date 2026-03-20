@@ -11,7 +11,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Briefcase, ListChecks, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Briefcase, ListChecks, Pencil, Trash2, Sparkles } from 'lucide-react';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
   type DragEndEvent,
@@ -24,6 +24,7 @@ import { EditCompetencyModal, type CompetencyFormData } from '@/components/compe
 import { CompetencyPreviewTable } from '@/components/competency/CompetencyPreviewTable';
 import { AICompetencyDialog } from '@/components/competency/AICompetencyDialog';
 import { CreateJobRoleDialog } from '@/components/competency/CreateJobRoleDialog';
+import { AdjustCompetencyDialog } from '@/components/competency/AdjustCompetencyDialog';
 import type { Json } from '@/integrations/supabase/types';
 
 interface Competency {
@@ -70,6 +71,10 @@ const CompetencyFramework = () => {
   const [viewMode, setViewMode] = useState<'roles' | 'competencies'>('roles');
   const [createJobRoleDialogOpen, setCreateJobRoleDialogOpen] = useState(false);
   const [deletingRoleId, setDeletingRoleId] = useState<string | null>(null);
+  const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
+  const [adjustingCompetency, setAdjustingCompetency] = useState<{
+    id: string; name: string; description: string | null; roleTitle: string; roleLevel: string;
+  } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -364,6 +369,23 @@ const CompetencyFramework = () => {
                               <p className="text-sm font-medium text-foreground">{comp.name}</p>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-primary"
+                                onClick={() => {
+                                  setAdjustingCompetency({
+                                    id: comp.competency_id,
+                                    name: comp.name,
+                                    description: comp.description ?? null,
+                                    roleTitle: role.role_title,
+                                    roleLevel: role.role_level || '',
+                                  });
+                                  setAdjustDialogOpen(true);
+                                }}
+                              >
+                                <Sparkles className="h-3 w-3" /> Ajustar
+                              </Button>
                               <Badge variant="outline" className="text-xs">
                                 {comp.expected_level}
                               </Badge>
@@ -441,6 +463,28 @@ const CompetencyFramework = () => {
         open={createJobRoleDialogOpen}
         onOpenChange={setCreateJobRoleDialogOpen}
         frameworkId={data?.frameworkId ?? ''}
+      />
+
+      <AdjustCompetencyDialog
+        open={adjustDialogOpen}
+        onOpenChange={setAdjustDialogOpen}
+        competency={adjustingCompetency}
+        jobTitle={adjustingCompetency?.roleTitle || ''}
+        level={adjustingCompetency?.roleLevel || ''}
+        onAdjusted={async (adjusted) => {
+          if (!adjustingCompetency) return;
+          const { error } = await supabase
+            .from('competencies')
+            .update({ description: adjusted.description, name: adjusted.name })
+            .eq('id', adjustingCompetency.id);
+          if (error) {
+            toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+          } else {
+            queryClient.invalidateQueries({ queryKey: ['competency-framework'] });
+            queryClient.invalidateQueries({ queryKey: ['job-roles'] });
+            toast({ title: 'Competência atualizada!' });
+          }
+        }}
       />
 
       <AlertDialog open={!!deletingRoleId} onOpenChange={() => setDeletingRoleId(null)}>
