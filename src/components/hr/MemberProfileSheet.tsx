@@ -8,7 +8,6 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -21,6 +20,8 @@ import {
   Briefcase,
   Loader2,
   UserX,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -31,20 +32,6 @@ interface MemberProfileSheetProps {
   memberId: string;
   workspaceId: string;
 }
-
-const sentimentColors: Record<string, string> = {
-  muito_positivo: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  positivo: 'bg-green-100 text-green-700 border-green-200',
-  neutro: 'bg-slate-100 text-slate-700 border-slate-200',
-  construtivo: 'bg-amber-100 text-amber-700 border-amber-200',
-  critico: 'bg-red-100 text-red-700 border-red-200',
-};
-
-const statusLabels: Record<string, { label: string; className: string }> = {
-  pending: { label: 'Pendente', className: 'bg-amber-100 text-amber-700 border-amber-200' },
-  in_progress: { label: 'Em andamento', className: 'bg-blue-100 text-blue-700 border-blue-200' },
-  completed: { label: 'Concluído', className: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-};
 
 function EmptyTab({ message }: { message: string }) {
   return (
@@ -85,8 +72,6 @@ export function MemberProfileSheet({
     enabled: open && !!memberId && !!workspaceId,
   });
 
-  const pdiItems = (profile?.pdi_items as any[]) || [];
-  const recentFeedbacks = (profile?.recent_feedbacks as any[]) || [];
   const skillsData = profile?.skills_data;
   const skillsList = Array.isArray(skillsData) ? skillsData : [];
 
@@ -143,131 +128,67 @@ export function MemberProfileSheet({
 
             <Separator />
 
-            {/* Tabs */}
-            <Tabs defaultValue="feedbacks" className="flex-1 flex flex-col">
+            {/* Metadata Cards */}
+            <div className="grid grid-cols-2 gap-3 px-6 py-4">
+              <Card className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] border">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Feedbacks
+                    </span>
+                  </div>
+                  <p className="text-2xl font-bold tracking-tight">{profile.feedback_count}</p>
+                  {profile.last_feedback_date ? (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Último: {format(new Date(profile.last_feedback_date), 'dd/MM/yyyy', { locale: ptBR })}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground mt-1">Nenhum registrado</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] border">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Target className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      PDI
+                    </span>
+                  </div>
+                  <p className="text-2xl font-bold tracking-tight">{profile.pdi_count}</p>
+                  <div className="flex items-center gap-1 mt-1">
+                    {profile.has_pdi ? (
+                      <>
+                        <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                        <span className="text-xs text-emerald-600">PDI ativo</span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">Sem PDI</span>
+                      </>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Separator />
+
+            {/* Tabs — only Sync & Skills */}
+            <Tabs defaultValue="sync" className="flex-1 flex flex-col">
               <TabsList className="mx-6 mt-4 w-auto">
-                <TabsTrigger value="feedbacks" className="gap-1.5 text-xs">
-                  <MessageSquare className="h-3.5 w-3.5" />
-                  Feedbacks
-                </TabsTrigger>
-                <TabsTrigger value="pdi" className="gap-1.5 text-xs">
-                  <Target className="h-3.5 w-3.5" />
-                  PDI
-                </TabsTrigger>
                 <TabsTrigger value="sync" className="gap-1.5 text-xs">
                   <Settings className="h-3.5 w-3.5" />
-                  Sync
+                  Rhitmo Sync
                 </TabsTrigger>
                 <TabsTrigger value="skills" className="gap-1.5 text-xs">
                   <Sparkles className="h-3.5 w-3.5" />
                   Skills
                 </TabsTrigger>
               </TabsList>
-
-              {/* Feedbacks */}
-              <TabsContent value="feedbacks" className="flex-1 px-6 pb-6">
-                <div className="flex items-center justify-between mt-3 mb-4">
-                  <span className="text-sm font-medium">
-                    {profile.feedback_count} feedbacks registrados
-                  </span>
-                  {profile.last_feedback_date && (
-                    <span className="text-xs text-muted-foreground">
-                      Último:{' '}
-                      {format(new Date(profile.last_feedback_date), 'dd/MM/yyyy', {
-                        locale: ptBR,
-                      })}
-                    </span>
-                  )}
-                </div>
-
-                {recentFeedbacks.length === 0 ? (
-                  <EmptyTab message="Nenhum feedback registrado ainda" />
-                ) : (
-                  <div className="space-y-3">
-                    {recentFeedbacks.map((fb: any) => (
-                      <Card
-                        key={fb.id}
-                        className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] border"
-                      >
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs text-muted-foreground">
-                              {format(new Date(fb.occurred_at), "dd/MM/yyyy 'às' HH:mm", {
-                                locale: ptBR,
-                              })}
-                            </span>
-                            {fb.sentiment && (
-                              <Badge
-                                variant="outline"
-                                className={`text-[11px] px-2 py-0.5 ${sentimentColors[fb.sentiment] || ''}`}
-                              >
-                                {fb.sentiment}
-                              </Badge>
-                            )}
-                          </div>
-                          {fb.title && (
-                            <p className="text-sm font-medium mb-1">{fb.title}</p>
-                          )}
-                          <p className="text-sm text-muted-foreground line-clamp-3">
-                            {fb.content}
-                          </p>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-
-              {/* PDI */}
-              <TabsContent value="pdi" className="flex-1 px-6 pb-6">
-                {pdiItems.length === 0 ? (
-                  <EmptyTab message="Nenhum item de PDI definido ainda" />
-                ) : (
-                  <div className="space-y-3 mt-3">
-                    {pdiItems.map((item: any) => {
-                      const st = statusLabels[item.status] || statusLabels.pending;
-                      return (
-                        <Card
-                          key={item.id}
-                          className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] border"
-                        >
-                          <CardHeader className="p-4 pb-2">
-                            <div className="flex items-center justify-between">
-                              <CardTitle className="text-sm font-medium">
-                                {item.title}
-                              </CardTitle>
-                              <Badge
-                                variant="outline"
-                                className={`text-[11px] px-2 py-0.5 ${st.className}`}
-                              >
-                                {st.label}
-                              </Badge>
-                            </div>
-                          </CardHeader>
-                          <CardContent className="p-4 pt-0">
-                            {item.description && (
-                              <p className="text-sm text-muted-foreground mb-1">
-                                {item.description}
-                              </p>
-                            )}
-                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                              {item.category && <span>{item.category}</span>}
-                              {item.due_date && (
-                                <span>
-                                  Meta:{' '}
-                                  {format(new Date(item.due_date), 'dd/MM/yyyy', {
-                                    locale: ptBR,
-                                  })}
-                                </span>
-                              )}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                )}
-              </TabsContent>
 
               {/* Rhitmo Sync */}
               <TabsContent value="sync" className="flex-1 px-6 pb-6">
