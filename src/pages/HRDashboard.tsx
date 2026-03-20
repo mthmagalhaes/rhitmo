@@ -1,14 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useHRAdmin } from '@/components/HRAdminGuard';
-import { useAuth } from '@/hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
-import { RhitmoLogo } from '@/components/RhitmoLogo';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Users, UserCheck, AlertCircle, CheckCircle, FileText,
-  Bell, LogOut, Activity, BookOpen, Target, ShieldAlert
+  Bell, Activity, Target, ShieldAlert
 } from 'lucide-react';
 
 interface Metrics {
