@@ -45,6 +45,8 @@ interface LinkedMemberData {
   chronotype?: string | null;
   feedback_style?: string | null;
   recognition_style?: string | null;
+  motivators?: unknown[] | null;
+  user_manual?: Record<string, unknown> | null;
 }
 
 interface DirectReportDashboardProps {
