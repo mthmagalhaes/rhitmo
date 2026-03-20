@@ -1,38 +1,43 @@
 
 
-## Plan: Job-Based Competency Framework UX
+## Plan: AI-Powered Competency Adjustment
 
 ### Summary
-Redesign the `/hr/competency-framework` page to show a "Por Cargo" / "Por Competência" toggle view, add a 2-step dialog for creating job roles with competency associations, and support deleting job roles.
+Add an "Ajustar com IA" feature: an edge function that refines competency descriptions based on job context, and a dialog component integrated into the roles view cards.
 
 ### Changes
 
-**1. Update `src/pages/CompetencyFramework.tsx`**
+**1. Edge Function `supabase/functions/adjust-competency/index.ts`**
 
-- Add state: `viewMode` (`'roles' | 'competencies'`), `createJobRoleDialogOpen`, `editingJobRole`
-- Add query for job roles using `get_job_roles_with_competencies` RPC (depends on `data?.frameworkId`)
-- Add delete mutation for job roles (delete from `job_roles` table by id)
-- Restructure layout:
-  - Header: title + subtitle + "Adicionar Cargo" button (when in roles view) or existing "Adicionar Competencia" button (when in competencies view)
-  - Toggle buttons: "Por Cargo" / "Por Competência" using `Button` variant toggle
-  - **Roles view**: Map `jobRoles` into cards showing title, level badge, department, description, competency list with expected_level badges, edit/delete buttons. Empty state with Briefcase icon and CTA.
-  - **Competencies view**: Keep existing DndContext + CompetencyCard + CompetencyPreviewTable code unchanged
-- Render `CreateJobRoleDialog` at bottom
+Follow the same pattern as `generate-competencies`:
+- CORS headers, auth via `getUser(token)`, rate limit/402 error handling
+- Accept: `competency_name`, `competency_description`, `job_title`, `level`, `adjustment_type` (more_specific | more_generic | adjust_level | custom), `custom_prompt`
+- Build prompt per adjustment type, call Lovable AI Gateway (`google/gemini-3-flash-preview`)
+- Use tool calling (`return_adjusted_competency`) to get structured `{name, description}` response
+- Return adjusted competency JSON
 
-**2. Create `src/components/competency/CreateJobRoleDialog.tsx`**
+**2. New component `src/components/competency/AdjustCompetencyDialog.tsx`**
 
-Two-step dialog:
-- **Step 1 (details)**: Title (required), Level (select from Junior-Principal), Department (input), Description (textarea). "Proximo: Competencias" button.
-- **Step 2 (competencies)**: Fetch available competencies from `competencies` table filtered by `frameworkId`. Each shown with checkbox + name + description. When selected, show expected_level select (Junior/Pleno/Senior/Especialista). Summary of selected competencies as badges. "Salvar Cargo" button.
-- On save: insert into `job_roles`, then batch insert into `role_competencies`. Invalidate `job-roles` query key.
-- Reset form on close. Support `editingRole` prop for future edit functionality.
+Dialog with:
+- Current competency display (name, description, job context)
+- 3 quick-action buttons: "Mais específico", "Mais genérico", "Ajustar para nível X"
+- Custom prompt textarea + "Ajustar com IA" button
+- After AI responds: preview card with adjusted result, "Ajustar novamente" and "Usar esta versão" buttons
+- On "Usar esta versão": update `competencies` table description, then invalidate queries
 
-**3. No database changes needed**
-Schema (`job_roles`, `role_competencies`) and RPC (`get_job_roles_with_competencies`) already exist from the previous migration.
+**3. Update `src/pages/CompetencyFramework.tsx`**
 
-### Technical Notes
-- Import `supabase` from `@/integrations/supabase/client` (not `@/lib/supabase`)
-- Use `toast` from `@/hooks/use-toast` for consistency with existing page
-- Job role cards: use `Card`/`CardContent` components with badges for level and "Obrigatoria" flag
-- Delete: confirm via `AlertDialog` before deleting
+- Add state: `adjustingCompetency`, `adjustDialogOpen`
+- Import `Sparkles` icon
+- In roles view competency rows (lines 361-377): add "Ajustar" ghost button with Sparkles icon
+- On click: set adjusting competency context (id, name, description, role title, role level)
+- Add mutation to update competency description in DB after AI adjustment
+- Render `AdjustCompetencyDialog` at bottom
+
+**4. Config: `supabase/config.toml`**
+
+Add `[functions.adjust-competency]` with `verify_jwt = false` (auth handled in code, same as `generate-competencies`).
+
+### No database changes needed
+The adjustment updates existing `competencies.description` via standard Supabase client update.
 
