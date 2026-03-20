@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Users, UserCheck, AlertCircle, CheckCircle, FileText,
-  Bell, LogOut, Activity, BookOpen
+  Bell, LogOut, Activity, BookOpen, Target, ShieldAlert
 } from 'lucide-react';
 
 interface Metrics {
@@ -18,6 +18,8 @@ interface Metrics {
   members_without_recent_review: number;
   sync_completed_count: number;
   reviews_last_90_days: number;
+  pdi_coverage_percentage: number;
+  bias_detected_last_7d: number;
   notes_per_leader_last_30d: { manager_id: string; note_count: number; member_count: number }[];
   sentiment_distribution: Record<string, number>;
 }
@@ -64,8 +66,12 @@ const HRDashboard = () => {
   const totalMembers = metrics?.total_members ?? 0;
   const syncCount = metrics?.sync_completed_count ?? 0;
   const syncPct = totalMembers > 0 ? Math.round((syncCount / totalMembers) * 100) : 0;
+  const pdiPct = metrics?.pdi_coverage_percentage ?? 0;
+  const biasCount = metrics?.bias_detected_last_7d ?? 0;
 
   const sentimentTotal = metrics ? Object.values(metrics.sentiment_distribution).reduce((a, b) => a + b, 0) : 0;
+
+  const hasNoAlerts = noFeedback === 0 && noReview === 0 && pdiPct >= 50 && biasCount === 0;
 
   return (
     <div className="min-h-screen bg-[#F5F0E8]">
@@ -96,8 +102,9 @@ const HRDashboard = () => {
             <BookOpen className="h-4 w-4" /> Framework de Competências
           </Button>
         </div>
-        {/* Seção 1 — Grid 4 cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+
+        {/* Seção 1 — Grid 5 cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <MetricCard icon={<Users className="h-5 w-5 text-violet-500" />} label="Líderes Ativos" value={metrics?.total_leaders} loading={isLoading} />
           <MetricCard icon={<UserCheck className="h-5 w-5 text-blue-500" />} label="Liderados" value={metrics?.total_members} loading={isLoading} />
           <MetricCard
@@ -108,6 +115,14 @@ const HRDashboard = () => {
             valueClass={noFeedback > 0 ? 'text-red-600' : 'text-emerald-600'}
           />
           <MetricCard icon={<FileText className="h-5 w-5 text-emerald-500" />} label="Avaliações (90d)" value={metrics?.reviews_last_90_days} loading={isLoading} />
+          <MetricCard
+            icon={<Target className="h-5 w-5 text-violet-500" />}
+            label="Cobertura PDI"
+            value={pdiPct}
+            loading={isLoading}
+            suffix="%"
+            valueClass={pdiPct < 50 ? 'text-amber-600' : 'text-emerald-600'}
+          />
         </div>
 
         {/* Seção 2 — Alertas de Atenção */}
@@ -132,7 +147,19 @@ const HRDashboard = () => {
                   {noReview} liderado{noReview > 1 ? 's' : ''} elegíve{noReview > 1 ? 'is' : 'l'} sem avaliação recente
                 </div>
               )}
-              {noFeedback === 0 && noReview === 0 && (
+              {pdiPct < 50 && (
+                <div className="flex items-center gap-2 text-amber-700 bg-amber-50 rounded-xl px-4 py-2 text-sm">
+                  <Target className="h-4 w-4 flex-shrink-0" />
+                  Apenas {pdiPct}% dos liderados têm PDI definido
+                </div>
+              )}
+              {biasCount > 0 && (
+                <div className="flex items-center gap-2 text-blue-700 bg-blue-50 rounded-xl px-4 py-2 text-sm">
+                  <ShieldAlert className="h-4 w-4 flex-shrink-0" />
+                  {biasCount} detecção{biasCount > 1 ? 'ões' : ''} de viés nos últimos 7 dias
+                </div>
+              )}
+              {hasNoAlerts && (
                 <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 rounded-xl px-4 py-2 text-sm">
                   <CheckCircle className="h-4 w-4 flex-shrink-0" />
                   Processo de acompanhamento em dia
@@ -227,18 +254,19 @@ const HRDashboard = () => {
 };
 
 const MetricCard = ({
-  icon, label, value, loading, valueClass,
+  icon, label, value, loading, valueClass, suffix,
 }: {
   icon: React.ReactNode;
   label: string;
   value?: number;
   loading: boolean;
   valueClass?: string;
+  suffix?: string;
 }) => (
   <div className="bg-white/80 rounded-3xl shadow-sm p-6">
     <div className="flex items-center gap-2 mb-2">{icon}<span className="text-xs text-gray-500">{label}</span></div>
     {loading ? <Skeleton className="h-8 w-16" /> : (
-      <p className={`text-3xl font-bold tracking-tight ${valueClass || 'text-gray-900'}`}>{value ?? 0}</p>
+      <p className={`text-3xl font-bold tracking-tight ${valueClass || 'text-gray-900'}`}>{value ?? 0}{suffix || ''}</p>
     )}
   </div>
 );
