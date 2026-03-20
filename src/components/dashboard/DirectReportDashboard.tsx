@@ -45,6 +45,8 @@ interface LinkedMemberData {
   chronotype?: string | null;
   feedback_style?: string | null;
   recognition_style?: string | null;
+  motivators?: unknown[] | null;
+  user_manual?: Record<string, unknown> | null;
 }
 
 interface DirectReportDashboardProps {
@@ -175,17 +177,20 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
   useEffect(() => {
     if (syncDialogOpen) {
       const wsd = linkedMember.work_style_data as any;
+      const um = linkedMember.user_manual as any;
       setSyncForm({
         chronotype: linkedMember.chronotype || '',
         work_environment: wsd?.work_environment || '',
-        energy_drains: wsd?.energy_drains || '',
-        energy_sources: wsd?.energy_sources || '',
-        stress_signs: wsd?.stress_signs || '',
-        support_needed: wsd?.support_needed || '',
+        energy_drains: um?.energy_drainers || wsd?.energy_drains || '',
+        energy_sources: um?.energy_boosters || wsd?.energy_sources || '',
+        stress_signs: um?.stress_signs || wsd?.stress_signs || '',
+        support_needed: um?.bad_day_support || wsd?.support_needed || '',
         feedback_style: linkedMember.feedback_style || '',
         recognition_style: linkedMember.recognition_style || '',
-        motivators: wsd?.motivators || [],
-        skill_goal: wsd?.skill_goal || '',
+        motivators: (Array.isArray(linkedMember.motivators) && linkedMember.motivators.length > 0
+          ? linkedMember.motivators as string[]
+          : wsd?.motivators || []),
+        skill_goal: um?.skill_goal || wsd?.skill_goal || '',
       });
     }
   }, [syncDialogOpen, linkedMember]);
@@ -333,12 +338,22 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
     setSyncSaving(true);
     try {
       const existingWsd = (linkedMember.work_style_data as Record<string, unknown>) || {};
+      const existingUm = (linkedMember.user_manual as Record<string, unknown>) || {};
       const { error } = await supabase
         .from('team_members')
         .update({
           chronotype: syncForm.chronotype || null,
           feedback_style: syncForm.feedback_style || null,
           recognition_style: syncForm.recognition_style || null,
+          motivators: syncForm.motivators.length > 0 ? syncForm.motivators : null,
+          user_manual: {
+            ...existingUm,
+            energy_drainers: syncForm.energy_drains || null,
+            energy_boosters: syncForm.energy_sources || null,
+            stress_signs: syncForm.stress_signs || null,
+            bad_day_support: syncForm.support_needed || null,
+            skill_goal: syncForm.skill_goal || null,
+          },
           work_style_data: {
             ...existingWsd,
             work_environment: syncForm.work_environment || null,
