@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check } from 'lucide-react';
+import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
@@ -8,6 +8,7 @@ import { ProfileSettingsDialog } from '@/components/ProfileSettingsDialog';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
+import { useUserRole } from '@/hooks/useUserRole';
 import { useToast } from '@/hooks/use-toast';
 import { useLinkedMember } from '@/hooks/useLinkedMember';
 import {
@@ -45,6 +46,7 @@ export function AppSidebar() {
   const { open } = useSidebar();
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdmin();
+  const { isLeader, isHRAdmin, isUser } = useUserRole();
   const { isLinkedMember, linkedMember } = useLinkedMember();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -90,7 +92,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems
-                .filter(item => !isLinkedMember || !leaderOnlyItems.includes(item.title))
+                .filter(item => !isUser || !leaderOnlyItems.includes(item.title))
                 .map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild tooltip={item.title}>
@@ -125,6 +127,29 @@ export function AppSidebar() {
                     >
                       <ShieldCheck className="h-5 w-5" />
                       <span>Admin</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {isHRAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">RH</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Painel RH">
+                    <NavLink 
+                      to="/hr" 
+                      end
+                      className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
+                      activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
+                    >
+                      <Users className="h-5 w-5" />
+                      <span>Painel RH</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
