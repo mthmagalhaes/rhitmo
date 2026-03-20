@@ -1,33 +1,95 @@
 
 
-## Plan: Fix Rhitmo Sync Pre-population
+## Plan: Smart Nudges for Leaders (In-App Only, Email Later)
 
-### Problem
-The edit dialog reads motivators, stress signs, and support info from `work_style_data`, but the initial sync saves them to separate columns (`motivators`, `user_manual`). Also, `useLinkedMember` doesn't fetch these columns. Result: fields appear empty on first edit.
+### Summary
+Create a system that detects leader inactivity (no feedback in 30+ days, missing PDI) and shows in-app nudge banners on the dashboard. An edge function runs daily via cron to generate nudges.
+
+### Corrections to user's approach
+- `team_members` has no `leader_id` column — the leader is `workspaces.owner_id` via `teams.workspace_id`
+- There's no `evaluations` table — feedback is in `feedbacks` table (with `member_id`, `occurred_at`)
+- No FK to `auth.users` on `leader_nudges` (avoid reserved schema references)
+- `development_plans` joins via `member_id`, not nested select from `team_members`
 
 ### Changes
 
-**1. `src/hooks/useLinkedMember.ts`** — Add missing columns to query
+**1. Database migration** — Create `leader_nudges` table
 
-- Add `motivators, user_manual` to the select query (line 42)
-- Add `motivators` and `user_manual` to the `LinkedMemberData` interface
+```sql
+CREATE TABLE leader_nudges (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  leader_id UUID NOT NULL,
+  member_id UUID,
+  nudge_type TEXT NOT NULL,
+  message TEXT NOT NULL,
+  action_url TEXT,
+  severity TEXT DEFAULT 'info',
+  dismissed_at TIMESTAMPTZ,
+  email_sent_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_nudges_leader ON leader_nudges(leader_id, dismissed_at);
+CREATE INDEX idx_nudges_created ON leader_nudges(created_at DESC);
+```
 
-**2. `src/components/dashboard/DirectReportDashboard.tsx`** — Fix pre-population logic (lines 174-191)
+RLS: Leaders can SELECT and UPDATE (dismiss) their own nudges. No INSERT for clients (only service role).
 
-Update the `useEffect` to read from the correct sources with fallback:
-- `motivators`: Read from `linkedMember.motivators` (array column), fall back to `wsd?.motivators`
-- `stress_signs`: Read from `linkedMember.user_manual?.stress_signs`, fall back to `wsd?.stress_signs`
-- `support_needed`: Read from `linkedMember.user_manual?.bad_day_support`, fall back to `wsd?.support_needed`
-- `energy_drains`: Read from `linkedMember.user_manual?.energy_drainers`, fall back to `wsd?.energy_drains`
-- `energy_sources`: Read from `linkedMember.user_manual?.energy_boosters`, fall back to `wsd?.energy_sources`
-- `skill_goal`: Read from `linkedMember.user_manual?.skill_goal`, fall back to `wsd?.skill_goal`
+**2. Edge Function: `generate-nudges`**
 
-Also update the `LinkedMemberData` interface in this file to include `motivators` and `user_manual`.
+- `verify_jwt = false` (called by cron)
+- Uses `SUPABASE_SERVICE_ROLE_KEY` to bypass RLS
+- **No-feedback nudge**: Query all members via `team_members → teams → workspaces`, LEFT JOIN `feedbacks` to find `MAX(occurred_at)`. If > 30 days → info, > 60 days → urgent
+- **No-PDI nudge**: Members with no rows in `development_plans`
+- Deduplication: Skip if active (non-dismissed) nudge of same type+member exists
+- No email sending in this iteration
 
-**3. `src/components/dashboard/DirectReportDashboard.tsx`** — Update `handleSaveSync` (lines 332-367)
+**3. Cron job** — pg_cron + pg_net
 
-Also write back to the `motivators` and `user_manual` columns (not just `work_style_data`) so the trigger correctly detects changes and data stays consistent.
+SQL insert (not migration) to schedule daily at 12:00 UTC (9h BRT):
+```sql
+SELECT cron.schedule('generate-nudges-daily', '0 12 * * *', $$
+  SELECT net.http_post(
+    url:='https://lybkgujyezzzvbzypxed.supabase.co/functions/v1/generate-nudges',
+    headers:='{"Content-Type":"application/json","Authorization":"Bearer <anon_key>"}'::jsonb,
+    body:='{}'::jsonb
+  ) as request_id;
+$$);
+```
 
-### No database changes needed
-All columns already exist. The trigger already watches `work_style_data`, `motivators`, and `user_manual`.
+**4. `src/components/NudgesBanner.tsx`** — New component
+
+- Query `leader_nudges` where `dismissed_at IS NULL`, limit 3, ordered by severity priority then created_at desc
+- Color-coded alerts: blue (info), amber (warning), red (urgent)
+- "Ver" button navigates to `action_url` and dismisses
+- "X" button dismisses only
+- `refetchInterval: 60000`
+
+**5. `src/pages/Index.tsx`** — Add `NudgesBanner`
+
+Insert `<NudgesBanner />` after CalendarWidget (~line 382), before LeaderSyncReminder. Only shown for leaders (the component self-guards by returning null if no nudges).
+
+**6. `supabase/config.toml`** — Add function config
+
+```toml
+[functions.generate-nudges]
+verify_jwt = false
+```
+
+### Technical details
+
+Edge function query pattern:
+```sql
+SELECT tm.id, tm.name, w.owner_id as leader_id,
+  MAX(f.occurred_at) as last_feedback_at
+FROM team_members tm
+JOIN teams t ON t.id = tm.team_id
+JOIN workspaces w ON w.id = t.workspace_id
+LEFT JOIN feedbacks f ON f.member_id = tm.id
+WHERE w.is_active = true
+GROUP BY tm.id, tm.name, w.owner_id
+HAVING MAX(f.occurred_at) < NOW() - INTERVAL '30 days'
+   OR MAX(f.occurred_at) IS NULL;
+```
+
+No email in this iteration — `email_sent_at` column exists for future use.
 
