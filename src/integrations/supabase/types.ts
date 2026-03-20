@@ -487,6 +487,53 @@ export type Database = {
         }
         Relationships: []
       }
+      leader_nudges: {
+        Row: {
+          action_url: string | null
+          created_at: string | null
+          dismissed_at: string | null
+          email_sent_at: string | null
+          id: string
+          leader_id: string
+          member_id: string | null
+          message: string
+          nudge_type: string
+          severity: string | null
+        }
+        Insert: {
+          action_url?: string | null
+          created_at?: string | null
+          dismissed_at?: string | null
+          email_sent_at?: string | null
+          id?: string
+          leader_id: string
+          member_id?: string | null
+          message: string
+          nudge_type: string
+          severity?: string | null
+        }
+        Update: {
+          action_url?: string | null
+          created_at?: string | null
+          dismissed_at?: string | null
+          email_sent_at?: string | null
+          id?: string
+          leader_id?: string
+          member_id?: string | null
+          message?: string
+          nudge_type?: string
+          severity?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leader_nudges_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meeting_transcripts: {
         Row: {
           chunk_count: number | null
