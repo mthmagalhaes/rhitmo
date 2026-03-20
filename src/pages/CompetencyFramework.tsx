@@ -226,7 +226,7 @@ const CompetencyFramework = () => {
     <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Framework de Competências</h1>
-        <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+        <Button onClick={() => setShowAIDialog(true)} className="gap-2">
           <Plus className="h-4 w-4" /> Adicionar Competência
         </Button>
       </div>
