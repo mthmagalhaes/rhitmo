@@ -1,56 +1,51 @@
 
 
-## Plan: HR Members Page with Filters and Activity Badges
+## Plan: Member Profile Sheet from HR Members Page
 
 ### Changes
 
-**1. Database: New RPC `get_hr_all_members`**
+**1. Database: New RPC `get_hr_member_profile`**
 
-Create via migration. Key corrections from user's SQL (adapting to actual schema):
-- Use `development_plans` table (not `pdi_items`)
-- Use `tm.skills_data` column (not `skills_map`)
-- Use `tm.work_style_data IS NOT NULL` for sync check (matches existing pattern in `get_hr_leader_team`)
-- Use `f.occurred_at` for feedback dates (not `f.created_at`)
-- Join `auth.users` for leader name
+Returns a single member's full profile. Key corrections from user's SQL:
+- `development_plans` doesn't have `title`/`description`/`target_date` — aggregate `development_items` instead (via `plan_id`)
+- `motivators` and `user_manual` are `jsonb`, not `text`
+- Recent feedbacks: use a subquery with `LIMIT 5` (the user's SQL had LIMIT in wrong place)
+- Return types must match actual column types
 
 ```sql
-CREATE OR REPLACE FUNCTION public.get_hr_all_members(
-  _workspace_id UUID,
-  _search TEXT DEFAULT NULL,
-  _leader_id UUID DEFAULT NULL,
-  _has_pdi BOOLEAN DEFAULT NULL,
-  _limit INTEGER DEFAULT 20,
-  _offset INTEGER DEFAULT 0
+CREATE OR REPLACE FUNCTION public.get_hr_member_profile(
+  _workspace_id UUID, _member_id UUID
 )
 RETURNS TABLE (
   member_id UUID, member_name TEXT, member_email TEXT, member_role TEXT,
   leader_id UUID, leader_name TEXT,
-  last_feedback_date TIMESTAMPTZ, days_since_last_feedback INTEGER,
-  pdi_count INTEGER, has_sync BOOLEAN, has_skills_map BOOLEAN,
-  total_count BIGINT
+  motivators JSONB, user_manual JSONB,
+  chronotype TEXT, feedback_style TEXT, recognition_style TEXT,
+  skills_data JSONB, work_style_data JSONB,
+  created_at TIMESTAMPTZ, feedback_count INTEGER, last_feedback_date TIMESTAMPTZ,
+  pdi_items JSONB, recent_feedbacks JSONB
 )
-LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
 ```
 
-Uses `is_hr_admin_of_workspace` + `is_admin()` for auth check.
+- `pdi_items`: aggregates from `development_items` joined through `development_plans`
+- `recent_feedbacks`: last 5 feedbacks by `occurred_at`
+- Auth: `is_admin() OR is_hr_admin_of_workspace()`
 
-**2. New page `src/pages/HRMembers.tsx`**
+**2. New component `src/components/hr/MemberProfileSheet.tsx`**
 
-- Uses `useHRAdmin()` for `workspaceId`
-- Filters: search input, leader dropdown (from `get_hr_leaders_overview`), PDI filter
-- Member cards with activity badges (color-coded by days since last feedback)
-- Status badges: Sync, PDI count, Skills Map
-- Pagination (20 per page)
-- "Ver Perfil" button (placeholder for now)
+Sheet (right side, `sm:max-w-xl`) with:
+- **Header**: Avatar initial, name, role, email, leader, join date
+- **4 Tabs**: Feedbacks, PDI, Rhitmo Sync, Skills
+- Each tab shows data or a clean empty state
+- `motivators`/`user_manual` rendered as JSON content (they're jsonb)
+- Fetches data via RPC only when `open && memberId` are truthy
 
-**3. Route in `src/App.tsx`**
+**3. Update `src/pages/HRMembers.tsx`**
 
-Add `/hr/members` route wrapped in `AppLayout` + `HRAdminGuard`, same pattern as other HR routes.
-
-**4. Sidebar update `src/components/AppSidebar.tsx`**
-
-Add `{ title: 'Liderados', url: '/hr/members', icon: Users }` to `hrMenuItems` array (after "Times e Líderes"). Use a different icon (`UserCheck` or keep `Users`) to differentiate from "Times e Líderes".
+- Add `selectedMemberId` + `profileSheetOpen` state
+- Wire "Ver Perfil" button's `onClick` to set member and open sheet
+- Render `MemberProfileSheet` at bottom of component
 
 ### No other changes needed
-RLS is handled by the SECURITY DEFINER function. Existing `get_hr_leaders_overview` RPC provides leader list for the filter dropdown.
+RLS handled by SECURITY DEFINER function. Existing Sheet UI component supports custom width via className.
 
