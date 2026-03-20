@@ -1,67 +1,50 @@
 
 
-## Plan: HR Teams & Leaders Page
+## Plan: Fix HR Admin UX — Redirect, Sidebar Menu, Consistent Layout
 
 ### Problem
-HR Admin needs to see organizational structure: leaders, their team sizes, activity metrics, and drill-down into each leader's team members.
-
-### Key schema corrections from user's proposal
-- No `profiles` table — leader names/emails must come from `auth.users` (in SECURITY DEFINER function)
-- `is_hr_admin_of_workspace()` takes only `_workspace_id` (not two params)
-- `feedbacks` uses `manager_id`, not `created_by`
-- No `leader_id` on `team_members` — leader is derived via `teams → workspaces → owner_id`
+1. HR Admin lands on `/dashboard` (leader view) after login
+2. "Painel RH" link is at the bottom of sidebar
+3. HR pages (`/hr`, `/hr/teams`) render their own header/layout, losing the sidebar
 
 ### Changes
 
-**1. Database migration** — Create `get_hr_leaders_overview` RPC
+**1. `src/pages/AuthPage.tsx`** — Smart redirect after login
 
-Returns JSONB array of leaders with:
-- `leader_id`, `leader_name`, `leader_email` (from `auth.users`)
-- `total_members` (count of team_members in their workspace)
-- `feedbacks_last_30d` (count from feedbacks where manager_id = owner_id)
-- `last_feedback_at`, `days_since_last_feedback`
+On line 72, instead of always navigating to `/dashboard`, check user role:
+- Query `workspaces` to see if user is in `hr_admin_ids` → redirect to `/hr`
+- Otherwise → `/dashboard` (existing behavior)
 
-Auth check: `is_hr_admin_of_workspace(_workspace_id)` or `is_admin()`.
+This keeps the checkout flow intact (lines 28-69) and only changes the default redirect.
 
-Query pattern:
-```sql
-SELECT w.owner_id, au.email, au.raw_user_meta_data->>'full_name',
-  COUNT(DISTINCT tm.id), ...
-FROM workspaces w
-JOIN auth.users au ON au.id = w.owner_id
-LEFT JOIN teams t ON t.workspace_id = w.id
-LEFT JOIN team_members tm ON tm.team_id = t.id
-LEFT JOIN feedbacks f ON f.manager_id = w.owner_id
-WHERE w.id = _workspace_id AND w.is_active = true
-GROUP BY w.owner_id, au.email, au.raw_user_meta_data
-```
+**2. `src/components/AppSidebar.tsx`** — Move HR section to top with expanded menu
 
-**2. Database migration** — Create `get_hr_leader_team` RPC
+- Move the `isHRAdmin` sidebar group (lines 138-159) to BEFORE the "Menu" group (line 90)
+- Expand it from a single "Painel RH" link to 3 items: Visão Geral (`/hr`), Times e Líderes (`/hr/teams`), Competências (`/hr/competency-framework`)
+- Add icons: `LayoutDashboard`, `Users`, `BookOpen`
 
-Takes `_workspace_id` and `_leader_id`. Returns JSONB array of team members under that leader with:
-- `id`, `name`, `email`, `role`
-- `last_feedback_at`, `days_since_last_feedback`
-- `pdi_count` (from development_plans)
-- `has_sync` (work_style_data IS NOT NULL)
+**3. `src/App.tsx`** — Wrap HR routes in AppLayout
 
-**3. `src/pages/HRTeams.tsx`** — New page
+Change `/hr`, `/hr/teams`, `/hr/competency-framework` routes to use `<AppLayout>` wrapper (same as `/dashboard`), keeping `HRAdminGuard` inside.
 
-- Uses `useHRAdmin()` for `workspaceId`
-- Calls `get_hr_leaders_overview` RPC
-- Displays leader cards with: name, email, member count, feedback activity, color-coded activity badge
-- Search filter by name/email
-- Click "Ver time" opens Sheet with team member list from `get_hr_leader_team`
-- Each member shows: name, last feedback date, PDI count, sync status
-- Matches existing HR dashboard visual style (bg-[#F5F0E8], rounded-3xl cards, same header)
+**4. `src/pages/HRDashboard.tsx`** — Remove standalone layout
 
-**4. `src/App.tsx`** — Add route `/hr/teams`
+- Remove the custom header (logo, logout button, sticky header)
+- Remove `min-h-screen bg-[#F5F0E8]` wrapper
+- Keep only the `<main>` content (KPIs, alerts, activity, maturity sections)
+- The AppLayout sidebar + header handles navigation now
 
-Wrap in `HRAdminGuard`, same pattern as `/hr/competency-framework`.
+**5. `src/pages/HRTeams.tsx`** — Remove standalone layout
 
-**5. `src/pages/HRDashboard.tsx`** — Add quick link
+Same treatment: remove custom header/nav, keep only the content. The page already uses `useHRAdmin()` for `workspaceId`.
 
-Add "Times e Líderes" button in the Quick Links section (line 96-104), navigating to `/hr/teams`.
+**6. `src/pages/CompetencyFramework.tsx`** — Verify layout consistency
 
-### No new RLS policies needed
-RPCs use SECURITY DEFINER and check HR admin authorization internally. No direct table access from client.
+Check if it also has its own header; if so, strip it.
+
+### What stays the same
+- `HRAdminGuard` still wraps HR routes and provides `useHRAdmin()` context
+- `DirectReportGuard` still wraps leader routes
+- No database changes needed
+- No new components needed
 
