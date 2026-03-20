@@ -52,7 +52,7 @@ const JOB_TITLES = [
 ];
 
 export const AICompetencyDialog = ({
-  open, onClose, frameworkId, currentMaxOrder, onCreatedManually, onSaved,
+  open, onClose, frameworkId, workspaceId, currentMaxOrder, onCreatedManually, onSaved,
 }: AICompetencyDialogProps) => {
   const [mode, setMode] = useState<'select' | 'input' | 'preview'>('select');
   const [jobTitle, setJobTitle] = useState('');
