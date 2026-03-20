@@ -220,6 +220,45 @@ export type Database = {
           },
         ]
       }
+      competency_templates: {
+        Row: {
+          company: string
+          competencies: Json
+          created_at: string
+          description: string | null
+          id: string
+          is_public: boolean | null
+          job_title: string
+          level: string | null
+          name: string
+          source: string | null
+        }
+        Insert: {
+          company: string
+          competencies: Json
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          job_title: string
+          level?: string | null
+          name: string
+          source?: string | null
+        }
+        Update: {
+          company?: string
+          competencies?: Json
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          job_title?: string
+          level?: string | null
+          name?: string
+          source?: string | null
+        }
+        Relationships: []
+      }
       development_items: {
         Row: {
           category: string | null
@@ -487,6 +526,47 @@ export type Database = {
         }
         Relationships: []
       }
+      job_roles: {
+        Row: {
+          created_at: string
+          department: string | null
+          description: string | null
+          framework_id: string
+          id: string
+          level: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          department?: string | null
+          description?: string | null
+          framework_id: string
+          id?: string
+          level?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          department?: string | null
+          description?: string | null
+          framework_id?: string
+          id?: string
+          level?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_roles_framework_id_fkey"
+            columns: ["framework_id"]
+            isOneToOne: false
+            referencedRelation: "competency_frameworks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leader_nudges: {
         Row: {
           action_url: string | null
@@ -722,6 +802,51 @@ export type Database = {
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      role_competencies: {
+        Row: {
+          competency_id: string
+          created_at: string
+          expected_level: string | null
+          id: string
+          is_required: boolean | null
+          job_role_id: string
+          weight: number | null
+        }
+        Insert: {
+          competency_id: string
+          created_at?: string
+          expected_level?: string | null
+          id?: string
+          is_required?: boolean | null
+          job_role_id: string
+          weight?: number | null
+        }
+        Update: {
+          competency_id?: string
+          created_at?: string
+          expected_level?: string | null
+          id?: string
+          is_required?: boolean | null
+          job_role_id?: string
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_competencies_competency_id_fkey"
+            columns: ["competency_id"]
+            isOneToOne: false
+            referencedRelation: "competencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "role_competencies_job_role_id_fkey"
+            columns: ["job_role_id"]
+            isOneToOne: false
+            referencedRelation: "job_roles"
             referencedColumns: ["id"]
           },
         ]
@@ -1154,6 +1279,18 @@ export type Database = {
           member_id: string
           member_name: string
           workspace_name: string
+        }[]
+      }
+      get_job_roles_with_competencies: {
+        Args: { _framework_id: string }
+        Returns: {
+          competencies: Json
+          competency_count: number
+          role_department: string
+          role_description: string
+          role_id: string
+          role_level: string
+          role_title: string
         }[]
       }
       get_member_for_sync: {
