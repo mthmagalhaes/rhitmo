@@ -278,6 +278,7 @@ const CompetencyFramework = () => {
         open={showAIDialog}
         onClose={() => setShowAIDialog(false)}
         frameworkId={data?.frameworkId ?? ''}
+        workspaceId={workspaceId}
         currentMaxOrder={data?.competencies?.length ? Math.max(...data.competencies.map(c => c.order)) : 0}
         onCreatedManually={() => setShowCreateModal(true)}
         onSaved={() => queryClient.invalidateQueries({ queryKey: ['competency-framework'] })}

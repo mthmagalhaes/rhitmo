@@ -32,6 +32,7 @@ interface AICompetencyDialogProps {
   open: boolean;
   onClose: () => void;
   frameworkId: string;
+  workspaceId: string;
   currentMaxOrder: number;
   onCreatedManually: () => void;
   onSaved: () => void;
@@ -51,7 +52,7 @@ const JOB_TITLES = [
 ];
 
 export const AICompetencyDialog = ({
-  open, onClose, frameworkId, currentMaxOrder, onCreatedManually, onSaved,
+  open, onClose, frameworkId, workspaceId, currentMaxOrder, onCreatedManually, onSaved,
 }: AICompetencyDialogProps) => {
   const [mode, setMode] = useState<'select' | 'input' | 'preview'>('select');
   const [jobTitle, setJobTitle] = useState('');
@@ -122,12 +123,25 @@ export const AICompetencyDialog = ({
     if (!competencies.length) return;
     setSaving(true);
     try {
+      let fwId = frameworkId;
+
+      // Auto-create framework if none exists
+      if (!fwId) {
+        const { data: fw, error: fwErr } = await supabase
+          .from('competency_frameworks')
+          .insert({ workspace_id: workspaceId })
+          .select('id')
+          .single();
+        if (fwErr) throw fwErr;
+        fwId = fw.id;
+      }
+
       for (let i = 0; i < competencies.length; i++) {
         const comp = competencies[i];
         const { data: newComp, error } = await supabase
           .from('competencies')
           .insert({
-            framework_id: frameworkId,
+            framework_id: fwId,
             name: comp.name,
             description: comp.description || null,
             order: currentMaxOrder + i + 1,
