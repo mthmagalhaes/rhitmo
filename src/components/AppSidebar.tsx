@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award } from 'lucide-react';
+import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award, ArrowRightLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
@@ -31,6 +31,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 
 const menuItems = [
   { title: 'Início', url: '/dashboard', icon: Home },
@@ -39,8 +40,14 @@ const menuItems = [
   { title: 'Guia Rhitmo', url: '/help', icon: BookOpen },
 ];
 
-// Itens que só líderes podem ver
 const leaderOnlyItems = ['Analytics', 'Assinatura', 'Guia Rhitmo'];
+
+const hrMenuItems = [
+  { title: 'Visão Geral', url: '/hr', icon: LayoutDashboard },
+  { title: 'Times e Líderes', url: '/hr/teams', icon: Users },
+  { title: 'Analytics', url: '/hr/analytics', icon: BarChart3 },
+  { title: 'Competências', url: '/hr/competency-framework', icon: Award },
+];
 
 export function AppSidebar() {
   const { open } = useSidebar();
@@ -63,13 +70,10 @@ export function AppSidebar() {
 
   const handleSignOut = async () => {
     await signOut();
-    
     toast({
       title: "Logout realizado",
       description: "Até logo!"
     });
-    
-    // Redirecionar para página de login
     navigate('/auth', { replace: true });
   };
 
@@ -87,79 +91,59 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
+        {/* HR Admin menu — always on top, isolated */}
         {isHRAdmin && (
           <SidebarGroup>
             <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Painel RH</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Visão Geral">
-                    <NavLink 
-                      to="/hr" 
-                      end
-                      className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
-                      activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
-                    >
-                      <LayoutDashboard className="h-5 w-5" />
-                      <span>Visão Geral</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Times e Líderes">
-                    <NavLink 
-                      to="/hr/teams" 
-                      end
-                      className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
-                      activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
-                    >
-                      <Users className="h-5 w-5" />
-                      <span>Times e Líderes</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Competências">
-                    <NavLink 
-                      to="/hr/competency-framework" 
-                      end
-                      className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
-                      activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
-                    >
-                      <Award className="h-5 w-5" />
-                      <span>Competências</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                {hrMenuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild tooltip={item.title}>
+                      <NavLink 
+                        to={item.url} 
+                        end
+                        className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
+                        activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
+                      >
+                        <item.icon className="h-5 w-5" />
+                        <span>{item.title}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
         )}
 
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Menu</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {menuItems
-                .filter(item => !isUser || !leaderOnlyItems.includes(item.title))
-                .map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild tooltip={item.title}>
-                    <NavLink 
-                      to={item.url} 
-                      end
-                      className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
-                      activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
-                    >
-                      <item.icon className="h-5 w-5" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Standard menu — hidden for pure HR Admins */}
+        {!isHRAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Menu</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {menuItems
+                  .filter(item => !isUser || !leaderOnlyItems.includes(item.title))
+                  .map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild tooltip={item.title}>
+                      <NavLink 
+                        to={item.url} 
+                        end
+                        className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
+                        activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
+                      >
+                        <item.icon className="h-5 w-5" />
+                        <span>{item.title}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {isAdmin && (
           <SidebarGroup>
@@ -186,7 +170,22 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter>
-        {/* Link de Suporte */}
+        {/* Context switch: HR Admin who is also a Leader */}
+        {isHRAdmin && isLeader && open && (
+          <div className="px-4 py-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-start gap-2 rounded-xl text-muted-foreground hover:text-primary"
+              onClick={() => navigate('/dashboard')}
+            >
+              <ArrowRightLeft className="h-4 w-4" />
+              Ver como Líder
+            </Button>
+          </div>
+        )}
+
+        {/* Support link */}
         <div className="px-4 py-2">
           <SidebarMenuButton asChild tooltip="Suporte">
             <button 
@@ -199,7 +198,7 @@ export function AppSidebar() {
           </SidebarMenuButton>
         </div>
 
-        {/* Bloco de usuário */}
+        {/* User block */}
         <div className="flex items-center gap-3 p-3 mx-2 mb-4 rounded-2xl bg-white/30 shadow-sm">
           {open && user?.id && (
             <MemberAvatar 
@@ -245,7 +244,6 @@ export function AppSidebar() {
         onOpenChange={setSettingsOpen} 
       />
 
-      {/* Dialog de Suporte */}
       <Dialog open={supportDialogOpen} onOpenChange={setSupportDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
