@@ -42,6 +42,7 @@ const CompetencyFramework = () => {
   const queryClient = useQueryClient();
   const [editingComp, setEditingComp] = useState<Competency | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showAIDialog, setShowAIDialog] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const sensors = useSensors(
