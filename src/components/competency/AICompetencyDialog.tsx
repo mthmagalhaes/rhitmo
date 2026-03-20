@@ -32,6 +32,7 @@ interface AICompetencyDialogProps {
   open: boolean;
   onClose: () => void;
   frameworkId: string;
+  workspaceId: string;
   currentMaxOrder: number;
   onCreatedManually: () => void;
   onSaved: () => void;
