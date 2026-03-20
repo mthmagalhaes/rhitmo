@@ -1,50 +1,38 @@
 
 
-## Plan: Job-Based Competency Framework Schema
+## Plan: Job-Based Competency Framework UX
 
 ### Summary
-Add three new tables (`job_roles`, `role_competencies`, `competency_templates`) and one RPC to support a cargo-centric competency model. Existing flat competencies remain untouched for backward compatibility. This is schema-only (no UI changes).
+Redesign the `/hr/competency-framework` page to show a "Por Cargo" / "Por Competência" toggle view, add a 2-step dialog for creating job roles with competency associations, and support deleting job roles.
 
 ### Changes
 
-**1. Database Migration — New Tables + RPC + Seed Data**
+**1. Update `src/pages/CompetencyFramework.tsx`**
 
-Single migration with:
+- Add state: `viewMode` (`'roles' | 'competencies'`), `createJobRoleDialogOpen`, `editingJobRole`
+- Add query for job roles using `get_job_roles_with_competencies` RPC (depends on `data?.frameworkId`)
+- Add delete mutation for job roles (delete from `job_roles` table by id)
+- Restructure layout:
+  - Header: title + subtitle + "Adicionar Cargo" button (when in roles view) or existing "Adicionar Competencia" button (when in competencies view)
+  - Toggle buttons: "Por Cargo" / "Por Competência" using `Button` variant toggle
+  - **Roles view**: Map `jobRoles` into cards showing title, level badge, department, description, competency list with expected_level badges, edit/delete buttons. Empty state with Briefcase icon and CTA.
+  - **Competencies view**: Keep existing DndContext + CompetencyCard + CompetencyPreviewTable code unchanged
+- Render `CreateJobRoleDialog` at bottom
 
-- **`job_roles`**: Stores job titles per framework with level and department. RLS allows workspace owners and HR admins to manage; linked members can view.
-- **`role_competencies`**: Maps competencies to job roles with expected level, required flag, and weight. Same RLS pattern as `job_roles`.
-- **`competency_templates`**: Public catalog of example frameworks (Spotify, Nubank). RLS: any authenticated user can read public templates.
-- **RPC `get_job_roles_with_competencies`**: Returns job roles with aggregated competency data as JSONB. SECURITY DEFINER.
-- **Seed data**: 2 template rows (Spotify Engineering, Nubank Values).
+**2. Create `src/components/competency/CreateJobRoleDialog.tsx`**
 
-**Key corrections from user's SQL:**
-- The `FOR ALL` policy needs a `WITH CHECK` expression — will add it matching the `USING` clause
-- Use `effective_user_id()` instead of `auth.uid()` for consistency with the rest of the codebase (supports admin impersonation)
-- CHECK constraint on `level` uses validation trigger instead (per guidelines) — actually, since these are static enum-like values that don't involve time, CHECK constraints are fine here
-- Add `updated_at` trigger on `job_roles` using existing `update_updated_at_column()` function
+Two-step dialog:
+- **Step 1 (details)**: Title (required), Level (select from Junior-Principal), Department (input), Description (textarea). "Proximo: Competencias" button.
+- **Step 2 (competencies)**: Fetch available competencies from `competencies` table filtered by `frameworkId`. Each shown with checkbox + name + description. When selected, show expected_level select (Junior/Pleno/Senior/Especialista). Summary of selected competencies as badges. "Salvar Cargo" button.
+- On save: insert into `job_roles`, then batch insert into `role_competencies`. Invalidate `job-roles` query key.
+- Reset form on close. Support `editingRole` prop for future edit functionality.
 
-**No frontend changes in this step.** The user stated "Próximo prompt: UX para criar cargos com competências."
+**3. No database changes needed**
+Schema (`job_roles`, `role_competencies`) and RPC (`get_job_roles_with_competencies`) already exist from the previous migration.
 
-### Technical Details
-
-```text
-job_roles
-├── id (PK)
-├── framework_id (FK → competency_frameworks)
-├── title, level, department, description
-└── timestamps
-
-role_competencies
-├── id (PK)
-├── job_role_id (FK → job_roles)
-├── competency_id (FK → competencies)
-├── expected_level, is_required, weight
-└── UNIQUE(job_role_id, competency_id)
-
-competency_templates (read-only catalog)
-├── id (PK)
-├── name, company, job_title, level
-├── competencies (JSONB)
-└── is_public
-```
+### Technical Notes
+- Import `supabase` from `@/integrations/supabase/client` (not `@/lib/supabase`)
+- Use `toast` from `@/hooks/use-toast` for consistency with existing page
+- Job role cards: use `Card`/`CardContent` components with badges for level and "Obrigatoria" flag
+- Delete: confirm via `AlertDialog` before deleting
 
