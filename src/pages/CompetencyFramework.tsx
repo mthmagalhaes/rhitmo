@@ -71,6 +71,10 @@ const CompetencyFramework = () => {
   const [viewMode, setViewMode] = useState<'roles' | 'competencies'>('roles');
   const [createJobRoleDialogOpen, setCreateJobRoleDialogOpen] = useState(false);
   const [deletingRoleId, setDeletingRoleId] = useState<string | null>(null);
+  const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
+  const [adjustingCompetency, setAdjustingCompetency] = useState<{
+    id: string; name: string; description: string | null; roleTitle: string; roleLevel: string;
+  } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
