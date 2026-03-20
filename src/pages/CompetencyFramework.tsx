@@ -262,7 +262,7 @@ const CompetencyFramework = () => {
         )}
 
         <CompetencyPreviewTable competencies={previewData} />
-      </main>
+      
 
       <EditCompetencyModal
         open={showCreateModal || !!editingComp}
