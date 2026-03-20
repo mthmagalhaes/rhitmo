@@ -1092,6 +1092,14 @@ export type Database = {
         Args: { _workspace_id: string }
         Returns: Json
       }
+      get_hr_leader_team: {
+        Args: { _leader_id: string; _workspace_id: string }
+        Returns: Json
+      }
+      get_hr_leaders_overview: {
+        Args: { _workspace_id: string }
+        Returns: Json
+      }
       get_invite_details: {
         Args: { p_invite_token: string }
         Returns: {
