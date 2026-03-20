@@ -119,8 +119,8 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {/* Standard menu — hidden for pure HR Admins */}
-        {!isHRAdmin && (
+        {/* Standard menu — show when NOT in HR context */}
+        {!isInHRContext && (
           <SidebarGroup>
             <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Menu</SidebarGroupLabel>
             <SidebarGroupContent>
