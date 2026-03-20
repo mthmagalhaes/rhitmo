@@ -1,28 +1,47 @@
 
 
-## Plan: Fix "+ Adicionar Competência" Button Not Opening Dialog
+## Plan: Auto-create Framework Before Saving AI Competencies
 
-### Root Cause
-The `AICompetencyDialog` is conditionally rendered only when `data` exists (line 277: `{data && (`). If the competency framework query fails (e.g., no framework row exists for the workspace yet, causing `.single()` to throw), `data` is undefined and the dialog never mounts — so clicking the button sets state but nothing renders.
+### Problem
+`frameworkId` is passed as `''` when no framework exists. Inserting a competency with `framework_id: ''` fails because Postgres expects a valid UUID.
 
-### Fix (`src/pages/CompetencyFramework.tsx`)
+### Fix (`src/components/competency/AICompetencyDialog.tsx`)
 
-1. **Move `AICompetencyDialog` outside the `{data && ...}` guard** so it always renders
-2. Pass `frameworkId` as `data?.frameworkId ?? ''` and handle the missing-framework case inside the dialog (disable "Salvar" if no frameworkId)
-3. Alternatively, auto-create the framework on first visit if none exists — but simpler fix is just always rendering the dialog
+In `saveAll` (line 121), before the insert loop, add logic to create a framework if `frameworkId` is empty:
 
-Specific change: Move lines 277-286 outside the `data` conditional, passing optional props:
+```typescript
+const saveAll = async () => {
+  if (!competencies.length) return;
+  setSaving(true);
+  try {
+    let fwId = frameworkId;
 
-```tsx
-<AICompetencyDialog
-  open={showAIDialog}
-  onClose={() => setShowAIDialog(false)}
-  frameworkId={data?.frameworkId ?? ''}
-  currentMaxOrder={data?.competencies?.length ? Math.max(...data.competencies.map(c => c.order)) : 0}
-  onCreatedManually={() => setShowCreateModal(true)}
-  onSaved={() => queryClient.invalidateQueries({ queryKey: ['competency-framework'] })}
-/>
+    // Auto-create framework if none exists
+    if (!fwId) {
+      const { data: fw, error: fwErr } = await supabase
+        .from('competency_frameworks')
+        .insert({ workspace_id: workspaceId })
+        .select('id')
+        .single();
+      if (fwErr) throw fwErr;
+      fwId = fw.id;
+    }
+
+    // Then use fwId instead of frameworkId in the loop
+    ...
 ```
 
-This is a single-file, ~5-line change.
+This requires passing `workspaceId` as a new prop to `AICompetencyDialog`.
+
+### Changes
+
+**1. `src/components/competency/AICompetencyDialog.tsx`**
+- Add `workspaceId` prop to interface
+- In `saveAll`: if `!frameworkId`, insert into `competency_frameworks` with `workspace_id` to get a new `fwId`
+- Use `fwId` for all competency inserts
+
+**2. `src/pages/CompetencyFramework.tsx`**
+- Pass `workspaceId={workspaceId}` to `AICompetencyDialog` (line ~278)
+
+Single-file logic change + one prop addition. No database changes needed.
 
