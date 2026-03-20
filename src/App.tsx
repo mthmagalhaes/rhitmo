@@ -107,6 +107,11 @@ const App = () => (
                 <HRDashboard />
               </HRAdminGuard>
             } />
+            <Route path="/hr/teams" element={
+              <HRAdminGuard>
+                <HRTeams />
+              </HRAdminGuard>
+            } />
             <Route path="/hr/competency-framework" element={
               <HRAdminGuard>
                 <CompetencyFramework />
