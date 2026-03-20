@@ -41,7 +41,7 @@ export function useLinkedMember() {
       
       const { data, error } = await supabase
         .from('team_members')
-        .select('id, name, email, role, skills_data, work_style_data, chronotype, feedback_style, recognition_style, updated_at')
+        .select('id, name, email, role, skills_data, work_style_data, chronotype, feedback_style, recognition_style, motivators, user_manual, updated_at')
         .eq('linked_user_id', user.id)
         .maybeSingle();
       
