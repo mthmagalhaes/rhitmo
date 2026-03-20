@@ -31,6 +31,8 @@ export default function HRMembers() {
   const [selectedLeader, setSelectedLeader] = useState('all');
   const [pdiFilter, setPdiFilter] = useState('all');
   const [page, setPage] = useState(0);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [profileSheetOpen, setProfileSheetOpen] = useState(false);
 
   const { data: leadersData } = useQuery({
     queryKey: ['hr-leaders', workspaceId],
