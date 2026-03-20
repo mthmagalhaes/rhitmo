@@ -45,6 +45,7 @@ const leaderOnlyItems = ['Analytics', 'Assinatura', 'Guia Rhitmo'];
 const hrMenuItems = [
   { title: 'Visão Geral', url: '/hr', icon: LayoutDashboard },
   { title: 'Times e Líderes', url: '/hr/teams', icon: Users },
+  { title: 'Liderados', url: '/hr/members', icon: UserCheck },
   { title: 'Analytics', url: '/hr/analytics', icon: BarChart3 },
   { title: 'Competências', url: '/hr/competency-framework', icon: Award },
 ];
