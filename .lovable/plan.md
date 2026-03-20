@@ -1,51 +1,25 @@
 
 
-## Plan: Member Profile Sheet from HR Members Page
+## Plan: Remove Feedback/PDI Content from HR Admin View (Privacy Fix)
+
+### Problem
+HR Admin can see full feedback content and PDI details in the Member Profile Sheet. This violates leader-member confidentiality. HR should only see metadata (counts, dates).
 
 ### Changes
 
-**1. Database: New RPC `get_hr_member_profile`**
+**1. Database: Update RPC `get_hr_member_profile`**
 
-Returns a single member's full profile. Key corrections from user's SQL:
-- `development_plans` doesn't have `title`/`description`/`target_date` — aggregate `development_items` instead (via `plan_id`)
-- `motivators` and `user_manual` are `jsonb`, not `text`
-- Recent feedbacks: use a subquery with `LIMIT 5` (the user's SQL had LIMIT in wrong place)
-- Return types must match actual column types
+Drop and recreate with new return signature — remove `pdi_items JSONB` and `recent_feedbacks JSONB`, replace with `pdi_count INTEGER` and `has_pdi BOOLEAN`. All other columns stay the same.
 
-```sql
-CREATE OR REPLACE FUNCTION public.get_hr_member_profile(
-  _workspace_id UUID, _member_id UUID
-)
-RETURNS TABLE (
-  member_id UUID, member_name TEXT, member_email TEXT, member_role TEXT,
-  leader_id UUID, leader_name TEXT,
-  motivators JSONB, user_manual JSONB,
-  chronotype TEXT, feedback_style TEXT, recognition_style TEXT,
-  skills_data JSONB, work_style_data JSONB,
-  created_at TIMESTAMPTZ, feedback_count INTEGER, last_feedback_date TIMESTAMPTZ,
-  pdi_items JSONB, recent_feedbacks JSONB
-)
-```
+**2. Frontend: `src/components/hr/MemberProfileSheet.tsx`**
 
-- `pdi_items`: aggregates from `development_items` joined through `development_plans`
-- `recent_feedbacks`: last 5 feedbacks by `occurred_at`
-- Auth: `is_admin() OR is_hr_admin_of_workspace()`
+- Remove unused imports: `Badge`, `sentimentColors`, `statusLabels`
+- Remove `pdiItems` and `recentFeedbacks` variable extraction
+- Replace 4-tab layout with: metadata cards (Feedbacks count + PDI count) above a 2-tab layout (Sync, Skills)
+- Metadata cards: 2-column grid showing feedback_count with last_feedback_date, and pdi_count with has_pdi flag
+- Tabs default to "sync" instead of "feedbacks"
+- Remove Feedbacks TabsContent and PDI TabsContent entirely
 
-**2. New component `src/components/hr/MemberProfileSheet.tsx`**
-
-Sheet (right side, `sm:max-w-xl`) with:
-- **Header**: Avatar initial, name, role, email, leader, join date
-- **4 Tabs**: Feedbacks, PDI, Rhitmo Sync, Skills
-- Each tab shows data or a clean empty state
-- `motivators`/`user_manual` rendered as JSON content (they're jsonb)
-- Fetches data via RPC only when `open && memberId` are truthy
-
-**3. Update `src/pages/HRMembers.tsx`**
-
-- Add `selectedMemberId` + `profileSheetOpen` state
-- Wire "Ver Perfil" button's `onClick` to set member and open sheet
-- Render `MemberProfileSheet` at bottom of component
-
-### No other changes needed
-RLS handled by SECURITY DEFINER function. Existing Sheet UI component supports custom width via className.
+### No other files affected
+`HRMembers.tsx` doesn't reference feedback content. The RPC signature change is backward-compatible since only this component calls it.
 
