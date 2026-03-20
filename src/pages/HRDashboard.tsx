@@ -214,7 +214,6 @@ const HRDashboard = () => {
             )}
           </div>
         </div>
-      </main>
     </div>
   );
 };
