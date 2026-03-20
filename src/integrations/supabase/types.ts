@@ -1131,6 +1131,7 @@ export type Database = {
           created_at: string
           feedback_count: number
           feedback_style: string
+          has_pdi: boolean
           last_feedback_date: string
           leader_id: string
           leader_name: string
@@ -1139,8 +1140,7 @@ export type Database = {
           member_name: string
           member_role: string
           motivators: Json
-          pdi_items: Json
-          recent_feedbacks: Json
+          pdi_count: number
           recognition_style: string
           skills_data: Json
           user_manual: Json
