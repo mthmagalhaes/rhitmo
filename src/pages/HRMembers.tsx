@@ -213,6 +213,12 @@ export default function HRMembers() {
           </div>
         </div>
       )}
+      <MemberProfileSheet
+        open={profileSheetOpen}
+        onOpenChange={setProfileSheetOpen}
+        memberId={selectedMemberId || ''}
+        workspaceId={workspaceId}
+      />
     </div>
   );
 }
