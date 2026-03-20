@@ -465,6 +465,28 @@ const CompetencyFramework = () => {
         frameworkId={data?.frameworkId ?? ''}
       />
 
+      <AdjustCompetencyDialog
+        open={adjustDialogOpen}
+        onOpenChange={setAdjustDialogOpen}
+        competency={adjustingCompetency}
+        jobTitle={adjustingCompetency?.roleTitle || ''}
+        level={adjustingCompetency?.roleLevel || ''}
+        onAdjusted={async (adjusted) => {
+          if (!adjustingCompetency) return;
+          const { error } = await supabase
+            .from('competencies')
+            .update({ description: adjusted.description, name: adjusted.name })
+            .eq('id', adjustingCompetency.id);
+          if (error) {
+            toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+          } else {
+            queryClient.invalidateQueries({ queryKey: ['competency-framework'] });
+            queryClient.invalidateQueries({ queryKey: ['job-roles'] });
+            toast({ title: 'Competência atualizada!' });
+          }
+        }}
+      />
+
       <AlertDialog open={!!deletingRoleId} onOpenChange={() => setDeletingRoleId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
