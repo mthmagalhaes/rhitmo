@@ -1,25 +1,50 @@
 
 
-## Plan: Remove Feedback/PDI Content from HR Admin View (Privacy Fix)
+## Plan: Job-Based Competency Framework Schema
 
-### Problem
-HR Admin can see full feedback content and PDI details in the Member Profile Sheet. This violates leader-member confidentiality. HR should only see metadata (counts, dates).
+### Summary
+Add three new tables (`job_roles`, `role_competencies`, `competency_templates`) and one RPC to support a cargo-centric competency model. Existing flat competencies remain untouched for backward compatibility. This is schema-only (no UI changes).
 
 ### Changes
 
-**1. Database: Update RPC `get_hr_member_profile`**
+**1. Database Migration — New Tables + RPC + Seed Data**
 
-Drop and recreate with new return signature — remove `pdi_items JSONB` and `recent_feedbacks JSONB`, replace with `pdi_count INTEGER` and `has_pdi BOOLEAN`. All other columns stay the same.
+Single migration with:
 
-**2. Frontend: `src/components/hr/MemberProfileSheet.tsx`**
+- **`job_roles`**: Stores job titles per framework with level and department. RLS allows workspace owners and HR admins to manage; linked members can view.
+- **`role_competencies`**: Maps competencies to job roles with expected level, required flag, and weight. Same RLS pattern as `job_roles`.
+- **`competency_templates`**: Public catalog of example frameworks (Spotify, Nubank). RLS: any authenticated user can read public templates.
+- **RPC `get_job_roles_with_competencies`**: Returns job roles with aggregated competency data as JSONB. SECURITY DEFINER.
+- **Seed data**: 2 template rows (Spotify Engineering, Nubank Values).
 
-- Remove unused imports: `Badge`, `sentimentColors`, `statusLabels`
-- Remove `pdiItems` and `recentFeedbacks` variable extraction
-- Replace 4-tab layout with: metadata cards (Feedbacks count + PDI count) above a 2-tab layout (Sync, Skills)
-- Metadata cards: 2-column grid showing feedback_count with last_feedback_date, and pdi_count with has_pdi flag
-- Tabs default to "sync" instead of "feedbacks"
-- Remove Feedbacks TabsContent and PDI TabsContent entirely
+**Key corrections from user's SQL:**
+- The `FOR ALL` policy needs a `WITH CHECK` expression — will add it matching the `USING` clause
+- Use `effective_user_id()` instead of `auth.uid()` for consistency with the rest of the codebase (supports admin impersonation)
+- CHECK constraint on `level` uses validation trigger instead (per guidelines) — actually, since these are static enum-like values that don't involve time, CHECK constraints are fine here
+- Add `updated_at` trigger on `job_roles` using existing `update_updated_at_column()` function
 
-### No other files affected
-`HRMembers.tsx` doesn't reference feedback content. The RPC signature change is backward-compatible since only this component calls it.
+**No frontend changes in this step.** The user stated "Próximo prompt: UX para criar cargos com competências."
+
+### Technical Details
+
+```text
+job_roles
+├── id (PK)
+├── framework_id (FK → competency_frameworks)
+├── title, level, department, description
+└── timestamps
+
+role_competencies
+├── id (PK)
+├── job_role_id (FK → job_roles)
+├── competency_id (FK → competencies)
+├── expected_level, is_required, weight
+└── UNIQUE(job_role_id, competency_id)
+
+competency_templates (read-only catalog)
+├── id (PK)
+├── name, company, job_title, level
+├── competencies (JSONB)
+└── is_public
+```
 
