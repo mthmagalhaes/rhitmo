@@ -1,95 +1,60 @@
 
 
-## Plan: Smart Nudges for Leaders (In-App Only, Email Later)
+## Plan: Unified Role System via `useUserRole` Hook
 
-### Summary
-Create a system that detects leader inactivity (no feedback in 30+ days, missing PDI) and shows in-app nudge banners on the dashboard. An edge function runs daily via cron to generate nudges.
+### Why NOT the user's proposed approach
 
-### Corrections to user's approach
-- `team_members` has no `leader_id` column — the leader is `workspaces.owner_id` via `teams.workspace_id`
-- There's no `evaluations` table — feedback is in `feedbacks` table (with `member_id`, `occurred_at`)
-- No FK to `auth.users` on `leader_nudges` (avoid reserved schema references)
-- `development_plans` joins via `member_id`, not nested select from `team_members`
+The user's request assumes a `profiles` table exists — it doesn't. The system already differentiates roles through three separate mechanisms:
+- **Leader**: `workspaces.owner_id` matches `auth.uid()`
+- **HR Admin**: `workspaces.hr_admin_ids` array contains `auth.uid()`
+- **Linked member (user)**: `team_members.linked_user_id` matches `auth.uid()`
+- **Super Admin**: `user_roles` table with `app_role` enum
+
+Creating a redundant `role` column on a new `profiles` table would duplicate data already derivable from existing tables, risk inconsistency (what if someone is a workspace owner but their profile says `user`?), and require keeping two sources of truth in sync.
+
+### Recommended approach: Derive roles from existing data
+
+Create a single `useUserRole` hook that queries existing tables to determine the user's role. No schema changes needed.
 
 ### Changes
 
-**1. Database migration** — Create `leader_nudges` table
+**1. `src/hooks/useUserRole.ts`** — New hook (derived role, no new table)
 
-```sql
-CREATE TABLE leader_nudges (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  leader_id UUID NOT NULL,
-  member_id UUID,
-  nudge_type TEXT NOT NULL,
-  message TEXT NOT NULL,
-  action_url TEXT,
-  severity TEXT DEFAULT 'info',
-  dismissed_at TIMESTAMPTZ,
-  email_sent_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-CREATE INDEX idx_nudges_leader ON leader_nudges(leader_id, dismissed_at);
-CREATE INDEX idx_nudges_created ON leader_nudges(created_at DESC);
+```typescript
+export type UserRole = 'hr_admin' | 'leader' | 'user';
 ```
 
-RLS: Leaders can SELECT and UPDATE (dismiss) their own nudges. No INSERT for clients (only service role).
+Logic:
+- Check if user is in any `workspaces.hr_admin_ids` → `hr_admin`
+- Check if user owns any active workspace → `leader`
+- Otherwise → `user`
 
-**2. Edge Function: `generate-nudges`**
+Uses a single query combining both checks. Returns `{ role, isHRAdmin, isLeader, isUser, loading }`. Cached for 5 minutes (`staleTime`).
 
-- `verify_jwt = false` (called by cron)
-- Uses `SUPABASE_SERVICE_ROLE_KEY` to bypass RLS
-- **No-feedback nudge**: Query all members via `team_members → teams → workspaces`, LEFT JOIN `feedbacks` to find `MAX(occurred_at)`. If > 30 days → info, > 60 days → urgent
-- **No-PDI nudge**: Members with no rows in `development_plans`
-- Deduplication: Skip if active (non-dismissed) nudge of same type+member exists
-- No email sending in this iteration
+**2. `src/components/AppSidebar.tsx`** — Use `useUserRole` for menu visibility
 
-**3. Cron job** — pg_cron + pg_net
+Replace the current `useAdmin` + `useLinkedMember` filtering logic with `useUserRole` for cleaner conditional rendering (HR Admin sees HR link, Leader sees Analytics/Billing, User sees minimal menu).
 
-SQL insert (not migration) to schedule daily at 12:00 UTC (9h BRT):
-```sql
-SELECT cron.schedule('generate-nudges-daily', '0 12 * * *', $$
-  SELECT net.http_post(
-    url:='https://lybkgujyezzzvbzypxed.supabase.co/functions/v1/generate-nudges',
-    headers:='{"Content-Type":"application/json","Authorization":"Bearer <anon_key>"}'::jsonb,
-    body:='{}'::jsonb
-  ) as request_id;
-$$);
-```
+**3. No database migration needed**
 
-**4. `src/components/NudgesBanner.tsx`** — New component
-
-- Query `leader_nudges` where `dismissed_at IS NULL`, limit 3, ordered by severity priority then created_at desc
-- Color-coded alerts: blue (info), amber (warning), red (urgent)
-- "Ver" button navigates to `action_url` and dismisses
-- "X" button dismisses only
-- `refetchInterval: 60000`
-
-**5. `src/pages/Index.tsx`** — Add `NudgesBanner`
-
-Insert `<NudgesBanner />` after CalendarWidget (~line 382), before LeaderSyncReminder. Only shown for leaders (the component self-guards by returning null if no nudges).
-
-**6. `supabase/config.toml`** — Add function config
-
-```toml
-[functions.generate-nudges]
-verify_jwt = false
-```
+All role data already exists in the schema. The `is_hr_admin_of_workspace()` and workspace owner checks in RLS already enforce backend security. This hook just provides a clean frontend API.
 
 ### Technical details
 
-Edge function query pattern:
+Hook query pattern:
 ```sql
-SELECT tm.id, tm.name, w.owner_id as leader_id,
-  MAX(f.occurred_at) as last_feedback_at
-FROM team_members tm
-JOIN teams t ON t.id = tm.team_id
-JOIN workspaces w ON w.id = t.workspace_id
-LEFT JOIN feedbacks f ON f.member_id = tm.id
-WHERE w.is_active = true
-GROUP BY tm.id, tm.name, w.owner_id
-HAVING MAX(f.occurred_at) < NOW() - INTERVAL '30 days'
-   OR MAX(f.occurred_at) IS NULL;
+-- Check HR admin
+SELECT id FROM workspaces WHERE auth.uid() = ANY(hr_admin_ids) LIMIT 1
+
+-- Check leader (workspace owner)
+SELECT id FROM workspaces WHERE owner_id = auth.uid() AND is_active = true LIMIT 1
 ```
 
-No email in this iteration — `email_sent_at` column exists for future use.
+Both can be done in parallel with `Promise.all`. If neither matches and user has a `linked_user_id` in `team_members`, they're a `user`.
+
+### What this does NOT change
+- RLS policies (already correct)
+- Admin system (`user_roles` with `super_admin` — separate concern)
+- `HRAdminGuard` (already works via `hr_admin_ids`)
+- `DirectReportGuard` (already works via `linked_user_id`)
 
