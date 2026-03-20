@@ -1088,6 +1088,30 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_hr_all_members: {
+        Args: {
+          _has_pdi?: boolean
+          _leader_id?: string
+          _limit?: number
+          _offset?: number
+          _search?: string
+          _workspace_id: string
+        }
+        Returns: {
+          days_since_last_feedback: number
+          has_skills_map: boolean
+          has_sync: boolean
+          last_feedback_date: string
+          leader_id: string
+          leader_name: string
+          member_email: string
+          member_id: string
+          member_name: string
+          member_role: string
+          pdi_count: number
+          total_count: number
+        }[]
+      }
       get_hr_dashboard_metrics: {
         Args: { _workspace_id: string }
         Returns: Json
