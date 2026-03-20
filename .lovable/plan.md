@@ -1,50 +1,52 @@
 
 
-## Plan: Fix HR Admin UX — Redirect, Sidebar Menu, Consistent Layout
+## Plan: Isolate HR Admin Menu + Create HR Analytics Page
 
 ### Problem
-1. HR Admin lands on `/dashboard` (leader view) after login
-2. "Painel RH" link is at the bottom of sidebar
-3. HR pages (`/hr`, `/hr/teams`) render their own header/layout, losing the sidebar
+HR Admin sees leader menu items (Início, Analytics, Assinatura, Guia Rhitmo) alongside HR menu, causing confusion. Needs isolated sidebar and a dedicated Analytics page with charts.
 
 ### Changes
 
-**1. `src/pages/AuthPage.tsx`** — Smart redirect after login
+**1. `src/components/AppSidebar.tsx`** — Isolate HR Admin menu
 
-On line 72, instead of always navigating to `/dashboard`, check user role:
-- Query `workspaces` to see if user is in `hr_admin_ids` → redirect to `/hr`
-- Otherwise → `/dashboard` (existing behavior)
+- Hide the "Menu" section (`menuItems`) when `isHRAdmin` is true
+- Add "Analytics" item to the Painel RH section: `/hr/analytics` with `BarChart3` icon
+- Add "Ver como Líder" button in footer (only if `isHRAdmin && isLeader`), navigates to `/dashboard`
 
-This keeps the checkout flow intact (lines 28-69) and only changes the default redirect.
+Result:
+```text
+HR Admin Sidebar:
+PAINEL RH
+├─ Visão Geral      /hr
+├─ Times e Líderes   /hr/teams
+├─ Analytics         /hr/analytics  ← NEW
+├─ Competências      /hr/competency-framework
 
-**2. `src/components/AppSidebar.tsx`** — Move HR section to top with expanded menu
+[footer]
+Ver como Líder → /dashboard (only if also leader)
+```
 
-- Move the `isHRAdmin` sidebar group (lines 138-159) to BEFORE the "Menu" group (line 90)
-- Expand it from a single "Painel RH" link to 3 items: Visão Geral (`/hr`), Times e Líderes (`/hr/teams`), Competências (`/hr/competency-framework`)
-- Add icons: `LayoutDashboard`, `Users`, `BookOpen`
+**2. `src/pages/HRAnalytics.tsx`** — New analytics page
 
-**3. `src/App.tsx`** — Wrap HR routes in AppLayout
+- Uses `useHRAdmin()` for `workspaceId`
+- Calls existing RPCs: `get_hr_dashboard_metrics` + `get_hr_leaders_overview`
+- **Filters**: Period dropdown (7/30/60/90 days), Leader dropdown
+- **3 charts** using recharts (already installed):
+  - Bar chart: Feedback frequency per leader (from leaders overview data)
+  - Horizontal bars: Sentiment distribution (from dashboard metrics)
+  - Summary KPI cards at top (reuse metrics)
+- No new RPC needed — existing data is sufficient for initial version
+- "Exportar relatório" button as placeholder (disabled, future feature)
 
-Change `/hr`, `/hr/teams`, `/hr/competency-framework` routes to use `<AppLayout>` wrapper (same as `/dashboard`), keeping `HRAdminGuard` inside.
+**3. `src/App.tsx`** — Add route `/hr/analytics`
 
-**4. `src/pages/HRDashboard.tsx`** — Remove standalone layout
+Wrap in `AppLayout` + `HRAdminGuard`, same pattern as other HR routes.
 
-- Remove the custom header (logo, logout button, sticky header)
-- Remove `min-h-screen bg-[#F5F0E8]` wrapper
-- Keep only the `<main>` content (KPIs, alerts, activity, maturity sections)
-- The AppLayout sidebar + header handles navigation now
+### No database changes needed
+Existing RPCs already return all needed data (sentiment distribution, leader feedback counts).
 
-**5. `src/pages/HRTeams.tsx`** — Remove standalone layout
-
-Same treatment: remove custom header/nav, keep only the content. The page already uses `useHRAdmin()` for `workspaceId`.
-
-**6. `src/pages/CompetencyFramework.tsx`** — Verify layout consistency
-
-Check if it also has its own header; if so, strip it.
-
-### What stays the same
-- `HRAdminGuard` still wraps HR routes and provides `useHRAdmin()` context
-- `DirectReportGuard` still wraps leader routes
-- No database changes needed
-- No new components needed
+### Technical details
+- `recharts` is already in `package.json`
+- Sentiment data keys from RPC: `muito_positivo`, `positivo`, `neutro`, `construtivo`, `critico`
+- Leader feedback data from `get_hr_leaders_overview`: `feedbacks_last_30d` per leader
 
