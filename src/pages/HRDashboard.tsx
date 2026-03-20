@@ -97,6 +97,13 @@ const HRDashboard = () => {
           <Button
             variant="outline"
             className="gap-2 rounded-xl"
+            onClick={() => navigate('/hr/teams')}
+          >
+            <Users className="h-4 w-4" /> Times e Líderes
+          </Button>
+          <Button
+            variant="outline"
+            className="gap-2 rounded-xl"
             onClick={() => navigate('/hr/competency-framework')}
           >
             <BookOpen className="h-4 w-4" /> Framework de Competências
