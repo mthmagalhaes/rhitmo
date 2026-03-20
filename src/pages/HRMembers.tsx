@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useHRAdmin } from '@/components/HRAdminGuard';
 import { Input } from '@/components/ui/input';
+import { MemberProfileSheet } from '@/components/hr/MemberProfileSheet';
 import {
   Select,
   SelectContent,
