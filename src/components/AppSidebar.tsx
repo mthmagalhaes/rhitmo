@@ -93,8 +93,8 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {/* HR Admin menu — always on top, isolated */}
-        {isHRAdmin && (
+        {/* HR Admin menu — show when in /hr/* context */}
+        {isInHRContext && isHRAdmin && (
           <SidebarGroup>
             <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Painel RH</SidebarGroupLabel>
             <SidebarGroupContent>
