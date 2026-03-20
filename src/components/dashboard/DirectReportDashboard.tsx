@@ -177,17 +177,20 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
   useEffect(() => {
     if (syncDialogOpen) {
       const wsd = linkedMember.work_style_data as any;
+      const um = linkedMember.user_manual as any;
       setSyncForm({
         chronotype: linkedMember.chronotype || '',
         work_environment: wsd?.work_environment || '',
-        energy_drains: wsd?.energy_drains || '',
-        energy_sources: wsd?.energy_sources || '',
-        stress_signs: wsd?.stress_signs || '',
-        support_needed: wsd?.support_needed || '',
+        energy_drains: um?.energy_drainers || wsd?.energy_drains || '',
+        energy_sources: um?.energy_boosters || wsd?.energy_sources || '',
+        stress_signs: um?.stress_signs || wsd?.stress_signs || '',
+        support_needed: um?.bad_day_support || wsd?.support_needed || '',
         feedback_style: linkedMember.feedback_style || '',
         recognition_style: linkedMember.recognition_style || '',
-        motivators: wsd?.motivators || [],
-        skill_goal: wsd?.skill_goal || '',
+        motivators: (Array.isArray(linkedMember.motivators) && linkedMember.motivators.length > 0
+          ? linkedMember.motivators as string[]
+          : wsd?.motivators || []),
+        skill_goal: um?.skill_goal || wsd?.skill_goal || '',
       });
     }
   }, [syncDialogOpen, linkedMember]);
