@@ -178,7 +178,15 @@ export default function HRMembers() {
                       </Badge>
                     )}
 
-                    <Button variant="ghost" size="sm" className="text-xs text-muted-foreground ml-auto">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs text-muted-foreground ml-auto"
+                      onClick={() => {
+                        setSelectedMemberId(member.member_id);
+                        setProfileSheetOpen(true);
+                      }}
+                    >
                       Ver Perfil
                     </Button>
                   </div>
