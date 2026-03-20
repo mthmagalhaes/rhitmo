@@ -11,7 +11,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Briefcase, ListChecks, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Briefcase, ListChecks, Pencil, Trash2, Sparkles } from 'lucide-react';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
   type DragEndEvent,
