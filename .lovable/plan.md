@@ -1,47 +1,56 @@
 
 
-## Plan: Auto-create Framework Before Saving AI Competencies
-
-### Problem
-`frameworkId` is passed as `''` when no framework exists. Inserting a competency with `framework_id: ''` fails because Postgres expects a valid UUID.
-
-### Fix (`src/components/competency/AICompetencyDialog.tsx`)
-
-In `saveAll` (line 121), before the insert loop, add logic to create a framework if `frameworkId` is empty:
-
-```typescript
-const saveAll = async () => {
-  if (!competencies.length) return;
-  setSaving(true);
-  try {
-    let fwId = frameworkId;
-
-    // Auto-create framework if none exists
-    if (!fwId) {
-      const { data: fw, error: fwErr } = await supabase
-        .from('competency_frameworks')
-        .insert({ workspace_id: workspaceId })
-        .select('id')
-        .single();
-      if (fwErr) throw fwErr;
-      fwId = fw.id;
-    }
-
-    // Then use fwId instead of frameworkId in the loop
-    ...
-```
-
-This requires passing `workspaceId` as a new prop to `AICompetencyDialog`.
+## Plan: HR Members Page with Filters and Activity Badges
 
 ### Changes
 
-**1. `src/components/competency/AICompetencyDialog.tsx`**
-- Add `workspaceId` prop to interface
-- In `saveAll`: if `!frameworkId`, insert into `competency_frameworks` with `workspace_id` to get a new `fwId`
-- Use `fwId` for all competency inserts
+**1. Database: New RPC `get_hr_all_members`**
 
-**2. `src/pages/CompetencyFramework.tsx`**
-- Pass `workspaceId={workspaceId}` to `AICompetencyDialog` (line ~278)
+Create via migration. Key corrections from user's SQL (adapting to actual schema):
+- Use `development_plans` table (not `pdi_items`)
+- Use `tm.skills_data` column (not `skills_map`)
+- Use `tm.work_style_data IS NOT NULL` for sync check (matches existing pattern in `get_hr_leader_team`)
+- Use `f.occurred_at` for feedback dates (not `f.created_at`)
+- Join `auth.users` for leader name
 
-Single-file logic change + one prop addition. No database changes needed.
+```sql
+CREATE OR REPLACE FUNCTION public.get_hr_all_members(
+  _workspace_id UUID,
+  _search TEXT DEFAULT NULL,
+  _leader_id UUID DEFAULT NULL,
+  _has_pdi BOOLEAN DEFAULT NULL,
+  _limit INTEGER DEFAULT 20,
+  _offset INTEGER DEFAULT 0
+)
+RETURNS TABLE (
+  member_id UUID, member_name TEXT, member_email TEXT, member_role TEXT,
+  leader_id UUID, leader_name TEXT,
+  last_feedback_date TIMESTAMPTZ, days_since_last_feedback INTEGER,
+  pdi_count INTEGER, has_sync BOOLEAN, has_skills_map BOOLEAN,
+  total_count BIGINT
+)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
+```
+
+Uses `is_hr_admin_of_workspace` + `is_admin()` for auth check.
+
+**2. New page `src/pages/HRMembers.tsx`**
+
+- Uses `useHRAdmin()` for `workspaceId`
+- Filters: search input, leader dropdown (from `get_hr_leaders_overview`), PDI filter
+- Member cards with activity badges (color-coded by days since last feedback)
+- Status badges: Sync, PDI count, Skills Map
+- Pagination (20 per page)
+- "Ver Perfil" button (placeholder for now)
+
+**3. Route in `src/App.tsx`**
+
+Add `/hr/members` route wrapped in `AppLayout` + `HRAdminGuard`, same pattern as other HR routes.
+
+**4. Sidebar update `src/components/AppSidebar.tsx`**
+
+Add `{ title: 'Liderados', url: '/hr/members', icon: Users }` to `hrMenuItems` array (after "Times e Líderes"). Use a different icon (`UserCheck` or keep `Users`) to differentiate from "Times e Líderes".
+
+### No other changes needed
+RLS is handled by the SECURITY DEFINER function. Existing `get_hr_leaders_overview` RPC provides leader list for the filter dropdown.
 
