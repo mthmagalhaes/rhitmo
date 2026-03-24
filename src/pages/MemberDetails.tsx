@@ -412,13 +412,9 @@ const MemberDetails = () => {
               <Sparkles className="h-4 w-4" />
               <span className="hidden sm:inline">Mentor Chat</span>
             </Button>
-            <Button variant="outline" onClick={() => setFormalReviewOpen(true)} className="gap-2">
+            <Button onClick={() => setFormalReviewOpen(true)} className="gap-2 px-4">
               <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">Avaliação Formal</span>
-            </Button>
-            <Button onClick={() => setDialogOpen(true)} className="gap-2 px-4">
-              <PenSquare className="h-4 w-4" />
-              <span className="hidden sm:inline">Nova Anotação</span>
+              <span className="hidden sm:inline">Avaliação de Desempenho</span>
             </Button>
           </div>
         </div>

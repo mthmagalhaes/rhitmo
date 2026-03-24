@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -260,12 +260,11 @@ export function FormalReviewSheet({
                     Revise e ajuste o texto gerado pela IA. Estrutura sugerida:
                     Pontos fortes • Áreas de desenvolvimento • Próximos passos
                   </p>
-                  <Textarea
-                    value={draftText}
-                    onChange={(e) => setDraftText(e.target.value)}
+                  <RichTextEditor
+                    content={draftText}
+                    onChange={setDraftText}
                     placeholder="Digite a avaliação geral do liderado no período..."
-                    rows={20}
-                    className="font-sans text-sm leading-relaxed"
+                    minHeight="400px"
                   />
                 </div>
               </div>
@@ -327,12 +326,12 @@ export function FormalReviewSheet({
                           </div>
                           <div>
                             <Label className="text-sm mb-2 block">Comentário / Justificativa</Label>
-                            <Textarea
+                            <textarea
                               value={evaluation.comment}
                               onChange={(e) => updateComment(evaluation.competency_id, e.target.value)}
                               placeholder="Adicione evidências ou contexto para esta avaliação..."
                               rows={3}
-                              className="text-sm"
+                              className="flex min-h-[80px] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                             />
                           </div>
                         </CardContent>
