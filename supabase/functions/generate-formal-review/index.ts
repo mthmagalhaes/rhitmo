@@ -299,11 +299,18 @@ Gere a avaliação formal de desempenho de ${memberName} em HTML puro, seguindo 
     }
 
     const aiData = await aiResponse.json();
-    const generatedContent = aiData.choices?.[0]?.message?.content;
+    let generatedContent = aiData.choices?.[0]?.message?.content;
 
     if (!generatedContent) {
       throw new Error("IA não retornou conteúdo");
     }
+
+    // Replace icon placeholders with Lucide SVGs
+    generatedContent = generatedContent
+      .replace(/\{\{ICON_SUMMARY\}\}/g, ICON_SUMMARY)
+      .replace(/\{\{ICON_STRENGTHS\}\}/g, ICON_STRENGTHS)
+      .replace(/\{\{ICON_DEVELOPMENT\}\}/g, ICON_DEVELOPMENT)
+      .replace(/\{\{ICON_NEXT_STEPS\}\}/g, ICON_NEXT_STEPS);
 
     console.log("Review generated successfully");
 
