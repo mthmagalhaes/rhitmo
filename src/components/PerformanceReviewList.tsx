@@ -92,9 +92,9 @@ export const PerformanceReviewList = ({ memberId, memberName, onCreateReview }: 
             Histórico de avaliações de desempenho de {memberName}
           </p>
         </div>
-        <Button onClick={() => setShowNewDialog(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nova Avaliação
+        <Button onClick={() => onCreateReview?.()} className="gap-2">
+          <FileText className="h-4 w-4" />
+          Avaliação de Desempenho
         </Button>
       </div>
 
