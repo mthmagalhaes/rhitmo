@@ -213,7 +213,7 @@ export function CreateFormalReviewDialog({
                       <MessageSquare className="h-4 w-4 text-muted-foreground" />
                       <span className="text-2xl font-bold">{evidence.feedbacks_count}</span>
                     </div>
-                    <p className="text-xs text-muted-foreground">Feedbacks</p>
+                    <p className="text-xs text-muted-foreground">Anotações</p>
                   </div>
                   <div className="text-center">
                     <div className="flex items-center justify-center gap-1.5 mb-1">

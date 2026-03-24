@@ -83,3 +83,6 @@ verify_jwt = false
 
 [functions.adjust-competency]
 verify_jwt = false
+
+[functions.generate-formal-review]
+verify_jwt = false
