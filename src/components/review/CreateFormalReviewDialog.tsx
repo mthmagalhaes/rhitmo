@@ -100,11 +100,27 @@ export function CreateFormalReviewDialog({
       if (error) throw error;
       return review;
     },
-    onSuccess: (review) => {
+    onSuccess: async (review) => {
       queryClient.invalidateQueries({ queryKey: ['performance-reviews'] });
-      toast({ title: 'Avaliação criada!' });
+      toast({ title: 'Avaliação criada! Gerando com IA...' });
       onOpenChange(false);
       onReviewCreated?.(review.id);
+
+      // Call AI generation asynchronously
+      try {
+        const { error } = await supabase.functions.invoke('generate-formal-review', {
+          body: { reviewId: review.id },
+        });
+        if (error) throw error;
+        queryClient.invalidateQueries({ queryKey: ['formal-review', review.id] });
+      } catch (err) {
+        console.error('Erro ao gerar com IA:', err);
+        toast({
+          title: 'Erro ao gerar rascunho',
+          description: 'Você pode escrever manualmente.',
+          variant: 'destructive',
+        });
+      }
     },
     onError: (error: any) => {
       toast({ title: 'Erro ao criar avaliação', description: error.message, variant: 'destructive' });
@@ -197,7 +213,7 @@ export function CreateFormalReviewDialog({
                       <MessageSquare className="h-4 w-4 text-muted-foreground" />
                       <span className="text-2xl font-bold">{evidence.feedbacks_count}</span>
                     </div>
-                    <p className="text-xs text-muted-foreground">Feedbacks</p>
+                    <p className="text-xs text-muted-foreground">Anotações</p>
                   </div>
                   <div className="text-center">
                     <div className="flex items-center justify-center gap-1.5 mb-1">
