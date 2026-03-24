@@ -111,7 +111,7 @@ export function FormalReviewSheet({
     setDraftText(review.content || '');
 
     if (review.competency_evaluations && Array.isArray(review.competency_evaluations)) {
-      setCompetencyEvaluations(review.competency_evaluations as CompetencyEvaluation[]);
+      setCompetencyEvaluations(review.competency_evaluations as unknown as CompetencyEvaluation[]);
     } else if (competencies && competencies.length > 0) {
       setCompetencyEvaluations(
         competencies.map((comp: any) => ({
