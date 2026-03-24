@@ -147,14 +147,6 @@ export const PerformanceReviewList = ({ memberId, memberName, onCreateReview }: 
         </div>
       )}
 
-      <NewReviewDialog
-        open={showNewDialog}
-        onOpenChange={setShowNewDialog}
-        memberId={memberId}
-        memberName={memberName}
-        onReviewCreated={() => queryClient.invalidateQueries({ queryKey: ['performance-reviews', memberId] })}
-      />
-
       {selectedReview && (
         <ReviewViewDialog
           open={!!selectedReview}

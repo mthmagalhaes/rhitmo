@@ -754,7 +754,7 @@ const MemberDetails = () => {
           </TabsContent>
           
           <TabsContent value="reviews">
-            <PerformanceReviewList memberId={member.id} memberName={member.name} />
+            <PerformanceReviewList memberId={member.id} memberName={member.name} onCreateReview={() => setFormalReviewOpen(true)} />
           </TabsContent>
         </Tabs>
       </main>
