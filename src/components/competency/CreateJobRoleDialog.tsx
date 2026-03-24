@@ -50,7 +50,7 @@ export function CreateJobRoleDialog({ open, onOpenChange, frameworkId, workspace
   const [newCompetencyName, setNewCompetencyName] = useState('');
   const [newCompetencyDescription, setNewCompetencyDescription] = useState('');
   const [newCompetencyExpectedLevel, setNewCompetencyExpectedLevel] = useState('Pleno');
-
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const { data: availableCompetencies } = useQuery({
     queryKey: ['competencies-for-role', frameworkId],
     queryFn: async () => {
