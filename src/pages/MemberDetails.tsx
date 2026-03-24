@@ -56,6 +56,8 @@ const MemberDetails = () => {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [recorderOpen, setRecorderOpen] = useState(false);
   const [formalReviewOpen, setFormalReviewOpen] = useState(false);
+  const [reviewSheetOpen, setReviewSheetOpen] = useState(false);
+  const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
