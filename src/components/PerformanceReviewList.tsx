@@ -107,8 +107,8 @@ export const PerformanceReviewList = ({ memberId, memberName, onCreateReview }: 
               Crie a primeira avaliação de desempenho para {memberName}. 
               A IA irá analisar o histórico de feedbacks e gerar um rascunho estruturado.
             </p>
-            <Button onClick={() => setShowNewDialog(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
+            <Button onClick={() => onCreateReview?.()} className="gap-2">
+              <FileText className="h-4 w-4" />
               Criar Primeira Avaliação
             </Button>
           </CardContent>
