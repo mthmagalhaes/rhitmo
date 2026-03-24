@@ -27,6 +27,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { InviteMemberDialog } from '@/components/InviteMemberDialog';
 import { MeetingRecorder } from '@/components/MeetingRecorder';
+import { CreateFormalReviewDialog } from '@/components/review/CreateFormalReviewDialog';
 import React from 'react';
 
 interface WorkStyleData {
@@ -53,6 +54,7 @@ const MemberDetails = () => {
   const [resendingInvite, setResendingInvite] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [recorderOpen, setRecorderOpen] = useState(false);
+  const [formalReviewOpen, setFormalReviewOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
@@ -406,6 +408,10 @@ const MemberDetails = () => {
             <Button variant="outline" onClick={() => setChatOpen(true)} className="gap-2">
               <Sparkles className="h-4 w-4" />
               <span className="hidden sm:inline">Mentor Chat</span>
+            </Button>
+            <Button variant="outline" onClick={() => setFormalReviewOpen(true)} className="gap-2">
+              <FileText className="h-4 w-4" />
+              <span className="hidden sm:inline">Avaliação Formal</span>
             </Button>
             <Button onClick={() => setDialogOpen(true)} className="gap-2 px-4">
               <PenSquare className="h-4 w-4" />
@@ -789,6 +795,13 @@ const MemberDetails = () => {
         onOpenChange={setRecorderOpen}
         memberId={member.id}
         memberName={member.name}
+      />
+
+      <CreateFormalReviewDialog
+        open={formalReviewOpen}
+        onOpenChange={setFormalReviewOpen}
+        member={{ id: member.id, name: member.name, role: member.role }}
+        workspaceId={workspace?.id || ''}
       />
     </div>;
 };

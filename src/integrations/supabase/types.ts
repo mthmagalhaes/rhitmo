@@ -718,9 +718,12 @@ export type Database = {
       performance_reviews: {
         Row: {
           coaching_tip: string | null
+          competency_evaluations: Json | null
           content: string
           created_at: string
+          evidence_count: number | null
           id: string
+          job_role_id: string | null
           member_id: string
           member_viewed_at: string | null
           period_end: string | null
@@ -732,9 +735,12 @@ export type Database = {
         }
         Insert: {
           coaching_tip?: string | null
+          competency_evaluations?: Json | null
           content: string
           created_at?: string
+          evidence_count?: number | null
           id?: string
+          job_role_id?: string | null
           member_id: string
           member_viewed_at?: string | null
           period_end?: string | null
@@ -746,9 +752,12 @@ export type Database = {
         }
         Update: {
           coaching_tip?: string | null
+          competency_evaluations?: Json | null
           content?: string
           created_at?: string
+          evidence_count?: number | null
           id?: string
+          job_role_id?: string | null
           member_id?: string
           member_viewed_at?: string | null
           period_end?: string | null
@@ -759,6 +768,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "performance_reviews_job_role_id_fkey"
+            columns: ["job_role_id"]
+            isOneToOne: false
+            referencedRelation: "job_roles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "performance_reviews_member_id_fkey"
             columns: ["member_id"]
@@ -1300,6 +1316,16 @@ export type Database = {
           name: string
           role: string
           work_style_data: Json
+        }[]
+      }
+      get_review_evidence: {
+        Args: { _member_id: string; _period_end: string; _period_start: string }
+        Returns: {
+          feedbacks: Json
+          feedbacks_count: number
+          meetings: Json
+          meetings_count: number
+          total_evidence_count: number
         }[]
       }
       is_admin: { Args: never; Returns: boolean }
