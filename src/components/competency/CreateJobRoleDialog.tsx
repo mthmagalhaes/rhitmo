@@ -56,12 +56,12 @@ export function CreateJobRoleDialog({ open, onOpenChange, frameworkId, workspace
     queryFn: async () => {
       const { data, error } = await supabase
         .from('competencies')
-        .select('id, name, description')
+        .select('id, name, description, role_competencies(count)')
         .eq('framework_id', frameworkId)
         .eq('is_active', true)
         .order('order');
       if (error) throw error;
-      return data;
+      return (data || []).filter((c: any) => (c.role_competencies?.[0]?.count || 0) > 0);
     },
     enabled: open && !!frameworkId,
   });
@@ -396,7 +396,15 @@ export function CreateJobRoleDialog({ open, onOpenChange, frameworkId, workspace
                     )}
 
                     <Separator />
-                    <p className="text-xs font-medium text-muted-foreground">Ou selecione competências existentes</p>
+                    {availableCompetencies && availableCompetencies.length > 0 ? (
+                      <p className="text-xs font-medium text-muted-foreground">Ou selecione competências existentes</p>
+                    ) : (
+                      <div className="text-center py-4">
+                        <p className="text-xs text-muted-foreground">
+                          Nenhuma competência disponível ainda. Crie sua primeira competência acima.
+                        </p>
+                      </div>
+                    )}
                   </>
                 )}
 
