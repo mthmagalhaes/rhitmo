@@ -405,6 +405,7 @@ const CompetencyFramework = () => {
         onOpenChange={setCreateJobRoleDialogOpen}
         frameworkId={data?.frameworkId ?? ''}
         workspaceId={workspaceId}
+        onOpenTemplateGallery={() => setTemplateGalleryOpen(true)}
       />
 
       <AdjustCompetencyDialog
