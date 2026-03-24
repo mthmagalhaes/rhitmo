@@ -23,6 +23,7 @@ interface PerformanceReview {
 interface PerformanceReviewListProps {
   memberId: string;
   memberName: string;
+  onCreateReview?: () => void;
 }
 
 export const PerformanceReviewList = ({ memberId, memberName }: PerformanceReviewListProps) => {
