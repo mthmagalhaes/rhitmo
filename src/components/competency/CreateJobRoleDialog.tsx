@@ -33,6 +33,7 @@ interface CreateJobRoleDialogProps {
   onOpenChange: (open: boolean) => void;
   frameworkId: string;
   workspaceId: string;
+  onOpenTemplateGallery?: () => void;
 }
 
 export function CreateJobRoleDialog({ open, onOpenChange, frameworkId, workspaceId }: CreateJobRoleDialogProps) {
