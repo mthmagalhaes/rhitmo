@@ -1,32 +1,41 @@
 
 
-## Plan: Formal Review Sheet with Draft + Competency Tabs
+## Plan: Unify Review Flow + Rich Text Editor
+
+### Summary
+Remove the "Nova Anotação" button from MemberDetails action bar (keeping the NewNoteDialog accessible via the "+" button in FeedbackTimeline if it exists), replace the plain Textarea in FormalReviewSheet with the existing RichTextEditor component, and rename the button to "Avaliação de Desempenho".
+
+### Analysis
+- `NewNoteDialog` (line 770) creates feedbacks, not reviews — but user wants to consolidate to a single "Avaliação de Desempenho" button
+- The project already has `src/components/ui/rich-text-editor.tsx` with Tiptap (Bold, Italic, H1, H2, BulletList, OrderedList) — no new dependencies needed
+- `dialogOpen` state (line 53) and the `openNote` deep link (lines 71-77) reference the NewNoteDialog
 
 ### Changes
 
-**1. New component `src/components/review/FormalReviewSheet.tsx`**
+**1. `src/components/review/FormalReviewSheet.tsx`** — Replace Textarea with RichTextEditor
 
-Sheet (right side, `sm:max-w-3xl` ~800px) with:
-- **Header**: Title "Avaliação Formal", member name/role, period dates, "Enviada" badge if `shared_with_member`
-- **2 Tabs**: "Rascunho Geral" (large Textarea, 20 rows) and "Competências" (competency cards with RadioGroup + Textarea per competency)
-- **Footer**: "Fechar" left, "Salvar Rascunho" + "Enviar ao Liderado" right
-- **Data flow**: Fetches review from `performance_reviews` by ID. Fetches competencies via `get_job_roles_with_competencies` if `job_role_id` exists. Initializes local state from DB, saves back on button click.
-- **Competency ratings**: 4 radio options (Abaixo do Esperado / Atende / Supera / Excelência), stored as JSONB in `competency_evaluations`
-- **Send**: Sets `shared_with_member = true`, closes sheet
+- Import `RichTextEditor` from `@/components/ui/rich-text-editor`
+- Remove `Textarea` import
+- Replace the Textarea block (lines 263-269) with:
+  ```tsx
+  <RichTextEditor
+    content={draftText}
+    onChange={setDraftText}
+    placeholder="Digite a avaliação geral do liderado no período..."
+    minHeight="400px"
+  />
+  ```
+- Remove `Label` import if no longer used elsewhere (it's still used in competencies tab, so keep it)
 
-Note: The query joins `performance_reviews` with member info. Since `performance_reviews` doesn't have a FK to `job_roles` that's populated yet (the `job_role_id` column exists but team_members don't have one), competencies tab will show empty state initially — which is correct behavior.
+**2. `src/pages/MemberDetails.tsx`** — Remove "Nova Anotação" button, rename "Avaliação Formal"
 
-**2. Update `src/components/review/CreateFormalReviewDialog.tsx`**
+- Remove lines 419-422 (the "Nova Anotação" button)
+- Rename "Avaliação Formal" to "Avaliação de Desempenho" (line 417)
+- Keep `dialogOpen` state and `NewNoteDialog` render — they're still needed for the `?openNote=true` deep link and the feedback note creation flow from other entry points
+- Alternatively, if user wants full removal: remove `dialogOpen` state, the `useEffect` for `openNote`, and the `NewNoteDialog` render. But this would break the deep link from nudges.
 
-- Add `onReviewCreated?: (reviewId: string) => void` prop
-- In `onSuccess`, call `onReviewCreated?.(review.id)` to trigger sheet opening
-
-**3. Update `src/pages/MemberDetails.tsx`**
-
-- Add state: `reviewSheetOpen`, `selectedReviewId`
-- Pass `onReviewCreated` callback to `CreateFormalReviewDialog` that sets review ID and opens sheet
-- Render `FormalReviewSheet` with review ID
+**Decision**: Keep `NewNoteDialog` but remove its button from the action bar. The dialog remains accessible via deep link (`?openNote=true`) for nudge-driven note creation.
 
 ### No database changes needed
-`competency_evaluations` JSONB column and `shared_with_member` boolean already exist on `performance_reviews`.
+`performance_reviews.content` already stores text — it will now store HTML instead, which is backward-compatible (plain text renders fine in rich text editors).
 
