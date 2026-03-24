@@ -25,6 +25,7 @@ interface CreateFormalReviewDialogProps {
   onOpenChange: (open: boolean) => void;
   member: { id: string; name: string; role: string } | null;
   workspaceId: string;
+  onReviewCreated?: (reviewId: string) => void;
 }
 
 export function CreateFormalReviewDialog({
