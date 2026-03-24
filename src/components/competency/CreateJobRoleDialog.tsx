@@ -119,7 +119,8 @@ export function CreateJobRoleDialog({ open, onOpenChange, frameworkId, workspace
         setIsGeneratingAI(false);
       }
     } else if (competencySource === 'template') {
-      toast({ title: 'Em breve', description: 'Importação de templates será disponibilizada em breve.' });
+      onOpenChange(false);
+      onOpenTemplateGallery?.();
     } else if (competencySource === 'manual') {
       setStep('competencies');
     }
