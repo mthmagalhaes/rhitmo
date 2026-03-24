@@ -396,7 +396,15 @@ export function CreateJobRoleDialog({ open, onOpenChange, frameworkId, workspace
                     )}
 
                     <Separator />
-                    <p className="text-xs font-medium text-muted-foreground">Ou selecione competências existentes</p>
+                    {availableCompetencies && availableCompetencies.length > 0 ? (
+                      <p className="text-xs font-medium text-muted-foreground">Ou selecione competências existentes</p>
+                    ) : (
+                      <div className="text-center py-4">
+                        <p className="text-xs text-muted-foreground">
+                          Nenhuma competência disponível ainda. Crie sua primeira competência acima.
+                        </p>
+                      </div>
+                    )}
                   </>
                 )}
 
