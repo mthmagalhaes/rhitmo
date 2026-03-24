@@ -1,36 +1,53 @@
 
 
-## Plan: Remove Duplicate Review Flow — Single Entry Point
+## Plan: Fix RPC Evidence + Create generate-formal-review Edge Function
 
 ### Problem
-Two parallel review creation flows exist:
-- **Top bar button** "Avaliação de Desempenho" → `CreateFormalReviewDialog` → `FormalReviewSheet` (new, with evidence preview, rich text — **keep**)
-- **PerformanceReviewList** "Nova Avaliação" → `NewReviewDialog` (old, separate dialog — **remove**)
-
-The `FormalReviewSheet` already uses `RichTextEditor` (Tiptap) from a previous implementation. No rich text changes needed.
+1. RPC `get_review_evidence` returns 0 evidence — likely auth check uses `is_workspace_owner(auth.uid(), _member_id)` but should use `effective_user_id()` for consistency; also `feedbacks` table IS the "anotações" source (no separate `feedback_notes` table exists)
+2. No edge function generates the formal review draft after creation — `generate-review` exists but isn't wired to the formal review flow
+3. Evidence preview shows only 2 counters (Feedbacks + 1:1s) but should show 3 (Anotações + 1:1s + Feedbacks by type)
 
 ### Changes
 
-**1. `src/components/PerformanceReviewList.tsx`** — Remove old dialog, wire to parent
+**1. Database Migration — Fix RPC `get_review_evidence`**
 
-- Remove `NewReviewDialog` import and render (lines 8, 151-157)
-- Remove `showNewDialog` state (line 30)
-- Replace "Nova Avaliação" button with a callback prop: `onCreateReview?: () => void`
-- Update buttons (lines 96-99, 111-114) to call `onCreateReview?.()` instead of `setShowNewDialog(true)`
-- Rename button text from "Nova Avaliação" to "Avaliação de Desempenho" with `FileText` icon
+Replace the function to:
+- Use `effective_user_id()` instead of `auth.uid()` in the auth check (consistent with rest of codebase)
+- Also check `is_hr_admin_of_workspace` for HR admin access
+- Keep querying `feedbacks` table (that's where "anotações" live) and `meeting_transcripts`
+- Fix `meeting_transcripts` column: use `duration_seconds` (not `duration`)
+- Return 3 separate counters: `feedbacks_count`, `meetings_count`, `total_evidence_count` (keep existing return signature for backward compatibility)
 
-**2. `src/pages/MemberDetails.tsx`** — Remove top bar button, pass callback to list
+**2. Create Edge Function `supabase/functions/generate-formal-review/index.ts`**
 
-- Remove the "Avaliação de Desempenho" button from the top action bar (lines 415-418) — this eliminates the duplicate entry point
-- Pass `onCreateReview={() => setFormalReviewOpen(true)}` prop to `PerformanceReviewList` so the button inside the reviews section opens the unified flow
-- All other state (`formalReviewOpen`, `reviewSheetOpen`, `selectedReviewId`) and components (`CreateFormalReviewDialog`, `FormalReviewSheet`) remain unchanged
+New function that:
+- Accepts `{ reviewId }` in request body
+- Fetches the review record from `performance_reviews` (with member info)
+- Fetches ALL feedbacks + meeting_transcripts for the review period using service role (bypasses RLS)
+- Builds context prompt with all evidence, anti-hallucination rules, and citation requirements
+- Calls Lovable AI Gateway (`google/gemini-2.5-flash`) to generate HTML-formatted review
+- Updates `performance_reviews.content` with generated HTML
+- Returns success + content
 
-**3. `src/components/NewReviewDialog.tsx`** — Add deprecation comment
+Pattern: follow `generate-competencies` for auth (Bearer token + `getUser`), follow `generate-review` for prompt structure and AI call pattern. Output HTML (not Markdown) since FormalReviewSheet uses Tiptap/RichTextEditor.
 
-Mark as `@deprecated` with comment. Not deleted yet since `PerformanceReviewList` currently imports it — after the edit it will no longer be imported by any file.
+**3. Update `src/components/review/CreateFormalReviewDialog.tsx`**
 
-### No database changes needed
+In `onSuccess` of `createMutation`:
+- After creating review and calling `onReviewCreated`, invoke `generate-formal-review` edge function asynchronously
+- On completion, invalidate `['formal-review', review.id]` query so FormalReviewSheet reloads with AI content
+- On error, show toast "Erro ao gerar rascunho" but don't block (user can write manually)
+- Update toast message to "Avaliação criada! Gerando com IA..."
 
-### Result
-Single button "Avaliação de Desempenho" inside the reviews section → `CreateFormalReviewDialog` (evidence preview) → `FormalReviewSheet` (rich text + competencies)
+**4. Update evidence preview in `CreateFormalReviewDialog.tsx`**
+
+Change the 2-column grid (lines 194-209) to show 3 columns: Anotações, 1:1s, Feedbacks — mapping to `feedbacks_count`, `meetings_count`. Since the data source is all `feedbacks`, keep the existing field names but update labels.
+
+**5. `supabase/config.toml`** — Add `generate-formal-review` function config with `verify_jwt = false` (auth in code).
+
+### Technical Notes
+- No `feedback_notes` table exists — "anotações" are `feedbacks` rows
+- The existing `generate-review` function outputs Markdown; the new function outputs HTML for Tiptap compatibility
+- Edge function uses service role to fetch evidence (bypasses RLS), but validates user auth via Bearer token
+- CORS headers must include full Supabase client headers
 
