@@ -234,9 +234,19 @@ All colors MUST be HSL.
 }
 
 .section-icon {
-  font-size: 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  line-height: 1;
+  width: 24px;
+  height: 24px;
+}
+
+.section-icon-svg {
+  width: 20px;
+  height: 20px;
+  color: hsl(var(--primary));
+  flex-shrink: 0;
 }
 
 .section-title {
