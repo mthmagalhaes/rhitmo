@@ -26,8 +26,7 @@ interface PerformanceReviewListProps {
   onCreateReview?: () => void;
 }
 
-export const PerformanceReviewList = ({ memberId, memberName }: PerformanceReviewListProps) => {
-  const [showNewDialog, setShowNewDialog] = useState(false);
+export const PerformanceReviewList = ({ memberId, memberName, onCreateReview }: PerformanceReviewListProps) => {
   const [selectedReview, setSelectedReview] = useState<PerformanceReview | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
