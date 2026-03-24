@@ -449,6 +449,24 @@ const CompetencyFramework = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={templateGalleryOpen} onOpenChange={setTemplateGalleryOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              Galeria de Templates
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <Building2 className="h-10 w-10 text-muted-foreground mb-4" />
+            <p className="font-medium text-foreground">Em breve</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Importação de templates de empresas referência será disponibilizada em breve.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
