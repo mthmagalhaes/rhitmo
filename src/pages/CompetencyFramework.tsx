@@ -11,18 +11,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Briefcase, ListChecks, Pencil, Trash2, Sparkles } from 'lucide-react';
-import {
-  DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, arrayMove,
-} from '@dnd-kit/sortable';
-import { CompetencyCard } from '@/components/competency/CompetencyCard';
+import { Plus, Briefcase, BookOpen, Pencil, Trash2, Sparkles } from 'lucide-react';
 import { EditCompetencyModal, type CompetencyFormData } from '@/components/competency/EditCompetencyModal';
-import { CompetencyPreviewTable } from '@/components/competency/CompetencyPreviewTable';
-import { AICompetencyDialog } from '@/components/competency/AICompetencyDialog';
 import { CreateJobRoleDialog } from '@/components/competency/CreateJobRoleDialog';
 import { AdjustCompetencyDialog } from '@/components/competency/AdjustCompetencyDialog';
 import type { Json } from '@/integrations/supabase/types';
@@ -65,21 +55,14 @@ const CompetencyFramework = () => {
   const { workspaceId } = useHRAdmin();
   const queryClient = useQueryClient();
   const [editingComp, setEditingComp] = useState<Competency | null>(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showAIDialog, setShowAIDialog] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [viewMode, setViewMode] = useState<'roles' | 'competencies'>('roles');
+  const [viewMode, setViewMode] = useState<'roles' | 'library'>('roles');
   const [createJobRoleDialogOpen, setCreateJobRoleDialogOpen] = useState(false);
   const [deletingRoleId, setDeletingRoleId] = useState<string | null>(null);
   const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
   const [adjustingCompetency, setAdjustingCompetency] = useState<{
     id: string; name: string; description: string | null; roleTitle: string; roleLevel: string;
   } | null>(null);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
 
   const { data, isLoading } = useQuery({
     queryKey: ['competency-framework', workspaceId],
@@ -124,6 +107,25 @@ const CompetencyFramework = () => {
     enabled: !!data?.frameworkId,
   });
 
+  // Library view: competencies with usage counts
+  const { data: libraryCompetencies = [] } = useQuery({
+    queryKey: ['competencies-library', data?.frameworkId],
+    queryFn: async () => {
+      const { data: comps, error } = await supabase
+        .from('competencies')
+        .select('id, name, description, order, is_active, role_competencies(count), competency_level_descriptions(count)')
+        .eq('framework_id', data!.frameworkId)
+        .order('name');
+      if (error) throw error;
+      return (comps || []).map((c: any) => ({
+        ...c,
+        usage_count: c.role_competencies?.[0]?.count || 0,
+        level_descriptions_count: c.competency_level_descriptions?.[0]?.count || 0,
+      }));
+    },
+    enabled: viewMode === 'library' && !!data?.frameworkId,
+  });
+
   const deleteRoleMutation = useMutation({
     mutationFn: async (roleId: string) => {
       const { error } = await supabase.from('job_roles').delete().eq('id', roleId);
@@ -136,93 +138,42 @@ const CompetencyFramework = () => {
     },
   });
 
-  const reorderMutation = useMutation({
-    mutationFn: async (items: { id: string; order: number }[]) => {
-      for (const item of items) {
-        const { error } = await supabase.from('competencies').update({ order: item.order }).eq('id', item.id);
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['competency-framework'] }),
-  });
-
-  const toggleActiveMutation = useMutation({
-    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
-      const { error } = await supabase.from('competencies').update({ is_active: !isActive }).eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['competency-framework'] });
-      toast({ title: 'Competência atualizada com sucesso' });
-    },
-  });
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id || !data) return;
-    const oldIndex = data.competencies.findIndex(c => c.id === active.id);
-    const newIndex = data.competencies.findIndex(c => c.id === over.id);
-    const reordered = arrayMove(data.competencies, oldIndex, newIndex);
-    reorderMutation.mutate(reordered.map((c, i) => ({ id: c.id, order: i + 1 })));
-  };
-
   const handleSave = async (formData: CompetencyFormData) => {
+    if (!editingComp) return;
     setSaving(true);
     try {
-      if (editingComp) {
-        const { error } = await supabase
-          .from('competencies')
-          .update({ name: formData.name, description: formData.description || null })
-          .eq('id', editingComp.id);
-        if (error) throw error;
+      const { error } = await supabase
+        .from('competencies')
+        .update({ name: formData.name, description: formData.description || null })
+        .eq('id', editingComp.id);
+      if (error) throw error;
 
-        for (const level of formData.levels) {
-          const existing = editingComp.levels.find(l => l.seniority_level === level.seniority_level);
-          const examples = level.examples.filter(Boolean);
-          if (existing) {
-            const { error: lErr } = await supabase
-              .from('competency_level_descriptions')
-              .update({ description: level.description, examples: examples.length ? examples : null })
-              .eq('id', existing.id);
-            if (lErr) throw lErr;
-          } else {
-            const { error: lErr } = await supabase
-              .from('competency_level_descriptions')
-              .insert({
-                competency_id: editingComp.id,
-                seniority_level: level.seniority_level,
-                description: level.description,
-                examples: examples.length ? examples : null,
-              });
-            if (lErr) throw lErr;
-          }
+      for (const level of formData.levels) {
+        const existing = editingComp.levels.find(l => l.seniority_level === level.seniority_level);
+        const examples = level.examples.filter(Boolean);
+        if (existing) {
+          const { error: lErr } = await supabase
+            .from('competency_level_descriptions')
+            .update({ description: level.description, examples: examples.length ? examples : null })
+            .eq('id', existing.id);
+          if (lErr) throw lErr;
+        } else {
+          const { error: lErr } = await supabase
+            .from('competency_level_descriptions')
+            .insert({
+              competency_id: editingComp.id,
+              seniority_level: level.seniority_level,
+              description: level.description,
+              examples: examples.length ? examples : null,
+            });
+          if (lErr) throw lErr;
         }
-      } else {
-        const maxOrder = data?.competencies.length ? Math.max(...data.competencies.map(c => c.order)) : 0;
-        const { data: newComp, error } = await supabase
-          .from('competencies')
-          .insert({ framework_id: data!.frameworkId, name: formData.name, description: formData.description || null, order: maxOrder + 1 })
-          .select('id')
-          .single();
-        if (error) throw error;
-
-        const levelInserts = formData.levels.map(level => {
-          const examples = level.examples.filter(Boolean);
-          return {
-            competency_id: newComp.id,
-            seniority_level: level.seniority_level,
-            description: level.description,
-            examples: examples.length ? examples : null,
-          };
-        });
-        const { error: lErr } = await supabase.from('competency_level_descriptions').insert(levelInserts);
-        if (lErr) throw lErr;
       }
 
       queryClient.invalidateQueries({ queryKey: ['competency-framework'] });
-      toast({ title: editingComp ? 'Competência atualizada' : 'Competência criada com sucesso' });
+      queryClient.invalidateQueries({ queryKey: ['competencies-library'] });
+      toast({ title: 'Competência atualizada' });
       setEditingComp(null);
-      setShowCreateModal(false);
     } catch (err: any) {
       toast({ title: 'Erro ao salvar', description: err.message, variant: 'destructive' });
     } finally {
@@ -243,17 +194,6 @@ const CompetencyFramework = () => {
     }),
   });
 
-  const previewData = (data?.competencies || [])
-    .filter(c => c.is_active)
-    .map(c => ({
-      name: c.name,
-      levels: c.levels.map(l => ({
-        seniority_level: l.seniority_level,
-        description: l.description,
-        examples: Array.isArray(l.examples) ? (l.examples as string[]) : null,
-      })),
-    }));
-
   const levelColorMap: Record<string, string> = {
     'Júnior': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
     'Pleno': 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300',
@@ -269,39 +209,37 @@ const CompetencyFramework = () => {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Framework de Competências</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Defina competências por cargo para avaliar liderados
+            Defina cargos e suas competências esperadas
           </p>
         </div>
-        {viewMode === 'roles' ? (
-          <Button onClick={() => setCreateJobRoleDialogOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" /> Adicionar Cargo
-          </Button>
-        ) : (
-          <Button onClick={() => setShowAIDialog(true)} className="gap-2">
-            <Plus className="h-4 w-4" /> Adicionar Competência
-          </Button>
-        )}
-      </div>
-
-      <div className="flex gap-1 bg-muted/50 p-1 rounded-xl w-fit">
-        <Button
-          variant={viewMode === 'roles' ? 'default' : 'ghost'}
-          size="sm"
-          onClick={() => setViewMode('roles')}
-          className="gap-2 rounded-lg"
-        >
-          <Briefcase className="h-4 w-4" /> Por Cargo
-        </Button>
-        <Button
-          variant={viewMode === 'competencies' ? 'default' : 'ghost'}
-          size="sm"
-          onClick={() => setViewMode('competencies')}
-          className="gap-2 rounded-lg"
-        >
-          <ListChecks className="h-4 w-4" /> Por Competência
+        <Button onClick={() => setCreateJobRoleDialogOpen(true)} className="gap-2">
+          <Plus className="h-4 w-4" /> Adicionar Cargo
         </Button>
       </div>
 
+      {/* Discrete toggle */}
+      <div className="flex justify-end">
+        <div className="flex gap-1 bg-muted/50 p-1 rounded-lg">
+          <Button
+            variant={viewMode === 'roles' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setViewMode('roles')}
+            className="text-xs h-7 gap-1.5 rounded-md"
+          >
+            <Briefcase className="h-3.5 w-3.5" /> Meus Cargos
+          </Button>
+          <Button
+            variant={viewMode === 'library' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setViewMode('library')}
+            className="text-xs h-7 gap-1.5 rounded-md"
+          >
+            <BookOpen className="h-3.5 w-3.5" /> Biblioteca
+          </Button>
+        </div>
+      </div>
+
+      {/* Roles View */}
       {viewMode === 'roles' && (
         <div className="space-y-4">
           {(isLoading || jobRolesLoading) ? (
@@ -346,12 +284,8 @@ const CompetencyFramework = () => {
                       )}
                     </div>
                     <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => setDeletingRoleId(role.role_id)}
-                      >
+                      <Button variant="ghost" size="icon" className="h-8 w-8"
+                        onClick={() => setDeletingRoleId(role.role_id)}>
                         <Trash2 className="h-4 w-4 text-muted-foreground" />
                       </Button>
                     </div>
@@ -370,29 +304,22 @@ const CompetencyFramework = () => {
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                               <Button
-                                variant="ghost"
-                                size="sm"
+                                variant="ghost" size="sm"
                                 className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-primary"
                                 onClick={() => {
                                   setAdjustingCompetency({
-                                    id: comp.competency_id,
-                                    name: comp.name,
+                                    id: comp.competency_id, name: comp.name,
                                     description: comp.description ?? null,
-                                    roleTitle: role.role_title,
-                                    roleLevel: role.role_level || '',
+                                    roleTitle: role.role_title, roleLevel: role.role_level || '',
                                   });
                                   setAdjustDialogOpen(true);
                                 }}
                               >
                                 <Sparkles className="h-3 w-3" /> Ajustar
                               </Button>
-                              <Badge variant="outline" className="text-xs">
-                                {comp.expected_level}
-                              </Badge>
+                              <Badge variant="outline" className="text-xs">{comp.expected_level}</Badge>
                               {comp.is_required && (
-                                <Badge className="text-xs bg-primary/10 text-primary border-0">
-                                  Obrigatória
-                                </Badge>
+                                <Badge className="text-xs bg-primary/10 text-primary border-0">Obrigatória</Badge>
                               )}
                             </div>
                           </div>
@@ -407,62 +334,73 @@ const CompetencyFramework = () => {
         </div>
       )}
 
-      {viewMode === 'competencies' && (
-        <div className="space-y-6">
-          {isLoading ? (
-            <div className="space-y-4">
-              {[1, 2, 3].map(i => <Skeleton key={i} className="h-24 w-full rounded-3xl" />)}
-            </div>
-          ) : !data?.competencies.length ? (
-            <div className="text-center py-16 text-muted-foreground">
-              Nenhuma competência encontrada. Clique em "Adicionar Competência" para começar.
-            </div>
+      {/* Library View */}
+      {viewMode === 'library' && (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Sua biblioteca de competências. Competências são criadas ao definir cargos e podem ser reutilizadas.
+          </p>
+          {libraryCompetencies.length === 0 ? (
+            <Card className="rounded-2xl">
+              <CardContent className="py-12 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Nenhuma competência criada ainda. Crie cargos para popular sua biblioteca.
+                </p>
+              </CardContent>
+            </Card>
           ) : (
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={data.competencies.map(c => c.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-4">
-                  {data.competencies.map(comp => (
-                    <CompetencyCard
-                      key={comp.id}
-                      id={comp.id}
-                      name={comp.name}
-                      description={comp.description}
-                      isActive={comp.is_active}
-                      levelCount={comp.levels.length}
-                      onEdit={() => setEditingComp(comp)}
-                      onToggleActive={() => toggleActiveMutation.mutate({ id: comp.id, isActive: comp.is_active })}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
+            libraryCompetencies.map((comp: any) => {
+              const fullComp = data?.competencies.find(c => c.id === comp.id);
+              return (
+                <Card key={comp.id} className="rounded-2xl">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground">{comp.name}</p>
+                        {comp.description && (
+                          <p className="text-sm text-muted-foreground mt-0.5">{comp.description}</p>
+                        )}
+                        <div className="flex items-center gap-2 mt-2">
+                          <Badge variant="outline" className="text-xs">
+                            Usada em {comp.usage_count} cargo(s)
+                          </Badge>
+                          {comp.level_descriptions_count > 0 && (
+                            <Badge variant="secondary" className="text-xs">
+                              {comp.level_descriptions_count} níveis definidos
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        {fullComp && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8"
+                            onClick={() => setEditingComp(fullComp)}>
+                            <Pencil className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
           )}
-          <CompetencyPreviewTable competencies={previewData} />
         </div>
       )}
 
       <EditCompetencyModal
-        open={showCreateModal || !!editingComp}
-        onClose={() => { setShowCreateModal(false); setEditingComp(null); }}
+        open={!!editingComp}
+        onClose={() => setEditingComp(null)}
         onSave={handleSave}
         initialData={editingComp ? getEditData(editingComp) : null}
         saving={saving}
-      />
-
-      <AICompetencyDialog
-        open={showAIDialog}
-        onClose={() => setShowAIDialog(false)}
-        frameworkId={data?.frameworkId ?? ''}
-        workspaceId={workspaceId}
-        currentMaxOrder={data?.competencies?.length ? Math.max(...data.competencies.map(c => c.order)) : 0}
-        onCreatedManually={() => setShowCreateModal(true)}
-        onSaved={() => queryClient.invalidateQueries({ queryKey: ['competency-framework'] })}
       />
 
       <CreateJobRoleDialog
         open={createJobRoleDialogOpen}
         onOpenChange={setCreateJobRoleDialogOpen}
         frameworkId={data?.frameworkId ?? ''}
+        workspaceId={workspaceId}
       />
 
       <AdjustCompetencyDialog

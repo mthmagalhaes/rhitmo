@@ -50,19 +50,23 @@ Deno.serve(async (req) => {
       throw new Error("LOVABLE_API_KEY not configured");
     }
 
-    const systemPrompt = `Você é um especialista em RH e desenvolvimento de competências comportamentais. Gere competências comportamentais em português brasileiro para o cargo informado. Foque em competências comportamentais (não técnicas), específicas para o cargo, com linguagem positiva e orientada a resultados.`;
+    const systemPrompt = `Você é um especialista em RH e frameworks de competências comportamentais. Gere competências comportamentais em português brasileiro para o cargo informado. IMPORTANTE: gere entre 3 e 5 competências ESSENCIAIS (menos é mais!). Foque nas competências CORE que diferenciam performance. Seja específico ao cargo e nível. Evite competências genéricas como "trabalho em equipe" ou "comunicação".`;
 
-    const userPrompt = `Gere 7 competências comportamentais essenciais para o cargo de "${job_title}" (nível ${level}, indústria ${industry}).
+    const userPrompt = `Gere entre 3 e 5 competências comportamentais ESSENCIAIS para o cargo de "${job_title}" (nível ${level}, indústria ${industry}).
 
 Para cada competência, forneça:
 - name: Nome (2-4 palavras)
-- description: Descrição concisa (1 frase, 15-25 palavras)
+- description: Descrição concisa (1 frase, 15-20 palavras)
 - levels: Array com 4 objetos, um para cada nível de senioridade (junior, pleno, senior, especialista), cada um com:
   - seniority_level: "junior" | "pleno" | "senior" | "especialista"
-  - description: Comportamento esperado neste nível (20-40 palavras, começando com verbo)
+  - description: Comportamento esperado neste nível (15-25 palavras, começando com verbo)
   - examples: Array de 2 exemplos práticos observáveis (8-12 palavras cada)
 
-Seja específico para o cargo. Evite genéricos como "trabalho em equipe".`;
+REGRAS:
+- Mínimo 3, máximo 5 competências
+- Foque em comportamentos observáveis, não traits abstratas
+- Seja específico para o cargo ${job_title}
+- Evite genéricos como "trabalho em equipe", "comunicação", "proatividade".`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
