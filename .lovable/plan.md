@@ -1,61 +1,65 @@
 
 
-## Plan: Formal Review Creation Flow
+## Plan: Secure meeting-recordings Bucket
 
-### Analysis
+### Problem
+The `meeting-recordings` bucket is public (`public = true`), meaning anyone with a file URL can download audio recordings without authentication. This is a critical privacy violation.
 
-The project already has a `performance_reviews` table and `PerformanceReviewList` component in MemberDetails. Creating a separate `formal_reviews` table would duplicate this. Instead, I'll enhance the existing `performance_reviews` flow with:
-1. A new dialog for configuring period + previewing evidence
-2. An RPC to gather evidence from `feedbacks` and `meeting_transcripts`
-3. A button on MemberDetails page (where the member context already exists)
+### Approach
+Since the upload function stores files as `{userId}/{timestamp}.ext` (where `userId` is the manager's auth UUID), we can use the folder path for RLS instead of complex joins through `meeting_transcripts`. The edge function uses `supabaseServiceKey` for uploads, so it bypasses RLS — no change needed there.
 
-Key corrections from user's SQL:
-- **No `feedback_notes` table exists** — evidence sources are `feedbacks` and `meeting_transcripts` only
-- **`meeting_transcripts` has no `title` or `summary` columns** — use `leader_notes` and `LEFT(transcript, 200)` instead
-- **Use existing `performance_reviews` table** instead of creating `formal_reviews` (avoid duplication). Add missing columns via migration if needed.
+### Migration (single SQL migration)
 
-However, looking more carefully, the existing `performance_reviews` table already has `period_start`, `period_end`, `content`, `coaching_tip`, `shared_with_member`, `period_type`. It's missing: `competency_evaluations JSONB`, `evidence_count INTEGER`, `status` (it has no status field). I'll add these columns to the existing table rather than creating a new table.
-
-### Changes
-
-**1. Database Migration — Add columns to `performance_reviews` + Create RPC**
-
-Add to `performance_reviews`:
+**1. Make bucket private:**
 ```sql
-ALTER TABLE public.performance_reviews 
-  ADD COLUMN IF NOT EXISTS competency_evaluations JSONB,
-  ADD COLUMN IF NOT EXISTS evidence_count INTEGER DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS job_role_id UUID REFERENCES public.job_roles(id);
+UPDATE storage.buckets SET public = false WHERE id = 'meeting-recordings';
 ```
 
-Create RPC `get_review_evidence(_member_id UUID, _period_start DATE, _period_end DATE)` that returns:
-- `feedbacks_count`, `meetings_count`, `total_evidence_count`
-- `feedbacks JSONB` (id, date, content preview, sentiment, tags)
-- `meetings JSONB` (id, date, leader_notes preview, duration)
+**2. Storage RLS policies:**
 
-Uses `is_workspace_owner(auth.uid(), _member_id)` for auth check. No `feedback_notes` reference.
+- **INSERT**: Allow authenticated users to upload into their own folder (`auth.uid()::text = (storage.foldername(name))[1]`). Note: the edge function uses service role so this doesn't affect it, but it's good practice.
+- **SELECT**: Manager can read files in their own folder. HR Admins need access too — but since there's no simple folder-based check for HR admins, we add a policy that checks `is_hr_admin_of_workspace` via the workspace chain.
+- **DELETE**: Only the file owner (manager) can delete.
 
-**2. New component `src/components/review/CreateFormalReviewDialog.tsx`**
+Simplified policies using folder-based ownership:
 
-Dialog with:
-- Header: member name + role
-- Period selection: 3 toggle buttons (Último mês, Último trimestre, Personalizado)
-- Custom period: 2 date pickers
-- Evidence preview card: 2-column grid (Feedbacks count, 1:1s count) + total
-- 2 checkboxes: "Rascunho Geral" (AI text), "Avaliação de Competências"
-- "Criar Avaliação" button — inserts into `performance_reviews` with `period_type: 'formal'`
-- On success: navigates to member details or opens review view
+```sql
+-- Manager can upload to own folder
+CREATE POLICY "Managers upload own recordings"
+  ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'meeting-recordings' AND auth.uid()::text = (storage.foldername(name))[1]);
 
-**3. Update `src/pages/MemberDetails.tsx`**
+-- Manager can view own folder
+CREATE POLICY "Managers view own recordings"
+  ON storage.objects FOR SELECT TO authenticated
+  USING (bucket_id = 'meeting-recordings' AND auth.uid()::text = (storage.foldername(name))[1]);
 
-- Add "Avaliação Formal" button next to "Nova Anotação" in the action bar (lines 401-414)
-- Add state + render `CreateFormalReviewDialog`
-- Pass member data and workspace info
+-- HR Admin can view workspace recordings
+CREATE POLICY "HR Admin view workspace recordings"
+  ON storage.objects FOR SELECT TO authenticated
+  USING (
+    bucket_id = 'meeting-recordings' AND
+    EXISTS (
+      SELECT 1 FROM workspaces w
+      WHERE (storage.foldername(name))[1]::uuid = w.owner_id
+        AND is_hr_admin_of_workspace(w.id)
+    )
+  );
+
+-- Manager can delete own recordings
+CREATE POLICY "Managers delete own recordings"
+  ON storage.objects FOR DELETE TO authenticated
+  USING (bucket_id = 'meeting-recordings' AND auth.uid()::text = (storage.foldername(name))[1]);
+```
+
+**3. Update edge function** — After making the bucket private, `getPublicUrl` no longer works for unauthenticated access. The edge function currently stores the public URL in `meeting_transcripts.transcript` field before transcription replaces it. Since the transcript text overwrites the URL after Whisper completes, the public URL is only temporarily stored and not used for playback. No change needed — the audio file path is already stored implicitly via the folder structure.
+
+### No frontend changes needed
+The app doesn't display audio playback URLs to users. The `transcript` field gets overwritten with actual text after transcription.
 
 ### Technical Notes
-- Evidence RPC is SECURITY DEFINER with `is_workspace_owner` check
-- `feedbacks` content is included in evidence (leader already has access via RLS)
-- `meeting_transcripts` uses `leader_notes` field (no `title`/`summary` columns)
-- Reuses `performance_reviews` table with `period_type: 'formal'` to distinguish from existing manual reviews
-- No new table needed — extends existing infrastructure
+- The user's proposed RLS using `meeting_transcripts.audio_url` won't work because there's no `audio_url` column — the URL was temporarily stored in `transcript` then overwritten
+- Folder-based RLS (`foldername`) is simpler, more performant, and doesn't require cross-table joins
+- Edge function uses service role key, so it bypasses all storage RLS — uploads continue to work
+- HR Admin access uses the existing `is_hr_admin_of_workspace` function, checking if the folder owner (manager) belongs to a workspace where the current user is HR admin
 
