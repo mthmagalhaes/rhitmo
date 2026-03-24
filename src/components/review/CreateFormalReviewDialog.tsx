@@ -100,10 +100,11 @@ export function CreateFormalReviewDialog({
       if (error) throw error;
       return review;
     },
-    onSuccess: () => {
+    onSuccess: (review) => {
       queryClient.invalidateQueries({ queryKey: ['performance-reviews'] });
-      toast({ title: 'Avaliação criada! Gerando com IA...' });
+      toast({ title: 'Avaliação criada!' });
       onOpenChange(false);
+      onReviewCreated?.(review.id);
     },
     onError: (error: any) => {
       toast({ title: 'Erro ao criar avaliação', description: error.message, variant: 'destructive' });

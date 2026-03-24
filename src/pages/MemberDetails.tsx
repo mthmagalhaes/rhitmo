@@ -805,7 +805,22 @@ const MemberDetails = () => {
         onOpenChange={setFormalReviewOpen}
         member={{ id: member.id, name: member.name, role: member.role }}
         workspaceId={workspace?.id || ''}
+        onReviewCreated={(reviewId) => {
+          setSelectedReviewId(reviewId);
+          setReviewSheetOpen(true);
+        }}
       />
+
+      {selectedReviewId && (
+        <FormalReviewSheet
+          open={reviewSheetOpen}
+          onOpenChange={setReviewSheetOpen}
+          reviewId={selectedReviewId}
+          onSent={() => {
+            queryClient.invalidateQueries({ queryKey: ['performance-reviews'] });
+          }}
+        />
+      )}
     </div>;
 };
 export default MemberDetails;
