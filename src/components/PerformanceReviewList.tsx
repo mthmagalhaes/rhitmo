@@ -3,9 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Calendar, FileText, Loader2, Eye } from "lucide-react";
+import { Calendar, FileText, Loader2, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { NewReviewDialog } from "./NewReviewDialog";
 import { ReviewViewDialog } from "./ReviewViewDialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -24,10 +23,10 @@ interface PerformanceReview {
 interface PerformanceReviewListProps {
   memberId: string;
   memberName: string;
+  onCreateReview?: () => void;
 }
 
-export const PerformanceReviewList = ({ memberId, memberName }: PerformanceReviewListProps) => {
-  const [showNewDialog, setShowNewDialog] = useState(false);
+export const PerformanceReviewList = ({ memberId, memberName, onCreateReview }: PerformanceReviewListProps) => {
   const [selectedReview, setSelectedReview] = useState<PerformanceReview | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -93,9 +92,9 @@ export const PerformanceReviewList = ({ memberId, memberName }: PerformanceRevie
             Histórico de avaliações de desempenho de {memberName}
           </p>
         </div>
-        <Button onClick={() => setShowNewDialog(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nova Avaliação
+        <Button onClick={() => onCreateReview?.()} className="gap-2">
+          <FileText className="h-4 w-4" />
+          Avaliação de Desempenho
         </Button>
       </div>
 
@@ -108,8 +107,8 @@ export const PerformanceReviewList = ({ memberId, memberName }: PerformanceRevie
               Crie a primeira avaliação de desempenho para {memberName}. 
               A IA irá analisar o histórico de feedbacks e gerar um rascunho estruturado.
             </p>
-            <Button onClick={() => setShowNewDialog(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
+            <Button onClick={() => onCreateReview?.()} className="gap-2">
+              <FileText className="h-4 w-4" />
               Criar Primeira Avaliação
             </Button>
           </CardContent>
@@ -147,14 +146,6 @@ export const PerformanceReviewList = ({ memberId, memberName }: PerformanceRevie
           ))}
         </div>
       )}
-
-      <NewReviewDialog
-        open={showNewDialog}
-        onOpenChange={setShowNewDialog}
-        memberId={memberId}
-        memberName={memberName}
-        onReviewCreated={() => queryClient.invalidateQueries({ queryKey: ['performance-reviews', memberId] })}
-      />
 
       {selectedReview && (
         <ReviewViewDialog

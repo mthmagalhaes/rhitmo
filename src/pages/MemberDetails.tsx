@@ -412,10 +412,6 @@ const MemberDetails = () => {
               <Sparkles className="h-4 w-4" />
               <span className="hidden sm:inline">Mentor Chat</span>
             </Button>
-            <Button onClick={() => setFormalReviewOpen(true)} className="gap-2 px-4">
-              <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">Avaliação de Desempenho</span>
-            </Button>
           </div>
         </div>
         <div className="mb-8">
@@ -758,7 +754,7 @@ const MemberDetails = () => {
           </TabsContent>
           
           <TabsContent value="reviews">
-            <PerformanceReviewList memberId={member.id} memberName={member.name} />
+            <PerformanceReviewList memberId={member.id} memberName={member.name} onCreateReview={() => setFormalReviewOpen(true)} />
           </TabsContent>
         </Tabs>
       </main>
