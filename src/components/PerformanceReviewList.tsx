@@ -3,9 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Calendar, FileText, Loader2, Eye } from "lucide-react";
+import { Calendar, FileText, Loader2, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { NewReviewDialog } from "./NewReviewDialog";
 import { ReviewViewDialog } from "./ReviewViewDialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
