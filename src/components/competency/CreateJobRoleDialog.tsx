@@ -401,7 +401,24 @@ export function CreateJobRoleDialog({ open, onOpenChange, frameworkId, workspace
                 )}
 
                 {competencySource === 'ai' && (
-                  <p className="text-sm text-muted-foreground">Revise e ajuste as competências geradas:</p>
+                  <>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-muted-foreground">Revise e ajuste as competências geradas:</p>
+                      <Button
+                        variant="outline" size="sm" className="gap-1 text-xs"
+                        onClick={() => {
+                          const newComp: SelectedCompetency = {
+                            id: crypto.randomUUID(), name: '', description: '',
+                            expected_level: level || 'Pleno', is_required: true, isNew: true,
+                          };
+                          setSelectedCompetencies(prev => [...prev, newComp]);
+                          setEditingIndex(selectedCompetencies.length);
+                        }}
+                      >
+                        <Plus className="h-3 w-3" /> Adicionar
+                      </Button>
+                    </div>
+                  </>
                 )}
 
                 <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
@@ -437,16 +454,60 @@ export function CreateJobRoleDialog({ open, onOpenChange, frameworkId, workspace
                     selectedCompetencies.map((comp, idx) => (
                       <Card key={comp.id}>
                         <CardContent className="p-3">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm">{comp.name}</p>
-                              {comp.description && <p className="text-xs text-muted-foreground mt-0.5">{comp.description}</p>}
+                          {editingIndex === idx ? (
+                            <div className="space-y-2">
+                              <div>
+                                <Label className="text-xs">Nome *</Label>
+                                <Input
+                                  value={comp.name}
+                                  onChange={e => setSelectedCompetencies(prev =>
+                                    prev.map((c, i) => i === idx ? { ...c, name: e.target.value } : c)
+                                  )}
+                                  placeholder="Nome da competência"
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Descrição</Label>
+                                <Textarea
+                                  value={comp.description || ''}
+                                  onChange={e => setSelectedCompetencies(prev =>
+                                    prev.map((c, i) => i === idx ? { ...c, description: e.target.value } : c)
+                                  )}
+                                  placeholder="Descrição da competência"
+                                  rows={2}
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div className="flex gap-2">
+                                <Button size="sm" variant="outline" onClick={() => {
+                                  if (!comp.name.trim()) {
+                                    setSelectedCompetencies(prev => prev.filter((_, i) => i !== idx));
+                                  }
+                                  setEditingIndex(null);
+                                }}>
+                                  {comp.name.trim() ? 'OK' : 'Cancelar'}
+                                </Button>
+                              </div>
                             </div>
-                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0"
-                              onClick={() => setSelectedCompetencies(prev => prev.filter((_, i) => i !== idx))}>
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
+                          ) : (
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm">{comp.name}</p>
+                                {comp.description && <p className="text-xs text-muted-foreground mt-0.5">{comp.description}</p>}
+                              </div>
+                              <div className="flex gap-0.5 shrink-0">
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
+                                  onClick={() => setEditingIndex(idx)}>
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
+                                  onClick={() => setSelectedCompetencies(prev => prev.filter((_, i) => i !== idx))}>
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
                     ))
