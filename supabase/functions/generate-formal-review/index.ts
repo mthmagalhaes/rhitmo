@@ -177,7 +177,7 @@ Gere HTML estruturado usando EXATAMENTE este formato. Use as classes CSS indicad
 
 <div class="review-section">
   <div class="section-header">
-    <span class="section-icon">📊</span>
+    <span class="section-icon">{{ICON_SUMMARY}}</span>
     <h2 class="section-title">Resumo Executivo</h2>
   </div>
   <p>Visão geral do período em 2-3 frases.</p>
