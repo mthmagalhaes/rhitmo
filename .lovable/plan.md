@@ -1,65 +1,109 @@
 
 
-## Plan: Secure meeting-recordings Bucket
+## Plan: Revoke Public/Anon Access to SECURITY DEFINER Functions
 
 ### Problem
-The `meeting-recordings` bucket is public (`public = true`), meaning anyone with a file URL can download audio recordings without authentication. This is a critical privacy violation.
+All SECURITY DEFINER functions default to `EXECUTE` granted to `public`, meaning unauthenticated (anon) callers can invoke them. While internal auth checks prevent data leakage, the functions still execute unnecessarily, exposing metadata and enabling brute-force attempts.
 
-### Approach
-Since the upload function stores files as `{userId}/{timestamp}.ext` (where `userId` is the manager's auth UUID), we can use the folder path for RLS instead of complex joins through `meeting_transcripts`. The edge function uses `supabaseServiceKey` for uploads, so it bypasses RLS — no change needed there.
+### Migration
 
-### Migration (single SQL migration)
-
-**1. Make bucket private:**
-```sql
-UPDATE storage.buckets SET public = false WHERE id = 'meeting-recordings';
-```
-
-**2. Storage RLS policies:**
-
-- **INSERT**: Allow authenticated users to upload into their own folder (`auth.uid()::text = (storage.foldername(name))[1]`). Note: the edge function uses service role so this doesn't affect it, but it's good practice.
-- **SELECT**: Manager can read files in their own folder. HR Admins need access too — but since there's no simple folder-based check for HR admins, we add a policy that checks `is_hr_admin_of_workspace` via the workspace chain.
-- **DELETE**: Only the file owner (manager) can delete.
-
-Simplified policies using folder-based ownership:
+Single SQL migration revoking `EXECUTE` from `anon` and `public`, then granting to `authenticated` only. Based on the actual functions listed in the database:
 
 ```sql
--- Manager can upload to own folder
-CREATE POLICY "Managers upload own recordings"
-  ON storage.objects FOR INSERT TO authenticated
-  WITH CHECK (bucket_id = 'meeting-recordings' AND auth.uid()::text = (storage.foldername(name))[1]);
+-- Helper functions (used in RLS policies too - must keep accessible to authenticated)
+REVOKE EXECUTE ON FUNCTION public.effective_user_id() FROM anon, public;
+GRANT EXECUTE ON FUNCTION public.effective_user_id() TO authenticated;
 
--- Manager can view own folder
-CREATE POLICY "Managers view own recordings"
-  ON storage.objects FOR SELECT TO authenticated
-  USING (bucket_id = 'meeting-recordings' AND auth.uid()::text = (storage.foldername(name))[1]);
+REVOKE EXECUTE ON FUNCTION public.is_admin() FROM anon, public;
+GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
 
--- HR Admin can view workspace recordings
-CREATE POLICY "HR Admin view workspace recordings"
-  ON storage.objects FOR SELECT TO authenticated
-  USING (
-    bucket_id = 'meeting-recordings' AND
-    EXISTS (
-      SELECT 1 FROM workspaces w
-      WHERE (storage.foldername(name))[1]::uuid = w.owner_id
-        AND is_hr_admin_of_workspace(w.id)
-    )
-  );
+REVOKE EXECUTE ON FUNCTION public.check_is_admin() FROM anon, public;
+GRANT EXECUTE ON FUNCTION public.check_is_admin() TO authenticated;
 
--- Manager can delete own recordings
-CREATE POLICY "Managers delete own recordings"
-  ON storage.objects FOR DELETE TO authenticated
-  USING (bucket_id = 'meeting-recordings' AND auth.uid()::text = (storage.foldername(name))[1]);
+REVOKE EXECUTE ON FUNCTION public.is_workspace_owner(uuid, uuid) FROM anon, public;
+GRANT EXECUTE ON FUNCTION public.is_workspace_owner(uuid, uuid) TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.is_hr_admin_of_workspace(uuid) FROM anon, public;
+GRANT EXECUTE ON FUNCTION public.is_hr_admin_of_workspace(uuid) TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.user_owns_team(uuid, uuid) FROM anon, public;
+GRANT EXECUTE ON FUNCTION public.user_owns_team(uuid, uuid) TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.workspace_is_active(uuid) FROM anon, public;
+GRANT EXECUTE ON FUNCTION public.workspace_is_active(uuid) TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.user_is_linked_member(uuid, uuid) FROM anon, public;
+GRANT EXECUTE ON FUNCTION public.user_is_linked_member(uuid, uuid) TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.can_update_own_sync(uuid) FROM anon, public;
+GRANT EXECUTE ON FUNCTION public.can_update_own_sync(uuid) TO authenticated;
+
+-- HR Admin RPCs
+REVOKE EXECUTE ON FUNCTION public.get_hr_dashboard_metrics(uuid) FROM anon, public;
+GRANT EXECUTE ON FUNCTION public.get_hr_dashboard_metrics(uuid) TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.get_hr_leaders_overview(uuid) FROM anon, public;
+GRANT EXECUTE ON FUNCTION public.get_hr_leaders_overview(uuid) TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.get_hr_leader_team(uuid, uuid) FROM anon, public;
+GRANT EXECUTE ON FUNCTION public.get_hr_leader_team(uuid, uuid) TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.get_hr_all_members(uuid, text, uuid, boolean, integer, integer) FROM anon, public;
+GRANT EXECUTE ON FUNCTION public.get_hr_all_members(uuid, text, uuid, boolean, integer, integer) TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.get_hr_member_profile(uuid, uuid) FROM anon, public;
+GRANT EXECUTE ON FUNCTION public.get_hr_member_profile(uuid, uuid) TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.manage_hr_admin(uuid, uuid, text) FROM anon, public;
+GRANT EXECUTE ON FUNCTION public.manage_hr_admin(uuid, uuid, text) TO authenticated;
+
+-- Review & Evidence RPCs
+REVOKE EXECUTE ON FUNCTION public.get_review_evidence(uuid, date, date) FROM anon, public;
+GRANT EXECUTE ON FUNCTION public.get_review_evidence(uuid, date, date) TO authenticated;
+
+-- Competency RPCs
+REVOKE EXECUTE ON FUNCTION public.get_job_roles_with_competencies(uuid) FROM anon, public;
+GRANT EXECUTE ON FUNCTION public.get_job_roles_with_competencies(uuid) TO authenticated;
+
+-- Member data RPCs
+REVOKE EXECUTE ON FUNCTION public.get_member_for_sync(uuid) FROM anon, public;
+GRANT EXECUTE ON FUNCTION public.get_member_for_sync(uuid) TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.submit_rhitmo_sync(uuid, jsonb) FROM anon, public;
+GRANT EXECUTE ON FUNCTION public.submit_rhitmo_sync(uuid, jsonb) TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.submit_rhitmo_sync_v2(...) FROM anon, public;
+GRANT EXECUTE ON FUNCTION public.submit_rhitmo_sync_v2(...) TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.update_member_own_data(jsonb, jsonb) FROM anon, public;
+GRANT EXECUTE ON FUNCTION public.update_member_own_data(jsonb, jsonb) TO authenticated;
+
+-- Admin RPCs
+REVOKE EXECUTE ON FUNCTION public.get_all_users_with_metadata() FROM anon, public;
+GRANT EXECUTE ON FUNCTION public.get_all_users_with_metadata() TO authenticated;
+
+-- Search/Match RPCs
+REVOKE EXECUTE ON FUNCTION public.match_feedbacks(...) FROM anon, public;
+GRANT EXECUTE ON FUNCTION public.match_feedbacks(...) TO authenticated;
+
+-- Invite (keep accessible - invite flow needs this before full auth)
+-- get_invite_details uses invite_token, called during onboarding - KEEP public access
+
+-- Framework auto-creation trigger function
+REVOKE EXECUTE ON FUNCTION public.create_default_competency_framework(uuid) FROM anon, public;
+GRANT EXECUTE ON FUNCTION public.create_default_competency_framework(uuid) TO authenticated;
 ```
 
-**3. Update edge function** — After making the bucket private, `getPublicUrl` no longer works for unauthenticated access. The edge function currently stores the public URL in `meeting_transcripts.transcript` field before transcription replaces it. Since the transcript text overwrites the URL after Whisper completes, the public URL is only temporarily stored and not used for playback. No change needed — the audio file path is already stored implicitly via the folder structure.
+### Key decisions
+
+- **`get_invite_details`**: Keep public access — it's called during the invite acceptance flow before the user is fully authenticated. It only returns name/email/workspace for a valid pending invite token.
+- **`effective_user_id`**: Revoke from anon. It's used in RLS policies which run as the table owner context, so `authenticated` grant is sufficient.
+- **`notify_leader_sync_change`**: Trigger function — not callable via RPC, skip.
+- **`update_updated_at_column`**: Trigger function — not callable via RPC, skip.
+- **`trigger_create_default_framework`**: Trigger function — skip.
+- **Validation triggers** (`validate_subscription_*`): Trigger functions — skip.
+- **`get_workspace_context`**: Does not exist — removed from migration.
 
 ### No frontend changes needed
-The app doesn't display audio playback URLs to users. The `transcript` field gets overwritten with actual text after transcription.
-
-### Technical Notes
-- The user's proposed RLS using `meeting_transcripts.audio_url` won't work because there's no `audio_url` column — the URL was temporarily stored in `transcript` then overwritten
-- Folder-based RLS (`foldername`) is simpler, more performant, and doesn't require cross-table joins
-- Edge function uses service role key, so it bypasses all storage RLS — uploads continue to work
-- HR Admin access uses the existing `is_hr_admin_of_workspace` function, checking if the folder owner (manager) belongs to a workspace where the current user is HR admin
+All frontend calls use the authenticated Supabase client. Edge functions use service_role key. No functionality will break.
 
