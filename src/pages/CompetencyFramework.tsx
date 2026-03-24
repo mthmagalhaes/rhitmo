@@ -66,6 +66,7 @@ const CompetencyFramework = () => {
   const [adjustingCompetency, setAdjustingCompetency] = useState<{
     id: string; name: string; description: string | null; roleTitle: string; roleLevel: string;
   } | null>(null);
+  const [templateGalleryOpen, setTemplateGalleryOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['competency-framework', workspaceId],
