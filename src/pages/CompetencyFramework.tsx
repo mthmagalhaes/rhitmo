@@ -11,7 +11,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Briefcase, BookOpen, Pencil, Trash2, Sparkles } from 'lucide-react';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
+import { Plus, Briefcase, BookOpen, Pencil, Trash2, Sparkles, Building2 } from 'lucide-react';
 import { EditCompetencyModal, type CompetencyFormData } from '@/components/competency/EditCompetencyModal';
 import { CreateJobRoleDialog } from '@/components/competency/CreateJobRoleDialog';
 import { AdjustCompetencyDialog } from '@/components/competency/AdjustCompetencyDialog';
@@ -63,6 +66,7 @@ const CompetencyFramework = () => {
   const [adjustingCompetency, setAdjustingCompetency] = useState<{
     id: string; name: string; description: string | null; roleTitle: string; roleLevel: string;
   } | null>(null);
+  const [templateGalleryOpen, setTemplateGalleryOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['competency-framework', workspaceId],
@@ -121,7 +125,7 @@ const CompetencyFramework = () => {
         ...c,
         usage_count: c.role_competencies?.[0]?.count || 0,
         level_descriptions_count: c.competency_level_descriptions?.[0]?.count || 0,
-      }));
+      })).filter((c: any) => c.usage_count > 0);
     },
     enabled: viewMode === 'library' && !!data?.frameworkId,
   });
@@ -344,7 +348,7 @@ const CompetencyFramework = () => {
             <Card className="rounded-2xl">
               <CardContent className="py-12 text-center">
                 <p className="text-sm text-muted-foreground">
-                  Nenhuma competência criada ainda. Crie cargos para popular sua biblioteca.
+                  Nenhuma competência em uso ainda. Crie cargos para popular sua biblioteca.
                 </p>
               </CardContent>
             </Card>
@@ -401,6 +405,7 @@ const CompetencyFramework = () => {
         onOpenChange={setCreateJobRoleDialogOpen}
         frameworkId={data?.frameworkId ?? ''}
         workspaceId={workspaceId}
+        onOpenTemplateGallery={() => setTemplateGalleryOpen(true)}
       />
 
       <AdjustCompetencyDialog
@@ -444,6 +449,24 @@ const CompetencyFramework = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={templateGalleryOpen} onOpenChange={setTemplateGalleryOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              Galeria de Templates
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <Building2 className="h-10 w-10 text-muted-foreground mb-4" />
+            <p className="font-medium text-foreground">Em breve</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Importação de templates de empresas referência será disponibilizada em breve.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
