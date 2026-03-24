@@ -74,6 +74,7 @@ export function CreateJobRoleDialog({ open, onOpenChange, frameworkId, workspace
       setIsCreatingNewCompetency(false);
       setNewCompetencyName(''); setNewCompetencyDescription('');
       setNewCompetencyExpectedLevel('Pleno');
+      setEditingIndex(null);
     }
   }, [open]);
 
