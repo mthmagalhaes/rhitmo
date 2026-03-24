@@ -1,43 +1,41 @@
 
 
-## Plan: Redesign Competency Framework — Cargo-Centric with 3 Source Options
+## Plan: Fix 3 Competency Flow Issues
 
-### Summary
-Remove "Por Competência" as main view, replace with discrete "Biblioteca" tab, redesign CreateJobRoleDialog with 3-step flow (details → source → competencies), and update AI to generate 3-5 competencies instead of 7.
+### Fix 1: Hide orphan competencies in Library
 
-### Changes
+**`src/pages/CompetencyFramework.tsx`** — Filter library query to only show competencies with `usage_count > 0`.
 
-**1. `supabase/functions/generate-competencies/index.ts`** — Update prompt
+In the `libraryCompetencies` query (line 120), add a filter after mapping:
+```typescript
+return (comps || []).map(...)
+  .filter((c: any) => c.usage_count > 0);
+```
 
-Change line 55 from "Gere 7 competências" to "Gere entre 3 e 5 competências comportamentais ESSENCIAIS". Update system prompt to emphasize "menos é mais" and "3-5 competências CORE que diferenciam performance". Keep all other logic (tool calling, CORS, auth) unchanged.
+Update empty state text to: "Nenhuma competência em uso ainda. Crie cargos para popular sua biblioteca."
 
-**2. `src/components/competency/CreateJobRoleDialog.tsx`** — Add source selection step + AI generation + manual creation
+### Fix 2: Allow editing AI-generated competencies before saving
 
-Major rewrite:
-- Add step `'source'` between `'details'` and `'competencies'`
-- **Source step**: 3 cards (Gerar com IA / Importar Template / Criar Manualmente) using `Card` + icons (`Sparkles`, `Building2`, `Pencil`)
-- **AI flow**: On "Gerar com IA" → show loading → call `generate-competencies` edge function → populate `selectedCompetencies` with results → go to competencies step for review (cards with X to remove)
-- **Manual flow**: Go to competencies step showing existing competencies as checkboxes (current behavior) + inline "Criar Nova Competência" form at top
-- **Template flow**: Placeholder for now (toast "Em breve")
-- Add new props: `workspaceId` (for auto-creating framework if needed)
-- Add states: `competencySource`, `isGeneratingAI`, `isCreatingNewCompetency`, `newCompetencyName/Description/ExpectedLevel`
-- Save mutation: if AI-generated competencies, first insert them into `competencies` table, then create `role_competencies` associations (same pattern as AICompetencyDialog)
+**`src/components/competency/CreateJobRoleDialog.tsx`** — Add inline editing for AI-generated competency cards.
 
-**3. `src/pages/CompetencyFramework.tsx`** — Replace toggle + add Biblioteca view
+- Add state: `editingIndex: number | null`
+- In the AI competencies list (lines 434-449), replace read-only cards with editable cards:
+  - Each card gets an Edit (Pencil) button alongside the existing X (remove) button
+  - When editing: show Input for name + Textarea for description inline, with a "OK" button to confirm
+  - When not editing: show current name/description (existing behavior) + Edit button
+- Add "+ Adicionar Competência" button above the AI list (creates a new blank `isNew` entry in edit mode)
+- Reset `editingIndex` on dialog close (add to the useEffect cleanup)
 
-- Change `viewMode` type from `'roles' | 'competencies'` to `'roles' | 'library'`
-- Replace the prominent toggle (lines 286-303) with a discrete right-aligned text toggle: "Meus Cargos" | "Biblioteca"
-- Remove "Por Competência" view (lines 410-441) — replace with "Biblioteca" view showing competencies with usage count badges and edit/delete buttons
-- Add query for library view: fetch competencies with `role_competencies(count)` and `competency_level_descriptions(count)` aggregations
-- Header button: always show "Adicionar Cargo" (remove conditional for "Adicionar Competência")
-- Remove `showAIDialog` state and `AICompetencyDialog` render (AI generation now lives inside CreateJobRoleDialog)
-- Pass `workspaceId` to `CreateJobRoleDialog`
-- Keep: EditCompetencyModal, AdjustCompetencyDialog, AlertDialog for delete
+### Fix 3: Connect "Importar Template" to gallery dialog
 
-**4. No database changes needed**
+**`src/components/competency/CreateJobRoleDialog.tsx`**:
+- Add `onOpenTemplateGallery?: () => void` prop
+- In `handleSourceChoice` (line 119-121), replace the toast with: close dialog + call `onOpenTemplateGallery?.()`
 
-### Technical Notes
-- AI-generated competencies in the dialog need to be inserted into `competencies` table first (with proper `framework_id` and `order`), then linked via `role_competencies` — reuse the same pattern from `AICompetencyDialog.saveAll`
-- Auto-create framework if `frameworkId` is empty (same logic already exists in AICompetencyDialog)
-- Library view uses standard Supabase query with `select('*, role_competencies(count)')` aggregation syntax: `select('id, name, description, order, is_active, role_competencies(count), competency_level_descriptions(count)')`
+**`src/pages/CompetencyFramework.tsx`**:
+- Add `templateGalleryOpen` state
+- Pass `onOpenTemplateGallery={() => setTemplateGalleryOpen(true)}` to `CreateJobRoleDialog`
+- Render a simple placeholder `Dialog` for the template gallery (title "Galeria de Templates", coming soon message)
+
+### No database changes needed
 
