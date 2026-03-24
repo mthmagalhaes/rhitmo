@@ -25,6 +25,7 @@ interface CreateFormalReviewDialogProps {
   onOpenChange: (open: boolean) => void;
   member: { id: string; name: string; role: string } | null;
   workspaceId: string;
+  onReviewCreated?: (reviewId: string) => void;
 }
 
 export function CreateFormalReviewDialog({
@@ -32,6 +33,7 @@ export function CreateFormalReviewDialog({
   onOpenChange,
   member,
   workspaceId,
+  onReviewCreated,
 }: CreateFormalReviewDialogProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -98,10 +100,11 @@ export function CreateFormalReviewDialog({
       if (error) throw error;
       return review;
     },
-    onSuccess: () => {
+    onSuccess: (review) => {
       queryClient.invalidateQueries({ queryKey: ['performance-reviews'] });
-      toast({ title: 'Avaliação criada! Gerando com IA...' });
+      toast({ title: 'Avaliação criada!' });
       onOpenChange(false);
+      onReviewCreated?.(review.id);
     },
     onError: (error: any) => {
       toast({ title: 'Erro ao criar avaliação', description: error.message, variant: 'destructive' });

@@ -28,6 +28,7 @@ import { Badge } from '@/components/ui/badge';
 import { InviteMemberDialog } from '@/components/InviteMemberDialog';
 import { MeetingRecorder } from '@/components/MeetingRecorder';
 import { CreateFormalReviewDialog } from '@/components/review/CreateFormalReviewDialog';
+import { FormalReviewSheet } from '@/components/review/FormalReviewSheet';
 import React from 'react';
 
 interface WorkStyleData {
@@ -55,6 +56,8 @@ const MemberDetails = () => {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [recorderOpen, setRecorderOpen] = useState(false);
   const [formalReviewOpen, setFormalReviewOpen] = useState(false);
+  const [reviewSheetOpen, setReviewSheetOpen] = useState(false);
+  const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
@@ -802,7 +805,22 @@ const MemberDetails = () => {
         onOpenChange={setFormalReviewOpen}
         member={{ id: member.id, name: member.name, role: member.role }}
         workspaceId={workspace?.id || ''}
+        onReviewCreated={(reviewId) => {
+          setSelectedReviewId(reviewId);
+          setReviewSheetOpen(true);
+        }}
       />
+
+      {selectedReviewId && (
+        <FormalReviewSheet
+          open={reviewSheetOpen}
+          onOpenChange={setReviewSheetOpen}
+          reviewId={selectedReviewId}
+          onSent={() => {
+            queryClient.invalidateQueries({ queryKey: ['performance-reviews'] });
+          }}
+        />
+      )}
     </div>;
 };
 export default MemberDetails;
