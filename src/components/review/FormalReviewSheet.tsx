@@ -326,12 +326,12 @@ export function FormalReviewSheet({
                           </div>
                           <div>
                             <Label className="text-sm mb-2 block">Comentário / Justificativa</Label>
-                            <Textarea
+                            <textarea
                               value={evaluation.comment}
                               onChange={(e) => updateComment(evaluation.competency_id, e.target.value)}
                               placeholder="Adicione evidências ou contexto para esta avaliação..."
                               rows={3}
-                              className="text-sm"
+                              className="flex min-h-[80px] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                             />
                           </div>
                         </CardContent>
