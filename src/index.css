@@ -216,3 +216,86 @@ All colors MUST be HSL.
   border-right: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: 2px 0 16px rgba(0, 0, 0, 0.2);
 }
+
+/* ── Formal Review AI-generated content ── */
+.review-section {
+  margin-bottom: 1.5rem;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: hsl(var(--muted) / 0.3);
+  border-left: 3px solid hsl(var(--primary));
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.section-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.section-title {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin: 0;
+  color: hsl(var(--foreground));
+}
+
+.strength-item,
+.development-item {
+  margin-bottom: 1rem;
+  padding-left: 1rem;
+}
+
+.strength-subtitle,
+.development-subtitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  color: hsl(var(--foreground));
+}
+
+.strength-detail,
+.development-detail {
+  line-height: 1.6;
+  color: hsl(var(--foreground) / 0.9);
+}
+
+.evidence-tag {
+  display: inline-block;
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  padding: 1px 8px;
+  border-radius: 12px;
+  margin-left: 4px;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.next-steps-list {
+  list-style: none;
+  padding-left: 0;
+  margin-top: 0.75rem;
+}
+
+.next-steps-list li {
+  padding-left: 1.5rem;
+  position: relative;
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+}
+
+.next-steps-list li::before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  color: hsl(var(--primary));
+  font-weight: bold;
+}
