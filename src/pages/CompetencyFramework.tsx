@@ -124,7 +124,7 @@ const CompetencyFramework = () => {
         ...c,
         usage_count: c.role_competencies?.[0]?.count || 0,
         level_descriptions_count: c.competency_level_descriptions?.[0]?.count || 0,
-      }));
+      })).filter((c: any) => c.usage_count > 0);
     },
     enabled: viewMode === 'library' && !!data?.frameworkId,
   });
