@@ -260,12 +260,11 @@ export function FormalReviewSheet({
                     Revise e ajuste o texto gerado pela IA. Estrutura sugerida:
                     Pontos fortes • Áreas de desenvolvimento • Próximos passos
                   </p>
-                  <Textarea
-                    value={draftText}
-                    onChange={(e) => setDraftText(e.target.value)}
+                  <RichTextEditor
+                    content={draftText}
+                    onChange={setDraftText}
                     placeholder="Digite a avaliação geral do liderado no período..."
-                    rows={20}
-                    className="font-sans text-sm leading-relaxed"
+                    minHeight="400px"
                   />
                 </div>
               </div>
