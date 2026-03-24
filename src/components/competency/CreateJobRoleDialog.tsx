@@ -56,12 +56,12 @@ export function CreateJobRoleDialog({ open, onOpenChange, frameworkId, workspace
     queryFn: async () => {
       const { data, error } = await supabase
         .from('competencies')
-        .select('id, name, description')
+        .select('id, name, description, role_competencies(count)')
         .eq('framework_id', frameworkId)
         .eq('is_active', true)
         .order('order');
       if (error) throw error;
-      return data;
+      return (data || []).filter((c: any) => (c.role_competencies?.[0]?.count || 0) > 0);
     },
     enabled: open && !!frameworkId,
   });
