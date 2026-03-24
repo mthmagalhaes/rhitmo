@@ -163,52 +163,67 @@ ${GUARDRAILS_PROMPT}
 Gerar um RASCUNHO de avaliação formal de desempenho para **${memberName}** (${member.role || "cargo não definido"}).
 Período: ${periodLabel}.
 
-## FORMATO DE SAÍDA: HTML PURO
+## FORMATO DE SAÍDA: HTML COM CLASSES SEMÂNTICAS
 
-Use APENAS tags HTML simples:
-- <h2> para títulos de seção
-- <h3> para subtítulos
-- <p> para parágrafos
-- <strong> para negrito
-- <em> para itálico
-- <ul> e <li> para listas
-- <ol> e <li> para listas ordenadas
+Gere HTML estruturado usando EXATAMENTE este formato. Use as classes CSS indicadas — elas serão estilizadas automaticamente.
 
-NÃO use:
-- Markdown (##, **, -, etc.)
-- Blocos de código
-- Tags complexas (div, span, class, style)
-- Emojis nos títulos
+### ESTRUTURA OBRIGATÓRIA (copie exatamente):
 
-## ESTRUTURA OBRIGATÓRIA
+<div class="review-section">
+  <div class="section-header">
+    <span class="section-icon">📊</span>
+    <h2 class="section-title">Resumo Executivo</h2>
+  </div>
+  <p>Visão geral do período em 2-3 frases.</p>
+</div>
 
-<h2>Resumo Executivo</h2>
-<p>Visão geral do período (2-3 frases)</p>
+<div class="review-section">
+  <div class="section-header">
+    <span class="section-icon">⭐</span>
+    <h2 class="section-title">Pontos Fortes</h2>
+  </div>
+  <div class="strength-item">
+    <h3 class="strength-subtitle">Nome do Ponto Forte</h3>
+    <p class="strength-detail">Descrição com evidência. <span class="evidence-tag">(Anotação de 12/mar)</span></p>
+  </div>
+  <!-- Repetir strength-item para cada ponto forte (2-4 itens) -->
+</div>
 
-<h2>Pontos Fortes</h2>
-<ul>
-<li><strong>Ponto:</strong> Descrição com evidência (ref: data)</li>
-</ul>
+<div class="review-section">
+  <div class="section-header">
+    <span class="section-icon">🎯</span>
+    <h2 class="section-title">Áreas de Desenvolvimento</h2>
+  </div>
+  <div class="development-item">
+    <h3 class="development-subtitle">Nome da Área</h3>
+    <p class="development-detail">Descrição construtiva com evidência. <span class="evidence-tag">(1:1 de 15/fev)</span></p>
+  </div>
+  <!-- Repetir development-item para cada área (1-3 itens) -->
+</div>
 
-<h2>Áreas de Desenvolvimento</h2>
-<ul>
-<li><strong>Área:</strong> Descrição construtiva com evidência</li>
-</ul>
-
-<h2>Próximos Passos</h2>
-<ol>
-<li><strong>Ação:</strong> Descrição concreta e mensurável</li>
-</ol>
+<div class="review-section">
+  <div class="section-header">
+    <span class="section-icon">🚀</span>
+    <h2 class="section-title">Próximos Passos</h2>
+  </div>
+  <ul class="next-steps-list">
+    <li>Ação concreta e mensurável 1</li>
+    <li>Ação concreta e mensurável 2</li>
+    <li>Ação concreta e mensurável 3</li>
+  </ul>
+</div>
 
 ## REGRAS CRÍTICAS
 
-1. **Anti-Alucinação**: Use APENAS as evidências fornecidas. Cite a fonte: "(Anotação de 12/mar)" ou "(1:1 de 15/fev)".
+1. **Anti-Alucinação**: Use APENAS as evidências fornecidas. Cite a fonte com <span class="evidence-tag">(Anotação de 12/mar)</span> ou <span class="evidence-tag">(1:1 de 15/fev)</span>.
 2. **NÃO invente** fatos, comportamentos ou situações não documentados.
 3. **Se houver poucas evidências**, seja honesto: "Com base nas evidências disponíveis..."
 4. **Tom**: Profissional, construtivo, respeitoso.
 5. **Tamanho**: 200-400 palavras no total.
 6. **Foco em ${memberName}**: Analise APENAS ações de ${firstName}. Ignore ações de outras pessoas.
-7. Liste 2-4 pontos fortes e 1-3 áreas de desenvolvimento.`;
+7. Liste 2-4 pontos fortes e 1-3 áreas de desenvolvimento.
+8. **NÃO use Markdown** (##, **, -, etc.). Use APENAS o HTML com classes indicado acima.
+9. **NÃO use blocos de código**. Retorne HTML puro.`;
 
     const userPrompt = `EVIDÊNCIAS DO PERÍODO (${totalEvidence} no total):
 
