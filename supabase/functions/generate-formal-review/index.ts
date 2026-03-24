@@ -197,7 +197,7 @@ Gere HTML estruturado usando EXATAMENTE este formato. Use as classes CSS indicad
 
 <div class="review-section">
   <div class="section-header">
-    <span class="section-icon">🎯</span>
+    <span class="section-icon">{{ICON_DEVELOPMENT}}</span>
     <h2 class="section-title">Áreas de Desenvolvimento</h2>
   </div>
   <div class="development-item">
