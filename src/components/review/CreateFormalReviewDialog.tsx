@@ -33,6 +33,7 @@ export function CreateFormalReviewDialog({
   onOpenChange,
   member,
   workspaceId,
+  onReviewCreated,
 }: CreateFormalReviewDialogProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
