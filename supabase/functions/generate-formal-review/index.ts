@@ -1,0 +1,319 @@
+import { createClient } from "jsr:@supabase/supabase-js@2";
+import { RHITMO_IDENTITY, GUARDRAILS_PROMPT } from "../_shared/rhitmo-constitution.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    // Auth
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseAuth = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: userData, error: authError } = await supabaseAuth.auth.getUser(token);
+    if (authError || !userData?.user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { reviewId } = await req.json();
+    if (!reviewId) {
+      return new Response(JSON.stringify({ error: "reviewId é obrigatório" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Service role client for data access
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    // Fetch review with member info
+    const { data: review, error: reviewError } = await supabase
+      .from("performance_reviews")
+      .select("*, team_members!performance_reviews_member_id_fkey(id, name, role)")
+      .eq("id", reviewId)
+      .single();
+
+    if (reviewError || !review) {
+      throw new Error("Avaliação não encontrada");
+    }
+
+    const member = review.team_members;
+    const periodStart = review.period_start;
+    const periodEnd = review.period_end;
+
+    console.log(`Generating formal review for ${member.name}, period: ${periodStart} - ${periodEnd}`);
+
+    // Fetch ALL feedbacks in period (full content, not preview)
+    const { data: feedbacks } = await supabase
+      .from("feedbacks")
+      .select("id, content, type, sentiment, tags, occurred_at, summary")
+      .eq("member_id", member.id)
+      .gte("occurred_at", periodStart)
+      .lte("occurred_at", periodEnd)
+      .order("occurred_at", { ascending: true });
+
+    // Fetch meeting transcripts in period
+    const { data: meetings } = await supabase
+      .from("meeting_transcripts")
+      .select("id, leader_notes, transcript, extracted_themes, created_at, duration_seconds")
+      .eq("member_id", member.id)
+      .gte("created_at", periodStart)
+      .lte("created_at", periodEnd)
+      .eq("processing_status", "completed")
+      .order("created_at", { ascending: true });
+
+    const feedbackCount = feedbacks?.length || 0;
+    const meetingCount = meetings?.length || 0;
+    const totalEvidence = feedbackCount + meetingCount;
+
+    console.log(`Evidence: ${feedbackCount} feedbacks, ${meetingCount} meetings`);
+
+    if (totalEvidence === 0) {
+      // Update with empty message
+      await supabase
+        .from("performance_reviews")
+        .update({
+          content: "<p>Nenhuma evidência encontrada no período selecionado. Adicione anotações ou registre 1:1s para gerar uma avaliação com IA.</p>",
+          evidence_count: 0,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", reviewId);
+
+      return new Response(
+        JSON.stringify({ success: true, content: "", evidence_count: 0 }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Build evidence context
+    let evidenceText = "";
+
+    if (feedbacks && feedbacks.length > 0) {
+      evidenceText += "\n## ANOTAÇÕES E FEEDBACKS DO LÍDER:\n\n";
+      feedbacks.forEach((f, idx) => {
+        const date = new Date(f.occurred_at).toLocaleDateString("pt-BR");
+        evidenceText += `[Anotação ${idx + 1} - ${date}] Tipo: ${f.type}\n`;
+        evidenceText += `${f.content}\n`;
+        if (f.tags && f.tags.length > 0) {
+          evidenceText += `Tags: ${f.tags.join(", ")}\n`;
+        }
+        if (f.summary) {
+          evidenceText += `Resumo: ${f.summary}\n`;
+        }
+        evidenceText += "\n";
+      });
+    }
+
+    if (meetings && meetings.length > 0) {
+      evidenceText += "\n## REUNIÕES 1:1:\n\n";
+      meetings.forEach((m, idx) => {
+        const date = new Date(m.created_at).toLocaleDateString("pt-BR");
+        evidenceText += `[1:1 ${idx + 1} - ${date}]\n`;
+        if (m.leader_notes) {
+          evidenceText += `Notas do líder: ${m.leader_notes}\n`;
+        }
+        if (m.transcript) {
+          evidenceText += `Transcrição: ${m.transcript.substring(0, 500)}\n`;
+        }
+        if (m.extracted_themes && m.extracted_themes.length > 0) {
+          evidenceText += `Temas: ${m.extracted_themes.join(", ")}\n`;
+        }
+        evidenceText += "\n";
+      });
+    }
+
+    const memberName = member.name;
+    const firstName = memberName.split(" ")[0];
+    const periodLabel = `de ${new Date(periodStart).toLocaleDateString("pt-BR")} a ${new Date(periodEnd).toLocaleDateString("pt-BR")}`;
+
+    const systemPrompt = `# RHITMO - GERADOR DE AVALIAÇÃO FORMAL DE DESEMPENHO
+
+## IDENTIDADE
+${RHITMO_IDENTITY}
+
+## REGRAS DE OURO
+${GUARDRAILS_PROMPT}
+
+## MISSÃO
+Gerar um RASCUNHO de avaliação formal de desempenho para **${memberName}** (${member.role || "cargo não definido"}).
+Período: ${periodLabel}.
+
+## FORMATO DE SAÍDA: HTML PURO
+
+Use APENAS tags HTML simples:
+- <h2> para títulos de seção
+- <h3> para subtítulos
+- <p> para parágrafos
+- <strong> para negrito
+- <em> para itálico
+- <ul> e <li> para listas
+- <ol> e <li> para listas ordenadas
+
+NÃO use:
+- Markdown (##, **, -, etc.)
+- Blocos de código
+- Tags complexas (div, span, class, style)
+- Emojis nos títulos
+
+## ESTRUTURA OBRIGATÓRIA
+
+<h2>Resumo Executivo</h2>
+<p>Visão geral do período (2-3 frases)</p>
+
+<h2>Pontos Fortes</h2>
+<ul>
+<li><strong>Ponto:</strong> Descrição com evidência (ref: data)</li>
+</ul>
+
+<h2>Áreas de Desenvolvimento</h2>
+<ul>
+<li><strong>Área:</strong> Descrição construtiva com evidência</li>
+</ul>
+
+<h2>Próximos Passos</h2>
+<ol>
+<li><strong>Ação:</strong> Descrição concreta e mensurável</li>
+</ol>
+
+## REGRAS CRÍTICAS
+
+1. **Anti-Alucinação**: Use APENAS as evidências fornecidas. Cite a fonte: "(Anotação de 12/mar)" ou "(1:1 de 15/fev)".
+2. **NÃO invente** fatos, comportamentos ou situações não documentados.
+3. **Se houver poucas evidências**, seja honesto: "Com base nas evidências disponíveis..."
+4. **Tom**: Profissional, construtivo, respeitoso.
+5. **Tamanho**: 200-400 palavras no total.
+6. **Foco em ${memberName}**: Analise APENAS ações de ${firstName}. Ignore ações de outras pessoas.
+7. Liste 2-4 pontos fortes e 1-3 áreas de desenvolvimento.`;
+
+    const userPrompt = `EVIDÊNCIAS DO PERÍODO (${totalEvidence} no total):
+
+${evidenceText}
+
+Gere a avaliação formal de desempenho de ${memberName} em HTML puro, seguindo a estrutura obrigatória.`;
+
+    // Call Lovable AI Gateway
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY não configurada");
+    }
+
+    console.log("Calling Lovable AI...");
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000);
+
+    let aiResponse;
+    try {
+      aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+        }),
+        signal: controller.signal,
+      });
+    } catch (fetchError: unknown) {
+      clearTimeout(timeoutId);
+      const err = fetchError as { name?: string };
+      if (err.name === "AbortError") {
+        return new Response(
+          JSON.stringify({ error: "Timeout na geração. Tente novamente." }),
+          { status: 504, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      throw fetchError;
+    }
+
+    clearTimeout(timeoutId);
+
+    if (!aiResponse.ok) {
+      const errorText = await aiResponse.text();
+      console.error("AI error:", aiResponse.status, errorText);
+
+      if (aiResponse.status === 429) {
+        return new Response(
+          JSON.stringify({ error: "Limite de requisições excedido. Tente novamente." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (aiResponse.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "Créditos de IA esgotados." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      throw new Error(`AI error: ${aiResponse.status}`);
+    }
+
+    const aiData = await aiResponse.json();
+    const generatedContent = aiData.choices?.[0]?.message?.content;
+
+    if (!generatedContent) {
+      throw new Error("IA não retornou conteúdo");
+    }
+
+    console.log("Review generated successfully");
+
+    // Save to database
+    const { error: updateError } = await supabase
+      .from("performance_reviews")
+      .update({
+        content: generatedContent,
+        evidence_count: totalEvidence,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", reviewId);
+
+    if (updateError) {
+      console.error("DB update error:", updateError);
+      throw updateError;
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        content: generatedContent,
+        evidence_count: totalEvidence,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Error in generate-formal-review:", error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : "Erro desconhecido" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
