@@ -796,6 +796,13 @@ const MemberDetails = () => {
         memberId={member.id}
         memberName={member.name}
       />
+
+      <CreateFormalReviewDialog
+        open={formalReviewOpen}
+        onOpenChange={setFormalReviewOpen}
+        member={{ id: member.id, name: member.name, role: member.role }}
+        workspaceId={workspace?.id || ''}
+      />
     </div>;
 };
 export default MemberDetails;
