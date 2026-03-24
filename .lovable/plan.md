@@ -1,41 +1,50 @@
 
 
-## Plan: Fix 3 Competency Flow Issues
+## Plan: Fix 2 Issues in Job Role Creation Flow
 
-### Fix 1: Hide orphan competencies in Library
+### Analysis
 
-**`src/pages/CompetencyFramework.tsx`** — Filter library query to only show competencies with `usage_count > 0`.
+After reviewing `CreateJobRoleDialog.tsx`:
+- **Fix 1 (Voltar button)**: Already exists at line 532 and is outside any source-conditional block. It's visible for both AI and manual modes. This is already working correctly — no change needed.
+- **Fix 2 (Orphan competencies)**: The `availableCompetencies` query (lines 54-67) fetches ALL active competencies without filtering by usage count. This shows old orphan competencies in manual mode.
 
-In the `libraryCompetencies` query (line 120), add a filter after mapping:
+### Changes
+
+**`src/components/competency/CreateJobRoleDialog.tsx`** — Filter manual mode competencies by usage
+
+Update the query at lines 54-67 to include `role_competencies(count)` and filter results:
+
 ```typescript
-return (comps || []).map(...)
-  .filter((c: any) => c.usage_count > 0);
+const { data: availableCompetencies } = useQuery({
+  queryKey: ['competencies-for-role', frameworkId],
+  queryFn: async () => {
+    const { data, error } = await supabase
+      .from('competencies')
+      .select('id, name, description, role_competencies(count)')
+      .eq('framework_id', frameworkId)
+      .eq('is_active', true)
+      .order('order');
+    if (error) throw error;
+    return (data || []).filter(c => (c.role_competencies?.[0]?.count || 0) > 0);
+  },
+  enabled: open && !!frameworkId,
+});
 ```
 
-Update empty state text to: "Nenhuma competência em uso ainda. Crie cargos para popular sua biblioteca."
+Also update the manual mode section (lines 398-401) to show a proper empty state when no competencies are available:
 
-### Fix 2: Allow editing AI-generated competencies before saving
+```tsx
+<Separator />
+{availableCompetencies && availableCompetencies.length > 0 ? (
+  <p className="text-xs font-medium text-muted-foreground">Ou selecione competências existentes</p>
+) : (
+  <div className="text-center py-4">
+    <p className="text-xs text-muted-foreground">
+      Nenhuma competência disponível ainda. Crie sua primeira competência acima.
+    </p>
+  </div>
+)}
+```
 
-**`src/components/competency/CreateJobRoleDialog.tsx`** — Add inline editing for AI-generated competency cards.
-
-- Add state: `editingIndex: number | null`
-- In the AI competencies list (lines 434-449), replace read-only cards with editable cards:
-  - Each card gets an Edit (Pencil) button alongside the existing X (remove) button
-  - When editing: show Input for name + Textarea for description inline, with a "OK" button to confirm
-  - When not editing: show current name/description (existing behavior) + Edit button
-- Add "+ Adicionar Competência" button above the AI list (creates a new blank `isNew` entry in edit mode)
-- Reset `editingIndex` on dialog close (add to the useEffect cleanup)
-
-### Fix 3: Connect "Importar Template" to gallery dialog
-
-**`src/components/competency/CreateJobRoleDialog.tsx`**:
-- Add `onOpenTemplateGallery?: () => void` prop
-- In `handleSourceChoice` (line 119-121), replace the toast with: close dialog + call `onOpenTemplateGallery?.()`
-
-**`src/pages/CompetencyFramework.tsx`**:
-- Add `templateGalleryOpen` state
-- Pass `onOpenTemplateGallery={() => setTemplateGalleryOpen(true)}` to `CreateJobRoleDialog`
-- Render a simple placeholder `Dialog` for the template gallery (title "Galeria de Templates", coming soon message)
-
-### No database changes needed
+### Single file change, no database changes needed
 
