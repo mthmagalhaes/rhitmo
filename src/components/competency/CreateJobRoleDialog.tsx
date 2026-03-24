@@ -36,7 +36,7 @@ interface CreateJobRoleDialogProps {
   onOpenTemplateGallery?: () => void;
 }
 
-export function CreateJobRoleDialog({ open, onOpenChange, frameworkId, workspaceId }: CreateJobRoleDialogProps) {
+export function CreateJobRoleDialog({ open, onOpenChange, frameworkId, workspaceId, onOpenTemplateGallery }: CreateJobRoleDialogProps) {
   const queryClient = useQueryClient();
   const [step, setStep] = useState<'details' | 'source' | 'competencies'>('details');
   const [title, setTitle] = useState('');
