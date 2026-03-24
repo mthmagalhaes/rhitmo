@@ -409,6 +409,10 @@ const MemberDetails = () => {
               <Sparkles className="h-4 w-4" />
               <span className="hidden sm:inline">Mentor Chat</span>
             </Button>
+            <Button variant="outline" onClick={() => setFormalReviewOpen(true)} className="gap-2">
+              <FileText className="h-4 w-4" />
+              <span className="hidden sm:inline">Avaliação Formal</span>
+            </Button>
             <Button onClick={() => setDialogOpen(true)} className="gap-2 px-4">
               <PenSquare className="h-4 w-4" />
               <span className="hidden sm:inline">Nova Anotação</span>
