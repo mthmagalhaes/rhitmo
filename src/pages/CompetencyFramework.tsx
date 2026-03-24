@@ -11,7 +11,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Briefcase, BookOpen, Pencil, Trash2, Sparkles } from 'lucide-react';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
+import { Plus, Briefcase, BookOpen, Pencil, Trash2, Sparkles, Building2 } from 'lucide-react';
 import { EditCompetencyModal, type CompetencyFormData } from '@/components/competency/EditCompetencyModal';
 import { CreateJobRoleDialog } from '@/components/competency/CreateJobRoleDialog';
 import { AdjustCompetencyDialog } from '@/components/competency/AdjustCompetencyDialog';
