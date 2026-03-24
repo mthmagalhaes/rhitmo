@@ -347,7 +347,7 @@ const CompetencyFramework = () => {
             <Card className="rounded-2xl">
               <CardContent className="py-12 text-center">
                 <p className="text-sm text-muted-foreground">
-                  Nenhuma competência criada ainda. Crie cargos para popular sua biblioteca.
+                  Nenhuma competência em uso ainda. Crie cargos para popular sua biblioteca.
                 </p>
               </CardContent>
             </Card>
