@@ -169,6 +169,11 @@ ${GUARDRAILS_PROMPT}
 Gerar um RASCUNHO de avaliação formal de desempenho para **${memberName}** (${member.role || "cargo não definido"}).
 Período: ${periodLabel}.
 
+## CRÍTICO - FORMATO DE OUTPUT
+- Retorne APENAS HTML puro, sem explicações
+- NÃO use code fences (\`\`\`html ou \`\`\`)
+- Comece DIRETAMENTE com <div class="review-section">
+
 ## FORMATO DE SAÍDA: HTML COM CLASSES SEMÂNTICAS
 
 Gere HTML estruturado usando EXATAMENTE este formato. Use as classes CSS indicadas — elas serão estilizadas automaticamente.
@@ -311,6 +316,13 @@ Gere a avaliação formal de desempenho de ${memberName} em HTML puro, seguindo 
       .replace(/\{\{ICON_STRENGTHS\}\}/g, ICON_STRENGTHS)
       .replace(/\{\{ICON_DEVELOPMENT\}\}/g, ICON_DEVELOPMENT)
       .replace(/\{\{ICON_NEXT_STEPS\}\}/g, ICON_NEXT_STEPS);
+
+    // Strip Markdown code fences
+    generatedContent = generatedContent
+      .replace(/^```html\n?/gm, '')
+      .replace(/^```[\w]*\n?/gm, '')
+      .replace(/\n?```$/gm, '')
+      .trim();
 
     console.log("Review generated successfully");
 
