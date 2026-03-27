@@ -236,7 +236,7 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
     queryFn: async () => {
       const { data, error } = await supabase
         .from('performance_reviews')
-        .select('id, title, content, period_type, period_start, period_end, created_at, member_viewed_at')
+        .select('id, title, content, period_type, period_start, period_end, created_at, member_viewed_at, acknowledged_at, sent_at')
         .eq('member_id', linkedMember.id)
         .eq('shared_with_member', true)
         .order('created_at', { ascending: false });

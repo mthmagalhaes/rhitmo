@@ -156,6 +156,7 @@ export function FormalReviewSheet({
           content: draftText,
           competency_evaluations: competencyEvaluations as any,
           shared_with_member: true,
+          sent_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
         .eq('id', reviewId);
