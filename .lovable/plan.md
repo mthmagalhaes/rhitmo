@@ -1,40 +1,51 @@
 
 
-## Plan: Read-Only Review View Page for Direct Reports
+## Plan: Email Notifications for Review Sharing & Acknowledgment
 
 ### Summary
-Create a `/review/:reviewId` route page where direct reports can view their shared performance review in read-only Tiptap, add comments, and acknowledge reading.
+Update the existing `notify-review-shared` edge function to accept `reviewId` and fetch data server-side, create a new `notify-review-acknowledged` edge function, and wire both into the frontend flows.
 
 ### Changes
 
-**1. New `src/pages/DirectReportReviewView.tsx`**
+**1. Update `supabase/functions/notify-review-shared/index.ts`**
 
-Full page component:
-- `useParams()` to get `reviewId`
-- Fetch review from `performance_reviews` (RLS ensures only shared reviews for linked member are returned)
-- Fetch member info from `team_members` where `linked_user_id = auth.uid()`
-- Tiptap editor in read-only mode (`editable: false`) with the review CSS classes
-- Status badge: Enviada (blue) or Confirmada (green)
-- `ReviewCommentsSection` component (already exists)
-- "Confirmar Leitura" button → mutation to set `acknowledged_at = now()`
-- After acknowledging, show confirmation timestamp instead of button
-- Loading/error/not-found states
-- Back button to `/dashboard`
+Refactor to accept `{ reviewId }` instead of pre-built fields. Use service role client to:
+- Fetch review + member info (name, email) + manager info (name) from DB
+- Build review link: `https://rhitmo.lovable.app/review/{reviewId}`
+- Send via Resend with updated email template including direct link CTA
+- Keep existing Rhitmo branding (purple `#7C3AED`)
 
-**2. Update `src/App.tsx`**
+**2. Create `supabase/functions/notify-review-acknowledged/index.ts`**
 
-Add route:
+New edge function accepting `{ reviewId }`:
+- Use service role to fetch review, member name, manager email/name
+- Send email to manager: "[Member] confirmou leitura da avaliação"
+- CTA links to member details page
+- Same Rhitmo branding template
+
+**3. Update `src/components/review/FormalReviewSheet.tsx`**
+
+In `sendMutation.onSuccess`, fire-and-forget call to notify edge function:
+```typescript
+supabase.functions.invoke('notify-review-shared', { body: { reviewId } })
+  .catch(err => console.error('Email notification failed:', err));
 ```
-<Route path="/review/:reviewId" element={<DirectReportReviewView />} />
-```
-Place before the catch-all `*` route. No guard needed — RLS handles access control.
 
-### No database changes needed
-All tables and RLS policies already exist (`performance_reviews` with `Linked members can view shared reviews` SELECT policy, `member_can_acknowledge_review` UPDATE policy, `review_comments` with member access policies).
+**4. Update `src/pages/DirectReportReviewView.tsx`**
+
+In `acknowledgeMutation.onSuccess`, fire-and-forget call:
+```typescript
+supabase.functions.invoke('notify-review-acknowledged', { body: { reviewId } })
+  .catch(err => console.error('Email notification failed:', err));
+```
+
+**5. Update `supabase/config.toml`**
+
+Add entries for both functions with `verify_jwt = false` (service role handles auth internally). `notify-review-shared` entry already exists implicitly — will keep consistent.
 
 ### Technical Notes
-- Tiptap is initialized with `editable: false` and `content` set from the review HTML — no toolbar rendered
-- The existing `ReviewCommentsSection` component is reused as-is
-- Review CSS classes (`.review-section`, `.section-header`, etc.) from `index.css` will style the content automatically via `.ProseMirror` / `.prose`
-- The page imports `useEditor` and `EditorContent` directly from `@tiptap/react` for the read-only view (lighter than `RichTextEditor` which includes toolbar)
+- Both functions use `SUPABASE_SERVICE_ROLE_KEY` to bypass RLS and fetch review + user data
+- `RESEND_API_KEY` already configured in secrets
+- Email failures are non-blocking (fire-and-forget) — UI flow continues regardless
+- No database changes needed
 
