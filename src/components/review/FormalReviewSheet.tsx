@@ -151,7 +151,7 @@ export function FormalReviewSheet({
     },
   });
 
-  // Send to member
+  // Send/share to member
   const sendMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase
@@ -169,12 +169,35 @@ export function FormalReviewSheet({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['formal-review', reviewId] });
       queryClient.invalidateQueries({ queryKey: ['performance-reviews'] });
-      toast({ title: 'Avaliação enviada ao liderado!' });
+      toast({ title: `Avaliação compartilhada com ${(review as any)?.team_members?.name || 'liderado'}!` });
+      setShareDialogOpen(false);
       onSent?.();
-      onOpenChange(false);
     },
     onError: (error: any) => {
-      toast({ title: 'Erro ao enviar', description: error.message, variant: 'destructive' });
+      toast({ title: 'Erro ao compartilhar', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // Unshare mutation
+  const unshareMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from('performance_reviews')
+        .update({
+          shared_with_member: false,
+          sent_at: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', reviewId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['formal-review', reviewId] });
+      queryClient.invalidateQueries({ queryKey: ['performance-reviews'] });
+      toast({ title: 'Compartilhamento removido' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Erro ao remover compartilhamento', description: error.message, variant: 'destructive' });
     },
   });
 
