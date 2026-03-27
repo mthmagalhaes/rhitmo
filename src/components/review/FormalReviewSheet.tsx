@@ -24,7 +24,10 @@ import {
   Send,
   Calendar,
   User,
+  Share2,
+  CheckCircle2,
 } from 'lucide-react';
+import { ShareReviewDialog } from './ShareReviewDialog';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -62,6 +65,7 @@ export function FormalReviewSheet({
   const [draftText, setDraftText] = useState('');
   const [competencyEvaluations, setCompetencyEvaluations] = useState<CompetencyEvaluation[]>([]);
   const [activeTab, setActiveTab] = useState('draft');
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
   // Fetch review data
   const { data: review, isLoading } = useQuery({
@@ -147,7 +151,7 @@ export function FormalReviewSheet({
     },
   });
 
-  // Send to member
+  // Send/share to member
   const sendMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase
@@ -165,12 +169,35 @@ export function FormalReviewSheet({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['formal-review', reviewId] });
       queryClient.invalidateQueries({ queryKey: ['performance-reviews'] });
-      toast({ title: 'Avaliação enviada ao liderado!' });
+      toast({ title: `Avaliação compartilhada com ${(review as any)?.team_members?.name || 'liderado'}!` });
+      setShareDialogOpen(false);
       onSent?.();
-      onOpenChange(false);
     },
     onError: (error: any) => {
-      toast({ title: 'Erro ao enviar', description: error.message, variant: 'destructive' });
+      toast({ title: 'Erro ao compartilhar', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // Unshare mutation
+  const unshareMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from('performance_reviews')
+        .update({
+          shared_with_member: false,
+          sent_at: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', reviewId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['formal-review', reviewId] });
+      queryClient.invalidateQueries({ queryKey: ['performance-reviews'] });
+      toast({ title: 'Compartilhamento removido' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Erro ao remover compartilhamento', description: error.message, variant: 'destructive' });
     },
   });
 
@@ -228,18 +255,26 @@ export function FormalReviewSheet({
                 )}
               </div>
             </div>
-            {review.shared_with_member && (
-              <div className="flex flex-col items-end gap-1">
-                <Badge className="bg-green-500/10 text-green-700 dark:text-green-400 border-0">
+            <div className="flex flex-col items-end gap-1">
+              {review.acknowledged_at && (
+                <Badge className="gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800">
+                  <CheckCircle2 className="w-3 h-3" />
+                  Confirmada
+                </Badge>
+              )}
+              {review.shared_with_member && !review.acknowledged_at && (
+                <Badge className="gap-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800">
+                  <Send className="w-3 h-3" />
                   Enviada
                 </Badge>
-                {(review as any).acknowledged_at && (
-                  <span className="text-[10px] text-green-600 dark:text-green-400">
-                    Leitura confirmada
-                  </span>
-                )}
-              </div>
-            )}
+              )}
+              {!review.shared_with_member && (
+                <Badge variant="secondary" className="gap-1">
+                  <FileText className="w-3 h-3" />
+                  Rascunho
+                </Badge>
+              )}
+            </div>
           </div>
         </SheetHeader>
 
@@ -371,24 +406,36 @@ export function FormalReviewSheet({
                 )}
                 Salvar Rascunho
               </Button>
-              <Button
-                onClick={() => sendMutation.mutate()}
-                disabled={sendMutation.isPending || !!review.shared_with_member}
-              >
-                {sendMutation.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : review.shared_with_member ? (
-                  'Já Enviada'
-                ) : (
-                  <>
-                    <Send className="mr-2 h-4 w-4" />
-                    Enviar ao Liderado
-                  </>
-                )}
-              </Button>
+              {!review.shared_with_member ? (
+                <Button onClick={() => setShareDialogOpen(true)}>
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Compartilhar com Liderado
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => unshareMutation.mutate()}
+                  disabled={unshareMutation.isPending}
+                >
+                  {unshareMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Share2 className="mr-2 h-4 w-4" />
+                  )}
+                  Remover Compartilhamento
+                </Button>
+              )}
             </div>
           </div>
         </SheetFooter>
+
+        <ShareReviewDialog
+          open={shareDialogOpen}
+          onOpenChange={setShareDialogOpen}
+          memberName={memberData?.name || ''}
+          onConfirm={() => sendMutation.mutate()}
+          isPending={sendMutation.isPending}
+        />
       </SheetContent>
     </Sheet>
   );
