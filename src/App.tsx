@@ -89,6 +89,7 @@ const App = () => (
             {/* Rotas públicas (sem sidebar) */}
             <Route path="/sync/:memberId" element={<RhitmoSync />} />
             <Route path="/invite" element={<Invite />} />
+            <Route path="/review/:reviewId" element={<DirectReportReviewView />} />
             <Route path="/terms-of-service" element={<TermsOfService />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             
