@@ -65,6 +65,7 @@ export function FormalReviewSheet({
   const [draftText, setDraftText] = useState('');
   const [competencyEvaluations, setCompetencyEvaluations] = useState<CompetencyEvaluation[]>([]);
   const [activeTab, setActiveTab] = useState('draft');
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
   // Fetch review data
   const { data: review, isLoading } = useQuery({
