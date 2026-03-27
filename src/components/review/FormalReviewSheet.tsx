@@ -255,18 +255,26 @@ export function FormalReviewSheet({
                 )}
               </div>
             </div>
-            {review.shared_with_member && (
-              <div className="flex flex-col items-end gap-1">
-                <Badge className="bg-green-500/10 text-green-700 dark:text-green-400 border-0">
+            <div className="flex flex-col items-end gap-1">
+              {review.acknowledged_at && (
+                <Badge className="gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800">
+                  <CheckCircle2 className="w-3 h-3" />
+                  Confirmada
+                </Badge>
+              )}
+              {review.shared_with_member && !review.acknowledged_at && (
+                <Badge className="gap-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800">
+                  <Send className="w-3 h-3" />
                   Enviada
                 </Badge>
-                {(review as any).acknowledged_at && (
-                  <span className="text-[10px] text-green-600 dark:text-green-400">
-                    Leitura confirmada
-                  </span>
-                )}
-              </div>
-            )}
+              )}
+              {!review.shared_with_member && (
+                <Badge variant="secondary" className="gap-1">
+                  <FileText className="w-3 h-3" />
+                  Rascunho
+                </Badge>
+              )}
+            </div>
           </div>
         </SheetHeader>
 
