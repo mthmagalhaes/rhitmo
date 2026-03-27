@@ -24,7 +24,10 @@ import {
   Send,
   Calendar,
   User,
+  Share2,
+  CheckCircle2,
 } from 'lucide-react';
+import { ShareReviewDialog } from './ShareReviewDialog';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
