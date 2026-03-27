@@ -20,6 +20,7 @@ import ReactMarkdown from 'react-markdown';
 import { MentorChat } from '@/components/MentorChat';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
+import { ReviewCommentsSection } from '@/components/review/ReviewCommentsSection';
 
 interface LinkedMemberData {
   id: string;
@@ -714,7 +715,17 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
                               {new Date(review.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
                             </p>
                           </div>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                          <div className="flex items-center gap-2">
+                            {review.acknowledged_at ? (
+                              <Badge className="bg-green-500/10 text-green-700 dark:text-green-400 border-0 text-[10px]">
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                                Confirmada
+                              </Badge>
+                            ) : !review.member_viewed_at ? (
+                              <Badge className="bg-primary/10 text-primary border-0 text-[10px]">Nova</Badge>
+                            ) : null}
+                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                          </div>
                         </div>
                       </Card>
                     ))}
