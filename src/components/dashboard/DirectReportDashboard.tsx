@@ -20,7 +20,7 @@ import ReactMarkdown from 'react-markdown';
 import { MentorChat } from '@/components/MentorChat';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
-import { ReviewCommentsSection } from '@/components/review/ReviewCommentsSection';
+
 
 interface LinkedMemberData {
   id: string;
@@ -752,13 +752,6 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
                     return <ReactMarkdown>{filtered}</ReactMarkdown>;
                   })()}
                 </div>
-
-                {/* Comments section */}
-                {selectedReview && (
-                  <div className="mt-6 pt-4 border-t border-border">
-                    <ReviewCommentsSection reviewId={selectedReview.id} />
-                  </div>
-                )}
 
                 <div className="flex items-center justify-between gap-2 mt-6 pt-4 border-t border-border">
                   <div className="flex gap-2">

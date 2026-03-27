@@ -8,8 +8,6 @@ import Highlight from '@tiptap/extension-highlight';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { ReviewCommentsSection } from '@/components/review/ReviewCommentsSection';
 import { ArrowLeft, Send, CheckCircle2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -126,10 +124,6 @@ export default function DirectReportReviewView() {
           <div className="prose prose-sm max-w-none dark:prose-invert">
             <EditorContent editor={editor} />
           </div>
-
-          <Separator />
-
-          <ReviewCommentsSection reviewId={reviewId!} />
 
           {!review.acknowledged_at ? (
             <div className="flex justify-center pt-4">
