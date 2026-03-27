@@ -156,6 +156,7 @@ export function FormalReviewSheet({
           content: draftText,
           competency_evaluations: competencyEvaluations as any,
           shared_with_member: true,
+          sent_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
         .eq('id', reviewId);
@@ -228,9 +229,16 @@ export function FormalReviewSheet({
               </div>
             </div>
             {review.shared_with_member && (
-              <Badge className="bg-green-500/10 text-green-700 dark:text-green-400 border-0">
-                Enviada
-              </Badge>
+              <div className="flex flex-col items-end gap-1">
+                <Badge className="bg-green-500/10 text-green-700 dark:text-green-400 border-0">
+                  Enviada
+                </Badge>
+                {(review as any).acknowledged_at && (
+                  <span className="text-[10px] text-green-600 dark:text-green-400">
+                    Leitura confirmada
+                  </span>
+                )}
+              </div>
             )}
           </div>
         </SheetHeader>
