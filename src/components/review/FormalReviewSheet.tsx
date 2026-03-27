@@ -406,24 +406,36 @@ export function FormalReviewSheet({
                 )}
                 Salvar Rascunho
               </Button>
-              <Button
-                onClick={() => sendMutation.mutate()}
-                disabled={sendMutation.isPending || !!review.shared_with_member}
-              >
-                {sendMutation.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : review.shared_with_member ? (
-                  'Já Enviada'
-                ) : (
-                  <>
-                    <Send className="mr-2 h-4 w-4" />
-                    Enviar ao Liderado
-                  </>
-                )}
-              </Button>
+              {!review.shared_with_member ? (
+                <Button onClick={() => setShareDialogOpen(true)}>
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Compartilhar com Liderado
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => unshareMutation.mutate()}
+                  disabled={unshareMutation.isPending}
+                >
+                  {unshareMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Share2 className="mr-2 h-4 w-4" />
+                  )}
+                  Remover Compartilhamento
+                </Button>
+              )}
             </div>
           </div>
         </SheetFooter>
+
+        <ShareReviewDialog
+          open={shareDialogOpen}
+          onOpenChange={setShareDialogOpen}
+          memberName={memberData?.name || ''}
+          onConfirm={() => sendMutation.mutate()}
+          isPending={sendMutation.isPending}
+        />
       </SheetContent>
     </Sheet>
   );
