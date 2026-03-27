@@ -172,6 +172,9 @@ export function FormalReviewSheet({
       toast({ title: `Avaliação compartilhada com ${(review as any)?.team_members?.name || 'liderado'}!` });
       setShareDialogOpen(false);
       onSent?.();
+      // Fire-and-forget email notification
+      supabase.functions.invoke('notify-review-shared', { body: { reviewId } })
+        .catch(err => console.error('Email notification failed:', err));
     },
     onError: (error: any) => {
       toast({ title: 'Erro ao compartilhar', description: error.message, variant: 'destructive' });

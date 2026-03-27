@@ -27,6 +27,12 @@ verify_jwt = true
 [functions.notify-admin-new-lead]
 verify_jwt = false
 
+[functions.notify-review-shared]
+verify_jwt = false
+
+[functions.notify-review-acknowledged]
+verify_jwt = false
+
 [functions.transcribe-audio]
 verify_jwt = true
 

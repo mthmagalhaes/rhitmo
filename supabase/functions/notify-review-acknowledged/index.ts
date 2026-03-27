@@ -25,10 +25,10 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // Fetch review + member
+    // Fetch review
     const { data: review, error: reviewErr } = await supabaseAdmin
       .from('performance_reviews')
-      .select('id, title, period_type, created_at, member_id')
+      .select('id, title, period_type, acknowledged_at, member_id')
       .eq('id', reviewId)
       .single();
 
@@ -36,50 +36,53 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error(`Review não encontrada: ${reviewErr?.message}`);
     }
 
-    // Fetch member info
-    const { data: member, error: memberErr } = await supabaseAdmin
+    // Fetch member name
+    const { data: member } = await supabaseAdmin
       .from('team_members')
-      .select('name, email, team_id')
+      .select('name, team_id')
       .eq('id', review.member_id)
       .single();
 
-    if (memberErr || !member || !member.email) {
-      throw new Error(`Membro não encontrado ou sem email: ${memberErr?.message}`);
+    if (!member) {
+      throw new Error('Membro não encontrado');
     }
 
-    // Fetch manager name via workspace owner
+    // Fetch manager email via workspace owner
     const { data: team } = await supabaseAdmin
       .from('teams')
       .select('workspace_id')
       .eq('id', member.team_id)
       .single();
 
-    let managerName = 'Seu líder';
-    if (team) {
-      const { data: workspace } = await supabaseAdmin
-        .from('workspaces')
-        .select('owner_id')
-        .eq('id', team.workspace_id)
-        .single();
+    if (!team) throw new Error('Time não encontrado');
 
-      if (workspace) {
-        const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(workspace.owner_id);
-        if (authUser?.user) {
-          managerName = authUser.user.user_metadata?.full_name || authUser.user.email || 'Seu líder';
-        }
-      }
+    const { data: workspace } = await supabaseAdmin
+      .from('workspaces')
+      .select('owner_id')
+      .eq('id', team.workspace_id)
+      .single();
+
+    if (!workspace) throw new Error('Workspace não encontrado');
+
+    const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(workspace.owner_id);
+    if (!authUser?.user?.email) {
+      throw new Error('Email do líder não encontrado');
     }
+
+    const managerName = authUser.user.user_metadata?.full_name || 'Líder';
+    const managerEmail = authUser.user.email;
 
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
     if (!resendApiKey) {
       throw new Error('RESEND_API_KEY não configurada');
     }
 
-    const periodLabel = review.period_type === 'manual' ? review.title : review.period_type;
-    const formattedDate = new Date(review.created_at).toLocaleDateString('pt-BR', {
-      day: '2-digit', month: 'long', year: 'numeric',
-    });
-    const reviewLink = `https://rhitmo.lovable.app/review/${reviewId}`;
+    const acknowledgedDate = review.acknowledged_at
+      ? new Date(review.acknowledged_at).toLocaleDateString('pt-BR', {
+          day: '2-digit', month: 'long', year: 'numeric',
+          hour: '2-digit', minute: '2-digit',
+        })
+      : 'agora';
 
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -89,38 +92,32 @@ const handler = async (req: Request): Promise<Response> => {
       },
       body: JSON.stringify({
         from: 'Rhitmo <noreply@rhitmo.co>',
-        to: [member.email],
-        subject: `${managerName} compartilhou sua avaliação de desempenho`,
+        to: [managerEmail],
+        subject: `${member.name} confirmou leitura da avaliação`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="text-align: center; margin-bottom: 30px;">
               <h1 style="color: #4F46E5; font-size: 32px; margin: 0;">🎵 <strong>Rhitmo</strong></h1>
             </div>
             
-            <h2 style="color: #333; margin-bottom: 20px;">Olá, ${member.name}! 👋</h2>
+            <h2 style="color: #333; margin-bottom: 20px;">Olá, ${managerName}! 👋</h2>
             
             <p style="font-size: 16px; line-height: 1.6; color: #666; margin-bottom: 20px;">
-              Seu líder <strong>${managerName}</strong> compartilhou sua avaliação formal de desempenho no Rhitmo.
+              <strong>${member.name}</strong> confirmou a leitura da avaliação de desempenho em <strong>${acknowledgedDate}</strong>.
             </p>
             
-            <div style="background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 30px;">
-              <ul style="margin: 0; padding-left: 20px; color: #666; font-size: 14px; line-height: 2; list-style: none;">
-                <li>📝 <strong>${periodLabel}</strong></li>
-                <li>📅 Gerada em ${formattedDate}</li>
-                <li>🔓 Disponível no seu portal do colaborador</li>
-              </ul>
+            <div style="background-color: #f0fdf4; border-radius: 8px; padding: 20px; margin-bottom: 30px; border-left: 4px solid #22c55e;">
+              <p style="margin: 0; color: #15803d; font-size: 14px;">
+                ✅ Leitura confirmada com sucesso
+              </p>
             </div>
             
             <div style="text-align: center; margin: 40px 0;">
-              <a href="${reviewLink}" 
+              <a href="https://rhitmo.lovable.app/dashboard" 
                  style="background-color: #7C3AED; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">
-                Ver minha avaliação →
+                Ver avaliação e comentários →
               </a>
             </div>
-            
-            <p style="font-size: 14px; color: #666; text-align: center;">
-              Você pode adicionar comentários e confirmar a leitura diretamente no Rhitmo.
-            </p>
             
             <hr style="border: none; border-top: 1px solid #eee; margin: 40px 0;" />
             
@@ -140,14 +137,14 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const emailData = await resendResponse.json();
-    console.log('✅ Email de notificação enviado:', emailData);
+    console.log('✅ Email de confirmação enviado ao líder:', emailData);
 
     return new Response(
       JSON.stringify({ success: true, emailId: emailData.id }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: any) {
-    console.error('Erro ao enviar notificação de review:', error);
+    console.error('Erro ao enviar notificação de acknowledged:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

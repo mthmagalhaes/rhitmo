@@ -64,6 +64,9 @@ export default function DirectReportReviewView() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shared-review', reviewId] });
       toast.success('Leitura confirmada com sucesso!');
+      // Fire-and-forget email notification to manager
+      supabase.functions.invoke('notify-review-acknowledged', { body: { reviewId } })
+        .catch(err => console.error('Email notification failed:', err));
     },
     onError: () => toast.error('Erro ao confirmar leitura.'),
   });
