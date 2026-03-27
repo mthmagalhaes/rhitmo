@@ -717,6 +717,7 @@ export type Database = {
       }
       performance_reviews: {
         Row: {
+          acknowledged_at: string | null
           coaching_tip: string | null
           competency_evaluations: Json | null
           content: string
@@ -729,11 +730,13 @@ export type Database = {
           period_end: string | null
           period_start: string | null
           period_type: string
+          sent_at: string | null
           shared_with_member: boolean | null
           title: string
           updated_at: string
         }
         Insert: {
+          acknowledged_at?: string | null
           coaching_tip?: string | null
           competency_evaluations?: Json | null
           content: string
@@ -746,11 +749,13 @@ export type Database = {
           period_end?: string | null
           period_start?: string | null
           period_type?: string
+          sent_at?: string | null
           shared_with_member?: boolean | null
           title: string
           updated_at?: string
         }
         Update: {
+          acknowledged_at?: string | null
           coaching_tip?: string | null
           competency_evaluations?: Json | null
           content?: string
@@ -763,6 +768,7 @@ export type Database = {
           period_end?: string | null
           period_start?: string | null
           period_type?: string
+          sent_at?: string | null
           shared_with_member?: boolean | null
           title?: string
           updated_at?: string
@@ -780,6 +786,44 @@ export type Database = {
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      review_comments: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          review_id: string
+          section: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          review_id: string
+          section?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          review_id?: string
+          section?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_comments_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "performance_reviews"
             referencedColumns: ["id"]
           },
         ]
