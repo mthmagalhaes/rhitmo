@@ -752,24 +752,62 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
                     return <ReactMarkdown>{filtered}</ReactMarkdown>;
                   })()}
                 </div>
-                <div className="flex gap-2 mt-6 pt-4 border-t border-border">
-                  <Button
-                    variant="outline"
-                    className="gap-2"
-                    onClick={() => {
-                      if (!selectedReview) return;
-                      const printWindow = window.open('', '_blank');
-                      if (!printWindow) return;
-                      const filtered = filterReviewForMember(selectedReview.content || '');
-                      const htmlContent = filtered.includes('</') ? filtered : marked(filtered);
-                      printWindow.document.write(`<!DOCTYPE html><html><head><title>${selectedReview.title}</title><style>body{font-family:'Segoe UI',Arial,sans-serif;padding:2cm;line-height:1.6;color:#333}h1{color:#222;border-bottom:3px solid #7C3AED;padding-bottom:16px}h2{color:#444;margin-top:28px}ul,ol{padding-left:24px}li{margin:6px 0}</style></head><body><h1>${selectedReview.title}</h1><p style="color:#666">${new Date(selectedReview.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>${htmlContent}</body></html>`);
-                      printWindow.document.close();
-                      setTimeout(() => printWindow.print(), 300);
-                    }}
-                  >
-                    <Download className="h-4 w-4" />
-                    Exportar PDF
-                  </Button>
+
+                {/* Comments section */}
+                {selectedReview && (
+                  <div className="mt-6 pt-4 border-t border-border">
+                    <ReviewCommentsSection reviewId={selectedReview.id} />
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between gap-2 mt-6 pt-4 border-t border-border">
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => {
+                        if (!selectedReview) return;
+                        const printWindow = window.open('', '_blank');
+                        if (!printWindow) return;
+                        const filtered = filterReviewForMember(selectedReview.content || '');
+                        const htmlContent = filtered.includes('</') ? filtered : marked(filtered);
+                        printWindow.document.write(`<!DOCTYPE html><html><head><title>${selectedReview.title}</title><style>body{font-family:'Segoe UI',Arial,sans-serif;padding:2cm;line-height:1.6;color:#333}h1{color:#222;border-bottom:3px solid #7C3AED;padding-bottom:16px}h2{color:#444;margin-top:28px}ul,ol{padding-left:24px}li{margin:6px 0}</style></head><body><h1>${selectedReview.title}</h1><p style="color:#666">${new Date(selectedReview.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>${htmlContent}</body></html>`);
+                        printWindow.document.close();
+                        setTimeout(() => printWindow.print(), 300);
+                      }}
+                    >
+                      <Download className="h-4 w-4" />
+                      Exportar PDF
+                    </Button>
+                  </div>
+                  {!selectedReview?.acknowledged_at && (
+                    <Button
+                      className="gap-2"
+                      onClick={async () => {
+                        if (!selectedReview) return;
+                        const { error } = await supabase
+                          .from('performance_reviews')
+                          .update({ acknowledged_at: new Date().toISOString() } as any)
+                          .eq('id', selectedReview.id);
+                        if (error) {
+                          toast.error('Erro ao confirmar leitura.');
+                          return;
+                        }
+                        toast.success('Leitura confirmada! ✅');
+                        setSelectedReview({ ...selectedReview, acknowledged_at: new Date().toISOString() });
+                        queryClient.invalidateQueries({ queryKey: ['shared-reviews', linkedMember.id] });
+                      }}
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      Confirmar Leitura
+                    </Button>
+                  )}
+                  {selectedReview?.acknowledged_at && (
+                    <Badge className="bg-green-500/10 text-green-700 dark:text-green-400 border-0">
+                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                      Leitura confirmada em {new Date(selectedReview.acknowledged_at).toLocaleDateString('pt-BR')}
+                    </Badge>
+                  )}
                 </div>
               </DialogContent>
             </Dialog>
