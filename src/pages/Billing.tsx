@@ -509,11 +509,13 @@ const Billing = () => {
         </div>
 
         {workspace?.is_beta_user && (
-          <Alert className="border-purple-200/60 bg-purple-50/80 dark:bg-purple-900/20 dark:border-purple-700/40">
-            <Crown className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-            <AlertTitle className="text-purple-800 dark:text-purple-200">Acesso Beta Grandfathered 🎉</AlertTitle>
-            <AlertDescription className="text-purple-700 dark:text-purple-300">
-              Como beta tester, você tem acesso total gratuito permanente. Obrigado por nos ajudar a construir a Rhitmo!
+          <Alert className="mb-6 border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/20 dark:border-purple-700/50">
+            <Crown className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+            <AlertTitle className="text-lg font-bold text-purple-900 dark:text-purple-200 flex items-center gap-2">
+              ⭐ Early Adopter — Acesso Vitalício
+            </AlertTitle>
+            <AlertDescription className="text-purple-800 dark:text-purple-300">
+              Obrigado por acreditar na Rhitmo desde o início! Seu acesso é ilimitado e gratuito para sempre como agradecimento por nos ajudar a construir o produto. 🎉
             </AlertDescription>
           </Alert>
         )}
@@ -694,11 +696,13 @@ const Billing = () => {
       </div>
 
       {workspace?.is_beta_user && (
-        <Alert className="border-purple-200/60 bg-purple-50/80 dark:bg-purple-900/20 dark:border-purple-700/40">
-          <Crown className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-          <AlertTitle className="text-purple-800 dark:text-purple-200">Acesso Beta Grandfathered 🎉</AlertTitle>
-          <AlertDescription className="text-purple-700 dark:text-purple-300">
-            Como beta tester, você tem acesso total gratuito permanente. Obrigado por nos ajudar a construir a Rhitmo!
+        <Alert className="mb-6 border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/20 dark:border-purple-700/50">
+          <Crown className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+          <AlertTitle className="text-lg font-bold text-purple-900 dark:text-purple-200 flex items-center gap-2">
+            ⭐ Early Adopter — Acesso Vitalício
+          </AlertTitle>
+          <AlertDescription className="text-purple-800 dark:text-purple-300">
+            Obrigado por acreditar na Rhitmo desde o início! Seu acesso é ilimitado e gratuito para sempre como agradecimento por nos ajudar a construir o produto. 🎉
           </AlertDescription>
         </Alert>
       )}
