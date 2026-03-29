@@ -1,57 +1,35 @@
 
 
-## Plan: Pro ↔ Business Upgrade/Downgrade via Stripe Subscription Update
+## Plan: Update Beta User Badge Text
 
 ### Summary
-Create an `update-subscription` edge function that updates existing Stripe subscriptions in-place (maintaining history), and update the Billing page to use it for Pro→Business upgrades and Business→Pro downgrades instead of creating new checkout sessions.
+Replace the "Acesso Beta Grandfathered" badge text in both instances (lines 511-519 and 696-704) with engaging Brazilian Portuguese copy, gradient styling, and larger typography.
 
 ### Changes
 
-**1. Create `supabase/functions/update-subscription/index.ts`**
+**`src/pages/Billing.tsx`** — Update both identical Alert blocks (lines 511-519 and 696-704):
 
-Edge function that:
-- Authenticates user via `getUser(token)`
-- Accepts `{ newPriceId, quantity }` in body
-- Looks up workspace's `stripe_subscription_id` from `subscriptions` table
-- Calls `stripe.subscriptions.update()` with new price item and `proration_behavior: 'create_prorations'`
-- For downgrades (Business→Pro), does NOT update DB directly — relies on webhook `customer.subscription.updated` to sync
-- Returns success/error
-
-**2. Update `supabase/config.toml`**
-
-Add:
+Replace each with:
+```jsx
+{workspace?.is_beta_user && (
+  <Alert className="mb-6 border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/20 dark:border-purple-700/50">
+    <Crown className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+    <AlertTitle className="text-lg font-bold text-purple-900 dark:text-purple-200 flex items-center gap-2">
+      ⭐ Early Adopter — Acesso Vitalício
+    </AlertTitle>
+    <AlertDescription className="text-purple-800 dark:text-purple-300">
+      Obrigado por acreditar na Rhitmo desde o início! Seu acesso é ilimitado e gratuito para sempre como agradecimento por nos ajudar a construir o produto. 🎉
+    </AlertDescription>
+  </Alert>
+)}
 ```
-[functions.update-subscription]
-verify_jwt = false
-```
 
-**3. Update `src/pages/Billing.tsx`**
-
-For Pro users with active subscription (non-canceled):
-- The existing "Fazer upgrade para Business" button already exists (line 548) — change it to call `update-subscription` instead of `create-checkout-session` when there's an active subscription
-- Add `handlePlanChange` function that invokes `update-subscription` with the target price ID and quantity
-
-For Business users with active subscription:
-- Add "Fazer downgrade para Pro" outline button next to "Trocar cartão"
-- Show confirmation AlertDialog before downgrading (lists features they'll lose: HR Dashboard, >5 members, etc.)
-- On confirm, call `update-subscription` with Pro price ID, quantity 1
-
-Refactor `BusinessQuantityDialog` `onConfirm` to check if already subscribed:
-- If `subscription` exists → call `update-subscription` (plan change)
-- If no subscription → call `create-checkout-session` (new checkout, current behavior)
-
-**4. Webhook already handles updates**
-
-The existing `customer.subscription.updated` handler in `stripe-webhook/index.ts` (lines 146-184) already:
-- Reads new price ID and maps to plan tier via `PRICE_TO_PLAN`
-- Updates `subscriptions` table (status, plan_tier, price_id, quantity)
-- Updates `workspaces.plan_tier`
-
-No webhook changes needed.
-
-### Technical Notes
-- Proration is handled by Stripe automatically via `proration_behavior: 'create_prorations'`
-- Upgrade (Pro→Business) takes effect immediately; downgrade (Business→Pro) also immediate per Stripe default, but prorated credit applied
-- The edge function fetches subscription ID from DB rather than trusting client input
-- Invalidating `['subscription']` and `['workspace-billing']` queries after success ensures UI reflects changes once webhook fires
+Key differences from current:
+- `mb-6` + `border-2` for more presence
+- Gradient background (`from-purple-50 to-pink-50`) for premium feel
+- Larger Crown icon (`h-5 w-5`)
+- `text-lg font-bold` title with star emoji
+- "Early Adopter — Acesso Vitalício" replaces English jargon
+- Warmer, longer gratitude message
+- Dark mode variants preserved
 
