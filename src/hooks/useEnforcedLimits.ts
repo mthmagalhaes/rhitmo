@@ -25,17 +25,10 @@ export function useEnforcedLimits() {
     (resourceName: string) => {
       toast({
         title: `Limite atingido: ${resourceName}`,
-        description: 'Faça upgrade do seu plano para continuar.',
-        action: React.createElement(
-          ToastAction,
-          {
-            altText: 'Ver Planos',
-            onClick: () => navigate('/billing'),
-          },
-          'Ver Planos'
-        ),
+        description: 'Faça upgrade do seu plano para continuar. Acesse a página de Planos.',
         duration: 10000,
       });
+      navigate('/billing');
     },
     [toast, navigate]
   );
