@@ -1,34 +1,46 @@
 
 
-## Plan: Generate Downloadable Technical Plan Document
+## Plan: Standardize Plan Nomenclature (flow/maestro → pro/business)
 
 ### Summary
-Create an exhaustive Markdown document covering the complete Rhitmo technical architecture, and output it as a downloadable file at `/mnt/documents/`.
+Replace all `flow`/`maestro` references with `pro`/`business` across 3 source files, 1 type definition, and 1 database migration. Update limits to match landing page pricing.
 
-### Content Outline
-The document will consolidate everything from the codebase into a single comprehensive reference:
+### Database Migration
 
-1. **Product Vision** — Service-as-Software, AI-Native Leadership Partner
-2. **Architecture Diagram** — Frontend SPA + Lovable Cloud (Auth, Postgres RLS, Edge Functions, Storage)
-3. **Database Schema (24 tables)** — Every table with columns and relationships, derived from `types.ts`
-4. **Database Functions (20+)** — All RPC functions with args/returns
-5. **Edge Functions (34)** — Categorized: AI, Audio, Notifications, Billing, Admin
-6. **Pages & Routes (21)** — Public, Leader, HR Admin, Super Admin, Direct Report
-7. **Components (~80+)** — Full inventory from src/components/
-8. **Hooks (9)** — All custom hooks with descriptions
-9. **Monetization** — 3 plans (Pulse/Pro/Business), pricing, limits, Stripe IDs
-10. **Billing Infrastructure** — Edge functions, webhook flow, subscriptions table, BETA_MODE flag
-11. **Integrations** — Stripe, Resend, Google Calendar, Lovable AI
-12. **Security Model** — RLS policies, effective_user_id(), Zero Trust, user_roles
-13. **Review Sharing System** — Tri-state flow (Draft → Sent → Confirmed), email notifications
-14. **Recent Changes Log** — All features implemented in recent sprints
-15. **Migration History** — 73 migrations listed
+Migrate existing data and update validation triggers:
 
-### Output
-- File: `/mnt/documents/rhitmo-plano-tecnico-completo.md`
-- Format: Markdown with tables and ASCII diagrams
+```sql
+-- Migrate data
+UPDATE workspaces SET plan_tier = 'pro' WHERE plan_tier = 'flow';
+UPDATE workspaces SET plan_tier = 'business' WHERE plan_tier = 'maestro';
 
-### Approach
-- Use all data already gathered from types.ts, components, hooks, pages, edge functions, billing page, and config
-- Single script execution to write the file
+-- Update validation trigger function
+CREATE OR REPLACE FUNCTION validate_workspace_plan_tier() ...
+  CHECK plan_tier IN ('pulse', 'pro', 'business', 'enterprise')
+```
+
+Also update `validate_subscription_plan_tier()` trigger to accept `pulse/pro/business`.
+
+### File Changes
+
+**1. `src/types/team.ts`**
+- `Workspace.plan_tier`: `'pulse' | 'flow' | 'maestro'` → `'pulse' | 'pro' | 'business'`
+- `PlanTier`: same change
+
+**2. `src/hooks/usePlanLimits.ts`**
+- Replace `PlanLimits` interface with expanded fields (maxTeams, maxMentorMessages, maxRecordingHours, hrDashboard, etc.)
+- Replace `PLAN_LIMITS` object with correct values per tier
+- Update all type references from `flow/maestro` to `pro/business`
+- Keep `BETA_MODE = true` but update beta return to use `'business'` tier
+- Add new return fields: `canAddTeam`, `hasMentorChat`, `hasHrDashboard`, etc.
+
+**3. `src/components/admin/AdminOverview.tsx`**
+- Update `planNames` record: `flow → 'Pro'`, `maestro → 'Business'`
+- Update 4 `SelectItem` values: `flow → pro`, `maestro → business`
+- Update emoji labels: `🌊 Flow → 💼 Pro`, `🎼 Maestro → 🏢 Business`
+
+### Already Correct (no changes needed)
+- `stripe-webhook/index.ts` — already maps to `'pro'` and `'business'`
+- `create-checkout-session` — already uses `pro`/`business`
+- `Billing.tsx` — already uses `pro`/`business`
 
