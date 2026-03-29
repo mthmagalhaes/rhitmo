@@ -309,3 +309,23 @@ All colors MUST be HSL.
   color: hsl(var(--primary));
   font-weight: bold;
 }
+
+/* Bias detection underlines */
+.bias-underline {
+  border-bottom: 2px wavy hsl(var(--destructive) / 0.6);
+  cursor: help;
+  transition: background-color 0.2s ease;
+  padding-bottom: 1px;
+}
+
+.bias-underline:hover {
+  background-color: hsl(var(--destructive) / 0.08);
+}
+
+.bias-underline[data-bias-type="masculine"] {
+  border-bottom-color: hsl(var(--warning) / 0.8);
+}
+
+.bias-underline[data-bias-type="masculine"]:hover {
+  background-color: hsl(var(--warning) / 0.08);
+}

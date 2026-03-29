@@ -135,6 +135,13 @@ export const RichTextEditor = ({
     };
   }, [editor, highlightWords]);
 
+  // Apply bias underline decorations via ProseMirror plugin
+  useEffect(() => {
+    if (!editor) return;
+    const tr = editor.state.tr.setMeta(biasPluginKey, biasMatches || []);
+    editor.view.dispatch(tr);
+  }, [editor, biasMatches]);
+
   if (!editor) {
     return null;
   }
