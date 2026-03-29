@@ -638,10 +638,47 @@ const Billing = () => {
           onOpenChange={setBusinessDialogOpen}
           onConfirm={(qty) => {
             setBusinessDialogOpen(false);
-            handleUpgrade('business', qty);
+            if (subscription) {
+              handlePlanChange('business', qty);
+            } else {
+              handleUpgrade('business', qty);
+            }
           }}
-          loading={upgradeLoading === 'business'}
+          loading={planChangeLoading || upgradeLoading === 'business'}
         />
+
+        <AlertDialog open={downgradeDialogOpen} onOpenChange={setDowngradeDialogOpen}>
+          <AlertDialogContent className="rounded-3xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Fazer downgrade para Pro?</AlertDialogTitle>
+              <AlertDialogDescription className="text-base space-y-3">
+                <span className="block">Ao mudar para o plano Pro, você perderá acesso a:</span>
+                <ul className="list-disc pl-5 space-y-1 text-sm">
+                  <li>HR Dashboard com métricas agregadas</li>
+                  <li>Mais de 5 liderados por líder</li>
+                  <li>Times ilimitados (limite de 3 no Pro)</li>
+                  <li>Gravação acima de 12h/mês</li>
+                  <li>Onboarding assistido e suporte prioritário</li>
+                </ul>
+                <span className="block">Créditos proporcionais serão aplicados automaticamente.</span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="rounded-xl h-11">Manter Business</AlertDialogCancel>
+              <AlertDialogAction
+                className="rounded-xl h-11"
+                onClick={() => {
+                  setDowngradeDialogOpen(false);
+                  handlePlanChange('pro', 1);
+                }}
+                disabled={planChangeLoading}
+              >
+                {planChangeLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Confirmar downgrade
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }
