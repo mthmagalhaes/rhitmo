@@ -327,12 +327,14 @@ Deno.serve(async (req) => {
   try {
     console.log('Generating nudges...');
 
-    const [feedbackNudges, pdiNudges] = await Promise.all([
+    const [feedbackNudges, pdiNudges, goalNudges, moodNudges] = await Promise.all([
       generateNoFeedbackNudges(),
       generateNoPDINudges(),
+      generateGoalDeadlineNudges(),
+      generateMoodShiftNudges(),
     ]);
 
-    const allNudges = [...feedbackNudges, ...pdiNudges];
+    const allNudges = [...feedbackNudges, ...pdiNudges, ...goalNudges, ...moodNudges];
     console.log(`Found ${allNudges.length} potential nudges`);
 
     const created = await saveNudges(allNudges);
@@ -345,6 +347,8 @@ Deno.serve(async (req) => {
         breakdown: {
           no_feedback: feedbackNudges.length,
           pending_pdi: pdiNudges.length,
+          goal_deadline: goalNudges.length,
+          mood_shift: moodNudges.length,
         },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
