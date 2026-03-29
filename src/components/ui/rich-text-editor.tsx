@@ -8,6 +8,8 @@ import { Bold, Italic, Heading1, Heading2, List, ListOrdered } from 'lucide-reac
 import { cn } from '@/lib/utils';
 import { useEffect, useRef, useCallback } from 'react';
 import { cleanTranscriptText } from '@/lib/textSanitizer';
+import { BiasUnderlineExtension, biasPluginKey } from '@/components/feedback/BiasUnderlineExtension';
+import type { BiasMatch } from '@/lib/biasDetection';
 
 interface RichTextEditorProps {
   content: string;
@@ -17,6 +19,7 @@ interface RichTextEditorProps {
   minHeight?: string;
   editorRef?: React.MutableRefObject<ReturnType<typeof useEditor> | null>;
   highlightWords?: string[];
+  biasMatches?: BiasMatch[];
 }
 
 export const RichTextEditor = ({
@@ -27,6 +30,7 @@ export const RichTextEditor = ({
   minHeight = '200px',
   editorRef,
   highlightWords,
+  biasMatches,
 }: RichTextEditorProps) => {
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editor = useEditor({
@@ -37,6 +41,7 @@ export const RichTextEditor = ({
         },
       }),
       Highlight.configure({ multicolor: true }),
+      BiasUnderlineExtension,
       Placeholder.configure({
         placeholder,
         emptyEditorClass: 'is-editor-empty',
@@ -129,6 +134,13 @@ export const RichTextEditor = ({
       if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
     };
   }, [editor, highlightWords]);
+
+  // Apply bias underline decorations via ProseMirror plugin
+  useEffect(() => {
+    if (!editor) return;
+    const tr = editor.state.tr.setMeta(biasPluginKey, biasMatches || []);
+    editor.view.dispatch(tr);
+  }, [editor, biasMatches]);
 
   if (!editor) {
     return null;

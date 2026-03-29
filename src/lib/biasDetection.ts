@@ -19,7 +19,7 @@ const MASCULINE_CODED_WORDS = [
   'arrojado', 'destemido',
 ];
 
-const NEUTRAL_ALTERNATIVES: Record<string, string[]> = {
+export const NEUTRAL_ALTERNATIVES: Record<string, string[]> = {
   // feminine-coded
   'organizada': ['estruturado/a', 'sistemático/a', 'planejador/a'],
   'organizad': ['estruturado/a', 'sistemático/a'],
@@ -64,6 +64,62 @@ export interface BiasDetectionResult {
   detectedWords: string[];
   suggestions: string[];
   explanation: string;
+}
+
+export interface BiasMatch {
+  word: string;
+  type: 'feminine' | 'masculine';
+  suggestion: string;
+  from: number;
+  to: number;
+}
+
+/**
+ * Position-aware bias detection for real-time editor highlighting.
+ * Returns exact character offsets in plain text for each biased word found.
+ */
+export function detectBiasWithPositions(plainText: string): BiasMatch[] {
+  const lower = plainText.toLowerCase();
+  const matches: BiasMatch[] = [];
+
+  const scanWords = (words: string[], type: 'feminine' | 'masculine') => {
+    for (const word of words) {
+      const lowerWord = word.toLowerCase();
+      let idx = lower.indexOf(lowerWord);
+      while (idx !== -1) {
+        const alts = NEUTRAL_ALTERNATIVES[word];
+        matches.push({
+          word: plainText.slice(idx, idx + lowerWord.length),
+          type,
+          suggestion: alts ? alts[0] : 'Considere reformular',
+          from: idx,
+          to: idx + lowerWord.length,
+        });
+        idx = lower.indexOf(lowerWord, idx + 1);
+      }
+    }
+  };
+
+  scanWords(FEMININE_CODED_WORDS, 'feminine');
+  scanWords(MASCULINE_CODED_WORDS, 'masculine');
+
+  // Sort by position
+  matches.sort((a, b) => a.from - b.from);
+
+  // Deduplicate overlapping matches (keep longest)
+  const deduped: BiasMatch[] = [];
+  for (const m of matches) {
+    const last = deduped[deduped.length - 1];
+    if (last && m.from < last.to) {
+      if (m.to - m.from > last.to - last.from) {
+        deduped[deduped.length - 1] = m;
+      }
+    } else {
+      deduped.push(m);
+    }
+  }
+
+  return deduped;
 }
 
 function stripHtml(text: string): string {

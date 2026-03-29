@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -22,6 +22,8 @@ import { Badge } from '@/components/ui/badge';
 import { getTagEmoji, getTagColor, VALID_TAGS } from '@/lib/tagConfig';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { detectBiasWithPositions, type BiasMatch } from '@/lib/biasDetection';
+import { BiasSuggestionsPanel } from '@/components/feedback/BiasSuggestionsPanel';
 
 // Smart Date Extraction - analisa as primeiras 20 linhas do texto
 const extractDateFromText = (text: string): Date | null => {
@@ -87,6 +89,52 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<ReturnType<typeof useEditor> | null>(null);
   const { toast } = useToast();
+  const [biasMatches, setBiasMatches] = useState<BiasMatch[]>([]);
+  const [biasDismissCount, setBiasDismissCount] = useState(0);
+  const biasTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounced bias detection on content changes
+  useEffect(() => {
+    if (biasTimerRef.current) clearTimeout(biasTimerRef.current);
+    if (biasDismissCount >= 3) return;
+
+    biasTimerRef.current = setTimeout(() => {
+      if (!editorRef.current) return;
+      const plainText = editorRef.current.getText();
+      if (plainText.length < 15) {
+        setBiasMatches([]);
+        return;
+      }
+      const matches = detectBiasWithPositions(plainText);
+      setBiasMatches(matches);
+    }, 800);
+
+    return () => {
+      if (biasTimerRef.current) clearTimeout(biasTimerRef.current);
+    };
+  }, [content, biasDismissCount]);
+
+  const handleApplyBiasSuggestion = useCallback((match: BiasMatch) => {
+    if (!editorRef.current) return;
+    const text = editorRef.current.getText();
+    const before = text.slice(0, match.from);
+    const after = text.slice(match.to);
+    const newText = before + match.suggestion + after;
+    editorRef.current.commands.setContent(`<p>${newText}</p>`);
+    setBiasMatches(prev => prev.filter(m => m.from !== match.from));
+  }, []);
+
+  const handleApplyAllBiasSuggestions = useCallback(() => {
+    if (!editorRef.current || biasMatches.length === 0) return;
+    let text = editorRef.current.getText();
+    // Apply in reverse order to preserve positions
+    const sorted = [...biasMatches].sort((a, b) => b.from - a.from);
+    for (const match of sorted) {
+      text = text.slice(0, match.from) + match.suggestion + text.slice(match.to);
+    }
+    editorRef.current.commands.setContent(`<p>${text}</p>`);
+    setBiasMatches([]);
+  }, [biasMatches]);
 
   const isMultiMode = !selectedMemberId;
 
@@ -103,6 +151,8 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
     setIsShared(false);
     setHasAttemptedSubmit(false);
     setMemberPopoverOpen(false);
+    setBiasMatches([]);
+    setBiasDismissCount(0);
     
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -633,7 +683,16 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
               disabled={loading || isProcessingFile}
               minHeight="150px"
               editorRef={editorRef}
+              biasMatches={biasDismissCount < 3 ? biasMatches : undefined}
             />
+            {biasDismissCount < 3 && biasMatches.length > 0 && (
+              <BiasSuggestionsPanel
+                matches={biasMatches}
+                onApply={handleApplyBiasSuggestion}
+                onApplyAll={handleApplyAllBiasSuggestions}
+                onDismiss={() => setBiasDismissCount(prev => prev + 1)}
+              />
+            )}
             <div className="flex justify-end">
               <VoiceInput 
                 onTranscription={(text) => {
