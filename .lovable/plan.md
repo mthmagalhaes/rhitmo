@@ -1,88 +1,46 @@
 
 
-## Plan: Real-Time Bias Detection with Visual Highlighting in Note Editor
+## Plan: Fix "Nova Nota" Button & Expand Bias Detection Words
 
 ### Summary
-Add real-time bias detection to NewNoteDialog using the existing client-side `biasDetection.ts` word-list engine (no new edge function needed for the fast path). Enhance the RichTextEditor with wavy underline decorations via a custom Tiptap extension, and show inline rewrite suggestions with one-click apply. For richer AI-powered suggestions on complex cases, add an optional `detect-bias-realtime` edge function call.
-
-### Architecture Decision
-The existing `biasDetection.ts` already has 30+ Portuguese bias words with neutral alternatives — this runs instantly client-side with zero latency. Use this as the primary detection engine (fired on every keystroke via debounce). Reserve the AI edge function call for an optional "deep analysis" button only, keeping the real-time experience snappy.
+Two fixes: (1) Add a "Nova Nota" button to the MemberDetails action bar, (2) expand the bias word lists to catch "nervosa", "histérica", "dramática", "ansiosa", "frágil", etc.
 
 ### Changes
 
-**1. Enhance `src/lib/biasDetection.ts`** — Add position-aware detection
+**1. `src/pages/MemberDetails.tsx`** — Add "Nova Nota" button (line ~406)
 
-Add a new function `detectBiasWithPositions(text)` that returns exact character offsets for each detected word, its type (feminine/masculine), and the suggestion from `NEUTRAL_ALTERNATIVES`. This enables precise Tiptap decorations.
-
-```typescript
-export interface BiasMatch {
-  word: string;
-  type: 'feminine' | 'masculine';
-  suggestion: string;
-  from: number;  // char offset in plain text
-  to: number;
-}
-
-export function detectBiasWithPositions(plainText: string): BiasMatch[]
+Insert a button between "Início" breadcrumb and "Gravar Reunião":
+```jsx
+<Button onClick={() => setDialogOpen(true)} className="gap-2">
+  <PenSquare className="h-4 w-4" />
+  <span className="hidden sm:inline">Nova Nota</span>
+</Button>
 ```
 
-**2. Create `src/components/feedback/BiasUnderlineExtension.ts`** — Tiptap ProseMirror plugin
+`PenSquare` is already imported. `dialogOpen` and `setDialogOpen` already exist and wire to `NewNoteDialog`. No new state or imports needed.
 
-Custom Tiptap extension that:
-- Accepts bias matches via `editor.storage` or transaction meta
-- Creates `Decoration.inline` with `class="bias-underline"` and `data-bias-type`
-- Renders wavy underlines under biased phrases (red for gender, amber for personality, blue for vague)
+**2. `src/lib/biasDetection.ts`** — Expand word lists and alternatives
 
-**3. Update `src/components/ui/rich-text-editor.tsx`**
+Add to `FEMININE_CODED_WORDS`:
+- `'nervosa'`, `'histérica'`, `'dramática'`, `'ansiosa'`, `'frágil'`, `'delicada'`, `'emocional'`
 
-- Add the `BiasUnderlineExtension` to the extensions array
-- Accept new prop `biasMatches?: BiasMatch[]`
-- When `biasMatches` changes, dispatch a transaction with the new decorations
-- No changes to existing highlight functionality (they coexist)
+Add to `MASCULINE_CODED_WORDS`:
+- `'autoritário'`, `'arrogante'`, `'intimidador'`
 
-**4. Create `src/components/feedback/BiasSuggestionsPanel.tsx`**
+Add corresponding entries to `NEUTRAL_ALTERNATIVES`:
+- `'nervosa'` → `['reativa sob pressão', 'demonstrou tensão']`
+- `'histérica'` → `['reagiu intensamente', 'demonstrou frustração']`
+- `'dramática'` → `['expressiva', 'comunicação intensa']`
+- `'ansiosa'` → `['demonstrou urgência', 'preocupada com prazos']`
+- `'frágil'` → `['em desenvolvimento', 'precisa de suporte']`
+- `'delicada'` → `['cuidadosa na abordagem', 'diplomática']`
+- `'emocional'` → `['demonstrou envolvimento', 'engajada emocionalmente']`
+- `'autoritário'` → `['estilo de liderança diretivo', 'comunicação firme']`
+- `'arrogante'` → `['autoconfiante', 'seguro/a de si']`
+- `'intimidador'` → `['presença forte', 'comunicação impositiva']`
 
-Compact panel shown below the editor when detections exist:
-- Lists each detected word with its suggestion
-- "Aplicar" button replaces the word in the editor via `editor.commands`
-- "Aplicar todas" button applies all suggestions at once
-- Color-coded badges by bias type
-- Dismissible (tracks dismiss count, hides after 3 dismissals per session)
-- Animated entrance (`animate-in fade-in`)
-
-**5. Update `src/components/NewNoteDialog.tsx`**
-
-- Import `detectBiasWithPositions` and `BiasSuggestionsPanel`
-- Add `useEffect` with 800ms debounce on `content` changes → run `detectBiasWithPositions(editor.getText())`
-- Pass `biasMatches` to `RichTextEditor`
-- Render `BiasSuggestionsPanel` between the editor and VoiceInput
-- Track dismiss count in local state
-
-**6. Update `src/index.css`** — Wavy underline styles
-
-```css
-.bias-underline {
-  border-bottom: 2px wavy rgba(239, 68, 68, 0.6);
-  cursor: help;
-  transition: background-color 0.2s;
-}
-.bias-underline:hover {
-  background-color: rgba(239, 68, 68, 0.1);
-}
-.bias-underline[data-bias-type="masculine"] {
-  border-bottom-color: rgba(245, 158, 11, 0.8);
-}
-```
-
-### What This Does NOT Include
-- No new edge function for real-time detection (client-side word-list is fast enough and free)
-- No changes to the existing `BiasAlert` component (still used in review dialog)
-- No database changes
-
-### Technical Notes
-- The Tiptap decoration plugin uses `DecorationSet` from `@tiptap/pm/view` — already available since Tiptap is installed
-- Character offset mapping between plain text and ProseMirror positions requires walking `doc.descendants()` to map plain-text indices to doc positions
-- The debounce prevents excessive re-renders; 800ms matches the user's spec
-- All detection runs client-side — zero API cost, zero latency
-- The `highlightWords` prop on RichTextEditor is kept for backward compatibility with the review dialog's existing behavior
+### No other changes needed
+- `NewNoteDialog` bias integration already works (debounce, `detectBiasWithPositions`, `BiasSuggestionsPanel`)
+- `RichTextEditor` already has `BiasUnderlineExtension` and `biasMatches` prop
+- CSS wavy underlines already in `index.css`
 
