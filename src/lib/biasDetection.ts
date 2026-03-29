@@ -10,6 +10,7 @@ const FEMININE_CODED_WORDS = [
   'dedicada', 'confiável', 'detalhista', 'meticulosa',
   'prestativa', 'empática', 'sensível', 'gentil', 'simpática',
   'acolhedora', 'maternal', 'dócil', 'obediente',
+  'nervosa', 'histérica', 'dramática', 'ansiosa', 'frágil', 'delicada', 'emocional',
 ];
 
 const MASCULINE_CODED_WORDS = [
@@ -17,6 +18,7 @@ const MASCULINE_CODED_WORDS = [
   'visionário', 'confiante', 'dominante', 'ambicioso', 'competitivo',
   'independente', 'objetivo', 'direto', 'forte', 'agressivo',
   'arrojado', 'destemido',
+  'autoritário', 'arrogante', 'intimidador',
 ];
 
 export const NEUTRAL_ALTERNATIVES: Record<string, string[]> = {
@@ -38,6 +40,13 @@ export const NEUTRAL_ALTERNATIVES: Record<string, string[]> = {
   'maternal': ['cuidado com desenvolvimento do time'],
   'dócil': ['receptivo/a a feedback', 'flexível'],
   'obediente': ['alinhado/a com diretrizes', 'confiável na execução'],
+  'nervosa': ['reativa sob pressão', 'demonstrou tensão'],
+  'histérica': ['reagiu intensamente', 'demonstrou frustração'],
+  'dramática': ['expressiva', 'comunicação intensa'],
+  'ansiosa': ['demonstrou urgência', 'preocupada com prazos'],
+  'frágil': ['em desenvolvimento', 'precisa de suporte'],
+  'delicada': ['cuidadosa na abordagem', 'diplomática'],
+  'emocional': ['demonstrou envolvimento', 'engajada emocionalmente'],
   // masculine-coded
   'assertivo': ['comunica claramente', 'expressa opiniões com clareza'],
   'decisivo': ['toma decisões rapidamente', 'age com clareza'],
@@ -55,6 +64,9 @@ export const NEUTRAL_ALTERNATIVES: Record<string, string[]> = {
   'agressivo': ['proativo/a', 'orientado/a a resultados'],
   'arrojado': ['corajoso/a', 'assume riscos calculados'],
   'destemido': ['corajoso/a', 'enfrenta desafios com confiança'],
+  'autoritário': ['estilo de liderança diretivo', 'comunicação firme'],
+  'arrogante': ['autoconfiante', 'seguro/a de si'],
+  'intimidador': ['presença forte', 'comunicação impositiva'],
 };
 
 export interface BiasDetectionResult {
