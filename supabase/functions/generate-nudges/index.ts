@@ -177,6 +177,111 @@ async function generateNoPDINudges(): Promise<NudgeInput[]> {
   return nudges;
 }
 
+async function generateGoalDeadlineNudges(): Promise<NudgeInput[]> {
+  const nudges: NudgeInput[] = [];
+
+  const now = new Date();
+  const in14Days = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+
+  const { data: goals, error } = await supabase
+    .from('goals')
+    .select(`
+      id,
+      title,
+      target_date,
+      member_id,
+      team_members!inner (
+        name,
+        team_id,
+        teams!inner (
+          workspace_id,
+          workspaces!inner (
+            owner_id,
+            is_active
+          )
+        )
+      )
+    `)
+    .in('status', ['active', 'at_risk'])
+    .gte('target_date', now.toISOString().split('T')[0])
+    .lte('target_date', in14Days.toISOString().split('T')[0]);
+
+  if (error || !goals) {
+    console.error('Error fetching goals for deadlines:', error);
+    return nudges;
+  }
+
+  for (const goal of goals) {
+    const member = (goal as any).team_members;
+    const workspace = member?.teams?.workspaces;
+    if (!workspace?.is_active) continue;
+
+    const daysUntil = Math.ceil(
+      (new Date(goal.target_date!).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+    );
+
+    nudges.push({
+      leader_id: workspace.owner_id,
+      member_id: goal.member_id,
+      nudge_type: daysUntil <= 7 ? 'goal_deadline_7d' : 'goal_deadline_14d',
+      message: `Meta "${goal.title}" de ${member.name} vence em ${daysUntil} dias`,
+      action_url: `/member/${goal.member_id}`,
+      severity: daysUntil <= 7 ? 'urgent' : 'warning',
+    });
+  }
+
+  return nudges;
+}
+
+async function generateMoodShiftNudges(): Promise<NudgeInput[]> {
+  const nudges: NudgeInput[] = [];
+  const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+
+  const { data: members, error } = await supabase
+    .from('team_members')
+    .select(`
+      id,
+      name,
+      teams!inner (
+        workspace_id,
+        workspaces!inner (
+          owner_id,
+          is_active
+        )
+      )
+    `);
+
+  if (error || !members) {
+    console.error('Error fetching members for mood shift:', error);
+    return nudges;
+  }
+
+  for (const member of members) {
+    const workspace = (member as any).teams?.workspaces;
+    if (!workspace?.is_active) continue;
+
+    const { count } = await supabase
+      .from('feedbacks')
+      .select('id', { count: 'exact', head: true })
+      .eq('member_id', member.id)
+      .gte('occurred_at', twoWeeksAgo)
+      .in('sentiment', ['construtivo', 'critico']);
+
+    if (count && count >= 3) {
+      nudges.push({
+        leader_id: workspace.owner_id,
+        member_id: member.id,
+        nudge_type: 'mood_shift',
+        message: `${member.name} teve ${count} sinais de atenção nas últimas 2 semanas`,
+        action_url: `/member/${member.id}`,
+        severity: 'urgent',
+      });
+    }
+  }
+
+  return nudges;
+}
+
 async function saveNudges(nudges: NudgeInput[]): Promise<number> {
   let created = 0;
 
