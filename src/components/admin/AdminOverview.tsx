@@ -153,8 +153,8 @@ export const AdminOverview = () => {
 
       const planNames: Record<PlanTier, string> = {
         pulse: '🎵 Pulse',
-        flow: '🌊 Flow',
-        maestro: '🎼 Maestro'
+        pro: '💼 Pro',
+        business: '🏢 Business'
       };
 
       toast({
@@ -234,8 +234,8 @@ export const AdminOverview = () => {
       
       const planNames: Record<PlanTier, string> = {
         pulse: 'Pulse',
-        flow: 'Flow',
-        maestro: 'Maestro'
+        pro: 'Pro',
+        business: 'Business'
       };
       
       toast({ 
@@ -508,11 +508,11 @@ export const AdminOverview = () => {
                               <SelectItem value="pulse">
                                 <span className="flex items-center gap-2">🎵 Pulse</span>
                               </SelectItem>
-                              <SelectItem value="flow">
-                                <span className="flex items-center gap-2">🌊 Flow</span>
+                              <SelectItem value="pro">
+                                <span className="flex items-center gap-2">💼 Pro</span>
                               </SelectItem>
-                              <SelectItem value="maestro">
-                                <span className="flex items-center gap-2">🎼 Maestro</span>
+                              <SelectItem value="business">
+                                <span className="flex items-center gap-2">🏢 Business</span>
                               </SelectItem>
                             </SelectContent>
                           </Select>
