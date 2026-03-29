@@ -21,7 +21,7 @@ export interface Workspace {
   name: string;
   owner_id: string;
   is_active: boolean;
-  plan_tier: 'pulse' | 'flow' | 'maestro';
+  plan_tier: 'pulse' | 'pro' | 'business';
   created_at: string;
   updated_at: string;
   leader_sync_data?: Record<string, unknown> | null;
@@ -36,4 +36,4 @@ export interface Team {
   updated_at: string;
 }
 
-export type PlanTier = 'pulse' | 'flow' | 'maestro';
+export type PlanTier = 'pulse' | 'pro' | 'business';
