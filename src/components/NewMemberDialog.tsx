@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { usePlanLimits } from '@/hooks/usePlanLimits';
+import { useEnforcedLimits } from '@/hooks/useEnforcedLimits';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, UserPlus } from 'lucide-react';
 import { z } from 'zod';
@@ -38,7 +38,7 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
-  const { hasSync } = usePlanLimits();
+  const { hasSync, memberCount, limits, enforceLimit } = useEnforcedLimits();
 
   // Desabilitar convite se plano não tem Sync
   useEffect(() => {
@@ -118,6 +118,9 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
       });
       return;
     }
+
+    // Check plan limit
+    if (!enforceLimit(memberCount, limits.maxMembers, 'liderados')) return;
 
     setLoading(true);
 

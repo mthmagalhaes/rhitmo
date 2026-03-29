@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useEnforcedLimits } from '@/hooks/useEnforcedLimits';
 import { Loader2, Users } from 'lucide-react';
 
 interface NewTeamDialogProps {
@@ -23,6 +24,7 @@ export const NewTeamDialog = ({
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { teamCount, limits, enforceLimit } = useEnforcedLimits();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +37,9 @@ export const NewTeamDialog = ({
       });
       return;
     }
+
+    // Check plan limit
+    if (!enforceLimit(teamCount, limits.maxTeams, 'times')) return;
 
     setLoading(true);
 
