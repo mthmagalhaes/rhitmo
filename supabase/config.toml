@@ -92,3 +92,6 @@ verify_jwt = false
 
 [functions.generate-formal-review]
 verify_jwt = false
+
+[functions.update-subscription]
+verify_jwt = false
