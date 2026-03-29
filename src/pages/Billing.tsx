@@ -574,9 +574,14 @@ const Billing = () => {
                   Reativar assinatura
                 </Button>
               ) : currentPlan === 'pro' ? (
-                <Button className="rounded-xl h-11" onClick={() => setBusinessDialogOpen(true)} disabled={upgradeLoading === 'business'}>
-                  {upgradeLoading === 'business' && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                <Button className="rounded-xl h-11" onClick={() => setBusinessDialogOpen(true)} disabled={planChangeLoading}>
+                  {planChangeLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowUp className="h-4 w-4 mr-2" />}
                   Fazer upgrade para Business
+                </Button>
+              ) : currentPlan === 'business' ? (
+                <Button variant="outline" className="rounded-xl h-11" onClick={() => setDowngradeDialogOpen(true)} disabled={planChangeLoading}>
+                  {planChangeLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowDown className="h-4 w-4 mr-2" />}
+                  Fazer downgrade para Pro
                 </Button>
               ) : null}
             </div>
