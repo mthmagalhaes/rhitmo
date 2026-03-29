@@ -404,6 +404,10 @@ const MemberDetails = () => {
             Início
           </Button>
           <div className="flex gap-2">
+            <Button onClick={() => setDialogOpen(true)} className="gap-2">
+              <PenSquare className="h-4 w-4" />
+              <span className="hidden sm:inline">Nova Nota</span>
+            </Button>
             <Button variant="outline" onClick={() => setRecorderOpen(true)} className="gap-2">
               <Monitor className="h-4 w-4" />
               <span className="hidden sm:inline">Gravar Reunião</span>
