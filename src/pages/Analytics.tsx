@@ -227,8 +227,8 @@ const Analytics = () => {
             O painel de Analytics está disponível a partir do plano <strong>Pro</strong>. 
             Faça upgrade para desbloquear insights avançados sobre seu time.
           </p>
-          </p>
-          
+
+
           <div className="pt-4">
             <Button 
               size="lg" 
