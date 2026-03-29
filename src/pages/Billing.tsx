@@ -30,7 +30,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Check, Lock, CreditCard, Loader2, AlertTriangle, Download, RotateCcw, Users, Minus, Plus, Crown } from 'lucide-react';
+import { Check, Lock, CreditCard, Loader2, AlertTriangle, Download, RotateCcw, Users, Minus, Plus, Crown, ArrowUp, ArrowDown } from 'lucide-react';
 
 const PLANS = {
   pulse: {
@@ -324,6 +324,8 @@ const Billing = () => {
   const [reactivateLoading, setReactivateLoading] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [businessDialogOpen, setBusinessDialogOpen] = useState(false);
+  const [planChangeLoading, setPlanChangeLoading] = useState(false);
+  const [downgradeDialogOpen, setDowngradeDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!user && !loading) {
@@ -440,7 +442,34 @@ const Billing = () => {
     } catch {
       toast({ title: 'Erro ao reativar', description: 'Tente novamente.', variant: 'destructive' });
     } finally {
-      setReactivateLoading(false);
+    setReactivateLoading(false);
+    }
+  };
+
+  const handlePlanChange = async (newPlan: 'pro' | 'business', quantity: number = 1) => {
+    setPlanChangeLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('update-subscription', {
+        body: { newPlan, quantity },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({
+        title: newPlan === 'business' ? 'Upgrade realizado! 🎉' : 'Downgrade realizado',
+        description: newPlan === 'business'
+          ? 'Seu plano Business está ativo. Mudanças aplicadas imediatamente.'
+          : 'Seu plano foi alterado para Pro. Créditos proporcionais serão aplicados.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-billing'] });
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao alterar plano',
+        description: err?.message || 'Tente novamente ou entre em contato: support@rhitmo.co',
+        variant: 'destructive',
+      });
+    } finally {
+      setPlanChangeLoading(false);
     }
   };
 
