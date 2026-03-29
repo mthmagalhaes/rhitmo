@@ -681,7 +681,16 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
               disabled={loading || isProcessingFile}
               minHeight="150px"
               editorRef={editorRef}
+              biasMatches={biasDismissCount < 3 ? biasMatches : undefined}
             />
+            {biasDismissCount < 3 && biasMatches.length > 0 && (
+              <BiasSuggestionsPanel
+                matches={biasMatches}
+                onApply={handleApplyBiasSuggestion}
+                onApplyAll={handleApplyAllBiasSuggestions}
+                onDismiss={() => setBiasDismissCount(prev => prev + 1)}
+              />
+            )}
             <div className="flex justify-end">
               <VoiceInput 
                 onTranscription={(text) => {
