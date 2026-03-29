@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -22,6 +22,8 @@ import { Badge } from '@/components/ui/badge';
 import { getTagEmoji, getTagColor, VALID_TAGS } from '@/lib/tagConfig';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { detectBiasWithPositions, type BiasMatch } from '@/lib/biasDetection';
+import { BiasSuggestionsPanel } from '@/components/feedback/BiasSuggestionsPanel';
 
 // Smart Date Extraction - analisa as primeiras 20 linhas do texto
 const extractDateFromText = (text: string): Date | null => {
