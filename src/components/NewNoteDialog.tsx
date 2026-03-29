@@ -151,6 +151,8 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
     setIsShared(false);
     setHasAttemptedSubmit(false);
     setMemberPopoverOpen(false);
+    setBiasMatches([]);
+    setBiasDismissCount(0);
     
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
