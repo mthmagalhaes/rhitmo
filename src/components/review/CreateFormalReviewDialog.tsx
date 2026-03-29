@@ -38,6 +38,7 @@ export function CreateFormalReviewDialog({
 }: CreateFormalReviewDialogProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { reviewCount, limits, enforceLimit } = useEnforcedLimits();
 
   const [periodType, setPeriodType] = useState<'last_month' | 'last_quarter' | 'custom'>('last_quarter');
   const [customStart, setCustomStart] = useState<Date>();
@@ -74,6 +75,9 @@ export function CreateFormalReviewDialog({
 
   const createMutation = useMutation({
     mutationFn: async () => {
+      if (!enforceLimit(reviewCount, limits.maxReviews, 'avaliações formais')) {
+        throw new Error('Limite atingido');
+      }
       if (!member) throw new Error('Membro não selecionado');
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Não autenticado');
