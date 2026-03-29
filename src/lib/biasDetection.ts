@@ -19,7 +19,7 @@ const MASCULINE_CODED_WORDS = [
   'arrojado', 'destemido',
 ];
 
-const NEUTRAL_ALTERNATIVES: Record<string, string[]> = {
+export const NEUTRAL_ALTERNATIVES: Record<string, string[]> = {
   // feminine-coded
   'organizada': ['estruturado/a', 'sistemático/a', 'planejador/a'],
   'organizad': ['estruturado/a', 'sistemático/a'],

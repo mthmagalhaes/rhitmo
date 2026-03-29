@@ -2,7 +2,7 @@ import { AlertTriangle, Sparkles, X, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { BiasMatch } from '@/lib/biasDetection';
-import { NEUTRAL_ALTERNATIVES } from '@/lib/biasDetection';
+// NEUTRAL_ALTERNATIVES import removed — not needed here
 
 interface BiasSuggestionsPanelProps {
   matches: BiasMatch[];
