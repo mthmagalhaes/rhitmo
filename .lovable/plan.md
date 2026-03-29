@@ -1,55 +1,57 @@
 
 
-## Plan: Disable BETA_MODE & Grandfather Existing Users
+## Plan: Pro ↔ Business Upgrade/Downgrade via Stripe Subscription Update
 
 ### Summary
-Add `is_beta_user` column to workspaces, mark all existing workspaces as beta, set `BETA_MODE = false`, and update `usePlanLimits` to grant unlimited access based on the DB flag instead of a hardcoded constant. Add a beta badge on the Billing page.
+Create an `update-subscription` edge function that updates existing Stripe subscriptions in-place (maintaining history), and update the Billing page to use it for Pro→Business upgrades and Business→Pro downgrades instead of creating new checkout sessions.
 
 ### Changes
 
-**1. Database Migration**
+**1. Create `supabase/functions/update-subscription/index.ts`**
 
-```sql
-ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS is_beta_user BOOLEAN DEFAULT FALSE;
-UPDATE workspaces SET is_beta_user = TRUE WHERE created_at < NOW();
-COMMENT ON COLUMN workspaces.is_beta_user IS 'Grandfathered beta users with unlimited access';
+Edge function that:
+- Authenticates user via `getUser(token)`
+- Accepts `{ newPriceId, quantity }` in body
+- Looks up workspace's `stripe_subscription_id` from `subscriptions` table
+- Calls `stripe.subscriptions.update()` with new price item and `proration_behavior: 'create_prorations'`
+- For downgrades (Business→Pro), does NOT update DB directly — relies on webhook `customer.subscription.updated` to sync
+- Returns success/error
+
+**2. Update `supabase/config.toml`**
+
+Add:
+```
+[functions.update-subscription]
+verify_jwt = false
 ```
 
-New workspaces default to `false` — no code changes needed for signup.
+**3. Update `src/pages/Billing.tsx`**
 
-**2. `src/hooks/usePlanLimits.ts`**
+For Pro users with active subscription (non-canceled):
+- The existing "Fazer upgrade para Business" button already exists (line 548) — change it to call `update-subscription` instead of `create-checkout-session` when there's an active subscription
+- Add `handlePlanChange` function that invokes `update-subscription` with the target price ID and quantity
 
-- Remove `BETA_MODE` constant entirely
-- Update workspace query to select `id, plan_tier, is_beta_user`
-- Replace `BETA_MODE` checks with `workspace?.is_beta_user` check:
-  - If `is_beta_user === true`: return unlimited limits (Infinity values) with `isBetaUser: true` and `planName` set to actual plan tier name (not forced "Business")
-  - If `is_beta_user === false` or undefined: use `PLAN_LIMITS[tier]` as normal
-- Add `isBetaUser: boolean` to the `PlanLimits` interface
-- Update all return fields (`canAddMember`, `hasAnalytics`, etc.) to check `workspace?.is_beta_user` instead of `BETA_MODE`
+For Business users with active subscription:
+- Add "Fazer downgrade para Pro" outline button next to "Trocar cartão"
+- Show confirmation AlertDialog before downgrading (lists features they'll lose: HR Dashboard, >5 members, etc.)
+- On confirm, call `update-subscription` with Pro price ID, quantity 1
 
-**3. `src/hooks/useEnforcedLimits.ts`**
+Refactor `BusinessQuantityDialog` `onConfirm` to check if already subscribed:
+- If `subscription` exists → call `update-subscription` (plan change)
+- If no subscription → call `create-checkout-session` (new checkout, current behavior)
 
-No changes needed — already checks `max >= 9999` or `Infinity`, which beta users will have.
+**4. Webhook already handles updates**
 
-**4. `src/pages/Billing.tsx`**
+The existing `customer.subscription.updated` handler in `stripe-webhook/index.ts` (lines 146-184) already:
+- Reads new price ID and maps to plan tier via `PRICE_TO_PLAN`
+- Updates `subscriptions` table (status, plan_tier, price_id, quantity)
+- Updates `workspaces.plan_tier`
 
-- Update workspace query to also select `is_beta_user`
-- Before the plan cards section (for Pulse users), add a beta banner:
-  ```
-  {workspace?.is_beta_user && (
-    <Alert with Crown icon>
-      "Acesso Beta Grandfathered" — full free access permanently
-    </Alert>
-  )}
-  ```
-- Also show the banner for active subscription users (Pro/Business section)
-
-**5. `src/components/billing/UpgradeBanner.tsx`**
-
-- Add early return if `limits.isBetaUser === true` (beta users should never see upgrade prompts)
+No webhook changes needed.
 
 ### Technical Notes
-- `is_beta_user` defaults to `FALSE` in the column definition, so new signups automatically get non-beta status
-- The `useEnforcedLimits` hook's `checkLimit` already returns `'allowed'` for `Infinity` values, so beta users pass all limit checks without changes
-- The UpgradeBanner already returns null when all limits return `'allowed'`, but an explicit beta check is cleaner
+- Proration is handled by Stripe automatically via `proration_behavior: 'create_prorations'`
+- Upgrade (Pro→Business) takes effect immediately; downgrade (Business→Pro) also immediate per Stripe default, but prorated credit applied
+- The edge function fetches subscription ID from DB rather than trusting client input
+- Invalidating `['subscription']` and `['workspace-billing']` queries after success ensures UI reflects changes once webhook fires
 
