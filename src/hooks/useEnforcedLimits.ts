@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { usePlanLimits } from './usePlanLimits';
 import { useToast } from './use-toast';
 import { useNavigate } from 'react-router-dom';
-import React from 'react';
+
 
 type LimitStatus = 'allowed' | 'warning' | 'blocked';
 
