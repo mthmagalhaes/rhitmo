@@ -30,7 +30,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Check, Lock, CreditCard, Loader2, AlertTriangle, Download, RotateCcw, Users, Minus, Plus, Crown } from 'lucide-react';
+import { Check, Lock, CreditCard, Loader2, AlertTriangle, Download, RotateCcw, Users, Minus, Plus, Crown, ArrowUp, ArrowDown } from 'lucide-react';
 
 const PLANS = {
   pulse: {
@@ -324,6 +324,8 @@ const Billing = () => {
   const [reactivateLoading, setReactivateLoading] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [businessDialogOpen, setBusinessDialogOpen] = useState(false);
+  const [planChangeLoading, setPlanChangeLoading] = useState(false);
+  const [downgradeDialogOpen, setDowngradeDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!user && !loading) {
@@ -440,7 +442,34 @@ const Billing = () => {
     } catch {
       toast({ title: 'Erro ao reativar', description: 'Tente novamente.', variant: 'destructive' });
     } finally {
-      setReactivateLoading(false);
+    setReactivateLoading(false);
+    }
+  };
+
+  const handlePlanChange = async (newPlan: 'pro' | 'business', quantity: number = 1) => {
+    setPlanChangeLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('update-subscription', {
+        body: { newPlan, quantity },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({
+        title: newPlan === 'business' ? 'Upgrade realizado! 🎉' : 'Downgrade realizado',
+        description: newPlan === 'business'
+          ? 'Seu plano Business está ativo. Mudanças aplicadas imediatamente.'
+          : 'Seu plano foi alterado para Pro. Créditos proporcionais serão aplicados.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-billing'] });
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao alterar plano',
+        description: err?.message || 'Tente novamente ou entre em contato: support@rhitmo.co',
+        variant: 'destructive',
+      });
+    } finally {
+      setPlanChangeLoading(false);
     }
   };
 
@@ -545,9 +574,14 @@ const Billing = () => {
                   Reativar assinatura
                 </Button>
               ) : currentPlan === 'pro' ? (
-                <Button className="rounded-xl h-11" onClick={() => setBusinessDialogOpen(true)} disabled={upgradeLoading === 'business'}>
-                  {upgradeLoading === 'business' && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                <Button className="rounded-xl h-11" onClick={() => setBusinessDialogOpen(true)} disabled={planChangeLoading}>
+                  {planChangeLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowUp className="h-4 w-4 mr-2" />}
                   Fazer upgrade para Business
+                </Button>
+              ) : currentPlan === 'business' ? (
+                <Button variant="outline" className="rounded-xl h-11" onClick={() => setDowngradeDialogOpen(true)} disabled={planChangeLoading}>
+                  {planChangeLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowDown className="h-4 w-4 mr-2" />}
+                  Fazer downgrade para Pro
                 </Button>
               ) : null}
             </div>
@@ -604,10 +638,47 @@ const Billing = () => {
           onOpenChange={setBusinessDialogOpen}
           onConfirm={(qty) => {
             setBusinessDialogOpen(false);
-            handleUpgrade('business', qty);
+            if (subscription) {
+              handlePlanChange('business', qty);
+            } else {
+              handleUpgrade('business', qty);
+            }
           }}
-          loading={upgradeLoading === 'business'}
+          loading={planChangeLoading || upgradeLoading === 'business'}
         />
+
+        <AlertDialog open={downgradeDialogOpen} onOpenChange={setDowngradeDialogOpen}>
+          <AlertDialogContent className="rounded-3xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Fazer downgrade para Pro?</AlertDialogTitle>
+              <AlertDialogDescription className="text-base space-y-3">
+                <span className="block">Ao mudar para o plano Pro, você perderá acesso a:</span>
+                <ul className="list-disc pl-5 space-y-1 text-sm">
+                  <li>HR Dashboard com métricas agregadas</li>
+                  <li>Mais de 5 liderados por líder</li>
+                  <li>Times ilimitados (limite de 3 no Pro)</li>
+                  <li>Gravação acima de 12h/mês</li>
+                  <li>Onboarding assistido e suporte prioritário</li>
+                </ul>
+                <span className="block">Créditos proporcionais serão aplicados automaticamente.</span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="rounded-xl h-11">Manter Business</AlertDialogCancel>
+              <AlertDialogAction
+                className="rounded-xl h-11"
+                onClick={() => {
+                  setDowngradeDialogOpen(false);
+                  handlePlanChange('pro', 1);
+                }}
+                disabled={planChangeLoading}
+              >
+                {planChangeLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Confirmar downgrade
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }
