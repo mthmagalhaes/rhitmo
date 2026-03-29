@@ -1216,6 +1216,7 @@ export type Database = {
           hr_admin_ids: string[] | null
           id: string
           is_active: boolean
+          is_beta_user: boolean | null
           leader_sync_completed_at: string | null
           leader_sync_data: Json | null
           name: string
@@ -1228,6 +1229,7 @@ export type Database = {
           hr_admin_ids?: string[] | null
           id?: string
           is_active?: boolean
+          is_beta_user?: boolean | null
           leader_sync_completed_at?: string | null
           leader_sync_data?: Json | null
           name: string
@@ -1240,6 +1242,7 @@ export type Database = {
           hr_admin_ids?: string[] | null
           id?: string
           is_active?: boolean
+          is_beta_user?: boolean | null
           leader_sync_completed_at?: string | null
           leader_sync_data?: Json | null
           name?: string

@@ -29,7 +29,8 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
-import { Check, Lock, CreditCard, Loader2, AlertTriangle, Download, RotateCcw, Users, Minus, Plus } from 'lucide-react';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Check, Lock, CreditCard, Loader2, AlertTriangle, Download, RotateCcw, Users, Minus, Plus, Crown } from 'lucide-react';
 
 const PLANS = {
   pulse: {
@@ -345,7 +346,7 @@ const Billing = () => {
   const { data: workspace, isLoading: workspaceLoading } = useQuery({
     queryKey: ['workspace-billing', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.from('workspaces').select('id, plan_tier').maybeSingle();
+      const { data, error } = await supabase.from('workspaces').select('id, plan_tier, is_beta_user').maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -477,6 +478,16 @@ const Billing = () => {
           <h1 className="text-3xl font-bold tracking-tight">Seu plano</h1>
           <p className="text-base text-muted-foreground mt-2">Gerencie sua assinatura Rhitmo.</p>
         </div>
+
+        {workspace?.is_beta_user && (
+          <Alert className="border-purple-200/60 bg-purple-50/80 dark:bg-purple-900/20 dark:border-purple-700/40">
+            <Crown className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+            <AlertTitle className="text-purple-800 dark:text-purple-200">Acesso Beta Grandfathered 🎉</AlertTitle>
+            <AlertDescription className="text-purple-700 dark:text-purple-300">
+              Como beta tester, você tem acesso total gratuito permanente. Obrigado por nos ajudar a construir a Rhitmo!
+            </AlertDescription>
+          </Alert>
+        )}
 
         {subscription?.status === 'trialing' && subscription.trial_ends_at && (
           <TrialBanner trialEndsAt={subscription.trial_ends_at} onUpdateCard={handleUpdatePayment} />
@@ -610,6 +621,16 @@ const Billing = () => {
           Você está no plano Pulse (gratuito). Faça upgrade para desbloquear mais recursos.
         </p>
       </div>
+
+      {workspace?.is_beta_user && (
+        <Alert className="border-purple-200/60 bg-purple-50/80 dark:bg-purple-900/20 dark:border-purple-700/40">
+          <Crown className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+          <AlertTitle className="text-purple-800 dark:text-purple-200">Acesso Beta Grandfathered 🎉</AlertTitle>
+          <AlertDescription className="text-purple-700 dark:text-purple-300">
+            Como beta tester, você tem acesso total gratuito permanente. Obrigado por nos ajudar a construir a Rhitmo!
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {(Object.entries(PLANS) as [PlanKey, typeof PLANS.pulse][]).map(([key, plan]) => {
