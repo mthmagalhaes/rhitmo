@@ -3,10 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
-// BETA MODE: Libera todas as funcionalidades para todos os usuários
-// Mudar para false quando sair do Beta para respeitar plan_tier do banco
-const BETA_MODE = true;
-
 interface PlanLimits {
   maxMembers: number;
   maxReviews: number;
@@ -21,9 +17,10 @@ interface PlanLimits {
   assistedOnboarding: boolean;
   planName: string;
   planTier: 'pulse' | 'pro' | 'business';
+  isBetaUser: boolean;
 }
 
-const PLAN_LIMITS: Record<string, Omit<PlanLimits, 'planTier'>> = {
+const PLAN_LIMITS: Record<string, Omit<PlanLimits, 'planTier' | 'isBetaUser'>> = {
   pulse: {
     maxMembers: 3,
     maxReviews: 1,
@@ -76,7 +73,7 @@ export const usePlanLimits = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('workspaces')
-        .select('id, plan_tier')
+        .select('id, plan_tier, is_beta_user')
         .maybeSingle();
       if (error) throw error;
       return data;
@@ -134,32 +131,37 @@ export const usePlanLimits = () => {
     refetchOnWindowFocus: true,
   });
 
-  // BETA: Forçar limites do plano Business para todos
+  const isBeta = !!workspace?.is_beta_user;
+
   const limits = useMemo<PlanLimits>(() => {
-    if (BETA_MODE) {
+    const tier = (workspace?.plan_tier as 'pulse' | 'pro' | 'business') || 'pulse';
+    const baseLimits = PLAN_LIMITS[tier];
+
+    if (isBeta) {
       return {
-        maxMembers: 9999,
-        maxReviews: 9999,
-        maxTeams: 9999,
-        maxMentorMessages: 9999,
-        maxRecordingHours: 9999,
+        maxMembers: Infinity,
+        maxReviews: Infinity,
+        maxTeams: Infinity,
+        maxMentorMessages: Infinity,
+        maxRecordingHours: Infinity,
         analytics: true,
         rhitmoSync: true,
         formalReviews: true,
         hrDashboard: true,
         prioritySupport: true,
         assistedOnboarding: true,
-        planName: 'Business',
-        planTier: 'business',
+        planName: baseLimits.planName,
+        planTier: tier,
+        isBetaUser: true,
       };
     }
-    
-    const tier = (workspace?.plan_tier as 'pulse' | 'pro' | 'business') || 'pulse';
+
     return {
-      ...PLAN_LIMITS[tier],
+      ...baseLimits,
       planTier: tier,
+      isBetaUser: false,
     };
-  }, [workspace?.plan_tier]);
+  }, [workspace?.plan_tier, isBeta]);
 
   const isLoading = workspaceLoading || memberLoading || reviewLoading || teamLoading;
 
@@ -169,18 +171,16 @@ export const usePlanLimits = () => {
     teamCount,
     reviewCount,
     isLoading,
-    // BETA: Sempre true para todas as permissões
-    canAddMember: BETA_MODE ? true : memberCount < limits.maxMembers,
-    canAddTeam: BETA_MODE ? true : teamCount < limits.maxTeams,
-    canGenerateReview: BETA_MODE ? true : reviewCount < limits.maxReviews,
-    hasAnalytics: BETA_MODE ? true : limits.analytics,
-    hasSync: BETA_MODE ? true : limits.rhitmoSync,
-    hasMentorChat: BETA_MODE ? true : true,
-    hasHrDashboard: BETA_MODE ? true : limits.hrDashboard,
-    hasFormalReviews: BETA_MODE ? true : limits.formalReviews,
-    // Valores altos para upgrade messages
-    membersRemaining: BETA_MODE ? 9999 : limits.maxMembers - memberCount,
-    teamsRemaining: BETA_MODE ? 9999 : limits.maxTeams - teamCount,
-    reviewsRemaining: BETA_MODE ? 9999 : limits.maxReviews - reviewCount,
+    canAddMember: isBeta ? true : memberCount < limits.maxMembers,
+    canAddTeam: isBeta ? true : teamCount < limits.maxTeams,
+    canGenerateReview: isBeta ? true : reviewCount < limits.maxReviews,
+    hasAnalytics: isBeta ? true : limits.analytics,
+    hasSync: isBeta ? true : limits.rhitmoSync,
+    hasMentorChat: true,
+    hasHrDashboard: isBeta ? true : limits.hrDashboard,
+    hasFormalReviews: isBeta ? true : limits.formalReviews,
+    membersRemaining: isBeta ? Infinity : limits.maxMembers - memberCount,
+    teamsRemaining: isBeta ? Infinity : limits.maxTeams - teamCount,
+    reviewsRemaining: isBeta ? Infinity : limits.maxReviews - reviewCount,
   };
 };

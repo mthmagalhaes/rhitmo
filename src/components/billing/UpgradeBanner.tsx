@@ -8,6 +8,9 @@ export const UpgradeBanner = () => {
   const navigate = useNavigate();
   const { limits, memberCount, teamCount, reviewCount, checkLimit } = useEnforcedLimits();
 
+  // Beta users never see upgrade prompts
+  if (limits.isBetaUser) return null;
+
   const nearLimits: { name: string; current: number; max: number }[] = [];
 
   const memberStatus = checkLimit(memberCount, limits.maxMembers);

@@ -29,7 +29,8 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
-import { Check, Lock, CreditCard, Loader2, AlertTriangle, Download, RotateCcw, Users, Minus, Plus } from 'lucide-react';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Check, Lock, CreditCard, Loader2, AlertTriangle, Download, RotateCcw, Users, Minus, Plus, Crown } from 'lucide-react';
 
 const PLANS = {
   pulse: {
