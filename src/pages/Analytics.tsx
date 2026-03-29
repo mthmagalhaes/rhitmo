@@ -212,7 +212,7 @@ const Analytics = () => {
 
   if (!user) return null;
 
-  // Upsell screen for non-Maestro plans
+  // Upsell screen for non-Pro/Business plans
   if (!limitsLoading && !hasAnalytics) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] p-8">
@@ -224,8 +224,9 @@ const Analytics = () => {
           <h1 className="text-3xl font-bold text-foreground">Analytics Premium</h1>
           
           <p className="text-muted-foreground text-lg">
-            O painel de Analytics está disponível no plano <strong>Maestro</strong>. 
+            O painel de Analytics está disponível a partir do plano <strong>Pro</strong>. 
             Faça upgrade para desbloquear insights avançados sobre seu time.
+          </p>
           </p>
           
           <div className="pt-4">
