@@ -89,6 +89,52 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<ReturnType<typeof useEditor> | null>(null);
   const { toast } = useToast();
+  const [biasMatches, setBiasMatches] = useState<BiasMatch[]>([]);
+  const [biasDismissCount, setBiasDismissCount] = useState(0);
+  const biasTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounced bias detection on content changes
+  useEffect(() => {
+    if (biasTimerRef.current) clearTimeout(biasTimerRef.current);
+    if (biasDismissCount >= 3) return;
+
+    biasTimerRef.current = setTimeout(() => {
+      if (!editorRef.current) return;
+      const plainText = editorRef.current.getText();
+      if (plainText.length < 15) {
+        setBiasMatches([]);
+        return;
+      }
+      const matches = detectBiasWithPositions(plainText);
+      setBiasMatches(matches);
+    }, 800);
+
+    return () => {
+      if (biasTimerRef.current) clearTimeout(biasTimerRef.current);
+    };
+  }, [content, biasDismissCount]);
+
+  const handleApplyBiasSuggestion = useCallback((match: BiasMatch) => {
+    if (!editorRef.current) return;
+    const text = editorRef.current.getText();
+    const before = text.slice(0, match.from);
+    const after = text.slice(match.to);
+    const newText = before + match.suggestion + after;
+    editorRef.current.commands.setContent(`<p>${newText}</p>`);
+    setBiasMatches(prev => prev.filter(m => m.from !== match.from));
+  }, []);
+
+  const handleApplyAllBiasSuggestions = useCallback(() => {
+    if (!editorRef.current || biasMatches.length === 0) return;
+    let text = editorRef.current.getText();
+    // Apply in reverse order to preserve positions
+    const sorted = [...biasMatches].sort((a, b) => b.from - a.from);
+    for (const match of sorted) {
+      text = text.slice(0, match.from) + match.suggestion + text.slice(match.to);
+    }
+    editorRef.current.commands.setContent(`<p>${text}</p>`);
+    setBiasMatches([]);
+  }, [biasMatches]);
 
   const isMultiMode = !selectedMemberId;
 
