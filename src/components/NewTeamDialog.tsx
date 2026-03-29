@@ -24,6 +24,7 @@ export const NewTeamDialog = ({
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { teamCount, limits, enforceLimit } = useEnforcedLimits();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +37,9 @@ export const NewTeamDialog = ({
       });
       return;
     }
+
+    // Check plan limit
+    if (!enforceLimit(teamCount, limits.maxTeams, 'times')) return;
 
     setLoading(true);
 

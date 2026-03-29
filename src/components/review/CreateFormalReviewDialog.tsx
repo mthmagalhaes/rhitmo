@@ -18,6 +18,7 @@ import { Loader2, Calendar as CalendarIcon, FileText, Award, MessageSquare, Moni
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
+import { useEnforcedLimits } from '@/hooks/useEnforcedLimits';
 import { cn } from '@/lib/utils';
 
 interface CreateFormalReviewDialogProps {
