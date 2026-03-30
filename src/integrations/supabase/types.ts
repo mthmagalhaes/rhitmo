@@ -356,6 +356,47 @@ export type Database = {
           },
         ]
       }
+      feedback_streaks: {
+        Row: {
+          created_at: string | null
+          current_streak: number | null
+          id: string
+          last_feedback_week: string | null
+          longest_streak: number | null
+          updated_at: string | null
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          current_streak?: number | null
+          id?: string
+          last_feedback_week?: string | null
+          longest_streak?: number | null
+          updated_at?: string | null
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string | null
+          current_streak?: number | null
+          id?: string
+          last_feedback_week?: string | null
+          longest_streak?: number | null
+          updated_at?: string | null
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_streaks_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feedbacks: {
         Row: {
           action_items: Json | null
@@ -563,6 +604,57 @@ export type Database = {
             columns: ["framework_id"]
             isOneToOne: false
             referencedRelation: "competency_frameworks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kudos: {
+        Row: {
+          company_value: string | null
+          created_at: string | null
+          from_user_id: string
+          id: string
+          message: string
+          slack_channel_id: string | null
+          slack_message_ts: string | null
+          to_member_id: string
+          workspace_id: string
+        }
+        Insert: {
+          company_value?: string | null
+          created_at?: string | null
+          from_user_id: string
+          id?: string
+          message: string
+          slack_channel_id?: string | null
+          slack_message_ts?: string | null
+          to_member_id: string
+          workspace_id: string
+        }
+        Update: {
+          company_value?: string | null
+          created_at?: string | null
+          from_user_id?: string
+          id?: string
+          message?: string
+          slack_channel_id?: string | null
+          slack_message_ts?: string | null
+          to_member_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kudos_to_member_id_fkey"
+            columns: ["to_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kudos_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
@@ -907,6 +999,41 @@ export type Database = {
             columns: ["job_role_id"]
             isOneToOne: false
             referencedRelation: "job_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      slack_integrations: {
+        Row: {
+          created_at: string | null
+          id: string
+          slack_team_id: string
+          slack_user_id: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          slack_team_id: string
+          slack_user_id: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          slack_team_id?: string
+          slack_user_id?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "slack_integrations_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
@@ -1423,6 +1550,10 @@ export type Database = {
           p_work_style_data?: Json
         }
         Returns: boolean
+      }
+      update_feedback_streak: {
+        Args: { p_user_id: string; p_workspace_id: string }
+        Returns: undefined
       }
       update_member_own_data: {
         Args: { p_skills_data?: Json; p_work_style_data?: Json }

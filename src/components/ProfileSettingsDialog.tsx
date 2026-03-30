@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useQuery } from '@tanstack/react-query';
-import { Loader2, RefreshCw, Compass } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Loader2, RefreshCw, Compass, MessageSquare, Link, Unlink } from 'lucide-react';
 import { ThemeSelector } from '@/components/ThemeSelector';
 import {
   Dialog,
@@ -26,11 +26,15 @@ interface ProfileSettingsDialogProps {
 export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
   const [loading, setLoading] = useState(false);
   const [batchSyncOpen, setBatchSyncOpen] = useState(false);
   const [leaderSyncOpen, setLeaderSyncOpen] = useState(false);
+  const [slackUserId, setSlackUserId] = useState('');
+  const [slackTeamId, setSlackTeamId] = useState('');
+  const [slackLinking, setSlackLinking] = useState(false);
 
   const { data: workspace } = useQuery({
     queryKey: ['workspace', user?.id],
@@ -40,6 +44,21 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
         .from('workspaces')
         .select('*')
         .eq('owner_id', user.id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!user && open,
+  });
+
+  const { data: slackIntegration, refetch: refetchSlack } = useQuery({
+    queryKey: ['slack-integration', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data } = await supabase
+        .from('slack_integrations')
+        .select('*')
+        .eq('user_id', user.id)
+        .limit(1)
         .maybeSingle();
       return data;
     },
@@ -75,9 +94,43 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
     setLoading(false);
   };
 
+  const handleSlackLink = async () => {
+    if (!slackUserId.trim() || !slackTeamId.trim()) {
+      toast({ title: "Preencha os dois campos", variant: "destructive" });
+      return;
+    }
+    setSlackLinking(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke('slack-link', {
+        body: { slack_user_id: slackUserId.trim(), slack_team_id: slackTeamId.trim() },
+      });
+      if (res.error) throw res.error;
+      toast({ title: "Slack conectado!", description: "Sua conta foi vinculada com sucesso." });
+      setSlackUserId('');
+      setSlackTeamId('');
+      refetchSlack();
+    } catch (err: any) {
+      toast({ title: "Erro ao vincular", description: err.message, variant: "destructive" });
+    }
+    setSlackLinking(false);
+  };
+
+  const handleSlackUnlink = async () => {
+    if (!slackIntegration) return;
+    const { error } = await supabase
+      .from('slack_integrations')
+      .delete()
+      .eq('id', slackIntegration.id);
+    if (!error) {
+      toast({ title: "Slack desconectado" });
+      refetchSlack();
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Configurações do Perfil</DialogTitle>
         </DialogHeader>
@@ -106,6 +159,56 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
           {/* Seção de Aparência */}
           <div className="border-t pt-4">
             <ThemeSelector />
+          </div>
+
+          {/* Seção Slack */}
+          <div className="border-t pt-4">
+            <Label className="text-muted-foreground text-xs uppercase tracking-wide mb-2 block">
+              <MessageSquare className="h-3 w-3 inline mr-1" />
+              Slack
+            </Label>
+            {slackIntegration ? (
+              <div className="flex items-center justify-between p-3 rounded-xl bg-muted/50">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-green-500" />
+                  <span className="text-sm">
+                    Conectado como <span className="font-medium">{slackIntegration.slack_user_id}</span>
+                  </span>
+                </div>
+                <Button variant="ghost" size="sm" onClick={handleSlackUnlink}>
+                  <Unlink className="h-4 w-4 mr-1" />
+                  Desconectar
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  Vincule sua conta Slack para usar comandos como <code>/rhitmo</code>, <code>/nota</code> e <code>/kudos</code>.
+                </p>
+                <Input
+                  value={slackUserId}
+                  onChange={(e) => setSlackUserId(e.target.value)}
+                  placeholder="Slack User ID (ex: U0123ABC)"
+                  className="text-sm"
+                />
+                <Input
+                  value={slackTeamId}
+                  onChange={(e) => setSlackTeamId(e.target.value)}
+                  placeholder="Slack Team ID (ex: T0123ABC)"
+                  className="text-sm"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSlackLink}
+                  disabled={slackLinking}
+                  className="w-full"
+                >
+                  {slackLinking ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Link className="h-4 w-4 mr-1" />}
+                  Vincular Conta Slack
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Seção de Manutenção */}
