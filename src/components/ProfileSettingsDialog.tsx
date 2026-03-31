@@ -262,6 +262,7 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
           existingData={(workspace as Record<string, unknown>).leader_sync_data as Record<string, unknown> | null}
         />
       )}
+      <SlackPrivacyOnboarding open={privacyOpen} onOpenChange={setPrivacyOpen} />
     </Dialog>
   );
 }
