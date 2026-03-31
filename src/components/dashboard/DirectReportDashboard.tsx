@@ -439,7 +439,7 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
   return (
     <div className="min-h-screen bg-muted/30 pb-20">
       {/* Header */}
-      <div className="container mx-auto px-6 py-8 flex items-start justify-between">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 flex items-start justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Olá, {displayName}! 👋</h1>
           <p className="text-sm text-muted-foreground mt-1">Painel do Colaborador · {linkedMember.role}</p>
