@@ -105,6 +105,36 @@ export const TeamMemberCard = ({ member, teamName, onClick, onEdit, pendingInvit
           <Calendar className="h-3 w-3" />
           <span>Última nota: {new Date(member.lastFeedback).toLocaleDateString('pt-BR')}</span>
         </div>
+        {/* Slack invite status */}
+        {!member.linkedUserId && pendingInvite && pendingInvite.status === 'sent' && (
+          <div className="mt-3">
+            <Badge
+              variant="secondary"
+              className={`text-xs rounded-full ${
+                pendingInvite.member_has_account
+                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                  : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+              }`}
+            >
+              {pendingInvite.member_has_account ? '⏳ Aguardando conexão' : '⏳ Aguardando cadastro'}
+            </Badge>
+          </div>
+        )}
+        {!member.linkedUserId && !pendingInvite && member.email && onSendInvite && (
+          <div className="mt-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs h-7 rounded-xl"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSendInvite();
+              }}
+            >
+              📧 Enviar Convite
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
