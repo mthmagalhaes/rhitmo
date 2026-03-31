@@ -5,6 +5,53 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// ── Verify HMAC State Token ───────────────────────────────
+async function verifyStateToken(state: string): Promise<{ slackUserId: string; slackTeamId: string } | null> {
+  const secret = Deno.env.get('SLACK_SIGNING_SECRET');
+  if (!secret) { console.error('[STATE] No signing secret'); return null; }
+
+  const parts = state.split('.');
+  if (parts.length !== 2) { console.error('[STATE] Invalid format'); return null; }
+
+  // base64url decode
+  const b64Decode = (s: string) => atob(s.replace(/-/g, '+').replace(/_/g, '/'));
+  
+  let payload: string;
+  let providedHex: string;
+  try {
+    payload = b64Decode(parts[0]);
+    providedHex = b64Decode(parts[1]);
+  } catch {
+    console.error('[STATE] Base64 decode failed');
+    return null;
+  }
+
+  // Verify HMAC
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
+  const expectedHex = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+  if (expectedHex !== providedHex) {
+    console.error('[STATE] HMAC mismatch');
+    return null;
+  }
+
+  // Parse payload: slack_user_id:slack_team_id:timestamp
+  const segments = payload.split(':');
+  if (segments.length !== 3) { console.error('[STATE] Invalid payload segments'); return null; }
+
+  const [slackUserId, slackTeamId, timestampStr] = segments;
+  const timestamp = parseInt(timestampStr);
+  const now = Math.floor(Date.now() / 1000);
+  
+  if (now - timestamp > 600) { // 10 minutes
+    console.error('[STATE] Token expired:', now - timestamp, 'seconds old');
+    return null;
+  }
+
+  return { slackUserId, slackTeamId };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -29,7 +76,25 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
     }
 
-    const { slack_user_id, slack_team_id } = await req.json();
+    const body = await req.json();
+    let slack_user_id: string;
+    let slack_team_id: string;
+
+    // Support both modes: direct IDs or HMAC state token
+    if (body.state) {
+      const verified = await verifyStateToken(body.state);
+      if (!verified) {
+        return new Response(JSON.stringify({ error: 'Invalid or expired state token' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      slack_user_id = verified.slackUserId;
+      slack_team_id = verified.slackTeamId;
+      console.log('[LINK] State token verified for:', slack_user_id);
+    } else {
+      slack_user_id = body.slack_user_id;
+      slack_team_id = body.slack_team_id;
+    }
 
     if (!slack_user_id || !slack_team_id) {
       return new Response(JSON.stringify({ error: 'slack_user_id and slack_team_id are required' }), {

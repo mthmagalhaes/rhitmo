@@ -31,6 +31,7 @@ import HRAnalytics from "./pages/HRAnalytics";
 import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import DirectReportReviewView from "./pages/DirectReportReviewView";
+import SlackConnect from "./pages/SlackConnect";
 
 const queryClient = new QueryClient();
 
@@ -85,6 +86,9 @@ const App = () => (
                 <AppLayout><BriefPage /></AppLayout>
               </DirectReportGuard>
             } />
+            
+            {/* Slack OAuth connect */}
+            <Route path="/slack/connect" element={<SlackConnect />} />
             
             {/* Rotas públicas (sem sidebar) */}
             <Route path="/sync/:memberId" element={<RhitmoSync />} />

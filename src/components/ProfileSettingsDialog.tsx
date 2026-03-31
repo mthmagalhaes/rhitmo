@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader2, RefreshCw, Compass, MessageSquare, Link, Unlink } from 'lucide-react';
+import { Loader2, RefreshCw, Compass, MessageSquare, Unlink, ExternalLink } from 'lucide-react';
 import { ThemeSelector } from '@/components/ThemeSelector';
 import {
   Dialog,
@@ -32,9 +32,7 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
   const [loading, setLoading] = useState(false);
   const [batchSyncOpen, setBatchSyncOpen] = useState(false);
   const [leaderSyncOpen, setLeaderSyncOpen] = useState(false);
-  const [slackUserId, setSlackUserId] = useState('');
-  const [slackTeamId, setSlackTeamId] = useState('');
-  const [slackLinking, setSlackLinking] = useState(false);
+  // Slack linking is now handled via OAuth flow, no manual inputs needed
 
   const { data: workspace } = useQuery({
     queryKey: ['workspace', user?.id],
@@ -94,27 +92,7 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
     setLoading(false);
   };
 
-  const handleSlackLink = async () => {
-    if (!slackUserId.trim() || !slackTeamId.trim()) {
-      toast({ title: "Preencha os dois campos", variant: "destructive" });
-      return;
-    }
-    setSlackLinking(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await supabase.functions.invoke('slack-link', {
-        body: { slack_user_id: slackUserId.trim(), slack_team_id: slackTeamId.trim() },
-      });
-      if (res.error) throw res.error;
-      toast({ title: "Slack conectado!", description: "Sua conta foi vinculada com sucesso." });
-      setSlackUserId('');
-      setSlackTeamId('');
-      refetchSlack();
-    } catch (err: any) {
-      toast({ title: "Erro ao vincular", description: err.message, variant: "destructive" });
-    }
-    setSlackLinking(false);
-  };
+  const slackOAuthUrl = `https://slack.com/oauth/v2/authorize?client_id=${import.meta.env.VITE_SLACK_CLIENT_ID || ''}&scope=commands,chat:write&user_scope=&redirect_uri=${encodeURIComponent(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/slack-oauth-callback`)}`;
 
   const handleSlackUnlink = async () => {
     if (!slackIntegration) return;
@@ -181,32 +159,24 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
                 </Button>
               </div>
             ) : (
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">
-                  Vincule sua conta Slack para usar comandos como <code>/rhitmo</code>, <code>/nota</code> e <code>/kudos</code>.
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Vincule sua conta Slack para usar comandos como <code className="bg-muted px-1 py-0.5 rounded text-xs">/rhitmo</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">/nota</code> e <code className="bg-muted px-1 py-0.5 rounded text-xs">/kudos</code>.
                 </p>
-                <Input
-                  value={slackUserId}
-                  onChange={(e) => setSlackUserId(e.target.value)}
-                  placeholder="Slack User ID (ex: U0123ABC)"
-                  className="text-sm"
-                />
-                <Input
-                  value={slackTeamId}
-                  onChange={(e) => setSlackTeamId(e.target.value)}
-                  placeholder="Slack Team ID (ex: T0123ABC)"
-                  className="text-sm"
-                />
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleSlackLink}
-                  disabled={slackLinking}
                   className="w-full"
+                  asChild
                 >
-                  {slackLinking ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Link className="h-4 w-4 mr-1" />}
-                  Vincular Conta Slack
+                  <a href={slackOAuthUrl} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-4 w-4 mr-1" />
+                    Adicionar ao Slack
+                  </a>
                 </Button>
+                <p className="text-xs text-muted-foreground">
+                  Já tem o bot instalado? Execute <code className="bg-muted px-1 py-0.5 rounded text-xs">/rhitmo</code> no Slack e clique em "Conectar Conta".
+                </p>
               </div>
             )}
           </div>
