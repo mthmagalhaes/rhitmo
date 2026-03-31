@@ -13,15 +13,22 @@ const supabase = createClient(
 // ── Slack Signature Verification ──────────────────────────
 async function verifySlackSignature(req: Request, body: string): Promise<boolean> {
   const signingSecret = Deno.env.get('SLACK_SIGNING_SECRET');
+  console.log('[VERIFY] Signing secret exists:', !!signingSecret);
   if (!signingSecret) return false;
 
   const timestamp = req.headers.get('x-slack-request-timestamp');
   const slackSignature = req.headers.get('x-slack-signature');
+  console.log('[VERIFY] Timestamp header:', timestamp);
+  console.log('[VERIFY] Signature header present:', !!slackSignature);
   if (!timestamp || !slackSignature) return false;
 
-  // Reject requests older than 5 minutes
   const now = Math.floor(Date.now() / 1000);
-  if (Math.abs(now - parseInt(timestamp)) > 300) return false;
+  const delta = Math.abs(now - parseInt(timestamp));
+  console.log('[VERIFY] Timestamp delta (seconds):', delta);
+  if (delta > 300) {
+    console.log('[VERIFY] REJECTED: timestamp too old');
+    return false;
+  }
 
   const sigBasestring = `v0:${timestamp}:${body}`;
   const key = await crypto.subtle.importKey(
@@ -34,7 +41,11 @@ async function verifySlackSignature(req: Request, body: string): Promise<boolean
   const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(sigBasestring));
   const hexDigest = 'v0=' + Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, '0')).join('');
 
-  return hexDigest === slackSignature;
+  const match = hexDigest === slackSignature;
+  console.log('[VERIFY] Calculated (first 20):', hexDigest.substring(0, 20));
+  console.log('[VERIFY] Received   (first 20):', slackSignature.substring(0, 20));
+  console.log('[VERIFY] Result:', match ? 'VALID' : 'INVALID');
+  return match;
 }
 
 // ── Helper: Get User Persona ──────────────────────────────
@@ -46,26 +57,34 @@ interface PersonaResult {
 }
 
 async function getUserPersona(slackUserId: string): Promise<PersonaResult> {
-  const { data: integration } = await supabase
+  console.log('[PERSONA] Looking up slack_user_id:', slackUserId);
+
+  const { data: integration, error: intError } = await supabase
     .from('slack_integrations')
     .select('user_id, workspace_id')
     .eq('slack_user_id', slackUserId)
     .limit(1)
     .maybeSingle();
 
+  console.log('[PERSONA] Integration found:', !!integration, 'error:', intError?.message || 'none');
+
   if (!integration) return { persona: 'unauthenticated' };
 
-  const { data: workspace } = await supabase
+  const { data: workspace, error: wsError } = await supabase
     .from('workspaces')
     .select('owner_id, hr_admin_ids')
     .eq('id', integration.workspace_id)
     .single();
 
+  console.log('[PERSONA] Workspace found:', !!workspace, 'error:', wsError?.message || 'none');
+
   if (workspace?.owner_id === integration.user_id) {
+    console.log('[PERSONA] Result: leader (workspace owner)');
     return { persona: 'leader', userId: integration.user_id, workspaceId: integration.workspace_id };
   }
 
   if (workspace?.hr_admin_ids?.includes(integration.user_id)) {
+    console.log('[PERSONA] Result: hr_admin');
     return { persona: 'hr_admin', userId: integration.user_id, workspaceId: integration.workspace_id };
   }
 
@@ -77,15 +96,19 @@ async function getUserPersona(slackUserId: string): Promise<PersonaResult> {
     .maybeSingle();
 
   if (member) {
+    console.log('[PERSONA] Result: direct_report, memberId:', member.id);
     return { persona: 'direct_report', userId: integration.user_id, workspaceId: integration.workspace_id, memberId: member.id };
   }
 
+  console.log('[PERSONA] Result: leader (fallback)');
   return { persona: 'leader', userId: integration.user_id, workspaceId: integration.workspace_id };
 }
 
 // ── Slack API Helper ──────────────────────────────────────
 async function slackApi(method: string, body: Record<string, unknown>) {
   const token = Deno.env.get('SLACK_BOT_TOKEN');
+  console.log('[SLACK_API] Calling:', method, '| Token exists:', !!token, '| Body keys:', Object.keys(body).join(','));
+
   const res = await fetch(`https://slack.com/api/${method}`, {
     method: 'POST',
     headers: {
@@ -94,14 +117,19 @@ async function slackApi(method: string, body: Record<string, unknown>) {
     },
     body: JSON.stringify(body),
   });
-  return res.json();
+  const json = await res.json();
+  console.log('[SLACK_API] Response:', method, '| ok:', json.ok, '| error:', json.error || 'none');
+  return json;
 }
 
 // ── Command: /rhitmo ──────────────────────────────────────
 async function handleRhitmoCommand(params: URLSearchParams) {
   const slackUserId = params.get('user_id')!;
   const channelId = params.get('channel_id')!;
+  console.log('[CMD /rhitmo] user:', slackUserId, 'channel:', channelId);
+
   const persona = await getUserPersona(slackUserId);
+  console.log('[CMD /rhitmo] persona:', persona.persona);
 
   if (persona.persona === 'unauthenticated') {
     await slackApi('chat.postEphemeral', {
@@ -177,6 +205,8 @@ async function handleNotaCommand(params: URLSearchParams) {
   const slackUserId = params.get('user_id')!;
   const channelId = params.get('channel_id')!;
   const text = params.get('text') || '';
+  console.log('[CMD /nota] user:', slackUserId, 'channel:', channelId, 'textLen:', text.length);
+
   const persona = await getUserPersona(slackUserId);
 
   if (persona.persona !== 'leader') {
@@ -199,8 +229,8 @@ async function handleNotaCommand(params: URLSearchParams) {
   }
 
   const [, memberName, content] = parts;
+  console.log('[CMD /nota] Looking for member:', memberName);
 
-  // Find member in workspace
   const { data: teams } = await supabase
     .from('teams')
     .select('id')
@@ -220,6 +250,8 @@ async function handleNotaCommand(params: URLSearchParams) {
     .limit(1)
     .maybeSingle();
 
+  console.log('[CMD /nota] Member found:', member?.name || 'NOT FOUND');
+
   if (!member) {
     await slackApi('chat.postEphemeral', {
       channel: channelId,
@@ -229,7 +261,6 @@ async function handleNotaCommand(params: URLSearchParams) {
     return;
   }
 
-  // Create feedback
   const { error: insertError } = await supabase
     .from('feedbacks')
     .insert({
@@ -243,18 +274,16 @@ async function handleNotaCommand(params: URLSearchParams) {
     });
 
   if (insertError) {
-    console.error('Error inserting feedback:', insertError);
+    console.error('[CMD /nota] Insert error:', insertError);
     await slackApi('chat.postEphemeral', { channel: channelId, user: slackUserId, text: '❌ Erro ao salvar nota.' });
     return;
   }
 
-  // Update streak
   await supabase.rpc('update_feedback_streak', {
     p_user_id: persona.userId,
     p_workspace_id: persona.workspaceId,
   });
 
-  // Get streak
   const { data: streak } = await supabase
     .from('feedback_streaks')
     .select('current_streak')
@@ -289,6 +318,8 @@ async function handleKudosCommand(params: URLSearchParams) {
   const channelId = params.get('channel_id')!;
   const text = params.get('text') || '';
   const userName = params.get('user_name') || 'alguém';
+  console.log('[CMD /kudos] user:', slackUserId, 'channel:', channelId, 'textLen:', text.length);
+
   const persona = await getUserPersona(slackUserId);
 
   if (persona.persona === 'unauthenticated') {
@@ -307,8 +338,8 @@ async function handleKudosCommand(params: URLSearchParams) {
   }
 
   const [, memberName, message] = parts;
+  console.log('[CMD /kudos] Looking for member:', memberName);
 
-  // Find member
   const { data: teams } = await supabase
     .from('teams')
     .select('id')
@@ -323,6 +354,8 @@ async function handleKudosCommand(params: URLSearchParams) {
     .limit(1)
     .maybeSingle();
 
+  console.log('[CMD /kudos] Member found:', member?.name || 'NOT FOUND');
+
   if (!member) {
     await slackApi('chat.postEphemeral', {
       channel: channelId,
@@ -332,7 +365,6 @@ async function handleKudosCommand(params: URLSearchParams) {
     return;
   }
 
-  // Post public kudos message
   const result = await slackApi('chat.postMessage', {
     channel: channelId,
     blocks: [
@@ -344,7 +376,6 @@ async function handleKudosCommand(params: URLSearchParams) {
     ],
   });
 
-  // Save to DB
   await supabase.from('kudos').insert({
     workspace_id: persona.workspaceId,
     from_user_id: persona.userId,
@@ -357,61 +388,91 @@ async function handleKudosCommand(params: URLSearchParams) {
 
 // ── Main Handler ──────────────────────────────────────────
 Deno.serve(async (req) => {
+  const url = new URL(req.url);
+  console.log(`[MAIN] ${req.method} ${url.pathname} | content-type: ${req.headers.get('content-type')} | has-sig: ${!!req.headers.get('x-slack-signature')} | has-ts: ${!!req.headers.get('x-slack-request-timestamp')}`);
+
+  // Health check
+  if (req.method === 'GET') {
+    const health = {
+      status: 'alive',
+      hasToken: !!Deno.env.get('SLACK_BOT_TOKEN'),
+      hasSigningSecret: !!Deno.env.get('SLACK_SIGNING_SECRET'),
+      hasSupabaseUrl: !!Deno.env.get('SUPABASE_URL'),
+      timestamp: new Date().toISOString(),
+    };
+    console.log('[HEALTH]', JSON.stringify(health));
+    return new Response(JSON.stringify(health), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const body = await req.text();
+    console.log('[MAIN] Body length:', body.length);
 
-    // Verify Slack signature
     const isValid = await verifySlackSignature(req, body);
     if (!isValid) {
-      console.error('Invalid Slack signature');
+      console.error('[MAIN] REJECTED: Invalid Slack signature');
       return new Response('Unauthorized', { status: 401 });
     }
 
-    // Check content type
     const contentType = req.headers.get('content-type') || '';
 
-    // Handle URL verification (JSON)
     if (contentType.includes('application/json')) {
       const json = JSON.parse(body);
+      console.log('[MAIN] JSON payload type:', json.type);
       if (json.type === 'url_verification') {
         return new Response(JSON.stringify({ challenge: json.challenge }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      // Interactive payloads come as JSON too sometimes
       return new Response('ok', { headers: corsHeaders });
     }
 
-    // Slash commands come as form-urlencoded
     const params = new URLSearchParams(body);
     const command = params.get('command');
+    const userId = params.get('user_id');
+    const channelId = params.get('channel_id');
+    const textLen = (params.get('text') || '').length;
+    console.log(`[MAIN] Command: ${command} | user: ${userId} | channel: ${channelId} | textLen: ${textLen}`);
 
-    // Respond immediately to Slack (3s timeout)
-    // Process async
     switch (command) {
       case '/rhitmo':
-        await handleRhitmoCommand(params);
+        try {
+          await handleRhitmoCommand(params);
+        } catch (e) {
+          console.error('[ERROR /rhitmo]', e);
+        }
         break;
       case '/nota':
-        await handleNotaCommand(params);
+        try {
+          await handleNotaCommand(params);
+        } catch (e) {
+          console.error('[ERROR /nota]', e);
+        }
         break;
       case '/kudos':
-        await handleKudosCommand(params);
+        try {
+          await handleKudosCommand(params);
+        } catch (e) {
+          console.error('[ERROR /kudos]', e);
+        }
         break;
       default:
+        console.log('[MAIN] Unknown command:', command);
         return new Response(JSON.stringify({ response_type: 'ephemeral', text: `Comando desconhecido: ${command}` }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
     }
 
-    // Return empty 200 (Slack requires fast response)
+    console.log('[MAIN] Command processed successfully, returning 200');
     return new Response('', { status: 200, headers: corsHeaders });
   } catch (error) {
-    console.error('Slack bot error:', error);
+    console.error('[MAIN] Unhandled error:', error);
     return new Response(JSON.stringify({ error: 'Internal error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
