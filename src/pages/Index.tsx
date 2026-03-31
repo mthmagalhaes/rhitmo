@@ -11,6 +11,7 @@ import { EditTeamDialog } from '@/components/EditTeamDialog';
 import { DeleteTeamDialog } from '@/components/DeleteTeamDialog';
 import { TeamTabs } from '@/components/TeamTabs';
 import { SetupChecklist } from '@/components/SetupChecklist';
+import { PendingInvitesSection } from '@/components/team/PendingInvitesSection';
 import { LeaderSyncWizard } from '@/components/LeaderSyncWizard';
 import { LeaderSyncReminder } from '@/components/LeaderSyncReminder';
 import { useAuth } from '@/hooks/useAuth';

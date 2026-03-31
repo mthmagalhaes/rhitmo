@@ -7,11 +7,19 @@ import { Calendar, MessageSquare, Settings } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 
+interface PendingInviteInfo {
+  status: string;
+  member_has_account: boolean;
+  created_at: string;
+}
+
 interface TeamMemberCardProps {
   member: TeamMember;
   teamName?: string;
   onClick: () => void;
   onEdit?: () => void;
+  pendingInvite?: PendingInviteInfo | null;
+  onSendInvite?: () => void;
 }
 
 export const TeamMemberCard = ({ member, teamName, onClick, onEdit }: TeamMemberCardProps) => {
