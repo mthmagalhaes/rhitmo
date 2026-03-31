@@ -1,70 +1,72 @@
 
 
-## Plan: Slack Privacy Protection Layers
+## Plan: UX Layout & Spacing Overhaul — All User Roles
 
-### Summary
-Add 3 protection layers for sensitive Slack commands: (1) privacy onboarding dialog after account linking, (2) public channel detection with warning + escape hatch, (3) DM-only enforcement for `/review`. Also add interactivity handler for button clicks.
+### Problem Identified
 
-### Changes
+The root cause is that `container mx-auto` in Tailwind defaults to full-width breakpoints (e.g., `max-width: 1280px` at `xl`, `1536px` at `2xl`), and with the sidebar taking ~256px, the remaining content area pushes components beyond the visible viewport. The NudgesBanner text truncates too aggressively, the CalendarWidget cards scroll horizontally without visual cues, and the header buttons ("Nova Nota") hide behind the right edge.
 
-**1. Database Migration — Add `hide_slack_privacy_tips` column**
+### Changes Overview
 
-```sql
-ALTER TABLE public.user_preferences 
-ADD COLUMN IF NOT EXISTS hide_slack_privacy_tips BOOLEAN DEFAULT false;
-```
+**1. Global: Constrain content width inside sidebar layout**
 
-No new RLS needed — existing policies already cover user_preferences CRUD.
+- **`src/pages/Index.tsx`** — Replace `container mx-auto px-6` with `max-w-5xl mx-auto px-4 sm:px-6` in both the header and `<main>` sections (lines 305, 375). This caps content at ~1024px, fitting comfortably inside the sidebar layout at 1136px viewport.
 
-**2. CREATE `src/components/slack/SlackPrivacyOnboarding.tsx`**
+**2. Index.tsx Header — Responsive button layout**
 
-- Dialog component with 3 styled cards (Rhitmo design: `rounded-2xl`, soft shadows):
-  - Card 1: Shield icon — Private commands (`/nota`, `/brief`, `/review`) → use in DM/private channels
-  - Card 2: Megaphone icon — Public commands (`/kudos`) → use in public channels
-  - Card 3: Lock icon — Why this matters (preview visibility while typing)
-- "Não mostrar novamente" checkbox → saves `hide_slack_privacy_tips: true` to `user_preferences`
-- "Entendi" primary button to close
+- Lines 339-371: Stack buttons vertically on smaller viewports or use `flex-wrap` to prevent overflow. Change `<div className="flex gap-3">` to `<div className="flex flex-wrap gap-2 sm:gap-3">`.
 
-**3. UPDATE `src/pages/SlackConnect.tsx`**
+**3. NudgesBanner — Fix text truncation**
 
-- After successful linking, check `user_preferences.hide_slack_privacy_tips`
-- If not hidden, show `SlackPrivacyOnboarding` dialog before the success screen
-- Flow: link succeeds → fetch preference → if not hidden, show dialog → on close, show success
+- Line 85: The message `<p>` uses `truncate` which clips long messages. Change to `line-clamp-2` so messages wrap to 2 lines instead of being cut off. This ensures "Yasmin Nóbrega teve 3 sinais de atenção nas últimas 2 semanas" is fully readable.
 
-**4. UPDATE `supabase/functions/slack-bot/index.ts` — Privacy detection + interactivity**
+**4. CalendarWidget — Add scroll indicators**
 
-Add constants:
-```typescript
-const SENSITIVE_COMMANDS = ['/nota', '/brief', '/review', '/meu-pdi'];
-const DM_ONLY_COMMANDS = ['/review'];
-```
+- Line 116: The horizontal scroll container `flex gap-3 overflow-x-auto pb-1` has no visual hint that more cards exist. Add gradient fade masks on the right edge (`mask-image` or a pseudo-element) and reduce `min-w-[220px]` to `min-w-[200px]` to show more cards.
 
-Add `isPublicChannel(channelId)` helper:
-- Calls `conversations.info` via Slack API with bot token
-- Returns `!channel.is_private` (public = true)
-- Simple in-memory cache (Map with 5-min TTL)
+**5. TeamTabs — Prevent overflow**
 
-In `processCommand`, before routing to handlers:
-- For `DM_ONLY_COMMANDS`: if `channel_type !== 'im'`, send ephemeral hard block via `response_url` and return
-- For `SENSITIVE_COMMANDS` in public channels: send warning with interactive buttons (Continue / Cancel) via `response_url`, storing original command info in `callback_id`
+- Line 30: `TabsList` uses `flex-nowrap overflow-x-auto` but has no max-width constraint. Add `max-w-full` and ensure scroll indicators are visible. Consider wrapping tabs on mobile with `flex-wrap` for small team counts.
 
-Add interactivity handler in main `Deno.serve`:
-- Detect `application/x-www-form-urlencoded` payloads where `payload` param exists (Slack interactive components)
-- Parse JSON from `payload` param
-- Verify signature
-- Extract `actions[0].value` — if `continue_public`, re-execute original command; if `cancel`, send cancellation message
-- Return 200 immediately, process async
+**6. MemberDetails.tsx — Constrain width**
 
-**5. UPDATE `src/components/ProfileSettingsDialog.tsx`**
+- Line 399: Replace `container mx-auto px-4 sm:px-6` with `max-w-5xl mx-auto px-4 sm:px-6`.
 
-- Add "Boas Práticas" section in the Slack integration area
-- Button "Ver Novamente" to reopen `SlackPrivacyOnboarding`
-- Small table showing command privacy classification
+**7. Analytics.tsx — Audit container**
+
+- Check and apply same `max-w-5xl` constraint to the Analytics page main wrapper.
+
+**8. DirectReportDashboard.tsx — Audit container**
+
+- Apply same `max-w-5xl` pattern to the direct report dashboard.
+
+**9. HRDashboard.tsx — Already correct**
+
+- Uses `max-w-6xl mx-auto` (line 66) — already well-constrained. No changes needed.
+
+**10. HRTeams.tsx, HRMembers.tsx, HRAnalytics.tsx — Audit containers**
+
+- Apply consistent `max-w-5xl` or `max-w-6xl` pattern if using `container mx-auto`.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `src/pages/Index.tsx` | Replace `container mx-auto` → `max-w-5xl mx-auto`, fix button wrapping |
+| `src/components/NudgesBanner.tsx` | `truncate` → `line-clamp-2` on message text |
+| `src/components/CalendarWidget.tsx` | Reduce card `min-w`, add right-fade hint |
+| `src/components/TeamTabs.tsx` | Ensure no overflow on narrow viewports |
+| `src/pages/MemberDetails.tsx` | `container mx-auto` → `max-w-5xl mx-auto` |
+| `src/pages/Analytics.tsx` | Same container constraint |
+| `src/components/dashboard/DirectReportDashboard.tsx` | Same container constraint |
+| `src/pages/HRTeams.tsx` | Audit & fix if needed |
+| `src/pages/HRMembers.tsx` | Audit & fix if needed |
+| `src/pages/HRAnalytics.tsx` | Audit & fix if needed |
 
 ### Technical Notes
 
-- Interactivity requires configuring the **Interactivity Request URL** in the Slack App settings to point to the same `slack-bot` edge function URL. User will need to do this manually.
-- The `conversations.info` call uses the bot token already available as `SLACK_BOT_TOKEN`.
-- Channel type `im` is provided in slash command payloads as `channel_type` param — no extra API call needed for DM detection.
-- For public channel detection on non-DM channels, we call `conversations.info` since `channel_type` only distinguishes `im` vs others.
+- `max-w-5xl` = 1024px — fits well inside 1136px viewport minus ~256px sidebar = ~880px available. Actually with sidebar collapsed it goes up to ~1100px, so `max-w-5xl` (1024px) works well across states.
+- No database changes needed.
+- No new dependencies.
+- All changes are CSS-only — zero logic changes.
 
