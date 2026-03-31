@@ -1,54 +1,70 @@
 
 
-## Plan: Add Comprehensive Debugging to Slack Bot Edge Function
+## Plan: Refactor Slack Bot to Immediate-Ack + response_url Pattern
 
-### Summary
-Add detailed logging at every decision point in `slack-bot/index.ts` plus a GET health-check endpoint. This will reveal whether requests reach the function, where they fail (signature, routing, Slack API calls), and whether secrets are configured.
+### Diagnosis from Logs
+
+The logs reveal the function **is** receiving requests and processing them successfully — signature verification passes, commands route correctly. However, two problems exist:
+
+1. **Timing**: The handler `await`s all DB queries and Slack API calls before returning 200. If this exceeds 3 seconds, Slack shows "dispatch_failed".
+2. **channel_not_found**: `chat.postEphemeral` fails with `channel_not_found` for DM channel IDs (e.g., `D04MHSU2P3M`). Using `response_url` instead bypasses this entirely since Slack handles delivery.
 
 ### Changes
 
-**`supabase/functions/slack-bot/index.ts`** — Single file update
+**Single file: `supabase/functions/slack-bot/index.ts`**
 
-**1. GET health-check endpoint** (top of `Deno.serve` handler, before body parsing)
-- Return JSON: `{ status: "alive", hasToken: bool, hasSigningSecret: bool, hasSupabaseUrl: bool, timestamp: string }`
-- This confirms the function is deployed and secrets are set
+**1. Immediate 200 + async processing**
 
-**2. Logging in `Deno.serve` entry**
-- Log method, URL, content-type, presence of `x-slack-signature` and `x-slack-request-timestamp` headers
-- Log raw body length (NOT full body, to avoid leaking tokens)
+Restructure `Deno.serve` handler to:
+- Read body and headers
+- Handle retries (`X-Slack-Retry-Num` header → return 200 immediately)
+- Handle JSON `url_verification` synchronously (required by Slack setup)
+- For slash commands: return `new Response('', { status: 200 })` **immediately**, then fire `processCommand()` without `await`
+- Store `response_url` from the parsed params — this is Slack's webhook for delayed responses
 
-**3. Logging in `verifySlackSignature`**
-- Log whether signing secret exists
-- Log whether timestamp and signature headers are present
-- Log timestamp delta (current time minus request timestamp)
-- Log calculated hex digest vs received signature (first 10 chars only, for safety)
-- Log final pass/fail result
+**2. New `processCommand()` async function**
 
-**4. Logging in command routing**
-- Log parsed `command`, `user_id`, `channel_id`, `text` length
-- Log which case was matched
+Contains all current logic (signature verification, persona lookup, command routing) but sends responses via `response_url` instead of `chat.postEphemeral`/`chat.postMessage`:
 
-**5. Logging in `getUserPersona`**
-- Log slack user ID being looked up
-- Log whether integration record was found
-- Log which persona was determined and why
+```text
+processCommand(body, headers, params)
+  → verifySlackSignature()
+  → getUserPersona()
+  → route to command handler
+  → POST result to response_url
+```
 
-**6. Logging in `slackApi` helper**
-- Log method name and body keys before each call
-- Log response `ok` field and `error` field from Slack API response
-- This catches invalid tokens or missing scopes immediately
+**3. Refactor command handlers to return message objects**
 
-**7. Wrap each command handler in try-catch**
-- `handleRhitmoCommand`, `handleNotaCommand`, `handleKudosCommand` each get individual try-catch with detailed error logging
+Instead of calling `slackApi('chat.postEphemeral', ...)` directly, each handler returns a message payload (`{ text, blocks }`). The `processCommand` wrapper sends it to `response_url`.
 
-### What this does NOT change
-- No logic changes — all existing behavior preserved
-- No new dependencies
-- No database changes
-- No config.toml changes needed (entry already exists)
+Exception: `/kudos` still uses `slackApi('chat.postMessage', ...)` for the public channel message, but the ephemeral confirmation uses `response_url`.
+
+**4. Add `sendDelayedResponse()` helper**
+
+```text
+sendDelayedResponse(responseUrl, message, responseType = 'ephemeral')
+  → fetch(responseUrl, { method: 'POST', body: { response_type, ...message } })
+```
+
+**5. Retry handling**
+
+At the top of the POST handler, check `X-Slack-Retry-Num` header. If present, log and return 200 without processing (prevents duplicate command execution).
+
+**6. Error safety**
+
+Wrap the entire `Deno.serve` in try-catch that always returns 200 to Slack. Errors are logged but never surface as 500s.
+
+### What stays the same
+- `verifySlackSignature()` — no changes
+- `getUserPersona()` — no changes  
+- Database operations (feedbacks insert, streak update, kudos insert) — no changes
+- Health check GET endpoint — no changes
+- `config.toml` — no changes needed
 
 ### Technical Notes
-- Logs are viewable via edge function logs tool after each Slack command attempt
-- Secret values are never logged — only boolean existence checks
-- Signature hex is truncated to prevent replay attacks from logs
+- `response_url` is included in every Slack slash command payload and is valid for 30 minutes
+- This pattern eliminates the `channel_not_found` error since we no longer call `chat.postEphemeral` for command responses
+- Deno edge functions keep running after the response is sent, so fire-and-forget `processCommand()` works correctly
+- `/kudos` is the only command that still needs `slackApi` — for posting the public message to the channel
 
