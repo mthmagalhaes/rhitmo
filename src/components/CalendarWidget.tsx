@@ -152,6 +152,8 @@ export const CalendarWidget = () => {
           );
         })}
       </div>
+      </div>
     </div>
   );
+};
 };
