@@ -113,7 +113,8 @@ export const CalendarWidget = () => {
           Desconectar
         </button>
       </div>
-      <div className="flex gap-3 overflow-x-auto pb-1">
+      <div className="relative">
+      <div className="flex gap-3 overflow-x-auto pb-1 [mask-image:linear-gradient(to_right,black_calc(100%-40px),transparent)]">
         {upcomingMeetings.map((meeting) => {
           const badge = getDayBadge(meeting.start_time);
 
