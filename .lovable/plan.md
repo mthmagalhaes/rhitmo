@@ -1,72 +1,99 @@
 
 
-## Plan: UX Layout & Spacing Overhaul — All User Roles
+## Plan: Automatic Slack Invitation System for New Team Members
 
-### Problem Identified
+### Summary
+When a manager adds a team member, automatically look up their email in the Slack workspace and send a personalized DM with a connect/signup link. Track invitation status and show it on the dashboard and member cards.
 
-The root cause is that `container mx-auto` in Tailwind defaults to full-width breakpoints (e.g., `max-width: 1280px` at `xl`, `1536px` at `2xl`), and with the sidebar taking ~256px, the remaining content area pushes components beyond the visible viewport. The NudgesBanner text truncates too aggressively, the CalendarWidget cards scroll horizontally without visual cues, and the header buttons ("Nova Nota") hide behind the right edge.
+### Changes
 
-### Changes Overview
+**1. Database Migration — `pending_slack_invites` table**
 
-**1. Global: Constrain content width inside sidebar layout**
+```sql
+CREATE TABLE public.pending_slack_invites (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  member_id UUID NOT NULL,
+  slack_user_id TEXT NOT NULL,
+  invited_by UUID NOT NULL,
+  member_has_account BOOLEAN DEFAULT false,
+  status TEXT DEFAULT 'sent',
+  reminded_at TIMESTAMPTZ,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  accepted_at TIMESTAMPTZ
+);
+CREATE INDEX idx_pending_invites_status ON public.pending_slack_invites(status);
+CREATE INDEX idx_pending_invites_member ON public.pending_slack_invites(member_id);
+ALTER TABLE public.pending_slack_invites ENABLE ROW LEVEL SECURITY;
+```
+RLS: Workspace owners can SELECT invites for their members (join through teams). Service role handles INSERT/UPDATE from edge functions.
 
-- **`src/pages/Index.tsx`** — Replace `container mx-auto px-6` with `max-w-5xl mx-auto px-4 sm:px-6` in both the header and `<main>` sections (lines 305, 375). This caps content at ~1024px, fitting comfortably inside the sidebar layout at 1136px viewport.
+**2. CREATE `supabase/functions/invite-member-slack/index.ts`**
 
-**2. Index.tsx Header — Responsive button layout**
+Edge function (verify_jwt = true) that:
+- Receives `{ member_id, member_name, member_email, manager_user_id }`
+- Checks if email exists in `auth.users` (via service role) → `has_existing_account`
+- Calls Slack `users.lookupByEmail` → gets `slack_user_id` or returns `{ success: false, reason: 'not_in_workspace' }`
+- Generates HMAC state token (same pattern as existing `slack-link`) embedding member_id + slack_user_id + has_existing_account
+- Sends personalized DM via `chat.postMessage`:
+  - Has account → "Conecte sua conta existente" with login-first link
+  - No account → "Crie sua conta" with signup-first link
+- Inserts into `pending_slack_invites` (status: 'sent', expires_at: now + 7 days)
+- Returns `{ success: true, has_existing_account }`
 
-- Lines 339-371: Stack buttons vertically on smaller viewports or use `flex-wrap` to prevent overflow. Change `<div className="flex gap-3">` to `<div className="flex flex-wrap gap-2 sm:gap-3">`.
+**3. UPDATE `src/components/NewMemberDialog.tsx`**
 
-**3. NudgesBanner — Fix text truncation**
+After successful member creation (line ~183), if email is provided:
+- Call `invite-member-slack` edge function (fire-and-forget, don't block the dialog)
+- Show contextual toast based on response (success + account status, not_in_workspace, or error)
+- Keep existing DISC invite logic unchanged
 
-- Line 85: The message `<p>` uses `truncate` which clips long messages. Change to `line-clamp-2` so messages wrap to 2 lines instead of being cut off. This ensures "Yasmin Nóbrega teve 3 sinais de atenção nas últimas 2 semanas" is fully readable.
+**4. UPDATE `src/pages/SlackConnect.tsx`**
 
-**4. CalendarWidget — Add scroll indicators**
+- Parse `member_id` from search params (passed from invite link)
+- When redirecting unauthenticated users to `/auth`, include `signup=true` param if token indicates no existing account
+- After successful linking, update `pending_slack_invites` status to 'accepted' via the `slack-link` function
 
-- Line 116: The horizontal scroll container `flex gap-3 overflow-x-auto pb-1` has no visual hint that more cards exist. Add gradient fade masks on the right edge (`mask-image` or a pseudo-element) and reduce `min-w-[220px]` to `min-w-[200px]` to show more cards.
+**5. UPDATE `supabase/functions/slack-link/index.ts`**
 
-**5. TeamTabs — Prevent overflow**
+After successful upsert (line ~156):
+- Update `pending_slack_invites` SET status='accepted', accepted_at=now() WHERE slack_user_id matches and status='sent'
 
-- Line 30: `TabsList` uses `flex-nowrap overflow-x-auto` but has no max-width constraint. Add `max-w-full` and ensure scroll indicators are visible. Consider wrapping tabs on mobile with `flex-wrap` for small team counts.
+**6. CREATE `src/components/team/PendingInvitesSection.tsx`**
 
-**6. MemberDetails.tsx — Constrain width**
+- Query `pending_slack_invites` where status='sent' for current workspace members
+- Show summary card: "⏳ {count} convites pendentes"
+- List with member name, account status badge (green "Aguardando conexão" vs yellow "Aguardando cadastro"), days since sent
+- "Reenviar" button calls `invite-member-slack` again
 
-- Line 399: Replace `container mx-auto px-4 sm:px-6` with `max-w-5xl mx-auto px-4 sm:px-6`.
+**7. UPDATE `src/pages/Index.tsx`**
 
-**7. Analytics.tsx — Audit container**
+- Import and render `PendingInvitesSection` below SetupChecklist (line ~410)
 
-- Check and apply same `max-w-5xl` constraint to the Analytics page main wrapper.
+**8. UPDATE `src/components/TeamMemberCard.tsx`**
 
-**8. DirectReportDashboard.tsx — Audit container**
-
-- Apply same `max-w-5xl` pattern to the direct report dashboard.
-
-**9. HRDashboard.tsx — Already correct**
-
-- Uses `max-w-6xl mx-auto` (line 66) — already well-constrained. No changes needed.
-
-**10. HRTeams.tsx, HRMembers.tsx, HRAnalytics.tsx — Audit containers**
-
-- Apply consistent `max-w-5xl` or `max-w-6xl` pattern if using `container mx-auto`.
+- Accept optional `pendingInvite` prop
+- If member has no `linked_user_id` and has pending invite: show color-coded badge
+- If no pending invite and has email: show "Enviar Convite" mini-button
 
 ### Files Modified
 
-| File | Change |
+| File | Action |
 |------|--------|
-| `src/pages/Index.tsx` | Replace `container mx-auto` → `max-w-5xl mx-auto`, fix button wrapping |
-| `src/components/NudgesBanner.tsx` | `truncate` → `line-clamp-2` on message text |
-| `src/components/CalendarWidget.tsx` | Reduce card `min-w`, add right-fade hint |
-| `src/components/TeamTabs.tsx` | Ensure no overflow on narrow viewports |
-| `src/pages/MemberDetails.tsx` | `container mx-auto` → `max-w-5xl mx-auto` |
-| `src/pages/Analytics.tsx` | Same container constraint |
-| `src/components/dashboard/DirectReportDashboard.tsx` | Same container constraint |
-| `src/pages/HRTeams.tsx` | Audit & fix if needed |
-| `src/pages/HRMembers.tsx` | Audit & fix if needed |
-| `src/pages/HRAnalytics.tsx` | Audit & fix if needed |
+| `supabase/migrations/..._pending_slack_invites.sql` | CREATE |
+| `supabase/functions/invite-member-slack/index.ts` | CREATE |
+| `supabase/functions/slack-link/index.ts` | UPDATE (mark invite accepted) |
+| `src/components/NewMemberDialog.tsx` | UPDATE (trigger invite after creation) |
+| `src/pages/SlackConnect.tsx` | UPDATE (handle member_id param, signup hint) |
+| `src/components/team/PendingInvitesSection.tsx` | CREATE |
+| `src/pages/Index.tsx` | UPDATE (add PendingInvitesSection) |
+| `src/components/TeamMemberCard.tsx` | UPDATE (invite status badges) |
 
 ### Technical Notes
 
-- `max-w-5xl` = 1024px — fits well inside 1136px viewport minus ~256px sidebar = ~880px available. Actually with sidebar collapsed it goes up to ~1100px, so `max-w-5xl` (1024px) works well across states.
-- No database changes needed.
-- No new dependencies.
-- All changes are CSS-only — zero logic changes.
+- The `invite-member-slack` function uses `SUPABASE_SERVICE_ROLE_KEY` to query `auth.users` for email lookup — this cannot be done from the client
+- State tokens reuse the existing HMAC-SHA256 pattern from `slack-link`, extended with `member_id:has_account` fields
+- The `pending_slack_invites` table intentionally has no FK to `auth.users` (invited_by) to avoid cross-schema references — we store the UUID directly
+- Slack `users.lookupByEmail` requires `users:read.email` scope on the bot token
+- No changes needed to `slack-bot` interactive handler for now — the unlinked member soft-error already exists
 
