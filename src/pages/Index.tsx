@@ -302,7 +302,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-muted/30 pb-20">
       <div className="bg-transparent">
-        <div className="container mx-auto px-6 py-8">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
           <div className="flex items-center justify-between">
             <div>
               {workspace && (
@@ -336,7 +336,7 @@ const Index = () => {
               )}
               <p className="text-sm text-muted-foreground mt-1">Gestão de Performance Contínua</p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               {teamMembers.length > 0 && (
                 <TooltipProvider>
                   <Tooltip>
@@ -372,7 +372,7 @@ const Index = () => {
         </div>
       </div>
 
-      <main className="container mx-auto px-6 py-8">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
         <TeamTabs 
           teams={teams}
           activeTeamId={activeTeamId}
