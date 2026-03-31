@@ -282,7 +282,11 @@ async function processCommand(body: string, timestamp: string, signature: string
 
   switch (command) {
     case '/rhitmo': {
-      const msg = buildRhitmoMenu(persona);
+      let stateToken: string | undefined;
+      if (persona.persona === 'unauthenticated') {
+        stateToken = await generateStateToken(slackUserId, params.get('team_id') || '');
+      }
+      const msg = buildRhitmoMenu(persona, stateToken);
       await sendDelayedResponse(responseUrl, msg);
       break;
     }

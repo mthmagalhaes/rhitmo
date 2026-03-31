@@ -87,6 +87,9 @@ const App = () => (
               </DirectReportGuard>
             } />
             
+            {/* Slack OAuth connect */}
+            <Route path="/slack/connect" element={<SlackConnect />} />
+            
             {/* Rotas públicas (sem sidebar) */}
             <Route path="/sync/:memberId" element={<RhitmoSync />} />
             <Route path="/invite" element={<Invite />} />
