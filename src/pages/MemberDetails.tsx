@@ -396,7 +396,7 @@ const MemberDetails = () => {
   const completedAt = (member.work_style_data as any)?.completed_at;
 
   return <div className="min-h-screen bg-background pb-20">
-      <main className="container mx-auto px-4 sm:px-6 py-8">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
         {/* Breadcrumb e ações */}
         <div className="flex items-center justify-between mb-6">
           <Button variant="ghost" onClick={() => navigate('/')} className="gap-2 -ml-3">

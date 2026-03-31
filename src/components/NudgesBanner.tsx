@@ -82,7 +82,7 @@ export function NudgesBanner() {
           >
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <span className="text-lg shrink-0">{config.icon}</span>
-              <p className="text-sm text-foreground truncate">{nudge.message}</p>
+              <p className="text-sm text-foreground line-clamp-2">{nudge.message}</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {nudge.action_url && (

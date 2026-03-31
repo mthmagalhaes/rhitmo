@@ -451,7 +451,7 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
       </div>
 
       {/* Tabs */}
-      <main className="container mx-auto px-6 pb-8">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 pb-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="border-b border-border bg-background sticky top-0 z-10 -mx-6 px-6 mb-6">
             <TabsList className="bg-transparent p-0 h-auto gap-1">

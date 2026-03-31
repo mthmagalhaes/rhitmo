@@ -121,7 +121,7 @@ export const CalendarWidget = () => {
           return (
             <div
               key={meeting.id || meeting.member_id + meeting.start_time}
-              className="min-w-[220px] rounded-xl bg-card p-3 shadow-sm border border-border/50 shrink-0 hover:-translate-y-0.5 transition-transform cursor-pointer"
+              className="min-w-[200px] rounded-xl bg-card p-3 shadow-sm border border-border/50 shrink-0 hover:-translate-y-0.5 transition-transform cursor-pointer"
               onClick={() => meeting.id ? navigate(`/brief/${meeting.id}`) : navigate(`/member/${meeting.member_id}`)}
             >
               <div className="flex items-center justify-between mb-1">
