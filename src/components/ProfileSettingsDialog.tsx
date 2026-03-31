@@ -33,6 +33,7 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
   const [loading, setLoading] = useState(false);
   const [batchSyncOpen, setBatchSyncOpen] = useState(false);
   const [leaderSyncOpen, setLeaderSyncOpen] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
   // Slack linking is now handled via OAuth flow, no manual inputs needed
 
   const { data: workspace } = useQuery({
