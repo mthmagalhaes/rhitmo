@@ -182,6 +182,30 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
                 </p>
               </div>
             )}
+
+            {/* Boas Práticas */}
+            <div className="mt-3 rounded-xl border bg-muted/30 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-muted-foreground">📖 Boas Práticas</span>
+                <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setPrivacyOpen(true)}>
+                  Ver Novamente
+                </Button>
+              </div>
+              <div className="text-xs space-y-1">
+                <div className="grid grid-cols-3 gap-1 font-medium text-muted-foreground border-b pb-1">
+                  <span>Comando</span><span>Onde Usar</span><span>Visibilidade</span>
+                </div>
+                <div className="grid grid-cols-3 gap-1">
+                  <code className="text-[10px]">/nota</code><span>DM/Privado</span><span>Só você</span>
+                </div>
+                <div className="grid grid-cols-3 gap-1">
+                  <code className="text-[10px]">/kudos</code><span>Público</span><span>Todos veem</span>
+                </div>
+                <div className="grid grid-cols-3 gap-1">
+                  <code className="text-[10px]">/review</code><span>Apenas DM</span><span>Só você</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Seção de Manutenção */}
