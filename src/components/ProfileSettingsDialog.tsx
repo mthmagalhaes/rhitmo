@@ -159,32 +159,24 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
                 </Button>
               </div>
             ) : (
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">
-                  Vincule sua conta Slack para usar comandos como <code>/rhitmo</code>, <code>/nota</code> e <code>/kudos</code>.
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Vincule sua conta Slack para usar comandos como <code className="bg-muted px-1 py-0.5 rounded text-xs">/rhitmo</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">/nota</code> e <code className="bg-muted px-1 py-0.5 rounded text-xs">/kudos</code>.
                 </p>
-                <Input
-                  value={slackUserId}
-                  onChange={(e) => setSlackUserId(e.target.value)}
-                  placeholder="Slack User ID (ex: U0123ABC)"
-                  className="text-sm"
-                />
-                <Input
-                  value={slackTeamId}
-                  onChange={(e) => setSlackTeamId(e.target.value)}
-                  placeholder="Slack Team ID (ex: T0123ABC)"
-                  className="text-sm"
-                />
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleSlackLink}
-                  disabled={slackLinking}
                   className="w-full"
+                  asChild
                 >
-                  {slackLinking ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Link className="h-4 w-4 mr-1" />}
-                  Vincular Conta Slack
+                  <a href={slackOAuthUrl} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-4 w-4 mr-1" />
+                    Adicionar ao Slack
+                  </a>
                 </Button>
+                <p className="text-xs text-muted-foreground">
+                  Já tem o bot instalado? Execute <code className="bg-muted px-1 py-0.5 rounded text-xs">/rhitmo</code> no Slack e clique em "Conectar Conta".
+                </p>
               </div>
             )}
           </div>
