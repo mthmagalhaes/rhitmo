@@ -94,11 +94,36 @@ async function sendDelayedResponse(responseUrl: string, message: Record<string, 
   console.log('[DELAYED] Status:', res.status);
 }
 
+// ── HMAC State Token Generator ────────────────────────────
+async function generateStateToken(slackUserId: string, slackTeamId: string): Promise<string> {
+  const secret = Deno.env.get('SLACK_SIGNING_SECRET')!;
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const payload = `${slackUserId}:${slackTeamId}:${timestamp}`;
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
+  const hexSig = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+  // base64url encode both parts
+  const b64Payload = btoa(payload).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const b64Sig = btoa(hexSig).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return `${b64Payload}.${b64Sig}`;
+}
+
 // ── Command Handlers (return message objects) ─────────────
 
-function buildRhitmoMenu(persona: PersonaResult): Record<string, unknown> {
+function buildRhitmoMenu(persona: PersonaResult, stateToken?: string): Record<string, unknown> {
   if (persona.persona === 'unauthenticated') {
-    return { text: '❌ Conecte sua conta Rhitmo primeiro nas configurações do app: https://rhitmo.lovable.app' };
+    const connectUrl = stateToken
+      ? `https://rhitmo.lovable.app/slack/connect?state=${encodeURIComponent(stateToken)}`
+      : 'https://rhitmo.lovable.app';
+    return {
+      blocks: [
+        { type: 'section', text: { type: 'mrkdwn', text: '🔗 *Conecte sua conta Rhitmo* para usar os comandos do Slack.' } },
+        { type: 'actions', elements: [
+          { type: 'button', text: { type: 'plain_text', text: '🔗 Conectar Conta' }, url: connectUrl, action_id: 'connect_account', style: 'primary' },
+        ]},
+        { type: 'context', elements: [{ type: 'mrkdwn', text: 'Você será redirecionado para o Rhitmo para vincular sua conta.' }] },
+      ],
+    };
   }
 
   const blocks: unknown[] = [
