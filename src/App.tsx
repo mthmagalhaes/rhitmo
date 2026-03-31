@@ -31,6 +31,7 @@ import HRAnalytics from "./pages/HRAnalytics";
 import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import DirectReportReviewView from "./pages/DirectReportReviewView";
+import SlackConnect from "./pages/SlackConnect";
 
 const queryClient = new QueryClient();
 
