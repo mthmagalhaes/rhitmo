@@ -92,7 +92,8 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
     setLoading(false);
   };
 
-  const slackOAuthUrl = `https://slack.com/oauth/v2/authorize?client_id=${import.meta.env.VITE_SLACK_CLIENT_ID || ''}&scope=commands,chat:write&user_scope=&redirect_uri=${encodeURIComponent(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/slack-oauth-callback`)}`;
+  const SLACK_CLIENT_ID = '590136271282.10821512589809';
+  const slackOAuthUrl = `https://slack.com/oauth/v2/authorize?client_id=${SLACK_CLIENT_ID}&scope=commands,chat:write&user_scope=&redirect_uri=${encodeURIComponent(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/slack-oauth-callback`)}`;
 
   const handleSlackUnlink = async () => {
     if (!slackIntegration) return;
