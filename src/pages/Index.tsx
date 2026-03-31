@@ -394,6 +394,9 @@ const Index = () => {
           />
         )}
 
+        {/* Pending Slack Invites */}
+        {workspace && <PendingInvitesSection workspaceId={(workspace as any).id} />}
+
         {/* Setup Checklist - aparece enquanto setup não está completo */}
         {onboardingStatus && !isSetupComplete && (
           <SetupChecklist

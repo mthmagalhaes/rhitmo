@@ -16,6 +16,7 @@ export default function SlackConnect() {
   const [errorMsg, setErrorMsg] = useState('');
   const [showPrivacy, setShowPrivacy] = useState(false);
   const state = searchParams.get('state');
+  const memberId = searchParams.get('member_id');
 
   useEffect(() => {
     if (authLoading) return;
@@ -26,8 +27,10 @@ export default function SlackConnect() {
     }
 
     if (!user) {
-      const returnTo = `/slack/connect?state=${encodeURIComponent(state)}`;
-      navigate(`/auth?returnTo=${encodeURIComponent(returnTo)}`, { replace: true });
+      const returnTo = `/slack/connect?state=${encodeURIComponent(state)}${memberId ? `&member_id=${memberId}` : ''}`;
+      // If member_id is present, hint signup for new accounts
+      const signupHint = memberId ? '&signup=true' : '';
+      navigate(`/auth?returnTo=${encodeURIComponent(returnTo)}${signupHint}`, { replace: true });
       return;
     }
 

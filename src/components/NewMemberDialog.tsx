@@ -212,6 +212,37 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
         });
       }
 
+      // Fire-and-forget: send Slack invite if email is provided
+      if (email.trim()) {
+        supabase.functions.invoke('invite-member-slack', {
+          body: {
+            member_id: newMember.id,
+            member_name: name.trim(),
+            member_email: email.trim(),
+          },
+        }).then(({ data: slackData, error: slackErr }) => {
+          if (slackErr) {
+            console.error('Slack invite error:', slackErr);
+            return;
+          }
+          if (slackData?.success) {
+            toast({
+              title: slackData.has_existing_account
+                ? '🔗 Convite Slack enviado'
+                : '🚀 Convite Slack enviado',
+              description: slackData.has_existing_account
+                ? `${name.trim()} já tem conta Rhitmo, só precisa conectar ao Slack.`
+                : `${name.trim()} receberá link para criar conta via Slack.`,
+            });
+          } else if (slackData?.reason === 'not_in_workspace') {
+            toast({
+              title: '⚠️ Email não encontrado no Slack',
+              description: 'Adicione a pessoa ao workspace Slack primeiro.',
+            });
+          }
+        }).catch(console.error);
+      }
+
       // Resetar formulário
       setName('');
       setRole('');
