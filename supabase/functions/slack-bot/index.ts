@@ -10,6 +10,37 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 );
 
+// ── Privacy Constants ────────────────────────────────────
+const SENSITIVE_COMMANDS = ['/nota', '/brief', '/review', '/meu-pdi'];
+const DM_ONLY_COMMANDS = ['/review'];
+
+// ── Channel Type Cache (5min TTL) ────────────────────────
+const channelCache = new Map<string, { isPublic: boolean; ts: number }>();
+const CACHE_TTL = 5 * 60 * 1000;
+
+async function isPublicChannel(channelId: string): Promise<boolean> {
+  const cached = channelCache.get(channelId);
+  if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.isPublic;
+
+  try {
+    const token = Deno.env.get('SLACK_BOT_TOKEN');
+    const res = await fetch(`https://slack.com/api/conversations.info?channel=${channelId}`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    const json = await res.json();
+    if (!json.ok) {
+      console.log('[CHANNEL] conversations.info error:', json.error);
+      return false; // assume private on error (safer)
+    }
+    const isPublic = !json.channel.is_private && !json.channel.is_im && !json.channel.is_mpim;
+    channelCache.set(channelId, { isPublic, ts: Date.now() });
+    return isPublic;
+  } catch (err) {
+    console.error('[CHANNEL] Error checking channel:', err);
+    return false;
+  }
+}
+
 // ── Slack Signature Verification ──────────────────────────
 async function verifySlackSignature(body: string, timestamp: string, slackSignature: string): Promise<boolean> {
   const signingSecret = Deno.env.get('SLACK_SIGNING_SECRET');
@@ -102,10 +133,42 @@ async function generateStateToken(slackUserId: string, slackTeamId: string): Pro
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
   const hexSig = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
-  // base64url encode both parts
   const b64Payload = btoa(payload).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   const b64Sig = btoa(hexSig).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   return `${b64Payload}.${b64Sig}`;
+}
+
+// ── Privacy Check: Returns message if blocked, null if OK ─
+async function checkPrivacy(command: string, channelType: string, channelId: string, responseUrl: string, originalParams: string): Promise<Record<string, unknown> | null> {
+  // DM-only enforcement (hard block)
+  if (DM_ONLY_COMMANDS.includes(command) && channelType !== 'im') {
+    console.log('[PRIVACY] Hard block:', command, 'in channel type:', channelType);
+    return {
+      text: '❌ *Este comando só funciona em DM direto com @Rhitmo.*\n\nAbra uma conversa privada comigo e execute lá para manter suas informações seguras.',
+    };
+  }
+
+  // Sensitive command in public channel (soft warning)
+  if (SENSITIVE_COMMANDS.includes(command) && channelType !== 'im') {
+    const pubCheck = await isPublicChannel(channelId);
+    if (pubCheck) {
+      console.log('[PRIVACY] Public channel warning for:', command);
+      // Encode original params in action value for replay
+      const encodedParams = btoa(originalParams).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      return {
+        blocks: [
+          { type: 'section', text: { type: 'mrkdwn', text: '⚠️ *Atenção: Canal Público Detectado*' } },
+          { type: 'section', text: { type: 'mrkdwn', text: `Você está executando \`${command}\` em um canal público. Recomendamos usar em:\n• DM direto com @Rhitmo\n• Canais privados do seu time\n\nDeseja continuar mesmo assim?` } },
+          { type: 'actions', block_id: 'privacy_check', elements: [
+            { type: 'button', text: { type: 'plain_text', text: '✅ Continuar' }, action_id: 'privacy_continue', value: encodedParams, style: 'primary' },
+            { type: 'button', text: { type: 'plain_text', text: '❌ Cancelar' }, action_id: 'privacy_cancel', value: 'cancel', style: 'danger' },
+          ]},
+        ],
+      };
+    }
+  }
+
+  return null; // No privacy issue
 }
 
 // ── Command Handlers (return message objects) ─────────────
@@ -272,10 +335,21 @@ async function processCommand(body: string, timestamp: string, signature: string
   const command = params.get('command');
   const slackUserId = params.get('user_id')!;
   const responseUrl = params.get('response_url')!;
-  console.log('[PROCESS] command:', command, '| user:', slackUserId);
+  const channelType = params.get('channel_type') || '';
+  const channelId = params.get('channel_id') || '';
+  console.log('[PROCESS] command:', command, '| user:', slackUserId, '| channelType:', channelType);
 
   const isValid = await verifySlackSignature(body, timestamp, signature);
   if (!isValid) { console.error('[PROCESS] Invalid signature — aborting'); return; }
+
+  // Privacy check before persona lookup (saves time if blocked)
+  if (command && (SENSITIVE_COMMANDS.includes(command) || DM_ONLY_COMMANDS.includes(command))) {
+    const privacyMsg = await checkPrivacy(command, channelType, channelId, responseUrl, body);
+    if (privacyMsg) {
+      await sendDelayedResponse(responseUrl, privacyMsg);
+      return;
+    }
+  }
 
   const persona = await getUserPersona(slackUserId);
   console.log('[PROCESS] persona:', persona.persona);
@@ -321,6 +395,80 @@ async function processCommand(body: string, timestamp: string, signature: string
   console.log('[PROCESS] Done:', command);
 }
 
+// ── Interactive Component Handler ─────────────────────────
+async function processInteraction(body: string, timestamp: string, signature: string) {
+  const isValid = await verifySlackSignature(body, timestamp, signature);
+  if (!isValid) { console.error('[INTERACT] Invalid signature'); return; }
+
+  const params = new URLSearchParams(body);
+  const payloadStr = params.get('payload');
+  if (!payloadStr) { console.error('[INTERACT] No payload'); return; }
+
+  const payload = JSON.parse(payloadStr);
+  const action = payload.actions?.[0];
+  const responseUrl = payload.response_url;
+
+  if (!action || !responseUrl) { console.error('[INTERACT] Missing action or response_url'); return; }
+
+  console.log('[INTERACT] action_id:', action.action_id, '| value:', action.value?.substring(0, 20));
+
+  if (action.action_id === 'privacy_continue') {
+    // Decode original command params and re-execute
+    const encodedParams = action.value;
+    const originalBody = atob(encodedParams.replace(/-/g, '+').replace(/_/g, '/'));
+    const originalParams = new URLSearchParams(originalBody);
+
+    // Delete the warning message
+    await fetch(responseUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ delete_original: true }),
+    });
+
+    // Re-process command skipping privacy check
+    const command = originalParams.get('command');
+    const slackUserId = originalParams.get('user_id')!;
+    const origResponseUrl = originalParams.get('response_url')!;
+
+    const persona = await getUserPersona(slackUserId);
+
+    switch (command) {
+      case '/nota': {
+        const p: Record<string, string> = {};
+        for (const [k, v] of originalParams.entries()) p[k] = v;
+        const msg = await handleNotaCommand(p, persona);
+        await sendDelayedResponse(origResponseUrl, msg);
+        break;
+      }
+      case '/brief':
+      case '/meu-pdi':
+        await sendDelayedResponse(origResponseUrl, { text: `✅ Processando \`${command}\`...` });
+        break;
+      default:
+        await sendDelayedResponse(origResponseUrl, { text: `Comando ${command} processado.` });
+    }
+  } else if (action.action_id === 'privacy_cancel') {
+    await fetch(responseUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        delete_original: true,
+      }),
+    });
+    // Send cancellation as new ephemeral
+    await fetch(responseUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        response_type: 'ephemeral',
+        text: '✅ Comando cancelado. Execute novamente em DM ou canal privado para maior segurança.',
+      }),
+    });
+  }
+
+  console.log('[INTERACT] Done');
+}
+
 // ── Main Handler ──────────────────────────────────────────
 Deno.serve(async (req) => {
   try {
@@ -360,19 +508,30 @@ Deno.serve(async (req) => {
       return new Response('ok', { headers: corsHeaders });
     }
 
-    // Slash commands — return 200 IMMEDIATELY, process async
-    const params = new URLSearchParams(body);
+    // Check if this is an interactive component payload
     const timestamp = req.headers.get('x-slack-request-timestamp') || '';
     const signature = req.headers.get('x-slack-signature') || '';
 
-    console.log('[MAIN] Firing async for:', params.get('command'));
+    if (contentType.includes('application/x-www-form-urlencoded')) {
+      const params = new URLSearchParams(body);
+      
+      if (params.has('payload')) {
+        // Interactive component (button click)
+        console.log('[MAIN] Interactive component detected');
+        processInteraction(body, timestamp, signature).catch(err => {
+          console.error('[INTERACT] Unhandled error:', err);
+        });
+        return new Response('', { status: 200, headers: corsHeaders });
+      }
 
-    // Fire and forget — don't await
-    processCommand(body, timestamp, signature, params).catch(err => {
-      console.error('[PROCESS] Unhandled error:', err);
-    });
+      // Slash command
+      console.log('[MAIN] Firing async for:', params.get('command'));
+      processCommand(body, timestamp, signature, params).catch(err => {
+        console.error('[PROCESS] Unhandled error:', err);
+      });
+      return new Response('', { status: 200, headers: corsHeaders });
+    }
 
-    // Return immediately to Slack
     return new Response('', { status: 200, headers: corsHeaders });
 
   } catch (error) {
