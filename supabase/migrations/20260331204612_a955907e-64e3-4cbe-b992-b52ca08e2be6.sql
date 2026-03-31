@@ -1,0 +1,1 @@
+ALTER TABLE public.user_preferences ADD COLUMN IF NOT EXISTS hide_slack_privacy_tips BOOLEAN DEFAULT false;

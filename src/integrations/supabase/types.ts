@@ -1268,6 +1268,7 @@ export type Database = {
       user_preferences: {
         Row: {
           created_at: string | null
+          hide_slack_privacy_tips: boolean | null
           id: string
           theme_preference: string
           updated_at: string | null
@@ -1275,6 +1276,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          hide_slack_privacy_tips?: boolean | null
           id?: string
           theme_preference?: string
           updated_at?: string | null
@@ -1282,6 +1284,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          hide_slack_privacy_tips?: boolean | null
           id?: string
           theme_preference?: string
           updated_at?: string | null
