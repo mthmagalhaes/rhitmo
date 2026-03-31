@@ -92,27 +92,7 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
     setLoading(false);
   };
 
-  const handleSlackLink = async () => {
-    if (!slackUserId.trim() || !slackTeamId.trim()) {
-      toast({ title: "Preencha os dois campos", variant: "destructive" });
-      return;
-    }
-    setSlackLinking(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await supabase.functions.invoke('slack-link', {
-        body: { slack_user_id: slackUserId.trim(), slack_team_id: slackTeamId.trim() },
-      });
-      if (res.error) throw res.error;
-      toast({ title: "Slack conectado!", description: "Sua conta foi vinculada com sucesso." });
-      setSlackUserId('');
-      setSlackTeamId('');
-      refetchSlack();
-    } catch (err: any) {
-      toast({ title: "Erro ao vincular", description: err.message, variant: "destructive" });
-    }
-    setSlackLinking(false);
-  };
+  const slackOAuthUrl = `https://slack.com/oauth/v2/authorize?client_id=${import.meta.env.VITE_SLACK_CLIENT_ID || ''}&scope=commands,chat:write&user_scope=&redirect_uri=${encodeURIComponent(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/slack-oauth-callback`)}`;
 
   const handleSlackUnlink = async () => {
     if (!slackIntegration) return;
