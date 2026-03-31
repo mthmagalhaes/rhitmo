@@ -22,7 +22,7 @@ interface TeamMemberCardProps {
   onSendInvite?: () => void;
 }
 
-export const TeamMemberCard = ({ member, teamName, onClick, onEdit }: TeamMemberCardProps) => {
+export const TeamMemberCard = ({ member, teamName, onClick, onEdit, pendingInvite, onSendInvite }: TeamMemberCardProps) => {
   const daysSince = member.lastFeedback ? differenceInDays(new Date(), new Date(member.lastFeedback)) : null;
 
   let statusColor: string;
