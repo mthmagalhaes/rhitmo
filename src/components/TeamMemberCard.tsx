@@ -106,7 +106,7 @@ export const TeamMemberCard = ({ member, teamName, onClick, onEdit, pendingInvit
           <span>Última nota: {new Date(member.lastFeedback).toLocaleDateString('pt-BR')}</span>
         </div>
         {/* Slack invite status */}
-        {!member.linkedUserId && pendingInvite && pendingInvite.status === 'sent' && (
+        {!(member as any).linked_user_id && pendingInvite && pendingInvite.status === 'sent' && (
           <div className="mt-3">
             <Badge
               variant="secondary"
@@ -120,7 +120,7 @@ export const TeamMemberCard = ({ member, teamName, onClick, onEdit, pendingInvit
             </Badge>
           </div>
         )}
-        {!member.linkedUserId && !pendingInvite && member.email && onSendInvite && (
+        {!(member as any).linked_user_id && !pendingInvite && (member as any).email && onSendInvite && (
           <div className="mt-3">
             <Button
               variant="outline"
