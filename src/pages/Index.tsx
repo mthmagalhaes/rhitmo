@@ -336,7 +336,7 @@ const Index = () => {
               )}
               <p className="text-sm text-muted-foreground mt-1">Gestão de Performance Contínua</p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               {teamMembers.length > 0 && (
                 <TooltipProvider>
                   <Tooltip>
