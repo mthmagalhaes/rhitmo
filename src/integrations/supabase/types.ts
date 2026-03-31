@@ -807,6 +807,45 @@ export type Database = {
           },
         ]
       }
+      pending_slack_invites: {
+        Row: {
+          accepted_at: string | null
+          created_at: string | null
+          expires_at: string
+          id: string
+          invited_by: string
+          member_has_account: boolean | null
+          member_id: string
+          reminded_at: string | null
+          slack_user_id: string
+          status: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          invited_by: string
+          member_has_account?: boolean | null
+          member_id: string
+          reminded_at?: string | null
+          slack_user_id: string
+          status?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          member_has_account?: boolean | null
+          member_id?: string
+          reminded_at?: string | null
+          slack_user_id?: string
+          status?: string | null
+        }
+        Relationships: []
+      }
       performance_reviews: {
         Row: {
           acknowledged_at: string | null

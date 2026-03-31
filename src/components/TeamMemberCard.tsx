@@ -7,14 +7,22 @@ import { Calendar, MessageSquare, Settings } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 
+interface PendingInviteInfo {
+  status: string;
+  member_has_account: boolean;
+  created_at: string;
+}
+
 interface TeamMemberCardProps {
   member: TeamMember;
   teamName?: string;
   onClick: () => void;
   onEdit?: () => void;
+  pendingInvite?: PendingInviteInfo | null;
+  onSendInvite?: () => void;
 }
 
-export const TeamMemberCard = ({ member, teamName, onClick, onEdit }: TeamMemberCardProps) => {
+export const TeamMemberCard = ({ member, teamName, onClick, onEdit, pendingInvite, onSendInvite }: TeamMemberCardProps) => {
   const daysSince = member.lastFeedback ? differenceInDays(new Date(), new Date(member.lastFeedback)) : null;
 
   let statusColor: string;
@@ -97,6 +105,36 @@ export const TeamMemberCard = ({ member, teamName, onClick, onEdit }: TeamMember
           <Calendar className="h-3 w-3" />
           <span>Última nota: {new Date(member.lastFeedback).toLocaleDateString('pt-BR')}</span>
         </div>
+        {/* Slack invite status */}
+        {!(member as any).linked_user_id && pendingInvite && pendingInvite.status === 'sent' && (
+          <div className="mt-3">
+            <Badge
+              variant="secondary"
+              className={`text-xs rounded-full ${
+                pendingInvite.member_has_account
+                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                  : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+              }`}
+            >
+              {pendingInvite.member_has_account ? '⏳ Aguardando conexão' : '⏳ Aguardando cadastro'}
+            </Badge>
+          </div>
+        )}
+        {!(member as any).linked_user_id && !pendingInvite && (member as any).email && onSendInvite && (
+          <div className="mt-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs h-7 rounded-xl"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSendInvite();
+              }}
+            >
+              📧 Enviar Convite
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

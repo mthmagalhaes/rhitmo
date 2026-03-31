@@ -162,6 +162,19 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Mark any pending invite as accepted
+    const { error: inviteUpdateError } = await serviceClient
+      .from('pending_slack_invites')
+      .update({ status: 'accepted', accepted_at: new Date().toISOString() })
+      .eq('slack_user_id', slack_user_id)
+      .eq('status', 'sent');
+
+    if (inviteUpdateError) {
+      console.warn('Failed to update pending invite:', inviteUpdateError);
+    } else {
+      console.log('[LINK] Pending invite marked as accepted for:', slack_user_id);
+    }
+
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
