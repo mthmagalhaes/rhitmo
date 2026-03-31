@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader2, RefreshCw, Compass, MessageSquare, Link, Unlink } from 'lucide-react';
+import { Loader2, RefreshCw, Compass, MessageSquare, Unlink, ExternalLink } from 'lucide-react';
 import { ThemeSelector } from '@/components/ThemeSelector';
 import {
   Dialog,
