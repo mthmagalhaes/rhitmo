@@ -201,6 +201,60 @@ const Index = () => {
     refetchOnWindowFocus: true,
   });
 
+  // Query para pending slack invites
+  const { data: pendingInvitesMap = new Map() } = useQuery({
+    queryKey: ['pending-slack-invites', workspace?.id],
+    queryFn: async () => {
+      if (!workspace) return new Map();
+      const { data, error } = await supabase
+        .from('pending_slack_invites')
+        .select('member_id, status, member_has_account, created_at')
+        .eq('status', 'sent');
+      if (error) throw error;
+      const map = new Map<string, { status: string; member_has_account: boolean; created_at: string }>();
+      (data || []).forEach(inv => {
+        map.set(inv.member_id, {
+          status: inv.status || 'sent',
+          member_has_account: inv.member_has_account || false,
+          created_at: inv.created_at || '',
+        });
+      });
+      return map;
+    },
+    enabled: !!workspace,
+    staleTime: 30 * 1000,
+  });
+
+  const handleSendSlackInvite = async (member: TeamMember) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('invite-member-slack', {
+        body: {
+          member_id: member.id,
+          member_name: member.name,
+          member_email: (member as any).email,
+        },
+      });
+      if (error) throw error;
+      if (data?.success) {
+        toast({
+          title: data.has_existing_account ? '🔗 Convite Slack enviado' : '🚀 Convite Slack enviado',
+          description: data.has_existing_account
+            ? `${member.name} já tem conta, só precisa conectar ao Slack.`
+            : `${member.name} receberá link para criar conta via Slack.`,
+        });
+        queryClient.invalidateQueries({ queryKey: ['pending-slack-invites'] });
+      } else if (data?.reason === 'not_in_workspace') {
+        toast({
+          title: '⚠️ Email não encontrado no Slack',
+          description: 'Adicione a pessoa ao workspace Slack primeiro.',
+        });
+      }
+    } catch (err: any) {
+      console.error('Slack invite error:', err);
+      toast({ title: 'Erro ao enviar convite Slack', description: err.message, variant: 'destructive' });
+    }
+  };
+
   // Query para status de onboarding
   const { data: onboardingStatus } = useQuery({
     queryKey: ['onboarding-status', workspace?.id, user?.id],
