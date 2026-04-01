@@ -39,6 +39,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     && !isLinkedMember;
 
   const isLeader = !isLinkedMember && !!user;
+  const showActivity = !!user;
 
   const handleWorkspaceComplete = () => {
     refetch();
