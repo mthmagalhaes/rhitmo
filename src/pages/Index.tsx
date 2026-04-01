@@ -554,8 +554,16 @@ const Index = () => {
                   lastFeedback: member.last_feedback_date || member.created_at,
                   feedbackCount: member.feedback_count || 0,
                   performanceScore: member.performance_score,
-                  teamId: member.teamId
-                }}
+                  teamId: member.teamId,
+                  linked_user_id: (member as any).linked_user_id,
+                  email: (member as any).email,
+                } as any}
+                pendingInvite={pendingInvitesMap.get(member.id) || null}
+                onSendInvite={
+                  !(member as any).linked_user_id && !pendingInvitesMap.has(member.id) && (member as any).email
+                    ? () => handleSendSlackInvite(member)
+                    : undefined
+                }
                 teamName={teams.find(t => t.id === member.teamId)?.name}
                 onEdit={() => {
                   setSelectedMember({
