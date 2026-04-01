@@ -71,9 +71,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </header>
           
           {/* Header desktop - notification bell */}
-          {isLeader && (
+          {showActivity && (
             <div className="hidden lg:flex h-12 items-center justify-end px-6">
-              <SyncNotificationBadge onClick={() => setNotificationsOpen(true)} />
+              <ActivityBadge onClick={() => setNotificationsOpen(true)} />
             </div>
           )}
           
