@@ -38,7 +38,6 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Workspace, Team } from '@/types/team';
 import { CalendarWidget } from '@/components/CalendarWidget';
-import { NudgesBanner } from '@/components/NudgesBanner';
 import { UpgradeBanner } from '@/components/billing/UpgradeBanner';
 
 interface TeamMember {
@@ -438,8 +437,6 @@ const Index = () => {
         {/* Calendar Widget */}
         <CalendarWidget />
 
-        {/* Smart Nudges */}
-        <NudgesBanner />
         <UpgradeBanner />
 
         {workspace && onboardingStatus?.hasLeaderSync && (
