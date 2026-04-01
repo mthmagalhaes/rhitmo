@@ -105,7 +105,14 @@ export const TeamMemberCard = ({ member, teamName, onClick, onEdit, pendingInvit
           <Calendar className="h-3 w-3" />
           <span>Última nota: {new Date(member.lastFeedback).toLocaleDateString('pt-BR')}</span>
         </div>
-        {/* Slack invite status */}
+        {/* Slack connection status */}
+        {(member as any).linked_user_id && (
+          <div className="mt-3">
+            <Badge variant="secondary" className="text-xs rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+              ✅ Slack conectado
+            </Badge>
+          </div>
+        )}
         {!(member as any).linked_user_id && pendingInvite && pendingInvite.status === 'sent' && (
           <div className="mt-3">
             <Badge
