@@ -85,8 +85,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Notification Sheet */}
-      {isLeader && (
-        <SyncNotificationSheet
+      {showActivity && (
+        <ActivitySheet
           open={notificationsOpen}
           onOpenChange={setNotificationsOpen}
         />
