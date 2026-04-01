@@ -437,8 +437,6 @@ const Index = () => {
         {/* Calendar Widget */}
         <CalendarWidget />
 
-        {/* Smart Nudges */}
-        <NudgesBanner />
         <UpgradeBanner />
 
         {workspace && onboardingStatus?.hasLeaderSync && (
