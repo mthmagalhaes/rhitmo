@@ -1,99 +1,46 @@
 
 
-## Plan: Automatic Slack Invitation System for New Team Members
+## Plan: Wire Up Slack Invite Status to Member Cards
 
-### Summary
-When a manager adds a team member, automatically look up their email in the Slack workspace and send a personalized DM with a connect/signup link. Track invitation status and show it on the dashboard and member cards.
+### Problem
+`TeamMemberCard` already accepts `pendingInvite` and `onSendInvite` props, but `Index.tsx` never passes them. The card UI exists but has no data.
 
 ### Changes
 
-**1. Database Migration — `pending_slack_invites` table**
+**1. UPDATE `src/pages/Index.tsx`**
 
-```sql
-CREATE TABLE public.pending_slack_invites (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  member_id UUID NOT NULL,
-  slack_user_id TEXT NOT NULL,
-  invited_by UUID NOT NULL,
-  member_has_account BOOLEAN DEFAULT false,
-  status TEXT DEFAULT 'sent',
-  reminded_at TIMESTAMPTZ,
-  expires_at TIMESTAMPTZ NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  accepted_at TIMESTAMPTZ
-);
-CREATE INDEX idx_pending_invites_status ON public.pending_slack_invites(status);
-CREATE INDEX idx_pending_invites_member ON public.pending_slack_invites(member_id);
-ALTER TABLE public.pending_slack_invites ENABLE ROW LEVEL SECURITY;
-```
-RLS: Workspace owners can SELECT invites for their members (join through teams). Service role handles INSERT/UPDATE from edge functions.
+- Add a query to fetch all `pending_slack_invites` with status='sent' for the workspace (join through team_members → teams → workspaces)
+- Build a `Map<member_id, PendingInviteInfo>` from results
+- Add a `handleSendSlackInvite(member)` function that calls `invite-member-slack` edge function
+- Pass `pendingInvite={pendingInvitesMap.get(member.id)}` and `onSendInvite={() => handleSendSlackInvite(member)}` to each `TeamMemberCard`
+- Also pass `linked_user_id` in the member object so the card can check connection status
 
-**2. CREATE `supabase/functions/invite-member-slack/index.ts`**
+**2. UPDATE `src/components/TeamMemberCard.tsx`**
 
-Edge function (verify_jwt = true) that:
-- Receives `{ member_id, member_name, member_email, manager_user_id }`
-- Checks if email exists in `auth.users` (via service role) → `has_existing_account`
-- Calls Slack `users.lookupByEmail` → gets `slack_user_id` or returns `{ success: false, reason: 'not_in_workspace' }`
-- Generates HMAC state token (same pattern as existing `slack-link`) embedding member_id + slack_user_id + has_existing_account
-- Sends personalized DM via `chat.postMessage`:
-  - Has account → "Conecte sua conta existente" with login-first link
-  - No account → "Crie sua conta" with signup-first link
-- Inserts into `pending_slack_invites` (status: 'sent', expires_at: now + 7 days)
-- Returns `{ success: true, has_existing_account }`
+- Minor: add `linked_user_id` display when member IS connected (show "✅ Slack" badge)
+- Show days since invite was sent in the pending badge
+- Keep existing logic, just enhance with timestamp display
 
 **3. UPDATE `src/components/NewMemberDialog.tsx`**
 
-After successful member creation (line ~183), if email is provided:
-- Call `invite-member-slack` edge function (fire-and-forget, don't block the dialog)
-- Show contextual toast based on response (success + account status, not_in_workspace, or error)
-- Keep existing DISC invite logic unchanged
+- After successful member creation (line ~183), fire-and-forget call to `invite-member-slack` if email is provided
+- Update toast messages to mention Slack invite status
 
-**4. UPDATE `src/pages/SlackConnect.tsx`**
+**4. Verify `PendingInvitesSection` in Index.tsx**
 
-- Parse `member_id` from search params (passed from invite link)
-- When redirecting unauthenticated users to `/auth`, include `signup=true` param if token indicates no existing account
-- After successful linking, update `pending_slack_invites` status to 'accepted' via the `slack-link` function
-
-**5. UPDATE `supabase/functions/slack-link/index.ts`**
-
-After successful upsert (line ~156):
-- Update `pending_slack_invites` SET status='accepted', accepted_at=now() WHERE slack_user_id matches and status='sent'
-
-**6. CREATE `src/components/team/PendingInvitesSection.tsx`**
-
-- Query `pending_slack_invites` where status='sent' for current workspace members
-- Show summary card: "⏳ {count} convites pendentes"
-- List with member name, account status badge (green "Aguardando conexão" vs yellow "Aguardando cadastro"), days since sent
-- "Reenviar" button calls `invite-member-slack` again
-
-**7. UPDATE `src/pages/Index.tsx`**
-
-- Import and render `PendingInvitesSection` below SetupChecklist (line ~410)
-
-**8. UPDATE `src/components/TeamMemberCard.tsx`**
-
-- Accept optional `pendingInvite` prop
-- If member has no `linked_user_id` and has pending invite: show color-coded badge
-- If no pending invite and has email: show "Enviar Convite" mini-button
+- Confirm it's already imported and rendered (from previous implementation)
+- If not, add it below SetupChecklist
 
 ### Files Modified
 
-| File | Action |
+| File | Change |
 |------|--------|
-| `supabase/migrations/..._pending_slack_invites.sql` | CREATE |
-| `supabase/functions/invite-member-slack/index.ts` | CREATE |
-| `supabase/functions/slack-link/index.ts` | UPDATE (mark invite accepted) |
-| `src/components/NewMemberDialog.tsx` | UPDATE (trigger invite after creation) |
-| `src/pages/SlackConnect.tsx` | UPDATE (handle member_id param, signup hint) |
-| `src/components/team/PendingInvitesSection.tsx` | CREATE |
-| `src/pages/Index.tsx` | UPDATE (add PendingInvitesSection) |
-| `src/components/TeamMemberCard.tsx` | UPDATE (invite status badges) |
+| `src/pages/Index.tsx` | Query pending invites, pass props to cards, add send handler |
+| `src/components/TeamMemberCard.tsx` | Add days-since display, connected status badge |
+| `src/components/NewMemberDialog.tsx` | Fire-and-forget Slack invite after member creation |
 
 ### Technical Notes
-
-- The `invite-member-slack` function uses `SUPABASE_SERVICE_ROLE_KEY` to query `auth.users` for email lookup — this cannot be done from the client
-- State tokens reuse the existing HMAC-SHA256 pattern from `slack-link`, extended with `member_id:has_account` fields
-- The `pending_slack_invites` table intentionally has no FK to `auth.users` (invited_by) to avoid cross-schema references — we store the UUID directly
-- Slack `users.lookupByEmail` requires `users:read.email` scope on the bot token
-- No changes needed to `slack-bot` interactive handler for now — the unlinked member soft-error already exists
+- No database changes needed — `pending_slack_invites` table and RLS already exist
+- The `invite-member-slack` edge function already exists and handles both new/existing account flows
+- `linked_user_id` is already queried in the members fetch but not passed to the card component
 
