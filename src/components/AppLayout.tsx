@@ -65,8 +65,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <header className="flex h-14 items-center gap-4 border-b px-4 lg:hidden bg-card">
             <SidebarTrigger />
             <span className="font-semibold text-foreground flex-1">Rhitmo</span>
-            {isLeader && (
-              <SyncNotificationBadge onClick={() => setNotificationsOpen(true)} />
+            {showActivity && (
+              <ActivityBadge onClick={() => setNotificationsOpen(true)} />
             )}
           </header>
           
