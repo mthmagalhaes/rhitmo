@@ -11,9 +11,9 @@ import { EditTeamDialog } from '@/components/EditTeamDialog';
 import { DeleteTeamDialog } from '@/components/DeleteTeamDialog';
 import { TeamTabs } from '@/components/TeamTabs';
 import { SetupChecklist } from '@/components/SetupChecklist';
-import { PendingInvitesSection } from '@/components/team/PendingInvitesSection';
 import { LeaderSyncWizard } from '@/components/LeaderSyncWizard';
-import { LeaderSyncReminder } from '@/components/LeaderSyncReminder';
+import { ActivityPreview } from '@/components/ActivityPreview';
+import { ActivitySheet } from '@/components/ActivitySheet';
 import { useAuth } from '@/hooks/useAuth';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { useLinkedMember } from '@/hooks/useLinkedMember';
@@ -70,6 +70,7 @@ const Index = () => {
   const [editTeamOpen, setEditTeamOpen] = useState(false);
   const [deleteTeamOpen, setDeleteTeamOpen] = useState(false);
   const [leaderSyncOpen, setLeaderSyncOpen] = useState(false);
+  const [activitySheetOpen, setActivitySheetOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [activeTeamId, setActiveTeamId] = useState<string | null>(null);
   const { toast } = useToast();
@@ -439,15 +440,8 @@ const Index = () => {
 
         <UpgradeBanner />
 
-        {workspace && onboardingStatus?.hasLeaderSync && (
-          <LeaderSyncReminder
-            leaderSyncCompletedAt={(workspace as unknown as Record<string, unknown>).leader_sync_completed_at as string | null}
-            onUpdate={() => setLeaderSyncOpen(true)}
-          />
-        )}
-
-        {/* Pending Slack Invites */}
-        {workspace && <PendingInvitesSection workspaceId={(workspace as any).id} />}
+        {/* Inline Activity Feed */}
+        <ActivityPreview onOpenSheet={() => setActivitySheetOpen(true)} />
 
         {/* Setup Checklist - aparece enquanto setup não está completo */}
         {onboardingStatus && !isSetupComplete && (
@@ -640,6 +634,7 @@ const Index = () => {
           existingData={(workspace as unknown as Record<string, unknown>).leader_sync_data as Record<string, unknown> | null}
         />
       )}
+      <ActivitySheet open={activitySheetOpen} onOpenChange={setActivitySheetOpen} />
     </div>
   );
 };
