@@ -634,6 +634,7 @@ const Index = () => {
           existingData={(workspace as unknown as Record<string, unknown>).leader_sync_data as Record<string, unknown> | null}
         />
       )}
+      <ActivitySheet open={activitySheetOpen} onOpenChange={setActivitySheetOpen} />
     </div>
   );
 };
