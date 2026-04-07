@@ -186,7 +186,7 @@ serve(async (req) => {
 
     // Send to Whisper
     console.log('Sending to Whisper...');
-    const ext = audioUrl.includes('.mp3') ? 'mp3' : audioUrl.includes('.wav') ? 'wav' : 'webm';
+    const ext = audioRef.includes('.mp3') ? 'mp3' : audioRef.includes('.wav') ? 'wav' : 'webm';
     const mimeType = ext === 'mp3' ? 'audio/mpeg' : ext === 'wav' ? 'audio/wav' : 'audio/webm';
 
     const whisperForm = new FormData();
