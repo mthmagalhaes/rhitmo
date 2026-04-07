@@ -37,7 +37,9 @@ import {
 } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { Workspace, Team } from '@/types/team';
-import { CalendarWidget } from '@/components/CalendarWidget';
+import { UpcomingMeetingsCard } from '@/components/dashboard/UpcomingMeetingsCard';
+import { QuickActionsCard } from '@/components/dashboard/QuickActionsCard';
+import { PendingInvitesSection } from '@/components/team/PendingInvitesSection';
 import { UpgradeBanner } from '@/components/billing/UpgradeBanner';
 
 interface TeamMember {
