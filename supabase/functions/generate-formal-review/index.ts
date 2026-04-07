@@ -326,14 +326,87 @@ Gere a avaliação formal de desempenho de ${memberName} em HTML puro, seguindo 
 
     console.log("Review generated successfully");
 
+    // Generate coaching tip (second AI call)
+    let coachingTip = null;
+    try {
+      const workStyle = member.work_style_data;
+      const feedbackStyle = member.feedback_style;
+      const recognitionStyle = member.recognition_style;
+      const chronotype = member.chronotype;
+      const motivators = member.motivators;
+
+      const hasProfile = workStyle || feedbackStyle || recognitionStyle || chronotype || motivators;
+
+      let profileContext = "";
+      if (hasProfile) {
+        profileContext = `## PERFIL RHITMO SYNC DO LIDERADO:\n`;
+        if (workStyle && typeof workStyle === "object") {
+          profileContext += `- Estilo de trabalho: ${JSON.stringify(workStyle)}\n`;
+        }
+        if (feedbackStyle) profileContext += `- Estilo de feedback preferido: ${feedbackStyle}\n`;
+        if (recognitionStyle) profileContext += `- Estilo de reconhecimento: ${recognitionStyle}\n`;
+        if (chronotype) profileContext += `- Cronotipo: ${chronotype}\n`;
+        if (motivators && Array.isArray(motivators) && motivators.length > 0) {
+          profileContext += `- Motivadores: ${JSON.stringify(motivators)}\n`;
+        }
+      }
+
+      const coachingSystemPrompt = `${RHITMO_IDENTITY}
+
+Você é um coach de liderança especializado em ajudar líderes a conduzir conversas de feedback de forma eficaz e empática.
+
+Gere dicas práticas e personalizadas para o líder conduzir a conversa de apresentação desta avaliação formal com ${firstName}.
+
+${hasProfile ? profileContext : "⚠️ O perfil Rhitmo Sync deste liderado ainda não foi preenchido. As dicas abaixo são genéricas. Quando o liderado preencher seu perfil, as dicas serão personalizadas."}
+
+## REGRAS:
+- Gere 3-5 dicas curtas e acionáveis em Markdown (lista com -)
+- Se houver perfil, calibre as dicas pelo estilo de comunicação e preferências do liderado
+- Inclua sugestões sobre: tom da conversa, ordem de apresentação (começar por pontos fortes?), como abordar áreas de desenvolvimento, e como encerrar a conversa
+- Máximo 150 palavras
+- Tom: profissional, empático, prático`;
+
+      const coachingUserPrompt = `Avaliação que será apresentada:\n\n${generatedContent.substring(0, 1500)}`;
+
+      const coachingResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: coachingSystemPrompt },
+            { role: "user", content: coachingUserPrompt },
+          ],
+        }),
+      });
+
+      if (coachingResponse.ok) {
+        const coachingData = await coachingResponse.json();
+        coachingTip = coachingData.choices?.[0]?.message?.content || null;
+        console.log("Coaching tip generated successfully");
+      } else {
+        console.error("Coaching tip generation failed:", coachingResponse.status);
+      }
+    } catch (coachingError) {
+      console.error("Error generating coaching tip:", coachingError);
+    }
+
     // Save to database
+    const updatePayload: Record<string, unknown> = {
+      content: generatedContent,
+      evidence_count: totalEvidence,
+      updated_at: new Date().toISOString(),
+    };
+    if (coachingTip) {
+      updatePayload.coaching_tip = coachingTip;
+    }
+
     const { error: updateError } = await supabase
       .from("performance_reviews")
-      .update({
-        content: generatedContent,
-        evidence_count: totalEvidence,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq("id", reviewId);
 
     if (updateError) {

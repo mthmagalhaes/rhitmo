@@ -26,7 +26,9 @@ import {
   User,
   Share2,
   CheckCircle2,
+  TrendingUp,
 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { ShareReviewDialog } from './ShareReviewDialog';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -300,6 +302,20 @@ export function FormalReviewSheet({
           <TabsContent value="draft" className="flex-1 px-6 mt-4 min-h-0">
             <ScrollArea className="h-[calc(100vh-280px)]">
               <div className="space-y-3 pr-4">
+                {/* Coaching tip card - visible only to leader, hidden in print */}
+                {review.coaching_tip && (
+                  <div className="print:hidden rounded-xl border border-blue-200 bg-blue-50/80 dark:border-blue-800 dark:bg-blue-950/30 p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+                        Dicas para Apresentação
+                      </span>
+                    </div>
+                    <div className="text-sm text-blue-800 dark:text-blue-200 prose prose-sm dark:prose-invert prose-p:my-1 prose-li:my-0.5 max-w-none">
+                      <ReactMarkdown>{review.coaching_tip}</ReactMarkdown>
+                    </div>
+                  </div>
+                )}
                 <div>
                   <Label className="text-sm font-medium">Avaliação geral do período</Label>
                   <p className="text-xs text-muted-foreground mt-1 mb-3">
