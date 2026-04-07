@@ -37,7 +37,9 @@ import {
 } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { Workspace, Team } from '@/types/team';
-import { CalendarWidget } from '@/components/CalendarWidget';
+import { UpcomingMeetingsCard } from '@/components/dashboard/UpcomingMeetingsCard';
+import { QuickActionsCard } from '@/components/dashboard/QuickActionsCard';
+import { PendingInvitesSection } from '@/components/team/PendingInvitesSection';
 import { UpgradeBanner } from '@/components/billing/UpgradeBanner';
 
 interface TeamMember {
@@ -435,13 +437,22 @@ const Index = () => {
           onNewTeam={() => setNewTeamOpen(true)}
         />
 
-        {/* Calendar Widget */}
-        <CalendarWidget />
-
         <UpgradeBanner />
 
-        {/* Inline Activity Feed */}
-        <ActivityPreview onOpenSheet={() => setActivitySheetOpen(true)} />
+        {/* Bento Grid: Meetings + Activity + Actions + Invites */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
+          {/* Left: Upcoming Meetings */}
+          <div className="lg:col-span-7">
+            <UpcomingMeetingsCard />
+          </div>
+
+          {/* Right: Activity + Quick Actions + Pending Invites */}
+          <div className="lg:col-span-5 space-y-6">
+            <ActivityPreview onOpenSheet={() => setActivitySheetOpen(true)} />
+            <QuickActionsCard onNewNote={() => setDialogOpen(true)} />
+            {workspace && <PendingInvitesSection workspaceId={workspace.id} compact />}
+          </div>
+        </div>
 
         {/* Setup Checklist - aparece enquanto setup não está completo */}
         {onboardingStatus && !isSetupComplete && (

@@ -1,9 +1,9 @@
 import { TeamMember } from '@/types/team';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { MemberAvatar } from '@/components/MemberAvatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, MessageSquare, Settings } from 'lucide-react';
+import { MessageSquare, Settings, Eye } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 
@@ -25,99 +25,105 @@ interface TeamMemberCardProps {
 export const TeamMemberCard = ({ member, teamName, onClick, onEdit, pendingInvite, onSendInvite }: TeamMemberCardProps) => {
   const daysSince = member.lastFeedback ? differenceInDays(new Date(), new Date(member.lastFeedback)) : null;
 
-  let statusColor: string;
+  let healthColor: string;
+  let healthTextColor: string;
   let statusMessage: string;
 
   if (member.feedbackCount === 0 || daysSince === null) {
-    statusColor = 'bg-muted-foreground/40';
-    statusMessage = 'Sem notas registradas';
-  } else if (daysSince === 0) {
-    statusColor = 'bg-emerald-500';
-    statusMessage = 'Última nota hoje';
-  } else if (daysSince === 1) {
-    statusColor = 'bg-emerald-500';
-    statusMessage = 'Última nota há 1 dia';
+    healthColor = 'bg-muted-foreground/40';
+    healthTextColor = 'text-muted-foreground';
+    statusMessage = 'Sem notas';
   } else if (daysSince <= 7) {
-    statusColor = 'bg-emerald-500';
-    statusMessage = `Última nota há ${daysSince} dias`;
+    healthColor = 'bg-emerald-500';
+    healthTextColor = 'text-emerald-600 dark:text-emerald-400';
+    statusMessage = daysSince === 0 ? 'Hoje' : daysSince === 1 ? 'Há 1 dia' : `Há ${daysSince} dias`;
   } else if (daysSince <= 14) {
-    statusColor = 'bg-yellow-500';
-    statusMessage = `Última nota há ${daysSince} dias`;
+    healthColor = 'bg-yellow-500';
+    healthTextColor = 'text-amber-600 dark:text-amber-400';
+    statusMessage = `Há ${daysSince} dias`;
   } else {
-    statusColor = 'bg-destructive';
-    statusMessage = `Última nota há ${daysSince} dias`;
+    healthColor = 'bg-destructive';
+    healthTextColor = 'text-destructive';
+    statusMessage = `Há ${daysSince} dias`;
   }
 
   return (
     <Card 
-      className="group relative cursor-pointer rounded-3xl border-0 bg-card shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300"
+      className="group relative cursor-pointer rounded-3xl border-0 bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:-translate-y-2 transition-all duration-300 aspect-[3/4] flex flex-col p-6"
       onClick={onClick}
     >
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className={`absolute top-4 right-4 h-2 w-2 rounded-full ${statusColor}`} />
-          </TooltipTrigger>
-          <TooltipContent>{statusMessage}</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-      <CardHeader className="pb-3">
-        <div className="flex items-start gap-4">
-          <div className="ring-2 ring-offset-2 ring-primary/10 rounded-full">
-            <MemberAvatar 
-              memberId={member.id}
-              memberName={member.name}
-              size="lg"
-            />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="font-bold tracking-tight text-lg text-foreground break-words">{member.name}</h3>
-              {onEdit && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEdit();
-                  }}
-                >
-                  <Settings className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-            <p className="text-sm text-muted-foreground">{member.role}</p>
-            {teamName && (
-              <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs font-normal mt-1">
-                {teamName}
-              </Badge>
-            )}
-          </div>
+      {/* Top: Edit button */}
+      {onEdit && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute top-4 right-4 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit();
+          }}
+        >
+          <Settings className="h-4 w-4" />
+        </Button>
+      )}
+
+      {/* Avatar + Info */}
+      <div className="flex-1 flex flex-col items-center text-center pt-2">
+        <div className="mb-4">
+          <MemberAvatar 
+            memberId={member.id}
+            memberName={member.name}
+            size="lg"
+          />
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-          <MessageSquare className="h-4 w-4" />
-          <span>{member.feedbackCount} notas</span>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Calendar className="h-3 w-3" />
-          <span>Última nota: {new Date(member.lastFeedback).toLocaleDateString('pt-BR')}</span>
-        </div>
-        {/* Slack connection status */}
-        {(member as any).linked_user_id && (
-          <div className="mt-3">
-            <Badge variant="secondary" className="text-xs rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-              ✅ Slack conectado
-            </Badge>
-          </div>
+        <h3 className="text-lg font-semibold tracking-tight text-foreground leading-tight line-clamp-2 mb-1">
+          {member.name}
+        </h3>
+        <p className="text-sm text-muted-foreground">{member.role}</p>
+        {teamName && (
+          <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs font-normal mt-2">
+            {teamName}
+          </Badge>
         )}
+      </div>
+
+      {/* Health indicator */}
+      <div className="mt-auto space-y-3">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center justify-center gap-2">
+                <span className={`h-2 w-2 rounded-full shrink-0 ${healthColor}`} />
+                <span className={`text-xs font-medium ${healthTextColor}`}>
+                  {statusMessage}
+                </span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              {member.feedbackCount === 0 ? 'Nenhuma nota registrada' : `Última nota: ${statusMessage.toLowerCase()}`}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        {/* Stats row */}
+        <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <MessageSquare className="h-3 w-3" />
+            {member.feedbackCount} notas
+          </span>
+          {(member as any).linked_user_id && (
+            <Badge variant="secondary" className="text-[10px] rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 px-2 py-0">
+              Slack ✓
+            </Badge>
+          )}
+        </div>
+
+        {/* Pending invite badge */}
         {!(member as any).linked_user_id && pendingInvite && pendingInvite.status === 'sent' && (
-          <div className="mt-3">
+          <div className="flex justify-center">
             <Badge
               variant="secondary"
-              className={`text-xs rounded-full ${
+              className={`text-[10px] rounded-full ${
                 pendingInvite.member_has_account
                   ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                   : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
@@ -127,22 +133,36 @@ export const TeamMemberCard = ({ member, teamName, onClick, onEdit, pendingInvit
             </Badge>
           </div>
         )}
+
+        {/* Send invite button */}
         {!(member as any).linked_user_id && !pendingInvite && (member as any).email && onSendInvite && (
-          <div className="mt-3">
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs h-7 rounded-xl"
-              onClick={(e) => {
-                e.stopPropagation();
-                onSendInvite();
-              }}
-            >
-              📧 Enviar Convite
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full text-xs h-8 rounded-xl"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSendInvite();
+            }}
+          >
+            📧 Enviar Convite
+          </Button>
         )}
-      </CardContent>
+
+        {/* Ver button */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full rounded-xl text-xs h-8 gap-1.5"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClick();
+          }}
+        >
+          <Eye className="h-3 w-3" />
+          Ver
+        </Button>
+      </div>
     </Card>
   );
 };

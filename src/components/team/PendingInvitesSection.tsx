@@ -22,9 +22,10 @@ interface PendingInvite {
 
 interface PendingInvitesSectionProps {
   workspaceId: string;
+  compact?: boolean;
 }
 
-export const PendingInvitesSection = ({ workspaceId }: PendingInvitesSectionProps) => {
+export const PendingInvitesSection = ({ workspaceId, compact = false }: PendingInvitesSectionProps) => {
   const [invites, setInvites] = useState<PendingInvite[]>([]);
   const [expanded, setExpanded] = useState(false);
   const [resending, setResending] = useState<string | null>(null);
@@ -36,7 +37,6 @@ export const PendingInvitesSection = ({ workspaceId }: PendingInvitesSectionProp
 
   const loadInvites = async () => {
     try {
-      // Query pending invites and join with team_members for names
       const { data, error } = await supabase
         .from('pending_slack_invites' as any)
         .select('*')
@@ -48,7 +48,6 @@ export const PendingInvitesSection = ({ workspaceId }: PendingInvitesSectionProp
         return;
       }
 
-      // Get member details
       const memberIds = (data as any[]).map((d: any) => d.member_id);
       const { data: members } = await supabase
         .from('team_members')
@@ -109,6 +108,73 @@ export const PendingInvitesSection = ({ workspaceId }: PendingInvitesSectionProp
     }
   };
 
+  // Compact mode: inline in dashboard
+  if (compact) {
+    if (invites.length === 0) {
+      return (
+        <div className="rounded-3xl bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-5">
+          <h3 className="text-sm font-semibold tracking-tight text-foreground mb-3 flex items-center gap-2">
+            📨 Convites Pendentes
+          </h3>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+            <span>Todos conectados!</span>
+          </div>
+        </div>
+      );
+    }
+
+    const visibleInvites = invites.slice(0, 3);
+
+    return (
+      <div className="rounded-3xl bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-5">
+        <h3 className="text-sm font-semibold tracking-tight text-foreground mb-3 flex items-center gap-2">
+          📨 Convites Pendentes
+          <Badge variant="secondary" className="text-xs rounded-full">{invites.length}</Badge>
+        </h3>
+        <div className="space-y-2">
+          {visibleInvites.map((invite) => {
+            const daysSince = differenceInDays(new Date(), new Date(invite.created_at));
+            return (
+              <div
+                key={invite.id}
+                className="flex items-center gap-2 rounded-xl bg-muted/30 p-2.5"
+              >
+                <Badge
+                  variant="secondary"
+                  className={`h-2 w-2 p-0 rounded-full shrink-0 ${
+                    invite.member_has_account
+                      ? 'bg-emerald-500'
+                      : 'bg-amber-500'
+                  }`}
+                />
+                <span className="text-sm text-foreground truncate flex-1">{invite.member_name}</span>
+                <span className="text-[11px] text-muted-foreground shrink-0">
+                  {daysSince === 0 ? 'Hoje' : `${daysSince}d`}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 shrink-0"
+                  onClick={() => handleResend(invite)}
+                  disabled={resending === invite.id}
+                >
+                  <RefreshCw className={`h-3 w-3 ${resending === invite.id ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+        {invites.length > 3 && (
+          <button className="text-xs text-primary mt-2 hover:underline">
+            Ver todos ({invites.length})
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // Full mode (original)
   if (invites.length === 0) return null;
 
   return (
