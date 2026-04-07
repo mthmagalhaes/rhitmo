@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
     // Fetch review with member info
     const { data: review, error: reviewError } = await supabase
       .from("performance_reviews")
-      .select("*, team_members!performance_reviews_member_id_fkey(id, name, role)")
+      .select("*, team_members!performance_reviews_member_id_fkey(id, name, role, work_style_data, feedback_style, recognition_style, chronotype, motivators)")
       .eq("id", reviewId)
       .single();
 
