@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,13 +11,27 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const response = await fetch(`${supabaseUrl}/functions/v1/reprocess-meeting`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${supabaseServiceKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ transcriptId: '46aa4f8d-91ea-486a-9675-df5a260b3fd4' }),
-    });
-    const data = await response.json();
-    return new Response(JSON.stringify(data), { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const filePath = '79a6f679-7920-42e2-9727-1fcee6edbf5a/1775588344866.wav';
+    const { data, error } = await supabase.storage.from('meeting-recordings').download(filePath);
+    if (error || !data) {
+      return new Response(JSON.stringify({ error: 'download failed', detail: error }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    const buffer = await data.arrayBuffer();
+    const view = new DataView(buffer);
+    const info = {
+      fileSize: buffer.byteLength,
+      fileSizeMB: (buffer.byteLength / 1024 / 1024).toFixed(1),
+      numChannels: view.getUint16(22, true),
+      sampleRate: view.getUint32(24, true),
+      byteRate: view.getUint32(28, true),
+      bitsPerSample: view.getUint16(34, true),
+      audioFormat: view.getUint16(20, true),
+    };
+
+    return new Response(JSON.stringify(info), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error) {
     return new Response(JSON.stringify({ error: String(error) }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
