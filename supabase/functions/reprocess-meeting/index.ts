@@ -24,7 +24,7 @@ serve(async (req) => {
       );
     }
 
-    // Authenticate user
+    // Authenticate — accept service role key or user JWT
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
@@ -33,15 +33,20 @@ serve(async (req) => {
       );
     }
 
-    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: { user } } = await authClient.auth.getUser();
-    if (!user) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Check if it's a service role key call
+    const isServiceRole = authHeader === `Bearer ${supabaseServiceKey}`;
+    
+    if (!isServiceRole) {
+      const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: { user } } = await authClient.auth.getUser();
+      if (!user) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Unauthorized' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     const { transcriptId } = await req.json();
@@ -83,39 +88,83 @@ serve(async (req) => {
       );
     }
 
-    // The transcript field contains the storage URL
-    const audioUrl = transcript.transcript;
-    if (!audioUrl || !audioUrl.startsWith('http')) {
+    // The transcript field contains either a storage file path or a legacy public URL
+    const audioRef = transcript.transcript;
+    if (!audioRef) {
       await supabase
         .from('meeting_transcripts')
         .update({
-          error_message: 'URL do arquivo de áudio não encontrada no registro.',
+          error_message: 'URL/path do arquivo de áudio não encontrada no registro.',
         } as Record<string, unknown>)
         .eq('id', transcriptId);
 
       return new Response(
-        JSON.stringify({ success: false, error: 'No audio URL found in transcript field' }),
+        JSON.stringify({ success: false, error: 'No audio reference found in transcript field' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Download audio file
-    console.log('Downloading audio from:', audioUrl);
-    const audioResponse = await fetch(audioUrl);
-    if (!audioResponse.ok) {
-      const errMsg = 'Não foi possível baixar o arquivo de áudio do storage.';
-      await supabase
-        .from('meeting_transcripts')
-        .update({ error_message: errMsg } as Record<string, unknown>)
-        .eq('id', transcriptId);
+    // Download audio file — try storage download first, fall back to public URL for legacy records
+    let audioBlob: Blob;
+    const isLegacyUrl = audioRef.startsWith('http');
 
-      return new Response(
-        JSON.stringify({ success: false, error: errMsg }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (isLegacyUrl) {
+      console.log('Legacy URL detected, trying direct fetch:', audioRef);
+      const audioResponse = await fetch(audioRef);
+      if (!audioResponse.ok) {
+        // Try to extract path from legacy URL and download via storage
+        const pathMatch = audioRef.match(/meeting-recordings\/(.+)$/);
+        if (pathMatch) {
+          console.log('Falling back to storage download with path:', pathMatch[1]);
+          const { data: dlData, error: dlError } = await supabase.storage
+            .from('meeting-recordings')
+            .download(pathMatch[1]);
+          if (dlError || !dlData) {
+            const errMsg = 'Não foi possível baixar o arquivo de áudio do storage.';
+            await supabase
+              .from('meeting_transcripts')
+              .update({ error_message: errMsg } as Record<string, unknown>)
+              .eq('id', transcriptId);
+            return new Response(
+              JSON.stringify({ success: false, error: errMsg }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          audioBlob = dlData;
+        } else {
+          const errMsg = 'Não foi possível baixar o arquivo de áudio (URL legada inacessível).';
+          await supabase
+            .from('meeting_transcripts')
+            .update({ error_message: errMsg } as Record<string, unknown>)
+            .eq('id', transcriptId);
+          return new Response(
+            JSON.stringify({ success: false, error: errMsg }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      } else {
+        audioBlob = await audioResponse.blob();
+      }
+    } else {
+      // New format: file path stored directly
+      console.log('Downloading from storage path:', audioRef);
+      const { data: dlData, error: dlError } = await supabase.storage
+        .from('meeting-recordings')
+        .download(audioRef);
+      if (dlError || !dlData) {
+        const errMsg = `Não foi possível baixar o arquivo de áudio do storage: ${dlError?.message || 'unknown'}`;
+        await supabase
+          .from('meeting_transcripts')
+          .update({ error_message: errMsg } as Record<string, unknown>)
+          .eq('id', transcriptId);
+        return new Response(
+          JSON.stringify({ success: false, error: errMsg }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      audioBlob = dlData;
     }
 
-    const audioBlob = await audioResponse.blob();
     console.log('Audio file size:', audioBlob.size);
 
     // Check size limit (20MB)
@@ -142,7 +191,7 @@ serve(async (req) => {
 
     // Send to Whisper
     console.log('Sending to Whisper...');
-    const ext = audioUrl.includes('.mp3') ? 'mp3' : audioUrl.includes('.wav') ? 'wav' : 'webm';
+    const ext = audioRef.includes('.mp3') ? 'mp3' : audioRef.includes('.wav') ? 'wav' : 'webm';
     const mimeType = ext === 'mp3' ? 'audio/mpeg' : ext === 'wav' ? 'audio/wav' : 'audio/webm';
 
     const whisperForm = new FormData();

@@ -72,17 +72,13 @@ serve(async (req) => {
       );
     }
 
-    const { data: urlData } = supabase.storage
-      .from('meeting-recordings')
-      .getPublicUrl(filePath);
-
-    // Create meeting_transcripts record
+    // Create meeting_transcripts record — store file path (not public URL) for private bucket
     const { data: transcript, error: dbError } = await supabase
       .from('meeting_transcripts')
       .insert({
         member_id: memberId || null,
         manager_id: userId || null,
-        transcript: urlData.publicUrl,
+        transcript: filePath,
         processing_status: 'processing',
         leader_notes: meetingTitle
           ? `Título: ${meetingTitle}${meetingUrl ? ` | URL: ${meetingUrl}` : ''}`
@@ -117,7 +113,7 @@ serve(async (req) => {
         } else {
           // Send to Whisper
           const whisperForm = new FormData();
-          whisperForm.append('file', file, 'audio.webm');
+          whisperForm.append('file', file, `audio.${ext}`);
           whisperForm.append('model', 'whisper-1');
           whisperForm.append('language', 'pt');
 
