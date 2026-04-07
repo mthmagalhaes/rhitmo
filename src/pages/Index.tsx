@@ -38,7 +38,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Workspace, Team } from '@/types/team';
 import { UpcomingMeetingsCard } from '@/components/dashboard/UpcomingMeetingsCard';
-import { QuickActionsCard } from '@/components/dashboard/QuickActionsCard';
+
 import { PendingInvitesSection } from '@/components/team/PendingInvitesSection';
 import { UpgradeBanner } from '@/components/billing/UpgradeBanner';
 
@@ -442,14 +442,13 @@ const Index = () => {
         {/* Bento Grid: Meetings + Activity + Actions + Invites */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
           {/* Left: Upcoming Meetings */}
-          <div className="lg:col-span-7">
+          <div className="lg:col-span-8">
             <UpcomingMeetingsCard />
           </div>
 
-          {/* Right: Activity + Quick Actions + Pending Invites */}
-          <div className="lg:col-span-5 space-y-6">
+          {/* Right: Activity + Pending Invites */}
+          <div className="lg:col-span-4 space-y-6">
             <ActivityPreview onOpenSheet={() => setActivitySheetOpen(true)} />
-            <QuickActionsCard onNewNote={() => setDialogOpen(true)} />
             {workspace && <PendingInvitesSection workspaceId={workspace.id} compact />}
           </div>
         </div>
