@@ -7,16 +7,18 @@ const corsHeaders = {
 };
 
 /**
- * Downsample a WAV file to mono 16kHz 16-bit to reduce size.
- * Pure TypeScript — no ffmpeg needed. Works because WAV is raw PCM.
- * A stereo 44.1kHz WAV is reduced by ~5.5x (e.g. 43MB → ~7.8MB).
+ * Split a large WAV into chunks and transcribe each via Whisper, then join.
+ * Returns the full transcription text.
  */
-function downsampleWav(buffer: ArrayBuffer): ArrayBuffer {
+async function transcribeWavChunked(
+  buffer: ArrayBuffer,
+  openaiApiKey: string,
+): Promise<string> {
   const view = new DataView(buffer);
   const numChannels = view.getUint16(22, true);
   const sampleRate = view.getUint32(24, true);
   const bitsPerSample = view.getUint16(34, true);
-  const bytesPerSample = bitsPerSample / 8;
+  const blockAlign = numChannels * (bitsPerSample / 8);
 
   // Find "data" chunk
   let dataOffset = 12;
@@ -24,7 +26,7 @@ function downsampleWav(buffer: ArrayBuffer): ArrayBuffer {
   while (dataOffset < buffer.byteLength - 8) {
     const chunkId = String.fromCharCode(
       view.getUint8(dataOffset), view.getUint8(dataOffset + 1),
-      view.getUint8(dataOffset + 2), view.getUint8(dataOffset + 3)
+      view.getUint8(dataOffset + 2), view.getUint8(dataOffset + 3),
     );
     const chunkSize = view.getUint32(dataOffset + 4, true);
     if (chunkId === 'data') {
@@ -36,46 +38,59 @@ function downsampleWav(buffer: ArrayBuffer): ArrayBuffer {
   }
   if (dataSize === 0) throw new Error('No data chunk found in WAV');
 
-  const TARGET_RATE = 16000;
-  const ratio = sampleRate / TARGET_RATE;
-  const totalSamples = dataSize / (bytesPerSample * numChannels);
-  const outSamples = Math.floor(totalSamples / ratio);
+  const MAX_CHUNK_DATA = 23 * 1024 * 1024; // ~23MB data per chunk (+ 44B header)
+  const alignedMax = Math.floor(MAX_CHUNK_DATA / blockAlign) * blockAlign;
+  const numChunks = Math.ceil(dataSize / alignedMax);
+  console.log(`WAV chunked transcription: ${numChunks} chunks, sampleRate=${sampleRate}, channels=${numChannels}, bps=${bitsPerSample}`);
 
-  const outData = new Int16Array(outSamples);
-  for (let i = 0; i < outSamples; i++) {
-    const srcIdx = Math.floor(i * ratio);
-    const bytePos = dataOffset + srcIdx * bytesPerSample * numChannels;
-    if (bytePos + bytesPerSample * numChannels > buffer.byteLength) break;
-    let sample = 0;
-    for (let ch = 0; ch < numChannels; ch++) {
-      const chPos = bytePos + ch * bytesPerSample;
-      if (bitsPerSample === 16) sample += view.getInt16(chPos, true);
-      else if (bitsPerSample === 32) sample += view.getInt32(chPos, true) >> 16;
-      else if (bitsPerSample === 8) sample += (view.getUint8(chPos) - 128) * 256;
+  const transcriptions: string[] = [];
+
+  for (let c = 0; c < numChunks; c++) {
+    const chunkStart = c * alignedMax;
+    const chunkDataSize = Math.min(alignedMax, dataSize - chunkStart);
+
+    // Build a valid WAV for this chunk
+    const chunkBuffer = new ArrayBuffer(44 + chunkDataSize);
+    const cv = new DataView(chunkBuffer);
+    cv.setUint32(0, 0x52494646, false); // RIFF
+    cv.setUint32(4, 36 + chunkDataSize, true);
+    cv.setUint32(8, 0x57415645, false); // WAVE
+    cv.setUint32(12, 0x666d7420, false); // fmt
+    cv.setUint32(16, 16, true);
+    cv.setUint16(20, 1, true); // PCM
+    cv.setUint16(22, numChannels, true);
+    cv.setUint32(24, sampleRate, true);
+    cv.setUint32(28, sampleRate * blockAlign, true);
+    cv.setUint16(32, blockAlign, true);
+    cv.setUint16(34, bitsPerSample, true);
+    cv.setUint32(36, 0x64617461, false); // data
+    cv.setUint32(40, chunkDataSize, true);
+    new Uint8Array(chunkBuffer, 44).set(new Uint8Array(buffer, dataOffset + chunkStart, chunkDataSize));
+
+    console.log(`Chunk ${c + 1}/${numChunks}: ${(chunkBuffer.byteLength / 1024 / 1024).toFixed(1)}MB`);
+
+    const form = new FormData();
+    form.append('file', new Blob([chunkBuffer], { type: 'audio/wav' }), `chunk${c}.wav`);
+    form.append('model', 'whisper-1');
+    form.append('language', 'pt');
+
+    const resp = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${openaiApiKey}` },
+      body: form,
+    });
+
+    if (!resp.ok) {
+      const errText = await resp.text();
+      throw new Error(`Whisper chunk ${c + 1} error ${resp.status}: ${errText}`);
     }
-    outData[i] = Math.max(-32768, Math.min(32767, Math.round(sample / numChannels)));
+
+    const result = await resp.json();
+    if (result.text) transcriptions.push(result.text);
+    console.log(`Chunk ${c + 1} done: ${result.text?.length || 0} chars`);
   }
 
-  // Build output WAV (mono, 16kHz, 16-bit)
-  const outDataSize = outSamples * 2;
-  const outBuffer = new ArrayBuffer(44 + outDataSize);
-  const out = new DataView(outBuffer);
-  out.setUint32(0, 0x52494646, false); // RIFF
-  out.setUint32(4, 36 + outDataSize, true);
-  out.setUint32(8, 0x57415645, false); // WAVE
-  out.setUint32(12, 0x666d7420, false); // fmt
-  out.setUint32(16, 16, true);
-  out.setUint16(20, 1, true); // PCM
-  out.setUint16(22, 1, true); // mono
-  out.setUint32(24, TARGET_RATE, true);
-  out.setUint32(28, TARGET_RATE * 2, true);
-  out.setUint16(32, 2, true);
-  out.setUint16(34, 16, true);
-  out.setUint32(36, 0x64617461, false); // data
-  out.setUint32(40, outDataSize, true);
-  new Int16Array(outBuffer, 44).set(outData);
-
-  return outBuffer;
+  return transcriptions.join(' ');
 }
 
 serve(async (req) => {
@@ -92,22 +107,20 @@ serve(async (req) => {
     if (!openaiApiKey) {
       return new Response(
         JSON.stringify({ success: false, error: 'OPENAI_API_KEY not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    // Authenticate — accept service role key or user JWT
+    // Auth — accept service role key or user JWT
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
         JSON.stringify({ success: false, error: 'Missing authorization' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    // Check if it's a service role key call
     const isServiceRole = authHeader === `Bearer ${supabaseServiceKey}`;
-    
     if (!isServiceRole) {
       const authClient = createClient(supabaseUrl, supabaseAnonKey, {
         global: { headers: { Authorization: authHeader } },
@@ -116,7 +129,7 @@ serve(async (req) => {
       if (!user) {
         return new Response(
           JSON.stringify({ success: false, error: 'Unauthorized' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       }
     }
@@ -125,7 +138,7 @@ serve(async (req) => {
     if (!transcriptId) {
       return new Response(
         JSON.stringify({ success: false, error: 'transcriptId is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
@@ -141,22 +154,21 @@ serve(async (req) => {
     if (fetchError || !transcript) {
       return new Response(
         JSON.stringify({ success: false, error: 'Transcript not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    // Validate: must be in error state
     if (transcript.processing_status === 'completed') {
       return new Response(
         JSON.stringify({ success: false, error: 'Transcript already completed' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
     if (transcript.processing_status !== 'error') {
       return new Response(
         JSON.stringify({ success: false, error: `Cannot reprocess: status is '${transcript.processing_status}'` }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
@@ -165,163 +177,98 @@ serve(async (req) => {
     if (!audioRef) {
       await supabase
         .from('meeting_transcripts')
-        .update({
-          error_message: 'URL/path do arquivo de áudio não encontrada no registro.',
-        } as Record<string, unknown>)
+        .update({ error_message: 'Nenhuma referência de áudio encontrada.' } as Record<string, unknown>)
         .eq('id', transcriptId);
-
       return new Response(
-        JSON.stringify({ success: false, error: 'No audio reference found in transcript field' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: 'No audio reference found' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    // Download audio file — try storage download first, fall back to public URL for legacy records
+    // Download audio — storage path or legacy URL
     let audioBlob: Blob;
     const isLegacyUrl = audioRef.startsWith('http');
 
     if (isLegacyUrl) {
-      console.log('Legacy URL detected, trying direct fetch:', audioRef);
-      const audioResponse = await fetch(audioRef);
-      if (!audioResponse.ok) {
-        // Try to extract path from legacy URL and download via storage
+      console.log('Legacy URL, trying fetch:', audioRef);
+      const resp = await fetch(audioRef);
+      if (!resp.ok) {
         const pathMatch = audioRef.match(/meeting-recordings\/(.+)$/);
         if (pathMatch) {
-          console.log('Falling back to storage download with path:', pathMatch[1]);
-          const { data: dlData, error: dlError } = await supabase.storage
-            .from('meeting-recordings')
-            .download(pathMatch[1]);
-          if (dlError || !dlData) {
-            const errMsg = 'Não foi possível baixar o arquivo de áudio do storage.';
-            await supabase
-              .from('meeting_transcripts')
-              .update({ error_message: errMsg } as Record<string, unknown>)
-              .eq('id', transcriptId);
-            return new Response(
-              JSON.stringify({ success: false, error: errMsg }),
-              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
+          console.log('Fallback to storage download:', pathMatch[1]);
+          const { data, error } = await supabase.storage.from('meeting-recordings').download(pathMatch[1]);
+          if (error || !data) {
+            const errMsg = 'Não foi possível baixar o áudio do storage.';
+            await supabase.from('meeting_transcripts').update({ error_message: errMsg } as Record<string, unknown>).eq('id', transcriptId);
+            return new Response(JSON.stringify({ success: false, error: errMsg }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
           }
-          audioBlob = dlData;
+          audioBlob = data;
         } else {
-          const errMsg = 'Não foi possível baixar o arquivo de áudio (URL legada inacessível).';
-          await supabase
-            .from('meeting_transcripts')
-            .update({ error_message: errMsg } as Record<string, unknown>)
-            .eq('id', transcriptId);
-          return new Response(
-            JSON.stringify({ success: false, error: errMsg }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+          const errMsg = 'URL legada inacessível.';
+          await supabase.from('meeting_transcripts').update({ error_message: errMsg } as Record<string, unknown>).eq('id', transcriptId);
+          return new Response(JSON.stringify({ success: false, error: errMsg }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
       } else {
-        audioBlob = await audioResponse.blob();
+        audioBlob = await resp.blob();
       }
     } else {
-      // New format: file path stored directly
-      console.log('Downloading from storage path:', audioRef);
-      const { data: dlData, error: dlError } = await supabase.storage
-        .from('meeting-recordings')
-        .download(audioRef);
-      if (dlError || !dlData) {
-        const errMsg = `Não foi possível baixar o arquivo de áudio do storage: ${dlError?.message || 'unknown'}`;
-        await supabase
-          .from('meeting_transcripts')
-          .update({ error_message: errMsg } as Record<string, unknown>)
-          .eq('id', transcriptId);
-        return new Response(
-          JSON.stringify({ success: false, error: errMsg }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+      console.log('Storage path download:', audioRef);
+      const { data, error } = await supabase.storage.from('meeting-recordings').download(audioRef);
+      if (error || !data) {
+        const errMsg = `Download falhou: ${error?.message || 'unknown'}`;
+        await supabase.from('meeting_transcripts').update({ error_message: errMsg } as Record<string, unknown>).eq('id', transcriptId);
+        return new Response(JSON.stringify({ success: false, error: errMsg }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
-      audioBlob = dlData;
+      audioBlob = data;
     }
 
     console.log('Audio file size:', audioBlob.size);
 
-    const WHISPER_MAX = 25 * 1024 * 1024;
+    const WHISPER_MAX = 24 * 1024 * 1024;
     const ext = audioRef.includes('.mp3') ? 'mp3' : audioRef.includes('.wav') ? 'wav' : 'webm';
-    let finalBlob = audioBlob;
-    let finalExt = ext;
-    let finalMime = ext === 'mp3' ? 'audio/mpeg' : ext === 'wav' ? 'audio/wav' : 'audio/webm';
+    let transcriptionText: string;
 
-    // If file exceeds Whisper limit and is WAV, compress by downsampling to mono 16kHz
-    if (audioBlob.size > WHISPER_MAX && ext === 'wav') {
-      console.log('WAV file exceeds 25MB, compressing via downsampling...');
-      try {
-        const compressed = await downsampleWav(await audioBlob.arrayBuffer());
-        finalBlob = new Blob([compressed], { type: 'audio/wav' });
-        console.log(`Compressed WAV: ${(audioBlob.size / 1024 / 1024).toFixed(1)}MB -> ${(finalBlob.size / 1024 / 1024).toFixed(1)}MB`);
-        
-        if (finalBlob.size > WHISPER_MAX) {
-          const errMsg = `Arquivo comprimido ainda excede limite do Whisper (${(finalBlob.size / 1024 / 1024).toFixed(1)}MB).`;
-          await supabase
-            .from('meeting_transcripts')
-            .update({ processing_status: 'error', error_message: errMsg } as Record<string, unknown>)
-            .eq('id', transcriptId);
-          return new Response(
-            JSON.stringify({ success: false, error: errMsg }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-      } catch (compErr) {
-        console.error('WAV compression failed:', compErr);
-        const errMsg = `Falha na compressão do WAV: ${compErr instanceof Error ? compErr.message : 'unknown'}`;
-        await supabase
-          .from('meeting_transcripts')
-          .update({ processing_status: 'error', error_message: errMsg } as Record<string, unknown>)
-          .eq('id', transcriptId);
-        return new Response(
-          JSON.stringify({ success: false, error: errMsg }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+    if (audioBlob.size <= WHISPER_MAX) {
+      // Single Whisper call
+      console.log('Single Whisper call...');
+      const mimeType = ext === 'mp3' ? 'audio/mpeg' : ext === 'wav' ? 'audio/wav' : 'audio/webm';
+      const form = new FormData();
+      form.append('file', new Blob([await audioBlob.arrayBuffer()], { type: mimeType }), `audio.${ext}`);
+      form.append('model', 'whisper-1');
+      form.append('language', 'pt');
+
+      const resp = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${openaiApiKey}` },
+        body: form,
+      });
+
+      if (!resp.ok) {
+        const errText = await resp.text();
+        console.error('Whisper error:', resp.status, errText);
+        const errMsg = `Whisper API error: ${resp.status}`;
+        await supabase.from('meeting_transcripts').update({ processing_status: 'error', error_message: errMsg } as Record<string, unknown>).eq('id', transcriptId);
+        return new Response(JSON.stringify({ success: false, error: errMsg }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
-    } else if (audioBlob.size > WHISPER_MAX) {
-      const errMsg = `Arquivo ${ext.toUpperCase()} de ${(audioBlob.size / 1024 / 1024).toFixed(1)}MB excede limite do Whisper (25MB).`;
-      await supabase
-        .from('meeting_transcripts')
-        .update({ processing_status: 'error', error_message: errMsg } as Record<string, unknown>)
-        .eq('id', transcriptId);
-      return new Response(
-        JSON.stringify({ success: false, error: errMsg, size_mb: (audioBlob.size / 1024 / 1024).toFixed(1) }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+
+      transcriptionText = (await resp.json()).text;
+    } else if (ext === 'wav') {
+      // WAV too large — split into chunks and transcribe each
+      console.log(`WAV ${(audioBlob.size / 1024 / 1024).toFixed(1)}MB > limit, chunking...`);
+      try {
+        transcriptionText = await transcribeWavChunked(await audioBlob.arrayBuffer(), openaiApiKey);
+      } catch (chunkErr) {
+        console.error('Chunked transcription failed:', chunkErr);
+        const errMsg = chunkErr instanceof Error ? chunkErr.message : 'Chunked transcription failed';
+        await supabase.from('meeting_transcripts').update({ processing_status: 'error', error_message: errMsg } as Record<string, unknown>).eq('id', transcriptId);
+        return new Response(JSON.stringify({ success: false, error: errMsg }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+    } else {
+      const errMsg = `Arquivo ${ext.toUpperCase()} de ${(audioBlob.size / 1024 / 1024).toFixed(1)}MB excede limite do Whisper.`;
+      await supabase.from('meeting_transcripts').update({ processing_status: 'error', error_message: errMsg } as Record<string, unknown>).eq('id', transcriptId);
+      return new Response(JSON.stringify({ success: false, error: errMsg }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Send to Whisper
-    console.log('Sending to Whisper...');
-
-    const whisperForm = new FormData();
-    whisperForm.append('file', new Blob([await finalBlob.arrayBuffer()], { type: finalMime }), `audio.${finalExt}`);
-    whisperForm.append('model', 'whisper-1');
-    whisperForm.append('language', 'pt');
-
-    const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${openaiApiKey}` },
-      body: whisperForm,
-    });
-
-    if (!whisperResponse.ok) {
-      const errText = await whisperResponse.text();
-      console.error('Whisper API error:', whisperResponse.status, errText);
-      const errMsg = `Whisper API error: ${whisperResponse.status}`;
-      await supabase
-        .from('meeting_transcripts')
-        .update({
-          processing_status: 'error',
-          error_message: errMsg,
-        } as Record<string, unknown>)
-        .eq('id', transcriptId);
-
-      return new Response(
-        JSON.stringify({ success: false, error: errMsg }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const whisperResult = await whisperResponse.json();
-    const transcriptionText = whisperResult.text;
     console.log('Transcription done, length:', transcriptionText?.length);
 
     // Update transcript record
@@ -334,7 +281,7 @@ serve(async (req) => {
       } as Record<string, unknown>)
       .eq('id', transcriptId);
 
-    // Create feedback note if member and manager exist
+    // Create feedback note
     let feedbackId: string | null = null;
     const memberId = transcript.member_id;
     const managerId = transcript.manager_id;
@@ -372,10 +319,7 @@ serve(async (req) => {
         try {
           await fetch(`${supabaseUrl}/functions/v1/analyze-feedback-background`, {
             method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${supabaseServiceKey}`,
-              'Content-Type': 'application/json',
-            },
+            headers: { 'Authorization': `Bearer ${supabaseServiceKey}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ feedbackId: feedbackData.id }),
           });
         } catch (bgErr) {
@@ -384,21 +328,17 @@ serve(async (req) => {
 
         // Trigger classify-note (non-blocking)
         try {
-          const classifyResponse = await fetch(`${supabaseUrl}/functions/v1/classify-note`, {
+          const classifyResp = await fetch(`${supabaseUrl}/functions/v1/classify-note`, {
             method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${supabaseServiceKey}`,
-              'Content-Type': 'application/json',
-            },
+            headers: { 'Authorization': `Bearer ${supabaseServiceKey}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ content: transcriptionText }),
           });
 
-          if (classifyResponse.ok) {
-            const classifyData = await classifyResponse.json();
+          if (classifyResp.ok) {
+            const classifyData = await classifyResp.json();
             const updates: Record<string, unknown> = {};
             if (classifyData.tags?.length > 0) updates.tags = classifyData.tags;
             if (classifyData.suggestedTitle) updates.title = classifyData.suggestedTitle;
-
             if (Object.keys(updates).length > 0) {
               await supabase.from('feedbacks').update(updates).eq('id', feedbackData.id);
               console.log('Classification applied:', updates);
@@ -411,20 +351,15 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        message: 'Transcrição reprocessada com sucesso',
-        transcript_id: transcriptId,
-        feedback_id: feedbackId,
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ success: true, message: 'Transcrição reprocessada com sucesso', transcript_id: transcriptId, feedback_id: feedbackId }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Unknown error';
     console.error('reprocess-meeting error:', msg);
     return new Response(
       JSON.stringify({ success: false, error: msg }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   }
 });
