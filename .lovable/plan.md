@@ -1,67 +1,88 @@
 
 
-## Plan: Unified Activity Center — Replace Dashboard Notifications
+## Plan: Dashboard UX Refresh + Centralized Activity Feed
 
-### Summary
-Transform the "Atualizações de Rhitmo Sync" sheet into a unified **Activity Center** (like Slack's Activity panel). Move leader nudges (NudgesBanner) into this panel, clean up the dashboard. Make it role-aware: leaders see nudges + sync updates, direct reports see shared feedback notifications, HR sees workspace-level alerts.
+### Current State
+- **ActivityBadge** (bell icon) lives in `AppLayout` header, but it's visually disconnected — small, top-right, easy to miss
+- **ActivitySheet** (side panel) already merges nudges + sync notifications with tabs
+- Dashboard (`Index.tsx`) still renders `CalendarWidget`, `UpgradeBanner`, `LeaderSyncReminder`, `PendingInvitesSection`, and `SetupChecklist` as stacked blocks before the member grid — creating visual clutter
+- Old `SyncNotificationBadge.tsx` and `SyncNotificationSheet.tsx` files still exist (unused)
+
+### UX Improvements
+
+**1. Inline Activity Feed on Dashboard (your suggestion: "subir com as notificações no meio da página")**
+
+Instead of only the side-panel bell, add a compact **inline Activity preview card** on the dashboard between the Calendar and the Members grid. This shows the 3 most recent unread items (nudges + sync) with a "Ver todas →" link that opens the full ActivitySheet.
+
+**2. Remove redundant dashboard clutter**
+- Remove `LeaderSyncReminder` from dashboard (move to ActivitySheet as a system nudge)
+- Remove `PendingInvitesSection` from dashboard (already visible on member cards)
+- Keep `CalendarWidget` (high-value, actionable)
+- Keep `SetupChecklist` (only shows during onboarding)
+- Keep `UpgradeBanner` (billing — conditional)
+
+**3. Keep bell in AppLayout header** (accessible from ALL pages, not just dashboard)
+
+**4. Delete old unused files**
+- `SyncNotificationBadge.tsx`
+- `SyncNotificationSheet.tsx`
 
 ### Changes
 
-**1. Rename & Expand `SyncNotificationSheet.tsx` → `ActivitySheet.tsx`**
+**File: `src/components/ActivityPreview.tsx` (NEW)**
+- Compact card component: "Atividade recente" header with bell icon
+- Fetches up to 3 most recent unread items (nudges + sync notifications)
+- Renders each as a single-line item: icon + message + time ago
+- Severity color bar on left (same as ActivitySheet)
+- "Ver todas" button opens ActivitySheet
+- If no unread items, renders nothing (clean dashboard)
+- Accepts `onOpenSheet` callback prop
 
-- Rename component to `ActivitySheet`
-- Change title: "Atualizações de Rhitmo Sync" → "Atividade"
-- Change description: "Mudanças no perfil comportamental..." → "Notificações e atualizações recentes"
-- Add **tab filters** at the top: "Todas" | "Alertas" | "Perfil" (for leaders); "Todas" | "Feedbacks" (for direct reports)
-- Fetch from TWO sources for leaders:
-  - `rhitmo_sync_notifications` (existing — profile changes)
-  - `leader_nudges` where `dismissed_at IS NULL` (nudges currently shown as banners)
-- Merge both into a unified timeline sorted by `created_at DESC`
-- Each item gets a type icon:
-  - Nudge urgent: red circle icon
-  - Nudge warning: amber icon
-  - Nudge info: blue lightbulb icon
-  - Sync update: purple user icon (existing)
-- Nudge items show: message + severity color bar on left + "Ver →" action button + dismiss (X) button
-- Sync items keep existing expandable diff UI
-- Mark nudge as "read" = dismiss it (`dismissed_at = now()`)
-- For direct reports: show shared feedbacks and review notifications (future — for now show empty state with "Nenhuma atividade ainda")
+**File: `src/pages/Index.tsx`**
+- Import `ActivityPreview` and `ActivitySheet`
+- Add state `activitySheetOpen`
+- Render `<ActivityPreview onOpenSheet={() => setActivitySheetOpen(true)} />` after `CalendarWidget`
+- Render `<ActivitySheet open={activitySheetOpen} onOpenChange={setActivitySheetOpen} />`
+- Remove `LeaderSyncReminder` component and import
+- Remove `PendingInvitesSection` component and import
+- Reorder: TeamTabs → CalendarWidget → UpgradeBanner → **ActivityPreview** → SetupChecklist → Members
 
-**2. Update `SyncNotificationBadge.tsx` → `ActivityBadge.tsx`**
+**File: `src/components/SyncNotificationBadge.tsx` — DELETE**
 
-- Rename component
-- Count BOTH unread sync notifications AND undismissed nudges
-- Query: `rhitmo_sync_notifications` count (read_at IS NULL) + `leader_nudges` count (dismissed_at IS NULL)
-- Sum both for the badge number
-- For direct reports: count from a different source (or 0 for now)
-- Update title: "Notificações de Rhitmo Sync" → "Atividade"
+**File: `src/components/SyncNotificationSheet.tsx` — DELETE**
 
-**3. Update `AppLayout.tsx`**
+### Visual Layout (Leader Dashboard)
 
-- Update imports: `SyncNotificationBadge` → `ActivityBadge`, `SyncNotificationSheet` → `ActivitySheet`
-- Show ActivityBadge for ALL roles (not just leaders) — direct reports and HR too
-- Pass user role context to ActivitySheet
-
-**4. Update `src/pages/Index.tsx` — Remove NudgesBanner**
-
-- Remove `<NudgesBanner />` from the dashboard (line ~442)
-- Remove import of NudgesBanner
-- This cleans up the dashboard significantly — nudges are now in the Activity panel
-
-**5. Keep `NudgesBanner.tsx` file** (don't delete — may be useful for email digests later)
+```text
+┌─────────────────────────────────────────────┐
+│  Faster Ops  [Business]  ✏️    [+ Membro] [+ Nota] │
+├─────────────────────────────────────────────┤
+│  Todos | Business Ops | CreativeOps | ...   │
+├─────────────────────────────────────────────┤
+│  📅 Próximas reuniões  [cards scroll]       │
+├─────────────────────────────────────────────┤
+│  🔔 Atividade recente              Ver todas│
+│  ┌─ 🚨 Yasmin teve 3 sinais...    2h atrás │
+│  ├─ 💡 Gabriela não tem PDI...    5h atrás │
+│  └─ 💡 Guilherme não tem PDI...   5h atrás │
+├─────────────────────────────────────────────┤
+│  👥 Todos os Membros                        │
+│  [card] [card] [card] [card]                │
+└─────────────────────────────────────────────┘
+```
 
 ### Files Modified
 
 | File | Change |
 |------|--------|
-| `src/components/SyncNotificationSheet.tsx` | Rename to ActivitySheet, add nudges feed, tabs, role-aware |
-| `src/components/SyncNotificationBadge.tsx` | Rename to ActivityBadge, count nudges + sync |
-| `src/components/AppLayout.tsx` | Update imports, show for all roles |
-| `src/pages/Index.tsx` | Remove NudgesBanner from dashboard |
+| `src/components/ActivityPreview.tsx` | New — inline activity preview card |
+| `src/pages/Index.tsx` | Add ActivityPreview, remove LeaderSyncReminder & PendingInvitesSection |
+| `src/components/SyncNotificationBadge.tsx` | Delete (unused) |
+| `src/components/SyncNotificationSheet.tsx` | Delete (unused) |
 
 ### Technical Notes
-- No database changes needed — both `leader_nudges` and `rhitmo_sync_notifications` tables already exist with correct RLS
-- Dismissing a nudge from the Activity panel uses the same mutation as the current NudgesBanner (update `dismissed_at`)
-- The badge count query combines two tables in parallel (`Promise.all`)
-- Direct report activity feed is a placeholder for now — can be populated later with shared feedback events
+- No database changes
+- ActivityPreview reuses the same queries as ActivitySheet (`leader_nudges`, `rhitmo_sync_notifications`)
+- Bell in AppLayout header remains for access from any page
+- LeaderSyncReminder logic (180-day check) could be converted to a DB-generated nudge later
 
