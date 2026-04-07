@@ -167,35 +167,60 @@ serve(async (req) => {
 
     console.log('Audio file size:', audioBlob.size);
 
-    // Check size limit (20MB)
-    const MAX_SIZE = 20 * 1024 * 1024;
-    if (audioBlob.size > MAX_SIZE) {
-      const errMsg = 'Arquivo .webm original excede limite do Whisper. Nova gravação será comprimida automaticamente.';
+    const WHISPER_MAX = 25 * 1024 * 1024;
+    const ext = audioRef.includes('.mp3') ? 'mp3' : audioRef.includes('.wav') ? 'wav' : 'webm';
+    let finalBlob = audioBlob;
+    let finalExt = ext;
+    let finalMime = ext === 'mp3' ? 'audio/mpeg' : ext === 'wav' ? 'audio/wav' : 'audio/webm';
+
+    // If file exceeds Whisper limit and is WAV, compress by downsampling to mono 16kHz
+    if (audioBlob.size > WHISPER_MAX && ext === 'wav') {
+      console.log('WAV file exceeds 25MB, compressing via downsampling...');
+      try {
+        const compressed = await downsampleWav(await audioBlob.arrayBuffer());
+        finalBlob = new Blob([compressed], { type: 'audio/wav' });
+        console.log(`Compressed WAV: ${(audioBlob.size / 1024 / 1024).toFixed(1)}MB -> ${(finalBlob.size / 1024 / 1024).toFixed(1)}MB`);
+        
+        if (finalBlob.size > WHISPER_MAX) {
+          const errMsg = `Arquivo comprimido ainda excede limite do Whisper (${(finalBlob.size / 1024 / 1024).toFixed(1)}MB).`;
+          await supabase
+            .from('meeting_transcripts')
+            .update({ processing_status: 'error', error_message: errMsg } as Record<string, unknown>)
+            .eq('id', transcriptId);
+          return new Response(
+            JSON.stringify({ success: false, error: errMsg }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      } catch (compErr) {
+        console.error('WAV compression failed:', compErr);
+        const errMsg = `Falha na compressão do WAV: ${compErr instanceof Error ? compErr.message : 'unknown'}`;
+        await supabase
+          .from('meeting_transcripts')
+          .update({ processing_status: 'error', error_message: errMsg } as Record<string, unknown>)
+          .eq('id', transcriptId);
+        return new Response(
+          JSON.stringify({ success: false, error: errMsg }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else if (audioBlob.size > WHISPER_MAX) {
+      const errMsg = `Arquivo ${ext.toUpperCase()} de ${(audioBlob.size / 1024 / 1024).toFixed(1)}MB excede limite do Whisper (25MB).`;
       await supabase
         .from('meeting_transcripts')
-        .update({
-          processing_status: 'error',
-          error_message: errMsg,
-        } as Record<string, unknown>)
+        .update({ processing_status: 'error', error_message: errMsg } as Record<string, unknown>)
         .eq('id', transcriptId);
-
       return new Response(
-        JSON.stringify({
-          success: false,
-          error: errMsg,
-          size_mb: (audioBlob.size / (1024 * 1024)).toFixed(1),
-        }),
+        JSON.stringify({ success: false, error: errMsg, size_mb: (audioBlob.size / 1024 / 1024).toFixed(1) }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     // Send to Whisper
     console.log('Sending to Whisper...');
-    const ext = audioRef.includes('.mp3') ? 'mp3' : audioRef.includes('.wav') ? 'wav' : 'webm';
-    const mimeType = ext === 'mp3' ? 'audio/mpeg' : ext === 'wav' ? 'audio/wav' : 'audio/webm';
 
     const whisperForm = new FormData();
-    whisperForm.append('file', new Blob([await audioBlob.arrayBuffer()], { type: mimeType }), `audio.${ext}`);
+    whisperForm.append('file', new Blob([await finalBlob.arrayBuffer()], { type: finalMime }), `audio.${finalExt}`);
     whisperForm.append('model', 'whisper-1');
     whisperForm.append('language', 'pt');
 
