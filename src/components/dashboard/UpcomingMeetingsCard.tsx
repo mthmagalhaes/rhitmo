@@ -1,0 +1,172 @@
+import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import { Calendar, CalendarOff, ExternalLink, FileText } from 'lucide-react';
+import { format, isToday, isTomorrow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
+
+const getTimeBadge = (startTime: string) => {
+  const date = new Date(startTime);
+  if (isToday(date)) return { label: `Hoje ${format(date, 'HH:mm')}`, className: 'bg-primary/10 text-primary border-primary/20' };
+  if (isTomorrow(date)) return { label: `Amanhã ${format(date, 'HH:mm')}`, className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800' };
+  return { label: format(date, "dd/MM HH:mm", { locale: ptBR }), className: 'bg-muted text-muted-foreground border-border' };
+};
+
+export const UpcomingMeetingsCard = () => {
+  const {
+    isConnected,
+    checkingConnection,
+    upcomingMeetings,
+    loadingMeetings,
+    connectCalendar,
+    disconnectCalendar,
+  } = useCalendarIntegration();
+  const navigate = useNavigate();
+
+  // Not connected state
+  if (!checkingConnection && !isConnected) {
+    return (
+      <div className="rounded-3xl bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-6 min-h-[400px] lg:min-h-[500px] flex flex-col items-center justify-center text-center">
+        <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-5">
+          <Calendar className="h-8 w-8 text-primary" />
+        </div>
+        <h3 className="text-lg font-semibold tracking-tight text-foreground mb-2">
+          Próximas 1:1s
+        </h3>
+        <p className="text-sm text-muted-foreground mb-6 max-w-[240px]">
+          Conecte o Google Calendar para ver suas próximas reuniões com liderados
+        </p>
+        <Button
+          onClick={connectCalendar}
+          className="rounded-xl gap-2"
+        >
+          <Calendar className="h-4 w-4" />
+          Conectar Google Calendar
+        </Button>
+      </div>
+    );
+  }
+
+  // Loading state
+  if (checkingConnection || loadingMeetings) {
+    return (
+      <div className="rounded-3xl bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-6 min-h-[400px] lg:min-h-[500px]">
+        <div className="flex items-center gap-2 mb-6">
+          <Calendar className="h-5 w-5 text-primary" />
+          <h3 className="text-lg font-semibold tracking-tight text-foreground">Próximas 1:1s</h3>
+        </div>
+        <div className="space-y-4">
+          {[1, 2, 3].map(i => (
+            <Skeleton key={i} className="h-20 rounded-2xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state
+  if (upcomingMeetings.length === 0) {
+    return (
+      <div className="rounded-3xl bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-6 min-h-[400px] lg:min-h-[500px] flex flex-col">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-primary" />
+            <h3 className="text-lg font-semibold tracking-tight text-foreground">Próximas 1:1s</h3>
+          </div>
+          <button
+            onClick={disconnectCalendar}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Desconectar
+          </button>
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center text-center">
+          <CalendarOff className="h-10 w-10 text-muted-foreground/40 mb-4" />
+          <p className="text-sm text-muted-foreground">
+            Nenhuma reunião com liderados nas próximas 48h
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // With meetings
+  const meetings = upcomingMeetings.slice(0, 5);
+
+  return (
+    <div className="rounded-3xl bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-6 min-h-[400px] lg:min-h-[500px] flex flex-col">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-5 w-5 text-primary" />
+          <h3 className="text-lg font-semibold tracking-tight text-foreground">Próximas 1:1s</h3>
+          <Badge variant="secondary" className="text-xs rounded-full">
+            {upcomingMeetings.length}
+          </Badge>
+        </div>
+        <button
+          onClick={disconnectCalendar}
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Desconectar
+        </button>
+      </div>
+
+      <div className="flex-1 space-y-1">
+        {meetings.map((meeting, index) => {
+          const badge = getTimeBadge(meeting.start_time);
+
+          return (
+            <div key={meeting.id || meeting.member_id + meeting.start_time}>
+              <div
+                className="flex items-center gap-4 p-3 rounded-2xl hover:bg-accent/50 transition-colors cursor-pointer group"
+                onClick={() => meeting.id ? navigate(`/brief/${meeting.id}`) : navigate(`/member/${meeting.member_id}`)}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge
+                      variant="outline"
+                      className={`text-xs border rounded-full px-2.5 py-0.5 ${badge.className}`}
+                    >
+                      {badge.label}
+                    </Badge>
+                  </div>
+                  <p className="text-sm font-semibold text-foreground truncate">
+                    {meeting.member_name}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">{meeting.title}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {meeting.meet_link && (
+                    <a
+                      href={meeting.meet_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center hover:bg-primary/20 transition-colors"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5 text-primary" />
+                    </a>
+                  )}
+                  <button
+                    className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      meeting.id ? navigate(`/brief/${meeting.id}`) : navigate(`/member/${meeting.member_id}`);
+                    }}
+                  >
+                    <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                  </button>
+                </div>
+              </div>
+              {index < meetings.length - 1 && (
+                <div className="mx-3 border-b border-border/50" />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
