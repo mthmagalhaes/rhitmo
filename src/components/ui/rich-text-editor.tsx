@@ -220,7 +220,7 @@ export const RichTextEditor = ({
       <EditorContent 
         editor={editor} 
         className={cn(
-          "prose prose-sm max-w-none p-3",
+          "prose prose-sm max-w-none p-3 prose-p:mb-4 prose-p:leading-relaxed prose-headings:mb-3 prose-headings:mt-6",
           "[&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[inherit]",
           "[&_.ProseMirror.is-editor-empty]:before:content-[attr(data-placeholder)]",
           "[&_.ProseMirror.is-editor-empty]:before:text-muted-foreground",

@@ -121,7 +121,7 @@ export default function DirectReportReviewView() {
         </CardHeader>
 
         <CardContent className="space-y-8">
-          <div className="prose prose-sm max-w-none dark:prose-invert">
+          <div className="prose prose-sm max-w-none dark:prose-invert prose-p:mb-4 prose-p:leading-relaxed prose-headings:mb-3 prose-headings:mt-6 prose-ul:my-4 prose-ol:my-4">
             <EditorContent editor={editor} />
           </div>
 
