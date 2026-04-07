@@ -329,3 +329,19 @@ All colors MUST be HSL.
 .bias-underline[data-bias-type="masculine"]:hover {
   background-color: hsl(var(--warning) / 0.08);
 }
+
+/* Review content — consistent paragraph spacing across editor & read-only views */
+.prose p {
+  margin-bottom: 1rem;
+}
+.prose .ProseMirror p {
+  margin-bottom: 1rem;
+}
+.prose h1, .prose h2, .prose h3 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+.prose ul, .prose ol {
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
