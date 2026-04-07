@@ -1,34 +1,37 @@
 
 
-## Plano: Restaurar "Dicas para Apresentação" nas Avaliações Formais
+## Plano: Corrigir gravação da Laís + Bugs na pipeline de gravação
 
-### Problema
-A função `generate-formal-review` (novo fluxo) não busca o `work_style_data` do liderado e não gera a seção "Dicas para Apresentação" que existia no fluxo antigo (`generate-review`). O campo `coaching_tip` já existe na tabela `performance_reviews` e o `ReviewViewDialog` já sabe exibi-lo — mas o novo fluxo simplesmente não o popula.
+### Problema encontrado
+A gravação da Laís (transcript `46aa4f8d`) está com status `error`. Investigando:
+
+1. **Bug 1 — Nome do arquivo no Whisper**: A `upload-meeting` sempre envia o arquivo para o Whisper com nome `audio.webm` (linha 120), mesmo quando o arquivo é `.wav` ou `.mp3`. Isso pode causar erro de decodificação na API do Whisper.
+2. **Bug 2 — URL pública em bucket privado**: A função salva `getPublicUrl()` no campo `transcript`, mas o bucket `meeting-recordings` é privado. Isso quebra o `reprocess-meeting`, que tenta baixar dessa URL e recebe 404.
+3. **Gravação da Laís**: Precisa ser reprocessada após as correções.
 
 ### Alterações
 
-**1. `supabase/functions/generate-formal-review/index.ts`**
-- Buscar `work_style_data` do `team_members` (já faz o select mas não inclui esse campo)
-- Após gerar o conteúdo principal da avaliação, fazer uma **segunda chamada à IA** para gerar as "Dicas para Apresentação", passando o perfil Rhitmo Sync do liderado + o conteúdo gerado
-- Salvar o resultado no campo `coaching_tip` junto com o `content`
+**1. `supabase/functions/upload-meeting/index.ts`**
+- Linha 120: usar o nome correto do arquivo com a extensão real (`audio.mp3`, `audio.wav`, etc.) ao enviar para o Whisper
+- Linha 75-77: salvar o **file path** no campo `transcript` em vez da URL pública (ex: `79a6f679.../1775588344866.wav`), permitindo que o reprocessamento use `createSignedUrl` ou `download` direto
 
-**2. `src/components/review/FormalReviewSheet.tsx`**
-- Adicionar exibição do `coaching_tip` acima do conteúdo (mesmo estilo do `ReviewViewDialog`: card azul claro com ícone TrendingUp, `print:hidden`)
-- Só exibir quando `coaching_tip` existe e não está em modo edição
-- Não exibir para liderado (já é `print:hidden` e a view do liderado é separada)
+**2. `supabase/functions/reprocess-meeting/index.ts`**
+- Alterar o download do áudio: em vez de fazer `fetch(audioUrl)`, usar `supabase.storage.from('meeting-recordings').download(filePath)` com a service role key
+- Detectar se o valor salvo é um path ou URL legada, e tratar ambos os casos
+- Usar a extensão correta ao enviar para o Whisper
 
-### Prompt da segunda chamada (coaching tip)
-Instruir a IA a gerar dicas de como o líder deve conduzir a conversa de feedback com o liderado, calibrando pelo perfil Rhitmo Sync (estilo de comunicação, preferências). Se o perfil não existir, gerar dicas genéricas com nota de que não há perfil disponível.
+**3. Reprocessar a gravação da Laís**
+- Após deploy das correções, chamar `reprocess-meeting` para o transcript `46aa4f8d` para criar o feedback no diário de bordo dela
 
 ### Arquivos
 
 | Arquivo | Alteração |
 |---------|-----------|
-| `supabase/functions/generate-formal-review/index.ts` | Buscar `work_style_data`, gerar coaching_tip, salvar no DB |
-| `src/components/review/FormalReviewSheet.tsx` | Exibir coaching_tip no card azul |
+| `supabase/functions/upload-meeting/index.ts` | Corrigir nome do arquivo Whisper + salvar path em vez de URL |
+| `supabase/functions/reprocess-meeting/index.ts` | Usar storage download em vez de fetch público + extensão correta |
 
 ### Notas técnicas
-- Sem alterações no banco de dados — campo `coaching_tip` já existe na tabela `performance_reviews`
-- A segunda chamada usa o modelo `gemini-2.5-flash` (rápido e barato) para manter o tempo de resposta aceitável
-- O coaching_tip é gerado em Markdown (como no fluxo antigo) e renderizado com `ReactMarkdown`
+- Sem alterações no banco de dados
+- O campo `transcript` da tabela `meeting_transcripts` é reutilizado: inicialmente guarda o path/URL do áudio, depois é sobrescrito com o texto transcrito. O reprocess precisa lidar com registros que já têm URL legada (começam com `http`)
+- A correção é retrocompatível: registros antigos com URL pública continuarão tentando download via fetch como fallback
 
