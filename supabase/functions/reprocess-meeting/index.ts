@@ -6,6 +6,78 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+/**
+ * Downsample a WAV file to mono 16kHz 16-bit to reduce size.
+ * Pure TypeScript — no ffmpeg needed. Works because WAV is raw PCM.
+ * A stereo 44.1kHz WAV is reduced by ~5.5x (e.g. 43MB → ~7.8MB).
+ */
+function downsampleWav(buffer: ArrayBuffer): ArrayBuffer {
+  const view = new DataView(buffer);
+  const numChannels = view.getUint16(22, true);
+  const sampleRate = view.getUint32(24, true);
+  const bitsPerSample = view.getUint16(34, true);
+  const bytesPerSample = bitsPerSample / 8;
+
+  // Find "data" chunk
+  let dataOffset = 12;
+  let dataSize = 0;
+  while (dataOffset < buffer.byteLength - 8) {
+    const chunkId = String.fromCharCode(
+      view.getUint8(dataOffset), view.getUint8(dataOffset + 1),
+      view.getUint8(dataOffset + 2), view.getUint8(dataOffset + 3)
+    );
+    const chunkSize = view.getUint32(dataOffset + 4, true);
+    if (chunkId === 'data') {
+      dataSize = chunkSize;
+      dataOffset += 8;
+      break;
+    }
+    dataOffset += 8 + chunkSize;
+  }
+  if (dataSize === 0) throw new Error('No data chunk found in WAV');
+
+  const TARGET_RATE = 16000;
+  const ratio = sampleRate / TARGET_RATE;
+  const totalSamples = dataSize / (bytesPerSample * numChannels);
+  const outSamples = Math.floor(totalSamples / ratio);
+
+  const outData = new Int16Array(outSamples);
+  for (let i = 0; i < outSamples; i++) {
+    const srcIdx = Math.floor(i * ratio);
+    const bytePos = dataOffset + srcIdx * bytesPerSample * numChannels;
+    if (bytePos + bytesPerSample * numChannels > buffer.byteLength) break;
+    let sample = 0;
+    for (let ch = 0; ch < numChannels; ch++) {
+      const chPos = bytePos + ch * bytesPerSample;
+      if (bitsPerSample === 16) sample += view.getInt16(chPos, true);
+      else if (bitsPerSample === 32) sample += view.getInt32(chPos, true) >> 16;
+      else if (bitsPerSample === 8) sample += (view.getUint8(chPos) - 128) * 256;
+    }
+    outData[i] = Math.max(-32768, Math.min(32767, Math.round(sample / numChannels)));
+  }
+
+  // Build output WAV (mono, 16kHz, 16-bit)
+  const outDataSize = outSamples * 2;
+  const outBuffer = new ArrayBuffer(44 + outDataSize);
+  const out = new DataView(outBuffer);
+  out.setUint32(0, 0x52494646, false); // RIFF
+  out.setUint32(4, 36 + outDataSize, true);
+  out.setUint32(8, 0x57415645, false); // WAVE
+  out.setUint32(12, 0x666d7420, false); // fmt
+  out.setUint32(16, 16, true);
+  out.setUint16(20, 1, true); // PCM
+  out.setUint16(22, 1, true); // mono
+  out.setUint32(24, TARGET_RATE, true);
+  out.setUint32(28, TARGET_RATE * 2, true);
+  out.setUint16(32, 2, true);
+  out.setUint16(34, 16, true);
+  out.setUint32(36, 0x64617461, false); // data
+  out.setUint32(40, outDataSize, true);
+  new Int16Array(outBuffer, 44).set(outData);
+
+  return outBuffer;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
