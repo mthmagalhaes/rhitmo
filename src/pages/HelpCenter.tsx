@@ -503,6 +503,44 @@ const HelpCenter = () => {
   );
 };
 
+interface QuickStartStep {
+  label: string;
+  icon: React.ElementType;
+}
+
+function QuickStartCard({ title, steps }: { title: string; steps: QuickStartStep[] }) {
+  return (
+    <Card className="rounded-2xl border-primary/20 bg-primary/5">
+      <CardContent className="p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <Rocket className="h-5 w-5 text-primary" />
+          <h2 className="font-semibold text-base">{title}</h2>
+        </div>
+        <div className="space-y-2">
+          {steps.map((step, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-3 p-3 rounded-xl bg-background border border-border"
+            >
+              <Checkbox checked={false} disabled className="h-5 w-5 shrink-0" />
+              <div className="p-1.5 rounded-lg bg-primary/10 shrink-0">
+                <step.icon className="h-4 w-4 text-primary" />
+              </div>
+              <span className="text-sm text-foreground">{step.label}</span>
+            </div>
+          ))}
+        </div>
+        <div>
+          <Progress value={0} className="h-2" />
+          <p className="text-xs text-muted-foreground text-center mt-2">
+            0 de {steps.length} etapas concluídas
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function FeatureGrid({ cards }: { cards: FeatureCard[] }) {
   if (cards.length === 0) {
     return (
