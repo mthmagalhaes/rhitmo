@@ -1,94 +1,41 @@
 
 
-## Refazer Guia Rhitmo — Central de Conhecimento inspirada no Lovable Docs
+## Remover Vídeo Demo → Quick Start Contextual por Perfil
 
-### Conceito
+### O que muda
 
-Transformar a página `/help` de um simples grid de 5 cards com accordion em uma **Central de Conhecimento completa** com navegação por tabs (por perfil de usuário), cards de funcionalidades com ícones, seção de vídeo, e conteúdo expandido cobrindo todos os use cases.
+Substituir a seção "Comece por aqui: Tour Completo" (iframe YouTube) por um **Quick Start Checklist** contextual que muda conforme a tab ativa (Líder, Liderado, RH Admin). Cada checklist mostra 3-4 passos essenciais com ícones e links para as funcionalidades.
 
-### Estrutura da página
+### Novo bloco (substitui linhas 393-408)
 
 ```text
 ┌──────────────────────────────────────────────┐
-│  Hero Strip (branded, wave bg)               │
-│  "Central de Conhecimento"                   │
-│  Subtítulo + Search input (filtro local)     │
-├──────────────────────────────────────────────┤
-│  [Tabs] Líder | Liderado | RH Admin         │
-├──────────────────────────────────────────────┤
-│  Seção: Comece por aqui (vídeo tour)         │
-├──────────────────────────────────────────────┤
-│  Grid de Feature Cards (por tab ativa)       │
-│  ┌─────────┐ ┌─────────┐ ┌─────────┐       │
-│  │ Icon    │ │ Icon    │ │ Icon    │       │
-│  │ Título  │ │ Título  │ │ Título  │       │
-│  │ Desc    │ │ Desc    │ │ Desc    │       │
-│  │ Steps   │ │ Steps   │ │ Steps   │       │
-│  └─────────┘ └─────────┘ └─────────┘       │
-├──────────────────────────────────────────────┤
-│  Seção: Integrações (Slack, Calendar, etc)   │
-├──────────────────────────────────────────────┤
-│  Seção: Dicas & Truques (accordion FAQ)      │
-├──────────────────────────────────────────────┤
-│  Footer: Suporte (support@rhitmo.co)         │
+│  🚀 Quick Start: [perfil ativo]              │
+│                                              │
+│  ✅ Passo 1 — Crie seu Workspace            │
+│  ○  Passo 2 — Adicione seu primeiro liderado │
+│  ○  Passo 3 — Registre uma nota              │
+│  ○  Passo 4 — Peça orientação ao Mentor IA   │
+│                                              │
+│  Barra de progresso: 1/4 concluídos          │
 └──────────────────────────────────────────────┘
 ```
 
-### Conteúdo por Tab
+**Conteúdo por perfil:**
 
-**Tab Líder** (~8 cards):
-- Primeiros Passos (Workspace + Times)
-- Diário de Bordo (notas, voz, Magic Paste)
-- Mentor Chat IA
-- Avaliações de Desempenho (gerar, editar, PDF)
-- Rhitmo Sync (convite comportamental)
-- Analytics & Métricas
-- Reuniões 1:1 (brief, calendar)
-- Competências & PDI
-
-**Tab Liderado** (~5 cards):
-- Primeiro Acesso (onboarding, Sync)
-- Meu Painel (Career Compass, Skills Map)
-- Avaliações Recebidas (visualizar, reconhecer)
-- Meus Objetivos (PDI, goals)
-- Perfil & Configurações
-
-**Tab RH Admin** (~6 cards):
-- Painel RH (visão geral, métricas)
-- Gestão de Times e Líderes
-- Gestão de Liderados
-- Framework de Competências
-- Analytics Organizacional (heatmap, risco)
-- Integrações (Slack, convites)
-
-### Seção Integrações (compartilhada entre tabs)
-- Slack (notificações, convites)
-- Google Calendar (1:1s automáticas)
-- Import de Transcrições (Tactiq, Fireflies)
-
-### Seção Dicas & Truques (accordion FAQ)
-- "Registre fatos, não opiniões"
-- "Quanto mais notas, melhor a IA"
-- "Use Magic Paste para reuniões externas"
-- "Exporte avaliações em PDF"
-- etc.
+- **Líder**: Criar workspace → Adicionar liderado → Registrar nota → Usar Mentor IA
+- **Liderado**: Completar Rhitmo Sync → Explorar Career Compass → Ver avaliações → Configurar perfil
+- **RH Admin**: Acessar painel RH → Gerenciar times → Configurar competências → Ver analytics
 
 ### Design
+- Card com `bg-primary/5 border-primary/20 rounded-2xl`
+- Ícone `Rocket` no header
+- Steps com checkbox visual (completado/pendente) — puramente visual, sem persistência
+- Exibido dentro de cada `TabsContent` (acima dos feature cards), não fora das tabs
 
-- Hero strip com gradient `bg-primary/5` e RhythmWave divider
-- Tabs usando Shadcn `Tabs` component
-- Feature cards: `rounded-2xl`, icon badge `bg-primary/10`, step-by-step com numbered list dentro de accordion
-- Search input no topo filtra cards por título/conteúdo
-- Seção integrações com badges de status (ativo/disponível)
-- FAQ com accordion Shadcn
-- Adaptado ao design system V2 (tipografia serif para headings, overline labels)
-- Tab ativa baseada no `useUserRole()` — auto-seleciona a tab do perfil do usuário
-
-### Arquivos
+### Arquivo
 
 | Arquivo | Ação |
 |---------|------|
-| `src/pages/HelpCenter.tsx` | Reescrever completamente |
-
-Nenhuma mudança em rotas ou sidebar — a rota `/help` já existe.
+| `src/pages/HelpCenter.tsx` | Remover bloco vídeo (linhas 393-408), adicionar Quick Start dentro de cada TabsContent |
 
