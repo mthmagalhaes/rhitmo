@@ -29,9 +29,10 @@ export const InviteMemberDialog = ({
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  // Gerar link de convite
+  // Gerar link de convite — sempre usar domínio de produção
+  const APP_URL = 'https://rhitmo.co';
   const inviteUrl = member.invite_token 
-    ? `${window.location.origin}/invite?code=${member.invite_token}`
+    ? `${APP_URL}/invite?code=${member.invite_token}`
     : null;
 
   const handleGenerateInvite = async () => {
