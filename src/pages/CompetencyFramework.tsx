@@ -18,6 +18,7 @@ import { Plus, Briefcase, BookOpen, Pencil, Trash2, Sparkles, Building2 } from '
 import { EditCompetencyModal, type CompetencyFormData } from '@/components/competency/EditCompetencyModal';
 import { CreateJobRoleDialog } from '@/components/competency/CreateJobRoleDialog';
 import { AdjustCompetencyDialog } from '@/components/competency/AdjustCompetencyDialog';
+import { TemplateMarketplace } from '@/components/competency/TemplateMarketplace';
 import type { Json } from '@/integrations/supabase/types';
 
 interface Competency {
