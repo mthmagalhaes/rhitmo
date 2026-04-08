@@ -61,8 +61,11 @@ const HRDashboard = () => {
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* ═══ HERO STRIP ═══ */}
-      <div className="bg-primary/5 border-b border-border/50">
-        <div className="max-w-6xl mx-auto px-6 py-10 sm:py-12">
+      <div className="relative bg-primary/5 border-b border-border/50 overflow-hidden">
+        <div className="absolute inset-0 flex items-end">
+          <RhythmWave variant="hero" className="opacity-60" />
+        </div>
+        <div className="relative max-w-6xl mx-auto px-6 py-10 sm:py-12">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary mb-3">Painel de Liderança</p>
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground font-serif">Visão Geral</h1>
           <p className="text-sm text-muted-foreground mt-2">{workspaceName}</p>
