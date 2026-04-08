@@ -1,88 +1,71 @@
 
 
-## Enxoval de Marca Rhitmo — Artefatos Visuais + Design System no App
+## Redesign Rhitmo — Integração do Key Visual (Rhythm Wave) no App
 
-### Parte 1: Gerar Artefatos Visuais (PDFs/PNGs)
+### Diagnóstico AS-IS
 
-Usar o **canvas-design skill** e **AI image generation** para criar 5 artefatos de alta qualidade salvos em `/mnt/documents/`:
+Após auditar as 10+ páginas principais do app, identifiquei as seguintes oportunidades de melhoria inspiradas pelo criativo `rhitmo-social-twitter.png` (onda rítmica roxa sobre fundo creme com tipografia editorial):
 
-#### 1. Brand Board (PDF, 1 página)
-Composição editorial com todos os elementos da marca em um único board:
-- Logo principal + variações (horizontal, vertical, ícone)
-- Paleta de cores com HEX/HSL (Primary #7C3AED, Secondary #1A1035, Background #F5F3EE, Success #059669, Warning #D97706, Destructive #DC2626, Info #0EA5E9)
-- Tipografia: Inter (body), Lora (headlines), Space Mono (dados)
-- Hierarquia tipográfica (H1-H5, body, caption)
-- Logo "rhythm wave" como motivo visual
-- Estilo: editorial, fundo creme, tipografia serifada para títulos
+**O que falta hoje:**
+1. **Hero strips são planas** — `bg-primary/5` com texto, sem identidade visual forte. Nenhuma referência ao motivo "rhythm wave" que define a marca
+2. **Auth page** usa foto stock genérica com overlay roxo — desperdiça a oportunidade de branded experience
+3. **Landing page** não tem nenhum elemento da rhythm wave — é funcional mas genérica
+4. **Sidebar** usa logo SVG simples de texto — sem expressão gráfica
+5. **Transições entre seções** são abruptas (border-b reto) — sem fluidez orgânica
+6. **Cards e métricas** seguem o sistema Creme/Bento corretamente, mas falta um "fio condutor" visual que una tudo
 
-#### 2. Logo Variations (PNG, 4 versões)
-- **Horizontal**: Texto "Rhitmo" + wave line ao lado
-- **Vertical/Stacked**: Texto em cima, wave embaixo
-- **Ícone**: Apenas a wave line estilizada em círculo
-- **Monocromática**: Versão branca para fundos escuros
+### Conceito do Redesign: "Rhythm Wave como DNA Visual"
 
-Gerar via AI image generation (gemini-3-pro-image-preview) com prompt detalhado da identidade.
+Inspirado diretamente no Twitter header: a **onda senoidal roxa** com múltiplas camadas de opacidade sobre fundo creme se torna o motivo recorrente em todo o app — como um heartbeat visual que aparece em hero strips, divisores de seção, backgrounds de auth, e landing page.
 
-#### 3. Color Palette Doc (PDF, 1 página)
-Documento técnico com:
-- Cores primárias, secundárias, semânticas
-- Swatches grandes com HEX, HSL, RGB
-- Exemplos de uso (botões, cards, backgrounds)
-- Regras de contraste e acessibilidade
+### Mudanças Planejadas
 
-#### 4. Typography Hierarchy (PDF, 1 página)
-- Specimen de Inter (400, 500, 600, 700)
-- Specimen de Lora (400, 500, 600, 700)
-- Specimen de Space Mono (400, 700)
-- Escala tipográfica: 11px → 48px com line-heights
-- Exemplos de uso em contexto
+#### 1. Componente `RhythmWave` reutilizável (NOVO)
+SVG inline que renderiza a onda rítmica com 3-5 linhas onduladas em tons de roxo (#7C3AED) com opacidades variadas (0.08, 0.15, 0.25, 0.4). Props: `height`, `opacity`, `className`, `variant` (hero | divider | background).
 
-#### 5. Social Media Templates (PNG, 3 peças)
-- Instagram post (1080x1080)
-- LinkedIn banner (1584x396)
-- Twitter/X header (1500x500)
-Todos usando a paleta Rhitmo, logo, e estilo editorial creme/bento.
+#### 2. Hero Strips dos 3 Dashboards — Rhythm Wave como background
+- **Líder** (`Index.tsx`): Substituir `bg-primary/5` por gradiente creme + rhythm wave SVG posicionada atrás do texto de saudação, com opacity baixa (0.08-0.12). Mantém TODO o conteúdo funcional (greeting, badges, metrics, buttons)
+- **Liderado** (`DirectReportDashboard.tsx`): Mesmo tratamento — wave sutil atrás do "Olá, {nome}!"
+- **RH Admin** (`HRDashboard.tsx`): Wave mais contida, apenas no hero strip "Visão Geral"
 
-### Parte 2: Página "Design System" no App
+#### 3. Auth Page — Branded split screen
+Substituir a foto stock por um layout visual inspirado no Twitter header:
+- Lado esquerdo: fundo creme (#F5F3EE) com rhythm wave em escala grande + logo Rhitmo centralizado + tagline "AI-Native Leadership Partner"
+- Mantém formulário no lado direito intacto (zero mudanças funcionais)
 
-Criar uma nova rota `/design-system` acessível apenas para o usuário `matheus@rhitmo.co` (admin master), com link no sidebar.
+#### 4. Landing Page — Rhythm wave como hero background
+- Adicionar rhythm wave como elemento decorativo atrás do hero text
+- Usar como divisor entre seções (substituindo borders retos por ondas suaves)
 
-#### Conteúdo da página:
-- **Hero**: "Rhitmo Brand Kit" com download dos artefatos
-- **Seção Cores**: Swatches interativos com copy-to-clipboard (HEX)
-- **Seção Tipografia**: Specimens live das 3 fontes
-- **Seção Logo**: Preview das variações com download
-- **Seção Templates**: Preview dos social media templates com download
-- **Seção Uso**: Guidelines de aplicação (do/don't)
+#### 5. Sidebar — Wave accent
+- Adicionar uma micro rhythm wave (2 linhas) como separador decorativo entre o logo e os menu items
 
-#### Acesso restrito:
-Verificar `user.email === 'matheus@rhitmo.co'` para mostrar o item no sidebar e permitir acesso à rota.
+#### 6. Section dividers globais
+- Criar um componente `WaveDivider` que substitui `border-b border-border/50` por uma wave SVG sutil entre seções
+
+### Regras de preservação (CRÍTICO)
+- **ZERO** mudanças em funcionalidades, queries, handlers, dialogs
+- **ZERO** mudanças em RLS, banco, edge functions
+- Todos os botões, dropdowns, tooltips, badges permanecem idênticos
+- Paleta de cores Rhitmo (#7C3AED, #F5F3EE, #1A1035) preservada — apenas adicionando layers de wave
+- Tipografia (Lora serif, Inter body, Space Mono data) preservada
 
 ### Arquivos
 
 | Arquivo | Ação |
 |---------|------|
-| `/mnt/documents/rhitmo-brand-board.pdf` | Novo — Brand Board completo |
-| `/mnt/documents/rhitmo-logo-horizontal.png` | Novo — Logo horizontal |
-| `/mnt/documents/rhitmo-logo-vertical.png` | Novo — Logo vertical |
-| `/mnt/documents/rhitmo-logo-icon.png` | Novo — Logo ícone |
-| `/mnt/documents/rhitmo-logo-mono.png` | Novo — Logo monocromática |
-| `/mnt/documents/rhitmo-color-palette.pdf` | Novo — Paleta documentada |
-| `/mnt/documents/rhitmo-typography.pdf` | Novo — Hierarquia tipográfica |
-| `/mnt/documents/rhitmo-social-instagram.png` | Novo — Template Instagram |
-| `/mnt/documents/rhitmo-social-linkedin.png` | Novo — Template LinkedIn |
-| `/mnt/documents/rhitmo-social-twitter.png` | Novo — Template Twitter |
-| `src/pages/DesignSystem.tsx` | Novo — Página do Design System |
-| `src/App.tsx` | Adicionar rota `/design-system` |
-| `src/components/AppSidebar.tsx` | Adicionar link condicional para matheus@rhitmo.co |
+| `src/components/RhythmWave.tsx` | **Novo** — Componente SVG reutilizável com variantes |
+| `src/components/WaveDivider.tsx` | **Novo** — Divisor de seção com wave sutil |
+| `src/pages/Index.tsx` | Edit — Hero strip com wave background |
+| `src/components/dashboard/DirectReportDashboard.tsx` | Edit — Hero strip com wave background |
+| `src/pages/HRDashboard.tsx` | Edit — Hero strip com wave background |
+| `src/components/Auth.tsx` | Edit — Split screen esquerdo com wave + logo (sem foto stock) |
+| `src/pages/Landing.tsx` | Edit — Hero section + section dividers com wave |
+| `src/components/AppSidebar.tsx` | Edit — Micro wave entre logo e menu |
 
-### Execução
-1. Gerar design philosophy (.md) via canvas-design skill
-2. Criar Brand Board PDF com reportlab (tipografia real, composição editorial)
-3. Gerar logo variations via AI image generation
-4. Criar Color Palette e Typography PDFs com reportlab
-5. Gerar Social Media templates via AI image generation
-6. QA visual de todos os artefatos
-7. Criar página DesignSystem.tsx com previews e downloads
-8. Adicionar rota e link no sidebar
+### Notas técnicas
+- SVG inline puro (sem imagens externas) — melhor performance e controle de cor via `currentColor`/CSS
+- Wave usa `path` com curvas Bézier para manter fidelidade ao criativo original
+- `pointer-events: none` e `position: absolute` para não interferir com cliques
+- Responsive: wave escala via viewBox, não pixels fixos
 
