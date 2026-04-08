@@ -119,6 +119,30 @@ serve(async (req) => {
 
     console.log('User authenticated:', user.id);
 
+    // Ownership check: verify user owns the workspace containing this member
+    const { data: ownershipCheck, error: ownershipError } = await supabase
+      .from('team_members')
+      .select('id, team_id, teams!inner(workspace_id, workspaces!inner(owner_id))')
+      .eq('id', memberId)
+      .single();
+
+    if (ownershipError || !ownershipCheck) {
+      console.error('Member not found:', ownershipError);
+      return new Response(
+        JSON.stringify({ error: 'Membro não encontrado' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const workspace = (ownershipCheck as any).teams?.workspaces;
+    if (workspace?.owner_id !== user.id) {
+      console.error('Unauthorized: user does not own workspace', { userId: user.id, ownerId: workspace?.owner_id });
+      return new Response(
+        JSON.stringify({ error: 'Você não tem permissão para registrar feedback neste workspace' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { data: feedback, error: insertError } = await supabase
       .from('feedbacks')
       .insert({
