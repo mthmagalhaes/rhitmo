@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { RhythmWave } from '@/components/RhythmWave';
 import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award, ArrowRightLeft, UserCheck, Palette } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
@@ -91,6 +92,11 @@ export function AppSidebar() {
         <div className="flex items-center gap-2">
           <RhitmoLogo size="sm" className="text-primary" />
         </div>
+        {open && (
+          <div className="mt-3 -mx-2 overflow-hidden">
+            <RhythmWave variant="divider" height={24} className="opacity-50" />
+          </div>
+        )}
       </SidebarHeader>
 
       <SidebarContent>
