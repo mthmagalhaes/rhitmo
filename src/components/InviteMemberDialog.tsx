@@ -13,10 +13,10 @@ interface InviteMemberDialogProps {
   member: {
     id: string;
     name: string;
-    email: string | null;
-    invite_status: string | null;
-    invite_token: string | null;
-  };
+    email?: string | null;
+    invite_status?: string | null;
+    invite_token?: string | null;
+  } | null;
   onSuccess?: () => void;
 }
 
