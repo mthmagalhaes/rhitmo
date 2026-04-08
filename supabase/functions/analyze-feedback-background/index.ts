@@ -363,6 +363,44 @@ ${truncatedContent}`;
       );
     }
 
+    console.log('Feedback analysis saved, generating embedding...');
+
+    // ── Generate embedding (non-blocking) ──
+    try {
+      const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'text-embedding-3-small',
+          input: feedback.content.substring(0, 8000),
+        }),
+      });
+
+      if (embeddingResponse.ok) {
+        const embData = await embeddingResponse.json();
+        const embedding = embData.data?.[0]?.embedding;
+        if (embedding) {
+          const embeddingStr = JSON.stringify(embedding);
+          const { error: embError } = await supabase
+            .from('feedbacks')
+            .update({ embedding: embeddingStr })
+            .eq('id', feedbackId);
+          if (embError) {
+            console.error('Error saving embedding:', embError.message);
+          } else {
+            console.log('Embedding saved successfully (1536 dims)');
+          }
+        }
+      } else {
+        console.error('Embedding API error:', embeddingResponse.status);
+      }
+    } catch (embErr: any) {
+      console.error('Embedding generation failed (non-blocking):', embErr.message);
+    }
+
     console.log('Feedback analysis completed successfully');
 
     return new Response(

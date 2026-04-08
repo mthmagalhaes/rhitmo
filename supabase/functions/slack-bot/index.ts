@@ -341,10 +341,12 @@ function buildRhitmoMenu(persona: PersonaResult, stateToken?: string): Record<st
   } else if (persona.persona === 'direct_report') {
     blocks.push(
       { type: 'section', text: { type: 'mrkdwn', text: '*👤 Seu Desenvolvimento*' } },
-      { type: 'section', text: { type: 'mrkdwn', text: 'Acesse seu painel completo no Rhitmo para ver feedbacks, PDI e reviews.' }},
+      { type: 'section', text: { type: 'mrkdwn', text: 'Acesse seu PDI, feedbacks e reviews diretamente pelo Slack ou no Rhitmo.' }},
       { type: 'actions', elements: [
+        { type: 'button', text: { type: 'plain_text', text: '📋 Meu PDI' }, action_id: 'action_meu_pdi', style: 'primary' },
         { type: 'button', text: { type: 'plain_text', text: '🚀 Abrir Rhitmo' }, url: 'https://rhitmo.lovable.app', action_id: 'open_app' },
       ]},
+      { type: 'section', text: { type: 'mrkdwn', text: '\n*💬 Comandos rápidos:*\n• `/meu-pdi` — Ver seu Plano de Desenvolvimento\n• `/rhitmo` — Este menu' }},
     );
   } else if (persona.persona === 'hr_admin') {
     blocks.push(
@@ -554,6 +556,187 @@ function buildKudosModal(triggerId: string): Record<string, unknown> {
   };
 }
 
+// ── /brief Handler ────────────────────────────────────────
+async function handleBriefCommand(payload: Record<string, string>, persona: PersonaResult): Promise<Record<string, unknown>> {
+  if (persona.persona !== 'leader') {
+    return { text: '❌ Este comando é exclusivo para líderes.' };
+  }
+
+  const text = (payload.text || '').trim();
+  if (!text) {
+    return { text: '❌ Formato: `/brief @membro`\nExemplo: `/brief @João`' };
+  }
+
+  const result = await resolveMember(text, persona.workspaceId!);
+  if ('error' in result) return { text: `❌ ${result.error}` };
+
+  // Fetch recent feedbacks
+  const { data: recentFeedbacks } = await supabase
+    .from('feedbacks')
+    .select('content, summary, sentiment, type, occurred_at, tags')
+    .eq('member_id', result.id)
+    .order('occurred_at', { ascending: false })
+    .limit(10);
+
+  // Fetch active PDI
+  const { data: activePlan } = await supabase
+    .from('development_plans')
+    .select('id, period_label, status')
+    .eq('member_id', result.id)
+    .neq('status', 'completed')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let pdiItems: any[] = [];
+  if (activePlan) {
+    const { data } = await supabase
+      .from('development_items')
+      .select('title, status, due_date')
+      .eq('plan_id', activePlan.id);
+    pdiItems = data || [];
+  }
+
+  // Fetch upcoming meeting
+  const { data: nextMeeting } = await supabase
+    .from('upcoming_meetings')
+    .select('title, start_time')
+    .eq('member_id', result.id)
+    .eq('user_id', persona.userId!)
+    .gte('start_time', new Date().toISOString())
+    .order('start_time', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  // Build blocks
+  const blocks: unknown[] = [
+    { type: 'header', text: { type: 'plain_text', text: `📊 Brief — ${result.name}` } },
+    { type: 'divider' },
+  ];
+
+  // Sentiment summary
+  if (recentFeedbacks?.length) {
+    const sentiments = recentFeedbacks.map(f => f.sentiment).filter(Boolean);
+    const sentimentCounts: Record<string, number> = {};
+    sentiments.forEach(s => { sentimentCounts[s!] = (sentimentCounts[s!] || 0) + 1; });
+    const topSentiment = Object.entries(sentimentCounts).sort((a, b) => b[1] - a[1])[0];
+    const sentimentEmoji: Record<string, string> = { muito_positivo: '🟢', positivo: '🟢', neutro: '⚪', construtivo: '🟡', critico: '🔴' };
+
+    const lastNote = recentFeedbacks[0];
+    const lastDate = new Date(lastNote.occurred_at).toLocaleDateString('pt-BR');
+    const summaryText = lastNote.summary || lastNote.content?.substring(0, 120) + '...';
+
+    blocks.push(
+      { type: 'section', text: { type: 'mrkdwn', text: `*📝 Últimas Notas* (${recentFeedbacks.length} registros)\nSentimento predominante: ${sentimentEmoji[topSentiment?.[0] || 'neutro'] || '⚪'} ${topSentiment?.[0] || 'neutro'}\n\n_Última nota (${lastDate}):_ ${summaryText}` } },
+    );
+  } else {
+    blocks.push(
+      { type: 'section', text: { type: 'mrkdwn', text: '📝 *Nenhuma nota registrada ainda.* Comece com `/nota @membro texto`' } },
+    );
+  }
+
+  // PDI section
+  if (activePlan && pdiItems.length) {
+    const pending = pdiItems.filter(i => i.status !== 'completed').length;
+    const done = pdiItems.filter(i => i.status === 'completed').length;
+    const nextDue = pdiItems.filter(i => i.due_date && i.status !== 'completed').sort((a, b) => a.due_date!.localeCompare(b.due_date!))[0];
+    let pdiText = `*📋 PDI Ativo* — ${activePlan.period_label || 'Sem período'}\n✅ ${done} concluídos | ⏳ ${pending} pendentes`;
+    if (nextDue) pdiText += `\nPróximo prazo: ${new Date(nextDue.due_date!).toLocaleDateString('pt-BR')} — _${nextDue.title}_`;
+    blocks.push({ type: 'section', text: { type: 'mrkdwn', text: pdiText } });
+  } else {
+    blocks.push({ type: 'section', text: { type: 'mrkdwn', text: '📋 *Sem PDI ativo.* Crie um no Rhitmo.' } });
+  }
+
+  // Next meeting
+  if (nextMeeting) {
+    const meetDate = new Date(nextMeeting.start_time).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    blocks.push({ type: 'section', text: { type: 'mrkdwn', text: `*📅 Próxima 1:1:* ${meetDate} — _${nextMeeting.title || 'Reunião'}_` } });
+  }
+
+  blocks.push(
+    { type: 'divider' },
+    { type: 'context', elements: [{ type: 'mrkdwn', text: '💡 Use `/nota @membro texto` para registrar observações.' }] },
+  );
+
+  return { blocks };
+}
+
+// ── /meu-pdi Handler ──────────────────────────────────────
+async function handleMeuPdiCommand(persona: PersonaResult): Promise<Record<string, unknown>> {
+  if (persona.persona !== 'direct_report' || !persona.memberId) {
+    return { text: '❌ Este comando é exclusivo para liderados vinculados ao Rhitmo.' };
+  }
+
+  const { data: plan } = await supabase
+    .from('development_plans')
+    .select('id, period_label, status, leader_comment')
+    .eq('member_id', persona.memberId)
+    .neq('status', 'completed')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!plan) {
+    return {
+      blocks: [
+        { type: 'section', text: { type: 'mrkdwn', text: '📋 *Você ainda não tem um PDI ativo.*' } },
+        { type: 'section', text: { type: 'mrkdwn', text: 'Converse com seu líder ou acesse o Rhitmo para criar um.' } },
+        { type: 'actions', elements: [
+          { type: 'button', text: { type: 'plain_text', text: '🚀 Abrir Rhitmo' }, url: 'https://rhitmo.lovable.app', action_id: 'open_app' },
+        ]},
+      ],
+    };
+  }
+
+  const { data: items } = await supabase
+    .from('development_items')
+    .select('title, status, due_date, category')
+    .eq('plan_id', plan.id)
+    .order('due_date', { ascending: true, nullsFirst: false });
+
+  const allItems = items || [];
+  const pending = allItems.filter(i => i.status !== 'completed');
+  const done = allItems.filter(i => i.status === 'completed');
+
+  const blocks: unknown[] = [
+    { type: 'header', text: { type: 'plain_text', text: '📋 Meu Plano de Desenvolvimento' } },
+    { type: 'section', text: { type: 'mrkdwn', text: `*Período:* ${plan.period_label || 'Não definido'} | *Status:* ${plan.status || 'ativo'}` } },
+    { type: 'divider' },
+  ];
+
+  if (pending.length) {
+    let pendingText = '*⏳ Pendentes:*\n';
+    pending.forEach(item => {
+      const due = item.due_date ? ` (até ${new Date(item.due_date).toLocaleDateString('pt-BR')})` : '';
+      const cat = item.category ? ` [${item.category}]` : '';
+      pendingText += `• ${item.title}${cat}${due}\n`;
+    });
+    blocks.push({ type: 'section', text: { type: 'mrkdwn', text: pendingText } });
+  }
+
+  if (done.length) {
+    let doneText = `*✅ Concluídos (${done.length}):*\n`;
+    done.slice(0, 5).forEach(item => { doneText += `• ~${item.title}~\n`; });
+    if (done.length > 5) doneText += `_...e mais ${done.length - 5}_\n`;
+    blocks.push({ type: 'section', text: { type: 'mrkdwn', text: doneText } });
+  }
+
+  if (!allItems.length) {
+    blocks.push({ type: 'section', text: { type: 'mrkdwn', text: '_Nenhum item de desenvolvimento cadastrado ainda._' } });
+  }
+
+  if (plan.leader_comment) {
+    blocks.push({ type: 'section', text: { type: 'mrkdwn', text: `💬 *Comentário do líder:* ${plan.leader_comment}` } });
+  }
+
+  blocks.push(
+    { type: 'divider' },
+    { type: 'context', elements: [{ type: 'mrkdwn', text: `📊 ${done.length}/${allItems.length} itens concluídos` }] },
+  );
+
+  return { blocks };
+}
+
 // ── Async Command Processor ──────────────────────────────
 async function processCommand(body: string, timestamp: string, signature: string, params: URLSearchParams) {
   const command = params.get('command');
@@ -601,7 +784,6 @@ async function processCommand(body: string, timestamp: string, signature: string
       const result = await handleKudosCommand(payload, persona);
       if (result.publicMsg) {
         const apiResult = await slackApi('chat.postMessage', { channel: result.publicMsg.channel, blocks: result.publicMsg.blocks });
-        // Use resolved member for kudos insert
         const text = params.get('text') || '';
         const mentionMatch2 = text.match(/^(<@U[A-Z0-9]+(?:\|[^>]*)?>)\s+(.+)/s);
         const plainMatch2 = text.match(/^[@]?(\S+)\s+(.+)/s);
@@ -619,6 +801,18 @@ async function processCommand(body: string, timestamp: string, signature: string
         }
       }
       await sendDelayedResponse(responseUrl, result.ephemeral);
+      break;
+    }
+    case '/brief': {
+      const payload: Record<string, string> = {};
+      for (const [k, v] of params.entries()) payload[k] = v;
+      const msg = await handleBriefCommand(payload, persona);
+      await sendDelayedResponse(responseUrl, msg);
+      break;
+    }
+    case '/meu-pdi': {
+      const msg = await handleMeuPdiCommand(persona);
+      await sendDelayedResponse(responseUrl, msg);
       break;
     }
     default:
@@ -692,10 +886,18 @@ async function processInteraction(body: string, timestamp: string, signature: st
             await sendDelayedResponse(origResponseUrl, msg);
             break;
           }
-          case '/brief':
-          case '/meu-pdi':
-            await sendDelayedResponse(origResponseUrl, { text: `✅ Processando \`${command}\`...` });
+          case '/brief': {
+            const p2: Record<string, string> = {};
+            for (const [k, v] of originalParams.entries()) p2[k] = v;
+            const briefMsg = await handleBriefCommand(p2, persona);
+            await sendDelayedResponse(origResponseUrl, briefMsg);
             break;
+          }
+          case '/meu-pdi': {
+            const pdiMsg = await handleMeuPdiCommand(persona);
+            await sendDelayedResponse(origResponseUrl, pdiMsg);
+            break;
+          }
           default:
             await sendDelayedResponse(origResponseUrl, { text: `Comando ${command} processado.` });
         }
@@ -725,6 +927,13 @@ async function processInteraction(body: string, timestamp: string, signature: st
         // These are URL buttons — Slack handles them, nothing to do server-side
         console.log('[INTERACT] URL button clicked:', action.action_id);
         break;
+      case 'action_meu_pdi': {
+        console.log('[INTERACT] Meu PDI button clicked');
+        const pdiPersona = await getUserPersona(slackUserId);
+        const pdiMsg = await handleMeuPdiCommand(pdiPersona);
+        if (responseUrl) await sendDelayedResponse(responseUrl, pdiMsg);
+        break;
+      }
       default:
         console.log('[INTERACT] Unhandled action:', action.action_id);
     }
