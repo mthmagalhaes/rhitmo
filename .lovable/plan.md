@@ -1,110 +1,64 @@
 
 
-## Fase 2 — Comunicação: Rewrite da Landing Page
+## Correção dos Erros Críticos de Segurança
 
-Todas as mudanças são no arquivo `src/pages/Landing.tsx`. Nenhuma mudança de backend.
+### Status atual dos findings
 
----
+| Finding | Status | Ação necessária |
+|---------|--------|-----------------|
+| submit_rhitmo_sync_v2 (anon) | JA CORRIGIDO | Marcar como fixed no scan |
+| member_review_update_bypass | JA CORRIGIDO | Marcar como fixed no scan |
+| meeting_recordings_public | JA CORRIGIDO (bucket private) | Marcar como fixed no scan |
+| chat_attachments_public_read | ABERTO | Corrigir |
+| chat_attachments_unrestricted_upload | ABERTO | Corrigir |
 
-### 1. Hero: Subhead agressivo + Badge AI-Native
-
-**Substituir** `heroSubtitle` (pt/en) por texto com números concretos:
-- PT: "O que levava 4 horas agora leva 2 minutos. Rhitmo é o único parceiro AI-nativo de liderança que transforma suas conversas em reviews prontas."
-- EN: "What took 4 hours now takes 2 minutes. Rhitmo is the only AI-native leadership partner that turns your conversations into ready-made reviews."
-
-**Adicionar badge** abaixo dos CTAs no hero:
-- `✨ AI-Native desde o dia 1 — Não é um add-on`
-- Componente inline com ícone Sparkles, bg gradient roxo/rosa, rounded-full
+Dos 5 erros críticos, **3 já foram corrigidos** em migrations anteriores. Faltam apenas os 2 do bucket `chat-attachments`.
 
 ---
 
-### 2. Nova seção: "Antes vs. Depois" (logo após hero, antes do vídeo)
+### Correções necessárias
 
-- 2 colunas desktop, stack mobile
-- **Sem Rhitmo** (fundo cinza, ícone X vermelho): 5 itens negativos com números (4h, 70%, viés)
-- **Com Rhitmo** (fundo gradient roxo suave, ícone Check verde): 5 itens positivos (30seg, tempo real, automático)
+#### 1. Migration SQL: Corrigir policies do chat-attachments
 
----
+O bucket `chat-attachments` já é private, mas tem 2 policies problemáticas:
 
-### 3. Nova seção: "Rhitmo vs. Outros" (após vídeo)
+**Policy "Public read for attachments"** — concede SELECT ao role `public` (qualquer pessoa, sem autenticação). Deve ser substituída por policy que restringe leitura ao dono do arquivo (via `storage.foldername`).
 
-- Tabela comparativa: Planilhas / Qulture.Rocks / Lattice / **Rhitmo**
-- 6 linhas: IA escreve review, Detecção viés, Mentor IA, Transcrição, Self-serve, Grátis até 3
-- Desktop: tabela HTML responsiva
-- Mobile: cards colapsáveis (Accordion)
-- Legenda: ✅ Completo / ~ Parcial / ❌ Não possui
+**Policy "Users can upload attachments"** — permite INSERT para qualquer autenticado em qualquer path. Deve restringir uploads ao folder do próprio `auth.uid()`.
 
----
+```sql
+-- Drop insecure policies
+DROP POLICY IF EXISTS "Public read for attachments" ON storage.objects;
+DROP POLICY IF EXISTS "Users can upload attachments" ON storage.objects;
 
-### 4. Nova seção: "Números Concretos" (após comparison)
+-- Owner-scoped read
+CREATE POLICY "Users can read own attachments"
+  ON storage.objects FOR SELECT TO authenticated
+  USING (bucket_id = 'chat-attachments' AND auth.uid()::text = (storage.foldername(name))[1]);
 
-- Grid 3 colunas (stack mobile)
-- Card 1: "4h → 2min" + "Tempo para escrever review" (ícone Clock)
-- Card 2: "38x" + "Mais feedback negativo para mulheres" (ícone AlertCircle)
-- Card 3: "R$49/mês" + "vs. R$108/mês em outras plataformas" (ícone DollarSign)
-- Números grandes (text-5xl), fundo gradient suave
-
----
-
-### 5. Nova seção: "O que só Rhitmo faz" (após números)
-
-- Grid 3 colunas com ícones grandes
-- Coluna 1: Zap — "IA que escreve (não sugere)"
-- Coluna 2: Shield — "Detecção de viés em tempo real"
-- Coluna 3: Mic — "Transcrição automática"
-- CTA ao final: "Ver Rhitmo em Ação" → scroll para vídeo
-
----
-
-### 6. Tom de voz: limpar textos genéricos
-
-**Atualizar translations pt/en:**
-- `leadersP1` e `leadersP2`: remover "cultura de alta performance", "complexidade", substituir por frases com números
-- `reportsP1` e `reportsP2`: manter essência mas adicionar dados concretos
-- `hrP1` e `hrP2`: substituir "microgerenciar o processo" por comparações numéricas
-- `videoSubtitle`: "Transforme a gestão do seu time" → "Veja como uma review de 4 horas vira 2 minutos"
-
----
-
-### 7. Footer: links comparativos
-
-- Adicionar seção no footer com 3 links placeholder:
-  - "Rhitmo vs. Qulture.Rocks"
-  - "Rhitmo vs. Feedz"
-  - "Rhitmo vs. Lattice"
-- Links apontam para `#` por enquanto (páginas comparativas criadas na Fase 3)
-
----
-
-### Ordem das seções (resultado final)
-
-```text
-Header (com Enterprise link — já existe)
-Hero (subhead atualizado + badge AI-Native)
-Antes vs. Depois (NOVA)
-Vídeo Demo (existente, subtitle atualizado)
-Rhitmo vs. Outros (NOVA — comparison table)
-Números Concretos (NOVA)
-O que só Rhitmo faz (NOVA — 3 USPs)
-Para Líderes (existente, textos atualizados)
-Para Pessoas Lideradas (existente, textos atualizados)
-Para RH (existente, textos atualizados)
-Pricing (existente, intacto)
-Footer (atualizado com links comparativos)
+-- Owner-scoped upload
+CREATE POLICY "Users can upload own attachments"
+  ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'chat-attachments' AND auth.uid()::text = (storage.foldername(name))[1]);
 ```
 
-### Imports adicionais
-- `Clock`, `AlertCircle`, `DollarSign`, `Shield`, `Mic`, `XCircle`, `CheckCircle2` de lucide-react
-- `Accordion` components de shadcn para mobile comparison table
+#### 2. Marcar findings resolvidos no scan
 
-### Arquivo alterado
-| Arquivo | Ação |
-|---------|------|
-| `src/pages/Landing.tsx` | Translations atualizadas + 4 novas seções + badge hero + footer links |
+Atualizar o status dos 3 findings já corrigidos + os 2 novos após a migration:
+- `rpc_public_grant_anon` → fixed
+- `member_review_update_bypass` → fixed
+- `meeting_recordings_public` → fixed
+- `chat_attachments_public_read` → fixed (após migration)
+- `chat_attachments_unrestricted_upload` → fixed (após migration)
+
+### Impacto
+- 1 migration SQL
+- 0 arquivos frontend (bucket `chat-attachments` não é referenciado no código atualmente)
+- 0 edge functions alteradas
 
 ### O que NÃO muda
-- Pricing cards (Pulse/Pro/Business/Enterprise): intactos
-- Checkout flow: intacto
-- Imagens existentes: mantidas
-- Rotas: nenhuma nova
+- Buckets meeting-recordings e data-backups (já seguros)
+- Lógica de upload de reuniões
+- Fluxo de autenticação
+- Landing page e pricing
 
