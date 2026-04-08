@@ -12,10 +12,9 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Monitor, Square, Loader2, CheckCircle, Mic, MicOff, Radio, AlertTriangle, Volume2, Copy, Check } from 'lucide-react';
+import { Monitor, Loader2, CheckCircle, Copy, Check, ExternalLink, Radio } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { cn } from '@/lib/utils';
 
 interface MeetingRecorderProps {
   open: boolean;
@@ -24,215 +23,16 @@ interface MeetingRecorderProps {
   memberName?: string;
 }
 
-type RecorderState = 'idle' | 'recording' | 'converting' | 'uploading' | 'done' | 'no-audio-warning';
+type RecorderState = 'idle' | 'recording-external' | 'done';
 
-const AUDIO_THRESHOLD = 0.08;
-
-// --- Audio conversion helpers ---
-
-function audioBufferToWav(buffer: AudioBuffer): ArrayBuffer {
-  const numChannels = buffer.numberOfChannels;
-  const sampleRate = buffer.sampleRate;
-  const samples = buffer.getChannelData(0);
-  const bytesPerSample = 2;
-  const blockAlign = numChannels * bytesPerSample;
-  const dataSize = samples.length * blockAlign;
-  const headerSize = 44;
-  const arrayBuffer = new ArrayBuffer(headerSize + dataSize);
-  const view = new DataView(arrayBuffer);
-
-  const writeString = (offset: number, str: string) => {
-    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
-  };
-
-  writeString(0, 'RIFF');
-  view.setUint32(4, 36 + dataSize, true);
-  writeString(8, 'WAVE');
-  writeString(12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, numChannels, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * blockAlign, true);
-  view.setUint16(32, blockAlign, true);
-  view.setUint16(34, 16, true);
-  writeString(36, 'data');
-  view.setUint32(40, dataSize, true);
-
-  let offset = 44;
-  for (let i = 0; i < samples.length; i++) {
-    const s = Math.max(-1, Math.min(1, samples[i]));
-    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-    offset += 2;
-  }
-
-  return arrayBuffer;
-}
-
-async function convertToMp3(webmBlob: Blob): Promise<{ blob: Blob; extension: string; mimeType: string }> {
-  // 1. Decode webm
-  const arrayBuffer = await webmBlob.arrayBuffer();
-  const audioContext = new AudioContext();
-  const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-  await audioContext.close();
-
-  // 2. Render to mono 16kHz
-  const targetSampleRate = 16000;
-  const offlineCtx = new OfflineAudioContext(
-    1,
-    Math.ceil(audioBuffer.duration * targetSampleRate),
-    targetSampleRate
-  );
-  const source = offlineCtx.createBufferSource();
-  source.buffer = audioBuffer;
-  source.connect(offlineCtx.destination);
-  source.start();
-  const renderedBuffer = await offlineCtx.startRendering();
-
-  // 3. Try MP3 encoding via lamejs
-  try {
-    const lamejs = await import('lamejs');
-    const mp3Encoder = new lamejs.Mp3Encoder(1, targetSampleRate, 32);
-
-    const samples = renderedBuffer.getChannelData(0);
-    const sampleInt16 = new Int16Array(samples.length);
-    for (let i = 0; i < samples.length; i++) {
-      sampleInt16[i] = Math.max(-32768, Math.min(32767, samples[i] * 32768));
-    }
-
-    const mp3Data: Int16Array[] = [];
-    const blockSize = 1152;
-    for (let i = 0; i < sampleInt16.length; i += blockSize) {
-      const chunk = sampleInt16.subarray(i, i + blockSize);
-      const encoded = mp3Encoder.encodeBuffer(chunk);
-      if (encoded.length > 0) mp3Data.push(encoded);
-    }
-    const finalChunk = mp3Encoder.flush();
-    if (finalChunk.length > 0) mp3Data.push(finalChunk);
-
-    const totalLength = mp3Data.reduce((acc, arr) => acc + arr.length, 0);
-    const result = new Uint8Array(totalLength);
-    let offset = 0;
-    for (const chunk of mp3Data) {
-      result.set(new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength), offset);
-      offset += chunk.byteLength;
-    }
-
-    console.log(`MP3 conversion: ${(webmBlob.size / 1024).toFixed(0)}KB → ${(result.byteLength / 1024).toFixed(0)}KB`);
-    return {
-      blob: new Blob([result], { type: 'audio/mpeg' }),
-      extension: 'mp3',
-      mimeType: 'audio/mpeg',
-    };
-  } catch (err) {
-    console.warn('lamejs failed, falling back to WAV. Error details:', {
-      name: (err as Error)?.name,
-      message: (err as Error)?.message,
-      stack: (err as Error)?.stack?.slice(0, 200),
-      browserUA: navigator.userAgent.slice(0, 80),
-      inputSize: webmBlob.size,
-      sampleRate: renderedBuffer.sampleRate,
-      duration: renderedBuffer.duration,
-    });
-
-    let finalBuffer = renderedBuffer;
-
-    // If WAV at 16kHz would be > 20MB, downsample to 8kHz mono to cut size ~2x
-    const estimatedWavSize = renderedBuffer.length * 2; // 16-bit mono
-    if (estimatedWavSize > 20 * 1024 * 1024) {
-      console.warn(`WAV too large (${(estimatedWavSize / 1024 / 1024).toFixed(1)}MB), downsampling to 8kHz`);
-      const downsampleCtx = new OfflineAudioContext(1, Math.ceil(renderedBuffer.duration * 8000), 8000);
-      const src = downsampleCtx.createBufferSource();
-      src.buffer = renderedBuffer;
-      src.connect(downsampleCtx.destination);
-      src.start();
-      finalBuffer = await downsampleCtx.startRendering();
-    }
-
-    const wavBuffer = audioBufferToWav(finalBuffer);
-    return {
-      blob: new Blob([wavBuffer], { type: 'audio/wav' }),
-      extension: 'wav',
-      mimeType: 'audio/wav',
-    };
-  }
-}
-
-// --- Waveform component ---
-
-const WaveformBars = ({
-  isActive,
-  analyserRef,
-  onAudioDetected,
-}: {
-  isActive: boolean;
-  analyserRef: React.RefObject<AnalyserNode | null>;
-  onAudioDetected?: () => void;
-}) => {
-  const [bars, setBars] = useState<number[]>(Array(16).fill(0.15));
-  const animationRef = useRef<number | null>(null);
-  const detectedRef = useRef(false);
-
-  useEffect(() => {
-    detectedRef.current = false;
-  }, [isActive]);
-
-  useEffect(() => {
-    if (!isActive) {
-      setBars(Array(16).fill(0.15));
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
-      return;
-    }
-
-    const updateBars = () => {
-      if (analyserRef.current) {
-        const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-        analyserRef.current.getByteFrequencyData(dataArray);
-        const step = Math.floor(dataArray.length / 16);
-        const newBars = Array.from({ length: 16 }, (_, i) =>
-          Math.max(0.15, dataArray[i * step] / 255)
-        );
-        setBars(newBars);
-
-        if (!detectedRef.current && onAudioDetected) {
-          const hasSound = newBars.some(b => b > AUDIO_THRESHOLD);
-          if (hasSound) {
-            detectedRef.current = true;
-            onAudioDetected();
-          }
-        }
-      }
-      animationRef.current = requestAnimationFrame(updateBars);
-    };
-    updateBars();
-
-    return () => {
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    };
-  }, [isActive, analyserRef, onAudioDetected]);
-
-  return (
-    <div className="flex items-center justify-center gap-0.5 h-12">
-      {bars.map((height, i) => (
-        <div
-          key={i}
-          className="w-1.5 bg-primary rounded-full transition-all duration-75"
-          style={{ height: `${height * 100}%`, minHeight: '15%' }}
-        />
-      ))}
-    </div>
-  );
-};
-
-// --- Main component ---
+const CHANNEL_NAME = 'rhitmo-recorder';
 
 export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: MeetingRecorderProps) => {
   const [state, setState] = useState<RecorderState>('idle');
-  const [duration, setDuration] = useState(0);
   const [meetingTitle, setMeetingTitle] = useState('');
   const [transcriptId, setTranscriptId] = useState<string | null>(null);
-  const [audioDetected, setAudioDetected] = useState(false);
-  const [hasMic, setHasMic] = useState(false);
+  const [externalDuration, setExternalDuration] = useState(0);
+  const [externalStatus, setExternalStatus] = useState<string>('recording');
 
   // Replication states
   const [feedbackContent, setFeedbackContent] = useState<string | null>(null);
@@ -244,13 +44,8 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
   const [isReplicating, setIsReplicating] = useState(false);
   const [replicationDone, setReplicationDone] = useState(false);
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const streamRef = useRef<MediaStream | null>(null);
-  const micStreamRef = useRef<MediaStream | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const popupRef = useRef<Window | null>(null);
+  const channelRef = useRef<BroadcastChannel | null>(null);
   const { toast } = useToast();
 
   const formatDuration = (seconds: number) => {
@@ -259,66 +54,76 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const cleanup = useCallback(() => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    if (micStreamRef.current) {
-      micStreamRef.current.getTracks().forEach(track => track.stop());
-      micStreamRef.current = null;
-    }
-    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-      audioContextRef.current.close();
-      audioContextRef.current = null;
-    }
-    analyserRef.current = null;
-    mediaRecorderRef.current = null;
-    chunksRef.current = [];
+  // Listen for BroadcastChannel messages from popup
+  useEffect(() => {
+    const channel = new BroadcastChannel(CHANNEL_NAME);
+    channelRef.current = channel;
+
+    channel.onmessage = (event) => {
+      const msg = event.data;
+      if (!msg?.type) return;
+
+      switch (msg.type) {
+        case 'status':
+          if (msg.state === 'recording') {
+            setExternalDuration(msg.duration || 0);
+            setExternalStatus('recording');
+          } else if (msg.state === 'converting') {
+            setExternalStatus('converting');
+          } else if (msg.state === 'uploading') {
+            setExternalStatus('uploading');
+          }
+          break;
+
+        case 'done':
+          setTranscriptId(msg.transcript_id);
+          setFeedbackId(msg.feedback_id || null);
+          setFeedbackContent(msg.feedback_content || null);
+          setFeedbackTitle(msg.feedback_title || null);
+          setState('done');
+          loadWorkspaceMembers();
+          toast({
+            title: msg.transcribed ? 'Transcrição salva como nota!' : 'Gravação enviada!',
+            description: msg.transcribed
+              ? 'A transcrição foi adicionada ao diário de bordo.'
+              : 'O áudio está sendo processado.',
+          });
+          break;
+
+        case 'popup-ready':
+          // Popup is open and ready
+          break;
+      }
+    };
+
+    return () => { channel.close(); };
   }, []);
 
-  const handleAudioDetected = useCallback(() => {
-    setAudioDetected(true);
-  }, []);
-
-  // Load workspace members when entering done state
+  // Load workspace members for replication
   const loadWorkspaceMembers = useCallback(async () => {
     if (!memberId) return;
-    
     const { data: memberData } = await supabase
       .from('team_members')
       .select('id, team_id, teams!inner(workspace_id)')
       .eq('id', memberId)
       .single();
-
     if (!memberData?.teams) return;
-
     const workspaceId = (memberData.teams as any).workspace_id;
-    
     const { data: members } = await supabase
       .from('team_members')
       .select('id, name, role, teams!inner(workspace_id)')
       .eq('teams.workspace_id', workspaceId)
       .neq('id', memberId)
       .order('name');
-
-    if (members) {
-      setAllMembers(members);
-    }
+    if (members) setAllMembers(members);
   }, [memberId]);
 
   const handleReplicate = async () => {
     if (replicateMembers.length === 0 || !feedbackContent) return;
-    
     setIsReplicating(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
-
       for (const mid of replicateMembers) {
         const { data: feedback, error } = await supabase
           .from('feedbacks')
@@ -334,237 +139,85 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
           })
           .select('id')
           .single();
-
-        if (error) {
-          console.error('Replication insert error:', error);
-          continue;
-        }
-
+        if (error) { console.error('Replication error:', error); continue; }
         if (feedback?.id) {
           supabase.functions.invoke('analyze-feedback-background', {
             body: { feedbackId: feedback.id }
           }).catch(err => console.warn('Background analysis failed:', err));
         }
       }
-
       toast({
         title: `Nota replicada para ${replicateMembers.length} liderado(s)! ✨`,
         description: 'Cada nota receberá análise de IA individual.',
       });
       setReplicationDone(true);
     } catch (err: any) {
-      console.error('Replication error:', err);
-      toast({
-        title: 'Erro na replicação',
-        description: err.message,
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro na replicação', description: err.message, variant: 'destructive' });
     } finally {
       setIsReplicating(false);
     }
   };
 
-  const startRecording = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        audio: true,
-        video: true,
+  const openRecorderPopup = useCallback(() => {
+    const params = new URLSearchParams();
+    if (memberId) params.set('memberId', memberId);
+    if (memberName) params.set('memberName', memberName);
+    if (meetingTitle.trim()) params.set('title', meetingTitle.trim());
+
+    const w = 420;
+    const h = 520;
+    const left = window.screenX + window.outerWidth - w - 40;
+    const top = window.screenY + 80;
+
+    const popup = window.open(
+      `/recorder?${params.toString()}`,
+      'rhitmo-recorder',
+      `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no`
+    );
+
+    if (popup) {
+      popupRef.current = popup;
+      setState('recording-external');
+    } else {
+      toast({
+        title: 'Popup bloqueado',
+        description: 'Permita popups para rhitmo.co nas configurações do navegador.',
+        variant: 'destructive',
       });
-
-      stream.getVideoTracks().forEach(track => track.stop());
-
-      const audioTracks = stream.getAudioTracks();
-      if (audioTracks.length === 0) {
-        stream.getTracks().forEach(t => t.stop());
-        setState('no-audio-warning');
-        return;
-      }
-
-      const tabAudioStream = new MediaStream(audioTracks);
-      streamRef.current = tabAudioStream;
-      chunksRef.current = [];
-
-      const audioContext = new AudioContext();
-      const destination = audioContext.createMediaStreamDestination();
-      const analyser = audioContext.createAnalyser();
-      analyser.fftSize = 256;
-
-      const tabSource = audioContext.createMediaStreamSource(tabAudioStream);
-      tabSource.connect(destination);
-      tabSource.connect(analyser);
-
-      audioContextRef.current = audioContext;
-      analyserRef.current = analyser;
-
-      let micAvailable = false;
-      try {
-        const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const micSource = audioContext.createMediaStreamSource(micStream);
-        micSource.connect(destination);
-        micStreamRef.current = micStream;
-        micAvailable = true;
-      } catch {
-        toast({
-          title: 'Microfone não disponível',
-          description: 'Gravando apenas áudio da aba.',
-        });
-      }
-      setHasMic(micAvailable);
-      setAudioDetected(false);
-
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-        ? 'audio/webm;codecs=opus'
-        : 'audio/webm';
-
-      const mediaRecorder = new MediaRecorder(destination.stream, { mimeType });
-      mediaRecorderRef.current = mediaRecorder;
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
-
-      audioTracks[0].onended = () => {
-        stopRecording();
-      };
-
-      mediaRecorder.start(1000);
-      setState('recording');
-      setDuration(0);
-
-      timerRef.current = setInterval(() => {
-        setDuration(prev => prev + 1);
-      }, 1000);
-    } catch (error: any) {
-      console.error('getDisplayMedia error:', error);
-      if (error.name !== 'NotAllowedError') {
-        toast({
-          title: 'Erro ao iniciar gravação',
-          description: error.message || 'Não foi possível capturar o áudio da aba.',
-          variant: 'destructive',
-        });
-      }
     }
-  }, [toast]);
+  }, [memberId, memberName, meetingTitle, toast]);
 
-  const stopRecording = useCallback(() => {
-    if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') return;
+  const focusPopup = useCallback(() => {
+    popupRef.current?.focus();
+  }, []);
 
-    setState('converting');
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-
-    const mediaRecorder = mediaRecorderRef.current;
-
-    mediaRecorder.onstop = async () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(t => t.stop());
-        streamRef.current = null;
-      }
-      if (micStreamRef.current) {
-        micStreamRef.current.getTracks().forEach(t => t.stop());
-        micStreamRef.current = null;
-      }
-      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-        audioContextRef.current.close();
-        audioContextRef.current = null;
-      }
-      analyserRef.current = null;
-
-      const webmBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
-      chunksRef.current = [];
-
-      if (webmBlob.size < 1000) {
-        toast({
-          title: 'Gravação muito curta',
-          description: 'Grave por mais tempo para gerar conteúdo.',
-          variant: 'destructive',
-        });
-        setState('idle');
-        return;
-      }
-
-      // Convert to MP3 (or WAV fallback)
-      let convertedBlob: Blob;
-      let fileName: string;
-      try {
-        const result = await convertToMp3(webmBlob);
-        convertedBlob = result.blob;
-        fileName = `meeting-${Date.now()}.${result.extension}`;
-
-        // Log conversion result for diagnostics
-        const sizeMB = (convertedBlob.size / 1024 / 1024).toFixed(1);
-        console.log(`Audio converted: ${result.extension}, ${sizeMB}MB`);
-
-        if (result.extension === 'wav') {
+  // Check if popup was closed externally
+  useEffect(() => {
+    if (state !== 'recording-external') return;
+    const interval = setInterval(() => {
+      if (popupRef.current && popupRef.current.closed) {
+        // Popup was closed — if we didn't get a 'done', reset
+        if (state === 'recording-external') {
+          setState('idle');
           toast({
-            title: 'Compressão MP3 indisponível',
-            description: `Gravação salva como WAV (${sizeMB}MB). Se o arquivo for muito grande, tente uma gravação mais curta.`,
+            title: 'Gravação encerrada',
+            description: 'A janela de gravação foi fechada.',
           });
         }
-      } catch (convErr) {
-        console.warn('Audio conversion failed, uploading original webm:', convErr);
-        convertedBlob = webmBlob;
-        fileName = `meeting-${Date.now()}.webm`;
+        clearInterval(interval);
       }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [state, toast]);
 
-      setState('uploading');
-
-      try {
-        const formData = new FormData();
-        formData.append('file', convertedBlob, fileName);
-        if (meetingTitle.trim()) formData.append('meeting_title', meetingTitle.trim());
-        if (memberId) formData.append('member_id', memberId);
-
-        const { data, error } = await supabase.functions.invoke('upload-meeting', {
-          body: formData,
-        });
-
-        if (error) throw error;
-
-        if (data?.success) {
-          setTranscriptId(data.transcript_id);
-          setFeedbackId(data.feedback_id || null);
-          setFeedbackContent(data.feedback_content || null);
-          setFeedbackTitle(meetingTitle.trim() || null);
-          setState('done');
-          
-          loadWorkspaceMembers();
-
-          toast({
-            title: data.transcribed ? 'Transcrição salva como nota!' : 'Gravação enviada!',
-            description: data.transcribed
-              ? 'A transcrição foi adicionada ao diário de bordo do membro.'
-              : 'O áudio está sendo processado.',
-          });
-        } else {
-          throw new Error(data?.error || 'Falha no upload');
-        }
-      } catch (err: any) {
-        console.error('Upload error:', err);
-        toast({
-          title: 'Erro no upload',
-          description: err.message || 'Não foi possível enviar a gravação.',
-          variant: 'destructive',
-        });
-        setState('idle');
-      }
-    };
-
-    mediaRecorder.stop();
-  }, [meetingTitle, memberId, toast, loadWorkspaceMembers]);
-
-  // Cleanup on dialog close or unmount
+  // Reset on dialog close
   useEffect(() => {
     if (!open) {
-      cleanup();
       setState('idle');
-      setDuration(0);
       setMeetingTitle('');
       setTranscriptId(null);
-      setAudioDetected(false);
-      setHasMic(false);
+      setExternalDuration(0);
+      setExternalStatus('recording');
       setFeedbackContent(null);
       setFeedbackId(null);
       setFeedbackTitle(null);
@@ -574,11 +227,7 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
       setIsReplicating(false);
       setReplicationDone(false);
     }
-  }, [open, cleanup]);
-
-  useEffect(() => {
-    return () => cleanup();
-  }, [cleanup]);
+  }, [open]);
 
   const toggleReplicateMember = (id: string) => {
     setReplicateMembers(prev =>
@@ -588,9 +237,8 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
 
   return (
     <Dialog open={open} onOpenChange={(v) => {
-      if (state === 'recording') {
-        stopRecording();
-        return;
+      if (state === 'recording-external') {
+        // Allow closing dialog — popup continues independently
       }
       onOpenChange(v);
     }}>
@@ -624,111 +272,60 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
                   <Monitor className="h-7 w-7 text-primary" />
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Selecione a aba do Google Meet (ou outra) e marque <strong>"Compartilhar áudio da aba"</strong>.
+                  Uma janela de gravação será aberta. Selecione a aba do Google Meet e marque <strong>"Compartilhar áudio da aba"</strong>.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Você poderá continuar usando a Rhitmo normalmente enquanto grava.
                 </p>
               </div>
 
-              <Button onClick={startRecording} className="w-full gap-2 rounded-xl" size="lg">
+              <Button onClick={openRecorderPopup} className="w-full gap-2 rounded-xl" size="lg">
                 <Monitor className="h-5 w-5" />
                 Iniciar Gravação
               </Button>
             </div>
           )}
 
-          {/* No audio warning state */}
-          {state === 'no-audio-warning' && (
-            <div className="space-y-4 animate-fade-in">
-              <div className="bg-destructive/5 border border-destructive/20 rounded-2xl p-6 text-center space-y-4">
-                <div className="w-14 h-14 rounded-2xl bg-destructive/10 flex items-center justify-center mx-auto">
-                  <AlertTriangle className="h-7 w-7 text-destructive" />
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground">Áudio da aba não detectado</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Ao compartilhar a aba, marque a caixa <strong>"Compartilhar áudio da aba"</strong> no canto inferior esquerdo da janela de seleção.
-                  </p>
-                </div>
-                <div className="flex items-center justify-center gap-3 text-muted-foreground">
-                  <Volume2 className="h-8 w-8" />
-                  <span className="text-2xl">→</span>
-                  <div className="flex items-center gap-1.5 border border-border rounded-lg px-3 py-1.5 text-xs font-medium">
-                    <div className="w-3 h-3 rounded-sm border border-primary bg-primary/20" />
-                    Compartilhar áudio
-                  </div>
-                </div>
-              </div>
-
-              <Button onClick={startRecording} className="w-full gap-2 rounded-xl" size="lg">
-                <Monitor className="h-5 w-5" />
-                Tentar Novamente
-              </Button>
-            </div>
-          )}
-
-          {/* Recording state */}
-          {state === 'recording' && (
+          {/* Recording in external popup */}
+          {state === 'recording-external' && (
             <div className="space-y-4 animate-fade-in">
               <div className="bg-muted/50 rounded-2xl p-6 text-center space-y-4">
                 <div className="flex items-center justify-center gap-2">
-                  <div className="h-3 w-3 rounded-full bg-destructive animate-pulse" />
-                  <span className="text-sm font-medium text-destructive">Gravando</span>
-                </div>
-                <p className="text-3xl font-mono font-bold tracking-tight text-foreground">
-                  {formatDuration(duration)}
-                </p>
-                <WaveformBars isActive analyserRef={analyserRef} onAudioDetected={handleAudioDetected} />
-
-                <div className="flex items-center justify-center gap-3">
-                  <Badge variant="secondary" className="gap-1.5 text-xs">
-                    <Monitor className="h-3 w-3" /> Aba
-                  </Badge>
-                  <Badge
-                    variant={hasMic ? 'secondary' : 'outline'}
-                    className={cn('gap-1.5 text-xs', !hasMic && 'opacity-50')}
-                  >
-                    {hasMic ? <Mic className="h-3 w-3" /> : <MicOff className="h-3 w-3" />}
-                    Mic
-                  </Badge>
+                  {externalStatus === 'recording' ? (
+                    <>
+                      <div className="h-3 w-3 rounded-full bg-destructive animate-pulse" />
+                      <span className="text-sm font-medium text-destructive">Gravando em janela externa</span>
+                    </>
+                  ) : (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      <span className="text-sm font-medium text-muted-foreground">
+                        {externalStatus === 'converting' ? 'Processando áudio...' : 'Enviando gravação...'}
+                      </span>
+                    </>
+                  )}
                 </div>
 
-                {!audioDetected && (
-                  <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground animate-fade-in">
-                    <Radio className="h-3.5 w-3.5 text-primary" />
-                    <span>Conectado — Capturando som assim que a conversa começar</span>
-                  </div>
+                {externalStatus === 'recording' && (
+                  <p className="text-3xl font-mono font-bold tracking-tight text-foreground">
+                    {formatDuration(externalDuration)}
+                  </p>
                 )}
+
+                <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+                  <Radio className="h-3.5 w-3.5 text-primary" />
+                  <span>Você pode navegar na Rhitmo — a gravação continua na outra janela</span>
+                </div>
               </div>
 
               <Button
-                onClick={stopRecording}
-                variant="destructive"
+                onClick={focusPopup}
+                variant="outline"
                 className="w-full gap-2 rounded-xl"
-                size="lg"
               >
-                <Square className="h-5 w-5" />
-                Parar Gravação
+                <ExternalLink className="h-4 w-4" />
+                Ver janela de gravação
               </Button>
-            </div>
-          )}
-
-          {/* Converting state */}
-          {state === 'converting' && (
-            <div className="bg-muted/50 rounded-2xl p-8 text-center space-y-4 animate-fade-in">
-              <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
-              <div>
-                <p className="text-sm font-medium text-foreground">Processando áudio...</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Isso pode levar alguns segundos para reuniões longas.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Uploading state */}
-          {state === 'uploading' && (
-            <div className="bg-muted/50 rounded-2xl p-8 text-center space-y-4 animate-fade-in">
-              <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
-              <p className="text-sm text-muted-foreground">Enviando gravação...</p>
             </div>
           )}
 
@@ -809,7 +406,6 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
                 </div>
               )}
 
-              {/* Replication done */}
               {replicationDone && (
                 <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 text-center">
                   <div className="flex items-center justify-center gap-2 text-sm font-medium text-primary">
