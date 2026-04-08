@@ -1357,14 +1357,6 @@ const Landing = () => {
           </div>
 
           {/* Comparison links */}
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t.footerCompare}</p>
-            <div className="flex justify-center gap-4 text-sm text-muted-foreground">
-              <a href="#" className="hover:text-foreground transition-colors">{t.footerVsQulture}</a>
-              <a href="#" className="hover:text-foreground transition-colors">{t.footerVsFeedz}</a>
-              <a href="#" className="hover:text-foreground transition-colors">{t.footerVsLattice}</a>
-            </div>
-          </div>
 
           <p className="text-sm text-muted-foreground">
             {t.footerRights}
