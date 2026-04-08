@@ -125,8 +125,31 @@ async function convertToMp3(webmBlob: Blob): Promise<{ blob: Blob; extension: st
       mimeType: 'audio/mpeg',
     };
   } catch (err) {
-    console.warn('lamejs failed, falling back to WAV:', err);
-    const wavBuffer = audioBufferToWav(renderedBuffer);
+    console.warn('lamejs failed, falling back to WAV. Error details:', {
+      name: (err as Error)?.name,
+      message: (err as Error)?.message,
+      stack: (err as Error)?.stack?.slice(0, 200),
+      browserUA: navigator.userAgent.slice(0, 80),
+      inputSize: webmBlob.size,
+      sampleRate: renderedBuffer.sampleRate,
+      duration: renderedBuffer.duration,
+    });
+
+    let finalBuffer = renderedBuffer;
+
+    // If WAV at 16kHz would be > 20MB, downsample to 8kHz mono to cut size ~2x
+    const estimatedWavSize = renderedBuffer.length * 2; // 16-bit mono
+    if (estimatedWavSize > 20 * 1024 * 1024) {
+      console.warn(`WAV too large (${(estimatedWavSize / 1024 / 1024).toFixed(1)}MB), downsampling to 8kHz`);
+      const downsampleCtx = new OfflineAudioContext(1, Math.ceil(renderedBuffer.duration * 8000), 8000);
+      const src = downsampleCtx.createBufferSource();
+      src.buffer = renderedBuffer;
+      src.connect(downsampleCtx.destination);
+      src.start();
+      finalBuffer = await downsampleCtx.startRendering();
+    }
+
+    const wavBuffer = audioBufferToWav(finalBuffer);
     return {
       blob: new Blob([wavBuffer], { type: 'audio/wav' }),
       extension: 'wav',
@@ -469,6 +492,17 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
         const result = await convertToMp3(webmBlob);
         convertedBlob = result.blob;
         fileName = `meeting-${Date.now()}.${result.extension}`;
+
+        // Log conversion result for diagnostics
+        const sizeMB = (convertedBlob.size / 1024 / 1024).toFixed(1);
+        console.log(`Audio converted: ${result.extension}, ${sizeMB}MB`);
+
+        if (result.extension === 'wav') {
+          toast({
+            title: 'Compressão MP3 indisponível',
+            description: `Gravação salva como WAV (${sizeMB}MB). Se o arquivo for muito grande, tente uma gravação mais curta.`,
+          });
+        }
       } catch (convErr) {
         console.warn('Audio conversion failed, uploading original webm:', convErr);
         convertedBlob = webmBlob;

@@ -297,19 +297,30 @@ Pergunta do usuário: ${question.slice(0, 300)}`;
       { role: 'user', content: userMessageContent },
     ];
 
+    // Use Lovable AI Gateway (Gemini 2.5 Flash) for L3 response
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    const useGateway = !!lovableApiKey;
+    const apiUrl = useGateway
+      ? 'https://ai.gateway.lovable.dev/v1/chat/completions'
+      : 'https://api.openai.com/v1/chat/completions';
+    const apiKey = useGateway ? lovableApiKey : openAIApiKey;
+    const modelName = useGateway ? 'google/gemini-2.5-flash' : 'gpt-4o';
+
+    console.log(`Calling ${modelName} via ${useGateway ? 'Lovable AI Gateway' : 'OpenAI'}`);
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), summaryApplied ? 90000 : 45000);
 
     let response;
     try {
-      response = await fetch('https://api.openai.com/v1/chat/completions', {
+      response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o',
+          model: modelName,
           messages: apiMessages,
           max_tokens: 1500,
         }),

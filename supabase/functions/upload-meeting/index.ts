@@ -45,6 +45,20 @@ serve(async (req) => {
       );
     }
 
+    // Server-side file size validation (25MB Whisper limit)
+    const MAX_FILE_SIZE = 25 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+      console.error(`File too large: ${sizeMB}MB (limit: 25MB)`);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `Arquivo muito grande (${sizeMB}MB). O limite é 25MB. Tente uma gravação mais curta.` 
+        }),
+        { status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Upload file to storage
     const folder = userId || 'anonymous';
     const timestamp = Date.now();
