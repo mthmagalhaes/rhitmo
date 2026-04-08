@@ -1,29 +1,43 @@
 
 
-## Tornar matheus@rhitmo.co somente HR Admin
+## Ajustes na Central de Conhecimento
 
-### Situação atual
+### 1. Renomear menu "Guia Rhitmo" → "Central de Conhecimento"
 
-- matheus@rhitmo.co (`032f8a17`) é `owner_id` do workspace "Rhitmo Inc." → sistema vê como **leader**
-- O `hr_admin_ids` contém apenas `matheus_hr@rhitmo.co` (`e708e033`)
-- Por isso ele vê a tela de líder (dashboard) e não a de RH Admin
+**Arquivo:** `src/components/AppSidebar.tsx`
+- Linha 41: trocar `title: 'Guia Rhitmo'` para `title: 'Central de Conhecimento'`
+- Linha 44: atualizar `leaderOnlyItems` com o novo nome
 
-### Solução
+### 2. Adicionar card "Gravação de Reuniões" nos cards do Líder
 
-**Uma única operação no banco**: adicionar o user ID de matheus@rhitmo.co ao array `hr_admin_ids` do workspace.
+**Arquivo:** `src/pages/HelpCenter.tsx`
+- Adicionar novo card no array `leaderCards` (após o card de "Reuniões 1:1"):
 
-O hook `useUserRole` já verifica `hr_admin_ids` antes de `owner_id`, então ao adicionar o ID dele no array, o sistema automaticamente:
-- Retorna role = `hr_admin`
-- Redireciona para `/hr` no login
-- Mostra a navegação de RH Admin na sidebar
+```
+{
+  id: 'l-recording',
+  icon: Mic,
+  title: 'Gravação de Reuniões',
+  subtitle: 'Grave reuniões e obtenha transcrições automáticas',
+  steps: [
+    'No perfil do liderado, clique em "Gravar Reunião".',
+    'Uma janela popup será aberta — selecione a aba do Chrome com a reunião.',
+    'A gravação roda na janela separada. Você pode continuar usando o Rhitmo normalmente.',
+    'Ao parar a gravação, o áudio é transcrito automaticamente e as notas são classificadas pela IA.',
+    'Atenção: não feche a janela do popup durante a gravação.',
+  ],
+}
+```
 
-Não é necessário deletar o workspace — ele continua como owner (necessário para RLS de dados), mas a UI o trata como HR Admin.
+### 3. Remover Quick Start dos 3 perfis
 
-### Execução
+**Arquivo:** `src/pages/HelpCenter.tsx`
+- Remover os 3 blocos `<QuickStartCard ... />` das TabsContent de leader, member e hr (linhas 396-404, 408-416, 420-428)
 
-| Ação | Detalhe |
-|------|---------|
-| UPDATE via insert tool | Adicionar `032f8a17-674e-4ef2-a9c1-8da1bea7338c` ao `hr_admin_ids` do workspace `d6226a14-2e20-40b0-a212-392dfff60623` |
+### Arquivos afetados
 
-Nenhuma alteração de código necessária — a lógica já prioriza HR Admin sobre Leader.
+| Arquivo | Ação |
+|---------|------|
+| `src/components/AppSidebar.tsx` | Renomear item do menu |
+| `src/pages/HelpCenter.tsx` | Remover Quick Starts + adicionar card de gravação |
 
