@@ -837,9 +837,7 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                       onClick={async () => {
                         if (!selectedReview) return;
                         const { error } = await supabase
-                          .from('performance_reviews')
-                          .update({ acknowledged_at: new Date().toISOString() } as any)
-                          .eq('id', selectedReview.id);
+                          .rpc('member_acknowledge_review', { p_review_id: selectedReview.id });
                         if (error) {
                           toast.error('Erro ao confirmar leitura.');
                           return;
