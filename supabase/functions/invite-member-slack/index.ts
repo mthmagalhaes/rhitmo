@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
     // Step 5: Build connect URL
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     // Extract project ref from URL for building the app URL
-    const connectUrl = `https://rhitmo.lovable.app/slack/connect?state=${encodeURIComponent(stateToken)}&member_id=${member_id}`;
+    const connectUrl = `https://rhitmo.co/slack/connect?state=${encodeURIComponent(stateToken)}&member_id=${member_id}`;
 
     // Step 6: Send DM via Slack
     const blocks = hasExistingAccount

@@ -310,9 +310,10 @@ async function checkPrivacy(command: string, channelType: string, channelId: str
 
 function buildRhitmoMenu(persona: PersonaResult, stateToken?: string): Record<string, unknown> {
   if (persona.persona === 'unauthenticated') {
+    const APP_URL = 'https://rhitmo.co';
     const connectUrl = stateToken
-      ? `https://rhitmo.lovable.app/slack/connect?state=${encodeURIComponent(stateToken)}`
-      : 'https://rhitmo.lovable.app';
+      ? `${APP_URL}/slack/connect?state=${encodeURIComponent(stateToken)}`
+      : APP_URL;
     return {
       blocks: [
         { type: 'section', text: { type: 'mrkdwn', text: '🔗 *Conecte sua conta Rhitmo* para usar os comandos do Slack.' } },
@@ -344,7 +345,7 @@ function buildRhitmoMenu(persona: PersonaResult, stateToken?: string): Record<st
       { type: 'section', text: { type: 'mrkdwn', text: 'Acesse seu PDI, feedbacks e reviews diretamente pelo Slack ou no Rhitmo.' }},
       { type: 'actions', elements: [
         { type: 'button', text: { type: 'plain_text', text: '📋 Meu PDI' }, action_id: 'action_meu_pdi', style: 'primary' },
-        { type: 'button', text: { type: 'plain_text', text: '🚀 Abrir Rhitmo' }, url: 'https://rhitmo.lovable.app', action_id: 'open_app' },
+        { type: 'button', text: { type: 'plain_text', text: '🚀 Abrir Rhitmo' }, url: 'https://rhitmo.co', action_id: 'open_app' },
       ]},
       { type: 'section', text: { type: 'mrkdwn', text: '\n*💬 Comandos rápidos:*\n• `/meu-pdi` — Ver seu Plano de Desenvolvimento\n• `/rhitmo` — Este menu' }},
     );
@@ -352,7 +353,7 @@ function buildRhitmoMenu(persona: PersonaResult, stateToken?: string): Record<st
     blocks.push(
       { type: 'section', text: { type: 'mrkdwn', text: '*📈 Analytics Organizacional*' } },
       { type: 'actions', elements: [
-        { type: 'button', text: { type: 'plain_text', text: '📊 Abrir Dashboard HR' }, url: 'https://rhitmo.lovable.app/hr', action_id: 'open_hr', style: 'primary' },
+        { type: 'button', text: { type: 'plain_text', text: '📊 Abrir Dashboard HR' }, url: 'https://rhitmo.co/hr', action_id: 'open_hr', style: 'primary' },
       ]},
     );
   }
@@ -682,7 +683,7 @@ async function handleMeuPdiCommand(persona: PersonaResult): Promise<Record<strin
         { type: 'section', text: { type: 'mrkdwn', text: '📋 *Você ainda não tem um PDI ativo.*' } },
         { type: 'section', text: { type: 'mrkdwn', text: 'Converse com seu líder ou acesse o Rhitmo para criar um.' } },
         { type: 'actions', elements: [
-          { type: 'button', text: { type: 'plain_text', text: '🚀 Abrir Rhitmo' }, url: 'https://rhitmo.lovable.app', action_id: 'open_app' },
+          { type: 'button', text: { type: 'plain_text', text: '🚀 Abrir Rhitmo' }, url: 'https://rhitmo.co', action_id: 'open_app' },
         ]},
       ],
     };

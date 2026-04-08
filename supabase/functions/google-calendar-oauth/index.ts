@@ -150,7 +150,7 @@ Deno.serve(async (req) => {
         status: 302,
         headers: {
           ...corsHeaders,
-          Location: "https://rhitmo.lovable.app/dashboard?calendar=connected",
+          Location: "https://rhitmo.co/dashboard?calendar=connected",
         },
       });
     }

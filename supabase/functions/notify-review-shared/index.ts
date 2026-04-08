@@ -79,7 +79,7 @@ const handler = async (req: Request): Promise<Response> => {
     const formattedDate = new Date(review.created_at).toLocaleDateString('pt-BR', {
       day: '2-digit', month: 'long', year: 'numeric',
     });
-    const reviewLink = `https://rhitmo.lovable.app/review/${reviewId}`;
+    const reviewLink = `https://rhitmo.co/review/${reviewId}`;
 
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
