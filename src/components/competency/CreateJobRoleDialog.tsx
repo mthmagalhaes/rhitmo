@@ -120,7 +120,7 @@ export function CreateJobRoleDialog({ open, onOpenChange, frameworkId, workspace
       }
     } else if (competencySource === 'template') {
       onOpenChange(false);
-      onOpenTemplateGallery?.();
+      setTimeout(() => onOpenTemplateGallery?.(), 150);
     } else if (competencySource === 'manual') {
       setStep('competencies');
     }

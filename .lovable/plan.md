@@ -1,63 +1,100 @@
 
 
-## Sprint 4: Épico 6 — Marketplace de Templates de Competências
+## Roadmap de Execução — 6 Épicos
 
-### O que existe hoje
-- Tabela `competency_templates` criada com colunas `id, name, company, job_title, level, competencies (jsonb), description, is_public, source`
-- 2 templates seed (Spotify e Nubank) com apenas 2 competências cada — insuficiente
-- Dialog placeholder "Em breve" no `CompetencyFramework.tsx` (linhas 453-469)
-- `CreateJobRoleDialog` já tem opção "Importar de Template" que redireciona para `onOpenTemplateGallery` (fecha o dialog e abre a galeria vazia)
-- RLS: apenas SELECT para `is_public = true`, sem INSERT/UPDATE/DELETE para users
+### Épico 1: Bug do MeetingRecorder (P0)
 
-### Alterações
+**Problema**: A compressão MP3 via `lamejs` falha silenciosamente em alguns navegadores, gerando WAV de 43MB que excede o limite do Whisper. O fallback atual (`convertToMp3` catch → WAV) não comprime o suficiente.
 
-#### 1. Seed de templates reais (INSERT via insert tool)
-Inserir 6 novos templates com 4-5 competências cada, cobrindo áreas-chave:
-- **Tech (Engineering Manager)** — Spotify-inspired
-- **Product Manager** — framework genérico
-- **Vendas / Account Executive** — framework comercial
-- **Customer Success** — framework CS
-- **Marketing** — framework growth/brand
-- **Design (UX/Product Designer)** — framework design
+**Alterações**:
 
-Cada competência terá `name`, `description`, e `levels` com 4 níveis (junior/pleno/senior/especialista) + exemplos. Total: ~30 competências de qualidade.
+| Arquivo | O que muda |
+|---------|-----------|
+| `src/components/MeetingRecorder.tsx` | Adicionar verificação de tamanho pós-conversão: se WAV > 20MB, re-render para 8kHz mono (reduz ~4x). Adicionar log de diagnóstico no catch do lamejs para entender a causa raiz. Mostrar toast de aviso se fallback for ativado. |
+| `supabase/functions/upload-meeting/index.ts` | Adicionar validação server-side: se arquivo > 25MB, rejeitar com mensagem clara pedindo gravação mais curta. |
 
-Atualizar os 2 templates existentes (Spotify/Nubank) para ter 4-5 competências cada.
+---
 
-#### 2. Novo componente `TemplateMarketplace.tsx`
-Substituir o dialog placeholder. Componente com:
-- Grid de cards (rounded-2xl, shadow soft) mostrando cada template
-- Cada card: logo/ícone da empresa, nome, cargo, nível, contagem de competências, badge de indústria
-- Ao clicar: expande/abre preview das competências do template (nome + descrição de cada)
-- Botão "Usar este template" que importa as competências para o framework do workspace
+### Épico 2: Slack Phase 2 — `/brief` e `/meu-pdi`
 
-#### 3. Lógica de importação
-Quando o user clica "Usar este template":
-- Cria um `job_role` com título/level do template
-- Insere cada competência do template na tabela `competencies` do framework
-- Insere `competency_level_descriptions` para cada nível
-- Cria `role_competencies` associando tudo
-- Invalida queries e fecha o dialog
+**Problema**: Os comandos `/brief` e `/meu-pdi` estão registrados na privacy list mas não têm handlers implementados. O menu para liderados é básico (só "Abrir Rhitmo").
 
-#### 4. Atualizar `CompetencyFramework.tsx`
-- Substituir o dialog placeholder (linhas 453-469) pelo `TemplateMarketplace`
-- Adicionar botão "Explorar Templates" visível na view de roles (ao lado de "Adicionar Cargo")
+**Alterações**:
 
-#### 5. Integrar com `CreateJobRoleDialog`
-- Quando user escolhe "Importar de Template" no step source, abrir o marketplace diretamente dentro do dialog em vez de fechar e reabrir
+| Arquivo | O que muda |
+|---------|-----------|
+| `supabase/functions/slack-bot/index.ts` | Implementar `handleBriefCommand` (chama `generate-brief` e retorna resumo formatado em blocks). Implementar `handleMeuPdiCommand` (busca PDI ativo do liderado e retorna lista formatada). Adicionar cases no `processCommand` switch. Expandir menu de liderados com botões de ação (Meu PDI, Meu Brief). |
 
-### Arquivos modificados/criados
+---
 
-| Arquivo | Ação |
-|---------|------|
-| `competency_templates` (dados) | INSERT 6 novos + UPDATE 2 existentes via insert tool |
-| `src/components/competency/TemplateMarketplace.tsx` | Novo: grid de templates + preview + importação |
-| `src/pages/CompetencyFramework.tsx` | Substituir placeholder pelo TemplateMarketplace, adicionar botão |
-| `src/components/competency/CreateJobRoleDialog.tsx` | Ajustar fluxo "template" para usar marketplace inline |
+### Épico 3: Ativar Embeddings
 
-### Notas técnicas
-- Sem migrações SQL — tabela e RLS já existem
-- Templates são read-only para users (RLS só permite SELECT de `is_public = true`)
-- A importação cria dados nas tabelas `competencies`, `competency_level_descriptions`, `role_competencies` e `job_roles` — todas já com RLS adequada para owner/HR
-- Design segue o padrão "Creme/Bento": `rounded-2xl`, shadows soft, hover lift
+**Problema**: A coluna `feedbacks.embedding` (vector 1536) e a RPC `match_feedbacks` existem, mas nenhuma Edge Function gera os vetores. O Mentor Chat usa apenas as 10 notas mais recentes.
+
+**Alterações**:
+
+| Arquivo | O que muda |
+|---------|-----------|
+| `supabase/functions/analyze-feedback-background/index.ts` | Após análise de sentimento/tags, chamar `text-embedding-3-small` via OpenAI para gerar embedding do conteúdo e salvar na coluna `embedding`. |
+| `supabase/functions/chat-mentor/index.ts` | Na Camada 2 (Compressor), quando `needsContext=true`, chamar `match_feedbacks` via RPC com embedding da pergunta para busca semântica, mesclando com as notas recentes. |
+
+---
+
+### Épico 4: Migrar Meu Rhitmo e Mentor Chat L3 para modelo mais barato
+
+**Problema**: `chat-mentor` e `meu-rhitmo` usam `gpt-4o` para a resposta final (L3), que é o principal driver de custo. O roteador e summarização já usam `gpt-4o-mini`.
+
+**Alterações**:
+
+| Arquivo | O que muda |
+|---------|-----------|
+| `supabase/functions/chat-mentor/index.ts` | Trocar `model: 'gpt-4o'` (linha 628) por Lovable AI Gateway (`google/gemini-2.5-flash`) via `https://ai.gateway.lovable.dev/v1/chat/completions` com `LOVABLE_API_KEY`. Manter `gpt-4o-mini` no roteador e summarização (já barato). |
+| `supabase/functions/meu-rhitmo/index.ts` | Trocar `model: 'gpt-4o'` por Lovable AI Gateway (`google/gemini-2.5-flash`). Manter `gpt-4o-mini` na summarização. |
+
+**Nota**: Gemini 2.5 Flash tem qualidade comparável ao GPT-4o para tarefas de análise textual em PT-BR, com custo significativamente menor e sem precisar de API key externa (usa `LOVABLE_API_KEY` já configurado).
+
+---
+
+### Épico 5: Analytics Avançado para HR
+
+**Problema**: O `HRAnalytics.tsx` atual mostra métricas básicas (sentimento, notas por líder). Faltam: evolução temporal, heatmap de engajamento, alertas de risco, comparativo entre líderes.
+
+**Alterações**:
+
+| Arquivo | O que muda |
+|---------|-----------|
+| Migração SQL | Criar RPC `get_hr_analytics_advanced` com: tendência de feedback semanal (últimas 12 semanas), distribuição de tags, membros em risco (>30d sem feedback + sem PDI), ranking de engajamento por líder. |
+| `src/pages/HRAnalytics.tsx` | Adicionar tabs: "Visão Geral" (atual), "Tendências" (gráfico de linha semanal), "Riscos" (tabela de membros em risco com ações), "Engajamento" (heatmap líder × semana). |
+| `src/components/hr/RiskTable.tsx` | Novo componente: tabela de membros em risco com filtros e ações rápidas. |
+| `src/components/hr/EngagementHeatmap.tsx` | Novo componente: heatmap visual líder × semana (verde/amarelo/vermelho). |
+
+---
+
+### Épico 6: Marketplace de Templates de Competências
+
+**Problema**: O framework de competências atual é fixo (6 competências genéricas criadas via `create_default_competency_framework`). Não há como importar frameworks prontos por área/indústria.
+
+**Alterações**:
+
+| Arquivo | O que muda |
+|---------|-----------|
+| Migração SQL | Criar tabela `competency_templates` (id, name, industry, description, template_data jsonb, is_public, created_by). Seed com 5-8 templates iniciais (Tech, Vendas, Marketing, Produto, CS, etc.). |
+| `src/components/competency/TemplateMarketplace.tsx` | Novo componente: grid de cards com templates disponíveis, preview das competências, botão "Usar este template". |
+| `src/pages/CompetencyFramework.tsx` | Adicionar botão "Explorar Templates" que abre o marketplace. Ação de importar substitui o framework default. |
+
+---
+
+### Ordem de Execução
+
+```text
+Sprint 1 (concluída):     Épico 1 (P0 bug) + Épico 4 (migração modelo) ✅
+Sprint 2 (concluída):     Épico 3 (embeddings) + Épico 2 (Slack Phase 2) ✅
+Sprint 3 (concluída):     Épico 5 (HR Analytics) ✅
+Sprint 4 (concluída):     Épico 6 (Marketplace) ✅
+```
+
+### Impacto em Custos
+
+- **Épico 4** reduz ~60-70% do custo de IA (GPT-4o → Gemini Flash via Lovable AI)
+- **Épico 3** adiciona custo marginal (~$0.0001/embedding) mas melhora drasticamente a qualidade das respostas do Mentor
 
