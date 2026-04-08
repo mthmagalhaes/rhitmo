@@ -33,6 +33,47 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Authenticate caller
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Ownership check: verify user owns the workspace containing this member
+    const { data: ownershipCheck, error: ownershipError } = await supabase
+      .from('team_members')
+      .select('id, team_id, teams!inner(workspace_id, workspaces!inner(owner_id))')
+      .eq('id', memberId)
+      .single();
+
+    if (ownershipError || !ownershipCheck) {
+      return new Response(
+        JSON.stringify({ error: 'Membro não encontrado' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const workspace = (ownershipCheck as any).teams?.workspaces;
+    if (workspace?.owner_id !== user.id) {
+      console.error('Unauthorized: user does not own workspace', { userId: user.id, ownerId: workspace?.owner_id });
+      return new Response(
+        JSON.stringify({ error: 'Você não tem permissão para gerar avaliação neste workspace' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Calcular datas limite (suporta custom range ou months)
     let limitDate: Date;
     let endLimitDate: Date;
