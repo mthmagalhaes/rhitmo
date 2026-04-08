@@ -30,15 +30,34 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     enabled: !!user,
   });
 
+  // Guard: check if user has a pending invite by email (prevent orphan workspace creation)
+  const { data: hasPendingInviteByEmail, isLoading: pendingInviteLoading } = useQuery({
+    queryKey: ['pending-invite-email', user?.email],
+    queryFn: async () => {
+      if (!user?.email) return false;
+      const { data } = await supabase
+        .from('team_members')
+        .select('id')
+        .eq('email', user.email)
+        .eq('invite_status', 'pending')
+        .is('linked_user_id', null)
+        .maybeSingle();
+      return !!data;
+    },
+    enabled: !!user?.email && !isLinkedMember,
+  });
+
   // Liderados NÃO precisam de workspace - só líderes
+  // Also block if there's a pending invite by email (auto-link will handle it)
   const needsWorkspaceSetup = !authLoading 
     && !workspaceLoading 
     && !linkedMemberLoading
+    && !pendingInviteLoading
     && user 
     && !workspace 
-    && !isLinkedMember;
+    && !isLinkedMember
+    && !hasPendingInviteByEmail;
 
-  const isLeader = !isLinkedMember && !!user;
   const showActivity = !!user;
 
   const handleWorkspaceComplete = () => {

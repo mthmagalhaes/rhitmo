@@ -72,7 +72,7 @@ export default function Invite() {
   const handleAcceptInvite = async () => {
     // Scenario A: User not logged in
     if (!user) {
-      sessionStorage.setItem('pending_invite', code!);
+      localStorage.setItem('pending_invite', code!);
       
       // Build URL with signup params
       const params = new URLSearchParams({ mode: 'signup' });
