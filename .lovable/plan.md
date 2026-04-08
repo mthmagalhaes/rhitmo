@@ -1,60 +1,69 @@
 
 
-## Análise de Riscos de Segurança
+## Status dos Guardrails por Plano — Diagnóstico Completo
 
-Revisei os 7 findings do scan. Aqui está a priorização por impacto real:
+### O que JA funciona (automatizado)
 
-### ALTO RISCO — Corrigir agora
+| Guardrail | Onde é checado | Status |
+|-----------|---------------|--------|
+| Limite de membros | `NewMemberDialog` + botão Index desabilitado | OK |
+| Limite de times | `NewTeamDialog` | OK |
+| Limite de reviews/mês | `CreateFormalReviewDialog` + `NewReviewDialog` | OK |
+| Analytics bloqueado (Pulse) | `Analytics.tsx` — tela de upsell | OK |
+| Rhitmo Sync bloqueado (Pulse) | `MemberDetails` — blur + `NewMemberDialog` — checkbox desabilitado | OK |
+| Banner de proximidade do limite | `UpgradeBanner` — aviso 80%, bloqueio 100% | OK |
+| Beta users bypass tudo | `usePlanLimits` — `is_beta_user = true` | OK |
+| Checkout Pro (14d trial) | `create-checkout-session` | OK |
+| Checkout Business (mín. 3 líderes) | Dialog de quantidade + validação no edge function | OK |
+| Upgrade/Downgrade in-place | `update-subscription` | OK |
+| Cancelamento + reativação | `cancel-subscription` + `reactivate-subscription` | OK |
+| Faturas | `get-invoices` | OK |
 
-| # | Finding | Risco real |
-|---|---------|-----------|
-| 1 | **submit_rhitmo_sync_v2 acessível por anon** | Qualquer pessoa pode envenenar o perfil comportamental de um liderado antes dele preencher. Dados de Rhitmo Sync falsos influenciam reviews e PDIs. |
-| 2 | **Edge Functions sem ownership check (generate-review, analyze-feedback)** | Qualquer usuário autenticado pode gerar review ou inserir feedback para membros de OUTRO workspace. Vazamento cross-tenant. |
-| 3 | **chat-attachments bucket público** | Qualquer pessoa na internet pode listar e baixar arquivos enviados no chat do mentor. Possível exposição de documentos sensíveis. |
+### O que NAO funciona (gaps)
 
-### MÉDIO RISCO — Corrigir em breve
+| # | Gap | Risco | Correção |
+|---|-----|-------|----------|
+| 1 | **Mentor Chat sem limite de mensagens (Pulse = 20/mês)** | Usuário Pulse pode mandar mensagens ilimitadas. `MentorChat.tsx` nunca checa `maxMentorMessages`. | Contar mensagens do mês no hook, bloquear envio no Pulse após 20. |
+| 2 | **Gravação de reuniões sem limite de horas** | `maxRecordingHours` definido (0/12/30) mas nunca checado. Pulse não deveria gravar. Pro deveria parar após 12h. | Contar horas usadas no mês, bloquear upload/gravação. |
+| 3 | **HR Dashboard sem gate de acesso** | Páginas HR (Dashboard, Analytics, Members, Teams) checam `useHRAdmin()` (role), mas não checam `hasHrDashboard` (plano). Um Pro com role HR admin acessaria. | Adicionar check `hasHrDashboard` nas 4 páginas HR. |
+| 4 | **Stripe webhook não atualiza `plan_tier` no workspace** | O `stripe-webhook` atualiza a tabela `subscriptions`, mas precisa verificar se também atualiza `workspaces.plan_tier`. Se não, o app pode ficar dessincronizado. | Verificar e corrigir o webhook. |
 
-| # | Finding | Risco real |
-|---|---------|-----------|
-| 4 | **Google OAuth state sem nonce** | Atacante pode injetar tokens do próprio Google Calendar na conta de outro usuário. Requer interceptação do redirect. |
-| 5 | **effective_user_id() sem LIMIT 1** | Se admin tiver 2+ registros em admin_impersonation, todas as queries RLS falham — denial of service para o admin. |
-| 6 | **meeting-recordings bucket público** | Gravações de reuniões 1:1 acessíveis via URL direta sem autenticação. |
+### Plano de correção
 
-### BAIXO RISCO — Aceitável por agora
+**1. Mentor Chat — limite de 20 msg/mês para Pulse**
+- Em `MentorChat.tsx`: contar mensagens do mês com query `count` filtrada por `role = 'user'` e `created_at >= primeiro dia do mês`
+- Se `count >= maxMentorMessages`: desabilitar input + mostrar mensagem de upgrade
+- Adicionar `mentorMessagesUsed` e `canSendMentorMessage` ao `usePlanLimits`
 
-| # | Finding | Risco real |
-|---|---------|-----------|
-| 7 | **HR Admin recording policy com condição quebrada** | Policy nunca concede acesso (falha silenciosa). Não é over-permissive, apenas non-functional. |
+**2. Gravação de reuniões — limite de horas**
+- Criar query para somar `duration_seconds` de `meeting_transcripts` no mês
+- Se Pulse (`maxRecordingHours = 0`): esconder/desabilitar botão de gravação
+- Se Pro/Business: bloquear ao atingir 12h/30h
+- Checar em `MeetingRecorder.tsx` e no edge function `upload-meeting`
 
----
+**3. HR Dashboard — gate de plano**
+- Nas 4 páginas HR (`HRDashboard`, `HRAnalytics`, `HRMembers`, `HRTeams`): adicionar check `hasHrDashboard`
+- Se `false`: redirecionar para upsell ou mostrar tela bloqueada
 
-### Plano de correção (5 ações)
+**4. Verificar webhook sincroniza plan_tier**
+- Ler `stripe-webhook/index.ts` para confirmar que atualiza `workspaces.plan_tier`
+- Se não atualiza: adicionar update
 
-**1. Revogar anon de submit_rhitmo_sync_v2**
-- Migration: `REVOKE EXECUTE FROM anon, public; GRANT TO authenticated;`
-- Adicionar check `linked_user_id = auth.uid()` dentro da função
+### Arquivos afetados
 
-**2. Adicionar ownership check nas Edge Functions**
-- `generate-review`: verificar que o caller é owner do workspace do member
-- `analyze-feedback`: mesma verificação antes de usar service_role
+| Arquivo | Ação |
+|---------|------|
+| `src/hooks/usePlanLimits.ts` | Adicionar queries de mentor messages e recording hours |
+| `src/components/MentorChat.tsx` | Checar limite antes de enviar |
+| `src/components/MeetingRecorder.tsx` | Checar limite de horas |
+| `src/pages/HRDashboard.tsx` | Adicionar gate `hasHrDashboard` |
+| `src/pages/HRAnalytics.tsx` | Adicionar gate `hasHrDashboard` |
+| `src/pages/HRMembers.tsx` | Adicionar gate `hasHrDashboard` |
+| `src/pages/HRTeams.tsx` | Adicionar gate `hasHrDashboard` |
+| `supabase/functions/stripe-webhook/index.ts` | Verificar/corrigir sync de `plan_tier` |
+| `supabase/functions/upload-meeting/index.ts` | Adicionar validação server-side de horas |
 
-**3. Tornar chat-attachments privado**
-- Migration: `UPDATE storage.buckets SET public = false WHERE id = 'chat-attachments';`
-- Atualizar código para usar signed URLs
+### Resumo
 
-**4. Tornar meeting-recordings privado**
-- Migration: `UPDATE storage.buckets SET public = false WHERE id = 'meeting-recordings';`
-- Atualizar upload-meeting e player para signed URLs
-
-**5. Adicionar LIMIT 1 em effective_user_id()**
-- Migration: recriar função com `ORDER BY created_at DESC LIMIT 1`
-
-### Sobre a Landing Page
-A landing page não é afetada — ela não usa autenticação nem acessa dados protegidos. Os riscos são todos no app autenticado.
-
-### Impacto estimado
-- 3 migrations SQL
-- 2 edge functions editadas
-- ~3 arquivos frontend (signed URLs)
-- Nenhuma mudança de UI/design
+O app está **~70% pronto** para receber clientes pagos. Os limites de membros, times e reviews funcionam bem. Faltam 4 correções para fechar os gaps — sendo as mais críticas o Mentor Chat sem limite e a gravação sem controle de horas, pois são custos diretos (API de AI e storage/transcrição).
 
