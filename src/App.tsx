@@ -32,6 +32,7 @@ import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import DirectReportReviewView from "./pages/DirectReportReviewView";
 import SlackConnect from "./pages/SlackConnect";
+import DesignSystem from "./pages/DesignSystem";
 
 
 const queryClient = new QueryClient();
@@ -87,8 +88,13 @@ const App = () => (
                 <AppLayout><BriefPage /></AppLayout>
               </DirectReportGuard>
             } />
-            
 
+            {/* Design System (matheus@rhitmo.co only) */}
+            <Route path="/design-system" element={
+              <DirectReportGuard>
+                <AppLayout><DesignSystem /></AppLayout>
+              </DirectReportGuard>
+            } />
 
 
             {/* Slack OAuth connect */}
