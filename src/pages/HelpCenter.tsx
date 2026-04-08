@@ -4,7 +4,7 @@ import {
   NotebookPen, MessageSquare, BarChart3, CalendarCheck, Award,
   UserCircle, Target, Settings, LayoutDashboard, Building2,
   Puzzle, ShieldCheck, Lightbulb, Mic, ClipboardPaste, Download,
-  Slack, Calendar, FileAudio, Compass, Eye, Palette
+  Slack, Calendar, FileAudio, Compass, Eye, Palette, Loader2, Unlink, Link
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,9 +13,12 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { RhythmWave } from '@/components/RhythmWave';
 import { WaveDivider } from '@/components/WaveDivider';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
+import { useSlackConnection } from '@/hooks/useSlackConnection';
 
 interface FeatureCard {
   id: string;
