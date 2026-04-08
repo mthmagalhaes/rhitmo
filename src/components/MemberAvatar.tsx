@@ -9,9 +9,8 @@ interface MemberAvatarProps {
   className?: string;
 }
 
-const getBoringAvatarUrl = (seed: string, size: number = 120) => {
-  const colors = '7C3AED,10B981,F59E0B,3B82F6,EC4899';
-  return `https://source.boringavatars.com/beam/${size}/${encodeURIComponent(seed)}?colors=${colors}&square`;
+const getDiceBearUrl = (seed: string) => {
+  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(seed)}`;
 };
 
 const sizes = {
@@ -30,7 +29,7 @@ export const MemberAvatar = ({
 }: MemberAvatarProps) => {
   const [imageError, setImageError] = useState(false);
   const sizeConfig = sizes[size];
-  const avatarUrl = customAvatarUrl || getBoringAvatarUrl(memberId, sizeConfig.imgSize);
+  const avatarUrl = customAvatarUrl || getDiceBearUrl(memberName);
   const initials = memberName.split(' ').map(n => n[0]).join('');
 
   return (

@@ -174,7 +174,7 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
           role: role.trim(),
           email: email.trim(),
           team_id: teamId,
-          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name.trim()}`,
+          
           performance_score: 50
         })
         .select()

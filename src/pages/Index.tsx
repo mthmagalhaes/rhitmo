@@ -584,7 +584,7 @@ const Index = () => {
                     id: member.id,
                     name: member.name,
                     role: member.role,
-                    avatar: member.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${member.name}`,
+                    avatar: member.avatar || null,
                     lastFeedback: member.last_feedback_date || member.created_at,
                     feedbackCount: member.feedback_count || 0,
                     performanceScore: member.performance_score,
@@ -604,7 +604,7 @@ const Index = () => {
                   onEdit={() => {
                     setSelectedMember({
                       id: member.id, name: member.name, role: member.role,
-                      teamId: member.teamId || '', avatar: member.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${member.name}`,
+                      teamId: member.teamId || '', avatar: member.avatar || null,
                       lastFeedback: member.last_feedback_date || member.created_at, feedbackCount: member.feedback_count || 0,
                       performanceScore: member.performance_score, performance_score: member.performance_score, created_at: member.created_at,
                     });

@@ -887,10 +887,12 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
               <Card className="p-6 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
                 <div className="flex items-center gap-6">
                   <div className="relative group">
-                    <img
-                      src={(linkedMember as any).avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${linkedMember.name}`}
-                      alt={linkedMember.name}
-                      className="h-20 w-20 rounded-2xl object-cover border-2 border-border shadow-sm"
+                    <MemberAvatar
+                      memberId={linkedMember.id}
+                      memberName={linkedMember.name}
+                      avatarUrl={(linkedMember as any).avatar}
+                      size="xl"
+                      className="rounded-2xl border-2 border-border shadow-sm"
                     />
                     <button
                       onClick={() => setAvatarLibraryOpen(true)}
