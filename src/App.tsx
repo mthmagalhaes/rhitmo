@@ -99,6 +99,9 @@ const App = () => (
             } />
 
 
+            {/* Recorder popup (standalone, no layout) */}
+            <Route path="/recorder" element={<RecorderPopup />} />
+
             {/* Slack OAuth connect */}
             <Route path="/slack/connect" element={<SlackConnect />} />
             
