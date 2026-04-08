@@ -878,7 +878,35 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
 
           {/* ═══ TAB 4: Meu Perfil ═══ */}
           <TabsContent value="perfil">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+            {/* Avatar Section */}
+            <div className="mb-6 mt-6">
+              <Card className="p-6 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
+                <div className="flex items-center gap-6">
+                  <div className="relative group">
+                    <img
+                      src={(linkedMember as any).avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${linkedMember.name}`}
+                      alt={linkedMember.name}
+                      className="h-20 w-20 rounded-2xl object-cover border-2 border-border shadow-sm"
+                    />
+                    <button
+                      onClick={() => setAvatarLibraryOpen(true)}
+                      className="absolute inset-0 rounded-2xl bg-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                    >
+                      <Camera className="h-5 w-5 text-background" />
+                    </button>
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold tracking-tight text-foreground">{displayName}</h2>
+                    <p className="text-sm text-muted-foreground">{linkedMember.role}</p>
+                    <Button variant="outline" size="sm" className="mt-2 gap-1.5 rounded-full text-xs" onClick={() => setAvatarLibraryOpen(true)}>
+                      <Camera className="h-3.5 w-3.5" />
+                      Trocar Avatar
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Informações da função */}
               <Card className="p-6 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
                 <div className="flex items-center justify-between mb-4">
