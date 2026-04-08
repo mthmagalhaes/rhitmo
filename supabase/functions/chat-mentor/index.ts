@@ -283,7 +283,65 @@ serve(async (req) => {
     // ============================================
     let contextLines = '';
     if (needsContext) {
-      contextLines = compressContext(feedbacks);
+      // Try semantic search via embeddings first
+      let semanticFeedbacks: any[] = [];
+      try {
+        const embResponse = await fetch('https://api.openai.com/v1/embeddings', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'text-embedding-3-small',
+            input: question.substring(0, 2000),
+          }),
+        });
+
+        if (embResponse.ok) {
+          const embData = await embResponse.json();
+          const queryEmbedding = embData.data?.[0]?.embedding;
+          if (queryEmbedding) {
+            // Extract memberId from feedbacks (all belong to same member)
+            const memberId = feedbacks?.[0]?.member_id;
+            const { data: semanticResults, error: rpcError } = await (await import('https://esm.sh/@supabase/supabase-js@2')).createClient(
+              Deno.env.get('SUPABASE_URL')!,
+              Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+            ).rpc('match_feedbacks', {
+              query_embedding: JSON.stringify(queryEmbedding),
+              match_threshold: 0.5,
+              match_count: 10,
+              filter_member_id: memberId || null,
+            });
+
+            if (!rpcError && semanticResults?.length) {
+              semanticFeedbacks = semanticResults;
+              console.log('Semantic search found', semanticResults.length, 'results');
+            } else if (rpcError) {
+              console.error('Semantic search RPC error:', rpcError.message);
+            }
+          }
+        }
+      } catch (semErr: any) {
+        console.error('Semantic search failed (falling back to recent):', semErr.message);
+      }
+
+      // Merge semantic results with recent feedbacks (dedup by id)
+      if (semanticFeedbacks.length > 0) {
+        const existingIds = new Set(feedbacks.map((f: any) => f.id));
+        const merged = [...feedbacks];
+        for (const sf of semanticFeedbacks) {
+          if (!existingIds.has(sf.id)) {
+            merged.push(sf);
+            existingIds.add(sf.id);
+          }
+        }
+        contextLines = compressContext(merged);
+        console.log('Context merged (recent + semantic):', { totalNotes: merged.length });
+      } else {
+        contextLines = compressContext(feedbacks);
+      }
+
       const notesCount = (contextLines.match(/\[Data:/g) || []).length;
       console.log('Context compressed:', { 
         chars: contextLines.length, 

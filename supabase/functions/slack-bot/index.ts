@@ -341,10 +341,12 @@ function buildRhitmoMenu(persona: PersonaResult, stateToken?: string): Record<st
   } else if (persona.persona === 'direct_report') {
     blocks.push(
       { type: 'section', text: { type: 'mrkdwn', text: '*👤 Seu Desenvolvimento*' } },
-      { type: 'section', text: { type: 'mrkdwn', text: 'Acesse seu painel completo no Rhitmo para ver feedbacks, PDI e reviews.' }},
+      { type: 'section', text: { type: 'mrkdwn', text: 'Acesse seu PDI, feedbacks e reviews diretamente pelo Slack ou no Rhitmo.' }},
       { type: 'actions', elements: [
+        { type: 'button', text: { type: 'plain_text', text: '📋 Meu PDI' }, action_id: 'action_meu_pdi', style: 'primary' },
         { type: 'button', text: { type: 'plain_text', text: '🚀 Abrir Rhitmo' }, url: 'https://rhitmo.lovable.app', action_id: 'open_app' },
       ]},
+      { type: 'section', text: { type: 'mrkdwn', text: '\n*💬 Comandos rápidos:*\n• `/meu-pdi` — Ver seu Plano de Desenvolvimento\n• `/rhitmo` — Este menu' }},
     );
   } else if (persona.persona === 'hr_admin') {
     blocks.push(
