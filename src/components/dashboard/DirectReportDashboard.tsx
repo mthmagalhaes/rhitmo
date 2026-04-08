@@ -22,6 +22,7 @@ import { MentorChat } from '@/components/MentorChat';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 import { AvatarLibrary } from '@/components/avatar/AvatarLibrary';
+import { MemberAvatar } from '@/components/MemberAvatar';
 
 interface LinkedMemberData {
   id: string;
