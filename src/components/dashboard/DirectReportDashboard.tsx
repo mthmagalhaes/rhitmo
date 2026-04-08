@@ -512,70 +512,128 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Resumo - 1/3 */}
-              <Card className="p-6 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:-translate-y-1 hover:shadow-lg transition-all duration-300 lg:col-span-1">
+              {/* Pulse Card - 1/3 */}
+              <Card className="p-6 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] lg:col-span-1">
                 <h2 className="text-lg font-bold tracking-tight flex items-center gap-2 mb-4 text-foreground">
                   <Zap className="h-5 w-5 text-primary" />
-                  Resumo
+                  Seu Pulso
                 </h2>
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">
-                      {feedbacks.length} feedbacks compartilhados
-                    </span>
-                    {unreadReviews.length > 0 && (
-                      <Badge className="bg-primary/10 text-primary text-xs border-0 ml-2">
-                        {unreadReviews.length} nova{unreadReviews.length > 1 ? 's' : ''}
-                      </Badge>
+                  {/* Last feedback */}
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Último feedback</p>
+                    {feedbacks.length > 0 ? (
+                      <div className="flex items-center gap-2">
+                        <span className={`h-2 w-2 rounded-full shrink-0 ${feedbacks[0].type === 'positive' ? 'bg-emerald-500' : feedbacks[0].type === 'constructive' ? 'bg-amber-500' : 'bg-muted-foreground/40'}`} />
+                        <span className="text-sm font-medium text-foreground">
+                          {getDaysSince(feedbacks[0].created_at) === 0 ? 'Hoje' : getDaysSince(feedbacks[0].created_at) === 1 ? 'Ontem' : `Há ${getDaysSince(feedbacks[0].created_at)} dias`}
+                        </span>
+                        <Badge variant="secondary" className="text-[10px] rounded-full">
+                          {feedbacks[0].type === 'positive' ? 'Positivo' : feedbacks[0].type === 'constructive' ? 'Construtivo' : 'Neutro'}
+                        </Badge>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Nenhum ainda</p>
                     )}
-                    <Button variant="ghost" size="sm" onClick={() => setActiveTab('feedbacks')} className="text-xs text-primary">
-                      Ver todos
-                    </Button>
                   </div>
+
+                  {/* PDI progress */}
+                  {devItems.length > 0 && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Progresso do PDI</p>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary rounded-full transition-all"
+                            style={{ width: `${Math.round(((devItems as any[]).filter((i: any) => i.status === 'completed').length / devItems.length) * 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-medium text-foreground">
+                          {(devItems as any[]).filter((i: any) => i.status === 'completed').length}/{devItems.length}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Reviews count */}
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Perfil Rhitmo Sync</span>
-                    <Badge 
-                      variant="secondary" 
-                      className="cursor-pointer text-xs"
-                      onClick={() => setActiveTab('perfil')}
-                    >
-                      Atualizar
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Meu Rhitmo</span>
-                    <Badge 
-                      variant="default" 
-                      className="cursor-pointer text-xs"
-                      onClick={() => setMeuRhitmoOpen(true)}
-                    >
-                      Novo
-                    </Badge>
+                    <span className="text-xs text-muted-foreground">Avaliações</span>
+                    <span className="text-sm font-medium text-foreground">{sharedReviews.length}</span>
                   </div>
                 </div>
               </Card>
 
-              {/* Próximas Ações - 2/3 */}
-              <Card className="p-6 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:-translate-y-1 hover:shadow-lg transition-all duration-300 lg:col-span-2">
+              {/* Contextual Actions - 2/3 */}
+              <Card className="p-6 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] lg:col-span-2">
                 <h2 className="text-lg font-bold tracking-tight flex items-center gap-2 mb-4 text-foreground">
                   <CheckCircle className="h-5 w-5 text-primary" />
                   Próximas Ações
                 </h2>
                 <div className="space-y-3">
-                  {[
-                    { text: '📋 Revise seus feedbacks recentes', tab: 'feedbacks' },
-                    { text: '🎯 Atualize suas aspirações no Rhitmo Sync', tab: 'perfil' },
-                    { text: '💬 Converse com o Meu Rhitmo sobre seu desenvolvimento', tab: 'meu-rhitmo' },
-                  ].map((item, i) => (
-                    <div
-                      key={i}
-                      onClick={() => item.tab === 'meu-rhitmo' ? setMeuRhitmoOpen(true) : setActiveTab(item.tab)}
-                      className="rounded-lg bg-muted/40 p-3 text-sm text-foreground flex items-center justify-between cursor-pointer hover:bg-muted/60 transition-colors"
-                    >
-                      <span>{item.text}</span>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    </div>
-                  ))}
+                  {(() => {
+                    const actions: { text: string; action: () => void; priority?: boolean }[] = [];
+
+                    // Unread review
+                    if (unreadReviews.length > 0) {
+                      actions.push({
+                        text: `📋 Leia sua avaliação "${unreadReviews[0].title}"`,
+                        action: () => { setActiveTab('feedbacks'); setSelectedReview(unreadReviews[0]); },
+                        priority: true,
+                      });
+                    }
+
+                    // Overdue PDI items
+                    const overdueItems = (devItems as any[]).filter((i: any) => i.status !== 'completed' && i.due_date && new Date(i.due_date) < new Date());
+                    if (overdueItems.length > 0) {
+                      actions.push({
+                        text: `🎯 "${overdueItems[0].title}" está vencido — atualize o status`,
+                        action: () => setActiveTab('carreira'),
+                        priority: true,
+                      });
+                    }
+
+                    // No Rhitmo Sync
+                    if (!hasRhitmoSync) {
+                      actions.push({
+                        text: '🧠 Complete seu Rhitmo Sync para seu líder te conhecer melhor',
+                        action: () => setActiveTab('perfil'),
+                      });
+                    }
+
+                    // Default actions if nothing urgent
+                    if (actions.length === 0) {
+                      return (
+                        <div className="flex flex-col items-center text-center py-6">
+                          <CheckCircle2 className="h-10 w-10 text-primary/30 mb-3" />
+                          <p className="text-sm font-medium text-foreground">Tudo em dia! 🎉</p>
+                          <p className="text-xs text-muted-foreground mt-1">Explore o Meu Rhitmo para continuar evoluindo</p>
+                          <Button variant="outline" size="sm" className="mt-3 gap-1.5 rounded-xl" onClick={() => setMeuRhitmoOpen(true)}>
+                            <Sparkles className="h-3.5 w-3.5" />
+                            Abrir Meu Rhitmo
+                          </Button>
+                        </div>
+                      );
+                    }
+
+                    // Add a filler if less than 3 actions
+                    if (actions.length < 3 && feedbacks.length > 0) {
+                      actions.push({ text: '💬 Converse com o Meu Rhitmo sobre seu desenvolvimento', action: () => setMeuRhitmoOpen(true) });
+                    }
+
+                    return actions.slice(0, 3).map((item, i) => (
+                      <div
+                        key={i}
+                        onClick={item.action}
+                        className={cn(
+                          "rounded-xl p-3 text-sm text-foreground flex items-center justify-between cursor-pointer transition-colors",
+                          item.priority ? "bg-primary/5 border border-primary/15 hover:bg-primary/10" : "bg-muted/40 hover:bg-muted/60"
+                        )}
+                      >
+                        <span>{item.text}</span>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      </div>
+                    ));
+                  })()}
                 </div>
               </Card>
             </div>
