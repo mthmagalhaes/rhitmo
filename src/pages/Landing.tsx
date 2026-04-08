@@ -5,7 +5,7 @@ import { RhitmoLogo } from "@/components/RhitmoLogo";
 import { RhythmWave } from "@/components/RhythmWave";
 
 import { useAuth } from "@/hooks/useAuth";
-import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X, Check, Lock, Moon, Sun, Globe } from "lucide-react";
+import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X, Check, Lock, Moon, Sun, Globe, Building } from "lucide-react";
 import analyticsScreenshot from "@/assets/analytics-screenshot.png";
 import heroLeaderFlow from "@/assets/hero-leader-flow.png";
 import heroDuoFeedback from "@/assets/hero-duo-feedback.png";
@@ -114,6 +114,21 @@ const translations = {
     footerPrivacy: "Política de Privacidade",
     launchBadge: "Preço de Lançamento",
     launchDisclaimer: "Preço de lançamento garantido enquanto sua assinatura estiver ativa.",
+    // Enterprise
+    enterpriseNav: "Enterprise",
+    enterpriseSubtitle: "Para empresas estruturadas com 100+ colaboradores que querem IA nativa de verdade.",
+    enterprisePrice: "A partir de R$15",
+    enterprisePer: "/colaborador/mês",
+    enterpriseNote: "Mínimo 100 colaboradores · contrato anual",
+    enterpriseCTA: "Falar com Vendas",
+    enterpriseFeatures: [
+      "Tudo do Business",
+      "SSO e API personalizada",
+      "CSM dedicado",
+      "SLA garantido",
+      "Onboarding white-glove",
+      "Integrações enterprise (SAP, TOTVS)",
+    ],
   },
   en: {
     signIn: "Sign in",
@@ -195,6 +210,20 @@ const translations = {
     footerPrivacy: "Privacy Policy",
     launchBadge: "Launch Price",
     launchDisclaimer: "Launch price guaranteed while your subscription is active.",
+    enterpriseNav: "Enterprise",
+    enterpriseSubtitle: "For structured companies with 100+ employees who want truly native AI.",
+    enterprisePrice: "Starting at R$15",
+    enterprisePer: "/employee/mo",
+    enterpriseNote: "Minimum 100 employees · annual contract",
+    enterpriseCTA: "Talk to Sales",
+    enterpriseFeatures: [
+      "Everything in Business",
+      "SSO and custom API",
+      "Dedicated CSM",
+      "Guaranteed SLA",
+      "White-glove onboarding",
+      "Enterprise integrations (SAP, TOTVS)",
+    ],
   },
 };
 
@@ -383,6 +412,11 @@ const Landing = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            <Link to="/enterprise">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground min-h-[44px]">
+                {t.enterpriseNav}
+              </Button>
+            </Link>
             <Link to="/auth">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground min-h-[44px]">
                 {t.signIn}
@@ -627,7 +661,7 @@ const Landing = () => {
           </div>
 
           {/* Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
 
             {/* ── Pulse ── */}
             <div className="bg-card rounded-2xl shadow-sm p-8 border space-y-6">
@@ -726,6 +760,41 @@ const Landing = () => {
 
               <ul className="space-y-3 pt-2">
                 {t.businessFeatures.map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-foreground">
+                    <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* ── Enterprise ── */}
+            <div className="bg-card rounded-2xl shadow-sm p-8 border space-y-6">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium mb-2" style={{ backgroundColor: "#1e3a8a15", color: "#1e3a8a" }}>
+                  <Building className="h-3 w-3" />
+                  Enterprise
+                </div>
+                <h3 className="text-2xl font-bold tracking-tight text-foreground">Enterprise</h3>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {t.enterpriseSubtitle}
+                </p>
+              </div>
+
+              <div>
+                <div>
+                  <span className="text-3xl font-bold text-foreground">{t.enterprisePrice}</span>
+                  <span className="text-sm text-muted-foreground ml-1">{t.enterprisePer}</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">{t.enterpriseNote}</p>
+              </div>
+
+              <Button variant="outline" className="w-full min-h-[44px]" asChild>
+                <Link to="/enterprise">{t.enterpriseCTA}</Link>
+              </Button>
+
+              <ul className="space-y-3 pt-2">
+                {t.enterpriseFeatures.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-sm text-foreground">
                     <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                     {f}
