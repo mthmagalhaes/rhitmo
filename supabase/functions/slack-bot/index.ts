@@ -886,10 +886,18 @@ async function processInteraction(body: string, timestamp: string, signature: st
             await sendDelayedResponse(origResponseUrl, msg);
             break;
           }
-          case '/brief':
-          case '/meu-pdi':
-            await sendDelayedResponse(origResponseUrl, { text: `✅ Processando \`${command}\`...` });
+          case '/brief': {
+            const p2: Record<string, string> = {};
+            for (const [k, v] of originalParams.entries()) p2[k] = v;
+            const briefMsg = await handleBriefCommand(p2, persona);
+            await sendDelayedResponse(origResponseUrl, briefMsg);
             break;
+          }
+          case '/meu-pdi': {
+            const pdiMsg = await handleMeuPdiCommand(persona);
+            await sendDelayedResponse(origResponseUrl, pdiMsg);
+            break;
+          }
           default:
             await sendDelayedResponse(origResponseUrl, { text: `Comando ${command} processado.` });
         }
