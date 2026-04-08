@@ -486,21 +486,6 @@ const Index = () => {
           </section>
         )}
 
-        {/* ═══ BENTO: Activity + Invites ═══ */}
-        <section className="mb-12">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-4">Atividade Recente</p>
-              <ActivityPreview onOpenSheet={() => setActivitySheetOpen(true)} />
-            </div>
-            {workspace && (
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-4">Convites Pendentes</p>
-                <PendingInvitesSection workspaceId={workspace.id} compact />
-              </div>
-            )}
-          </div>
-        </section>
 
         {/* ═══ Nudges ═══ */}
         {nudges.length > 0 && (
