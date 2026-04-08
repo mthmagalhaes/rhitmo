@@ -182,13 +182,18 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
 
       if (insertError) throw insertError;
 
-      // Se checkbox DISC marcado, enviar convite
+      // Se checkbox DISC marcado, enviar convite via transactional email
       if (sendDiscInvite) {
-        const { data: inviteData, error: inviteError } = await supabase.functions.invoke('send-disc-invite', {
+        const syncUrl = `${window.location.origin}/sync/${newMember.id}`;
+        const { data: inviteData, error: inviteError } = await supabase.functions.invoke('send-transactional-email', {
           body: { 
-            name: name.trim(), 
-            email: email.trim(),
-            memberId: newMember.id
+            templateName: 'sync-invite',
+            recipientEmail: email.trim(),
+            idempotencyKey: `sync-invite-${newMember.id}`,
+            templateData: {
+              memberName: name.trim(),
+              syncUrl,
+            }
           }
         });
 

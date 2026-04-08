@@ -33,6 +33,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import DirectReportReviewView from "./pages/DirectReportReviewView";
 import SlackConnect from "./pages/SlackConnect";
 import DesignSystem from "./pages/DesignSystem";
+import Unsubscribe from "./pages/Unsubscribe";
 
 
 const queryClient = new QueryClient();
@@ -155,6 +156,9 @@ const App = () => (
                 </HRAdminGuard>
               </AppLayout>
             } />
+            
+            {/* Unsubscribe */}
+            <Route path="/unsubscribe" element={<Unsubscribe />} />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

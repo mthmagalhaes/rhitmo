@@ -1,109 +1,87 @@
 project_id = "lybkgujyezzzvbzypxed"
 
-[functions.analyze-feedback]
-verify_jwt = true
-
-[functions.analyze-feedback-background]
-verify_jwt = true
-
-[functions.reanalyze-feedback]
-verify_jwt = true
-
-[functions.send-disc-invite]
-verify_jwt = true
-
-[functions.chat-mentor]
-verify_jwt = true
-
-[functions.generate-review]
-verify_jwt = true
-
-[functions.admin-delete-user]
-verify_jwt = true
-
-[functions.admin-invite-user]
-verify_jwt = true
-
-[functions.notify-admin-new-lead]
-verify_jwt = false
-
-[functions.notify-review-shared]
-verify_jwt = false
-
-[functions.notify-review-acknowledged]
-verify_jwt = false
-
-[functions.transcribe-audio]
-verify_jwt = true
-
-[functions.extract-text-vision]
-verify_jwt = true
-
-[functions.backup-data]
-verify_jwt = true
-
-[functions.classify-note]
-verify_jwt = true
-
-[functions.analyze-job-crafting]
-verify_jwt = true
-
-[functions.google-calendar-oauth]
-verify_jwt = false
-
-[functions.fetch-calendar-events]
-verify_jwt = false
-
-[functions.reprocess-meeting]
-verify_jwt = true
-
-[functions.upload-meeting]
-verify_jwt = true
-
-[functions.meu-rhitmo]
-verify_jwt = true
-
-[functions.create-checkout-session]
-verify_jwt = false
-
-[functions.stripe-webhook]
-verify_jwt = false
-
-[functions.create-portal-session]
-verify_jwt = false
-
-[functions.cancel-subscription]
-verify_jwt = false
-
-[functions.reactivate-subscription]
-verify_jwt = false
-
-[functions.get-invoices]
-verify_jwt = false
-
-[functions.update-payment-method]
-verify_jwt = false
-
-[functions.generate-competencies]
-verify_jwt = false
-
-[functions.adjust-competency]
-verify_jwt = false
-
-[functions.generate-formal-review]
-verify_jwt = false
-
-[functions.update-subscription]
-verify_jwt = false
-
-[functions.generate-brief]
-verify_jwt = false
-
-[functions.slack-bot]
-verify_jwt = false
-
-[functions.slack-link]
-verify_jwt = false
-
-[functions.slack-oauth-callback]
-verify_jwt = false
+[functions]
+  [functions.adjust-competency]
+    verify_jwt = false
+  [functions.admin-delete-user]
+    verify_jwt = true
+  [functions.admin-invite-user]
+    verify_jwt = true
+  [functions.analyze-feedback]
+    verify_jwt = true
+  [functions.analyze-feedback-background]
+    verify_jwt = true
+  [functions.analyze-job-crafting]
+    verify_jwt = true
+  [functions.auth-email-hook]
+    verify_jwt = false
+  [functions.backup-data]
+    verify_jwt = true
+  [functions.cancel-subscription]
+    verify_jwt = false
+  [functions.chat-mentor]
+    verify_jwt = true
+  [functions.classify-note]
+    verify_jwt = true
+  [functions.create-checkout-session]
+    verify_jwt = false
+  [functions.create-portal-session]
+    verify_jwt = false
+  [functions.extract-text-vision]
+    verify_jwt = true
+  [functions.fetch-calendar-events]
+    verify_jwt = false
+  [functions.generate-brief]
+    verify_jwt = false
+  [functions.generate-competencies]
+    verify_jwt = false
+  [functions.generate-formal-review]
+    verify_jwt = false
+  [functions.generate-review]
+    verify_jwt = true
+  [functions.get-invoices]
+    verify_jwt = false
+  [functions.google-calendar-oauth]
+    verify_jwt = false
+  [functions.meu-rhitmo]
+    verify_jwt = true
+  [functions.notify-admin-new-lead]
+    verify_jwt = false
+  [functions.notify-review-acknowledged]
+    verify_jwt = false
+  [functions.notify-review-shared]
+    verify_jwt = false
+  [functions.reactivate-subscription]
+    verify_jwt = false
+  [functions.reanalyze-feedback]
+    verify_jwt = true
+  [functions.reprocess-meeting]
+    verify_jwt = true
+  [functions.send-disc-invite]
+    verify_jwt = true
+  [functions.slack-bot]
+    verify_jwt = false
+  [functions.slack-link]
+    verify_jwt = false
+  [functions.slack-oauth-callback]
+    verify_jwt = false
+  [functions.stripe-webhook]
+    verify_jwt = false
+  [functions.transcribe-audio]
+    verify_jwt = true
+  [functions.update-payment-method]
+    verify_jwt = false
+  [functions.update-subscription]
+    verify_jwt = false
+  [functions.upload-meeting]
+    verify_jwt = true
+  [functions.process-email-queue]
+    verify_jwt = true
+  [functions.send-transactional-email]
+    verify_jwt = true
+  [functions.preview-transactional-email]
+    verify_jwt = false
+  [functions.handle-email-unsubscribe]
+    verify_jwt = false
+  [functions.handle-email-suppression]
+    verify_jwt = false

@@ -306,14 +306,19 @@ const MemberDetails = () => {
     if (!member) return;
     setResendingInvite(true);
     try {
+      const syncUrl = `${window.location.origin}/sync/${member.id}`;
       const {
         data: inviteData,
         error: inviteError
-      } = await supabase.functions.invoke('send-disc-invite', {
+      } = await supabase.functions.invoke('send-transactional-email', {
         body: {
-          name: member.name,
-          email: member.email,
-          memberId: member.id
+          templateName: 'sync-invite',
+          recipientEmail: member.email,
+          idempotencyKey: `sync-invite-resend-${member.id}-${Date.now()}`,
+          templateData: {
+            memberName: member.name,
+            syncUrl,
+          }
         }
       });
       if (inviteError) throw inviteError;
