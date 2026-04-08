@@ -17,14 +17,16 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Users, Power, PowerOff, Trash2, Loader2 } from 'lucide-react';
+import { Users, Power, PowerOff, Trash2, Loader2, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useImpersonation } from '@/hooks/useImpersonation';
 
 export const AdminUsers = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const { startImpersonation } = useImpersonation();
 
   // Users with metadata query
   const { data: users, isLoading: usersLoading } = useQuery({
@@ -202,6 +204,14 @@ export const AdminUsers = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => startImpersonation(user.user_id, user.email)}
+                            title="Impersonar usuário"
+                          >
+                            <Eye className="h-4 w-4 text-primary" />
+                          </Button>
                           {wsInfo && (
                             <Button
                               variant="ghost"
