@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Sparkles } from 'lucide-react';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
+import { RhythmWave } from '@/components/RhythmWave';
 
 interface AuthProps {
   defaultMode?: 'login' | 'signup';
@@ -114,38 +115,22 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
 
   return (
     <div className="flex min-h-screen">
-      {/* LADO ESQUERDO: Hero Image (50%) */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
-        {/* Imagem de fundo */}
-        <img 
-          src="https://images.unsplash.com/photo-1573497620053-ea5300f94f21?w=1200&auto=format&fit=crop&q=80" 
-          alt="Líder colaborando com sua equipe" 
-          className="w-full h-full object-cover object-center" 
-        />
-        {/* Overlay duotone violeta pesado (efeito artístico) */}
-        <div className="absolute inset-0 bg-[#7C3AED]/80 mix-blend-multiply" />
-        <div className="absolute inset-0 bg-gradient-to-br from-[#7C3AED]/40 to-[#5B21B6]/60" />
-        
-        {/* Gradiente de legibilidade (escuro embaixo, transparente em cima) */}
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-purple-900/50 to-transparent" />
-        
-        {/* Logo no topo esquerdo */}
-        <div className="absolute top-8 left-8">
-          <RhitmoLogo size="lg" className="text-white" />
+      {/* LADO ESQUERDO: Branded Rhythm Wave */}
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-[hsl(var(--background))]">
+        {/* Wave layers */}
+        <div className="absolute inset-0 flex flex-col justify-center">
+          <RhythmWave variant="auth" className="opacity-100" />
+        </div>
+        <div className="absolute inset-0 flex flex-col justify-end pb-16">
+          <RhythmWave variant="auth" height={200} className="opacity-40" />
         </div>
         
-        {/* Conteúdo do Hero - Editorial Tech */}
-        <div className="absolute inset-0 flex flex-col justify-end items-start text-white p-16">
-          {/* Bloco de texto com marcador editorial */}
-          <div className="border-l-4 border-emerald-400 pl-6">
-            <h2 className="text-4xl lg:text-5xl font-extrabold text-left mb-4 leading-tight max-w-xl">
-              Sua Liderança, em outro{' '}
-              <span className="text-emerald-400">Rhitmo.</span>
-            </h2>
-            <p className="text-xl text-left text-white/80 max-w-md leading-relaxed">
-              A plataforma que transforma conversas em performance.
-            </p>
-          </div>
+        {/* Logo + tagline centered */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
+          <RhitmoLogo size="lg" className="text-primary mb-6" />
+          <p className="text-sm font-medium tracking-[0.2em] uppercase text-primary/60">
+            AI-Native Leadership Partner
+          </p>
         </div>
       </div>
       
