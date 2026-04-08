@@ -1,110 +1,80 @@
 
 
-## Mapeamento Completo de Emails — Rhitmo (Estado Atual)
+## Templates Branded — Auth + Transacionais
 
-### Resumo
+### Contexto
+- Domínio `notify.rhitmo.co` configurado, DNS pendente (não bloqueia scaffolding)
+- Design system: Roxo `#7C3AED`, fundo creme `#F5F3EE`, foreground `#1A1035`, fonte Lora (headings) + Inter (body)
+- 4 edge functions existentes usam Resend diretamente com HTML inline (sem branding consistente)
 
-Existem **6 fluxos de email** ativos, todos usando **Resend API diretamente** (via `RESEND_API_KEY`) + **1 fluxo via Supabase Auth API**. Nenhum usa o sistema nativo de email do Lovable ainda.
+### Parte 1: Auth Email Templates (6 templates)
 
----
+Scaffold via ferramenta nativa + aplicar branding Rhitmo:
 
-### Fluxo 1: Emails de Autenticação (Supabase Auth)
-| Item | Detalhe |
-|------|---------|
-| **Gatilho** | Signup, reset de senha, verificação de email |
-| **Remetente** | Template padrão Supabase (sem branding Rhitmo) |
-| **Destinatário** | Usuário que está se cadastrando/resetando senha |
-| **Edge Function** | Nenhuma — gerenciado internamente pelo Auth |
-| **Status** | Funcionando, mas sem branding |
+| Template | Conteúdo |
+|----------|----------|
+| `signup.tsx` | "Confirme sua conta" — botão roxo, tom casual ("Bem-vindo ao Rhitmo!") |
+| `recovery.tsx` | "Redefinir senha" — botão roxo |
+| `magic-link.tsx` | "Acesse sua conta" — link mágico |
+| `invite.tsx` | "Você foi convidado" — convite admin |
+| `email-change.tsx` | "Confirme seu novo email" |
+| `reauthentication.tsx` | Código OTP |
 
-### Fluxo 2: Convite Rhitmo Sync (DISC)
-| Item | Detalhe |
-|------|---------|
-| **Gatilho** | Líder cadastra novo membro com checkbox "Enviar convite Sync" marcado |
-| **Edge Function** | `send-disc-invite` |
-| **Remetente** | `Rhitmo <noreply@rhitmo.co>` via Resend |
-| **Destinatário** | Email do liderado cadastrado |
-| **Conteúdo** | Link para preencher o formulário Rhitmo Sync (`/sync/{memberId}`) |
-| **Chamado de** | `NewMemberDialog.tsx` |
+**Branding aplicado em todos:**
+- Fundo body: `#ffffff` (regra obrigatória)
+- Botão CTA: `background: #7C3AED`, `color: #fff`, `border-radius: 12px`
+- Headings: `color: #1A1035`, font-family Inter (web-safe fallback, Lora não é web-safe para email)
+- Texto: `color: #6B6784`
+- Logo Rhitmo no topo (wave SVG inline ou texto estilizado)
+- Footer: "Rhitmo • Gestão de Performance Contínua"
+- Idioma: Português (BR), tom consistente com o app
 
-### Fluxo 3: Notificação de Avaliação Compartilhada
-| Item | Detalhe |
-|------|---------|
-| **Gatilho** | Líder compartilha avaliação de desempenho com o liderado |
-| **Edge Function** | `notify-review-shared` |
-| **Remetente** | `Rhitmo <noreply@rhitmo.co>` via Resend |
-| **Destinatário** | Email do liderado (campo `email` em `team_members`) |
-| **Conteúdo** | Link para visualizar a avaliação compartilhada |
-| **Chamado de** | `FormalReviewSheet.tsx`, `ReviewViewDialog.tsx` |
+### Parte 2: Infraestrutura de Email Transacional
 
-### Fluxo 4: Notificação de Avaliação Reconhecida
-| Item | Detalhe |
-|------|---------|
-| **Gatilho** | Liderado reconhece/confirma leitura da avaliação |
-| **Edge Function** | `notify-review-acknowledged` |
-| **Remetente** | `Rhitmo <noreply@rhitmo.co>` via Resend |
-| **Destinatário** | Email do **gestor** (owner do workspace) |
-| **Conteúdo** | Notifica o líder que o liderado leu e reconheceu a avaliação |
+Setup da infraestrutura (pgmq, queues, cron) + scaffold do sistema transacional.
 
-### Fluxo 5: Notificação de Novo Lead (Admin)
-| Item | Detalhe |
-|------|---------|
-| **Gatilho** | Novo cadastro na lista de espera (waitlist) |
-| **Edge Function** | `notify-admin-new-lead` |
-| **Remetente** | `Rhitmo <noreply@rhitmo.co>` via Resend |
-| **Destinatário** | `matheus@rhitmo.co` (hardcoded) |
-| **Conteúdo** | Dados do lead + link para painel admin |
-| **Chamado de** | `WaitlistDialog.tsx` |
+### Parte 3: Migrar 4 Edge Functions Resend → Templates Transacionais
 
-### Fluxo 6: Convite Admin (Supabase Auth API)
-| Item | Detalhe |
-|------|---------|
-| **Gatilho** | Admin convida novo usuário via painel |
-| **Edge Function** | `admin-invite-user` |
-| **Método** | `supabase.auth.admin.inviteUserByEmail()` — usa email nativo do Supabase Auth |
-| **Destinatário** | Email do usuário convidado |
-| **Conteúdo** | Email de convite padrão Supabase (sem branding) |
-| **Chamado de** | `AdminAccess.tsx`, `AdminOverview.tsx` |
+| Template | Substitui | Gatilho |
+|----------|-----------|---------|
+| `sync-invite.tsx` | `send-disc-invite` | Novo membro com checkbox Sync |
+| `review-shared.tsx` | `notify-review-shared` | Líder compartilha avaliação |
+| `review-acknowledged.tsx` | `notify-review-acknowledged` | Liderado reconhece avaliação |
+| `admin-new-lead.tsx` | `notify-admin-new-lead` | Novo lead na waitlist |
 
-### Fluxo 7: Convite via Slack (DM, não email)
-| Item | Detalhe |
-|------|---------|
-| **Gatilho** | Após cadastrar membro, fire-and-forget |
-| **Edge Function** | `invite-member-slack` |
-| **Canal** | DM no Slack (não é email) |
-| **Chamado de** | `NewMemberDialog.tsx`, `Index.tsx` |
+Cada template terá o mesmo branding dos auth emails. Os call sites em `NewMemberDialog.tsx`, `FormalReviewSheet.tsx`, etc. serão atualizados para usar `supabase.functions.invoke('send-transactional-email', ...)`.
 
----
+### Parte 4: Página de Unsubscribe
 
-### Diagrama de Fluxo
+Criar página `/unsubscribe` com branding Rhitmo para opt-out de emails transacionais.
 
-```text
-CADASTRO NA PLATAFORMA
-├── Signup (email/senha) ──→ [Supabase Auth] ──→ Email verificação (sem branding)
-├── Signup (Google OAuth) ──→ Sem email
-├── Convite Admin ──→ [admin-invite-user] ──→ Email convite Supabase (sem branding)
-└── Waitlist ──→ [notify-admin-new-lead] ──→ Email para matheus@ (Resend)
+### Parte 5: Atualizar URLs hardcoded
 
-GESTÃO DE EQUIPE
-├── Novo membro ──→ [send-disc-invite] ──→ Email Sync para liderado (Resend)
-└── Novo membro ──→ [invite-member-slack] ──→ DM Slack (não email)
+Substituir `rhitmo.lovable.app` por `rhitmo.co` em todos os templates e edge functions.
 
-AVALIAÇÕES
-├── Compartilhar review ──→ [notify-review-shared] ──→ Email para liderado (Resend)
-└── Liderado reconhece ──→ [notify-review-acknowledged] ──→ Email para gestor (Resend)
-```
+### Sequência de execução
 
-### O que migrar para o sistema de email Lovable
+1. Scaffold auth templates → aplicar branding → deploy `auth-email-hook`
+2. Setup email infra (pgmq, queues, cron)
+3. Scaffold transactional → criar 4 templates branded → registrar no registry
+4. Atualizar call sites nos componentes React (trocar Resend → `send-transactional-email`)
+5. Criar página `/unsubscribe`
+6. Deploy todas as edge functions
+7. Verificar previews
 
-Quando configurarmos o domínio, o plano seria:
+### Arquivos impactados
 
-1. **Auth emails** (Fluxos 1 e 6): Migrar para templates branded via `auth-email-hook` — verificação, reset, convite admin
-2. **Transactional emails** (Fluxos 2-5): Migrar os 4 emails Resend para templates React Email via `send-transactional-email`, eliminando dependência do `RESEND_API_KEY`
-3. **URLs hardcoded**: Substituir `rhitmo.lovable.app` pelo domínio customizado em todos os templates
-
-### Emails que ainda NÃO existem (oportunidades)
-- Welcome email após primeiro login
-- Resumo semanal de atividades para o líder
-- Lembrete de 1:1 agendada (se integração calendar ativa)
-- Notificação quando PDI é atualizado
+| Arquivo | Ação |
+|---------|------|
+| `supabase/functions/_shared/email-templates/*.tsx` | Criar (6 auth templates) |
+| `supabase/functions/auth-email-hook/*` | Criar |
+| `supabase/functions/_shared/transactional-email-templates/*.tsx` | Criar (4 templates + registry) |
+| `supabase/functions/send-transactional-email/*` | Criar |
+| `supabase/functions/handle-email-unsubscribe/*` | Criar |
+| `supabase/functions/handle-email-suppression/*` | Criar |
+| `src/components/NewMemberDialog.tsx` | Editar — trocar invoke de `send-disc-invite` → `send-transactional-email` |
+| `src/components/review/FormalReviewSheet.tsx` | Editar — trocar invoke |
+| `src/components/WaitlistDialog.tsx` | Editar — trocar invoke |
+| `src/pages/Unsubscribe.tsx` | Criar |
+| `src/App.tsx` | Editar — adicionar rota `/unsubscribe` |
 
