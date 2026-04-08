@@ -210,6 +210,20 @@ const translations = {
     footerPrivacy: "Privacy Policy",
     launchBadge: "Launch Price",
     launchDisclaimer: "Launch price guaranteed while your subscription is active.",
+    enterpriseNav: "Enterprise",
+    enterpriseSubtitle: "For structured companies with 100+ employees who want truly native AI.",
+    enterprisePrice: "Starting at R$15",
+    enterprisePer: "/employee/mo",
+    enterpriseNote: "Minimum 100 employees · annual contract",
+    enterpriseCTA: "Talk to Sales",
+    enterpriseFeatures: [
+      "Everything in Business",
+      "SSO and custom API",
+      "Dedicated CSM",
+      "Guaranteed SLA",
+      "White-glove onboarding",
+      "Enterprise integrations (SAP, TOTVS)",
+    ],
   },
 };
 
