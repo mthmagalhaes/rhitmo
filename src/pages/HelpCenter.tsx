@@ -420,35 +420,7 @@ const HelpCenter = () => {
         </Tabs>
 
         {/* Integrations */}
-        {filteredIntegrations.length > 0 && (
-          <section className="space-y-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-medium">
-              Integrações
-            </p>
-            <div className="grid gap-4 sm:grid-cols-3">
-              {filteredIntegrations.map((integ) => (
-                <Card key={integ.id} className="rounded-2xl">
-                  <CardContent className="p-5 flex items-start gap-4">
-                    <div className="p-2.5 rounded-xl bg-primary/10 shrink-0">
-                      <integ.icon className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="min-w-0 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm">{integ.name}</span>
-                        <Badge variant={integ.status === 'available' ? 'default' : 'secondary'} className="text-[10px] px-1.5 py-0">
-                          {integ.status === 'available' ? 'Disponível' : 'Beta'}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        {integ.description}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </section>
-        )}
+        <IntegrationsSection filteredIntegrations={filteredIntegrations} />
 
         {/* FAQ */}
         {filteredFaq.length > 0 && (
