@@ -89,7 +89,7 @@ const Index = () => {
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [activeTeamId, setActiveTeamId] = useState<string | null>(null);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
-  const [inviteMember, setInviteMember] = useState<Pick<TeamMember, 'id' | 'name' | 'email' | 'invite_status' | 'invite_token'> | null>(null);
+  const [inviteMember, setInviteMember] = useState<Pick<TeamMember, 'id' | 'name' | 'invite_status' | 'invite_token'> & { email?: string | null } | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {

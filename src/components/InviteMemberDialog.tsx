@@ -13,10 +13,10 @@ interface InviteMemberDialogProps {
   member: {
     id: string;
     name: string;
-    email: string | null;
-    invite_status: string | null;
-    invite_token: string | null;
-  };
+    email?: string | null;
+    invite_status?: string | null;
+    invite_token?: string | null;
+  } | null;
   onSuccess?: () => void;
 }
 
@@ -31,9 +31,11 @@ export const InviteMemberDialog = ({
 
   // Gerar link de convite — sempre usar domínio de produção
   const APP_URL = 'https://rhitmo.co';
-  const inviteUrl = member.invite_token 
+  const inviteUrl = member?.invite_token 
     ? `${APP_URL}/invite?code=${member.invite_token}`
     : null;
+
+  if (!member) return null;
 
   const handleGenerateInvite = async () => {
     setLoading(true);

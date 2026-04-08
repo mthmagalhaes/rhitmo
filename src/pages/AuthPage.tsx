@@ -17,7 +17,7 @@ const AuthPage = () => {
   const planParam = searchParams.get('plan') as 'pro' | 'business' | null;
 
   // Detect invite flow
-  const hasPendingInvite = typeof window !== 'undefined' && !!sessionStorage.getItem('pending_invite');
+  const hasPendingInvite = typeof window !== 'undefined' && !!localStorage.getItem('pending_invite');
   const isInviteFlow = hasPendingInvite || mode === 'signup';
 
   useEffect(() => {
