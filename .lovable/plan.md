@@ -1,33 +1,50 @@
 
 
-## Fazer o Slack funcionar — Substituir URLs hardcoded
+## Corrigir Fluxo de Convite — Liderado vira Líder por engano
 
-### Problema
-76 ocorrências de `rhitmo.lovable.app` hardcoded em 8 edge functions. Todas as URLs de redirect, links em mensagens e botões do Slack apontam para o domínio errado.
+### Diagnóstico
 
-### Solução
-Substituir todas as ocorrências de `https://rhitmo.lovable.app` por `https://rhitmo.co` nos 7 arquivos afetados (o 8º, `auth-email-hook`, usa `app-rhitmo.lovable.app` como sample URL para preview — manter).
+O problema tem **duas causas raiz**:
 
-### Arquivos e mudanças
+1. **sessionStorage se perde no OAuth** — Quando Yas clica "Aceitar e Acessar", o código salva o `pending_invite` em `sessionStorage` e redireciona para `/auth?mode=signup`. Se ela faz signup via Google OAuth, o redirect externo (Google → Supabase → app) limpa a sessionStorage. Resultado: o invite nunca é processado.
 
-| Arquivo | Ocorrências | Mudança |
-|---------|-------------|---------|
-| `supabase/functions/slack-bot/index.ts` | ~8 | `rhitmo.lovable.app` → `rhitmo.co` |
-| `supabase/functions/slack-oauth-callback/index.ts` | 5 | idem |
-| `supabase/functions/invite-member-slack/index.ts` | 1 | idem |
-| `supabase/functions/google-calendar-oauth/index.ts` | 1 | idem |
-| `supabase/functions/notify-review-shared/index.ts` | 1 | idem |
-| `supabase/functions/notify-admin-new-lead/index.ts` | 1 | idem |
-| `supabase/functions/admin-invite-user/index.ts` | 2 | idem |
+2. **Sem proteção contra criação de workspace** — Sem o link feito, `useLinkedMember()` retorna `null`, e o sistema trata Yas como líder novo, exibindo `WorkspaceOnboarding`. Ela criou o workspace "Faster" e virou líder.
 
-### Abordagem
-Em cada arquivo, definir uma constante `const APP_URL = 'https://rhitmo.co'` no topo e usar template literals (`${APP_URL}/dashboard`, `${APP_URL}/slack/connect?...`). Isso facilita futuras mudanças de domínio.
+**Estado atual no banco:**
+- `team_members` da Yas: `linked_user_id = NULL`, `invite_status = pending`
+- Workspace "Faster" (orphan) criado por Yas: `dec0c903-000d-4c66-8ee8-f6fa7cf931a0`
+- Auth user da Yas: `dec0c903-000d-4c66-8ee8-f6fa7cf931a0`
 
-### Deploy
-Após as edições, deploy de todas as 7 edge functions de uma vez.
+### Correção imediata (dados)
 
-### O que NÃO muda
-- `auth-email-hook/index.ts` — usa `app-rhitmo.lovable.app` apenas como sample para preview de templates, não afeta produção
-- Frontend (`SlackConnect.tsx`) — não tem URLs hardcoded, usa rotas relativas
-- Secrets do Slack — já estão todos configurados
+Via migration:
+1. Linkar Yas: `UPDATE team_members SET linked_user_id = 'dec0c903-...', invite_status = 'accepted', invite_token = NULL WHERE id = '31855607-...'`
+2. Deletar workspace orphan "Faster": `DELETE FROM workspaces WHERE id = '77104ace-...'`
+
+### Correção no código (3 mudanças)
+
+**1. Trocar `sessionStorage` → `localStorage` para `pending_invite`**
+
+Afeta 2 arquivos:
+- `src/pages/Invite.tsx` (linha 75): `sessionStorage.setItem` → `localStorage.setItem`
+- `src/components/AuthEventProvider.tsx` (linhas 20, 44): `sessionStorage.getItem/removeItem` → `localStorage.getItem/removeItem`
+- `src/pages/AuthPage.tsx` (linha 20): `sessionStorage.getItem` → `localStorage.getItem`
+
+**2. Auto-link por email no AuthEventProvider**
+
+Quando um usuário faz login pela primeira vez e NÃO tem `pending_invite`, verificar se existe um `team_members` com `email = user.email` e `invite_status = 'pending'` → auto-linkar. Isso é um safety net para quando o token se perde.
+
+**3. Bloquear WorkspaceOnboarding para usuários com invite pendente por email**
+
+No `AppLayout.tsx`, antes de mostrar o `WorkspaceOnboarding`, adicionar uma query extra: verificar se existe `team_members` onde `email = user.email` e `linked_user_id IS NULL`. Se sim, auto-linkar e NÃO mostrar o onboarding de workspace.
+
+### Arquivos afetados
+
+| Arquivo | Ação |
+|---------|------|
+| `src/pages/Invite.tsx` | Trocar sessionStorage → localStorage |
+| `src/components/AuthEventProvider.tsx` | Trocar sessionStorage → localStorage + adicionar auto-link por email |
+| `src/pages/AuthPage.tsx` | Trocar sessionStorage → localStorage |
+| `src/components/AppLayout.tsx` | Adicionar guard contra workspace creation para convidados |
+| Migration SQL | Linkar Yas + deletar workspace orphan |
 
