@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award, ArrowRightLeft, UserCheck } from 'lucide-react';
+import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award, ArrowRightLeft, UserCheck, Palette } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
@@ -143,6 +143,30 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* Design System — only for matheus@rhitmo.co */}
+        {!isInHRContext && user?.email === 'matheus@rhitmo.co' && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Marca</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Design System">
+                    <NavLink 
+                      to="/design-system" 
+                      end
+                      className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
+                      activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
+                    >
+                      <Palette className="h-5 w-5" />
+                      <span>Design System</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
