@@ -130,7 +130,7 @@ export const TeamMemberCard = ({ member, teamName, onClick, onEdit, pendingInvit
         {/* Legacy pending invite text removed — now shown as pulsing icon in top-right */}
 
         {/* Send invite button */}
-        {!(member as any).linked_user_id && !pendingInvite && (member as any).email && onSendInvite && (
+        {!(member as any).linked_user_id && (member as any).email && onSendInvite && (
           <Button
             variant="outline"
             size="sm"
@@ -140,7 +140,7 @@ export const TeamMemberCard = ({ member, teamName, onClick, onEdit, pendingInvit
               onSendInvite();
             }}
           >
-            📧 Enviar Convite
+            {(member as any).invite_status === 'pending' && (member as any).invite_token ? '📧 Ver Convite' : '📧 Enviar Convite'}
           </Button>
         )}
 

@@ -40,6 +40,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Workspace, Team } from '@/types/team';
 import { PendingInvitesSection } from '@/components/team/PendingInvitesSection';
 import { UpgradeBanner } from '@/components/billing/UpgradeBanner';
+import { InviteMemberDialog } from '@/components/InviteMemberDialog';
 import { format, formatDistanceToNow, isToday, isTomorrow, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -57,6 +58,10 @@ interface TeamMember {
   lastFeedback?: string;
   feedbackCount?: number;
   performanceScore?: number;
+  email?: string | null;
+  linked_user_id?: string | null;
+  invite_status?: string | null;
+  invite_token?: string | null;
 }
 
 const getGreeting = () => {
@@ -83,6 +88,8 @@ const Index = () => {
   const [activitySheetOpen, setActivitySheetOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [activeTeamId, setActiveTeamId] = useState<string | null>(null);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [inviteMember, setInviteMember] = useState<Pick<TeamMember, 'id' | 'name' | 'email' | 'invite_status' | 'invite_token'> | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -258,27 +265,15 @@ const Index = () => {
     staleTime: 60_000,
   });
 
-  const handleSendSlackInvite = async (member: TeamMember) => {
-    try {
-      const { data, error } = await supabase.functions.invoke('invite-member-slack', {
-        body: { member_id: member.id, member_name: member.name, member_email: (member as any).email },
-      });
-      if (error) throw error;
-      if (data?.success) {
-        toast({
-          title: data.has_existing_account ? '🔗 Convite Slack enviado' : '🚀 Convite Slack enviado',
-          description: data.has_existing_account
-            ? `${member.name} já tem conta, só precisa conectar ao Slack.`
-            : `${member.name} receberá link para criar conta via Slack.`,
-        });
-        queryClient.invalidateQueries({ queryKey: ['pending-slack-invites'] });
-      } else if (data?.reason === 'not_in_workspace') {
-        toast({ title: '⚠️ Email não encontrado no Slack', description: 'Adicione a pessoa ao workspace Slack primeiro.' });
-      }
-    } catch (err: any) {
-      console.error('Slack invite error:', err);
-      toast({ title: 'Erro ao enviar convite Slack', description: err.message, variant: 'destructive' });
-    }
+  const handleOpenInviteDialog = (member: TeamMember) => {
+    setInviteMember({
+      id: member.id,
+      name: member.name,
+      email: member.email ?? null,
+      invite_status: member.invite_status ?? null,
+      invite_token: member.invite_token ?? null,
+    });
+    setInviteDialogOpen(true);
   };
 
   const { data: onboardingStatus } = useQuery({
@@ -594,13 +589,15 @@ const Index = () => {
                     feedbackCount: member.feedback_count || 0,
                     performanceScore: member.performance_score,
                     teamId: member.teamId,
-                    linked_user_id: (member as any).linked_user_id,
-                    email: (member as any).email,
+                    linked_user_id: member.linked_user_id,
+                    email: member.email,
+                    invite_status: member.invite_status,
+                    invite_token: member.invite_token,
                   } as any}
                   pendingInvite={pendingInvitesMap.get(member.id) || null}
                   onSendInvite={
-                    !(member as any).linked_user_id && !pendingInvitesMap.has(member.id) && (member as any).email
-                      ? () => handleSendSlackInvite(member)
+                    !member.linked_user_id && member.email
+                      ? () => handleOpenInviteDialog(member)
                       : undefined
                   }
                   teamName={teams.find(t => t.id === member.teamId)?.name}
@@ -657,6 +654,17 @@ const Index = () => {
           onOpenChange={setLeaderSyncOpen}
           workspaceId={workspace.id}
           existingData={(workspace as unknown as Record<string, unknown>).leader_sync_data as Record<string, unknown> | null}
+        />
+      )}
+      {inviteMember && (
+        <InviteMemberDialog
+          open={inviteDialogOpen}
+          onOpenChange={(open) => {
+            setInviteDialogOpen(open);
+            if (!open) setInviteMember(null);
+          }}
+          member={inviteMember}
+          onSuccess={handleSuccess}
         />
       )}
       <ActivitySheet open={activitySheetOpen} onOpenChange={setActivitySheetOpen} />
