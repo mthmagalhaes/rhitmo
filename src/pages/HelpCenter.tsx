@@ -122,6 +122,19 @@ const leaderCards: FeatureCard[] = [
       'Acompanhe o progresso dos itens e adicione observações.',
     ],
   },
+  {
+    id: 'l-recording',
+    icon: Mic,
+    title: 'Gravação de Reuniões',
+    subtitle: 'Grave reuniões e obtenha transcrições automáticas',
+    steps: [
+      'No perfil do liderado, clique em "Gravar Reunião".',
+      'Uma janela popup será aberta — selecione a aba do Chrome com a reunião.',
+      'A gravação roda na janela separada. Você pode continuar usando o Rhitmo normalmente.',
+      'Ao parar a gravação, o áudio é transcrito automaticamente e as notas são classificadas pela IA.',
+      'Atenção: não feche a janela do popup durante a gravação.',
+    ],
+  },
 ];
 
 const memberCards: FeatureCard[] = [
@@ -393,39 +406,12 @@ const HelpCenter = () => {
           </TabsList>
 
           <TabsContent value="leader" className="mt-8 space-y-8">
-            <QuickStartCard
-              title="Quick Start: Líder"
-              steps={[
-                { label: 'Crie seu Workspace e adicione seu time', icon: Users },
-                { label: 'Adicione seu primeiro liderado', icon: UserCircle },
-                { label: 'Registre uma nota no Diário de Bordo', icon: NotebookPen },
-                { label: 'Peça orientação ao Mentor IA', icon: MessageSquare },
-              ]}
-            />
             <FeatureGrid cards={filteredLeader} />
           </TabsContent>
           <TabsContent value="member" className="mt-8 space-y-8">
-            <QuickStartCard
-              title="Quick Start: Liderado"
-              steps={[
-                { label: 'Complete seu Rhitmo Sync', icon: Compass },
-                { label: 'Explore o Career Compass no seu painel', icon: Target },
-                { label: 'Visualize suas avaliações recebidas', icon: Eye },
-                { label: 'Configure seu perfil e preferências', icon: Settings },
-              ]}
-            />
             <FeatureGrid cards={filteredMember} />
           </TabsContent>
           <TabsContent value="hr" className="mt-8 space-y-8">
-            <QuickStartCard
-              title="Quick Start: RH Admin"
-              steps={[
-                { label: 'Acesse o Painel RH para visão geral', icon: LayoutDashboard },
-                { label: 'Gerencie times e líderes', icon: Users },
-                { label: 'Configure o Framework de Competências', icon: Palette },
-                { label: 'Explore o Analytics organizacional', icon: BarChart3 },
-              ]}
-            />
             <FeatureGrid cards={filteredHR} />
           </TabsContent>
         </Tabs>

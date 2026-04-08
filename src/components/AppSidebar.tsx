@@ -38,10 +38,10 @@ const menuItems = [
   { title: 'Início', url: '/dashboard', icon: Home },
   { title: 'Analytics', url: '/analytics', icon: BarChart3 },
   { title: 'Assinatura', url: '/billing', icon: CreditCard },
-  { title: 'Guia Rhitmo', url: '/help', icon: BookOpen },
+  { title: 'Central de Conhecimento', url: '/help', icon: BookOpen },
 ];
 
-const leaderOnlyItems = ['Analytics', 'Assinatura', 'Guia Rhitmo'];
+const leaderOnlyItems = ['Analytics', 'Assinatura', 'Central de Conhecimento'];
 
 const hrMenuItems = [
   { title: 'Visão Geral', url: '/hr', icon: LayoutDashboard },
