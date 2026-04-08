@@ -421,7 +421,7 @@ const MemberDetails = () => {
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row items-start gap-6 mb-6">
             <div className="mx-auto sm:mx-0">
-              <MemberAvatar memberId={member.id} memberName={member.name} size="xl" />
+              <MemberAvatar memberId={member.id} memberName={member.name} avatarUrl={member.avatar} size="xl" />
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">

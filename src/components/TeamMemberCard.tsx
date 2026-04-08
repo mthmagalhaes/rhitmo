@@ -81,6 +81,7 @@ export const TeamMemberCard = ({ member, teamName, onClick, onEdit, pendingInvit
           <MemberAvatar 
             memberId={member.id}
             memberName={member.name}
+            avatarUrl={(member as any).avatar}
             size="lg"
           />
         </div>

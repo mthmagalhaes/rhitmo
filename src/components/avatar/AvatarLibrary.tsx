@@ -8,6 +8,18 @@ import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 
 const AVATAR_SEEDS = [
+  { style: 'avataaars', seed: 'Alex' },
+  { style: 'avataaars', seed: 'Sam' },
+  { style: 'avataaars', seed: 'Jordan' },
+  { style: 'avataaars', seed: 'Taylor' },
+  { style: 'avataaars', seed: 'Casey' },
+  { style: 'avataaars', seed: 'Riley' },
+  { style: 'avataaars', seed: 'Morgan' },
+  { style: 'avataaars', seed: 'Quinn' },
+  { style: 'avataaars', seed: 'Avery' },
+  { style: 'avataaars', seed: 'Blake' },
+  { style: 'avataaars', seed: 'Drew' },
+  { style: 'avataaars', seed: 'Charlie' },
   { style: 'notionists', seed: 'Felix' },
   { style: 'notionists', seed: 'Luna' },
   { style: 'notionists', seed: 'Mia' },
@@ -15,23 +27,11 @@ const AVATAR_SEEDS = [
   { style: 'notionists', seed: 'Zara' },
   { style: 'notionists', seed: 'Leo' },
   { style: 'notionists', seed: 'Iris' },
-  { style: 'lorelei', seed: 'Aneka' },
-  { style: 'lorelei', seed: 'Jasper' },
-  { style: 'lorelei', seed: 'Sophia' },
-  { style: 'lorelei', seed: 'Noah' },
-  { style: 'lorelei', seed: 'Amara' },
-  { style: 'lorelei', seed: 'River' },
-  { style: 'fun-emoji', seed: 'happy' },
-  { style: 'fun-emoji', seed: 'cool' },
-  { style: 'fun-emoji', seed: 'wink' },
-  { style: 'fun-emoji', seed: 'smile' },
-  { style: 'fun-emoji', seed: 'star' },
-  { style: 'avataaars', seed: 'Alex' },
-  { style: 'avataaars', seed: 'Sam' },
-  { style: 'avataaars', seed: 'Jordan' },
-  { style: 'avataaars', seed: 'Taylor' },
-  { style: 'avataaars', seed: 'Casey' },
-  { style: 'avataaars', seed: 'Riley' },
+  { style: 'notionists', seed: 'Sage' },
+  { style: 'notionists', seed: 'Kai' },
+  { style: 'notionists', seed: 'Nora' },
+  { style: 'notionists', seed: 'Theo' },
+  { style: 'notionists', seed: 'Ava' },
 ];
 
 const getAvatarUrl = (style: string, seed: string) =>
@@ -60,6 +60,7 @@ export function AvatarLibrary({ open, onOpenChange, memberId, currentAvatar }: A
       if (error) throw error;
       toast.success('Avatar atualizado! 🎉');
       queryClient.invalidateQueries({ queryKey: ['linked-member'] });
+      queryClient.invalidateQueries({ queryKey: ['team-members'] });
       onOpenChange(false);
       setSelected(null);
     } catch (err) {
