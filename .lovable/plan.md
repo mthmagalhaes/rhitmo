@@ -1,100 +1,66 @@
 
 
-## Roadmap de Execução — 6 Épicos
+## Melhorias de Design — 3 Dashboards do Rhitmo
 
-### Épico 1: Bug do MeetingRecorder (P0)
+### Diagnóstico Visual (baseado nos screenshots em 67%)
 
-**Problema**: A compressão MP3 via `lamejs` falha silenciosamente em alguns navegadores, gerando WAV de 43MB que excede o limite do Whisper. O fallback atual (`convertToMp3` catch → WAV) não comprime o suficiente.
+**Líder (Tela 1)**: Layout funcional mas o card "Próximas 1:1s" domina 70% da viewport com background amarelo/creme que compete visualmente com o branding. Os cards de membros estão bem com proporção 3:4, mas há muito espaço vazio entre a seção de meetings e os membros.
 
-**Alterações**:
+**HR Admin (Tela 2)**: O banner de upgrade amarelo é visualmente agressivo e quebra a estética Creme/Bento. O empty state do calendário ocupa espaço excessivo. O Setup Checklist fica abaixo da dobra (below the fold), perdendo visibilidade.
 
-| Arquivo | O que muda |
-|---------|-----------|
-| `src/components/MeetingRecorder.tsx` | Adicionar verificação de tamanho pós-conversão: se WAV > 20MB, re-render para 8kHz mono (reduz ~4x). Adicionar log de diagnóstico no catch do lamejs para entender a causa raiz. Mostrar toast de aviso se fallback for ativado. |
-| `supabase/functions/upload-meeting/index.ts` | Adicionar validação server-side: se arquivo > 25MB, rejeitar com mensagem clara pedindo gravação mais curta. |
+**Liderado (Tela 3)**: A "Visão Geral" é a mais fraca — o card "Resumo" é uma lista estática de links disfarçados de métricas, e "Próximas Ações" são 3 CTAs hardcoded sem contexto real. Muito espaço vazio abaixo. Não há sensação de progresso ou momentum.
 
 ---
 
-### Épico 2: Slack Phase 2 — `/brief` e `/meu-pdi`
+### Alterações Propostas
 
-**Problema**: Os comandos `/brief` e `/meu-pdi` estão registrados na privacy list mas não têm handlers implementados. O menu para liderados é básico (só "Abrir Rhitmo").
+#### 1. Dashboard do Líder — Densidade informacional + cor
 
-**Alterações**:
-
-| Arquivo | O que muda |
+| Arquivo | Alteração |
 |---------|-----------|
-| `supabase/functions/slack-bot/index.ts` | Implementar `handleBriefCommand` (chama `generate-brief` e retorna resumo formatado em blocks). Implementar `handleMeuPdiCommand` (busca PDI ativo do liderado e retorna lista formatada). Adicionar cases no `processCommand` switch. Expandir menu de liderados com botões de ação (Meu PDI, Meu Brief). |
+| `UpcomingMeetingsCard.tsx` | Remover background amarelo/creme. Usar `bg-card` com shadow padrão Bento. Limitar lista a 3 reuniões visíveis + "Ver mais N" colapsável. Reduz altura em ~40%. |
+| `Index.tsx` | Adicionar um "greeting strip" no topo do Bento Grid: saudação contextual ("Boa tarde, Matheus") + micro-métricas inline (ex: "3 reuniões amanhã · 2 notas esta semana · 1 membro precisa de atenção"). Ocupa 1 linha, dá contexto imediato. |
+| `ActivityPreview.tsx` | Se não há atividade recente, mostrar um micro empty state com ícone sutil em vez de card vazio. |
+
+#### 2. Dashboard HR Admin — Hierarquia e banner
+
+| Arquivo | Alteração |
+|---------|-----------|
+| `UpgradeBanner.tsx` | Redesign do banner: trocar amarelo por gradiente sutil `primary/5 → primary/10` com borda `primary/20`. Mais discreto e alinhado com a paleta Creme. |
+| `Index.tsx` (seção HR) | Quando Setup Checklist existe, posicioná-lo ACIMA do Bento Grid (antes das meetings), não abaixo. É a ação mais importante para um novo user. |
+| `SetupChecklist.tsx` | Adicionar uma progress bar visual no topo do checklist (ex: "2/5 concluídos") com animação de preenchimento, tornando-o mais motivacional. |
+
+#### 3. Dashboard do Liderado — De estático para dinâmico
+
+| Arquivo | Alteração |
+|---------|-----------|
+| `DirectReportDashboard.tsx` (Visão Geral) | Substituir o card "Resumo" por um **"Pulse Card"** com dados reais: último feedback recebido (data + tipo positivo/construtivo), progresso do PDI (X/Y itens concluídos com mini progress bar), e dias desde a última 1:1. Substitui os badges "Atualizar"/"Novo" por métricas reais. |
+| `DirectReportDashboard.tsx` (Visão Geral) | Substituir "Próximas Ações" hardcoded por ações contextuais: se tem review não lida → "Leia sua avaliação"; se PDI tem item vencido → "Item X vence em 2 dias"; se não fez Rhitmo Sync → "Complete seu perfil". Quando tudo está em dia, mostrar mensagem positiva ("Tudo em dia! 🎉"). |
+| `DirectReportDashboard.tsx` (Header) | Adicionar um subtítulo contextual abaixo de "Olá, Matheus!" com a última ação: "Último feedback recebido há 3 dias" ou "PDI 60% concluído". Dá sensação de continuidade. |
+
+#### 4. Ajustes globais (afetam os 3 dashboards)
+
+| Arquivo | Alteração |
+|---------|-----------|
+| `TeamMemberCard.tsx` | Adicionar um micro indicador de "invite pending" mais visível (ícone de envelope pulsando no canto, em vez de texto). |
+| `AppSidebar.tsx` | No estado colapsado, garantir que o logo Rhitmo tenha padding adequado. Nos screenshots o logo fica muito colado ao topo. |
 
 ---
 
-### Épico 3: Ativar Embeddings
+### Arquivos modificados
 
-**Problema**: A coluna `feedbacks.embedding` (vector 1536) e a RPC `match_feedbacks` existem, mas nenhuma Edge Function gera os vetores. O Mentor Chat usa apenas as 10 notas mais recentes.
+| Arquivo | Tipo |
+|---------|------|
+| `src/components/dashboard/UpcomingMeetingsCard.tsx` | Edit — remover bg amarelo, limitar a 3 items |
+| `src/components/billing/UpgradeBanner.tsx` | Edit — redesign com paleta Creme |
+| `src/components/SetupChecklist.tsx` | Edit — mover para cima + progress bar |
+| `src/components/dashboard/DirectReportDashboard.tsx` | Edit — Pulse Card + ações contextuais |
+| `src/pages/Index.tsx` | Edit — greeting strip + reordenar checklist |
+| `src/components/TeamMemberCard.tsx` | Edit — indicador de invite |
+| `src/components/AppSidebar.tsx` | Edit — padding do logo |
 
-**Alterações**:
-
-| Arquivo | O que muda |
-|---------|-----------|
-| `supabase/functions/analyze-feedback-background/index.ts` | Após análise de sentimento/tags, chamar `text-embedding-3-small` via OpenAI para gerar embedding do conteúdo e salvar na coluna `embedding`. |
-| `supabase/functions/chat-mentor/index.ts` | Na Camada 2 (Compressor), quando `needsContext=true`, chamar `match_feedbacks` via RPC com embedding da pergunta para busca semântica, mesclando com as notas recentes. |
-
----
-
-### Épico 4: Migrar Meu Rhitmo e Mentor Chat L3 para modelo mais barato
-
-**Problema**: `chat-mentor` e `meu-rhitmo` usam `gpt-4o` para a resposta final (L3), que é o principal driver de custo. O roteador e summarização já usam `gpt-4o-mini`.
-
-**Alterações**:
-
-| Arquivo | O que muda |
-|---------|-----------|
-| `supabase/functions/chat-mentor/index.ts` | Trocar `model: 'gpt-4o'` (linha 628) por Lovable AI Gateway (`google/gemini-2.5-flash`) via `https://ai.gateway.lovable.dev/v1/chat/completions` com `LOVABLE_API_KEY`. Manter `gpt-4o-mini` no roteador e summarização (já barato). |
-| `supabase/functions/meu-rhitmo/index.ts` | Trocar `model: 'gpt-4o'` por Lovable AI Gateway (`google/gemini-2.5-flash`). Manter `gpt-4o-mini` na summarização. |
-
-**Nota**: Gemini 2.5 Flash tem qualidade comparável ao GPT-4o para tarefas de análise textual em PT-BR, com custo significativamente menor e sem precisar de API key externa (usa `LOVABLE_API_KEY` já configurado).
-
----
-
-### Épico 5: Analytics Avançado para HR
-
-**Problema**: O `HRAnalytics.tsx` atual mostra métricas básicas (sentimento, notas por líder). Faltam: evolução temporal, heatmap de engajamento, alertas de risco, comparativo entre líderes.
-
-**Alterações**:
-
-| Arquivo | O que muda |
-|---------|-----------|
-| Migração SQL | Criar RPC `get_hr_analytics_advanced` com: tendência de feedback semanal (últimas 12 semanas), distribuição de tags, membros em risco (>30d sem feedback + sem PDI), ranking de engajamento por líder. |
-| `src/pages/HRAnalytics.tsx` | Adicionar tabs: "Visão Geral" (atual), "Tendências" (gráfico de linha semanal), "Riscos" (tabela de membros em risco com ações), "Engajamento" (heatmap líder × semana). |
-| `src/components/hr/RiskTable.tsx` | Novo componente: tabela de membros em risco com filtros e ações rápidas. |
-| `src/components/hr/EngagementHeatmap.tsx` | Novo componente: heatmap visual líder × semana (verde/amarelo/vermelho). |
-
----
-
-### Épico 6: Marketplace de Templates de Competências
-
-**Problema**: O framework de competências atual é fixo (6 competências genéricas criadas via `create_default_competency_framework`). Não há como importar frameworks prontos por área/indústria.
-
-**Alterações**:
-
-| Arquivo | O que muda |
-|---------|-----------|
-| Migração SQL | Criar tabela `competency_templates` (id, name, industry, description, template_data jsonb, is_public, created_by). Seed com 5-8 templates iniciais (Tech, Vendas, Marketing, Produto, CS, etc.). |
-| `src/components/competency/TemplateMarketplace.tsx` | Novo componente: grid de cards com templates disponíveis, preview das competências, botão "Usar este template". |
-| `src/pages/CompetencyFramework.tsx` | Adicionar botão "Explorar Templates" que abre o marketplace. Ação de importar substitui o framework default. |
-
----
-
-### Ordem de Execução
-
-```text
-Sprint 1 (concluída):     Épico 1 (P0 bug) + Épico 4 (migração modelo) ✅
-Sprint 2 (concluída):     Épico 3 (embeddings) + Épico 2 (Slack Phase 2) ✅
-Sprint 3 (concluída):     Épico 5 (HR Analytics) ✅
-Sprint 4 (concluída):     Épico 6 (Marketplace) ✅
-```
-
-### Impacto em Custos
-
-- **Épico 4** reduz ~60-70% do custo de IA (GPT-4o → Gemini Flash via Lovable AI)
-- **Épico 3** adiciona custo marginal (~$0.0001/embedding) mas melhora drasticamente a qualidade das respostas do Mentor
+### Notas
+- Zero alterações no banco de dados
+- Todas as mudanças são puramente visuais e de UX
+- Mantém o design system Creme/Bento existente, apenas refina a hierarquia e densidade
 
