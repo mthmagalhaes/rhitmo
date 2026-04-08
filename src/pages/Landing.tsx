@@ -412,7 +412,7 @@ const Landing = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Link to="/auth">
+            <Link to="/enterprise">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground min-h-[44px]">
                 {t.enterpriseNav}
               </Button>
