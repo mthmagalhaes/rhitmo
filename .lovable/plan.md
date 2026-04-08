@@ -1,66 +1,51 @@
 
 
-## Melhorias de Design — 3 Dashboards do Rhitmo
+## Protótipo: Dashboard do Líder — Redesign inspirado no 15five
 
-### Diagnóstico Visual (baseado nos screenshots em 67%)
+### Conceito
 
-**Líder (Tela 1)**: Layout funcional mas o card "Próximas 1:1s" domina 70% da viewport com background amarelo/creme que compete visualmente com o branding. Os cards de membros estão bem com proporção 3:4, mas há muito espaço vazio entre a seção de meetings e os membros.
+Criar uma nova página `/dashboard-v2` como protótipo isolado, sem alterar o dashboard atual. Usa a **disposição e elementos do 15five** (hero strip contextual, seções com overline labels, cards com padding generoso, tipografia editorial) mas mantém a **paleta Rhitmo** (roxo #7C3AED, creme #F5F3EE, foreground #1A1035).
 
-**HR Admin (Tela 2)**: O banner de upgrade amarelo é visualmente agressivo e quebra a estética Creme/Bento. O empty state do calendário ocupa espaço excessivo. O Setup Checklist fica abaixo da dobra (below the fold), perdendo visibilidade.
+### O que muda visualmente vs. o dashboard atual
 
-**Liderado (Tela 3)**: A "Visão Geral" é a mais fraca — o card "Resumo" é uma lista estática de links disfarçados de métricas, e "Próximas Ações" são 3 CTAs hardcoded sem contexto real. Muito espaço vazio abaixo. Não há sensação de progresso ou momentum.
+| Aspecto | Atual | Novo (15five-inspired) |
+|---------|-------|----------------------|
+| Header | Título + botões inline, denso | Hero strip com saudação editorial (font-serif), subtítulo contextual, CTAs pill |
+| Layout | Bento Grid 8/4 fixo | Seções empilhadas full-width com overline labels ("SEU TIME", "PRÓXIMAS 1:1s") |
+| Cards de membros | Grid 4 colunas, aspect-ratio 3:4 | Cards horizontais mais largos (2 colunas), com avatar + métricas inline |
+| Meetings | Card único grande | Seção compacta com lista horizontal de "chips" de reunião |
+| Activity | Card lateral pequeno | Seção "Atividade Recente" com timeline vertical sutil |
+| Tipografia | Inter apenas | Lora (serif) para títulos de seção, Inter para body — editorial feel |
+| Spacing | gap-6, padding p-6 | Padding mais generoso (p-8/p-10), spacing entre seções 48-64px |
+| Botões | rounded-full com shadow | Pill buttons (rounded-full, h-12, px-8) — mais respiração |
 
----
+### Alterações
 
-### Alterações Propostas
+#### 1. Nova página `src/pages/DashboardV2.tsx`
+Página protótipo completa que reutiliza os mesmos hooks e queries do `Index.tsx` (workspace, teams, members, meetings) mas com layout totalmente novo:
 
-#### 1. Dashboard do Líder — Densidade informacional + cor
+- **Hero Strip**: Fundo `bg-accent` (tint roxo leve), saudação com hora do dia ("Boa tarde, Matheus"), micro-métricas contextuais (N liderados, N reuniões hoje, N notas esta semana), CTAs "Nova Nota" e "Novo Membro" como pill buttons
+- **Seção "Próximas 1:1s"**: Overline label uppercase, chips horizontais de reunião (badge de tempo + nome + link Meet), max 4 visíveis
+- **Seção "Seu Time"**: Overline label, grid 2 colunas de cards horizontais — cada card com avatar, nome, cargo, health dot, última nota, contagem de feedbacks. Hover com lift sutil
+- **Seção "Atividade"**: Timeline vertical com nudges e syncs, empty state com ícone sutil
+- **Setup Checklist**: Se incompleto, aparece como banner hero no topo com progress bar
 
-| Arquivo | Alteração |
-|---------|-----------|
-| `UpcomingMeetingsCard.tsx` | Remover background amarelo/creme. Usar `bg-card` com shadow padrão Bento. Limitar lista a 3 reuniões visíveis + "Ver mais N" colapsável. Reduz altura em ~40%. |
-| `Index.tsx` | Adicionar um "greeting strip" no topo do Bento Grid: saudação contextual ("Boa tarde, Matheus") + micro-métricas inline (ex: "3 reuniões amanhã · 2 notas esta semana · 1 membro precisa de atenção"). Ocupa 1 linha, dá contexto imediato. |
-| `ActivityPreview.tsx` | Se não há atividade recente, mostrar um micro empty state com ícone sutil em vez de card vazio. |
+#### 2. Rota temporária em `App.tsx`
+Adicionar rota `/dashboard-v2` apontando para `DashboardV2` — permite comparar lado a lado sem quebrar nada.
 
-#### 2. Dashboard HR Admin — Hierarquia e banner
+#### 3. Não altera nenhum componente existente
+Todos os componentes (UpcomingMeetingsCard, TeamMemberCard, etc.) ficam intactos. O protótipo reimplementa a UI inline para máxima liberdade visual.
 
-| Arquivo | Alteração |
-|---------|-----------|
-| `UpgradeBanner.tsx` | Redesign do banner: trocar amarelo por gradiente sutil `primary/5 → primary/10` com borda `primary/20`. Mais discreto e alinhado com a paleta Creme. |
-| `Index.tsx` (seção HR) | Quando Setup Checklist existe, posicioná-lo ACIMA do Bento Grid (antes das meetings), não abaixo. É a ação mais importante para um novo user. |
-| `SetupChecklist.tsx` | Adicionar uma progress bar visual no topo do checklist (ex: "2/5 concluídos") com animação de preenchimento, tornando-o mais motivacional. |
+### Arquivos
 
-#### 3. Dashboard do Liderado — De estático para dinâmico
-
-| Arquivo | Alteração |
-|---------|-----------|
-| `DirectReportDashboard.tsx` (Visão Geral) | Substituir o card "Resumo" por um **"Pulse Card"** com dados reais: último feedback recebido (data + tipo positivo/construtivo), progresso do PDI (X/Y itens concluídos com mini progress bar), e dias desde a última 1:1. Substitui os badges "Atualizar"/"Novo" por métricas reais. |
-| `DirectReportDashboard.tsx` (Visão Geral) | Substituir "Próximas Ações" hardcoded por ações contextuais: se tem review não lida → "Leia sua avaliação"; se PDI tem item vencido → "Item X vence em 2 dias"; se não fez Rhitmo Sync → "Complete seu perfil". Quando tudo está em dia, mostrar mensagem positiva ("Tudo em dia! 🎉"). |
-| `DirectReportDashboard.tsx` (Header) | Adicionar um subtítulo contextual abaixo de "Olá, Matheus!" com a última ação: "Último feedback recebido há 3 dias" ou "PDI 60% concluído". Dá sensação de continuidade. |
-
-#### 4. Ajustes globais (afetam os 3 dashboards)
-
-| Arquivo | Alteração |
-|---------|-----------|
-| `TeamMemberCard.tsx` | Adicionar um micro indicador de "invite pending" mais visível (ícone de envelope pulsando no canto, em vez de texto). |
-| `AppSidebar.tsx` | No estado colapsado, garantir que o logo Rhitmo tenha padding adequado. Nos screenshots o logo fica muito colado ao topo. |
-
----
-
-### Arquivos modificados
-
-| Arquivo | Tipo |
+| Arquivo | Ação |
 |---------|------|
-| `src/components/dashboard/UpcomingMeetingsCard.tsx` | Edit — remover bg amarelo, limitar a 3 items |
-| `src/components/billing/UpgradeBanner.tsx` | Edit — redesign com paleta Creme |
-| `src/components/SetupChecklist.tsx` | Edit — mover para cima + progress bar |
-| `src/components/dashboard/DirectReportDashboard.tsx` | Edit — Pulse Card + ações contextuais |
-| `src/pages/Index.tsx` | Edit — greeting strip + reordenar checklist |
-| `src/components/TeamMemberCard.tsx` | Edit — indicador de invite |
-| `src/components/AppSidebar.tsx` | Edit — padding do logo |
+| `src/pages/DashboardV2.tsx` | Novo — protótipo completo |
+| `src/App.tsx` | Adicionar rota `/dashboard-v2` |
 
 ### Notas
 - Zero alterações no banco de dados
-- Todas as mudanças são puramente visuais e de UX
-- Mantém o design system Creme/Bento existente, apenas refina a hierarquia e densidade
+- Zero alterações em componentes existentes
+- Mesmos dados reais (queries Supabase idênticas)
+- Após aprovação visual, migraremos o design para o `Index.tsx` principal
 
