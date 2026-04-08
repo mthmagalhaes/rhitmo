@@ -326,10 +326,7 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
   useEffect(() => {
     if (selectedReview && !selectedReview.member_viewed_at) {
       supabase
-        .from('performance_reviews')
-        .update({ member_viewed_at: new Date().toISOString() } as any)
-        .eq('id', selectedReview.id)
-        .is('member_viewed_at', null)
+        .rpc('member_view_review', { p_review_id: selectedReview.id })
         .then(() => queryClient.invalidateQueries({ queryKey: ['shared-reviews', linkedMember.id] }));
     }
   }, [selectedReview?.id]);
