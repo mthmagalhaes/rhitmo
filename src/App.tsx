@@ -88,12 +88,8 @@ const App = () => (
               </DirectReportGuard>
             } />
             
-            {/* Dashboard V2 prototype */}
-            <Route path="/dashboard-v2" element={
-              <DirectReportGuard>
-                <AppLayout><DashboardV2 /></AppLayout>
-              </DirectReportGuard>
-            } />
+
+
 
             {/* Slack OAuth connect */}
             <Route path="/slack/connect" element={<SlackConnect />} />
