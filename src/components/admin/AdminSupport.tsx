@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, Edit, Trash2, Building, User, Loader2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Search, Edit, Trash2, Building, User, Loader2, ArrowRightLeft, KeyRound } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -42,7 +43,32 @@ export const AdminSupport = () => {
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [editForm, setEditForm] = useState<any>({});
   const [loading, setLoading] = useState(false);
+  const [resettingEmail, setResettingEmail] = useState<string | null>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Fetch all teams for the move member feature
+  const { data: allTeams } = useQuery({
+    queryKey: ['admin-all-teams'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('teams')
+        .select('id, name, workspace_id, workspaces(name, owner_id)')
+        .order('name');
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch users for password reset
+  const { data: allUsers } = useQuery({
+    queryKey: ['admin-users-metadata'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_all_users_with_metadata');
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const { data: searchResults, isLoading, refetch } = useQuery({
     queryKey: ['admin-search', searchTerm],
@@ -57,7 +83,7 @@ export const AdminSupport = () => {
           .limit(10),
         supabase
           .from('team_members')
-          .select('*, teams(name, workspace_id)')
+          .select('*, teams(id, name, workspace_id)')
           .or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
           .limit(10),
       ]);
@@ -85,24 +111,34 @@ export const AdminSupport = () => {
           .eq('id', editForm.id);
         if (error) throw error;
       } else if (editDialog.type === 'member') {
+        const updateData: any = {
+          name: editForm.name,
+          email: editForm.email,
+          role: editForm.role,
+        };
+        
+        // If team_id changed, move the member
+        if (editForm.team_id && editForm.team_id !== editDialog.data?.team_id) {
+          updateData.team_id = editForm.team_id;
+        }
+
         const { error } = await supabase
           .from('team_members')
-          .update({
-            name: editForm.name,
-            email: editForm.email,
-            role: editForm.role,
-          })
+          .update(updateData)
           .eq('id', editForm.id);
         if (error) throw error;
       }
 
       toast({
         title: "Alterações salvas",
-        description: "Os dados foram atualizados com sucesso.",
+        description: editDialog.type === 'member' && editForm.team_id !== editDialog.data?.team_id 
+          ? "Membro movido para o novo time com sucesso."
+          : "Os dados foram atualizados com sucesso.",
       });
 
       setEditDialog({ open: false, type: null, data: null });
       refetch();
+      queryClient.invalidateQueries({ queryKey: ['admin-all-teams'] });
     } catch (error: any) {
       console.error('Error saving:', error);
       toast({
@@ -161,11 +197,46 @@ export const AdminSupport = () => {
     }
   };
 
+  const handlePasswordReset = async (email: string) => {
+    setResettingEmail(email);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-reset-password', {
+        body: { email },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({
+        title: "Email de reset enviado",
+        description: `Link de recuperação enviado para ${email}.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao enviar reset",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setResettingEmail(null);
+    }
+  };
+
+  // Group teams by workspace for better UX
+  const teamsByWorkspace = allTeams?.reduce((acc: Record<string, { wsName: string; teams: typeof allTeams }>, team: any) => {
+    const wsId = team.workspace_id;
+    const wsName = team.workspaces?.name || 'Desconhecido';
+    if (!acc[wsId]) {
+      acc[wsId] = { wsName, teams: [] };
+    }
+    acc[wsId].teams.push(team);
+    return acc;
+  }, {} as Record<string, any>) || {};
+
   return (
     <div className="p-8 space-y-8">
       <div>
         <h1 className="text-3xl font-bold">Suporte & Edição</h1>
-        <p className="text-muted-foreground">Buscar e editar registros</p>
+        <p className="text-muted-foreground">Buscar, editar registros e mover membros entre times</p>
       </div>
 
       <Card>
@@ -177,7 +248,7 @@ export const AdminSupport = () => {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar workspaces ou membros..."
+                placeholder="Buscar workspaces, membros ou emails..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9"
@@ -242,12 +313,36 @@ export const AdminSupport = () => {
                     {searchResults.members.map((member: any) => (
                       <Card key={member.id}>
                         <CardContent className="flex items-center justify-between p-4">
-                          <div>
+                          <div className="space-y-1">
                             <p className="font-medium">{member.name}</p>
                             <p className="text-sm text-muted-foreground">{member.email || 'Sem email'}</p>
-                            <Badge variant="outline" className="mt-1">{member.role}</Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline">{member.role}</Badge>
+                              {member.teams && (
+                                <Badge variant="secondary" className="text-xs">
+                                  <ArrowRightLeft className="h-3 w-3 mr-1" />
+                                  {(member.teams as any).name}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                           <div className="flex gap-2">
+                            {member.email && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handlePasswordReset(member.email)}
+                                disabled={resettingEmail === member.email}
+                                title="Enviar reset de senha"
+                              >
+                                {resettingEmail === member.email ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <KeyRound className="h-4 w-4 mr-2" />
+                                )}
+                                Reset Senha
+                              </Button>
+                            )}
                             <Button
                               size="sm"
                               variant="outline"
@@ -280,13 +375,54 @@ export const AdminSupport = () => {
         </CardContent>
       </Card>
 
+      {/* Password Reset Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <KeyRound className="h-5 w-5" />
+            Reset de Senha
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Busque um membro acima para enviar um link de recuperação de senha, ou use a busca universal para encontrar o usuário desejado.
+          </p>
+          {allUsers && allUsers.length > 0 && (
+            <div className="space-y-2">
+              {allUsers.slice(0, 10).map((u: any) => (
+                <div key={u.user_id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-accent/50">
+                  <div>
+                    <span className="font-medium text-sm">{u.full_name || 'Sem nome'}</span>
+                    <span className="text-muted-foreground text-sm ml-2">{u.email}</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handlePasswordReset(u.email)}
+                    disabled={resettingEmail === u.email}
+                  >
+                    {resettingEmail === u.email ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <KeyRound className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Edit Dialog */}
       <Dialog open={editDialog.open} onOpenChange={(open) => setEditDialog({ ...editDialog, open })}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Editar {editDialog.type === 'workspace' ? 'Workspace' : 'Membro'}</DialogTitle>
             <DialogDescription>
-              Faça as alterações necessárias
+              {editDialog.type === 'member' 
+                ? 'Edite os dados do membro. Para mover para outro time, altere o campo "Time".'
+                : 'Faça as alterações necessárias'}
             </DialogDescription>
           </DialogHeader>
 
@@ -328,6 +464,34 @@ export const AdminSupport = () => {
                     value={editForm.role || ''}
                     onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
                   />
+                </div>
+                <div>
+                  <Label htmlFor="team" className="flex items-center gap-2">
+                    <ArrowRightLeft className="h-4 w-4" />
+                    Mover para Time
+                  </Label>
+                  <Select
+                    value={editForm.team_id || ''}
+                    onValueChange={(value) => setEditForm({ ...editForm, team_id: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecionar time..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(teamsByWorkspace).map(([wsId, wsData]: [string, any]) => (
+                        wsData.teams.map((team: any) => (
+                          <SelectItem key={team.id} value={team.id}>
+                            {wsData.wsName} → {team.name}
+                          </SelectItem>
+                        ))
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {editForm.team_id && editForm.team_id !== editDialog.data?.team_id && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      ⚠️ O membro será movido para outro time/líder ao salvar.
+                    </p>
+                  )}
                 </div>
               </>
             )}

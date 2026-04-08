@@ -126,6 +126,30 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
+        {/* Admin menu — show in HR context for super admins */}
+        {isInHRContext && isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Administração</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Admin">
+                    <NavLink 
+                      to="/admin" 
+                      end
+                      className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
+                      activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
+                    >
+                      <ShieldCheck className="h-5 w-5" />
+                      <span>Admin</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
         {/* Standard menu — show when NOT in HR context */}
         {!isInHRContext && (
           <SidebarGroup>
