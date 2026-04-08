@@ -5,7 +5,7 @@ import { RhitmoLogo } from "@/components/RhitmoLogo";
 import { RhythmWave } from "@/components/RhythmWave";
 
 import { useAuth } from "@/hooks/useAuth";
-import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X, Check, Lock, Moon, Sun, Globe } from "lucide-react";
+import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X, Check, Lock, Moon, Sun, Globe, Building } from "lucide-react";
 import analyticsScreenshot from "@/assets/analytics-screenshot.png";
 import heroLeaderFlow from "@/assets/hero-leader-flow.png";
 import heroDuoFeedback from "@/assets/hero-duo-feedback.png";
@@ -114,6 +114,21 @@ const translations = {
     footerPrivacy: "Política de Privacidade",
     launchBadge: "Preço de Lançamento",
     launchDisclaimer: "Preço de lançamento garantido enquanto sua assinatura estiver ativa.",
+    // Enterprise
+    enterpriseNav: "Enterprise",
+    enterpriseSubtitle: "Para empresas estruturadas com 100+ colaboradores que querem IA nativa de verdade.",
+    enterprisePrice: "A partir de R$15",
+    enterprisePer: "/colaborador/mês",
+    enterpriseNote: "Mínimo 100 colaboradores · contrato anual",
+    enterpriseCTA: "Falar com Vendas",
+    enterpriseFeatures: [
+      "Tudo do Business",
+      "SSO e API personalizada",
+      "CSM dedicado",
+      "SLA garantido",
+      "Onboarding white-glove",
+      "Integrações enterprise (SAP, TOTVS)",
+    ],
   },
   en: {
     signIn: "Sign in",
