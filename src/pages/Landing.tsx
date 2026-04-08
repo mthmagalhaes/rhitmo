@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { RhitmoLogo } from "@/components/RhitmoLogo";
+import { RhythmWave } from "@/components/RhythmWave";
 
 import { useAuth } from "@/hooks/useAuth";
 import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X, Check, Lock, Moon, Sun, Globe } from "lucide-react";
@@ -449,8 +450,11 @@ const Landing = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="bg-gradient-to-b from-background to-muted/30">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 py-20 lg:py-28">
+      <section className="relative bg-gradient-to-b from-background to-muted/30 overflow-hidden">
+        <div className="absolute bottom-0 left-0 right-0">
+          <RhythmWave variant="hero" height={140} className="opacity-80" />
+        </div>
+        <div className="relative max-w-7xl mx-auto px-6 lg:px-8 py-20 lg:py-28">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             
             {/* Coluna Esquerda - Texto */}
