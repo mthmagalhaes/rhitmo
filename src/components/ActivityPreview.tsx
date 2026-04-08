@@ -1,4 +1,4 @@
-import { Bell, AlertCircle, Lightbulb, User, ArrowRight } from 'lucide-react';
+import { Bell, AlertCircle, Lightbulb, User, ArrowRight, Inbox } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
@@ -59,7 +59,21 @@ export function ActivityPreview({ onOpenSheet }: ActivityPreviewProps) {
     refetchInterval: 30000,
   });
 
-  if (items.length === 0) return null;
+  // Empty state — subtle micro card
+  if (items.length === 0) {
+    return (
+      <div className="rounded-2xl bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Bell className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold tracking-tight text-foreground">Atividade recente</h3>
+        </div>
+        <div className="flex flex-col items-center text-center py-4">
+          <Inbox className="h-8 w-8 text-muted-foreground/25 mb-2" />
+          <p className="text-xs text-muted-foreground">Tudo em dia — sem alertas pendentes</p>
+        </div>
+      </div>
+    );
+  }
 
   const getIcon = (item: ActivityItem) => {
     if (item.type === 'sync') return <User className="h-3.5 w-3.5 text-primary" />;
@@ -75,7 +89,7 @@ export function ActivityPreview({ onOpenSheet }: ActivityPreviewProps) {
   };
 
   return (
-    <div className="mb-6 rounded-2xl bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] overflow-hidden">
+    <div className="rounded-2xl bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] overflow-hidden">
       <div className="flex items-center justify-between px-5 pt-4 pb-2">
         <div className="flex items-center gap-2">
           <Bell className="h-4 w-4 text-primary" />

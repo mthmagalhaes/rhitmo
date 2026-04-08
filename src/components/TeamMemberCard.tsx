@@ -52,20 +52,28 @@ export const TeamMemberCard = ({ member, teamName, onClick, onEdit, pendingInvit
       className="group relative cursor-pointer rounded-3xl border-0 bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:-translate-y-2 transition-all duration-300 aspect-[3/4] flex flex-col p-6"
       onClick={onClick}
     >
-      {/* Top: Edit button */}
-      {onEdit && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute top-4 right-4 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit();
-          }}
-        >
-          <Settings className="h-4 w-4" />
-        </Button>
-      )}
+      {/* Top-right: Edit + Pending invite indicator */}
+      <div className="absolute top-4 right-4 flex items-center gap-1.5">
+        {!(member as any).linked_user_id && pendingInvite && pendingInvite.status === 'sent' && (
+          <span className="relative flex h-6 w-6 items-center justify-center" title={pendingInvite.member_has_account ? 'Aguardando conexão' : 'Aguardando cadastro'}>
+            <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400/30 animate-ping" />
+            <MessageSquare className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 relative" />
+          </span>
+        )}
+        {onEdit && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
 
       {/* Avatar + Info */}
       <div className="flex-1 flex flex-col items-center text-center pt-2">
