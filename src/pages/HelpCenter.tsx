@@ -1,15 +1,17 @@
 import { useState, useMemo } from 'react';
 import {
-  BookOpen, Rocket, Users, Sparkles, FileText, Play, Search,
+  BookOpen, Rocket, Users, Sparkles, FileText, Search, Check,
   NotebookPen, MessageSquare, BarChart3, CalendarCheck, Award,
   UserCircle, Target, Settings, LayoutDashboard, Building2,
   Puzzle, ShieldCheck, Lightbulb, Mic, ClipboardPaste, Download,
-  Slack, Calendar, FileAudio
+  Slack, Calendar, FileAudio, Compass, Eye, Palette
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { RhythmWave } from '@/components/RhythmWave';
 import { WaveDivider } from '@/components/WaveDivider';
@@ -390,30 +392,40 @@ const HelpCenter = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* Video Tour */}
-          <div className="mt-8 space-y-3">
-            <div className="flex items-center gap-2">
-              <Play className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-semibold">Comece por aqui: Tour Completo (1:37)</h2>
-            </div>
-            <div className="aspect-video w-full rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.06)] overflow-hidden border">
-              <iframe
-                className="w-full h-full"
-                src="https://www.youtube.com/embed/bRQiwrBGlsc"
-                title="Tour Completo do Rhitmo"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-          </div>
-
-          <TabsContent value="leader" className="mt-8">
+          <TabsContent value="leader" className="mt-8 space-y-8">
+            <QuickStartCard
+              title="Quick Start: Líder"
+              steps={[
+                { label: 'Crie seu Workspace e adicione seu time', icon: Users },
+                { label: 'Adicione seu primeiro liderado', icon: UserCircle },
+                { label: 'Registre uma nota no Diário de Bordo', icon: NotebookPen },
+                { label: 'Peça orientação ao Mentor IA', icon: MessageSquare },
+              ]}
+            />
             <FeatureGrid cards={filteredLeader} />
           </TabsContent>
-          <TabsContent value="member" className="mt-8">
+          <TabsContent value="member" className="mt-8 space-y-8">
+            <QuickStartCard
+              title="Quick Start: Liderado"
+              steps={[
+                { label: 'Complete seu Rhitmo Sync', icon: Compass },
+                { label: 'Explore o Career Compass no seu painel', icon: Target },
+                { label: 'Visualize suas avaliações recebidas', icon: Eye },
+                { label: 'Configure seu perfil e preferências', icon: Settings },
+              ]}
+            />
             <FeatureGrid cards={filteredMember} />
           </TabsContent>
-          <TabsContent value="hr" className="mt-8">
+          <TabsContent value="hr" className="mt-8 space-y-8">
+            <QuickStartCard
+              title="Quick Start: RH Admin"
+              steps={[
+                { label: 'Acesse o Painel RH para visão geral', icon: LayoutDashboard },
+                { label: 'Gerencie times e líderes', icon: Users },
+                { label: 'Configure o Framework de Competências', icon: Palette },
+                { label: 'Explore o Analytics organizacional', icon: BarChart3 },
+              ]}
+            />
             <FeatureGrid cards={filteredHR} />
           </TabsContent>
         </Tabs>
@@ -490,6 +502,44 @@ const HelpCenter = () => {
     </div>
   );
 };
+
+interface QuickStartStep {
+  label: string;
+  icon: React.ElementType;
+}
+
+function QuickStartCard({ title, steps }: { title: string; steps: QuickStartStep[] }) {
+  return (
+    <Card className="rounded-2xl border-primary/20 bg-primary/5">
+      <CardContent className="p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <Rocket className="h-5 w-5 text-primary" />
+          <h2 className="font-semibold text-base">{title}</h2>
+        </div>
+        <div className="space-y-2">
+          {steps.map((step, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-3 p-3 rounded-xl bg-background border border-border"
+            >
+              <Checkbox checked={false} disabled className="h-5 w-5 shrink-0" />
+              <div className="p-1.5 rounded-lg bg-primary/10 shrink-0">
+                <step.icon className="h-4 w-4 text-primary" />
+              </div>
+              <span className="text-sm text-foreground">{step.label}</span>
+            </div>
+          ))}
+        </div>
+        <div>
+          <Progress value={0} className="h-2" />
+          <p className="text-xs text-muted-foreground text-center mt-2">
+            0 de {steps.length} etapas concluídas
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 function FeatureGrid({ cards }: { cards: FeatureCard[] }) {
   if (cards.length === 0) {
