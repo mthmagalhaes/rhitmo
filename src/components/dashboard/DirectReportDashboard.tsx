@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FeedbackTimeline } from '@/components/FeedbackTimeline';
-import { Home, Compass, FileText, User, Zap, CheckCircle, ChevronRight, Sparkles, Loader2, Download, Bell, Sprout, Plus, CheckCircle2, MessageCircle } from 'lucide-react';
+import { Home, Compass, FileText, User, Zap, CheckCircle, ChevronRight, Sparkles, Loader2, Download, Bell, Sprout, Plus, CheckCircle2, MessageCircle, Camera } from 'lucide-react';
 import { NewPDIDialog } from '@/components/NewPDIDialog';
 import { cn } from '@/lib/utils';
 import SkillsMapCard from './SkillsMapCard';
@@ -20,7 +20,7 @@ import ReactMarkdown from 'react-markdown';
 import { MentorChat } from '@/components/MentorChat';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
-
+import { AvatarLibrary } from '@/components/avatar/AvatarLibrary';
 
 interface LinkedMemberData {
   id: string;
@@ -159,6 +159,7 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
   const [showPDIDialog, setShowPDIDialog] = useState(false);
   const [meuRhitmoOpen, setMeuRhitmoOpen] = useState(false);
   const [meuRhitmoInitialPrompt, setMeuRhitmoInitialPrompt] = useState<string | undefined>();
+  const [avatarLibraryOpen, setAvatarLibraryOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const [syncForm, setSyncForm] = useState({
@@ -437,25 +438,32 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
   };
 
   return (
-    <div className="min-h-screen bg-muted/30 pb-20">
-      {/* Header */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Olá, {displayName}! 👋</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {feedbacks.length > 0 
-              ? `${feedbacks.length} feedback${feedbacks.length > 1 ? 's' : ''} compartilhado${feedbacks.length > 1 ? 's' : ''} · ${devItems.length > 0 ? `PDI ${Math.round(((devItems as any[]).filter((i: any) => i.status === 'completed').length / devItems.length) * 100)}% concluído` : linkedMember.role}` 
-              : `Painel do Colaborador · ${linkedMember.role}`}
-          </p>
+    <div className="min-h-screen bg-background pb-20">
+      {/* ═══ HERO STRIP ═══ */}
+      <div className="bg-primary/5 border-b border-border/50">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary mb-3">Meu Painel</p>
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground font-serif">
+                Olá, {displayName}! 👋
+              </h1>
+              <p className="text-sm text-muted-foreground mt-2">
+                {feedbacks.length > 0
+                  ? `${feedbacks.length} feedback${feedbacks.length > 1 ? 's' : ''} compartilhado${feedbacks.length > 1 ? 's' : ''} · ${devItems.length > 0 ? `PDI ${Math.round(((devItems as any[]).filter((i: any) => i.status === 'completed').length / devItems.length) * 100)}% concluído` : linkedMember.role}`
+                  : `Painel do Colaborador · ${linkedMember.role}`}
+              </p>
+            </div>
+            <Button onClick={() => setMeuRhitmoOpen(true)} variant="outline" className="gap-2 rounded-full h-11 px-6">
+              <Sparkles className="h-4 w-4" />
+              Meu Rhitmo
+            </Button>
+          </div>
         </div>
-        <Button onClick={() => setMeuRhitmoOpen(true)} variant="outline" className="gap-2">
-          <Sparkles className="h-4 w-4" />
-          Meu Rhitmo
-        </Button>
       </div>
 
       {/* Tabs */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 pb-8">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="border-b border-border bg-background sticky top-0 z-10 -mx-6 px-6 mb-6">
             <TabsList className="bg-transparent p-0 h-auto gap-1">
@@ -870,7 +878,35 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
 
           {/* ═══ TAB 4: Meu Perfil ═══ */}
           <TabsContent value="perfil">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+            {/* Avatar Section */}
+            <div className="mb-6 mt-6">
+              <Card className="p-6 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
+                <div className="flex items-center gap-6">
+                  <div className="relative group">
+                    <img
+                      src={(linkedMember as any).avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${linkedMember.name}`}
+                      alt={linkedMember.name}
+                      className="h-20 w-20 rounded-2xl object-cover border-2 border-border shadow-sm"
+                    />
+                    <button
+                      onClick={() => setAvatarLibraryOpen(true)}
+                      className="absolute inset-0 rounded-2xl bg-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                    >
+                      <Camera className="h-5 w-5 text-background" />
+                    </button>
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold tracking-tight text-foreground">{displayName}</h2>
+                    <p className="text-sm text-muted-foreground">{linkedMember.role}</p>
+                    <Button variant="outline" size="sm" className="mt-2 gap-1.5 rounded-full text-xs" onClick={() => setAvatarLibraryOpen(true)}>
+                      <Camera className="h-3.5 w-3.5" />
+                      Trocar Avatar
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Informações da função */}
               <Card className="p-6 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
                 <div className="flex items-center justify-between mb-4">
@@ -1188,6 +1224,12 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
           initialPrompt={meuRhitmoInitialPrompt}
         />
       )}
+      <AvatarLibrary
+        open={avatarLibraryOpen}
+        onOpenChange={setAvatarLibraryOpen}
+        memberId={linkedMember.id}
+        currentAvatar={(linkedMember as any).avatar}
+      />
     </div>
   );
 }
