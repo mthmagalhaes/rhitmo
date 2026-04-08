@@ -1,86 +1,110 @@
 
 
-## Checklist de Lançamento — Rhitmo
+## Mapeamento Completo de Emails — Rhitmo (Estado Atual)
 
-### Estado atual: ~85% pronto
+### Resumo
 
-O app está funcional e visualmente polido. Os gaps abaixo são os itens que separam o estado atual de um lançamento público confiável.
-
----
-
-### 1. Domínio customizado
-- Atualmente publicado em `rhitmo.lovable.app`
-- Para lançar profissionalmente: conectar `app.rhitmo.co` ou similar
-- Ação: **Project Settings → Domains → Add custom domain**
-
-### 2. Email transacional / verificação
-- Atualmente os emails de verificação e reset de senha usam o template padrão (sem branding Rhitmo)
-- Recomendação: configurar templates de email com a marca (logo, cores, footer legal)
-- Também verificar se o domínio de email está configurado (evitar ir para spam)
-
-### 3. Confirmação de email
-- Verificar se auto-confirm está desativado (usuários devem confirmar email antes de entrar)
-- Testar o fluxo completo: signup → email de verificação → confirmação → login
-
-### 4. Testes end-to-end dos fluxos críticos
-| Fluxo | O que testar |
-|-------|-------------|
-| Signup + verificação de email | Cria conta, recebe email, confirma, redireciona |
-| Google OAuth | Login, primeiro acesso cria workspace, redireciona |
-| Stripe checkout | Upgrade Pulse→Pro, webhook processa, limites atualizam |
-| Stripe webhook | `checkout.session.completed` cria subscription no DB |
-| Adicionar liderado + link | Convite por email, liderado faz signup, vê dashboard |
-| Gravação de reunião | Upload áudio → transcrição → análise AI |
-| Mentor Chat | Enviar mensagem, receber resposta AI com contexto |
-| Avaliação formal | Gerar rascunho AI, editar, compartilhar com liderado |
-| Dark mode | Todas as páginas + logo + waves adaptam |
-
-### 5. Landing page — vídeo demo
-- A seção "Veja Rhitmo em ação" existe mas precisa de um vídeo real (placeholder atualmente)
-- Gravar um Loom/demo de 2 min ou remover a seção temporariamente
-
-### 6. SEO e Open Graph
-- Verificar `index.html` tem meta tags OG (título, descrição, imagem para compartilhamento)
-- A imagem `rhitmo-social-twitter.png` pode ser usada como OG image
-
-### 7. Analytics / tracking
-- Configurar analytics básico (Google Analytics, Plausible, ou Posthog)
-- Sem isso, não terá visibilidade sobre tráfego e conversão
-
-### 8. Termos de Serviço e Privacidade
-- Já existem (`/terms-of-service`, `/privacy-policy`) — revisar se o conteúdo jurídico está atualizado e aprovado por advogado
-
-### 9. Rate limiting / abuse protection
-- Edge functions de AI (chat-mentor, analyze-feedback) devem ter proteção contra abuso
-- Verificar se os limites por plano (ex: 20 mensagens/mês no Pulse) estão sendo enforçados
-
-### 10. Backup e recuperação
-- A edge function `backup-data` existe — verificar se está rodando periodicamente
-- Configurar um cron ou trigger para backup automático
+Existem **6 fluxos de email** ativos, todos usando **Resend API diretamente** (via `RESEND_API_KEY`) + **1 fluxo via Supabase Auth API**. Nenhum usa o sistema nativo de email do Lovable ainda.
 
 ---
 
-### Prioridade de execução sugerida
+### Fluxo 1: Emails de Autenticação (Supabase Auth)
+| Item | Detalhe |
+|------|---------|
+| **Gatilho** | Signup, reset de senha, verificação de email |
+| **Remetente** | Template padrão Supabase (sem branding Rhitmo) |
+| **Destinatário** | Usuário que está se cadastrando/resetando senha |
+| **Edge Function** | Nenhuma — gerenciado internamente pelo Auth |
+| **Status** | Funcionando, mas sem branding |
+
+### Fluxo 2: Convite Rhitmo Sync (DISC)
+| Item | Detalhe |
+|------|---------|
+| **Gatilho** | Líder cadastra novo membro com checkbox "Enviar convite Sync" marcado |
+| **Edge Function** | `send-disc-invite` |
+| **Remetente** | `Rhitmo <noreply@rhitmo.co>` via Resend |
+| **Destinatário** | Email do liderado cadastrado |
+| **Conteúdo** | Link para preencher o formulário Rhitmo Sync (`/sync/{memberId}`) |
+| **Chamado de** | `NewMemberDialog.tsx` |
+
+### Fluxo 3: Notificação de Avaliação Compartilhada
+| Item | Detalhe |
+|------|---------|
+| **Gatilho** | Líder compartilha avaliação de desempenho com o liderado |
+| **Edge Function** | `notify-review-shared` |
+| **Remetente** | `Rhitmo <noreply@rhitmo.co>` via Resend |
+| **Destinatário** | Email do liderado (campo `email` em `team_members`) |
+| **Conteúdo** | Link para visualizar a avaliação compartilhada |
+| **Chamado de** | `FormalReviewSheet.tsx`, `ReviewViewDialog.tsx` |
+
+### Fluxo 4: Notificação de Avaliação Reconhecida
+| Item | Detalhe |
+|------|---------|
+| **Gatilho** | Liderado reconhece/confirma leitura da avaliação |
+| **Edge Function** | `notify-review-acknowledged` |
+| **Remetente** | `Rhitmo <noreply@rhitmo.co>` via Resend |
+| **Destinatário** | Email do **gestor** (owner do workspace) |
+| **Conteúdo** | Notifica o líder que o liderado leu e reconheceu a avaliação |
+
+### Fluxo 5: Notificação de Novo Lead (Admin)
+| Item | Detalhe |
+|------|---------|
+| **Gatilho** | Novo cadastro na lista de espera (waitlist) |
+| **Edge Function** | `notify-admin-new-lead` |
+| **Remetente** | `Rhitmo <noreply@rhitmo.co>` via Resend |
+| **Destinatário** | `matheus@rhitmo.co` (hardcoded) |
+| **Conteúdo** | Dados do lead + link para painel admin |
+| **Chamado de** | `WaitlistDialog.tsx` |
+
+### Fluxo 6: Convite Admin (Supabase Auth API)
+| Item | Detalhe |
+|------|---------|
+| **Gatilho** | Admin convida novo usuário via painel |
+| **Edge Function** | `admin-invite-user` |
+| **Método** | `supabase.auth.admin.inviteUserByEmail()` — usa email nativo do Supabase Auth |
+| **Destinatário** | Email do usuário convidado |
+| **Conteúdo** | Email de convite padrão Supabase (sem branding) |
+| **Chamado de** | `AdminAccess.tsx`, `AdminOverview.tsx` |
+
+### Fluxo 7: Convite via Slack (DM, não email)
+| Item | Detalhe |
+|------|---------|
+| **Gatilho** | Após cadastrar membro, fire-and-forget |
+| **Edge Function** | `invite-member-slack` |
+| **Canal** | DM no Slack (não é email) |
+| **Chamado de** | `NewMemberDialog.tsx`, `Index.tsx` |
+
+---
+
+### Diagrama de Fluxo
 
 ```text
-P0 (bloqueia lançamento)
-├── Testar fluxo Stripe end-to-end (checkout + webhook)
-├── Testar signup com verificação de email
-├── Verificar meta tags OG no index.html
-└── Conectar domínio customizado
+CADASTRO NA PLATAFORMA
+├── Signup (email/senha) ──→ [Supabase Auth] ──→ Email verificação (sem branding)
+├── Signup (Google OAuth) ──→ Sem email
+├── Convite Admin ──→ [admin-invite-user] ──→ Email convite Supabase (sem branding)
+└── Waitlist ──→ [notify-admin-new-lead] ──→ Email para matheus@ (Resend)
 
-P1 (lançar sem isso é ok, mas resolver em 1 semana)
-├── Templates de email com branding
-├── Vídeo demo ou remover seção
-├── Analytics/tracking
-└── Rate limiting nas edge functions AI
+GESTÃO DE EQUIPE
+├── Novo membro ──→ [send-disc-invite] ──→ Email Sync para liderado (Resend)
+└── Novo membro ──→ [invite-member-slack] ──→ DM Slack (não email)
 
-P2 (pós-lançamento)
-├── Backup automático periódico
-├── Revisão jurídica final dos termos
-└── Monitoramento de erros (Sentry ou similar)
+AVALIAÇÕES
+├── Compartilhar review ──→ [notify-review-shared] ──→ Email para liderado (Resend)
+└── Liderado reconhece ──→ [notify-review-acknowledged] ──→ Email para gestor (Resend)
 ```
 
-### Quer que eu implemente algum desses itens?
-Posso começar pelos P0 — configurar meta tags OG, testar o fluxo Stripe, ou preparar os templates de email branded.
+### O que migrar para o sistema de email Lovable
+
+Quando configurarmos o domínio, o plano seria:
+
+1. **Auth emails** (Fluxos 1 e 6): Migrar para templates branded via `auth-email-hook` — verificação, reset, convite admin
+2. **Transactional emails** (Fluxos 2-5): Migrar os 4 emails Resend para templates React Email via `send-transactional-email`, eliminando dependência do `RESEND_API_KEY`
+3. **URLs hardcoded**: Substituir `rhitmo.lovable.app` pelo domínio customizado em todos os templates
+
+### Emails que ainda NÃO existem (oportunidades)
+- Welcome email após primeiro login
+- Resumo semanal de atividades para o líder
+- Lembrete de 1:1 agendada (se integração calendar ativa)
+- Notificação quando PDI é atualizado
 
