@@ -442,7 +442,11 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 flex items-start justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Olá, {displayName}! 👋</h1>
-          <p className="text-sm text-muted-foreground mt-1">Painel do Colaborador · {linkedMember.role}</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {feedbacks.length > 0 
+              ? `${feedbacks.length} feedback${feedbacks.length > 1 ? 's' : ''} compartilhado${feedbacks.length > 1 ? 's' : ''} · ${devItems.length > 0 ? `PDI ${Math.round(((devItems as any[]).filter((i: any) => i.status === 'completed').length / devItems.length) * 100)}% concluído` : linkedMember.role}` 
+              : `Painel do Colaborador · ${linkedMember.role}`}
+          </p>
         </div>
         <Button onClick={() => setMeuRhitmoOpen(true)} variant="outline" className="gap-2">
           <Sparkles className="h-4 w-4" />
