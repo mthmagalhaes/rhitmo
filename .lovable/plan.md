@@ -90,7 +90,7 @@
 Sprint 1 (concluída):     Épico 1 (P0 bug) + Épico 4 (migração modelo) ✅
 Sprint 2 (concluída):     Épico 3 (embeddings) + Épico 2 (Slack Phase 2) ✅
 Sprint 3 (concluída):     Épico 5 (HR Analytics) ✅
-Sprint 4:                  Épico 6 (Marketplace)
+Sprint 4 (concluída):     Épico 6 (Marketplace) ✅
 ```
 
 ### Impacto em Custos
