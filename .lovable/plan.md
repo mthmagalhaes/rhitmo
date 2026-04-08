@@ -1,45 +1,60 @@
 
 
-## Mover abas do Liderado para o menu lateral
+## Análise de Riscos de Segurança
 
-### Contexto
-Hoje o liderado (`isUser`) vê apenas "Início" no sidebar e navega entre "Visão Geral", "Minha Carreira", "Feedbacks" e "Meu Perfil" via abas internas no `DirectReportDashboard.tsx`. Vamos transformar essas abas em rotas separadas no menu lateral, igualando a experiência dos líderes e HR Admins.
+Revisei os 7 findings do scan. Aqui está a priorização por impacto real:
 
-### Plano
+### ALTO RISCO — Corrigir agora
 
-**1. Criar rotas dedicadas para cada seção**
+| # | Finding | Risco real |
+|---|---------|-----------|
+| 1 | **submit_rhitmo_sync_v2 acessível por anon** | Qualquer pessoa pode envenenar o perfil comportamental de um liderado antes dele preencher. Dados de Rhitmo Sync falsos influenciam reviews e PDIs. |
+| 2 | **Edge Functions sem ownership check (generate-review, analyze-feedback)** | Qualquer usuário autenticado pode gerar review ou inserir feedback para membros de OUTRO workspace. Vazamento cross-tenant. |
+| 3 | **chat-attachments bucket público** | Qualquer pessoa na internet pode listar e baixar arquivos enviados no chat do mentor. Possível exposição de documentos sensíveis. |
 
-**Arquivo:** `src/App.tsx`
-- Adicionar rotas: `/dashboard` (Início), `/dashboard/carreira`, `/dashboard/feedbacks`, `/dashboard/perfil`
-- Todas protegidas pelo mesmo `DirectReportGuard` + `AppLayout`
-- Cada rota renderiza o `DirectReportDashboard` com uma prop `activeTab` diferente
+### MÉDIO RISCO — Corrigir em breve
 
-**2. Adicionar itens no sidebar para o liderado**
+| # | Finding | Risco real |
+|---|---------|-----------|
+| 4 | **Google OAuth state sem nonce** | Atacante pode injetar tokens do próprio Google Calendar na conta de outro usuário. Requer interceptação do redirect. |
+| 5 | **effective_user_id() sem LIMIT 1** | Se admin tiver 2+ registros em admin_impersonation, todas as queries RLS falham — denial of service para o admin. |
+| 6 | **meeting-recordings bucket público** | Gravações de reuniões 1:1 acessíveis via URL direta sem autenticação. |
 
-**Arquivo:** `src/components/AppSidebar.tsx`
-- Criar array `memberMenuItems` com:
-  - Início → `/dashboard` (icon: Home)
-  - Minha Carreira → `/dashboard/carreira` (icon: Compass)
-  - Feedbacks → `/dashboard/feedbacks` (icon: FileText)
-  - Meu Perfil → `/dashboard/perfil` (icon: User)
-- No bloco `!isInHRContext`, quando `isUser` é true, renderizar `memberMenuItems` em vez de `menuItems`
+### BAIXO RISCO — Aceitável por agora
 
-**3. Refatorar DirectReportDashboard para aceitar tab via prop/rota**
+| # | Finding | Risco real |
+|---|---------|-----------|
+| 7 | **HR Admin recording policy com condição quebrada** | Policy nunca concede acesso (falha silenciosa). Não é over-permissive, apenas non-functional. |
 
-**Arquivo:** `src/components/dashboard/DirectReportDashboard.tsx`
-- Aceitar prop `activeTab` (default: `'visao-geral'`)
-- Remover o `TabsList` visual (as tabs horizontais)
-- Manter o `Tabs` component com `value={activeTab}` controlado pela rota
-- Todo o conteúdo de cada `TabsContent` permanece intacto
+---
 
-### Arquivos afetados
+### Plano de correção (5 ações)
 
-| Arquivo | Ação |
-|---------|------|
-| `src/App.tsx` | Adicionar 3 novas rotas para carreira/feedbacks/perfil |
-| `src/components/AppSidebar.tsx` | Adicionar `memberMenuItems` para liderados |
-| `src/components/dashboard/DirectReportDashboard.tsx` | Receber `activeTab` via prop, ocultar TabsList |
+**1. Revogar anon de submit_rhitmo_sync_v2**
+- Migration: `REVOKE EXECUTE FROM anon, public; GRANT TO authenticated;`
+- Adicionar check `linked_user_id = auth.uid()` dentro da função
 
-### Resultado
-O liderado vê 4 itens no menu lateral (Início, Minha Carreira, Feedbacks, Meu Perfil) — mesma experiência visual dos outros perfis. Todas as funcionalidades existentes são preservadas.
+**2. Adicionar ownership check nas Edge Functions**
+- `generate-review`: verificar que o caller é owner do workspace do member
+- `analyze-feedback`: mesma verificação antes de usar service_role
+
+**3. Tornar chat-attachments privado**
+- Migration: `UPDATE storage.buckets SET public = false WHERE id = 'chat-attachments';`
+- Atualizar código para usar signed URLs
+
+**4. Tornar meeting-recordings privado**
+- Migration: `UPDATE storage.buckets SET public = false WHERE id = 'meeting-recordings';`
+- Atualizar upload-meeting e player para signed URLs
+
+**5. Adicionar LIMIT 1 em effective_user_id()**
+- Migration: recriar função com `ORDER BY created_at DESC LIMIT 1`
+
+### Sobre a Landing Page
+A landing page não é afetada — ela não usa autenticação nem acessa dados protegidos. Os riscos são todos no app autenticado.
+
+### Impacto estimado
+- 3 migrations SQL
+- 2 edge functions editadas
+- ~3 arquivos frontend (signed URLs)
+- Nenhuma mudança de UI/design
 
