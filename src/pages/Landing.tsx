@@ -5,7 +5,7 @@ import { RhitmoLogo } from "@/components/RhitmoLogo";
 import { RhythmWave } from "@/components/RhythmWave";
 
 import { useAuth } from "@/hooks/useAuth";
-import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X, Check, Lock, Moon, Sun, Globe, Building } from "lucide-react";
+import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X, Check, Lock, Moon, Sun, Globe, Building, Clock, AlertCircle, DollarSign, Shield, Mic, XCircle, CheckCircle2 } from "lucide-react";
 import analyticsScreenshot from "@/assets/analytics-screenshot.png";
 import heroLeaderFlow from "@/assets/hero-leader-flow.png";
 import heroDuoFeedback from "@/assets/hero-duo-feedback.png";
@@ -17,6 +17,20 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 // ============== TRANSLATIONS ==============
 
@@ -28,26 +42,78 @@ const translations = {
     toggleTheme: "Alternar tema",
     // Hero
     heroTitle: "Nunca mais escreva uma avaliação de desempenho do zero.",
-    heroSubtitle: "Com Rhitmo, líderes ganham tempo e organização para focar no que mais importa: desenvolver pessoas e construir uma cultura de resultados.",
+    heroSubtitle: "O que levava 4 horas agora leva 2 minutos. Rhitmo é o único parceiro AI-nativo de liderança que transforma suas conversas em reviews prontas.",
     seePlans: "Ver planos",
+    aiNativeBadge: "AI-Native desde o dia 1 — Não é um add-on",
+    // Before vs After
+    beforeAfterTitle: "A diferença é brutal",
+    withoutRhitmo: "Sem Rhitmo",
+    withRhitmo: "Com Rhitmo",
+    beforeItems: [
+      "⏱️ 4 horas escrevendo review do zero",
+      "🚫 Viés inconsciente não detectado",
+      "😰 Esquecer 70% das 1:1s do trimestre",
+      "💬 Feedback vago: \"precisa melhorar\"",
+      "📋 Planilhas desorganizadas",
+    ],
+    afterItems: [
+      "⚡ 30 segundos gerando draft completo",
+      "🎯 IA detecta e corrige viés em tempo real",
+      "🧠 Tudo registrado automaticamente",
+      "📊 Feedback específico e acionável",
+      "🤖 AI organiza tudo por você",
+    ],
     // Video
     videoTitle: "Veja Rhitmo em ação",
-    videoSubtitle: "Transforme a gestão do seu time em menos de 2 minutos.",
+    videoSubtitle: "Veja como uma review de 4 horas vira 2 minutos.",
+    // Comparison
+    comparisonTitle: "Por que Rhitmo é diferente",
+    compFeature: "Recurso",
+    compSpreadsheets: "Planilhas",
+    compQulture: "Qulture.Rocks",
+    compLattice: "Lattice",
+    compRhitmo: "Rhitmo",
+    compRows: [
+      { feature: "IA escreve review completa", spreadsheets: "no", qulture: "partial", lattice: "yes", rhitmo: "yes" },
+      { feature: "Detecção de viés em tempo real", spreadsheets: "no", qulture: "no", lattice: "partial", rhitmo: "yes" },
+      { feature: "Mentor IA conversacional", spreadsheets: "no", qulture: "no", lattice: "no", rhitmo: "yes" },
+      { feature: "Transcrição automática de 1:1s", spreadsheets: "no", qulture: "no", lattice: "no", rhitmo: "yes" },
+      { feature: "Self-serve (sem demo call)", spreadsheets: "yes", qulture: "no", lattice: "no", rhitmo: "yes" },
+      { feature: "Grátis até 3 liderados", spreadsheets: "yes", qulture: "no", lattice: "no", rhitmo: "yes" },
+    ],
+    compLegend: "✅ Completo · ~ Parcial · ❌ Não possui",
+    // Numbers
+    numbersTitle: "Números concretos",
+    numbersStat1: "4h → 2min",
+    numbersLabel1: "Tempo para escrever uma review",
+    numbersStat2: "38x",
+    numbersLabel2: "Mais feedback negativo para mulheres — Rhitmo detecta",
+    numbersStat3: "R$49/mês",
+    numbersLabel3: "vs. R$108/mês em outras plataformas para 1 líder + 5 liderados",
+    // USPs
+    uspsTitle: "O que só Rhitmo faz",
+    uspTitle1: "IA que escreve (não sugere)",
+    uspText1: "Outros dão \"sugestões\". Rhitmo escreve a review completa baseada em todas as suas 1:1s. Você só revisa.",
+    uspTitle2: "Detecção de viés em tempo real",
+    uspText2: "Enquanto você escreve, Rhitmo alerta sobre linguagem tendenciosa. Não é análise pós-review, é prevenção.",
+    uspTitle3: "Transcrição automática",
+    uspText3: "Grave suas 1:1s. Rhitmo transcreve, analisa e registra automaticamente. Você nunca mais esquece o que foi dito.",
+    uspCTA: "Ver Rhitmo em Ação",
     // Leaders
     forLeaders: "Para Líderes",
     leadersTitle: "Automatize o operacional. Lidere com confiança.",
-    leadersP1: "É como ter um livro de gestão escrito para você, que se adapta em tempo real às necessidades do seu time. O Rhitmo atua como sua plataforma de automação gerencial: ele transforma anotações soltas em pautas de reunião e avaliações de desempenho completas, eliminando horas de trabalho manual burocrático.",
-    leadersP2: "Eleve o impacto das suas 1:1s com insights automáticos que decifram o estilo de trabalho de cada liderado. Construa confiança através de uma comunicação livre de ruídos e simplifique a complexidade da cultura de alta performance.",
+    leadersP1: "Rhitmo transforma anotações soltas em avaliações de desempenho completas. Sem gastar 4 horas copiando e colando de planilhas. 30 segundos e você tem um draft pronto.",
+    leadersP2: "Insights automáticos decodificam o estilo de trabalho de cada liderado. Esqueceu a 1:1 de janeiro? A IA lembra. Tudo vira evidência na hora da review.",
     // Reports
     forReports: "Para Pessoas Lideradas",
     reportsTitle: "Avaliações justas. Carreira sem surpresas.",
-    reportsP1: "Chega de ter seu esforço esquecido ou subvalorizado. O Rhitmo elimina vieses e garante que todas as suas entregas sejam lembradas na hora da avaliação, baseando seu feedback em fatos reais, não apenas na memória recente do gestor.",
-    reportsP2: "Use essa clareza para crescer. Receba planos de desenvolvimento personalizados que mostram exatamente o caminho para o próximo nível, transformando a avaliação de desempenho em uma alavanca para a sua promoção.",
+    reportsP1: "Mulheres recebem 38x mais feedback negativo que homens. Rhitmo detecta viés e garante que todas as suas entregas sejam lembradas — baseado em fatos, não na memória recente do gestor.",
+    reportsP2: "Receba planos de desenvolvimento personalizados com o caminho exato para o próximo nível. A avaliação vira alavanca, não burocracia.",
     // HR
     forHR: "Para RH",
     hrTitle: "Escale a cultura. Elimine o gargalo operacional.",
-    hrP1: "Garanta avaliações objetivas e pontuais, sem precisar microgerenciar o processo. O Rhitmo devolve o tempo dos seus gestores ao automatizar a escrita das avaliações, entregando rascunhos estruturados e livres de viés.",
-    hrP2: "Vá além dos treinamentos de sala de aula. O Rhitmo oferece coaching personalizado e contínuo no fluxo de trabalho. Para o RH, isso significa visibilidade total: acesse métricas de saúde dos times e insights profundos para medir o ROI da sua cultura.",
+    hrP1: "Seus gestores gastam 4h por review. Com Rhitmo, são 2 minutos. Isso são centenas de horas devolvidas por ciclo de avaliação — sem perder qualidade.",
+    hrP2: "Coaching personalizado no fluxo de trabalho, visibilidade total de métricas de saúde dos times. ROI mensurável, não promessa de consultoria.",
     // Pricing
     pricingTitle: "Simples. Transparente.",
     pricingSubtitle: "Comece grátis. Evolua quando seu time crescer.",
@@ -129,28 +195,85 @@ const translations = {
       "Onboarding white-glove",
       "Integrações enterprise (SAP, TOTVS)",
     ],
+    // Footer comparisons
+    footerCompare: "Compare",
+    footerVsQulture: "Rhitmo vs. Qulture.Rocks",
+    footerVsFeedz: "Rhitmo vs. Feedz",
+    footerVsLattice: "Rhitmo vs. Lattice",
   },
   en: {
     signIn: "Sign in",
     getStarted: "Get started free",
     toggleTheme: "Toggle theme",
     heroTitle: "Never write a performance review from scratch again.",
-    heroSubtitle: "With Rhitmo, managers gain time and clarity to focus on what matters most: developing people and building a culture of results.",
+    heroSubtitle: "What took 4 hours now takes 2 minutes. Rhitmo is the only AI-native leadership partner that turns your conversations into ready-made reviews.",
     seePlans: "See plans",
+    aiNativeBadge: "AI-Native since day 1 — Not an add-on",
+    // Before vs After
+    beforeAfterTitle: "The difference is brutal",
+    withoutRhitmo: "Without Rhitmo",
+    withRhitmo: "With Rhitmo",
+    beforeItems: [
+      "⏱️ 4 hours writing reviews from scratch",
+      "🚫 Unconscious bias goes undetected",
+      "😰 Forgetting 70% of quarterly 1:1s",
+      "💬 Vague feedback: \"needs to improve\"",
+      "📋 Disorganized spreadsheets",
+    ],
+    afterItems: [
+      "⚡ 30 seconds to generate a full draft",
+      "🎯 AI detects and corrects bias in real time",
+      "🧠 Everything recorded automatically",
+      "📊 Specific, actionable feedback",
+      "🤖 AI organizes everything for you",
+    ],
     videoTitle: "See Rhitmo in action",
-    videoSubtitle: "Transform how you manage your team in under 2 minutes.",
+    videoSubtitle: "See how a 4-hour review becomes 2 minutes.",
+    // Comparison
+    comparisonTitle: "Why Rhitmo is different",
+    compFeature: "Feature",
+    compSpreadsheets: "Spreadsheets",
+    compQulture: "Qulture.Rocks",
+    compLattice: "Lattice",
+    compRhitmo: "Rhitmo",
+    compRows: [
+      { feature: "AI writes full review", spreadsheets: "no", qulture: "partial", lattice: "yes", rhitmo: "yes" },
+      { feature: "Real-time bias detection", spreadsheets: "no", qulture: "no", lattice: "partial", rhitmo: "yes" },
+      { feature: "Conversational AI Mentor", spreadsheets: "no", qulture: "no", lattice: "no", rhitmo: "yes" },
+      { feature: "Automatic 1:1 transcription", spreadsheets: "no", qulture: "no", lattice: "no", rhitmo: "yes" },
+      { feature: "Self-serve (no demo call)", spreadsheets: "yes", qulture: "no", lattice: "no", rhitmo: "yes" },
+      { feature: "Free up to 3 reports", spreadsheets: "yes", qulture: "no", lattice: "no", rhitmo: "yes" },
+    ],
+    compLegend: "✅ Complete · ~ Partial · ❌ Not available",
+    // Numbers
+    numbersTitle: "Concrete numbers",
+    numbersStat1: "4h → 2min",
+    numbersLabel1: "Time to write a performance review",
+    numbersStat2: "38x",
+    numbersLabel2: "More negative feedback for women — Rhitmo detects it",
+    numbersStat3: "R$49/mo",
+    numbersLabel3: "vs. R$108/mo on other platforms for 1 leader + 5 reports",
+    // USPs
+    uspsTitle: "What only Rhitmo does",
+    uspTitle1: "AI that writes (doesn't just suggest)",
+    uspText1: "Others give \"suggestions.\" Rhitmo writes the full review based on all your 1:1s. You just review it.",
+    uspTitle2: "Real-time bias detection",
+    uspText2: "As you write, Rhitmo flags biased language. It's not post-review analysis — it's prevention.",
+    uspTitle3: "Automatic transcription",
+    uspText3: "Record your 1:1s. Rhitmo transcribes, analyzes, and logs everything automatically. You never forget what was said.",
+    uspCTA: "See Rhitmo in Action",
     forLeaders: "For Leaders",
     leadersTitle: "Automate the busywork. Lead with confidence.",
-    leadersP1: "It's like having a management playbook written just for you — one that adapts in real time to your team's needs. Rhitmo acts as your leadership automation platform: it turns scattered notes into meeting agendas and complete performance reviews, eliminating hours of manual paperwork.",
-    leadersP2: "Elevate the impact of your 1:1s with automatic insights that decode each report's work style. Build trust through clear, noise-free communication and simplify the complexity of a high-performance culture.",
+    leadersP1: "Rhitmo turns scattered notes into complete performance reviews. No more spending 4 hours copy-pasting from spreadsheets. 30 seconds and you have a ready draft.",
+    leadersP2: "Automatic insights decode each report's work style. Forgot the January 1:1? The AI remembers. Everything becomes evidence at review time.",
     forReports: "For Direct Reports",
     reportsTitle: "Fair reviews. No career surprises.",
-    reportsP1: "No more having your effort forgotten or undervalued. Rhitmo eliminates bias and ensures all your contributions are remembered at review time, grounding feedback in real facts — not just your manager's recent memory.",
-    reportsP2: "Use that clarity to grow. Receive personalized development plans that show exactly the path to the next level, turning performance reviews into a lever for your promotion.",
+    reportsP1: "Women receive 38x more negative feedback than men. Rhitmo detects bias and ensures all your contributions are remembered — based on facts, not your manager's recent memory.",
+    reportsP2: "Get personalized development plans with the exact path to the next level. Reviews become a lever, not bureaucracy.",
     forHR: "For HR",
     hrTitle: "Scale the culture. Eliminate the operational bottleneck.",
-    hrP1: "Ensure objective, timely reviews without micromanaging the process. Rhitmo gives your managers their time back by automating review writing, delivering structured, bias-free drafts.",
-    hrP2: "Go beyond classroom trainings. Rhitmo offers personalized, continuous coaching in the flow of work. For HR, that means full visibility: access team health metrics and deep insights to measure your culture's ROI.",
+    hrP1: "Your managers spend 4h per review. With Rhitmo, it's 2 minutes. That's hundreds of hours returned per review cycle — without losing quality.",
+    hrP2: "Personalized coaching in the flow of work, full visibility into team health metrics. Measurable ROI, not consulting promises.",
     pricingTitle: "Simple. Transparent.",
     pricingSubtitle: "Start free. Scale when your team grows.",
     pulseSubtitle: "For the leader who wants to start tracking and developing their team.",
@@ -224,12 +347,22 @@ const translations = {
       "White-glove onboarding",
       "Enterprise integrations (SAP, TOTVS)",
     ],
+    footerCompare: "Compare",
+    footerVsQulture: "Rhitmo vs. Qulture.Rocks",
+    footerVsFeedz: "Rhitmo vs. Feedz",
+    footerVsLattice: "Rhitmo vs. Lattice",
   },
 };
 
 type Translations = typeof translations.pt;
 
 // ============== COMPONENTES DE VISUAL ==============
+
+const ComparisonIcon = ({ status }: { status: string }) => {
+  if (status === "yes") return <span className="text-primary font-bold">✅</span>;
+  if (status === "partial") return <span className="text-yellow-500">~</span>;
+  return <span className="text-muted-foreground">❌</span>;
+};
 
 // Browser Frame - Janela estilo macOS
 const BrowserFrame = ({
@@ -463,6 +596,13 @@ const Landing = () => {
             <SheetContent side="right" className="w-[280px] pt-12">
               <nav className="flex flex-col gap-4">
                 <SheetClose asChild>
+                  <Link to="/enterprise">
+                    <Button variant="outline" className="w-full justify-start min-h-[44px]">
+                      {t.enterpriseNav}
+                    </Button>
+                  </Link>
+                </SheetClose>
+                <SheetClose asChild>
                   <Link to="/auth">
                     <Button variant="outline" className="w-full justify-start min-h-[44px]">
                       {t.signIn}
@@ -509,6 +649,14 @@ const Landing = () => {
                   <a href="#pricing">{t.seePlans}</a>
                 </Button>
               </div>
+
+              {/* AI-Native Badge */}
+              <div className="pt-2">
+                <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary/15 to-pink-500/15 border border-primary/20 text-sm font-medium text-foreground">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  {t.aiNativeBadge}
+                </span>
+              </div>
             </div>
             
             {/* Coluna Direita - Imagem Premium */}
@@ -524,6 +672,41 @@ const Landing = () => {
               </div>
             </div>
             
+          </div>
+        </div>
+      </section>
+
+      {/* Seção: Antes vs. Depois */}
+      <section className="py-20 bg-background">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
+            {t.beforeAfterTitle}
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+            {/* Sem Rhitmo */}
+            <div className="bg-muted/50 rounded-2xl p-8 border space-y-5">
+              <div className="flex items-center gap-2">
+                <XCircle className="h-6 w-6 text-destructive" />
+                <h3 className="text-xl font-bold text-foreground">{t.withoutRhitmo}</h3>
+              </div>
+              <ul className="space-y-3">
+                {t.beforeItems.map((item) => (
+                  <li key={item} className="text-muted-foreground leading-relaxed">{item}</li>
+                ))}
+              </ul>
+            </div>
+            {/* Com Rhitmo */}
+            <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-2xl p-8 border border-primary/20 space-y-5">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-6 w-6 text-primary" />
+                <h3 className="text-xl font-bold text-foreground">{t.withRhitmo}</h3>
+              </div>
+              <ul className="space-y-3">
+                {t.afterItems.map((item) => (
+                  <li key={item} className="text-foreground leading-relaxed">{item}</li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
       </section>
@@ -555,8 +738,137 @@ const Landing = () => {
         </div>
       </section>
 
+      {/* Seção: Rhitmo vs. Outros */}
+      <section className="py-20 bg-background">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
+            {t.comparisonTitle}
+          </h2>
+
+          {/* Desktop: Table */}
+          <div className="hidden md:block max-w-4xl mx-auto">
+            <div className="rounded-2xl border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="font-bold text-foreground">{t.compFeature}</TableHead>
+                    <TableHead className="text-center">{t.compSpreadsheets}</TableHead>
+                    <TableHead className="text-center">{t.compQulture}</TableHead>
+                    <TableHead className="text-center">{t.compLattice}</TableHead>
+                    <TableHead className="text-center font-bold text-primary">{t.compRhitmo}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {t.compRows.map((row) => (
+                    <TableRow key={row.feature}>
+                      <TableCell className="font-medium text-foreground">{row.feature}</TableCell>
+                      <TableCell className="text-center"><ComparisonIcon status={row.spreadsheets} /></TableCell>
+                      <TableCell className="text-center"><ComparisonIcon status={row.qulture} /></TableCell>
+                      <TableCell className="text-center"><ComparisonIcon status={row.lattice} /></TableCell>
+                      <TableCell className="text-center"><ComparisonIcon status={row.rhitmo} /></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <p className="text-sm text-muted-foreground text-center mt-4">{t.compLegend}</p>
+          </div>
+
+          {/* Mobile: Accordion cards */}
+          <div className="md:hidden max-w-lg mx-auto">
+            <Accordion type="single" collapsible className="space-y-3">
+              {t.compRows.map((row, i) => (
+                <AccordionItem key={i} value={`comp-${i}`} className="border rounded-xl px-4">
+                  <AccordionTrigger className="text-sm font-medium hover:no-underline">
+                    {row.feature}
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="grid grid-cols-2 gap-2 text-sm py-2">
+                      <div className="flex justify-between"><span className="text-muted-foreground">{t.compSpreadsheets}</span> <ComparisonIcon status={row.spreadsheets} /></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">{t.compQulture}</span> <ComparisonIcon status={row.qulture} /></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">{t.compLattice}</span> <ComparisonIcon status={row.lattice} /></div>
+                      <div className="flex justify-between"><span className="font-medium text-primary">{t.compRhitmo}</span> <ComparisonIcon status={row.rhitmo} /></div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+            <p className="text-sm text-muted-foreground text-center mt-4">{t.compLegend}</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Seção: Números Concretos */}
+      <section className="py-20 bg-gradient-to-br from-muted/30 to-primary/5">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
+            {t.numbersTitle}
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {/* Card 1 */}
+            <div className="bg-card rounded-2xl p-8 border shadow-sm text-center space-y-3 hover:-translate-y-1 transition-transform">
+              <Clock className="h-8 w-8 mx-auto text-primary" />
+              <div className="text-5xl font-extrabold tracking-tight text-foreground">{t.numbersStat1}</div>
+              <p className="text-sm text-muted-foreground">{t.numbersLabel1}</p>
+            </div>
+            {/* Card 2 */}
+            <div className="bg-card rounded-2xl p-8 border shadow-sm text-center space-y-3 hover:-translate-y-1 transition-transform">
+              <AlertCircle className="h-8 w-8 mx-auto text-destructive" />
+              <div className="text-5xl font-extrabold tracking-tight text-foreground">{t.numbersStat2}</div>
+              <p className="text-sm text-muted-foreground">{t.numbersLabel2}</p>
+            </div>
+            {/* Card 3 */}
+            <div className="bg-card rounded-2xl p-8 border shadow-sm text-center space-y-3 hover:-translate-y-1 transition-transform">
+              <DollarSign className="h-8 w-8 mx-auto text-emerald-500" />
+              <div className="text-5xl font-extrabold tracking-tight text-foreground">{t.numbersStat3}</div>
+              <p className="text-sm text-muted-foreground">{t.numbersLabel3}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Seção: O que só Rhitmo faz */}
+      <section className="py-20 bg-background">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
+            {t.uspsTitle}
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            {/* USP 1 */}
+            <div className="text-center space-y-4 p-6">
+              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
+                <Zap className="h-8 w-8 text-primary" />
+              </div>
+              <h3 className="text-xl font-bold text-foreground">{t.uspTitle1}</h3>
+              <p className="text-muted-foreground leading-relaxed">{t.uspText1}</p>
+            </div>
+            {/* USP 2 */}
+            <div className="text-center space-y-4 p-6">
+              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
+                <Shield className="h-8 w-8 text-primary" />
+              </div>
+              <h3 className="text-xl font-bold text-foreground">{t.uspTitle2}</h3>
+              <p className="text-muted-foreground leading-relaxed">{t.uspText2}</p>
+            </div>
+            {/* USP 3 */}
+            <div className="text-center space-y-4 p-6">
+              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
+                <Mic className="h-8 w-8 text-primary" />
+              </div>
+              <h3 className="text-xl font-bold text-foreground">{t.uspTitle3}</h3>
+              <p className="text-muted-foreground leading-relaxed">{t.uspText3}</p>
+            </div>
+          </div>
+          <div className="text-center mt-10">
+            <Button size="lg" variant="outline" className="text-base px-8" asChild>
+              <a href="#video-section">{t.uspCTA}</a>
+            </Button>
+          </div>
+        </div>
+      </section>
+
       {/* Seção 1: Para Líderes - Fundo Branco */}
-      <section className="py-24">
+      <section className="py-24 bg-muted/30">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-16 items-center">
             {/* Texto */}
@@ -585,7 +897,7 @@ const Landing = () => {
       </section>
 
       {/* Seção 2: Para Pessoas Lideradas - Fundo Cinza Suave */}
-      <section className="py-24 bg-muted/30">
+      <section className="py-24 bg-background">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-16 items-center">
             {/* Visual - Foto Humana (emoção) */}
@@ -619,7 +931,7 @@ const Landing = () => {
       </section>
 
       {/* Seção 3: Para RH - Fundo Branco */}
-      <section className="py-24">
+      <section className="py-24 bg-muted/30">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-16 items-center">
             {/* Texto */}
@@ -648,7 +960,7 @@ const Landing = () => {
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-24 bg-muted/30">
+      <section id="pricing" className="py-24 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
           <div className="text-center space-y-3 mb-16">
@@ -771,7 +1083,7 @@ const Landing = () => {
             {/* ── Enterprise ── */}
             <div className="bg-card rounded-2xl shadow-sm p-8 border space-y-6">
               <div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium mb-2" style={{ backgroundColor: "#1e3a8a15", color: "#1e3a8a" }}>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium mb-2 bg-primary/10 text-primary">
                   <Building className="h-3 w-3" />
                   Enterprise
                 </div>
@@ -810,7 +1122,7 @@ const Landing = () => {
 
       {/* Footer */}
       <footer className="border-t py-8 pb-20">
-        <div className="container mx-auto px-4 text-center space-y-4">
+        <div className="container mx-auto px-4 text-center space-y-6">
           <div className="flex justify-center gap-6 text-sm text-muted-foreground">
             <Link to="/terms-of-service" className="hover:text-foreground transition-colors">
               {t.footerTerms}
@@ -819,6 +1131,17 @@ const Landing = () => {
               {t.footerPrivacy}
             </Link>
           </div>
+
+          {/* Comparison links */}
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t.footerCompare}</p>
+            <div className="flex justify-center gap-4 text-sm text-muted-foreground">
+              <a href="#" className="hover:text-foreground transition-colors">{t.footerVsQulture}</a>
+              <a href="#" className="hover:text-foreground transition-colors">{t.footerVsFeedz}</a>
+              <a href="#" className="hover:text-foreground transition-colors">{t.footerVsLattice}</a>
+            </div>
+          </div>
+
           <p className="text-sm text-muted-foreground">
             {t.footerRights}
           </p>
