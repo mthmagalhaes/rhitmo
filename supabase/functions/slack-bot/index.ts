@@ -919,6 +919,13 @@ async function processInteraction(body: string, timestamp: string, signature: st
         // These are URL buttons — Slack handles them, nothing to do server-side
         console.log('[INTERACT] URL button clicked:', action.action_id);
         break;
+      case 'action_meu_pdi': {
+        console.log('[INTERACT] Meu PDI button clicked');
+        const pdiPersona = await getUserPersona(slackUserId);
+        const pdiMsg = await handleMeuPdiCommand(pdiPersona);
+        if (responseUrl) await sendDelayedResponse(responseUrl, pdiMsg);
+        break;
+      }
       default:
         console.log('[INTERACT] Unhandled action:', action.action_id);
     }
