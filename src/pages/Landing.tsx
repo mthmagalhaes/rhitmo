@@ -5,7 +5,7 @@ import { RhitmoLogo } from "@/components/RhitmoLogo";
 import { RhythmWave } from "@/components/RhythmWave";
 
 import { useAuth } from "@/hooks/useAuth";
-import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X, Check, Lock, Moon, Sun, Globe, Building, Clock, AlertCircle, DollarSign, Shield, Mic, XCircle, CheckCircle2 } from "lucide-react";
+import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X, Check, Lock, Moon, Sun, Globe, Building, Clock, AlertCircle, DollarSign, Shield, Mic, XCircle, CheckCircle2, Target, Users, FileText, ArrowRight } from "lucide-react";
 import analyticsScreenshot from "@/assets/analytics-screenshot.png";
 import heroLeaderFlow from "@/assets/hero-leader-flow.png";
 import heroDuoFeedback from "@/assets/hero-duo-feedback.png";
@@ -200,6 +200,46 @@ const translations = {
     footerVsQulture: "Rhitmo vs. Qulture.Rocks",
     footerVsFeedz: "Rhitmo vs. Feedz",
     footerVsLattice: "Rhitmo vs. Lattice",
+    // Phase 3 — Value Proposition
+    forWhoTitle: "Para quem é Rhitmo",
+    forWhoLeaderTitle: "Líderes individuais",
+    forWhoLeaderText: "Você gerencia 3-10 pessoas e precisa de ajuda para escrever reviews justas, dar feedback melhor e não esquecer nada das 1:1s.",
+    forWhoLeaderBadge: "Ideal para você",
+    forWhoPmeTitle: "Startups e PMEs",
+    forWhoPmeText: "20-100 colaboradores, sem RH estruturado. Precisa profissionalizar gestão de performance sem contratar consultoria.",
+    forWhoPmeBadge: "Recomendado",
+    forWhoEntTitle: "Empresas estruturadas",
+    forWhoEntText: "100+ colaboradores, RH como comprador. Quer IA nativa de verdade, não add-on superficial.",
+    forWhoEntBadge: "Plano Enterprise",
+    forWhoEntLink: "Saiba mais →",
+    howItWorksTitle: "Como funciona",
+    howStep1Title: "Registre suas 1:1s",
+    howStep1Text: "Grave reuniões ou cole transcrições. Rhitmo captura tudo automaticamente.",
+    howStep2Title: "IA analisa e organiza",
+    howStep2Text: "Cada conversa vira nota estruturada com temas, compromissos e alertas de viés.",
+    howStep3Title: "Review pronta em 30 segundos",
+    howStep3Text: "Selecione o período, clique 'Gerar'. Rhitmo escreve a avaliação completa. Você só revisa.",
+    whatWeAreNotTitle: "Comunicação honesta: o que Rhitmo não faz (ainda)",
+    whatWeAreNotIntro: "Rhitmo não é uma plataforma genérica de RH. Somos especialistas em IA para reviews e 1:1s. Aqui está o que NÃO temos hoje:",
+    whatWeAreNotItems: [
+      "Avaliação 360° (planejado para Q3/2026)",
+      "OKRs completos (temos metas básicas, OKRs vêm em Q4/2026)",
+      "Pesquisa de clima organizacional (roadmap 2027)",
+    ],
+    whatWeAreNotOutro: "Se você precisa dessas features HOJE, recomendamos usar Qulture.Rocks ou Feedz para isso, e Rhitmo para o que fazemos melhor: IA que escreve reviews, detecta viés e registra tudo automaticamente. Muitos clientes usam Rhitmo + outra ferramenta. Estamos OK com isso.",
+    whatWeAreNotCTA: "Ver nosso roadmap público →",
+    positioningLine1: "Rhitmo não é mais uma plataforma de RH.",
+    positioningLine2: "É o AI Chief of Staff que escreve reviews, detecta vieses e registra tudo automaticamente.",
+    positioningLine3: "Não fazemos de tudo. Fazemos uma coisa excepcionalmente bem: transformar conversas em performance reviews prontas.",
+    positioningCTA: "Essa é a nossa missão. Junte-se a nós →",
+    faqTitle: "Perguntas frequentes",
+    faqItems: [
+      { q: "Rhitmo substitui ferramentas como Qulture.Rocks?", a: "Não completamente. Se você precisa de 360° ou pesquisa de clima hoje, use Qulture + Rhitmo. Se precisa só de reviews e 1:1s melhores, use só Rhitmo." },
+      { q: "A IA realmente escreve tudo ou só dá sugestões?", a: "Escreve tudo. Você recebe um draft completo de 2-3 páginas. Não são bullet points, é texto corrido pronto para revisão." },
+      { q: "Como Rhitmo detecta viés?", a: "IA analisa linguagem em tempo real e alerta sobre: viés de gênero (ex: \"agressiva\" vs. \"assertivo\"), viés de personalidade (foco em \"como é\" vs. \"o que fez\"), generalizações (\"sempre\", \"nunca\")." },
+      { q: "Preciso treinar meu time para usar?", a: "Não. Interface é autoexplicativa. A maioria dos usuários começa a usar em menos de 5 minutos." },
+      { q: "Meus dados estão seguros?", a: "Sim. Notas de líderes são privadas por padrão. Compartilhamento é uma ação explícita. Seguimos as melhores práticas de segurança e LGPD." },
+    ],
   },
   en: {
     signIn: "Sign in",
@@ -351,6 +391,46 @@ const translations = {
     footerVsQulture: "Rhitmo vs. Qulture.Rocks",
     footerVsFeedz: "Rhitmo vs. Feedz",
     footerVsLattice: "Rhitmo vs. Lattice",
+    // Phase 3
+    forWhoTitle: "Who is Rhitmo for",
+    forWhoLeaderTitle: "Individual Leaders",
+    forWhoLeaderText: "You manage 3-10 people and need help writing fair reviews, giving better feedback, and never forgetting what was said in 1:1s.",
+    forWhoLeaderBadge: "Ideal for you",
+    forWhoPmeTitle: "Startups & SMBs",
+    forWhoPmeText: "20-100 employees, no structured HR. Need to professionalize performance management without hiring consultants.",
+    forWhoPmeBadge: "Recommended",
+    forWhoEntTitle: "Structured companies",
+    forWhoEntText: "100+ employees, HR as the buyer. Want truly native AI, not a superficial add-on.",
+    forWhoEntBadge: "Enterprise Plan",
+    forWhoEntLink: "Learn more →",
+    howItWorksTitle: "How it works",
+    howStep1Title: "Record your 1:1s",
+    howStep1Text: "Record meetings or paste transcriptions. Rhitmo captures everything automatically.",
+    howStep2Title: "AI analyzes and organizes",
+    howStep2Text: "Each conversation becomes a structured note with themes, commitments, and bias alerts.",
+    howStep3Title: "Review ready in 30 seconds",
+    howStep3Text: "Select the period, click 'Generate'. Rhitmo writes the full review. You just review it.",
+    whatWeAreNotTitle: "Honest communication: what Rhitmo doesn't do (yet)",
+    whatWeAreNotIntro: "Rhitmo is not a generic HR platform. We specialize in AI for reviews and 1:1s. Here's what we DON'T have today:",
+    whatWeAreNotItems: [
+      "360° review (planned for Q3/2026)",
+      "Full OKRs (we have basic goals, OKRs coming Q4/2026)",
+      "Employee engagement surveys (roadmap 2027)",
+    ],
+    whatWeAreNotOutro: "If you need these features TODAY, we recommend using Qulture.Rocks or Lattice for that, and Rhitmo for what we do best: AI that writes reviews, detects bias, and records everything automatically. Many clients use Rhitmo + another tool. We're OK with that.",
+    whatWeAreNotCTA: "See our public roadmap →",
+    positioningLine1: "Rhitmo is not just another HR platform.",
+    positioningLine2: "It's the AI Chief of Staff that writes reviews, detects bias, and records everything automatically.",
+    positioningLine3: "We don't do everything. We do one thing exceptionally well: turn conversations into ready-made performance reviews.",
+    positioningCTA: "That's our mission. Join us →",
+    faqTitle: "Frequently asked questions",
+    faqItems: [
+      { q: "Does Rhitmo replace tools like Qulture.Rocks?", a: "Not completely. If you need 360° or engagement surveys today, use Qulture + Rhitmo. If you only need better reviews and 1:1s, just use Rhitmo." },
+      { q: "Does the AI really write everything or just suggest?", a: "It writes everything. You get a full 2-3 page draft. Not bullet points — ready-to-review prose." },
+      { q: "How does Rhitmo detect bias?", a: "AI analyzes language in real time and flags: gender bias (e.g., \"aggressive\" vs. \"assertive\"), personality bias (focus on \"who they are\" vs. \"what they did\"), generalizations (\"always\", \"never\")." },
+      { q: "Do I need to train my team to use it?", a: "No. The interface is self-explanatory. Most users start using it in under 5 minutes." },
+      { q: "Is my data secure?", a: "Yes. Leader notes are private by default. Sharing is an explicit action. We follow security best practices and LGPD compliance." },
+    ],
   },
 };
 
