@@ -1041,45 +1041,6 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Seção: Como funciona */}
-      <section className="py-20 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-center mb-16 text-foreground">
-            {t.howItWorksTitle}
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto relative">
-            {/* Connector line (desktop only) */}
-            <div className="hidden md:block absolute top-12 left-[16.67%] right-[16.67%] h-0.5 bg-border" />
-            {/* Step 1 */}
-            <div className="text-center space-y-4 relative">
-              <div className="w-24 h-24 rounded-full bg-primary/10 border-4 border-background flex items-center justify-center mx-auto relative z-10">
-                <Mic className="h-10 w-10 text-primary" />
-              </div>
-              <span className="text-sm font-bold text-primary">01</span>
-              <h3 className="text-xl font-bold text-foreground">{t.howStep1Title}</h3>
-              <p className="text-muted-foreground leading-relaxed">{t.howStep1Text}</p>
-            </div>
-            {/* Step 2 */}
-            <div className="text-center space-y-4 relative">
-              <div className="w-24 h-24 rounded-full bg-primary/10 border-4 border-background flex items-center justify-center mx-auto relative z-10">
-                <Sparkles className="h-10 w-10 text-primary" />
-              </div>
-              <span className="text-sm font-bold text-primary">02</span>
-              <h3 className="text-xl font-bold text-foreground">{t.howStep2Title}</h3>
-              <p className="text-muted-foreground leading-relaxed">{t.howStep2Text}</p>
-            </div>
-            {/* Step 3 */}
-            <div className="text-center space-y-4 relative">
-              <div className="w-24 h-24 rounded-full bg-primary/10 border-4 border-background flex items-center justify-center mx-auto relative z-10">
-                <FileText className="h-10 w-10 text-primary" />
-              </div>
-              <span className="text-sm font-bold text-primary">03</span>
-              <h3 className="text-xl font-bold text-foreground">{t.howStep3Title}</h3>
-              <p className="text-muted-foreground leading-relaxed">{t.howStep3Text}</p>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Seção: O que Rhitmo NÃO é */}
       <section className="py-20 bg-background">
