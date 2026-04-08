@@ -29,6 +29,8 @@ import {
 import { BarChart3, Users, MessageSquare, TrendingUp, Filter, Activity, AlertTriangle, Tag } from 'lucide-react';
 import { RiskTable } from '@/components/hr/RiskTable';
 import { EngagementHeatmap } from '@/components/hr/EngagementHeatmap';
+import { usePlanLimits } from '@/hooks/usePlanLimits';
+import { Navigate } from 'react-router-dom';
 
 interface Metrics {
   total_leaders: number;
@@ -85,7 +87,12 @@ const SENTIMENT_COLORS: Record<string, string> = {
 
 export default function HRAnalytics() {
   const { workspaceId } = useHRAdmin();
+  const { hasHrDashboard, isLoading: planLoading } = usePlanLimits();
   const [selectedLeader, setSelectedLeader] = useState('all');
+
+  if (!planLoading && !hasHrDashboard) {
+    return <Navigate to="/billing" replace />;
+  }
 
   const { data: metrics, isLoading: metricsLoading } = useQuery({
     queryKey: ['hr-analytics-metrics', workspaceId],

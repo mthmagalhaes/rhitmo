@@ -13,6 +13,7 @@ import ReactMarkdown from 'react-markdown';
 import { VoiceInput } from './VoiceInput';
 import { ContextPicker } from './ContextPicker';
 import { extractTextFromFile, isFileSupported } from '@/lib/fileParser';
+import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { format, isToday, isYesterday, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -127,6 +128,7 @@ export const MentorChat = ({
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { canSendMentorMessage, mentorMessagesRemaining, limits } = usePlanLimits();
 
   // Resolve effective owner for queries
   const effectiveUserId = isLeader ? user?.id : userId;
@@ -282,6 +284,15 @@ export const MentorChat = ({
     let finalMessage = messageToSend || input;
     if (!finalMessage.trim() && !attachment) return;
     if (isLoading || !effectiveUserId) return;
+
+    if (!canSendMentorMessage) {
+      toast({
+        title: 'Limite de mensagens atingido',
+        description: `Você atingiu o limite de ${limits.maxMentorMessages} mensagens/mês do plano ${limits.planName}. Faça upgrade para continuar.`,
+        duration: 8000,
+      });
+      return;
+    }
 
     let imageContent: { isImage: true; imageBase64: string; mimeType: string; textMessage: string } | undefined;
     if (attachment?.isImage && attachment.imageBase64 && attachment.mimeType) {

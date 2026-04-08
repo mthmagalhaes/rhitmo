@@ -3,6 +3,8 @@ import { RhythmWave } from '@/components/RhythmWave';
 import { supabase } from '@/integrations/supabase/client';
 import { useHRAdmin } from '@/components/HRAdminGuard';
 import { Skeleton } from '@/components/ui/skeleton';
+import { usePlanLimits } from '@/hooks/usePlanLimits';
+import { Navigate } from 'react-router-dom';
 import {
   Users, UserCheck, AlertCircle, CheckCircle, FileText,
   Bell, Activity, Target, ShieldAlert
@@ -39,6 +41,11 @@ const SENTIMENT_LABELS: Record<string, string> = {
 
 const HRDashboard = () => {
   const { workspaceId, workspaceName } = useHRAdmin();
+  const { hasHrDashboard, isLoading: planLoading } = usePlanLimits();
+
+  if (!planLoading && !hasHrDashboard) {
+    return <Navigate to="/billing" replace />;
+  }
 
   const { data: metrics, isLoading } = useQuery<Metrics>({
     queryKey: ['hr-dashboard', workspaceId],
