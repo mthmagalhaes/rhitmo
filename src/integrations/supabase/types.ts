@@ -443,6 +443,48 @@ export type Database = {
         }
         Relationships: []
       }
+      enterprise_leads: {
+        Row: {
+          company: string
+          company_size: string
+          consent: boolean | null
+          created_at: string | null
+          email: string
+          full_name: string
+          id: string
+          job_title: string
+          message: string | null
+          phone: string | null
+          status: string | null
+        }
+        Insert: {
+          company: string
+          company_size: string
+          consent?: boolean | null
+          created_at?: string | null
+          email: string
+          full_name: string
+          id?: string
+          job_title: string
+          message?: string | null
+          phone?: string | null
+          status?: string | null
+        }
+        Update: {
+          company?: string
+          company_size?: string
+          consent?: boolean | null
+          created_at?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          job_title?: string
+          message?: string | null
+          phone?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
       feedback_streaks: {
         Row: {
           created_at: string | null
