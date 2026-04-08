@@ -1224,6 +1224,12 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
           initialPrompt={meuRhitmoInitialPrompt}
         />
       )}
+      <AvatarLibrary
+        open={avatarLibraryOpen}
+        onOpenChange={setAvatarLibraryOpen}
+        memberId={linkedMember.id}
+        currentAvatar={(linkedMember as any).avatar}
+      />
     </div>
   );
 }
