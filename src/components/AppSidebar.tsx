@@ -37,8 +37,8 @@ import { Separator } from '@/components/ui/separator';
 const menuItems = [
   { title: 'Início', url: '/dashboard', icon: Home },
   { title: 'Analytics', url: '/analytics', icon: BarChart3 },
-  { title: 'Assinatura', url: '/billing', icon: CreditCard },
   { title: 'Central de Conhecimento', url: '/help', icon: BookOpen },
+  { title: 'Assinatura', url: '/billing', icon: CreditCard },
 ];
 
 const leaderOnlyItems = ['Analytics', 'Assinatura', 'Central de Conhecimento'];
