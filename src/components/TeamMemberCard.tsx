@@ -126,21 +126,7 @@ export const TeamMemberCard = ({ member, teamName, onClick, onEdit, pendingInvit
           )}
         </div>
 
-        {/* Pending invite badge */}
-        {!(member as any).linked_user_id && pendingInvite && pendingInvite.status === 'sent' && (
-          <div className="flex justify-center">
-            <Badge
-              variant="secondary"
-              className={`text-[10px] rounded-full ${
-                pendingInvite.member_has_account
-                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                  : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-              }`}
-            >
-              {pendingInvite.member_has_account ? '⏳ Aguardando conexão' : '⏳ Aguardando cadastro'}
-            </Badge>
-          </div>
-        )}
+        {/* Legacy pending invite text removed — now shown as pulsing icon in top-right */}
 
         {/* Send invite button */}
         {!(member as any).linked_user_id && !pendingInvite && (member as any).email && onSendInvite && (
