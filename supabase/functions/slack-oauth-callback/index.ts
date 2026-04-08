@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
 
     if (error) {
       console.error('[OAUTH] Slack returned error:', error);
-      return Response.redirect('https://rhitmo.lovable.app/dashboard?slack_error=denied', 302);
+      return Response.redirect('https://rhitmo.co/dashboard?slack_error=denied', 302);
     }
 
     if (!code) {
@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
 
     if (!tokenData.ok) {
       console.error('[OAUTH] Token exchange failed:', tokenData.error);
-      return Response.redirect(`https://rhitmo.lovable.app/dashboard?slack_error=${tokenData.error}`, 302);
+      return Response.redirect(`https://rhitmo.co/dashboard?slack_error=${tokenData.error}`, 302);
     }
 
     const slackUserId = tokenData.authed_user?.id;
@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
 
     if (!slackUserId || !slackTeamId) {
       console.error('[OAUTH] Missing user/team from response:', JSON.stringify(tokenData));
-      return Response.redirect('https://rhitmo.lovable.app/dashboard?slack_error=missing_ids', 302);
+      return Response.redirect('https://rhitmo.co/dashboard?slack_error=missing_ids', 302);
     }
 
     console.log('[OAUTH] Got user:', slackUserId, 'team:', slackTeamId);
@@ -77,10 +77,10 @@ Deno.serve(async (req) => {
     const stateToken = await generateStateToken(slackUserId, slackTeamId);
 
     // Redirect to SlackConnect page
-    return Response.redirect(`https://rhitmo.lovable.app/slack/connect?state=${encodeURIComponent(stateToken)}`, 302);
+    return Response.redirect(`https://rhitmo.co/slack/connect?state=${encodeURIComponent(stateToken)}`, 302);
 
   } catch (err) {
     console.error('[OAUTH] Error:', err);
-    return Response.redirect('https://rhitmo.lovable.app/dashboard?slack_error=internal', 302);
+    return Response.redirect('https://rhitmo.co/dashboard?slack_error=internal', 302);
   }
 });

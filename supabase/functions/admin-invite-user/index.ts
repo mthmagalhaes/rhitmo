@@ -55,8 +55,8 @@ serve(async (req) => {
 
     const isHrAdmin = role === 'hr_admin' && workspace_id;
     const redirectUrl = isHrAdmin 
-      ? 'https://rhitmo.lovable.app/hr' 
-      : 'https://rhitmo.lovable.app/dashboard';
+      ? 'https://rhitmo.co/hr' 
+      : 'https://rhitmo.co/dashboard';
 
     // Convidar usuário via Admin API com plano atribuído
     const { data: invitation, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {

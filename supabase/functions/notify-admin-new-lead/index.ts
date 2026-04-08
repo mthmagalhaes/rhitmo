@@ -62,7 +62,7 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
             
             <div style="text-align: center; margin: 30px 0;">
-              <a href="https://rhitmo.lovable.app/admin" 
+              <a href="https://rhitmo.co/admin" 
                  style="background-color: #7C3AED; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600;">
                 Acessar Painel Admin
               </a>
