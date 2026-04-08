@@ -32,7 +32,7 @@ import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import DirectReportReviewView from "./pages/DirectReportReviewView";
 import SlackConnect from "./pages/SlackConnect";
-import DashboardV2 from "./pages/DashboardV2";
+
 
 const queryClient = new QueryClient();
 
