@@ -47,7 +47,7 @@ const translations = {
     seePlans: "Ver planos",
     aiNativeBadge: "AI-Native desde o dia 1 — Não é um add-on",
     // Before vs After
-    beforeAfterTitle: "A diferença é brutal",
+    beforeAfterTitle: "O impacto na prática",
     withoutRhitmo: "Sem Rhitmo",
     withRhitmo: "Com Rhitmo",
     beforeItems: [
@@ -251,7 +251,7 @@ const translations = {
     seePlans: "See plans",
     aiNativeBadge: "AI-Native since day 1 — Not an add-on",
     // Before vs After
-    beforeAfterTitle: "The difference is brutal",
+    beforeAfterTitle: "The impact in practice",
     withoutRhitmo: "Without Rhitmo",
     withRhitmo: "With Rhitmo",
     beforeItems: [
