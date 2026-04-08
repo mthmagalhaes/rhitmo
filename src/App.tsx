@@ -36,6 +36,7 @@ import DesignSystem from "./pages/DesignSystem";
 import Unsubscribe from "./pages/Unsubscribe";
 import RecorderPopup from "./pages/RecorderPopup";
 import Enterprise from "./pages/Enterprise";
+import Roadmap from "./pages/Roadmap";
 
 
 const queryClient = new QueryClient();
@@ -128,6 +129,7 @@ const App = () => (
             <Route path="/terms-of-service" element={<TermsOfService />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/enterprise" element={<Enterprise />} />
+            <Route path="/roadmap" element={<Roadmap />} />
             
             {/* Rota Admin */}
             <Route 
