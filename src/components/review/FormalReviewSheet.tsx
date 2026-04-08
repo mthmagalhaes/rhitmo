@@ -78,7 +78,7 @@ export function FormalReviewSheet({
         .select(`
           *,
           team_members!performance_reviews_member_id_fkey (
-            id, name, role
+            id, name, role, email
           )
         `)
         .eq('id', reviewId)
