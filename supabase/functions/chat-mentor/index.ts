@@ -611,21 +611,30 @@ Com base neste resumo, dê sugestões práticas de liderança, identifique ponto
       { role: 'user', content: currentUserContent }
     ];
 
-    console.log('Calling GPT-4o with context length:', systemPrompt.length, 'history messages:', (conversationHistory || []).length);
+    // Use Lovable AI Gateway (Gemini 2.5 Flash) for L3 response
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    const useGateway = !!lovableApiKey;
+    const apiUrl = useGateway
+      ? 'https://ai.gateway.lovable.dev/v1/chat/completions'
+      : 'https://api.openai.com/v1/chat/completions';
+    const apiKey = useGateway ? lovableApiKey : openAIApiKey;
+    const modelName = useGateway ? 'google/gemini-2.5-flash' : 'gpt-4o';
+
+    console.log(`Calling ${modelName} via ${useGateway ? 'Lovable AI Gateway' : 'OpenAI'}, context length:`, systemPrompt.length, 'history messages:', (conversationHistory || []).length);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 45000);
 
     let response;
     try {
-      response = await fetch('https://api.openai.com/v1/chat/completions', {
+      response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o',
+          model: modelName,
           messages: apiMessages,
           max_tokens: 1500,
         }),
@@ -634,7 +643,7 @@ Com base neste resumo, dê sugestões práticas de liderança, identifique ponto
     } catch (fetchError: any) {
       clearTimeout(timeoutId);
       if (fetchError.name === 'AbortError') {
-        console.error('OpenAI request timeout');
+        console.error('AI request timeout');
         return new Response(
           JSON.stringify({ error: 'Tempo de resposta excedido. Tente novamente.' }),
           { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
