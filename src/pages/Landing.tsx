@@ -908,46 +908,6 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Seção: O que só Rhitmo faz */}
-      <section className="py-20 bg-background">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
-            {t.uspsTitle}
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {/* USP 1 */}
-            <div className="text-center space-y-4 p-6">
-              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
-                <Zap className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold text-foreground">{t.uspTitle1}</h3>
-              <p className="text-muted-foreground leading-relaxed">{t.uspText1}</p>
-            </div>
-            {/* USP 2 */}
-            <div className="text-center space-y-4 p-6">
-              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
-                <Shield className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold text-foreground">{t.uspTitle2}</h3>
-              <p className="text-muted-foreground leading-relaxed">{t.uspText2}</p>
-            </div>
-            {/* USP 3 */}
-            <div className="text-center space-y-4 p-6">
-              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
-                <Mic className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold text-foreground">{t.uspTitle3}</h3>
-              <p className="text-muted-foreground leading-relaxed">{t.uspText3}</p>
-            </div>
-          </div>
-          <div className="text-center mt-10">
-            <Button size="lg" variant="outline" className="text-base px-8" asChild>
-              <a href="#video-section">{t.uspCTA}</a>
-            </Button>
-          </div>
-        </div>
-      </section>
-
       {/* Seção 1: Para Líderes - Fundo Branco */}
       <section className="py-24 bg-muted/30">
         <div className="container mx-auto px-4">
