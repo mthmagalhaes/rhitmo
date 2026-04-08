@@ -35,6 +35,7 @@ import SlackConnect from "./pages/SlackConnect";
 import DesignSystem from "./pages/DesignSystem";
 import Unsubscribe from "./pages/Unsubscribe";
 import RecorderPopup from "./pages/RecorderPopup";
+import Enterprise from "./pages/Enterprise";
 
 
 const queryClient = new QueryClient();
