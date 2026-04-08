@@ -155,6 +155,10 @@ const filterReviewForMember = (content: string): string => {
 export default function DirectReportDashboard({ linkedMember, activeTab: activeTabProp }: DirectReportDashboardProps) {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState(activeTabProp || 'visao-geral');
+
+  useEffect(() => {
+    if (activeTabProp) setActiveTab(activeTabProp);
+  }, [activeTabProp]);
   const [syncDialogOpen, setSyncDialogOpen] = useState(false);
   const [syncSaving, setSyncSaving] = useState(false);
   const [isReanalyzing, setIsReanalyzing] = useState(false);
