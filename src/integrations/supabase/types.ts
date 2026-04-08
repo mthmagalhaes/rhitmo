@@ -1698,6 +1698,11 @@ export type Database = {
           type: string
         }[]
       }
+      member_acknowledge_review: {
+        Args: { p_review_id: string }
+        Returns: undefined
+      }
+      member_view_review: { Args: { p_review_id: string }; Returns: undefined }
       move_to_dlq: {
         Args: {
           dlq_name: string

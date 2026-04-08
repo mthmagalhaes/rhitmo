@@ -326,10 +326,7 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
   useEffect(() => {
     if (selectedReview && !selectedReview.member_viewed_at) {
       supabase
-        .from('performance_reviews')
-        .update({ member_viewed_at: new Date().toISOString() } as any)
-        .eq('id', selectedReview.id)
-        .is('member_viewed_at', null)
+        .rpc('member_view_review', { p_review_id: selectedReview.id })
         .then(() => queryClient.invalidateQueries({ queryKey: ['shared-reviews', linkedMember.id] }));
     }
   }, [selectedReview?.id]);
@@ -840,9 +837,7 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                       onClick={async () => {
                         if (!selectedReview) return;
                         const { error } = await supabase
-                          .from('performance_reviews')
-                          .update({ acknowledged_at: new Date().toISOString() } as any)
-                          .eq('id', selectedReview.id);
+                          .rpc('member_acknowledge_review', { p_review_id: selectedReview.id });
                         if (error) {
                           toast.error('Erro ao confirmar leitura.');
                           return;
