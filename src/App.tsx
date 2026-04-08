@@ -36,6 +36,7 @@ import DesignSystem from "./pages/DesignSystem";
 import Unsubscribe from "./pages/Unsubscribe";
 import RecorderPopup from "./pages/RecorderPopup";
 import Enterprise from "./pages/Enterprise";
+import Roadmap from "./pages/Roadmap";
 
 
 const queryClient = new QueryClient();
