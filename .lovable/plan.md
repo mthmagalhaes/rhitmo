@@ -87,8 +87,8 @@
 ### Ordem de Execução
 
 ```text
-Sprint 1 (esta semana):   Épico 1 (P0 bug) + Épico 4 (migração modelo)
-Sprint 2 (próxima semana): Épico 3 (embeddings) + Épico 2 (Slack Phase 2)
+Sprint 1 (concluída):     Épico 1 (P0 bug) + Épico 4 (migração modelo) ✅
+Sprint 2 (concluída):     Épico 3 (embeddings) + Épico 2 (Slack Phase 2) ✅
 Sprint 3:                  Épico 5 (HR Analytics)
 Sprint 4:                  Épico 6 (Marketplace)
 ```
