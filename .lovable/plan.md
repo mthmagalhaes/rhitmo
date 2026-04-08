@@ -1,155 +1,110 @@
 
 
-## Roadmap: Pricing + Comunicação + Proposta de Valor
+## Fase 2 — Comunicação: Rewrite da Landing Page
 
-Dado o tamanho das mudanças, divido em **3 fases independentes** para implementar de forma segura sem quebrar nada existente.
-
----
-
-### FASE 1 — Pricing Enterprise (backend + página dedicada)
-*Pode ser implementada isoladamente, sem tocar na landing atual.*
-
-**1.1 Migration: tabela `enterprise_leads`**
-```sql
-CREATE TABLE enterprise_leads (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  full_name TEXT NOT NULL,
-  email TEXT NOT NULL,
-  company TEXT NOT NULL,
-  job_title TEXT NOT NULL,
-  company_size TEXT NOT NULL,
-  phone TEXT,
-  message TEXT,
-  consent BOOLEAN DEFAULT false,
-  status TEXT DEFAULT 'new',
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-ALTER TABLE enterprise_leads ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins can read" ON enterprise_leads FOR SELECT TO authenticated USING (public.is_admin());
-```
-
-**1.2 Edge Function: `enterprise-contact/index.ts`**
-- Valida input com Zod (email corporativo, telefone BR, nome com 2+ palavras)
-- Insere em `enterprise_leads` via service_role
-- Envia email de notificação para equipe via template transacional existente
-- Retorna 200 com mensagem de sucesso
-
-**1.3 Página: `src/pages/Enterprise.tsx`**
-- Hero com tom corporativo (navy blue `#1e3a8a`, emerald CTAs `#10b981`)
-- Seção de diferenciais enterprise (SSO, API, CSM, SLA, LGPD, SAP/TOTVS)
-- Card de pricing: "A partir de R$15/colaborador/mês, mínimo 100"
-- Formulário com validações (email corporativo, telefone BR, nome completo)
-- Layout: 2 colunas desktop (conteúdo + form), stack mobile
-- Toast de sucesso/erro
-
-**1.4 Rota: `src/App.tsx`**
-- Adicionar `<Route path="/enterprise" element={<Enterprise />} />`
-
-**1.5 Landing (mínimo): Adicionar card Enterprise na seção pricing**
-- 4o card ao lado de Pulse/Pro/Business
-- Grid muda de `md:grid-cols-3` para `md:grid-cols-4` (ou 2x2 mobile)
-- CTA: "Falar com Vendas" → link para `/enterprise`
-- Header: adicionar link "Enterprise" no nav
-
-| Arquivo | Ação |
-|---------|------|
-| `supabase/migrations/...` | Nova tabela `enterprise_leads` |
-| `supabase/functions/enterprise-contact/index.ts` | Nova edge function |
-| `src/pages/Enterprise.tsx` | Nova página |
-| `src/App.tsx` | Nova rota |
-| `src/pages/Landing.tsx` | Card Enterprise + link header |
+Todas as mudanças são no arquivo `src/pages/Landing.tsx`. Nenhuma mudança de backend.
 
 ---
 
-### FASE 2 — Comunicação (rewrite do conteúdo da landing)
-*Altera apenas textos e adiciona seções. Nenhuma mudança de backend.*
+### 1. Hero: Subhead agressivo + Badge AI-Native
 
-**2.1 Hero: Subhead mais agressivo**
-- Substituir subhead genérico por: "O que levava 4 horas agora leva 2 minutos. Rhitmo e o unico parceiro AI-nativo de lideranca que transforma suas conversas em reviews prontas."
-- Badge abaixo dos CTAs: "AI-Native desde o dia 1 — Nao e um add-on"
+**Substituir** `heroSubtitle` (pt/en) por texto com números concretos:
+- PT: "O que levava 4 horas agora leva 2 minutos. Rhitmo é o único parceiro AI-nativo de liderança que transforma suas conversas em reviews prontas."
+- EN: "What took 4 hours now takes 2 minutes. Rhitmo is the only AI-native leadership partner that turns your conversations into ready-made reviews."
 
-**2.2 Nova seção: "Antes vs. Depois"** (logo após hero)
-- 2 colunas: "Sem Rhitmo" (cinza, lista negativa) vs. "Com Rhitmo" (roxo, lista positiva)
-- Itens com numeros concretos (4h, 70%, 30 seg)
-
-**2.3 Nova seção: "Rhitmo vs. Outros"** (comparison table)
-- Tabela: Planilhas / Qulture.Rocks / Lattice / Rhitmo
-- 6 linhas de features com check/X/parcial
-- Mobile: cards colapsáveis
-
-**2.4 Nova seção: "Numeros Concretos"**
-- 3 cards: "4h → 2min" / "38x mais vies" / "R$49 vs R$108"
-
-**2.5 Nova seção: "O que so Rhitmo faz"** (3 USPs)
-- IA que escreve / Detecção de vies / Transcrição automática
-
-**2.6 Tom de voz: limpar textos genéricos**
-- Atualizar translations pt + en removendo frases institucionais
-- Substituir por frases com números e comparações
-
-**2.7 Footer: links comparativos**
-- "Rhitmo vs. Qulture.Rocks" / "vs. Feedz" / "vs. Lattice" (placeholder links)
-
-| Arquivo | Ação |
-|---------|------|
-| `src/pages/Landing.tsx` | Rewrite de translations + 4 novas seções + footer |
+**Adicionar badge** abaixo dos CTAs no hero:
+- `✨ AI-Native desde o dia 1 — Não é um add-on`
+- Componente inline com ícone Sparkles, bg gradient roxo/rosa, rounded-full
 
 ---
 
-### FASE 3 — Proposta de Valor (positioning + novas páginas)
-*Adiciona seções de positioning e páginas auxiliares.*
+### 2. Nova seção: "Antes vs. Depois" (logo após hero, antes do vídeo)
 
-**3.1 Nova seção: "Para quem e Rhitmo"** (3 cards: Lider / PME / Enterprise)
-
-**3.2 Nova seção: "O que Rhitmo NÃO é"** (positioning honesto)
-- Lista do que não faz ainda (360°, OKRs, clima) com timeline
-- Tom construtivo, não defensivo
-
-**3.3 Nova seção: "Positioning Statement"** (manifesto)
-- Background gradient escuro, texto bold central
-
-**3.4 Componente: `AINativeBadge.tsx`**
-- Reutilizável, adicionado em hero, header, footer, comparison table
-
-**3.5 Nova seção: "Como funciona"** (3 passos)
-- Timeline horizontal desktop / vertical mobile
-- Registre 1:1s → IA analisa → Review pronta
-
-**3.6 FAQ section**
-- 4-5 perguntas honestas com respostas diretas
-- Accordion colapsável
-
-**3.7 Página: `src/pages/Roadmap.tsx`**
-- Timeline visual com quarters (Q2-Q4/2026 + 2027)
-- Cada item com status (done/wip/planned)
-- Rota: `/roadmap`
-
-**3.8 Meta tags SEO**
-- Atualizar title/description em `index.html`
-
-| Arquivo | Ação |
-|---------|------|
-| `src/components/ui/AINativeBadge.tsx` | Novo componente |
-| `src/pages/Landing.tsx` | 4 novas seções + FAQ + badge |
-| `src/pages/Roadmap.tsx` | Nova página |
-| `src/App.tsx` | Rota `/roadmap` |
-| `index.html` | Meta tags SEO |
+- 2 colunas desktop, stack mobile
+- **Sem Rhitmo** (fundo cinza, ícone X vermelho): 5 itens negativos com números (4h, 70%, viés)
+- **Com Rhitmo** (fundo gradient roxo suave, ícone Check verde): 5 itens positivos (30seg, tempo real, automático)
 
 ---
 
-### Ordem de execução recomendada
+### 3. Nova seção: "Rhitmo vs. Outros" (após vídeo)
+
+- Tabela comparativa: Planilhas / Qulture.Rocks / Lattice / **Rhitmo**
+- 6 linhas: IA escreve review, Detecção viés, Mentor IA, Transcrição, Self-serve, Grátis até 3
+- Desktop: tabela HTML responsiva
+- Mobile: cards colapsáveis (Accordion)
+- Legenda: ✅ Completo / ~ Parcial / ❌ Não possui
+
+---
+
+### 4. Nova seção: "Números Concretos" (após comparison)
+
+- Grid 3 colunas (stack mobile)
+- Card 1: "4h → 2min" + "Tempo para escrever review" (ícone Clock)
+- Card 2: "38x" + "Mais feedback negativo para mulheres" (ícone AlertCircle)
+- Card 3: "R$49/mês" + "vs. R$108/mês em outras plataformas" (ícone DollarSign)
+- Números grandes (text-5xl), fundo gradient suave
+
+---
+
+### 5. Nova seção: "O que só Rhitmo faz" (após números)
+
+- Grid 3 colunas com ícones grandes
+- Coluna 1: Zap — "IA que escreve (não sugere)"
+- Coluna 2: Shield — "Detecção de viés em tempo real"
+- Coluna 3: Mic — "Transcrição automática"
+- CTA ao final: "Ver Rhitmo em Ação" → scroll para vídeo
+
+---
+
+### 6. Tom de voz: limpar textos genéricos
+
+**Atualizar translations pt/en:**
+- `leadersP1` e `leadersP2`: remover "cultura de alta performance", "complexidade", substituir por frases com números
+- `reportsP1` e `reportsP2`: manter essência mas adicionar dados concretos
+- `hrP1` e `hrP2`: substituir "microgerenciar o processo" por comparações numéricas
+- `videoSubtitle`: "Transforme a gestão do seu time" → "Veja como uma review de 4 horas vira 2 minutos"
+
+---
+
+### 7. Footer: links comparativos
+
+- Adicionar seção no footer com 3 links placeholder:
+  - "Rhitmo vs. Qulture.Rocks"
+  - "Rhitmo vs. Feedz"
+  - "Rhitmo vs. Lattice"
+- Links apontam para `#` por enquanto (páginas comparativas criadas na Fase 3)
+
+---
+
+### Ordem das seções (resultado final)
 
 ```text
-FASE 1 (Pricing)     → independente, pode ir primeiro
-FASE 2 (Comunicação) → depende de nada, pode ir em paralelo
-FASE 3 (Prop. Valor) → idealmente após Fase 2 (mesma página)
+Header (com Enterprise link — já existe)
+Hero (subhead atualizado + badge AI-Native)
+Antes vs. Depois (NOVA)
+Vídeo Demo (existente, subtitle atualizado)
+Rhitmo vs. Outros (NOVA — comparison table)
+Números Concretos (NOVA)
+O que só Rhitmo faz (NOVA — 3 USPs)
+Para Líderes (existente, textos atualizados)
+Para Pessoas Lideradas (existente, textos atualizados)
+Para RH (existente, textos atualizados)
+Pricing (existente, intacto)
+Footer (atualizado com links comparativos)
 ```
 
-Sugiro implementar **Fase 1 primeiro** (é autocontida: tabela + edge function + página + card), depois **Fases 2 e 3 juntas** (ambas editam Landing.tsx, melhor fazer de uma vez para evitar conflitos).
+### Imports adicionais
+- `Clock`, `AlertCircle`, `DollarSign`, `Shield`, `Mic`, `XCircle`, `CheckCircle2` de lucide-react
+- `Accordion` components de shadcn para mobile comparison table
+
+### Arquivo alterado
+| Arquivo | Ação |
+|---------|------|
+| `src/pages/Landing.tsx` | Translations atualizadas + 4 novas seções + badge hero + footer links |
 
 ### O que NÃO muda
-- Planos Pulse/Pro/Business: intactos (pricing, features, checkout)
-- Página `/billing`: sem alterações
-- `usePlanLimits.ts`: sem alterações
-- Guardrails existentes: preservados
-- Design system do app (sidebar, dashboard): sem alterações
+- Pricing cards (Pulse/Pro/Business/Enterprise): intactos
+- Checkout flow: intacto
+- Imagens existentes: mantidas
+- Rotas: nenhuma nova
+
