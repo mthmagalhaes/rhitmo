@@ -414,6 +414,11 @@ const Landing = () => {
             </DropdownMenu>
             <Link to="/auth">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground min-h-[44px]">
+                {t.enterpriseNav}
+              </Button>
+            </Link>
+            <Link to="/auth">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground min-h-[44px]">
                 {t.signIn}
               </Button>
             </Link>
