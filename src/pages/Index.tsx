@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { RhythmWave } from '@/components/RhythmWave';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { TeamMemberCard } from '@/components/TeamMemberCard';

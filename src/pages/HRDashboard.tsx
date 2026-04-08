@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { RhythmWave } from '@/components/RhythmWave';
 import { supabase } from '@/integrations/supabase/client';
 import { useHRAdmin } from '@/components/HRAdminGuard';
 import { Skeleton } from '@/components/ui/skeleton';
