@@ -1,102 +1,46 @@
 
 
-## Migração dos 3 Dashboards para Design V2 + Avatar Library para Liderados
+## Atualizar Biblioteca de Avatares + Sincronizar Avatar nos Cards do Líder
 
-### Escopo
+### O que muda
 
-1. **Migrar o dashboard do Líder** (`Index.tsx`) para usar o layout/design do `DashboardV2.tsx` (hero strip, overline labels, cards horizontais, meetings como chips), preservando TODAS as funcionalidades existentes (TeamTabs, EditWorkspace, EditMember, DeleteTeam, DropdownMenu de settings, PendingInvites, UpgradeBanner, ActivitySheet, Slack invites, calendar callback, subscription badge)
-2. **Migrar o dashboard do Liderado** (`DirectReportDashboard.tsx`) para o mesmo design language (hero strip com overline, seções com spacing generoso, font-serif nos títulos)
-3. **Migrar o dashboard do HR Admin** (`HRDashboard.tsx`) para o mesmo design language
-4. **Criar biblioteca de 20+ avatares ilustrados** e editor no perfil do liderado
-5. **Remover** `DashboardV2.tsx` e sua rota temporária após migração
+#### 1. `src/components/avatar/AvatarLibrary.tsx` — Substituir seeds
+Remover estilos `lorelei` e `fun-emoji`. Manter apenas:
+- **12 avataaars**: Alex, Sam, Jordan, Taylor, Casey, Riley, Morgan, Quinn, Avery, Blake, Drew, Charlie
+- **12 notionists**: Felix, Luna, Mia, Oliver, Zara, Leo, Iris, Sage, Kai, Nora, Theo, Ava
 
-### Alterações por arquivo
+Total: 24 avatares (12+12), somente esses dois estilos.
 
-#### 1. `src/pages/Index.tsx` — Líder (arquivo principal, ~650 linhas)
-Reescrever o layout visual usando o padrão V2, MAS manter:
-- Todos os estados (`editWorkspaceOpen`, `newTeamOpen`, `editMemberOpen`, `editTeamOpen`, `deleteTeamOpen`, `leaderSyncOpen`, `activitySheetOpen`, `selectedMember`, `activeTeamId`)
-- `TeamTabs` com filtro por time
-- `UpgradeBanner`
-- `PendingInvitesSection`
-- `ActivityPreview` + `ActivitySheet`
-- `EditWorkspaceDialog`, `NewTeamDialog`, `EditMemberDialog`, `EditTeamDialog`, `DeleteTeamDialog`
-- `LeaderSyncWizard`
-- Subscription badge
-- Slack invite flow (`handleSendSlackInvite`)
-- Calendar callback (`useEffect` para `?calendar=connected`)
-- Team settings dropdown (rename/delete)
-- Member cards com `TeamMemberCard` (mantendo `onEdit`, `onClick`, `pendingInvite`, `onSendInvite`)
-- Empty state com vídeo YouTube
-- Legenda de cores (health dots)
+#### 2. `src/components/MemberAvatar.tsx` — Aceitar avatar customizado
+Adicionar prop opcional `avatarUrl?: string | null`. Quando presente e não-vazio, usar esse URL em vez do Boring Avatars. Isso faz com que o avatar escolhido pelo liderado apareça em TODOS os lugares que usam `MemberAvatar` (cards do líder, sidebar, member details, pending invites).
 
-O que muda visualmente:
-- Header → Hero strip com overline "DASHBOARD", saudação serif, micro-métricas, pill CTAs
-- Meetings → Seção com overline "PRÓXIMAS 1:1s" + chips horizontais (do V2)
-- Time → Overline "SEU TIME" + grid 2 colunas com cards horizontais (mas MANTENDO o `TeamMemberCard` existente com suas props completas)
-- Activity + Invites → Seção lateral ou abaixo com overline label
-- Spacing entre seções: `mb-12`, padding `py-10`
+#### 3. `src/components/TeamMemberCard.tsx` — Passar avatar do DB
+O `TeamMember` já tem campo `avatar: string`. Passar `avatarUrl={member.avatar}` para `MemberAvatar`.
 
-#### 2. `src/components/dashboard/DirectReportDashboard.tsx` — Liderado (~1193 linhas)
-Aplicar design language V2 ao header e tabs:
-- Header → Hero strip com overline "MEU PAINEL", saudação serif (`font-serif`), subtítulo contextual, "Meu Rhitmo" como pill button
-- Tab triggers → Estilo mais limpo com `tracking-[0.2em]` uppercase
-- Cards internos → Manter todos os cards, dialogs, funcionalidades (Pulse, Actions, PDI, Skills Map, Feedbacks, Reviews, Sync Dialog, MentorChat)
-- Nenhuma funcionalidade removida
+#### 4. `src/pages/Index.tsx` — Já busca `avatar` via `select('*')`
+A query já retorna o campo `avatar` do `team_members`. Os cards já recebem o member com avatar. Basta o `TeamMemberCard` repassar para `MemberAvatar`.
 
-#### 3. `src/pages/HRDashboard.tsx` — HR Admin (~239 linhas)
-Aplicar design language V2:
-- Header → Hero strip com overline "PAINEL DE LIDERANÇA", título serif, workspace name como subtítulo
-- MetricCards → Manter grid 5 colunas, aplicar `rounded-2xl border border-border shadow-sm` em vez de `bg-white/80 rounded-3xl`
-- Seções → Adicionar overline labels ("PONTOS DE ATENÇÃO", "ATIVIDADE DOS LÍDERES", "MATURIDADE")
-- Nenhuma funcionalidade removida
+#### 5. `src/pages/MemberDetails.tsx` — Passar avatar
+Mesma lógica: passar `avatarUrl` para `MemberAvatar`.
 
-#### 4. `src/components/avatar/AvatarLibrary.tsx` — Novo
-Componente com grid de 20+ avatares ilustrados SVG/DiceBear (estilo `notionists`, `fun-emoji`, `lorelei`, `avataaars`). Cada avatar é um seed predefinido renderizado via DiceBear API. O liderado clica para selecionar e salvar no `team_members.avatar` via update.
+#### 6. `src/components/team/PendingInvitesSection.tsx` — Sem avatar salvo disponível aqui, mantém fallback Boring Avatars
 
-#### 5. `src/components/dashboard/DirectReportDashboard.tsx` — Perfil tab (adição)
-Na tab "Meu Perfil", adicionar seção "Meu Avatar" acima de "Informações da Função":
-- Avatar grande atual + botão "Trocar Avatar"
-- Ao clicar, abre dialog/sheet com `AvatarLibrary` grid
-- Seleção salva diretamente no DB via `supabase.from('team_members').update({ avatar: selectedUrl })`
+#### 7. Invalidação de cache
+O `AvatarLibrary.handleSave` já faz `invalidateQueries(['linked-member'])`. Adicionar também invalidação de `['team-members']` para que o painel do líder reflita a mudança em tempo real.
 
-#### 6. `src/pages/DashboardV2.tsx` — Remover
-Delete do arquivo protótipo.
+### Arquivos modificados
 
-#### 7. `src/App.tsx` — Limpar rota
-Remover import e rota `/dashboard-v2`.
+| Arquivo | Alteração |
+|---------|-----------|
+| `src/components/avatar/AvatarLibrary.tsx` | Substituir seeds por 12 avataaars + 12 notionists; invalidar query `team-members` |
+| `src/components/MemberAvatar.tsx` | Adicionar prop `avatarUrl`; priorizar sobre Boring Avatars |
+| `src/components/TeamMemberCard.tsx` | Passar `avatarUrl={member.avatar}` |
+| `src/pages/MemberDetails.tsx` | Passar `avatarUrl` para MemberAvatar |
 
-### Funcionalidades preservadas (checklist)
-
-| Funcionalidade | Status |
-|---|---|
-| TeamTabs (filtro por time) | Mantido |
-| EditWorkspaceDialog | Mantido |
-| NewTeamDialog | Mantido |
-| EditMemberDialog | Mantido |
-| DeleteTeamDialog | Mantido |
-| TeamMemberCard com todas as props | Mantido |
-| Slack invite flow | Mantido |
-| Calendar callback | Mantido |
-| Subscription badge | Mantido |
-| UpgradeBanner | Mantido |
-| PendingInvitesSection | Mantido |
-| ActivityPreview + ActivitySheet | Mantido |
-| LeaderSyncWizard | Mantido |
-| SetupChecklist | Mantido |
-| Empty state com vídeo | Mantido |
-| Health dot legend | Mantido |
-| DirectReport: 4 tabs completas | Mantido |
-| DirectReport: Sync Dialog | Mantido |
-| DirectReport: MentorChat | Mantido |
-| DirectReport: PDI Dialog | Mantido |
-| DirectReport: Review Dialog | Mantido |
-| HR: MetricCards, Alertas, Atividade, Maturidade | Mantido |
-
-### Avatar Library — 20 avatares
-Usando DiceBear API com seeds predefinidos e estilos variados (`notionists`, `fun-emoji`, `lorelei`), gerando URLs determinísticas. Sem necessidade de upload ou storage — são URLs públicas.
-
-### Notas técnicas
-- Zero migrações SQL — campo `avatar` já existe em `team_members`
-- O update do avatar usa o update direto via Supabase client (RLS já permite o liderado atualizar via `linked_user_id`)
-- Design tokens: `font-serif` para títulos, `tracking-[0.2em]` uppercase para overlines, `mb-12` entre seções, `rounded-2xl` para cards
+### Fluxo resultante
+1. Liderado abre perfil → clica "Trocar Avatar" → escolhe entre 24 opções (avataaars/notionists)
+2. Salva → `team_members.avatar` é atualizado no DB
+3. Cache `linked-member` + `team-members` invalidado
+4. No dashboard do líder, `TeamMemberCard` renderiza `MemberAvatar` com o `avatarUrl` do DB
+5. Se `avatar` é null (nunca escolheu), fallback automático via Boring Avatars (comportamento atual)
 
