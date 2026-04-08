@@ -34,6 +34,7 @@ import DirectReportReviewView from "./pages/DirectReportReviewView";
 import SlackConnect from "./pages/SlackConnect";
 import DesignSystem from "./pages/DesignSystem";
 import Unsubscribe from "./pages/Unsubscribe";
+import RecorderPopup from "./pages/RecorderPopup";
 
 
 const queryClient = new QueryClient();
