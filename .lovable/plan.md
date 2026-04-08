@@ -1,51 +1,102 @@
 
 
-## Protótipo: Dashboard do Líder — Redesign inspirado no 15five
+## Migração dos 3 Dashboards para Design V2 + Avatar Library para Liderados
 
-### Conceito
+### Escopo
 
-Criar uma nova página `/dashboard-v2` como protótipo isolado, sem alterar o dashboard atual. Usa a **disposição e elementos do 15five** (hero strip contextual, seções com overline labels, cards com padding generoso, tipografia editorial) mas mantém a **paleta Rhitmo** (roxo #7C3AED, creme #F5F3EE, foreground #1A1035).
+1. **Migrar o dashboard do Líder** (`Index.tsx`) para usar o layout/design do `DashboardV2.tsx` (hero strip, overline labels, cards horizontais, meetings como chips), preservando TODAS as funcionalidades existentes (TeamTabs, EditWorkspace, EditMember, DeleteTeam, DropdownMenu de settings, PendingInvites, UpgradeBanner, ActivitySheet, Slack invites, calendar callback, subscription badge)
+2. **Migrar o dashboard do Liderado** (`DirectReportDashboard.tsx`) para o mesmo design language (hero strip com overline, seções com spacing generoso, font-serif nos títulos)
+3. **Migrar o dashboard do HR Admin** (`HRDashboard.tsx`) para o mesmo design language
+4. **Criar biblioteca de 20+ avatares ilustrados** e editor no perfil do liderado
+5. **Remover** `DashboardV2.tsx` e sua rota temporária após migração
 
-### O que muda visualmente vs. o dashboard atual
+### Alterações por arquivo
 
-| Aspecto | Atual | Novo (15five-inspired) |
-|---------|-------|----------------------|
-| Header | Título + botões inline, denso | Hero strip com saudação editorial (font-serif), subtítulo contextual, CTAs pill |
-| Layout | Bento Grid 8/4 fixo | Seções empilhadas full-width com overline labels ("SEU TIME", "PRÓXIMAS 1:1s") |
-| Cards de membros | Grid 4 colunas, aspect-ratio 3:4 | Cards horizontais mais largos (2 colunas), com avatar + métricas inline |
-| Meetings | Card único grande | Seção compacta com lista horizontal de "chips" de reunião |
-| Activity | Card lateral pequeno | Seção "Atividade Recente" com timeline vertical sutil |
-| Tipografia | Inter apenas | Lora (serif) para títulos de seção, Inter para body — editorial feel |
-| Spacing | gap-6, padding p-6 | Padding mais generoso (p-8/p-10), spacing entre seções 48-64px |
-| Botões | rounded-full com shadow | Pill buttons (rounded-full, h-12, px-8) — mais respiração |
+#### 1. `src/pages/Index.tsx` — Líder (arquivo principal, ~650 linhas)
+Reescrever o layout visual usando o padrão V2, MAS manter:
+- Todos os estados (`editWorkspaceOpen`, `newTeamOpen`, `editMemberOpen`, `editTeamOpen`, `deleteTeamOpen`, `leaderSyncOpen`, `activitySheetOpen`, `selectedMember`, `activeTeamId`)
+- `TeamTabs` com filtro por time
+- `UpgradeBanner`
+- `PendingInvitesSection`
+- `ActivityPreview` + `ActivitySheet`
+- `EditWorkspaceDialog`, `NewTeamDialog`, `EditMemberDialog`, `EditTeamDialog`, `DeleteTeamDialog`
+- `LeaderSyncWizard`
+- Subscription badge
+- Slack invite flow (`handleSendSlackInvite`)
+- Calendar callback (`useEffect` para `?calendar=connected`)
+- Team settings dropdown (rename/delete)
+- Member cards com `TeamMemberCard` (mantendo `onEdit`, `onClick`, `pendingInvite`, `onSendInvite`)
+- Empty state com vídeo YouTube
+- Legenda de cores (health dots)
 
-### Alterações
+O que muda visualmente:
+- Header → Hero strip com overline "DASHBOARD", saudação serif, micro-métricas, pill CTAs
+- Meetings → Seção com overline "PRÓXIMAS 1:1s" + chips horizontais (do V2)
+- Time → Overline "SEU TIME" + grid 2 colunas com cards horizontais (mas MANTENDO o `TeamMemberCard` existente com suas props completas)
+- Activity + Invites → Seção lateral ou abaixo com overline label
+- Spacing entre seções: `mb-12`, padding `py-10`
 
-#### 1. Nova página `src/pages/DashboardV2.tsx`
-Página protótipo completa que reutiliza os mesmos hooks e queries do `Index.tsx` (workspace, teams, members, meetings) mas com layout totalmente novo:
+#### 2. `src/components/dashboard/DirectReportDashboard.tsx` — Liderado (~1193 linhas)
+Aplicar design language V2 ao header e tabs:
+- Header → Hero strip com overline "MEU PAINEL", saudação serif (`font-serif`), subtítulo contextual, "Meu Rhitmo" como pill button
+- Tab triggers → Estilo mais limpo com `tracking-[0.2em]` uppercase
+- Cards internos → Manter todos os cards, dialogs, funcionalidades (Pulse, Actions, PDI, Skills Map, Feedbacks, Reviews, Sync Dialog, MentorChat)
+- Nenhuma funcionalidade removida
 
-- **Hero Strip**: Fundo `bg-accent` (tint roxo leve), saudação com hora do dia ("Boa tarde, Matheus"), micro-métricas contextuais (N liderados, N reuniões hoje, N notas esta semana), CTAs "Nova Nota" e "Novo Membro" como pill buttons
-- **Seção "Próximas 1:1s"**: Overline label uppercase, chips horizontais de reunião (badge de tempo + nome + link Meet), max 4 visíveis
-- **Seção "Seu Time"**: Overline label, grid 2 colunas de cards horizontais — cada card com avatar, nome, cargo, health dot, última nota, contagem de feedbacks. Hover com lift sutil
-- **Seção "Atividade"**: Timeline vertical com nudges e syncs, empty state com ícone sutil
-- **Setup Checklist**: Se incompleto, aparece como banner hero no topo com progress bar
+#### 3. `src/pages/HRDashboard.tsx` — HR Admin (~239 linhas)
+Aplicar design language V2:
+- Header → Hero strip com overline "PAINEL DE LIDERANÇA", título serif, workspace name como subtítulo
+- MetricCards → Manter grid 5 colunas, aplicar `rounded-2xl border border-border shadow-sm` em vez de `bg-white/80 rounded-3xl`
+- Seções → Adicionar overline labels ("PONTOS DE ATENÇÃO", "ATIVIDADE DOS LÍDERES", "MATURIDADE")
+- Nenhuma funcionalidade removida
 
-#### 2. Rota temporária em `App.tsx`
-Adicionar rota `/dashboard-v2` apontando para `DashboardV2` — permite comparar lado a lado sem quebrar nada.
+#### 4. `src/components/avatar/AvatarLibrary.tsx` — Novo
+Componente com grid de 20+ avatares ilustrados SVG/DiceBear (estilo `notionists`, `fun-emoji`, `lorelei`, `avataaars`). Cada avatar é um seed predefinido renderizado via DiceBear API. O liderado clica para selecionar e salvar no `team_members.avatar` via update.
 
-#### 3. Não altera nenhum componente existente
-Todos os componentes (UpcomingMeetingsCard, TeamMemberCard, etc.) ficam intactos. O protótipo reimplementa a UI inline para máxima liberdade visual.
+#### 5. `src/components/dashboard/DirectReportDashboard.tsx` — Perfil tab (adição)
+Na tab "Meu Perfil", adicionar seção "Meu Avatar" acima de "Informações da Função":
+- Avatar grande atual + botão "Trocar Avatar"
+- Ao clicar, abre dialog/sheet com `AvatarLibrary` grid
+- Seleção salva diretamente no DB via `supabase.from('team_members').update({ avatar: selectedUrl })`
 
-### Arquivos
+#### 6. `src/pages/DashboardV2.tsx` — Remover
+Delete do arquivo protótipo.
 
-| Arquivo | Ação |
-|---------|------|
-| `src/pages/DashboardV2.tsx` | Novo — protótipo completo |
-| `src/App.tsx` | Adicionar rota `/dashboard-v2` |
+#### 7. `src/App.tsx` — Limpar rota
+Remover import e rota `/dashboard-v2`.
 
-### Notas
-- Zero alterações no banco de dados
-- Zero alterações em componentes existentes
-- Mesmos dados reais (queries Supabase idênticas)
-- Após aprovação visual, migraremos o design para o `Index.tsx` principal
+### Funcionalidades preservadas (checklist)
+
+| Funcionalidade | Status |
+|---|---|
+| TeamTabs (filtro por time) | Mantido |
+| EditWorkspaceDialog | Mantido |
+| NewTeamDialog | Mantido |
+| EditMemberDialog | Mantido |
+| DeleteTeamDialog | Mantido |
+| TeamMemberCard com todas as props | Mantido |
+| Slack invite flow | Mantido |
+| Calendar callback | Mantido |
+| Subscription badge | Mantido |
+| UpgradeBanner | Mantido |
+| PendingInvitesSection | Mantido |
+| ActivityPreview + ActivitySheet | Mantido |
+| LeaderSyncWizard | Mantido |
+| SetupChecklist | Mantido |
+| Empty state com vídeo | Mantido |
+| Health dot legend | Mantido |
+| DirectReport: 4 tabs completas | Mantido |
+| DirectReport: Sync Dialog | Mantido |
+| DirectReport: MentorChat | Mantido |
+| DirectReport: PDI Dialog | Mantido |
+| DirectReport: Review Dialog | Mantido |
+| HR: MetricCards, Alertas, Atividade, Maturidade | Mantido |
+
+### Avatar Library — 20 avatares
+Usando DiceBear API com seeds predefinidos e estilos variados (`notionists`, `fun-emoji`, `lorelei`), gerando URLs determinísticas. Sem necessidade de upload ou storage — são URLs públicas.
+
+### Notas técnicas
+- Zero migrações SQL — campo `avatar` já existe em `team_members`
+- O update do avatar usa o update direto via Supabase client (RLS já permite o liderado atualizar via `linked_user_id`)
+- Design tokens: `font-serif` para títulos, `tracking-[0.2em]` uppercase para overlines, `mb-12` entre seções, `rounded-2xl` para cards
 
