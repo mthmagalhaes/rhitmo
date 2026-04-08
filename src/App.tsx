@@ -32,6 +32,7 @@ import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import DirectReportReviewView from "./pages/DirectReportReviewView";
 import SlackConnect from "./pages/SlackConnect";
+import DashboardV2 from "./pages/DashboardV2";
 
 const queryClient = new QueryClient();
 
@@ -87,6 +88,13 @@ const App = () => (
               </DirectReportGuard>
             } />
             
+            {/* Dashboard V2 prototype */}
+            <Route path="/dashboard-v2" element={
+              <DirectReportGuard>
+                <AppLayout><DashboardV2 /></AppLayout>
+              </DirectReportGuard>
+            } />
+
             {/* Slack OAuth connect */}
             <Route path="/slack/connect" element={<SlackConnect />} />
             
