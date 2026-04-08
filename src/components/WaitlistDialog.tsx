@@ -62,22 +62,20 @@ export const WaitlistDialog = ({ open, onOpenChange }: WaitlistDialogProps) => {
         description: "Avisaremos em breve quando sua conta estiver pronta."
       });
 
-      // Notificar admin de forma assíncrona (fire-and-forget)
-      // Se falhar, não impacta o usuário - o cadastro já foi salvo
-      supabase.functions.invoke('notify-admin-new-lead', {
+      // Notificar admin de forma assíncrona (fire-and-forget) via transactional email
+      supabase.functions.invoke('send-transactional-email', {
         body: {
-          type: 'INSERT',
-          table: 'waitlist_leads',
-          record: {
-            email,
-            name: name || null,
-            phone: phone || null,
-            team_size: teamSize || null,
-            created_at: new Date().toISOString()
+          templateName: 'admin-new-lead',
+          recipientEmail: 'matheus@rhitmo.co',
+          idempotencyKey: `admin-lead-${email}-${Date.now()}`,
+          templateData: {
+            leadEmail: email,
+            leadName: name || null,
+            leadPhone: phone || null,
+            leadTeamSize: teamSize || null,
           }
         }
       }).catch((err) => {
-        // Falha silenciosa - apenas log para debug
         console.error('Falha ao notificar admin (não crítico):', err);
       });
       

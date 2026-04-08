@@ -33,6 +33,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import DirectReportReviewView from "./pages/DirectReportReviewView";
 import SlackConnect from "./pages/SlackConnect";
 import DesignSystem from "./pages/DesignSystem";
+import Unsubscribe from "./pages/Unsubscribe";
 
 
 const queryClient = new QueryClient();

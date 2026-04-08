@@ -62,9 +62,18 @@ export default function DirectReportReviewView() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shared-review', reviewId] });
       toast.success('Leitura confirmada com sucesso!');
-      // Fire-and-forget email notification to manager
-      supabase.functions.invoke('notify-review-acknowledged', { body: { reviewId } })
-        .catch(err => console.error('Email notification failed:', err));
+      // Fire-and-forget email notification to manager via transactional system
+      supabase.functions.invoke('send-transactional-email', {
+        body: {
+          templateName: 'review-acknowledged',
+          recipientEmail: '', // Will use template's `to` field or be resolved server-side
+          idempotencyKey: `review-ack-${reviewId}`,
+          templateData: {
+            memberName: review?.team_members?.name || 'Colaborador',
+            acknowledgedDate: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+          }
+        }
+      }).catch(err => console.error('Email notification failed:', err));
     },
     onError: () => toast.error('Erro ao confirmar leitura.'),
   });

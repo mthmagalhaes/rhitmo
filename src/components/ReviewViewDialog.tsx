@@ -364,13 +364,18 @@ export const ReviewViewDialog = ({
                               const leaderName = currentUser?.user_metadata?.full_name || 'Seu líder';
 
                               if (memberData?.email) {
-                                supabase.functions.invoke('notify-review-shared', {
+                                supabase.functions.invoke('send-transactional-email', {
                                   body: {
-                                    memberName: memberData.name,
-                                    memberEmail: memberData.email,
-                                    leaderName,
-                                    reviewTitle: review.title,
-                                    reviewDate: review.created_at,
+                                    templateName: 'review-shared',
+                                    recipientEmail: memberData.email,
+                                    idempotencyKey: `review-shared-${review.id}`,
+                                    templateData: {
+                                      memberName: memberData.name,
+                                      managerName: leaderName,
+                                      periodLabel: review.title,
+                                      formattedDate: new Date(review.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }),
+                                      reviewLink: `${window.location.origin}/review/${review.id}`,
+                                    }
                                   },
                                 }).catch(err => console.error('Email notification failed:', err));
                               }
