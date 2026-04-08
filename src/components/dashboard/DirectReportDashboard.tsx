@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { RhythmWave } from '@/components/RhythmWave';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -440,8 +441,11 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* ═══ HERO STRIP ═══ */}
-      <div className="bg-primary/5 border-b border-border/50">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
+      <div className="relative bg-primary/5 border-b border-border/50 overflow-hidden">
+        <div className="absolute inset-0 flex items-end">
+          <RhythmWave variant="hero" className="opacity-60" />
+        </div>
+        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary mb-3">Meu Painel</p>
