@@ -15,6 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Monitor, Loader2, CheckCircle, Copy, Check, ExternalLink, Radio } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { usePlanLimits } from '@/hooks/usePlanLimits';
 
 interface MeetingRecorderProps {
   open: boolean;
@@ -47,6 +48,7 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
   const popupRef = useRef<Window | null>(null);
   const channelRef = useRef<BroadcastChannel | null>(null);
   const { toast } = useToast();
+  const { canRecord, limits, recordingHoursRemaining } = usePlanLimits();
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -279,10 +281,30 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
                 </p>
               </div>
 
-              <Button onClick={openRecorderPopup} className="w-full gap-2 rounded-xl" size="lg">
-                <Monitor className="h-5 w-5" />
-                Iniciar Gravação
-              </Button>
+              {!canRecord ? (
+                <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 rounded-xl p-4 text-center space-y-2">
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                    {limits.maxRecordingHours === 0
+                      ? `Gravação não disponível no plano ${limits.planName}`
+                      : `Limite de ${limits.maxRecordingHours}h de gravação/mês atingido`}
+                  </p>
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    Faça upgrade para gravar reuniões.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {recordingHoursRemaining !== Infinity && recordingHoursRemaining < 2 && (
+                    <p className="text-xs text-amber-600 text-center">
+                      ⚠️ Restam {recordingHoursRemaining.toFixed(1)}h de gravação neste mês
+                    </p>
+                  )}
+                  <Button onClick={openRecorderPopup} className="w-full gap-2 rounded-xl" size="lg">
+                    <Monitor className="h-5 w-5" />
+                    Iniciar Gravação
+                  </Button>
+                </>
+              )}
             </div>
           )}
 

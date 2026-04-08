@@ -15,6 +15,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Search, Users, CheckCircle2, Calendar, Loader2, UserCheck, Sparkles } from 'lucide-react';
+import { usePlanLimits } from '@/hooks/usePlanLimits';
+import { Navigate } from 'react-router-dom';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -27,7 +29,12 @@ const getActivityBadge = (days: number) => {
 
 export default function HRMembers() {
   const { workspaceId } = useHRAdmin();
+  const { hasHrDashboard, isLoading: planLoading } = usePlanLimits();
   const [search, setSearch] = useState('');
+
+  if (!planLoading && !hasHrDashboard) {
+    return <Navigate to="/billing" replace />;
+  }
   const [selectedLeader, setSelectedLeader] = useState('all');
   const [pdiFilter, setPdiFilter] = useState('all');
   const [page, setPage] = useState(0);

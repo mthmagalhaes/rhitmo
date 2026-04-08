@@ -131,7 +131,50 @@ export const usePlanLimits = () => {
     refetchOnWindowFocus: true,
   });
 
+  // Count mentor messages sent this month (role = 'user' only)
+  const { data: mentorMessageCount = 0, isLoading: mentorLoading } = useQuery({
+    queryKey: ['mentor-message-count-month', user?.id],
+    queryFn: async () => {
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+
+      const { count, error } = await supabase
+        .from('mentor_messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('role', 'user')
+        .gte('created_at', startOfMonth.toISOString());
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!user,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+  });
+
+  // Sum recording hours used this month
+  const { data: recordingSecondsUsed = 0, isLoading: recordingLoading } = useQuery({
+    queryKey: ['recording-seconds-month', user?.id],
+    queryFn: async () => {
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+
+      const { data, error } = await supabase
+        .from('meeting_transcripts')
+        .select('duration_seconds')
+        .gte('created_at', startOfMonth.toISOString());
+      if (error) throw error;
+      const total = (data || []).reduce((sum, row) => sum + (row.duration_seconds || 0), 0);
+      return total;
+    },
+    enabled: !!user,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+  });
+
   const isBeta = !!workspace?.is_beta_user;
+  const recordingHoursUsed = recordingSecondsUsed / 3600;
 
   const limits = useMemo<PlanLimits>(() => {
     const tier = (workspace?.plan_tier as 'pulse' | 'pro' | 'business') || 'pulse';
@@ -163,17 +206,21 @@ export const usePlanLimits = () => {
     };
   }, [workspace?.plan_tier, isBeta]);
 
-  const isLoading = workspaceLoading || memberLoading || reviewLoading || teamLoading;
+  const isLoading = workspaceLoading || memberLoading || reviewLoading || teamLoading || mentorLoading || recordingLoading;
 
   return {
     limits,
     memberCount,
     teamCount,
     reviewCount,
+    mentorMessageCount,
+    recordingHoursUsed,
     isLoading,
     canAddMember: isBeta ? true : memberCount < limits.maxMembers,
     canAddTeam: isBeta ? true : teamCount < limits.maxTeams,
     canGenerateReview: isBeta ? true : reviewCount < limits.maxReviews,
+    canSendMentorMessage: isBeta ? true : limits.maxMentorMessages === Infinity || mentorMessageCount < limits.maxMentorMessages,
+    canRecord: isBeta ? true : limits.maxRecordingHours > 0 && recordingHoursUsed < limits.maxRecordingHours,
     hasAnalytics: isBeta ? true : limits.analytics,
     hasSync: isBeta ? true : limits.rhitmoSync,
     hasMentorChat: true,
@@ -182,5 +229,7 @@ export const usePlanLimits = () => {
     membersRemaining: isBeta ? Infinity : limits.maxMembers - memberCount,
     teamsRemaining: isBeta ? Infinity : limits.maxTeams - teamCount,
     reviewsRemaining: isBeta ? Infinity : limits.maxReviews - reviewCount,
+    mentorMessagesRemaining: isBeta ? Infinity : limits.maxMentorMessages === Infinity ? Infinity : limits.maxMentorMessages - mentorMessageCount,
+    recordingHoursRemaining: isBeta ? Infinity : limits.maxRecordingHours === Infinity ? Infinity : limits.maxRecordingHours - recordingHoursUsed,
   };
 };

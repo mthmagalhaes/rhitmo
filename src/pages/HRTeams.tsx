@@ -17,6 +17,8 @@ import {
   Users, Search, AlertTriangle, ChevronRight,
   FileText, CheckCircle, XCircle
 } from 'lucide-react';
+import { usePlanLimits } from '@/hooks/usePlanLimits';
+import { Navigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -43,7 +45,12 @@ interface TeamMember {
 
 const HRTeams = () => {
   const { workspaceId } = useHRAdmin();
+  const { hasHrDashboard, isLoading: planLoading } = usePlanLimits();
   const [search, setSearch] = useState('');
+
+  if (!planLoading && !hasHrDashboard) {
+    return <Navigate to="/billing" replace />;
+  }
   const [selectedLeader, setSelectedLeader] = useState<Leader | null>(null);
 
   const { data: leadersData, isLoading } = useQuery({
