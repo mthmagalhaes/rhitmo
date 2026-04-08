@@ -1469,6 +1469,10 @@ export type Database = {
           total_count: number
         }[]
       }
+      get_hr_analytics_advanced: {
+        Args: { _workspace_id: string }
+        Returns: Json
+      }
       get_hr_dashboard_metrics: {
         Args: { _workspace_id: string }
         Returns: Json
