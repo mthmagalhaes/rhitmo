@@ -6,6 +6,7 @@ import { ActivityBadge } from '@/components/ActivityBadge';
 import { ActivitySheet } from '@/components/ActivitySheet';
 import { useAuth } from '@/hooks/useAuth';
 import { useLinkedMember } from '@/hooks/useLinkedMember';
+import { ImpersonationBanner } from '@/components/admin/ImpersonationBanner';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -77,6 +78,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         />
       )}
 
+      <ImpersonationBanner />
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <SidebarInset className="flex-1">
