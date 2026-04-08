@@ -71,7 +71,7 @@ const getGreeting = () => {
   return 'Boa noite';
 };
 
-const Index = () => {
+const Index = ({ activeTab }: { activeTab?: string }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, loading: authLoading } = useAuth();
@@ -323,7 +323,7 @@ const Index = () => {
 
   if (isLinkedMember) {
     if (needsOnboarding) return <Navigate to="/onboarding" replace />;
-    return <DirectReportDashboard linkedMember={linkedMember!} />;
+    return <DirectReportDashboard linkedMember={linkedMember!} activeTab={activeTab} />;
   }
 
   const filteredMembers = activeTeamId
