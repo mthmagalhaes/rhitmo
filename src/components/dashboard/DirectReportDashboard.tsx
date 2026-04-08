@@ -54,6 +54,7 @@ interface LinkedMemberData {
 
 interface DirectReportDashboardProps {
   linkedMember: LinkedMemberData;
+  activeTab?: string;
 }
 
 const tenureLabels: Record<string, string> = {
@@ -151,9 +152,9 @@ const filterReviewForMember = (content: string): string => {
   return filtered.join('\n').trim();
 };
 
-export default function DirectReportDashboard({ linkedMember }: DirectReportDashboardProps) {
+export default function DirectReportDashboard({ linkedMember, activeTab: activeTabProp }: DirectReportDashboardProps) {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('visao-geral');
+  const [activeTab, setActiveTab] = useState(activeTabProp || 'visao-geral');
   const [syncDialogOpen, setSyncDialogOpen] = useState(false);
   const [syncSaving, setSyncSaving] = useState(false);
   const [isReanalyzing, setIsReanalyzing] = useState(false);
@@ -470,26 +471,7 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
       {/* Tabs */}
       <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <div className="border-b border-border bg-background sticky top-0 z-10 -mx-6 px-6 mb-6">
-            <TabsList className="bg-transparent p-0 h-auto gap-1">
-              <TabsTrigger value="visao-geral" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none text-muted-foreground hover:text-foreground px-4 py-3 text-sm font-medium transition-colors gap-2">
-                <Home className="h-4 w-4" />
-                Visão Geral
-              </TabsTrigger>
-              <TabsTrigger value="carreira" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none text-muted-foreground hover:text-foreground px-4 py-3 text-sm font-medium transition-colors gap-2">
-                <Compass className="h-4 w-4" />
-                Minha Carreira
-              </TabsTrigger>
-              <TabsTrigger value="feedbacks" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none text-muted-foreground hover:text-foreground px-4 py-3 text-sm font-medium transition-colors gap-2">
-                <FileText className="h-4 w-4" />
-                Feedbacks
-              </TabsTrigger>
-              <TabsTrigger value="perfil" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none text-muted-foreground hover:text-foreground px-4 py-3 text-sm font-medium transition-colors gap-2">
-                <User className="h-4 w-4" />
-                Meu Perfil
-              </TabsTrigger>
-            </TabsList>
-          </div>
+          {/* TabsList hidden — navigation moved to sidebar */}
 
           {/* ═══ TAB 1: Visão Geral ═══ */}
           <TabsContent value="visao-geral">

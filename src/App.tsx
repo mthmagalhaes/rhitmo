@@ -63,6 +63,21 @@ const App = () => (
                 <AppLayout><Index /></AppLayout>
               </DirectReportGuard>
             } />
+            <Route path="/dashboard/carreira" element={
+              <DirectReportGuard>
+                <AppLayout><Index activeTab="carreira" /></AppLayout>
+              </DirectReportGuard>
+            } />
+            <Route path="/dashboard/feedbacks" element={
+              <DirectReportGuard>
+                <AppLayout><Index activeTab="feedbacks" /></AppLayout>
+              </DirectReportGuard>
+            } />
+            <Route path="/dashboard/perfil" element={
+              <DirectReportGuard>
+                <AppLayout><Index activeTab="perfil" /></AppLayout>
+              </DirectReportGuard>
+            } />
             <Route path="/member/:id" element={
               <DirectReportGuard>
                 <AppLayout><MemberDetails /></AppLayout>

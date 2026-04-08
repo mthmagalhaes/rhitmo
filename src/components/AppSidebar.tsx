@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { RhythmWave } from '@/components/RhythmWave';
-import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award, ArrowRightLeft, UserCheck, Palette } from 'lucide-react';
+import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award, ArrowRightLeft, UserCheck, Palette, Compass, FileText, User } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
@@ -42,6 +42,13 @@ const menuItems = [
 ];
 
 const leaderOnlyItems = ['Analytics', 'Assinatura', 'Central de Conhecimento'];
+
+const memberMenuItems = [
+  { title: 'Início', url: '/dashboard', icon: Home },
+  { title: 'Minha Carreira', url: '/dashboard/carreira', icon: Compass },
+  { title: 'Feedbacks', url: '/dashboard/feedbacks', icon: FileText },
+  { title: 'Meu Perfil', url: '/dashboard/perfil', icon: User },
+];
 
 const hrMenuItems = [
   { title: 'Visão Geral', url: '/hr', icon: LayoutDashboard },
@@ -156,8 +163,7 @@ export function AppSidebar() {
             <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Menu</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {menuItems
-                  .filter(item => !isUser || !leaderOnlyItems.includes(item.title))
+                {(isUser ? memberMenuItems : menuItems)
                   .map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild tooltip={item.title}>
