@@ -1141,11 +1141,6 @@ const Landing = () => {
           <p className="text-muted-foreground leading-relaxed text-center mb-6">
             {t.whatWeAreNotOutro}
           </p>
-          <div className="text-center">
-            <Button variant="outline" asChild>
-              <Link to="/roadmap">{t.whatWeAreNotCTA}</Link>
-            </Button>
-          </div>
         </div>
       </section>
 
