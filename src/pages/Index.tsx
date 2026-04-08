@@ -20,7 +20,7 @@ import { useLinkedMember } from '@/hooks/useLinkedMember';
 import DirectReportDashboard from '@/components/dashboard/DirectReportDashboard';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { PenSquare, Users, Loader2, UserPlus, Pencil, Settings, Trash2 } from 'lucide-react';
+import { PenSquare, Users, Loader2, UserPlus, Pencil, Settings, Trash2, Calendar, FileText, Bell, Video, ChevronRight, MessageSquare, CheckCircle2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
@@ -37,10 +37,10 @@ import {
 } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { Workspace, Team } from '@/types/team';
-import { UpcomingMeetingsCard } from '@/components/dashboard/UpcomingMeetingsCard';
-
 import { PendingInvitesSection } from '@/components/team/PendingInvitesSection';
 import { UpgradeBanner } from '@/components/billing/UpgradeBanner';
+import { format, formatDistanceToNow, isToday, isTomorrow, differenceInDays } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface TeamMember {
   id: string;
@@ -57,6 +57,13 @@ interface TeamMember {
   feedbackCount?: number;
   performanceScore?: number;
 }
+
+const getGreeting = () => {
+  const h = new Date().getHours();
+  if (h < 12) return 'Bom dia';
+  if (h < 18) return 'Boa tarde';
+  return 'Boa noite';
+};
 
 const Index = () => {
   const navigate = useNavigate();
@@ -77,14 +84,12 @@ const Index = () => {
   const [activeTeamId, setActiveTeamId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Redirect if not authenticated
   useEffect(() => {
     if (!user && !authLoading) {
       navigate('/', { replace: true });
     }
   }, [user, authLoading, navigate]);
 
-  // Handle calendar callback
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('calendar') === 'connected') {
@@ -95,7 +100,6 @@ const Index = () => {
     }
   }, []);
 
-  // Query para workspace - FILTRO EXPLÍCITO por owner_id para isolamento de tenant
   const { data: workspace } = useQuery({
     queryKey: ['workspace', user?.id],
     queryFn: async () => {
@@ -103,7 +107,7 @@ const Index = () => {
       const { data, error } = await supabase
         .from('workspaces')
         .select('*')
-        .eq('owner_id', user.id) // ✅ ISOLAMENTO: Apenas workspace do usuário logado
+        .eq('owner_id', user.id)
         .maybeSingle();
       if (error) throw error;
       return data as Workspace;
@@ -114,7 +118,6 @@ const Index = () => {
     refetchOnWindowFocus: true,
   });
 
-  // Query para subscription ativa do workspace (source of truth para badge)
   const { data: activeSubscription } = useQuery({
     queryKey: ['active-subscription', workspace?.id],
     queryFn: async () => {
@@ -132,7 +135,6 @@ const Index = () => {
     staleTime: 30 * 1000,
   });
 
-  // Query para teams
   const { data: teams = [] } = useQuery({
     queryKey: ['teams', workspace?.id],
     queryFn: async () => {
@@ -151,59 +153,37 @@ const Index = () => {
     refetchOnWindowFocus: true,
   });
 
-  // Query para team members com feedback info - FILTRO EXPLÍCITO por workspace
   const { data: teamMembers = [], isLoading: loading } = useQuery({
     queryKey: ['team-members', workspace?.id],
     queryFn: async () => {
       if (!workspace) return [];
-
-      // Query 1: Buscar membros APENAS do workspace atual via join com teams
       const { data: members, error: membersError } = await supabase
         .from('team_members')
         .select('*, teams!inner(workspace_id)')
-        .eq('teams.workspace_id', workspace.id) // ✅ ISOLAMENTO: Apenas membros do workspace
+        .eq('teams.workspace_id', workspace.id)
         .order('name');
-
       if (membersError) throw membersError;
-
-      // Query 2: Buscar feedbacks apenas dos membros deste workspace
       const memberIds = (members || []).map(m => m.id);
       const { data: feedbackCounts, error: countError } = await supabase
         .from('feedbacks')
         .select('member_id, created_at')
         .in('member_id', memberIds.length > 0 ? memberIds : ['00000000-0000-0000-0000-000000000000']);
-
       if (countError) throw countError;
-
-      // Combinar os dados: contar feedbacks e pegar o mais recente
       const membersWithCounts = (members || []).map(member => {
-        const memberFeedbacks = (feedbackCounts || []).filter(
-          f => f.member_id === member.id
-        );
-        
+        const memberFeedbacks = (feedbackCounts || []).filter(f => f.member_id === member.id);
         const lastFeedback = memberFeedbacks.length > 0
-          ? memberFeedbacks.sort((a, b) => 
-              new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-            )[0].created_at
+          ? memberFeedbacks.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0].created_at
           : member.created_at;
-
-        return {
-          ...member,
-          feedback_count: memberFeedbacks.length,
-          last_feedback_date: lastFeedback,
-          teamId: member.team_id
-        };
+        return { ...member, feedback_count: memberFeedbacks.length, last_feedback_date: lastFeedback, teamId: member.team_id };
       });
-
       return membersWithCounts as TeamMember[];
     },
-    enabled: !!workspace, // ✅ Só executa após ter workspace
+    enabled: !!workspace,
     staleTime: 30 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: true,
   });
 
-  // Query para pending slack invites
   const { data: pendingInvitesMap = new Map() } = useQuery({
     queryKey: ['pending-slack-invites', workspace?.id],
     queryFn: async () => {
@@ -215,11 +195,7 @@ const Index = () => {
       if (error) throw error;
       const map = new Map<string, { status: string; member_has_account: boolean; created_at: string }>();
       (data || []).forEach(inv => {
-        map.set(inv.member_id, {
-          status: inv.status || 'sent',
-          member_has_account: inv.member_has_account || false,
-          created_at: inv.created_at || '',
-        });
+        map.set(inv.member_id, { status: inv.status || 'sent', member_has_account: inv.member_has_account || false, created_at: inv.created_at || '' });
       });
       return map;
     },
@@ -227,14 +203,64 @@ const Index = () => {
     staleTime: 30 * 1000,
   });
 
+  // Meetings query (from V2)
+  const { data: meetings = [] } = useQuery({
+    queryKey: ['upcoming-meetings', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data } = await supabase
+        .from('upcoming_meetings')
+        .select('*, team_members(name)')
+        .eq('user_id', user.id)
+        .gte('start_time', new Date().toISOString())
+        .order('start_time')
+        .limit(6);
+      return data || [];
+    },
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+
+  // Weekly notes count
+  const { data: weeklyNotesCount = 0 } = useQuery({
+    queryKey: ['weekly-notes', user?.id],
+    queryFn: async () => {
+      if (!user) return 0;
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const { count } = await supabase
+        .from('feedbacks')
+        .select('*', { count: 'exact', head: true })
+        .eq('manager_id', user.id)
+        .gte('created_at', weekAgo.toISOString());
+      return count || 0;
+    },
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+
+  // Nudges
+  const { data: nudges = [] } = useQuery({
+    queryKey: ['leader-nudges', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data } = await supabase
+        .from('leader_nudges')
+        .select('*')
+        .eq('leader_id', user.id)
+        .is('dismissed_at', null)
+        .order('created_at', { ascending: false })
+        .limit(5);
+      return data || [];
+    },
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+
   const handleSendSlackInvite = async (member: TeamMember) => {
     try {
       const { data, error } = await supabase.functions.invoke('invite-member-slack', {
-        body: {
-          member_id: member.id,
-          member_name: member.name,
-          member_email: (member as any).email,
-        },
+        body: { member_id: member.id, member_name: member.name, member_email: (member as any).email },
       });
       if (error) throw error;
       if (data?.success) {
@@ -246,10 +272,7 @@ const Index = () => {
         });
         queryClient.invalidateQueries({ queryKey: ['pending-slack-invites'] });
       } else if (data?.reason === 'not_in_workspace') {
-        toast({
-          title: '⚠️ Email não encontrado no Slack',
-          description: 'Adicione a pessoa ao workspace Slack primeiro.',
-        });
+        toast({ title: '⚠️ Email não encontrado no Slack', description: 'Adicione a pessoa ao workspace Slack primeiro.' });
       }
     } catch (err: any) {
       console.error('Slack invite error:', err);
@@ -257,39 +280,16 @@ const Index = () => {
     }
   };
 
-  // Query para status de onboarding
   const { data: onboardingStatus } = useQuery({
     queryKey: ['onboarding-status', workspace?.id, user?.id],
     queryFn: async () => {
       if (!workspace || !user) return { hasMembers: false, hasFeedbacks: false, hasAIAnalysis: false, hasMentorChat: false, hasLeaderSync: false };
-      
       const hasLeaderSync = !!(workspace as unknown as Record<string, unknown>).leader_sync_data;
-      
       const memberIds = teamMembers.map(m => m.id);
-      if (memberIds.length === 0) {
-        return { hasMembers: false, hasFeedbacks: false, hasAIAnalysis: false, hasMentorChat: false, hasLeaderSync };
-      }
-
-      // Contar feedbacks
-      const { count: feedbackCount } = await supabase
-        .from('feedbacks')
-        .select('*', { count: 'exact', head: true })
-        .in('member_id', memberIds);
-
-      // Contar feedbacks com análise de IA (summary preenchido)
-      const { count: aiCount } = await supabase
-        .from('feedbacks')
-        .select('*', { count: 'exact', head: true })
-        .in('member_id', memberIds)
-        .not('summary', 'is', null);
-
-      // Contar mensagens do mentor (apenas role='user' para garantir que o usuário interagiu)
-      const { count: mentorCount } = await supabase
-        .from('mentor_messages')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('role', 'user');
-
+      if (memberIds.length === 0) return { hasMembers: false, hasFeedbacks: false, hasAIAnalysis: false, hasMentorChat: false, hasLeaderSync };
+      const { count: feedbackCount } = await supabase.from('feedbacks').select('*', { count: 'exact', head: true }).in('member_id', memberIds);
+      const { count: aiCount } = await supabase.from('feedbacks').select('*', { count: 'exact', head: true }).in('member_id', memberIds).not('summary', 'is', null);
+      const { count: mentorCount } = await supabase.from('mentor_messages').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('role', 'user');
       return {
         hasMembers: teamMembers.length > 0,
         hasFeedbacks: (feedbackCount || 0) > 0,
@@ -302,11 +302,7 @@ const Index = () => {
     staleTime: 30 * 1000,
   });
 
-  const isSetupComplete = onboardingStatus?.hasMembers && 
-    onboardingStatus?.hasFeedbacks && 
-    onboardingStatus?.hasAIAnalysis && 
-    onboardingStatus?.hasMentorChat &&
-    onboardingStatus?.hasLeaderSync;
+  const isSetupComplete = onboardingStatus?.hasMembers && onboardingStatus?.hasFeedbacks && onboardingStatus?.hasAIAnalysis && onboardingStatus?.hasMentorChat && onboardingStatus?.hasLeaderSync;
 
   const handleSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ['workspace'] });
@@ -316,13 +312,9 @@ const Index = () => {
   };
 
   const handleOpenMentor = () => {
-    // Se tem membros, navega para o primeiro membro para abrir o mentor
-    if (teamMembers.length > 0) {
-      navigate(`/member/${teamMembers[0].id}?openMentor=true`);
-    }
+    if (teamMembers.length > 0) navigate(`/member/${teamMembers[0].id}?openMentor=true`);
   };
 
-  // Loading combinado: auth + linked member + dados
   if (authLoading || linkedMemberLoading || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -333,21 +325,17 @@ const Index = () => {
 
   if (!user) return null;
 
-  // INVERSÃO: Priorizar fluxo de liderado ANTES de verificar workspace
   if (isLinkedMember) {
-    if (needsOnboarding) {
-      return <Navigate to="/onboarding" replace />;
-    }
-    // Liderado com onboarding completo → Dashboard próprio
+    if (needsOnboarding) return <Navigate to="/onboarding" replace />;
     return <DirectReportDashboard linkedMember={linkedMember!} />;
   }
 
-  const filteredMembers = activeTeamId 
+  const filteredMembers = activeTeamId
     ? teamMembers.filter(m => m.teamId === activeTeamId)
     : teamMembers;
 
   const activeTeam = teams.find(t => t.id === activeTeamId);
-  
+
   const getPageTitle = () => {
     if (!activeTeamId) return 'Todos os Membros';
     if (activeTeam?.name === 'Sem Time') return 'Membros sem Time';
@@ -355,58 +343,61 @@ const Index = () => {
   };
 
   const showTeamSettings = activeTeamId && activeTeam?.name !== 'Sem Time';
+  const firstName = user.user_metadata?.full_name?.split(' ')[0] || user.email?.split('@')[0] || 'Líder';
+  const todayMeetings = meetings.filter((m: any) => isToday(new Date(m.start_time)));
+  const membersNeedingAttention = teamMembers.filter(m => {
+    const ref = m.last_feedback_date || m.created_at;
+    return differenceInDays(new Date(), new Date(ref)) > 14;
+  });
 
   return (
-    <div className="min-h-screen bg-muted/30 pb-20">
-      <div className="bg-transparent">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-          <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-background pb-20">
+      {/* ═══ HERO STRIP ═══ */}
+      <div className="bg-primary/5 border-b border-border/50">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
             <div>
-              {workspace && (
-                  <div className="flex flex-wrap items-center gap-3 mb-1">
-                  <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-foreground">{workspace.name}</h1>
-                  <Badge 
-                    variant={activeSubscription ? 'default' : 'outline'}
-                    className={
-                      activeSubscription?.plan_tier === 'business' 
-                        ? 'bg-foreground text-background hover:bg-foreground/90' 
-                        : activeSubscription?.plan_tier === 'pro'
-                          ? ''
-                          : ''
-                    }
-                  >
-                    {activeSubscription 
-                      ? `${activeSubscription.plan_tier.charAt(0).toUpperCase() + activeSubscription.plan_tier.slice(1)}${activeSubscription.status === 'trialing' ? ' · Trial' : ''}`
-                      : 'Pulse'
-                    }
-                  </Badge>
-                  <Button 
-                    variant="ghost" 
-                    size="icon"
-                    onClick={() => setEditWorkspaceOpen(true)}
-                    className="h-8 w-8"
-                    aria-label="Editar workspace"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-              <p className="text-sm text-muted-foreground mt-1">Gestão de Performance Contínua</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary mb-3">Dashboard</p>
+              <div className="flex flex-wrap items-center gap-3 mb-1">
+                <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground font-serif">
+                  {getGreeting()}, {firstName}
+                </h1>
+                <Badge
+                  variant={activeSubscription ? 'default' : 'outline'}
+                  className={activeSubscription?.plan_tier === 'business' ? 'bg-foreground text-background hover:bg-foreground/90' : ''}
+                >
+                  {activeSubscription
+                    ? `${activeSubscription.plan_tier.charAt(0).toUpperCase() + activeSubscription.plan_tier.slice(1)}${activeSubscription.status === 'trialing' ? ' · Trial' : ''}`
+                    : 'Pulse'}
+                </Badge>
+                <Button variant="ghost" size="icon" onClick={() => setEditWorkspaceOpen(true)} className="h-8 w-8" aria-label="Editar workspace">
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 mt-3 text-sm text-muted-foreground">
+                <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" />{teamMembers.length} liderado{teamMembers.length !== 1 ? 's' : ''}</span>
+                <span className="text-border">·</span>
+                <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" />{todayMeetings.length} reuniõ{todayMeetings.length !== 1 ? 'es' : ''} hoje</span>
+                <span className="text-border">·</span>
+                <span className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" />{weeklyNotesCount} nota{weeklyNotesCount !== 1 ? 's' : ''} esta semana</span>
+                {membersNeedingAttention.length > 0 && (
+                  <>
+                    <span className="text-border">·</span>
+                    <span className="flex items-center gap-1.5 text-destructive font-medium">
+                      <Bell className="h-3.5 w-3.5" />{membersNeedingAttention.length} precisa{membersNeedingAttention.length !== 1 ? 'm' : ''} de atenção
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2 sm:gap-3">
+            <div className="flex gap-3">
               {teamMembers.length > 0 && (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span>
-                        <Button 
-                          onClick={() => setMemberDialogOpen(true)} 
-                          size="lg" 
-                          variant="outline" 
-                          className="gap-2 rounded-full"
-                          disabled={!canAddMember}
-                        >
-                          <UserPlus className="h-5 w-5" />
+                        <Button onClick={() => setMemberDialogOpen(true)} variant="outline" className="rounded-full h-11 px-6 gap-2" disabled={!canAddMember}>
+                          <UserPlus className="h-4 w-4" />
                           <span className="hidden sm:inline">Novo Membro</span>
                         </Button>
                       </span>
@@ -420,8 +411,8 @@ const Index = () => {
                   </Tooltip>
                 </TooltipProvider>
               )}
-              <Button onClick={() => setDialogOpen(true)} size="lg" className="gap-2 shadow-md rounded-full">
-                <PenSquare className="h-5 w-5" />
+              <Button onClick={() => setDialogOpen(true)} className="rounded-full h-11 px-6 gap-2 shadow-md">
+                <PenSquare className="h-4 w-4" />
                 <span className="hidden sm:inline">Nova Nota</span>
               </Button>
             </div>
@@ -429,8 +420,8 @@ const Index = () => {
         </div>
       </div>
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-        <TeamTabs 
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-8">
+        <TeamTabs
           teams={teams}
           activeTeamId={activeTeamId}
           onTeamChange={setActiveTeamId}
@@ -439,7 +430,6 @@ const Index = () => {
 
         <UpgradeBanner />
 
-        {/* Setup Checklist — above Bento Grid for new users */}
         {onboardingStatus && !isSetupComplete && (
           <SetupChecklist
             hasMembers={onboardingStatus.hasMembers}
@@ -454,188 +444,208 @@ const Index = () => {
           />
         )}
 
-        {/* Bento Grid: Meetings + Activity + Actions + Invites */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
-          {/* Left: Upcoming Meetings */}
-          <div className="lg:col-span-8">
-            <UpcomingMeetingsCard />
-          </div>
+        {/* ═══ PRÓXIMAS 1:1s ═══ */}
+        {meetings.length > 0 && (
+          <section className="mb-12">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-4">Próximas 1:1s</p>
+            <div className="flex flex-wrap gap-3">
+              {meetings.slice(0, 4).map((meeting: any) => {
+                const startDate = new Date(meeting.start_time);
+                const memberName = meeting.team_members?.name || meeting.title || 'Reunião';
+                const timeLabel = isToday(startDate)
+                  ? `Hoje · ${format(startDate, 'HH:mm')}`
+                  : isTomorrow(startDate)
+                    ? `Amanhã · ${format(startDate, 'HH:mm')}`
+                    : format(startDate, "EEE, dd MMM · HH:mm", { locale: ptBR });
+                return (
+                  <div
+                    key={meeting.id}
+                    className="flex items-center gap-3 bg-card border border-border rounded-2xl px-4 py-3 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer group"
+                    onClick={() => meeting.member_id && navigate(`/brief/${meeting.id}`)}
+                  >
+                    <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <Calendar className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{memberName}</p>
+                      <p className="text-xs text-muted-foreground">{timeLabel}</p>
+                    </div>
+                    {meeting.meet_link && (
+                      <a href={meeting.meet_link} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="ml-auto shrink-0">
+                        <Badge variant="outline" className="gap-1 text-xs hover:bg-primary/10 transition-colors">
+                          <Video className="h-3 w-3" />Meet
+                        </Badge>
+                      </a>
+                    )}
+                  </div>
+                );
+              })}
+              {meetings.length > 4 && (
+                <div className="flex items-center px-3 text-sm text-muted-foreground">+{meetings.length - 4} mais</div>
+              )}
+            </div>
+          </section>
+        )}
 
-          {/* Right: Activity + Pending Invites */}
-          <div className="lg:col-span-4 space-y-6">
-            <ActivityPreview onOpenSheet={() => setActivitySheetOpen(true)} />
-            {workspace && <PendingInvitesSection workspaceId={workspace.id} compact />}
+        {/* ═══ BENTO: Activity + Invites ═══ */}
+        <section className="mb-12">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-4">Atividade Recente</p>
+              <ActivityPreview onOpenSheet={() => setActivitySheetOpen(true)} />
+            </div>
+            {workspace && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-4">Convites Pendentes</p>
+                <PendingInvitesSection workspaceId={workspace.id} compact />
+              </div>
+            )}
           </div>
-        </div>
+        </section>
 
-        <div className="mb-8">
+        {/* ═══ Nudges ═══ */}
+        {nudges.length > 0 && (
+          <section className="mb-12">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-4">Alertas</p>
+            <div className="space-y-2">
+              {nudges.slice(0, 4).map((nudge: any) => (
+                <div key={nudge.id} className="flex items-start gap-3 bg-card border border-border rounded-xl px-4 py-3">
+                  <div className="mt-0.5 h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <MessageSquare className="h-3 w-3 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-foreground leading-relaxed">{nudge.message}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{formatDistanceToNow(new Date(nudge.created_at), { locale: ptBR, addSuffix: true })}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ═══ SEU TIME ═══ */}
+        <section className="mb-12">
           <div className="flex items-center gap-2 mb-2">
-            <Users className="h-5 w-5 text-primary" />
-            <h2 className="text-2xl font-bold tracking-tight text-foreground">{getPageTitle()}</h2>
-            
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Seu Time</p>
             {showTeamSettings && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Configurações do time">
-                    <Settings className="h-4 w-4" />
+                  <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Configurações do time">
+                    <Settings className="h-3.5 w-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">
                   <DropdownMenuItem onClick={() => setEditTeamOpen(true)}>
-                    <Pencil className="h-4 w-4 mr-2" />
-                    Renomear Time
+                    <Pencil className="h-4 w-4 mr-2" />Renomear Time
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    onClick={() => setDeleteTeamOpen(true)}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Excluir Time
+                  <DropdownMenuItem onClick={() => setDeleteTeamOpen(true)} className="text-destructive focus:text-destructive">
+                    <Trash2 className="h-4 w-4 mr-2" />Excluir Time
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
           </div>
-          <p className="text-muted-foreground">
-            {filteredMembers.length} {filteredMembers.length === 1 ? 'liderado' : 'liderados'} · Clique em um card para ver o histórico
-          </p>
-          <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mt-3">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm text-muted-foreground">
+              {filteredMembers.length} {filteredMembers.length === 1 ? 'liderado' : 'liderados'} — {getPageTitle()}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mb-4">
             <span className="font-medium text-foreground/70">Última anotação:</span>
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500"></span> Recente (até 7 dias)</span>
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-yellow-500"></span> Atenção (8–14 dias)</span>
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-destructive"></span> Sem registro (+14 dias)</span>
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-muted-foreground/40"></span> Nenhuma nota</span>
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Recente (até 7 dias)</span>
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-yellow-500" /> Atenção (8–14 dias)</span>
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-destructive" /> Sem registro (+14 dias)</span>
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-muted-foreground/40" /> Nenhuma nota</span>
           </div>
-        </div>
 
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : teamMembers.length === 0 ? (
-          <div className="col-span-full rounded-3xl bg-gradient-to-br from-primary/5 to-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-12 text-center">
-            <div className="max-w-2xl mx-auto">
-              <div className="mb-6">
-                <p className="text-muted-foreground mb-3">
-                  Veja como gerenciar seu time em 2 minutos
-                </p>
-                <div className="aspect-video w-full rounded-2xl shadow-md overflow-hidden">
-                  <iframe
-                    className="w-full h-full"
-                    src="https://www.youtube.com/embed/bRQiwrBGlsc"
-                    title="Demo do Rhitmo"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
+          {loading ? (
+            <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+          ) : teamMembers.length === 0 ? (
+            <div className="rounded-2xl bg-card border border-border shadow-sm p-12 text-center">
+              <div className="max-w-md mx-auto">
+                <p className="text-muted-foreground mb-3 text-sm">Veja como gerenciar seu time em 2 minutos</p>
+                <div className="aspect-video w-full rounded-xl shadow-md overflow-hidden mb-6">
+                  <iframe className="w-full h-full" src="https://www.youtube.com/embed/bRQiwrBGlsc" title="Demo do Rhitmo" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
                 </div>
+                <Button onClick={() => setMemberDialogOpen(true)} className="rounded-full px-8 h-11">Adicionar Primeiro Liderado</Button>
               </div>
-              <p className="text-muted-foreground mb-4">Nenhum liderado cadastrado ainda</p>
-              <Button onClick={() => setMemberDialogOpen(true)} className="rounded-full px-8 py-3 text-lg">
-                Adicionar Primeiro Liderado
-              </Button>
             </div>
-          </div>
-        ) : filteredMembers.length === 0 ? (
-          <div className="col-span-full rounded-2xl bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-12 text-center">
-            <p className="text-muted-foreground mb-4">Nenhum membro neste time</p>
-            <Button onClick={() => setActiveTeamId(null)} variant="outline" className="rounded-full">
-              Ver Todos os Membros
-            </Button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredMembers.map((member) => (
-              <TeamMemberCard
-                key={member.id}
-                member={{
-                  id: member.id,
-                  name: member.name,
-                  role: member.role,
-                  avatar: member.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${member.name}`,
-                  lastFeedback: member.last_feedback_date || member.created_at,
-                  feedbackCount: member.feedback_count || 0,
-                  performanceScore: member.performance_score,
-                  teamId: member.teamId,
-                  linked_user_id: (member as any).linked_user_id,
-                  email: (member as any).email,
-                } as any}
-                pendingInvite={pendingInvitesMap.get(member.id) || null}
-                onSendInvite={
-                  !(member as any).linked_user_id && !pendingInvitesMap.has(member.id) && (member as any).email
-                    ? () => handleSendSlackInvite(member)
-                    : undefined
-                }
-                teamName={teams.find(t => t.id === member.teamId)?.name}
-                onEdit={() => {
-                  setSelectedMember({
+          ) : filteredMembers.length === 0 ? (
+            <div className="rounded-2xl bg-card border border-border shadow-sm p-12 text-center">
+              <p className="text-muted-foreground mb-4">Nenhum membro neste time</p>
+              <Button onClick={() => setActiveTeamId(null)} variant="outline" className="rounded-full">Ver Todos os Membros</Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredMembers.map((member) => (
+                <TeamMemberCard
+                  key={member.id}
+                  member={{
                     id: member.id,
                     name: member.name,
                     role: member.role,
-                    teamId: member.teamId || '',
                     avatar: member.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${member.name}`,
                     lastFeedback: member.last_feedback_date || member.created_at,
                     feedbackCount: member.feedback_count || 0,
                     performanceScore: member.performance_score,
-                    performance_score: member.performance_score,
-                    created_at: member.created_at
-                  });
-                  setEditMemberOpen(true);
-                }}
-                onClick={() => navigate(`/member/${member.id}`)}
-              />
-            ))}
-          </div>
+                    teamId: member.teamId,
+                    linked_user_id: (member as any).linked_user_id,
+                    email: (member as any).email,
+                  } as any}
+                  pendingInvite={pendingInvitesMap.get(member.id) || null}
+                  onSendInvite={
+                    !(member as any).linked_user_id && !pendingInvitesMap.has(member.id) && (member as any).email
+                      ? () => handleSendSlackInvite(member)
+                      : undefined
+                  }
+                  teamName={teams.find(t => t.id === member.teamId)?.name}
+                  onEdit={() => {
+                    setSelectedMember({
+                      id: member.id, name: member.name, role: member.role,
+                      teamId: member.teamId || '', avatar: member.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${member.name}`,
+                      lastFeedback: member.last_feedback_date || member.created_at, feedbackCount: member.feedback_count || 0,
+                      performanceScore: member.performance_score, performance_score: member.performance_score, created_at: member.created_at,
+                    });
+                    setEditMemberOpen(true);
+                  }}
+                  onClick={() => navigate(`/member/${member.id}`)}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Empty state */}
+        {meetings.length === 0 && nudges.length === 0 && teamMembers.length > 0 && (
+          <section className="mb-12">
+            <div className="rounded-2xl bg-card border border-dashed border-border p-8 text-center">
+              <CheckCircle2 className="h-8 w-8 text-primary/30 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">Tudo em dia! Nenhuma reunião ou alerta pendente.</p>
+            </div>
+          </section>
         )}
       </main>
 
+      {/* ═══ DIALOGS ═══ */}
       <NewNoteDialog open={dialogOpen} onOpenChange={setDialogOpen} workspaceId={workspace?.id} />
-      <NewMemberDialog 
-        open={memberDialogOpen} 
-        onOpenChange={setMemberDialogOpen}
-        workspaceId={workspace?.id || ''}
-        onSuccess={handleSuccess}
-      />
-      <EditWorkspaceDialog
-        open={editWorkspaceOpen}
-        onOpenChange={setEditWorkspaceOpen}
-        workspaceId={workspace?.id || ''}
-        currentName={workspace?.name || ''}
-        onSuccess={handleSuccess}
-      />
-      <NewTeamDialog
-        open={newTeamOpen}
-        onOpenChange={setNewTeamOpen}
-        workspaceId={workspace?.id || ''}
-        onSuccess={handleSuccess}
-      />
+      <NewMemberDialog open={memberDialogOpen} onOpenChange={setMemberDialogOpen} workspaceId={workspace?.id || ''} onSuccess={handleSuccess} />
+      <EditWorkspaceDialog open={editWorkspaceOpen} onOpenChange={setEditWorkspaceOpen} workspaceId={workspace?.id || ''} currentName={workspace?.name || ''} onSuccess={handleSuccess} />
+      <NewTeamDialog open={newTeamOpen} onOpenChange={setNewTeamOpen} workspaceId={workspace?.id || ''} onSuccess={handleSuccess} />
       <EditMemberDialog
         open={editMemberOpen}
         onOpenChange={setEditMemberOpen}
-        member={selectedMember ? {
-          id: selectedMember.id,
-          name: selectedMember.name,
-          role: selectedMember.role,
-          teamId: selectedMember.teamId || ''
-        } : null}
+        member={selectedMember ? { id: selectedMember.id, name: selectedMember.name, role: selectedMember.role, teamId: selectedMember.teamId || '' } : null}
         workspaceId={workspace?.id || ''}
         onSuccess={handleSuccess}
       />
-      <EditTeamDialog
-        open={editTeamOpen}
-        onOpenChange={setEditTeamOpen}
-        team={activeTeam}
-        onSuccess={handleSuccess}
-      />
+      <EditTeamDialog open={editTeamOpen} onOpenChange={setEditTeamOpen} team={activeTeam} onSuccess={handleSuccess} />
       <DeleteTeamDialog
         open={deleteTeamOpen}
         onOpenChange={setDeleteTeamOpen}
         team={activeTeam}
         workspaceId={workspace?.id || ''}
-        onSuccess={() => {
-          setActiveTeamId(null);
-          handleSuccess();
-        }}
+        onSuccess={() => { setActiveTeamId(null); handleSuccess(); }}
       />
       {workspace && (
         <LeaderSyncWizard
