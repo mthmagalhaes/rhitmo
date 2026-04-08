@@ -656,7 +656,7 @@ const Landing = () => {
           </div>
 
           {/* Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
 
             {/* ── Pulse ── */}
             <div className="bg-card rounded-2xl shadow-sm p-8 border space-y-6">
@@ -755,6 +755,41 @@ const Landing = () => {
 
               <ul className="space-y-3 pt-2">
                 {t.businessFeatures.map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-foreground">
+                    <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* ── Enterprise ── */}
+            <div className="bg-card rounded-2xl shadow-sm p-8 border space-y-6">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium mb-2" style={{ backgroundColor: "#1e3a8a15", color: "#1e3a8a" }}>
+                  <Building className="h-3 w-3" />
+                  Enterprise
+                </div>
+                <h3 className="text-2xl font-bold tracking-tight text-foreground">Enterprise</h3>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {t.enterpriseSubtitle}
+                </p>
+              </div>
+
+              <div>
+                <div>
+                  <span className="text-3xl font-bold text-foreground">{t.enterprisePrice}</span>
+                  <span className="text-sm text-muted-foreground ml-1">{t.enterprisePer}</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">{t.enterpriseNote}</p>
+              </div>
+
+              <Button variant="outline" className="w-full min-h-[44px]" asChild>
+                <Link to="/enterprise">{t.enterpriseCTA}</Link>
+              </Button>
+
+              <ul className="space-y-3 pt-2">
+                {t.enterpriseFeatures.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-sm text-foreground">
                     <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                     {f}
