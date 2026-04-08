@@ -159,6 +159,7 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
   const [showPDIDialog, setShowPDIDialog] = useState(false);
   const [meuRhitmoOpen, setMeuRhitmoOpen] = useState(false);
   const [meuRhitmoInitialPrompt, setMeuRhitmoInitialPrompt] = useState<string | undefined>();
+  const [avatarLibraryOpen, setAvatarLibraryOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const [syncForm, setSyncForm] = useState({
@@ -437,25 +438,32 @@ export default function DirectReportDashboard({ linkedMember }: DirectReportDash
   };
 
   return (
-    <div className="min-h-screen bg-muted/30 pb-20">
-      {/* Header */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Olá, {displayName}! 👋</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {feedbacks.length > 0 
-              ? `${feedbacks.length} feedback${feedbacks.length > 1 ? 's' : ''} compartilhado${feedbacks.length > 1 ? 's' : ''} · ${devItems.length > 0 ? `PDI ${Math.round(((devItems as any[]).filter((i: any) => i.status === 'completed').length / devItems.length) * 100)}% concluído` : linkedMember.role}` 
-              : `Painel do Colaborador · ${linkedMember.role}`}
-          </p>
+    <div className="min-h-screen bg-background pb-20">
+      {/* ═══ HERO STRIP ═══ */}
+      <div className="bg-primary/5 border-b border-border/50">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary mb-3">Meu Painel</p>
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground font-serif">
+                Olá, {displayName}! 👋
+              </h1>
+              <p className="text-sm text-muted-foreground mt-2">
+                {feedbacks.length > 0
+                  ? `${feedbacks.length} feedback${feedbacks.length > 1 ? 's' : ''} compartilhado${feedbacks.length > 1 ? 's' : ''} · ${devItems.length > 0 ? `PDI ${Math.round(((devItems as any[]).filter((i: any) => i.status === 'completed').length / devItems.length) * 100)}% concluído` : linkedMember.role}`
+                  : `Painel do Colaborador · ${linkedMember.role}`}
+              </p>
+            </div>
+            <Button onClick={() => setMeuRhitmoOpen(true)} variant="outline" className="gap-2 rounded-full h-11 px-6">
+              <Sparkles className="h-4 w-4" />
+              Meu Rhitmo
+            </Button>
+          </div>
         </div>
-        <Button onClick={() => setMeuRhitmoOpen(true)} variant="outline" className="gap-2">
-          <Sparkles className="h-4 w-4" />
-          Meu Rhitmo
-        </Button>
       </div>
 
       {/* Tabs */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 pb-8">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="border-b border-border bg-background sticky top-0 z-10 -mx-6 px-6 mb-6">
             <TabsList className="bg-transparent p-0 h-auto gap-1">
