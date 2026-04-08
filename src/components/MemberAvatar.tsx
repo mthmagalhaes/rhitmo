@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 interface MemberAvatarProps {
   memberId: string;
   memberName: string;
+  avatarUrl?: string | null;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
 }
@@ -23,12 +24,13 @@ const sizes = {
 export const MemberAvatar = ({ 
   memberId, 
   memberName, 
+  avatarUrl: customAvatarUrl,
   size = 'md',
   className 
 }: MemberAvatarProps) => {
   const [imageError, setImageError] = useState(false);
   const sizeConfig = sizes[size];
-  const avatarUrl = getBoringAvatarUrl(memberId, sizeConfig.imgSize);
+  const avatarUrl = customAvatarUrl || getBoringAvatarUrl(memberId, sizeConfig.imgSize);
   const initials = memberName.split(' ').map(n => n[0]).join('');
 
   return (
