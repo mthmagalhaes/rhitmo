@@ -87,7 +87,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-0 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
-      <SidebarHeader className="px-5 py-6">
+      <SidebarHeader className={`py-6 ${open ? 'px-5' : 'px-3 flex justify-center'}`}>
         <div className="flex items-center gap-2">
           <RhitmoLogo size="sm" className="text-primary" />
         </div>

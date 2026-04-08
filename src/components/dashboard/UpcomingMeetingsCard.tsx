@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, CalendarOff, ExternalLink, FileText } from 'lucide-react';
+import { Calendar, CalendarOff, ExternalLink, FileText, ChevronDown } from 'lucide-react';
 import { format, isToday, isTomorrow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -14,6 +15,8 @@ const getTimeBadge = (startTime: string) => {
   return { label: format(date, "dd/MM HH:mm", { locale: ptBR }), className: 'bg-muted text-muted-foreground border-border' };
 };
 
+const VISIBLE_COUNT = 3;
+
 export const UpcomingMeetingsCard = () => {
   const {
     isConnected,
@@ -24,18 +27,19 @@ export const UpcomingMeetingsCard = () => {
     disconnectCalendar,
   } = useCalendarIntegration();
   const navigate = useNavigate();
+  const [expanded, setExpanded] = useState(false);
 
   // Not connected state
   if (!checkingConnection && !isConnected) {
     return (
-      <div className="rounded-3xl bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-6 min-h-[400px] lg:min-h-[500px] flex flex-col items-center justify-center text-center">
-        <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-5">
-          <Calendar className="h-8 w-8 text-primary" />
+      <div className="rounded-3xl bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-6 min-h-[300px] flex flex-col items-center justify-center text-center">
+        <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+          <Calendar className="h-7 w-7 text-primary" />
         </div>
         <h3 className="text-lg font-semibold tracking-tight text-foreground mb-2">
           Próximas 1:1s
         </h3>
-        <p className="text-sm text-muted-foreground mb-6 max-w-[240px]">
+        <p className="text-sm text-muted-foreground mb-5 max-w-[240px]">
           Conecte o Google Calendar para ver suas próximas reuniões com liderados
         </p>
         <Button
@@ -52,14 +56,14 @@ export const UpcomingMeetingsCard = () => {
   // Loading state
   if (checkingConnection || loadingMeetings) {
     return (
-      <div className="rounded-3xl bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-6 min-h-[400px] lg:min-h-[500px]">
-        <div className="flex items-center gap-2 mb-6">
+      <div className="rounded-3xl bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-6">
+        <div className="flex items-center gap-2 mb-5">
           <Calendar className="h-5 w-5 text-primary" />
           <h3 className="text-lg font-semibold tracking-tight text-foreground">Próximas 1:1s</h3>
         </div>
-        <div className="space-y-4">
+        <div className="space-y-3">
           {[1, 2, 3].map(i => (
-            <Skeleton key={i} className="h-20 rounded-2xl" />
+            <Skeleton key={i} className="h-16 rounded-2xl" />
           ))}
         </div>
       </div>
@@ -69,8 +73,8 @@ export const UpcomingMeetingsCard = () => {
   // Empty state
   if (upcomingMeetings.length === 0) {
     return (
-      <div className="rounded-3xl bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-6 min-h-[400px] lg:min-h-[500px] flex flex-col">
-        <div className="flex items-center justify-between mb-6">
+      <div className="rounded-3xl bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-6 min-h-[200px] flex flex-col">
+        <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary" />
             <h3 className="text-lg font-semibold tracking-tight text-foreground">Próximas 1:1s</h3>
@@ -82,22 +86,23 @@ export const UpcomingMeetingsCard = () => {
             Desconectar
           </button>
         </div>
-        <div className="flex-1 flex flex-col items-center justify-center text-center">
-          <CalendarOff className="h-10 w-10 text-muted-foreground/40 mb-4" />
+        <div className="flex-1 flex flex-col items-center justify-center text-center py-6">
+          <CalendarOff className="h-9 w-9 text-muted-foreground/30 mb-3" />
           <p className="text-sm text-muted-foreground">
-            Nenhuma reunião com liderados nas próximas 48h
+            Nenhuma reunião nas próximas 48h
           </p>
         </div>
       </div>
     );
   }
 
-  // With meetings
-  const meetings = upcomingMeetings.slice(0, 5);
+  // With meetings — show max VISIBLE_COUNT, collapsible
+  const hasMore = upcomingMeetings.length > VISIBLE_COUNT;
+  const visibleMeetings = expanded ? upcomingMeetings.slice(0, 8) : upcomingMeetings.slice(0, VISIBLE_COUNT);
 
   return (
-    <div className="rounded-3xl bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-6 min-h-[400px] lg:min-h-[500px] flex flex-col">
-      <div className="flex items-center justify-between mb-6">
+    <div className="rounded-3xl bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-6 flex flex-col">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Calendar className="h-5 w-5 text-primary" />
           <h3 className="text-lg font-semibold tracking-tight text-foreground">Próximas 1:1s</h3>
@@ -113,8 +118,8 @@ export const UpcomingMeetingsCard = () => {
         </button>
       </div>
 
-      <div className="flex-1 space-y-1">
-        {meetings.map((meeting, index) => {
+      <div className="space-y-1">
+        {visibleMeetings.map((meeting, index) => {
           const badge = getTimeBadge(meeting.start_time);
 
           return (
@@ -160,13 +165,23 @@ export const UpcomingMeetingsCard = () => {
                   </button>
                 </div>
               </div>
-              {index < meetings.length - 1 && (
+              {index < visibleMeetings.length - 1 && (
                 <div className="mx-3 border-b border-border/50" />
               )}
             </div>
           );
         })}
       </div>
+
+      {hasMore && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="mt-3 flex items-center justify-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors py-2"
+        >
+          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+          {expanded ? 'Mostrar menos' : `Ver mais ${upcomingMeetings.length - VISIBLE_COUNT}`}
+        </button>
+      )}
     </div>
   );
 };

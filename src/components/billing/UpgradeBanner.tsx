@@ -1,14 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import { useEnforcedLimits } from '@/hooks/useEnforcedLimits';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { AlertCircle } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 
 export const UpgradeBanner = () => {
   const navigate = useNavigate();
   const { limits, memberCount, teamCount, reviewCount, checkLimit } = useEnforcedLimits();
 
-  // Beta users never see upgrade prompts
   if (limits.isBetaUser) return null;
 
   const nearLimits: { name: string; current: number; max: number }[] = [];
@@ -31,27 +29,27 @@ export const UpgradeBanner = () => {
   if (nearLimits.length === 0) return null;
 
   return (
-    <Alert className="mb-4 border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30">
-      <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-      <AlertTitle className="text-amber-800 dark:text-amber-200">
-        Você está próximo do limite do plano {limits.planName}
-      </AlertTitle>
-      <AlertDescription className="text-amber-700 dark:text-amber-300">
-        <div className="space-y-1 mt-1">
+    <div className="mb-4 rounded-2xl bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20 p-4 flex items-center justify-between gap-4">
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-foreground">
+          Próximo do limite — {limits.planName}
+        </p>
+        <div className="flex flex-wrap gap-3 mt-1">
           {nearLimits.map((limit) => (
-            <div key={limit.name} className="text-sm">
+            <span key={limit.name} className="text-xs text-muted-foreground">
               {limit.current}/{limit.max} {limit.name}
-            </div>
+            </span>
           ))}
         </div>
-        <Button
-          size="sm"
-          className="mt-3"
-          onClick={() => navigate('/billing')}
-        >
-          Fazer Upgrade
-        </Button>
-      </AlertDescription>
-    </Alert>
+      </div>
+      <Button
+        size="sm"
+        className="rounded-xl gap-1.5 shrink-0"
+        onClick={() => navigate('/billing')}
+      >
+        Upgrade
+        <ArrowUpRight className="h-3.5 w-3.5" />
+      </Button>
+    </div>
   );
 };

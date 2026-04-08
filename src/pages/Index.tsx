@@ -439,21 +439,7 @@ const Index = () => {
 
         <UpgradeBanner />
 
-        {/* Bento Grid: Meetings + Activity + Actions + Invites */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
-          {/* Left: Upcoming Meetings */}
-          <div className="lg:col-span-8">
-            <UpcomingMeetingsCard />
-          </div>
-
-          {/* Right: Activity + Pending Invites */}
-          <div className="lg:col-span-4 space-y-6">
-            <ActivityPreview onOpenSheet={() => setActivitySheetOpen(true)} />
-            {workspace && <PendingInvitesSection workspaceId={workspace.id} compact />}
-          </div>
-        </div>
-
-        {/* Setup Checklist - aparece enquanto setup não está completo */}
+        {/* Setup Checklist — above Bento Grid for new users */}
         {onboardingStatus && !isSetupComplete && (
           <SetupChecklist
             hasMembers={onboardingStatus.hasMembers}
@@ -467,6 +453,20 @@ const Index = () => {
             onOpenLeaderSync={() => setLeaderSyncOpen(true)}
           />
         )}
+
+        {/* Bento Grid: Meetings + Activity + Actions + Invites */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
+          {/* Left: Upcoming Meetings */}
+          <div className="lg:col-span-8">
+            <UpcomingMeetingsCard />
+          </div>
+
+          {/* Right: Activity + Pending Invites */}
+          <div className="lg:col-span-4 space-y-6">
+            <ActivityPreview onOpenSheet={() => setActivitySheetOpen(true)} />
+            {workspace && <PendingInvitesSection workspaceId={workspace.id} compact />}
+          </div>
+        </div>
 
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-2">
