@@ -31,21 +31,41 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     enabled: !!user,
   });
 
-  // Guard: check if user has a pending invite by email (prevent orphan workspace creation)
+  // Guard: check if user has a pending invite by email AND auto-link immediately
   const { data: hasPendingInviteByEmail, isLoading: pendingInviteLoading } = useQuery({
     queryKey: ['pending-invite-email', user?.email],
     queryFn: async () => {
       if (!user?.email) return false;
-      const { data } = await supabase
+      const { data: pendingMember } = await supabase
         .from('team_members')
         .select('id')
         .eq('email', user.email)
         .eq('invite_status', 'pending')
         .is('linked_user_id', null)
         .maybeSingle();
-      return !!data;
+      
+      if (!pendingMember) return false;
+
+      // Auto-link immediately to prevent race condition
+      const { error } = await supabase
+        .from('team_members')
+        .update({
+          linked_user_id: user.id,
+          invite_status: 'accepted',
+          invite_token: null,
+        })
+        .eq('id', pendingMember.id)
+        .is('linked_user_id', null); // safety: only if still unlinked
+
+      if (!error) {
+        // Invalidate linked-member query so the UI updates
+        queryClient.invalidateQueries({ queryKey: ['linked-member'] });
+      }
+
+      return true;
     },
     enabled: !!user?.email && !isLinkedMember,
+    staleTime: Infinity, // only run once per session
   });
 
   // Liderados NÃO precisam de workspace - só líderes
