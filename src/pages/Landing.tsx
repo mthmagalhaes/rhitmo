@@ -45,7 +45,7 @@ const translations = {
     heroTitle: "Nunca mais escreva uma avaliação de desempenho do zero.",
     heroSubtitle: "O que levava 4 horas agora leva 2 minutos. Rhitmo é o único parceiro AI-nativo de liderança que transforma suas conversas em reviews prontas.",
     seePlans: "Ver planos",
-    aiNativeBadge: "AI-Native desde o dia 1 — Não é um add-on",
+    aiNativeBadge: "AI-Native desde o dia 1",
     // Before vs After
     beforeAfterTitle: "O impacto na prática",
     withoutRhitmo: "Sem Rhitmo",
