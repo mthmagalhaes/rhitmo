@@ -195,7 +195,7 @@ export function AppSidebar() {
             <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Menu</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {(isUser ? memberMenuItems : menuItems)
+                {((isUser || isLinkedMember) ? memberMenuItems : menuItems)
                   .map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild tooltip={item.title}>
