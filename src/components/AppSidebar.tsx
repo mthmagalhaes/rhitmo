@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { RhythmWave } from '@/components/RhythmWave';
-import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award, ArrowRightLeft, UserCheck, Palette, Compass, FileText, User } from 'lucide-react';
+import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award, ArrowRightLeft, UserCheck, Palette, Compass, FileText, User, Download } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
@@ -38,6 +38,7 @@ const menuItems = [
   { title: 'Início', url: '/dashboard', icon: Home },
   { title: 'Analytics', url: '/analytics', icon: BarChart3 },
   { title: 'Central de Conhecimento', url: '/help', icon: BookOpen },
+  { title: 'Extensão Chrome', url: '#extension', icon: Download },
   { title: 'Assinatura', url: '/billing', icon: CreditCard },
 ];
 
@@ -71,12 +72,43 @@ export function AppSidebar() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [supportDialogOpen, setSupportDialogOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [extensionDialogOpen, setExtensionDialogOpen] = useState(false);
+  const [tokenCopied, setTokenCopied] = useState(false);
 
   const handleCopyEmail = () => {
     navigator.clipboard.writeText('support@rhitmo.co');
     setCopied(true);
     toast({ title: "E-mail copiado!" });
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownloadExtension = () => {
+    fetch('/rhitmo-recorder-extension.zip')
+      .then((res) => {
+        if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+        return res.blob();
+      })
+      .then((blob) => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'rhitmo-recorder-extension.zip';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      })
+      .catch(() => toast({ title: 'Erro ao baixar extensão', variant: 'destructive' }));
+  };
+
+  const handleCopyToken = async () => {
+    const { data } = await import('@/integrations/supabase/client').then(m => m.supabase.auth.getSession());
+    const token = data?.session?.access_token;
+    if (token) {
+      navigator.clipboard.writeText(token);
+      setTokenCopied(true);
+      toast({ title: 'Token copiado!' });
+      setTimeout(() => setTokenCopied(false), 2000);
+    } else {
+      toast({ title: 'Faça login novamente para copiar o token', variant: 'destructive' });
+    }
   };
 
   const handleSignOut = async () => {
@@ -167,15 +199,25 @@ export function AppSidebar() {
                   .map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild tooltip={item.title}>
-                      <NavLink 
-                        to={item.url} 
-                        end
-                        className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
-                        activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
-                      >
-                        <item.icon className="h-5 w-5" />
-                        <span>{item.title}</span>
-                      </NavLink>
+                      {item.url === '#extension' ? (
+                        <button
+                          onClick={() => setExtensionDialogOpen(true)}
+                          className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground flex items-center gap-2 w-full"
+                        >
+                          <item.icon className="h-5 w-5" />
+                          <span>{item.title}</span>
+                        </button>
+                      ) : (
+                        <NavLink 
+                          to={item.url} 
+                          end
+                          className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
+                          activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
+                        >
+                          <item.icon className="h-5 w-5" />
+                          <span>{item.title}</span>
+                        </NavLink>
+                      )}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
@@ -345,6 +387,50 @@ export function AppSidebar() {
             >
               {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={extensionDialogOpen} onOpenChange={setExtensionDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Download className="h-5 w-5 text-primary" />
+              Extensão Chrome — Rhitmo Recorder
+            </DialogTitle>
+            <DialogDescription>
+              Grave reuniões no Google Meet automaticamente. Ao entrar em uma chamada, a extensão inicia a gravação e envia o áudio para transcrição pela IA.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-2">
+            <Button onClick={handleDownloadExtension} className="w-full rounded-xl gap-2">
+              <Download className="h-4 w-4" />
+              Baixar Extensão (.zip)
+            </Button>
+
+            <Separator />
+
+            <div className="space-y-3">
+              <p className="text-sm font-semibold text-foreground">Como instalar:</p>
+              <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+                <li>Descompacte o arquivo ZIP em uma pasta.</li>
+                <li>No Chrome, acesse <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">chrome://extensions</code></li>
+                <li>Ative o <strong>Modo Desenvolvedor</strong> (toggle no canto superior direito).</li>
+                <li>Clique em <strong>"Carregar sem compactação"</strong> e selecione a pasta.</li>
+              </ol>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-foreground">Token de Conexão:</p>
+              <p className="text-xs text-muted-foreground">Cole este token no popup da extensão para autenticá-la.</p>
+              <Button variant="outline" size="sm" className="w-full rounded-xl gap-2" onClick={handleCopyToken}>
+                {tokenCopied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                {tokenCopied ? 'Token copiado!' : 'Copiar Token'}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
