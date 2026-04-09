@@ -208,6 +208,69 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
             </div>
           </div>
 
+          {/* Seção Chrome Extension */}
+          <div className="border-t pt-4">
+            <Label className="text-muted-foreground text-xs uppercase tracking-wide mb-2 block">
+              <Chrome className="h-3 w-3 inline mr-1" />
+              Extensão Chrome
+            </Label>
+            <p className="text-sm text-muted-foreground mb-3">
+              Grave reuniões do Google Meet com 1 click, direto do navegador.
+            </p>
+            
+            {/* Copy Token */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full mb-2"
+              onClick={async () => {
+                if (!user) return;
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session?.access_token) {
+                  navigator.clipboard.writeText(session.access_token);
+                  setTokenCopied(true);
+                  setTimeout(() => setTokenCopied(false), 2000);
+                  toast({ title: "Token copiado!", description: "Cole na extensão para conectar." });
+                }
+              }}
+            >
+              {tokenCopied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
+              {tokenCopied ? 'Copiado!' : 'Copiar Token de Conexão'}
+            </Button>
+
+            {/* Download */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => {
+                fetch('/rhitmo-recorder-extension.zip')
+                  .then(res => {
+                    if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+                    return res.blob();
+                  })
+                  .then(blob => {
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = 'rhitmo-recorder-extension.zip';
+                    a.click();
+                    URL.revokeObjectURL(a.href);
+                  })
+                  .catch(err => toast({ title: "Erro no download", description: err.message, variant: "destructive" }));
+              }}
+            >
+              <ExternalLink className="h-4 w-4 mr-1" />
+              Baixar Extensão
+            </Button>
+
+            <div className="mt-2 text-xs text-muted-foreground space-y-1">
+              <p>1. Baixe e descompacte o ZIP</p>
+              <p>2. Abra <code className="bg-muted px-1 py-0.5 rounded text-[10px]">chrome://extensions</code></p>
+              <p>3. Ative <strong>Modo Desenvolvedor</strong> e clique <strong>Carregar sem compactação</strong></p>
+              <p>4. Copie o token acima e cole na extensão</p>
+            </div>
+          </div>
+
           {/* Seção de Manutenção */}
           <div className="border-t pt-4">
             <Label className="text-muted-foreground text-xs uppercase tracking-wide mb-2 block">
