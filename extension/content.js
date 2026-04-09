@@ -33,12 +33,20 @@
   ];
 
   function isInCall() {
-    // Check if any call indicator exists AND we're on a meeting URL (not landing)
     const url = window.location.href;
     if (url.includes('/landing') || !url.match(/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}/i)) {
       return false;
     }
-    return CALL_INDICATORS.some(sel => document.querySelector(sel) !== null);
+    // Primary: check known DOM selectors
+    const hasIndicator = CALL_INDICATORS.some(sel => document.querySelector(sel) !== null);
+    if (hasIndicator) return true;
+    // Fallback: if on a meeting URL and there are multiple video elements, likely in a call
+    const videos = document.querySelectorAll('video');
+    if (videos.length >= 2) return true;
+    // Fallback 2: bottom bar with hangup button (red circle)
+    const hangupBtn = document.querySelector('button[style*="background"][style*="red"], [data-promo-anchor-id="HANGUP_BUTTON"]');
+    if (hangupBtn) return true;
+    return false;
   }
 
   function isCallEnded() {
