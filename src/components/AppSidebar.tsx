@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { RhythmWave } from '@/components/RhythmWave';
-import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award, ArrowRightLeft, UserCheck, Palette, Compass, FileText, User } from 'lucide-react';
+import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award, ArrowRightLeft, UserCheck, Palette, Compass, FileText, User, Download } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
@@ -38,6 +38,7 @@ const menuItems = [
   { title: 'Início', url: '/dashboard', icon: Home },
   { title: 'Analytics', url: '/analytics', icon: BarChart3 },
   { title: 'Central de Conhecimento', url: '/help', icon: BookOpen },
+  { title: 'Extensão Chrome', url: '#extension', icon: Download },
   { title: 'Assinatura', url: '/billing', icon: CreditCard },
 ];
 
@@ -71,12 +72,43 @@ export function AppSidebar() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [supportDialogOpen, setSupportDialogOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [extensionDialogOpen, setExtensionDialogOpen] = useState(false);
+  const [tokenCopied, setTokenCopied] = useState(false);
 
   const handleCopyEmail = () => {
     navigator.clipboard.writeText('support@rhitmo.co');
     setCopied(true);
     toast({ title: "E-mail copiado!" });
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownloadExtension = () => {
+    fetch('/rhitmo-recorder-extension.zip')
+      .then((res) => {
+        if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+        return res.blob();
+      })
+      .then((blob) => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'rhitmo-recorder-extension.zip';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      })
+      .catch(() => toast({ title: 'Erro ao baixar extensão', variant: 'destructive' }));
+  };
+
+  const handleCopyToken = async () => {
+    const { data } = await import('@/integrations/supabase/client').then(m => m.supabase.auth.getSession());
+    const token = data?.session?.access_token;
+    if (token) {
+      navigator.clipboard.writeText(token);
+      setTokenCopied(true);
+      toast({ title: 'Token copiado!' });
+      setTimeout(() => setTokenCopied(false), 2000);
+    } else {
+      toast({ title: 'Faça login novamente para copiar o token', variant: 'destructive' });
+    }
   };
 
   const handleSignOut = async () => {
