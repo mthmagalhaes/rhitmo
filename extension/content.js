@@ -10,14 +10,26 @@
     '[data-call-ended]',           // end-call button area
     '[aria-label*="Leave"]',       // leave call button (EN)
     '[aria-label*="Sair"]',        // leave call button (PT)
+    '[aria-label*="Desligar"]',    // hangup button (PT)
     '[data-tooltip*="Leave"]',
     '[data-tooltip*="Sair"]',
+    '[data-tooltip*="Desligar"]',
     'button[jsname="CQylAd"]',    // hangup button jsname
+    'button[jsname="Ahq7gc"]',    // alternate hangup jsname
+    '[data-is-muted]',            // mute indicators = in call
+    '[data-self-name]',           // self participant tile
+    '[jscontroller="kAPMuc"]',    // call controls container
+    'div[jsname="ME4pUe"]',       // bottom bar controls
+    '[aria-label*="microphone"]', // mic button (EN)
+    '[aria-label*="microfone"]',  // mic button (PT)
+    '[aria-label*="camera"]',     // camera button
+    '[aria-label*="câmera"]',     // camera button (PT)
   ];
 
   const ENDED_INDICATORS = [
     '[data-call-ended="true"]',
     '[jsname="r4nke"]',            // "return to home" after call ends
+    '[data-call-ended]',           // generic call-ended marker
   ];
 
   function isInCall() {
