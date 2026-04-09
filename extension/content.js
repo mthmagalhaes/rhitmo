@@ -10,23 +10,43 @@
     '[data-call-ended]',           // end-call button area
     '[aria-label*="Leave"]',       // leave call button (EN)
     '[aria-label*="Sair"]',        // leave call button (PT)
+    '[aria-label*="Desligar"]',    // hangup button (PT)
     '[data-tooltip*="Leave"]',
     '[data-tooltip*="Sair"]',
+    '[data-tooltip*="Desligar"]',
     'button[jsname="CQylAd"]',    // hangup button jsname
+    'button[jsname="Ahq7gc"]',    // alternate hangup jsname
+    '[data-is-muted]',            // mute indicators = in call
+    '[data-self-name]',           // self participant tile
+    '[jscontroller="kAPMuc"]',    // call controls container
+    'div[jsname="ME4pUe"]',       // bottom bar controls
+    '[aria-label*="microphone"]', // mic button (EN)
+    '[aria-label*="microfone"]',  // mic button (PT)
+    '[aria-label*="camera"]',     // camera button
+    '[aria-label*="câmera"]',     // camera button (PT)
   ];
 
   const ENDED_INDICATORS = [
     '[data-call-ended="true"]',
     '[jsname="r4nke"]',            // "return to home" after call ends
+    '[data-call-ended]',           // generic call-ended marker
   ];
 
   function isInCall() {
-    // Check if any call indicator exists AND we're on a meeting URL (not landing)
     const url = window.location.href;
     if (url.includes('/landing') || !url.match(/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}/i)) {
       return false;
     }
-    return CALL_INDICATORS.some(sel => document.querySelector(sel) !== null);
+    // Primary: check known DOM selectors
+    const hasIndicator = CALL_INDICATORS.some(sel => document.querySelector(sel) !== null);
+    if (hasIndicator) return true;
+    // Fallback: if on a meeting URL and there are multiple video elements, likely in a call
+    const videos = document.querySelectorAll('video');
+    if (videos.length >= 2) return true;
+    // Fallback 2: bottom bar with hangup button (red circle)
+    const hangupBtn = document.querySelector('button[style*="background"][style*="red"], [data-promo-anchor-id="HANGUP_BUTTON"]');
+    if (hangupBtn) return true;
+    return false;
   }
 
   function isCallEnded() {
