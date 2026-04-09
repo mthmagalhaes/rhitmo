@@ -426,7 +426,13 @@ export function AppSidebar() {
             <div className="space-y-2">
               <p className="text-sm font-semibold text-foreground">Token de Conexão:</p>
               <p className="text-xs text-muted-foreground">Cole este token no popup da extensão para autenticá-la.</p>
-              <Button variant="outline" size="sm" className="w-full rounded-xl gap-2" onClick={handleCopyToken}>
+              <Button 
+                variant="outline" 
+                size="default" 
+                className="w-full rounded-xl gap-2 relative z-50 cursor-pointer hover:bg-accent" 
+                onClick={handleCopyToken}
+                type="button"
+              >
                 {tokenCopied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
                 {tokenCopied ? 'Token copiado!' : 'Copiar Token'}
               </Button>
