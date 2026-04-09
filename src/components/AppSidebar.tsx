@@ -75,10 +75,48 @@ export function AppSidebar() {
   const [extensionDialogOpen, setExtensionDialogOpen] = useState(false);
   const [tokenCopied, setTokenCopied] = useState(false);
 
-  const handleCopyEmail = () => {
-    navigator.clipboard.writeText('support@rhitmo.co');
+  const copyTextToClipboard = async (text: string) => {
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch {
+        // Fallback para contextos com permissão bloqueada (ex.: iframe do preview)
+      }
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', 'true');
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    textarea.style.pointerEvents = 'none';
+    textarea.style.inset = '0';
+
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    textarea.setSelectionRange(0, textarea.value.length);
+
+    try {
+      return document.execCommand('copy');
+    } catch {
+      return false;
+    } finally {
+      document.body.removeChild(textarea);
+    }
+  };
+
+  const handleCopyEmail = async () => {
+    const email = 'support@rhitmo.co';
+    const copiedSuccessfully = await copyTextToClipboard(email);
+
+    if (!copiedSuccessfully) {
+      window.prompt('Copie este e-mail manualmente:', email);
+    }
+
     setCopied(true);
-    toast({ title: "E-mail copiado!" });
+    toast({ title: copiedSuccessfully ? 'E-mail copiado!' : 'Copie o e-mail manualmente' });
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -101,14 +139,26 @@ export function AppSidebar() {
   const handleCopyToken = async () => {
     const { data } = await import('@/integrations/supabase/client').then(m => m.supabase.auth.getSession());
     const token = data?.session?.access_token;
-    if (token) {
-      navigator.clipboard.writeText(token);
-      setTokenCopied(true);
-      toast({ title: 'Token copiado!' });
-      setTimeout(() => setTokenCopied(false), 2000);
-    } else {
+
+    if (!token) {
       toast({ title: 'Faça login novamente para copiar o token', variant: 'destructive' });
+      return;
     }
+
+    const copiedSuccessfully = await copyTextToClipboard(token);
+
+    if (!copiedSuccessfully) {
+      window.prompt('Copie o token manualmente:', token);
+      toast({
+        title: 'Não consegui copiar automaticamente',
+        description: 'Abri o token para cópia manual.',
+      });
+      return;
+    }
+
+    setTokenCopied(true);
+    toast({ title: 'Token copiado!' });
+    setTimeout(() => setTokenCopied(false), 2000);
   };
 
   const handleSignOut = async () => {
