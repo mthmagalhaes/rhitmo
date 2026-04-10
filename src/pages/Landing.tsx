@@ -1005,14 +1005,15 @@ const Landing = () => {
       </section>
 
       {/* Seção: Para quem é Rhitmo */}
-      <section className="py-20 bg-background">
+      <section className="py-24 bg-background">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
+          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{lang === 'pt' ? 'Público-alvo' : 'Target Audience'}</p>
+          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
             {t.forWhoTitle}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {/* Líder */}
-            <div className="bg-card rounded-2xl border p-8 space-y-4 hover:-translate-y-1 transition-transform relative">
+            <div className="bg-card rounded-2xl border p-8 space-y-4 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 shadow-md relative">
               <span className="absolute -top-3 left-6 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full">{t.forWhoLeaderBadge}</span>
               <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
                 <Target className="h-6 w-6 text-primary" />
@@ -1021,7 +1022,7 @@ const Landing = () => {
               <p className="text-muted-foreground leading-relaxed">{t.forWhoLeaderText}</p>
             </div>
             {/* PME */}
-            <div className="bg-card rounded-2xl border p-8 space-y-4 hover:-translate-y-1 transition-transform relative">
+            <div className="bg-card rounded-2xl border p-8 space-y-4 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 shadow-md relative">
               <span className="absolute -top-3 left-6 bg-emerald-500 text-white text-xs font-semibold px-3 py-1 rounded-full">{t.forWhoPmeBadge}</span>
               <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center">
                 <Users className="h-6 w-6 text-emerald-600" />
@@ -1030,7 +1031,7 @@ const Landing = () => {
               <p className="text-muted-foreground leading-relaxed">{t.forWhoPmeText}</p>
             </div>
             {/* Enterprise */}
-            <div className="bg-card rounded-2xl border p-8 space-y-4 hover:-translate-y-1 transition-transform relative">
+            <div className="bg-card rounded-2xl border p-8 space-y-4 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 shadow-md relative">
               <span className="absolute -top-3 left-6 bg-muted text-muted-foreground text-xs font-semibold px-3 py-1 rounded-full border">{t.forWhoEntBadge}</span>
               <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
                 <Building className="h-6 w-6 text-muted-foreground" />
@@ -1047,15 +1048,16 @@ const Landing = () => {
 
 
       {/* Seção: O que Rhitmo NÃO é */}
-      <section className="py-20 bg-background">
+      <section className="py-24 bg-background">
         <div className="container mx-auto px-4 max-w-3xl">
-          <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-center mb-6 text-foreground">
+          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{lang === 'pt' ? 'Transparência' : 'Transparency'}</p>
+          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-6 text-foreground">
             {t.whatWeAreNotTitle}
           </h2>
           <p className="text-lg text-muted-foreground text-center mb-8 leading-relaxed">
             {t.whatWeAreNotIntro}
           </p>
-          <div className="bg-muted/50 rounded-2xl border p-8 space-y-4 mb-8">
+          <div className="bg-muted/30 rounded-2xl border-l-4 border-l-primary/30 border p-8 space-y-4 mb-8">
             {t.whatWeAreNotItems.map((item) => (
               <div key={item} className="flex items-start gap-3">
                 <XCircle className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
@@ -1072,25 +1074,26 @@ const Landing = () => {
       {/* Seção: Positioning Statement */}
       <section className="py-24 bg-gradient-to-br from-primary/90 to-primary">
         <div className="container mx-auto px-4 max-w-3xl text-center space-y-8">
-          <p className="text-2xl lg:text-3xl font-bold text-primary-foreground leading-snug">
+          <p className="font-serif text-2xl lg:text-3xl font-bold text-primary-foreground leading-snug">
             {t.positioningLine1}
           </p>
-          <p className="text-xl lg:text-2xl text-primary-foreground/90 leading-relaxed">
+          <p className="font-serif text-xl lg:text-2xl text-primary-foreground/90 leading-relaxed">
             {t.positioningLine2}
           </p>
           <p className="text-lg text-primary-foreground/80 leading-relaxed">
             {t.positioningLine3}
           </p>
-          <Button size="lg" variant="secondary" className="text-base px-8" onClick={() => navigate('/auth?mode=signup')}>
+          <Button size="lg" variant="secondary" className="text-base px-8 rounded-xl" onClick={() => navigate('/auth?mode=signup')}>
             {t.positioningCTA}
           </Button>
         </div>
       </section>
 
       {/* FAQ Section */}
-      <section className="py-20 bg-muted/30">
+      <section className="py-24 bg-muted/30">
         <div className="container mx-auto px-4 max-w-3xl">
-          <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
+          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">FAQ</p>
+          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
             {t.faqTitle}
           </h2>
           <Accordion type="single" collapsible className="space-y-3">
