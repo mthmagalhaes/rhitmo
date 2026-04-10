@@ -85,3 +85,5 @@ project_id = "lybkgujyezzzvbzypxed"
     verify_jwt = false
   [functions.handle-email-suppression]
     verify_jwt = false
+  [functions.bulk-onboard]
+    verify_jwt = true
