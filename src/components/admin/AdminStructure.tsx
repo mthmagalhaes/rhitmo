@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import {
   Building, Users, UserPlus, Plus, Edit, Trash2, Loader2, ChevronDown, ChevronRight,
-  Crown, User,
+  Crown, User, FileSpreadsheet,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
