@@ -54,6 +54,7 @@ export function WorkspaceOnboarding({ userId, userMetadata, onComplete }: Worksp
         .insert({
           workspace_id: workspace.id,
           name: 'Sem Time',
+          leader_user_id: userId,
         });
 
       if (teamError) throw teamError;
