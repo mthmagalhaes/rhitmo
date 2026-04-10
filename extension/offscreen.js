@@ -84,11 +84,12 @@ async function handleUpload() {
 
     const { authToken } = await chrome.storage.local.get('authToken');
     if (!authToken) {
-      throw new Error('Token não encontrado. Reconecte sua conta no Rhitmo.');
+      throw new Error('Token não encontrado. Gere um novo token no Rhitmo.');
     }
 
     const formData = new FormData();
-    formData.append('audio', blob, `meet-auto-${Date.now()}.webm`);
+    // Use 'file' field name to match backend contract
+    formData.append('file', blob, `meet-auto-${Date.now()}.webm`);
 
     const res = await fetch(UPLOAD_FN, {
       method: 'POST',
@@ -98,7 +99,13 @@ async function handleUpload() {
 
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || `Erro ${res.status}`);
+      const errMsg = errData.error || `Erro ${res.status}`;
+      
+      // Provide clear message for auth failures
+      if (res.status === 401) {
+        throw new Error('Token expirado ou inválido. Gere um novo token no Rhitmo.');
+      }
+      throw new Error(errMsg);
     }
 
     console.log('[Rhitmo Offscreen] Upload complete');

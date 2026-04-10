@@ -6,6 +6,62 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+/**
+ * Resolve user from Authorization header.
+ * Supports:
+ * 1. Standard JWT (Bearer eyJ...)
+ * 2. Extension token (Bearer ext_...)
+ */
+async function resolveUser(
+  authHeader: string | null,
+  supabaseUrl: string,
+  supabaseAnonKey: string,
+  supabaseServiceKey: string,
+): Promise<{ userId: string | null; isExtensionToken: boolean }> {
+  if (!authHeader) return { userId: null, isExtensionToken: false };
+
+  const token = authHeader.replace('Bearer ', '');
+
+  // Extension token path
+  if (token.startsWith('ext_')) {
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Hash the token
+    const encoder = new TextEncoder();
+    const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(token));
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const tokenHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    const { data, error } = await supabase
+      .from('extension_tokens')
+      .select('user_id, id')
+      .eq('token_hash', tokenHash)
+      .is('revoked_at', null)
+      .maybeSingle();
+
+    if (error || !data) {
+      console.error('Extension token lookup failed:', error?.message);
+      return { userId: null, isExtensionToken: true };
+    }
+
+    // Update last_used_at (non-blocking)
+    supabase
+      .from('extension_tokens')
+      .update({ last_used_at: new Date().toISOString() })
+      .eq('id', data.id)
+      .then(() => {});
+
+    return { userId: data.user_id, isExtensionToken: true };
+  }
+
+  // Standard JWT path
+  const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+  const { data: { user } } = await authClient.auth.getUser();
+  return { userId: user?.id || null, isExtensionToken: false };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -17,23 +73,23 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
 
-    let userId: string | null = null;
-
     const authHeader = req.headers.get('Authorization');
-    if (authHeader) {
-      const authClient = createClient(supabaseUrl, supabaseAnonKey, {
-        global: { headers: { Authorization: authHeader } },
-      });
-      const { data: { user } } = await authClient.auth.getUser();
-      if (user) {
-        userId = user.id;
-      }
+    const { userId, isExtensionToken } = await resolveUser(
+      authHeader, supabaseUrl, supabaseAnonKey, supabaseServiceKey,
+    );
+
+    if (isExtensionToken && !userId) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Token inválido ou revogado. Gere um novo token no Rhitmo.' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const formData = await req.formData();
-    const file = formData.get('file') as File | null;
+    // Accept both 'file' and 'audio' field names for backwards compatibility
+    const file = (formData.get('file') as File | null) || (formData.get('audio') as File | null);
     const meetingTitle = formData.get('meeting_title') as string | null;
     const meetingUrl = formData.get('meeting_url') as string | null;
     const memberId = formData.get('member_id') as string | null;
@@ -62,7 +118,6 @@ serve(async (req) => {
     // Upload file to storage
     const folder = userId || 'anonymous';
     const timestamp = Date.now();
-    // Derive extension from uploaded file name or type
     const fileName = (file as File).name || '';
     let ext = 'webm';
     if (fileName.endsWith('.mp3')) ext = 'mp3';
@@ -86,7 +141,7 @@ serve(async (req) => {
       );
     }
 
-    // Create meeting_transcripts record — store file path (not public URL) for private bucket
+    // Create meeting_transcripts record
     const { data: transcript, error: dbError } = await supabase
       .from('meeting_transcripts')
       .insert({
@@ -117,7 +172,6 @@ serve(async (req) => {
       try {
         console.log('Starting Whisper transcription, file size:', file.size);
 
-        // Check file size limit (25MB for Whisper)
         if (file.size > 25 * 1024 * 1024) {
           console.warn('File exceeds 25MB Whisper limit, skipping transcription');
           await supabase
@@ -125,7 +179,6 @@ serve(async (req) => {
             .update({ processing_status: 'error' })
             .eq('id', transcript.id);
         } else {
-          // Send to Whisper
           const whisperForm = new FormData();
           whisperForm.append('file', file, `audio.${ext}`);
           whisperForm.append('model', 'whisper-1');
@@ -133,9 +186,7 @@ serve(async (req) => {
 
           const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
             method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${openaiApiKey}`,
-            },
+            headers: { 'Authorization': `Bearer ${openaiApiKey}` },
             body: whisperForm,
           });
 
@@ -151,7 +202,6 @@ serve(async (req) => {
             transcriptionText = whisperResult.text;
             console.log('Transcription done, length:', transcriptionText?.length);
 
-            // Update meeting_transcripts with text
             await supabase
               .from('meeting_transcripts')
               .update({
@@ -160,12 +210,10 @@ serve(async (req) => {
               })
               .eq('id', transcript.id);
 
-            // Generate automatic title
             const now = new Date();
             const dateStr = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`;
             const autoTitle = meetingTitle?.trim() || `Transcrição de Áudio - ${dateStr}`;
 
-            // Insert as feedback (note) in the knowledge base
             if (transcriptionText && memberId && userId) {
               const { data: feedbackData, error: feedbackError } = await supabase
                 .from('feedbacks')
@@ -189,7 +237,7 @@ serve(async (req) => {
                 feedbackId = feedbackData.id;
                 console.log('Feedback created:', feedbackId);
 
-                // Trigger background analysis for embedding (non-blocking)
+                // Background analysis (non-blocking)
                 try {
                   await fetch(`${supabaseUrl}/functions/v1/analyze-feedback-background`, {
                     method: 'POST',
@@ -199,12 +247,11 @@ serve(async (req) => {
                     },
                     body: JSON.stringify({ feedbackId: feedbackData.id }),
                   });
-                  console.log('Background analysis triggered');
                 } catch (bgErr) {
-                  console.error('Background analysis trigger failed (non-critical):', bgErr);
+                  console.error('Background analysis trigger failed:', bgErr);
                 }
 
-                // Trigger classify-note for tags and AI title (non-blocking)
+                // Classify note (non-blocking)
                 try {
                   const classifyResponse = await fetch(
                     `${supabaseUrl}/functions/v1/classify-note`,
@@ -221,24 +268,14 @@ serve(async (req) => {
                   if (classifyResponse.ok) {
                     const classifyData = await classifyResponse.json();
                     const updates: Record<string, unknown> = {};
-
-                    if (classifyData.tags?.length > 0) {
-                      updates.tags = classifyData.tags;
-                    }
-                    if (classifyData.suggestedTitle) {
-                      updates.title = classifyData.suggestedTitle;
-                    }
-
+                    if (classifyData.tags?.length > 0) updates.tags = classifyData.tags;
+                    if (classifyData.suggestedTitle) updates.title = classifyData.suggestedTitle;
                     if (Object.keys(updates).length > 0) {
-                      await supabase
-                        .from('feedbacks')
-                        .update(updates)
-                        .eq('id', feedbackData.id);
-                      console.log('Classification applied:', updates);
+                      await supabase.from('feedbacks').update(updates).eq('id', feedbackData.id);
                     }
                   }
                 } catch (classifyErr) {
-                  console.error('Classification failed (non-critical):', classifyErr);
+                  console.error('Classification failed:', classifyErr);
                 }
               }
             }
