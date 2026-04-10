@@ -62,7 +62,7 @@ export const AdminStructure = () => {
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; type: 'workspace' | 'team' | 'member'; id: string; name: string } | null>(null);
 
   // Form state
-  const [wsForm, setWsForm] = useState({ name: '', plan_tier: 'pulse' });
+  const [wsForm, setWsForm] = useState({ name: '', plan_tier: 'pulse', owner_id: '', hr_admin_id: '' });
   const [teamForm, setTeamForm] = useState({ name: '', leader_user_id: '' });
   const [memberForm, setMemberForm] = useState({ name: '', email: '', role: '', team_id: '' });
 
@@ -149,15 +149,27 @@ export const AdminStructure = () => {
     setLoading(true);
     try {
       if (wsDialog.mode === 'create') {
-        // Use the current admin user as owner
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Não autenticado');
-        const { error } = await supabase.from('workspaces').insert({
+        // Use selected owner or fallback to current admin
+        let ownerId = wsForm.owner_id;
+        if (!ownerId) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error('Não autenticado');
+          ownerId = user.id;
+        }
+        const { data: newWs, error } = await supabase.from('workspaces').insert({
           name: wsForm.name,
           plan_tier: wsForm.plan_tier,
-          owner_id: user.id,
-        });
+          owner_id: ownerId,
+        }).select('id').single();
         if (error) throw error;
+        // If HR admin selected, assign via RPC
+        if (wsForm.hr_admin_id && newWs) {
+          await supabase.rpc('manage_hr_admin', {
+            _workspace_id: newWs.id,
+            _user_id: wsForm.hr_admin_id,
+            _action: 'add',
+          });
+        }
         toast({ title: 'Workspace criado' });
       } else {
         const { error } = await supabase.from('workspaces')
@@ -260,12 +272,12 @@ export const AdminStructure = () => {
   };
 
   const openCreateWs = () => {
-    setWsForm({ name: '', plan_tier: 'pulse' });
+    setWsForm({ name: '', plan_tier: 'pulse', owner_id: '', hr_admin_id: '' });
     setWsDialog({ open: true, mode: 'create' });
   };
 
   const openEditWs = (ws: WorkspaceRow) => {
-    setWsForm({ name: ws.name, plan_tier: ws.plan_tier });
+    setWsForm({ name: ws.name, plan_tier: ws.plan_tier, owner_id: ws.owner_id, hr_admin_id: '' });
     setWsDialog({ open: true, mode: 'edit', data: ws });
   };
 
@@ -367,10 +379,11 @@ export const AdminStructure = () => {
                 >
                   {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                   <Building className="h-4 w-4 text-primary" />
-                  <span className="font-semibold flex-1">{ws.name}</span>
-                  <Badge variant="outline" className={planColors[ws.plan_tier] || ''}>
+                   <span className="font-semibold flex-1">{ws.name}</span>
+                   <span className="text-xs text-muted-foreground">Owner: {getUserEmail(ws.owner_id)}</span>
+                   <Badge variant="outline" className={planColors[ws.plan_tier] || ''}>
                     {ws.plan_tier}
-                  </Badge>
+                   </Badge>
                   <Badge variant={ws.is_active ? 'default' : 'destructive'} className="text-xs">
                     {ws.is_active ? 'Ativo' : 'Suspenso'}
                   </Badge>
@@ -512,6 +525,35 @@ export const AdminStructure = () => {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label>Owner (proprietário do workspace)</Label>
+              <Select value={wsForm.owner_id} onValueChange={v => setWsForm(p => ({ ...p, owner_id: v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecionar owner" /></SelectTrigger>
+                <SelectContent>
+                  {allUsers?.map((u: any) => (
+                    <SelectItem key={u.user_id} value={u.user_id}>
+                      {u.full_name || u.email} ({u.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {wsDialog.mode === 'create' && (
+              <div className="space-y-2">
+                <Label>HR Admin (opcional)</Label>
+                <Select value={wsForm.hr_admin_id} onValueChange={v => setWsForm(p => ({ ...p, hr_admin_id: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Selecionar HR Admin" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
+                    {allUsers?.map((u: any) => (
+                      <SelectItem key={u.user_id} value={u.user_id}>
+                        {u.full_name || u.email} ({u.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button onClick={handleSaveWorkspace} disabled={loading || !wsForm.name.trim()}>
