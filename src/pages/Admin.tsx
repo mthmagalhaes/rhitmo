@@ -4,6 +4,7 @@ import { AdminSupport } from '@/components/admin/AdminSupport';
 import { AdminExport } from '@/components/admin/AdminExport';
 import { AdminUsers } from '@/components/admin/AdminUsers';
 import { AdminAccess } from '@/components/admin/AdminAccess';
+import { AdminStructure } from '@/components/admin/AdminStructure';
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -49,6 +50,7 @@ const Admin = () => {
       {activeTab === 'export' && <AdminExport />}
       {activeTab === 'users' && <AdminUsers />}
       {activeTab === 'access' && <AdminAccess />}
+      {activeTab === 'structure' && <AdminStructure />}
     </>
   );
 };
