@@ -127,15 +127,26 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
       if (ownedError) console.warn('[Index] Owned workspace query error:', ownedError.message);
       if (ownedWorkspace) return ownedWorkspace as Workspace;
       
-      // Fallback: RLS-based (for team leaders viewing their leader's workspace)
-      const { data, error } = await supabase
-        .from('workspaces')
-        .select('*')
-        .eq('is_active', true)
+      // Fallback: check if user leads a team → get that workspace
+      const { data: leaderTeam } = await supabase
+        .from('teams')
+        .select('workspace_id')
+        .eq('leader_user_id', user.id)
         .limit(1)
         .maybeSingle();
-      if (error) throw error;
-      return data as Workspace;
+
+      if (leaderTeam?.workspace_id) {
+        const { data: wsData, error: wsError } = await supabase
+          .from('workspaces')
+          .select('*')
+          .eq('id', leaderTeam.workspace_id)
+          .eq('is_active', true)
+          .maybeSingle();
+        if (wsError) throw wsError;
+        return wsData as Workspace;
+      }
+
+      return null;
     },
     enabled: !!user && !authLoading,
     staleTime: 30 * 1000,
