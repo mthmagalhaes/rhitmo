@@ -1,46 +1,25 @@
 
 
-## Plano: Corrigir layout das seções "Quem usa Rhitmo" e "Pricing"
+## Problem
 
-### Problemas identificados
+The two comparison cards ("Sem Rhitmo" / "Com Rhitmo") are in a `grid-cols-2` layout but can misalign vertically because they are independent grid cells. The "Com Rhitmo" card also has an extra arrow indicator element that can affect its internal spacing. Font size is `text-sm` which is small.
 
-**Seção "Quem usa Rhitmo" (Persona Cards):**
-- O card "Líderes individuais" usa `md:scale-105` + `border-2 border-primary`, fazendo ele parecer maior que os outros dois
-- Os cards PME e Enterprise não têm CTA/botão, criando alturas desiguais
-- Falta consistência visual entre os três cards
+## Plan
 
-**Seção "Pricing":**
-- 4 cards em `lg:grid-cols-4` ficam comprimidos, textos quebram em linhas curtas
-- O card Pro usa `md:-translate-y-2` criando desalinhamento vertical
-- Botões em posições diferentes porque o conteúdo acima varia em altura
-- Cards Enterprise e Business ficam estreitos com features longas quebrando mal
+**File: `src/pages/Landing.tsx` (lines 779-818)**
 
-### Solução proposta
+1. **Force equal height alignment** — Add `items-stretch` to the grid container and use `flex flex-col` on each card so their internal content stretches equally. Both cards already have the same number of items (5 each), but the flex structure ensures pixel-perfect alignment.
 
-**Persona Cards: Cards uniformes com altura equalizada**
-- Remover `md:scale-105` do card de líder (destaque fica apenas na borda roxa)
-- Adicionar `flex flex-col` + `h-full` em todos os cards para equalizar altura
-- Adicionar CTA secundário nos cards PME ("Começar grátis") e manter link Enterprise
-- Usar `min-h-[...] flex flex-col justify-between` para alinhar conteúdo e CTAs na base
+2. **Increase font size** — Change list item text from `text-sm` to `text-base` on both sides (lines 792 and 814). Change header `text-xl` to `text-2xl` (lines 786 and 808).
 
-**Pricing: Layout 2+2 em telas médias, 4 colunas só em telas grandes**
-- Trocar grid para `md:grid-cols-2 xl:grid-cols-4` para dar mais espaço aos cards em telas médias
-- Remover `md:-translate-y-2` do card Pro (destaque via borda roxa e badge é suficiente)
-- Usar `flex flex-col` + `flex-1` na área de features para empurrar botões para a mesma linha base
-- Estruturar cada card como: header fixo > preço > botão > features (com `mt-auto` no botão)
-- Reduzir `max-w-7xl` para `max-w-6xl` para evitar cards excessivamente estreitos em 4 colunas
+3. **Align internal structure** — Ensure both cards use identical padding, spacing, and structure:
+   - Both cards: same `p-8 lg:p-10` padding (already matching)
+   - Both cards: same `space-y-6` (already matching)
+   - Move the arrow indicator's positioning so it doesn't affect the "Com Rhitmo" card's internal flow (it's `absolute` so it shouldn't, but verify)
+   - Add `min-h-0` or explicit `items-start` on the grid to prevent any stretch misalignment
 
-### Mudanças no arquivo
-
-**`src/pages/Landing.tsx`**
-
-1. **Persona Cards (linhas 1067-1103):** Refatorar o grid para cards uniformes com `flex flex-col h-full`, remover `scale-105`, adicionar CTA no card PME, alinhar conteúdo verticalmente
-
-2. **Pricing Cards (linhas 1148-1290):** Refatorar para `md:grid-cols-2 xl:grid-cols-4`, remover translate-y do Pro, usar flexbox vertical com `mt-auto` para alinhar botões, garantir que textos não quebrem mal
-
-### O que NÃO muda
-- Conteúdo textual (copy) de nenhuma seção
-- Cores, badges, ícones existentes
-- Estrutura de traduções PT/EN
-- Outras seções da landing page
+4. **Apply Design Skill polish** — Add subtle refinements:
+   - Slightly larger icon containers (`w-12 h-12` instead of `w-10 h-10`)
+   - Increase list spacing from `space-y-4` to `space-y-5` for better readability at the larger font size
+   - Ensure icon `mt-1` alignment matches the new `text-base` line height
 
