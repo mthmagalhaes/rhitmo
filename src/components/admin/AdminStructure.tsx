@@ -680,6 +680,12 @@ export const AdminStructure = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <BulkOnboardDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        workspaceNames={workspaces?.map(w => w.name) || []}
+      />
     </div>
   );
 };
