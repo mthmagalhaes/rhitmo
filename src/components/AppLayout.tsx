@@ -17,19 +17,24 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   // Query para verificar workspace do usuário
-  const { data: workspace, isLoading: workspaceLoading, refetch } = useQuery({
+  const { data: workspace, isLoading: workspaceLoading, error: workspaceError, refetch } = useQuery({
     queryKey: ['user-workspace', user?.id],
     queryFn: async () => {
       if (!user) return null;
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('workspaces')
         .select('id')
         .eq('is_active', true)
         .limit(1)
         .maybeSingle();
+      if (error) {
+        console.error('Workspace query error:', error.message);
+        throw error;
+      }
       return data;
     },
     enabled: !!user,
+    retry: 2,
   });
 
   // Guard: check if user has a pending invite by email AND auto-link immediately
@@ -77,6 +82,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     && !pendingInviteLoading
     && user 
     && !workspace 
+    && !workspaceError
     && !isLinkedMember
     && !hasPendingInviteByEmail;
 
