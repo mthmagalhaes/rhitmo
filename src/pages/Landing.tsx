@@ -1064,41 +1064,46 @@ const Landing = () => {
             {lang === 'pt' ? 'Três perfis, uma plataforma. Encontre o seu.' : 'Three profiles, one platform. Find yours.'}
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto items-start">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {/* Líder — Card em destaque */}
-            <div className="bg-card rounded-2xl border-2 border-primary p-8 lg:p-10 space-y-5 shadow-lg md:scale-105 relative">
+            <div className="bg-card rounded-2xl border-2 border-primary p-8 lg:p-10 shadow-lg relative flex flex-col">
               <span className="absolute -top-3 left-6 bg-primary text-primary-foreground text-xs font-semibold px-4 py-1.5 rounded-full">{t.forWhoLeaderBadge}</span>
-              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-5">
                 <Target className="h-7 w-7 text-primary" />
               </div>
-              <h3 className="text-xl font-bold text-foreground">{t.forWhoLeaderTitle}</h3>
-              <p className="text-muted-foreground leading-relaxed">{t.forWhoLeaderText}</p>
-              <Button className="w-full rounded-xl" onClick={() => navigate('/auth?mode=signup')}>
+              <h3 className="text-xl font-bold text-foreground mb-3">{t.forWhoLeaderTitle}</h3>
+              <p className="text-muted-foreground leading-relaxed flex-1">{t.forWhoLeaderText}</p>
+              <Button className="w-full rounded-xl mt-6" onClick={() => navigate('/auth?mode=signup')}>
                 {lang === 'pt' ? 'Começar grátis' : 'Get started free'}
               </Button>
             </div>
 
             {/* PME */}
-            <div className="bg-card rounded-2xl border p-8 space-y-5 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all duration-300 relative">
+            <div className="bg-card rounded-2xl border p-8 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all duration-300 relative flex flex-col">
               <span className="absolute -top-3 left-6 bg-accent text-accent-foreground text-xs font-semibold px-3 py-1 rounded-full">{t.forWhoPmeBadge}</span>
-              <div className="w-14 h-14 rounded-full bg-accent/50 flex items-center justify-center">
+              <div className="w-14 h-14 rounded-full bg-accent/50 flex items-center justify-center mb-5">
                 <Users className="h-7 w-7 text-accent-foreground" />
               </div>
-              <h3 className="text-xl font-bold text-foreground">{t.forWhoPmeTitle}</h3>
-              <p className="text-muted-foreground leading-relaxed">{t.forWhoPmeText}</p>
+              <h3 className="text-xl font-bold text-foreground mb-3">{t.forWhoPmeTitle}</h3>
+              <p className="text-muted-foreground leading-relaxed flex-1">{t.forWhoPmeText}</p>
+              <Button variant="outline" className="w-full rounded-xl mt-6" onClick={() => navigate('/auth?mode=signup')}>
+                {lang === 'pt' ? 'Começar grátis' : 'Get started free'}
+              </Button>
             </div>
 
             {/* Enterprise */}
-            <div className="bg-card rounded-2xl border p-8 space-y-5 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all duration-300 relative">
+            <div className="bg-card rounded-2xl border p-8 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all duration-300 relative flex flex-col">
               <span className="absolute -top-3 left-6 bg-muted text-muted-foreground text-xs font-semibold px-3 py-1 rounded-full border">{t.forWhoEntBadge}</span>
-              <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+              <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-5">
                 <Building className="h-7 w-7 text-muted-foreground" />
               </div>
-              <h3 className="text-xl font-bold text-foreground">{t.forWhoEntTitle}</h3>
-              <p className="text-muted-foreground leading-relaxed">{t.forWhoEntText}</p>
-              <Link to="/enterprise" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-                {t.forWhoEntLink} <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
+              <h3 className="text-xl font-bold text-foreground mb-3">{t.forWhoEntTitle}</h3>
+              <p className="text-muted-foreground leading-relaxed flex-1">{t.forWhoEntText}</p>
+              <Button variant="outline" className="w-full rounded-xl mt-6" asChild>
+                <Link to="/enterprise">
+                  {t.forWhoEntLink} <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+                </Link>
+              </Button>
             </div>
           </div>
         </div>
@@ -1132,7 +1137,7 @@ const Landing = () => {
       {/* Pricing Section */}
       <WaveDivider className="bg-background" />
       <section id="pricing" className="py-28 bg-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
           <div className="text-center space-y-3 mb-16">
             <p className="uppercase text-xs font-semibold tracking-widest text-primary">{lang === 'pt' ? 'Planos' : 'Plans'}</p>
@@ -1145,58 +1150,58 @@ const Landing = () => {
           </div>
 
           {/* Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
 
             {/* ── Pulse ── */}
-            <div className="bg-card rounded-2xl shadow-md p-8 border space-y-6 hover:shadow-lg transition-shadow duration-300">
-              <div>
+            <div className="bg-card rounded-2xl shadow-md p-8 border flex flex-col hover:shadow-lg transition-shadow duration-300">
+              <div className="mb-4">
                 <h3 className="text-2xl font-bold tracking-tight text-foreground">Pulse</h3>
                 <p className="text-sm text-muted-foreground mt-2">
                   {t.pulseSubtitle}
                 </p>
               </div>
 
-              <div>
+              <div className="mb-6">
                 <span className="text-4xl font-bold text-foreground">{t.pulseFree}</span>
                 <span className="text-sm text-muted-foreground ml-1">{t.pulseForever}</span>
               </div>
 
-              <Button className="w-full min-h-[44px]" onClick={() => navigate('/auth?mode=signup')}>
+              <Button className="w-full min-h-[44px] mb-6" onClick={() => navigate('/auth?mode=signup')}>
                 {t.pulseCTA}
               </Button>
 
-              <ul className="space-y-3 pt-2">
+              <ul className="space-y-3 flex-1">
                 {t.pulseFeatures.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-sm text-foreground">
                     <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                    {f}
+                    <span>{f}</span>
                   </li>
                 ))}
                 {t.pulseLocked.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-sm text-muted-foreground opacity-50">
                     <Lock className="h-4 w-4 mt-0.5 shrink-0" />
-                    {f}
+                    <span>{f}</span>
                   </li>
                 ))}
               </ul>
             </div>
 
             {/* ── Pro (destacado) ── */}
-            <div className="relative md:-translate-y-2">
+            <div className="relative">
               <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
                 <span className="bg-primary text-primary-foreground text-xs font-semibold px-4 py-1 rounded-full">
                   {t.proBadge}
                 </span>
               </div>
-              <div className="bg-card rounded-2xl shadow-lg p-8 border-2 border-primary space-y-6">
-                <div>
+              <div className="bg-card rounded-2xl shadow-lg p-8 border-2 border-primary flex flex-col h-full">
+                <div className="mb-4">
                   <h3 className="text-2xl font-bold tracking-tight text-foreground">Pro</h3>
                   <p className="text-sm text-muted-foreground mt-2">
                     {t.proSubtitle}
                   </p>
                 </div>
 
-                <div>
+                <div className="mb-6">
                   <span className="bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400 rounded-full px-3 py-1 text-xs font-medium inline-block mb-2">{t.launchBadge}</span>
                   <div>
                     <span className="text-4xl font-bold text-foreground">R$49</span>
@@ -1205,15 +1210,15 @@ const Landing = () => {
                   <p className="text-xs text-muted-foreground mt-1">{t.proNote}</p>
                 </div>
 
-                <Button className="w-full min-h-[44px]" onClick={() => navigate('/auth?mode=signup&plan=pro')}>
+                <Button className="w-full min-h-[44px] mb-6" onClick={() => navigate('/auth?mode=signup&plan=pro')}>
                   {t.proCTA}
                 </Button>
 
-                <ul className="space-y-3 pt-2">
+                <ul className="space-y-3 flex-1">
                   {t.proFeatures.map((f) => (
                     <li key={f} className="flex items-start gap-2 text-sm text-foreground">
                       <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      {f}
+                      <span>{f}</span>
                     </li>
                   ))}
                 </ul>
@@ -1221,15 +1226,15 @@ const Landing = () => {
             </div>
 
             {/* ── Business ── */}
-            <div className="bg-card rounded-2xl shadow-md p-8 border space-y-6 hover:shadow-lg transition-shadow duration-300">
-              <div>
+            <div className="bg-card rounded-2xl shadow-md p-8 border flex flex-col hover:shadow-lg transition-shadow duration-300">
+              <div className="mb-4">
                 <h3 className="text-2xl font-bold tracking-tight text-foreground">Business</h3>
                 <p className="text-sm text-muted-foreground mt-2">
                   {t.businessSubtitle}
                 </p>
               </div>
 
-              <div>
+              <div className="mb-6">
                 <span className="bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400 rounded-full px-3 py-1 text-xs font-medium inline-block mb-2">{t.launchBadge}</span>
                 <div>
                   <span className="text-4xl font-bold text-foreground">R$69</span>
@@ -1238,23 +1243,23 @@ const Landing = () => {
                 <p className="text-xs text-muted-foreground mt-1">{t.businessNote}</p>
               </div>
 
-              <Button variant="outline" className="w-full min-h-[44px]" asChild>
+              <Button variant="outline" className="w-full min-h-[44px] mb-6" asChild>
                 <a href="mailto:matheus@rhitmo.co">{t.businessCTA}</a>
               </Button>
 
-              <ul className="space-y-3 pt-2">
+              <ul className="space-y-3 flex-1">
                 {t.businessFeatures.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-sm text-foreground">
                     <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                    {f}
+                    <span>{f}</span>
                   </li>
                 ))}
               </ul>
             </div>
 
             {/* ── Enterprise ── */}
-            <div className="bg-card rounded-2xl shadow-md p-8 border space-y-6 hover:shadow-lg transition-shadow duration-300">
-              <div>
+            <div className="bg-card rounded-2xl shadow-md p-8 border flex flex-col hover:shadow-lg transition-shadow duration-300">
+              <div className="mb-4">
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium mb-2 bg-primary/10 text-primary">
                   <Building className="h-3 w-3" />
                   Enterprise
@@ -1265,7 +1270,7 @@ const Landing = () => {
                 </p>
               </div>
 
-              <div>
+              <div className="mb-6">
                 <div>
                   <span className="text-3xl font-bold text-foreground">{t.enterprisePrice}</span>
                   <span className="text-sm text-muted-foreground ml-1">{t.enterprisePer}</span>
@@ -1273,15 +1278,15 @@ const Landing = () => {
                 <p className="text-xs text-muted-foreground mt-1">{t.enterpriseNote}</p>
               </div>
 
-              <Button variant="outline" className="w-full min-h-[44px]" asChild>
+              <Button variant="outline" className="w-full min-h-[44px] mb-6" asChild>
                 <Link to="/enterprise">{t.enterpriseCTA}</Link>
               </Button>
 
-              <ul className="space-y-3 pt-2">
+              <ul className="space-y-3 flex-1">
                 {t.enterpriseFeatures.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-sm text-foreground">
                     <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                    {f}
+                    <span>{f}</span>
                   </li>
                 ))}
               </ul>
