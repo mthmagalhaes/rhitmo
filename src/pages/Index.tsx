@@ -115,6 +115,12 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
     queryFn: async () => {
       if (!user) return null;
       
+      // CRITICAL: Wait for session before RLS-dependent queries
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No active session — will retry');
+      }
+      
       // First try: explicit owner check (robust against RLS timing)
       const { data: ownedWorkspace, error: ownedError } = await supabase
         .from('workspaces')
@@ -152,7 +158,8 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
     staleTime: 30 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: true,
-    retry: 3,
+    retry: 5,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
   });
 
   const { data: activeSubscription } = useQuery({
