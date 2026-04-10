@@ -524,6 +524,35 @@ export const AdminStructure = () => {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label>Owner (proprietário do workspace)</Label>
+              <Select value={wsForm.owner_id} onValueChange={v => setWsForm(p => ({ ...p, owner_id: v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecionar owner" /></SelectTrigger>
+                <SelectContent>
+                  {allUsers?.map((u: any) => (
+                    <SelectItem key={u.user_id} value={u.user_id}>
+                      {u.full_name || u.email} ({u.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {wsDialog.mode === 'create' && (
+              <div className="space-y-2">
+                <Label>HR Admin (opcional)</Label>
+                <Select value={wsForm.hr_admin_id} onValueChange={v => setWsForm(p => ({ ...p, hr_admin_id: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Selecionar HR Admin" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
+                    {allUsers?.map((u: any) => (
+                      <SelectItem key={u.user_id} value={u.user_id}>
+                        {u.full_name || u.email} ({u.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button onClick={handleSaveWorkspace} disabled={loading || !wsForm.name.trim()}>
