@@ -48,50 +48,53 @@ const translations = {
     seePlans: "Ver planos",
     aiNativeBadge: "AI-Native desde o dia 1",
     // Before vs After
-    beforeAfterTitle: "O impacto na prática",
+    beforeAfterOverline: "O dia a dia sem IA",
+    beforeAfterTitle: "Antes era burocracia. Agora é estratégia.",
     withoutRhitmo: "Sem Rhitmo",
     withRhitmo: "Com Rhitmo",
     beforeItems: [
-      "⏱️ 4 horas escrevendo review do zero",
-      "🚫 Viés inconsciente não detectado",
-      "😰 Esquecer 70% das 1:1s do trimestre",
-      "💬 Feedback vago: \"precisa melhorar\"",
-      "📋 Planilhas desorganizadas",
+      "4h por review — reescrevendo do zero toda vez",
+      "Viés invisível passando despercebido em cada avaliação",
+      "70% das conversas do trimestre esquecidas",
+      "Feedback genérico: \"precisa melhorar comunicação\"",
+      "Dados espalhados entre planilhas, docs e e-mails",
     ],
     afterItems: [
-      "⚡ 30 segundos gerando draft completo",
-      "🎯 IA detecta e corrige viés em tempo real",
-      "🧠 Tudo registrado automaticamente",
-      "📊 Feedback específico e acionável",
-      "🤖 AI organiza tudo por você",
+      "Draft completo em 30 segundos — você só revisa",
+      "Viés detectado e corrigido antes de salvar",
+      "Cada 1:1 registrada automaticamente com contexto",
+      "Feedback baseado em evidências reais, não memória",
+      "Tudo centralizado, organizado por IA",
     ],
     // Video
     videoTitle: "Veja Rhitmo em ação",
     videoSubtitle: "Veja como uma review de 4 horas vira 2 minutos.",
     // Comparison
-    comparisonTitle: "Por que Rhitmo é diferente",
+    comparisonOverline: "Comparativo real",
+    comparisonTitle: "A diferença não está no que prometem. Está no que entregam.",
     compFeature: "Recurso",
     compSpreadsheets: "Planilhas",
     compQulture: "Qulture.Rocks",
     compLattice: "Lattice",
     compRhitmo: "Rhitmo",
     compRows: [
-      { feature: "IA escreve review completa", spreadsheets: "no", qulture: "partial", lattice: "yes", rhitmo: "yes" },
-      { feature: "Detecção de viés em tempo real", spreadsheets: "no", qulture: "no", lattice: "partial", rhitmo: "yes" },
-      { feature: "Mentor IA conversacional", spreadsheets: "no", qulture: "no", lattice: "no", rhitmo: "yes" },
-      { feature: "Transcrição automática de 1:1s", spreadsheets: "no", qulture: "no", lattice: "no", rhitmo: "yes" },
-      { feature: "Self-serve (sem demo call)", spreadsheets: "yes", qulture: "no", lattice: "no", rhitmo: "yes" },
-      { feature: "Grátis até 3 liderados", spreadsheets: "yes", qulture: "no", lattice: "no", rhitmo: "yes" },
+      { feature: "Escreve review completa de ponta a ponta", spreadsheets: "no", qulture: "partial", lattice: "yes", rhitmo: "yes" },
+      { feature: "Detecta viés de gênero e personalidade em tempo real", spreadsheets: "no", qulture: "no", lattice: "partial", rhitmo: "yes" },
+      { feature: "Mentor IA conversacional no fluxo de trabalho", spreadsheets: "no", qulture: "no", lattice: "no", rhitmo: "yes" },
+      { feature: "Transcreve e analisa 1:1s automaticamente", spreadsheets: "no", qulture: "no", lattice: "no", rhitmo: "yes" },
+      { feature: "Funciona em 5 min — sem demo call, sem implantação", spreadsheets: "yes", qulture: "no", lattice: "no", rhitmo: "yes" },
+      { feature: "Plano gratuito real — não trial de 14 dias", spreadsheets: "yes", qulture: "no", lattice: "no", rhitmo: "yes" },
     ],
     compLegend: "✅ Completo · ~ Parcial · ❌ Não possui",
     // Numbers
-    numbersTitle: "Números concretos",
+    numbersOverline: "Impacto mensurável",
+    numbersTitle: "Não é promessa. São números.",
     numbersStat1: "4h → 2min",
-    numbersLabel1: "Tempo para escrever uma review",
+    numbersLabel1: "Tempo médio para escrever uma avaliação de desempenho completa. De uma tarde inteira para o tempo de um café.",
     numbersStat2: "38x",
-    numbersLabel2: "Mais feedback negativo para mulheres — Rhitmo detecta",
-    numbersStat3: "R$49/mês",
-    numbersLabel3: "vs. R$108/mês em outras plataformas para 1 líder + 5 liderados",
+    numbersLabel2: "Mulheres recebem 38x mais feedback sobre personalidade do que homens. Rhitmo detecta e corrige antes que você publique.",
+    numbersStat3: "60%",
+    numbersLabel3: "Redução no custo por líder comparado a plataformas tradicionais de performance management.",
     // USPs
     uspsTitle: "O que só Rhitmo faz",
     uspTitle1: "IA que escreve (não sugere)",
@@ -203,15 +206,16 @@ const translations = {
     footerVsFeedz: "Rhitmo vs. Feedz",
     footerVsLattice: "Rhitmo vs. Lattice",
     // Phase 3 — Value Proposition
-    forWhoTitle: "Para quem é Rhitmo",
+    forWhoOverline: "Feito para você",
+    forWhoTitle: "Quem usa Rhitmo — e por quê.",
     forWhoLeaderTitle: "Líderes individuais",
-    forWhoLeaderText: "Você gerencia 3-10 pessoas e precisa de ajuda para escrever reviews justas, dar feedback melhor e não esquecer nada das 1:1s.",
-    forWhoLeaderBadge: "Ideal para você",
+    forWhoLeaderText: "Você lidera 3 a 10 pessoas. Não tem tempo de escrever reviews do zero. Precisa de um copiloto que registra tudo e entrega o draft pronto.",
+    forWhoLeaderBadge: "Caso de uso #1",
     forWhoPmeTitle: "Startups e PMEs",
-    forWhoPmeText: "20-100 colaboradores, sem RH estruturado. Precisa profissionalizar gestão de performance sem contratar consultoria.",
-    forWhoPmeBadge: "Recomendado",
+    forWhoPmeText: "20-100 colaboradores, sem RH estruturado. Você quer profissionalizar gestão de performance sem contratar consultoria de R$50k.",
+    forWhoPmeBadge: "Crescimento rápido",
     forWhoEntTitle: "Empresas estruturadas",
-    forWhoEntText: "100+ colaboradores, RH como comprador. Quer IA nativa de verdade, não add-on superficial.",
+    forWhoEntText: "100+ colaboradores. RH como comprador. Precisa de IA nativa de verdade — não um checkbox de marketing.",
     forWhoEntBadge: "Plano Enterprise",
     forWhoEntLink: "Saiba mais →",
     howItWorksTitle: "Como funciona",
@@ -252,49 +256,52 @@ const translations = {
     seePlans: "See plans",
     aiNativeBadge: "AI-Native since day 1 — Not an add-on",
     // Before vs After
-    beforeAfterTitle: "The impact in practice",
+    beforeAfterOverline: "Day-to-day without AI",
+    beforeAfterTitle: "It used to be bureaucracy. Now it's strategy.",
     withoutRhitmo: "Without Rhitmo",
     withRhitmo: "With Rhitmo",
     beforeItems: [
-      "⏱️ 4 hours writing reviews from scratch",
-      "🚫 Unconscious bias goes undetected",
-      "😰 Forgetting 70% of quarterly 1:1s",
-      "💬 Vague feedback: \"needs to improve\"",
-      "📋 Disorganized spreadsheets",
+      "4 hours per review — rewriting from scratch every time",
+      "Invisible bias slipping through every evaluation",
+      "70% of quarterly conversations forgotten",
+      "Generic feedback: \"needs to improve communication\"",
+      "Data scattered across spreadsheets, docs and emails",
     ],
     afterItems: [
-      "⚡ 30 seconds to generate a full draft",
-      "🎯 AI detects and corrects bias in real time",
-      "🧠 Everything recorded automatically",
-      "📊 Specific, actionable feedback",
-      "🤖 AI organizes everything for you",
+      "Full draft in 30 seconds — you just review",
+      "Bias detected and corrected before saving",
+      "Every 1:1 recorded automatically with context",
+      "Feedback based on real evidence, not memory",
+      "Everything centralized, organized by AI",
     ],
     videoTitle: "See Rhitmo in action",
     videoSubtitle: "See how a 4-hour review becomes 2 minutes.",
     // Comparison
-    comparisonTitle: "Why Rhitmo is different",
+    comparisonOverline: "Real comparison",
+    comparisonTitle: "The difference isn't in what they promise. It's in what they deliver.",
     compFeature: "Feature",
     compSpreadsheets: "Spreadsheets",
     compQulture: "Qulture.Rocks",
     compLattice: "Lattice",
     compRhitmo: "Rhitmo",
     compRows: [
-      { feature: "AI writes full review", spreadsheets: "no", qulture: "partial", lattice: "yes", rhitmo: "yes" },
-      { feature: "Real-time bias detection", spreadsheets: "no", qulture: "no", lattice: "partial", rhitmo: "yes" },
-      { feature: "Conversational AI Mentor", spreadsheets: "no", qulture: "no", lattice: "no", rhitmo: "yes" },
-      { feature: "Automatic 1:1 transcription", spreadsheets: "no", qulture: "no", lattice: "no", rhitmo: "yes" },
-      { feature: "Self-serve (no demo call)", spreadsheets: "yes", qulture: "no", lattice: "no", rhitmo: "yes" },
-      { feature: "Free up to 3 reports", spreadsheets: "yes", qulture: "no", lattice: "no", rhitmo: "yes" },
+      { feature: "Writes full review end-to-end", spreadsheets: "no", qulture: "partial", lattice: "yes", rhitmo: "yes" },
+      { feature: "Detects gender and personality bias in real time", spreadsheets: "no", qulture: "no", lattice: "partial", rhitmo: "yes" },
+      { feature: "Conversational AI Mentor in the workflow", spreadsheets: "no", qulture: "no", lattice: "no", rhitmo: "yes" },
+      { feature: "Transcribes and analyzes 1:1s automatically", spreadsheets: "no", qulture: "no", lattice: "no", rhitmo: "yes" },
+      { feature: "Works in 5 min — no demo call, no deployment", spreadsheets: "yes", qulture: "no", lattice: "no", rhitmo: "yes" },
+      { feature: "Real free plan — not a 14-day trial", spreadsheets: "yes", qulture: "no", lattice: "no", rhitmo: "yes" },
     ],
     compLegend: "✅ Complete · ~ Partial · ❌ Not available",
     // Numbers
-    numbersTitle: "Concrete numbers",
+    numbersOverline: "Measurable impact",
+    numbersTitle: "Not a promise. These are numbers.",
     numbersStat1: "4h → 2min",
-    numbersLabel1: "Time to write a performance review",
+    numbersLabel1: "Average time to write a complete performance review. From an entire afternoon to the time of a coffee break.",
     numbersStat2: "38x",
-    numbersLabel2: "More negative feedback for women — Rhitmo detects it",
-    numbersStat3: "R$49/mo",
-    numbersLabel3: "vs. R$108/mo on other platforms for 1 leader + 5 reports",
+    numbersLabel2: "Women receive 38x more personality feedback than men. Rhitmo detects and corrects before you publish.",
+    numbersStat3: "60%",
+    numbersLabel3: "Cost reduction per leader compared to traditional performance management platforms.",
     // USPs
     uspsTitle: "What only Rhitmo does",
     uspTitle1: "AI that writes (doesn't just suggest)",
@@ -394,15 +401,16 @@ const translations = {
     footerVsFeedz: "Rhitmo vs. Feedz",
     footerVsLattice: "Rhitmo vs. Lattice",
     // Phase 3
-    forWhoTitle: "Who is Rhitmo for",
+    forWhoOverline: "Built for you",
+    forWhoTitle: "Who uses Rhitmo — and why.",
     forWhoLeaderTitle: "Individual Leaders",
-    forWhoLeaderText: "You manage 3-10 people and need help writing fair reviews, giving better feedback, and never forgetting what was said in 1:1s.",
-    forWhoLeaderBadge: "Ideal for you",
+    forWhoLeaderText: "You lead 3 to 10 people. No time to write reviews from scratch. You need a copilot that records everything and delivers the draft ready.",
+    forWhoLeaderBadge: "Use case #1",
     forWhoPmeTitle: "Startups & SMBs",
-    forWhoPmeText: "20-100 employees, no structured HR. Need to professionalize performance management without hiring consultants.",
-    forWhoPmeBadge: "Recommended",
+    forWhoPmeText: "20-100 employees, no structured HR. You want to professionalize performance management without hiring $50k consultants.",
+    forWhoPmeBadge: "Fast growth",
     forWhoEntTitle: "Structured companies",
-    forWhoEntText: "100+ employees, HR as the buyer. Want truly native AI, not a superficial add-on.",
+    forWhoEntText: "100+ employees. HR as the buyer. Needs truly native AI — not a marketing checkbox.",
     forWhoEntBadge: "Enterprise Plan",
     forWhoEntLink: "Learn more →",
     howItWorksTitle: "How it works",
@@ -757,35 +765,54 @@ const Landing = () => {
 
       <WaveDivider className="bg-background" />
 
-      {/* Seção: Antes vs. Depois */}
-      <section className="py-24 bg-background">
+      {/* Seção: Antes vs. Depois — Split Timeline */}
+      <section className="py-28 bg-background">
         <div className="container mx-auto px-4">
-          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{lang === 'pt' ? 'Antes & Depois' : 'Before & After'}</p>
-          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
+          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{t.beforeAfterOverline}</p>
+          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-4 text-foreground">
             {t.beforeAfterTitle}
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
-            {/* Sem Rhitmo */}
-            <div className="bg-muted/50 rounded-2xl p-8 border space-y-5">
-              <div className="flex items-center gap-2">
-                <XCircle className="h-6 w-6 text-destructive" />
+          <p className="text-lg text-muted-foreground text-center mb-14 max-w-2xl mx-auto">
+            {lang === 'pt' ? 'Veja o que muda quando IA assume o trabalho operacional.' : 'See what changes when AI takes over the busywork.'}
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 max-w-5xl mx-auto">
+            {/* Sem Rhitmo — Lado escuro */}
+            <div className="bg-muted rounded-2xl md:rounded-r-none p-8 lg:p-10 border border-destructive/10 space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
+                  <XCircle className="h-5 w-5 text-destructive" />
+                </div>
                 <h3 className="text-xl font-bold text-foreground">{t.withoutRhitmo}</h3>
               </div>
-              <ul className="space-y-3">
+              <ul className="space-y-4">
                 {t.beforeItems.map((item) => (
-                  <li key={item} className="text-muted-foreground leading-relaxed">{item}</li>
+                  <li key={item} className="flex items-start gap-3">
+                    <XCircle className="h-4 w-4 text-destructive/60 mt-1 shrink-0" />
+                    <span className="text-muted-foreground leading-relaxed text-sm">{item}</span>
+                  </li>
                 ))}
               </ul>
             </div>
-            {/* Com Rhitmo */}
-            <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-2xl p-8 border border-primary/20 space-y-5">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-6 w-6 text-primary" />
+
+            {/* Com Rhitmo — Lado claro + primary */}
+            <div className="bg-gradient-to-br from-primary/5 to-emerald-500/5 rounded-2xl md:rounded-l-none p-8 lg:p-10 border border-primary/20 space-y-6 relative">
+              {/* Arrow indicator between cards - desktop only */}
+              <div className="hidden md:flex absolute -left-5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-primary text-primary-foreground items-center justify-center shadow-lg z-10">
+                <ArrowRight className="h-5 w-5" />
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <CheckCircle2 className="h-5 w-5 text-primary" />
+                </div>
                 <h3 className="text-xl font-bold text-foreground">{t.withRhitmo}</h3>
               </div>
-              <ul className="space-y-3">
+              <ul className="space-y-4">
                 {t.afterItems.map((item) => (
-                  <li key={item} className="text-foreground leading-relaxed">{item}</li>
+                  <li key={item} className="flex items-start gap-3">
+                    <CheckCircle2 className="h-4 w-4 text-primary mt-1 shrink-0" />
+                    <span className="text-foreground leading-relaxed text-sm font-medium">{item}</span>
+                  </li>
                 ))}
               </ul>
             </div>
@@ -821,57 +848,60 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Seção: Rhitmo vs. Outros */}
-      <section className="py-24 bg-background">
+      {/* Seção: Rhitmo vs. Outros — Feature Showdown */}
+      <section className="py-28 bg-background">
         <div className="container mx-auto px-4">
-          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{lang === 'pt' ? 'Comparativo' : 'Comparison'}</p>
-          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
+          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{t.comparisonOverline}</p>
+          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-4 text-foreground">
             {t.comparisonTitle}
           </h2>
+          <p className="text-lg text-muted-foreground text-center mb-14 max-w-2xl mx-auto">
+            {lang === 'pt' ? 'Funcionalidades reais, não promessas de roadmap.' : 'Real features, not roadmap promises.'}
+          </p>
 
-          {/* Desktop: Table */}
-          <div className="hidden md:block max-w-4xl mx-auto">
-            <div className="rounded-2xl border overflow-hidden">
+          {/* Desktop: Premium Table */}
+          <div className="hidden md:block max-w-5xl mx-auto">
+            <div className="rounded-2xl border overflow-hidden shadow-md">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="font-bold text-foreground">{t.compFeature}</TableHead>
-                    <TableHead className="text-center">{t.compSpreadsheets}</TableHead>
-                    <TableHead className="text-center">{t.compQulture}</TableHead>
-                    <TableHead className="text-center">{t.compLattice}</TableHead>
-                    <TableHead className="text-center font-bold text-primary bg-primary/5">{t.compRhitmo}</TableHead>
+                  <TableRow className="bg-muted/30 border-b-2">
+                    <TableHead className="font-bold text-foreground py-5 pl-6">{t.compFeature}</TableHead>
+                    <TableHead className="text-center text-muted-foreground py-5">{t.compSpreadsheets}</TableHead>
+                    <TableHead className="text-center text-muted-foreground py-5">{t.compQulture}</TableHead>
+                    <TableHead className="text-center text-muted-foreground py-5">{t.compLattice}</TableHead>
+                    <TableHead className="text-center font-bold py-5 bg-primary text-primary-foreground rounded-t-none">{t.compRhitmo}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {t.compRows.map((row) => (
-                    <TableRow key={row.feature}>
-                      <TableCell className="font-medium text-foreground">{row.feature}</TableCell>
-                      <TableCell className="text-center"><ComparisonIcon status={row.spreadsheets} /></TableCell>
-                      <TableCell className="text-center"><ComparisonIcon status={row.qulture} /></TableCell>
-                      <TableCell className="text-center"><ComparisonIcon status={row.lattice} /></TableCell>
-                      <TableCell className="text-center bg-primary/5"><ComparisonIcon status={row.rhitmo} /></TableCell>
+                  {t.compRows.map((row, i) => (
+                    <TableRow key={row.feature} className={i % 2 === 0 ? 'bg-background' : 'bg-muted/20'}>
+                      <TableCell className="font-medium text-foreground py-4 pl-6">{row.feature}</TableCell>
+                      <TableCell className="text-center py-4"><ComparisonIcon status={row.spreadsheets} /></TableCell>
+                      <TableCell className="text-center py-4"><ComparisonIcon status={row.qulture} /></TableCell>
+                      <TableCell className="text-center py-4"><ComparisonIcon status={row.lattice} /></TableCell>
+                      <TableCell className="text-center py-4 bg-primary/5 border-x border-primary/10"><ComparisonIcon status={row.rhitmo} /></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </div>
-            <p className="text-sm text-muted-foreground text-center mt-4">{t.compLegend}</p>
+            <p className="text-sm text-muted-foreground text-center mt-6">{t.compLegend}</p>
           </div>
 
           {/* Mobile: Accordion cards */}
           <div className="md:hidden max-w-lg mx-auto">
             <Accordion type="single" collapsible className="space-y-3">
               {t.compRows.map((row, i) => (
-                <AccordionItem key={i} value={`comp-${i}`} className="border rounded-xl px-4">
+                <AccordionItem key={i} value={`comp-${i}`} className="border rounded-xl px-4 bg-card">
                   <AccordionTrigger className="text-sm font-medium hover:no-underline">
                     {row.feature}
                   </AccordionTrigger>
                   <AccordionContent>
-                    <div className="grid grid-cols-2 gap-2 text-sm py-2">
+                    <div className="grid grid-cols-2 gap-3 text-sm py-2">
                       <div className="flex justify-between"><span className="text-muted-foreground">{t.compSpreadsheets}</span> <ComparisonIcon status={row.spreadsheets} /></div>
                       <div className="flex justify-between"><span className="text-muted-foreground">{t.compQulture}</span> <ComparisonIcon status={row.qulture} /></div>
                       <div className="flex justify-between"><span className="text-muted-foreground">{t.compLattice}</span> <ComparisonIcon status={row.lattice} /></div>
-                      <div className="flex justify-between"><span className="font-medium text-primary">{t.compRhitmo}</span> <ComparisonIcon status={row.rhitmo} /></div>
+                      <div className="flex justify-between rounded-lg bg-primary/5 px-2 py-1"><span className="font-medium text-primary">{t.compRhitmo}</span> <ComparisonIcon status={row.rhitmo} /></div>
                     </div>
                   </AccordionContent>
                 </AccordionItem>
@@ -885,28 +915,50 @@ const Landing = () => {
       {/* Seção: Números Concretos */}
       <section className="py-28 bg-gradient-to-br from-muted/30 to-primary/5">
         <div className="container mx-auto px-4">
-          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{lang === 'pt' ? 'Resultados' : 'Results'}</p>
-          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
+          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{t.numbersOverline}</p>
+          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-4 text-foreground">
             {t.numbersTitle}
           </h2>
+          <p className="text-lg text-muted-foreground text-center mb-14 max-w-2xl mx-auto">
+            {lang === 'pt' ? 'Resultados reais de quem já usa Rhitmo no dia a dia.' : 'Real results from leaders who already use Rhitmo daily.'}
+          </p>
+
+          {/* Bento Grid — Hero card + 2 secondary */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {/* Card 1 */}
-            <div className="bg-card rounded-2xl p-8 border shadow-md text-center space-y-3 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
-              <Clock className="h-8 w-8 mx-auto text-primary" />
-              <div className="font-serif text-5xl font-bold tracking-tight text-foreground">{t.numbersStat1}</div>
-              <p className="text-sm text-muted-foreground">{t.numbersLabel1}</p>
+            {/* Hero Card — spans 2 cols */}
+            <div className="md:col-span-2 bg-card rounded-2xl p-10 lg:p-12 border-l-4 border-l-primary border shadow-md hover:shadow-lg transition-all duration-300 flex flex-col justify-center">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Clock className="h-6 w-6 text-primary" />
+                </div>
+                <span className="uppercase text-xs font-semibold tracking-widest text-primary">{lang === 'pt' ? 'Produtividade' : 'Productivity'}</span>
+              </div>
+              <div className="font-serif text-6xl lg:text-7xl font-bold tracking-tight text-foreground mb-4">{t.numbersStat1}</div>
+              <p className="text-base text-muted-foreground leading-relaxed max-w-lg">{t.numbersLabel1}</p>
             </div>
-            {/* Card 2 */}
-            <div className="bg-card rounded-2xl p-8 border shadow-md text-center space-y-3 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
-              <AlertCircle className="h-8 w-8 mx-auto text-destructive" />
-              <div className="font-serif text-5xl font-bold tracking-tight text-foreground">{t.numbersStat2}</div>
-              <p className="text-sm text-muted-foreground">{t.numbersLabel2}</p>
-            </div>
-            {/* Card 3 */}
-            <div className="bg-card rounded-2xl p-8 border shadow-md text-center space-y-3 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
-              <DollarSign className="h-8 w-8 mx-auto text-primary" />
-              <div className="font-serif text-5xl font-bold tracking-tight text-foreground">{t.numbersStat3}</div>
-              <p className="text-sm text-muted-foreground">{t.numbersLabel3}</p>
+
+            {/* Secondary Cards — stacked */}
+            <div className="flex flex-col gap-6">
+              <div className="bg-card rounded-2xl p-8 border-l-4 border-l-destructive border shadow-md hover:shadow-lg transition-all duration-300 flex-1">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
+                    <AlertCircle className="h-5 w-5 text-destructive" />
+                  </div>
+                  <span className="uppercase text-xs font-semibold tracking-widest text-destructive">{lang === 'pt' ? 'Equidade' : 'Equity'}</span>
+                </div>
+                <div className="font-serif text-4xl font-bold tracking-tight text-foreground mb-2">{t.numbersStat2}</div>
+                <p className="text-sm text-muted-foreground leading-relaxed">{t.numbersLabel2}</p>
+              </div>
+              <div className="bg-card rounded-2xl p-8 border-l-4 border-l-primary border shadow-md hover:shadow-lg transition-all duration-300 flex-1">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <DollarSign className="h-5 w-5 text-primary" />
+                  </div>
+                  <span className="uppercase text-xs font-semibold tracking-widest text-primary">{lang === 'pt' ? 'Economia' : 'Savings'}</span>
+                </div>
+                <div className="font-serif text-4xl font-bold tracking-tight text-foreground mb-2">{t.numbersStat3}</div>
+                <p className="text-sm text-muted-foreground leading-relaxed">{t.numbersLabel3}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -1001,42 +1053,51 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Seção: Para quem é Rhitmo */}
-      <section className="py-24 bg-background">
+      {/* Seção: Para quem é Rhitmo — Persona Cards */}
+      <section className="py-28 bg-background">
         <div className="container mx-auto px-4">
-          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{lang === 'pt' ? 'Público-alvo' : 'Target Audience'}</p>
-          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
+          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{t.forWhoOverline}</p>
+          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-4 text-foreground">
             {t.forWhoTitle}
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {/* Líder */}
-            <div className="bg-card rounded-2xl border p-8 space-y-4 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 shadow-md relative">
-              <span className="absolute -top-3 left-6 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full">{t.forWhoLeaderBadge}</span>
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Target className="h-6 w-6 text-primary" />
+          <p className="text-lg text-muted-foreground text-center mb-14 max-w-2xl mx-auto">
+            {lang === 'pt' ? 'Três perfis, uma plataforma. Encontre o seu.' : 'Three profiles, one platform. Find yours.'}
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto items-start">
+            {/* Líder — Card em destaque */}
+            <div className="bg-card rounded-2xl border-2 border-primary p-8 lg:p-10 space-y-5 shadow-lg md:scale-105 relative">
+              <span className="absolute -top-3 left-6 bg-primary text-primary-foreground text-xs font-semibold px-4 py-1.5 rounded-full">{t.forWhoLeaderBadge}</span>
+              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+                <Target className="h-7 w-7 text-primary" />
               </div>
               <h3 className="text-xl font-bold text-foreground">{t.forWhoLeaderTitle}</h3>
               <p className="text-muted-foreground leading-relaxed">{t.forWhoLeaderText}</p>
+              <Button className="w-full rounded-xl" onClick={() => navigate('/auth?mode=signup')}>
+                {lang === 'pt' ? 'Começar grátis' : 'Get started free'}
+              </Button>
             </div>
+
             {/* PME */}
-            <div className="bg-card rounded-2xl border p-8 space-y-4 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 shadow-md relative">
-              <span className="absolute -top-3 left-6 bg-emerald-500 text-white text-xs font-semibold px-3 py-1 rounded-full">{t.forWhoPmeBadge}</span>
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                <Users className="h-6 w-6 text-emerald-600" />
+            <div className="bg-card rounded-2xl border p-8 space-y-5 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all duration-300 relative">
+              <span className="absolute -top-3 left-6 bg-accent text-accent-foreground text-xs font-semibold px-3 py-1 rounded-full">{t.forWhoPmeBadge}</span>
+              <div className="w-14 h-14 rounded-full bg-accent/50 flex items-center justify-center">
+                <Users className="h-7 w-7 text-accent-foreground" />
               </div>
               <h3 className="text-xl font-bold text-foreground">{t.forWhoPmeTitle}</h3>
               <p className="text-muted-foreground leading-relaxed">{t.forWhoPmeText}</p>
             </div>
+
             {/* Enterprise */}
-            <div className="bg-card rounded-2xl border p-8 space-y-4 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 shadow-md relative">
+            <div className="bg-card rounded-2xl border p-8 space-y-5 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all duration-300 relative">
               <span className="absolute -top-3 left-6 bg-muted text-muted-foreground text-xs font-semibold px-3 py-1 rounded-full border">{t.forWhoEntBadge}</span>
-              <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
-                <Building className="h-6 w-6 text-muted-foreground" />
+              <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+                <Building className="h-7 w-7 text-muted-foreground" />
               </div>
               <h3 className="text-xl font-bold text-foreground">{t.forWhoEntTitle}</h3>
               <p className="text-muted-foreground leading-relaxed">{t.forWhoEntText}</p>
-              <Link to="/enterprise" className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
-                {t.forWhoEntLink} <ArrowRight className="h-3 w-3" />
+              <Link to="/enterprise" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+                {t.forWhoEntLink} <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
           </div>
