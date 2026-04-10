@@ -374,55 +374,10 @@ export function AppSidebar() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={extensionDialogOpen} onOpenChange={setExtensionDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Download className="h-5 w-5 text-primary" />
-              Extensão Chrome — Rhitmo Recorder
-            </DialogTitle>
-            <DialogDescription>
-              Grave reuniões no Google Meet automaticamente. Ao entrar em uma chamada, a extensão inicia a gravação e envia o áudio para transcrição pela IA.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 mt-2">
-            <Button onClick={handleDownloadExtension} className="w-full rounded-xl gap-2">
-              <Download className="h-4 w-4" />
-              Baixar Extensão (.zip)
-            </Button>
-
-            <Separator />
-
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-foreground">Como instalar:</p>
-              <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-                <li>Descompacte o arquivo ZIP em uma pasta.</li>
-                <li>No Chrome, acesse <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">chrome://extensions</code></li>
-                <li>Ative o <strong>Modo Desenvolvedor</strong> (toggle no canto superior direito).</li>
-                <li>Clique em <strong>"Carregar sem compactação"</strong> e selecione a pasta.</li>
-              </ol>
-            </div>
-
-            <Separator />
-
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-foreground">Token de Conexão:</p>
-              <p className="text-xs text-muted-foreground">Cole este token no popup da extensão para autenticá-la.</p>
-              <Button 
-                variant="outline" 
-                size="default" 
-                className="w-full rounded-xl gap-2 relative z-50 cursor-pointer hover:bg-accent" 
-                onClick={handleCopyToken}
-                type="button"
-              >
-                {tokenCopied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
-                {tokenCopied ? 'Token copiado!' : 'Copiar Token'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ChromeExtensionSetupDialog
+        open={extensionDialogOpen}
+        onOpenChange={setExtensionDialogOpen}
+      />
     </Sidebar>
   );
 }
