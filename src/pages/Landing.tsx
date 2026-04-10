@@ -949,9 +949,6 @@ const Landing = () => {
             <div className="md:order-1 order-2">
               <HumanImageContainer>
                 <div className="relative w-full h-full">
-                  {/* Overlay esmeralda suave */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/40 to-emerald-600/20 mix-blend-multiply z-10 rounded-2xl" />
-                  
                   <img src={heroDuoFeedback} alt={t.duoAlt} className="w-full h-full object-cover rounded-2xl" />
                 </div>
               </HumanImageContainer>
