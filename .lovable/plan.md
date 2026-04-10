@@ -1,31 +1,50 @@
 
 
-## Corrigir: Resolução de membros quando `users.info` falha
+## Verificação e Diagnóstico — Matheus Magalhaes
 
-### Problema
-Quando o líder digita `/nota @guilherme cunha`, o Slack envia `<@U08RFSY3F29|guilherme.cunha>`. O fluxo de resolução:
-1. Busca U08RFSY3F29 em `slack_integrations` → não encontrado (Guilherme não vinculou conta)
-2. Chama `users.info` no Slack → falha com `user_not_found`
-3. Retorna erro, **sem tentar o fuzzy match pelo nome**
+### Status dos dados no banco (confirmado agora)
 
-O membro "Guilherme Cunha" existe na tabela `team_members`, mas o código desperdiça o display name (`guilherme.cunha`) que vem no próprio formato da menção `<@U...|display_name>`.
+| Item | Valor | Status |
+|------|-------|--------|
+| Auth user ID | `79a6f679-7920-42e2-9727-1fcee6edbf5a` | OK |
+| Workspace "Faster Ops" | `27ee8977-...` owner = Matheus | OK |
+| Plano | business | OK |
+| Times | 5 (Business Ops, Expansão, CreativeOps, Customer Success, People) | OK |
+| Membros totais | 6 (2+1+1+2+0) | OK |
+| Feedbacks | 215 | OK |
+| linked_user_id na team_members | Nenhuma row vincula Matheus como liderado | OK |
+| team_members com email dele | 1 row ("João Silva" com email matheus.magalhaes@fstr.co, invite_status=none, linked_user_id=null) | Suspeito mas inofensivo |
 
-### Solução
+### Verificação do código (pós-edições)
 
-**`supabase/functions/slack-bot/index.ts`** — No bloco de fallback (linhas ~207-245), adicionar:
+1. **`useAuth.ts`** — Agora espera `getSession` + `getUser` antes de setar `loading=false`. O `onAuthStateChange` com `INITIAL_SESSION` não dispara `setLoading(false)` prematuramente. **Correto.**
 
-1. **Antes de chamar `users.info`**: extrair o display name do `|` da menção (`mentionMatch` já captura `<@U...|display_name>`, mas o regex descarta a parte após `|`). Ajustar para capturar o display name.
+2. **`useLinkedMember.ts`** — Filtra por `invite_status = 'accepted'`. Como Matheus não tem nenhuma row com `linked_user_id` apontando para ele, `isLinkedMember` será `false`. **Correto.**
 
-2. **Quando `users.info` falha**: usar o display name extraído da menção (ex: `guilherme.cunha` → `guilherme cunha`) para fazer fuzzy match na tabela `team_members`, da mesma forma que o fallback por `realName` já faz.
+3. **`useUserRole.ts`** — Verifica owner + team leader em paralelo. Matheus é owner da workspace, retorna `'leader'`. Tem `enabled: !!user && !authLoading` e retry 3x. **Correto.**
 
-3. **Fluxo corrigido**:
-   - Slack integration lookup → se falhar...
-   - Extrair display name da menção (`|` part) → fuzzy match → se falhar...
-   - `users.info` → real name → fuzzy match → se falhar...
-   - Retornar erro
+4. **`Index.tsx` (linha 342)** — `if (isLinkedMember && !isLeader && !isHRAdmin)` — Matheus é `isLeader=true`, então nunca entra no branch de liderado mesmo que `isLinkedMember` fosse true. **Correto.**
 
-Mudança pontual: ~15 linhas no bloco `resolveMember`.
+5. **`AppSidebar.tsx` (linha 108)** — `showMemberMenu = !roleLoading && !isLeader && !isHRAdmin && (isUser || isLinkedMember)`. Matheus é leader, então `showMemberMenu=false`. **Correto.**
 
-### Arquivos alterados
-- `supabase/functions/slack-bot/index.ts` — melhorar fallback no `resolveMember`
+6. **`AppLayout.tsx`** — O auto-link por email foi removido da query `hasPendingInviteByEmail` (agora é read-only). A lógica de link real foi centralizada no `AuthEventProvider`. **Correto.**
+
+7. **`AuthEventProvider.tsx`** — Auto-link por email só roda se o usuário NÃO é owner de workspace ativa e NÃO é team leader. Matheus é owner, então o auto-link é pulado. **Correto.**
+
+### Conclusão
+
+Todos os dados estão intactos e as edições de código estão logicamente corretas. Não há ação adicional necessária no código ou no banco de dados.
+
+### Ponto de atenção (não-bloqueante)
+
+Existe uma row na `team_members` com `name = "João Silva"` mas `email = matheus.magalhaes@fstr.co`. Parece ser um registro de teste. Não causa problema porque `invite_status = 'none'` e `linked_user_id = null`, mas pode gerar confusão visual se aparecer em relatórios. Isso pode ser limpo manualmente se desejado.
+
+### Próximo passo recomendado
+
+Pedir ao Matheus para fazer login novamente (aba anônima, hard refresh) e confirmar que:
+- Vê o dashboard de líder
+- Vê seus 5 times e 6 membros
+- Vê os 215 feedbacks
+
+Se ainda houver problema visual, precisaremos capturar os console logs do browser dele para identificar se alguma query RLS está falhando silenciosamente.
 
