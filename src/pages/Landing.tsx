@@ -710,12 +710,20 @@ const Landing = () => {
         <div className="absolute bottom-0 left-0 right-0">
           <RhythmWave variant="hero" height={140} className="opacity-80" />
         </div>
-        <div className="relative max-w-7xl mx-auto px-6 lg:px-8 py-20 lg:py-28">
+        <div className="relative max-w-7xl mx-auto px-6 lg:px-8 py-24 lg:py-32">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             
             {/* Coluna Esquerda - Texto */}
             <div className="space-y-6 text-left">
-              <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl xl:text-6xl">
+              {/* AI-Native Badge */}
+              <div>
+                <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 text-sm font-medium text-foreground">
+                  <Sparkles className="h-4 w-4 text-primary animate-pulse" />
+                  {t.aiNativeBadge}
+                </span>
+              </div>
+
+              <h1 className="font-serif text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight text-foreground">
                 {t.heroTitle}
               </h1>
               
@@ -724,32 +732,21 @@ const Landing = () => {
               </p>
               
               <div className="pt-4 flex flex-wrap gap-3">
-                <Button size="lg" className="text-base px-8" onClick={() => navigate('/auth?mode=signup')}>
+                <Button size="lg" className="text-base px-8 rounded-xl" onClick={() => navigate('/auth?mode=signup')}>
                   {t.getStarted}
                 </Button>
-                <Button size="lg" variant="outline" className="text-base px-8" asChild>
+                <Button size="lg" variant="outline" className="text-base px-8 rounded-xl" asChild>
                   <a href="#pricing">{t.seePlans}</a>
                 </Button>
-              </div>
-
-              {/* AI-Native Badge */}
-              <div className="pt-2">
-                <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary/15 to-pink-500/15 border border-primary/20 text-sm font-medium text-foreground">
-                  <Sparkles className="h-4 w-4 text-primary" />
-                  {t.aiNativeBadge}
-                </span>
               </div>
             </div>
             
             {/* Coluna Direita - Imagem Premium */}
             <div className="relative">
-              {/* Glow effect roxo/esmeralda */}
-              <div className="absolute -inset-4 bg-gradient-to-r from-primary/30 to-emerald-500/30 rounded-3xl blur-3xl opacity-60" />
+              {/* Glow effect sutil */}
+              <div className="absolute -inset-6 bg-gradient-to-r from-primary/15 to-primary/10 rounded-3xl blur-3xl opacity-30" />
               
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/50 hover:scale-105 transition-transform duration-500">
-                {/* Overlay roxo similar à página de login */}
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/50 to-primary/30 mix-blend-multiply z-10" />
-                
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/30 hover:shadow-xl transition-all duration-500">
                 <img src={heroLeaderFlow} alt={t.heroAlt} className="w-full h-full object-cover aspect-[4/3]" />
               </div>
             </div>
@@ -757,6 +754,8 @@ const Landing = () => {
           </div>
         </div>
       </section>
+
+      <WaveDivider className="bg-background" />
 
       {/* Seção: Antes vs. Depois */}
       <section className="py-20 bg-background">
