@@ -1,95 +1,26 @@
 
 
-## Diagnóstico: Modal de onboarding reaparecendo + "infinite recursion"
+## Corrigir: Vídeo demo aparecendo para liderados
 
-### Causa raiz
+### Problema
+Na tela do liderado em `/dashboard/perfil`, o vídeo do YouTube "Veja como gerenciar seu time em 2 minutos" aparece no estado vazio. Esse conteúdo é voltado para líderes e não faz sentido para liderados.
 
-A função `is_hr_admin_of_workspace()` é `LANGUAGE sql` com `SECURITY DEFINER`. O otimizador do PostgreSQL pode **inlinar** funções SQL, o que faz a query interna `SELECT ... FROM workspaces` ser mesclada na avaliação da política RLS da própria tabela `workspaces`, causando **recursão infinita**.
-
-Isso faz a query de workspace no `AppLayout` falhar silenciosamente (retorna `null`), o que aciona `needsWorkspaceSetup = true` e exibe o modal indevidamente.
+Isso acontece porque um usuário que é tanto liderado (linked member) quanto tem acesso como líder (ou simplesmente não está corretamente vinculado) cai na view de líder do `Index.tsx`, que mostra o vídeo demo quando não há membros no time.
 
 ### Solução
 
-**1. Migração SQL — Corrigir função recursiva**
+**1. `src/pages/Index.tsx` — Condicionar o vídeo demo ao papel de líder**
 
-Recriar `is_hr_admin_of_workspace` como `LANGUAGE plpgsql` (não pode ser inlinada pelo otimizador):
+No trecho do empty state (linhas ~549-558), verificar se o usuário é um linked member antes de mostrar o vídeo. Se for um liderado sem time próprio, mostrar uma mensagem adequada em vez do vídeo de onboarding de líder.
 
-```sql
-CREATE OR REPLACE FUNCTION public.is_hr_admin_of_workspace(_workspace_id uuid)
-RETURNS boolean
-LANGUAGE plpgsql
-STABLE SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  RETURN auth.uid() = ANY(
-    SELECT unnest(COALESCE(hr_admin_ids, '{}'))
-    FROM workspaces WHERE id = _workspace_id
-  );
-END;
-$$;
-```
+Importar `useLinkedMember` (já importado) e usar `isLinkedMember` para:
+- Se `isLinkedMember === true` e caiu na view de líder: não mostrar vídeo, mostrar mensagem neutra ou redirecionar para a view de liderado
+- Se `isLinkedMember === false` (é líder): manter o vídeo demo atual
 
-Mesma correção para `effective_user_id()` (também `LANGUAGE sql`, risco similar em outras tabelas):
+**2. Validação adicional**
 
-```sql
-CREATE OR REPLACE FUNCTION public.effective_user_id()
-RETURNS uuid
-LANGUAGE plpgsql
-STABLE SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  RETURN COALESCE(
-    (SELECT impersonated_user_id
-     FROM public.admin_impersonation
-     WHERE admin_user_id = auth.uid()
-     ORDER BY created_at DESC
-     LIMIT 1),
-    auth.uid()
-  );
-END;
-$$;
-```
-
-**2. Frontend — Tornar a query de workspace mais resiliente**
-
-Em `AppLayout.tsx`, adicionar tratamento de erro na query de workspace para que uma falha de RLS não acione o modal:
-
-```typescript
-const { data: workspace, isLoading: workspaceLoading, error: workspaceError } = useQuery({
-  queryKey: ['user-workspace', user?.id],
-  queryFn: async () => {
-    if (!user) return null;
-    const { data, error } = await supabase
-      .from('workspaces')
-      .select('id')
-      .eq('is_active', true)
-      .limit(1)
-      .maybeSingle();
-    if (error) {
-      console.error('Workspace query error:', error.message);
-      return null;
-    }
-    return data;
-  },
-  enabled: !!user,
-  retry: 2,
-});
-
-// Só mostrar modal se a query concluiu SEM ERRO e não encontrou workspace
-const needsWorkspaceSetup = !authLoading 
-  && !workspaceLoading 
-  && !linkedMemberLoading
-  && !pendingInviteLoading
-  && user 
-  && !workspace 
-  && !workspaceError  // ← não mostrar modal se houve erro
-  && !isLinkedMember
-  && !hasPendingInviteByEmail;
-```
+Verificar se o `isLinkedMember` já está sendo usado no componente Index e garantir que a lógica de redirecionamento na linha 325 cubra o caso de `/dashboard/perfil` com `activeTab`.
 
 ### Arquivos alterados
-- Nova migração SQL (corrige 2 funções)
-- `src/components/AppLayout.tsx` (resiliência na query)
+- `src/pages/Index.tsx` — Condicionar empty state com vídeo ao role de líder
 
