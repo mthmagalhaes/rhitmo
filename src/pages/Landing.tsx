@@ -71,7 +71,7 @@ const translations = {
     videoSubtitle: "Veja como uma review de 4 horas vira 2 minutos.",
     // Comparison
     comparisonOverline: "Comparativo real",
-    comparisonTitle: "Você já sabe que precisa mudar. A pergunta é: com qual ferramenta.",
+    comparisonTitle: "Você já sabe que precisa mudar.",
     compFeature: "Recurso",
     compSpreadsheets: "Planilhas",
     compQulture: "Qulture.Rocks",
@@ -278,7 +278,7 @@ const translations = {
     videoSubtitle: "See how a 4-hour review becomes 2 minutes.",
     // Comparison
     comparisonOverline: "Real comparison",
-    comparisonTitle: "You already know you need to change. The question is: with which tool.",
+    comparisonTitle: "You already know you need to change.",
     compFeature: "Feature",
     compSpreadsheets: "Spreadsheets",
     compQulture: "Qulture.Rocks",
@@ -856,7 +856,7 @@ const Landing = () => {
             {t.comparisonTitle}
           </h2>
           <p className="text-lg text-muted-foreground text-center mb-14 max-w-2xl mx-auto">
-            {lang === 'pt' ? 'Funcionalidades reais, não promessas de roadmap.' : 'Real features, not roadmap promises.'}
+            {lang === 'pt' ? 'A pergunta é com qual ferramenta. Funcionalidades reais, não promessas de roadmap.' : 'The question is with which tool. Real features, not roadmap promises.'}
           </p>
 
           {/* Desktop: Premium Table */}
