@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { RhitmoLogo } from "@/components/RhitmoLogo";
 import { RhythmWave } from "@/components/RhythmWave";
+import { WaveDivider } from "@/components/WaveDivider";
 
 import { useAuth } from "@/hooks/useAuth";
 import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X, Check, Lock, Moon, Sun, Globe, Building, Clock, AlertCircle, DollarSign, Shield, Mic, XCircle, CheckCircle2, Target, Users, FileText, ArrowRight } from "lucide-react";
@@ -709,12 +710,20 @@ const Landing = () => {
         <div className="absolute bottom-0 left-0 right-0">
           <RhythmWave variant="hero" height={140} className="opacity-80" />
         </div>
-        <div className="relative max-w-7xl mx-auto px-6 lg:px-8 py-20 lg:py-28">
+        <div className="relative max-w-7xl mx-auto px-6 lg:px-8 py-24 lg:py-32">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             
             {/* Coluna Esquerda - Texto */}
             <div className="space-y-6 text-left">
-              <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl xl:text-6xl">
+              {/* AI-Native Badge */}
+              <div>
+                <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 text-sm font-medium text-foreground">
+                  <Sparkles className="h-4 w-4 text-primary animate-pulse" />
+                  {t.aiNativeBadge}
+                </span>
+              </div>
+
+              <h1 className="font-serif text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight text-foreground">
                 {t.heroTitle}
               </h1>
               
@@ -723,32 +732,21 @@ const Landing = () => {
               </p>
               
               <div className="pt-4 flex flex-wrap gap-3">
-                <Button size="lg" className="text-base px-8" onClick={() => navigate('/auth?mode=signup')}>
+                <Button size="lg" className="text-base px-8 rounded-xl" onClick={() => navigate('/auth?mode=signup')}>
                   {t.getStarted}
                 </Button>
-                <Button size="lg" variant="outline" className="text-base px-8" asChild>
+                <Button size="lg" variant="outline" className="text-base px-8 rounded-xl" asChild>
                   <a href="#pricing">{t.seePlans}</a>
                 </Button>
-              </div>
-
-              {/* AI-Native Badge */}
-              <div className="pt-2">
-                <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary/15 to-pink-500/15 border border-primary/20 text-sm font-medium text-foreground">
-                  <Sparkles className="h-4 w-4 text-primary" />
-                  {t.aiNativeBadge}
-                </span>
               </div>
             </div>
             
             {/* Coluna Direita - Imagem Premium */}
             <div className="relative">
-              {/* Glow effect roxo/esmeralda */}
-              <div className="absolute -inset-4 bg-gradient-to-r from-primary/30 to-emerald-500/30 rounded-3xl blur-3xl opacity-60" />
+              {/* Glow effect sutil */}
+              <div className="absolute -inset-6 bg-gradient-to-r from-primary/15 to-primary/10 rounded-3xl blur-3xl opacity-30" />
               
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/50 hover:scale-105 transition-transform duration-500">
-                {/* Overlay roxo similar à página de login */}
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/50 to-primary/30 mix-blend-multiply z-10" />
-                
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/30 hover:shadow-xl transition-all duration-500">
                 <img src={heroLeaderFlow} alt={t.heroAlt} className="w-full h-full object-cover aspect-[4/3]" />
               </div>
             </div>
@@ -757,10 +755,13 @@ const Landing = () => {
         </div>
       </section>
 
+      <WaveDivider className="bg-background" />
+
       {/* Seção: Antes vs. Depois */}
-      <section className="py-20 bg-background">
+      <section className="py-24 bg-background">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
+          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{lang === 'pt' ? 'Antes & Depois' : 'Before & After'}</p>
+          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
             {t.beforeAfterTitle}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
@@ -793,13 +794,14 @@ const Landing = () => {
       </section>
 
       {/* Seção: Vídeo Demo */}
-      <section className="py-20 bg-muted/50">
+      <section className="py-24 bg-muted/50">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center space-y-8">
             
             {/* Título */}
             <div className="space-y-3">
-              <h2 className="text-3xl lg:text-4xl font-bold text-foreground">{t.videoTitle}</h2>
+              <p className="uppercase text-xs font-semibold tracking-widest text-primary">{lang === 'pt' ? 'Demonstração' : 'Demo'}</p>
+              <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-foreground">{t.videoTitle}</h2>
               <p className="text-lg text-muted-foreground">
                 {t.videoSubtitle}
               </p>
@@ -820,9 +822,10 @@ const Landing = () => {
       </section>
 
       {/* Seção: Rhitmo vs. Outros */}
-      <section className="py-20 bg-background">
+      <section className="py-24 bg-background">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
+          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{lang === 'pt' ? 'Comparativo' : 'Comparison'}</p>
+          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
             {t.comparisonTitle}
           </h2>
 
@@ -836,7 +839,7 @@ const Landing = () => {
                     <TableHead className="text-center">{t.compSpreadsheets}</TableHead>
                     <TableHead className="text-center">{t.compQulture}</TableHead>
                     <TableHead className="text-center">{t.compLattice}</TableHead>
-                    <TableHead className="text-center font-bold text-primary">{t.compRhitmo}</TableHead>
+                    <TableHead className="text-center font-bold text-primary bg-primary/5">{t.compRhitmo}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -846,7 +849,7 @@ const Landing = () => {
                       <TableCell className="text-center"><ComparisonIcon status={row.spreadsheets} /></TableCell>
                       <TableCell className="text-center"><ComparisonIcon status={row.qulture} /></TableCell>
                       <TableCell className="text-center"><ComparisonIcon status={row.lattice} /></TableCell>
-                      <TableCell className="text-center"><ComparisonIcon status={row.rhitmo} /></TableCell>
+                      <TableCell className="text-center bg-primary/5"><ComparisonIcon status={row.rhitmo} /></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -880,28 +883,29 @@ const Landing = () => {
       </section>
 
       {/* Seção: Números Concretos */}
-      <section className="py-20 bg-gradient-to-br from-muted/30 to-primary/5">
+      <section className="py-28 bg-gradient-to-br from-muted/30 to-primary/5">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
+          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{lang === 'pt' ? 'Resultados' : 'Results'}</p>
+          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
             {t.numbersTitle}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {/* Card 1 */}
-            <div className="bg-card rounded-2xl p-8 border shadow-sm text-center space-y-3 hover:-translate-y-1 transition-transform">
+            <div className="bg-card rounded-2xl p-8 border shadow-md text-center space-y-3 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
               <Clock className="h-8 w-8 mx-auto text-primary" />
-              <div className="text-5xl font-extrabold tracking-tight text-foreground">{t.numbersStat1}</div>
+              <div className="font-serif text-5xl font-bold tracking-tight text-foreground">{t.numbersStat1}</div>
               <p className="text-sm text-muted-foreground">{t.numbersLabel1}</p>
             </div>
             {/* Card 2 */}
-            <div className="bg-card rounded-2xl p-8 border shadow-sm text-center space-y-3 hover:-translate-y-1 transition-transform">
+            <div className="bg-card rounded-2xl p-8 border shadow-md text-center space-y-3 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
               <AlertCircle className="h-8 w-8 mx-auto text-destructive" />
-              <div className="text-5xl font-extrabold tracking-tight text-foreground">{t.numbersStat2}</div>
+              <div className="font-serif text-5xl font-bold tracking-tight text-foreground">{t.numbersStat2}</div>
               <p className="text-sm text-muted-foreground">{t.numbersLabel2}</p>
             </div>
             {/* Card 3 */}
-            <div className="bg-card rounded-2xl p-8 border shadow-sm text-center space-y-3 hover:-translate-y-1 transition-transform">
-              <DollarSign className="h-8 w-8 mx-auto text-emerald-500" />
-              <div className="text-5xl font-extrabold tracking-tight text-foreground">{t.numbersStat3}</div>
+            <div className="bg-card rounded-2xl p-8 border shadow-md text-center space-y-3 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
+              <DollarSign className="h-8 w-8 mx-auto text-primary" />
+              <div className="font-serif text-5xl font-bold tracking-tight text-foreground">{t.numbersStat3}</div>
               <p className="text-sm text-muted-foreground">{t.numbersLabel3}</p>
             </div>
           </div>
@@ -918,7 +922,7 @@ const Landing = () => {
                 <Zap className="h-4 w-4" />
                 {t.forLeaders}
               </div>
-              <h2 className="text-3xl lg:text-4xl font-bold text-foreground">
+              <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
                 {t.leadersTitle}
               </h2>
               <div className="space-y-4 text-lg text-muted-foreground leading-relaxed">
@@ -945,9 +949,6 @@ const Landing = () => {
             <div className="md:order-1 order-2">
               <HumanImageContainer>
                 <div className="relative w-full h-full">
-                  {/* Overlay esmeralda suave */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/40 to-emerald-600/20 mix-blend-multiply z-10 rounded-2xl" />
-                  
                   <img src={heroDuoFeedback} alt={t.duoAlt} className="w-full h-full object-cover rounded-2xl" />
                 </div>
               </HumanImageContainer>
@@ -959,7 +960,7 @@ const Landing = () => {
                 <Heart className="h-4 w-4" />
                 {t.forReports}
               </div>
-              <h2 className="text-3xl lg:text-4xl font-bold text-foreground">
+              <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
                 {t.reportsTitle}
               </h2>
               <div className="space-y-4 text-lg text-muted-foreground leading-relaxed">
@@ -981,7 +982,7 @@ const Landing = () => {
                 <BarChart className="h-4 w-4" />
                 {t.forHR}
               </div>
-              <h2 className="text-3xl lg:text-4xl font-bold text-foreground">
+              <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
                 {t.hrTitle}
               </h2>
               <div className="space-y-4 text-lg text-muted-foreground leading-relaxed">
@@ -1001,14 +1002,15 @@ const Landing = () => {
       </section>
 
       {/* Seção: Para quem é Rhitmo */}
-      <section className="py-20 bg-background">
+      <section className="py-24 bg-background">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
+          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{lang === 'pt' ? 'Público-alvo' : 'Target Audience'}</p>
+          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
             {t.forWhoTitle}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {/* Líder */}
-            <div className="bg-card rounded-2xl border p-8 space-y-4 hover:-translate-y-1 transition-transform relative">
+            <div className="bg-card rounded-2xl border p-8 space-y-4 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 shadow-md relative">
               <span className="absolute -top-3 left-6 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full">{t.forWhoLeaderBadge}</span>
               <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
                 <Target className="h-6 w-6 text-primary" />
@@ -1017,7 +1019,7 @@ const Landing = () => {
               <p className="text-muted-foreground leading-relaxed">{t.forWhoLeaderText}</p>
             </div>
             {/* PME */}
-            <div className="bg-card rounded-2xl border p-8 space-y-4 hover:-translate-y-1 transition-transform relative">
+            <div className="bg-card rounded-2xl border p-8 space-y-4 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 shadow-md relative">
               <span className="absolute -top-3 left-6 bg-emerald-500 text-white text-xs font-semibold px-3 py-1 rounded-full">{t.forWhoPmeBadge}</span>
               <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center">
                 <Users className="h-6 w-6 text-emerald-600" />
@@ -1026,7 +1028,7 @@ const Landing = () => {
               <p className="text-muted-foreground leading-relaxed">{t.forWhoPmeText}</p>
             </div>
             {/* Enterprise */}
-            <div className="bg-card rounded-2xl border p-8 space-y-4 hover:-translate-y-1 transition-transform relative">
+            <div className="bg-card rounded-2xl border p-8 space-y-4 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 shadow-md relative">
               <span className="absolute -top-3 left-6 bg-muted text-muted-foreground text-xs font-semibold px-3 py-1 rounded-full border">{t.forWhoEntBadge}</span>
               <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
                 <Building className="h-6 w-6 text-muted-foreground" />
@@ -1043,15 +1045,16 @@ const Landing = () => {
 
 
       {/* Seção: O que Rhitmo NÃO é */}
-      <section className="py-20 bg-background">
+      <section className="py-24 bg-background">
         <div className="container mx-auto px-4 max-w-3xl">
-          <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-center mb-6 text-foreground">
+          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{lang === 'pt' ? 'Transparência' : 'Transparency'}</p>
+          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-6 text-foreground">
             {t.whatWeAreNotTitle}
           </h2>
           <p className="text-lg text-muted-foreground text-center mb-8 leading-relaxed">
             {t.whatWeAreNotIntro}
           </p>
-          <div className="bg-muted/50 rounded-2xl border p-8 space-y-4 mb-8">
+          <div className="bg-muted/30 rounded-2xl border-l-4 border-l-primary/30 border p-8 space-y-4 mb-8">
             {t.whatWeAreNotItems.map((item) => (
               <div key={item} className="flex items-start gap-3">
                 <XCircle className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
@@ -1068,25 +1071,26 @@ const Landing = () => {
       {/* Seção: Positioning Statement */}
       <section className="py-24 bg-gradient-to-br from-primary/90 to-primary">
         <div className="container mx-auto px-4 max-w-3xl text-center space-y-8">
-          <p className="text-2xl lg:text-3xl font-bold text-primary-foreground leading-snug">
+          <p className="font-serif text-2xl lg:text-3xl font-bold text-primary-foreground leading-snug">
             {t.positioningLine1}
           </p>
-          <p className="text-xl lg:text-2xl text-primary-foreground/90 leading-relaxed">
+          <p className="font-serif text-xl lg:text-2xl text-primary-foreground/90 leading-relaxed">
             {t.positioningLine2}
           </p>
           <p className="text-lg text-primary-foreground/80 leading-relaxed">
             {t.positioningLine3}
           </p>
-          <Button size="lg" variant="secondary" className="text-base px-8" onClick={() => navigate('/auth?mode=signup')}>
+          <Button size="lg" variant="secondary" className="text-base px-8 rounded-xl" onClick={() => navigate('/auth?mode=signup')}>
             {t.positioningCTA}
           </Button>
         </div>
       </section>
 
       {/* FAQ Section */}
-      <section className="py-20 bg-muted/30">
+      <section className="py-24 bg-muted/30">
         <div className="container mx-auto px-4 max-w-3xl">
-          <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
+          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">FAQ</p>
+          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
             {t.faqTitle}
           </h2>
           <Accordion type="single" collapsible className="space-y-3">
@@ -1105,11 +1109,13 @@ const Landing = () => {
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-24 bg-background">
+      <WaveDivider className="bg-background" />
+      <section id="pricing" className="py-28 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
           <div className="text-center space-y-3 mb-16">
-            <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
+            <p className="uppercase text-xs font-semibold tracking-widest text-primary">{lang === 'pt' ? 'Planos' : 'Plans'}</p>
+            <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
               {t.pricingTitle}
             </h2>
             <p className="text-lg text-muted-foreground">
@@ -1121,7 +1127,7 @@ const Landing = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
 
             {/* ── Pulse ── */}
-            <div className="bg-card rounded-2xl shadow-sm p-8 border space-y-6">
+            <div className="bg-card rounded-2xl shadow-md p-8 border space-y-6 hover:shadow-lg transition-shadow duration-300">
               <div>
                 <h3 className="text-2xl font-bold tracking-tight text-foreground">Pulse</h3>
                 <p className="text-sm text-muted-foreground mt-2">
@@ -1161,7 +1167,7 @@ const Landing = () => {
                   {t.proBadge}
                 </span>
               </div>
-              <div className="bg-card rounded-2xl shadow-md p-8 border-2 border-primary space-y-6">
+              <div className="bg-card rounded-2xl shadow-lg p-8 border-2 border-primary space-y-6">
                 <div>
                   <h3 className="text-2xl font-bold tracking-tight text-foreground">Pro</h3>
                   <p className="text-sm text-muted-foreground mt-2">
@@ -1194,7 +1200,7 @@ const Landing = () => {
             </div>
 
             {/* ── Business ── */}
-            <div className="bg-card rounded-2xl shadow-sm p-8 border space-y-6">
+            <div className="bg-card rounded-2xl shadow-md p-8 border space-y-6 hover:shadow-lg transition-shadow duration-300">
               <div>
                 <h3 className="text-2xl font-bold tracking-tight text-foreground">Business</h3>
                 <p className="text-sm text-muted-foreground mt-2">
@@ -1226,7 +1232,7 @@ const Landing = () => {
             </div>
 
             {/* ── Enterprise ── */}
-            <div className="bg-card rounded-2xl shadow-sm p-8 border space-y-6">
+            <div className="bg-card rounded-2xl shadow-md p-8 border space-y-6 hover:shadow-lg transition-shadow duration-300">
               <div>
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium mb-2 bg-primary/10 text-primary">
                   <Building className="h-3 w-3" />
@@ -1266,8 +1272,10 @@ const Landing = () => {
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-8 pb-20">
+      <WaveDivider className="bg-muted/30" />
+      <footer className="bg-muted/30 py-12 pb-20">
         <div className="container mx-auto px-4 text-center space-y-6">
+          <RhitmoLogo size="sm" className="mx-auto text-primary" />
           <div className="flex justify-center gap-6 text-sm text-muted-foreground">
             <Link to="/terms-of-service" className="hover:text-foreground transition-colors">
               {t.footerTerms}
@@ -1276,9 +1284,6 @@ const Landing = () => {
               {t.footerPrivacy}
             </Link>
           </div>
-
-          {/* Comparison links */}
-
           <p className="text-sm text-muted-foreground">
             {t.footerRights}
           </p>
