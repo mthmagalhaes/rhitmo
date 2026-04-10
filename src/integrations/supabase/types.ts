@@ -1742,6 +1742,19 @@ export type Database = {
           total_evidence_count: number
         }[]
       }
+      get_user_caps: {
+        Args: never
+        Returns: {
+          email: string
+          full_name: string
+          hr_admin_of: Json
+          is_super_admin: boolean
+          leader_of: Json
+          member_of: Json
+          owner_of: Json
+          user_id: string
+        }[]
+      }
       is_admin: { Args: never; Returns: boolean }
       is_hr_admin_of_workspace: {
         Args: { _workspace_id: string }
