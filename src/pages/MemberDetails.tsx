@@ -193,7 +193,8 @@ const MemberDetails = () => {
       const { data, error } = await supabase
         .from('workspaces')
         .select('id, leader_sync_data')
-        .eq('owner_id', user.id)
+        .eq('is_active', true)
+        .limit(1)
         .maybeSingle();
       if (error) throw error;
       return data;

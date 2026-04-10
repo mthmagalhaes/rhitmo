@@ -115,7 +115,8 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
       const { data, error } = await supabase
         .from('workspaces')
         .select('*')
-        .eq('owner_id', user.id)
+        .eq('is_active', true)
+        .limit(1)
         .maybeSingle();
       if (error) throw error;
       return data as Workspace;

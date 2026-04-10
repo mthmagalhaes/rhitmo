@@ -24,7 +24,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       const { data } = await supabase
         .from('workspaces')
         .select('id')
-        .eq('owner_id', user.id)
+        .eq('is_active', true)
+        .limit(1)
         .maybeSingle();
       return data;
     },

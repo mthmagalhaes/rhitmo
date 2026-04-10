@@ -20,8 +20,8 @@ export function useUserRole(): UserRoleData {
     queryFn: async (): Promise<UserRole> => {
       if (!user) return 'user';
 
-      // Check HR admin and leader in parallel
-      const [hrResult, leaderResult] = await Promise.all([
+      // Check HR admin, workspace owner, and team leader in parallel
+      const [hrResult, ownerResult, teamLeaderResult] = await Promise.all([
         supabase
           .from('workspaces')
           .select('id')
@@ -35,10 +35,16 @@ export function useUserRole(): UserRoleData {
           .eq('is_active', true)
           .limit(1)
           .maybeSingle(),
+        supabase
+          .from('teams')
+          .select('id')
+          .eq('leader_user_id', user.id)
+          .limit(1)
+          .maybeSingle(),
       ]);
 
       if (hrResult.data) return 'hr_admin';
-      if (leaderResult.data) return 'leader';
+      if (ownerResult.data || teamLeaderResult.data) return 'leader';
       return 'user';
     },
     enabled: !!user && !authLoading,
