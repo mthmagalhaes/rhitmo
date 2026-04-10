@@ -43,6 +43,7 @@ export function useLinkedMember() {
         .from('team_members')
         .select('id, name, email, role, skills_data, work_style_data, chronotype, feedback_style, recognition_style, motivators, user_manual, updated_at')
         .eq('linked_user_id', user.id)
+        .eq('invite_status', 'accepted')
         .maybeSingle();
       
       if (error) {
@@ -52,7 +53,7 @@ export function useLinkedMember() {
       
       return data as LinkedMemberData | null;
     },
-    enabled: !!user,
+    enabled: !!user && !authLoading,
   });
 
   const needsOnboarding = linkedMember && 

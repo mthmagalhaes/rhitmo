@@ -18,6 +18,7 @@ import { ActivitySheet } from '@/components/ActivitySheet';
 import { useAuth } from '@/hooks/useAuth';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { useLinkedMember } from '@/hooks/useLinkedMember';
+import { useUserRole } from '@/hooks/useUserRole';
 import DirectReportDashboard from '@/components/dashboard/DirectReportDashboard';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -76,6 +77,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
   const queryClient = useQueryClient();
   const { user, loading: authLoading } = useAuth();
   const { linkedMember, isLinkedMember, needsOnboarding, isLoading: linkedMemberLoading } = useLinkedMember();
+  const { isLeader, isHRAdmin, loading: roleLoading } = useUserRole();
   const { canAddMember, limits } = usePlanLimits();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
@@ -327,7 +329,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
     if (teamMembers.length > 0) navigate(`/member/${teamMembers[0].id}?openMentor=true`);
   };
 
-  if (authLoading || linkedMemberLoading || loading) {
+  if (authLoading || linkedMemberLoading || roleLoading || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -337,7 +339,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
 
   if (!user) return null;
 
-  if (isLinkedMember) {
+  if (isLinkedMember && !isLeader && !isHRAdmin) {
     if (needsOnboarding) return <Navigate to="/onboarding" replace />;
     return <DirectReportDashboard linkedMember={linkedMember!} activeTab={activeTab} />;
   }
