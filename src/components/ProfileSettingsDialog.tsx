@@ -284,6 +284,7 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
         />
       )}
       <SlackPrivacyOnboarding open={privacyOpen} onOpenChange={setPrivacyOpen} />
+      <ChromeExtensionSetupDialog open={extensionSetupOpen} onOpenChange={setExtensionSetupOpen} />
     </Dialog>
   );
 }
