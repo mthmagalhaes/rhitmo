@@ -1,4 +1,5 @@
-import { MessageSquare, CheckCircle2, ExternalLink } from 'lucide-react';
+import { CheckCircle2, ExternalLink } from 'lucide-react';
+import { SlackIcon } from '@/components/icons/SlackIcon';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -23,7 +24,7 @@ export function SlackConnectorDialog({ open, onOpenChange }: SlackConnectorDialo
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-primary" />
+            <SlackIcon className="h-5 w-5" />
             Conector Slack — Rhitmo Bot
           </DialogTitle>
           <DialogDescription>
