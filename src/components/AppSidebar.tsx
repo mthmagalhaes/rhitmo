@@ -65,7 +65,7 @@ export function AppSidebar() {
   const { open } = useSidebar();
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdmin();
-  const { isLeader, isHRAdmin, isUser } = useUserRole();
+  const { isLeader, isHRAdmin, isUser, loading: roleLoading } = useUserRole();
   const { isLinkedMember, linkedMember } = useLinkedMember();
   const { toast } = useToast();
   const navigate = useNavigate();
