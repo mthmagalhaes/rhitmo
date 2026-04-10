@@ -38,6 +38,29 @@ export function useLinkedMember() {
     queryKey: ['linked-member', user?.id],
     queryFn: async (): Promise<LinkedMemberData | null> => {
       if (!user) return null;
+
+      // LEADER GUARD: If the user owns any workspace or leads any team,
+      // they should NEVER be treated as a linked member, even if a stray
+      // team_members row exists with their user id.
+      const [ownerCheck, leaderCheck] = await Promise.all([
+        supabase
+          .from('workspaces')
+          .select('id')
+          .eq('owner_id', user.id)
+          .eq('is_active', true)
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from('teams')
+          .select('id')
+          .eq('leader_user_id', user.id)
+          .limit(1)
+          .maybeSingle(),
+      ]);
+
+      if (ownerCheck.data || leaderCheck.data) {
+        return null; // User is a leader/owner — not a linked member
+      }
       
       const { data, error } = await supabase
         .from('team_members')
