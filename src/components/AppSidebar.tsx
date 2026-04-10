@@ -105,7 +105,9 @@ export function AppSidebar() {
     navigate('/auth', { replace: true });
   };
 
-  const userName = (isLinkedMember && linkedMember?.name) 
+  const showMemberMenu = !roleLoading && !isLeader && !isHRAdmin && (isUser || isLinkedMember);
+
+  const userName = (!isLeader && isLinkedMember && linkedMember?.name)
     || user?.user_metadata?.full_name 
     || user?.user_metadata?.name 
     || 'Usuário';
@@ -180,7 +182,7 @@ export function AppSidebar() {
             <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Menu</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {((!roleLoading && (isUser || isLinkedMember)) ? memberMenuItems : menuItems)
+                {(showMemberMenu ? memberMenuItems : menuItems)
                   .map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild tooltip={item.title}>
@@ -202,7 +204,7 @@ export function AppSidebar() {
         )}
 
         {/* Conectores — Chrome & Slack */}
-        {!isInHRContext && !(!roleLoading && (isUser || isLinkedMember)) && open && (
+        {!isInHRContext && !showMemberMenu && open && (
           <SidebarGroup>
             <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Conectores</SidebarGroupLabel>
             <SidebarGroupContent>

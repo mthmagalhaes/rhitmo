@@ -21,8 +21,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     queryKey: ['user-workspace', user?.id],
     queryFn: async () => {
       if (!user) return null;
-      
-      // First try: explicit owner check (most common case, bypasses RLS timing issues)
+
       const { data: ownedWorkspace, error: ownedError } = await supabase
         .from('workspaces')
         .select('id')
@@ -30,11 +29,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         .eq('is_active', true)
         .limit(1)
         .maybeSingle();
-      
+
       if (ownedError) console.warn('[AppLayout] Owned workspace query error:', ownedError.message);
       if (ownedWorkspace) return ownedWorkspace;
-      
-      // Fallback: RLS-based query (for team leaders, HR admins etc.)
+
       const { data, error } = await supabase
         .from('workspaces')
         .select('id')
@@ -47,46 +45,34 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       }
       return data;
     },
-    enabled: !!user,
+    enabled: !!user && !authLoading,
     retry: 3,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
   });
 
-  // Guard: check if user has a pending invite by email AND auto-link immediately
+  // Read-only check used only to prevent onboarding flash while an invited member
+  // account is still being linked elsewhere in the auth flow.
   const { data: hasPendingInviteByEmail, isLoading: pendingInviteLoading } = useQuery({
     queryKey: ['pending-invite-email', user?.email],
     queryFn: async () => {
       if (!user?.email) return false;
-      const { data: pendingMember } = await supabase
+      const { data: pendingMember, error } = await supabase
         .from('team_members')
         .select('id')
         .eq('email', user.email)
         .eq('invite_status', 'pending')
         .is('linked_user_id', null)
         .maybeSingle();
-      
-      if (!pendingMember) return false;
 
-      // Auto-link immediately to prevent race condition
-      const { error } = await supabase
-        .from('team_members')
-        .update({
-          linked_user_id: user.id,
-          invite_status: 'accepted',
-          invite_token: null,
-        })
-        .eq('id', pendingMember.id)
-        .is('linked_user_id', null); // safety: only if still unlinked
-
-      if (!error) {
-        // Invalidate linked-member query so the UI updates
-        queryClient.invalidateQueries({ queryKey: ['linked-member'] });
+      if (error) {
+        console.warn('[AppLayout] Pending invite query error:', error.message);
+        return false;
       }
 
-      return true;
+      return !!pendingMember;
     },
-    enabled: !!user?.email && !isLinkedMember,
-    staleTime: Infinity, // only run once per session
+    enabled: !!user?.email && !authLoading && !isLinkedMember,
+    staleTime: 30 * 1000,
   });
 
   // Liderados NÃO precisam de workspace - só líderes
