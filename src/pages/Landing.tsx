@@ -94,7 +94,7 @@ const translations = {
     numbersStat2: "38x",
     numbersLabel2: (<>Mulheres <span className="highlight-marker--destructive">recebem 38x mais feedback sobre personalidade do que homens</span>. Rhitmo detecta e corrige antes que você publique.</>),
     numbersStat3: "60%",
-    numbersLabel3: "Em grandes empresas, avaliações tradicionais custam até US$ 35 milhões por ano. E 95% dos gestores estão insatisfeitos com o resultado. Rhitmo corta o custo e entrega precisão.",
+    numbersLabel3: (<>Em grandes empresas, avaliações tradicionais <span className="highlight-marker">custam até US$ 35 milhões</span> por ano. <span className="highlight-marker">E 95% dos gestores</span> estão insatisfeitos com o resultado. Rhitmo corta o custo e entrega precisão.</>),
     // USPs
     uspsTitle: "O que só Rhitmo faz",
     uspTitle1: "IA que escreve (não sugere)",
@@ -301,7 +301,7 @@ const translations = {
     numbersStat2: "38x",
     numbersLabel2: (<>Women <span className="highlight-marker--destructive">receive 38x more personality feedback than men</span>. Rhitmo detects and corrects before you publish.</>),
     numbersStat3: "60%",
-    numbersLabel3: "In large companies, traditional reviews cost up to $35 million per year. And 95% of managers are dissatisfied with the results. Rhitmo cuts costs and delivers precision.",
+    numbersLabel3: (<>In large companies, traditional reviews <span className="highlight-marker">cost up to $35 million</span> per year. <span className="highlight-marker">And 95% of managers</span> are dissatisfied with the results. Rhitmo cuts costs and delivers precision.</>),
     // USPs
     uspsTitle: "What only Rhitmo does",
     uspTitle1: "AI that writes (doesn't just suggest)",
