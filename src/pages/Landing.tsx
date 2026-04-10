@@ -71,7 +71,7 @@ const translations = {
     videoSubtitle: "Veja como uma review de 4 horas vira 2 minutos.",
     // Comparison
     comparisonOverline: "Comparativo real",
-    comparisonTitle: "A diferença não está no que prometem. Está no que entregam.",
+    comparisonTitle: "Você já sabe que precisa mudar. A pergunta é: com qual ferramenta.",
     compFeature: "Recurso",
     compSpreadsheets: "Planilhas",
     compQulture: "Qulture.Rocks",
@@ -278,7 +278,7 @@ const translations = {
     videoSubtitle: "See how a 4-hour review becomes 2 minutes.",
     // Comparison
     comparisonOverline: "Real comparison",
-    comparisonTitle: "The difference isn't in what they promise. It's in what they deliver.",
+    comparisonTitle: "You already know you need to change. The question is: with which tool.",
     compFeature: "Feature",
     compSpreadsheets: "Spreadsheets",
     compQulture: "Qulture.Rocks",
