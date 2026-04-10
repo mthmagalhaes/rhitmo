@@ -14,6 +14,9 @@ import { template as reviewShared } from './review-shared.tsx'
 import { template as reviewAcknowledged } from './review-acknowledged.tsx'
 import { template as adminNewLead } from './admin-new-lead.tsx'
 import { template as enterpriseLead } from './enterprise-lead.tsx'
+import { template as leaderWelcome } from './leader-welcome.tsx'
+import { template as memberWelcome } from './member-welcome.tsx'
+import { template as hrAdminWelcome } from './hr-admin-welcome.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'sync-invite': syncInvite,
@@ -21,4 +24,7 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'review-acknowledged': reviewAcknowledged,
   'admin-new-lead': adminNewLead,
   'enterprise-lead': enterpriseLead,
+  'leader-welcome': leaderWelcome,
+  'member-welcome': memberWelcome,
+  'hr-admin-welcome': hrAdminWelcome,
 }
