@@ -121,62 +121,6 @@ async function generateNoFeedbackNudges(): Promise<NudgeInput[]> {
   return nudges;
 }
 
-async function generateNoPDINudges(): Promise<NudgeInput[]> {
-  const nudges: NudgeInput[] = [];
-
-  const { data: members, error } = await supabase
-    .from('team_members')
-    .select(`
-      id,
-      name,
-      created_at,
-      teams!inner (
-        workspace_id,
-        workspaces!inner (
-          owner_id,
-          is_active
-        )
-      )
-    `);
-
-  if (error || !members) {
-    console.error('Error fetching members for PDI:', error);
-    return nudges;
-  }
-
-  for (const member of members) {
-    const workspace = (member as any).teams?.workspaces;
-    if (!workspace?.is_active) continue;
-
-    // Only check members created > 30 days ago
-    const daysSinceCreated = Math.floor(
-      (Date.now() - new Date(member.created_at).getTime()) / (1000 * 60 * 60 * 24)
-    );
-    if (daysSinceCreated < 30) continue;
-
-    const leaderId = workspace.owner_id;
-
-    // Check if member has any development plan
-    const { count } = await supabase
-      .from('development_plans')
-      .select('id', { count: 'exact', head: true })
-      .eq('member_id', member.id);
-
-    if (!count || count === 0) {
-      nudges.push({
-        leader_id: leaderId,
-        member_id: member.id,
-        nudge_type: 'pending_pdi',
-        message: `${member.name} ainda não tem PDI definido`,
-        action_url: `/member/${member.id}`,
-        severity: 'info',
-      });
-    }
-  }
-
-  return nudges;
-}
-
 async function generateGoalDeadlineNudges(): Promise<NudgeInput[]> {
   const nudges: NudgeInput[] = [];
 
@@ -327,14 +271,13 @@ Deno.serve(async (req) => {
   try {
     console.log('Generating nudges...');
 
-    const [feedbackNudges, pdiNudges, goalNudges, moodNudges] = await Promise.all([
+    const [feedbackNudges, goalNudges, moodNudges] = await Promise.all([
       generateNoFeedbackNudges(),
-      generateNoPDINudges(),
       generateGoalDeadlineNudges(),
       generateMoodShiftNudges(),
     ]);
 
-    const allNudges = [...feedbackNudges, ...pdiNudges, ...goalNudges, ...moodNudges];
+    const allNudges = [...feedbackNudges, ...goalNudges, ...moodNudges];
     console.log(`Found ${allNudges.length} potential nudges`);
 
     const created = await saveNudges(allNudges);
@@ -346,7 +289,6 @@ Deno.serve(async (req) => {
         nudges_created: created,
         breakdown: {
           no_feedback: feedbackNudges.length,
-          pending_pdi: pdiNudges.length,
           goal_deadline: goalNudges.length,
           mood_shift: moodNudges.length,
         },
