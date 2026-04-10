@@ -43,12 +43,24 @@ export function useUserRole(): UserRoleData {
           .maybeSingle(),
       ]);
 
+      // Log errors for debugging — these silent failures cause leaders to appear as 'user'
+      if (hrResult.error) console.warn('[useUserRole] HR check error:', hrResult.error.message);
+      if (ownerResult.error) console.warn('[useUserRole] Owner check error:', ownerResult.error.message);
+      if (teamLeaderResult.error) console.warn('[useUserRole] Team leader check error:', teamLeaderResult.error.message);
+
+      // If ALL queries errored, throw so react-query retries
+      if (hrResult.error && ownerResult.error && teamLeaderResult.error) {
+        throw new Error('All role-check queries failed');
+      }
+
       if (hrResult.data) return 'hr_admin';
       if (ownerResult.data || teamLeaderResult.data) return 'leader';
       return 'user';
     },
     enabled: !!user && !authLoading,
     staleTime: 5 * 60 * 1000,
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
   });
 
   const resolvedRole = role ?? 'user';

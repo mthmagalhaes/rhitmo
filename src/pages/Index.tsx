@@ -112,6 +112,20 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
     queryKey: ['workspace', user?.id],
     queryFn: async () => {
       if (!user) return null;
+      
+      // First try: explicit owner check (robust against RLS timing)
+      const { data: ownedWorkspace, error: ownedError } = await supabase
+        .from('workspaces')
+        .select('*')
+        .eq('owner_id', user.id)
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle();
+      
+      if (ownedError) console.warn('[Index] Owned workspace query error:', ownedError.message);
+      if (ownedWorkspace) return ownedWorkspace as Workspace;
+      
+      // Fallback: RLS-based (for team leaders viewing their leader's workspace)
       const { data, error } = await supabase
         .from('workspaces')
         .select('*')
@@ -125,6 +139,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
     staleTime: 30 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: true,
+    retry: 3,
   });
 
   const { data: activeSubscription } = useQuery({

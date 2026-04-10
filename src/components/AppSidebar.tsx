@@ -65,7 +65,7 @@ export function AppSidebar() {
   const { open } = useSidebar();
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdmin();
-  const { isLeader, isHRAdmin, isUser } = useUserRole();
+  const { isLeader, isHRAdmin, isUser, loading: roleLoading } = useUserRole();
   const { isLinkedMember, linkedMember } = useLinkedMember();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -180,7 +180,7 @@ export function AppSidebar() {
             <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Menu</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {((isUser || isLinkedMember) ? memberMenuItems : menuItems)
+                {((!roleLoading && (isUser || isLinkedMember)) ? memberMenuItems : menuItems)
                   .map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild tooltip={item.title}>
@@ -202,7 +202,7 @@ export function AppSidebar() {
         )}
 
         {/* Conectores — Chrome & Slack */}
-        {!isInHRContext && !(isUser || isLinkedMember) && open && (
+        {!isInHRContext && !(!roleLoading && (isUser || isLinkedMember)) && open && (
           <SidebarGroup>
             <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Conectores</SidebarGroupLabel>
             <SidebarGroupContent>
