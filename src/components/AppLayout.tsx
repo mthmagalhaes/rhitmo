@@ -82,6 +82,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     && !pendingInviteLoading
     && user 
     && !workspace 
+    && !workspaceError
     && !isLinkedMember
     && !hasPendingInviteByEmail;
 
