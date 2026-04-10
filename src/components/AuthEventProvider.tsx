@@ -46,72 +46,10 @@ export function AuthEventProvider({ children }: { children: React.ReactNode }) {
       return false;
     };
 
-    const autoLinkByEmail = async (userId: string, email: string) => {
-      try {
-        const [ownedWorkspaceResult, ledTeamResult, existingLinkResult, pendingMembersResult] = await Promise.all([
-          supabase
-            .from('workspaces')
-            .select('id')
-            .eq('owner_id', userId)
-            .eq('is_active', true)
-            .limit(1)
-            .maybeSingle(),
-          supabase
-            .from('teams')
-            .select('id')
-            .eq('leader_user_id', userId)
-            .limit(1)
-            .maybeSingle(),
-          supabase
-            .from('team_members')
-            .select('id')
-            .eq('linked_user_id', userId)
-            .eq('invite_status', 'accepted')
-            .limit(1)
-            .maybeSingle(),
-          supabase
-            .from('team_members')
-            .select('id')
-            .eq('email', email)
-            .eq('invite_status', 'pending')
-            .is('linked_user_id', null)
-            .limit(2),
-        ]);
-
-        // Never auto-link someone who already owns/leads a workspace.
-        if (ownedWorkspaceResult.data || ledTeamResult.data || existingLinkResult.data) {
-          return;
-        }
-
-        const pendingMembers = pendingMembersResult.data ?? [];
-        if (pendingMembers.length !== 1) {
-          if (pendingMembers.length > 1) {
-            console.warn('[AuthEventProvider] Multiple pending invites for same email. Auto-link skipped.');
-          }
-          return;
-        }
-
-        const { error } = await supabase
-          .from('team_members')
-          .update({
-            linked_user_id: userId,
-            invite_status: 'accepted',
-            invite_token: null,
-          })
-          .eq('id', pendingMembers[0].id)
-          .eq('invite_status', 'pending')
-          .is('linked_user_id', null);
-
-        if (!error) {
-          toast({
-            title: 'Conta vinculada automaticamente!',
-            description: 'Você foi vinculado à equipe pelo seu e-mail.',
-          });
-        }
-      } catch (err) {
-        console.error('Error auto-linking by email:', err);
-      }
-    };
+    // Auto-link by email has been REMOVED from the auth event flow.
+    // It was causing race conditions where leaders could be momentarily
+    // linked as team members during session restoration.
+    // Email-based linking should only happen via explicit invite acceptance.
 
     const processInviteFlows = async (sessionUser?: { id: string; email?: string | null } | null) => {
       const resolvedUser = sessionUser ?? (await supabase.auth.getUser()).data.user;
@@ -119,10 +57,7 @@ export function AuthEventProvider({ children }: { children: React.ReactNode }) {
 
       processedUserIdRef.current = resolvedUser.id;
 
-      const linked = await processPendingInvite(resolvedUser.id);
-      if (!linked && resolvedUser.email) {
-        await autoLinkByEmail(resolvedUser.id, resolvedUser.email);
-      }
+      await processPendingInvite(resolvedUser.id);
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
