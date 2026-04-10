@@ -848,57 +848,60 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Seção: Rhitmo vs. Outros */}
-      <section className="py-24 bg-background">
+      {/* Seção: Rhitmo vs. Outros — Feature Showdown */}
+      <section className="py-28 bg-background">
         <div className="container mx-auto px-4">
-          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{lang === 'pt' ? 'Comparativo' : 'Comparison'}</p>
-          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
+          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{t.comparisonOverline}</p>
+          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-4 text-foreground">
             {t.comparisonTitle}
           </h2>
+          <p className="text-lg text-muted-foreground text-center mb-14 max-w-2xl mx-auto">
+            {lang === 'pt' ? 'Funcionalidades reais, não promessas de roadmap.' : 'Real features, not roadmap promises.'}
+          </p>
 
-          {/* Desktop: Table */}
-          <div className="hidden md:block max-w-4xl mx-auto">
-            <div className="rounded-2xl border overflow-hidden">
+          {/* Desktop: Premium Table */}
+          <div className="hidden md:block max-w-5xl mx-auto">
+            <div className="rounded-2xl border overflow-hidden shadow-md">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="font-bold text-foreground">{t.compFeature}</TableHead>
-                    <TableHead className="text-center">{t.compSpreadsheets}</TableHead>
-                    <TableHead className="text-center">{t.compQulture}</TableHead>
-                    <TableHead className="text-center">{t.compLattice}</TableHead>
-                    <TableHead className="text-center font-bold text-primary bg-primary/5">{t.compRhitmo}</TableHead>
+                  <TableRow className="bg-muted/30 border-b-2">
+                    <TableHead className="font-bold text-foreground py-5 pl-6">{t.compFeature}</TableHead>
+                    <TableHead className="text-center text-muted-foreground py-5">{t.compSpreadsheets}</TableHead>
+                    <TableHead className="text-center text-muted-foreground py-5">{t.compQulture}</TableHead>
+                    <TableHead className="text-center text-muted-foreground py-5">{t.compLattice}</TableHead>
+                    <TableHead className="text-center font-bold py-5 bg-primary text-primary-foreground rounded-t-none">{t.compRhitmo}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {t.compRows.map((row) => (
-                    <TableRow key={row.feature}>
-                      <TableCell className="font-medium text-foreground">{row.feature}</TableCell>
-                      <TableCell className="text-center"><ComparisonIcon status={row.spreadsheets} /></TableCell>
-                      <TableCell className="text-center"><ComparisonIcon status={row.qulture} /></TableCell>
-                      <TableCell className="text-center"><ComparisonIcon status={row.lattice} /></TableCell>
-                      <TableCell className="text-center bg-primary/5"><ComparisonIcon status={row.rhitmo} /></TableCell>
+                  {t.compRows.map((row, i) => (
+                    <TableRow key={row.feature} className={i % 2 === 0 ? 'bg-background' : 'bg-muted/20'}>
+                      <TableCell className="font-medium text-foreground py-4 pl-6">{row.feature}</TableCell>
+                      <TableCell className="text-center py-4"><ComparisonIcon status={row.spreadsheets} /></TableCell>
+                      <TableCell className="text-center py-4"><ComparisonIcon status={row.qulture} /></TableCell>
+                      <TableCell className="text-center py-4"><ComparisonIcon status={row.lattice} /></TableCell>
+                      <TableCell className="text-center py-4 bg-primary/5 border-x border-primary/10"><ComparisonIcon status={row.rhitmo} /></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </div>
-            <p className="text-sm text-muted-foreground text-center mt-4">{t.compLegend}</p>
+            <p className="text-sm text-muted-foreground text-center mt-6">{t.compLegend}</p>
           </div>
 
           {/* Mobile: Accordion cards */}
           <div className="md:hidden max-w-lg mx-auto">
             <Accordion type="single" collapsible className="space-y-3">
               {t.compRows.map((row, i) => (
-                <AccordionItem key={i} value={`comp-${i}`} className="border rounded-xl px-4">
+                <AccordionItem key={i} value={`comp-${i}`} className="border rounded-xl px-4 bg-card">
                   <AccordionTrigger className="text-sm font-medium hover:no-underline">
                     {row.feature}
                   </AccordionTrigger>
                   <AccordionContent>
-                    <div className="grid grid-cols-2 gap-2 text-sm py-2">
+                    <div className="grid grid-cols-2 gap-3 text-sm py-2">
                       <div className="flex justify-between"><span className="text-muted-foreground">{t.compSpreadsheets}</span> <ComparisonIcon status={row.spreadsheets} /></div>
                       <div className="flex justify-between"><span className="text-muted-foreground">{t.compQulture}</span> <ComparisonIcon status={row.qulture} /></div>
                       <div className="flex justify-between"><span className="text-muted-foreground">{t.compLattice}</span> <ComparisonIcon status={row.lattice} /></div>
-                      <div className="flex justify-between"><span className="font-medium text-primary">{t.compRhitmo}</span> <ComparisonIcon status={row.rhitmo} /></div>
+                      <div className="flex justify-between rounded-lg bg-primary/5 px-2 py-1"><span className="font-medium text-primary">{t.compRhitmo}</span> <ComparisonIcon status={row.rhitmo} /></div>
                     </div>
                   </AccordionContent>
                 </AccordionItem>
