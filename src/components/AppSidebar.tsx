@@ -39,7 +39,6 @@ const menuItems = [
   { title: 'Início', url: '/dashboard', icon: Home },
   { title: 'Analytics', url: '/analytics', icon: BarChart3 },
   { title: 'Central de Conhecimento', url: '/help', icon: BookOpen },
-  { title: 'Extensão Chrome', url: '#extension', icon: Download },
   { title: 'Assinatura', url: '/billing', icon: CreditCard },
 ];
 

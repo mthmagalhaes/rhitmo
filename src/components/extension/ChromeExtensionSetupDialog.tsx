@@ -60,7 +60,7 @@ export function ChromeExtensionSetupDialog({ open, onOpenChange }: ChromeExtensi
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Download className="h-5 w-5 text-primary" />
-            Extensão Chrome — Rhitmo Recorder
+            Conector Chrome — Rhitmo Recorder
           </DialogTitle>
           <DialogDescription>
             Grave reuniões no Google Meet automaticamente. Ao entrar em uma chamada, a extensão inicia a gravação e envia o áudio para transcrição pela IA.
