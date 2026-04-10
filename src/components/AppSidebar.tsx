@@ -392,6 +392,11 @@ export function AppSidebar() {
         open={extensionDialogOpen}
         onOpenChange={setExtensionDialogOpen}
       />
+
+      <SlackConnectorDialog
+        open={slackDialogOpen}
+        onOpenChange={setSlackDialogOpen}
+      />
     </Sidebar>
   );
 }
