@@ -62,7 +62,7 @@ export const AdminStructure = () => {
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; type: 'workspace' | 'team' | 'member'; id: string; name: string } | null>(null);
 
   // Form state
-  const [wsForm, setWsForm] = useState({ name: '', plan_tier: 'pulse' });
+  const [wsForm, setWsForm] = useState({ name: '', plan_tier: 'pulse', owner_id: '', hr_admin_id: '' });
   const [teamForm, setTeamForm] = useState({ name: '', leader_user_id: '' });
   const [memberForm, setMemberForm] = useState({ name: '', email: '', role: '', team_id: '' });
 
