@@ -1112,11 +1112,13 @@ const Landing = () => {
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-24 bg-background">
+      <WaveDivider className="bg-background" />
+      <section id="pricing" className="py-28 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
           <div className="text-center space-y-3 mb-16">
-            <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
+            <p className="uppercase text-xs font-semibold tracking-widest text-primary">{lang === 'pt' ? 'Planos' : 'Plans'}</p>
+            <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
               {t.pricingTitle}
             </h2>
             <p className="text-lg text-muted-foreground">
@@ -1128,7 +1130,7 @@ const Landing = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
 
             {/* ── Pulse ── */}
-            <div className="bg-card rounded-2xl shadow-sm p-8 border space-y-6">
+            <div className="bg-card rounded-2xl shadow-md p-8 border space-y-6 hover:shadow-lg transition-shadow duration-300">
               <div>
                 <h3 className="text-2xl font-bold tracking-tight text-foreground">Pulse</h3>
                 <p className="text-sm text-muted-foreground mt-2">
@@ -1168,7 +1170,7 @@ const Landing = () => {
                   {t.proBadge}
                 </span>
               </div>
-              <div className="bg-card rounded-2xl shadow-md p-8 border-2 border-primary space-y-6">
+              <div className="bg-card rounded-2xl shadow-lg p-8 border-2 border-primary space-y-6">
                 <div>
                   <h3 className="text-2xl font-bold tracking-tight text-foreground">Pro</h3>
                   <p className="text-sm text-muted-foreground mt-2">
@@ -1201,7 +1203,7 @@ const Landing = () => {
             </div>
 
             {/* ── Business ── */}
-            <div className="bg-card rounded-2xl shadow-sm p-8 border space-y-6">
+            <div className="bg-card rounded-2xl shadow-md p-8 border space-y-6 hover:shadow-lg transition-shadow duration-300">
               <div>
                 <h3 className="text-2xl font-bold tracking-tight text-foreground">Business</h3>
                 <p className="text-sm text-muted-foreground mt-2">
@@ -1233,7 +1235,7 @@ const Landing = () => {
             </div>
 
             {/* ── Enterprise ── */}
-            <div className="bg-card rounded-2xl shadow-sm p-8 border space-y-6">
+            <div className="bg-card rounded-2xl shadow-md p-8 border space-y-6 hover:shadow-lg transition-shadow duration-300">
               <div>
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium mb-2 bg-primary/10 text-primary">
                   <Building className="h-3 w-3" />
@@ -1273,8 +1275,10 @@ const Landing = () => {
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-8 pb-20">
+      <WaveDivider className="bg-muted/30" />
+      <footer className="bg-muted/30 py-12 pb-20">
         <div className="container mx-auto px-4 text-center space-y-6">
+          <RhitmoLogo size="sm" className="mx-auto text-primary" />
           <div className="flex justify-center gap-6 text-sm text-muted-foreground">
             <Link to="/terms-of-service" className="hover:text-foreground transition-colors">
               {t.footerTerms}
@@ -1283,9 +1287,6 @@ const Landing = () => {
               {t.footerPrivacy}
             </Link>
           </div>
-
-          {/* Comparison links */}
-
           <p className="text-sm text-muted-foreground">
             {t.footerRights}
           </p>
