@@ -317,10 +317,16 @@ export const AdminStructure = () => {
           <h1 className="text-3xl font-bold tracking-tight">Estrutura da Plataforma</h1>
           <p className="text-muted-foreground">Gerencie workspaces, times, líderes e liderados</p>
         </div>
-        <Button onClick={openCreateWs} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Novo Workspace
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setBulkOpen(true)} className="gap-2">
+            <FileSpreadsheet className="h-4 w-4" />
+            Importar em Massa
+          </Button>
+          <Button onClick={openCreateWs} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Novo Workspace
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
