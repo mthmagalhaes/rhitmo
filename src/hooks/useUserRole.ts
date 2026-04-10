@@ -20,6 +20,15 @@ export function useUserRole(): UserRoleData {
     queryFn: async (): Promise<UserRole> => {
       if (!user) return 'user';
 
+      // CRITICAL: Verify the Supabase client has an active session
+      // before making RLS-dependent queries. On page refresh, queries
+      // can fire before the JWT is attached, causing all RLS checks
+      // to return empty results and the role to silently resolve to 'user'.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No active session — will retry');
+      }
+
       const [hrResult, ownerResult, teamLeaderResult] = await Promise.all([
         supabase
           .from('workspaces')
@@ -56,7 +65,7 @@ export function useUserRole(): UserRoleData {
     },
     enabled: !!user && !authLoading,
     staleTime: 5 * 60 * 1000,
-    retry: 3,
+    retry: 5,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
   });
 
