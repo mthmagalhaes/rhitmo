@@ -1088,7 +1088,7 @@ Deno.serve(async (req) => {
     const timestamp = req.headers.get('x-slack-request-timestamp') || '';
     const slackSignature = req.headers.get('x-slack-signature') || '';
 
-    // JSON payloads (url_verification)
+    // JSON payloads (url_verification + event_callback)
     if (contentType.includes('application/json')) {
       const json = JSON.parse(body);
       if (json.type === 'url_verification') {
@@ -1096,6 +1096,91 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
+
+      // Event API: message.im and app_home_opened
+      if (json.type === 'event_callback') {
+        // Verify signature for event callbacks
+        const sigValid = await verifySlackSignature(body, timestamp, slackSignature);
+        if (!sigValid) {
+          console.log('[EVENT] Invalid signature — ignoring');
+          return new Response('', { status: 200, headers: corsHeaders });
+        }
+
+        const event = json.event;
+        console.log('[EVENT] type:', event?.type, '| subtype:', event?.subtype, '| bot_id:', event?.bot_id);
+
+        // Ignore bot messages to prevent infinite loops
+        if (event?.bot_id || event?.subtype === 'bot_message') {
+          console.log('[EVENT] Bot message — ignoring');
+          return new Response('', { status: 200, headers: corsHeaders });
+        }
+
+        // Handle DM messages
+        if (event?.type === 'message' && event?.channel_type === 'im') {
+          // Fire-and-forget async processing
+          (async () => {
+            try {
+              const slackUserId = event.user;
+              console.log('[DM] Message from:', slackUserId, '| text:', event.text?.substring(0, 50));
+
+              const persona = await getUserPersona(slackUserId);
+              console.log('[DM] Persona:', persona.persona);
+
+              let stateToken: string | undefined;
+              if (persona.persona === 'unauthenticated') {
+                stateToken = await generateStateToken(slackUserId, json.team_id || '');
+              }
+
+              const menu = buildRhitmoMenu(persona, stateToken);
+
+              // Add a friendly intro before the menu
+              const introText = persona.persona === 'unauthenticated'
+                ? undefined
+                : '👋 Olá! Aqui estão suas ações disponíveis:';
+
+              await slackApi('chat.postMessage', {
+                channel: event.channel,
+                ...(introText ? { text: introText } : {}),
+                ...menu,
+              });
+            } catch (err) {
+              console.error('[DM] Error processing message:', err);
+            }
+          })();
+
+          return new Response('', { status: 200, headers: corsHeaders });
+        }
+
+        // Handle app_home_opened (messages tab) — send welcome
+        if (event?.type === 'app_home_opened' && event?.tab === 'messages') {
+          (async () => {
+            try {
+              const slackUserId = event.user;
+              console.log('[HOME] Messages tab opened by:', slackUserId);
+
+              const persona = await getUserPersona(slackUserId);
+
+              let stateToken: string | undefined;
+              if (persona.persona === 'unauthenticated') {
+                stateToken = await generateStateToken(slackUserId, json.team_id || '');
+              }
+
+              const menu = buildRhitmoMenu(persona, stateToken);
+
+              await slackApi('chat.postMessage', {
+                channel: event.channel,
+                text: '👋 Bem-vindo ao Rhitmo! Envie qualquer mensagem para ver suas opções.',
+                ...menu,
+              });
+            } catch (err) {
+              console.error('[HOME] Error sending welcome:', err);
+            }
+          })();
+
+          return new Response('', { status: 200, headers: corsHeaders });
+        }
+      }
+
       return new Response('ok', { headers: corsHeaders });
     }
 
