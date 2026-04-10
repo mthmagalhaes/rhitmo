@@ -191,7 +191,7 @@ export const AdminStructure = () => {
         const { error } = await supabase.from('teams')
           .update({
             name: teamForm.name,
-            leader_user_id: teamForm.leader_user_id || null,
+            leader_user_id: teamForm.leader_user_id && teamForm.leader_user_id !== 'none' ? teamForm.leader_user_id : null,
           })
           .eq('id', teamDialog.data!.id);
         if (error) throw error;
