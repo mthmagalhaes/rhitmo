@@ -1406,6 +1406,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          leader_user_id: string | null
           name: string
           updated_at: string
           workspace_id: string
@@ -1413,6 +1414,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          leader_user_id?: string | null
           name: string
           updated_at?: string
           workspace_id: string
@@ -1420,6 +1422,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          leader_user_id?: string | null
           name?: string
           updated_at?: string
           workspace_id?: string
@@ -1742,6 +1745,14 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       is_hr_admin_of_workspace: {
         Args: { _workspace_id: string }
+        Returns: boolean
+      }
+      is_leader_of_team: {
+        Args: { _team_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_team_leader: {
+        Args: { _member_id: string; _user_id: string }
         Returns: boolean
       }
       is_workspace_owner: {

@@ -107,6 +107,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
           .insert({
             workspace_id: newWorkspace.id,
             name: 'Sem Time',
+            leader_user_id: user.id,
           });
 
         if (teamError) throw teamError;

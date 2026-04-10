@@ -119,10 +119,10 @@ serve(async (req) => {
 
     console.log('User authenticated:', user.id);
 
-    // Ownership check: verify user owns the workspace containing this member
+    // Ownership check: verify user is the team leader for this member
     const { data: ownershipCheck, error: ownershipError } = await supabase
       .from('team_members')
-      .select('id, team_id, teams!inner(workspace_id, workspaces!inner(owner_id))')
+      .select('id, team_id, teams!inner(leader_user_id, workspace_id)')
       .eq('id', memberId)
       .single();
 
@@ -134,9 +134,9 @@ serve(async (req) => {
       );
     }
 
-    const workspace = (ownershipCheck as any).teams?.workspaces;
-    if (workspace?.owner_id !== user.id) {
-      console.error('Unauthorized: user does not own workspace', { userId: user.id, ownerId: workspace?.owner_id });
+    const team = (ownershipCheck as any).teams;
+    if (team?.leader_user_id !== user.id) {
+      console.error('Unauthorized: user is not team leader', { userId: user.id, leaderId: team?.leader_user_id });
       return new Response(
         JSON.stringify({ error: 'Você não tem permissão para registrar feedback neste workspace' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -35,9 +35,9 @@ async function generateNoFeedbackNudges(): Promise<NudgeInput[]> {
         name,
         team_id,
         teams!inner (
+          leader_user_id,
           workspace_id,
           workspaces!inner (
-            owner_id,
             is_active
           )
         )
@@ -49,10 +49,12 @@ async function generateNoFeedbackNudges(): Promise<NudgeInput[]> {
     }
 
     for (const member of rawMembers) {
-      const workspace = (member as any).teams?.workspaces;
+      const team = (member as any).teams;
+      const workspace = team?.workspaces;
       if (!workspace?.is_active) continue;
 
-      const leaderId = workspace.owner_id;
+      const leaderId = team.leader_user_id;
+      if (!leaderId) continue;
 
       // Get last feedback for this member
       const { data: lastFeedback } = await supabase
