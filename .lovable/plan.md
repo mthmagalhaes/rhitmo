@@ -1,85 +1,67 @@
 
-Objetivo imediato: colocar a plataforma utilizável para a reunião sem arriscar apagar os 215 feedbacks, os 5 times ou os 6 membros do Matheus.
+Objetivo imediato: parar o bloqueio do modal, corrigir a recursão de permissões em `workspaces` e fazer o Matheus entrar direto no workspace existente, sem copiar nem apagar dados.
 
-Leitura do problema a partir do código e das telas
-- O modal aparece quando `AppLayout` conclui `!workspace && !isLinkedMember`.
-- Pela tela, a sidebar já carrega, então auth/UI básica estão de pé; o erro está na resolução do “workspace atual”.
-- Isso não aponta para perda de dados no banco; aponta para sessão errada, impersonação antiga, conta duplicada ou query de contexto resolvendo o usuário errado.
-- Deletar “usuários com nome Matheus” às cegas é perigoso.
+Diagnóstico confirmado
+- O print mostra o erro real: `infinite recursion detected in policy for relation "workspaces"`.
+- Isso explica por que o sistema acha que “não existe workspace” e abre o onboarding.
+- O modal fica impossível de fechar porque `WorkspaceOnboarding` é renderizado com `open={true}` e bloqueia clique fora/escape.
+- O problema não é perda de dados; é RLS recursivo + frontend tratando erro como “workspace nulo”.
+- Hoje `AppLayout.tsx` e `Index.tsx` engolem erro de `workspaces` (`console.warn` e continuam), então uma falha de permissão vira falsamente “usuário novo”.
 
-Ponto crítico de segurança antes de qualquer deleção
-- `workspaces.owner_id` aponta para usuário auth com `ON DELETE CASCADE`.
-- `feedbacks.manager_id` aponta para usuário auth com `ON DELETE CASCADE`.
-- Ou seja: se apagarmos o usuário errado, podemos apagar junto o workspace e os 215 feedbacks.
-- Então: sim, é possível limpar usuários antigos, mas só depois de mapear exatamente quais IDs não possuem dados.
+Plano de correção emergencial
+1. Conter o bloqueio agora
+- Em `src/components/AppLayout.tsx`, impedir `WorkspaceOnboarding` quando houver qualquer erro de resolução de `workspace` ou `role`.
+- Mostrar loading/erro leve no lugar do modal, nunca onboarding bloqueante.
+- Em `src/components/WorkspaceOnboarding.tsx`, remover o comportamento “prisão” para esse caso.
 
-Plano de ação emergencial
-1. Congelar deleções cegas
-- Não apagar por nome.
-- Trabalhar por e-mail + user_id + ownership real.
+2. Corrigir a recursão no backend
+- Criar uma migração corretiva para reescrever as políticas de `workspaces`, `teams` e `team_members`.
+- Quebrar o ciclo atual:
+  - `workspaces` consulta `teams`
+  - `teams` consulta `workspaces`
+  - `team_members` consulta `teams/workspaces`
+- Substituir esse encadeamento por funções helper `plpgsql SECURITY DEFINER`, evitando nova avaliação recursiva de RLS.
+- Em `workspaces`, evitar política que se auto-consulta por função; a checagem de HR Admin deve ser direta no próprio registro quando possível.
 
-2. Auditoria rápida dos “Matheus”
-- Levantar todos os usuários auth relacionados a:
-  - `matheus.magalhaes@fstr.co`
-  - `matheus_hr@rhitmo.co`
-  - `mth.magalhaes@fstr.co`
-  - quaisquer contas antigas com “matheus”
-- Para cada uma, verificar:
-  - se é owner de workspace
-  - se é `manager_id` de feedbacks
-  - se lidera times
-  - se está em `admin_impersonation`
-  - se está ligado em `team_members.linked_user_id`
+3. Parar de transformar erro em “sem workspace”
+- Em `src/components/AppLayout.tsx`, `src/pages/Index.tsx`, `src/hooks/useUserRole.ts` e `src/hooks/useLinkedMember.ts`, tratar erro de `workspaces` como erro real.
+- Não continuar silenciosamente para `null`.
+- Enquanto houver erro de contexto, não abrir onboarding e não degradar o papel para `user`.
 
-3. Correção operacional mais segura
-- Manter intacto o usuário canônico `matheus.magalhaes@fstr.co`.
-- Limpar qualquer registro ativo em `admin_impersonation` que possa estar trocando o contexto.
-- Remover/neutralizar vínculos legados de `team_members` que possam fazer a UI tratá-lo como outra persona.
-- Só deletar contas antigas que comprovadamente:
-  - não possuem workspace
-  - não possuem feedbacks
-  - não lideram times
-  - não são necessárias para demo
+4. Unificar a resolução de contexto
+- Criar um contexto/hook único de conta com `workspace + role + linkedMember + loading + error`.
+- Fazer `AppLayout`, `AppSidebar`, `Index` e guards dependerem dessa mesma fonte.
+- Isso elimina o cenário atual de sidebar em modo liderado e dashboard parcialmente em modo líder.
 
-4. Hotfix de frontend para parar o modal indevido
-- Ajustar `AppLayout` para só abrir `WorkspaceOnboarding` após um estado explícito de “conta totalmente resolvida”.
-- Criar um contexto único de conta efetiva:
-  - auth pronto
-  - user real
-  - role resolvida
-  - linkedMember resolvido
-  - workspace resolvido
-- Enquanto isso não terminar, mostrar loading e nunca onboarding.
-- Regra final:
-  - líder/owner confirmado: nunca mostrar onboarding
-  - linked member confirmado: nunca mostrar onboarding
-  - onboarding só para usuário novo sem workspace após checagem final
+5. Validação final para a reunião
+- Login do `matheus.magalhaes@fstr.co` em sessão normal e anônima.
+- Confirmar:
+  - sem modal de workspace
+  - sem toast de recursão
+  - sidebar de líder
+  - workspace `Faster Ops`
+  - 5 times, 6 membros e 215 feedbacks visíveis
 
-5. Blindagem contra recorrência
-- Prioridade de papéis: HR Admin > Líder > Membro vinculado.
-- Nunca classificar “user genérico” como liderado.
-- Revisar `AppLayout`, `Index`, `AppSidebar` e `DirectReportGuard` para dependerem do mesmo contexto consolidado.
+Contingência
+- Não vou apagar usuários nem mexer nos dados do Matheus agora; isso não corrige essa falha e pode arriscar cascata.
+- Rollback só de frontend não basta, porque o erro atual está vindo do backend/RLS.
+- Se precisarmos de fallback rápido, o seguro é:
+  1. esconder o onboarding para usuários existentes;
+  2. aplicar a migração corretiva de RLS;
+  3. só depois considerar rollback visual, se necessário.
 
-6. Plano de contingência para a reunião
-- Se a correção não estiver estável a tempo:
-  - rollback do frontend para a última versão visualmente estável
-  - sem mexer no banco
-  - mantendo os dados intactos do Matheus
-
-Resultado esperado após execução
-- `matheus.magalhaes@fstr.co` entra direto como líder
-- não vê mais o modal de criar workspace
-- volta a enxergar o workspace “Faster Ops”
-- dashboard mostra 5 times, 6 membros e 215 feedbacks
-- contas antigas de “Matheus” ficam removidas ou neutralizadas com segurança, sem risco de cascata
+Arquivos mais prováveis de ajuste
+- `src/components/AppLayout.tsx`
+- `src/components/WorkspaceOnboarding.tsx`
+- `src/pages/Index.tsx`
+- `src/components/AppSidebar.tsx`
+- `src/hooks/useUserRole.ts`
+- `src/hooks/useLinkedMember.ts`
+- nova migração em `supabase/migrations/`
 
 Detalhes técnicos
-- Arquivos mais prováveis de ajuste:
-  - `src/components/AppLayout.tsx`
-  - `src/pages/Index.tsx`
-  - `src/components/AppSidebar.tsx`
-  - `src/components/DirectReportGuard.tsx`
-  - `src/hooks/useLinkedMember.ts`
-  - `src/hooks/useUserRole.ts`
-  - novo hook/contexto de “account resolved”
-- A limpeza de usuários deve usar auditoria prévia porque o projeto já possui deleção administrativa, mas o schema atual permite cascata em owner/manager.
+- A causa mais provável é a combinação de:
+  - política `Leaders can view workspace` em `workspaces`
+  - políticas de `teams`/`team_members` que voltam a consultar `workspaces`
+  - frontend que captura esse erro e interpreta como ausência de workspace
+- O resultado prático é exatamente o do print: modal indevido + erro de recursão + dashboard vazio/inconsistente.
