@@ -1803,6 +1803,23 @@ export type Database = {
           read_ct: number
         }[]
       }
+      rls_check_member_access: {
+        Args: { _member_team_id: string }
+        Returns: boolean
+      }
+      rls_check_member_read_access: {
+        Args: { _member_team_id: string }
+        Returns: boolean
+      }
+      rls_check_team_access: { Args: { _team_id: string }; Returns: boolean }
+      rls_check_team_read_access: {
+        Args: { _team_id: string }
+        Returns: boolean
+      }
+      rls_check_workspace_access: {
+        Args: { _workspace_id: string }
+        Returns: boolean
+      }
       submit_rhitmo_sync: {
         Args: { p_member_id: string; p_work_style_data: Json }
         Returns: boolean
