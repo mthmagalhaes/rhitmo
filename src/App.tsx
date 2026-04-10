@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { AuthProvider } from "./contexts/AuthContext";
+import { AccountProvider } from "./contexts/AccountContext";
 import { AppLayout } from "./components/AppLayout";
 import { AuthEventProvider } from "./components/AuthEventProvider";
 import { DirectReportGuard } from "./components/DirectReportGuard";
