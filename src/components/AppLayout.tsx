@@ -16,11 +16,25 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
-  // Query para verificar workspace do usuário
+  // Query para verificar workspace do usuário — tenta como owner primeiro, depois por RLS
   const { data: workspace, isLoading: workspaceLoading, error: workspaceError, refetch } = useQuery({
     queryKey: ['user-workspace', user?.id],
     queryFn: async () => {
       if (!user) return null;
+      
+      // First try: explicit owner check (most common case, bypasses RLS timing issues)
+      const { data: ownedWorkspace, error: ownedError } = await supabase
+        .from('workspaces')
+        .select('id')
+        .eq('owner_id', user.id)
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle();
+      
+      if (ownedError) console.warn('[AppLayout] Owned workspace query error:', ownedError.message);
+      if (ownedWorkspace) return ownedWorkspace;
+      
+      // Fallback: RLS-based query (for team leaders, HR admins etc.)
       const { data, error } = await supabase
         .from('workspaces')
         .select('id')
@@ -28,13 +42,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         .limit(1)
         .maybeSingle();
       if (error) {
-        console.error('Workspace query error:', error.message);
+        console.error('[AppLayout] Workspace fallback query error:', error.message);
         throw error;
       }
       return data;
     },
     enabled: !!user,
-    retry: 2,
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
   });
 
   // Guard: check if user has a pending invite by email AND auto-link immediately
