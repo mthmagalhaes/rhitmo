@@ -92,7 +92,7 @@ const translations = {
     numbersStat1: "4h → 2min",
     numbersLabel1: (<>Gestores dedicam <span className="highlight-marker">210 horas por ano</span> a avaliações de desempenho. São <span className="highlight-marker">cinco semanas inteiras</span>. Só a redação consome 65 horas. <span className="highlight-marker">Com Rhitmo, o draft sai pronto em segundos.</span></>),
     numbersStat2: "38x",
-    numbersLabel2: "Mulheres recebem 38x mais feedback sobre personalidade do que homens. Rhitmo detecta e corrige antes que você publique.",
+    numbersLabel2: (<>Mulheres <span className="highlight-marker">recebem 38x mais feedback sobre personalidade do que homens</span>. Rhitmo detecta e corrige antes que você publique.</>),
     numbersStat3: "60%",
     numbersLabel3: "Em grandes empresas, avaliações tradicionais custam até US$ 35 milhões por ano. E 95% dos gestores estão insatisfeitos com o resultado. Rhitmo corta o custo e entrega precisão.",
     // USPs
@@ -299,7 +299,7 @@ const translations = {
     numbersStat1: "4h → 2min",
     numbersLabel1: (<>Managers spend <span className="highlight-marker">210 hours per year</span> on performance reviews. That's <span className="highlight-marker">five full weeks</span>. Writing alone takes 65 hours. <span className="highlight-marker">With Rhitmo, the draft is ready in seconds.</span></>),
     numbersStat2: "38x",
-    numbersLabel2: "Women receive 38x more personality feedback than men. Rhitmo detects and corrects before you publish.",
+    numbersLabel2: (<>Women <span className="highlight-marker">receive 38x more personality feedback than men</span>. Rhitmo detects and corrects before you publish.</>),
     numbersStat3: "60%",
     numbersLabel3: "In large companies, traditional reviews cost up to $35 million per year. And 95% of managers are dissatisfied with the results. Rhitmo cuts costs and delivers precision.",
     // USPs
