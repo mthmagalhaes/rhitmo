@@ -149,15 +149,27 @@ export const AdminStructure = () => {
     setLoading(true);
     try {
       if (wsDialog.mode === 'create') {
-        // Use the current admin user as owner
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Não autenticado');
-        const { error } = await supabase.from('workspaces').insert({
+        // Use selected owner or fallback to current admin
+        let ownerId = wsForm.owner_id;
+        if (!ownerId) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error('Não autenticado');
+          ownerId = user.id;
+        }
+        const { data: newWs, error } = await supabase.from('workspaces').insert({
           name: wsForm.name,
           plan_tier: wsForm.plan_tier,
-          owner_id: user.id,
-        });
+          owner_id: ownerId,
+        }).select('id').single();
         if (error) throw error;
+        // If HR admin selected, assign via RPC
+        if (wsForm.hr_admin_id && newWs) {
+          await supabase.rpc('manage_hr_admin', {
+            _workspace_id: newWs.id,
+            _user_id: wsForm.hr_admin_id,
+            _action: 'add',
+          });
+        }
         toast({ title: 'Workspace criado' });
       } else {
         const { error } = await supabase.from('workspaces')
