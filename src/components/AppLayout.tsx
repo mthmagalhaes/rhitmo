@@ -6,21 +6,32 @@ import { ActivityBadge } from '@/components/ActivityBadge';
 import { ActivitySheet } from '@/components/ActivitySheet';
 import { useAuth } from '@/hooks/useAuth';
 import { useLinkedMember } from '@/hooks/useLinkedMember';
+import { useUserRole } from '@/hooks/useUserRole';
 import { ImpersonationBanner } from '@/components/admin/ImpersonationBanner';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { Loader2 } from 'lucide-react';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const { isLinkedMember, isLoading: linkedMemberLoading } = useLinkedMember();
+  const { isLeader, isHRAdmin, loading: roleLoading } = useUserRole();
   const queryClient = useQueryClient();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
-  // Query para verificar workspace do usuário — tenta como owner primeiro, depois por RLS
+  // Query para verificar workspace do usuário — com verificação de sessão
   const { data: workspace, isLoading: workspaceLoading, error: workspaceError, refetch } = useQuery({
     queryKey: ['user-workspace', user?.id],
     queryFn: async () => {
       if (!user) return null;
+
+      // CRITICAL: Wait for Supabase session to be fully attached before
+      // running RLS-dependent queries. Without this, auth.uid() returns null
+      // in RLS policies and the query silently returns zero rows.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No active session — will retry');
+      }
 
       const { data: ownedWorkspace, error: ownedError } = await supabase
         .from('workspaces')
@@ -54,7 +65,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       return null;
     },
     enabled: !!user && !authLoading,
-    retry: 3,
+    retry: 5,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
   });
 
@@ -83,17 +94,25 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     staleTime: 30 * 1000,
   });
 
-  // Liderados NÃO precisam de workspace - só líderes
-  // Also block if there's a pending invite by email (auto-link will handle it)
-  const needsWorkspaceSetup = !authLoading 
+  // CRITICAL: All context must be fully resolved before deciding on onboarding.
+  // While anything is still loading, show a loading state — never onboarding.
+  const allContextResolved = !authLoading 
     && !workspaceLoading 
     && !linkedMemberLoading
     && !pendingInviteLoading
+    && !roleLoading;
+
+  // CRITICAL: Leaders/HR admins should NEVER see the workspace onboarding modal.
+  // Even if the workspace query temporarily returns null (race condition),
+  // the role check already confirms they have leadership access.
+  const needsWorkspaceSetup = allContextResolved
     && user 
     && !workspace 
     && !workspaceError
     && !isLinkedMember
-    && !hasPendingInviteByEmail;
+    && !hasPendingInviteByEmail
+    && !isLeader
+    && !isHRAdmin;
 
   const showActivity = !!user;
 

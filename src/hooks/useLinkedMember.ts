@@ -39,6 +39,15 @@ export function useLinkedMember() {
     queryFn: async (): Promise<LinkedMemberData | null> => {
       if (!user) return null;
 
+      // CRITICAL: Wait for Supabase session to be fully attached before
+      // running RLS-dependent queries. Without this, auth.uid() returns null
+      // and the leader guard checks below silently return zero rows,
+      // causing a false "is linked member" classification.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No active session — will retry');
+      }
+
       // LEADER GUARD: If the user owns any workspace or leads any team,
       // they should NEVER be treated as a linked member, even if a stray
       // team_members row exists with their user id.
@@ -77,6 +86,8 @@ export function useLinkedMember() {
       return data as LinkedMemberData | null;
     },
     enabled: !!user && !authLoading,
+    retry: 5,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
   });
 
   const needsOnboarding = linkedMember && 
