@@ -1,50 +1,89 @@
 
+Objetivo: parar o desvio “líder -> liderado” após refresh, confirmar que os dados do Matheus continuam intactos, e corrigir a causa estrutural para que isso não volte a acontecer.
 
-## Verificação e Diagnóstico — Matheus Magalhaes
+Diagnóstico mais provável:
+1. Há uma regressão de frontend na resolução de contexto do usuário:
+   - `useAuth` não está centralizado em um provider; cada componente/hook cria sua própria restauração de sessão.
+   - `useUserRole`, `useLinkedMember`, `AppLayout`, `AppSidebar`, `Index`, `DirectReportGuard` e outros podem resolver estados diferentes em momentos diferentes.
+   - Isso explica a tela aparecer como líder por alguns segundos e depois trocar para liderado.
+2. Há também uma regressão de backend/permissão:
+   - a migração recente de RLS restringiu leitura de `feedbacks` ao líder atual do time (`is_team_leader(...)`), o que pode esconder feedbacks históricos do Matheus mesmo com os 215 registros intactos no banco.
+   - isso explica “dados incompletos” sem necessariamente haver perda real.
+3. O `AuthEventProvider` ainda executa auto-link por e-mail no `INITIAL_SESSION` / `SIGNED_IN`, o que é arriscado em refresh e pode vincular contas em momentos errados.
+4. O modal de workspace pode estar sendo disparado cedo demais, antes de o contexto do usuário estar realmente estabilizado.
 
-### Status dos dados no banco (confirmado agora)
+Plano de correção organizado:
 
-| Item | Valor | Status |
-|------|-------|--------|
-| Auth user ID | `79a6f679-7920-42e2-9727-1fcee6edbf5a` | OK |
-| Workspace "Faster Ops" | `27ee8977-...` owner = Matheus | OK |
-| Plano | business | OK |
-| Times | 5 (Business Ops, Expansão, CreativeOps, Customer Success, People) | OK |
-| Membros totais | 6 (2+1+1+2+0) | OK |
-| Feedbacks | 215 | OK |
-| linked_user_id na team_members | Nenhuma row vincula Matheus como liderado | OK |
-| team_members com email dele | 1 row ("João Silva" com email matheus.magalhaes@fstr.co, invite_status=none, linked_user_id=null) | Suspeito mas inofensivo |
+1. Contenção imediata
+- Desativar o auto-link por e-mail disparado automaticamente no refresh/login.
+- Manter apenas o fluxo explícito por convite/token.
+- Isso evita novos casos de líderes sendo tratados como liderados enquanto investigamos.
 
-### Verificação do código (pós-edições)
+2. Verificação de integridade do Matheus
+- Confirmar novamente:
+  - auth user do `matheus.magalhaes@fstr.co`
+  - workspace owner
+  - times (5)
+  - membros (6)
+  - feedbacks totais (215)
+- Verificar também:
+  - se existe algum `team_members.linked_user_id` apontando para o usuário dele
+  - se existe invite pendente/aceito com o e-mail dele
+  - se existe registro em `admin_impersonation` afetando `effective_user_id`
+- Se houver vínculo incorreto, corrigir o dado antes de validar a UI.
 
-1. **`useAuth.ts`** — Agora espera `getSession` + `getUser` antes de setar `loading=false`. O `onAuthStateChange` com `INITIAL_SESSION` não dispara `setLoading(false)` prematuramente. **Correto.**
+3. Corrigir a arquitetura de sessão/contexto
+- Criar um `AuthProvider` real para o app inteiro.
+- Fazer `useAuth` consumir esse contexto compartilhado, em vez de reinstanciar a sessão em cada hook/componente.
+- Criar um hook único de contexto de conta (ex.: role + linkedMember + workspace + flags de onboarding), para que a UI dependa de uma única fonte de verdade.
 
-2. **`useLinkedMember.ts`** — Filtra por `invite_status = 'accepted'`. Como Matheus não tem nenhuma row com `linked_user_id` apontando para ele, `isLinkedMember` será `false`. **Correto.**
+4. Corrigir as decisões de UI
+- `Index`, `AppSidebar`, `AppLayout` e `DirectReportGuard` devem esperar o contexto consolidado terminar.
+- Não renderizar menu de membro, dashboard de liderado ou modal de workspace enquanto o contexto ainda estiver “indeterminado”.
+- Remover qualquer fallback silencioso que trate erro/indefinição como `user`.
 
-3. **`useUserRole.ts`** — Verifica owner + team leader em paralelo. Matheus é owner da workspace, retorna `'leader'`. Tem `enabled: !!user && !authLoading` e retry 3x. **Correto.**
+5. Corrigir visibilidade dos dados históricos
+- Revisar a migração recente de RLS que passou a exigir `is_team_leader(...)`.
+- Restaurar a regra correta para feedbacks históricos: o criador/manager deve continuar vendo o que ele criou, mesmo que o líder atual do time tenha mudado.
+- Preservar a privacidade dos liderados: membro continua vendo só o que foi compartilhado.
+- Aplicar a mesma revisão em entidades correlatas se necessário (`performance_reviews`, `meeting_transcripts`, possivelmente `goals`).
 
-4. **`Index.tsx` (linha 342)** — `if (isLinkedMember && !isLeader && !isHRAdmin)` — Matheus é `isLeader=true`, então nunca entra no branch de liderado mesmo que `isLinkedMember` fosse true. **Correto.**
+6. Endurecer o onboarding/workspace detection
+- O modal de workspace só deve abrir para “novo líder sem workspace”, nunca durante estado intermediário.
+- Remover fallback genérico de workspace que tenta descobrir contexto por tentativas soltas; passar a depender do contexto consolidado do usuário.
 
-5. **`AppSidebar.tsx` (linha 108)** — `showMemberMenu = !roleLoading && !isLeader && !isHRAdmin && (isUser || isLinkedMember)`. Matheus é leader, então `showMemberMenu=false`. **Correto.**
+7. Validação final
+- Testar com o Matheus:
+  - refresh em aba anônima
+  - permanece líder do começo ao fim
+  - não abre modal de workspace indevido
+  - mostra 5 times, 6 membros e 215 feedbacks
+- Testar também:
+  - líder normal
+  - liderado real
+  - usuário entrando por convite
+- Confirmar que ninguém é auto-vinculado por engano.
 
-6. **`AppLayout.tsx`** — O auto-link por email foi removido da query `hasPendingInviteByEmail` (agora é read-only). A lógica de link real foi centralizada no `AuthEventProvider`. **Correto.**
+Critério de rollback:
+- Se a investigação confirmar que o bug é só de frontend, podemos restaurar a última versão estável via History e publicar.
+- Se houver regressão de RLS/backend (o que hoje é bem provável), rollback só de frontend não basta, porque mudanças de backend já ficam ativas automaticamente.
+- Nesse caso, o rollback seguro é:
+  1. restaurar a UI estável via History, se necessário;
+  2. criar uma migração corretiva para devolver a regra de acesso correta aos dados históricos.
 
-7. **`AuthEventProvider.tsx`** — Auto-link por email só roda se o usuário NÃO é owner de workspace ativa e NÃO é team leader. Matheus é owner, então o auto-link é pulado. **Correto.**
+Arquivos mais prováveis de ajuste:
+- `src/hooks/useAuth.ts`
+- novo provider de auth/contexto de conta
+- `src/hooks/useUserRole.ts`
+- `src/hooks/useLinkedMember.ts`
+- `src/components/AuthEventProvider.tsx`
+- `src/components/AppLayout.tsx`
+- `src/components/AppSidebar.tsx`
+- `src/components/DirectReportGuard.tsx`
+- `src/pages/Index.tsx`
+- migração corretiva em `supabase/migrations/`
 
-### Conclusão
-
-Todos os dados estão intactos e as edições de código estão logicamente corretas. Não há ação adicional necessária no código ou no banco de dados.
-
-### Ponto de atenção (não-bloqueante)
-
-Existe uma row na `team_members` com `name = "João Silva"` mas `email = matheus.magalhaes@fstr.co`. Parece ser um registro de teste. Não causa problema porque `invite_status = 'none'` e `linked_user_id = null`, mas pode gerar confusão visual se aparecer em relatórios. Isso pode ser limpo manualmente se desejado.
-
-### Próximo passo recomendado
-
-Pedir ao Matheus para fazer login novamente (aba anônima, hard refresh) e confirmar que:
-- Vê o dashboard de líder
-- Vê seus 5 times e 6 membros
-- Vê os 215 feedbacks
-
-Se ainda houver problema visual, precisaremos capturar os console logs do browser dele para identificar se alguma query RLS está falhando silenciosamente.
-
+Detalhes técnicos importantes:
+- O problema não parece ser perda de dados; parece combinação de contexto de usuário instável + políticas de acesso mais restritivas do que deveriam.
+- O maior risco atual para novos incidentes é o auto-link por e-mail rodando no ciclo de autenticação.
+- O maior risco para “dados sumiram” é a política recente que esconde históricos por depender do líder atual do time, em vez do criador do registro.
