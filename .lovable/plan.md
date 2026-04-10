@@ -1,63 +1,91 @@
 
 
-## Plano: Profissionalizar a Landing Page com Design System V2
+## Plano: Redesign das seções Antes & Depois, Comparativo, Resultados e Publico-Alvo + Copy Senior
 
-### Diagnóstico
+Baseado nos padroes visuais dominantes no Dribbble para SaaS landing pages premium (cards com gradientes sutis, tipografia de alto contraste, layouts assimétricos, métricas em destaque com animação visual), e aplicando copy de nível senior tech copywriter.
 
-A landing page tem bom conteúdo e estrutura, mas apresenta inconsistências visuais que reduzem o nível percebido de profissionalismo:
+---
 
-1. **Tipografia não editorial** — Headlines usam `font-extrabold` genérico em vez do `font-serif` (Lora) definido no Design System V2 para títulos e saudações
-2. **Sem overlines** — O Design System V2 usa labels em "overline" (uppercase, tracking-wide, text-xs) para cabeçalhos de seção; a landing não usa nenhum
-3. **Wave dividers não utilizados** — O componente `WaveDivider` existe mas nunca é usado entre seções; as transições são abruptas
-4. **Hero com overlay pesado** — O mix-blend-multiply roxo sobre a imagem parece amador; precisa ser mais sutil
-5. **Seções sem respiro** — Padding uniforme `py-20`/`py-24` sem variação de ritmo visual
-6. **Cards sem sombras do Design System** — Usa `shadow-sm` genérico em vez dos tokens definidos (`--shadow-md`, `--shadow-lg`)
-7. **Footer básico** — Sem identidade visual, sem wave, sem logo
+### 1. Antes & Depois — De lista simples para "Split Timeline"
 
-### Mudanças
+**Design:** Inspirado no padrão Dribbble de split-screen com contraste visual forte. Lado esquerdo escuro (problema), lado direito claro com destaque primary (solução). Sem emojis — usar ícones Lucide consistentes.
 
-**1. Tipografia editorial em todas as headlines**
-- Todas as `h2` de seção: `font-serif text-3xl lg:text-4xl font-bold tracking-tight`
-- Hero `h1`: `font-serif text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight`
-- Adicionar overlines antes de cada título de seção: `<p className="uppercase text-xs font-semibold tracking-widest text-primary">` com texto contextual
+**Novo copy (PT):**
+- Overline: `O DIA A DIA SEM IA`
+- Titulo: `"Antes era burocracia. Agora é estratégia."`
+- Sem Rhitmo: items reescritos com tom técnico-direto, sem emojis
+  - `4h por review — reescrevendo do zero toda vez`
+  - `Viés invisível passando despercebido em cada avaliação`
+  - `70% das conversas do trimestre esquecidas`
+  - `Feedback genérico: "precisa melhorar comunicação"`
+  - `Dados espalhados entre planilhas, docs e e-mails`
+- Com Rhitmo: items com métrica + resultado
+  - `Draft completo em 30 segundos — você só revisa`
+  - `Viés detectado e corrigido antes de salvar`
+  - `Cada 1:1 registrada automaticamente com contexto`
+  - `Feedback baseado em evidências reais, não memória`
+  - `Tudo centralizado, organizado por IA`
 
-**2. Wave dividers entre seções-chave**
-- Adicionar `<WaveDivider />` após Hero, antes de Pricing e antes do Footer
-- Cria ritmo visual e reforça identidade da marca
+**Layout:** Dois cards lado a lado, o esquerdo com `bg-muted border-destructive/20`, o direito com `bg-gradient-to-br from-primary/5 to-emerald-500/5 border-primary/30`. Cada item com ícone `XCircle`/`CheckCircle2` inline. Linha central com indicador visual "→" ou seta animada.
 
-**3. Hero refinado**
-- Remover overlay `mix-blend-multiply` pesado da imagem
-- Substituir por borda suave + sombra editorial (`shadow-2xl` do DS)
-- Manter glow sutil mas reduzir intensidade (opacity-30 em vez de 60)
+---
 
-**4. Sombras e cards do Design System**
-- Cards de números: `shadow-[var(--shadow-md)]` com hover para `shadow-[var(--shadow-lg)]`
-- Pricing cards: mesma progressão de sombras
-- Cards "Para quem": sombra editorial + transição suave
+### 2. Comparativo — De tabela simples para "Feature Showdown"
 
-**5. Seções com ritmo visual melhorado**
-- Alternar entre `py-20` e `py-28` para criar breathing room
-- Seção de números: fundo com gradiente mais editorial
-- Seção "O que não fazemos": estilo blockquote editorial com borda lateral
+**Design:** Inspirado nas comparison tables premium do Dribbble — header sticky com logo/nome de cada competidor, coluna Rhitmo com highlight vertical full-height (`bg-primary/5 border-primary/20`), ícones maiores com tooltips.
 
-**6. Footer profissional**
-- Adicionar wave divider acima
-- Incluir logo Rhitmo centralizado
-- Reorganizar links em layout mais limpo
-- Adicionar cor de fundo sutil (`bg-muted/30`)
+**Novo copy (PT):**
+- Overline: `COMPARATIVO REAL`
+- Titulo: `"A diferença não está no que prometem. Está no que entregam."`
+- Rows reescritos com verbos de ação:
+  - `Escreve review completa de ponta a ponta`
+  - `Detecta viés de gênero e personalidade em tempo real`
+  - `Mentor IA conversacional no fluxo de trabalho`
+  - `Transcreve e analisa 1:1s automaticamente`
+  - `Funciona em 5 min — sem demo call, sem implantação`
+  - `Plano gratuito real — não trial de 14 dias`
 
-**7. Micro-refinamentos**
-- Botões do hero: `rounded-xl` (Design System) em vez do padrão
-- Badge AI-Native: adicionar animação pulse sutil no ícone Sparkles
-- Comparison table: header com `bg-primary/5` para destaque da coluna Rhitmo
-- FAQ: estilo mais editorial com separadores suaves
+**Layout:** Manter table no desktop, mas adicionar borda arredondada na coluna Rhitmo inteira, com header em `bg-primary text-primary-foreground` para destaque máximo. Mobile mantém accordion.
 
-### Arquivo modificado
-- `src/pages/Landing.tsx` — todas as mudanças visuais acima
+---
 
-### Não muda
-- Conteúdo/traduções (pt/en)
-- Estrutura de seções
-- Componentes reutilizáveis (`RhythmWave`, `WaveDivider`, `RhitmoLogo`)
-- Design System tokens em `index.css`
+### 3. Resultados — De 3 cards simétricos para "Impact Metrics" com layout assimétrico
+
+**Design:** Inspirado no padrão Dribbble de métricas hero-sized. Card principal (4h → 2min) ocupa largura dupla com tipografia gigante (`text-7xl`). Os dois cards secundários ficam empilhados ao lado.
+
+**Novo copy (PT):**
+- Overline: `IMPACTO MENSURÁVEL`
+- Titulo: `"Não é promessa. São números."`
+- Card 1 (hero): `4h → 2min` / `Tempo médio para escrever uma avaliação de desempenho completa. De uma tarde inteira para o tempo de um café.`
+- Card 2: `38x` / `Mulheres recebem 38x mais feedback sobre personalidade do que homens. Rhitmo detecta e corrige antes que você publique.`
+- Card 3: `60%` (novo) / `Redução no custo por líder comparado a plataformas tradicionais de performance management.`
+
+**Layout:** Grid `grid-cols-1 md:grid-cols-3` com primeiro card `md:col-span-2 md:row-span-2` para criar assimetria Bento-style. Background com gradiente sutil. Cards com `border-l-4 border-primary`.
+
+---
+
+### 4. Publico-Alvo — De 3 cards iguais para "Persona Cards" com hierarquia visual
+
+**Design:** Inspirado em cards de produto premium do Dribbble. Card principal (Líderes) em destaque com borda primary e tamanho maior. Os outros dois em tamanho regular.
+
+**Novo copy (PT):**
+- Overline: `FEITO PARA VOCÊ`
+- Titulo: `"Quem usa Rhitmo — e por quê."`
+- Card 1 (Líderes): `"Você lidera 3 a 10 pessoas. Não tem tempo de escrever reviews do zero. Precisa de um copiloto que registra tudo e entrega o draft pronto."` + badge `Caso de uso #1`
+- Card 2 (PMEs): `"20-100 colaboradores, sem RH estruturado. Você quer profissionalizar gestão de performance sem contratar consultoria de R$50k."` + badge `Crescimento rápido`
+- Card 3 (Enterprise): `"100+ colaboradores. RH como comprador. Precisa de IA nativa de verdade — não um checkbox de marketing."` + badge `Plano Enterprise` + link
+
+**Layout:** Card do líder com `md:col-span-2` no grid, ou destaque com escala `scale-105` e shadow maior. Ícones maiores (`h-8 w-8`) dentro de containers circulares em vez de quadrados.
+
+---
+
+### Arquivos modificados
+
+- `src/pages/Landing.tsx` — redesign das 4 seções + novo copy em PT e EN
+
+### Nao muda
+- Estrutura geral da pagina
+- Outras seções (Hero, Pricing, FAQ, Footer)
+- Componentes reutilizáveis
+- Design System tokens
 
