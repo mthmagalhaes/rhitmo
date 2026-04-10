@@ -199,7 +199,31 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {/* Design System — only for matheus@rhitmo.co */}
+        {/* Conectores — Chrome & Slack */}
+        {!isInHRContext && !(isUser || isLinkedMember) && open && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Conectores</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <div className="px-2 space-y-2">
+                <button
+                  onClick={() => setExtensionDialogOpen(true)}
+                  className="w-full flex items-center gap-3 h-12 px-4 rounded-xl border border-border/60 bg-background hover:bg-accent/50 hover:border-primary/30 hover:-translate-y-0.5 transition-all duration-200 group"
+                >
+                  <Globe className="h-5 w-5 text-primary shrink-0" />
+                  <span className="text-sm font-medium text-foreground group-hover:text-primary tracking-tight">Conector Chrome</span>
+                </button>
+                <button
+                  onClick={() => setSlackDialogOpen(true)}
+                  className="w-full flex items-center gap-3 h-12 px-4 rounded-xl border border-border/60 bg-background hover:bg-accent/50 hover:border-primary/30 hover:-translate-y-0.5 transition-all duration-200 group"
+                >
+                  <MessageSquare className="h-5 w-5 text-primary shrink-0" />
+                  <span className="text-sm font-medium text-foreground group-hover:text-primary tracking-tight">Conector Slack</span>
+                </button>
+              </div>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
         {!isInHRContext && user?.email === 'matheus@rhitmo.co' && (
           <SidebarGroup>
             <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Marca</SidebarGroupLabel>
