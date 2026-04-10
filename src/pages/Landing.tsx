@@ -883,28 +883,29 @@ const Landing = () => {
       </section>
 
       {/* Seção: Números Concretos */}
-      <section className="py-20 bg-gradient-to-br from-muted/30 to-primary/5">
+      <section className="py-28 bg-gradient-to-br from-muted/30 to-primary/5">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
+          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{lang === 'pt' ? 'Resultados' : 'Results'}</p>
+          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
             {t.numbersTitle}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {/* Card 1 */}
-            <div className="bg-card rounded-2xl p-8 border shadow-sm text-center space-y-3 hover:-translate-y-1 transition-transform">
+            <div className="bg-card rounded-2xl p-8 border shadow-md text-center space-y-3 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
               <Clock className="h-8 w-8 mx-auto text-primary" />
-              <div className="text-5xl font-extrabold tracking-tight text-foreground">{t.numbersStat1}</div>
+              <div className="font-serif text-5xl font-bold tracking-tight text-foreground">{t.numbersStat1}</div>
               <p className="text-sm text-muted-foreground">{t.numbersLabel1}</p>
             </div>
             {/* Card 2 */}
-            <div className="bg-card rounded-2xl p-8 border shadow-sm text-center space-y-3 hover:-translate-y-1 transition-transform">
+            <div className="bg-card rounded-2xl p-8 border shadow-md text-center space-y-3 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
               <AlertCircle className="h-8 w-8 mx-auto text-destructive" />
-              <div className="text-5xl font-extrabold tracking-tight text-foreground">{t.numbersStat2}</div>
+              <div className="font-serif text-5xl font-bold tracking-tight text-foreground">{t.numbersStat2}</div>
               <p className="text-sm text-muted-foreground">{t.numbersLabel2}</p>
             </div>
             {/* Card 3 */}
-            <div className="bg-card rounded-2xl p-8 border shadow-sm text-center space-y-3 hover:-translate-y-1 transition-transform">
-              <DollarSign className="h-8 w-8 mx-auto text-emerald-500" />
-              <div className="text-5xl font-extrabold tracking-tight text-foreground">{t.numbersStat3}</div>
+            <div className="bg-card rounded-2xl p-8 border shadow-md text-center space-y-3 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
+              <DollarSign className="h-8 w-8 mx-auto text-primary" />
+              <div className="font-serif text-5xl font-bold tracking-tight text-foreground">{t.numbersStat3}</div>
               <p className="text-sm text-muted-foreground">{t.numbersLabel3}</p>
             </div>
           </div>
@@ -921,7 +922,7 @@ const Landing = () => {
                 <Zap className="h-4 w-4" />
                 {t.forLeaders}
               </div>
-              <h2 className="text-3xl lg:text-4xl font-bold text-foreground">
+              <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
                 {t.leadersTitle}
               </h2>
               <div className="space-y-4 text-lg text-muted-foreground leading-relaxed">
@@ -962,7 +963,7 @@ const Landing = () => {
                 <Heart className="h-4 w-4" />
                 {t.forReports}
               </div>
-              <h2 className="text-3xl lg:text-4xl font-bold text-foreground">
+              <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
                 {t.reportsTitle}
               </h2>
               <div className="space-y-4 text-lg text-muted-foreground leading-relaxed">
@@ -984,7 +985,7 @@ const Landing = () => {
                 <BarChart className="h-4 w-4" />
                 {t.forHR}
               </div>
-              <h2 className="text-3xl lg:text-4xl font-bold text-foreground">
+              <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
                 {t.hrTitle}
               </h2>
               <div className="space-y-4 text-lg text-muted-foreground leading-relaxed">
