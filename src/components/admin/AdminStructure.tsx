@@ -381,8 +381,9 @@ export const AdminStructure = () => {
                   <Building className="h-4 w-4 text-primary" />
                    <span className="font-semibold flex-1">{ws.name}</span>
                    <span className="text-xs text-muted-foreground">Owner: {getUserEmail(ws.owner_id)}</span>
+                   <Badge variant="outline" className={planColors[ws.plan_tier] || ''}>
                     {ws.plan_tier}
-                  </Badge>
+                   </Badge>
                   <Badge variant={ws.is_active ? 'default' : 'destructive'} className="text-xs">
                     {ws.is_active ? 'Ativo' : 'Suspenso'}
                   </Badge>
