@@ -1161,22 +1161,27 @@ const Landing = () => {
 
             {/* ── Pulse ── */}
             <div className="bg-card rounded-2xl shadow-md p-8 border flex flex-col hover:shadow-lg transition-shadow duration-300">
-              <div className="mb-4">
+              {/* Slot: Badge placeholder */}
+              <div className="xl:min-h-[28px] mb-4">
+                {/* No badge for Pulse */}
+              </div>
+              {/* Slot: Title + Subtitle */}
+              <div className="xl:min-h-[72px] mb-4">
                 <h3 className="text-2xl font-bold tracking-tight text-foreground">Pulse</h3>
                 <p className="text-sm text-muted-foreground mt-2">
                   {t.pulseSubtitle}
                 </p>
               </div>
-
-              <div className="mb-6">
+              {/* Slot: Price */}
+              <div className="xl:min-h-[80px] mb-6">
                 <span className="text-4xl font-bold text-foreground">{t.pulseFree}</span>
                 <span className="text-sm text-muted-foreground ml-1">{t.pulseForever}</span>
               </div>
-
+              {/* Slot: CTA */}
               <Button className="w-full min-h-[44px] mb-6" onClick={() => navigate('/auth?mode=signup')}>
                 {t.pulseCTA}
               </Button>
-
+              {/* Slot: Features */}
               <ul className="space-y-3 flex-1">
                 {t.pulseFeatures.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-sm text-foreground">
@@ -1201,14 +1206,19 @@ const Landing = () => {
                 </span>
               </div>
               <div className="bg-card rounded-2xl shadow-lg p-8 border-2 border-primary flex flex-col h-full">
-                <div className="mb-4">
+                {/* Slot: Badge placeholder */}
+                <div className="xl:min-h-[28px] mb-4">
+                  {/* Badge is absolutely positioned above */}
+                </div>
+                {/* Slot: Title + Subtitle */}
+                <div className="xl:min-h-[72px] mb-4">
                   <h3 className="text-2xl font-bold tracking-tight text-foreground">Pro</h3>
                   <p className="text-sm text-muted-foreground mt-2">
                     {t.proSubtitle}
                   </p>
                 </div>
-
-                <div className="mb-6">
+                {/* Slot: Price */}
+                <div className="xl:min-h-[80px] mb-6">
                   <span className="bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400 rounded-full px-3 py-1 text-xs font-medium inline-block mb-2">{t.launchBadge}</span>
                   <div>
                     <span className="text-4xl font-bold text-foreground">R$49</span>
@@ -1216,11 +1226,11 @@ const Landing = () => {
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">{t.proNote}</p>
                 </div>
-
+                {/* Slot: CTA */}
                 <Button className="w-full min-h-[44px] mb-6" onClick={() => navigate('/auth?mode=signup&plan=pro')}>
                   {t.proCTA}
                 </Button>
-
+                {/* Slot: Features */}
                 <ul className="space-y-3 flex-1">
                   {t.proFeatures.map((f) => (
                     <li key={f} className="flex items-start gap-2 text-sm text-foreground">
@@ -1234,14 +1244,19 @@ const Landing = () => {
 
             {/* ── Business ── */}
             <div className="bg-card rounded-2xl shadow-md p-8 border flex flex-col hover:shadow-lg transition-shadow duration-300">
-              <div className="mb-4">
+              {/* Slot: Badge placeholder */}
+              <div className="xl:min-h-[28px] mb-4">
+                {/* No badge for Business */}
+              </div>
+              {/* Slot: Title + Subtitle */}
+              <div className="xl:min-h-[72px] mb-4">
                 <h3 className="text-2xl font-bold tracking-tight text-foreground">Business</h3>
                 <p className="text-sm text-muted-foreground mt-2">
                   {t.businessSubtitle}
                 </p>
               </div>
-
-              <div className="mb-6">
+              {/* Slot: Price */}
+              <div className="xl:min-h-[80px] mb-6">
                 <span className="bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400 rounded-full px-3 py-1 text-xs font-medium inline-block mb-2">{t.launchBadge}</span>
                 <div>
                   <span className="text-4xl font-bold text-foreground">R$69</span>
@@ -1249,11 +1264,11 @@ const Landing = () => {
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">{t.businessNote}</p>
               </div>
-
+              {/* Slot: CTA */}
               <Button variant="outline" className="w-full min-h-[44px] mb-6" asChild>
                 <a href="mailto:matheus@rhitmo.co">{t.businessCTA}</a>
               </Button>
-
+              {/* Slot: Features */}
               <ul className="space-y-3 flex-1">
                 {t.businessFeatures.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-sm text-foreground">
@@ -1266,29 +1281,33 @@ const Landing = () => {
 
             {/* ── Enterprise ── */}
             <div className="bg-card rounded-2xl shadow-md p-8 border flex flex-col hover:shadow-lg transition-shadow duration-300">
-              <div className="mb-4">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium mb-2 bg-primary/10 text-primary">
+              {/* Slot: Badge */}
+              <div className="xl:min-h-[28px] mb-4">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
                   <Building className="h-3 w-3" />
                   Enterprise
                 </div>
+              </div>
+              {/* Slot: Title + Subtitle */}
+              <div className="xl:min-h-[72px] mb-4">
                 <h3 className="text-2xl font-bold tracking-tight text-foreground">Enterprise</h3>
                 <p className="text-sm text-muted-foreground mt-2">
                   {t.enterpriseSubtitle}
                 </p>
               </div>
-
-              <div className="mb-6">
+              {/* Slot: Price */}
+              <div className="xl:min-h-[80px] mb-6">
                 <div>
                   <span className="text-3xl font-bold text-foreground">{t.enterprisePrice}</span>
                   <span className="text-sm text-muted-foreground ml-1">{t.enterprisePer}</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">{t.enterpriseNote}</p>
               </div>
-
+              {/* Slot: CTA */}
               <Button variant="outline" className="w-full min-h-[44px] mb-6" asChild>
                 <Link to="/enterprise">{t.enterpriseCTA}</Link>
               </Button>
-
+              {/* Slot: Features */}
               <ul className="space-y-3 flex-1">
                 {t.enterpriseFeatures.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-sm text-foreground">
