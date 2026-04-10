@@ -549,11 +549,18 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
           ) : teamMembers.length === 0 ? (
             <div className="rounded-2xl bg-card border border-border shadow-sm p-12 text-center">
               <div className="max-w-md mx-auto">
-                <p className="text-muted-foreground mb-3 text-sm">Veja como gerenciar seu time em 2 minutos</p>
-                <div className="aspect-video w-full rounded-xl shadow-md overflow-hidden mb-6">
-                  <iframe className="w-full h-full" src="https://www.youtube.com/embed/bRQiwrBGlsc" title="Demo do Rhitmo" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-                </div>
-                <Button onClick={() => setMemberDialogOpen(true)} className="rounded-full px-8 h-11">Adicionar Primeiro Liderado</Button>
+                {workspace && (
+                  <>
+                    <p className="text-muted-foreground mb-3 text-sm">Veja como gerenciar seu time em 2 minutos</p>
+                    <div className="aspect-video w-full rounded-xl shadow-md overflow-hidden mb-6">
+                      <iframe className="w-full h-full" src="https://www.youtube.com/embed/bRQiwrBGlsc" title="Demo do Rhitmo" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                    </div>
+                    <Button onClick={() => setMemberDialogOpen(true)} className="rounded-full px-8 h-11">Adicionar Primeiro Liderado</Button>
+                  </>
+                )}
+                {!workspace && (
+                  <p className="text-muted-foreground text-sm">Nenhum conteúdo disponível no momento.</p>
+                )}
               </div>
             </div>
           ) : filteredMembers.length === 0 ? (
