@@ -55,6 +55,7 @@ export const AdminStructure = () => {
   const [expandedWs, setExpandedWs] = useState<Set<string>>(new Set());
   const [expandedTeam, setExpandedTeam] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   // Dialogs
   const [wsDialog, setWsDialog] = useState<{ open: boolean; mode: 'create' | 'edit'; data?: WorkspaceRow }>({ open: false, mode: 'create' });
