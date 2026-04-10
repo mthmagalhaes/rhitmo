@@ -1,50 +1,46 @@
 
 
-## Plano: Atualizar copy dos cards Produtividade e Economia na seção Impacto Mensurável
+## Plano: Corrigir layout das seções "Quem usa Rhitmo" e "Pricing"
 
-### Análise dos dados fornecidos
+### Problemas identificados
 
-**Card Produtividade (header `4h → 2min` mantido):**
-- Gestores gastam 210h/ano (5 semanas) em gestão de desempenho
-- Só a redação consome 65h/ano
-- Preparação de dados: 48h/ano
-- Com IA, preparação cai 75% e tempo total cai 25%
+**Seção "Quem usa Rhitmo" (Persona Cards):**
+- O card "Líderes individuais" usa `md:scale-105` + `border-2 border-primary`, fazendo ele parecer maior que os outros dois
+- Os cards PME e Enterprise não têm CTA/botão, criando alturas desiguais
+- Falta consistência visual entre os três cards
 
-**Card Economia (header `60%` mantido):**
-- Custo em grandes empresas: US$ 2,4M a US$ 35M/ano
-- 95% dos gestores insatisfeitos com sistemas tradicionais
-- 90% dos líderes de RH dizem que o processo não gera dados precisos
+**Seção "Pricing":**
+- 4 cards em `lg:grid-cols-4` ficam comprimidos, textos quebram em linhas curtas
+- O card Pro usa `md:-translate-y-2` criando desalinhamento vertical
+- Botões em posições diferentes porque o conteúdo acima varia em altura
+- Cards Enterprise e Business ficam estreitos com features longas quebrando mal
 
-**Card Equidade:** intocado.
+### Solução proposta
 
-### Mudanças em `src/pages/Landing.tsx`
+**Persona Cards: Cards uniformes com altura equalizada**
+- Remover `md:scale-105` do card de líder (destaque fica apenas na borda roxa)
+- Adicionar `flex flex-col` + `h-full` em todos os cards para equalizar altura
+- Adicionar CTA secundário nos cards PME ("Começar grátis") e manter link Enterprise
+- Usar `min-h-[...] flex flex-col justify-between` para alinhar conteúdo e CTAs na base
 
-**PT (linha 93):**
-```
-De: "Tempo médio para escrever uma avaliação de desempenho completa. De uma tarde inteira para o tempo de um café."
-Para: "Gestores dedicam 210 horas por ano a avaliações de desempenho. São cinco semanas inteiras. Só a redação consome 65 horas. Com Rhitmo, o draft sai pronto em segundos."
-```
+**Pricing: Layout 2+2 em telas médias, 4 colunas só em telas grandes**
+- Trocar grid para `md:grid-cols-2 xl:grid-cols-4` para dar mais espaço aos cards em telas médias
+- Remover `md:-translate-y-2` do card Pro (destaque via borda roxa e badge é suficiente)
+- Usar `flex flex-col` + `flex-1` na área de features para empurrar botões para a mesma linha base
+- Estruturar cada card como: header fixo > preço > botão > features (com `mt-auto` no botão)
+- Reduzir `max-w-7xl` para `max-w-6xl` para evitar cards excessivamente estreitos em 4 colunas
 
-**PT (linha 97):**
-```
-De: "Redução no custo por líder comparado a plataformas tradicionais de performance management."
-Para: "Em grandes empresas, avaliações tradicionais custam até US$ 35 milhões por ano. E 95% dos gestores estão insatisfeitos com o resultado. Rhitmo corta o custo e entrega precisão."
-```
+### Mudanças no arquivo
 
-**EN (linha 300):**
-```
-De: "Average time to write a complete performance review. From an entire afternoon to the time of a coffee break."
-Para: "Managers spend 210 hours per year on performance reviews. That's five full weeks. Writing alone takes 65 hours. With Rhitmo, the draft is ready in seconds."
-```
+**`src/pages/Landing.tsx`**
 
-**EN (linha 304):**
-```
-De: "Cost reduction per leader compared to traditional performance management platforms."
-Para: "In large companies, traditional reviews cost up to $35 million per year. And 95% of managers are dissatisfied with the results. Rhitmo cuts costs and delivers precision."
-```
+1. **Persona Cards (linhas 1067-1103):** Refatorar o grid para cards uniformes com `flex flex-col h-full`, remover `scale-105`, adicionar CTA no card PME, alinhar conteúdo verticalmente
 
-### O que não muda
-- Headers dos 3 cards (4h → 2min, 38x, 60%)
-- Card de Equidade (38x)
-- Layout, cores, tipografia, estrutura JSX
+2. **Pricing Cards (linhas 1148-1290):** Refatorar para `md:grid-cols-2 xl:grid-cols-4`, remover translate-y do Pro, usar flexbox vertical com `mt-auto` para alinhar botões, garantir que textos não quebrem mal
+
+### O que NÃO muda
+- Conteúdo textual (copy) de nenhuma seção
+- Cores, badges, ícones existentes
+- Estrutura de traduções PT/EN
+- Outras seções da landing page
 
