@@ -179,10 +179,11 @@ export const AdminStructure = () => {
     setLoading(true);
     try {
       if (teamDialog.mode === 'create') {
+        const leaderUserId = teamForm.leader_user_id && teamForm.leader_user_id !== 'none' ? teamForm.leader_user_id : null;
         const { error } = await supabase.from('teams').insert({
           name: teamForm.name,
           workspace_id: teamDialog.workspaceId!,
-          leader_user_id: teamForm.leader_user_id || null,
+          leader_user_id: leaderUserId,
         });
         if (error) throw error;
         toast({ title: 'Time criado' });
