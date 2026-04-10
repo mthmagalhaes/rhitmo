@@ -1,67 +1,96 @@
 
-Objetivo imediato: parar o bloqueio do modal, corrigir a recursão de permissões em `workspaces` e fazer o Matheus entrar direto no workspace existente, sem copiar nem apagar dados.
 
-Diagnóstico confirmado
-- O print mostra o erro real: `infinite recursion detected in policy for relation "workspaces"`.
-- Isso explica por que o sistema acha que “não existe workspace” e abre o onboarding.
-- O modal fica impossível de fechar porque `WorkspaceOnboarding` é renderizado com `open={true}` e bloqueia clique fora/escape.
-- O problema não é perda de dados; é RLS recursivo + frontend tratando erro como “workspace nulo”.
-- Hoje `AppLayout.tsx` e `Index.tsx` engolem erro de `workspaces` (`console.warn` e continuam), então uma falha de permissão vira falsamente “usuário novo”.
+## Análise Completa: O que aconteceu, o que perdemos e como prevenir
 
-Plano de correção emergencial
-1. Conter o bloqueio agora
-- Em `src/components/AppLayout.tsx`, impedir `WorkspaceOnboarding` quando houver qualquer erro de resolução de `workspace` ou `role`.
-- Mostrar loading/erro leve no lugar do modal, nunca onboarding bloqueante.
-- Em `src/components/WorkspaceOnboarding.tsx`, remover o comportamento “prisão” para esse caso.
+### Cronologia do Incidente
 
-2. Corrigir a recursão no backend
-- Criar uma migração corretiva para reescrever as políticas de `workspaces`, `teams` e `team_members`.
-- Quebrar o ciclo atual:
-  - `workspaces` consulta `teams`
-  - `teams` consulta `workspaces`
-  - `team_members` consulta `teams/workspaces`
-- Substituir esse encadeamento por funções helper `plpgsql SECURITY DEFINER`, evitando nova avaliação recursiva de RLS.
-- Em `workspaces`, evitar política que se auto-consulta por função; a checagem de HR Admin deve ser direta no próprio registro quando possível.
+**10 de Abril ~04:20 — Migração grande (Phase 1-16)**
+A migração `20260410042019` adicionou `leader_user_id` à tabela `teams` e reescreveu todas as políticas RLS. Na Phase 11, criou esta política em `workspaces`:
 
-3. Parar de transformar erro em “sem workspace”
-- Em `src/components/AppLayout.tsx`, `src/pages/Index.tsx`, `src/hooks/useUserRole.ts` e `src/hooks/useLinkedMember.ts`, tratar erro de `workspaces` como erro real.
-- Não continuar silenciosamente para `null`.
-- Enquanto houver erro de contexto, não abrir onboarding e não degradar o papel para `user`.
+```text
+CREATE POLICY "Leaders can view workspace" ON workspaces FOR SELECT
+USING (
+  EXISTS (SELECT 1 FROM teams t WHERE t.workspace_id = workspaces.id AND t.leader_user_id = ...)
+);
+```
 
-4. Unificar a resolução de contexto
-- Criar um contexto/hook único de conta com `workspace + role + linkedMember + loading + error`.
-- Fazer `AppLayout`, `AppSidebar`, `Index` e guards dependerem dessa mesma fonte.
-- Isso elimina o cenário atual de sidebar em modo liderado e dashboard parcialmente em modo líder.
+Essa política consulta `teams` dentro de uma política de `workspaces`. Mas as políticas de `teams` já consultavam `workspaces` para verificar `w.owner_id`. Resultado: **recursão infinita entre as RLS de `workspaces` ↔ `teams`**.
 
-5. Validação final para a reunião
-- Login do `matheus.magalhaes@fstr.co` em sessão normal e anônima.
-- Confirmar:
-  - sem modal de workspace
-  - sem toast de recursão
-  - sidebar de líder
-  - workspace `Faster Ops`
-  - 5 times, 6 membros e 215 feedbacks visíveis
+**10 de Abril ~04:24 — Migração de admin**
+A migração `20260410042424` adicionou políticas `FOR ALL` de admin nas três tabelas — inofensiva, mas não corrigiu a recursão.
 
-Contingência
-- Não vou apagar usuários nem mexer nos dados do Matheus agora; isso não corrige essa falha e pode arriscar cascata.
-- Rollback só de frontend não basta, porque o erro atual está vindo do backend/RLS.
-- Se precisarmos de fallback rápido, o seguro é:
-  1. esconder o onboarding para usuários existentes;
-  2. aplicar a migração corretiva de RLS;
-  3. só depois considerar rollback visual, se necessário.
+**10 de Abril ~13:48 — Tentativas de correção**
+Várias migrações adicionais tentaram corrigir (limpar emails de team_members, reescrever policies) mas o problema fundamental persistiu.
 
-Arquivos mais prováveis de ajuste
-- `src/components/AppLayout.tsx`
-- `src/components/WorkspaceOnboarding.tsx`
-- `src/pages/Index.tsx`
-- `src/components/AppSidebar.tsx`
-- `src/hooks/useUserRole.ts`
-- `src/hooks/useLinkedMember.ts`
-- nova migração em `supabase/migrations/`
+**10 de Abril ~19:41 — Fix de RLS com SECURITY DEFINER**
+A migração `20260410194148` finalmente substituiu todas as políticas recursivas por 5 funções `SECURITY DEFINER` (`rls_check_workspace_access`, `rls_check_team_read_access`, etc.) que quebram a recursão. **Esta migração está ativa e funcionando corretamente no banco.**
 
-Detalhes técnicos
-- A causa mais provável é a combinação de:
-  - política `Leaders can view workspace` em `workspaces`
-  - políticas de `teams`/`team_members` que voltam a consultar `workspaces`
-  - frontend que captura esse erro e interpreta como ausência de workspace
-- O resultado prático é exatamente o do print: modal indevido + erro de recursão + dashboard vazio/inconsistente.
+**Frontend revertido** para antes das tentativas de hotfix, mas as migrações de banco (que corrigiram a recursão) continuam aplicadas.
+
+---
+
+### Estado Atual — O que está intacto
+
+| Item | Status |
+|------|--------|
+| 215 feedbacks do Matheus | OK |
+| 5 times (Business Ops, CreativeOps, Customer Success, Expansão, People) | OK |
+| 6 membros distribuídos nos times | OK |
+| Workspace "Faster Ops" | OK |
+| Funções RLS anti-recursão | Ativas e funcionando |
+
+**Nenhum dado foi perdido.**
+
+---
+
+### O que foi perdido no rollback do frontend
+
+O rollback de frontend descartou as edições de emergência feitas nos arquivos:
+- `AppLayout.tsx` — guard contra `workspaceError` (bloquear onboarding quando RLS falha)
+- `useLinkedMember.ts` — verificação extra de sessão
+- `Index.tsx` — verificação de sessão antes de queries
+
+Essas mudanças eram **defensivas** mas não essenciais agora que a recursão de RLS foi corrigida no banco. O frontend atual (pré-hotfix) funciona porque as políticas RLS do banco já não entram em recursão.
+
+---
+
+### Causa Raiz e Como Prevenir
+
+**Causa raiz**: Políticas RLS com dependências circulares entre tabelas.
+
+```text
+workspaces SELECT → consulta teams (para verificar leader)
+teams SELECT     → consulta workspaces (para verificar owner)
+→ Loop infinito
+```
+
+**O fix aplicado** (funções `SECURITY DEFINER` com `LANGUAGE plpgsql`) é correto porque:
+1. `SECURITY DEFINER` + `plpgsql` impede que o Postgres faça inlining da função dentro da política, quebrando a recursão
+2. Cada função acessa as tabelas diretamente, sem passar pelas RLS delas
+
+### Plano de Blindagem (5 ações)
+
+1. **Reaplicar os guards de frontend** — Voltar a tratar `workspaceError` como bloqueio real no `AppLayout.tsx`. Se RLS falhar por qualquer motivo, mostrar loading/erro, nunca o modal de onboarding.
+
+2. **Regra arquitetural para migrações RLS** — Toda nova política RLS que precise consultar outra tabela DEVE usar uma função `SECURITY DEFINER plpgsql`. Nunca subqueries diretas entre `workspaces ↔ teams ↔ team_members`.
+
+3. **Teste automatizado de recursão** — Adicionar um health-check SQL simples que pode ser executado após cada migração:
+```sql
+SELECT id FROM workspaces LIMIT 1;
+SELECT id FROM teams LIMIT 1;
+SELECT id FROM team_members LIMIT 1;
+```
+Se qualquer um falhar com "infinite recursion", a migração deve ser revertida.
+
+4. **Contexto unificado de conta** — Criar um hook/contexto único (`useAccountContext`) que resolve workspace + role + linkedMember uma vez e propaga para todos os consumidores. Isso elimina o problema de cada componente resolver independentemente e chegar a conclusões diferentes.
+
+5. **Limpar contas Matheus legadas** — Com segurança, agora que o mapeamento de dados está claro, neutralizar as contas auth antigas que não possuem dados mas podem causar conflito de auto-link.
+
+### Arquivos a ajustar
+
+- `src/components/AppLayout.tsx` — reaplicar guard de `workspaceError`
+- `src/hooks/useUserRole.ts` — verificação de sessão antes de queries RLS
+- `src/hooks/useLinkedMember.ts` — verificação de sessão antes de queries RLS
+- Novo: `src/contexts/AccountContext.tsx` — contexto unificado
+- Nova migração: limpeza segura de contas legadas
+
