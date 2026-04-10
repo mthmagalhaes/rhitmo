@@ -765,35 +765,54 @@ const Landing = () => {
 
       <WaveDivider className="bg-background" />
 
-      {/* Seção: Antes vs. Depois */}
-      <section className="py-24 bg-background">
+      {/* Seção: Antes vs. Depois — Split Timeline */}
+      <section className="py-28 bg-background">
         <div className="container mx-auto px-4">
-          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{lang === 'pt' ? 'Antes & Depois' : 'Before & After'}</p>
-          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
+          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{t.beforeAfterOverline}</p>
+          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-4 text-foreground">
             {t.beforeAfterTitle}
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
-            {/* Sem Rhitmo */}
-            <div className="bg-muted/50 rounded-2xl p-8 border space-y-5">
-              <div className="flex items-center gap-2">
-                <XCircle className="h-6 w-6 text-destructive" />
+          <p className="text-lg text-muted-foreground text-center mb-14 max-w-2xl mx-auto">
+            {lang === 'pt' ? 'Veja o que muda quando IA assume o trabalho operacional.' : 'See what changes when AI takes over the busywork.'}
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 max-w-5xl mx-auto">
+            {/* Sem Rhitmo — Lado escuro */}
+            <div className="bg-muted rounded-2xl md:rounded-r-none p-8 lg:p-10 border border-destructive/10 space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
+                  <XCircle className="h-5 w-5 text-destructive" />
+                </div>
                 <h3 className="text-xl font-bold text-foreground">{t.withoutRhitmo}</h3>
               </div>
-              <ul className="space-y-3">
+              <ul className="space-y-4">
                 {t.beforeItems.map((item) => (
-                  <li key={item} className="text-muted-foreground leading-relaxed">{item}</li>
+                  <li key={item} className="flex items-start gap-3">
+                    <XCircle className="h-4 w-4 text-destructive/60 mt-1 shrink-0" />
+                    <span className="text-muted-foreground leading-relaxed text-sm">{item}</span>
+                  </li>
                 ))}
               </ul>
             </div>
-            {/* Com Rhitmo */}
-            <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-2xl p-8 border border-primary/20 space-y-5">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-6 w-6 text-primary" />
+
+            {/* Com Rhitmo — Lado claro + primary */}
+            <div className="bg-gradient-to-br from-primary/5 to-emerald-500/5 rounded-2xl md:rounded-l-none p-8 lg:p-10 border border-primary/20 space-y-6 relative">
+              {/* Arrow indicator between cards - desktop only */}
+              <div className="hidden md:flex absolute -left-5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-primary text-primary-foreground items-center justify-center shadow-lg z-10">
+                <ArrowRight className="h-5 w-5" />
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <CheckCircle2 className="h-5 w-5 text-primary" />
+                </div>
                 <h3 className="text-xl font-bold text-foreground">{t.withRhitmo}</h3>
               </div>
-              <ul className="space-y-3">
+              <ul className="space-y-4">
                 {t.afterItems.map((item) => (
-                  <li key={item} className="text-foreground leading-relaxed">{item}</li>
+                  <li key={item} className="flex items-start gap-3">
+                    <CheckCircle2 className="h-4 w-4 text-primary mt-1 shrink-0" />
+                    <span className="text-foreground leading-relaxed text-sm font-medium">{item}</span>
+                  </li>
                 ))}
               </ul>
             </div>
