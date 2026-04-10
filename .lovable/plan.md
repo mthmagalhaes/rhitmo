@@ -1,67 +1,55 @@
 
 
-## Plano: Superpoderes do Super Admin + Sistema de Multi-Cap para Usuários
+## Plano: Cadastro em Massa (Bulk Onboarding)
 
-### Contexto atual
+### Problema
+Hoje o cadastro é um-a-um: o admin convida usuário por usuário via `admin-invite-user`. Para dezenas de e-mails com papéis diferentes (líder, liderado, HR admin), isso é inviável.
 
-- `matheus@rhitmo.co` já é `super_admin` e tem acesso ao painel `/admin`
-- `matheus_hr@rhitmo.co` mantém-se como está (HR Admin + Owner, sem acesso ao `/admin`)
-- O painel admin atual tem: Visão Geral, Suporte, Export, Usuários, Acessos, Estrutura
-- A aba "Usuários" mostra apenas nome, cargo, telefone e status — **sem visibilidade de papéis múltiplos**
-- A aba "Estrutura" permite CRUD de workspaces/times/membros mas **não mostra conceito de "cliente"** nem tags de multi-cap
-- Caso real: Yasmin (`yasmin.nobrega@fstr.co`) é liderada de `matheus.magalhaes@fstr.co` (linked_member) mas em breve será líder dos seus próprios liderados
+### Solução: Upload de Planilha + Processamento em Lote
 
-### O que será feito
+Adicionar na aba **Estrutura** (ou nova aba "Importar") do painel Admin um fluxo de importação em massa:
 
-**1. Conceito de "Cliente" na Estrutura**
-- Na aba Estrutura, agrupar workspaces por "cliente" (o owner define o cliente)
-- Adicionar campo visual de "empresa/cliente" ao criar/editar workspace (ex: "Faster Ops" como cliente, com múltiplos workspaces potenciais)
-- Por ora, o workspace name funciona como identificador de cliente — sem nova tabela, apenas agrupamento visual pelo `owner_id`
+**1. Template CSV/Excel para download**
+- Colunas: `email`, `nome`, `papel` (líder / liderado / hr_admin), `workspace` (nome do workspace destino), `time` (nome do time), `líder_email` (se liderado, email do líder)
+- Botão "Baixar template" com exemplo preenchido
 
-**2. Multi-Cap Tags no AdminUsers**
-- Para cada usuário na lista, mostrar **badges empilhados** indicando todos os "chapéus":
-  - 🏢 **Owner** — se é `owner_id` de algum workspace
-  - 🛡️ **HR Admin** — se está em `hr_admin_ids` de algum workspace  
-  - 👑 **Líder** — se é `leader_user_id` de algum time
-  - 👤 **Liderado** — se tem `linked_user_id` em `team_members`
-  - ⚙️ **Super Admin** — se tem role `super_admin`
-- Cada badge mostra o contexto (ex: "Líder @ Faster Ops", "Liderada @ Business Ops")
-- Isso resolve o caso Yasmin: aparecerá como "Liderada @ Business Ops" hoje, e quando virar líder, ganhará badge "Líder @ [time]"
+**2. Upload e Preview**
+- Admin faz upload do CSV/XLSX preenchido
+- Frontend parseia o arquivo (já existe `src/lib/fileParser.ts`) e exibe tabela de preview
+- Validações visuais: emails duplicados, campos obrigatórios, workspaces/times que não existem (highlight em vermelho)
+- Admin revisa e confirma
 
-**3. Enriquecer AdminUsers com ações de gestão**
-- Adicionar botão "Editar papéis" por usuário: promover a líder, vincular como liderado, atribuir HR admin
-- Adicionar filtro por "cap": mostrar apenas Leaders, apenas Liderados, apenas HR Admins, etc.
-- Adicionar busca por nome/email
+**3. Processamento no backend (nova Edge Function `bulk-onboard`)**
+- Recebe o array de usuários validados
+- Para cada linha:
+  - Chama `supabase.auth.admin.inviteUserByEmail()` com metadata (nome, plano)
+  - Se papel = `hr_admin`: adiciona ao `hr_admin_ids` do workspace via `manage_hr_admin` RPC
+  - Se papel = `líder`: cria o time (se não existe) e seta `leader_user_id`
+  - Se papel = `liderado`: cria `team_member` com `linked_user_id` (se o líder já existir)
+- Retorna relatório: quantos convidados, quantos já existiam, quantos falharam
 
-**4. Configuração de owner ao criar workspace (Estrutura)**
-- Atualmente, `handleSaveWorkspace` usa o admin logado como owner — incorreto para criar workspaces de clientes
-- Alterar para permitir selecionar qualquer usuário como owner do workspace
-- Adicionar campo para designar HR Admin(s) no momento da criação
+**4. Relatório pós-importação**
+- Exibe resultado na tela: sucesso/erro por linha
+- Opção de exportar relatório
 
 ### Arquivos a criar/modificar
 
 | Arquivo | Ação |
 |---------|------|
-| `src/components/admin/AdminUsers.tsx` | Adicionar query de multi-cap (workspaces, teams, team_members), badges de papéis, filtros, busca |
-| `src/components/admin/AdminStructure.tsx` | Corrigir criação de workspace (owner selecionável), campo HR admin, agrupamento por cliente |
-| Nova RPC: `get_user_caps` | Função SQL que retorna todos os "chapéus" de cada usuário (owner_of, hr_admin_of, leader_of, member_of) em uma query otimizada |
+| `src/components/admin/BulkOnboardDialog.tsx` | Novo — dialog de upload, preview, validação e envio |
+| `src/components/admin/AdminStructure.tsx` | Adicionar botão "Importar em Massa" |
+| `supabase/functions/bulk-onboard/index.ts` | Nova Edge Function — processamento em lote |
 
 ### Detalhes técnicos
+- O `fileParser.ts` existente já suporta CSV e XLSX — será reutilizado para o parsing client-side
+- A Edge Function processa sequencialmente (não paralelo) para evitar rate-limit na API de convites
+- Limite de 100 usuários por lote para segurança
+- A função verifica `is_admin()` antes de processar
 
-A nova RPC `get_user_caps` consolidará em uma única query:
+### Fluxo visual
 ```text
-SELECT u.id, u.email,
-  array de workspaces onde é owner,
-  array de workspaces onde é hr_admin,
-  array de times onde é leader,
-  array de team_members onde é linked_user
-FROM auth.users u
--- joins com workspaces, teams, team_members
+[Baixar Template] → [Preencher CSV] → [Upload no Admin]
+     → [Preview com validação] → [Confirmar]
+     → [Edge Function processa] → [Relatório final]
 ```
-
-Isso evita N+1 queries no frontend e garante que o painel admin carregue rápido mesmo com dezenas de usuários.
-
-### Fora de escopo (por agora)
-- Analytics cross-workspace (será uma fase seguinte)
-- Nova tabela de "clientes" — workspace name já serve como identificador
 
