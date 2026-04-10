@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Download, Copy, Check, Eye, EyeOff, RefreshCw, ShieldCheck } from 'lucide-react';
+import { ChromeIcon } from '@/components/icons/ChromeIcon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
@@ -59,7 +60,7 @@ export function ChromeExtensionSetupDialog({ open, onOpenChange }: ChromeExtensi
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Download className="h-5 w-5 text-primary" />
+            <ChromeIcon className="h-5 w-5" />
             Conector Chrome — Rhitmo Recorder
           </DialogTitle>
           <DialogDescription>

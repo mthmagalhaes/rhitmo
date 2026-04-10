@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { RhythmWave } from '@/components/RhythmWave';
-import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award, ArrowRightLeft, UserCheck, Palette, Compass, FileText, User, Download, MessageSquare, Globe } from 'lucide-react';
+import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award, ArrowRightLeft, UserCheck, Palette, Compass, FileText, User, Download } from 'lucide-react';
+import { ChromeIcon } from '@/components/icons/ChromeIcon';
+import { SlackIcon } from '@/components/icons/SlackIcon';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
@@ -209,14 +211,14 @@ export function AppSidebar() {
                   onClick={() => setExtensionDialogOpen(true)}
                   className="w-full flex items-center gap-3 h-12 px-4 rounded-xl border border-border/60 bg-background hover:bg-accent/50 hover:border-primary/30 hover:-translate-y-0.5 transition-all duration-200 group"
                 >
-                  <Globe className="h-5 w-5 text-primary shrink-0" />
+                  <ChromeIcon className="h-5 w-5 shrink-0" />
                   <span className="text-sm font-medium text-foreground group-hover:text-primary tracking-tight">Conector Chrome</span>
                 </button>
                 <button
                   onClick={() => setSlackDialogOpen(true)}
                   className="w-full flex items-center gap-3 h-12 px-4 rounded-xl border border-border/60 bg-background hover:bg-accent/50 hover:border-primary/30 hover:-translate-y-0.5 transition-all duration-200 group"
                 >
-                  <MessageSquare className="h-5 w-5 text-primary shrink-0" />
+                  <SlackIcon className="h-5 w-5 shrink-0" />
                   <span className="text-sm font-medium text-foreground group-hover:text-primary tracking-tight">Conector Slack</span>
                 </button>
               </div>
