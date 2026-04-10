@@ -73,7 +73,7 @@ export function AppSidebar() {
   const [supportDialogOpen, setSupportDialogOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [extensionDialogOpen, setExtensionDialogOpen] = useState(false);
-
+  const [slackDialogOpen, setSlackDialogOpen] = useState(false);
   const handleCopyEmail = async () => {
     const email = 'support@rhitmo.co';
     let success = false;
@@ -182,25 +182,15 @@ export function AppSidebar() {
                   .map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild tooltip={item.title}>
-                      {item.url === '#extension' ? (
-                        <button
-                          onClick={() => setExtensionDialogOpen(true)}
-                          className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground flex items-center gap-2 w-full"
-                        >
-                          <item.icon className="h-5 w-5" />
-                          <span>{item.title}</span>
-                        </button>
-                      ) : (
-                        <NavLink 
-                          to={item.url} 
-                          end
-                          className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
-                          activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
-                        >
-                          <item.icon className="h-5 w-5" />
-                          <span>{item.title}</span>
-                        </NavLink>
-                      )}
+                      <NavLink 
+                        to={item.url} 
+                        end
+                        className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
+                        activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
+                      >
+                        <item.icon className="h-5 w-5" />
+                        <span>{item.title}</span>
+                      </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
