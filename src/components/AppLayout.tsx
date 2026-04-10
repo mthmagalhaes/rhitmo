@@ -33,17 +33,25 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       if (ownedError) console.warn('[AppLayout] Owned workspace query error:', ownedError.message);
       if (ownedWorkspace) return ownedWorkspace;
 
-      const { data, error } = await supabase
-        .from('workspaces')
-        .select('id')
-        .eq('is_active', true)
+      // Fallback: check if user leads a team → get that workspace
+      const { data: leaderTeam } = await supabase
+        .from('teams')
+        .select('workspace_id')
+        .eq('leader_user_id', user.id)
         .limit(1)
         .maybeSingle();
-      if (error) {
-        console.error('[AppLayout] Workspace fallback query error:', error.message);
-        throw error;
+
+      if (leaderTeam?.workspace_id) {
+        const { data: wsData } = await supabase
+          .from('workspaces')
+          .select('id')
+          .eq('id', leaderTeam.workspace_id)
+          .eq('is_active', true)
+          .maybeSingle();
+        return wsData;
       }
-      return data;
+
+      return null;
     },
     enabled: !!user && !authLoading,
     retry: 3,
