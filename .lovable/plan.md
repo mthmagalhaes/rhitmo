@@ -2,24 +2,34 @@
 
 ## Problem
 
-The two comparison cards ("Sem Rhitmo" / "Com Rhitmo") are in a `grid-cols-2` layout but can misalign vertically because they are independent grid cells. The "Com Rhitmo" card also has an extra arrow indicator element that can affect its internal spacing. Font size is `text-sm` which is small.
+The two comparison cards are two separate grid cells. Even with `items-stretch` and `flex flex-col`, there's no mechanism to align each internal row (header, item 1, item 2...) across the two cells. The screenshot confirms "Com Rhitmo" header sits lower than "Sem Rhitmo".
 
-## Plan
+## Solution
 
-**File: `src/pages/Landing.tsx` (lines 779-818)**
+Restructure the comparison as a **single container with a 2-column internal grid** where each row spans both sides, guaranteeing pixel-perfect alignment.
 
-1. **Force equal height alignment** — Add `items-stretch` to the grid container and use `flex flex-col` on each card so their internal content stretches equally. Both cards already have the same number of items (5 each), but the flex structure ensures pixel-perfect alignment.
+### File: `src/pages/Landing.tsx` (lines 779-818)
 
-2. **Increase font size** — Change list item text from `text-sm` to `text-base` on both sides (lines 792 and 814). Change header `text-xl` to `text-2xl` (lines 786 and 808).
+Replace the current two-card grid with a single wrapper that contains two visual halves:
 
-3. **Align internal structure** — Ensure both cards use identical padding, spacing, and structure:
-   - Both cards: same `p-8 lg:p-10` padding (already matching)
-   - Both cards: same `space-y-6` (already matching)
-   - Move the arrow indicator's positioning so it doesn't affect the "Com Rhitmo" card's internal flow (it's `absolute` so it shouldn't, but verify)
-   - Add `min-h-0` or explicit `items-start` on the grid to prevent any stretch misalignment
+```text
+┌──────────────────────┬──────────────────────┐
+│  Sem Rhitmo header   │  Com Rhitmo header   │  ← same grid row
+├──────────────────────┼──────────────────────┤
+│  ✗ Item 1            │  ✓ Item 1            │  ← same grid row
+│  ✗ Item 2            │  ✓ Item 2            │  ← same grid row
+│  ...                 │  ...                 │
+└──────────────────────┴──────────────────────┘
+```
 
-4. **Apply Design Skill polish** — Add subtle refinements:
-   - Slightly larger icon containers (`w-12 h-12` instead of `w-10 h-10`)
-   - Increase list spacing from `space-y-4` to `space-y-5` for better readability at the larger font size
-   - Ensure icon `mt-1` alignment matches the new `text-base` line height
+**Approach**: Keep the two-card visual design but wrap them in a single `div` that uses `grid grid-cols-2` with each pair of items (left item + right item) sharing the same implicit row. This is done by interleaving the items:
+
+1. Create a single outer container with `grid md:grid-cols-2` and apply the left/right background styling via CSS pseudo-elements or two background divs
+2. Place headers side-by-side in the same row
+3. Map both `beforeItems` and `afterItems` arrays together, placing each pair in the same grid row
+4. Keep the arrow indicator absolutely positioned on the container
+5. Maintain all existing text sizes (`text-2xl` headers, `text-base` items), spacing, and colors
+6. On mobile (`grid-cols-1`), stack as before — left card on top, right card below
+
+This guarantees every line aligns perfectly because they share the same CSS grid row.
 
