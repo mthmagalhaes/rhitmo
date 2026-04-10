@@ -776,42 +776,42 @@ const Landing = () => {
             {lang === 'pt' ? 'Veja o que muda quando IA assume o trabalho operacional.' : 'See what changes when AI takes over the busywork.'}
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 max-w-5xl mx-auto items-stretch">
             {/* Sem Rhitmo — Lado escuro */}
-            <div className="bg-muted rounded-2xl md:rounded-r-none p-8 lg:p-10 border border-destructive/10 space-y-6">
+            <div className="flex flex-col bg-muted rounded-2xl md:rounded-r-none p-8 lg:p-10 border border-destructive/10 space-y-6">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
                   <XCircle className="h-5 w-5 text-destructive" />
                 </div>
-                <h3 className="text-xl font-bold text-foreground">{t.withoutRhitmo}</h3>
+                <h3 className="text-2xl font-bold tracking-tight text-foreground">{t.withoutRhitmo}</h3>
               </div>
-              <ul className="space-y-4">
+              <ul className="space-y-5 flex-1">
                 {t.beforeItems.map((item) => (
                   <li key={item} className="flex items-start gap-3">
                     <XCircle className="h-4 w-4 text-destructive/60 mt-1 shrink-0" />
-                    <span className="text-muted-foreground leading-relaxed text-sm">{item}</span>
+                    <span className="text-muted-foreground leading-relaxed text-base">{item}</span>
                   </li>
                 ))}
               </ul>
             </div>
 
             {/* Com Rhitmo — Lado claro + primary */}
-            <div className="bg-gradient-to-br from-primary/5 to-emerald-500/5 rounded-2xl md:rounded-l-none p-8 lg:p-10 border border-primary/20 space-y-6 relative">
+            <div className="flex flex-col bg-gradient-to-br from-primary/5 to-emerald-500/5 rounded-2xl md:rounded-l-none p-8 lg:p-10 border border-primary/20 space-y-6 relative">
               {/* Arrow indicator between cards - desktop only */}
               <div className="hidden md:flex absolute -left-5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-primary text-primary-foreground items-center justify-center shadow-lg z-10">
                 <ArrowRight className="h-5 w-5" />
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                   <CheckCircle2 className="h-5 w-5 text-primary" />
                 </div>
-                <h3 className="text-xl font-bold text-foreground">{t.withRhitmo}</h3>
+                <h3 className="text-2xl font-bold tracking-tight text-foreground">{t.withRhitmo}</h3>
               </div>
-              <ul className="space-y-4">
+              <ul className="space-y-5 flex-1">
                 {t.afterItems.map((item) => (
                   <li key={item} className="flex items-start gap-3">
                     <CheckCircle2 className="h-4 w-4 text-primary mt-1 shrink-0" />
-                    <span className="text-foreground leading-relaxed text-sm font-medium">{item}</span>
+                    <span className="text-foreground leading-relaxed text-base font-medium">{item}</span>
                   </li>
                 ))}
               </ul>
