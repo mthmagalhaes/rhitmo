@@ -915,28 +915,50 @@ const Landing = () => {
       {/* Seção: Números Concretos */}
       <section className="py-28 bg-gradient-to-br from-muted/30 to-primary/5">
         <div className="container mx-auto px-4">
-          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{lang === 'pt' ? 'Resultados' : 'Results'}</p>
-          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
+          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{t.numbersOverline}</p>
+          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-4 text-foreground">
             {t.numbersTitle}
           </h2>
+          <p className="text-lg text-muted-foreground text-center mb-14 max-w-2xl mx-auto">
+            {lang === 'pt' ? 'Resultados reais de quem já usa Rhitmo no dia a dia.' : 'Real results from leaders who already use Rhitmo daily.'}
+          </p>
+
+          {/* Bento Grid — Hero card + 2 secondary */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {/* Card 1 */}
-            <div className="bg-card rounded-2xl p-8 border shadow-md text-center space-y-3 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
-              <Clock className="h-8 w-8 mx-auto text-primary" />
-              <div className="font-serif text-5xl font-bold tracking-tight text-foreground">{t.numbersStat1}</div>
-              <p className="text-sm text-muted-foreground">{t.numbersLabel1}</p>
+            {/* Hero Card — spans 2 cols */}
+            <div className="md:col-span-2 bg-card rounded-2xl p-10 lg:p-12 border-l-4 border-l-primary border shadow-md hover:shadow-lg transition-all duration-300 flex flex-col justify-center">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Clock className="h-6 w-6 text-primary" />
+                </div>
+                <span className="uppercase text-xs font-semibold tracking-widest text-primary">{lang === 'pt' ? 'Produtividade' : 'Productivity'}</span>
+              </div>
+              <div className="font-serif text-6xl lg:text-7xl font-bold tracking-tight text-foreground mb-4">{t.numbersStat1}</div>
+              <p className="text-base text-muted-foreground leading-relaxed max-w-lg">{t.numbersLabel1}</p>
             </div>
-            {/* Card 2 */}
-            <div className="bg-card rounded-2xl p-8 border shadow-md text-center space-y-3 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
-              <AlertCircle className="h-8 w-8 mx-auto text-destructive" />
-              <div className="font-serif text-5xl font-bold tracking-tight text-foreground">{t.numbersStat2}</div>
-              <p className="text-sm text-muted-foreground">{t.numbersLabel2}</p>
-            </div>
-            {/* Card 3 */}
-            <div className="bg-card rounded-2xl p-8 border shadow-md text-center space-y-3 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
-              <DollarSign className="h-8 w-8 mx-auto text-primary" />
-              <div className="font-serif text-5xl font-bold tracking-tight text-foreground">{t.numbersStat3}</div>
-              <p className="text-sm text-muted-foreground">{t.numbersLabel3}</p>
+
+            {/* Secondary Cards — stacked */}
+            <div className="flex flex-col gap-6">
+              <div className="bg-card rounded-2xl p-8 border-l-4 border-l-destructive border shadow-md hover:shadow-lg transition-all duration-300 flex-1">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
+                    <AlertCircle className="h-5 w-5 text-destructive" />
+                  </div>
+                  <span className="uppercase text-xs font-semibold tracking-widest text-destructive">{lang === 'pt' ? 'Equidade' : 'Equity'}</span>
+                </div>
+                <div className="font-serif text-4xl font-bold tracking-tight text-foreground mb-2">{t.numbersStat2}</div>
+                <p className="text-sm text-muted-foreground leading-relaxed">{t.numbersLabel2}</p>
+              </div>
+              <div className="bg-card rounded-2xl p-8 border-l-4 border-l-primary border shadow-md hover:shadow-lg transition-all duration-300 flex-1">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <DollarSign className="h-5 w-5 text-primary" />
+                  </div>
+                  <span className="uppercase text-xs font-semibold tracking-widest text-primary">{lang === 'pt' ? 'Economia' : 'Savings'}</span>
+                </div>
+                <div className="font-serif text-4xl font-bold tracking-tight text-foreground mb-2">{t.numbersStat3}</div>
+                <p className="text-sm text-muted-foreground leading-relaxed">{t.numbersLabel3}</p>
+              </div>
             </div>
           </div>
         </div>
