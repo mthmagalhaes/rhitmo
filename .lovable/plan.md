@@ -1,73 +1,35 @@
 
-Objetivo: resolver o problema do “Copiar Token” pela arquitetura do fluxo da extensão, não por CSS/z-index.
 
-O que encontrei
-- Hoje existem 2 fluxos diferentes para a mesma tarefa:
-  - `src/components/AppSidebar.tsx`: modal da extensão com helper próprio de cópia
-  - `src/components/ProfileSettingsDialog.tsx`: cópia direta com `navigator.clipboard.writeText`
-- Isso já mostra drift de implementação: qualquer correção feita num lugar não garante o outro.
-- No modal do sidebar, o botão já é um `Button` normal dentro de `Dialog`; pelo código e pela ausência de erros de runtime, isso não parece ser só “botão sem clique”.
-- O fallback atual usa `window.prompt`, que é frágil em preview/iframe e ruim para suporte.
-- A raiz mais séria: a extensão depende do `access_token` da sessão web. Isso é frágil por expiração, opaco para o usuário e difícil de diagnosticar.
-- Há mais um sinal de drift end-to-end: `extension/offscreen.js` envia `audio`, mas `upload-meeting` espera `file`.
+## Plano: Renomear "Extensão" para "Conector" + Redesign dos botões + Criar Conector Slack
 
-Plano
-1. Unificar a jornada da extensão
-- Criar um componente/hook compartilhado para:
-  - baixar ZIP
-  - obter token
-  - copiar token
-  - mostrar instruções
-- Reusar no menu lateral e em configurações.
-- Remover lógica duplicada de cópia.
+### O que muda
 
-2. Trocar “copiar access token da sessão” por “token dedicado da extensão”
-- Criar uma tabela própria para tokens da extensão, com:
-  - `user_id uuid` (sem FK para `auth.users`)
-  - hash do token
-  - `created_at`, `last_used_at`, `revoked_at`
-- Criar uma função backend para gerar/rotacionar o token e devolver o valor apenas uma vez.
-- O botão passa a copiar esse token dedicado, e não mais o JWT bruto da sessão.
+1. **Renomear "Extensão Chrome" → "Conector Chrome"** em toda a sidebar e modais
+2. **Criar seção "Conectores" na sidebar** com dois botões grandes, retangulares arredondados (estilo card/pill), um para Chrome e outro para Slack — substituindo o item de menu simples atual
+3. **Criar modal "Conector Slack"** com instruções de como conectar (OAuth via `/rhitmo` no Slack), status de conexão e botão de conectar
 
-3. Tornar o fallback visível e confiável
-- No modal, exibir um campo readonly com o token (mascarado por padrão, com “mostrar”).
-- O botão “Copiar Token” usa clipboard API, mas se falhar o token continua selecionável/copiável manualmente no próprio modal.
-- Remover dependência de `window.prompt`.
+### Design dos botões na sidebar
 
-4. Alinhar extensão + backend
-- Atualizar `extension/popup.js` e `extension/offscreen.js` para o novo token.
-- Corrigir o contrato de upload para usar o campo esperado pelo backend (`file`).
-- Ajustar `supabase/functions/upload-meeting/index.ts` para aceitar:
-  - JWT atual (compatibilidade)
-  - novo token da extensão
-- Registrar `last_used_at` para diagnóstico.
+Os dois botões ficam abaixo do menu principal, em uma seção visual separada. Cada um será um card compacto (~48px altura) com:
+- Ícone à esquerda (Chrome / Slack)
+- Nome "Conector Chrome" / "Conector Slack"
+- Borda suave, `rounded-xl`, cor de destaque (`text-primary`)
+- Hover com lift sutil
 
-5. Fechar o loop de suporte
-- Exibir estados claros no modal:
-  - token copiado
-  - token inválido/revogado
-  - sessão expirada
-- Exibir mensagens melhores no popup da extensão quando a autenticação falhar.
-- Atualizar a Central de Conhecimento e os textos dos modais para refletir o fluxo novo.
+Referência visual: como aparece no screenshot do usuário ("Conector Chrome" e "Conector Slack" em roxo/laranja).
 
-Detalhes técnicos
-- Frontend:
-  - refatorar `src/components/AppSidebar.tsx`
-  - refatorar `src/components/ProfileSettingsDialog.tsx`
-  - criar algo como `src/components/extension/ChromeExtensionSetupDialog.tsx`
-  - criar algo como `src/hooks/useExtensionToken.ts`
-- Backend:
-  - nova migration para tabela de tokens da extensão com RLS e armazenamento por hash
-  - nova função backend para gerar/rotacionar token
-  - ajuste em `supabase/functions/upload-meeting/index.ts`
-- Extensão:
-  - atualizar `extension/popup.js`
-  - atualizar `extension/offscreen.js`
-  - reempacotar `public/rhitmo-recorder-extension.zip`
+### Detalhes técnicos
 
-Critérios de sucesso
-- O botão volta a funcionar no preview e no app publicado.
-- Mesmo se a cópia automática falhar, o token continua copiável manualmente no modal.
-- Não existem mais duas implementações divergentes para esse fluxo.
-- A extensão autentica e envia gravações com o contrato correto.
-- Usuários já conectados não quebram durante a transição.
+**Arquivos modificados:**
+- `src/components/AppSidebar.tsx` — remover "Extensão Chrome" do `menuItems`, criar seção "Conectores" com dois botões estilizados que abrem seus respectivos modais
+- `src/components/extension/ChromeExtensionSetupDialog.tsx` — renomear título para "Conector Chrome — Rhitmo Recorder"
+
+**Arquivo novo:**
+- `src/components/slack/SlackConnectorDialog.tsx` — modal com:
+  - Status de conexão (usando `useSlackConnection`)
+  - Instruções de como conectar via Slack (`/rhitmo`)
+  - Botão "Conectar ao Slack" (redireciona para OAuth)
+  - Se já conectado, mostrar status verde + opção de reconectar
+
+**Sem mudanças no backend** — o fluxo Slack OAuth já existe (`useSlackConnection`, `slack-oauth-callback`, `slack-link`).
+
