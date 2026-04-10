@@ -207,7 +207,7 @@ const translations = {
     footerVsLattice: "Rhitmo vs. Lattice",
     // Phase 3 — Value Proposition
     forWhoOverline: "Feito para você",
-    forWhoTitle: "Quem usa Rhitmo — e por quê.",
+    forWhoTitle: "Quem usa Rhitmo e por quê.",
     forWhoLeaderTitle: "Líderes individuais",
     forWhoLeaderText: "Você lidera 3 a 10 pessoas. Não tem tempo de escrever reviews do zero. Precisa de um copiloto que registra tudo e entrega o draft pronto.",
     forWhoLeaderBadge: "Caso de uso #1",
