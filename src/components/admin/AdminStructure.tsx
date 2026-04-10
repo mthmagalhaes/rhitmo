@@ -379,8 +379,8 @@ export const AdminStructure = () => {
                 >
                   {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                   <Building className="h-4 w-4 text-primary" />
-                  <span className="font-semibold flex-1">{ws.name}</span>
-                  <Badge variant="outline" className={planColors[ws.plan_tier] || ''}>
+                   <span className="font-semibold flex-1">{ws.name}</span>
+                   <span className="text-xs text-muted-foreground">Owner: {getUserEmail(ws.owner_id)}</span>
                     {ws.plan_tier}
                   </Badge>
                   <Badge variant={ws.is_active ? 'default' : 'destructive'} className="text-xs">
