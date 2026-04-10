@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { BulkOnboardDialog } from './BulkOnboardDialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +18,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import {
   Building, Users, UserPlus, Plus, Edit, Trash2, Loader2, ChevronDown, ChevronRight,
-  Crown, User,
+  Crown, User, FileSpreadsheet,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -54,6 +55,7 @@ export const AdminStructure = () => {
   const [expandedWs, setExpandedWs] = useState<Set<string>>(new Set());
   const [expandedTeam, setExpandedTeam] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   // Dialogs
   const [wsDialog, setWsDialog] = useState<{ open: boolean; mode: 'create' | 'edit'; data?: WorkspaceRow }>({ open: false, mode: 'create' });
@@ -315,10 +317,16 @@ export const AdminStructure = () => {
           <h1 className="text-3xl font-bold tracking-tight">Estrutura da Plataforma</h1>
           <p className="text-muted-foreground">Gerencie workspaces, times, líderes e liderados</p>
         </div>
-        <Button onClick={openCreateWs} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Novo Workspace
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setBulkOpen(true)} className="gap-2">
+            <FileSpreadsheet className="h-4 w-4" />
+            Importar em Massa
+          </Button>
+          <Button onClick={openCreateWs} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Novo Workspace
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -672,6 +680,12 @@ export const AdminStructure = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <BulkOnboardDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        workspaceNames={workspaces?.map(w => w.name) || []}
+      />
     </div>
   );
 };
