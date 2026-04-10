@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useLinkedMember } from '@/hooks/useLinkedMember';
+import { useAccount } from '@/contexts/AccountContext';
 import { Loader2 } from 'lucide-react';
 
 interface DirectReportGuardProps {
@@ -10,19 +10,16 @@ interface DirectReportGuardProps {
 export function DirectReportGuard({ children }: DirectReportGuardProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isLinkedMember, needsOnboarding, isLoading } = useLinkedMember();
+  const { isLinkedMember, needsOnboarding, loading } = useAccount();
 
   useEffect(() => {
-    // Não redirecionar se já está no onboarding
     if (location.pathname === '/onboarding') return;
-
-    // Redirecionar se é linked member e precisa de onboarding
-    if (!isLoading && isLinkedMember && needsOnboarding) {
+    if (!loading && isLinkedMember && needsOnboarding) {
       navigate('/onboarding', { replace: true });
     }
-  }, [isLoading, isLinkedMember, needsOnboarding, location.pathname, navigate]);
+  }, [loading, isLinkedMember, needsOnboarding, location.pathname, navigate]);
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
