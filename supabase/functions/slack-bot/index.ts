@@ -176,10 +176,11 @@ async function resolveMember(
   const teamIds = teams.map(t => t.id);
 
   // Case 1: Slack mention format <@U12345> or <@U12345|display_name>
-  const mentionMatch = input.match(/^<@(U[A-Z0-9]+)(?:\|[^>]*)?>/);
+  const mentionMatch = input.match(/^<@(U[A-Z0-9]+)(?:\|([^>]+))?>/);
   if (mentionMatch) {
     const slackMentionUserId = mentionMatch[1];
-    console.log('[RESOLVE] Slack mention detected, user ID:', slackMentionUserId);
+    const mentionDisplayName = mentionMatch[2] || '';
+    console.log('[RESOLVE] Slack mention detected, user ID:', slackMentionUserId, '| display name:', mentionDisplayName);
 
     // Look up via slack_integrations → linked_user_id → team_members
     const { data: integration } = await supabase
@@ -204,39 +205,28 @@ async function resolveMember(
       }
     }
 
-    // Fallback: try to get Slack user's real name and fuzzy match
+    // Fallback 1: use display name from mention (e.g. "guilherme.cunha" → "guilherme cunha")
+    if (mentionDisplayName) {
+      const cleanDisplayName = mentionDisplayName.replace(/[._-]/g, ' ').trim();
+      console.log('[RESOLVE] Trying display name from mention:', cleanDisplayName);
+      const foundViaDisplay = await fuzzyMatchMember(supabase, teamIds, cleanDisplayName);
+      if (foundViaDisplay) {
+        console.log('[RESOLVE] Found via mention display name:', foundViaDisplay.name);
+        return foundViaDisplay;
+      }
+    }
+
+    // Fallback 2: try to get Slack user's real name and fuzzy match
     try {
       const slackUser = await slackApi('users.info', { user: slackMentionUserId });
       if (slackUser.ok) {
         const realName = slackUser.user?.real_name || slackUser.user?.profile?.display_name || '';
         console.log('[RESOLVE] Slack user real name:', realName);
         if (realName) {
-          const { data: member } = await supabase
-            .from('team_members')
-            .select('id, name')
-            .in('team_id', teamIds)
-            .ilike('name', `%${realName}%`)
-            .limit(1)
-            .maybeSingle();
-          if (member) {
-            console.log('[RESOLVE] Found via real name fallback:', member.name);
-            return member;
-          }
-          // Try first + last name parts
-          const nameParts = realName.split(' ');
-          if (nameParts.length >= 2) {
-            const { data: member2 } = await supabase
-              .from('team_members')
-              .select('id, name')
-              .in('team_id', teamIds)
-              .ilike('name', `%${nameParts[0]}%`)
-              .ilike('name', `%${nameParts[nameParts.length - 1]}%`)
-              .limit(1)
-              .maybeSingle();
-            if (member2) {
-              console.log('[RESOLVE] Found via name parts:', member2.name);
-              return member2;
-            }
+          const foundViaReal = await fuzzyMatchMember(supabase, teamIds, realName);
+          if (foundViaReal) {
+            console.log('[RESOLVE] Found via real name fallback:', foundViaReal.name);
+            return foundViaReal;
           }
         }
       }
