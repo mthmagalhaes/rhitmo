@@ -102,9 +102,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     && !pendingInviteLoading
     && !roleLoading;
 
-  // CRITICAL: Leaders/HR admins should NEVER see the workspace onboarding modal.
-  // Even if the workspace query temporarily returns null (race condition),
-  // the role check already confirms they have leadership access.
+  // CRITICAL: Never show onboarding if there was an error resolving workspace.
+  // RLS errors (e.g. infinite recursion) return null workspace + error, and
+  // treating that as "no workspace" would trap existing users in onboarding.
+  // Leaders/HR admins should NEVER see this modal regardless.
   const needsWorkspaceSetup = allContextResolved
     && user 
     && !workspace 
