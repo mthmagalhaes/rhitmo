@@ -194,6 +194,7 @@ const App = () => (
       </AuthEventProvider>
     </TooltipProvider>
     </ThemeProvider>
+    </AccountProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
