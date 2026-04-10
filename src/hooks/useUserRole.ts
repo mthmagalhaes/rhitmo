@@ -20,7 +20,6 @@ export function useUserRole(): UserRoleData {
     queryFn: async (): Promise<UserRole> => {
       if (!user) return 'user';
 
-      // Check HR admin, workspace owner, and team leader in parallel
       const [hrResult, ownerResult, teamLeaderResult] = await Promise.all([
         supabase
           .from('workspaces')
@@ -43,12 +42,10 @@ export function useUserRole(): UserRoleData {
           .maybeSingle(),
       ]);
 
-      // Log errors for debugging — these silent failures cause leaders to appear as 'user'
       if (hrResult.error) console.warn('[useUserRole] HR check error:', hrResult.error.message);
       if (ownerResult.error) console.warn('[useUserRole] Owner check error:', ownerResult.error.message);
       if (teamLeaderResult.error) console.warn('[useUserRole] Team leader check error:', teamLeaderResult.error.message);
 
-      // If ALL queries errored, throw so react-query retries
       if (hrResult.error && ownerResult.error && teamLeaderResult.error) {
         throw new Error('All role-check queries failed');
       }
@@ -63,13 +60,17 @@ export function useUserRole(): UserRoleData {
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
   });
 
-  const resolvedRole = role ?? 'user';
+  const stillLoading = authLoading || isLoading;
+
+  // CRITICAL: Do not default to 'user' while still loading.
+  // This prevents momentary "member" flashes for leaders.
+  const resolvedRole: UserRole = stillLoading ? 'leader' : (role ?? 'user');
 
   return {
     role: resolvedRole,
-    isHRAdmin: resolvedRole === 'hr_admin',
-    isLeader: resolvedRole === 'leader' || resolvedRole === 'hr_admin',
-    isUser: resolvedRole === 'user',
-    loading: authLoading || isLoading,
+    isHRAdmin: !stillLoading && resolvedRole === 'hr_admin',
+    isLeader: stillLoading || resolvedRole === 'leader' || resolvedRole === 'hr_admin',
+    isUser: !stillLoading && resolvedRole === 'user',
+    loading: stillLoading,
   };
 }
