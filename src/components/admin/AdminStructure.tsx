@@ -272,12 +272,12 @@ export const AdminStructure = () => {
   };
 
   const openCreateWs = () => {
-    setWsForm({ name: '', plan_tier: 'pulse' });
+    setWsForm({ name: '', plan_tier: 'pulse', owner_id: '', hr_admin_id: '' });
     setWsDialog({ open: true, mode: 'create' });
   };
 
   const openEditWs = (ws: WorkspaceRow) => {
-    setWsForm({ name: ws.name, plan_tier: ws.plan_tier });
+    setWsForm({ name: ws.name, plan_tier: ws.plan_tier, owner_id: ws.owner_id, hr_admin_id: '' });
     setWsDialog({ open: true, mode: 'edit', data: ws });
   };
 
