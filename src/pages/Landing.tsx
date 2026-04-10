@@ -1105,47 +1105,7 @@ const Landing = () => {
       </section>
 
 
-      {/* Seção: O que Rhitmo NÃO é */}
-      <section className="py-24 bg-background">
-        <div className="container mx-auto px-4 max-w-3xl">
-          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{lang === 'pt' ? 'Transparência' : 'Transparency'}</p>
-          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-6 text-foreground">
-            {t.whatWeAreNotTitle}
-          </h2>
-          <p className="text-lg text-muted-foreground text-center mb-8 leading-relaxed">
-            {t.whatWeAreNotIntro}
-          </p>
-          <div className="bg-muted/30 rounded-2xl border-l-4 border-l-primary/30 border p-8 space-y-4 mb-8">
-            {t.whatWeAreNotItems.map((item) => (
-              <div key={item} className="flex items-start gap-3">
-                <XCircle className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
-                <span className="text-foreground">{item}</span>
-              </div>
-            ))}
-          </div>
-          <p className="text-muted-foreground leading-relaxed text-center mb-6">
-            {t.whatWeAreNotOutro}
-          </p>
-        </div>
-      </section>
 
-      {/* Seção: Positioning Statement */}
-      <section className="py-24 bg-gradient-to-br from-primary/90 to-primary">
-        <div className="container mx-auto px-4 max-w-3xl text-center space-y-8">
-          <p className="font-serif text-2xl lg:text-3xl font-bold text-primary-foreground leading-snug">
-            {t.positioningLine1}
-          </p>
-          <p className="font-serif text-xl lg:text-2xl text-primary-foreground/90 leading-relaxed">
-            {t.positioningLine2}
-          </p>
-          <p className="text-lg text-primary-foreground/80 leading-relaxed">
-            {t.positioningLine3}
-          </p>
-          <Button size="lg" variant="secondary" className="text-base px-8 rounded-xl" onClick={() => navigate('/auth?mode=signup')}>
-            {t.positioningCTA}
-          </Button>
-        </div>
-      </section>
 
       {/* FAQ Section */}
       <section className="py-24 bg-muted/30">
