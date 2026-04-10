@@ -230,6 +230,56 @@ serve(async (req) => {
           }
         }
 
+        // Send role-specific welcome email (only for new users)
+        if (!existing) {
+          const templateMap: Record<string, { templateName: string; templateData: Record<string, any> }> = {
+            leader: {
+              templateName: 'leader-welcome',
+              templateData: {
+                leaderName: row.name || undefined,
+                teamName: row.team || undefined,
+                workspaceName: row.workspace || undefined,
+                dashboardUrl: 'https://app-rhitmo.lovable.app',
+              },
+            },
+            member: {
+              templateName: 'member-welcome',
+              templateData: {
+                memberName: row.name || undefined,
+                leaderName: row.leader_email ? users.find(u => u.email?.toLowerCase() === row.leader_email?.toLowerCase())?.name : undefined,
+                teamName: row.team || undefined,
+                syncUrl: 'https://app-rhitmo.lovable.app/sync',
+              },
+            },
+            hr_admin: {
+              templateName: 'hr-admin-welcome',
+              templateData: {
+                adminName: row.name || undefined,
+                workspaceName: row.workspace || undefined,
+                dashboardUrl: 'https://app-rhitmo.lovable.app/hr',
+              },
+            },
+          };
+
+          const emailConfig = templateMap[row.role];
+          if (emailConfig) {
+            try {
+              await supabaseAdmin.functions.invoke('send-transactional-email', {
+                body: {
+                  templateName: emailConfig.templateName,
+                  recipientEmail: email,
+                  idempotencyKey: `bulk-welcome-${row.role}-${userId}`,
+                  templateData: emailConfig.templateData,
+                },
+              });
+              const existingResult = results.find(r => r.email === email);
+              if (existingResult) existingResult.message += ' + Email de boas-vindas enviado';
+            } catch (emailErr: any) {
+              console.warn(`⚠️ Erro ao enviar email de boas-vindas para ${email}:`, emailErr.message);
+            }
+          }
+        }
+
         // Ensure there's a result for this email
         if (!results.find(r => r.email === email)) {
           results.push({ email, status: 'ok', message: 'Processado' });
