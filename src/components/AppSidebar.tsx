@@ -6,6 +6,7 @@ import { NavLink } from '@/components/NavLink';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
 import { MemberAvatar } from '@/components/MemberAvatar';
 import { ProfileSettingsDialog } from '@/components/ProfileSettingsDialog';
+import { ChromeExtensionSetupDialog } from '@/components/extension/ChromeExtensionSetupDialog';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
@@ -32,7 +33,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Separator } from '@/components/ui/separator';
 
 const menuItems = [
   { title: 'Início', url: '/dashboard', icon: Home },
@@ -73,92 +73,25 @@ export function AppSidebar() {
   const [supportDialogOpen, setSupportDialogOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [extensionDialogOpen, setExtensionDialogOpen] = useState(false);
-  const [tokenCopied, setTokenCopied] = useState(false);
-
-  const copyTextToClipboard = async (text: string) => {
-    if (navigator.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(text);
-        return true;
-      } catch {
-        // Fallback para contextos com permissão bloqueada (ex.: iframe do preview)
-      }
-    }
-
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.setAttribute('readonly', 'true');
-    textarea.style.position = 'fixed';
-    textarea.style.opacity = '0';
-    textarea.style.pointerEvents = 'none';
-    textarea.style.inset = '0';
-
-    document.body.appendChild(textarea);
-    textarea.focus();
-    textarea.select();
-    textarea.setSelectionRange(0, textarea.value.length);
-
-    try {
-      return document.execCommand('copy');
-    } catch {
-      return false;
-    } finally {
-      document.body.removeChild(textarea);
-    }
-  };
 
   const handleCopyEmail = async () => {
     const email = 'support@rhitmo.co';
-    const copiedSuccessfully = await copyTextToClipboard(email);
-
-    if (!copiedSuccessfully) {
-      window.prompt('Copie este e-mail manualmente:', email);
+    let success = false;
+    if (navigator.clipboard?.writeText) {
+      try { await navigator.clipboard.writeText(email); success = true; } catch { /* fallback */ }
     }
-
+    if (!success) {
+      const ta = document.createElement('textarea');
+      ta.value = email;
+      ta.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { success = document.execCommand('copy'); } catch { success = false; }
+      document.body.removeChild(ta);
+    }
     setCopied(true);
-    toast({ title: copiedSuccessfully ? 'E-mail copiado!' : 'Copie o e-mail manualmente' });
+    toast({ title: success ? 'E-mail copiado!' : 'Copie manualmente: support@rhitmo.co' });
     setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleDownloadExtension = () => {
-    fetch('/rhitmo-recorder-extension.zip')
-      .then((res) => {
-        if (!res.ok) throw new Error(`Download failed: ${res.status}`);
-        return res.blob();
-      })
-      .then((blob) => {
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'rhitmo-recorder-extension.zip';
-        a.click();
-        URL.revokeObjectURL(a.href);
-      })
-      .catch(() => toast({ title: 'Erro ao baixar extensão', variant: 'destructive' }));
-  };
-
-  const handleCopyToken = async () => {
-    const { data } = await import('@/integrations/supabase/client').then(m => m.supabase.auth.getSession());
-    const token = data?.session?.access_token;
-
-    if (!token) {
-      toast({ title: 'Faça login novamente para copiar o token', variant: 'destructive' });
-      return;
-    }
-
-    const copiedSuccessfully = await copyTextToClipboard(token);
-
-    if (!copiedSuccessfully) {
-      window.prompt('Copie o token manualmente:', token);
-      toast({
-        title: 'Não consegui copiar automaticamente',
-        description: 'Abri o token para cópia manual.',
-      });
-      return;
-    }
-
-    setTokenCopied(true);
-    toast({ title: 'Token copiado!' });
-    setTimeout(() => setTokenCopied(false), 2000);
   };
 
   const handleSignOut = async () => {
