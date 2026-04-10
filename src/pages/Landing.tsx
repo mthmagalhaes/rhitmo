@@ -758,9 +758,10 @@ const Landing = () => {
       <WaveDivider className="bg-background" />
 
       {/* Seção: Antes vs. Depois */}
-      <section className="py-20 bg-background">
+      <section className="py-24 bg-background">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
+          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{lang === 'pt' ? 'Antes & Depois' : 'Before & After'}</p>
+          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
             {t.beforeAfterTitle}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
@@ -793,13 +794,14 @@ const Landing = () => {
       </section>
 
       {/* Seção: Vídeo Demo */}
-      <section className="py-20 bg-muted/50">
+      <section className="py-24 bg-muted/50">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center space-y-8">
             
             {/* Título */}
             <div className="space-y-3">
-              <h2 className="text-3xl lg:text-4xl font-bold text-foreground">{t.videoTitle}</h2>
+              <p className="uppercase text-xs font-semibold tracking-widest text-primary">{lang === 'pt' ? 'Demonstração' : 'Demo'}</p>
+              <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-foreground">{t.videoTitle}</h2>
               <p className="text-lg text-muted-foreground">
                 {t.videoSubtitle}
               </p>
@@ -820,9 +822,10 @@ const Landing = () => {
       </section>
 
       {/* Seção: Rhitmo vs. Outros */}
-      <section className="py-20 bg-background">
+      <section className="py-24 bg-background">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
+          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{lang === 'pt' ? 'Comparativo' : 'Comparison'}</p>
+          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
             {t.comparisonTitle}
           </h2>
 
@@ -836,7 +839,7 @@ const Landing = () => {
                     <TableHead className="text-center">{t.compSpreadsheets}</TableHead>
                     <TableHead className="text-center">{t.compQulture}</TableHead>
                     <TableHead className="text-center">{t.compLattice}</TableHead>
-                    <TableHead className="text-center font-bold text-primary">{t.compRhitmo}</TableHead>
+                    <TableHead className="text-center font-bold text-primary bg-primary/5">{t.compRhitmo}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -846,7 +849,7 @@ const Landing = () => {
                       <TableCell className="text-center"><ComparisonIcon status={row.spreadsheets} /></TableCell>
                       <TableCell className="text-center"><ComparisonIcon status={row.qulture} /></TableCell>
                       <TableCell className="text-center"><ComparisonIcon status={row.lattice} /></TableCell>
-                      <TableCell className="text-center"><ComparisonIcon status={row.rhitmo} /></TableCell>
+                      <TableCell className="text-center bg-primary/5"><ComparisonIcon status={row.rhitmo} /></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
