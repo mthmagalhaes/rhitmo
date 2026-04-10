@@ -368,3 +368,17 @@ All colors MUST be HSL.
 .highlight-marker[data-animate] {
   animation: highlight-grow 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
+.highlight-marker--destructive {
+  background-image: linear-gradient(
+    120deg,
+    hsl(var(--destructive) / 0.15) 0%,
+    hsl(var(--destructive) / 0.22) 100%
+  );
+  background-repeat: no-repeat;
+  background-position: 0 88%;
+  background-size: 100% 40%;
+  padding: 0 0.15em;
+  border-radius: 2px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
