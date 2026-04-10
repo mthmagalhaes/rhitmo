@@ -1053,42 +1053,51 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Seção: Para quem é Rhitmo */}
-      <section className="py-24 bg-background">
+      {/* Seção: Para quem é Rhitmo — Persona Cards */}
+      <section className="py-28 bg-background">
         <div className="container mx-auto px-4">
-          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{lang === 'pt' ? 'Público-alvo' : 'Target Audience'}</p>
-          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
+          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{t.forWhoOverline}</p>
+          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-4 text-foreground">
             {t.forWhoTitle}
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {/* Líder */}
-            <div className="bg-card rounded-2xl border p-8 space-y-4 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 shadow-md relative">
-              <span className="absolute -top-3 left-6 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full">{t.forWhoLeaderBadge}</span>
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Target className="h-6 w-6 text-primary" />
+          <p className="text-lg text-muted-foreground text-center mb-14 max-w-2xl mx-auto">
+            {lang === 'pt' ? 'Três perfis, uma plataforma. Encontre o seu.' : 'Three profiles, one platform. Find yours.'}
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto items-start">
+            {/* Líder — Card em destaque */}
+            <div className="bg-card rounded-2xl border-2 border-primary p-8 lg:p-10 space-y-5 shadow-lg md:scale-105 relative">
+              <span className="absolute -top-3 left-6 bg-primary text-primary-foreground text-xs font-semibold px-4 py-1.5 rounded-full">{t.forWhoLeaderBadge}</span>
+              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+                <Target className="h-7 w-7 text-primary" />
               </div>
               <h3 className="text-xl font-bold text-foreground">{t.forWhoLeaderTitle}</h3>
               <p className="text-muted-foreground leading-relaxed">{t.forWhoLeaderText}</p>
+              <Button className="w-full rounded-xl" onClick={() => navigate('/auth?mode=signup')}>
+                {lang === 'pt' ? 'Começar grátis' : 'Get started free'}
+              </Button>
             </div>
+
             {/* PME */}
-            <div className="bg-card rounded-2xl border p-8 space-y-4 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 shadow-md relative">
-              <span className="absolute -top-3 left-6 bg-emerald-500 text-white text-xs font-semibold px-3 py-1 rounded-full">{t.forWhoPmeBadge}</span>
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                <Users className="h-6 w-6 text-emerald-600" />
+            <div className="bg-card rounded-2xl border p-8 space-y-5 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all duration-300 relative">
+              <span className="absolute -top-3 left-6 bg-accent text-accent-foreground text-xs font-semibold px-3 py-1 rounded-full">{t.forWhoPmeBadge}</span>
+              <div className="w-14 h-14 rounded-full bg-accent/50 flex items-center justify-center">
+                <Users className="h-7 w-7 text-accent-foreground" />
               </div>
               <h3 className="text-xl font-bold text-foreground">{t.forWhoPmeTitle}</h3>
               <p className="text-muted-foreground leading-relaxed">{t.forWhoPmeText}</p>
             </div>
+
             {/* Enterprise */}
-            <div className="bg-card rounded-2xl border p-8 space-y-4 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 shadow-md relative">
+            <div className="bg-card rounded-2xl border p-8 space-y-5 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all duration-300 relative">
               <span className="absolute -top-3 left-6 bg-muted text-muted-foreground text-xs font-semibold px-3 py-1 rounded-full border">{t.forWhoEntBadge}</span>
-              <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
-                <Building className="h-6 w-6 text-muted-foreground" />
+              <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+                <Building className="h-7 w-7 text-muted-foreground" />
               </div>
               <h3 className="text-xl font-bold text-foreground">{t.forWhoEntTitle}</h3>
               <p className="text-muted-foreground leading-relaxed">{t.forWhoEntText}</p>
-              <Link to="/enterprise" className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
-                {t.forWhoEntLink} <ArrowRight className="h-3 w-3" />
+              <Link to="/enterprise" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+                {t.forWhoEntLink} <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
           </div>
