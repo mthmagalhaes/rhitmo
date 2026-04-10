@@ -46,6 +46,7 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
+    <AccountProvider>
     <ThemeProvider>
     <TooltipProvider>
       <Toaster />
