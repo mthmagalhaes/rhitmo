@@ -3,7 +3,7 @@ import { RhitmoLogo } from '@/components/RhitmoLogo';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LayoutDashboard, Settings, FileDown, LogOut, Home, Users, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Settings, FileDown, LogOut, Home, Users, ShieldCheck, Network } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -92,6 +92,13 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
               >
                 <ShieldCheck className="h-4 w-4" />
                 Gestão de Acessos
+              </TabsTrigger>
+              <TabsTrigger 
+                value="structure" 
+                className="w-full justify-start gap-3 text-slate-300 hover:text-white hover:bg-slate-800 data-[state=active]:bg-slate-800 data-[state=active]:text-violet-400"
+              >
+                <Network className="h-4 w-4" />
+                Estrutura
               </TabsTrigger>
             </TabsList>
           </Tabs>
