@@ -1,26 +1,51 @@
 
 
-## Corrigir: Vídeo demo aparecendo para liderados
+## Habilitar DMs com o Bot Rhitmo no Slack
 
 ### Problema
-Na tela do liderado em `/dashboard/perfil`, o vídeo do YouTube "Veja como gerenciar seu time em 2 minutos" aparece no estado vazio. Esse conteúdo é voltado para líderes e não faz sentido para liderados.
+O bot Rhitmo não aceita mensagens diretas — o Slack mostra "O envio de mensagens para esse app foi desativado". Isso acontece porque o **Messages Tab** não está habilitado nas configurações do app Slack, e o bot não processa eventos de mensagem.
 
-Isso acontece porque um usuário que é tanto liderado (linked member) quanto tem acesso como líder (ou simplesmente não está corretamente vinculado) cai na view de líder do `Index.tsx`, que mostra o vídeo demo quando não há membros no time.
+### Causa raiz
+1. **Configuração do Slack App**: O "Messages Tab" da aba App Home está desativado no painel do Slack (api.slack.com/apps)
+2. **Código**: A edge function `slack-bot` só processa `slash commands`, `interactive components` e `url_verification`. Não processa `event_callback` (tipo usado para mensagens enviadas ao bot)
 
-### Solução
+### Solução (2 partes)
 
-**1. `src/pages/Index.tsx` — Condicionar o vídeo demo ao papel de líder**
+#### Parte 1: Configuração manual no Slack App (você precisa fazer)
 
-No trecho do empty state (linhas ~549-558), verificar se o usuário é um linked member antes de mostrar o vídeo. Se for um liderado sem time próprio, mostrar uma mensagem adequada em vez do vídeo de onboarding de líder.
+No painel do app em **https://api.slack.com/apps** > Rhitmo:
 
-Importar `useLinkedMember` (já importado) e usar `isLinkedMember` para:
-- Se `isLinkedMember === true` e caiu na view de líder: não mostrar vídeo, mostrar mensagem neutra ou redirecionar para a view de liderado
-- Se `isLinkedMember === false` (é líder): manter o vídeo demo atual
+1. **App Home** > ativar **"Messages Tab"** e marcar **"Allow users to send Slash commands and messages from the messages tab"**
+2. **Event Subscriptions** > ativar Events e configurar:
+   - Request URL: `https://lybkgujyezzzvbzypxed.supabase.co/functions/v1/slack-bot`
+   - Em **Subscribe to bot events**, adicionar: `message.im` (mensagens diretas para o bot)
+3. **OAuth & Permissions** > garantir que o scope `im:history` está presente (necessário para ler mensagens DM)
+4. **Reinstalar o app** no workspace após as alterações
 
-**2. Validação adicional**
+#### Parte 2: Atualizar a Edge Function `slack-bot`
 
-Verificar se o `isLinkedMember` já está sendo usado no componente Index e garantir que a lógica de redirecionamento na linha 325 cubra o caso de `/dashboard/perfil` com `activeTab`.
+Modificar o handler principal para processar eventos do tipo `event_callback` com subtipo `message`:
+
+- No bloco que trata payloads JSON (linhas 1091-1099), em vez de retornar `'ok'` para qualquer JSON que não seja `url_verification`, detectar `event_callback` e processar
+- Para mensagens DM do usuário ao bot:
+  - Identificar o `slack_user_id` do remetente
+  - Resolver a persona (líder/liderado/RH) usando `getUserPersona()`
+  - Responder com um menu contextual baseado na persona (similar ao `/rhitmo`, mas adaptado ao contexto de DM)
+  - Ignorar mensagens do próprio bot (`bot_id` presente) para evitar loops
+- Adicionar uma mensagem de boas-vindas quando o usuário abre a DM pela primeira vez (evento `app_home_opened` com `tab: "messages"`)
+
+**Fluxo de resposta a DMs:**
+```
+Usuário envia mensagem → event_callback (message.im)
+  → Verificar assinatura
+  → Ignorar se é bot message (evitar loop)
+  → Resolver persona
+  → Responder com menu de ações contextual via chat.postMessage
+```
 
 ### Arquivos alterados
-- `src/pages/Index.tsx` — Condicionar empty state com vídeo ao role de líder
+- `supabase/functions/slack-bot/index.ts` — adicionar handler de `event_callback` para `message.im` e `app_home_opened`
+
+### O que você precisa fazer manualmente
+Acessar https://api.slack.com/apps, selecionar o app Rhitmo, e fazer as configurações da Parte 1. Depois de aprovar este plano, eu implemento a Parte 2 (código).
 
