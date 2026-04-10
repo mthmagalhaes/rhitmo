@@ -163,6 +163,39 @@ async function generateStateToken(slackUserId: string, slackTeamId: string): Pro
   return `${b64Payload}.${b64Sig}`;
 }
 
+// ── Fuzzy Member Match Helper ─────────────────────────────
+async function fuzzyMatchMember(
+  db: any,
+  teamIds: string[],
+  name: string
+): Promise<{ id: string; name: string } | null> {
+  // Try direct ilike match
+  const { data: member } = await db
+    .from('team_members')
+    .select('id, name')
+    .in('team_id', teamIds)
+    .ilike('name', `%${name}%`)
+    .limit(1)
+    .maybeSingle();
+  if (member) return member;
+
+  // Try first + last name parts
+  const nameParts = name.split(' ').filter(Boolean);
+  if (nameParts.length >= 2) {
+    const { data: member2 } = await db
+      .from('team_members')
+      .select('id, name')
+      .in('team_id', teamIds)
+      .ilike('name', `%${nameParts[0]}%`)
+      .ilike('name', `%${nameParts[nameParts.length - 1]}%`)
+      .limit(1)
+      .maybeSingle();
+    if (member2) return member2;
+  }
+
+  return null;
+}
+
 // ── Member Resolution ─────────────────────────────────────
 // Resolves a Slack mention (<@U12345>) or plain text name to a team member
 async function resolveMember(
