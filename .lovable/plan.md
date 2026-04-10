@@ -1,40 +1,50 @@
 
 
-## Plano: Remover todos os travessões (—) do copy da Landing Page
+## Plano: Atualizar copy dos cards Produtividade e Economia na seção Impacto Mensurável
 
-Substituir cada ocorrência de " — " por alternativas naturais (pontos, vírgulas, ou reestruturação da frase) em ambos os idiomas (PT e EN).
+### Análise dos dados fornecidos
 
-### Mudanças no arquivo `src/pages/Landing.tsx`
+**Card Produtividade (header `4h → 2min` mantido):**
+- Gestores gastam 210h/ano (5 semanas) em gestão de desempenho
+- Só a redação consome 65h/ano
+- Preparação de dados: 48h/ano
+- Com IA, preparação cai 75% e tempo total cai 25%
 
-**PT (linhas 49-240):**
+**Card Economia (header `60%` mantido):**
+- Custo em grandes empresas: US$ 2,4M a US$ 35M/ano
+- 95% dos gestores insatisfeitos com sistemas tradicionais
+- 90% dos líderes de RH dizem que o processo não gera dados precisos
 
-| Linha | De | Para |
-|---|---|---|
-| 56 | `4h por review — reescrevendo do zero toda vez` | `4h por review, reescrevendo do zero toda vez` |
-| 63 | `Draft completo em 30 segundos — você só revisa` | `Draft completo em 30 segundos. Você só revisa.` |
-| 85 | `Funciona em 5 min — sem demo call, sem implantação` | `Funciona em 5 min, sem demo call, sem implantação` |
-| 86 | `Plano gratuito real — não trial de 14 dias` | `Plano gratuito real, não trial de 14 dias` |
-| 115 | `...sejam lembradas — baseado em fatos...` | `...sejam lembradas. Baseado em fatos, não na memória recente do gestor.` |
-| 120 | `...devolvidas por ciclo de avaliação — sem perder qualidade.` | `...devolvidas por ciclo de avaliação, sem perder qualidade.` |
-| 218 | `...IA nativa de verdade — não um checkbox de marketing.` | `...IA nativa de verdade, não um checkbox de marketing.` |
+**Card Equidade:** intocado.
 
-**EN (linhas 257-443):**
+### Mudanças em `src/pages/Landing.tsx`
 
-| Linha | De | Para |
-|---|---|---|
-| 257 | `AI-Native since day 1 — Not an add-on` | `AI-Native since day 1. Not an add-on.` |
-| 264 | `4 hours per review — rewriting from scratch every time` | `4 hours per review, rewriting from scratch every time` |
-| 271 | `Full draft in 30 seconds — you just review` | `Full draft in 30 seconds. You just review.` |
-| 292 | `Works in 5 min — no demo call, no deployment` | `Works in 5 min, no demo call, no deployment` |
-| 293 | `Real free plan — not a 14-day trial` | `Real free plan, not a 14-day trial` |
-| 310 | `...It's not post-review analysis — it's prevention.` | `...It's not post-review analysis. It's prevention.` |
-| 320 | `...remembered — based on facts...` | `...remembered. Based on facts, not your manager's recent memory.` |
-| 324 | `...returned per review cycle — without losing quality.` | `...returned per review cycle, without losing quality.` |
-| 405 | `Who uses Rhitmo — and why.` | `Who uses Rhitmo and why.` |
-| 413 | `...truly native AI — not a marketing checkbox.` | `...truly native AI, not a marketing checkbox.` |
+**PT (linha 93):**
+```
+De: "Tempo médio para escrever uma avaliação de desempenho completa. De uma tarde inteira para o tempo de um café."
+Para: "Gestores dedicam 210 horas por ano a avaliações de desempenho. São cinco semanas inteiras. Só a redação consome 65 horas. Com Rhitmo, o draft sai pronto em segundos."
+```
 
-### Critério de substituição
-- Separação de duas frases independentes → ponto final
-- Complemento explicativo → vírgula
-- Nenhum travessão residual no arquivo
+**PT (linha 97):**
+```
+De: "Redução no custo por líder comparado a plataformas tradicionais de performance management."
+Para: "Em grandes empresas, avaliações tradicionais custam até US$ 35 milhões por ano. E 95% dos gestores estão insatisfeitos com o resultado. Rhitmo corta o custo e entrega precisão."
+```
+
+**EN (linha 300):**
+```
+De: "Average time to write a complete performance review. From an entire afternoon to the time of a coffee break."
+Para: "Managers spend 210 hours per year on performance reviews. That's five full weeks. Writing alone takes 65 hours. With Rhitmo, the draft is ready in seconds."
+```
+
+**EN (linha 304):**
+```
+De: "Cost reduction per leader compared to traditional performance management platforms."
+Para: "In large companies, traditional reviews cost up to $35 million per year. And 95% of managers are dissatisfied with the results. Rhitmo cuts costs and delivers precision."
+```
+
+### O que não muda
+- Headers dos 3 cards (4h → 2min, 38x, 60%)
+- Card de Equidade (38x)
+- Layout, cores, tipografia, estrutura JSX
 
