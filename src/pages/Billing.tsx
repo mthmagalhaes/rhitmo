@@ -38,7 +38,7 @@ const PLANS = {
     price: 'Grátis',
     priceDetail: 'para sempre',
     features: [
-      'Até 3 liderados',
+      'Até 2 liderados',
       '20 mensagens de Mentor Chat por mês',
       'Notas e anotações ilimitadas',
       '1 avaliação formal por mês',

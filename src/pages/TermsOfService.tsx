@@ -38,7 +38,7 @@ const TermsOfService = () => {
 
         <p><strong>Pulse (Gratuito):</strong></p>
         <ul className="list-disc ml-6 space-y-2">
-          <li>Até 3 liderados</li>
+          <li>Até 2 liderados</li>
           <li>20 mensagens de Mentor Chat por mês</li>
           <li>Notas e anotações ilimitadas</li>
           <li>1 avaliação formal por mês</li>

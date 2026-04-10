@@ -128,7 +128,7 @@ const translations = {
     pulseForever: "· para sempre",
     pulseCTA: "Começar grátis",
     pulseFeatures: [
-      "Até 3 liderados",
+      "Até 2 liderados",
       "20 mensagens de Mentor Chat por mês",
       "Notas e anotações ilimitadas",
       "1 avaliação formal por mês",
@@ -330,7 +330,7 @@ const translations = {
     pulseForever: "· forever",
     pulseCTA: "Get started free",
     pulseFeatures: [
-      "Up to 3 direct reports",
+      "Up to 2 direct reports",
       "20 Mentor Chat messages per month",
       "Unlimited notes and annotations",
       "1 formal review per month",

@@ -22,7 +22,7 @@ interface PlanLimits {
 
 const PLAN_LIMITS: Record<string, Omit<PlanLimits, 'planTier' | 'isBetaUser'>> = {
   pulse: {
-    maxMembers: 3,
+    maxMembers: 2,
     maxReviews: 1,
     maxTeams: 1,
     maxMentorMessages: 20,
