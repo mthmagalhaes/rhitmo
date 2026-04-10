@@ -296,8 +296,8 @@ const integrations: Integration[] = [
   {
     id: 'slack',
     icon: Slack,
-    name: 'Slack',
-    description: 'Envie convites de Rhitmo Sync e receba notificações diretamente no Slack do time.',
+    name: 'Conector Slack',
+    description: 'Use comandos como /rhitmo, /nota e /kudos direto no Slack para registrar observações e reconhecimentos.',
     status: 'available',
   },
   {
