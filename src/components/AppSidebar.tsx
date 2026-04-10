@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { RhythmWave } from '@/components/RhythmWave';
-import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award, ArrowRightLeft, UserCheck, Palette, Compass, FileText, User, Download } from 'lucide-react';
+import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award, ArrowRightLeft, UserCheck, Palette, Compass, FileText, User, Download, MessageSquare, Globe } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
 import { MemberAvatar } from '@/components/MemberAvatar';
 import { ProfileSettingsDialog } from '@/components/ProfileSettingsDialog';
 import { ChromeExtensionSetupDialog } from '@/components/extension/ChromeExtensionSetupDialog';
+import { SlackConnectorDialog } from '@/components/slack/SlackConnectorDialog';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
@@ -38,7 +39,6 @@ const menuItems = [
   { title: 'Início', url: '/dashboard', icon: Home },
   { title: 'Analytics', url: '/analytics', icon: BarChart3 },
   { title: 'Central de Conhecimento', url: '/help', icon: BookOpen },
-  { title: 'Extensão Chrome', url: '#extension', icon: Download },
   { title: 'Assinatura', url: '/billing', icon: CreditCard },
 ];
 
@@ -73,7 +73,7 @@ export function AppSidebar() {
   const [supportDialogOpen, setSupportDialogOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [extensionDialogOpen, setExtensionDialogOpen] = useState(false);
-
+  const [slackDialogOpen, setSlackDialogOpen] = useState(false);
   const handleCopyEmail = async () => {
     const email = 'support@rhitmo.co';
     let success = false;
@@ -182,25 +182,15 @@ export function AppSidebar() {
                   .map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild tooltip={item.title}>
-                      {item.url === '#extension' ? (
-                        <button
-                          onClick={() => setExtensionDialogOpen(true)}
-                          className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground flex items-center gap-2 w-full"
-                        >
-                          <item.icon className="h-5 w-5" />
-                          <span>{item.title}</span>
-                        </button>
-                      ) : (
-                        <NavLink 
-                          to={item.url} 
-                          end
-                          className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
-                          activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
-                        >
-                          <item.icon className="h-5 w-5" />
-                          <span>{item.title}</span>
-                        </NavLink>
-                      )}
+                      <NavLink 
+                        to={item.url} 
+                        end
+                        className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
+                        activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
+                      >
+                        <item.icon className="h-5 w-5" />
+                        <span>{item.title}</span>
+                      </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
@@ -209,7 +199,31 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {/* Design System — only for matheus@rhitmo.co */}
+        {/* Conectores — Chrome & Slack */}
+        {!isInHRContext && !(isUser || isLinkedMember) && open && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Conectores</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <div className="px-2 space-y-2">
+                <button
+                  onClick={() => setExtensionDialogOpen(true)}
+                  className="w-full flex items-center gap-3 h-12 px-4 rounded-xl border border-border/60 bg-background hover:bg-accent/50 hover:border-primary/30 hover:-translate-y-0.5 transition-all duration-200 group"
+                >
+                  <Globe className="h-5 w-5 text-primary shrink-0" />
+                  <span className="text-sm font-medium text-foreground group-hover:text-primary tracking-tight">Conector Chrome</span>
+                </button>
+                <button
+                  onClick={() => setSlackDialogOpen(true)}
+                  className="w-full flex items-center gap-3 h-12 px-4 rounded-xl border border-border/60 bg-background hover:bg-accent/50 hover:border-primary/30 hover:-translate-y-0.5 transition-all duration-200 group"
+                >
+                  <MessageSquare className="h-5 w-5 text-primary shrink-0" />
+                  <span className="text-sm font-medium text-foreground group-hover:text-primary tracking-tight">Conector Slack</span>
+                </button>
+              </div>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
         {!isInHRContext && user?.email === 'matheus@rhitmo.co' && (
           <SidebarGroup>
             <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Marca</SidebarGroupLabel>
@@ -377,6 +391,11 @@ export function AppSidebar() {
       <ChromeExtensionSetupDialog
         open={extensionDialogOpen}
         onOpenChange={setExtensionDialogOpen}
+      />
+
+      <SlackConnectorDialog
+        open={slackDialogOpen}
+        onOpenChange={setSlackDialogOpen}
       />
     </Sidebar>
   );
