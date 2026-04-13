@@ -11,7 +11,7 @@ const supabase = createClient(
 );
 
 // ── Privacy Constants ────────────────────────────────────
-const SENSITIVE_COMMANDS = ['/nota', '/brief', '/review', '/meu-pdi'];
+const SENSITIVE_COMMANDS = ['/nota', '/brief', '/review', '/meu-pdi', '/mentor', '/meu-rhitmo'];
 const DM_ONLY_COMMANDS = ['/review'];
 
 // ── Channel Type Cache (5min TTL) ────────────────────────
