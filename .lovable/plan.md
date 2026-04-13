@@ -1,43 +1,39 @@
+<final-text>Do I know what the issue is? Sim.
 
+O problema real hoje não parece mais ser o RPC do banco. O problema que ainda quebra o acesso do Guilherme é a incompatibilidade do parâmetro do link.
 
-## Plano: Tags Manuais nas Anotações
+Check que eu fiz:
+- Em `src/pages/Invite.tsx`, a página lê apenas `searchParams.get('code')`
+- No histórico desse caso, o link enviado para o Guilherme estava no formato `.../invite?token=...`
+- Em `src/components/InviteMemberDialog.tsx`, o sistema atual já monta o convite como `.../invite?code=...`
+- A migration que trocou `get_invite_details` para `text` já existe, então o bug antigo de tipo foi corrigido
 
-### O que muda
+Validação prática que bate com isso:
+- `.../invite?token=...` continua abrindo “Convite Inválido”
+- `.../invite?code=...` já entra em “Validando convite...”
 
-Hoje as tags são apenas automáticas (geradas pela IA ao salvar). Você quer poder adicionar tags manuais — tanto as pré-definidas (1:1, PDI, Check-in, etc.) quanto tags livres como "Negativa", "Oportunidade de Melhoria", "Risco".
+Conclusão do check:
+- O link antigo com `token=` não está confiável no código atual
+- O formato que está alinhado com o frontend hoje é `code=`
+- Então, do jeito que o app está agora, o link que tende a funcionar é o convite no formato `.../invite?code=<uuid>`, não `.../invite?token=<uuid>`
 
-### Solução
+Arquivos envolvidos:
+- `src/pages/Invite.tsx`
+- `src/components/InviteMemberDialog.tsx`
+- `supabase/migrations/20260413153413_38de2b24-51f6-4f81-8dfd-a2ee56fe5bed.sql`
 
-**1. Adicionar tags pré-definidas para sinalizações de liderança no `tagConfig.ts`**
+Plano para blindar isso de vez:
+1. Ajustar `Invite.tsx` para aceitar os dois formatos:
+```text
+const inviteCode = searchParams.get('code') ?? searchParams.get('token')
+```
+2. Padronizar a geração e o compartilhamento dos convites em um único formato
+3. Testar fim a fim:
+   - convite com `code`
+   - convite com `token`
+   - convite já usado
+   - convite expirado/inválido
 
-Novas tags built-in:
-- "Oportunidade de Melhoria" (⚠️, laranja) — sinaliza ponto de atenção/melhoria para o liderado
-- "Destaque Positivo" (⭐, dourado) — sinaliza algo que o liderado fez muito bem
-- "Risco" (🔴, vermelho) — sinaliza risco operacional ou de retenção
-
-**2. Transformar a seção de tags no `NewNoteDialog.tsx` em um seletor interativo**
-
-Substituir o bloco passivo (linhas 639-667) por:
-- Um dropdown/combobox com todas as tags pré-definidas (VALID_TAGS) para seleção rápida
-- Um input de texto livre para digitar tags customizadas (Enter para adicionar)
-- Tags selecionadas aparecem como badges removíveis (já funciona)
-- Tags manuais escolhidas antes de salvar são preservadas e mescladas com as automáticas (as automáticas só preenchem se `tags.length === 0`)
-
-**3. Atualizar filtros no `FeedbackFilters.tsx`**
-
-Adicionar as novas tags pré-definidas ao array `FILTER_TAGS` para que possam ser filtradas na timeline.
-
-### Arquivos a modificar
-
-| Arquivo | Ação |
-|---------|------|
-| `src/lib/tagConfig.ts` | Adicionar 3 novas tags pré-definidas |
-| `src/components/NewNoteDialog.tsx` | Adicionar seletor de tags (dropdown + input livre) |
-| `src/components/FeedbackFilters.tsx` | Adicionar novas tags aos filtros |
-
-### Comportamento
-
-- Se o líder seleciona tags manualmente → IA NÃO sobrescreve (já funciona assim, linha 355: `if (tags.length === 0)`)
-- Se o líder não seleciona nenhuma → IA classifica automaticamente (comportamento atual mantido)
-- Tags customizadas (digitadas) usam estilo neutro padrão (cinza) já existente no `getTagColor` fallback
-
+Resumo objetivo:
+- Se você quer só o check: eu não confiaria no link antigo com `token`
+- Eu confiaria no link com `code`, porque é esse que o frontend atual entende</final-text>
