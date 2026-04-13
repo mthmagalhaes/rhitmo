@@ -32,22 +32,26 @@ const roadmap: Quarter[] = [
       { title: "Slack App", description: "Registre feedback diretamente do Slack sem sair da conversa.", status: "done" },
       { title: "Dashboard redesign", description: "Novo dashboard Bento Grid com métricas visuais e Career Compass.", status: "done" },
       { title: "Detecção de viés em tempo real", description: "IA alerta sobre linguagem tendenciosa enquanto você escreve feedback.", status: "done" },
+      { title: "Pre-meeting briefs", description: "IA gera resumo automático antes de cada 1:1 com base no histórico.", status: "done" },
+      { title: "Nudges automáticos", description: "Alertas inteligentes quando um liderado precisa de atenção.", status: "done" },
+      { title: "HR Dashboard avançado", description: "Heatmaps de engajamento, risk table e métricas agregadas por departamento.", status: "done" },
+      { title: "Tags manuais de classificação", description: "Líder pode classificar notas manualmente com tags visuais (Destaque, Risco, Melhoria).", status: "done" },
     ],
   },
   {
     label: "Q3 / 2026",
     items: [
       { title: "Avaliação 360°", description: "Colete feedback de pares, liderados e stakeholders para avaliações completas.", status: "wip" },
-      { title: "Pre-meeting briefs", description: "IA gera resumo automático antes de cada 1:1 com base no histórico.", status: "wip" },
-      { title: "Nudges automáticos", description: "Alertas inteligentes quando um liderado precisa de atenção.", status: "planned" },
+      { title: "Mentor Chat no Slack", description: "Líderes consultam o mentor de IA diretamente pelo Slack com /mentor.", status: "wip" },
+      { title: "Meu Rhitmo no Slack", description: "Liderados acessam seu resumo de carreira e feedbacks pelo Slack.", status: "wip" },
     ],
   },
   {
     label: "Q4 / 2026",
     items: [
       { title: "OKRs completos", description: "Defina, acompanhe e conecte OKRs ao ciclo de performance.", status: "planned" },
-      { title: "HR Dashboard avançado", description: "Heatmaps de engajamento, risk table e métricas agregadas por departamento.", status: "planned" },
       { title: "API pública", description: "Integre Rhitmo com seus sistemas internos via REST API.", status: "planned" },
+      { title: "Filtros avançados no HR Dashboard", description: "Filtro por time, exportação CSV/PDF e comparativo entre períodos.", status: "planned" },
     ],
   },
   {
