@@ -17,7 +17,7 @@ interface InviteData {
 
 export default function Invite() {
   const [searchParams] = useSearchParams();
-  const code = searchParams.get('code');
+  const code = searchParams.get('code') ?? searchParams.get('token');
   
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
