@@ -21,11 +21,23 @@
      emoji: "📢", 
      color: "bg-gray-500/10 text-gray-700 dark:text-gray-400 border-gray-200 dark:border-gray-800" 
    },
-   "Brainstorming": { 
-     emoji: "🧠", 
-     color: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800" 
-   },
- };
+  "Brainstorming": { 
+    emoji: "🧠", 
+    color: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800" 
+  },
+  "Oportunidade de Melhoria": {
+    emoji: "⚠️",
+    color: "bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800"
+  },
+  "Destaque Positivo": {
+    emoji: "⭐",
+    color: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800"
+  },
+  "Risco": {
+    emoji: "🔴",
+    color: "bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800"
+  },
+};
  
  export const VALID_TAGS = Object.keys(TAG_CONFIG);
  

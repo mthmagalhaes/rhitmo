@@ -636,10 +636,12 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
             )}
           </div>
 
-          {/* Smart Tags */}
+          {/* Smart Tags - Seletor Interativo */}
           <div className="space-y-2">
             <Label>Tags de Classificação</Label>
-            {tags.length > 0 ? (
+            
+            {/* Tags selecionadas */}
+            {tags.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {tags.map((tag) => (
                   <Badge 
@@ -659,9 +661,64 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
                   </Badge>
                 ))}
               </div>
-            ) : (
+            )}
+
+            {/* Seletor de tags pré-definidas */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs gap-1.5 text-muted-foreground"
+                  disabled={loading}
+                >
+                  <ChevronsUpDown className="h-3.5 w-3.5" />
+                  Adicionar tag
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[220px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar ou criar tag..." />
+                  <CommandList>
+                    <CommandEmpty>
+                      <button
+                        type="button"
+                        className="w-full text-left px-2 py-1.5 text-sm hover:bg-accent rounded-sm"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          const input = e.currentTarget.closest('[cmdk-root]')?.querySelector<HTMLInputElement>('[cmdk-input]');
+                          const value = input?.value?.trim();
+                          if (value && !tags.includes(value)) {
+                            setTags(prev => [...prev, value]);
+                            if (input) input.value = '';
+                          }
+                        }}
+                      >
+                        Criar tag personalizada
+                      </button>
+                    </CommandEmpty>
+                    <CommandGroup>
+                      {VALID_TAGS.filter(t => !tags.includes(t)).map((tag) => (
+                        <CommandItem
+                          key={tag}
+                          value={tag}
+                          onSelect={() => {
+                            setTags(prev => [...prev, tag]);
+                          }}
+                        >
+                          <span className="mr-2">{getTagEmoji(tag)}</span>
+                          {tag}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+
+            {tags.length === 0 && (
               <p className="text-xs text-muted-foreground">
-                 Tags serão geradas automaticamente ao salvar
+                Selecione tags ou deixe vazio para classificação automática por IA
               </p>
             )}
           </div>
