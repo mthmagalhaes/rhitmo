@@ -31,6 +31,9 @@ const FILTER_TAGS = [
   { key: 'PDI', emoji: '🚀', label: 'PDI' },
   { key: 'Check-in', emoji: '✅', label: 'Check-in' },
   { key: 'Feedback Difícil', emoji: '🚨', label: 'Feedback' },
+  { key: 'Oportunidade de Melhoria', emoji: '⚠️', label: 'Melhoria' },
+  { key: 'Destaque Positivo', emoji: '⭐', label: 'Destaque' },
+  { key: 'Risco', emoji: '🔴', label: 'Risco' },
 ];
 
 export const FeedbackFilters = ({
