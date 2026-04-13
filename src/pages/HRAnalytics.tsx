@@ -214,7 +214,7 @@ export default function HRAnalytics() {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <Card className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] border-0">
             <CardContent className="p-5">
               <div className="flex items-center gap-3">
@@ -267,6 +267,22 @@ export default function HRAnalytics() {
               </div>
             </CardContent>
           </Card>
+          <Card className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] border-0">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-primary/10">
+                  <Heart className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-2xl font-bold tracking-tight">{healthScore ?? '—'}</p>
+                    <Badge variant={healthColor as any} className="text-[10px] px-1.5 py-0">{healthLabel}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Saúde Org.</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -282,15 +298,28 @@ export default function HRAnalytics() {
         {/* Tab: Visão Geral (existing content) */}
         <TabsContent value="overview" className="space-y-6">
           {/* Filters */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <Filter className="h-4 w-4 text-muted-foreground" />
+            <Select value={selectedTeam} onValueChange={(v) => { setSelectedTeam(v); setSelectedLeader('all'); }}>
+              <SelectTrigger className="w-[200px] rounded-xl">
+                <SelectValue placeholder="Filtrar por time" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os times</SelectItem>
+                {teams.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select value={selectedLeader} onValueChange={setSelectedLeader}>
               <SelectTrigger className="w-[220px] rounded-xl">
                 <SelectValue placeholder="Filtrar por líder" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os líderes</SelectItem>
-                {leaders.map((l) => (
+                {filteredLeaders.map((l) => (
                   <SelectItem key={l.leader_id} value={l.leader_id}>
                     {l.leader_name}
                   </SelectItem>
