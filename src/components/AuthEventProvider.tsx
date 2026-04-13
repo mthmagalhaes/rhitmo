@@ -14,12 +14,13 @@ export function AuthEventProvider({ children }: { children: React.ReactNode }) {
       setShowPasswordDialog(true);
     }
 
-    const processPendingInvite = async (userId: string) => {
+    const processPendingInvite = async (userId: string, userEmail?: string | null) => {
       const pendingCode = localStorage.getItem('pending_invite');
       if (!pendingCode) return false;
 
       try {
-        const { error } = await supabase
+        // Try by invite_token first
+        const { data: tokenResult, error } = await supabase
           .from('team_members')
           .update({
             linked_user_id: userId,
@@ -28,14 +29,38 @@ export function AuthEventProvider({ children }: { children: React.ReactNode }) {
           })
           .eq('invite_token', pendingCode)
           .eq('invite_status', 'pending')
-          .is('linked_user_id', null);
+          .is('linked_user_id', null)
+          .select('id');
 
-        if (!error) {
+        if (!error && tokenResult && tokenResult.length > 0) {
           toast({
             title: 'Convite aceito com sucesso!',
             description: 'Você foi vinculado à equipe.',
           });
           return true;
+        }
+
+        // Fallback: try matching by email if token match failed
+        if (userEmail) {
+          const { data: emailResult, error: emailError } = await supabase
+            .from('team_members')
+            .update({
+              linked_user_id: userId,
+              invite_status: 'accepted',
+              invite_token: null,
+            })
+            .eq('email', userEmail)
+            .eq('invite_status', 'pending')
+            .is('linked_user_id', null)
+            .select('id');
+
+          if (!emailError && emailResult && emailResult.length > 0) {
+            toast({
+              title: 'Convite aceito com sucesso!',
+              description: 'Você foi vinculado à equipe.',
+            });
+            return true;
+          }
         }
       } catch (err) {
         console.error('Error processing pending invite:', err);
@@ -57,7 +82,7 @@ export function AuthEventProvider({ children }: { children: React.ReactNode }) {
 
       processedUserIdRef.current = resolvedUser.id;
 
-      await processPendingInvite(resolvedUser.id);
+      await processPendingInvite(resolvedUser.id, resolvedUser.email);
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
