@@ -26,11 +26,12 @@ import {
   Area,
   AreaChart,
 } from 'recharts';
-import { BarChart3, Users, MessageSquare, TrendingUp, Filter, Activity, AlertTriangle, Tag } from 'lucide-react';
+import { BarChart3, Users, MessageSquare, TrendingUp, Filter, Activity, AlertTriangle, Tag, Heart } from 'lucide-react';
 import { RiskTable } from '@/components/hr/RiskTable';
 import { EngagementHeatmap } from '@/components/hr/EngagementHeatmap';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { Navigate } from 'react-router-dom';
+import { Badge } from '@/components/ui/badge';
 
 interface Metrics {
   total_leaders: number;
@@ -89,6 +90,7 @@ export default function HRAnalytics() {
   const { workspaceId } = useHRAdmin();
   const { hasHrDashboard, isLoading: planLoading } = usePlanLimits();
   const [selectedLeader, setSelectedLeader] = useState('all');
+  const [selectedTeam, setSelectedTeam] = useState('all');
 
   if (!planLoading && !hasHrDashboard) {
     return <Navigate to="/billing" replace />;
@@ -130,11 +132,49 @@ export default function HRAnalytics() {
     enabled: !!workspaceId,
   });
 
+  // Fetch teams for filtering
+  const { data: teamsData } = useQuery({
+    queryKey: ['hr-analytics-teams', workspaceId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('teams')
+        .select('id, name, leader_user_id')
+        .eq('workspace_id', workspaceId);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!workspaceId,
+  });
+
+  const teams = teamsData || [];
+
   const isLoading = metricsLoading || leadersLoading;
-  const leaders = leadersData || [];
+
+  // Filter leaders by selected team
+  const filteredLeaders = (leadersData || []).filter(l => {
+    if (selectedTeam === 'all') return true;
+    const team = teams.find(t => t.id === selectedTeam);
+    return team && team.leader_user_id === l.leader_id;
+  });
+
+  const leaders = filteredLeaders.filter(l => selectedLeader === 'all' || l.leader_id === selectedLeader);
+
+  // Compute organizational health score (0-100)
+  const healthScore = (() => {
+    if (!metrics || !leaders.length) return null;
+    const totalMembers = metrics.total_members || 1;
+    const feedbackCoverage = Math.min(100, ((totalMembers - (metrics.members_without_recent_feedback || 0)) / totalMembers) * 100);
+    const pdiCoverage = metrics.pdi_coverage_percentage || 0;
+    const atRiskCount = advancedData?.at_risk_members?.length || 0;
+    const riskPenalty = Math.min(30, (atRiskCount / totalMembers) * 100);
+    // Weighted: 40% feedback coverage + 30% PDI + 30% inverse risk
+    return Math.round(feedbackCoverage * 0.4 + pdiCoverage * 0.3 + (100 - riskPenalty) * 0.3);
+  })();
+
+  const healthLabel = healthScore === null ? '—' : healthScore >= 80 ? 'Saudável' : healthScore >= 60 ? 'Atenção' : 'Crítico';
+  const healthColor = healthScore === null ? 'secondary' : healthScore >= 80 ? 'default' : healthScore >= 60 ? 'outline' : 'destructive';
 
   const feedbackByLeader = leaders
-    .filter(l => selectedLeader === 'all' || l.leader_id === selectedLeader)
     .map(l => ({
       name: l.leader_name?.split(' ')[0] || 'N/A',
       feedbacks: l.feedbacks_last_30d || 0,
@@ -174,7 +214,7 @@ export default function HRAnalytics() {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <Card className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] border-0">
             <CardContent className="p-5">
               <div className="flex items-center gap-3">
@@ -227,6 +267,22 @@ export default function HRAnalytics() {
               </div>
             </CardContent>
           </Card>
+          <Card className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] border-0">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-primary/10">
+                  <Heart className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-2xl font-bold tracking-tight">{healthScore ?? '—'}</p>
+                    <Badge variant={healthColor as any} className="text-[10px] px-1.5 py-0">{healthLabel}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Saúde Org.</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -242,15 +298,28 @@ export default function HRAnalytics() {
         {/* Tab: Visão Geral (existing content) */}
         <TabsContent value="overview" className="space-y-6">
           {/* Filters */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <Filter className="h-4 w-4 text-muted-foreground" />
+            <Select value={selectedTeam} onValueChange={(v) => { setSelectedTeam(v); setSelectedLeader('all'); }}>
+              <SelectTrigger className="w-[200px] rounded-xl">
+                <SelectValue placeholder="Filtrar por time" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os times</SelectItem>
+                {teams.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select value={selectedLeader} onValueChange={setSelectedLeader}>
               <SelectTrigger className="w-[220px] rounded-xl">
                 <SelectValue placeholder="Filtrar por líder" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os líderes</SelectItem>
-                {leaders.map((l) => (
+                {filteredLeaders.map((l) => (
                   <SelectItem key={l.leader_id} value={l.leader_id}>
                     {l.leader_name}
                   </SelectItem>
