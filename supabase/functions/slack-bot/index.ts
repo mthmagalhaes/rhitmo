@@ -761,6 +761,195 @@ async function handleMeuPdiCommand(persona: PersonaResult): Promise<Record<strin
   return { blocks };
 }
 
+// ── /mentor Handler (for leaders) ─────────────────────────
+async function handleMentorCommand(payload: Record<string, string>, persona: PersonaResult): Promise<Record<string, unknown>> {
+  if (persona.persona !== 'leader') {
+    return { text: '❌ Este comando é exclusivo para líderes.' };
+  }
+
+  const text = (payload.text || '').trim();
+  if (!text) {
+    return { text: '❌ Formato: `/mentor <pergunta>`\nExemplo: `/mentor como preparar feedback construtivo para alguém que não entrega no prazo?`' };
+  }
+
+  // Check if there's a member mention for context
+  let memberContext: { id: string; name: string } | null = null;
+  let question = text;
+  const mentionMatch = text.match(/^(<@U[A-Z0-9]+(?:\|[^>]*)?>)\s+(.+)/s);
+  if (mentionMatch) {
+    const result = await resolveMember(mentionMatch[1], persona.workspaceId!);
+    if (!('error' in result)) {
+      memberContext = result;
+      question = mentionMatch[2];
+    }
+  }
+
+  try {
+    // Call the chat-mentor edge function
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    const mentorPayload: Record<string, unknown> = {
+      message: question,
+      userId: persona.userId,
+    };
+
+    if (memberContext) {
+      mentorPayload.memberId = memberContext.id;
+    }
+
+    const res = await fetch(`${supabaseUrl}/functions/v1/chat-mentor`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${serviceKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(mentorPayload),
+    });
+
+    if (!res.ok) {
+      console.error('[MENTOR] Edge function error:', res.status);
+      return { text: '❌ Erro ao consultar o mentor. Tente novamente.' };
+    }
+
+    const data = await res.json();
+    const reply = data.reply || data.message || 'Sem resposta do mentor.';
+
+    const blocks: unknown[] = [
+      { type: 'header', text: { type: 'plain_text', text: '🧠 Mentor Rhitmo' } },
+    ];
+
+    if (memberContext) {
+      blocks.push({ type: 'context', elements: [{ type: 'mrkdwn', text: `Contexto: *${memberContext.name}*` }] });
+    }
+
+    blocks.push(
+      { type: 'divider' },
+      { type: 'section', text: { type: 'mrkdwn', text: reply.substring(0, 3000) } },
+      { type: 'divider' },
+      { type: 'context', elements: [{ type: 'mrkdwn', text: '💡 Continue a conversa no Rhitmo para manter o histórico completo.' }] },
+    );
+
+    return { blocks };
+  } catch (err) {
+    console.error('[MENTOR] Error:', err);
+    return { text: '❌ Erro ao consultar o mentor. Tente novamente.' };
+  }
+}
+
+// ── /meu-rhitmo Handler (for direct reports) ──────────────
+async function handleMeuRhitmoCommand(persona: PersonaResult): Promise<Record<string, unknown>> {
+  if (persona.persona !== 'direct_report' || !persona.memberId) {
+    return { text: '❌ Este comando é exclusivo para liderados vinculados ao Rhitmo.' };
+  }
+
+  // Fetch member data
+  const { data: member } = await supabase
+    .from('team_members')
+    .select('name, role, work_style_data, skills_data, feedback_style, recognition_style, chronotype, motivators, user_manual')
+    .eq('id', persona.memberId)
+    .single();
+
+  if (!member) {
+    return { text: '❌ Perfil não encontrado.' };
+  }
+
+  // Fetch recent feedbacks (shared only)
+  const { data: recentFeedbacks } = await supabase
+    .from('feedbacks')
+    .select('summary, sentiment, tags, occurred_at')
+    .eq('member_id', persona.memberId)
+    .eq('visibility', 'shared')
+    .order('occurred_at', { ascending: false })
+    .limit(5);
+
+  // Fetch active PDI
+  const { data: activePlan } = await supabase
+    .from('development_plans')
+    .select('id, period_label, status')
+    .eq('member_id', persona.memberId)
+    .neq('status', 'completed')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let pdiCount = 0;
+  let pdiPending = 0;
+  if (activePlan) {
+    const { data: items } = await supabase
+      .from('development_items')
+      .select('status')
+      .eq('plan_id', activePlan.id);
+    pdiCount = items?.length || 0;
+    pdiPending = items?.filter(i => i.status !== 'completed').length || 0;
+  }
+
+  // Build profile blocks
+  const blocks: unknown[] = [
+    { type: 'header', text: { type: 'plain_text', text: `🎯 Meu Rhitmo — ${member.name}` } },
+    { type: 'divider' },
+  ];
+
+  // Work style summary
+  const workStyle = member.work_style_data as Record<string, unknown> | null;
+  if (workStyle) {
+    const disc = workStyle.disc_profile as Record<string, unknown> | undefined;
+    const discText = disc ? `DISC: *${disc.primary || '—'}*${disc.secondary ? ` / ${disc.secondary}` : ''}` : '';
+    const chronoEmoji: Record<string, string> = { morning: '🌅', afternoon: '☀️', evening: '🌙' };
+    const chronoText = member.chronotype ? `${chronoEmoji[member.chronotype] || '⏰'} ${member.chronotype}` : '';
+    
+    let profileParts = [discText, chronoText].filter(Boolean).join(' | ');
+    if (member.feedback_style) profileParts += `\nEstilo de feedback: *${member.feedback_style}*`;
+    if (member.recognition_style) profileParts += `\nReconhecimento: *${member.recognition_style}*`;
+
+    if (profileParts) {
+      blocks.push({ type: 'section', text: { type: 'mrkdwn', text: `*🧬 Meu Perfil*\n${profileParts}` } });
+    }
+  }
+
+  // Skills
+  const skills = member.skills_data as Record<string, unknown> | null;
+  if (skills) {
+    const topSkills = (skills.top_skills as string[]) || [];
+    const growthAreas = (skills.growth_areas as string[]) || [];
+    let skillsText = '';
+    if (topSkills.length) skillsText += `💪 Forças: ${topSkills.slice(0, 3).join(', ')}\n`;
+    if (growthAreas.length) skillsText += `📈 Desenvolvimento: ${growthAreas.slice(0, 3).join(', ')}`;
+    if (skillsText) {
+      blocks.push({ type: 'section', text: { type: 'mrkdwn', text: `*🗺️ Career Compass*\n${skillsText}` } });
+    }
+  }
+
+  // Recent shared feedbacks
+  if (recentFeedbacks?.length) {
+    const sentimentEmoji: Record<string, string> = { muito_positivo: '🟢', positivo: '🟢', neutro: '⚪', construtivo: '🟡', critico: '🔴' };
+    let fbText = '*📝 Feedbacks Recentes*\n';
+    recentFeedbacks.forEach(f => {
+      const date = new Date(f.occurred_at).toLocaleDateString('pt-BR');
+      const emoji = sentimentEmoji[f.sentiment || 'neutro'] || '⚪';
+      fbText += `${emoji} ${date}: ${f.summary || '(sem resumo)'}\n`;
+    });
+    blocks.push({ type: 'section', text: { type: 'mrkdwn', text: fbText } });
+  } else {
+    blocks.push({ type: 'section', text: { type: 'mrkdwn', text: '📝 *Nenhum feedback compartilhado ainda.*' } });
+  }
+
+  // PDI status
+  if (activePlan) {
+    const done = pdiCount - pdiPending;
+    blocks.push({ type: 'section', text: { type: 'mrkdwn', text: `*📋 PDI:* ${activePlan.period_label || 'Ativo'} — ✅ ${done}/${pdiCount} concluídos` } });
+  }
+
+  blocks.push(
+    { type: 'divider' },
+    { type: 'actions', elements: [
+      { type: 'button', text: { type: 'plain_text', text: '🚀 Ver completo no Rhitmo' }, url: 'https://app-rhitmo.lovable.app', action_id: 'open_app' },
+    ]},
+  );
+
+  return { blocks };
+}
+
 // ── Async Command Processor ──────────────────────────────
 async function processCommand(body: string, timestamp: string, signature: string, params: URLSearchParams) {
   const command = params.get('command');
@@ -836,6 +1025,18 @@ async function processCommand(body: string, timestamp: string, signature: string
     }
     case '/meu-pdi': {
       const msg = await handleMeuPdiCommand(persona);
+      await sendDelayedResponse(responseUrl, msg);
+      break;
+    }
+    case '/mentor': {
+      const payload: Record<string, string> = {};
+      for (const [k, v] of params.entries()) payload[k] = v;
+      const msg = await handleMentorCommand(payload, persona);
+      await sendDelayedResponse(responseUrl, msg);
+      break;
+    }
+    case '/meu-rhitmo': {
+      const msg = await handleMeuRhitmoCommand(persona);
       await sendDelayedResponse(responseUrl, msg);
       break;
     }
