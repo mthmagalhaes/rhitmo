@@ -1123,6 +1123,18 @@ async function processInteraction(body: string, timestamp: string, signature: st
             await sendDelayedResponse(origResponseUrl, pdiMsg);
             break;
           }
+          case '/mentor': {
+            const p3: Record<string, string> = {};
+            for (const [k, v] of originalParams.entries()) p3[k] = v;
+            const mentorMsg = await handleMentorCommand(p3, persona);
+            await sendDelayedResponse(origResponseUrl, mentorMsg);
+            break;
+          }
+          case '/meu-rhitmo': {
+            const rhitmoMsg = await handleMeuRhitmoCommand(persona);
+            await sendDelayedResponse(origResponseUrl, rhitmoMsg);
+            break;
+          }
           default:
             await sendDelayedResponse(origResponseUrl, { text: `Comando ${command} processado.` });
         }
