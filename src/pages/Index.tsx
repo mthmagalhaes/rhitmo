@@ -362,6 +362,30 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
     return <DirectReportDashboard linkedMember={linkedMember!} activeTab={activeTab} />;
   }
 
+  // User role but not linked — show a friendly state instead of falling through to leader dashboard
+  if (!isLeader && !isHRAdmin && !isLinkedMember) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <div className="max-w-md text-center space-y-6">
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+            <Loader2 className="h-8 w-8 text-primary animate-spin" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Processando seu acesso...
+            </h1>
+            <p className="text-muted-foreground">
+              Seu convite está sendo processado. Se o problema persistir, peça ao seu líder para reenviar o convite.
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => window.location.reload()}>
+            Tentar novamente
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   const filteredMembers = activeTeamId
     ? teamMembers.filter(m => m.teamId === activeTeamId)
     : teamMembers;

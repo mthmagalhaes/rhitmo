@@ -87,16 +87,35 @@ export default function Invite() {
     // Scenario B: User logged in - link account
     setProcessing(true);
     try {
-      const { error } = await supabase
+      // Try by invite_token first
+      const { data: tokenResult, error: tokenError } = await supabase
         .from('team_members')
         .update({
           linked_user_id: user.id,
           invite_status: 'accepted',
           invite_token: null
         })
-        .eq('invite_token', code);
+        .eq('invite_token', code)
+        .eq('invite_status', 'pending')
+        .select('id');
 
-      if (error) throw error;
+      // Fallback: if token match failed (e.g. token already cleared), try by member_id
+      if ((!tokenResult || tokenResult.length === 0) && inviteData?.memberId) {
+        const { error: memberError } = await supabase
+          .from('team_members')
+          .update({
+            linked_user_id: user.id,
+            invite_status: 'accepted',
+            invite_token: null
+          })
+          .eq('id', inviteData.memberId)
+          .eq('invite_status', 'pending')
+          .is('linked_user_id', null);
+
+        if (memberError) throw memberError;
+      } else if (tokenError) {
+        throw tokenError;
+      }
 
       toast({
         title: "Convite aceito com sucesso!",
