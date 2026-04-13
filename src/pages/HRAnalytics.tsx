@@ -26,11 +26,12 @@ import {
   Area,
   AreaChart,
 } from 'recharts';
-import { BarChart3, Users, MessageSquare, TrendingUp, Filter, Activity, AlertTriangle, Tag } from 'lucide-react';
+import { BarChart3, Users, MessageSquare, TrendingUp, Filter, Activity, AlertTriangle, Tag, Heart } from 'lucide-react';
 import { RiskTable } from '@/components/hr/RiskTable';
 import { EngagementHeatmap } from '@/components/hr/EngagementHeatmap';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { Navigate } from 'react-router-dom';
+import { Badge } from '@/components/ui/badge';
 
 interface Metrics {
   total_leaders: number;
@@ -89,6 +90,7 @@ export default function HRAnalytics() {
   const { workspaceId } = useHRAdmin();
   const { hasHrDashboard, isLoading: planLoading } = usePlanLimits();
   const [selectedLeader, setSelectedLeader] = useState('all');
+  const [selectedTeam, setSelectedTeam] = useState('all');
 
   if (!planLoading && !hasHrDashboard) {
     return <Navigate to="/billing" replace />;
