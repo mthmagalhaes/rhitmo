@@ -1,66 +1,102 @@
 
+## Plano: Atualização do Roadmap + Revisão de 3 Áreas
 
-## Diagnóstico: Guilherme Fica Preso no Dashboard de Líder
+### 1. Atualizar o Roadmap (`src/pages/Roadmap.tsx`)
 
-### Causa raiz identificada
+Mudanças de status com base na auditoria técnica:
 
-O problema está em uma **inconsistência de estado entre a sidebar e o conteúdo principal (Index.tsx)**.
+| Item | Status Atual | Novo Status |
+|------|-------------|-------------|
+| Pre-meeting briefs | `wip` | `done` |
+| Nudges automáticos | `planned` | `done` |
+| HR Dashboard avançado | `planned` → Q4 | `done` → mover para Q2 |
+| Tags manuais de classificação | — | Adicionar em Q2 como `done` |
 
-O que acontece com o Guilherme (e potencialmente qualquer liderado cujo convite não processou 100%):
+---
 
-1. **Sidebar** (`AppSidebar.tsx` linha 108):
-   ```text
-   showMemberMenu = !roleLoading && !isLeader && !isHRAdmin && (isUser || isLinkedMember)
-   ```
-   Se `useUserRole` retorna `'user'` (não é owner/líder/HR), a sidebar mostra o menu de membro — **mesmo que `isLinkedMember` seja `false`**. Isso é correto: o menu de membro é o fallback para quem não é líder.
+### 2. HR Dashboard Avançado — Status Atual (AS IS)
 
-2. **Index.tsx** (linha 360):
-   ```text
-   if (isLinkedMember && !isLeader && !isHRAdmin) → DirectReportDashboard
-   ```
-   Se `isLinkedMember` é `false` (convite não processado, `invite_status ≠ accepted`, ou `linked_user_id` não setado), essa condição falha. O código **cai direto no dashboard de líder** (linha 385+), que precisa de um workspace para funcionar. Guilherme não tem workspace → vê dashboard vazio com Setup Inicial, impossível de sair.
+Já implementado em `HRAnalytics.tsx` com 4 abas:
+- **Visão Geral**: KPIs (liderados, líderes ativos, feedbacks 30d, cobertura PDI), feedbacks por líder, distribuição de sentimento
+- **Tendências**: Volume semanal (12 semanas), tags mais frequentes
+- **Riscos**: `RiskTable` com membros em risco (dias sem feedback, sem PDI)
+- **Engajamento**: `EngagementHeatmap` por líder
 
-3. **Resultado**: Sidebar mostra "Início, Minha Carreira, Feedbacks, Meu Perfil" (links de membro). Mas o conteúdo mostra o dashboard de líder vazio. Clicar nos links do sidebar **navega** para as rotas certas (`/dashboard/carreira`, etc.), mas `Index.tsx` sempre renderiza o dashboard de líder porque `isLinkedMember` é `false`.
+**O que está faltando/pode melhorar:**
+- Filtro por departamento/time (hoje só filtra por líder)
+- Export de dados (CSV/PDF dos relatórios)
+- Comparativo entre períodos (mês anterior vs. atual)
+- Score de saúde organizacional consolidado
 
-### Por que `isLinkedMember` pode ser `false` para o Guilherme
+Nesta sprint, implementarei:
+- Filtro por time no dashboard HR
+- KPI de "score de saúde" agregado
 
-- A query `useLinkedMember` filtra por `invite_status = 'accepted'` E `linked_user_id = user.id`
-- Se o fluxo de aceitação (via `/invite` → `/auth` → `AuthEventProvider`) não completou corretamente (o `update` no `team_members` falhou silenciosamente), o status permanece `pending` e `linked_user_id` fica `null`
+---
 
-### Correção (2 partes)
+### 3. Painel Admin (`matheus@rhitmo.co`) — Revisão de Funcionalidades
 
-**Parte 1: Tratar o estado "user sem vínculo" no Index.tsx**
+O painel `/admin` hoje tem 6 abas:
+- **Visão Geral**: Stats globais (workspaces, membros, feedbacks, reviews), tabela de workspaces com toggle ativo/inativo, troca de plano, envio de convite
+- **Suporte & Edição**: (AdminSupport)
+- **Data Export**: (AdminExport)
+- **Usuários**: (AdminUsers)
+- **Acessos**: (AdminAccess)
+- **Estrutura**: (AdminStructure) — gestão de workspaces/times/membros
 
-Adicionar um bloco entre a linha 360 e 365 para quando o usuário tem role `'user'` mas NÃO é `isLinkedMember`. Em vez de cair no dashboard de líder, mostrar um estado adequado: verificar se há convite pendente por email e orientar o usuário.
+**Funcionalidades existentes que funcionam:**
+- CRUD de workspaces, toggle ativo, troca de plano
+- Convite de usuários com seleção de plano
+- Gestão de estrutura hierárquica
+- Impersonation
 
-```text
-if (!isLeader && !isHRAdmin && !isLinkedMember) {
-  // Usuário sem vínculo — mostrar estado de espera
-  // "Seu convite está sendo processado" ou "Entre em contato com seu líder"
-}
-```
+**O que pode ser adicionado:**
+- Dashboard de métricas de uso (logins, feedbacks/dia, retenção)
+- Logs de atividade por workspace
+- Gerenciamento de billing centralizado
 
-**Parte 2: Garantir que o Guilherme seja vinculado corretamente**
+Nesta sprint, vou revisar e validar as funcionalidades existentes. Novas funcionalidades serão propostas após validação.
 
-Verificar no banco se o `team_member` do Guilherme tem `invite_status = 'accepted'` e `linked_user_id` setado. Se não, corrigir com uma query direta. Mas também tornar o fluxo de aceitação mais resiliente:
+---
 
-- No `Invite.tsx`, o `handleAcceptInvite` faz `.eq('invite_token', code)` — se o token já foi limpo (`invite_token: null`), a query não encontra a row e falha silenciosamente
-- Adicionar fallback: se o update por token falhar, tentar por `member_id` (que já temos em `inviteData`)
+### 4. Slack Bot — Revisão de Funcionalidades
+
+**Comandos implementados hoje:**
+| Comando | Persona | Status |
+|---------|---------|--------|
+| `/rhitmo` | Todos | ✅ Menu contextual por persona |
+| `/nota` | Líder | ✅ Registra feedback |
+| `/kudos` | Todos | ✅ Reconhecimento público |
+| `/brief` | Líder | ✅ Resumo de membro |
+| `/meu-pdi` | Liderado | ✅ PDI no Slack |
+| Modais (nota/kudos) | Líder | ✅ Via botões interativos |
+
+**O que NÃO existe ainda no Slack:**
+- ❌ **Mentor Chat via Slack** — Hoje o `chat-mentor` é uma Edge Function chamada pelo frontend (`MentorChat.tsx`). Não há integração com o Slack bot. O líder não consegue conversar com o mentor pelo Slack.
+- ❌ **Meu Rhitmo via Slack** — A Edge Function `meu-rhitmo` existe (analisa transcrições), mas não está conectada ao Slack. O liderado não consegue acessar "Meu Rhitmo" pelo Slack.
+
+**Implementação proposta nesta sprint:**
+
+**4a. `/mentor` no Slack (para líderes)**
+- Novo comando `/mentor <pergunta>` que envia a pergunta para a Edge Function `chat-mentor`
+- Resposta formatada em blocks do Slack
+- Suporta contexto do membro se mencionado: `/mentor @João como preparar a 1:1?`
+
+**4b. `/meu-rhitmo` no Slack (para liderados)**
+- Novo comando que retorna um resumo do perfil do liderado (Career Compass, feedbacks recentes, próximas ações)
+- Consulta dados já existentes no banco sem precisar chamar a Edge Function completa
+
+---
 
 ### Arquivos a modificar
 
 | Arquivo | Ação |
 |---------|------|
-| `src/pages/Index.tsx` | Adicionar tratamento para `isUser && !isLinkedMember` — mostrar estado de "convite pendente" em vez de cair no dashboard de líder |
-| `src/pages/Invite.tsx` | Melhorar resiliência do `handleAcceptInvite` com fallback por `member_id` |
-| `src/components/AuthEventProvider.tsx` | Adicionar fallback por email quando `invite_token` match falha |
+| `src/pages/Roadmap.tsx` | Atualizar status de 4 itens, adicionar tags manuais |
+| `src/pages/HRAnalytics.tsx` | Adicionar filtro por time e KPI de saúde |
+| `supabase/functions/slack-bot/index.ts` | Adicionar `/mentor` e `/meu-rhitmo` |
 
-### Fluxo corrigido
-
-```text
-Usuário com role 'user' acessa /dashboard
-  ├── isLinkedMember = true → DirectReportDashboard ✓
-  ├── isLinkedMember = false, hasPendingInvite = true → "Processando seu convite..."
-  └── isLinkedMember = false, sem convite → "Sem vínculo ativo. Fale com seu líder."
-```
-
+### Ordem de execução
+1. Roadmap (rápido, ~2 min)
+2. Slack `/mentor` + `/meu-rhitmo` (funcionalidade nova)
+3. HR Dashboard filtro por time
