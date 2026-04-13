@@ -82,7 +82,7 @@ export function AuthEventProvider({ children }: { children: React.ReactNode }) {
 
       processedUserIdRef.current = resolvedUser.id;
 
-      await processPendingInvite(resolvedUser.id);
+      await processPendingInvite(resolvedUser.id, resolvedUser.email);
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
