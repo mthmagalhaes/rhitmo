@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Trash2, ChevronDown, Lock, Eye, MoreVertical, Mic, RefreshCw, Copy } from 'lucide-react';
+import { Trash2, ChevronDown, Lock, Eye, MoreVertical, Mic, RefreshCw, Copy, MessageSquare } from 'lucide-react';
+import { SlackIcon } from '@/components/icons/SlackIcon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
