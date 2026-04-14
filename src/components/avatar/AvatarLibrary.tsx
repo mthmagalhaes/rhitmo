@@ -6,36 +6,8 @@ import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
-
-const AVATAR_SEEDS = [
-  { style: 'avataaars', seed: 'Alex' },
-  { style: 'avataaars', seed: 'Sam' },
-  { style: 'avataaars', seed: 'Jordan' },
-  { style: 'avataaars', seed: 'Taylor' },
-  { style: 'avataaars', seed: 'Casey' },
-  { style: 'avataaars', seed: 'Riley' },
-  { style: 'avataaars', seed: 'Morgan' },
-  { style: 'avataaars', seed: 'Quinn' },
-  { style: 'avataaars', seed: 'Avery' },
-  { style: 'avataaars', seed: 'Blake' },
-  { style: 'avataaars', seed: 'Drew' },
-  { style: 'avataaars', seed: 'Charlie' },
-  { style: 'notionists', seed: 'Felix' },
-  { style: 'notionists', seed: 'Luna' },
-  { style: 'notionists', seed: 'Mia' },
-  { style: 'notionists', seed: 'Oliver' },
-  { style: 'notionists', seed: 'Zara' },
-  { style: 'notionists', seed: 'Leo' },
-  { style: 'notionists', seed: 'Iris' },
-  { style: 'notionists', seed: 'Sage' },
-  { style: 'notionists', seed: 'Kai' },
-  { style: 'notionists', seed: 'Nora' },
-  { style: 'notionists', seed: 'Theo' },
-  { style: 'notionists', seed: 'Ava' },
-];
-
-const getAvatarUrl = (style: string, seed: string) =>
-  `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}`;
+import { AVATAR_VARIANTS } from './avatarData';
+import { CustomAvatar } from './CustomAvatar';
 
 interface AvatarLibraryProps {
   open: boolean;
@@ -78,14 +50,13 @@ export function AvatarLibrary({ open, onOpenChange, memberId, currentAvatar }: A
           <DialogTitle>Escolha seu avatar</DialogTitle>
         </DialogHeader>
         <div className="grid grid-cols-4 sm:grid-cols-6 gap-3 mt-4">
-          {AVATAR_SEEDS.map(({ style, seed }) => {
-            const url = getAvatarUrl(style, seed);
-            const isSelected = selected === url;
-            const isCurrent = currentAvatar === url;
+          {AVATAR_VARIANTS.map((variant) => {
+            const isSelected = selected === variant.id;
+            const isCurrent = currentAvatar === variant.id;
             return (
               <button
-                key={`${style}-${seed}`}
-                onClick={() => setSelected(url)}
+                key={variant.id}
+                onClick={() => setSelected(variant.id)}
                 className={cn(
                   "relative rounded-2xl p-2 border-2 transition-all hover:-translate-y-0.5 hover:shadow-md",
                   isSelected
@@ -95,7 +66,7 @@ export function AvatarLibrary({ open, onOpenChange, memberId, currentAvatar }: A
                       : "border-border bg-card hover:border-primary/30"
                 )}
               >
-                <img src={url} alt={seed} className="w-full aspect-square rounded-xl" />
+                <CustomAvatar variant={variant} size={60} className="w-full h-auto" />
                 {isCurrent && !isSelected && (
                   <span className="absolute -top-1 -right-1 text-[10px] bg-primary text-primary-foreground rounded-full px-1.5 py-0.5">Atual</span>
                 )}
