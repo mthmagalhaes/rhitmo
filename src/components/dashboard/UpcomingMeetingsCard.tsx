@@ -3,7 +3,7 @@ import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, CalendarOff, ExternalLink, FileText, ChevronDown } from 'lucide-react';
+import { Calendar, CalendarOff, ExternalLink, FileText, ChevronDown, Mic, Loader2, CheckCircle2 } from 'lucide-react';
 import { format, isToday, isTomorrow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -25,6 +25,8 @@ export const UpcomingMeetingsCard = () => {
     loadingMeetings,
     connectCalendar,
     disconnectCalendar,
+    scheduleBot,
+    getBotStatus,
   } = useCalendarIntegration();
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
@@ -143,6 +145,56 @@ export const UpcomingMeetingsCard = () => {
                   <p className="text-xs text-muted-foreground truncate">{meeting.title}</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  {/* Recall bot status / schedule button */}
+                  {meeting.meet_link && (() => {
+                    const bot = meeting.id ? getBotStatus(meeting.id) : undefined;
+                    if (bot?.status === 'done') {
+                      return (
+                        <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          Transcrito
+                        </span>
+                      );
+                    }
+                    if (bot?.status === 'recording') {
+                      return (
+                        <span className="flex items-center gap-1 text-xs text-red-500 font-medium animate-pulse">
+                          <Mic className="h-3.5 w-3.5" />
+                          Gravando
+                        </span>
+                      );
+                    }
+                    if (bot?.status === 'joining' || bot?.status === 'scheduled' || bot?.status === 'processing') {
+                      return (
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          {bot.status === 'scheduled' ? 'Agendado' : bot.status === 'processing' ? 'Processando' : 'Entrando'}
+                        </span>
+                      );
+                    }
+                    return (
+                      <button
+                        className="h-8 px-2.5 rounded-lg bg-primary/10 flex items-center gap-1.5 hover:bg-primary/20 transition-colors text-xs font-medium text-primary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          scheduleBot.mutate({
+                            meeting_id: meeting.id,
+                            meeting_url: meeting.meet_link!,
+                            member_id: meeting.member_id,
+                            start_time: meeting.start_time,
+                          });
+                        }}
+                        disabled={scheduleBot.isPending}
+                      >
+                        {scheduleBot.isPending ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Mic className="h-3.5 w-3.5" />
+                        )}
+                        Transcrever
+                      </button>
+                    );
+                  })()}
                   {meeting.meet_link && (
                     <a
                       href={meeting.meet_link}
