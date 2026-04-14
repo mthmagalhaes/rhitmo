@@ -202,13 +202,7 @@ async function handleBotDone(
     console.log(`No members matched — created orphan transcript ${mt?.id}`);
   }
 
-  // Get speaker timeline data for storage
-  let speakerTimelineData: unknown = null;
-  try {
-    if (speakerResponse.ok) {
-      speakerTimelineData = await speakerResponse.json().catch(() => null);
-    }
-  } catch { /* already consumed */ }
+  // speakerTimelineData already parsed above
 
   // Update bot record as done
   await supabaseAdmin
@@ -233,17 +227,6 @@ async function handleBotDone(
   }
 }
 
-// ── Helper: Build speaker name map from speaker_timeline response ──────────
-
-function buildSpeakerNameMap(speakerResponse: Response): Record<number, string> {
-  const map: Record<number, string> = {};
-  // Speaker response body may have already been consumed; we parse it inline
-  // Note: we clone before consuming in handleBotDone so we can reuse
-  return map;
-}
-
-// We need to handle speaker response differently since Response body can only be consumed once.
-// Let's refactor: consume speaker response in handleBotDone and pass data down.
 
 // ── Helper: Format transcript with speaker names ───────────────────────────
 
