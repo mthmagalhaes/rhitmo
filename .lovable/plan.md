@@ -1,54 +1,36 @@
 
 
-## Plano: Ajustar timing do bot e adicionar mensagem de consentimento
+## Plano: Corrigir endpoint de transcrição (API v2) e recuperar reunião da Giovanna
 
-### Mudanças
+### Causa raiz
+O `recall-webhook` usa `/api/v1/bot/{id}/transcript/` — endpoint descontinuado pelo Recall.
+A API agora requer:
+1. `GET https://us-west-2.recall.ai/api/v2/bot/{botId}/` → ler `recordings[0].media_shortcuts.transcript.data.download_url`
+2. Baixar a transcrição via essa URL
 
-**1. Reduzir `join_at` de 10 minutos para 2 minutos antes**
+### Correções
 
-Arquivos: `supabase/functions/schedule-recall-bot/index.ts`, `supabase/functions/fetch-calendar-events/index.ts`
+**1. Atualizar `recall-webhook/index.ts` — função `handleBotDone`**
 
-Trocar `10 * 60 * 1000` por `2 * 60 * 1000` em ambos os lugares onde o `joinAt` é calculado.
+Substituir a lógica de fetch de transcrição:
+- Em vez de `GET /api/v1/bot/{id}/transcript/`, usar `GET /api/v2/bot/{id}/`
+- Extrair `recordings[0].media_shortcuts.transcript.data.download_url`
+- Se o status do transcript for `processing`, retornar sem marcar erro (retry no próximo webhook)
+- Se `done`, baixar o JSON da `download_url` e processar normalmente
+- Remover também o endpoint legado `/api/v1/bot/{id}/speaker_timeline/` — os dados de speaker vêm dentro do transcript download
 
-**2. Adicionar mensagem automática de consentimento no chat da reunião**
+**2. Criar edge function `reprocess-meeting` para recuperar a reunião da Giovanna**
 
-Arquivos: `supabase/functions/schedule-recall-bot/index.ts`, `supabase/functions/fetch-calendar-events/index.ts`
+A edge function já existe (`supabase/functions/reprocess-meeting/index.ts`). Atualizar para usar a mesma lógica v2.
 
-Adicionar o campo `chat` ao payload do Create Bot:
-
-```json
-{
-  "meeting_url": "...",
-  "join_at": "...",
-  "bot_name": "Rhitmo",
-  "chat": {
-    "on_bot_join": {
-      "send_to": "everyone",
-      "message": "👋 Olá! Sou o assistente Rhitmo. Esta reunião está sendo transcrita para fins de anotações e desenvolvimento profissional. Se tiver dúvidas, fale com seu líder.",
-      "pin": true
-    },
-    "on_participant_join": {
-      "exclude_host": true,
-      "message": "👋 Olá! Esta reunião está sendo transcrita pelo Rhitmo para fins de anotações e desenvolvimento profissional."
-    }
-  },
-  "recording_config": {
-    "transcript": {
-      "provider": { "meeting_captions": {} }
-    }
-  }
-}
-```
-
-- `on_bot_join` com `pin: true` — no Google Meet a mensagem fica fixada no topo do chat para todos.
-- `on_participant_join` com `exclude_host: true` — quem entrar depois também recebe a mensagem, sem repetir para o organizador.
+**3. Testar chamando o reprocess para o bot `711862ea-606f-4805-b61f-8b893f89c9d6`**
 
 ### Arquivos a modificar
-- `supabase/functions/schedule-recall-bot/index.ts` — timing + chat
-- `supabase/functions/fetch-calendar-events/index.ts` — timing + chat (auto-transcribe)
+- `supabase/functions/recall-webhook/index.ts` — migrar de v1 para v2
+- `supabase/functions/reprocess-meeting/index.ts` — mesma migração
 
 ### Resultado esperado
-- Bot entra 2 minutos antes da reunião (não 10).
-- Ao entrar, envia mensagem pinada no chat avisando da transcrição.
-- Participantes que entrarem depois também recebem o aviso.
+- Próximas reuniões: transcrição baixada automaticamente via API v2
+- Reunião da Giovanna: recuperada via reprocess
+- Feedback criado no diário de bordo da Giovanna com a transcrição
 
