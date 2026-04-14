@@ -1,76 +1,126 @@
 
 
-## Plano: Implementar Melhorias da Jornada de E-mails
+## Plano: Internacionalização (i18n) — PT-BR, EN, ES
 
-### Resumo
+### Escopo
 
-Implementar os 4 GAPs identificados na analise de jornada: (1) email de confirmacao para leads da waitlist, (2) envio de member-welcome no cadastro manual, (3) welcome email no signup self-service, e (4) notificacao ao lider quando sync e completado.
+~148 arquivos com ~600+ strings em português hardcoded precisam ser externalizadas. Isso inclui sidebar, dashboard, formulários, diálogos, pages de auth, billing, analytics, HR, competências, reviews, etc.
 
----
+### Abordagem Técnica
 
-### GAP 1 — Email de confirmacao para o Lead (Prioridade Alta)
-
-**Template novo:** `waitlist-confirmation`
-
-Criar `supabase/functions/_shared/transactional-email-templates/waitlist-confirmation.tsx` com:
-- Assunto: "Voce esta na fila! Seu lugar no Rhitmo esta garantido"
-- Conteudo: confirmacao de entrada na waitlist, proposta de valor, expectativa de prazo
-- Branding consistente com os demais templates
-
-**Registrar** no `registry.ts`.
-
-**Wiring:** Adicionar chamada em `WaitlistDialog.tsx` apos insert com sucesso, fire-and-forget para o email do lead.
+Usar **react-i18next** (padrão da indústria para React) com JSON de traduções organizados por namespace.
 
 ---
 
-### GAP 2 — Member-welcome no cadastro manual (Prioridade Media)
+### Fase 1 — Infraestrutura i18n
 
-**Arquivo:** `src/components/NewMemberDialog.tsx`
+**Novos arquivos:**
 
-Atualmente, quando `sendDiscInvite` esta ativo, so envia `sync-invite`. Ajustar para:
-1. Sempre enviar `member-welcome` (apresentacao do Rhitmo, com nome do lider e link do sync)
-2. Remover o envio separado de `sync-invite` nesse fluxo (o member-welcome ja inclui o CTA do sync)
+| Arquivo | Descrição |
+|---------|-----------|
+| `src/i18n/index.ts` | Configuração do i18next + detector de idioma |
+| `src/i18n/locales/pt-BR.json` | Todas as strings em português (fonte da verdade) |
+| `src/i18n/locales/en.json` | Traduções em inglês |
+| `src/i18n/locales/es.json` | Traduções em espanhol |
 
-Isso garante que liderados cadastrados manualmente recebam a mesma apresentacao contextualizada que os de bulk-onboard.
+**Estrutura dos JSONs** (namespaces por área):
+```json
+{
+  "common": { "save": "Salvar", "cancel": "Cancelar", ... },
+  "sidebar": { "home": "Início", "analytics": "Analytics", ... },
+  "auth": { "login": "Entrar", "forgotPassword": "Esqueci minha senha", ... },
+  "dashboard": { "greeting.morning": "Bom dia", ... },
+  "members": { ... },
+  "reviews": { ... },
+  "hr": { ... },
+  "billing": { ... },
+  "settings": { ... }
+}
+```
 
----
-
-### GAP 3 — Welcome email no signup self-service (Prioridade Media)
-
-**Arquivo:** `src/components/WorkspaceOnboarding.tsx`
-
-Apos criar workspace com sucesso, disparar `leader-welcome` para o proprio usuario logado (que acabou de criar o workspace = e lider). Fire-and-forget com dados do workspace e dashboard URL.
-
----
-
-### GAP 4 — Notificacao "Sync completado" para o lider (Prioridade Media)
-
-**Template novo:** `sync-completed`
-
-Criar `supabase/functions/_shared/transactional-email-templates/sync-completed.tsx` com:
-- Assunto: "[Nome] completou o Rhitmo Sync!"
-- Conteudo: notificar o lider que o liderado completou, com CTA para ver o perfil
-- Branding consistente
-
-**Registrar** no `registry.ts`.
-
-**Wiring:** Em `src/pages/RhitmoSync.tsx`, apos `submit_rhitmo_sync_v2` retornar sucesso, buscar dados do member (nome, team, leader email) e disparar fire-and-forget para o email do lider. Precisaremos de uma query adicional para obter o email do lider (via team -> leader_user_id -> auth.users). Alternativa mais segura: criar uma DB function `get_sync_notification_data(member_id)` SECURITY DEFINER que retorna leader_email, leader_name, member_name.
+**Dependência:** `react-i18next` + `i18next` + `i18next-browser-languagedetector`
 
 ---
 
-### Arquivos a criar/modificar
+### Fase 2 — Contexto de Idioma + Persistência
 
-| Arquivo | Acao |
-|---------|------|
-| `supabase/functions/_shared/transactional-email-templates/waitlist-confirmation.tsx` | **Novo** |
-| `supabase/functions/_shared/transactional-email-templates/sync-completed.tsx` | **Novo** |
-| `supabase/functions/_shared/transactional-email-templates/registry.ts` | Adicionar 2 imports |
-| `src/components/WaitlistDialog.tsx` | Adicionar envio `waitlist-confirmation` |
-| `src/components/NewMemberDialog.tsx` | Trocar `sync-invite` por `member-welcome` |
-| `src/components/WorkspaceOnboarding.tsx` | Adicionar envio `leader-welcome` |
-| `src/pages/RhitmoSync.tsx` | Adicionar envio `sync-completed` ao lider |
+**Migração SQL:** Adicionar coluna `default_locale` à tabela `workspaces` (varchar, default `'pt-BR'`).
 
-**Migracao SQL:** Criar function `get_sync_notification_data(member_id)` para buscar email do lider de forma segura.
+**Migração SQL:** Adicionar coluna `locale_override` ao user metadata via `supabase.auth.updateUser`.
 
-**Deploy:** `send-transactional-email` (recompila com novos templates no registry).
+**Lógica de resolução de idioma (prioridade):**
+1. `user.user_metadata.locale` (preferência pessoal) — se definido
+2. `workspace.default_locale` (definido pelo admin) — se definido
+3. `navigator.language` (browser) — fallback
+4. `'pt-BR'` — fallback final
+
+**Novo hook:** `src/hooks/useLocale.ts` — resolve o idioma ativo e expõe `setLocale()`.
+
+---
+
+### Fase 3 — UI de Seleção de Idioma
+
+**ProfileSettingsDialog.tsx:** Adicionar seletor de idioma (dropdown com bandeiras 🇧🇷🇺🇸🇪🇸) na seção de perfil, que salva no `user_metadata.locale`.
+
+**Admin Panel (AdminOverview ou AdminAccess):** Para o super-admin (matheus@rhitmo.co), adicionar opção de definir `default_locale` por workspace na lista de workspaces.
+
+---
+
+### Fase 4 — Migração de Strings (o grosso do trabalho)
+
+Substituir todas as strings hardcoded por chamadas `t('namespace.key')` em **todos** os 148 arquivos. Organizado por área:
+
+| Área | Arquivos estimados | Exemplos |
+|------|-------------------|----------|
+| **Sidebar + Nav** | ~5 | AppSidebar, NavLink |
+| **Auth** | ~3 | Auth, ResetPassword, AuthPage |
+| **Dashboard (Líder)** | ~15 | Index, SetupChecklist, ActivityPreview, NudgesBanner, GoalsManager |
+| **Dashboard (Liderado)** | ~8 | DirectReportDashboard, CareerCompassCard, SkillsMapCard |
+| **Members + Teams** | ~12 | TeamMemberCard, NewMemberDialog, EditMemberDialog, MemberDetails |
+| **Feedback + Notes** | ~10 | FeedbackTimeline, NewNoteDialog, BiasDetectionPanel |
+| **Reviews** | ~8 | PerformanceReviewList, NewReviewDialog, ReviewViewDialog, FormalReviewSheet |
+| **HR** | ~8 | HRDashboard, HRMembers, HRTeams, HRAnalytics, EngagementHeatmap |
+| **Competências** | ~7 | CompetencyFramework, CompetencyCard, CreateJobRoleDialog |
+| **Billing** | ~3 | Billing, UpgradeBanner |
+| **Settings + Profile** | ~5 | ProfileSettingsDialog, ThemeSelector, WorkspaceOnboarding |
+| **Admin** | ~8 | AdminOverview, AdminUsers, AdminStructure, AdminSupport |
+| **Onboarding + Sync** | ~5 | OnboardingModal, RhitmoSync, LeaderSyncWizard |
+| **Landing + Legal** | ~5 | Landing, PrivacyPolicy, TermsOfService |
+| **Misc** | ~10+ | MentorChat, MeetingRecorder, VoiceInput, etc. |
+
+**Também:** `date-fns` locale — trocar `ptBR` hardcoded por locale dinâmico baseado no idioma ativo.
+
+---
+
+### Fase 5 — E-mails (Futuro/Opcional)
+
+Os templates de email em `supabase/functions/_shared/` também estão em PT-BR. Internacionalizá-los requer passar o locale do destinatário para a Edge Function. Isso pode ser feito numa fase posterior.
+
+---
+
+### Resumo de Mudanças
+
+| Tipo | Quantidade |
+|------|-----------|
+| Dependências novas | 3 (react-i18next, i18next, i18next-browser-languagedetector) |
+| Arquivos novos | ~6 (config i18n + 3 JSONs de locale + hook + componente seletor) |
+| Arquivos modificados | ~100+ (substituição de strings) |
+| Migração SQL | 1 (coluna `default_locale` em workspaces) |
+| Componentes UI novos | Seletor de idioma no perfil + opção admin por workspace |
+
+---
+
+### Riscos e Considerações
+
+- **Volume:** Este é um projeto de alto volume. Vou fazer em batches (infraestrutura primeiro, depois área por área).
+- **Strings dinâmicas:** Algumas strings vêm do banco (ex: nomes de competências, títulos de reviews). Essas não serão traduzidas — apenas a UI estática.
+- **Emails:** Ficam em PT-BR por agora, a menos que queira incluir nessa fase.
+
+### Ordem de Execução
+
+1. Instalar dependências + criar infraestrutura i18n
+2. Criar os 3 arquivos JSON de tradução completos
+3. Migração SQL + hook useLocale
+4. Seletor de idioma no perfil + admin
+5. Migrar strings arquivo por arquivo (batches de ~15-20 arquivos)
 
