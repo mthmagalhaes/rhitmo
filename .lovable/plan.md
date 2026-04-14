@@ -1,60 +1,31 @@
 
 
-## Plano: Corrigir idioma da transcrição — migrar de `meeting_captions` para `recallai_streaming`
+## Plano: Reescrever cost-analysis.md (Abril 2026)
 
-### Diagnóstico
+Consolidar as duas análises discutidas (auditoria atualizada + premissas reais de uso) em um único documento atualizado.
 
-O provider atual é `meeting_captions`, que usa as legendas nativas do Google Meet. Essas legendas dependem da configuração de idioma do Meet do participante — se estava em inglês, a transcrição sai em inglês (traduzida/mal-reconhecida). Pior: **`meeting_captions` não suporta detecção automática de idioma**.
+### Conteúdo do novo cost-analysis.md
 
-### Solução
+1. **Custos unitários atualizados** — refletindo migração para Lovable AI Gateway (custo zero em chat-mentor L3, meu-rhitmo, classify, review, brief, job-crafting) e adição do Recall.ai bot ($0.15/hora)
 
-Trocar para o provider `recallai_streaming` com `language_code: "auto"`. Isso:
-- Detecta automaticamente o idioma falado (PT-BR, EN, ES — todos suportados)
-- Não depende das configurações do Google Meet de cada participante
-- Custo: US$ 0.15/hora de transcrição (vs. gratuito do `meeting_captions`)
+2. **Premissas realistas por plano:**
+   - **Pulse (free):** 2 liderados, 20 notas, 20 msgs mentor, 0 reuniões com bot
+   - **Pro (R$49):** 5 liderados, 40 notas, 60 msgs mentor, 20 reuniões/mês (30min cada = 10h)
+   - **Business (R$69):** 10 liderados, 80 notas, 60 msgs mentor, 40 reuniões/mês (30min cada = 20h)
 
-O modo `prioritize_accuracy` entrega transcrições em blocos de 3-10 min com qualidade superior. Para o caso de uso do Rhitmo (análise pós-reunião), é ideal.
+3. **Custos e margens por plano:**
+   - Pulse: ~R$0.08/líder → subsidio aceitável
+   - Pro: ~R$8.87/líder → margem 81.9%
+   - Business: ~R$17.73/líder → margem 74.3%
 
-### Mudanças
+4. **Comparativo Mar/26 vs Abr/26** — redução de ~85-87%
 
-**Arquivos:** `schedule-recall-bot/index.ts` e `fetch-calendar-events/index.ts`
+5. **Custos fixos da plataforma** (~$20-45/mês)
 
-Substituir o bloco `recording_config` em ambos:
+6. **Drivers de custo e oportunidades de otimização**
 
-```typescript
-// ANTES
-recording_config: {
-  transcript: {
-    provider: { meeting_captions: {} }
-  }
-}
+7. **Notas técnicas** (embeddings pendentes, Whisper para uploads manuais, Resend free tier)
 
-// DEPOIS
-recording_config: {
-  transcript: {
-    provider: {
-      recallai_streaming: {
-        mode: "prioritize_accuracy",
-        language_code: "auto"
-      }
-    }
-  }
-}
-```
-
-Isso é tudo. Não precisa de migração de banco, mudança no webhook, nem configuração do usuário. O `language_code: "auto"` resolve os 3 idiomas (PT-BR, EN, ES) automaticamente.
-
-### Custo
-
-- `meeting_captions`: gratuito
-- `recallai_streaming`: US$ 0.15/hora
-
-Para uma reunião de 1 hora, são ~R$ 0.85. Aceitável para o valor que entrega.
-
-### Resultado esperado
-
-- Reuniões em português: transcrição em português
-- Reuniões em inglês: transcrição em inglês
-- Reuniões em espanhol: transcrição em espanhol
-- Detecção automática — nenhuma configuração manual necessária do líder
+### Arquivo a modificar
+- `cost-analysis.md` — reescrita completa
 
