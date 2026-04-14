@@ -214,7 +214,53 @@
 
 ---
 
-## 10. Notas Técnicas
+## 10. Projeção de Escala — 50 e 100 Líderes Ativos
+
+> Premissas: custo fixo de R$174/mês (~$30 USD × 5.80), mix de 70% Pro + 30% Business, cenário moderado de uso. Stripe: 3,99% + R$0,39/transação.
+
+### 50 líderes (35 Pro + 15 Business)
+
+| Métrica | Cálculo | Valor |
+|---|---|---|
+| **Receita bruta** | (35 × R$49) + (15 × R$69) | **R$2.750/mês** |
+| Stripe (taxas) | ~4,5% médio | -R$123,75 |
+| **Receita líquida** | | **R$2.626,25** |
+| Custo variável Pro | 35 × R$8,87 | R$310,45 |
+| Custo variável Business | 15 × R$17,73 | R$265,95 |
+| **Total custo variável** | | **R$576,40** |
+| Custo fixo plataforma | | R$174,00 |
+| **Custo total** | | **R$750,40** |
+| **Lucro líquido mensal** | | **R$1.875,85** |
+| **Margem líquida** | | **68,2%** |
+
+### 100 líderes (70 Pro + 30 Business)
+
+| Métrica | Cálculo | Valor |
+|---|---|---|
+| **Receita bruta** | (70 × R$49) + (30 × R$69) | **R$5.500/mês** |
+| Stripe (taxas) | ~4,5% médio | -R$247,50 |
+| **Receita líquida** | | **R$5.252,50** |
+| Custo variável Pro | 70 × R$8,87 | R$620,90 |
+| Custo variável Business | 30 × R$17,73 | R$531,90 |
+| **Total custo variável** | | **R$1.152,80** |
+| Custo fixo plataforma | | R$174,00 |
+| **Custo total** | | **R$1.326,80** |
+| **Lucro líquido mensal** | | **R$3.925,70** |
+| **Margem líquida** | | **71,3%** |
+
+### Resumo visual
+
+| Escala | Receita bruta | Custo total | Lucro líquido | Margem |
+|---|---|---|---|---|
+| **10 líderes** | R$550 | R$304 | **R$246** | 44,7% |
+| **50 líderes** | R$2.750 | R$750 | **R$1.876** | 68,2% |
+| **100 líderes** | R$5.500 | R$1.327 | **R$3.926** | 71,3% |
+
+> A margem líquida melhora com escala porque o custo fixo (R$174) se dilui. A partir de 50 líderes, a operação gera ~R$1.900/mês de lucro líquido. Com 100, ~R$3.900/mês.
+
+---
+
+## 11. Notas Técnicas
 
 - **Embeddings:** O schema possui coluna `feedbacks.embedding` (pgvector) mas nenhuma Edge Function popula embeddings atualmente. Custo futuro estimado: ~$0.00002/nota via `text-embedding-3-small`.
 - **Layer 2 (Compressor):** Implementado como JavaScript puro (substring/filtragem), sem chamada LLM — custo zero.
