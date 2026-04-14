@@ -127,8 +127,11 @@ async function fetchTranscriptFromRecall(
     return "not_ready";
   }
 
-  // Check transcript status
-  const transcriptStatus = transcriptShortcut.status;
+  // Check transcript status — could be a string or nested object
+  const transcriptStatus = typeof transcriptShortcut.status === "string"
+    ? transcriptShortcut.status
+    : transcriptShortcut.status?.code || transcriptShortcut.status?.status;
+  console.log(`Bot ${botId}: transcript shortcut keys: ${Object.keys(transcriptShortcut).join(", ")}, status raw: ${JSON.stringify(transcriptShortcut.status)}`);
   if (transcriptStatus && transcriptStatus !== "done") {
     console.log(`Bot ${botId}: transcript status is '${transcriptStatus}', will retry`);
     return "not_ready";
