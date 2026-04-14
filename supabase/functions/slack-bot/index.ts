@@ -891,9 +891,10 @@ async function handleMentorCommand(payload: Record<string, string>, persona: Per
     }
 
     const data = await res.json();
-    const reply = data.reply || data.message || 'Sem resposta do mentor.';
+    const reply = data.response || data.reply || data.message || 'Sem resposta do mentor.';
 
     const blocks: unknown[] = [
+      { type: 'section', text: { type: 'mrkdwn', text: `> _${question}_` } },
       { type: 'header', text: { type: 'plain_text', text: '🧠 Mentor Rhitmo' } },
     ];
 
