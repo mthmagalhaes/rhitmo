@@ -79,6 +79,7 @@ export const UpcomingMeetingsCard = () => {
 
   // Empty state
   if (upcomingMeetings.length === 0) {
+    const hasEvents = syncDebug && syncDebug.events_found > 0;
     return (
       <div className="rounded-3xl bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-6 min-h-[200px] flex flex-col">
         <div className="flex items-center justify-between mb-5">
@@ -86,18 +87,37 @@ export const UpcomingMeetingsCard = () => {
             <Calendar className="h-5 w-5 text-primary" />
             <h3 className="text-lg font-semibold tracking-tight text-foreground">Próximas 1:1s</h3>
           </div>
-          <button
-            onClick={disconnectCalendar}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Desconectar
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => refetchMeetings()}
+              className="text-xs text-primary hover:text-primary/80 transition-colors font-medium"
+            >
+              Sincronizar
+            </button>
+            <button
+              onClick={disconnectCalendar}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Desconectar
+            </button>
+          </div>
         </div>
         <div className="flex-1 flex flex-col items-center justify-center text-center py-6">
           <CalendarOff className="h-9 w-9 text-muted-foreground/30 mb-3" />
-          <p className="text-sm text-muted-foreground">
-            Nenhuma reunião nas próximas 48h
-          </p>
+          {hasEvents ? (
+            <>
+              <p className="text-sm text-muted-foreground mb-1">
+                {syncDebug.events_found} eventos encontrados, mas nenhum com liderados cadastrados
+              </p>
+              <p className="text-xs text-muted-foreground/70">
+                Verifique se os e-mails dos liderados estão cadastrados corretamente no time
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Nenhuma reunião nas próximas 48h
+            </p>
+          )}
         </div>
       </div>
     );
