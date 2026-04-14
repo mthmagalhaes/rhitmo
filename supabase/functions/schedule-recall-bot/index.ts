@@ -37,16 +37,15 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
+    const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
+    if (userError || !authUser) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const userId = claimsData.claims.sub as string;
+    const userId = authUser.id;
 
     // Parse body
     const body = await req.json();
@@ -80,7 +79,7 @@ Deno.serve(async (req) => {
     }
 
     // Schedule bot via Recall.ai API
-    const joinAt = new Date(new Date(start_time).getTime() - 60 * 1000).toISOString();
+    const joinAt = new Date(new Date(start_time).getTime() - 10 * 60 * 1000).toISOString();
 
     // Use meeting_captions by default (free), allow override via body
     const transcriptionProvider = provider || "meeting_captions";

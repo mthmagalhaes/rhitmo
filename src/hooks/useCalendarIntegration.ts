@@ -42,8 +42,8 @@ export const useCalendarIntegration = () => {
   const isConnected = !!connectionData;
   const autoTranscribe = connectionData?.auto_transcribe ?? false;
 
-  const { data: calendarData, isLoading: loadingMeetings, refetch: refetchMeetings } = useQuery({
-    queryKey: ['upcoming-meetings', user?.id],
+  const { data: calendarData, isLoading: loadingMeetings, isFetching: isSyncing, isError: isSyncError, error: syncError, refetch: refetchMeetings } = useQuery({
+    queryKey: ['calendar-upcoming-meetings', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('fetch-calendar-events');
       if (error) throw error;
@@ -166,6 +166,9 @@ export const useCalendarIntegration = () => {
     upcomingMeetings,
     syncDebug,
     loadingMeetings,
+    isSyncing,
+    isSyncError,
+    syncError,
     refetchMeetings,
     connectCalendar,
     disconnectCalendar,

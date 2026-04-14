@@ -109,7 +109,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
       toast({ title: t('dashboard.calendarConnected') });
       window.history.replaceState({}, '', '/dashboard');
       queryClient.invalidateQueries({ queryKey: ['calendar-connected'] });
-      queryClient.invalidateQueries({ queryKey: ['upcoming-meetings'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar-upcoming-meetings'] });
     }
   }, []);
 
@@ -248,7 +248,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
   });
 
   const { data: meetings = [] } = useQuery({
-    queryKey: ['upcoming-meetings', user?.id],
+    queryKey: ['upcoming-meetings-db', user?.id],
     queryFn: async () => {
       if (!user) return [];
       const { data } = await supabase
