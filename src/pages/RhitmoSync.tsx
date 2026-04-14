@@ -312,7 +312,7 @@ export default function RhitmoSync() {
 
       // Fire-and-forget: notificar líder que o sync foi completado
       if (memberId) {
-        supabase.rpc('get_sync_notification_data', { p_member_id: memberId })
+        Promise.resolve(supabase.rpc('get_sync_notification_data', { p_member_id: memberId }))
           .then(({ data: notifData }) => {
             if (notifData && notifData.length > 0) {
               const nd = notifData[0];
