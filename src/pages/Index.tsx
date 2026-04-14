@@ -71,6 +71,7 @@ const CalendarCardBoundary = () => (
   </CalendarErrorBoundary>
 );
 
+interface TeamMember {
   id: string;
   name: string;
   role: string;
