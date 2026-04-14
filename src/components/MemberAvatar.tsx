@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { CustomAvatar } from '@/components/avatar/CustomAvatar';
+import { getAvatarById, getAvatarForName } from '@/components/avatar/avatarData';
 
 interface MemberAvatarProps {
   memberId: string;
@@ -9,15 +10,11 @@ interface MemberAvatarProps {
   className?: string;
 }
 
-const getDiceBearUrl = (seed: string) => {
-  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(seed)}`;
-};
-
 const sizes = {
-  sm: { container: 'h-8 w-8', imgSize: 40 },
-  md: { container: 'h-10 w-10', imgSize: 60 },
-  lg: { container: 'h-16 w-16', imgSize: 120 },
-  xl: { container: 'h-24 w-24', imgSize: 160 }
+  sm: { container: 'h-8 w-8', svgSize: 32 },
+  md: { container: 'h-10 w-10', svgSize: 40 },
+  lg: { container: 'h-16 w-16', svgSize: 64 },
+  xl: { container: 'h-24 w-24', svgSize: 96 }
 };
 
 export const MemberAvatar = ({ 
@@ -27,24 +24,45 @@ export const MemberAvatar = ({
   size = 'md',
   className 
 }: MemberAvatarProps) => {
-  const [imageError, setImageError] = useState(false);
   const sizeConfig = sizes[size];
-  const avatarUrl = customAvatarUrl || getDiceBearUrl(memberName);
   const initials = memberName.split(' ').map(n => n[0]).join('');
 
-  return (
-    <Avatar className={`${sizeConfig.container} ${className || ''}`}>
-      {!imageError ? (
-        <AvatarImage 
-          src={avatarUrl}
-          alt={memberName}
+  // Check if it's a custom avatar ID (e.g. "avatar-1")
+  const customVariant = customAvatarUrl?.startsWith('avatar-')
+    ? getAvatarById(customAvatarUrl)
+    : null;
+
+  // If custom avatar ID is set, render it
+  if (customVariant) {
+    return (
+      <div className={`${sizeConfig.container} ${className || ''} rounded-full overflow-hidden shrink-0`}>
+        <CustomAvatar variant={customVariant} size={sizeConfig.svgSize} className="w-full h-full" />
+      </div>
+    );
+  }
+
+  // If it's an external URL (legacy DiceBear or uploaded photo), show it
+  if (customAvatarUrl && !customAvatarUrl.startsWith('avatar-')) {
+    return (
+      <Avatar className={`${sizeConfig.container} ${className || ''}`}>
+        <img 
+          src={customAvatarUrl} 
+          alt={memberName} 
+          className="aspect-square h-full w-full"
           loading="lazy"
-          onError={() => setImageError(true)}
         />
-      ) : null}
-      <AvatarFallback className="bg-violet-600 text-white">
-        {initials}
-      </AvatarFallback>
-    </Avatar>
+        <AvatarFallback className="bg-primary text-primary-foreground">
+          {initials}
+        </AvatarFallback>
+      </Avatar>
+    );
+  }
+
+  // Default: deterministic avatar based on name
+  const defaultVariant = getAvatarForName(memberName);
+  return (
+    <div className={`${sizeConfig.container} ${className || ''} rounded-full overflow-hidden shrink-0`}>
+      <CustomAvatar variant={defaultVariant} size={sizeConfig.svgSize} className="w-full h-full" />
+    </div>
   );
 };
