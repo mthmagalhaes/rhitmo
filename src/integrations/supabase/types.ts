@@ -1080,6 +1080,79 @@ export type Database = {
           },
         ]
       }
+      recall_bots: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          id: string
+          meeting_id: string | null
+          meeting_transcript_id: string | null
+          meeting_url: string
+          member_id: string | null
+          recall_bot_id: string
+          scheduled_at: string | null
+          status: string
+          transcript: string | null
+          transcript_data: Json | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          meeting_id?: string | null
+          meeting_transcript_id?: string | null
+          meeting_url: string
+          member_id?: string | null
+          recall_bot_id: string
+          scheduled_at?: string | null
+          status?: string
+          transcript?: string | null
+          transcript_data?: Json | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          meeting_id?: string | null
+          meeting_transcript_id?: string | null
+          meeting_url?: string
+          member_id?: string | null
+          recall_bot_id?: string
+          scheduled_at?: string | null
+          status?: string
+          transcript?: string | null
+          transcript_data?: Json | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recall_bots_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "upcoming_meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recall_bots_meeting_transcript_id_fkey"
+            columns: ["meeting_transcript_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_transcripts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recall_bots_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       review_comments: {
         Row: {
           content: string
