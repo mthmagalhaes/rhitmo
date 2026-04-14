@@ -159,8 +159,20 @@ export const useCalendarIntegration = () => {
       queryClient.invalidateQueries({ queryKey: ['recall-bots'] });
       toast({ title: 'Bot agendado', description: 'O Rhitmo entrará na reunião automaticamente para transcrever.' });
     },
-    onError: (error: Error & { message?: string }) => {
-      const msg = error.message?.includes('409') ? 'Bot já agendado para esta reunião.' : 'Erro ao agendar bot de transcrição.';
+    onError: (error: any) => {
+      let msg = 'Erro ao agendar bot de transcrição.';
+      try {
+        const raw = error?.context ? error.context : error;
+        if (typeof raw?.json === 'function') {
+          raw.json().then((body: any) => {
+            const detail = body?.error || body?.details || JSON.stringify(body);
+            toast({ title: 'Erro', description: detail, variant: 'destructive' });
+          });
+          return;
+        }
+        if (error?.message?.includes('409')) msg = 'Bot já agendado para esta reunião.';
+        else if (error?.message) msg = error.message;
+      } catch {}
       toast({ title: 'Erro', description: msg, variant: 'destructive' });
     },
   });
