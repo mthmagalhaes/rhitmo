@@ -89,11 +89,12 @@ export const useCalendarIntegration = () => {
   const { data: recallBots = [] } = useQuery({
     queryKey: ['recall-bots', user?.id],
     queryFn: async () => {
-      const { data, error } = await (supabase as unknown as { from: (table: string) => { select: (cols: string) => { eq: (col: string, val: string) => { not: (col: string, op: string, val: string) => Promise<{ data: RecallBot[] | null; error: unknown }> } } } } })
+      const supabaseAny = supabase as any;
+      const { data, error } = await supabaseAny
         .from('recall_bots')
         .select('id, meeting_id, status, scheduled_at')
         .eq('user_id', user!.id)
-        .not('status', 'eq', 'error');
+        .neq('status', 'error');
       if (error) return [];
       return (data || []) as RecallBot[];
     },
