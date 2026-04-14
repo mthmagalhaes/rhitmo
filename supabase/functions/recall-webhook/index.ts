@@ -77,7 +77,8 @@ Deno.serve(async (req) => {
     }
 
     // When bot is done, fetch transcript + create feedbacks for all members
-    if (event === "bot.done" && botRecord.status !== "done") {
+    // Also handle bot.recording_done which fires when recording is ready
+    if ((event === "bot.done" || event === "bot.recording_done") && botRecord.status !== "done") {
       await handleBotDone(supabaseAdmin, botRecord, botId, RECALL_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     }
 
@@ -107,15 +108,20 @@ async function handleBotDone(
 
   const recallHeaders = { Authorization: `Token ${recallApiKey}` };
 
-  // Fetch transcript and speaker timeline in parallel
-  const [transcriptResponse, speakerResponse] = await Promise.all([
-    fetch(`https://us-west-2.recall.ai/api/v1/bot/${botId}/transcript/`, { headers: recallHeaders }),
-    fetch(`https://us-west-2.recall.ai/api/v1/bot/${botId}/speaker_timeline/`, { headers: recallHeaders }),
-  ]);
+  // Fetch transcript — try the transcript endpoint first, retry once if empty
+  const transcriptResponse = await fetch(
+    `https://us-west-2.recall.ai/api/v1/bot/${botId}/transcript/`,
+    { headers: recallHeaders }
+  );
 
   if (!transcriptResponse.ok) {
     const errText = await transcriptResponse.text();
     console.error(`Failed to fetch transcript: ${errText}`);
+    // If 404 or not ready, mark as processing and wait for next webhook
+    if (transcriptResponse.status === 404 || transcriptResponse.status === 425) {
+      console.log(`Transcript not ready yet for bot ${botId}, will retry on next event`);
+      return;
+    }
     await supabaseAdmin
       .from("recall_bots")
       .update({ status: "error", error_message: `Transcript fetch failed: ${transcriptResponse.status}` })
@@ -124,6 +130,18 @@ async function handleBotDone(
   }
 
   const transcriptData = await transcriptResponse.json();
+
+  // If transcript is empty, it may not be ready yet
+  if (Array.isArray(transcriptData) && transcriptData.length === 0) {
+    console.log(`Transcript empty for bot ${botId}, will retry on next event`);
+    return;
+  }
+
+  // Fetch speaker timeline
+  const speakerResponse = await fetch(
+    `https://us-west-2.recall.ai/api/v1/bot/${botId}/speaker_timeline/`,
+    { headers: recallHeaders }
+  );
 
   // Parse speaker timeline data
   let speakerTimelineData: unknown = null;
