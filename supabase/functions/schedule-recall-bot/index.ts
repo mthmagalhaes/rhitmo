@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
 
     // Parse body
     const body = await req.json();
-    const { meeting_id, meeting_url, member_id, start_time, provider } = body;
+    const { meeting_id, meeting_url, member_id, start_time } = body;
 
     if (!meeting_url || !start_time) {
       return new Response(JSON.stringify({ error: "meeting_url and start_time are required" }), {
@@ -80,9 +80,6 @@ Deno.serve(async (req) => {
 
     // Schedule bot via Recall.ai API
     const joinAt = new Date(new Date(start_time).getTime() - 10 * 60 * 1000).toISOString();
-
-    // Use meeting_captions by default (free), allow override via body
-    const transcriptionProvider = provider || "meeting_captions";
 
     const recallResponse = await fetch("https://us-west-2.recall.ai/api/v1/bot/", {
       method: "POST",
