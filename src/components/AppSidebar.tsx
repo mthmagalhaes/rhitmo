@@ -43,6 +43,28 @@ import {
 export function AppSidebar() {
   const { t } = useTranslation();
   const { open } = useSidebar();
+
+  const menuItems = [
+    { title: t('sidebar.home'), url: '/dashboard', icon: Home },
+    { title: t('sidebar.analytics'), url: '/analytics', icon: BarChart3 },
+    { title: t('sidebar.knowledgeCenter'), url: '/help', icon: BookOpen },
+    { title: t('sidebar.subscription'), url: '/billing', icon: CreditCard },
+  ];
+
+  const memberMenuItems = [
+    { title: t('sidebar.home'), url: '/dashboard', icon: Home },
+    { title: t('sidebar.myCareer'), url: '/dashboard/carreira', icon: Compass },
+    { title: t('sidebar.feedbacks'), url: '/dashboard/feedbacks', icon: FileText },
+    { title: t('sidebar.myProfile'), url: '/dashboard/perfil', icon: User },
+  ];
+
+  const hrMenuItems = [
+    { title: t('sidebar.overview'), url: '/hr', icon: LayoutDashboard },
+    { title: t('sidebar.teamsAndLeaders'), url: '/hr/teams', icon: Users },
+    { title: t('sidebar.directReports'), url: '/hr/members', icon: UserCheck },
+    { title: t('sidebar.analytics'), url: '/hr/analytics', icon: BarChart3 },
+    { title: t('sidebar.competencies'), url: '/hr/competency-framework', icon: Award },
+  ];
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdmin();
   const { isLeader, isHRAdmin, isUser, loading: roleLoading } = useUserRole();
