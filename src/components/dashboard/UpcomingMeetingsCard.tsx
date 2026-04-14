@@ -302,16 +302,19 @@ export const UpcomingMeetingsCard = () => {
                         className="h-8 px-2.5 rounded-lg bg-primary/10 flex items-center gap-1.5 hover:bg-primary/20 transition-colors text-xs font-medium text-primary"
                         onClick={(e) => {
                           e.stopPropagation();
+                          setSchedulingMeetingId(meeting.id);
                           scheduleBot.mutate({
                             meeting_id: meeting.id,
                             meeting_url: meeting.meet_link!,
                             member_id: meeting.member_id,
                             start_time: meeting.start_time,
+                          }, {
+                            onSettled: () => setSchedulingMeetingId(null),
                           });
                         }}
-                        disabled={scheduleBot.isPending}
+                        disabled={schedulingMeetingId === meeting.id}
                       >
-                        {scheduleBot.isPending ? (
+                        {schedulingMeetingId === meeting.id ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : (
                           <Mic className="h-3.5 w-3.5" />
