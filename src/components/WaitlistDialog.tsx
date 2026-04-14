@@ -78,6 +78,20 @@ export const WaitlistDialog = ({ open, onOpenChange }: WaitlistDialogProps) => {
       }).catch((err) => {
         console.error('Falha ao notificar admin (não crítico):', err);
       });
+
+      // Enviar confirmação para o lead (fire-and-forget)
+      supabase.functions.invoke('send-transactional-email', {
+        body: {
+          templateName: 'waitlist-confirmation',
+          recipientEmail: email,
+          idempotencyKey: `waitlist-confirm-${email}-${Date.now()}`,
+          templateData: {
+            leadName: name || null,
+          }
+        }
+      }).catch((err) => {
+        console.error('Falha ao enviar confirmação ao lead (não crítico):', err);
+      });
       
       // Reset form and close
       setName('');

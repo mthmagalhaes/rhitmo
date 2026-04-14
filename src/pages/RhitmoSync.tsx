@@ -310,6 +310,30 @@ export default function RhitmoSync() {
         throw new Error('Este questionário já foi preenchido');
       }
 
+      // Fire-and-forget: notificar líder que o sync foi completado
+      if (memberId) {
+        Promise.resolve(supabase.rpc('get_sync_notification_data', { p_member_id: memberId }))
+          .then(({ data: notifData }) => {
+            if (notifData && notifData.length > 0) {
+              const nd = notifData[0];
+              supabase.functions.invoke('send-transactional-email', {
+                body: {
+                  templateName: 'sync-completed',
+                  recipientEmail: nd.leader_email,
+                  idempotencyKey: `sync-completed-${memberId}`,
+                  templateData: {
+                    memberName: nd.member_name,
+                    leaderName: nd.leader_name,
+                    teamName: nd.team_name,
+                    profileUrl: `${window.location.origin}/member/${memberId}`,
+                  }
+                }
+              }).catch(console.error);
+            }
+          })
+          .catch(console.error);
+      }
+
       setCompleted(true);
       toast.success('Perfil sintonizado com sucesso!');
     } catch (error: unknown) {

@@ -59,6 +59,25 @@ export function WorkspaceOnboarding({ userId, userMetadata, onComplete }: Worksp
 
       if (teamError) throw teamError;
 
+      // Fire-and-forget: enviar leader-welcome para o próprio líder
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        supabase.functions.invoke('send-transactional-email', {
+          body: {
+            templateName: 'leader-welcome',
+            recipientEmail: user.email,
+            idempotencyKey: `leader-welcome-${userId}`,
+            templateData: {
+              leaderName: user.user_metadata?.full_name || user.email.split('@')[0],
+              workspaceName: workspaceName.trim(),
+              dashboardUrl: `${window.location.origin}/dashboard`,
+            }
+          }
+        }).catch((err) => {
+          console.error('Falha ao enviar leader-welcome (não crítico):', err);
+        });
+      }
+
       toast({
         title: 'Workspace criado!',
         description: 'Seu ambiente está pronto para uso.',
