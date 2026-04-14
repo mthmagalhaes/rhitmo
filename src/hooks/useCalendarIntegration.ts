@@ -57,6 +57,9 @@ export const useCalendarIntegration = () => {
     refetchInterval: 10 * 60 * 1000,
   });
 
+  const upcomingMeetings = calendarData?.meetings ?? [];
+  const syncDebug = calendarData?.debug;
+
   const connectCalendar = async () => {
     const { data, error } = await supabase.functions.invoke('google-calendar-oauth', {
       body: { action: 'authorize' },
@@ -161,6 +164,7 @@ export const useCalendarIntegration = () => {
     connectionData,
     autoTranscribe,
     upcomingMeetings,
+    syncDebug,
     loadingMeetings,
     refetchMeetings,
     connectCalendar,
