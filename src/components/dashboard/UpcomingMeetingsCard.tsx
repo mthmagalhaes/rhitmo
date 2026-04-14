@@ -3,7 +3,8 @@ import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, CalendarOff, ExternalLink, FileText, ChevronDown, Mic, Loader2, CheckCircle2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Calendar, CalendarOff, ExternalLink, FileText, ChevronDown, Mic, Loader2, CheckCircle2, Sparkles } from 'lucide-react';
 import { format, isToday, isTomorrow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -25,6 +26,8 @@ export const UpcomingMeetingsCard = () => {
     loadingMeetings,
     connectCalendar,
     disconnectCalendar,
+    autoTranscribe,
+    toggleAutoTranscribe,
     scheduleBot,
     getBotStatus,
   } = useCalendarIntegration();
@@ -104,7 +107,7 @@ export const UpcomingMeetingsCard = () => {
 
   return (
     <div className="rounded-3xl bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-6 flex flex-col">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <Calendar className="h-5 w-5 text-primary" />
           <h3 className="text-lg font-semibold tracking-tight text-foreground">Próximas 1:1s</h3>
@@ -120,9 +123,25 @@ export const UpcomingMeetingsCard = () => {
         </button>
       </div>
 
+      {/* Auto-transcribe toggle */}
+      <div className="flex items-center justify-between px-1 py-2 mb-2">
+        <div className="flex items-center gap-1.5">
+          <Sparkles className="h-3.5 w-3.5 text-primary" />
+          <span className="text-xs font-medium text-muted-foreground">Transcrição automática</span>
+        </div>
+        <Switch
+          checked={autoTranscribe}
+          onCheckedChange={(checked) => toggleAutoTranscribe.mutate(checked)}
+          disabled={toggleAutoTranscribe.isPending}
+          className="scale-90"
+        />
+      </div>
+
       <div className="space-y-1">
         {visibleMeetings.map((meeting, index) => {
           const badge = getTimeBadge(meeting.start_time);
+          const bot = meeting.id ? getBotStatus(meeting.id) : undefined;
+          const isAutoScheduled = autoTranscribe && bot?.status === 'scheduled';
 
           return (
             <div key={meeting.id || meeting.member_id + meeting.start_time}>
@@ -147,7 +166,6 @@ export const UpcomingMeetingsCard = () => {
                 <div className="flex items-center gap-2 shrink-0">
                   {/* Recall bot status / schedule button */}
                   {meeting.meet_link && (() => {
-                    const bot = meeting.id ? getBotStatus(meeting.id) : undefined;
                     if (bot?.status === 'done') {
                       return (
                         <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
@@ -167,8 +185,26 @@ export const UpcomingMeetingsCard = () => {
                     if (bot?.status === 'joining' || bot?.status === 'scheduled' || bot?.status === 'processing') {
                       return (
                         <span className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          {bot.status === 'scheduled' ? 'Agendado' : bot.status === 'processing' ? 'Processando' : 'Entrando'}
+                          {isAutoScheduled ? (
+                            <>
+                              <Sparkles className="h-3.5 w-3.5 text-primary" />
+                              <span className="text-primary">Auto ✓</span>
+                            </>
+                          ) : (
+                            <>
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              {bot.status === 'scheduled' ? 'Agendado' : bot.status === 'processing' ? 'Processando' : 'Entrando'}
+                            </>
+                          )}
+                        </span>
+                      );
+                    }
+                    // No bot — show manual button (unless auto-transcribe will handle on next sync)
+                    if (autoTranscribe) {
+                      return (
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground/60 font-medium">
+                          <Sparkles className="h-3.5 w-3.5" />
+                          Pendente
                         </span>
                       );
                     }

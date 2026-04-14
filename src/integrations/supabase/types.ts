@@ -696,6 +696,7 @@ export type Database = {
       google_calendar_tokens: {
         Row: {
           access_token: string
+          auto_transcribe: boolean | null
           calendar_email: string | null
           created_at: string | null
           id: string
@@ -706,6 +707,7 @@ export type Database = {
         }
         Insert: {
           access_token: string
+          auto_transcribe?: boolean | null
           calendar_email?: string | null
           created_at?: string | null
           id?: string
@@ -716,6 +718,7 @@ export type Database = {
         }
         Update: {
           access_token?: string
+          auto_transcribe?: boolean | null
           calendar_email?: string | null
           created_at?: string | null
           id?: string
