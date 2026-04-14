@@ -1,46 +1,60 @@
 
 
-## Plano: Garantir cobertura multi-workspace para todos os líderes
+## Plano: Corrigir idioma da transcrição — migrar de `meeting_captions` para `recallai_streaming`
 
-### Status atual — tudo OK para você
+### Diagnóstico
 
-- Bot da Giovanna (15:30): `joining` — entrou na sala agora
-- Bot da Giovanna anterior: `done` — transcrição + feedback criados com sucesso (157 segmentos)
-- Bot da Gabriela: `scheduled` para 20:20 UTC (2 min antes da reunião das 17:30 BRT)
-- Webhook funcional e recebendo eventos do Recall
+O provider atual é `meeting_captions`, que usa as legendas nativas do Google Meet. Essas legendas dependem da configuração de idioma do Meet do participante — se estava em inglês, a transcrição sai em inglês (traduzida/mal-reconhecida). Pior: **`meeting_captions` não suporta detecção automática de idioma**.
 
-Seus liderados estão todos no workspace "Faster Ops" que você é owner. O fluxo vai funcionar.
+### Solução
 
-### Melhoria necessária para robustez
+Trocar para o provider `recallai_streaming` com `language_code: "auto"`. Isso:
+- Detecta automaticamente o idioma falado (PT-BR, EN, ES — todos suportados)
+- Não depende das configurações do Google Meet de cada participante
+- Custo: US$ 0.15/hora de transcrição (vs. gratuito do `meeting_captions`)
 
-O `fetch-calendar-events` hoje busca liderados de **um único workspace**:
-1. Primeiro tenta `workspaces.owner_id = userId` → pega 1 workspace
-2. Se não encontra, tenta `teams.leader_user_id = userId` → pega 1 workspace
+O modo `prioritize_accuracy` entrega transcrições em blocos de 3-10 min com qualidade superior. Para o caso de uso do Rhitmo (análise pós-reunião), é ideal.
 
-Se um líder lidera times em **múltiplos workspaces** (ex: um gestor convidado em outra empresa), os liderados do segundo workspace não seriam encontrados.
+### Mudanças
 
-### Correção
+**Arquivos:** `schedule-recall-bot/index.ts` e `fetch-calendar-events/index.ts`
 
-**Arquivo: `supabase/functions/fetch-calendar-events/index.ts`**
+Substituir o bloco `recording_config` em ambos:
 
-Substituir a lógica de busca de membros por uma query que carrega **todos os liderados de todos os times** que o usuário lidera, independente de workspace:
+```typescript
+// ANTES
+recording_config: {
+  transcript: {
+    provider: { meeting_captions: {} }
+  }
+}
 
-```sql
-SELECT tm.id, tm.name, tm.role, tm.email
-FROM team_members tm
-JOIN teams t ON t.id = tm.team_id
-WHERE t.leader_user_id = :userId
-  AND tm.email IS NOT NULL
+// DEPOIS
+recording_config: {
+  transcript: {
+    provider: {
+      recallai_streaming: {
+        mode: "prioritize_accuracy",
+        language_code: "auto"
+      }
+    }
+  }
+}
 ```
 
-Isso elimina a dependência do `workspaceId` e garante cobertura total.
+Isso é tudo. Não precisa de migração de banco, mudança no webhook, nem configuração do usuário. O `language_code: "auto"` resolve os 3 idiomas (PT-BR, EN, ES) automaticamente.
 
-Também preciso ajustar a lógica de `upcoming_meetings` que usa `workspace_id` — mas o upsert usa `user_id`, então não há problema ali.
+### Custo
 
-### Arquivos a modificar
-- `supabase/functions/fetch-calendar-events/index.ts` — buscar membros via `teams.leader_user_id` direto, sem filtro de workspace
+- `meeting_captions`: gratuito
+- `recallai_streaming`: US$ 0.15/hora
+
+Para uma reunião de 1 hora, são ~R$ 0.85. Aceitável para o valor que entrega.
 
 ### Resultado esperado
-- Reunião com Gabriela: bot entra, transcreve, transcrição cai no diário dela
-- Funciona para qualquer líder, mesmo liderando times em múltiplos workspaces
+
+- Reuniões em português: transcrição em português
+- Reuniões em inglês: transcrição em inglês
+- Reuniões em espanhol: transcrição em espanhol
+- Detecção automática — nenhuma configuração manual necessária do líder
 
