@@ -1,85 +1,116 @@
 
 
-## Análise Profunda: Painel Admin — Duplicações, Gaps e Recomendações
+## Plano: Integração Recall.ai para Transcrição Automática de Reuniões
 
-### Duplicações Encontradas
+### Diagnóstico: Por que o sistema atual não funciona
 
-| Dado/Funcionalidade | Onde aparece | Problema |
-|---|---|---|
-| **Tabela "Todos os Usuários"** | Visão Geral (seção inferior) + Lista de Usuários (aba inteira) | A Overview tem uma tabela completa de usuários com plano, status, toggle — a aba "Lista de Usuários" repete isso com a mesma query `get_all_users_with_metadata` / `get_user_caps` |
-| **Toggle ativo/suspenso de workspace** | Visão Geral + Lista de Usuários + Estrutura | 3 locais diferentes para a mesma ação `toggleWorkspaceStatus` |
-| **Waitlist + Convite** | Visão Geral (Lista de Espera + Invite Dialog) | OK, exclusivo desta aba |
-| **Stats (Workspaces, Membros)** | Visão Geral (4 cards) + Estrutura (3 cards) | Estrutura repete contagem de workspaces/membros |
-| **Reset de Senha** | Suporte & Edição (seção dedicada + busca universal) | Reset aparece tanto na busca universal quanto na lista fixa abaixo — redundante dentro da mesma aba |
-| **Busca/Edição/Delete de Membros** | Suporte & Edição + Estrutura | Ambas permitem editar/deletar membros com dialogs similares |
-| **Query `admin-workspaces`** | Visão Geral, Lista de Usuários, Gestão de Acessos, Estrutura | 4 abas fazem a mesma query independentemente |
+O pipeline atual depende de captura de áudio do lado do cliente (extensão Chrome com `tabCapture` ou popup com `getDisplayMedia`), o que falha por múltiplas razões:
+- Requer ação manual do líder (selecionar aba, marcar "compartilhar áudio")
+- Limitação de 25MB do Whisper (reuniões longas falham)
+- Extensão Chrome é frágil (permissões, atualizações do Meet)
+- Popup fecha se o líder navegar incorretamente
 
-### Gaps — O que falta para o "God's Eye"
+### Solução: Recall.ai como Meeting Bot
 
-1. **Activity Log / Audit Trail** — Não há log de ações: quem logou, quando, última atividade. Impossível saber "quando o líder X usou a plataforma pela última vez"
-2. **Health Score por Workspace** — Não há indicador de "saúde": workspaces parados, sem feedbacks recentes, sem 1:1s
-3. **Métricas de Uso/Engajamento** — Faltam: DAU/WAU, feedbacks por semana, tempo médio entre 1:1s, membros sem interação há X dias
-4. **Alertas/Anomalias** — Sem sistema de "atenção necessária": workspace sem atividade há 30 dias, membro sem feedback há 60 dias, líder que nunca fez review
-5. **Billing/Revenue Overview** — Sem visão de MRR, churn, planos por tier, receita por workspace
-6. **Edge Function Monitoring** — Sem visibilidade de erros em funções, latência, uso de AI credits
-7. **Email Delivery Status** — Sem painel de emails enviados, bounces, supressões
+O Recall.ai envia um **bot** que entra na reunião do Google Meet automaticamente, grava, transcreve e entrega o resultado via webhook. Nenhuma ação do líder é necessária além de conectar o Calendar.
 
-### Plano de Reestruturação Proposto
+**Pricing:** $0.50/hora de reunião gravada (inclui transcrição built-in).
+
+### Arquitetura
 
 ```text
-ANTES (6 abas):                    DEPOIS (5 abas):
-┌─────────────────────┐            ┌─────────────────────┐
-│ 1. Visão Geral      │ ──────►   │ 1. Command Center   │ ← Stats + Health + Alerts + Activity
-│ 2. Suporte & Edição │ ──────►   │ 2. Usuários         │ ← Merge Users + Support (busca, edit, impersonate, reset, delete)
-│ 3. Data Export       │ ──────►   │ 3. Estrutura        │ ← Mesmo (tree view CRUD)
-│ 4. Lista de Usuários │           │ 4. Acessos & Export │ ← Merge Access + Export
-│ 5. Gestão de Acessos │           │ 5. Inteligência     │ ← Health scores, engagement, alertas, billing
-│ 6. Estrutura         │           └─────────────────────┘
-└─────────────────────┘
+Google Calendar (já integrado)
+     │
+     ▼
+[fetch-calendar-events] ──► upcoming_meetings (já existe)
+     │
+     ▼
+[schedule-recall-bot] ──► Recall.ai API: POST /api/v1/bot/
+     │                      com join_at = start_time - 1min
+     │                      meeting_url = meet_link
+     ▼
+     Bot entra na reunião automaticamente
+     │
+     ▼
+[recall-webhook] ◄──── Recall.ai envia webhook (bot.done / transcript.done)
+     │
+     ▼
+     Salva transcrição em meeting_transcripts
+     Cria feedback automático (mesmo fluxo do upload-meeting)
+     Dispara analyze-feedback-background
 ```
 
-#### Detalhes por aba:
+### Fase 1: Piloto Interno (escopo aprovado)
 
-**1. Command Center (nova Overview)**
-- Big numbers: Workspaces, Usuários auth, Liderados, Feedbacks, Reviews, Planos pagos
-- **Waitlist/Leads** (mantém)
-- **Alertas**: cards vermelhos/amarelos com "3 workspaces inativos há 30+ dias", "5 membros sem feedback há 60 dias"
-- **Atividade Recente**: últimos logins, últimos feedbacks criados, últimos reviews compartilhados (query simples)
-- Remove tabela de usuários duplicada
+#### 1. Secret: RECALL_API_KEY
+- Solicitar ao usuário a API key do Recall.ai via ferramenta `add_secret`
+- Região sugerida: `us-east-1`
 
-**2. Usuários (merge Overview users + AdminUsers + AdminSupport)**
-- Tabela unificada com `get_user_caps` (badges multi-role)
-- Ações inline: Impersonate, Toggle ativo, Reset senha, Editar, Deletar
-- Busca universal integrada (não precisa ser aba separada)
-- Remove Suporte como aba isolada
+#### 2. Tabela: `recall_bots` (nova)
+Rastreia bots enviados e seu status:
+```sql
+CREATE TABLE public.recall_bots (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  meeting_id UUID REFERENCES public.upcoming_meetings(id) ON DELETE SET NULL,
+  member_id UUID REFERENCES public.team_members(id) ON DELETE SET NULL,
+  recall_bot_id TEXT NOT NULL,          -- ID retornado pela API do Recall
+  meeting_url TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'scheduled', -- scheduled, joining, recording, done, error
+  transcript TEXT,
+  transcript_data JSONB,                -- transcript com speaker labels
+  meeting_transcript_id UUID REFERENCES public.meeting_transcripts(id),
+  error_message TEXT,
+  scheduled_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+```
 
-**3. Estrutura** — mantém igual (tree view)
+#### 3. Edge Function: `schedule-recall-bot`
+- Chamada pelo frontend quando o líder ativa "Transcrição Automática" para uma reunião específica (ou chamada automaticamente pelo `fetch-calendar-events`)
+- Envia `POST` para `https://us-east-1.recall.ai/api/v1/bot/` com:
+  - `meeting_url`: link do Google Meet
+  - `join_at`: horário agendado (start_time - 1 min)
+  - `transcription_options.provider`: `"recallai"`
+  - `bot_name`: `"Rhitmo"`
+- Salva o `recall_bot_id` na tabela `recall_bots`
 
-**4. Acessos & Export** — merge AdminAccess + AdminExport
-- Seção superior: Convite HR Admin + lista de HR Admins ativos
-- Seção inferior: Botões de export CSV
+#### 4. Edge Function: `recall-webhook`
+- Endpoint público (sem JWT) que recebe webhooks do Recall.ai
+- Eventos relevantes: `bot.status_change`, `bot.transcription_complete`
+- Quando transcrição completa:
+  1. Busca transcrição via `GET /api/v1/bot/{id}/transcript/`
+  2. Salva em `meeting_transcripts` (mesmo schema atual)
+  3. Cria feedback automático no diário de bordo
+  4. Dispara `analyze-feedback-background` (não-bloqueante)
+  5. Atualiza `recall_bots.status = 'done'`
 
-**5. Inteligência (novo)**
-- Health Score por workspace (baseado em: feedbacks/semana, % membros com review, dias desde último sync)
-- Engagement heatmap (atividade por dia/semana)
-- Billing summary: MRR simulado por tier
-- "Workspaces em risco" (sem atividade recente)
+#### 5. UI: Botão "Transcrever" no UpcomingMeetingsCard
+- No card de cada reunião futura com `meet_link`, adicionar botão "Transcrever automaticamente"
+- Ao clicar, chama `schedule-recall-bot`
+- Badge de status: "Bot agendado" → "Gravando" → "Transcrito ✓"
+- Mantém o fluxo existente de gravação manual como fallback
 
-### Correções visuais
-- **AdminAccess** usa `bg-slate-900` hardcoded (dark mode forçado), quebrando o tema — deve usar `bg-background`
-- **AdminUsers** usa `boringavatars.com` para avatares (deveria usar os novos CustomAvatar)
+#### 6. Ajuste no `fetch-calendar-events`
+- Para o piloto: **não** agendar bots automaticamente
+- Apenas marcar reuniões que têm `meet_link` como "elegíveis para transcrição"
 
-### Arquivos modificados
+### O que NÃO muda
+- Pipeline atual de gravação manual (extensão Chrome + popup) continua funcionando como fallback
+- Tabela `meeting_transcripts` e fluxo de análise AI permanecem iguais
+- Google Calendar OAuth já está implementado e funcional
+
+### Arquivos criados/modificados
 
 | Arquivo | Mudança |
 |---------|---------|
-| `AdminOverview.tsx` | Refatorar para Command Center: remover tabela de usuários, adicionar alertas e atividade recente |
-| `AdminSupport.tsx` | Eliminar — mover busca/edit/reset para AdminUsers |
-| `AdminUsers.tsx` | Absorver funcionalidades do Support; usar CustomAvatar; unificar ações |
-| `AdminAccess.tsx` | Corrigir tema dark hardcoded; absorver Export |
-| `AdminExport.tsx` | Eliminar — mover para AdminAccess |
-| `AdminStructure.tsx` | Sem mudanças |
-| `Admin.tsx` | Atualizar tabs de 6 para 5 |
-| `AdminLayout.tsx` | Atualizar sidebar com novas 5 abas |
-| **Novo:** `AdminIntelligence.tsx` | Health scores, engagement, billing summary |
+| Migração SQL | Criar tabela `recall_bots` com RLS |
+| `supabase/functions/schedule-recall-bot/index.ts` | **Novo** — Agendar bot no Recall.ai |
+| `supabase/functions/recall-webhook/index.ts` | **Novo** — Receber webhooks e processar transcrição |
+| `src/components/dashboard/UpcomingMeetingsCard.tsx` | Botão "Transcrever" por reunião |
+| `src/hooks/useCalendarIntegration.ts` | Adicionar mutation para agendar bot |
+
+### Pré-requisito
+Você precisará criar uma conta no [Recall.ai](https://recall.ai), obter a API key, e configurar o webhook URL apontando para `https://lybkgujyezzzvbzypxed.supabase.co/functions/v1/recall-webhook`.
 
