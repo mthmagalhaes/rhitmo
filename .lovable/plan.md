@@ -1,53 +1,47 @@
 
 
-## Plano: Corrigir /brief, /mentor, /meu-rhitmo e Adicionar Tag Slack
+## Plano: Corrigir /mentor "Sem resposta do mentor" + Melhorias UX
 
 ### Diagnóstico
 
-**`/mentor` — Erro 400**: O slack-bot envia `{ message, userId }` mas a Edge Function `chat-mentor` exige `{ question, feedbacks, memberName }`. Payload incompatível.
+**Bug principal**: O `chat-mentor` retorna `{ response: mentorResponse }`, mas o `slack-bot` lê `data.reply || data.message` — nenhum dos dois existe. Resultado: sempre cai no fallback `'Sem resposta do mentor.'`.
 
-**`/brief` — Erro**: O comando `/brief` em si funciona (não chama IA), mas o erro ocorreu porque o membro mencionado (`@matheus.magalhaes`) não foi encontrado como `team_member` no workspace. Logs confirmam: `user_not_found`. Isso é esperado se o usuário Slack não está cadastrado como membro de time. O handler de `/brief` já é robusto — o problema é de dados, não de código. Porém, a mensagem de erro exibida nas screenshots diz "Erro ao consultar o mentor", o que indica que pode haver um bug no roteamento que está chamando o handler errado, ou a mensagem genérica está confundindo. Vou investigar e garantir mensagens de erro distintas.
+**Bug secundário (não-bloqueante)**: O semantic search (`match_feedbacks` RPC) retorna "Unauthorized", mas isso é tratado com fallback silencioso e não bloqueia a resposta. Provavelmente um problema de permissão na RPC function — investigar separadamente.
 
-**`/meu-rhitmo`**: Provavelmente funciona (é direto no DB, sem IA), mas precisa de teste. O único risco é se o liderado não estiver vinculado.
-
-**Tag Slack no Diário de Bordo**: O campo `source: 'slack'` já é salvo na tabela `feedbacks` pelo handler `/nota`. Falta apenas exibir um ícone/badge no `FeedbackTimeline.tsx`.
-
----
+**UX: pergunta não aparece**: O bot não inclui a pergunta do usuário na resposta. Como o Slack mostra slash commands como "efêmeros" (só o usuário vê), a pergunta original desaparece visualmente.
 
 ### Alterações
 
-#### 1. Corrigir `/mentor` no slack-bot (Crítico)
+#### 1. Fix campo de resposta (`slack-bot/index.ts`, linha 894)
 
-**Arquivo**: `supabase/functions/slack-bot/index.ts`
+```typescript
+// DE:
+const reply = data.reply || data.message || 'Sem resposta do mentor.';
+// PARA:
+const reply = data.response || data.reply || data.message || 'Sem resposta do mentor.';
+```
 
-O handler `handleMentorCommand` precisa:
-- Buscar feedbacks recentes do DB para o líder (como o frontend `MentorChat.tsx` faz)
-- Buscar dados do membro se mencionado
-- Enviar o payload correto: `{ question, feedbacks, memberName, memberRole, managerName, workStyleData, contextMode: 'auto' }`
-- Adicionar tratamento de erro robusto com mensagens claras
+#### 2. Mostrar a pergunta do usuário na resposta (`slack-bot/index.ts`, ~linha 896)
 
-#### 2. Adicionar badge "Slack" no Diário de Bordo
+Adicionar um bloco com a pergunta original antes do header, para o usuário ter contexto:
 
-**Arquivo**: `src/components/FeedbackTimeline.tsx`
+```typescript
+blocks.push(
+  { type: 'section', text: { type: 'mrkdwn', text: `> _${question}_` } },
+);
+```
 
-- Detectar `feedback.source === 'slack'`
-- Exibir um badge com ícone do Slack (usando `SlackIcon` já existente em `src/components/icons/SlackIcon.tsx`) ao lado da data, similar ao badge "Transcrição"
+#### 3. Investigar RPC `match_feedbacks` Unauthorized
 
-#### 3. Melhorar mensagens de erro do `/brief`
+Verificar se a RPC function tem `SECURITY DEFINER` e se aceita chamadas com service role key. Isso é secundário — o mentor funciona sem semantic search (usa feedbacks recentes como fallback).
 
-**Arquivo**: `supabase/functions/slack-bot/index.ts`
+### Arquivos a modificar
 
-- Garantir que a mensagem de erro do `/brief` diz "Membro não encontrado" e não "Erro ao consultar o mentor"
+| Arquivo | Mudança |
+|---------|---------|
+| `supabase/functions/slack-bot/index.ts` | Fix `data.response`, adicionar bloco de pergunta |
 
-#### 4. Re-deploy da Edge Function
-
-Deploy automático após as alterações.
-
----
-
-### Ordem de execução
-1. Fix `/mentor` handler (payload correto para `chat-mentor`)
-2. Adicionar badge Slack no `FeedbackTimeline`
-3. Revisar mensagens de erro do `/brief`
-4. Deploy e validação
+### Resultado esperado
+- `/mentor como dar feedback?` → Mostra a pergunta + resposta da IA
+- Tempo de resposta: ~5-7s é esperado (3 chamadas de IA: router + embeddings + resposta)
 
