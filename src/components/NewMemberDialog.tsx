@@ -182,23 +182,34 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
 
       if (insertError) throw insertError;
 
-      // Se checkbox DISC marcado, enviar convite via transactional email
+      // Enviar member-welcome (apresentação do Rhitmo + CTA do Sync) se checkbox marcado
       if (sendDiscInvite) {
         const syncUrl = `${window.location.origin}/sync/${newMember.id}`;
-        const { data: inviteData, error: inviteError } = await supabase.functions.invoke('send-transactional-email', {
+        
+        // Obter nome do líder para personalizar o email
+        const { data: { user } } = await supabase.auth.getUser();
+        const leaderName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || '';
+        
+        // Buscar nome do time
+        const selectedTeam = teams.find(t => t.id === teamId);
+        const teamName = selectedTeam?.name || '';
+
+        const { error: inviteError } = await supabase.functions.invoke('send-transactional-email', {
           body: { 
-            templateName: 'sync-invite',
+            templateName: 'member-welcome',
             recipientEmail: email.trim(),
-            idempotencyKey: `sync-invite-${newMember.id}`,
+            idempotencyKey: `member-welcome-${newMember.id}`,
             templateData: {
               memberName: name.trim(),
+              leaderName,
+              teamName,
               syncUrl,
             }
           }
         });
 
         if (inviteError) {
-          console.error('Erro ao enviar convite DISC:', inviteError);
+          console.error('Erro ao enviar boas-vindas:', inviteError);
           toast({
             title: "Membro cadastrado",
             description: `${name.trim()} foi adicionado, mas houve erro ao enviar o convite: ${inviteError.message}`,
@@ -207,7 +218,7 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
         } else {
           toast({
             title: "Sucesso!",
-            description: `Membro cadastrado e convite Rhitmo Sync enviado para ${email.trim()}`,
+            description: `Membro cadastrado e boas-vindas enviadas para ${email.trim()}`,
           });
         }
       } else {

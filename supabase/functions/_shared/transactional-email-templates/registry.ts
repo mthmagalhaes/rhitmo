@@ -17,6 +17,8 @@ import { template as enterpriseLead } from './enterprise-lead.tsx'
 import { template as leaderWelcome } from './leader-welcome.tsx'
 import { template as memberWelcome } from './member-welcome.tsx'
 import { template as hrAdminWelcome } from './hr-admin-welcome.tsx'
+import { template as waitlistConfirmation } from './waitlist-confirmation.tsx'
+import { template as syncCompleted } from './sync-completed.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'sync-invite': syncInvite,
@@ -27,4 +29,6 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'leader-welcome': leaderWelcome,
   'member-welcome': memberWelcome,
   'hr-admin-welcome': hrAdminWelcome,
+  'waitlist-confirmation': waitlistConfirmation,
+  'sync-completed': syncCompleted,
 }
