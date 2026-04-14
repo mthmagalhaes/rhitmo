@@ -3,7 +3,7 @@ import { RhitmoLogo } from '@/components/RhitmoLogo';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LayoutDashboard, Settings, FileDown, LogOut, Home, Users, ShieldCheck, Network } from 'lucide-react';
+import { LayoutDashboard, Users, LogOut, Home, ShieldCheck, Network, Brain } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -18,16 +18,12 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('overview');
 
-  // Ouvir eventos de mudança de tab vindos de outros componentes
   useEffect(() => {
     const handleExternalTabChange = (e: CustomEvent) => {
       setActiveTab(e.detail);
     };
-
     window.addEventListener('admin-tab-change', handleExternalTabChange as EventListener);
-    return () => {
-      window.removeEventListener('admin-tab-change', handleExternalTabChange as EventListener);
-    };
+    return () => window.removeEventListener('admin-tab-change', handleExternalTabChange as EventListener);
   }, []);
 
   const handleTabChange = (value: string) => {
@@ -38,15 +34,19 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
-    toast({
-      title: "Logout realizado",
-      description: "Até logo!",
-    });
+    toast({ title: "Logout realizado", description: "Até logo!" });
   };
+
+  const tabs = [
+    { value: 'overview', icon: LayoutDashboard, label: 'Command Center' },
+    { value: 'users', icon: Users, label: 'Usuários' },
+    { value: 'structure', icon: Network, label: 'Estrutura' },
+    { value: 'access', icon: ShieldCheck, label: 'Acessos & Export' },
+    { value: 'intelligence', icon: Brain, label: 'Inteligência' },
+  ];
 
   return (
     <div className="flex min-h-screen w-full bg-background">
-      {/* Sidebar */}
       <aside className="w-64 bg-slate-900 text-slate-100 border-r border-slate-800 flex flex-col">
         <div className="p-6 border-b border-slate-800">
           <div className="flex items-center gap-3">
@@ -58,78 +58,31 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
         <nav className="flex-1 p-4">
           <Tabs value={activeTab} onValueChange={handleTabChange} orientation="vertical" className="w-full">
             <TabsList className="flex flex-col h-auto bg-transparent gap-2 w-full">
-              <TabsTrigger 
-                value="overview" 
-                className="w-full justify-start gap-3 text-slate-300 hover:text-white hover:bg-slate-800 data-[state=active]:bg-slate-800 data-[state=active]:text-violet-400"
-              >
-                <LayoutDashboard className="h-4 w-4" />
-                Visão Geral
-              </TabsTrigger>
-              <TabsTrigger 
-                value="support" 
-                className="w-full justify-start gap-3 text-slate-300 hover:text-white hover:bg-slate-800 data-[state=active]:bg-slate-800 data-[state=active]:text-violet-400"
-              >
-                <Settings className="h-4 w-4" />
-                Suporte & Edição
-              </TabsTrigger>
-              <TabsTrigger 
-                value="export" 
-                className="w-full justify-start gap-3 text-slate-300 hover:text-white hover:bg-slate-800 data-[state=active]:bg-slate-800 data-[state=active]:text-violet-400"
-              >
-                <FileDown className="h-4 w-4" />
-                Data Export
-              </TabsTrigger>
-              <TabsTrigger 
-                value="users" 
-                className="w-full justify-start gap-3 text-slate-300 hover:text-white hover:bg-slate-800 data-[state=active]:bg-slate-800 data-[state=active]:text-violet-400"
-              >
-                <Users className="h-4 w-4" />
-                Lista de Usuários
-              </TabsTrigger>
-              <TabsTrigger 
-                value="access" 
-                className="w-full justify-start gap-3 text-slate-300 hover:text-white hover:bg-slate-800 data-[state=active]:bg-slate-800 data-[state=active]:text-violet-400"
-              >
-                <ShieldCheck className="h-4 w-4" />
-                Gestão de Acessos
-              </TabsTrigger>
-              <TabsTrigger 
-                value="structure" 
-                className="w-full justify-start gap-3 text-slate-300 hover:text-white hover:bg-slate-800 data-[state=active]:bg-slate-800 data-[state=active]:text-violet-400"
-              >
-                <Network className="h-4 w-4" />
-                Estrutura
-              </TabsTrigger>
+              {tabs.map(tab => (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  className="w-full justify-start gap-3 text-slate-300 hover:text-white hover:bg-slate-800 data-[state=active]:bg-slate-800 data-[state=active]:text-violet-400"
+                >
+                  <tab.icon className="h-4 w-4" />
+                  {tab.label}
+                </TabsTrigger>
+              ))}
             </TabsList>
           </Tabs>
         </nav>
 
         <div className="p-4 border-t border-slate-800 space-y-2">
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-3 text-slate-300 hover:text-slate-100 hover:bg-slate-800"
-            onClick={() => navigate('/')}
-          >
-            <Home className="h-4 w-4" />
-            Voltar ao App
+          <Button variant="ghost" className="w-full justify-start gap-3 text-slate-300 hover:text-slate-100 hover:bg-slate-800" onClick={() => navigate('/')}>
+            <Home className="h-4 w-4" /> Voltar ao App
           </Button>
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-3 text-slate-300 hover:text-slate-100 hover:bg-slate-800"
-            onClick={handleSignOut}
-          >
-            <LogOut className="h-4 w-4" />
-            Sair
+          <Button variant="ghost" className="w-full justify-start gap-3 text-slate-300 hover:text-slate-100 hover:bg-slate-800" onClick={handleSignOut}>
+            <LogOut className="h-4 w-4" /> Sair
           </Button>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1">
-        {children}
-      </main>
+      <main className="flex-1">{children}</main>
     </div>
   );
 };
-
-

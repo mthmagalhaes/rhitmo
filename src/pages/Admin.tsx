@@ -1,25 +1,21 @@
 import { useEffect, useState } from 'react';
 import { AdminOverview } from '@/components/admin/AdminOverview';
-import { AdminSupport } from '@/components/admin/AdminSupport';
-import { AdminExport } from '@/components/admin/AdminExport';
 import { AdminUsers } from '@/components/admin/AdminUsers';
 import { AdminAccess } from '@/components/admin/AdminAccess';
 import { AdminStructure } from '@/components/admin/AdminStructure';
+import { AdminIntelligence } from '@/components/admin/AdminIntelligence';
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState('overview');
 
-  // Listen to custom events from AdminLayout
   useEffect(() => {
     const handleTabChange = (e: CustomEvent) => {
       setActiveTab(e.detail);
     };
-
     window.addEventListener('admin-tab-change' as any, handleTabChange);
     return () => window.removeEventListener('admin-tab-change' as any, handleTabChange);
   }, []);
 
-  // Sync activeTab state with AdminLayout via custom events
   useEffect(() => {
     const tabsElement = document.querySelector('[role="tablist"]');
     if (tabsElement) {
@@ -32,13 +28,7 @@ const Admin = () => {
           }
         }
       });
-
-      observer.observe(tabsElement, {
-        attributes: true,
-        subtree: true,
-        attributeFilter: ['data-state'],
-      });
-
+      observer.observe(tabsElement, { attributes: true, subtree: true, attributeFilter: ['data-state'] });
       return () => observer.disconnect();
     }
   }, [activeTab]);
@@ -46,11 +36,10 @@ const Admin = () => {
   return (
     <>
       {activeTab === 'overview' && <AdminOverview />}
-      {activeTab === 'support' && <AdminSupport />}
-      {activeTab === 'export' && <AdminExport />}
       {activeTab === 'users' && <AdminUsers />}
-      {activeTab === 'access' && <AdminAccess />}
       {activeTab === 'structure' && <AdminStructure />}
+      {activeTab === 'access' && <AdminAccess />}
+      {activeTab === 'intelligence' && <AdminIntelligence />}
     </>
   );
 };
