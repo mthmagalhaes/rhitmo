@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { RhythmWave } from '@/components/RhythmWave';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,6 +24,8 @@ import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 import { AvatarLibrary } from '@/components/avatar/AvatarLibrary';
 import { MemberAvatar } from '@/components/MemberAvatar';
+import { getDateLocale } from '@/lib/dateLocale';
+import { format } from 'date-fns';
 
 interface LinkedMemberData {
   id: string;
@@ -57,83 +60,80 @@ interface DirectReportDashboardProps {
   activeTab?: string;
 }
 
-const tenureLabels: Record<string, string> = {
-  'less_than_1': 'Menos de 1 ano',
-  '1_to_3': '1 a 3 anos',
-  '3_to_5': '3 a 5 anos',
-  'more_than_5': 'Mais de 5 anos',
+const TENURE_KEYS: Record<string, string> = {
+  'less_than_1': 'directReport.tenure.lessThan1',
+  '1_to_3': 'directReport.tenure.1to3',
+  '3_to_5': 'directReport.tenure.3to5',
+  'more_than_5': 'directReport.tenure.moreThan5',
 };
 
-const chronotypeLabels: Record<string, string> = {
-  'early_bird': 'Madrugador (5h-14h)',
-  'madrugador': 'Madrugador (5h-14h)',
-  'commercial': 'Horário Comercial',
-  'comercial': 'Horário Comercial',
-  'night_owl': 'Noturno (depois das 18h)',
-  'noturno': 'Noturno (depois das 18h)',
-  'variable': 'Variável',
+const CHRONOTYPE_KEYS: Record<string, string> = {
+  'early_bird': 'directReport.chronotype.earlyBird',
+  'madrugador': 'directReport.chronotype.earlyBird',
+  'commercial': 'directReport.chronotype.commercial',
+  'comercial': 'directReport.chronotype.commercial',
+  'night_owl': 'directReport.chronotype.nightOwl',
+  'noturno': 'directReport.chronotype.nightOwl',
+  'variable': 'directReport.chronotype.variable',
 };
 
-const feedbackStyleLabels: Record<string, string> = {
-  'direct': 'Direto',
-  'direto': 'Direto',
-  'empathetic': 'Empático / Sanduíche',
-  'empatico': 'Empático / Sanduíche',
-  'written': 'Escrito',
-  'escrito': 'Escrito',
-  'private': 'Em particular',
-  'privado': 'Em particular',
-  'context': 'Com contexto e exemplos',
+const FEEDBACK_STYLE_KEYS: Record<string, string> = {
+  'direct': 'directReport.feedbackStyle.direct',
+  'direto': 'directReport.feedbackStyle.direct',
+  'empathetic': 'directReport.feedbackStyle.empathetic',
+  'empatico': 'directReport.feedbackStyle.empathetic',
+  'written': 'directReport.feedbackStyle.written',
+  'escrito': 'directReport.feedbackStyle.written',
+  'private': 'directReport.feedbackStyle.private',
+  'privado': 'directReport.feedbackStyle.private',
+  'context': 'directReport.feedbackStyle.context',
 };
 
-const recognitionStyleLabels: Record<string, string> = {
-  'public': 'Reconhecimento Público',
-  'publico': 'Reconhecimento Público',
-  'private': 'Reconhecimento Privado',
-  'privado': 'Reconhecimento Privado',
-  'results': 'Por Resultados',
-  'learning': 'Por Aprendizado',
+const RECOGNITION_STYLE_KEYS: Record<string, string> = {
+  'public': 'directReport.recognitionStyle.public',
+  'publico': 'directReport.recognitionStyle.public',
+  'private': 'directReport.recognitionStyle.private',
+  'privado': 'directReport.recognitionStyle.private',
+  'results': 'directReport.recognitionStyle.results',
+  'learning': 'directReport.recognitionStyle.learning',
 };
 
-const getLabel = (map: Record<string, string>, value: string) =>
-  map[value] || value.charAt(0).toUpperCase() + value.slice(1);
-
-const chronotypeContext: Record<string, string> = {
-  'early_bird': 'Seu líder sabe que você rende melhor de manhã cedo e evita reuniões pesadas no fim do dia.',
-  'madrugador': 'Seu líder sabe que você rende melhor de manhã cedo e evita reuniões pesadas no fim do dia.',
-  'commercial': 'Seu líder sabe que você está no seu melhor dentro do horário comercial.',
-  'comercial': 'Seu líder sabe que você está no seu melhor dentro do horário comercial.',
-  'night_owl': 'Seu líder sabe que sua energia peak é no período noturno.',
-  'noturno': 'Seu líder sabe que sua energia peak é no período noturno.',
+const CHRONOTYPE_CONTEXT_KEYS: Record<string, string> = {
+  'early_bird': 'directReport.chronotypeContext.earlyBird',
+  'madrugador': 'directReport.chronotypeContext.earlyBird',
+  'commercial': 'directReport.chronotypeContext.commercial',
+  'comercial': 'directReport.chronotypeContext.commercial',
+  'night_owl': 'directReport.chronotypeContext.nightOwl',
+  'noturno': 'directReport.chronotypeContext.nightOwl',
 };
 
-const feedbackContext: Record<string, string> = {
-  'direct': 'Seu líder vai direto ao ponto com você, sem rodeios.',
-  'direto': 'Seu líder vai direto ao ponto com você, sem rodeios.',
-  'empathetic': 'Seu líder contextualiza antes de pontos críticos e equilibra positivo e construtivo.',
-  'empatico': 'Seu líder contextualiza antes de pontos críticos e equilibra positivo e construtivo.',
-  'written': 'Seu líder prefere te enviar feedback por escrito para você processar no seu tempo.',
-  'escrito': 'Seu líder prefere te enviar feedback por escrito para você processar no seu tempo.',
-  'private': 'Seu líder reserva feedbacks importantes para conversas privadas.',
-  'privado': 'Seu líder reserva feedbacks importantes para conversas privadas.',
+const FEEDBACK_CONTEXT_KEYS: Record<string, string> = {
+  'direct': 'directReport.feedbackContext.direct',
+  'direto': 'directReport.feedbackContext.direct',
+  'empathetic': 'directReport.feedbackContext.empathetic',
+  'empatico': 'directReport.feedbackContext.empathetic',
+  'written': 'directReport.feedbackContext.written',
+  'escrito': 'directReport.feedbackContext.written',
+  'private': 'directReport.feedbackContext.private',
+  'privado': 'directReport.feedbackContext.private',
 };
 
-const recognitionContext: Record<string, string> = {
-  'public': 'Seu líder celebra suas conquistas em frente ao time.',
-  'publico': 'Seu líder celebra suas conquistas em frente ao time.',
-  'private': 'Seu líder te reconhece em 1:1, sem holofotes.',
-  'privado': 'Seu líder te reconhece em 1:1, sem holofotes.',
-  'results': 'Seu líder conecta reconhecimento diretamente aos resultados que você entregou.',
-  'learning': 'Seu líder valoriza e destaca seu crescimento e aprendizado.',
+const RECOGNITION_CONTEXT_KEYS: Record<string, string> = {
+  'public': 'directReport.recognitionContext.public',
+  'publico': 'directReport.recognitionContext.public',
+  'private': 'directReport.recognitionContext.private',
+  'privado': 'directReport.recognitionContext.private',
+  'results': 'directReport.recognitionContext.results',
+  'learning': 'directReport.recognitionContext.learning',
 };
+
+const MOTIVATOR_KEYS = ['autonomy', 'money', 'stability', 'learning', 'purpose', 'status'] as const;
 
 const getDaysSince = (dateStr: string | null | undefined): number | null => {
   if (!dateStr) return null;
   const diff = Date.now() - new Date(dateStr).getTime();
   return Math.floor(diff / (1000 * 60 * 60 * 24));
 };
-
-const MOTIVATOR_OPTIONS = ['Autonomia', 'Dinheiro', 'Estabilidade', 'Aprendizado', 'Propósito', 'Status'];
 
 const filterReviewForMember = (content: string): string => {
   const lines = content.split('\n');
@@ -153,6 +153,7 @@ const filterReviewForMember = (content: string): string => {
 };
 
 export default function DirectReportDashboard({ linkedMember, activeTab: activeTabProp }: DirectReportDashboardProps) {
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState(activeTabProp || 'visao-geral');
 
@@ -206,6 +207,14 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
 
   // Fix nome concatenado
   const displayName = linkedMember.name?.replace(linkedMember.role, '').trim() || linkedMember.name;
+
+  const getTranslatedLabel = (keyMap: Record<string, string>, value: string) => {
+    const key = keyMap[value];
+    return key ? t(key) : value.charAt(0).toUpperCase() + value.slice(1);
+  };
+
+  const formatLocalDate = (dateStr: string, fmt = 'dd MMM yyyy') =>
+    format(new Date(dateStr), fmt, { locale: getDateLocale(i18n.language) });
 
   // Query feedbacks do próprio membro (visibility = 'shared')
   const { data: feedbacks = [], isLoading } = useQuery({
@@ -314,13 +323,10 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
       .from('development_items')
       .update(updates)
       .eq('id', itemId);
-    if (error) { toast.error('Erro ao atualizar item.'); return; }
-    toast.success(newStatus === 'completed' ? 'Objetivo concluído! 🎉' : 'Status atualizado.');
+    if (error) { toast.error(t('directReport.toast.errorUpdateItem')); return; }
+    toast.success(newStatus === 'completed' ? t('directReport.toast.goalCompleted') : t('directReport.toast.statusUpdated'));
     queryClient.invalidateQueries({ queryKey: ['my-dev-items', devPlan?.id] });
   };
-
-  const formatPDIDate = (dateStr: string) =>
-    new Date(dateStr).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
 
   // Mark review as read when opened
   useEffect(() => {
@@ -376,12 +382,12 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
       if (error) throw error;
 
       console.log('[Rhitmo Sync] Updated successfully for member:', linkedMember.id);
-      toast.success('Rhitmo Sync atualizado! Seu líder foi notificado.');
+      toast.success(t('directReport.toast.syncUpdated'));
       setSyncDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ['linked-member'] });
     } catch (err) {
       console.error('Error saving sync:', err);
-      toast.error('Erro ao salvar. Tente novamente.');
+      toast.error(t('directReport.toast.errorSave'));
     } finally {
       setSyncSaving(false);
     }
@@ -415,28 +421,26 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
         .eq('linked_user_id', user.id);
 
       await queryClient.invalidateQueries({ queryKey: ['linked-member'] });
-      toast.success('Análise atualizada! Sua Bússola de Carreira foi regenerada.');
+      toast.success(t('directReport.toast.analysisUpdated'));
     } catch (err) {
       console.error('[handleReanalyze] Error:', err);
-      toast.error('Erro na análise. Tente novamente em alguns instantes.');
+      toast.error(t('directReport.toast.errorAnalysis'));
     } finally {
       setIsReanalyzing(false);
     }
   };
 
-
-
   const handleSuggestOneOnOne = (focusArea: string) => {
-    const text = `Olá, gostaria de conversar sobre o desenvolvimento da minha competência em "${focusArea}". O Skills Map identificou isso como uma área prioritária para meu crescimento. Podemos incluir esse tema na nossa próxima 1:1?`;
+    const text = t('directReport.suggestOneOnOneText', { focusArea });
     navigator.clipboard.writeText(text).then(() => {
-      toast.success('💬 Sugestão de pauta copiada! Cole no seu próximo email ou mensagem para seu líder.');
+      toast.success(t('directReport.toast.oneOnOneCopied'));
     }).catch(() => {
-      toast.error('Não foi possível copiar. Tente novamente.');
+      toast.error(t('directReport.toast.errorCopy'));
     });
   };
 
   const handleOpenMeuRhitmoWithContext = (focusArea: string) => {
-    const prompt = `O meu Skills Map identificou "${focusArea}" como foco prioritário para meu desenvolvimento. Como posso desenvolver essa competência de forma prática? Que ações concretas você sugere?`;
+    const prompt = t('directReport.meuRhitmoPrompt', { focusArea });
     setMeuRhitmoInitialPrompt(prompt);
     setMeuRhitmoOpen(true);
   };
@@ -451,19 +455,19 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
         <div className="relative max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary mb-3">Meu Painel</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary mb-3">{t('directReport.myPanel')}</p>
               <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground font-serif">
-                Olá, {displayName}! 👋
+                {t('directReport.hello', { name: displayName })} 👋
               </h1>
               <p className="text-sm text-muted-foreground mt-2">
                 {feedbacks.length > 0
-                  ? `${feedbacks.length} feedback${feedbacks.length > 1 ? 's' : ''} compartilhado${feedbacks.length > 1 ? 's' : ''} · ${devItems.length > 0 ? `PDI ${Math.round(((devItems as any[]).filter((i: any) => i.status === 'completed').length / devItems.length) * 100)}% concluído` : linkedMember.role}`
-                  : `Painel do Colaborador · ${linkedMember.role}`}
+                  ? `${t('directReport.feedbackCount', { count: feedbacks.length })} · ${devItems.length > 0 ? t('directReport.pdiProgress', { percent: Math.round(((devItems as any[]).filter((i: any) => i.status === 'completed').length / devItems.length) * 100) }) : linkedMember.role}`
+                  : `${t('directReport.collaboratorPanel')} · ${linkedMember.role}`}
               </p>
             </div>
             <Button onClick={() => setMeuRhitmoOpen(true)} variant="outline" className="gap-2 rounded-full h-11 px-6">
               <Sparkles className="h-4 w-4" />
-              Meu Rhitmo
+              {t('directReport.meuRhitmo')}
             </Button>
           </div>
         </div>
@@ -481,7 +485,7 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
               <div className="mb-6">
                 <h2 className="text-lg font-bold tracking-tight flex items-center gap-2 mb-3 text-foreground">
                   <Bell className="h-5 w-5 text-primary" />
-                  Novidades
+                  {t('directReport.news')}
                 </h2>
                 {unreadReviews.map((review: any) => (
                   <div
@@ -496,9 +500,9 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                       <FileText className="h-4 w-4 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground">Nova avaliação disponível</p>
+                      <p className="text-sm font-semibold text-foreground">{t('directReport.newReviewAvailable')}</p>
                       <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                        &ldquo;{review.title}&rdquo; foi compartilhada pelo seu líder
+                        &ldquo;{review.title}&rdquo; {t('directReport.sharedByLeader')}
                       </p>
                     </div>
                     <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
@@ -512,31 +516,31 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
               <Card className="p-6 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] lg:col-span-1">
                 <h2 className="text-lg font-bold tracking-tight flex items-center gap-2 mb-4 text-foreground">
                   <Zap className="h-5 w-5 text-primary" />
-                  Seu Pulso
+                  {t('directReport.yourPulse')}
                 </h2>
                 <div className="space-y-4">
                   {/* Last feedback */}
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Último feedback</p>
+                    <p className="text-xs text-muted-foreground mb-1">{t('directReport.lastFeedback')}</p>
                     {feedbacks.length > 0 ? (
                       <div className="flex items-center gap-2">
                         <span className={`h-2 w-2 rounded-full shrink-0 ${feedbacks[0].type === 'positive' ? 'bg-emerald-500' : feedbacks[0].type === 'constructive' ? 'bg-amber-500' : 'bg-muted-foreground/40'}`} />
                         <span className="text-sm font-medium text-foreground">
-                          {getDaysSince(feedbacks[0].created_at) === 0 ? 'Hoje' : getDaysSince(feedbacks[0].created_at) === 1 ? 'Ontem' : `Há ${getDaysSince(feedbacks[0].created_at)} dias`}
+                          {getDaysSince(feedbacks[0].created_at) === 0 ? t('common.today') : getDaysSince(feedbacks[0].created_at) === 1 ? t('common.yesterday') : t('directReport.daysAgo', { count: getDaysSince(feedbacks[0].created_at) })}
                         </span>
                         <Badge variant="secondary" className="text-[10px] rounded-full">
-                          {feedbacks[0].type === 'positive' ? 'Positivo' : feedbacks[0].type === 'constructive' ? 'Construtivo' : 'Neutro'}
+                          {feedbacks[0].type === 'positive' ? t('directReport.feedbackType.positive') : feedbacks[0].type === 'constructive' ? t('directReport.feedbackType.constructive') : t('directReport.feedbackType.neutral')}
                         </Badge>
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">Nenhum ainda</p>
+                      <p className="text-sm text-muted-foreground">{t('directReport.noneYet')}</p>
                     )}
                   </div>
 
                   {/* PDI progress */}
                   {devItems.length > 0 && (
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Progresso do PDI</p>
+                      <p className="text-xs text-muted-foreground mb-1">{t('directReport.pdiProgressLabel')}</p>
                       <div className="flex items-center gap-2">
                         <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                           <div
@@ -553,7 +557,7 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
 
                   {/* Reviews count */}
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Avaliações</span>
+                    <span className="text-xs text-muted-foreground">{t('directReport.reviews')}</span>
                     <span className="text-sm font-medium text-foreground">{sharedReviews.length}</span>
                   </div>
                 </div>
@@ -563,7 +567,7 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
               <Card className="p-6 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] lg:col-span-2">
                 <h2 className="text-lg font-bold tracking-tight flex items-center gap-2 mb-4 text-foreground">
                   <CheckCircle className="h-5 w-5 text-primary" />
-                  Próximas Ações
+                  {t('directReport.nextActions')}
                 </h2>
                 <div className="space-y-3">
                   {(() => {
@@ -572,7 +576,7 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                     // Unread review
                     if (unreadReviews.length > 0) {
                       actions.push({
-                        text: `📋 Leia sua avaliação "${unreadReviews[0].title}"`,
+                        text: `📋 ${t('directReport.action.readReview', { title: unreadReviews[0].title })}`,
                         action: () => { setActiveTab('feedbacks'); setSelectedReview(unreadReviews[0]); },
                         priority: true,
                       });
@@ -582,7 +586,7 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                     const overdueItems = (devItems as any[]).filter((i: any) => i.status !== 'completed' && i.due_date && new Date(i.due_date) < new Date());
                     if (overdueItems.length > 0) {
                       actions.push({
-                        text: `🎯 "${overdueItems[0].title}" está vencido — atualize o status`,
+                        text: `🎯 ${t('directReport.action.overdueItem', { title: overdueItems[0].title })}`,
                         action: () => setActiveTab('carreira'),
                         priority: true,
                       });
@@ -591,7 +595,7 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                     // No Rhitmo Sync
                     if (!hasRhitmoSync) {
                       actions.push({
-                        text: '🧠 Complete seu Rhitmo Sync para seu líder te conhecer melhor',
+                        text: `🧠 ${t('directReport.action.completeSync')}`,
                         action: () => setActiveTab('perfil'),
                       });
                     }
@@ -601,11 +605,11 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                       return (
                         <div className="flex flex-col items-center text-center py-6">
                           <CheckCircle2 className="h-10 w-10 text-primary/30 mb-3" />
-                          <p className="text-sm font-medium text-foreground">Tudo em dia! 🎉</p>
-                          <p className="text-xs text-muted-foreground mt-1">Explore o Meu Rhitmo para continuar evoluindo</p>
+                          <p className="text-sm font-medium text-foreground">{t('directReport.allCaughtUp')} 🎉</p>
+                          <p className="text-xs text-muted-foreground mt-1">{t('directReport.exploreMeuRhitmo')}</p>
                           <Button variant="outline" size="sm" className="mt-3 gap-1.5 rounded-xl" onClick={() => setMeuRhitmoOpen(true)}>
                             <Sparkles className="h-3.5 w-3.5" />
-                            Abrir Meu Rhitmo
+                            {t('directReport.openMeuRhitmo')}
                           </Button>
                         </div>
                       );
@@ -613,7 +617,7 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
 
                     // Add a filler if less than 3 actions
                     if (actions.length < 3 && feedbacks.length > 0) {
-                      actions.push({ text: '💬 Converse com o Meu Rhitmo sobre seu desenvolvimento', action: () => setMeuRhitmoOpen(true) });
+                      actions.push({ text: `💬 ${t('directReport.action.talkMeuRhitmo')}`, action: () => setMeuRhitmoOpen(true) });
                     }
 
                     return actions.slice(0, 3).map((item, i) => (
@@ -651,26 +655,26 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                 <Card className="p-6 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
                   <div className="flex items-center gap-2 mb-2">
                     <Sprout className="h-5 w-5 text-primary" />
-                    <h2 className="text-lg font-bold tracking-tight text-foreground">Meu Desenvolvimento</h2>
+                    <h2 className="text-lg font-bold tracking-tight text-foreground">{t('directReport.myDevelopment')}</h2>
                   </div>
                   <p className="text-sm text-muted-foreground mb-6">
-                    Você está no comando do seu crescimento. Proponha seus objetivos de desenvolvimento e alinhe com seu líder.
+                    {t('directReport.developmentDescription')}
                   </p>
                   {devPlan?.status === 'draft' && devPlan.leader_comment && (
                     <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-4">
-                      <p className="text-xs text-amber-600 dark:text-amber-400 uppercase tracking-wide mb-1">Feedback do líder</p>
+                      <p className="text-xs text-amber-600 dark:text-amber-400 uppercase tracking-wide mb-1">{t('directReport.leaderFeedback')}</p>
                       <p className="text-sm italic text-foreground">"{devPlan.leader_comment}"</p>
                     </div>
                   )}
                   {linkedMember.skills_data?.aspirations && (
                     <div className="bg-muted/40 rounded-xl p-4 mb-4">
-                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Você disse que quer</p>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{t('directReport.youSaidYouWant')}</p>
                       <p className="text-sm italic text-foreground">"{linkedMember.skills_data.aspirations}"</p>
                     </div>
                   )}
                   <Button onClick={() => setShowPDIDialog(true)} size="lg" className="gap-2 w-full">
                     <Plus className="h-4 w-4" />
-                    Propor Ação de Desenvolvimento
+                    {t('directReport.proposeDevAction')}
                   </Button>
                 </Card>
               ) : devPlan.status === 'active' ? (
@@ -678,31 +682,31 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
                       <Sprout className="h-5 w-5 text-primary" />
-                      <h2 className="text-lg font-bold tracking-tight text-foreground">Meu Desenvolvimento</h2>
+                      <h2 className="text-lg font-bold tracking-tight text-foreground">{t('directReport.myDevelopment')}</h2>
                     </div>
-                    <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 text-xs">✓ Ativo</Badge>
+                    <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 text-xs">✓ {t('directReport.active')}</Badge>
                   </div>
-                  {devPlan.period_label && <p className="text-sm text-muted-foreground mb-3">Período: {devPlan.period_label}</p>}
+                  {devPlan.period_label && <p className="text-sm text-muted-foreground mb-3">{t('directReport.period')}: {devPlan.period_label}</p>}
                   {(devItems as any[]).map((item: any) => (
                     <div key={item.id} className={cn("flex items-start gap-3 py-3 border-b border-border last:border-0", item.status === 'completed' && "opacity-60")}>
                       <div className={cn("w-2 h-2 rounded-full mt-1.5 shrink-0", item.category === 'aprender' && "bg-blue-400", item.category === 'praticar' && "bg-purple-400", item.category === 'entregar' && "bg-emerald-400")} />
                       <div className="flex-1 min-w-0">
                         <p className={cn("text-sm font-medium text-foreground", item.status === 'completed' && "line-through")}>{item.title}</p>
                         {item.description && <p className="text-xs text-muted-foreground mt-0.5">{item.description}</p>}
-                        {item.due_date && <p className="text-xs text-muted-foreground mt-1">Prazo: {formatPDIDate(item.due_date)}</p>}
+                        {item.due_date && <p className="text-xs text-muted-foreground mt-1">{t('directReport.deadline')}: {formatLocalDate(item.due_date, 'dd MMM yyyy')}</p>}
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
                         {item.status === 'completed' ? (
-                          <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 text-xs">Concluído</Badge>
+                          <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 text-xs">{t('directReport.completed')}</Badge>
                         ) : item.status === 'in_progress' ? (
                           <Button variant="ghost" size="sm" className="text-emerald-600 text-xs" onClick={() => updateItemStatus(item.id, 'completed')}>
-                            <CheckCircle2 className="h-4 w-4 mr-1" /> Concluir
+                            <CheckCircle2 className="h-4 w-4 mr-1" /> {t('directReport.complete')}
                           </Button>
                         ) : (
                           <>
-                            <Button variant="ghost" size="sm" className="text-xs" onClick={() => updateItemStatus(item.id, 'in_progress')}>Iniciar</Button>
+                            <Button variant="ghost" size="sm" className="text-xs" onClick={() => updateItemStatus(item.id, 'in_progress')}>{t('directReport.start')}</Button>
                             <Button variant="ghost" size="sm" className="text-emerald-600 text-xs" onClick={() => updateItemStatus(item.id, 'completed')}>
-                              <CheckCircle2 className="h-4 w-4 mr-1" /> Concluir
+                              <CheckCircle2 className="h-4 w-4 mr-1" /> {t('directReport.complete')}
                             </Button>
                           </>
                         )}
@@ -721,7 +725,7 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
           {/* ═══ TAB 3: Feedbacks ═══ */}
           <TabsContent value="feedbacks">
             <div className="mt-6">
-              <h2 className="text-lg font-semibold mb-4 text-foreground">Feedbacks do seu líder</h2>
+              <h2 className="text-lg font-semibold mb-4 text-foreground">{t('directReport.feedbacksFromLeader')}</h2>
               <Card className="p-6 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
                 {isLoading ? (
                   <div className="flex justify-center py-8">
@@ -730,8 +734,8 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                 ) : feedbacks.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p>Nenhuma anotação compartilhada</p>
-                    <p className="text-sm">Seu líder pode compartilhar feedbacks com você</p>
+                    <p>{t('directReport.noSharedNotes')}</p>
+                    <p className="text-sm">{t('directReport.leaderCanShare')}</p>
                   </div>
                 ) : (
                   <FeedbackTimeline feedbacks={feedbacks} />
@@ -742,7 +746,7 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
               <div className="mt-8">
                 <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-foreground">
                   <FileText className="h-5 w-5 text-primary" />
-                  Avaliações Formais
+                  {t('directReport.formalReviews')}
                 </h2>
                 {loadingReviews ? (
                   <div className="flex justify-center py-8">
@@ -752,10 +756,10 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                   <Card className="p-8 text-center rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
                     <FileText className="h-8 w-8 mx-auto mb-3 text-muted-foreground/30" />
                     <p className="text-sm text-muted-foreground">
-                      Nenhuma avaliação compartilhada ainda
+                      {t('directReport.noSharedReviews')}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Seu líder compartilhará avaliações formais quando estiverem prontas.
+                      {t('directReport.leaderWillShare')}
                     </p>
                   </Card>
                 ) : (
@@ -770,17 +774,17 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                           <div>
                             <p className="font-semibold text-sm text-foreground">{review.title}</p>
                             <p className="text-xs text-muted-foreground mt-1">
-                              {new Date(review.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                              {formatLocalDate(review.created_at, 'dd MMMM yyyy')}
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
                             {review.acknowledged_at ? (
                               <Badge className="bg-green-500/10 text-green-700 dark:text-green-400 border-0 text-[10px]">
                                 <CheckCircle2 className="h-3 w-3 mr-1" />
-                                Confirmada
+                                {t('directReport.confirmed')}
                               </Badge>
                             ) : !review.member_viewed_at ? (
-                              <Badge className="bg-primary/10 text-primary border-0 text-[10px]">Nova</Badge>
+                              <Badge className="bg-primary/10 text-primary border-0 text-[10px]">{t('directReport.new')}</Badge>
                             ) : null}
                             <ChevronRight className="h-4 w-4 text-muted-foreground" />
                           </div>
@@ -798,7 +802,7 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                 <DialogHeader>
                   <DialogTitle>{selectedReview?.title}</DialogTitle>
                   <p className="text-xs text-muted-foreground">
-                    {selectedReview && new Date(selectedReview.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                    {selectedReview && formatLocalDate(selectedReview.created_at, 'dd MMMM yyyy')}
                   </p>
                 </DialogHeader>
                 <div className="prose prose-sm max-w-none mt-4">
@@ -822,13 +826,14 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                         if (!printWindow) return;
                         const filtered = filterReviewForMember(selectedReview.content || '');
                         const htmlContent = filtered.includes('</') ? filtered : marked(filtered);
-                        printWindow.document.write(`<!DOCTYPE html><html><head><title>${selectedReview.title}</title><style>body{font-family:'Segoe UI',Arial,sans-serif;padding:2cm;line-height:1.6;color:#333}h1{color:#222;border-bottom:3px solid #7C3AED;padding-bottom:16px}h2{color:#444;margin-top:28px}ul,ol{padding-left:24px}li{margin:6px 0}</style></head><body><h1>${selectedReview.title}</h1><p style="color:#666">${new Date(selectedReview.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>${htmlContent}</body></html>`);
+                        const dateStr = formatLocalDate(selectedReview.created_at, 'dd MMMM yyyy');
+                        printWindow.document.write(`<!DOCTYPE html><html><head><title>${selectedReview.title}</title><style>body{font-family:'Segoe UI',Arial,sans-serif;padding:2cm;line-height:1.6;color:#333}h1{color:#222;border-bottom:3px solid #7C3AED;padding-bottom:16px}h2{color:#444;margin-top:28px}ul,ol{padding-left:24px}li{margin:6px 0}</style></head><body><h1>${selectedReview.title}</h1><p style="color:#666">${dateStr}</p>${htmlContent}</body></html>`);
                         printWindow.document.close();
                         setTimeout(() => printWindow.print(), 300);
                       }}
                     >
                       <Download className="h-4 w-4" />
-                      Exportar PDF
+                      {t('directReport.exportPDF')}
                     </Button>
                   </div>
                   {!selectedReview?.acknowledged_at && (
@@ -839,22 +844,22 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                         const { error } = await supabase
                           .rpc('member_acknowledge_review', { p_review_id: selectedReview.id });
                         if (error) {
-                          toast.error('Erro ao confirmar leitura.');
+                          toast.error(t('directReport.toast.errorConfirm'));
                           return;
                         }
-                        toast.success('Leitura confirmada! ✅');
+                        toast.success(t('directReport.toast.readingConfirmed'));
                         setSelectedReview({ ...selectedReview, acknowledged_at: new Date().toISOString() });
                         queryClient.invalidateQueries({ queryKey: ['shared-reviews', linkedMember.id] });
                       }}
                     >
                       <CheckCircle2 className="h-4 w-4" />
-                      Confirmar Leitura
+                      {t('directReport.confirmReading')}
                     </Button>
                   )}
                   {selectedReview?.acknowledged_at && (
                     <Badge className="bg-green-500/10 text-green-700 dark:text-green-400 border-0">
                       <CheckCircle2 className="h-3 w-3 mr-1" />
-                      Leitura confirmada em {new Date(selectedReview.acknowledged_at).toLocaleDateString('pt-BR')}
+                      {t('directReport.readingConfirmedOn', { date: formatLocalDate(selectedReview.acknowledged_at) })}
                     </Badge>
                   )}
                 </div>
@@ -888,7 +893,7 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                     <p className="text-sm text-muted-foreground">{linkedMember.role}</p>
                     <Button variant="outline" size="sm" className="mt-2 gap-1.5 rounded-full text-xs" onClick={() => setAvatarLibraryOpen(true)}>
                       <Camera className="h-3.5 w-3.5" />
-                      Trocar Avatar
+                      {t('directReport.changeAvatar')}
                     </Button>
                   </div>
                 </div>
@@ -900,30 +905,30 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-bold tracking-tight flex items-center gap-2 text-foreground">
                     <User className="h-5 w-5 text-primary" />
-                    Informações da Função
+                    {t('directReport.roleInfo')}
                   </h2>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => toast('Edição de perfil', { description: 'Em breve você poderá atualizar suas informações de função diretamente aqui.' })}
+                    onClick={() => toast(t('directReport.toast.profileEditTitle'), { description: t('directReport.toast.profileEditDesc') })}
                   >
-                    Editar
+                    {t('common.edit')}
                   </Button>
                 </div>
                 <div className="space-y-4">
                   <div>
-                    <p className="text-sm text-muted-foreground">Cargo</p>
+                    <p className="text-sm text-muted-foreground">{t('directReport.jobTitle')}</p>
                     <p className="font-medium text-foreground">{linkedMember.role}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Tempo na função</p>
+                    <p className="text-sm text-muted-foreground">{t('directReport.timeInRole')}</p>
                     <p className="font-medium text-foreground">
-                      {tenure ? tenureLabels[tenure] || tenure : '-'}
+                      {tenure ? getTranslatedLabel(TENURE_KEYS, tenure) : '-'}
                     </p>
                   </div>
                   {responsibilities.length > 0 && (
                     <div>
-                      <p className="text-sm text-muted-foreground mb-2">Responsabilidades</p>
+                      <p className="text-sm text-muted-foreground mb-2">{t('directReport.responsibilities')}</p>
                       <ul className="list-disc list-inside space-y-1">
                         {responsibilities.map((resp, i) => (
                           <li key={i} className="text-foreground">{resp}</li>
@@ -933,13 +938,13 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                   )}
                   {linkedMember.skills_data?.aspirations && (
                     <div>
-                      <p className="text-sm text-muted-foreground mb-1">Aspirações</p>
+                      <p className="text-sm text-muted-foreground mb-1">{t('directReport.aspirations')}</p>
                       <p className="text-foreground">{linkedMember.skills_data.aspirations}</p>
                     </div>
                   )}
                   {linkedMember.skills_data?.interests && linkedMember.skills_data.interests.length > 0 && (
                     <div>
-                      <p className="text-sm text-muted-foreground mb-2">Interesses</p>
+                      <p className="text-sm text-muted-foreground mb-2">{t('directReport.interests')}</p>
                       <div className="flex flex-wrap gap-2">
                         {linkedMember.skills_data.interests.map((interest, i) => (
                           <span key={i} className="px-2 py-1 bg-muted rounded-xl text-sm text-foreground">
@@ -957,10 +962,10 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                 <div className="flex items-center justify-between mb-2">
                   <h2 className="text-lg font-bold tracking-tight flex items-center gap-2 text-foreground">
                     <Sparkles className="h-5 w-5 text-primary" />
-                    Meu Rhitmo Sync
+                    {t('directReport.myRhitmoSync')}
                   </h2>
                 </div>
-                <p className="text-sm text-muted-foreground mb-2">Seu perfil comportamental e preferências</p>
+                <p className="text-sm text-muted-foreground mb-2">{t('directReport.syncSubtitle')}</p>
 
                 {(() => {
                   const syncDate = (linkedMember.work_style_data as any)?.completed_at || linkedMember.updated_at;
@@ -968,7 +973,7 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                   if (days !== null && days <= 180) {
                     return (
                       <p className="text-xs text-muted-foreground mb-4">
-                        Atualizado {days} dias atrás
+                        {t('directReport.updatedDaysAgo', { count: days })}
                       </p>
                     );
                   }
@@ -977,15 +982,15 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                       <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-100 mt-1 mb-4">
                         <span className="text-amber-500 text-sm">⏰</span>
                         <div>
-                          <p className="text-xs font-medium text-amber-700">Seu perfil pode estar desatualizado</p>
+                          <p className="text-xs font-medium text-amber-700">{t('directReport.profileOutdated')}</p>
                           <p className="text-xs text-amber-600 mt-0.5">
-                            Faz mais de 6 meses desde o último sync. Suas preferências podem ter mudado.
+                            {t('directReport.profileOutdatedDesc')}
                           </p>
                           <button
                             onClick={() => setSyncDialogOpen(true)}
                             className="text-xs text-amber-700 font-semibold underline mt-1"
                           >
-                            Atualizar agora
+                            {t('directReport.updateNow')}
                           </button>
                         </div>
                       </div>
@@ -999,30 +1004,30 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                     {linkedMember.chronotype && (
                       <div>
                         <Badge variant="secondary" className="rounded-full bg-primary/10 text-primary text-xs px-3 py-1">
-                          {getLabel(chronotypeLabels, linkedMember.chronotype)}
+                          {getTranslatedLabel(CHRONOTYPE_KEYS, linkedMember.chronotype)}
                         </Badge>
                         <p className="text-xs text-muted-foreground italic mt-1">
-                          {chronotypeContext[linkedMember.chronotype] || 'Seu líder considera seu ritmo natural ao agendar reuniões importantes.'}
+                          {CHRONOTYPE_CONTEXT_KEYS[linkedMember.chronotype] ? t(CHRONOTYPE_CONTEXT_KEYS[linkedMember.chronotype]) : t('directReport.chronotypeContext.default')}
                         </p>
                       </div>
                     )}
                     {linkedMember.feedback_style && (
                       <div>
                         <Badge variant="secondary" className="rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-400 text-xs px-3 py-1">
-                          {getLabel(feedbackStyleLabels, linkedMember.feedback_style)}
+                          {getTranslatedLabel(FEEDBACK_STYLE_KEYS, linkedMember.feedback_style)}
                         </Badge>
                         <p className="text-xs text-muted-foreground italic mt-1">
-                          {feedbackContext[linkedMember.feedback_style] || 'Seu líder adapta a forma de dar feedback ao seu estilo.'}
+                          {FEEDBACK_CONTEXT_KEYS[linkedMember.feedback_style] ? t(FEEDBACK_CONTEXT_KEYS[linkedMember.feedback_style]) : t('directReport.feedbackContext.default')}
                         </p>
                       </div>
                     )}
                     {linkedMember.recognition_style && (
                       <div>
                         <Badge variant="secondary" className="rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs px-3 py-1">
-                          {getLabel(recognitionStyleLabels, linkedMember.recognition_style)}
+                          {getTranslatedLabel(RECOGNITION_STYLE_KEYS, linkedMember.recognition_style)}
                         </Badge>
                         <p className="text-xs text-muted-foreground italic mt-1">
-                          {recognitionContext[linkedMember.recognition_style] || 'Seu líder adapta o reconhecimento ao que mais te motiva.'}
+                          {RECOGNITION_CONTEXT_KEYS[linkedMember.recognition_style] ? t(RECOGNITION_CONTEXT_KEYS[linkedMember.recognition_style]) : t('directReport.recognitionContext.default')}
                         </p>
                       </div>
                     )}
@@ -1036,7 +1041,7 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                           ))}
                         </div>
                         <p className="text-xs text-muted-foreground italic mt-1">
-                          Seu líder usa isso para conectar desafios e oportunidades ao que realmente te move.
+                          {t('directReport.motivatorContext')}
                         </p>
                       </div>
                     )}
@@ -1044,8 +1049,8 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                 ) : (
                   <div className="text-center py-6 text-muted-foreground">
                     <Sparkles className="h-10 w-10 mx-auto mb-3 opacity-40" />
-                    <p className="text-sm">Você ainda não completou o Rhitmo Sync</p>
-                    <p className="text-xs mt-1">Complete para que seu líder conheça seu estilo de trabalho</p>
+                    <p className="text-sm">{t('directReport.noSyncYet')}</p>
+                    <p className="text-xs mt-1">{t('directReport.completeSyncHint')}</p>
                   </div>
                 )}
 
@@ -1056,7 +1061,7 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                     className="w-full"
                     onClick={() => setSyncDialogOpen(true)}
                   >
-                    Atualizar Sync
+                    {t('directReport.updateSync')}
                   </Button>
                 </div>
               </Card>
@@ -1069,125 +1074,128 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
       <Dialog open={syncDialogOpen} onOpenChange={setSyncDialogOpen}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Atualizar meu Rhitmo Sync</DialogTitle>
+            <DialogTitle>{t('directReport.syncDialog.title')}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 mt-2">
             {/* ── Seção: Ritmo e Energia ── */}
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mt-4 mb-2">Ritmo e Energia</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mt-4 mb-2">{t('directReport.syncDialog.rhythmEnergy')}</p>
 
             <div className="space-y-2">
-              <Label>Quando você é mais produtivo?</Label>
+              <Label>{t('directReport.syncDialog.whenProductive')}</Label>
               <Select value={syncForm.chronotype} onValueChange={(v) => setSyncForm(prev => ({ ...prev, chronotype: v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t('directReport.syncDialog.selectPlaceholder')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="madrugador">Madrugador (entre 5h e 10h)</SelectItem>
-                  <SelectItem value="comercial">Horário Comercial (9h às 18h)</SelectItem>
-                  <SelectItem value="noturno">Noturno (depois das 18h)</SelectItem>
+                  <SelectItem value="madrugador">{t('directReport.syncDialog.earlyBird')}</SelectItem>
+                  <SelectItem value="comercial">{t('directReport.syncDialog.commercial')}</SelectItem>
+                  <SelectItem value="noturno">{t('directReport.syncDialog.nightOwl')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label>Ambiente ideal de trabalho</Label>
+              <Label>{t('directReport.syncDialog.idealEnvironment')}</Label>
               <Select value={syncForm.work_environment} onValueChange={(v) => setSyncForm(prev => ({ ...prev, work_environment: v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t('directReport.syncDialog.selectPlaceholder')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="silencioso">Silencioso e focado</SelectItem>
-                  <SelectItem value="dinamico">Dinâmico e colaborativo</SelectItem>
-                  <SelectItem value="flexivel">Flexível / híbrido</SelectItem>
-                  <SelectItem value="remoto">Remoto</SelectItem>
+                  <SelectItem value="silencioso">{t('directReport.syncDialog.envQuiet')}</SelectItem>
+                  <SelectItem value="dinamico">{t('directReport.syncDialog.envDynamic')}</SelectItem>
+                  <SelectItem value="flexivel">{t('directReport.syncDialog.envFlexible')}</SelectItem>
+                  <SelectItem value="remoto">{t('directReport.syncDialog.envRemote')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label>O que drena minha energia</Label>
-              <Textarea placeholder="Ex: Reuniões longas sem pauta, interrupções constantes..." maxLength={200} value={syncForm.energy_drains} onChange={(e) => setSyncForm(prev => ({ ...prev, energy_drains: e.target.value }))} />
+              <Label>{t('directReport.syncDialog.energyDrains')}</Label>
+              <Textarea placeholder={t('directReport.syncDialog.energyDrainsPlaceholder')} maxLength={200} value={syncForm.energy_drains} onChange={(e) => setSyncForm(prev => ({ ...prev, energy_drains: e.target.value }))} />
               <p className="text-xs text-muted-foreground text-right">{syncForm.energy_drains.length}/200</p>
             </div>
 
             <div className="space-y-2">
-              <Label>O que carrega minha energia</Label>
-              <Textarea placeholder="Ex: Tempo para trabalho focado, feedback positivo..." maxLength={200} value={syncForm.energy_sources} onChange={(e) => setSyncForm(prev => ({ ...prev, energy_sources: e.target.value }))} />
+              <Label>{t('directReport.syncDialog.energySources')}</Label>
+              <Textarea placeholder={t('directReport.syncDialog.energySourcesPlaceholder')} maxLength={200} value={syncForm.energy_sources} onChange={(e) => setSyncForm(prev => ({ ...prev, energy_sources: e.target.value }))} />
               <p className="text-xs text-muted-foreground text-right">{syncForm.energy_sources.length}/200</p>
             </div>
 
             {/* ── Seção: Manual de Instruções ── */}
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mt-4 mb-2">Manual de Instruções</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mt-4 mb-2">{t('directReport.syncDialog.userManual')}</p>
 
             <div className="space-y-2">
-              <Label>Quando estou estressado, eu...</Label>
-              <Textarea placeholder="Ex: Fico quieto, respondo com respostas curtas, evito reuniões..." maxLength={200} value={syncForm.stress_signs} onChange={(e) => setSyncForm(prev => ({ ...prev, stress_signs: e.target.value }))} />
+              <Label>{t('directReport.syncDialog.stressSigns')}</Label>
+              <Textarea placeholder={t('directReport.syncDialog.stressSignsPlaceholder')} maxLength={200} value={syncForm.stress_signs} onChange={(e) => setSyncForm(prev => ({ ...prev, stress_signs: e.target.value }))} />
               <p className="text-xs text-muted-foreground text-right">{syncForm.stress_signs.length}/200</p>
             </div>
 
             <div className="space-y-2">
-              <Label>Em dias ruins, me ajude...</Label>
-              <Textarea placeholder="Ex: Me dando espaço, perguntando se preciso de algo..." maxLength={200} value={syncForm.support_needed} onChange={(e) => setSyncForm(prev => ({ ...prev, support_needed: e.target.value }))} />
+              <Label>{t('directReport.syncDialog.badDaySupport')}</Label>
+              <Textarea placeholder={t('directReport.syncDialog.badDaySupportPlaceholder')} maxLength={200} value={syncForm.support_needed} onChange={(e) => setSyncForm(prev => ({ ...prev, support_needed: e.target.value }))} />
               <p className="text-xs text-muted-foreground text-right">{syncForm.support_needed.length}/200</p>
             </div>
 
             <div className="space-y-2">
-              <Label>Como prefiro receber feedback?</Label>
+              <Label>{t('directReport.syncDialog.feedbackPreference')}</Label>
               <Select value={syncForm.feedback_style} onValueChange={(v) => setSyncForm(prev => ({ ...prev, feedback_style: v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t('directReport.syncDialog.selectPlaceholder')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="direto">Direto (sem rodeios, objetivo)</SelectItem>
-                  <SelectItem value="empatico">Empático (com contexto e cuidado)</SelectItem>
-                  <SelectItem value="escrito">Escrito (prefiro ler e processar)</SelectItem>
+                  <SelectItem value="direto">{t('directReport.syncDialog.feedbackDirect')}</SelectItem>
+                  <SelectItem value="empatico">{t('directReport.syncDialog.feedbackEmpathetic')}</SelectItem>
+                  <SelectItem value="escrito">{t('directReport.syncDialog.feedbackWritten')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label>Como prefiro ser reconhecido?</Label>
+              <Label>{t('directReport.syncDialog.recognitionPreference')}</Label>
               <Select value={syncForm.recognition_style} onValueChange={(v) => setSyncForm(prev => ({ ...prev, recognition_style: v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t('directReport.syncDialog.selectPlaceholder')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="publico">Público (em grupo)</SelectItem>
-                  <SelectItem value="privado">Privado (1:1 com meu líder)</SelectItem>
+                  <SelectItem value="publico">{t('directReport.syncDialog.recognitionPublic')}</SelectItem>
+                  <SelectItem value="privado">{t('directReport.syncDialog.recognitionPrivate')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {/* ── Seção: Futuro ── */}
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mt-4 mb-2">Futuro</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mt-4 mb-2">{t('directReport.syncDialog.future')}</p>
 
             <div className="space-y-2">
-              <Label>O que te motiva? (escolha até 3)</Label>
+              <Label>{t('directReport.syncDialog.motivators')}</Label>
               <div className="flex flex-wrap gap-2">
-                {MOTIVATOR_OPTIONS.map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => handleToggleMotivator(m)}
-                    className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
-                      syncForm.motivators.includes(m)
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                    }`}
-                  >
-                    {m}
-                  </button>
-                ))}
+                {MOTIVATOR_KEYS.map((key) => {
+                  const label = t(`directReport.motivator.${key}`);
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => handleToggleMotivator(label)}
+                      className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+                        syncForm.motivators.includes(label)
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label>O que você quer aprender/desenvolver?</Label>
-              <Textarea placeholder="Ex: Apresentações em público, gestão de projetos..." maxLength={200} value={syncForm.skill_goal} onChange={(e) => setSyncForm(prev => ({ ...prev, skill_goal: e.target.value }))} />
+              <Label>{t('directReport.syncDialog.skillGoal')}</Label>
+              <Textarea placeholder={t('directReport.syncDialog.skillGoalPlaceholder')} maxLength={200} value={syncForm.skill_goal} onChange={(e) => setSyncForm(prev => ({ ...prev, skill_goal: e.target.value }))} />
               <p className="text-xs text-muted-foreground text-right">{syncForm.skill_goal.length}/200</p>
             </div>
           </div>
 
           <div className="flex justify-end gap-3 mt-4">
             <Button variant="outline" onClick={() => setSyncDialogOpen(false)} disabled={syncSaving}>
-              Cancelar
+              {t('common.cancel')}
             </Button>
             <Button onClick={handleSaveSync} disabled={syncSaving}>
               {syncSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Salvar
+              {t('common.save')}
             </Button>
           </div>
         </DialogContent>
