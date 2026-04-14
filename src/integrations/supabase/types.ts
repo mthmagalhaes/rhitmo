@@ -1568,6 +1568,7 @@ export type Database = {
       workspaces: {
         Row: {
           created_at: string
+          default_locale: string | null
           hr_admin_ids: string[] | null
           id: string
           is_active: boolean
@@ -1581,6 +1582,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          default_locale?: string | null
           hr_admin_ids?: string[] | null
           id?: string
           is_active?: boolean
@@ -1594,6 +1596,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          default_locale?: string | null
           hr_admin_ids?: string[] | null
           id?: string
           is_active?: boolean

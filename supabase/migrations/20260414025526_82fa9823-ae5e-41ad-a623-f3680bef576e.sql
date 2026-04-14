@@ -1,0 +1,1 @@
+ALTER TABLE public.workspaces ADD COLUMN default_locale varchar(10) DEFAULT 'pt-BR';
