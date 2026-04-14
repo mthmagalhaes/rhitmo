@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
     }
 
     // Schedule bot via Recall.ai API
-    const joinAt = new Date(new Date(start_time).getTime() - 10 * 60 * 1000).toISOString();
+    const joinAt = new Date(new Date(start_time).getTime() - 2 * 60 * 1000).toISOString();
 
     const recallResponse = await fetch("https://us-west-2.recall.ai/api/v1/bot/", {
       method: "POST",
@@ -91,6 +91,17 @@ Deno.serve(async (req) => {
         meeting_url: meeting_url,
         join_at: joinAt,
         bot_name: "Rhitmo",
+        chat: {
+          on_bot_join: {
+            send_to: "everyone",
+            message: "👋 Olá! Sou o assistente Rhitmo. Esta reunião está sendo transcrita para fins de anotações e desenvolvimento profissional. Se tiver dúvidas, fale com seu líder.",
+            pin: true,
+          },
+          on_participant_join: {
+            exclude_host: true,
+            message: "👋 Olá! Esta reunião está sendo transcrita pelo Rhitmo para fins de anotações e desenvolvimento profissional.",
+          },
+        },
         recording_config: {
           transcript: {
             provider: {
