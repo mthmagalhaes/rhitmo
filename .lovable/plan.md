@@ -1,58 +1,48 @@
 
 
-## Plano: Avatares Custom estilo Dribbble (SVG puro)
+## Plano: Avatar para Líderes + Migração de Avatares Existentes
 
-Os avatares da referência são: círculos com fundo gradiente suave (2 cores) + rostos minimalistas desenhados com traços simples (stroke paths). São simples o suficiente para criar como SVG puro em React, sem depender de APIs externas.
+### Problema identificado
+1. **Líderes não podem editar avatar** — o `ProfileSettingsDialog` não tem seletor de avatar
+2. **Liderados já podem editar** via `DirectReportDashboard` (tab Perfil) — mas o hook `useLinkedMember` não busca o campo `avatar`
+3. **Avatares atuais** dos membros existentes ainda usam DiceBear (URLs externas) ou estão nulos
 
-### Abordagem: Componentes SVG inline
+---
 
-Criar ~24 avatares como dados SVG puros definidos em um array. Cada avatar tem:
-- **Gradiente de fundo** (2 cores, diagonal ou radial)
-- **Rosto** com traços curvos: olhos (pontos ou vírgulas), boca (curva), sobrancelha opcional (onda)
-- Cada combinação é única (expressão + paleta)
+### Mudanças
 
-### Paletas (inspiradas na referência)
+#### 1. Corrigir `useLinkedMember.ts` — buscar campo `avatar`
+Adicionar `avatar` no select da query para que o liderado veja seu avatar atual corretamente.
 
-| # | Gradiente | Vibe |
-|---|-----------|------|
-| 1 | Laranja → Coral | Energético |
-| 2 | Rosa → Pêssego | Acolhedor |
-| 3 | Lilás → Azul | Sereno |
-| 4 | Azul → Ciano | Confiante |
-| 5 | Verde → Limão | Fresco |
-| 6 | Amarelo → Dourado | Otimista |
-| 7 | Turquesa → Menta | Calmo |
-| 8 | Vermelho → Azul | Ousado |
-| 9 | Rosa → Violeta | Criativo |
-| 10 | Ciano → Verde | Natural |
-| 11 | Lavanda → Rosa | Suave |
-| 12 | Azul → Índigo | Profundo |
+#### 2. Adicionar seletor de avatar no `ProfileSettingsDialog.tsx`
+- Importar `AvatarLibrary` e `MemberAvatar`
+- Buscar o workspace owner/leader e seu avatar atual
+- Renderizar avatar clicável no topo do dialog com botão "Trocar Avatar"
+- Salvar no campo `avatar` da tabela correta (provavelmente `workspaces` ou via user metadata)
 
-### Expressões faciais (variações de paths SVG)
+**Desafio:** Líderes não estão na tabela `team_members` — precisamos verificar onde armazenar o avatar do líder. Opções:
+- Usar `user_metadata` do auth (mais simples, sem migração)
+- Criar coluna `avatar` em `workspaces` (se não existir)
 
-- Sorriso aberto, sorriso fechado, sorriso de lado
-- Olhos redondos, olhos de vírgula, olhos fechados (feliz)
-- Com/sem sobrancelhas onduladas
-- ~8 combinações de expressão × 12 paletas = selecionar 24 melhores
+#### 3. Migração SQL — randomizar avatares de todos os `team_members`
+```sql
+UPDATE team_members 
+SET avatar = 'avatar-' || (floor(random() * 24) + 1)::int
+WHERE avatar IS NULL OR avatar LIKE 'https://%';
+```
+Isso atribui um avatar aleatório (avatar-1 a avatar-24) para todos os membros que ainda não têm um avatar custom.
+
+#### 4. Avatar do líder no sidebar (`AppSidebar.tsx`)
+O `MemberAvatar` no footer da sidebar já renderiza o avatar — precisamos garantir que ele receba o avatar salvo do líder.
+
+---
 
 ### Arquivos modificados
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/components/avatar/avatarData.ts` | **Novo** — Array com 24 definições (gradiente + paths do rosto) |
-| `src/components/avatar/CustomAvatar.tsx` | **Novo** — Componente SVG que renderiza um avatar a partir dos dados |
-| `src/components/avatar/AvatarLibrary.tsx` | Substituir DiceBear por avatares custom SVG |
-| `src/components/MemberAvatar.tsx` | Remover DiceBear fallback, usar CustomAvatar |
-
-### Vantagens vs DiceBear
-
-- Zero dependência externa (sem chamadas HTTP)
-- Carregamento instantâneo (SVG inline)
-- Visual premium e coeso com a marca Rhitmo
-- Controle total sobre o estilo
-
-### O que NÃO muda
-- Fluxo de seleção na AvatarLibrary (grid de opções → salvar no DB)
-- Campo `avatar` no banco continua sendo string (agora será um ID como `"avatar-1"` em vez de URL)
-- Upload de foto custom (se existir) continua funcionando
+| `src/hooks/useLinkedMember.ts` | Adicionar `avatar` no select |
+| `src/components/ProfileSettingsDialog.tsx` | Adicionar seção de avatar com `AvatarLibrary` |
+| `src/components/AppSidebar.tsx` | Passar avatar do líder para `MemberAvatar` |
+| Migração SQL | Randomizar avatares dos membros existentes |
 
