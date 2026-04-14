@@ -1790,6 +1790,17 @@ export type Database = {
           workspace_name: string
         }[]
       }
+      get_invite_status: {
+        Args: { p_invite_token: string }
+        Returns: {
+          linked_user_id: string
+          member_email: string
+          member_id: string
+          member_name: string
+          status: string
+          workspace_name: string
+        }[]
+      }
       get_job_roles_with_competencies: {
         Args: { _framework_id: string }
         Returns: {
