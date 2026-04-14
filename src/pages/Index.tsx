@@ -14,6 +14,7 @@ import { TeamTabs } from '@/components/TeamTabs';
 import { SetupChecklist } from '@/components/SetupChecklist';
 import { LeaderSyncWizard } from '@/components/LeaderSyncWizard';
 import { ActivityPreview } from '@/components/ActivityPreview';
+import { UpcomingMeetingsCard } from '@/components/dashboard/UpcomingMeetingsCard';
 import { ActivitySheet } from '@/components/ActivitySheet';
 import { useAuth } from '@/hooks/useAuth';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
