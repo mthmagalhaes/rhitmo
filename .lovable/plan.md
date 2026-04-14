@@ -1,72 +1,44 @@
 
 
-## Plano: Continuar i18n — Corrigir crash + Migração SQL + UI + Strings
+## Plano: i18n Batch 2 — Dashboard, SetupChecklist, ActivityPreview, NudgesBanner, DirectReportDashboard, SkillsMapCard, CareerCompassCard, TeamMemberCard
 
-### Problema Urgente: App crashado
-
-O `react-i18next` v17 e `i18next` v26 requerem React 19. O projeto usa React 18, causando o erro `Cannot read properties of null (reading 'useState')`. Preciso fazer downgrade:
-- `react-i18next` → `^15.4.1` (última compatível com React 18)
-- `i18next` → `^23.16.8` (estável para React 18)
-- `i18next-browser-languagedetector` → `^8.0.4` (mantém compatível)
+This batch migrates all hardcoded Portuguese strings in the dashboard layer (both leader and direct report views) to use `t()` from react-i18next.
 
 ---
 
-### Fase 2 — SQL + Admin locale por workspace
+### Files to modify
 
-1. **Migração SQL**: Adicionar coluna `default_locale varchar default 'pt-BR'` à tabela `workspaces`
-2. **AdminOverview.tsx**: Adicionar seletor de idioma padrão por workspace (dropdown PT-BR/EN/ES) na tabela de workspaces, visível apenas para super_admin. Salva via update na coluna `default_locale`
+| File | Estimated strings |
+|------|------------------|
+| `src/pages/Index.tsx` | ~40 (greetings, labels, buttons, tooltips, plurals) |
+| `src/components/SetupChecklist.tsx` | ~8 (step labels, action buttons, progress text) |
+| `src/components/ActivityPreview.tsx` | ~6 (section title, empty state, time labels) |
+| `src/components/NudgesBanner.tsx` | ~3 (button labels, sr-only) |
+| `src/components/dashboard/DirectReportDashboard.tsx` | ~60+ (tenure/chronotype/feedback/recognition labels, tab names, section headers, buttons, toasts) |
+| `src/components/dashboard/SkillsMapCard.tsx` | ~15 (headers, empty state, buttons, tips) |
+| `src/components/dashboard/CareerCompassCard.tsx` | ~10 (headers, score labels, section titles) |
+| `src/components/TeamMemberCard.tsx` | ~8 (status messages, tooltips, labels) |
 
-### Fase 3 — Seletor de idioma no perfil
+### Key changes
 
-**ProfileSettingsDialog.tsx**: Adicionar seção "Idioma" com 3 botões (🇧🇷🇺🇸🇪🇸) que chamam `useLocale().setLocale()`. Persiste no `user_metadata.locale` e `localStorage`.
+1. **`Index.tsx`**: Replace `getGreeting()` with `t('dashboard.greeting.morning/afternoon/evening')`. Replace all inline Portuguese (liderado/reunião/nota plurals, button labels, section headers, empty states) with `t()` calls. Replace `ptBR` date-fns locale with dynamic locale based on `i18n.language`.
 
-### Fase 4 — Migração de strings (por batches)
+2. **`DirectReportDashboard.tsx`**: The `tenureLabels`, `chronotypeLabels`, `feedbackStyleLabels`, `recognitionStyleLabels`, `chronotypeContext`, `feedbackContext`, `recognitionContext` maps all contain Portuguese. Convert to `t()` keys. Tab labels (Visão Geral, Feedbacks, Avaliações, etc.) all need translation. All toasts, buttons, section headers.
 
-Substituir strings hardcoded por `t('key')` nos principais arquivos, organizados por prioridade:
+3. **`SkillsMapCard.tsx` + `CareerCompassCard.tsx`**: Headers ("Bússola de Carreira"), empty states, score labels ("Excelente alinhamento"), section titles ("Pontos de Atenção", "Foco Recomendado"), action buttons.
 
-**Batch 1 — Core (alto impacto):**
-- `Auth.tsx` (~30 strings: login, signup, esqueci senha, toasts)
-- `AppSidebar.tsx` (~20 strings: menu items, labels, botões)
-- `ProfileSettingsDialog.tsx` (~15 strings)
-- `ResetPassword.tsx`
+4. **`TeamMemberCard.tsx`**: Status messages ("Sem notas", "Hoje", "Há X dias"), tooltips.
 
-**Batch 2 — Dashboard:**
-- `Index.tsx` (~40 strings: saudações, labels, botões, toasts)
-- `SetupChecklist.tsx`, `ActivityPreview.tsx`, `NudgesBanner.tsx`
-- `DirectReportDashboard.tsx`, `CareerCompassCard.tsx`, `SkillsMapCard.tsx`
+5. **Locale JSONs**: Add all new keys to `pt-BR.json`, `en.json`, `es.json` under existing namespaces (`dashboard`, `setup`, `common`, plus new `directReport` namespace).
 
-**Batch 3 — Members + Feedback:**
-- `TeamMemberCard.tsx`, `NewMemberDialog.tsx`, `EditMemberDialog.tsx`, `MemberDetails.tsx`
-- `FeedbackTimeline.tsx`, `NewNoteDialog.tsx`, `BiasDetectionPanel.tsx`
+6. **date-fns dynamic locale**: Create a helper `getDateLocale(lang)` that returns the correct `date-fns/locale` object, used in `Index.tsx`, `ActivityPreview.tsx`, and `DirectReportDashboard.tsx`.
 
-**Batch 4 — Reviews + HR:**
-- `PerformanceReviewList.tsx`, `NewReviewDialog.tsx`, `ReviewViewDialog.tsx`
-- `HRDashboard.tsx`, `HRMembers.tsx`, `HRTeams.tsx`, `HRAnalytics.tsx`
+### Execution order
 
-**Batch 5 — Billing, Admin, Onboarding, Competências:**
-- `Billing.tsx`, `UpgradeBanner.tsx`
-- `AdminOverview.tsx`, `AdminUsers.tsx`, `AdminStructure.tsx`
-- `OnboardingModal.tsx`, `WorkspaceOnboarding.tsx`, `RhitmoSync.tsx`, `LeaderSyncWizard.tsx`
-- `CompetencyFramework.tsx`, competency components
-
-**Batch 6 — Misc:**
-- `MentorChat.tsx`, `MeetingRecorder.tsx`, `VoiceInput.tsx`, `GoalsManager.tsx`
-- `Landing.tsx`, legal pages
-- `date-fns` locale dinâmico (trocar `ptBR` hardcoded por locale baseado em `i18n.language`)
-
-Também atualizarei os JSONs de tradução (`en.json`, `es.json`, `pt-BR.json`) conforme novas keys forem necessárias.
-
----
-
-### Resumo
-
-| Ação | Estimativa |
-|------|-----------|
-| Fix dependências (crash) | 1 arquivo |
-| Migração SQL | 1 migration |
-| Seletor no perfil | 1 arquivo |
-| Admin locale | 1 arquivo |
-| Migração de strings | ~50-60 arquivos + 3 JSONs |
-
-Vou executar em ordem: fix crash → SQL → UI → strings batch a batch.
+1. Add all new translation keys to the 3 JSON files
+2. Create `src/lib/dateLocale.ts` helper for dynamic date-fns locale
+3. Migrate `Index.tsx` (largest file)
+4. Migrate `SetupChecklist.tsx`, `ActivityPreview.tsx`, `NudgesBanner.tsx`
+5. Migrate `DirectReportDashboard.tsx` (second largest)
+6. Migrate `SkillsMapCard.tsx`, `CareerCompassCard.tsx`, `TeamMemberCard.tsx`
 
