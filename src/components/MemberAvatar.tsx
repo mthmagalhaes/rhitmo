@@ -51,7 +51,7 @@ export const MemberAvatar = ({
           className="aspect-square h-full w-full"
           loading="lazy"
         />
-        <AvatarFallback className="bg-violet-600 text-white">
+        <AvatarFallback className="bg-primary text-primary-foreground">
           {initials}
         </AvatarFallback>
       </Avatar>
