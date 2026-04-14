@@ -43,7 +43,8 @@ import { PendingInvitesSection } from '@/components/team/PendingInvitesSection';
 import { UpgradeBanner } from '@/components/billing/UpgradeBanner';
 import { InviteMemberDialog } from '@/components/InviteMemberDialog';
 import { format, formatDistanceToNow, isToday, isTomorrow, differenceInDays } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { useTranslation } from 'react-i18next';
+import { getDateLocale } from '@/lib/dateLocale';
 
 interface TeamMember {
   id: string;
@@ -65,14 +66,8 @@ interface TeamMember {
   invite_token?: string | null;
 }
 
-const getGreeting = () => {
-  const h = new Date().getHours();
-  if (h < 12) return 'Bom dia';
-  if (h < 18) return 'Boa tarde';
-  return 'Boa noite';
-};
-
 const Index = ({ activeTab }: { activeTab?: string }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, loading: authLoading } = useAuth();
@@ -94,6 +89,13 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
   const [inviteMember, setInviteMember] = useState<Pick<TeamMember, 'id' | 'name' | 'invite_status' | 'invite_token'> & { email?: string | null } | null>(null);
   const { toast } = useToast();
 
+  const getGreeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return t('dashboard.greeting.morning');
+    if (h < 18) return t('dashboard.greeting.afternoon');
+    return t('dashboard.greeting.evening');
+  };
+
   useEffect(() => {
     if (!user && !authLoading) {
       navigate('/', { replace: true });
@@ -103,7 +105,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('calendar') === 'connected') {
-      toast({ title: 'Google Calendar conectado! 🗓️' });
+      toast({ title: t('dashboard.calendarConnected') });
       window.history.replaceState({}, '', '/dashboard');
       queryClient.invalidateQueries({ queryKey: ['calendar-connected'] });
       queryClient.invalidateQueries({ queryKey: ['upcoming-meetings'] });
@@ -115,13 +117,11 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
     queryFn: async () => {
       if (!user) return null;
       
-      // CRITICAL: Wait for session before RLS-dependent queries
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('No active session — will retry');
       }
       
-      // First try: explicit owner check (robust against RLS timing)
       const { data: ownedWorkspace, error: ownedError } = await supabase
         .from('workspaces')
         .select('*')
@@ -133,7 +133,6 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
       if (ownedError) console.warn('[Index] Owned workspace query error:', ownedError.message);
       if (ownedWorkspace) return ownedWorkspace as Workspace;
       
-      // Fallback: check if user leads a team → get that workspace
       const { data: leaderTeam } = await supabase
         .from('teams')
         .select('workspace_id')
@@ -247,7 +246,6 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
     staleTime: 30 * 1000,
   });
 
-  // Meetings query (from V2)
   const { data: meetings = [] } = useQuery({
     queryKey: ['upcoming-meetings', user?.id],
     queryFn: async () => {
@@ -265,7 +263,6 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
     staleTime: 60_000,
   });
 
-  // Weekly notes count
   const { data: weeklyNotesCount = 0 } = useQuery({
     queryKey: ['weekly-notes', user?.id],
     queryFn: async () => {
@@ -283,7 +280,6 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
     staleTime: 60_000,
   });
 
-  // Nudges
   const { data: nudges = [] } = useQuery({
     queryKey: ['leader-nudges', user?.id],
     queryFn: async () => {
@@ -362,7 +358,6 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
     return <DirectReportDashboard linkedMember={linkedMember!} activeTab={activeTab} />;
   }
 
-  // User role but not linked — show a friendly state instead of falling through to leader dashboard
   if (!isLeader && !isHRAdmin && !isLinkedMember) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -372,14 +367,14 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
           </div>
           <div className="space-y-2">
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              Processando seu acesso...
+              {t('auth.processingAccess')}
             </h1>
             <p className="text-muted-foreground">
-              Seu convite está sendo processado. Se o problema persistir, peça ao seu líder para reenviar o convite.
+              {t('auth.processingAccessDescription')}
             </p>
           </div>
           <Button variant="outline" onClick={() => window.location.reload()}>
-            Tentar novamente
+            {t('common.tryAgain')}
           </Button>
         </div>
       </div>
@@ -393,18 +388,20 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
   const activeTeam = teams.find(t => t.id === activeTeamId);
 
   const getPageTitle = () => {
-    if (!activeTeamId) return 'Todos os Membros';
-    if (activeTeam?.name === 'Sem Time') return 'Membros sem Time';
+    if (!activeTeamId) return t('dashboard.allMembers');
+    if (activeTeam?.name === 'Sem Time') return t('dashboard.membersWithoutTeam');
     return activeTeam?.name || '';
   };
 
   const showTeamSettings = activeTeamId && activeTeam?.name !== 'Sem Time';
-  const firstName = user.user_metadata?.full_name?.split(' ')[0] || user.email?.split('@')[0] || 'Líder';
+  const firstName = user.user_metadata?.full_name?.split(' ')[0] || user.email?.split('@')[0] || t('common.leader');
   const todayMeetings = meetings.filter((m: any) => isToday(new Date(m.start_time)));
   const membersNeedingAttention = teamMembers.filter(m => {
     const ref = m.last_feedback_date || m.created_at;
     return differenceInDays(new Date(), new Date(ref)) > 14;
   });
+
+  const dateLocale = getDateLocale();
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -429,21 +426,41 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
                     ? `${activeSubscription.plan_tier.charAt(0).toUpperCase() + activeSubscription.plan_tier.slice(1)}${activeSubscription.status === 'trialing' ? ' · Trial' : ''}`
                     : 'Pulse'}
                 </Badge>
-                <Button variant="ghost" size="icon" onClick={() => setEditWorkspaceOpen(true)} className="h-8 w-8" aria-label="Editar workspace">
+                <Button variant="ghost" size="icon" onClick={() => setEditWorkspaceOpen(true)} className="h-8 w-8" aria-label={t('dashboard.editWorkspace')}>
                   <Pencil className="h-4 w-4" />
                 </Button>
               </div>
               <div className="flex flex-wrap items-center gap-3 mt-3 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" />{teamMembers.length} liderado{teamMembers.length !== 1 ? 's' : ''}</span>
+                <span className="flex items-center gap-1.5">
+                  <Users className="h-3.5 w-3.5" />
+                  {teamMembers.length === 1
+                    ? t('dashboard.membersCount', { count: 1 })
+                    : t('dashboard.membersCount_plural', { count: teamMembers.length })}
+                </span>
                 <span className="text-border">·</span>
-                <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" />{todayMeetings.length} reuniõ{todayMeetings.length !== 1 ? 'es' : ''} hoje</span>
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5" />
+                  {todayMeetings.length === 1
+                    ? t('dashboard.meetingsCount', { count: 1 })
+                    : t('dashboard.meetingsCount_plural', { count: todayMeetings.length })}
+                  {' '}{t('dashboard.meetingsToday')}
+                </span>
                 <span className="text-border">·</span>
-                <span className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" />{weeklyNotesCount} nota{weeklyNotesCount !== 1 ? 's' : ''} esta semana</span>
+                <span className="flex items-center gap-1.5">
+                  <FileText className="h-3.5 w-3.5" />
+                  {weeklyNotesCount === 1
+                    ? t('dashboard.notesCount', { count: 1 })
+                    : t('dashboard.notesCount_plural', { count: weeklyNotesCount })}
+                  {' '}{t('dashboard.thisWeek')}
+                </span>
                 {membersNeedingAttention.length > 0 && (
                   <>
                     <span className="text-border">·</span>
                     <span className="flex items-center gap-1.5 text-destructive font-medium">
-                      <Bell className="h-3.5 w-3.5" />{membersNeedingAttention.length} precisa{membersNeedingAttention.length !== 1 ? 'm' : ''} de atenção
+                      <Bell className="h-3.5 w-3.5" />
+                      {membersNeedingAttention.length === 1
+                        ? t('dashboard.attentionCount', { count: 1 })
+                        : t('dashboard.attentionCount_plural', { count: membersNeedingAttention.length })}
                     </span>
                   </>
                 )}
@@ -457,14 +474,14 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
                       <span>
                         <Button onClick={() => setMemberDialogOpen(true)} variant="outline" className="rounded-full h-11 px-6 gap-2" disabled={!canAddMember}>
                           <UserPlus className="h-4 w-4" />
-                          <span className="hidden sm:inline">Novo Membro</span>
+                          <span className="hidden sm:inline">{t('dashboard.newMember')}</span>
                         </Button>
                       </span>
                     </TooltipTrigger>
                     {!canAddMember && (
                       <TooltipContent>
-                        <p>Limite atingido ({limits.maxMembers} membros).</p>
-                        <p className="text-primary font-medium">Faça upgrade para adicionar mais.</p>
+                        <p>{t('dashboard.limitReachedTooltip', { max: limits.maxMembers })}</p>
+                        <p className="text-primary font-medium">{t('dashboard.limitReachedTooltipUpgrade')}</p>
                       </TooltipContent>
                     )}
                   </Tooltip>
@@ -472,7 +489,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
               )}
               <Button onClick={() => setDialogOpen(true)} className="rounded-full h-11 px-6 gap-2 shadow-md">
                 <PenSquare className="h-4 w-4" />
-                <span className="hidden sm:inline">Nova Nota</span>
+                <span className="hidden sm:inline">{t('dashboard.newNote')}</span>
               </Button>
             </div>
           </div>
@@ -506,16 +523,16 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
         {/* ═══ PRÓXIMAS 1:1s ═══ */}
         {meetings.length > 0 && (
           <section className="mb-12">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-4">Próximas 1:1s</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-4">{t('dashboard.upcomingOneOnOnes')}</p>
             <div className="flex flex-wrap gap-3">
               {meetings.slice(0, 4).map((meeting: any) => {
                 const startDate = new Date(meeting.start_time);
-                const memberName = meeting.team_members?.name || meeting.title || 'Reunião';
+                const memberName = meeting.team_members?.name || meeting.title || t('dashboard.meeting');
                 const timeLabel = isToday(startDate)
-                  ? `Hoje · ${format(startDate, 'HH:mm')}`
+                  ? `${t('common.today')} · ${format(startDate, 'HH:mm')}`
                   : isTomorrow(startDate)
-                    ? `Amanhã · ${format(startDate, 'HH:mm')}`
-                    : format(startDate, "EEE, dd MMM · HH:mm", { locale: ptBR });
+                    ? `${t('common.tomorrow')} · ${format(startDate, 'HH:mm')}`
+                    : format(startDate, "EEE, dd MMM · HH:mm", { locale: dateLocale });
                 return (
                   <div
                     key={meeting.id}
@@ -540,7 +557,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
                 );
               })}
               {meetings.length > 4 && (
-                <div className="flex items-center px-3 text-sm text-muted-foreground">+{meetings.length - 4} mais</div>
+                <div className="flex items-center px-3 text-sm text-muted-foreground">+{meetings.length - 4} {t('dashboard.more')}</div>
               )}
             </div>
           </section>
@@ -550,7 +567,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
         {/* ═══ Nudges ═══ */}
         {nudges.length > 0 && (
           <section className="mb-12">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-4">Alertas</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-4">{t('dashboard.alerts')}</p>
             <div className="space-y-2">
               {nudges.slice(0, 4).map((nudge: any) => (
                 <div key={nudge.id} className="flex items-start gap-3 bg-card border border-border rounded-xl px-4 py-3">
@@ -559,7 +576,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-foreground leading-relaxed">{nudge.message}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{formatDistanceToNow(new Date(nudge.created_at), { locale: ptBR, addSuffix: true })}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{formatDistanceToNow(new Date(nudge.created_at), { locale: dateLocale, addSuffix: true })}</p>
                   </div>
                 </div>
               ))}
@@ -570,21 +587,21 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
         {/* ═══ SEU TIME ═══ */}
         <section className="mb-12">
           <div className="flex items-center gap-2 mb-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Seu Time</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{t('dashboard.yourTeam')}</p>
             {showTeamSettings && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Configurações do time">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={t('dashboard.teamSettings')}>
                     <Settings className="h-3.5 w-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">
                   <DropdownMenuItem onClick={() => setEditTeamOpen(true)}>
-                    <Pencil className="h-4 w-4 mr-2" />Renomear Time
+                    <Pencil className="h-4 w-4 mr-2" />{t('dashboard.renameTeam')}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => setDeleteTeamOpen(true)} className="text-destructive focus:text-destructive">
-                    <Trash2 className="h-4 w-4 mr-2" />Excluir Time
+                    <Trash2 className="h-4 w-4 mr-2" />{t('dashboard.deleteTeam')}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -592,15 +609,18 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
           </div>
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm text-muted-foreground">
-              {filteredMembers.length} {filteredMembers.length === 1 ? 'liderado' : 'liderados'} — {getPageTitle()}
+              {filteredMembers.length === 1
+                ? t('dashboard.membersCount', { count: 1 })
+                : t('dashboard.membersCount_plural', { count: filteredMembers.length })}
+              {' — '}{getPageTitle()}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mb-4">
-            <span className="font-medium text-foreground/70">Última anotação:</span>
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Recente (até 7 dias)</span>
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-yellow-500" /> Atenção (8–14 dias)</span>
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-destructive" /> Sem registro (+14 dias)</span>
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-muted-foreground/40" /> Nenhuma nota</span>
+            <span className="font-medium text-foreground/70">{t('dashboard.lastNote')}</span>
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" /> {t('dashboard.recent')}</span>
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-yellow-500" /> {t('dashboard.attention')}</span>
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-destructive" /> {t('dashboard.noRecord')}</span>
+            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-muted-foreground/40" /> {t('dashboard.noNotes')}</span>
           </div>
 
           {loading ? (
@@ -610,22 +630,22 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
               <div className="max-w-md mx-auto">
                 {workspace && (
                   <>
-                    <p className="text-muted-foreground mb-3 text-sm">Veja como gerenciar seu time em 2 minutos</p>
+                    <p className="text-muted-foreground mb-3 text-sm">{t('dashboard.watchDemo')}</p>
                     <div className="aspect-video w-full rounded-xl shadow-md overflow-hidden mb-6">
                       <iframe className="w-full h-full" src="https://www.youtube.com/embed/bRQiwrBGlsc" title="Demo do Rhitmo" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
                     </div>
-                    <Button onClick={() => setMemberDialogOpen(true)} className="rounded-full px-8 h-11">Adicionar Primeiro Liderado</Button>
+                    <Button onClick={() => setMemberDialogOpen(true)} className="rounded-full px-8 h-11">{t('dashboard.addFirstMember')}</Button>
                   </>
                 )}
                 {!workspace && (
-                  <p className="text-muted-foreground text-sm">Nenhum conteúdo disponível no momento.</p>
+                  <p className="text-muted-foreground text-sm">{t('dashboard.noContentAvailable')}</p>
                 )}
               </div>
             </div>
           ) : filteredMembers.length === 0 ? (
             <div className="rounded-2xl bg-card border border-border shadow-sm p-12 text-center">
-              <p className="text-muted-foreground mb-4">Nenhum membro neste time</p>
-              <Button onClick={() => setActiveTeamId(null)} variant="outline" className="rounded-full">Ver Todos os Membros</Button>
+              <p className="text-muted-foreground mb-4">{t('dashboard.noMembersInTeam')}</p>
+              <Button onClick={() => setActiveTeamId(null)} variant="outline" className="rounded-full">{t('dashboard.viewAllMembers')}</Button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -674,7 +694,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
           <section className="mb-12">
             <div className="rounded-2xl bg-card border border-dashed border-border p-8 text-center">
               <CheckCircle2 className="h-8 w-8 text-primary/30 mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">Tudo em dia! Nenhuma reunião ou alerta pendente.</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.allCaughtUp')}</p>
             </div>
           </section>
         )}

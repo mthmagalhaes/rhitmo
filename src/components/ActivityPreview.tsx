@@ -2,8 +2,9 @@ import { Bell, AlertCircle, Lightbulb, User, ArrowRight, Inbox } from 'lucide-re
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from 'react-i18next';
+import { getDateLocale } from '@/lib/dateLocale';
 
 interface ActivityItem {
   id: string;
@@ -18,6 +19,9 @@ interface ActivityPreviewProps {
 }
 
 export function ActivityPreview({ onOpenSheet }: ActivityPreviewProps) {
+  const { t } = useTranslation();
+  const dateLocale = getDateLocale();
+
   const { data: items = [] } = useQuery({
     queryKey: ['activity-preview'],
     queryFn: async () => {
@@ -47,7 +51,7 @@ export function ActivityPreview({ onOpenSheet }: ActivityPreviewProps) {
       const syncs: ActivityItem[] = (syncRes.data || []).map((s: any) => ({
         id: s.id,
         type: 'sync' as const,
-        message: `${s.team_members?.name || 'Membro'} atualizou: ${s.change_summary}`,
+        message: t('activity.memberUpdated', { name: s.team_members?.name || t('common.member'), summary: s.change_summary }),
         severity: null,
         created_at: s.created_at || '',
       }));
@@ -59,17 +63,17 @@ export function ActivityPreview({ onOpenSheet }: ActivityPreviewProps) {
     refetchInterval: 30000,
   });
 
-  // Empty state — subtle micro card
+  // Empty state
   if (items.length === 0) {
     return (
       <div className="rounded-2xl bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-5">
         <div className="flex items-center gap-2 mb-4">
           <Bell className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold tracking-tight text-foreground">Atividade recente</h3>
+          <h3 className="text-sm font-semibold tracking-tight text-foreground">{t('activity.recentActivity')}</h3>
         </div>
         <div className="flex flex-col items-center text-center py-4">
           <Inbox className="h-8 w-8 text-muted-foreground/25 mb-2" />
-          <p className="text-xs text-muted-foreground">Tudo em dia — sem alertas pendentes</p>
+          <p className="text-xs text-muted-foreground">{t('activity.allCaughtUp')}</p>
         </div>
       </div>
     );
@@ -93,7 +97,7 @@ export function ActivityPreview({ onOpenSheet }: ActivityPreviewProps) {
       <div className="flex items-center justify-between px-5 pt-4 pb-2">
         <div className="flex items-center gap-2">
           <Bell className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold tracking-tight text-foreground">Atividade recente</h3>
+          <h3 className="text-sm font-semibold tracking-tight text-foreground">{t('activity.recentActivity')}</h3>
         </div>
         <Button
           variant="ghost"
@@ -101,7 +105,7 @@ export function ActivityPreview({ onOpenSheet }: ActivityPreviewProps) {
           className="text-xs text-primary gap-1 h-7 px-2 hover:bg-primary/5"
           onClick={onOpenSheet}
         >
-          Ver todas
+          {t('activity.viewAll')}
           <ArrowRight className="h-3 w-3" />
         </Button>
       </div>
@@ -117,7 +121,7 @@ export function ActivityPreview({ onOpenSheet }: ActivityPreviewProps) {
             <div className="shrink-0">{getIcon(item)}</div>
             <p className="text-sm text-foreground truncate flex-1">{item.message}</p>
             <span className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
-              {formatDistanceToNow(new Date(item.created_at), { addSuffix: true, locale: ptBR })}
+              {formatDistanceToNow(new Date(item.created_at), { addSuffix: true, locale: dateLocale })}
             </span>
           </div>
         ))}

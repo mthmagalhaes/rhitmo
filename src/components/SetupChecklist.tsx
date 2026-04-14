@@ -5,6 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Rocket, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 
 interface SetupChecklistProps {
   hasMembers: boolean;
@@ -29,39 +30,41 @@ export const SetupChecklist = ({
   onOpenMentor,
   onOpenLeaderSync,
 }: SetupChecklistProps) => {
+  const { t } = useTranslation();
+
   const steps = [
     { 
-      label: 'Cadastre seu primeiro liderado', 
+      label: t('setup.registerFirstMember'), 
       done: hasMembers, 
       action: onAddMember,
-      actionLabel: 'Adicionar →'
+      actionLabel: t('setup.addAction')
     },
     { 
-      label: 'Configure seu perfil de liderança', 
+      label: t('setup.configureLeadership'), 
       done: hasLeaderSync, 
       action: onOpenLeaderSync,
-      actionLabel: '3 min 🧠',
+      actionLabel: t('setup.threeMin'),
       disabled: false
     },
     { 
-      label: 'Crie uma nota rápida de teste', 
+      label: t('setup.createTestNote'), 
       done: hasFeedbacks, 
       action: onAddNote,
-      actionLabel: 'Criar nota →',
+      actionLabel: t('setup.createNoteAction'),
       disabled: !hasMembers
     },
     { 
-      label: 'Gere um resumo com IA', 
+      label: t('setup.generateAISummary'), 
       done: hasAIAnalysis, 
       action: onAddNote,
-      actionLabel: 'Criar nota →',
+      actionLabel: t('setup.createNoteAction'),
       disabled: !hasMembers
     },
     { 
-      label: 'Peça orientação ao Mentor de Liderança', 
+      label: t('setup.askMentor'), 
       done: hasMentorChat, 
       action: onOpenMentor,
-      actionLabel: 'Conversar →',
+      actionLabel: t('setup.chatAction'),
       disabled: !hasMembers
     },
   ];
@@ -78,7 +81,7 @@ export const SetupChecklist = ({
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Rocket className="h-5 w-5 text-primary" />
-            Setup Inicial
+            {t('setup.title')}
           </CardTitle>
           <Badge variant="secondary" className="font-medium">
             {completedCount}/{steps.length}
@@ -128,7 +131,7 @@ export const SetupChecklist = ({
         <div className="pt-2">
           <Progress value={progress} className="h-2" />
           <p className="text-xs text-muted-foreground text-center mt-2">
-            {completedCount} de {steps.length} etapas concluídas
+            {t('setup.stepsCompleted', { completed: completedCount, total: steps.length })}
           </p>
         </div>
       </CardContent>
