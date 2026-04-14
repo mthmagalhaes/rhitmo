@@ -14,6 +14,7 @@ import { TeamTabs } from '@/components/TeamTabs';
 import { SetupChecklist } from '@/components/SetupChecklist';
 import { LeaderSyncWizard } from '@/components/LeaderSyncWizard';
 import { ActivityPreview } from '@/components/ActivityPreview';
+import { UpcomingMeetingsCard } from '@/components/dashboard/UpcomingMeetingsCard';
 import { ActivitySheet } from '@/components/ActivitySheet';
 import { useAuth } from '@/hooks/useAuth';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
@@ -521,47 +522,9 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
         )}
 
         {/* ═══ PRÓXIMAS 1:1s ═══ */}
-        {meetings.length > 0 && (
-          <section className="mb-12">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-4">{t('dashboard.upcomingOneOnOnes')}</p>
-            <div className="flex flex-wrap gap-3">
-              {meetings.slice(0, 4).map((meeting: any) => {
-                const startDate = new Date(meeting.start_time);
-                const memberName = meeting.team_members?.name || meeting.title || t('dashboard.meeting');
-                const timeLabel = isToday(startDate)
-                  ? `${t('common.today')} · ${format(startDate, 'HH:mm')}`
-                  : isTomorrow(startDate)
-                    ? `${t('common.tomorrow')} · ${format(startDate, 'HH:mm')}`
-                    : format(startDate, "EEE, dd MMM · HH:mm", { locale: dateLocale });
-                return (
-                  <div
-                    key={meeting.id}
-                    className="flex items-center gap-3 bg-card border border-border rounded-2xl px-4 py-3 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer group"
-                    onClick={() => meeting.member_id && navigate(`/brief/${meeting.id}`)}
-                  >
-                    <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <Calendar className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{memberName}</p>
-                      <p className="text-xs text-muted-foreground">{timeLabel}</p>
-                    </div>
-                    {meeting.meet_link && (
-                      <a href={meeting.meet_link} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="ml-auto shrink-0">
-                        <Badge variant="outline" className="gap-1 text-xs hover:bg-primary/10 transition-colors">
-                          <Video className="h-3 w-3" />Meet
-                        </Badge>
-                      </a>
-                    )}
-                  </div>
-                );
-              })}
-              {meetings.length > 4 && (
-                <div className="flex items-center px-3 text-sm text-muted-foreground">+{meetings.length - 4} {t('dashboard.more')}</div>
-              )}
-            </div>
-          </section>
-        )}
+        <section className="mb-12">
+          <UpcomingMeetingsCard />
+        </section>
 
 
         {/* ═══ Nudges ═══ */}
