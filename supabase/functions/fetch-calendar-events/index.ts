@@ -332,7 +332,10 @@ Deno.serve(async (req) => {
               recording_config: {
                 transcript: {
                   provider: {
-                    meeting_captions: {},
+                    recallai_streaming: {
+                      mode: "prioritize_accuracy",
+                      language_code: "auto",
+                    },
                   },
                 },
               },
