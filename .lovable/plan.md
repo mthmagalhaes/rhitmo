@@ -1,75 +1,54 @@
-<final-text>
-Diagnóstico objetivo
 
-- Não consigo fazer a chamada direta ao Recall neste modo read-only, mas os logs já provam que a API key está chegando ao Recall: a resposta é uma validação do próprio Recall, não um erro de autenticação.
-- Erro exato hoje:
-  - `transcription_options`: “This field is not allowed”
-  - `recording_mode`: “This field is not allowed”
-- Então o bot nunca é criado. Por isso:
-  - com “Transcrição automática”, a reunião fica em “Pendente”;
-  - no manual, todas entram em loading porque o card usa um único `scheduleBot.isPending` global.
 
-Plano de correção
+## Plano: Ajustar timing do bot e adicionar mensagem de consentimento
 
-1. Corrigir o payload enviado ao Recall
-- Arquivos:
-  - `supabase/functions/schedule-recall-bot/index.ts`
-  - `supabase/functions/fetch-calendar-events/index.ts`
-- Trocar o body atual pelo formato suportado pela documentação, usando o payload mínimo:
+### Mudanças
+
+**1. Reduzir `join_at` de 10 minutos para 2 minutos antes**
+
+Arquivos: `supabase/functions/schedule-recall-bot/index.ts`, `supabase/functions/fetch-calendar-events/index.ts`
+
+Trocar `10 * 60 * 1000` por `2 * 60 * 1000` em ambos os lugares onde o `joinAt` é calculado.
+
+**2. Adicionar mensagem automática de consentimento no chat da reunião**
+
+Arquivos: `supabase/functions/schedule-recall-bot/index.ts`, `supabase/functions/fetch-calendar-events/index.ts`
+
+Adicionar o campo `chat` ao payload do Create Bot:
+
 ```json
 {
   "meeting_url": "...",
   "join_at": "...",
   "bot_name": "Rhitmo",
+  "chat": {
+    "on_bot_join": {
+      "send_to": "everyone",
+      "message": "👋 Olá! Sou o assistente Rhitmo. Esta reunião está sendo transcrita para fins de anotações e desenvolvimento profissional. Se tiver dúvidas, fale com seu líder.",
+      "pin": true
+    },
+    "on_participant_join": {
+      "exclude_host": true,
+      "message": "👋 Olá! Esta reunião está sendo transcrita pelo Rhitmo para fins de anotações e desenvolvimento profissional."
+    }
+  },
   "recording_config": {
     "transcript": {
-      "provider": {
-        "meeting_captions": {}
-      }
+      "provider": { "meeting_captions": {} }
     }
   }
 }
 ```
-- Remover os campos inválidos de topo.
-- Fazer a função devolver o motivo real do Recall em caso de erro.
 
-2. Arrumar a UX/status do card
-- Arquivos:
-  - `src/hooks/useCalendarIntegration.ts`
-  - `src/components/dashboard/UpcomingMeetingsCard.tsx`
-- Usar loading por reunião, não global.
-- Mostrar estados corretos:
-  - `Pendente` = aguardando tentativa de agendamento
-  - `Agendado` = bot criado com sucesso
-  - `Falhou` = Recall rejeitou o agendamento
-- Exibir o erro real no toast/card em vez do genérico “Erro ao agendar bot de transcrição”.
+- `on_bot_join` com `pin: true` — no Google Meet a mensagem fica fixada no topo do chat para todos.
+- `on_participant_join` com `exclude_host: true` — quem entrar depois também recebe a mensagem, sem repetir para o organizador.
 
-3. Garantir que a transcrição caia no diário após a reunião
-- Arquivo:
-  - `supabase/functions/recall-webhook/index.ts`
-- Alinhar o pós-reunião com a doc do Recall:
-  - esperar o artefato de transcript/recording ficar pronto;
-  - recuperar a transcrição via `recordings[].media_shortcuts.transcript.data.download_url`;
-  - então criar `meeting_transcripts` e `feedbacks`.
-- Isso evita depender só do `bot.done`, que pode chegar antes da transcrição estar pronta.
+### Arquivos a modificar
+- `supabase/functions/schedule-recall-bot/index.ts` — timing + chat
+- `supabase/functions/fetch-calendar-events/index.ts` — timing + chat (auto-transcribe)
 
-4. Teste ponta a ponta após implementar
-- validar agendamento manual;
-- validar `Transcrição automática` + `Sincronizar`;
-- confirmar se a reunião da Giovanna sai de `Pendente` para `Agendado`;
-- admitir o bot no Google Meet se a sala pedir;
-- confirmar que, ao final da reunião, a transcrição aparece no fluxo esperado.
+### Resultado esperado
+- Bot entra 2 minutos antes da reunião (não 10).
+- Ao entrar, envia mensagem pinada no chat avisando da transcrição.
+- Participantes que entrarem depois também recebem o aviso.
 
-Detalhes técnicos
-
-- Não parece ser problema de API key inválida.
-- O problema principal é contrato incorreto com a API do Recall.
-- Para a correção principal, não preciso de migração de banco.
-
-Resultado esperado
-
-- O clique em “Sincronizar” passa a realmente criar o bot.
-- O botão “Transcrever” deixa de colocar todas as reuniões em loading ao mesmo tempo.
-- A reunião da Giovanna às 15:30 pode ficar `Agendada`.
-- Depois da reunião, a transcrição poderá ser processada e salva corretamente.
-</final-text>
