@@ -11,7 +11,6 @@ import { ChromeExtensionSetupDialog } from '@/components/extension/ChromeExtensi
 import { useLocale } from '@/hooks/useLocale';
 import { SUPPORTED_LANGUAGES, type SupportedLanguage } from '@/i18n';
 import { MemberAvatar } from '@/components/MemberAvatar';
-import { MemberAvatar } from '@/components/MemberAvatar';
 import { LeaderAvatarLibrary } from '@/components/avatar/LeaderAvatarLibrary';
 import {
   Dialog,
