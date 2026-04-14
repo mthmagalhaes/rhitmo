@@ -1,35 +1,41 @@
 
 
-## Plano: i18n — Migrar DirectReportDashboard.tsx (último arquivo do Batch 2)
+## Plano: Transformar matheus@rhitmo.co em "God's Eye" — Painel de Controle Total
 
-Este é o único arquivo pendente do Batch 2. Possui ~200 strings hardcoded em português distribuídas por todo o componente de 1223 linhas.
+O objetivo é que o super admin nunca veja o dashboard de líder. Ao logar, ele vai direto para o painel Admin, com uma sidebar dedicada contendo apenas Design System e Admin.
 
-### Categorias de strings a migrar
+---
 
-| Categoria | Quantidade estimada | Exemplos |
-|-----------|-------------------|----------|
-| Label maps (tenure, chronotype, feedback, recognition) | ~30 | `'Menos de 1 ano'`, `'Madrugador (5h-14h)'`, `'Direto'`, `'Reconhecimento Público'` |
-| Context maps (chronotype, feedback, recognition) | ~20 | `'Seu líder sabe que você rende melhor...'` |
-| MOTIVATOR_OPTIONS array | 6 | `'Autonomia'`, `'Dinheiro'`, `'Estabilidade'`... |
-| Hero section | ~10 | `'Meu Painel'`, `'Olá, {name}!'`, subtitle with plurals |
-| Tab 1: Visão Geral (Pulse, Actions, News) | ~25 | `'Seu Pulso'`, `'Próximas Ações'`, `'Novidades'`, `'Hoje'`, `'Ontem'`, `'Tudo em dia!'` |
-| Tab 2: Minha Carreira (PDI) | ~20 | `'Meu Desenvolvimento'`, `'Propor Ação de Desenvolvimento'`, `'Concluído'`, `'Iniciar'`, `'Prazo:'` |
-| Tab 3: Feedbacks | ~10 | `'Feedbacks do seu líder'`, `'Nenhuma anotação compartilhada'`, `'Avaliações Formais'`, `'Exportar PDF'`, `'Confirmar Leitura'` |
-| Tab 4: Meu Perfil (Role info + Sync) | ~30 | `'Informações da Função'`, `'Cargo'`, `'Tempo na função'`, `'Responsabilidades'`, `'Aspirações'`, `'Interesses'` |
-| Sync Dialog form | ~25 | `'Ritmo e Energia'`, `'Quando você é mais produtivo?'`, `'Madrugador'`, `'Manual de Instruções'`, labels, placeholders |
-| Toasts | ~8 | `'Rhitmo Sync atualizado!'`, `'Erro ao salvar.'`, `'Análise atualizada!'`, `'Objetivo concluído!'` |
+### Mudanças
 
-### Mudanças técnicas
+#### 1. Redirecionamento automático para /admin
+- **`src/pages/Landing.tsx`** (~linha 590): Quando o usuário autenticado for super_admin, redirecionar para `/admin` em vez de `/dashboard`
+- Usar o hook `useAdmin` para detectar isso, com fallback para `/dashboard` enquanto o check carrega
 
-1. **Import** `useTranslation` e `getDateLocale`
-2. **Converter label/context maps** para usar `t()` — chamar `t('directReport.tenure.lessThan1')` etc. em vez de strings literais
-3. **`MOTIVATOR_OPTIONS`** — converter para array de keys, renderizar como `t('directReport.motivator.autonomy')` etc.
-4. **`formatPDIDate`** — usar locale dinâmico via `getDateLocale()`
-5. **`toLocaleDateString('pt-BR')`** — substituir por locale dinâmico
-6. **Todas as strings inline** no JSX — substituir por `t('directReport.*')`
-7. **Atualizar os 3 JSONs** com todas as novas keys sob namespace `directReport`
+#### 2. Sidebar dedicada para super admin
+- **`src/components/AppSidebar.tsx`**: Quando `isAdmin && user?.email === 'matheus@rhitmo.co'` (ou simplesmente `isAdmin`), renderizar um menu mínimo:
+  - **Design System** (`/design-system`)
+  - **Painel Admin** (`/admin`)
+  - Esconder itens de líder (Início, Analytics, Central de Conhecimento, Assinatura), conectores (Chrome/Slack), e botão "Voltar ao Painel RH"
 
-### Execução
+#### 3. Bloquear acesso ao /dashboard para super admin
+- **`src/components/DirectReportGuard.tsx`**: Adicionar check — se `isAdmin`, redirecionar para `/admin` (impede acesso manual via URL)
 
-Um único passo: migrar o arquivo + atualizar JSONs. Sem novas dependências ou migrações SQL.
+#### 4. Design System dentro do AdminLayout (opcional)
+- Mover a rota `/design-system` para usar `AdminLayout` em vez de `AppLayout`, mantendo a experiência visual consistente para o super admin
+
+---
+
+### O que NÃO muda nesta fase
+- O conteúdo do painel Admin (`AdminOverview`, `AdminUsers`, etc.) permanece igual por agora
+- Melhorias de KPIs exaustivos, dashboards Minority Report-style serão uma fase seguinte
+- A lógica de impersonation já existe e continua funcionando
+
+### Arquivos modificados
+| Arquivo | Mudança |
+|---------|---------|
+| `src/pages/Landing.tsx` | Redirect super_admin → `/admin` |
+| `src/components/AppSidebar.tsx` | Menu mínimo para super admin |
+| `src/components/DirectReportGuard.tsx` | Block `/dashboard` para admin |
+| `src/App.tsx` | (Opcional) Mover `/design-system` para `AdminLayout` |
 
