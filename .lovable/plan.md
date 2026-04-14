@@ -1,41 +1,58 @@
 
 
-## Plano: Transformar matheus@rhitmo.co em "God's Eye" — Painel de Controle Total
+## Plano: Avatares Custom estilo Dribbble (SVG puro)
 
-O objetivo é que o super admin nunca veja o dashboard de líder. Ao logar, ele vai direto para o painel Admin, com uma sidebar dedicada contendo apenas Design System e Admin.
+Os avatares da referência são: círculos com fundo gradiente suave (2 cores) + rostos minimalistas desenhados com traços simples (stroke paths). São simples o suficiente para criar como SVG puro em React, sem depender de APIs externas.
 
----
+### Abordagem: Componentes SVG inline
 
-### Mudanças
+Criar ~24 avatares como dados SVG puros definidos em um array. Cada avatar tem:
+- **Gradiente de fundo** (2 cores, diagonal ou radial)
+- **Rosto** com traços curvos: olhos (pontos ou vírgulas), boca (curva), sobrancelha opcional (onda)
+- Cada combinação é única (expressão + paleta)
 
-#### 1. Redirecionamento automático para /admin
-- **`src/pages/Landing.tsx`** (~linha 590): Quando o usuário autenticado for super_admin, redirecionar para `/admin` em vez de `/dashboard`
-- Usar o hook `useAdmin` para detectar isso, com fallback para `/dashboard` enquanto o check carrega
+### Paletas (inspiradas na referência)
 
-#### 2. Sidebar dedicada para super admin
-- **`src/components/AppSidebar.tsx`**: Quando `isAdmin && user?.email === 'matheus@rhitmo.co'` (ou simplesmente `isAdmin`), renderizar um menu mínimo:
-  - **Design System** (`/design-system`)
-  - **Painel Admin** (`/admin`)
-  - Esconder itens de líder (Início, Analytics, Central de Conhecimento, Assinatura), conectores (Chrome/Slack), e botão "Voltar ao Painel RH"
+| # | Gradiente | Vibe |
+|---|-----------|------|
+| 1 | Laranja → Coral | Energético |
+| 2 | Rosa → Pêssego | Acolhedor |
+| 3 | Lilás → Azul | Sereno |
+| 4 | Azul → Ciano | Confiante |
+| 5 | Verde → Limão | Fresco |
+| 6 | Amarelo → Dourado | Otimista |
+| 7 | Turquesa → Menta | Calmo |
+| 8 | Vermelho → Azul | Ousado |
+| 9 | Rosa → Violeta | Criativo |
+| 10 | Ciano → Verde | Natural |
+| 11 | Lavanda → Rosa | Suave |
+| 12 | Azul → Índigo | Profundo |
 
-#### 3. Bloquear acesso ao /dashboard para super admin
-- **`src/components/DirectReportGuard.tsx`**: Adicionar check — se `isAdmin`, redirecionar para `/admin` (impede acesso manual via URL)
+### Expressões faciais (variações de paths SVG)
 
-#### 4. Design System dentro do AdminLayout (opcional)
-- Mover a rota `/design-system` para usar `AdminLayout` em vez de `AppLayout`, mantendo a experiência visual consistente para o super admin
-
----
-
-### O que NÃO muda nesta fase
-- O conteúdo do painel Admin (`AdminOverview`, `AdminUsers`, etc.) permanece igual por agora
-- Melhorias de KPIs exaustivos, dashboards Minority Report-style serão uma fase seguinte
-- A lógica de impersonation já existe e continua funcionando
+- Sorriso aberto, sorriso fechado, sorriso de lado
+- Olhos redondos, olhos de vírgula, olhos fechados (feliz)
+- Com/sem sobrancelhas onduladas
+- ~8 combinações de expressão × 12 paletas = selecionar 24 melhores
 
 ### Arquivos modificados
+
 | Arquivo | Mudança |
 |---------|---------|
-| `src/pages/Landing.tsx` | Redirect super_admin → `/admin` |
-| `src/components/AppSidebar.tsx` | Menu mínimo para super admin |
-| `src/components/DirectReportGuard.tsx` | Block `/dashboard` para admin |
-| `src/App.tsx` | (Opcional) Mover `/design-system` para `AdminLayout` |
+| `src/components/avatar/avatarData.ts` | **Novo** — Array com 24 definições (gradiente + paths do rosto) |
+| `src/components/avatar/CustomAvatar.tsx` | **Novo** — Componente SVG que renderiza um avatar a partir dos dados |
+| `src/components/avatar/AvatarLibrary.tsx` | Substituir DiceBear por avatares custom SVG |
+| `src/components/MemberAvatar.tsx` | Remover DiceBear fallback, usar CustomAvatar |
+
+### Vantagens vs DiceBear
+
+- Zero dependência externa (sem chamadas HTTP)
+- Carregamento instantâneo (SVG inline)
+- Visual premium e coeso com a marca Rhitmo
+- Controle total sobre o estilo
+
+### O que NÃO muda
+- Fluxo de seleção na AvatarLibrary (grid de opções → salvar no DB)
+- Campo `avatar` no banco continua sendo string (agora será um ID como `"avatar-1"` em vez de URL)
+- Upload de foto custom (se existir) continua funcionando
 
