@@ -3,7 +3,7 @@ import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, CalendarOff, ExternalLink, FileText, ChevronDown } from 'lucide-react';
+import { Calendar, CalendarOff, ExternalLink, FileText, ChevronDown, Mic, Loader2, CheckCircle2 } from 'lucide-react';
 import { format, isToday, isTomorrow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -25,6 +25,8 @@ export const UpcomingMeetingsCard = () => {
     loadingMeetings,
     connectCalendar,
     disconnectCalendar,
+    scheduleBot,
+    getBotStatus,
   } = useCalendarIntegration();
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
