@@ -369,7 +369,8 @@ export function AppSidebar() {
           {open && user?.id && (
             <MemberAvatar 
               memberId={user.id} 
-              memberName={userName} 
+              memberName={userName}
+              avatarUrl={user.user_metadata?.avatar}
               size="md"
             />
           )}

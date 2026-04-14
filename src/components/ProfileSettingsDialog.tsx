@@ -11,8 +11,8 @@ import { ChromeExtensionSetupDialog } from '@/components/extension/ChromeExtensi
 import { useLocale } from '@/hooks/useLocale';
 import { SUPPORTED_LANGUAGES, type SupportedLanguage } from '@/i18n';
 import { MemberAvatar } from '@/components/MemberAvatar';
-import { AvatarLibrary } from '@/components/avatar/AvatarLibrary';
-import { getAvatarForName } from '@/components/avatar/avatarData';
+import { MemberAvatar } from '@/components/MemberAvatar';
+import { LeaderAvatarLibrary } from '@/components/avatar/LeaderAvatarLibrary';
 import {
   Dialog,
   DialogContent,
@@ -343,6 +343,11 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
       )}
       <SlackPrivacyOnboarding open={privacyOpen} onOpenChange={setPrivacyOpen} />
       <ChromeExtensionSetupDialog open={extensionSetupOpen} onOpenChange={setExtensionSetupOpen} />
+      <LeaderAvatarLibrary
+        open={avatarLibraryOpen}
+        onOpenChange={setAvatarLibraryOpen}
+        currentAvatar={user?.user_metadata?.avatar}
+      />
     </Dialog>
   );
 }
