@@ -1,150 +1,224 @@
 # Rhitmo — Auditoria de Custos Operacionais por Líder Ativo
 
-> Gerado em: 14/03/2026  
-> Câmbio utilizado: USD 1 = BRL 5,80
+> Gerado em: 14/04/2026  
+> Câmbio utilizado: USD 1 = BRL 5,80  
+> Atualização: migração para Lovable AI Gateway (Gemini) + Recall.ai Bot
 
 ---
 
-## 1. Custos Unitários por Operação
+## 1. O que mudou desde Março 2026
 
-### 1.1 OpenAI (custo direto)
+| Mudança | Antes (Mar/26) | Agora (Abr/26) |
+|---|---|---|
+| **chat-mentor Layer 3** (Resposta RAG) | gpt-4o → $0.026/msg | gemini-2.5-flash (Lovable AI) → **$0.00** |
+| **meu-rhitmo** (chat do liderado) | gpt-4o → $0.017/msg | gemini-2.5-flash (Lovable AI) → **$0.00** |
+| **Transcrição de reunião** | Whisper (upload manual) $0.006/min | **Recall.ai Bot** (automático) → **$0.15/hora** |
+| **generate-review, classify-note, generate-brief, analyze-job-crafting** | Lovable AI → $0.00 | Sem mudança → $0.00 |
+
+**Resultado:** custo variável por líder caiu **~85%** no cenário moderado.
+
+---
+
+## 2. Custos Unitários por Operação (Abril 2026)
+
+### 2.1 OpenAI (custo direto — apenas roteamento e análise leve)
 
 | Operação | Modelo | Tokens Input | Tokens Output | Custo Unitário (USD) |
 |---|---|---|---|---|
 | **chat-mentor — Layer 1** (Router Semântico) | gpt-4o-mini | ~300 | ~5 | $0.000048 |
 | **chat-mentor — Layer 2** (Compressor) | JavaScript puro | — | — | $0.00 |
-| **chat-mentor — Layer 3** (Resposta RAG) | gpt-4o | ~7.250 | ~800 | $0.0261 |
-| **chat-mentor TOTAL por mensagem** | — | — | — | **$0.0262** |
-| **meu-rhitmo** (chat do liderado) | gpt-4o | ~3.600 | ~800 | **$0.0170** |
-| **analyze-feedback-background** (análise de nota) | gpt-4o-mini | ~3.000 | ~300 | **$0.00063** |
-| **transcribe-audio** (Whisper) | whisper-1 | N/A | N/A | **$0.006/min** |
+| **analyze-feedback-background** (análise de nota) | gpt-4o-mini | ~3.000 | ~300 | $0.00063 |
+| **extract-text-vision** (OCR de imagem) | gpt-4o | ~500 | ~200 | ~$0.01 |
+| **transcribe-audio** (upload manual, legado) | whisper-1 | N/A | N/A | $0.006/min |
 
-> **Preços OpenAI utilizados (Março 2026):**
+> **Preços OpenAI utilizados (Abril 2026):**
 > - gpt-4o: $2.50/1M input, $10.00/1M output
 > - gpt-4o-mini: $0.15/1M input, $0.60/1M output
 > - whisper-1: $0.006/minuto de áudio
 
-### 1.2 Lovable AI Gateway (incluso no plano Lovable)
+### 2.2 Lovable AI Gateway (incluso no plano Lovable — custo zero)
 
-| Operação | Modelo | Tokens Input | Tokens Output | Custo |
-|---|---|---|---|---|
-| **classify-note** (classificação de nota) | gemini-2.5-flash | ~2.500 | ~100 | $0.00 |
-| **generate-review** (avaliação de desempenho) | gemini-2.5-flash | ~8.000 | ~2.000 | $0.00 |
-| **generate-brief** (brief pré-reunião) | gemini-3-flash-preview | ~2.000 | ~500 | $0.00 |
-| **analyze-job-crafting** (perfil de trabalho) | gemini-3-flash-preview | ~1.500 | ~300 | $0.00 |
-
-> Todas as chamadas via Lovable AI Gateway estão inclusas no plano Lovable — custo operacional zero.
-
-### 1.3 Supabase (Lovable Cloud)
-
-| Recurso | Estimativa | Custo |
+| Operação | Modelo | Custo |
 |---|---|---|
-| Database (Postgres + pgvector) | Incluso no Lovable Cloud | $0.00 |
-| Edge Function invocations | Incluso | $0.00 |
-| Realtime connections | Incluso | $0.00 |
-| Storage (meeting-recordings) | Incluso (dentro dos limites) | $0.00 |
-| Bandwidth | Incluso | $0.00 |
+| **chat-mentor — Layer 3** (Resposta RAG) | gemini-2.5-flash | **$0.00** ✅ |
+| **meu-rhitmo** (chat do liderado) | gemini-2.5-flash | **$0.00** ✅ |
+| **classify-note** (classificação de nota) | gemini-2.5-flash | $0.00 |
+| **generate-review** (avaliação de desempenho) | gemini-2.5-flash | $0.00 |
+| **generate-brief** (brief pré-reunião) | gemini-3-flash-preview | $0.00 |
+| **analyze-job-crafting** (perfil de trabalho) | gemini-3-flash-preview | $0.00 |
 
-> **Nota:** O campo `feedbacks.embedding` existe no schema mas **nenhuma Edge Function gera embeddings atualmente**. Quando implementado, haverá custo adicional de ~$0.00002/nota via `text-embedding-3-small`.
+### 2.3 Recall.ai (transcrição automática de reunião) 🆕
 
-### 1.4 Resend (emails transacionais)
+| Recurso | Provider | Custo |
+|---|---|---|
+| **Bot de transcrição** | recallai_streaming (mode: prioritize_accuracy, language: auto) | **$0.15/hora** |
 
-| Evento | Custo |
+> Detecta automaticamente PT-BR, EN e ES. Não depende de configuração do Google Meet.
+
+### 2.4 Supabase (Lovable Cloud)
+
+| Recurso | Custo |
 |---|---|
-| Convite Rhitmo Sync | $0.00 (free tier) |
-| Notificação avaliação compartilhada | $0.00 (free tier) |
+| Database (Postgres + pgvector) | $0.00 (incluso) |
+| Edge Function invocations | $0.00 (incluso) |
+| Realtime connections | $0.00 (incluso) |
+| Storage (meeting-recordings) | $0.00 (incluso) |
 
-> Free tier: 3.000 emails/mês — suficiente para ~500 líderes ativos.
+### 2.5 Resend (emails transacionais)
+
+| Recurso | Custo |
+|---|---|
+| Emails transacionais | $0.00 (free tier: 3.000/mês) |
 
 ---
 
-## 2. Cenários de Uso por Líder/Mês
+## 3. Premissas de Uso por Plano
 
-### Premissas dos cenários
-
-| Parâmetro | Leve | Moderado | Intenso |
+| Parâmetro | Pulse (grátis) | Pro (R$49) | Business (R$69) |
 |---|---|---|---|
 | Liderados ativos | 2 | 5 | 10 |
 | Notas/mês | 20 | 40 | 80 |
-| Msgs Mentor Chat (líder)/mês | 15 | 60 | 150 |
-| Gravações/mês | 0 | 4 (30min) | 12 (45min) |
-| Avaliações/período | 1/trimestre | 1/mês | 3/mês |
+| Msgs Mentor Chat (líder)/mês | 20 | 60 | 60 |
+| **Reuniões com bot/mês** | **0** | **20** (1/liderado/semana) | **40** (1/liderado/semana) |
+| Duração média reunião | — | 30 min | 30 min |
+| **Horas transcrição/mês** | **0h** | **10h** | **20h** |
+| Avaliações/período | 0 | 1/mês | 3/mês |
 | Msgs Meu Rhitmo/liderado/mês | 0 | 10 | 30 |
-
-### Custos detalhados por componente
-
-| Componente | Cálculo Leve | Cálculo Moderado | Cálculo Intenso |
-|---|---|---|---|
-| **Mentor Chat** (OpenAI) | 15 × $0.0262 = **$0.39** | 60 × $0.0262 = **$1.57** | 150 × $0.0262 = **$3.93** |
-| **Meu Rhitmo** (OpenAI) | 0 × $0.0170 = **$0.00** | 50 × $0.0170 = **$0.85** | 300 × $0.0170 = **$5.10** |
-| **Análise de notas** (OpenAI) | 20 × $0.00063 = **$0.013** | 40 × $0.00063 = **$0.025** | 80 × $0.00063 = **$0.050** |
-| **Whisper transcrição** | 0 min = **$0.00** | 120 min × $0.006 = **$0.72** | 540 min × $0.006 = **$3.24** |
-| **Lovable AI** (classify, review, brief, job-crafting) | **$0.00** | **$0.00** | **$0.00** |
-| **Supabase** (Lovable Cloud) | **incluso** | **incluso** | **incluso** |
-| **Resend** (emails) | **$0.00** | **$0.00** | **$0.00** |
-
-### Tabela Resumo
-
-| Componente | Leve | Moderado | Intenso |
-|---|---|---|---|
-| OpenAI | $0.40 | $3.16 | $12.32 |
-| Supabase | $0.00 | $0.00 | $0.00 |
-| Resend | $0.00 | $0.00 | $0.00 |
-| **TOTAL USD/líder/mês** | **$0.40** | **$3.16** | **$12.32** |
-| **TOTAL BRL/líder/mês** | **R$2,34** | **R$18,33** | **R$71,46** |
-| **Com margem 2x** | **R$4,68** | **R$36,66** | **R$142,92** |
+| Acesso ao Meu Rhitmo | Não | Sim | Sim |
 
 ---
 
-## 3. Margem de Segurança
+## 4. Custos Detalhados por Plano
 
-Recomenda-se aplicar **margem 2x** sobre o custo base para absorver:
+### 4.1 Pulse (grátis) — 2 liderados, sem bot
 
-- Picos de uso acima da média
-- Usuários power-users (acima do cenário estimado)
-- Flutuações cambiais USD/BRL
-- Eventuais reajustes de preços da OpenAI
-- Custos de Supabase ao ultrapassar free tier em escala
+| Componente | Cálculo | Custo USD |
+|---|---|---|
+| Mentor Chat L1 (gpt-4o-mini) | 20 × $0.000048 | $0.001 |
+| Mentor Chat L3 (Lovable AI) | 20 × $0.00 | $0.00 |
+| Análise de notas (gpt-4o-mini) | 20 × $0.00063 | $0.013 |
+| Recall.ai Bot | 0h | $0.00 |
+| Meu Rhitmo | N/A | $0.00 |
+| Lovable AI (classify, review, brief) | — | $0.00 |
+| **TOTAL** | | **$0.014** |
+
+### 4.2 Pro (R$49) — 5 liderados, 20 reuniões/mês
+
+| Componente | Cálculo | Custo USD |
+|---|---|---|
+| Mentor Chat L1 (gpt-4o-mini) | 60 × $0.000048 | $0.003 |
+| Mentor Chat L3 (Lovable AI) | 60 × $0.00 | $0.00 |
+| Análise de notas (gpt-4o-mini) | 40 × $0.00063 | $0.025 |
+| **Recall.ai Bot** | **10h × $0.15** | **$1.50** |
+| Meu Rhitmo (Lovable AI) | 50 × $0.00 | $0.00 |
+| Lovable AI (classify, review, brief) | — | $0.00 |
+| **TOTAL** | | **$1.53** |
+
+### 4.3 Business (R$69) — 10 liderados, 40 reuniões/mês
+
+| Componente | Cálculo | Custo USD |
+|---|---|---|
+| Mentor Chat L1 (gpt-4o-mini) | 60 × $0.000048 | $0.003 |
+| Mentor Chat L3 (Lovable AI) | 60 × $0.00 | $0.00 |
+| Análise de notas (gpt-4o-mini) | 80 × $0.00063 | $0.050 |
+| **Recall.ai Bot** | **20h × $0.15** | **$3.00** |
+| Meu Rhitmo (Lovable AI) | 300 × $0.00 | $0.00 |
+| Lovable AI (classify, review, brief) | — | $0.00 |
+| **TOTAL** | | **$3.06** |
 
 ---
 
-## 4. Ponto de Break-Even por Plano
+## 5. Tabela Resumo — Custo e Margem por Plano
 
-| Cenário | Custo base | Com margem 2x | Com margem 3x (lucro saudável) |
+| Métrica | Pulse (grátis) | Pro (R$49) | Business (R$69) |
 |---|---|---|---|
-| Leve | R$2,34 | R$4,68 | R$7,02 |
-| **Moderado** | **R$18,33** | **R$36,66** | **R$55,00** |
-| Intenso | R$71,46 | R$142,92 | R$214,38 |
+| Custo USD/líder/mês | $0.014 | $1.53 | $3.06 |
+| **Custo BRL/líder/mês** | **R$0,08** | **R$8,87** | **R$17,73** |
+| Receita/líder/mês | R$0 | R$49 | R$69 |
+| **Margem bruta** | **-R$0,08** (subsídio) | **R$40,13 (81,9%)** | **R$51,27 (74,3%)** |
 
-### Recomendação de precificação
+### Cenário intenso (power users Pro/Business)
 
-> **Para cobrir custos no cenário moderado com margem 2x, o preço mínimo por líder/mês é R$36,66.**
->
-> Com margem de lucro saudável (3x): **R$55/líder/mês.**
+| Parâmetro | Pro Intenso | Business Intenso |
+|---|---|---|
+| Reuniões com bot/mês | 30 (15h) | 60 (30h) |
+| Custo Recall.ai | $2.25 | $4.50 |
+| Custo total USD | $2.30 | $4.60 |
+| Custo total BRL | R$13,34 | R$26,68 |
+| Margem bruta | **R$35,66 (72,8%)** | **R$42,32 (61,3%)** |
+
+> Mesmo no cenário intenso, a margem bruta se mantém acima de 60%.
 
 ---
 
-## 5. Maiores Drivers de Custo
+## 6. Comparativo: Março 2026 vs Abril 2026
 
-1. **Whisper (transcrição de áudio)** — $3.24/líder no cenário intenso (26% do total). Maior custo unitário por operação.
-2. **Meu Rhitmo (gpt-4o)** — $5.10/líder no cenário intenso (41% do total). Volume de mensagens de liderados é o principal multiplicador.
-3. **Mentor Chat (gpt-4o)** — $3.93/líder no cenário intenso (32% do total). Pipeline de 3 camadas mas custo concentrado na Layer 3.
+| Cenário | Custo Mar/26 | Custo Abr/26 | Redução |
+|---|---|---|---|
+| **Moderado (Pro)** | $3.16 / R$18,33 | $1.53 / R$8,87 | **-52%** |
+| **Intenso (Pro)** | $12.32 / R$71,46 | $2.30 / R$13,34 | **-81%** |
+
+> A redução no cenário moderado é menor que 85% porque o Recall.ai ($1.50) adicionou custo que antes não existia (transcrição era manual/grátis). Porém, o custo de LLM caiu ~98%.
+
+---
+
+## 7. Maiores Drivers de Custo (Abril 2026)
+
+| # | Driver | % do custo total (Pro moderado) |
+|---|---|---|
+| 1 | **Recall.ai Bot** (transcrição) | **98%** |
+| 2 | Análise de notas (gpt-4o-mini) | ~1.6% |
+| 3 | Router semântico (gpt-4o-mini) | ~0.2% |
+| 4 | Lovable AI (tudo mais) | 0% |
+
+> O custo de LLM é agora **desprezível**. O driver de custo é exclusivamente a transcrição automática de reuniões.
 
 ### Oportunidades de otimização
 
 | Ação | Economia estimada | Impacto |
 |---|---|---|
-| Migrar meu-rhitmo de gpt-4o → gpt-4o-mini | ~90% no componente | Verificar qualidade das respostas |
-| Migrar chat-mentor Layer 3 de gpt-4o → gpt-4o-mini | ~90% no componente | Verificar qualidade do RAG |
-| Migrar Whisper → alternativa open-source (Groq/Deepgram) | ~50-80% no componente | Verificar qualidade pt-BR |
-| Implementar cache de respostas frequentes | ~10-20% geral | Baixo risco |
-| Limitar msgs Meu Rhitmo por plano | Controla teto de custo | Experiência do liderado |
+| Limitar reuniões com bot por plano (ex: 15/mês no Pro) | Controla teto de custo | Experiência do líder |
+| Reduzir duração mínima de gravação (ignorar <5min) | ~5-10% do Recall.ai | Baixo risco |
+| Negociar volume com Recall.ai | ~10-30% no componente | Requer escala |
+| Migrar Whisper → Recall.ai para uploads manuais | Simplifica stack | Custo similar |
 
 ---
 
-## 6. Notas Técnicas
+## 8. Custos Fixos Mensais da Plataforma
+
+| Serviço | Custo/mês |
+|---|---|
+| Lovable (Pro plan) | ~$20/mês |
+| Lovable Cloud (Supabase) | $25 free credit/mês |
+| Recall.ai | Pay-as-you-go (sem fixo) |
+| OpenAI | Pay-as-you-go (sem fixo) |
+| Resend | Free tier (3k emails) |
+| Stripe | 3,99% + R$0,39 por transação |
+| Google Calendar OAuth | Grátis |
+| Slack API | Grátis |
+| Domínio + DNS | ~$15/ano (~$1,25/mês) |
+| **TOTAL fixo estimado** | **~$20–45/mês** |
+
+> Com os $25 de crédito do Lovable Cloud, o custo fixo efetivo pode ser tão baixo quanto ~$20/mês.
+
+---
+
+## 9. Break-Even por Plano
+
+| Plano | Custo fixo rateado (10 líderes) | Custo variável | Custo total/líder | Receita | Lucro/líder |
+|---|---|---|---|---|---|
+| Pro | ~R$17,40 | R$8,87 | R$26,27 | R$49 | **R$22,73 (46,4%)** |
+| Business | ~R$17,40 | R$17,73 | R$35,13 | R$69 | **R$33,87 (49,1%)** |
+
+> Com 10 líderes pagantes, o custo fixo rateado é ~R$17,40/líder. A partir de ~5 líderes Pro, a operação já é lucrativa.
+
+---
+
+## 10. Notas Técnicas
 
 - **Embeddings:** O schema possui coluna `feedbacks.embedding` (pgvector) mas nenhuma Edge Function popula embeddings atualmente. Custo futuro estimado: ~$0.00002/nota via `text-embedding-3-small`.
 - **Layer 2 (Compressor):** Implementado como JavaScript puro (substring/filtragem), sem chamada LLM — custo zero.
-- **Lovable AI Gateway:** Todas as funções que usam o gateway (`classify-note`, `generate-review`, `generate-brief`, `analyze-job-crafting`) têm custo zero adicional pois estão inclusas no plano Lovable.
-- **Resend:** Dentro do free tier (3k emails/mês), os emails transacionais não geram custo. Acima disso: ~$0.001/email.
+- **Whisper (transcribe-audio):** Ainda ativo como fallback para uploads manuais de áudio. Custo: $0.006/min. Fluxo principal agora é via Recall.ai Bot.
+- **Recall.ai provider:** `recallai_streaming` com `mode: prioritize_accuracy` e `language_code: auto`. Detecta PT-BR, EN e ES automaticamente.
+- **Resend:** Dentro do free tier (3k emails/mês). Acima disso: ~$0.001/email.
+- **Lovable AI Gateway:** Todas as funções que usam o gateway têm custo zero adicional. Modelos utilizados: `gemini-2.5-flash` e `gemini-3-flash-preview`.
