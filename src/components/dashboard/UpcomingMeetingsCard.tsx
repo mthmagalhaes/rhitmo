@@ -30,6 +30,8 @@ export const UpcomingMeetingsCard = () => {
     toggleAutoTranscribe,
     scheduleBot,
     getBotStatus,
+    syncDebug,
+    refetchMeetings,
   } = useCalendarIntegration();
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
