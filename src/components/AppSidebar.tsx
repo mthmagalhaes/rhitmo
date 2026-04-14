@@ -108,6 +108,7 @@ export function AppSidebar() {
   };
 
   const showMemberMenu = !roleLoading && !isLeader && !isHRAdmin && (isUser || isLinkedMember);
+  const isSuperAdmin = isAdmin && user?.email === 'matheus@rhitmo.co';
 
     const leaderOnlyItems = [t('sidebar.analytics'), t('sidebar.subscription'), t('sidebar.knowledgeCenter')];
     const userName = (!isLeader && isLinkedMember && linkedMember?.name)
@@ -129,158 +130,199 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {/* HR Admin menu — show when in /hr/* context */}
-        {isInHRContext && isHRAdmin && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">{t('sidebar.hrPanel')}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {hrMenuItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild tooltip={item.title}>
+        {/* Super Admin "God's Eye" — minimal menu */}
+        {isSuperAdmin ? (
+          <>
+            <SidebarGroup>
+              <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Controle</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Painel Admin">
                       <NavLink 
-                        to={item.url} 
+                        to="/admin" 
                         end
                         className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
                         activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
                       >
-                        <item.icon className="h-5 w-5" />
-                        <span>{item.title}</span>
+                        <ShieldCheck className="h-5 w-5" />
+                        <span>Painel Admin</span>
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        {/* Admin menu — show in HR context for super admins */}
-        {isInHRContext && isAdmin && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">{t('sidebar.administration')}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Admin">
-                    <NavLink 
-                      to="/admin" 
-                      end
-                      className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
-                      activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
-                    >
-                      <ShieldCheck className="h-5 w-5" />
-                      <span>Admin</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        {/* Standard menu — show when NOT in HR context */}
-        {!isInHRContext && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">{t('sidebar.menu')}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {(showMemberMenu ? memberMenuItems : menuItems)
-                  .map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild tooltip={item.title}>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Design System">
                       <NavLink 
-                        to={item.url} 
+                        to="/design-system" 
                         end
                         className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
                         activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
                       >
-                        <item.icon className="h-5 w-5" />
-                        <span>{item.title}</span>
+                        <Palette className="h-5 w-5" />
+                        <span>Design System</span>
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        ) : (
+          <>
+            {/* HR Admin menu — show when in /hr/* context */}
+            {isInHRContext && isHRAdmin && (
+              <SidebarGroup>
+                <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">{t('sidebar.hrPanel')}</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {hrMenuItems.map((item) => (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton asChild tooltip={item.title}>
+                          <NavLink 
+                            to={item.url} 
+                            end
+                            className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
+                            activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
+                          >
+                            <item.icon className="h-5 w-5" />
+                            <span>{item.title}</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
 
-        {/* Conectores — Chrome & Slack */}
-        {!isInHRContext && !showMemberMenu && open && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">{t('sidebar.connectors')}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <div className="px-2 space-y-2">
-                <button
-                  onClick={() => setExtensionDialogOpen(true)}
-                  className="w-full flex items-center gap-3 h-12 px-4 rounded-xl border border-border/60 bg-background hover:bg-accent/50 hover:border-primary/30 hover:-translate-y-0.5 transition-all duration-200 group"
-                >
-                  <ChromeIcon className="h-5 w-5 shrink-0" />
-                  <span className="text-sm font-medium text-foreground group-hover:text-primary tracking-tight">{t('sidebar.chromeConnector')}</span>
-                </button>
-                <button
-                  onClick={() => setSlackDialogOpen(true)}
-                  className="w-full flex items-center gap-3 h-12 px-4 rounded-xl border border-border/60 bg-background hover:bg-accent/50 hover:border-primary/30 hover:-translate-y-0.5 transition-all duration-200 group"
-                >
-                  <SlackIcon className="h-5 w-5 shrink-0" />
-                  <span className="text-sm font-medium text-foreground group-hover:text-primary tracking-tight">{t('sidebar.slackConnector')}</span>
-                </button>
-              </div>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+            {/* Admin menu — show in HR context for super admins */}
+            {isInHRContext && isAdmin && (
+              <SidebarGroup>
+                <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">{t('sidebar.administration')}</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild tooltip="Admin">
+                        <NavLink 
+                          to="/admin" 
+                          end
+                          className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
+                          activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
+                        >
+                          <ShieldCheck className="h-5 w-5" />
+                          <span>Admin</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
 
-        {!isInHRContext && user?.email === 'matheus@rhitmo.co' && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">{t('sidebar.brand')}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Design System">
-                    <NavLink 
-                      to="/design-system" 
-                      end
-                      className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
-                      activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
+            {/* Standard menu — show when NOT in HR context */}
+            {!isInHRContext && (
+              <SidebarGroup>
+                <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">{t('sidebar.menu')}</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {(showMemberMenu ? memberMenuItems : menuItems)
+                      .map((item) => (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton asChild tooltip={item.title}>
+                          <NavLink 
+                            to={item.url} 
+                            end
+                            className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
+                            activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
+                          >
+                            <item.icon className="h-5 w-5" />
+                            <span>{item.title}</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+
+            {/* Conectores — Chrome & Slack */}
+            {!isInHRContext && !showMemberMenu && open && (
+              <SidebarGroup>
+                <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">{t('sidebar.connectors')}</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <div className="px-2 space-y-2">
+                    <button
+                      onClick={() => setExtensionDialogOpen(true)}
+                      className="w-full flex items-center gap-3 h-12 px-4 rounded-xl border border-border/60 bg-background hover:bg-accent/50 hover:border-primary/30 hover:-translate-y-0.5 transition-all duration-200 group"
                     >
-                      <Palette className="h-5 w-5" />
-                      <span>Design System</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        {isAdmin && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">{t('sidebar.administration')}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Admin">
-                    <NavLink 
-                      to="/admin" 
-                      end
-                      className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
-                      activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
+                      <ChromeIcon className="h-5 w-5 shrink-0" />
+                      <span className="text-sm font-medium text-foreground group-hover:text-primary tracking-tight">{t('sidebar.chromeConnector')}</span>
+                    </button>
+                    <button
+                      onClick={() => setSlackDialogOpen(true)}
+                      className="w-full flex items-center gap-3 h-12 px-4 rounded-xl border border-border/60 bg-background hover:bg-accent/50 hover:border-primary/30 hover:-translate-y-0.5 transition-all duration-200 group"
                     >
-                      <ShieldCheck className="h-5 w-5" />
-                      <span>Admin</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+                      <SlackIcon className="h-5 w-5 shrink-0" />
+                      <span className="text-sm font-medium text-foreground group-hover:text-primary tracking-tight">{t('sidebar.slackConnector')}</span>
+                    </button>
+                  </div>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+
+            {!isInHRContext && user?.email === 'matheus@rhitmo.co' && (
+              <SidebarGroup>
+                <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">{t('sidebar.brand')}</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild tooltip="Design System">
+                        <NavLink 
+                          to="/design-system" 
+                          end
+                          className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
+                          activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
+                        >
+                          <Palette className="h-5 w-5" />
+                          <span>Design System</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+
+            {isAdmin && (
+              <SidebarGroup>
+                <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">{t('sidebar.administration')}</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild tooltip="Admin">
+                        <NavLink 
+                          to="/admin" 
+                          end
+                          className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
+                          activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
+                        >
+                          <ShieldCheck className="h-5 w-5" />
+                          <span>Admin</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
+          </>
         )}
       </SidebarContent>
 
       <SidebarFooter>
         {/* Context switch: HR Admin → Leader view */}
-        {isInHRContext && isHRAdmin && isLeader && open && (
+        {!isSuperAdmin && isInHRContext && isHRAdmin && isLeader && open && (
           <div className="px-4 py-2">
             <Button
               variant="outline"
@@ -295,7 +337,7 @@ export function AppSidebar() {
         )}
 
         {/* Context switch: Leader → HR view */}
-        {!isInHRContext && isHRAdmin && open && (
+        {!isSuperAdmin && !isInHRContext && isHRAdmin && open && (
           <div className="px-4 py-2">
             <Button
               variant="outline"

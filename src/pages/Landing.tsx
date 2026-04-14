@@ -6,6 +6,7 @@ import { RhythmWave } from "@/components/RhythmWave";
 import { WaveDivider } from "@/components/WaveDivider";
 
 import { useAuth } from "@/hooks/useAuth";
+import { useAdmin } from "@/hooks/useAdmin";
 import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X, Check, Lock, Moon, Sun, Globe, Building, Clock, AlertCircle, DollarSign, Shield, Mic, XCircle, CheckCircle2, Target, Users, FileText, ArrowRight } from "lucide-react";
 import analyticsScreenshot from "@/assets/analytics-screenshot.png";
 import heroLeaderFlow from "@/assets/hero-leader-flow.png";
@@ -587,13 +588,14 @@ const Landing = () => {
 
   const toggleTheme = () => setLandingTheme(prev => prev === 'light' ? 'dark' : 'light');
 
+  const { isAdmin, loading: adminLoading } = useAdmin();
+
   useEffect(() => {
     if (!loading && user) {
-      navigate("/dashboard", {
-        replace: true
-      });
+      if (adminLoading) return;
+      navigate(isAdmin ? "/admin" : "/dashboard", { replace: true });
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, adminLoading, isAdmin, navigate]);
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-background">
