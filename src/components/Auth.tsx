@@ -19,10 +19,35 @@ interface AuthProps {
 export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = false }: AuthProps) => {
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(defaultMode === 'signup');
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState(defaultEmail);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const { toast } = useToast();
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      toast({ title: "Informe seu email", description: "Digite o email da sua conta.", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      toast({
+        title: "Link enviado!",
+        description: "Verifique seu email para redefinir sua senha.",
+      });
+      setIsForgotPassword(false);
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -145,12 +170,44 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
           {/* Título */}
           <div className="space-y-2">
             <h1 className="text-3xl font-bold text-foreground">
-              {isSignUp ? 'Criar sua Conta' : 'Acesso Restrito'}
+              {isForgotPassword ? 'Recuperar Senha' : isSignUp ? 'Criar sua Conta' : 'Acesso Restrito'}
             </h1>
             <p className="text-muted-foreground text-lg">
-              {isSignUp ? 'Complete seu cadastro para acessar' : 'Exclusivo para convidados'}
+              {isForgotPassword ? 'Enviaremos um link para redefinir sua senha' : isSignUp ? 'Complete seu cadastro para acessar' : 'Exclusivo para convidados'}
             </p>
           </div>
+
+          {/* Forgot Password Form */}
+          {isForgotPassword && (
+            <form onSubmit={handleForgotPassword} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="recovery-email">Email</Label>
+                <Input
+                  id="recovery-email"
+                  type="email"
+                  placeholder="seu@email.com"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  className="rounded-xl bg-muted/30 border-0 ring-1 ring-input focus-visible:ring-2 focus-visible:ring-primary"
+                  required
+                  disabled={loading}
+                />
+              </div>
+              <Button type="submit" className="w-full h-12 rounded-xl font-bold text-base" disabled={loading}>
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Enviar Link de Recuperação
+              </Button>
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsForgotPassword(false)}
+                  className="text-sm text-primary hover:underline font-medium"
+                >
+                  Voltar para o login
+                </button>
+              </div>
+            </form>
+          )}
 
           {/* Invite Flow Banner */}
           {isInviteFlow && isSignUp && (
@@ -161,7 +218,7 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
           )}
           
           {/* Form */}
-          {isSignUp ? (
+          {!isForgotPassword && isSignUp ? (
             <form onSubmit={handleSignUp} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
@@ -274,7 +331,7 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
                 </p>
               </div>
             </form>
-          ) : (
+          ) : !isForgotPassword ? (
             <form onSubmit={handleLogin} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
@@ -290,7 +347,16 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Senha</Label>
+                  <button
+                    type="button"
+                    onClick={() => setIsForgotPassword(true)}
+                    className="text-xs text-primary hover:underline font-medium"
+                  >
+                    Esqueci minha senha
+                  </button>
+                </div>
                 <Input 
                   id="password" 
                   type="password" 
@@ -373,7 +439,7 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
                 </p>
               </div>
             </form>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
