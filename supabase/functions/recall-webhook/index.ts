@@ -30,7 +30,6 @@ Deno.serve(async (req) => {
 
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Find our bot record
     const { data: botRecord, error: findError } = await supabaseAdmin
       .from("recall_bots")
       .select("*")
@@ -44,7 +43,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Map Recall event names to our internal statuses
     const eventStatusMap: Record<string, string> = {
       "bot.joining_call": "joining",
       "bot.in_waiting_room": "joining",
@@ -76,8 +74,7 @@ Deno.serve(async (req) => {
       console.log(`Bot ${botId} status: ${event} → ${isFatal ? "error" : newStatus}`);
     }
 
-    // When bot is done, fetch transcript + create feedbacks for all members
-    // Also handle bot.recording_done which fires when recording is ready
+    // When bot is done, fetch transcript via API v1 bot retrieve endpoint
     if ((event === "bot.done" || event === "bot.recording_done") && botRecord.status !== "done") {
       await handleBotDone(supabaseAdmin, botRecord, botId, RECALL_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     }
@@ -94,6 +91,89 @@ Deno.serve(async (req) => {
   }
 });
 
+// ── Fetch transcript via Recall API v1 bot retrieve → media_shortcuts ──────
+
+async function fetchTranscriptFromRecall(
+  botId: string,
+  recallApiKey: string,
+): Promise<{ transcriptData: unknown; speakerNameMap: Record<number, string> } | "not_ready" | "error"> {
+  const recallHeaders = { Authorization: `Token ${recallApiKey}` };
+
+  // Retrieve the full bot object which contains recordings + media_shortcuts
+  const botResponse = await fetch(
+    `https://us-west-2.recall.ai/api/v1/bot/${botId}/`,
+    { headers: recallHeaders },
+  );
+
+  if (!botResponse.ok) {
+    const errText = await botResponse.text();
+    console.error(`Failed to retrieve bot ${botId}: ${botResponse.status} ${errText}`);
+    return "error";
+  }
+
+  const botData = await botResponse.json();
+  const recordings = botData.recordings;
+
+  if (!recordings || recordings.length === 0) {
+    console.log(`Bot ${botId}: no recordings yet, will retry`);
+    return "not_ready";
+  }
+
+  const recording = recordings[0];
+  const transcriptShortcut = recording?.media_shortcuts?.transcript;
+
+  if (!transcriptShortcut) {
+    console.log(`Bot ${botId}: no transcript in media_shortcuts, will retry`);
+    return "not_ready";
+  }
+
+  // Check transcript status — could be a string or nested object
+  const transcriptStatus = typeof transcriptShortcut.status === "string"
+    ? transcriptShortcut.status
+    : transcriptShortcut.status?.code || transcriptShortcut.status?.status;
+  console.log(`Bot ${botId}: transcript shortcut keys: ${Object.keys(transcriptShortcut).join(", ")}, status raw: ${JSON.stringify(transcriptShortcut.status)}`);
+  if (transcriptStatus && transcriptStatus !== "done") {
+    console.log(`Bot ${botId}: transcript status is '${transcriptStatus}', will retry`);
+    return "not_ready";
+  }
+
+  const downloadUrl = transcriptShortcut.data?.download_url;
+  if (!downloadUrl) {
+    console.log(`Bot ${botId}: transcript done but no download_url, will retry`);
+    return "not_ready";
+  }
+
+  // Download the transcript JSON
+  console.log(`Bot ${botId}: downloading transcript from media_shortcuts...`);
+  const transcriptResponse = await fetch(downloadUrl);
+  if (!transcriptResponse.ok) {
+    console.error(`Failed to download transcript: ${transcriptResponse.status}`);
+    return "error";
+  }
+
+  const transcriptData = await transcriptResponse.json();
+
+  if (Array.isArray(transcriptData) && transcriptData.length === 0) {
+    console.log(`Bot ${botId}: transcript downloaded but empty, will retry`);
+    return "not_ready";
+  }
+
+  // Build speaker name map from transcript data (v2 format has participant.name)
+  const speakerNameMap: Record<number, string> = {};
+  if (Array.isArray(transcriptData)) {
+    for (const segment of transcriptData) {
+      const participantId = segment.participant?.id;
+      const participantName = segment.participant?.name;
+      if (participantId !== undefined && participantName) {
+        speakerNameMap[participantId] = participantName;
+      }
+    }
+  }
+
+  console.log(`Bot ${botId}: transcript downloaded, ${Array.isArray(transcriptData) ? transcriptData.length : 0} segments, ${Object.keys(speakerNameMap).length} speakers`);
+  return { transcriptData, speakerNameMap };
+}
+
 // ── Main handler for bot.done ──────────────────────────────────────────────
 
 async function handleBotDone(
@@ -104,70 +184,24 @@ async function handleBotDone(
   supabaseUrl: string,
   serviceRoleKey: string,
 ) {
-  console.log(`Bot ${botId} done — fetching transcript + speaker timeline...`);
+  console.log(`Bot ${botId} done — fetching transcript via API...`);
 
-  const recallHeaders = { Authorization: `Token ${recallApiKey}` };
+  const result = await fetchTranscriptFromRecall(botId, recallApiKey);
 
-  // Fetch transcript — try the transcript endpoint first, retry once if empty
-  const transcriptResponse = await fetch(
-    `https://us-west-2.recall.ai/api/v1/bot/${botId}/transcript/`,
-    { headers: recallHeaders }
-  );
+  if (result === "not_ready") {
+    console.log(`Bot ${botId}: transcript not ready yet, will retry on next webhook event`);
+    return;
+  }
 
-  if (!transcriptResponse.ok) {
-    const errText = await transcriptResponse.text();
-    console.error(`Failed to fetch transcript: ${errText}`);
-    // If 404 or not ready, mark as processing and wait for next webhook
-    if (transcriptResponse.status === 404 || transcriptResponse.status === 425) {
-      console.log(`Transcript not ready yet for bot ${botId}, will retry on next event`);
-      return;
-    }
+  if (result === "error") {
     await supabaseAdmin
       .from("recall_bots")
-      .update({ status: "error", error_message: `Transcript fetch failed: ${transcriptResponse.status}` })
+      .update({ status: "error", error_message: "Failed to fetch transcript from Recall API" })
       .eq("id", botRecord.id);
     return;
   }
 
-  const transcriptData = await transcriptResponse.json();
-
-  // If transcript is empty, it may not be ready yet
-  if (Array.isArray(transcriptData) && transcriptData.length === 0) {
-    console.log(`Transcript empty for bot ${botId}, will retry on next event`);
-    return;
-  }
-
-  // Fetch speaker timeline
-  const speakerResponse = await fetch(
-    `https://us-west-2.recall.ai/api/v1/bot/${botId}/speaker_timeline/`,
-    { headers: recallHeaders }
-  );
-
-  // Parse speaker timeline data
-  let speakerTimelineData: unknown = null;
-  const speakerNameMap: Record<number, string> = {};
-  if (speakerResponse.ok) {
-    try {
-      speakerTimelineData = await speakerResponse.json();
-      if (Array.isArray(speakerTimelineData)) {
-        for (const entry of speakerTimelineData as Array<{ speaker: number; name?: string }>) {
-          if (entry.name && entry.speaker !== undefined) {
-            speakerNameMap[entry.speaker] = entry.name;
-          }
-        }
-      }
-      if ((speakerTimelineData as { speakers?: unknown[] })?.speakers) {
-        for (const s of (speakerTimelineData as { speakers: Array<{ id: number; name?: string }> }).speakers) {
-          if (s.name && s.id !== undefined) {
-            speakerNameMap[s.id] = s.name;
-          }
-        }
-      }
-      console.log(`Speaker timeline: ${Object.keys(speakerNameMap).length} speakers mapped`);
-    } catch (e) {
-      console.warn("Failed to parse speaker timeline:", e);
-    }
-  }
+  const { transcriptData, speakerNameMap } = result;
 
   // Format transcript with real speaker names
   const formattedTranscript = formatTranscript(transcriptData, speakerNameMap);
@@ -185,21 +219,20 @@ async function handleBotDone(
 
   // Truncate content for feedbacks (15k chars max to save on analysis tokens)
   const truncatedContent = formattedTranscript.slice(0, 15000);
-  const firstMeetingTranscriptId: string | null = null;
 
   // Create meeting_transcript + feedback for each member
   const createdIds: { memberId: string; transcriptId: string; feedbackId: string }[] = [];
 
   for (const memberId of memberIds) {
-    const result = await createTranscriptAndFeedback(
+    const created = await createTranscriptAndFeedback(
       supabaseAdmin,
       botRecord.user_id as string,
       memberId,
       formattedTranscript,
       truncatedContent,
     );
-    if (result) {
-      createdIds.push({ memberId, ...result });
+    if (created) {
+      createdIds.push({ memberId, ...created });
     }
   }
 
@@ -220,8 +253,6 @@ async function handleBotDone(
     console.log(`No members matched — created orphan transcript ${mt?.id}`);
   }
 
-  // speakerTimelineData already parsed above
-
   // Update bot record as done
   await supabaseAdmin
     .from("recall_bots")
@@ -230,7 +261,6 @@ async function handleBotDone(
       transcript: formattedTranscript,
       transcript_data: {
         raw_transcript: transcriptData,
-        speaker_timeline: speakerTimelineData,
         speaker_map: speakerNameMap,
       },
       meeting_transcript_id: createdIds[0]?.transcriptId || null,
@@ -240,11 +270,10 @@ async function handleBotDone(
   console.log(`Bot ${botId} done — ${createdIds.length} feedback(s) created`);
 
   // Trigger background analysis for each feedback (non-blocking)
-  for (const { feedbackId, memberId } of createdIds) {
-    triggerBackgroundAnalysis(supabaseUrl, serviceRoleKey, feedbackId, memberId, botRecord.user_id as string);
+  for (const { feedbackId } of createdIds) {
+    triggerBackgroundAnalysis(supabaseUrl, serviceRoleKey, feedbackId);
   }
 }
-
 
 // ── Helper: Format transcript with speaker names ───────────────────────────
 
@@ -255,14 +284,15 @@ function formatTranscript(
   if (!Array.isArray(transcriptData)) return JSON.stringify(transcriptData);
 
   return transcriptData
-    .map((segment: { speaker: string | number; speaker_id?: number; words: Array<{ text: string }> }) => {
-      const speakerId = segment.speaker_id ?? segment.speaker;
+    .map((segment: { participant?: { id?: number; name?: string }; speaker?: string | number; speaker_id?: number; words: Array<{ text: string }> }) => {
+      // v2 format: participant.name; v1 fallback: speaker_id / speaker
       const speakerName =
-        typeof speakerId === "number" && speakerNameMap[speakerId]
-          ? speakerNameMap[speakerId]
+        segment.participant?.name ||
+        (segment.speaker_id !== undefined && speakerNameMap[segment.speaker_id]
+          ? speakerNameMap[segment.speaker_id]
           : typeof segment.speaker === "string" && segment.speaker
             ? segment.speaker
-            : "Participante";
+            : "Participante");
       const text = segment.words?.map((w: { text: string }) => w.text).join(" ") || "";
       return `**${speakerName}:** ${text}`;
     })
@@ -280,7 +310,6 @@ async function findAllMeetingMembers(
 ): Promise<string[]> {
   const memberIds = new Set<string>();
 
-  // Strategy 1: If we have a meeting_id, find all upcoming_meetings with same google_event_id
   if (meetingId) {
     const { data: sourceMeeting } = await supabaseAdmin
       .from("upcoming_meetings")
@@ -304,7 +333,6 @@ async function findAllMeetingMembers(
     }
   }
 
-  // Strategy 2: Match by meeting_url
   if (meetingUrl) {
     const { data: urlMatches } = await supabaseAdmin
       .from("upcoming_meetings")
@@ -320,7 +348,6 @@ async function findAllMeetingMembers(
     }
   }
 
-  // Strategy 3: Fallback to the single member_id stored on the bot record
   if (memberIds.size === 0 && fallbackMemberId) {
     memberIds.add(fallbackMemberId);
   }
@@ -337,7 +364,6 @@ async function createTranscriptAndFeedback(
   fullTranscript: string,
   truncatedContent: string,
 ): Promise<{ transcriptId: string; feedbackId: string } | null> {
-  // Create meeting_transcript
   const { data: mt, error: mtError } = await supabaseAdmin
     .from("meeting_transcripts")
     .insert({
@@ -355,7 +381,6 @@ async function createTranscriptAndFeedback(
     return null;
   }
 
-  // Create feedback in the diary (Diário de Bordo)
   const { data: fb, error: fbError } = await supabaseAdmin
     .from("feedbacks")
     .insert({
@@ -386,8 +411,6 @@ function triggerBackgroundAnalysis(
   supabaseUrl: string,
   serviceRoleKey: string,
   feedbackId: string,
-  memberId: string,
-  managerId: string,
 ) {
   if (!feedbackId) return;
 

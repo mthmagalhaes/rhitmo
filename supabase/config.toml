@@ -55,8 +55,10 @@ project_id = "lybkgujyezzzvbzypxed"
     verify_jwt = false
   [functions.reanalyze-feedback]
     verify_jwt = true
+  [functions.recall-webhook]
+    verify_jwt = false
   [functions.reprocess-meeting]
-    verify_jwt = true
+    verify_jwt = false
   [functions.send-disc-invite]
     verify_jwt = true
   [functions.slack-bot]
