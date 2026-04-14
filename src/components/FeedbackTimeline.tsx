@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Trash2, ChevronDown, Lock, Eye, MoreVertical, Mic, RefreshCw, Copy } from 'lucide-react';
+import { Trash2, ChevronDown, Lock, Eye, MoreVertical, Mic, RefreshCw, Copy, MessageSquare } from 'lucide-react';
+import { SlackIcon } from '@/components/icons/SlackIcon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -180,7 +181,7 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onToggleVisibility }: Fe
           const formattedDate = new Date(feedback.occurred_at || feedback.created_at).toLocaleDateString('pt-BR');
           const isShared = feedback.visibility === 'shared';
           const isTranscription = feedback.source === 'transcription' || !!feedback.meeting_transcript_id;
-          
+          const isSlack = feedback.source === 'slack';
           return (
             <Collapsible key={feedback.id} className="group">
               <div className="flex items-center rounded-lg border bg-card hover:bg-muted/50 transition-colors">
@@ -221,7 +222,13 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onToggleVisibility }: Fe
                     </Badge>
                   )}
 
-                  {isShared && !isTranscription && (
+                  {isSlack && !isTranscription && (
+                    <Badge variant="outline" className="hidden sm:flex text-xs py-0.5 px-2 border-[#4A154B]/30 text-[#4A154B] dark:text-[#E01E5A] bg-[#4A154B]/10 gap-1">
+                      <SlackIcon className="h-3 w-3" /> Slack
+                    </Badge>
+                  )}
+
+                  {isShared && !isTranscription && !isSlack && (
                     <Badge variant="outline" className="hidden sm:flex text-xs py-0.5 px-2 border-primary/30 text-primary bg-primary/10">
                       Compartilhado
                     </Badge>
@@ -328,7 +335,12 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onToggleVisibility }: Fe
                       <Mic className="h-3 w-3" /> Transcrição
                     </Badge>
                   )}
-                  {isShared && !isTranscription && (
+                  {isSlack && !isTranscription && (
+                    <Badge variant="outline" className="flex sm:hidden text-xs py-0.5 px-2 mb-3 w-fit border-[#4A154B]/30 text-[#4A154B] dark:text-[#E01E5A] bg-[#4A154B]/10 gap-1">
+                      <SlackIcon className="h-3 w-3" /> Slack
+                    </Badge>
+                  )}
+                  {isShared && !isTranscription && !isSlack && (
                     <Badge variant="outline" className="flex sm:hidden text-xs py-0.5 px-2 mb-3 w-fit border-primary/30 text-primary bg-primary/10">
                       Compartilhado
                     </Badge>

@@ -785,18 +785,95 @@ async function handleMentorCommand(payload: Record<string, string>, persona: Per
   }
 
   try {
-    // Call the chat-mentor edge function
+    // Determine which member to fetch context for
+    const targetMemberId = memberContext?.id;
+
+    // Fetch recent feedbacks for context (like frontend MentorChat does)
+    let feedbacks: any[] = [];
+    let memberName = memberContext?.name || 'Meu time';
+    let memberRole = '';
+    let workStyleData: any = null;
+
+    if (targetMemberId) {
+      // Fetch member details
+      const { data: memberData } = await supabase
+        .from('team_members')
+        .select('name, role, work_style_data')
+        .eq('id', targetMemberId)
+        .single();
+      if (memberData) {
+        memberName = memberData.name;
+        memberRole = memberData.role;
+        workStyleData = memberData.work_style_data;
+      }
+
+      // Fetch recent feedbacks for this member
+      const { data: fbData } = await supabase
+        .from('feedbacks')
+        .select('id, content, summary, type, tags, sentiment, occurred_at, created_at, member_id')
+        .eq('member_id', targetMemberId)
+        .eq('manager_id', persona.userId!)
+        .order('occurred_at', { ascending: false })
+        .limit(15);
+      feedbacks = fbData || [];
+    } else {
+      // No specific member — fetch all leader's recent feedbacks across team
+      const { data: teams } = await supabase.from('teams').select('id').eq('workspace_id', persona.workspaceId!).eq('leader_user_id', persona.userId!);
+      const teamIds = teams?.map(t => t.id) || [];
+      if (teamIds.length > 0) {
+        const { data: members } = await supabase
+          .from('team_members')
+          .select('id, name')
+          .in('team_id', teamIds)
+          .limit(50);
+        const memberIds = members?.map(m => m.id) || [];
+        if (memberIds.length > 0) {
+          const { data: fbData } = await supabase
+            .from('feedbacks')
+            .select('id, content, summary, type, tags, sentiment, occurred_at, created_at, member_id')
+            .in('member_id', memberIds)
+            .eq('manager_id', persona.userId!)
+            .order('occurred_at', { ascending: false })
+            .limit(15);
+          feedbacks = fbData || [];
+          // Use first member's name as fallback context
+          if (members?.length === 1) {
+            memberName = members[0].name;
+          }
+        }
+      }
+    }
+
+    // Fetch manager name
+    const { data: managerProfile } = await supabase
+      .from('workspaces')
+      .select('name')
+      .eq('id', persona.workspaceId!)
+      .single();
+
+    // Fetch leader sync data for leader profile
+    const { data: wsData } = await supabase
+      .from('workspaces')
+      .select('leader_sync_data')
+      .eq('id', persona.workspaceId!)
+      .single();
+
+    // Build the correct payload for chat-mentor
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
     const mentorPayload: Record<string, unknown> = {
-      message: question,
-      userId: persona.userId,
+      question,
+      feedbacks: feedbacks.length > 0 ? feedbacks : [{ id: 'empty', content: 'Sem notas registradas ainda.', type: 'neutral', occurred_at: new Date().toISOString(), created_at: new Date().toISOString() }],
+      memberName,
+      memberRole: memberRole || 'Colaborador',
+      managerName: 'Líder',
+      workStyleData: workStyleData || null,
+      leaderSyncData: wsData?.leader_sync_data || null,
+      contextMode: 'auto',
     };
 
-    if (memberContext) {
-      mentorPayload.memberId = memberContext.id;
-    }
+    console.log('[MENTOR] Calling chat-mentor with:', { question: question.substring(0, 50), feedbacksCount: feedbacks.length, memberName });
 
     const res = await fetch(`${supabaseUrl}/functions/v1/chat-mentor`, {
       method: 'POST',
@@ -808,8 +885,9 @@ async function handleMentorCommand(payload: Record<string, string>, persona: Per
     });
 
     if (!res.ok) {
-      console.error('[MENTOR] Edge function error:', res.status);
-      return { text: '❌ Erro ao consultar o mentor. Tente novamente.' };
+      const errBody = await res.text();
+      console.error('[MENTOR] Edge function error:', res.status, errBody);
+      return { text: '❌ Erro ao consultar o mentor de IA. Tente novamente em alguns segundos.' };
     }
 
     const data = await res.json();
@@ -833,7 +911,7 @@ async function handleMentorCommand(payload: Record<string, string>, persona: Per
     return { blocks };
   } catch (err) {
     console.error('[MENTOR] Error:', err);
-    return { text: '❌ Erro ao consultar o mentor. Tente novamente.' };
+    return { text: '❌ Erro ao consultar o mentor de IA. Tente novamente.' };
   }
 }
 
