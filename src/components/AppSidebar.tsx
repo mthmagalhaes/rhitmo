@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { RhythmWave } from '@/components/RhythmWave';
 import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award, ArrowRightLeft, UserCheck, Palette, Compass, FileText, User, Download } from 'lucide-react';
 import { ChromeIcon } from '@/components/icons/ChromeIcon';
@@ -37,32 +38,33 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 
-const menuItems = [
-  { title: 'Início', url: '/dashboard', icon: Home },
-  { title: 'Analytics', url: '/analytics', icon: BarChart3 },
-  { title: 'Central de Conhecimento', url: '/help', icon: BookOpen },
-  { title: 'Assinatura', url: '/billing', icon: CreditCard },
-];
-
-const leaderOnlyItems = ['Analytics', 'Assinatura', 'Central de Conhecimento'];
-
-const memberMenuItems = [
-  { title: 'Início', url: '/dashboard', icon: Home },
-  { title: 'Minha Carreira', url: '/dashboard/carreira', icon: Compass },
-  { title: 'Feedbacks', url: '/dashboard/feedbacks', icon: FileText },
-  { title: 'Meu Perfil', url: '/dashboard/perfil', icon: User },
-];
-
-const hrMenuItems = [
-  { title: 'Visão Geral', url: '/hr', icon: LayoutDashboard },
-  { title: 'Times e Líderes', url: '/hr/teams', icon: Users },
-  { title: 'Liderados', url: '/hr/members', icon: UserCheck },
-  { title: 'Analytics', url: '/hr/analytics', icon: BarChart3 },
-  { title: 'Competências', url: '/hr/competency-framework', icon: Award },
-];
+// Menu items are now defined inside the component to use t()
 
 export function AppSidebar() {
+  const { t } = useTranslation();
   const { open } = useSidebar();
+
+  const menuItems = [
+    { title: t('sidebar.home'), url: '/dashboard', icon: Home },
+    { title: t('sidebar.analytics'), url: '/analytics', icon: BarChart3 },
+    { title: t('sidebar.knowledgeCenter'), url: '/help', icon: BookOpen },
+    { title: t('sidebar.subscription'), url: '/billing', icon: CreditCard },
+  ];
+
+  const memberMenuItems = [
+    { title: t('sidebar.home'), url: '/dashboard', icon: Home },
+    { title: t('sidebar.myCareer'), url: '/dashboard/carreira', icon: Compass },
+    { title: t('sidebar.feedbacks'), url: '/dashboard/feedbacks', icon: FileText },
+    { title: t('sidebar.myProfile'), url: '/dashboard/perfil', icon: User },
+  ];
+
+  const hrMenuItems = [
+    { title: t('sidebar.overview'), url: '/hr', icon: LayoutDashboard },
+    { title: t('sidebar.teamsAndLeaders'), url: '/hr/teams', icon: Users },
+    { title: t('sidebar.directReports'), url: '/hr/members', icon: UserCheck },
+    { title: t('sidebar.analytics'), url: '/hr/analytics', icon: BarChart3 },
+    { title: t('sidebar.competencies'), url: '/hr/competency-framework', icon: Award },
+  ];
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdmin();
   const { isLeader, isHRAdmin, isUser, loading: roleLoading } = useUserRole();
@@ -92,25 +94,26 @@ export function AppSidebar() {
       document.body.removeChild(ta);
     }
     setCopied(true);
-    toast({ title: success ? 'E-mail copiado!' : 'Copie manualmente: support@rhitmo.co' });
+    toast({ title: success ? t('sidebar.emailCopied') : t('sidebar.copyManually') });
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleSignOut = async () => {
     await signOut();
     toast({
-      title: "Logout realizado",
-      description: "Até logo!"
+      title: t('sidebar.logoutDone'),
+      description: t('sidebar.seeYouSoon')
     });
     navigate('/auth', { replace: true });
   };
 
   const showMemberMenu = !roleLoading && !isLeader && !isHRAdmin && (isUser || isLinkedMember);
 
-  const userName = (!isLeader && isLinkedMember && linkedMember?.name)
-    || user?.user_metadata?.full_name 
+    const leaderOnlyItems = [t('sidebar.analytics'), t('sidebar.subscription'), t('sidebar.knowledgeCenter')];
+    const userName = (!isLeader && isLinkedMember && linkedMember?.name)
+      || user?.user_metadata?.full_name
     || user?.user_metadata?.name 
-    || 'Usuário';
+    || t('common.user');
 
   return (
     <Sidebar collapsible="icon" className="border-0 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
@@ -129,7 +132,7 @@ export function AppSidebar() {
         {/* HR Admin menu — show when in /hr/* context */}
         {isInHRContext && isHRAdmin && (
           <SidebarGroup>
-            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Painel RH</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">{t('sidebar.hrPanel')}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {hrMenuItems.map((item) => (
@@ -155,7 +158,7 @@ export function AppSidebar() {
         {/* Admin menu — show in HR context for super admins */}
         {isInHRContext && isAdmin && (
           <SidebarGroup>
-            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Administração</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">{t('sidebar.administration')}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
@@ -179,7 +182,7 @@ export function AppSidebar() {
         {/* Standard menu — show when NOT in HR context */}
         {!isInHRContext && (
           <SidebarGroup>
-            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Menu</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">{t('sidebar.menu')}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {(showMemberMenu ? memberMenuItems : menuItems)
@@ -206,7 +209,7 @@ export function AppSidebar() {
         {/* Conectores — Chrome & Slack */}
         {!isInHRContext && !showMemberMenu && open && (
           <SidebarGroup>
-            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Conectores</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">{t('sidebar.connectors')}</SidebarGroupLabel>
             <SidebarGroupContent>
               <div className="px-2 space-y-2">
                 <button
@@ -214,14 +217,14 @@ export function AppSidebar() {
                   className="w-full flex items-center gap-3 h-12 px-4 rounded-xl border border-border/60 bg-background hover:bg-accent/50 hover:border-primary/30 hover:-translate-y-0.5 transition-all duration-200 group"
                 >
                   <ChromeIcon className="h-5 w-5 shrink-0" />
-                  <span className="text-sm font-medium text-foreground group-hover:text-primary tracking-tight">Conector Chrome</span>
+                  <span className="text-sm font-medium text-foreground group-hover:text-primary tracking-tight">{t('sidebar.chromeConnector')}</span>
                 </button>
                 <button
                   onClick={() => setSlackDialogOpen(true)}
                   className="w-full flex items-center gap-3 h-12 px-4 rounded-xl border border-border/60 bg-background hover:bg-accent/50 hover:border-primary/30 hover:-translate-y-0.5 transition-all duration-200 group"
                 >
                   <SlackIcon className="h-5 w-5 shrink-0" />
-                  <span className="text-sm font-medium text-foreground group-hover:text-primary tracking-tight">Conector Slack</span>
+                  <span className="text-sm font-medium text-foreground group-hover:text-primary tracking-tight">{t('sidebar.slackConnector')}</span>
                 </button>
               </div>
             </SidebarGroupContent>
@@ -230,7 +233,7 @@ export function AppSidebar() {
 
         {!isInHRContext && user?.email === 'matheus@rhitmo.co' && (
           <SidebarGroup>
-            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Marca</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">{t('sidebar.brand')}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
@@ -253,7 +256,7 @@ export function AppSidebar() {
 
         {isAdmin && (
           <SidebarGroup>
-            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Administração</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">{t('sidebar.administration')}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
@@ -286,7 +289,7 @@ export function AppSidebar() {
               onClick={() => navigate('/dashboard')}
             >
               <ArrowRightLeft className="h-4 w-4" />
-              Ver como Líder
+              {t('sidebar.viewAsLeader')}
             </Button>
           </div>
         )}
@@ -301,20 +304,20 @@ export function AppSidebar() {
               onClick={() => navigate('/hr')}
             >
               <ArrowRightLeft className="h-4 w-4" />
-              Voltar ao Painel RH
+              {t('sidebar.backToHRPanel')}
             </Button>
           </div>
         )}
 
         {/* Support link */}
         <div className="px-4 py-2">
-          <SidebarMenuButton asChild tooltip="Suporte">
+          <SidebarMenuButton asChild tooltip={t('sidebar.support')}>
             <button 
               onClick={() => setSupportDialogOpen(true)}
               className="flex items-center gap-2 text-sm text-sidebar-foreground/70 hover:text-primary rounded-2xl transition-all duration-200 hover:translate-x-1 w-full"
             >
               <LifeBuoy className="h-4 w-4" />
-              {open && <span>Suporte / Feedback</span>}
+              {open && <span>{t('sidebar.supportFeedback')}</span>}
             </button>
           </SidebarMenuButton>
         </div>
@@ -342,7 +345,7 @@ export function AppSidebar() {
                 size="icon"
                 className="h-8 w-8 text-sidebar-foreground hover:bg-primary/5 rounded-xl"
                 onClick={() => setSettingsOpen(true)}
-                title="Configurações"
+                title={t('common.settings')}
               >
                 <Settings className="h-4 w-4" />
               </Button>
@@ -352,7 +355,7 @@ export function AppSidebar() {
               size="icon"
               className="h-8 w-8 text-sidebar-foreground hover:bg-primary/5 rounded-xl"
               onClick={handleSignOut}
-              title="Sair"
+              title={t('sidebar.signOut')}
             >
               <LogOut className="h-4 w-4" />
             </Button>
@@ -370,10 +373,10 @@ export function AppSidebar() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <LifeBuoy className="h-5 w-5 text-primary" />
-              Fale com a gente
+              {t('sidebar.talkToUs')}
             </DialogTitle>
             <DialogDescription>
-              Estamos aqui para ajudar. Para dúvidas, reclamações ou feedbacks, envie um e-mail para:
+              {t('sidebar.supportDescription')}
             </DialogDescription>
           </DialogHeader>
           

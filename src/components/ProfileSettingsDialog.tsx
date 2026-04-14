@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { SlackPrivacyOnboarding } from '@/components/slack/SlackPrivacyOnboarding';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader2, RefreshCw, Compass, MessageSquare, Unlink, ExternalLink, Download } from 'lucide-react';
+import { Loader2, RefreshCw, Compass, MessageSquare, Unlink, ExternalLink, Download, Globe } from 'lucide-react';
 import { ThemeSelector } from '@/components/ThemeSelector';
 import { ChromeExtensionSetupDialog } from '@/components/extension/ChromeExtensionSetupDialog';
+import { useLocale } from '@/hooks/useLocale';
+import { SUPPORTED_LANGUAGES, type SupportedLanguage } from '@/i18n';
 import {
   Dialog,
   DialogContent,
@@ -26,8 +29,10 @@ interface ProfileSettingsDialogProps {
 }
 
 export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDialogProps) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { currentLocale, setLocale } = useLocale();
   const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
@@ -82,13 +87,13 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
     
     if (!error) {
       toast({ 
-        title: "Perfil atualizado!",
-        description: "Suas informações foram salvas com sucesso."
+        title: t('settings.profileUpdated'),
+        description: t('settings.profileUpdatedDesc')
       });
       onOpenChange(false);
     } else {
       toast({
-        title: "Erro ao atualizar",
+        title: t('common.error'),
         description: error.message,
         variant: "destructive"
       });
@@ -106,7 +111,7 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
       .delete()
       .eq('id', slackIntegration.id);
     if (!error) {
-      toast({ title: "Slack desconectado" });
+      toast({ title: t('settings.slackDisconnected') });
       refetchSlack();
     }
   };
@@ -115,36 +120,58 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Configurações do Perfil</DialogTitle>
+          <DialogTitle>{t('settings.profileSettings')}</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Nome</Label>
+            <Label htmlFor="name">{t('settings.name')}</Label>
             <Input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Seu nome"
+              placeholder={t('settings.namePlaceholder')}
             />
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="role">Cargo</Label>
+            <Label htmlFor="role">{t('settings.jobTitle')}</Label>
             <Input
               id="role"
               value={role}
               onChange={(e) => setRole(e.target.value)}
-              placeholder="Ex: Tech Lead, PM, etc."
+              placeholder={t('settings.jobTitlePlaceholder')}
             />
           </div>
+
+          {/* Language Selector */}
+          <div className="border-t pt-4">
+            <Label className="text-muted-foreground text-xs uppercase tracking-wide mb-2 block">
+              <Globe className="h-3 w-3 inline mr-1" />
+              {t('settings.language')}
+            </Label>
+            <div className="flex gap-2">
+              {SUPPORTED_LANGUAGES.map((lang) => (
+                <Button
+                  key={lang.code}
+                  variant={currentLocale === lang.code ? 'default' : 'outline'}
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => setLocale(lang.code as SupportedLanguage)}
+                >
+                  <span className="mr-1">{lang.flag}</span>
+                  {lang.label}
+                </Button>
+              ))}
+            </div>
+          </div>
           
-          {/* Seção de Aparência */}
+          {/* Appearance */}
           <div className="border-t pt-4">
             <ThemeSelector />
           </div>
 
-          {/* Seção Slack */}
+          {/* Slack */}
           <div className="border-t pt-4">
             <Label className="text-muted-foreground text-xs uppercase tracking-wide mb-2 block">
               <MessageSquare className="h-3 w-3 inline mr-1" />
@@ -155,18 +182,18 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-green-500" />
                   <span className="text-sm">
-                    Conectado como <span className="font-medium">{slackIntegration.slack_user_id}</span>
+                    {t('settings.slackConnectedAs')} <span className="font-medium">{slackIntegration.slack_user_id}</span>
                   </span>
                 </div>
                 <Button variant="ghost" size="sm" onClick={handleSlackUnlink}>
                   <Unlink className="h-4 w-4 mr-1" />
-                  Desconectar
+                  {t('settings.disconnect')}
                 </Button>
               </div>
             ) : (
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  Vincule sua conta Slack para usar comandos como <code className="bg-muted px-1 py-0.5 rounded text-xs">/rhitmo</code>, <code className="bg-muted px-1 py-0.5 rounded text-xs">/nota</code> e <code className="bg-muted px-1 py-0.5 rounded text-xs">/kudos</code>.
+                  {t('settings.slackDescription')}
                 </p>
                 <Button
                   variant="outline"
@@ -176,48 +203,48 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
                 >
                   <a href={slackOAuthUrl} target="_blank" rel="noopener noreferrer">
                     <ExternalLink className="h-4 w-4 mr-1" />
-                    Adicionar ao Slack
+                    {t('settings.addToSlack')}
                   </a>
                 </Button>
                 <p className="text-xs text-muted-foreground">
-                  Já tem o bot instalado? Execute <code className="bg-muted px-1 py-0.5 rounded text-xs">/rhitmo</code> no Slack e clique em "Conectar Conta".
+                  {t('settings.slackBotHint')}
                 </p>
               </div>
             )}
 
-            {/* Boas Práticas */}
+            {/* Best Practices */}
             <div className="mt-3 rounded-xl border bg-muted/30 p-3">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-muted-foreground">📖 Boas Práticas</span>
+                <span className="text-xs font-medium text-muted-foreground">📖 {t('settings.bestPractices')}</span>
                 <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setPrivacyOpen(true)}>
-                  Ver Novamente
+                  {t('settings.viewAgain')}
                 </Button>
               </div>
               <div className="text-xs space-y-1">
                 <div className="grid grid-cols-3 gap-1 font-medium text-muted-foreground border-b pb-1">
-                  <span>Comando</span><span>Onde Usar</span><span>Visibilidade</span>
+                  <span>{t('settings.command')}</span><span>{t('settings.whereToUse')}</span><span>{t('settings.visibility')}</span>
                 </div>
                 <div className="grid grid-cols-3 gap-1">
-                  <code className="text-[10px]">/nota</code><span>DM/Privado</span><span>Só você</span>
+                  <code className="text-[10px]">/nota</code><span>DM/{t('settings.private')}</span><span>{t('settings.onlyYou')}</span>
                 </div>
                 <div className="grid grid-cols-3 gap-1">
-                  <code className="text-[10px]">/kudos</code><span>Público</span><span>Todos veem</span>
+                  <code className="text-[10px]">/kudos</code><span>{t('settings.public')}</span><span>{t('settings.everyoneSees')}</span>
                 </div>
                 <div className="grid grid-cols-3 gap-1">
-                  <code className="text-[10px]">/review</code><span>Apenas DM</span><span>Só você</span>
+                  <code className="text-[10px]">/review</code><span>{t('settings.dmOnly')}</span><span>{t('settings.onlyYou')}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Seção Chrome Extension */}
+          {/* Chrome Extension */}
           <div className="border-t pt-4">
             <Label className="text-muted-foreground text-xs uppercase tracking-wide mb-2 block">
               <Download className="h-3 w-3 inline mr-1" />
-              Extensão Chrome
+              {t('settings.chromeExtension')}
             </Label>
             <p className="text-sm text-muted-foreground mb-3">
-              Grave reuniões do Google Meet com 1 click, direto do navegador.
+              {t('settings.chromeExtensionDesc')}
             </p>
             <Button
               variant="outline"
@@ -226,14 +253,14 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
               onClick={() => setExtensionSetupOpen(true)}
             >
               <Download className="h-4 w-4 mr-1" />
-              Configurar Extensão
+              {t('settings.setupExtension')}
             </Button>
           </div>
 
-          {/* Seção de Manutenção */}
+          {/* Maintenance */}
           <div className="border-t pt-4">
             <Label className="text-muted-foreground text-xs uppercase tracking-wide mb-2 block">
-              Manutenção
+              {t('settings.maintenance')}
             </Label>
             {workspace && (
               <Button
@@ -243,7 +270,7 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
                 className="w-full justify-start gap-2 mb-2"
               >
                 <Compass className="h-4 w-4" />
-                {(workspace as Record<string, unknown>).leader_sync_data ? 'Atualizar Perfil de Liderança' : 'Configurar Perfil de Liderança'}
+                {(workspace as Record<string, unknown>).leader_sync_data ? t('settings.updateLeaderProfile') : t('settings.setupLeaderProfile')}
               </Button>
             )}
             <Button
@@ -253,21 +280,21 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
               className="w-full justify-start gap-2"
             >
               <RefreshCw className="h-4 w-4" />
-              Sincronizar Inteligência do Sistema
+              {t('settings.syncIntelligence')}
             </Button>
             <p className="text-xs text-muted-foreground mt-1">
-              Processa notas antigas sem classificação por IA
+              {t('settings.syncIntelligenceDesc')}
             </p>
           </div>
         </div>
         
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
+            {t('common.cancel')}
           </Button>
           <Button onClick={handleSave} disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Salvar
+            {t('common.save')}
           </Button>
         </DialogFooter>
       </DialogContent>

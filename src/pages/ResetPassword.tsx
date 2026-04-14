@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,8 +9,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, CheckCircle2 } from 'lucide-react';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
 import { RhythmWave } from '@/components/RhythmWave';
+import { useEffect } from 'react';
 
 const ResetPassword = () => {
+  const { t } = useTranslation();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,14 +22,12 @@ const ResetPassword = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Listen for PASSWORD_RECOVERY event from Supabase
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
         setIsRecovery(true);
       }
     });
 
-    // Also check hash for type=recovery
     const hash = window.location.hash;
     if (hash.includes('type=recovery')) {
       setIsRecovery(true);
@@ -39,12 +40,12 @@ const ResetPassword = () => {
     e.preventDefault();
 
     if (password !== confirmPassword) {
-      toast({ title: "Senhas não conferem", description: "Digite a mesma senha nos dois campos.", variant: "destructive" });
+      toast({ title: t('auth.passwordMismatch'), description: t('auth.passwordMismatchDesc'), variant: "destructive" });
       return;
     }
 
     if (password.length < 6) {
-      toast({ title: "Senha muito curta", description: "A senha deve ter no mínimo 6 caracteres.", variant: "destructive" });
+      toast({ title: t('auth.passwordTooShort'), description: t('auth.passwordMinLength'), variant: "destructive" });
       return;
     }
 
@@ -53,10 +54,10 @@ const ResetPassword = () => {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
       setSuccess(true);
-      toast({ title: "Senha atualizada!", description: "Sua nova senha foi salva com sucesso." });
+      toast({ title: t('auth.passwordUpdated'), description: t('auth.passwordUpdatedDesc') });
       setTimeout(() => navigate('/dashboard', { replace: true }), 2000);
     } catch (error: any) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      toast({ title: t('common.error'), description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -64,7 +65,6 @@ const ResetPassword = () => {
 
   return (
     <div className="flex min-h-screen">
-      {/* Left side */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-[hsl(var(--background))]">
         <div className="absolute inset-0 flex flex-col justify-center">
           <RhythmWave variant="auth" className="opacity-100" />
@@ -80,7 +80,6 @@ const ResetPassword = () => {
         </div>
       </div>
 
-      {/* Right side */}
       <div className="w-full lg:w-1/2 flex items-center justify-center bg-background p-8">
         <div className="w-full max-w-md space-y-8 animate-fade-in">
           <div className="flex justify-center lg:hidden">
@@ -90,29 +89,29 @@ const ResetPassword = () => {
           {success ? (
             <div className="space-y-4 text-center">
               <CheckCircle2 className="h-16 w-16 text-primary mx-auto" />
-              <h1 className="text-3xl font-bold text-foreground">Senha Atualizada!</h1>
-              <p className="text-muted-foreground text-lg">Redirecionando para o dashboard...</p>
+              <h1 className="text-3xl font-bold text-foreground">{t('auth.passwordUpdated')}</h1>
+              <p className="text-muted-foreground text-lg">{t('auth.redirectingToDashboard')}</p>
             </div>
           ) : !isRecovery ? (
             <div className="space-y-4 text-center">
-              <h1 className="text-3xl font-bold text-foreground">Link Inválido</h1>
+              <h1 className="text-3xl font-bold text-foreground">{t('auth.invalidLink')}</h1>
               <p className="text-muted-foreground text-lg">
-                Este link de recuperação expirou ou é inválido. Solicite um novo link na página de login.
+                {t('auth.invalidLinkDesc')}
               </p>
               <Button onClick={() => navigate('/auth')} className="rounded-xl h-12 font-bold">
-                Ir para o Login
+                {t('auth.goToLogin')}
               </Button>
             </div>
           ) : (
             <>
               <div className="space-y-2">
-                <h1 className="text-3xl font-bold text-foreground">Nova Senha</h1>
-                <p className="text-muted-foreground text-lg">Escolha uma nova senha para sua conta</p>
+                <h1 className="text-3xl font-bold text-foreground">{t('auth.newPassword')}</h1>
+                <p className="text-muted-foreground text-lg">{t('auth.chooseNewPassword')}</p>
               </div>
 
               <form onSubmit={handleResetPassword} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="new-password">Nova Senha</Label>
+                  <Label htmlFor="new-password">{t('auth.newPassword')}</Label>
                   <Input
                     id="new-password"
                     type="password"
@@ -126,7 +125,7 @@ const ResetPassword = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="confirm-new-password">Confirmar Nova Senha</Label>
+                  <Label htmlFor="confirm-new-password">{t('auth.confirmNewPassword')}</Label>
                   <Input
                     id="confirm-new-password"
                     type="password"
@@ -141,7 +140,7 @@ const ResetPassword = () => {
                 </div>
                 <Button type="submit" className="w-full h-12 rounded-xl font-bold text-base" disabled={loading}>
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Salvar Nova Senha
+                  {t('auth.saveNewPassword')}
                 </Button>
               </form>
             </>
