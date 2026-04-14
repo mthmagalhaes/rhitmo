@@ -174,41 +174,23 @@ Deno.serve(async (req) => {
 
     console.log(`[sync] Fetched ${allEvents.length} events from Google Calendar`);
 
-    // ── Fetch team members with email ──
-    const { data: workspace } = await supabaseAdmin
-      .from("workspaces")
-      .select("id")
-      .eq("owner_id", userId)
-      .maybeSingle();
+    // ── Fetch ALL team members across every team this user leads ──
+    const { data: members } = await supabaseAdmin
+      .from("team_members")
+      .select("id, name, role, email, teams!inner(leader_user_id)")
+      .eq("teams.leader_user_id", userId)
+      .not("email", "is", null);
 
-    // Also check if user is a team leader (not just workspace owner)
-    let workspaceId = workspace?.id;
-    if (!workspaceId) {
-      const { data: leaderTeam } = await supabaseAdmin
-        .from("teams")
-        .select("workspace_id")
-        .eq("leader_user_id", userId)
-        .limit(1)
-        .maybeSingle();
-      workspaceId = leaderTeam?.workspace_id;
-    }
-
-    if (!workspaceId) {
-      console.log(`[sync] No workspace found for user ${userId}`);
-      return new Response(JSON.stringify({ meetings: [], debug: { events_found: allEvents.length, reason: "no_workspace" } }), {
+    if (!members || members.length === 0) {
+      console.log(`[sync] No team members found for leader ${userId}`);
+      return new Response(JSON.stringify({ meetings: [], debug: { events_found: allEvents.length, reason: "no_members" } }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const { data: members } = await supabaseAdmin
-      .from("team_members")
-      .select("id, name, role, email, teams!inner(workspace_id)")
-      .eq("teams.workspace_id", workspaceId)
-      .not("email", "is", null);
-
     // Build normalized email lookup (lowercase, trim)
     const membersByEmail = new Map<string, { id: string; name: string; role: string }>();
-    for (const m of members || []) {
+    for (const m of members) {
       if (m.email) {
         membersByEmail.set(m.email.toLowerCase().trim(), { id: m.id, name: m.name, role: m.role });
       }
