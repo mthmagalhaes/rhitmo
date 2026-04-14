@@ -1,54 +1,147 @@
+<final-text>
+## Plano de correção: regressão do Google Calendar
 
+### Diagnóstico mais provável
+Encontrei uma regressão forte no frontend que explica exatamente o que você descreveu:
 
-## Plano: Melhorar a jornada pós-convite do liderado
+1. **Colisão de cache no React Query**
+- `src/pages/Index.tsx` usa a query key `['upcoming-meetings', user?.id]` para ler a tabela `upcoming_meetings`.
+- `src/hooks/useCalendarIntegration.ts` usa **a mesma key** `['upcoming-meetings', user?.id]` para chamar a edge function `fetch-calendar-events`.
 
-### O problema do Guilherme
-O convite é "single-use by design": após aceitar, o `invite_token` é apagado. Quando o Guilherme clica no mesmo link novamente, recebe "Convite Inválido" — uma tela fria, sem orientação. Ele não sabe que pode acessar diretamente via `rhitmo.co/auth`.
+Isso mistura **duas fontes diferentes** com o mesmo cache. Na prática:
+- o card pode receber um **array do banco** quando espera um objeto `{ meetings, debug }`;
+- `calendarData?.meetings` vira `undefined`;
+- o componente cai no estado “Nenhuma reunião nas próximas 48h”;
+- o botão **“Sincronizar” parece não fazer nada**, porque o refetch pode estar reaproveitando a query errada.
 
-### Solução: 3 melhorias complementares
+2. **Erros estão sendo mascarados como estado vazio**
+- O hook não expõe `error`, `isError`, `isFetching` ou `isRefetching`.
+- Se `fetch-calendar-events` falhar, a UI mostra vazio em vez de mostrar erro.
+- Isso faz parecer que “não há reuniões”, quando pode haver falha real de sync.
 
-#### 1. Tela de "Convite já aceito" em vez de erro genérico
-Quando o token não é encontrado, verificar se existe um `team_member` com `invite_status = 'accepted'` para aquele token/member. Se sim, mostrar uma tela amigável:
+3. **O botão “Sincronizar” não tem feedback visual**
+- Hoje ele chama `refetchMeetings()`, mas o componente só usa `isLoading`.
+- Em refetch manual, o estado correto seria `isFetching`/`isRefetching`.
+- Resultado: o usuário clica e nada visível acontece.
 
-> "Olá! Você já aceitou este convite. Para acessar suas devolutivas, faça login abaixo."
-> [Botão: Acessar com Google] [Botão: Acessar com email]
-
-Em vez do "Convite Inválido" atual.
-
-**Implementação:** Alterar a RPC `get_invite_details` (ou criar uma nova) para retornar um campo `already_accepted: true` quando o membro existe mas o token já foi consumido. No frontend, tratar esse caso com uma UI dedicada.
-
-#### 2. E-mail/toast pós-aceite com instruções de acesso futuro
-Após aceitar o convite com sucesso, mostrar um **toast persistente** ou uma **tela de sucesso intermediária** (em vez de redirecionar imediatamente) com a mensagem:
-
-> "Pronto! Da próxima vez, acesse diretamente em **rhitmo.co/auth** usando sua conta Google."
-
-Isso educa o usuário no momento certo.
-
-#### 3. Redirect inteligente na página de erro
-Se o usuário já está logado e clica num convite já aceito, em vez de mostrar erro, detectar que o `linked_user_id` bate com o `user.id` atual e redirecionar direto para o dashboard.
+4. **Há gaps secundários no backend**
+- `fetch-calendar-events` ainda busca só no **calendar primary**; reuniões em calendário secundário/compartilhado ainda podem sumir.
+- `schedule-recall-bot` ainda usa `getClaims` e `join_at` de 1 minuto antes, então a parte de transcrição/manual também está inconsistente.
 
 ---
 
-### Arquivos a modificar
+## Plano de implementação
 
-| Arquivo | Mudança |
-|---------|---------|
-| Migração SQL | Criar RPC `get_invite_status` ou ajustar `get_invite_details` para retornar status `already_accepted` |
-| `src/pages/Invite.tsx` | Nova UI para estado "já aceito" com botões de login + redirect inteligente para usuários já logados |
+### 1. Restaurar o fluxo básico imediatamente
+**Objetivo:** fazer o dashboard voltar a sincronizar de forma previsível.
 
-### Detalhes técnicos
+**Arquivos:**
+- `src/pages/Index.tsx`
+- `src/hooks/useCalendarIntegration.ts`
 
-**Nova RPC ou ajuste na existente:**
-```sql
--- Retornar status mesmo quando token já foi consumido
--- Buscar por member_id OU pelo histórico do token
--- Retornar campo 'status': 'pending' | 'accepted' | 'not_found'
-```
+**Mudanças:**
+- Separar as query keys:
+  - Dashboard/DB: `['upcoming-meetings-db', user?.id]`
+  - Sync do Calendar: `['calendar-upcoming-meetings', user?.id]`
+- Ou, preferencialmente, deixar o card/hook como **fonte única da verdade** para as reuniões visíveis e parar de competir com a query do banco.
 
-**Invite.tsx — 3 estados em vez de 2:**
-1. `pending` → UI atual (botão "Aceitar e Acessar")
-2. `already_accepted` → Nova UI amigável com botões de login
-3. `not_found` → Erro genérico (token realmente inválido)
+### 2. Corrigir a UX do botão “Sincronizar”
+**Objetivo:** o clique precisa mostrar que algo está acontecendo.
 
-**Pós-aceite:** Antes do `navigate('/dashboard')`, exibir tela de sucesso por 5 segundos com instrução de acesso futuro, ou usar toast persistente.
+**Arquivos:**
+- `src/hooks/useCalendarIntegration.ts`
+- `src/components/dashboard/UpcomingMeetingsCard.tsx`
 
+**Mudanças:**
+- Expor `isFetching` / `isRefetching` / `isError` / `error`.
+- Trocar o link simples “Sincronizar” por botão com spinner/estado desabilitado.
+- Mostrar:
+  - “Sincronizando...”
+  - erro real quando a edge function falhar
+  - vazio apenas quando realmente não houver eventos
+
+### 3. Parar de mascarar falha como “nenhuma reunião”
+**Objetivo:** diferenciar claramente:
+- sem reuniões,
+- falha de autenticação,
+- falha na API do Google,
+- eventos encontrados sem match.
+
+**Arquivos:**
+- `src/hooks/useCalendarIntegration.ts`
+- `src/components/dashboard/UpcomingMeetingsCard.tsx`
+
+**Mudanças:**
+- Se `fetch-calendar-events` retornar erro, renderizar estado de erro com CTA de retry.
+- Exibir mensagem mais precisa:
+  - “Falha ao sincronizar calendário”
+  - “Reconecte sua conta”
+  - “Eventos encontrados, mas nenhum bateu com liderados cadastrados”
+
+### 4. Endurecer a edge function de sync
+**Objetivo:** depois de restaurar o fluxo, atacar os casos em que a reunião ainda não aparece.
+
+**Arquivo:**
+- `supabase/functions/fetch-calendar-events/index.ts`
+
+**Mudanças:**
+- Manter a autenticação com `getUser()`.
+- Adicionar diagnóstico mais explícito no payload:
+  - `events_found`
+  - `matched`
+  - `no_match`
+  - `team_members_loaded`
+  - `calendars_scanned`
+  - motivo de descarte principal
+- Corrigir a extração fallback de links.
+- Expandir da agenda `primary` para calendários relevantes/compartilhados, para não depender só do calendário principal.
+
+### 5. Corrigir a parte de Recall/transcrição
+**Objetivo:** garantir que, depois que a reunião aparecer, o restante do fluxo funcione.
+
+**Arquivo:**
+- `supabase/functions/schedule-recall-bot/index.ts`
+
+**Mudanças:**
+- Trocar `getClaims` por `getUser()`.
+- Ajustar `join_at` para 10 minutos antes.
+- Manter comportamento consistente com o auto-transcribe.
+
+---
+
+## Ordem recomendada
+1. **Separar query keys e consertar o card**
+2. **Adicionar estados reais de sync/erro**
+3. **Validar que o botão “Sincronizar” chama a edge function certa**
+4. **Só depois ampliar para multi-calendar**
+5. **Fechar o fluxo com Recall**
+
+---
+
+## Resultado esperado
+Depois dessa correção:
+- clicar em **Sincronizar** vai mostrar feedback real;
+- a tela não vai mais mentir dizendo “nenhuma reunião” quando houver erro;
+- a reunião da Giovanna volta a ter chance real de aparecer;
+- o sistema deixa de competir entre banco e sync do Google;
+- a transcrição volta a operar sobre uma base confiável.
+
+---
+
+## Arquivos a ajustar
+- `src/pages/Index.tsx`
+- `src/hooks/useCalendarIntegration.ts`
+- `src/components/dashboard/UpcomingMeetingsCard.tsx`
+- `supabase/functions/fetch-calendar-events/index.ts`
+- `supabase/functions/schedule-recall-bot/index.ts`
+
+---
+
+## Validação após implementação
+- abrir dashboard e verificar que o card não cai mais em vazio falso;
+- clicar em **Sincronizar** e ver spinner/estado de progresso;
+- confirmar chamada real de `fetch-calendar-events`;
+- validar que uma falha de backend aparece como erro explícito;
+- confirmar se a reunião de hoje com a Giovanna aparece;
+- testar o botão/toggle de transcrição ponta a ponta.
+</final-text>
