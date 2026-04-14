@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
 
       // Fetch transcript from Recall.ai
       const transcriptResponse = await fetch(
-        `https://us-east-1.recall.ai/api/v1/bot/${botId}/transcript/`,
+        `https://us-west-2.recall.ai/api/v1/bot/${botId}/transcript/`,
         { headers: { "Authorization": `Token ${RECALL_API_KEY}` } }
       );
 
