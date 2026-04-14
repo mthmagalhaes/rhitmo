@@ -336,10 +336,13 @@ Deno.serve(async (req) => {
               meeting_url: meeting.meet_link,
               join_at: joinAt,
               bot_name: "Rhitmo",
-              transcription_options: {
-                provider: "meeting_captions",
+              recording_config: {
+                transcript: {
+                  provider: {
+                    meeting_captions: {},
+                  },
+                },
               },
-              recording_mode: "speaker_view",
             }),
           });
 

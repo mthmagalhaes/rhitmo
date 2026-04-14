@@ -94,10 +94,13 @@ Deno.serve(async (req) => {
         meeting_url: meeting_url,
         join_at: joinAt,
         bot_name: "Rhitmo",
-        transcription_options: {
-          provider: transcriptionProvider,
+        recording_config: {
+          transcript: {
+            provider: {
+              meeting_captions: {},
+            },
+          },
         },
-        recording_mode: "speaker_view",
       }),
     });
 

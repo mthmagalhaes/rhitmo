@@ -43,6 +43,7 @@ export const UpcomingMeetingsCard = () => {
   } = useCalendarIntegration();
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
+  const [schedulingMeetingId, setSchedulingMeetingId] = useState<string | null>(null);
 
   // Not connected state
   if (!checkingConnection && !isConnected) {
