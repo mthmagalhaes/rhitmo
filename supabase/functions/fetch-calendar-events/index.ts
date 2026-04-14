@@ -15,6 +15,7 @@ Deno.serve(async (req) => {
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID")!;
   const GOOGLE_CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET")!;
+  const RECALL_API_KEY = Deno.env.get("RECALL_API_KEY");
 
   try {
     // Authenticate user
@@ -43,7 +44,7 @@ Deno.serve(async (req) => {
     const userId = claimsData.claims.sub as string;
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Fetch token
+    // Fetch token (including auto_transcribe flag)
     const { data: tokenData, error: tokenError } = await supabaseAdmin
       .from("google_calendar_tokens")
       .select("*")
@@ -58,11 +59,11 @@ Deno.serve(async (req) => {
     }
 
     let accessToken = tokenData.access_token;
+    const autoTranscribe = tokenData.auto_transcribe === true;
 
     // Refresh if expired
     if (tokenData.token_expiry && new Date(tokenData.token_expiry) < new Date()) {
       if (!tokenData.refresh_token) {
-        // No refresh token, user needs to re-authorize
         await supabaseAdmin.from("google_calendar_tokens").delete().eq("user_id", userId);
         return new Response(JSON.stringify({ error: "Token expired, please reconnect" }), {
           status: 401,
@@ -179,17 +180,14 @@ Deno.serve(async (req) => {
 
       if (!startTime) continue;
 
-      // Find matching member
       for (const attendee of attendees) {
         const email = attendee.email?.toLowerCase();
         if (!email) continue;
         const member = membersByEmail.get(email);
         if (!member) continue;
 
-        // Extract meet link
         const meetLink = event.hangoutLink || null;
 
-        // Upsert into upcoming_meetings
         const { data: upserted } = await supabaseAdmin
           .from("upcoming_meetings")
           .upsert(
@@ -219,8 +217,75 @@ Deno.serve(async (req) => {
           member_name: member.name,
           member_role: member.role,
         });
+      }
+    }
 
-        // Continue iterating to match all team members in this event
+    // Auto-schedule Recall bots if auto_transcribe is enabled
+    if (autoTranscribe && RECALL_API_KEY) {
+      const autoScheduled: string[] = [];
+
+      for (const meeting of matchedMeetings) {
+        if (!meeting.meet_link || !meeting.id) continue;
+
+        // Check if bot already exists for this meeting
+        const { data: existingBot } = await supabaseAdmin
+          .from("recall_bots")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("meeting_id", meeting.id)
+          .not("status", "eq", "error")
+          .maybeSingle();
+
+        if (existingBot) continue;
+
+        // Schedule bot via Recall.ai API (server-to-server)
+        const joinAt = new Date(new Date(meeting.start_time).getTime() - 60 * 1000).toISOString();
+
+        try {
+          const recallResponse = await fetch("https://us-west-2.recall.ai/api/v1/bot/", {
+            method: "POST",
+            headers: {
+              "Authorization": `Token ${RECALL_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              meeting_url: meeting.meet_link,
+              join_at: joinAt,
+              bot_name: "Rhitmo",
+              transcription_options: {
+                provider: "meeting_captions",
+              },
+              recording_mode: "speaker_view",
+            }),
+          });
+
+          const recallData = await recallResponse.json();
+
+          if (recallResponse.ok && recallData.id) {
+            await supabaseAdmin
+              .from("recall_bots")
+              .insert({
+                user_id: userId,
+                meeting_id: meeting.id,
+                member_id: meeting.member_id,
+                recall_bot_id: recallData.id,
+                meeting_url: meeting.meet_link,
+                status: "scheduled",
+                scheduled_at: joinAt,
+              });
+
+            autoScheduled.push(meeting.id);
+            console.log(`Auto-scheduled bot for meeting ${meeting.id}: ${recallData.id}`);
+          } else {
+            console.error(`Auto-schedule failed for meeting ${meeting.id}:`, recallData);
+          }
+        } catch (e) {
+          console.error(`Auto-schedule error for meeting ${meeting.id}:`, e);
+        }
+      }
+
+      if (autoScheduled.length > 0) {
+        console.log(`Auto-scheduled ${autoScheduled.length} bots`);
       }
     }
 

@@ -29,9 +29,9 @@ export const useCalendarIntegration = () => {
   const { data: connectionData, isLoading: checkingConnection } = useQuery({
     queryKey: ['calendar-connected', user?.id],
     queryFn: async () => {
-      const { data } = await (supabase as unknown as { from: (table: string) => { select: (cols: string) => { maybeSingle: () => Promise<{ data: { id: string; calendar_email: string } | null }> } } })
+      const { data } = await (supabase as unknown as { from: (table: string) => { select: (cols: string) => { maybeSingle: () => Promise<{ data: { id: string; calendar_email: string; auto_transcribe: boolean } | null }> } } })
         .from('google_calendar_tokens')
-        .select('id, calendar_email')
+        .select('id, calendar_email, auto_transcribe')
         .maybeSingle();
       return data;
     },
@@ -40,6 +40,7 @@ export const useCalendarIntegration = () => {
   });
 
   const isConnected = !!connectionData;
+  const autoTranscribe = connectionData?.auto_transcribe ?? false;
 
   const { data: upcomingMeetings = [], isLoading: loadingMeetings, refetch: refetchMeetings } = useQuery({
     queryKey: ['upcoming-meetings', user?.id],
@@ -85,6 +86,33 @@ export const useCalendarIntegration = () => {
     toast({ title: 'Google Calendar desconectado' });
   };
 
+  // Toggle auto-transcribe
+  const toggleAutoTranscribe = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      const supabaseAny = supabase as any;
+      const { error } = await supabaseAny
+        .from('google_calendar_tokens')
+        .update({ auto_transcribe: enabled, updated_at: new Date().toISOString() })
+        .eq('user_id', user!.id);
+      if (error) throw error;
+      return enabled;
+    },
+    onSuccess: (enabled) => {
+      queryClient.invalidateQueries({ queryKey: ['calendar-connected'] });
+      if (enabled) {
+        // Refetch meetings to trigger auto-scheduling
+        queryClient.invalidateQueries({ queryKey: ['upcoming-meetings'] });
+      }
+      toast({
+        title: enabled ? 'Transcrição automática ativada' : 'Transcrição automática desativada',
+        description: enabled ? 'Todas as reuniões com link serão transcritas automaticamente.' : 'Você pode ativar novamente a qualquer momento.',
+      });
+    },
+    onError: () => {
+      toast({ title: 'Erro', description: 'Não foi possível alterar a configuração.', variant: 'destructive' });
+    },
+  });
+
   // Fetch recall bot statuses for upcoming meetings
   const { data: recallBots = [] } = useQuery({
     queryKey: ['recall-bots', user?.id],
@@ -128,11 +156,13 @@ export const useCalendarIntegration = () => {
     isConnected,
     checkingConnection,
     connectionData,
+    autoTranscribe,
     upcomingMeetings,
     loadingMeetings,
     refetchMeetings,
     connectCalendar,
     disconnectCalendar,
+    toggleAutoTranscribe,
     scheduleBot,
     getBotStatus,
     recallBots,
