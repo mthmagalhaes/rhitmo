@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 interface Nudge {
   id: string;
@@ -29,6 +30,7 @@ const severityConfig: Record<string, { className: string; icon: string }> = {
 };
 
 export function NudgesBanner() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -47,7 +49,6 @@ export function NudgesBanner() {
         return [];
       }
 
-      // Sort by severity priority: urgent > warning > info
       const priority: Record<string, number> = { urgent: 0, warning: 1, info: 2 };
       return (data || []).sort(
         (a, b) => (priority[a.severity] ?? 3) - (priority[b.severity] ?? 3)
@@ -95,7 +96,7 @@ export function NudgesBanner() {
                     dismissMutation.mutate(nudge.id);
                   }}
                 >
-                  Ver
+                  {t('nudges.view')}
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Button>
               )}
@@ -106,7 +107,7 @@ export function NudgesBanner() {
                 onClick={() => dismissMutation.mutate(nudge.id)}
               >
                 <X className="h-3.5 w-3.5" />
-                <span className="sr-only">Dispensar</span>
+                <span className="sr-only">{t('nudges.dismiss')}</span>
               </Button>
             </div>
           </div>

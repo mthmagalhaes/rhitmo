@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { MessageSquare, Settings, Eye } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
+import { useTranslation } from 'react-i18next';
 
 interface PendingInviteInfo {
   status: string;
@@ -23,6 +24,7 @@ interface TeamMemberCardProps {
 }
 
 export const TeamMemberCard = ({ member, teamName, onClick, onEdit, pendingInvite, onSendInvite }: TeamMemberCardProps) => {
+  const { t } = useTranslation();
   const daysSince = member.lastFeedback ? differenceInDays(new Date(), new Date(member.lastFeedback)) : null;
 
   let healthColor: string;
@@ -32,19 +34,19 @@ export const TeamMemberCard = ({ member, teamName, onClick, onEdit, pendingInvit
   if (member.feedbackCount === 0 || daysSince === null) {
     healthColor = 'bg-muted-foreground/40';
     healthTextColor = 'text-muted-foreground';
-    statusMessage = 'Sem notas';
+    statusMessage = t('teamMember.noNotes');
   } else if (daysSince <= 7) {
     healthColor = 'bg-emerald-500';
     healthTextColor = 'text-emerald-600 dark:text-emerald-400';
-    statusMessage = daysSince === 0 ? 'Hoje' : daysSince === 1 ? 'Há 1 dia' : `Há ${daysSince} dias`;
+    statusMessage = daysSince === 0 ? t('teamMember.today') : daysSince === 1 ? t('teamMember.oneDayAgo') : t('teamMember.daysAgo', { count: daysSince });
   } else if (daysSince <= 14) {
     healthColor = 'bg-yellow-500';
     healthTextColor = 'text-amber-600 dark:text-amber-400';
-    statusMessage = `Há ${daysSince} dias`;
+    statusMessage = t('teamMember.daysAgo', { count: daysSince });
   } else {
     healthColor = 'bg-destructive';
     healthTextColor = 'text-destructive';
-    statusMessage = `Há ${daysSince} dias`;
+    statusMessage = t('teamMember.daysAgo', { count: daysSince });
   }
 
   return (
@@ -55,7 +57,7 @@ export const TeamMemberCard = ({ member, teamName, onClick, onEdit, pendingInvit
       {/* Top-right: Edit + Pending invite indicator */}
       <div className="absolute top-4 right-4 flex items-center gap-1.5">
         {!(member as any).linked_user_id && pendingInvite && pendingInvite.status === 'sent' && (
-          <span className="relative flex h-6 w-6 items-center justify-center" title={pendingInvite.member_has_account ? 'Aguardando conexão' : 'Aguardando cadastro'}>
+          <span className="relative flex h-6 w-6 items-center justify-center" title={pendingInvite.member_has_account ? t('teamMember.awaitingConnection') : t('teamMember.awaitingSignup')}>
             <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400/30 animate-ping" />
             <MessageSquare className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 relative" />
           </span>
@@ -109,7 +111,7 @@ export const TeamMemberCard = ({ member, teamName, onClick, onEdit, pendingInvit
               </div>
             </TooltipTrigger>
             <TooltipContent>
-              {member.feedbackCount === 0 ? 'Nenhuma nota registrada' : `Última nota: ${statusMessage.toLowerCase()}`}
+              {member.feedbackCount === 0 ? t('teamMember.noNotesRecorded') : t('teamMember.lastNote', { status: statusMessage.toLowerCase() })}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -118,7 +120,7 @@ export const TeamMemberCard = ({ member, teamName, onClick, onEdit, pendingInvit
         <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <MessageSquare className="h-3 w-3" />
-            {member.feedbackCount} notas
+            {t('teamMember.notesCount', { count: member.feedbackCount })}
           </span>
           {(member as any).linked_user_id && (
             <Badge variant="secondary" className="text-[10px] rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 px-2 py-0">
@@ -126,8 +128,6 @@ export const TeamMemberCard = ({ member, teamName, onClick, onEdit, pendingInvit
             </Badge>
           )}
         </div>
-
-        {/* Legacy pending invite text removed — now shown as pulsing icon in top-right */}
 
         {/* Send invite button */}
         {!(member as any).linked_user_id && (member as any).email && onSendInvite && (
@@ -140,7 +140,7 @@ export const TeamMemberCard = ({ member, teamName, onClick, onEdit, pendingInvit
               onSendInvite();
             }}
           >
-            {(member as any).invite_status === 'pending' && (member as any).invite_token ? '📧 Ver Convite' : '📧 Enviar Convite'}
+            {(member as any).invite_status === 'pending' && (member as any).invite_token ? t('teamMember.viewInvite') : t('teamMember.sendInvite')}
           </Button>
         )}
 
@@ -155,7 +155,7 @@ export const TeamMemberCard = ({ member, teamName, onClick, onEdit, pendingInvit
           }}
         >
           <Eye className="h-3 w-3" />
-          Ver
+          {t('common.view')}
         </Button>
       </div>
     </Card>
