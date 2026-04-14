@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Calendar, CalendarOff, ExternalLink, FileText, ChevronDown, Mic, Loader2, CheckCircle2, Sparkles } from 'lucide-react';
+import { Calendar, CalendarOff, ExternalLink, FileText, ChevronDown, Mic, Loader2, CheckCircle2, Sparkles, RefreshCw, AlertTriangle } from 'lucide-react';
 import { format, isToday, isTomorrow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -24,6 +24,9 @@ export const UpcomingMeetingsCard = () => {
     checkingConnection,
     upcomingMeetings,
     loadingMeetings,
+    isSyncing,
+    isSyncError,
+    syncError,
     connectCalendar,
     disconnectCalendar,
     autoTranscribe,
@@ -60,7 +63,7 @@ export const UpcomingMeetingsCard = () => {
     );
   }
 
-  // Loading state
+  // Loading state (initial load only)
   if (checkingConnection || loadingMeetings) {
     return (
       <div className="rounded-3xl bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-6">
@@ -77,6 +80,65 @@ export const UpcomingMeetingsCard = () => {
     );
   }
 
+  // Sync button component
+  const SyncButton = () => (
+    <button
+      onClick={() => refetchMeetings()}
+      disabled={isSyncing}
+      className="text-xs text-primary hover:text-primary/80 transition-colors font-medium flex items-center gap-1 disabled:opacity-50"
+    >
+      <RefreshCw className={`h-3 w-3 ${isSyncing ? 'animate-spin' : ''}`} />
+      {isSyncing ? 'Sincronizando...' : 'Sincronizar'}
+    </button>
+  );
+
+  // Error state
+  if (isSyncError) {
+    const errorMsg = (syncError as Error)?.message || '';
+    const isAuthError = errorMsg.includes('401') || errorMsg.includes('reconnect') || errorMsg.includes('expired');
+    return (
+      <div className="rounded-3xl bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-6 min-h-[200px] flex flex-col">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-primary" />
+            <h3 className="text-lg font-semibold tracking-tight text-foreground">Próximas 1:1s</h3>
+          </div>
+          <div className="flex items-center gap-3">
+            <SyncButton />
+            <button
+              onClick={disconnectCalendar}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Desconectar
+            </button>
+          </div>
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center text-center py-6">
+          <AlertTriangle className="h-9 w-9 text-amber-500/50 mb-3" />
+          <p className="text-sm font-medium text-foreground mb-1">
+            {isAuthError ? 'Sessão do Google Calendar expirou' : 'Falha ao sincronizar calendário'}
+          </p>
+          <p className="text-xs text-muted-foreground mb-4">
+            {isAuthError
+              ? 'Reconecte sua conta para continuar sincronizando reuniões.'
+              : 'Tente sincronizar novamente ou reconecte sua conta.'}
+          </p>
+          {isAuthError ? (
+            <Button onClick={connectCalendar} variant="outline" size="sm" className="rounded-xl gap-2">
+              <Calendar className="h-3.5 w-3.5" />
+              Reconectar
+            </Button>
+          ) : (
+            <Button onClick={() => refetchMeetings()} variant="outline" size="sm" className="rounded-xl gap-2" disabled={isSyncing}>
+              <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+              Tentar novamente
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   // Empty state
   if (upcomingMeetings.length === 0) {
     const hasEvents = syncDebug && syncDebug.events_found > 0;
@@ -88,12 +150,7 @@ export const UpcomingMeetingsCard = () => {
             <h3 className="text-lg font-semibold tracking-tight text-foreground">Próximas 1:1s</h3>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => refetchMeetings()}
-              className="text-xs text-primary hover:text-primary/80 transition-colors font-medium"
-            >
-              Sincronizar
-            </button>
+            <SyncButton />
             <button
               onClick={disconnectCalendar}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -136,13 +193,17 @@ export const UpcomingMeetingsCard = () => {
           <Badge variant="secondary" className="text-xs rounded-full">
             {upcomingMeetings.length}
           </Badge>
+          {isSyncing && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
         </div>
-        <button
-          onClick={disconnectCalendar}
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Desconectar
-        </button>
+        <div className="flex items-center gap-3">
+          <SyncButton />
+          <button
+            onClick={disconnectCalendar}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Desconectar
+          </button>
+        </div>
       </div>
 
       {/* Auto-transcribe toggle */}
