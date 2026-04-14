@@ -1742,6 +1742,15 @@ export type Database = {
           total_evidence_count: number
         }[]
       }
+      get_sync_notification_data: {
+        Args: { p_member_id: string }
+        Returns: {
+          leader_email: string
+          leader_name: string
+          member_name: string
+          team_name: string
+        }[]
+      }
       get_user_caps: {
         Args: never
         Returns: {
