@@ -10,6 +10,9 @@ import { ThemeSelector } from '@/components/ThemeSelector';
 import { ChromeExtensionSetupDialog } from '@/components/extension/ChromeExtensionSetupDialog';
 import { useLocale } from '@/hooks/useLocale';
 import { SUPPORTED_LANGUAGES, type SupportedLanguage } from '@/i18n';
+import { MemberAvatar } from '@/components/MemberAvatar';
+import { AvatarLibrary } from '@/components/avatar/AvatarLibrary';
+import { getAvatarForName } from '@/components/avatar/avatarData';
 import {
   Dialog,
   DialogContent,
@@ -41,6 +44,7 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
   const [leaderSyncOpen, setLeaderSyncOpen] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const [extensionSetupOpen, setExtensionSetupOpen] = useState(false);
+  const [avatarLibraryOpen, setAvatarLibraryOpen] = useState(false);
 
   const { data: workspace } = useQuery({
     queryKey: ['workspace', user?.id],
@@ -124,6 +128,32 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
         </DialogHeader>
         
         <div className="space-y-4">
+          {/* Avatar selector for leaders */}
+          <div className="flex flex-col items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setAvatarLibraryOpen(true)}
+              className="relative group rounded-full transition-all hover:scale-105"
+            >
+              <MemberAvatar
+                memberId={user?.id || ''}
+                memberName={name || 'User'}
+                avatarUrl={user?.user_metadata?.avatar}
+                size="lg"
+              />
+              <div className="absolute inset-0 rounded-full bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <span className="text-white text-xs font-medium">{t('common.edit')}</span>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setAvatarLibraryOpen(true)}
+              className="text-xs text-primary hover:underline"
+            >
+              {t('settings.changeAvatar', 'Trocar Avatar')}
+            </button>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="name">{t('settings.name')}</Label>
             <Input
