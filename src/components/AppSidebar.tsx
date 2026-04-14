@@ -132,7 +132,7 @@ export function AppSidebar() {
         {/* HR Admin menu — show when in /hr/* context */}
         {isInHRContext && isHRAdmin && (
           <SidebarGroup>
-            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Painel RH</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">{t('sidebar.hrPanel')}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {hrMenuItems.map((item) => (
@@ -158,7 +158,7 @@ export function AppSidebar() {
         {/* Admin menu — show in HR context for super admins */}
         {isInHRContext && isAdmin && (
           <SidebarGroup>
-            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Administração</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">{t('sidebar.administration')}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
@@ -182,7 +182,7 @@ export function AppSidebar() {
         {/* Standard menu — show when NOT in HR context */}
         {!isInHRContext && (
           <SidebarGroup>
-            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Menu</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">{t('sidebar.menu')}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {(showMemberMenu ? memberMenuItems : menuItems)
@@ -209,7 +209,7 @@ export function AppSidebar() {
         {/* Conectores — Chrome & Slack */}
         {!isInHRContext && !showMemberMenu && open && (
           <SidebarGroup>
-            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Conectores</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">{t('sidebar.connectors')}</SidebarGroupLabel>
             <SidebarGroupContent>
               <div className="px-2 space-y-2">
                 <button
@@ -217,14 +217,14 @@ export function AppSidebar() {
                   className="w-full flex items-center gap-3 h-12 px-4 rounded-xl border border-border/60 bg-background hover:bg-accent/50 hover:border-primary/30 hover:-translate-y-0.5 transition-all duration-200 group"
                 >
                   <ChromeIcon className="h-5 w-5 shrink-0" />
-                  <span className="text-sm font-medium text-foreground group-hover:text-primary tracking-tight">Conector Chrome</span>
+                  <span className="text-sm font-medium text-foreground group-hover:text-primary tracking-tight">{t('sidebar.chromeConnector')}</span>
                 </button>
                 <button
                   onClick={() => setSlackDialogOpen(true)}
                   className="w-full flex items-center gap-3 h-12 px-4 rounded-xl border border-border/60 bg-background hover:bg-accent/50 hover:border-primary/30 hover:-translate-y-0.5 transition-all duration-200 group"
                 >
                   <SlackIcon className="h-5 w-5 shrink-0" />
-                  <span className="text-sm font-medium text-foreground group-hover:text-primary tracking-tight">Conector Slack</span>
+                  <span className="text-sm font-medium text-foreground group-hover:text-primary tracking-tight">{t('sidebar.slackConnector')}</span>
                 </button>
               </div>
             </SidebarGroupContent>
@@ -233,7 +233,7 @@ export function AppSidebar() {
 
         {!isInHRContext && user?.email === 'matheus@rhitmo.co' && (
           <SidebarGroup>
-            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Marca</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">{t('sidebar.brand')}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
@@ -256,7 +256,7 @@ export function AppSidebar() {
 
         {isAdmin && (
           <SidebarGroup>
-            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">Administração</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">{t('sidebar.administration')}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
@@ -289,7 +289,7 @@ export function AppSidebar() {
               onClick={() => navigate('/dashboard')}
             >
               <ArrowRightLeft className="h-4 w-4" />
-              Ver como Líder
+              {t('sidebar.viewAsLeader')}
             </Button>
           </div>
         )}
@@ -304,7 +304,7 @@ export function AppSidebar() {
               onClick={() => navigate('/hr')}
             >
               <ArrowRightLeft className="h-4 w-4" />
-              Voltar ao Painel RH
+              {t('sidebar.backToHRPanel')}
             </Button>
           </div>
         )}
