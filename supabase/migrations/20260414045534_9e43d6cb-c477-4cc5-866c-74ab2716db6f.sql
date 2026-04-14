@@ -1,0 +1,1 @@
+ALTER TABLE public.google_calendar_tokens ADD COLUMN auto_transcribe BOOLEAN DEFAULT false;
