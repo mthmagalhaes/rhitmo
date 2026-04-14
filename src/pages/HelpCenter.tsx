@@ -153,6 +153,20 @@ const leaderCards: FeatureCard[] = [
       'Ao sair da reunião, o áudio é enviado e transcrito pela IA sem nenhum clique.',
     ],
   },
+  {
+    id: 'l-auto-transcription',
+    icon: FileAudio,
+    title: 'Transcrição Automática',
+    subtitle: 'Suas reuniões transcritas e analisadas pela IA',
+    steps: [
+      'Conecte seu Google Calendar em Configurações → Integrações.',
+      'Ative o toggle "Transcrição Automática" no card de Próximas Reuniões.',
+      'O bot Rhitmo entrará automaticamente nas suas reuniões com link do Google Meet, Zoom ou Teams.',
+      'A transcrição com nomes dos participantes aparece automaticamente no Diário de Bordo de cada liderado.',
+      'A IA analisa a transcrição gerando resumo, sentimento e coaching tips — tudo automático.',
+      'Se a reunião tiver mais de um liderado, a nota é criada para cada um deles.',
+    ],
+  },
 ];
 
 const memberCards: FeatureCard[] = [

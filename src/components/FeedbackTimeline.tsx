@@ -180,7 +180,7 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onToggleVisibility }: Fe
           const isFallbackTitle = !feedback.title;
           const formattedDate = new Date(feedback.occurred_at || feedback.created_at).toLocaleDateString('pt-BR');
           const isShared = feedback.visibility === 'shared';
-          const isTranscription = feedback.source === 'transcription' || !!feedback.meeting_transcript_id;
+          const isTranscription = feedback.source === 'transcription' || feedback.source === 'recall_bot' || !!feedback.meeting_transcript_id;
           const isSlack = feedback.source === 'slack';
           return (
             <Collapsible key={feedback.id} className="group">
