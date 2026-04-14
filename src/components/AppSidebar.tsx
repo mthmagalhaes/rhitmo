@@ -311,13 +311,13 @@ export function AppSidebar() {
 
         {/* Support link */}
         <div className="px-4 py-2">
-          <SidebarMenuButton asChild tooltip="Suporte">
+          <SidebarMenuButton asChild tooltip={t('sidebar.support')}>
             <button 
               onClick={() => setSupportDialogOpen(true)}
               className="flex items-center gap-2 text-sm text-sidebar-foreground/70 hover:text-primary rounded-2xl transition-all duration-200 hover:translate-x-1 w-full"
             >
               <LifeBuoy className="h-4 w-4" />
-              {open && <span>Suporte / Feedback</span>}
+              {open && <span>{t('sidebar.supportFeedback')}</span>}
             </button>
           </SidebarMenuButton>
         </div>
@@ -345,7 +345,7 @@ export function AppSidebar() {
                 size="icon"
                 className="h-8 w-8 text-sidebar-foreground hover:bg-primary/5 rounded-xl"
                 onClick={() => setSettingsOpen(true)}
-                title="Configurações"
+                title={t('common.settings')}
               >
                 <Settings className="h-4 w-4" />
               </Button>
@@ -355,7 +355,7 @@ export function AppSidebar() {
               size="icon"
               className="h-8 w-8 text-sidebar-foreground hover:bg-primary/5 rounded-xl"
               onClick={handleSignOut}
-              title="Sair"
+              title={t('sidebar.signOut')}
             >
               <LogOut className="h-4 w-4" />
             </Button>
@@ -373,10 +373,10 @@ export function AppSidebar() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <LifeBuoy className="h-5 w-5 text-primary" />
-              Fale com a gente
+              {t('sidebar.talkToUs')}
             </DialogTitle>
             <DialogDescription>
-              Estamos aqui para ajudar. Para dúvidas, reclamações ou feedbacks, envie um e-mail para:
+              {t('sidebar.supportDescription')}
             </DialogDescription>
           </DialogHeader>
           
