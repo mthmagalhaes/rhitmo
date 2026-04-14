@@ -105,7 +105,10 @@ Deno.serve(async (req) => {
         recording_config: {
           transcript: {
             provider: {
-              meeting_captions: {},
+              recallai_streaming: {
+                mode: "prioritize_accuracy",
+                language_code: "auto",
+              },
             },
           },
         },
@@ -145,7 +148,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log(`Bot scheduled: ${recallData.id} for meeting ${meeting_id || meeting_url} (provider: ${transcriptionProvider})`);
+    console.log(`Bot scheduled: ${recallData.id} for meeting ${meeting_id || meeting_url} (provider: recallai_streaming/auto)`);
 
     return new Response(JSON.stringify({ success: true, bot: botRecord, recall_bot_id: recallData.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
