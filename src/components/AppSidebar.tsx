@@ -94,15 +94,15 @@ export function AppSidebar() {
       document.body.removeChild(ta);
     }
     setCopied(true);
-    toast({ title: success ? 'E-mail copiado!' : 'Copie manualmente: support@rhitmo.co' });
+    toast({ title: success ? t('sidebar.emailCopied') : t('sidebar.copyManually') });
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleSignOut = async () => {
     await signOut();
     toast({
-      title: "Logout realizado",
-      description: "Até logo!"
+      title: t('sidebar.logoutDone'),
+      description: t('sidebar.seeYouSoon')
     });
     navigate('/auth', { replace: true });
   };
