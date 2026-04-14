@@ -1,126 +1,72 @@
 
 
-## Plano: Internacionalização (i18n) — PT-BR, EN, ES
+## Plano: Continuar i18n — Corrigir crash + Migração SQL + UI + Strings
 
-### Escopo
+### Problema Urgente: App crashado
 
-~148 arquivos com ~600+ strings em português hardcoded precisam ser externalizadas. Isso inclui sidebar, dashboard, formulários, diálogos, pages de auth, billing, analytics, HR, competências, reviews, etc.
-
-### Abordagem Técnica
-
-Usar **react-i18next** (padrão da indústria para React) com JSON de traduções organizados por namespace.
-
----
-
-### Fase 1 — Infraestrutura i18n
-
-**Novos arquivos:**
-
-| Arquivo | Descrição |
-|---------|-----------|
-| `src/i18n/index.ts` | Configuração do i18next + detector de idioma |
-| `src/i18n/locales/pt-BR.json` | Todas as strings em português (fonte da verdade) |
-| `src/i18n/locales/en.json` | Traduções em inglês |
-| `src/i18n/locales/es.json` | Traduções em espanhol |
-
-**Estrutura dos JSONs** (namespaces por área):
-```json
-{
-  "common": { "save": "Salvar", "cancel": "Cancelar", ... },
-  "sidebar": { "home": "Início", "analytics": "Analytics", ... },
-  "auth": { "login": "Entrar", "forgotPassword": "Esqueci minha senha", ... },
-  "dashboard": { "greeting.morning": "Bom dia", ... },
-  "members": { ... },
-  "reviews": { ... },
-  "hr": { ... },
-  "billing": { ... },
-  "settings": { ... }
-}
-```
-
-**Dependência:** `react-i18next` + `i18next` + `i18next-browser-languagedetector`
+O `react-i18next` v17 e `i18next` v26 requerem React 19. O projeto usa React 18, causando o erro `Cannot read properties of null (reading 'useState')`. Preciso fazer downgrade:
+- `react-i18next` → `^15.4.1` (última compatível com React 18)
+- `i18next` → `^23.16.8` (estável para React 18)
+- `i18next-browser-languagedetector` → `^8.0.4` (mantém compatível)
 
 ---
 
-### Fase 2 — Contexto de Idioma + Persistência
+### Fase 2 — SQL + Admin locale por workspace
 
-**Migração SQL:** Adicionar coluna `default_locale` à tabela `workspaces` (varchar, default `'pt-BR'`).
+1. **Migração SQL**: Adicionar coluna `default_locale varchar default 'pt-BR'` à tabela `workspaces`
+2. **AdminOverview.tsx**: Adicionar seletor de idioma padrão por workspace (dropdown PT-BR/EN/ES) na tabela de workspaces, visível apenas para super_admin. Salva via update na coluna `default_locale`
 
-**Migração SQL:** Adicionar coluna `locale_override` ao user metadata via `supabase.auth.updateUser`.
+### Fase 3 — Seletor de idioma no perfil
 
-**Lógica de resolução de idioma (prioridade):**
-1. `user.user_metadata.locale` (preferência pessoal) — se definido
-2. `workspace.default_locale` (definido pelo admin) — se definido
-3. `navigator.language` (browser) — fallback
-4. `'pt-BR'` — fallback final
+**ProfileSettingsDialog.tsx**: Adicionar seção "Idioma" com 3 botões (🇧🇷🇺🇸🇪🇸) que chamam `useLocale().setLocale()`. Persiste no `user_metadata.locale` e `localStorage`.
 
-**Novo hook:** `src/hooks/useLocale.ts` — resolve o idioma ativo e expõe `setLocale()`.
+### Fase 4 — Migração de strings (por batches)
 
----
+Substituir strings hardcoded por `t('key')` nos principais arquivos, organizados por prioridade:
 
-### Fase 3 — UI de Seleção de Idioma
+**Batch 1 — Core (alto impacto):**
+- `Auth.tsx` (~30 strings: login, signup, esqueci senha, toasts)
+- `AppSidebar.tsx` (~20 strings: menu items, labels, botões)
+- `ProfileSettingsDialog.tsx` (~15 strings)
+- `ResetPassword.tsx`
 
-**ProfileSettingsDialog.tsx:** Adicionar seletor de idioma (dropdown com bandeiras 🇧🇷🇺🇸🇪🇸) na seção de perfil, que salva no `user_metadata.locale`.
+**Batch 2 — Dashboard:**
+- `Index.tsx` (~40 strings: saudações, labels, botões, toasts)
+- `SetupChecklist.tsx`, `ActivityPreview.tsx`, `NudgesBanner.tsx`
+- `DirectReportDashboard.tsx`, `CareerCompassCard.tsx`, `SkillsMapCard.tsx`
 
-**Admin Panel (AdminOverview ou AdminAccess):** Para o super-admin (matheus@rhitmo.co), adicionar opção de definir `default_locale` por workspace na lista de workspaces.
+**Batch 3 — Members + Feedback:**
+- `TeamMemberCard.tsx`, `NewMemberDialog.tsx`, `EditMemberDialog.tsx`, `MemberDetails.tsx`
+- `FeedbackTimeline.tsx`, `NewNoteDialog.tsx`, `BiasDetectionPanel.tsx`
 
----
+**Batch 4 — Reviews + HR:**
+- `PerformanceReviewList.tsx`, `NewReviewDialog.tsx`, `ReviewViewDialog.tsx`
+- `HRDashboard.tsx`, `HRMembers.tsx`, `HRTeams.tsx`, `HRAnalytics.tsx`
 
-### Fase 4 — Migração de Strings (o grosso do trabalho)
+**Batch 5 — Billing, Admin, Onboarding, Competências:**
+- `Billing.tsx`, `UpgradeBanner.tsx`
+- `AdminOverview.tsx`, `AdminUsers.tsx`, `AdminStructure.tsx`
+- `OnboardingModal.tsx`, `WorkspaceOnboarding.tsx`, `RhitmoSync.tsx`, `LeaderSyncWizard.tsx`
+- `CompetencyFramework.tsx`, competency components
 
-Substituir todas as strings hardcoded por chamadas `t('namespace.key')` em **todos** os 148 arquivos. Organizado por área:
+**Batch 6 — Misc:**
+- `MentorChat.tsx`, `MeetingRecorder.tsx`, `VoiceInput.tsx`, `GoalsManager.tsx`
+- `Landing.tsx`, legal pages
+- `date-fns` locale dinâmico (trocar `ptBR` hardcoded por locale baseado em `i18n.language`)
 
-| Área | Arquivos estimados | Exemplos |
-|------|-------------------|----------|
-| **Sidebar + Nav** | ~5 | AppSidebar, NavLink |
-| **Auth** | ~3 | Auth, ResetPassword, AuthPage |
-| **Dashboard (Líder)** | ~15 | Index, SetupChecklist, ActivityPreview, NudgesBanner, GoalsManager |
-| **Dashboard (Liderado)** | ~8 | DirectReportDashboard, CareerCompassCard, SkillsMapCard |
-| **Members + Teams** | ~12 | TeamMemberCard, NewMemberDialog, EditMemberDialog, MemberDetails |
-| **Feedback + Notes** | ~10 | FeedbackTimeline, NewNoteDialog, BiasDetectionPanel |
-| **Reviews** | ~8 | PerformanceReviewList, NewReviewDialog, ReviewViewDialog, FormalReviewSheet |
-| **HR** | ~8 | HRDashboard, HRMembers, HRTeams, HRAnalytics, EngagementHeatmap |
-| **Competências** | ~7 | CompetencyFramework, CompetencyCard, CreateJobRoleDialog |
-| **Billing** | ~3 | Billing, UpgradeBanner |
-| **Settings + Profile** | ~5 | ProfileSettingsDialog, ThemeSelector, WorkspaceOnboarding |
-| **Admin** | ~8 | AdminOverview, AdminUsers, AdminStructure, AdminSupport |
-| **Onboarding + Sync** | ~5 | OnboardingModal, RhitmoSync, LeaderSyncWizard |
-| **Landing + Legal** | ~5 | Landing, PrivacyPolicy, TermsOfService |
-| **Misc** | ~10+ | MentorChat, MeetingRecorder, VoiceInput, etc. |
-
-**Também:** `date-fns` locale — trocar `ptBR` hardcoded por locale dinâmico baseado no idioma ativo.
+Também atualizarei os JSONs de tradução (`en.json`, `es.json`, `pt-BR.json`) conforme novas keys forem necessárias.
 
 ---
 
-### Fase 5 — E-mails (Futuro/Opcional)
+### Resumo
 
-Os templates de email em `supabase/functions/_shared/` também estão em PT-BR. Internacionalizá-los requer passar o locale do destinatário para a Edge Function. Isso pode ser feito numa fase posterior.
-
----
-
-### Resumo de Mudanças
-
-| Tipo | Quantidade |
+| Ação | Estimativa |
 |------|-----------|
-| Dependências novas | 3 (react-i18next, i18next, i18next-browser-languagedetector) |
-| Arquivos novos | ~6 (config i18n + 3 JSONs de locale + hook + componente seletor) |
-| Arquivos modificados | ~100+ (substituição de strings) |
-| Migração SQL | 1 (coluna `default_locale` em workspaces) |
-| Componentes UI novos | Seletor de idioma no perfil + opção admin por workspace |
+| Fix dependências (crash) | 1 arquivo |
+| Migração SQL | 1 migration |
+| Seletor no perfil | 1 arquivo |
+| Admin locale | 1 arquivo |
+| Migração de strings | ~50-60 arquivos + 3 JSONs |
 
----
-
-### Riscos e Considerações
-
-- **Volume:** Este é um projeto de alto volume. Vou fazer em batches (infraestrutura primeiro, depois área por área).
-- **Strings dinâmicas:** Algumas strings vêm do banco (ex: nomes de competências, títulos de reviews). Essas não serão traduzidas — apenas a UI estática.
-- **Emails:** Ficam em PT-BR por agora, a menos que queira incluir nessa fase.
-
-### Ordem de Execução
-
-1. Instalar dependências + criar infraestrutura i18n
-2. Criar os 3 arquivos JSON de tradução completos
-3. Migração SQL + hook useLocale
-4. Seletor de idioma no perfil + admin
-5. Migrar strings arquivo por arquivo (batches de ~15-20 arquivos)
+Vou executar em ordem: fix crash → SQL → UI → strings batch a batch.
 
