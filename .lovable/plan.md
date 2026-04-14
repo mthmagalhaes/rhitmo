@@ -1,63 +1,54 @@
 
-Diagnóstico objetivo:
 
-- Não parece ser bug do Recall. A reunião some antes do Recall entrar no fluxo. Hoje a cadeia é: Google Calendar → `fetch-calendar-events` → match com liderados → grava `upcoming_meetings` → só depois agendamento/transcrição.
-- Há um forte indício de bug na sincronização: a conexão do Google do líder está ativa e foi atualizada hoje, a Giovanna existe no workspace com `giovanna@fstr.co`, mas `upcoming_meetings` está vazia.
-- Pelo código atual, os pontos mais prováveis são:
-  1. a sync lê apenas `calendar/primary/events`;
-  2. limita em `maxResults=20`;
-  3. faz match exato por e-mail do attendee;
-  4. quase não tem observabilidade para sabermos por que um evento foi descartado;
-  5. o parser do link de reunião está incompleto;
-  6. o OAuth do Calendar está usando um app Google não-branded/não verificado.
+## Plano: Melhorar a jornada pós-convite do liderado
 
-Plano recomendado:
+### O problema do Guilherme
+O convite é "single-use by design": após aceitar, o `invite_token` é apagado. Quando o Guilherme clica no mesmo link novamente, recebe "Convite Inválido" — uma tela fria, sem orientação. Ele não sabe que pode acessar diretamente via `rhitmo.co/auth`.
 
-1. Corrigir a ingestão das reuniões
-- Em `fetch-calendar-events`, paginar resultados em vez de limitar a 20.
-- Buscar também calendários relevantes além do `primary` (ou pelo menos tornar isso configurável).
-- Adicionar logs estruturados por evento: veio do Google, tinha attendee, qual e-mail tentou casar, motivo do descarte.
-- Persistir um campo de diagnóstico leve para debug (`match_reason` / `last_sync_status`) ou pelo menos logs claros.
+### Solução: 3 melhorias complementares
 
-2. Tornar o matching resiliente
-- Normalizar e comparar organizer, attendees e aliases.
-- Suportar e-mails alternativos dos liderados quando o convite vier por alias.
-- Tratar casos em que o nome bate, mas o e-mail do evento não é exatamente o cadastrado.
+#### 1. Tela de "Convite já aceito" em vez de erro genérico
+Quando o token não é encontrado, verificar se existe um `team_member` com `invite_status = 'accepted'` para aquele token/member. Se sim, mostrar uma tela amigável:
 
-3. Melhorar extração de link e UX
-- Ler Meet link de `hangoutLink`, `conferenceData.entryPoints`, e fallback em `location`/descrição.
-- Se houver eventos encontrados mas sem match, mostrar estado explicativo no card em vez de “Nenhuma reunião”.
+> "Olá! Você já aceitou este convite. Para acessar suas devolutivas, faça login abaixo."
+> [Botão: Acessar com Google] [Botão: Acessar com email]
 
-4. Endurecer a integração com Recall
-- Ajustar `join_at` para 10–15 minutos antes da reunião. A doc da Recall recomenda bots agendados com pelo menos 10 minutos de antecedência para garantir entrada.
-- Considerar bots autenticados no Google Meet. A doc da Recall diz que, por padrão, bots no Meet precisam ser admitidos manualmente; autenticação melhora a entrada automática, embora isso não explique o sumiço da reunião no dashboard.
+Em vez do "Convite Inválido" atual.
 
-5. Resolver o problema “app não verificado” e o nome estranho no Google
-- O problema não está no frontend; está na configuração do OAuth do Google usada pelo conector de calendário.
-- Criar/usar um cliente OAuth próprio e branded do Rhitmo.
-- Configurar no Google Cloud:
-  - App name: Rhitmo
-  - logo, support email, homepage `https://rhitmo.co`
-  - Privacy Policy e Terms válidos
-  - domínio autorizado/verificado
-  - escopo de Calendar declarado corretamente
-  - test users enquanto a verificação não sai
-- Depois atualizar as credenciais/secrets usadas por `google-calendar-oauth`.
-- Resultado esperado: some o nome interno “lybk…”, entram Rhitmo/políticas/termos, e o warning cai drasticamente; para remover totalmente o intersticial para todos, precisa concluir a verificação do app no Google.
+**Implementação:** Alterar a RPC `get_invite_details` (ou criar uma nova) para retornar um campo `already_accepted: true` quando o membro existe mas o token já foi consumido. No frontend, tratar esse caso com uma UI dedicada.
 
-Arquivos principais a ajustar:
-- `supabase/functions/fetch-calendar-events/index.ts`
-- `supabase/functions/google-calendar-oauth/index.ts`
-- `src/components/dashboard/UpcomingMeetingsCard.tsx`
+#### 2. E-mail/toast pós-aceite com instruções de acesso futuro
+Após aceitar o convite com sucesso, mostrar um **toast persistente** ou uma **tela de sucesso intermediária** (em vez de redirecionar imediatamente) com a mensagem:
 
-Decisão de produto/CTO:
-- Eu não pediria para os usuários “reconectarem” como solução principal.
-- Primeiro corrigimos sync + matching + branding.
-- A reconexão só deve ser usada depois, para migrar usuários para o OAuth branded novo.
+> "Pronto! Da próxima vez, acesse diretamente em **rhitmo.co/auth** usando sua conta Google."
 
-Validação após implementação:
-- testar com a reunião da Giovanna hoje;
-- validar se ela aparece no card;
-- validar se o toggle de transcrição aparece;
-- validar se o fluxo Google mostra “Rhitmo” e não o identificador interno;
-- testar ponta a ponta um agendamento real no Meet.
+Isso educa o usuário no momento certo.
+
+#### 3. Redirect inteligente na página de erro
+Se o usuário já está logado e clica num convite já aceito, em vez de mostrar erro, detectar que o `linked_user_id` bate com o `user.id` atual e redirecionar direto para o dashboard.
+
+---
+
+### Arquivos a modificar
+
+| Arquivo | Mudança |
+|---------|---------|
+| Migração SQL | Criar RPC `get_invite_status` ou ajustar `get_invite_details` para retornar status `already_accepted` |
+| `src/pages/Invite.tsx` | Nova UI para estado "já aceito" com botões de login + redirect inteligente para usuários já logados |
+
+### Detalhes técnicos
+
+**Nova RPC ou ajuste na existente:**
+```sql
+-- Retornar status mesmo quando token já foi consumido
+-- Buscar por member_id OU pelo histórico do token
+-- Retornar campo 'status': 'pending' | 'accepted' | 'not_found'
+```
+
+**Invite.tsx — 3 estados em vez de 2:**
+1. `pending` → UI atual (botão "Aceitar e Acessar")
+2. `already_accepted` → Nova UI amigável com botões de login
+3. `not_found` → Erro genérico (token realmente inválido)
+
+**Pós-aceite:** Antes do `navigate('/dashboard')`, exibir tela de sucesso por 5 segundos com instrução de acesso futuro, ou usar toast persistente.
+
