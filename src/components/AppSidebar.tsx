@@ -38,31 +38,10 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 
-const menuItems = [
-  { title: 'Início', url: '/dashboard', icon: Home },
-  { title: 'Analytics', url: '/analytics', icon: BarChart3 },
-  { title: 'Central de Conhecimento', url: '/help', icon: BookOpen },
-  { title: 'Assinatura', url: '/billing', icon: CreditCard },
-];
-
-const leaderOnlyItems = ['Analytics', 'Assinatura', 'Central de Conhecimento'];
-
-const memberMenuItems = [
-  { title: 'Início', url: '/dashboard', icon: Home },
-  { title: 'Minha Carreira', url: '/dashboard/carreira', icon: Compass },
-  { title: 'Feedbacks', url: '/dashboard/feedbacks', icon: FileText },
-  { title: 'Meu Perfil', url: '/dashboard/perfil', icon: User },
-];
-
-const hrMenuItems = [
-  { title: 'Visão Geral', url: '/hr', icon: LayoutDashboard },
-  { title: 'Times e Líderes', url: '/hr/teams', icon: Users },
-  { title: 'Liderados', url: '/hr/members', icon: UserCheck },
-  { title: 'Analytics', url: '/hr/analytics', icon: BarChart3 },
-  { title: 'Competências', url: '/hr/competency-framework', icon: Award },
-];
+// Menu items are now defined inside the component to use t()
 
 export function AppSidebar() {
+  const { t } = useTranslation();
   const { open } = useSidebar();
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdmin();
