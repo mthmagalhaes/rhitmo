@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -12,6 +12,13 @@ interface UpcomingMeeting {
   member_id: string;
   member_name: string;
   member_role: string;
+}
+
+interface RecallBot {
+  id: string;
+  meeting_id: string | null;
+  status: string;
+  scheduled_at: string | null;
 }
 
 export const useCalendarIntegration = () => {
@@ -78,6 +85,44 @@ export const useCalendarIntegration = () => {
     toast({ title: 'Google Calendar desconectado' });
   };
 
+  // Fetch recall bot statuses for upcoming meetings
+  const { data: recallBots = [] } = useQuery({
+    queryKey: ['recall-bots', user?.id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as unknown as { from: (table: string) => { select: (cols: string) => { eq: (col: string, val: string) => { not: (col: string, op: string, val: string) => Promise<{ data: RecallBot[] | null; error: unknown }> } } } } })
+        .from('recall_bots')
+        .select('id, meeting_id, status, scheduled_at')
+        .eq('user_id', user!.id)
+        .not('status', 'eq', 'error');
+      if (error) return [];
+      return (data || []) as RecallBot[];
+    },
+    enabled: !!user && isConnected,
+    staleTime: 30 * 1000,
+  });
+
+  const scheduleBot = useMutation({
+    mutationFn: async (params: { meeting_id: string; meeting_url: string; member_id: string; start_time: string }) => {
+      const { data, error } = await supabase.functions.invoke('schedule-recall-bot', {
+        body: params,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recall-bots'] });
+      toast({ title: 'Bot agendado', description: 'O Rhitmo entrará na reunião automaticamente para transcrever.' });
+    },
+    onError: (error: Error & { message?: string }) => {
+      const msg = error.message?.includes('409') ? 'Bot já agendado para esta reunião.' : 'Erro ao agendar bot de transcrição.';
+      toast({ title: 'Erro', description: msg, variant: 'destructive' });
+    },
+  });
+
+  const getBotStatus = (meetingId: string): RecallBot | undefined => {
+    return recallBots.find(b => b.meeting_id === meetingId);
+  };
+
   return {
     isConnected,
     checkingConnection,
@@ -87,5 +132,8 @@ export const useCalendarIntegration = () => {
     refetchMeetings,
     connectCalendar,
     disconnectCalendar,
+    scheduleBot,
+    getBotStatus,
+    recallBots,
   };
 };
