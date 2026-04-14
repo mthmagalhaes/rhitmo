@@ -1,102 +1,53 @@
 
-## Plano: Atualização do Roadmap + Revisão de 3 Áreas
 
-### 1. Atualizar o Roadmap (`src/pages/Roadmap.tsx`)
+## Plano: Corrigir /brief, /mentor, /meu-rhitmo e Adicionar Tag Slack
 
-Mudanças de status com base na auditoria técnica:
+### Diagnóstico
 
-| Item | Status Atual | Novo Status |
-|------|-------------|-------------|
-| Pre-meeting briefs | `wip` | `done` |
-| Nudges automáticos | `planned` | `done` |
-| HR Dashboard avançado | `planned` → Q4 | `done` → mover para Q2 |
-| Tags manuais de classificação | — | Adicionar em Q2 como `done` |
+**`/mentor` — Erro 400**: O slack-bot envia `{ message, userId }` mas a Edge Function `chat-mentor` exige `{ question, feedbacks, memberName }`. Payload incompatível.
 
----
+**`/brief` — Erro**: O comando `/brief` em si funciona (não chama IA), mas o erro ocorreu porque o membro mencionado (`@matheus.magalhaes`) não foi encontrado como `team_member` no workspace. Logs confirmam: `user_not_found`. Isso é esperado se o usuário Slack não está cadastrado como membro de time. O handler de `/brief` já é robusto — o problema é de dados, não de código. Porém, a mensagem de erro exibida nas screenshots diz "Erro ao consultar o mentor", o que indica que pode haver um bug no roteamento que está chamando o handler errado, ou a mensagem genérica está confundindo. Vou investigar e garantir mensagens de erro distintas.
 
-### 2. HR Dashboard Avançado — Status Atual (AS IS)
+**`/meu-rhitmo`**: Provavelmente funciona (é direto no DB, sem IA), mas precisa de teste. O único risco é se o liderado não estiver vinculado.
 
-Já implementado em `HRAnalytics.tsx` com 4 abas:
-- **Visão Geral**: KPIs (liderados, líderes ativos, feedbacks 30d, cobertura PDI), feedbacks por líder, distribuição de sentimento
-- **Tendências**: Volume semanal (12 semanas), tags mais frequentes
-- **Riscos**: `RiskTable` com membros em risco (dias sem feedback, sem PDI)
-- **Engajamento**: `EngagementHeatmap` por líder
-
-**O que está faltando/pode melhorar:**
-- Filtro por departamento/time (hoje só filtra por líder)
-- Export de dados (CSV/PDF dos relatórios)
-- Comparativo entre períodos (mês anterior vs. atual)
-- Score de saúde organizacional consolidado
-
-Nesta sprint, implementarei:
-- Filtro por time no dashboard HR
-- KPI de "score de saúde" agregado
+**Tag Slack no Diário de Bordo**: O campo `source: 'slack'` já é salvo na tabela `feedbacks` pelo handler `/nota`. Falta apenas exibir um ícone/badge no `FeedbackTimeline.tsx`.
 
 ---
 
-### 3. Painel Admin (`matheus@rhitmo.co`) — Revisão de Funcionalidades
+### Alterações
 
-O painel `/admin` hoje tem 6 abas:
-- **Visão Geral**: Stats globais (workspaces, membros, feedbacks, reviews), tabela de workspaces com toggle ativo/inativo, troca de plano, envio de convite
-- **Suporte & Edição**: (AdminSupport)
-- **Data Export**: (AdminExport)
-- **Usuários**: (AdminUsers)
-- **Acessos**: (AdminAccess)
-- **Estrutura**: (AdminStructure) — gestão de workspaces/times/membros
+#### 1. Corrigir `/mentor` no slack-bot (Crítico)
 
-**Funcionalidades existentes que funcionam:**
-- CRUD de workspaces, toggle ativo, troca de plano
-- Convite de usuários com seleção de plano
-- Gestão de estrutura hierárquica
-- Impersonation
+**Arquivo**: `supabase/functions/slack-bot/index.ts`
 
-**O que pode ser adicionado:**
-- Dashboard de métricas de uso (logins, feedbacks/dia, retenção)
-- Logs de atividade por workspace
-- Gerenciamento de billing centralizado
+O handler `handleMentorCommand` precisa:
+- Buscar feedbacks recentes do DB para o líder (como o frontend `MentorChat.tsx` faz)
+- Buscar dados do membro se mencionado
+- Enviar o payload correto: `{ question, feedbacks, memberName, memberRole, managerName, workStyleData, contextMode: 'auto' }`
+- Adicionar tratamento de erro robusto com mensagens claras
 
-Nesta sprint, vou revisar e validar as funcionalidades existentes. Novas funcionalidades serão propostas após validação.
+#### 2. Adicionar badge "Slack" no Diário de Bordo
 
----
+**Arquivo**: `src/components/FeedbackTimeline.tsx`
 
-### 4. Slack Bot — Revisão de Funcionalidades
+- Detectar `feedback.source === 'slack'`
+- Exibir um badge com ícone do Slack (usando `SlackIcon` já existente em `src/components/icons/SlackIcon.tsx`) ao lado da data, similar ao badge "Transcrição"
 
-**Comandos implementados hoje:**
-| Comando | Persona | Status |
-|---------|---------|--------|
-| `/rhitmo` | Todos | ✅ Menu contextual por persona |
-| `/nota` | Líder | ✅ Registra feedback |
-| `/kudos` | Todos | ✅ Reconhecimento público |
-| `/brief` | Líder | ✅ Resumo de membro |
-| `/meu-pdi` | Liderado | ✅ PDI no Slack |
-| Modais (nota/kudos) | Líder | ✅ Via botões interativos |
+#### 3. Melhorar mensagens de erro do `/brief`
 
-**O que NÃO existe ainda no Slack:**
-- ❌ **Mentor Chat via Slack** — Hoje o `chat-mentor` é uma Edge Function chamada pelo frontend (`MentorChat.tsx`). Não há integração com o Slack bot. O líder não consegue conversar com o mentor pelo Slack.
-- ❌ **Meu Rhitmo via Slack** — A Edge Function `meu-rhitmo` existe (analisa transcrições), mas não está conectada ao Slack. O liderado não consegue acessar "Meu Rhitmo" pelo Slack.
+**Arquivo**: `supabase/functions/slack-bot/index.ts`
 
-**Implementação proposta nesta sprint:**
+- Garantir que a mensagem de erro do `/brief` diz "Membro não encontrado" e não "Erro ao consultar o mentor"
 
-**4a. `/mentor` no Slack (para líderes)**
-- Novo comando `/mentor <pergunta>` que envia a pergunta para a Edge Function `chat-mentor`
-- Resposta formatada em blocks do Slack
-- Suporta contexto do membro se mencionado: `/mentor @João como preparar a 1:1?`
+#### 4. Re-deploy da Edge Function
 
-**4b. `/meu-rhitmo` no Slack (para liderados)**
-- Novo comando que retorna um resumo do perfil do liderado (Career Compass, feedbacks recentes, próximas ações)
-- Consulta dados já existentes no banco sem precisar chamar a Edge Function completa
+Deploy automático após as alterações.
 
 ---
-
-### Arquivos a modificar
-
-| Arquivo | Ação |
-|---------|------|
-| `src/pages/Roadmap.tsx` | Atualizar status de 4 itens, adicionar tags manuais |
-| `src/pages/HRAnalytics.tsx` | Adicionar filtro por time e KPI de saúde |
-| `supabase/functions/slack-bot/index.ts` | Adicionar `/mentor` e `/meu-rhitmo` |
 
 ### Ordem de execução
-1. Roadmap (rápido, ~2 min)
-2. Slack `/mentor` + `/meu-rhitmo` (funcionalidade nova)
-3. HR Dashboard filtro por time
+1. Fix `/mentor` handler (payload correto para `chat-mentor`)
+2. Adicionar badge Slack no `FeedbackTimeline`
+3. Revisar mensagens de erro do `/brief`
+4. Deploy e validação
+
