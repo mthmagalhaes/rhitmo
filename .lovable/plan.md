@@ -1,116 +1,55 @@
 
 
-## Plano: Integração Recall.ai para Transcrição Automática de Reuniões
+## Plano: Speaker Diarization + Auto-agendamento + Meeting Captions
 
-### Diagnóstico: Por que o sistema atual não funciona
+### 1. Speaker Diarization nativa (Recall.ai)
 
-O pipeline atual depende de captura de áudio do lado do cliente (extensão Chrome com `tabCapture` ou popup com `getDisplayMedia`), o que falha por múltiplas razões:
-- Requer ação manual do líder (selecionar aba, marcar "compartilhar áudio")
-- Limitação de 25MB do Whisper (reuniões longas falham)
-- Extensão Chrome é frágil (permissões, atualizações do Meet)
-- Popup fecha se o líder navegar incorretamente
+**Problema atual:** O webhook formata a transcrição com labels genéricos (`speaker`/`Participante`).
 
-### Solução: Recall.ai como Meeting Bot
+**Solução:** Após `bot.done`, além do transcript, buscar o endpoint `GET /api/v1/bot/{id}/speaker_timeline/` para obter os nomes reais dos participantes. O Recall.ai já faz diarização perfeita usando streams separados — os `speaker.name` vêm do nome do participante no Google Meet/Teams/Zoom.
 
-O Recall.ai envia um **bot** que entra na reunião do Google Meet automaticamente, grava, transcreve e entrega o resultado via webhook. Nenhuma ação do líder é necessária além de conectar o Calendar.
+**Mudanças:**
 
-**Pricing:** $0.50/hora de reunião gravada (inclui transcrição built-in).
+- **`recall-webhook/index.ts`**: Após buscar o transcript, fazer um segundo fetch para `/speaker_timeline/`. Usar o `speaker_id` do transcript para mapear ao `name` do speaker_timeline. O formato final fica: `**João Silva:** texto da fala`. Salvar o `speaker_timeline` completo no campo `transcript_data` (JSONB) para uso futuro.
 
-### Arquitetura
+### 2. Auto-agendamento de bot para todas as 1:1s
 
-```text
-Google Calendar (já integrado)
-     │
-     ▼
-[fetch-calendar-events] ──► upcoming_meetings (já existe)
-     │
-     ▼
-[schedule-recall-bot] ──► Recall.ai API: POST /api/v1/bot/
-     │                      com join_at = start_time - 1min
-     │                      meeting_url = meet_link
-     ▼
-     Bot entra na reunião automaticamente
-     │
-     ▼
-[recall-webhook] ◄──── Recall.ai envia webhook (bot.done / transcript.done)
-     │
-     ▼
-     Salva transcrição em meeting_transcripts
-     Cria feedback automático (mesmo fluxo do upload-meeting)
-     Dispara analyze-feedback-background
-```
+**Problema atual:** O líder precisa clicar "Transcrever" manualmente para cada reunião.
 
-### Fase 1: Piloto Interno (escopo aprovado)
+**Solução:** Adicionar uma coluna `auto_transcribe` (boolean, default false) na tabela `google_calendar_tokens`. Quando ativada, o `fetch-calendar-events` automaticamente chama `schedule-recall-bot` para cada reunião que tenha `meet_link` e ainda não tenha bot agendado.
 
-#### 1. Secret: RECALL_API_KEY
-- Solicitar ao usuário a API key do Recall.ai via ferramenta `add_secret`
-- Região sugerida: `us-east-1`
+**Mudanças:**
 
-#### 2. Tabela: `recall_bots` (nova)
-Rastreia bots enviados e seu status:
-```sql
-CREATE TABLE public.recall_bots (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  meeting_id UUID REFERENCES public.upcoming_meetings(id) ON DELETE SET NULL,
-  member_id UUID REFERENCES public.team_members(id) ON DELETE SET NULL,
-  recall_bot_id TEXT NOT NULL,          -- ID retornado pela API do Recall
-  meeting_url TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'scheduled', -- scheduled, joining, recording, done, error
-  transcript TEXT,
-  transcript_data JSONB,                -- transcript com speaker labels
-  meeting_transcript_id UUID REFERENCES public.meeting_transcripts(id),
-  error_message TEXT,
-  scheduled_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-```
+- **Migração SQL**: `ALTER TABLE google_calendar_tokens ADD COLUMN auto_transcribe BOOLEAN DEFAULT false;`
+- **`fetch-calendar-events/index.ts`**: Após fazer upsert das reuniões, verificar se `auto_transcribe = true`. Se sim, para cada reunião com `meet_link` que não tenha bot agendado em `recall_bots`, criar automaticamente o bot via Recall.ai API (mesma lógica do `schedule-recall-bot`, mas server-to-server sem JWT do usuário).
+- **`useCalendarIntegration.ts`**: Adicionar mutation `toggleAutoTranscribe` que faz update na tabela `google_calendar_tokens`.
+- **`UpcomingMeetingsCard.tsx`**: Adicionar toggle "Transcrição automática" no header do card (ao lado de "Desconectar"). Quando ativo, os botões individuais "Transcrever" são substituídos por badges "Auto ✓". Manter botão manual como fallback para reuniões sem meet_link.
 
-#### 3. Edge Function: `schedule-recall-bot`
-- Chamada pelo frontend quando o líder ativa "Transcrição Automática" para uma reunião específica (ou chamada automaticamente pelo `fetch-calendar-events`)
-- Envia `POST` para `https://us-east-1.recall.ai/api/v1/bot/` com:
-  - `meeting_url`: link do Google Meet
-  - `join_at`: horário agendado (start_time - 1 min)
-  - `transcription_options.provider`: `"recallai"`
-  - `bot_name`: `"Rhitmo"`
-- Salva o `recall_bot_id` na tabela `recall_bots`
+### 3. Meeting Captions como provider de transcrição
 
-#### 4. Edge Function: `recall-webhook`
-- Endpoint público (sem JWT) que recebe webhooks do Recall.ai
-- Eventos relevantes: `bot.status_change`, `bot.transcription_complete`
-- Quando transcrição completa:
-  1. Busca transcrição via `GET /api/v1/bot/{id}/transcript/`
-  2. Salva em `meeting_transcripts` (mesmo schema atual)
-  3. Cria feedback automático no diário de bordo
-  4. Dispara `analyze-feedback-background` (não-bloqueante)
-  5. Atualiza `recall_bots.status = 'done'`
+**Problema atual:** Usamos `provider: "default"` no bot, que pode ter custo adicional de $0.15/hora.
 
-#### 5. UI: Botão "Transcrever" no UpcomingMeetingsCard
-- No card de cada reunião futura com `meet_link`, adicionar botão "Transcrever automaticamente"
-- Ao clicar, chama `schedule-recall-bot`
-- Badge de status: "Bot agendado" → "Gravando" → "Transcrito ✓"
-- Mantém o fluxo existente de gravação manual como fallback
+**Solução:** Trocar para `provider: "meeting_captions"` como padrão. Meeting Captions é **gratuito** (sem custo adicional), usa as legendas nativas do Google Meet/Teams/Zoom. Tem diarização precisa pois usa streams separados. A desvantagem (sem timestamps por palavra) não nos afeta, pois queremos apenas o texto.
 
-#### 6. Ajuste no `fetch-calendar-events`
-- Para o piloto: **não** agendar bots automaticamente
-- Apenas marcar reuniões que têm `meet_link` como "elegíveis para transcrição"
+**Mudanças:**
 
-### O que NÃO muda
-- Pipeline atual de gravação manual (extensão Chrome + popup) continua funcionando como fallback
-- Tabela `meeting_transcripts` e fluxo de análise AI permanecem iguais
-- Google Calendar OAuth já está implementado e funcional
+- **`schedule-recall-bot/index.ts`**: Alterar `transcription_options.provider` de `"default"` para `"meeting_captions"`. Adicionar fallback: se o body incluir `provider`, usar esse; senão, `"meeting_captions"`.
+- **`fetch-calendar-events/index.ts`** (auto-schedule): Usar `"meeting_captions"` como provider padrão.
 
-### Arquivos criados/modificados
+### Arquivos modificados
 
 | Arquivo | Mudança |
 |---------|---------|
-| Migração SQL | Criar tabela `recall_bots` com RLS |
-| `supabase/functions/schedule-recall-bot/index.ts` | **Novo** — Agendar bot no Recall.ai |
-| `supabase/functions/recall-webhook/index.ts` | **Novo** — Receber webhooks e processar transcrição |
-| `src/components/dashboard/UpcomingMeetingsCard.tsx` | Botão "Transcrever" por reunião |
-| `src/hooks/useCalendarIntegration.ts` | Adicionar mutation para agendar bot |
+| Migração SQL | Adicionar `auto_transcribe` em `google_calendar_tokens` |
+| `supabase/functions/recall-webhook/index.ts` | Buscar speaker_timeline para nomes reais dos participantes |
+| `supabase/functions/schedule-recall-bot/index.ts` | Trocar provider para `meeting_captions` |
+| `supabase/functions/fetch-calendar-events/index.ts` | Auto-agendar bots quando `auto_transcribe = true` |
+| `src/hooks/useCalendarIntegration.ts` | Adicionar `toggleAutoTranscribe` + expor `autoTranscribe` state |
+| `src/components/dashboard/UpcomingMeetingsCard.tsx` | Toggle de auto-transcrição no header + badges "Auto ✓" |
 
-### Pré-requisito
-Você precisará criar uma conta no [Recall.ai](https://recall.ai), obter a API key, e configurar o webhook URL apontando para `https://lybkgujyezzzvbzypxed.supabase.co/functions/v1/recall-webhook`.
+### Custo estimado por reunião
+
+- Bot joining: $0.50/hora (fixo Recall.ai)
+- Transcrição (meeting_captions): **$0.00** (gratuito)
+- Total: **~$0.50/hora** por reunião
 
