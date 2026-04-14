@@ -115,9 +115,11 @@ const App = () => (
 
             {/* Design System (matheus@rhitmo.co only) */}
             <Route path="/design-system" element={
-              <DirectReportGuard>
-                <AppLayout><DesignSystem /></AppLayout>
-              </DirectReportGuard>
+              <AdminGuard>
+                <AdminLayout>
+                  <DesignSystem />
+                </AdminLayout>
+              </AdminGuard>
             } />
 
 
