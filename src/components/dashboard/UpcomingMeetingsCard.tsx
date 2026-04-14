@@ -10,10 +10,15 @@ import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 
 const getTimeBadge = (startTime: string) => {
-  const date = new Date(startTime);
-  if (isToday(date)) return { label: `Hoje ${format(date, 'HH:mm')}`, className: 'bg-primary/10 text-primary border-primary/20' };
-  if (isTomorrow(date)) return { label: `Amanhã ${format(date, 'HH:mm')}`, className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800' };
-  return { label: format(date, "dd/MM HH:mm", { locale: ptBR }), className: 'bg-muted text-muted-foreground border-border' };
+  try {
+    const date = new Date(startTime);
+    if (isNaN(date.getTime())) return { label: '--:--', className: 'bg-muted text-muted-foreground border-border' };
+    if (isToday(date)) return { label: `Hoje ${format(date, 'HH:mm')}`, className: 'bg-primary/10 text-primary border-primary/20' };
+    if (isTomorrow(date)) return { label: `Amanhã ${format(date, 'HH:mm')}`, className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800' };
+    return { label: format(date, "dd/MM HH:mm", { locale: ptBR }), className: 'bg-muted text-muted-foreground border-border' };
+  } catch {
+    return { label: '--:--', className: 'bg-muted text-muted-foreground border-border' };
+  }
 };
 
 const VISIBLE_COUNT = 3;
@@ -94,7 +99,7 @@ export const UpcomingMeetingsCard = () => {
 
   // Error state
   if (isSyncError) {
-    const errorMsg = (syncError as Error)?.message || '';
+    const errorMsg = String((syncError as any)?.message || '');
     const isAuthError = errorMsg.includes('401') || errorMsg.includes('reconnect') || errorMsg.includes('expired');
     return (
       <div className="rounded-3xl bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-6 min-h-[200px] flex flex-col">

@@ -46,7 +46,19 @@ export const useCalendarIntegration = () => {
     queryKey: ['calendar-upcoming-meetings', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('fetch-calendar-events');
-      if (error) throw error;
+      if (error) {
+        // Extract readable message from FunctionsHttpError
+        let msg = 'Falha ao sincronizar calendário';
+        try {
+          if (typeof (error as any).context?.json === 'function') {
+            const body = await (error as any).context.json();
+            msg = body?.error || body?.message || msg;
+          } else if (error.message) {
+            msg = error.message;
+          }
+        } catch {}
+        throw new Error(msg);
+      }
       return {
         meetings: (data?.meetings || []) as UpcomingMeeting[],
         debug: data?.debug as { events_found: number; matched: number; no_attendees: number; no_match: number; team_members_loaded: number } | undefined,
@@ -88,7 +100,7 @@ export const useCalendarIntegration = () => {
       return;
     }
     queryClient.invalidateQueries({ queryKey: ['calendar-connected'] });
-    queryClient.invalidateQueries({ queryKey: ['upcoming-meetings'] });
+    queryClient.invalidateQueries({ queryKey: ['calendar-upcoming-meetings'] });
     toast({ title: 'Google Calendar desconectado' });
   };
 
@@ -106,8 +118,7 @@ export const useCalendarIntegration = () => {
     onSuccess: (enabled) => {
       queryClient.invalidateQueries({ queryKey: ['calendar-connected'] });
       if (enabled) {
-        // Refetch meetings to trigger auto-scheduling
-        queryClient.invalidateQueries({ queryKey: ['upcoming-meetings'] });
+        queryClient.invalidateQueries({ queryKey: ['calendar-upcoming-meetings'] });
       }
       toast({
         title: enabled ? 'Transcrição automática ativada' : 'Transcrição automática desativada',

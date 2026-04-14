@@ -523,7 +523,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
 
         {/* ═══ PRÓXIMAS 1:1s ═══ */}
         <section className="mb-12">
-          <UpcomingMeetingsCard />
+          <CalendarCardBoundary />
         </section>
 
 
