@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
     // Schedule bot via Recall.ai API
     const joinAt = new Date(new Date(start_time).getTime() - 60 * 1000).toISOString();
 
-    const recallResponse = await fetch("https://us-east-1.recall.ai/api/v1/bot/", {
+    const recallResponse = await fetch("https://us-west-2.recall.ai/api/v1/bot/", {
       method: "POST",
       headers: {
         "Authorization": `Token ${RECALL_API_KEY}`,
