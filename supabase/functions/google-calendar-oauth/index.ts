@@ -18,7 +18,6 @@ Deno.serve(async (req) => {
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-  // Determine action from query param or body
   let action = url.searchParams.get("action");
 
   if (!action && req.method === "POST") {
@@ -47,16 +46,15 @@ Deno.serve(async (req) => {
         global: { headers: { Authorization: authHeader } },
       });
 
-      const token = authHeader.replace("Bearer ", "");
-      const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-      if (claimsError || !claimsData?.claims) {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      const userId = claimsData.claims.sub;
+      const userId = user.id;
 
       const params = new URLSearchParams({
         client_id: GOOGLE_CLIENT_ID,
@@ -86,7 +84,6 @@ Deno.serve(async (req) => {
         return new Response("Missing code or state", { status: 400, headers: corsHeaders });
       }
 
-      // Exchange code for tokens
       const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -108,7 +105,6 @@ Deno.serve(async (req) => {
 
       const tokenExpiry = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
 
-      // Fetch calendar email
       let calendarEmail: string | null = null;
       try {
         const calResponse = await fetch(
@@ -123,7 +119,6 @@ Deno.serve(async (req) => {
         console.error("Failed to fetch calendar email:", e);
       }
 
-      // Use service role to write tokens (no user JWT in callback redirect)
       const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
       const { error: upsertError } = await supabaseAdmin
@@ -145,12 +140,12 @@ Deno.serve(async (req) => {
         return new Response("Failed to save tokens", { status: 500, headers: corsHeaders });
       }
 
-      // Redirect to dashboard
+      // Redirect back to the app dashboard
       return new Response(null, {
         status: 302,
         headers: {
           ...corsHeaders,
-          Location: "https://rhitmo.co/dashboard?calendar=connected",
+          Location: "https://app-rhitmo.lovable.app/?calendar=connected",
         },
       });
     }
@@ -171,18 +166,15 @@ Deno.serve(async (req) => {
         global: { headers: { Authorization: authHeader } },
       });
 
-      const token = authHeader.replace("Bearer ", "");
-      const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-      if (claimsError || !claimsData?.claims) {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      const userId = claimsData.claims.sub;
-
-      // Use service role to delete
+      const userId = user.id;
       const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
       await supabaseAdmin.from("google_calendar_tokens").delete().eq("user_id", userId);
