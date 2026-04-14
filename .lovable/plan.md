@@ -1,36 +1,46 @@
 
 
-## Plano: Corrigir endpoint de transcrição (API v2) e recuperar reunião da Giovanna
+## Plano: Garantir cobertura multi-workspace para todos os líderes
 
-### Causa raiz
-O `recall-webhook` usa `/api/v1/bot/{id}/transcript/` — endpoint descontinuado pelo Recall.
-A API agora requer:
-1. `GET https://us-west-2.recall.ai/api/v2/bot/{botId}/` → ler `recordings[0].media_shortcuts.transcript.data.download_url`
-2. Baixar a transcrição via essa URL
+### Status atual — tudo OK para você
 
-### Correções
+- Bot da Giovanna (15:30): `joining` — entrou na sala agora
+- Bot da Giovanna anterior: `done` — transcrição + feedback criados com sucesso (157 segmentos)
+- Bot da Gabriela: `scheduled` para 20:20 UTC (2 min antes da reunião das 17:30 BRT)
+- Webhook funcional e recebendo eventos do Recall
 
-**1. Atualizar `recall-webhook/index.ts` — função `handleBotDone`**
+Seus liderados estão todos no workspace "Faster Ops" que você é owner. O fluxo vai funcionar.
 
-Substituir a lógica de fetch de transcrição:
-- Em vez de `GET /api/v1/bot/{id}/transcript/`, usar `GET /api/v2/bot/{id}/`
-- Extrair `recordings[0].media_shortcuts.transcript.data.download_url`
-- Se o status do transcript for `processing`, retornar sem marcar erro (retry no próximo webhook)
-- Se `done`, baixar o JSON da `download_url` e processar normalmente
-- Remover também o endpoint legado `/api/v1/bot/{id}/speaker_timeline/` — os dados de speaker vêm dentro do transcript download
+### Melhoria necessária para robustez
 
-**2. Criar edge function `reprocess-meeting` para recuperar a reunião da Giovanna**
+O `fetch-calendar-events` hoje busca liderados de **um único workspace**:
+1. Primeiro tenta `workspaces.owner_id = userId` → pega 1 workspace
+2. Se não encontra, tenta `teams.leader_user_id = userId` → pega 1 workspace
 
-A edge function já existe (`supabase/functions/reprocess-meeting/index.ts`). Atualizar para usar a mesma lógica v2.
+Se um líder lidera times em **múltiplos workspaces** (ex: um gestor convidado em outra empresa), os liderados do segundo workspace não seriam encontrados.
 
-**3. Testar chamando o reprocess para o bot `711862ea-606f-4805-b61f-8b893f89c9d6`**
+### Correção
+
+**Arquivo: `supabase/functions/fetch-calendar-events/index.ts`**
+
+Substituir a lógica de busca de membros por uma query que carrega **todos os liderados de todos os times** que o usuário lidera, independente de workspace:
+
+```sql
+SELECT tm.id, tm.name, tm.role, tm.email
+FROM team_members tm
+JOIN teams t ON t.id = tm.team_id
+WHERE t.leader_user_id = :userId
+  AND tm.email IS NOT NULL
+```
+
+Isso elimina a dependência do `workspaceId` e garante cobertura total.
+
+Também preciso ajustar a lógica de `upcoming_meetings` que usa `workspace_id` — mas o upsert usa `user_id`, então não há problema ali.
 
 ### Arquivos a modificar
-- `supabase/functions/recall-webhook/index.ts` — migrar de v1 para v2
-- `supabase/functions/reprocess-meeting/index.ts` — mesma migração
+- `supabase/functions/fetch-calendar-events/index.ts` — buscar membros via `teams.leader_user_id` direto, sem filtro de workspace
 
 ### Resultado esperado
-- Próximas reuniões: transcrição baixada automaticamente via API v2
-- Reunião da Giovanna: recuperada via reprocess
-- Feedback criado no diário de bordo da Giovanna com a transcrição
+- Reunião com Gabriela: bot entra, transcreve, transcrição cai no diário dela
+- Funciona para qualquer líder, mesmo liderando times em múltiplos workspaces
 
