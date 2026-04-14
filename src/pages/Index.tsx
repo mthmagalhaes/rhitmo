@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Component, type ReactNode } from 'react';
 import { RhythmWave } from '@/components/RhythmWave';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -47,7 +47,30 @@ import { format, formatDistanceToNow, isToday, isTomorrow, differenceInDays } fr
 import { useTranslation } from 'react-i18next';
 import { getDateLocale } from '@/lib/dateLocale';
 
-interface TeamMember {
+class CalendarErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="rounded-3xl bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-6 min-h-[200px] flex flex-col items-center justify-center text-center">
+          <p className="text-sm text-muted-foreground mb-2">Erro ao carregar reuniões</p>
+          <button onClick={() => this.setState({ hasError: false })} className="text-xs text-primary hover:text-primary/80 font-medium">
+            Tentar novamente
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const CalendarCardBoundary = () => (
+  <CalendarErrorBoundary>
+    <UpcomingMeetingsCard />
+  </CalendarErrorBoundary>
+);
+
   id: string;
   name: string;
   role: string;
