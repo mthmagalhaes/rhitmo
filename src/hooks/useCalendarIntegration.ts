@@ -42,12 +42,15 @@ export const useCalendarIntegration = () => {
   const isConnected = !!connectionData;
   const autoTranscribe = connectionData?.auto_transcribe ?? false;
 
-  const { data: upcomingMeetings = [], isLoading: loadingMeetings, refetch: refetchMeetings } = useQuery({
+  const { data: calendarData, isLoading: loadingMeetings, refetch: refetchMeetings } = useQuery({
     queryKey: ['upcoming-meetings', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('fetch-calendar-events');
       if (error) throw error;
-      return (data?.meetings || []) as UpcomingMeeting[];
+      return {
+        meetings: (data?.meetings || []) as UpcomingMeeting[],
+        debug: data?.debug as { events_found: number; matched: number; no_attendees: number; no_match: number; team_members_loaded: number } | undefined,
+      };
     },
     enabled: !!user && isConnected,
     staleTime: 5 * 60 * 1000,
