@@ -109,10 +109,11 @@ export function AppSidebar() {
 
   const showMemberMenu = !roleLoading && !isLeader && !isHRAdmin && (isUser || isLinkedMember);
 
-  const userName = (!isLeader && isLinkedMember && linkedMember?.name)
-    || user?.user_metadata?.full_name 
+    const leaderOnlyItems = [t('sidebar.analytics'), t('sidebar.subscription'), t('sidebar.knowledgeCenter')];
+    const userName = (!isLeader && isLinkedMember && linkedMember?.name)
+      || user?.user_metadata?.full_name
     || user?.user_metadata?.name 
-    || 'Usuário';
+    || t('common.user');
 
   return (
     <Sidebar collapsible="icon" className="border-0 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
