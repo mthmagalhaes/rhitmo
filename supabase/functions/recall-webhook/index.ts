@@ -125,8 +125,31 @@ async function handleBotDone(
 
   const transcriptData = await transcriptResponse.json();
 
-  // Build speaker name map
-  const speakerNameMap = buildSpeakerNameMap(speakerResponse);
+  // Parse speaker timeline data
+  let speakerTimelineData: unknown = null;
+  const speakerNameMap: Record<number, string> = {};
+  if (speakerResponse.ok) {
+    try {
+      speakerTimelineData = await speakerResponse.json();
+      if (Array.isArray(speakerTimelineData)) {
+        for (const entry of speakerTimelineData as Array<{ speaker: number; name?: string }>) {
+          if (entry.name && entry.speaker !== undefined) {
+            speakerNameMap[entry.speaker] = entry.name;
+          }
+        }
+      }
+      if ((speakerTimelineData as { speakers?: unknown[] })?.speakers) {
+        for (const s of (speakerTimelineData as { speakers: Array<{ id: number; name?: string }> }).speakers) {
+          if (s.name && s.id !== undefined) {
+            speakerNameMap[s.id] = s.name;
+          }
+        }
+      }
+      console.log(`Speaker timeline: ${Object.keys(speakerNameMap).length} speakers mapped`);
+    } catch (e) {
+      console.warn("Failed to parse speaker timeline:", e);
+    }
+  }
 
   // Format transcript with real speaker names
   const formattedTranscript = formatTranscript(transcriptData, speakerNameMap);
