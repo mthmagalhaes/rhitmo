@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "content-type",
+  "Access-Control-Allow-Headers": "content-type, webhook-id, webhook-timestamp, webhook-signature",
 };
 
 Deno.serve(async (req) => {
@@ -16,10 +16,13 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    console.log("Recall webhook received:", JSON.stringify(body).slice(0, 500));
+    console.log("Recall webhook received:", JSON.stringify(body).slice(0, 800));
 
-    const event = body.event || body.data?.event;
-    const botId = body.data?.bot_id || body.bot_id;
+    // Recall.ai webhook format:
+    // { event: "bot.done", data: { data: { code, sub_code, updated_at }, bot: { id, metadata } } }
+    const event = body.event as string | undefined;
+    const botId = body.data?.bot?.id as string | undefined;
+    const statusCode = body.data?.data?.code as string | undefined;
 
     if (!botId) {
       console.log("No bot_id in webhook payload, ignoring");
@@ -44,47 +47,45 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Handle status changes
-    const statusCode = body.data?.status?.code || body.status?.code;
-    if (statusCode) {
-      const statusMap: Record<string, string> = {
-        ready: "scheduled",
-        joining_call: "joining",
-        in_waiting_room: "joining",
-        in_call_not_recording: "joining",
-        in_call_recording: "recording",
-        call_ended: "processing",
-        done: "processing",
-        fatal: "error",
-        analysis_done: "processing",
-      };
+    // Map Recall event names to our internal statuses
+    const eventStatusMap: Record<string, string> = {
+      "bot.joining_call": "joining",
+      "bot.in_waiting_room": "joining",
+      "bot.in_call_not_recording": "joining",
+      "bot.recording_permission_allowed": "joining",
+      "bot.in_call_recording": "recording",
+      "bot.call_ended": "processing",
+      "bot.done": "processing",
+      "bot.fatal": "error",
+    };
 
-      const newStatus = statusMap[statusCode] || botRecord.status;
-      const errorMessage = statusCode === "fatal"
-        ? (body.data?.status?.message || "Bot encountered a fatal error")
+    if (event && eventStatusMap[event]) {
+      const newStatus = eventStatusMap[event];
+      const isFatal = event === "bot.fatal";
+      const subCode = body.data?.data?.sub_code;
+      const errorMessage = isFatal
+        ? `Fatal error: ${subCode || statusCode || "unknown"}`
         : null;
 
       await supabaseAdmin
         .from("recall_bots")
         .update({
-          status: errorMessage ? "error" : newStatus,
+          status: isFatal ? "error" : newStatus,
           error_message: errorMessage,
         })
         .eq("id", botRecord.id);
 
-      console.log(`Bot ${botId} status updated to: ${newStatus}`);
+      console.log(`Bot ${botId} status: ${event} → ${isFatal ? "error" : newStatus}`);
     }
 
-    // Handle transcript complete
-    if (event === "bot.transcription_complete" || event === "transcript.done" || statusCode === "done") {
-      console.log(`Fetching transcript for bot ${botId}...`);
+    // When bot is done, fetch transcript
+    if (event === "bot.done" && botRecord.status !== "done") {
+      console.log(`Bot ${botId} done — fetching transcript...`);
 
       // Fetch transcript from Recall.ai
       const transcriptResponse = await fetch(
         `https://us-east-1.recall.ai/api/v1/bot/${botId}/transcript/`,
-        {
-          headers: { "Authorization": `Token ${RECALL_API_KEY}` },
-        }
+        { headers: { "Authorization": `Token ${RECALL_API_KEY}` } }
       );
 
       if (!transcriptResponse.ok) {
@@ -101,13 +102,15 @@ Deno.serve(async (req) => {
 
       const transcriptData = await transcriptResponse.json();
 
-      // Format transcript as readable text
+      // Format transcript as readable text with speaker labels
       const formattedTranscript = Array.isArray(transcriptData)
-        ? transcriptData.map((segment: { speaker: string; words: Array<{ text: string }> }) => {
-            const speaker = segment.speaker || "Unknown";
-            const text = segment.words?.map((w: { text: string }) => w.text).join(" ") || "";
-            return `${speaker}: ${text}`;
-          }).join("\n\n")
+        ? transcriptData
+            .map((segment: { speaker: string; words: Array<{ text: string }> }) => {
+              const speaker = segment.speaker || "Participante";
+              const text = segment.words?.map((w: { text: string }) => w.text).join(" ") || "";
+              return `**${speaker}:** ${text}`;
+            })
+            .join("\n\n")
         : JSON.stringify(transcriptData);
 
       // Create meeting_transcript record
@@ -118,7 +121,7 @@ Deno.serve(async (req) => {
           member_id: botRecord.member_id,
           transcript: formattedTranscript,
           processing_status: "completed",
-          leader_notes: `Transcrição automática via Recall.ai`,
+          leader_notes: "Transcrição automática via Recall.ai",
         })
         .select("id")
         .single();
@@ -134,7 +137,7 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Update bot record
+      // Update bot record as done
       await supabaseAdmin
         .from("recall_bots")
         .update({
