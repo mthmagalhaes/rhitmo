@@ -339,6 +339,10 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onToggleVisibility }: Fe
                             )}
                           </DropdownMenuItem>
                         )}
+                        <DropdownMenuItem onClick={() => openEditDialog(feedback)}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Editar
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => openReplicateDialog(feedback)}>
                           <Copy className="h-4 w-4 mr-2" />
                           Replicar para liderados
@@ -448,6 +452,102 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onToggleVisibility }: Fe
           );
         })}
       </div>
+
+      {/* Dialog de Edição */}
+      <Dialog open={editDialog.open} onOpenChange={(open) => {
+        if (!open) setEditDialog({ open: false, feedback: null });
+      }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar nota</DialogTitle>
+            <DialogDescription>
+              Ajuste o título, conteúdo, tags ou data da anotação.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Título */}
+            <div className="space-y-1.5">
+              <Label>Título</Label>
+              <Input
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder="Título da nota (opcional)"
+              />
+            </div>
+
+            {/* Conteúdo */}
+            <div className="space-y-1.5">
+              <Label>Conteúdo</Label>
+              <RichTextEditor
+                content={editContent}
+                onChange={setEditContent}
+                placeholder="Escreva sua anotação..."
+                minHeight="150px"
+                editorRef={editorRef}
+              />
+            </div>
+
+            {/* Tags */}
+            <div className="space-y-1.5">
+              <Label>Tags</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {VALID_TAGS.map((tag) => (
+                  <Badge
+                    key={tag}
+                    variant="outline"
+                    className={cn(
+                      "cursor-pointer text-xs py-0.5 px-2 border transition-all",
+                      editTags.includes(tag) ? getTagColor(tag) : "opacity-40 hover:opacity-70"
+                    )}
+                    onClick={() => toggleEditTag(tag)}
+                  >
+                    {getTagEmoji(tag)} {tag}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            {/* Data do fato */}
+            <div className="space-y-1.5">
+              <Label>Data do fato</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !editOccurredAt && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {editOccurredAt ? format(editOccurredAt, "PPP", { locale: ptBR }) : "Selecionar data"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={editOccurredAt}
+                    onSelect={setEditOccurredAt}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                    locale={ptBR}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialog({ open: false, feedback: null })}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveEdit} disabled={isSavingEdit || !editContent.trim()}>
+              {isSavingEdit ? 'Salvando...' : 'Salvar alterações'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog de Replicação */}
       <Dialog open={replicateDialog.open} onOpenChange={(open) => {
