@@ -108,6 +108,14 @@ const renderSanitizedContent = (content: string) => {
 
 export const FeedbackTimeline = ({ feedbacks, onDelete, onToggleVisibility }: FeedbackTimelineProps) => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [editDialog, setEditDialog] = useState<{ open: boolean; feedback: Feedback | null }>({ open: false, feedback: null });
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [editTags, setEditTags] = useState<string[]>([]);
+  const [editOccurredAt, setEditOccurredAt] = useState<Date | undefined>();
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const editorRef = useRef<any>(null);
   const [replicateDialog, setReplicateDialog] = useState<{ open: boolean; feedback: Feedback | null }>({ open: false, feedback: null });
   const [replicateTargets, setReplicateTargets] = useState<string[]>([]);
   const [replicateShared, setReplicateShared] = useState<Record<string, boolean>>({});
