@@ -74,16 +74,32 @@ Deno.serve(async (req) => {
       console.log(`Bot ${botId} status: ${event} → ${isFatal ? "error" : newStatus}`);
     }
 
-    // ── Leader presence detection: when bot starts recording, check if leader is in the call ──
+    // ── Leader presence detection: check synchronously when recording starts ──
     if (event === "bot.in_call_recording" && botRecord.leader_email) {
-      // Wait 3 minutes then check participants
-      setTimeout(async () => {
-        try {
-          await checkLeaderPresence(supabaseAdmin, botRecord, botId, RECALL_API_KEY);
-        } catch (e) {
-          console.error(`Leader presence check failed for bot ${botId}:`, e);
-        }
-      }, 3 * 60 * 1000); // 3 min grace period
+      // Synchronous check — no setTimeout (Deno Edge Functions terminate after response)
+      try {
+        await checkLeaderPresence(supabaseAdmin, botRecord, botId, RECALL_API_KEY);
+      } catch (e) {
+        console.error(`Leader presence check failed for bot ${botId}:`, e);
+      }
+    }
+
+    // ── Re-check leader presence on bot.done if not yet detected ──
+    if (event === "bot.done" && botRecord.leader_email && !botRecord.leader_detected) {
+      try {
+        await checkLeaderPresence(supabaseAdmin, botRecord, botId, RECALL_API_KEY);
+      } catch (e) {
+        console.error(`Final leader presence check failed for bot ${botId}:`, e);
+      }
+      // Re-fetch bot record after presence check for handleBotDone
+      const { data: updatedBot } = await supabaseAdmin
+        .from("recall_bots")
+        .select("*")
+        .eq("id", botRecord.id)
+        .single();
+      if (updatedBot) {
+        Object.assign(botRecord, updatedBot);
+      }
     }
 
     // When bot is done, fetch transcript via API v1 bot retrieve endpoint
