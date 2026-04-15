@@ -103,6 +103,79 @@ Deno.serve(async (req) => {
   }
 });
 
+// ── Leader presence check ──────────────────────────────────────────────────
+
+async function checkLeaderPresence(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  botRecord: Record<string, unknown>,
+  botId: string,
+  recallApiKey: string,
+) {
+  const leaderEmail = (botRecord.leader_email as string).toLowerCase();
+
+  // Re-check bot status (might have ended already)
+  const { data: currentBot } = await supabaseAdmin
+    .from("recall_bots")
+    .select("status, leader_detected")
+    .eq("id", botRecord.id)
+    .single();
+
+  if (!currentBot || currentBot.status === "done" || currentBot.status === "error" || currentBot.leader_detected) {
+    console.log(`Bot ${botId}: skipping leader check — status=${currentBot?.status}, leader_detected=${currentBot?.leader_detected}`);
+    return;
+  }
+
+  // Fetch participants from Recall API
+  const botResponse = await fetch(`https://us-west-2.recall.ai/api/v1/bot/${botId}/`, {
+    headers: { Authorization: `Token ${recallApiKey}` },
+  });
+
+  if (!botResponse.ok) {
+    console.error(`Failed to fetch bot ${botId} for leader check: ${botResponse.status}`);
+    return;
+  }
+
+  const botData = await botResponse.json();
+  const participants = botData.meeting_participants || [];
+
+  console.log(`Bot ${botId}: checking ${participants.length} participants for leader email ${leaderEmail}`);
+
+  // Check if leader is among participants (by email or name containing email prefix)
+  const leaderPrefix = leaderEmail.split("@")[0].toLowerCase();
+  const leaderFound = participants.some((p: { email?: string; name?: string }) => {
+    if (p.email && p.email.toLowerCase() === leaderEmail) return true;
+    if (p.name && p.name.toLowerCase().includes(leaderPrefix)) return true;
+    return false;
+  });
+
+  if (leaderFound) {
+    console.log(`Bot ${botId}: leader detected ✓`);
+    await supabaseAdmin
+      .from("recall_bots")
+      .update({ leader_detected: true })
+      .eq("id", botRecord.id);
+    return;
+  }
+
+  // Leader not found — remove bot from call
+  console.log(`Bot ${botId}: leader NOT detected after grace period — removing bot`);
+
+  const leaveResponse = await fetch(`https://us-west-2.recall.ai/api/v1/bot/${botId}/leave/`, {
+    method: "POST",
+    headers: { Authorization: `Token ${recallApiKey}` },
+  });
+
+  console.log(`Bot ${botId}: leave response: ${leaveResponse.status}`);
+
+  await supabaseAdmin
+    .from("recall_bots")
+    .update({
+      status: "skipped_no_leader",
+      error_message: "Líder não detectado na reunião — bot removido automaticamente",
+    })
+    .eq("id", botRecord.id);
+}
+
 // ── Fetch transcript via Recall API v1 bot retrieve → media_shortcuts ──────
 
 async function fetchTranscriptFromRecall(
