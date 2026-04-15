@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Trash2, ChevronDown, Lock, Eye, MoreVertical, Mic, RefreshCw, Copy, MessageSquare } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Trash2, ChevronDown, Lock, Eye, MoreVertical, Mic, RefreshCw, Copy, MessageSquare, Pencil, CalendarIcon } from 'lucide-react';
 import { SlackIcon } from '@/components/icons/SlackIcon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -42,15 +42,22 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { getTagEmoji, getTagColor } from '@/lib/tagConfig';
+import { getTagEmoji, getTagColor, VALID_TAGS } from '@/lib/tagConfig';
 import { cleanTranscriptText, containsHtml } from '@/lib/textSanitizer';
 import DOMPurify from 'dompurify';
 import { BiasDetectionPanel } from '@/components/BiasDetectionPanel';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { useQueryClient } from '@tanstack/react-query';
 import { useQuery } from '@tanstack/react-query';
 
 interface Feedback {
@@ -101,6 +108,14 @@ const renderSanitizedContent = (content: string) => {
 
 export const FeedbackTimeline = ({ feedbacks, onDelete, onToggleVisibility }: FeedbackTimelineProps) => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [editDialog, setEditDialog] = useState<{ open: boolean; feedback: Feedback | null }>({ open: false, feedback: null });
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [editTags, setEditTags] = useState<string[]>([]);
+  const [editOccurredAt, setEditOccurredAt] = useState<Date | undefined>();
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const editorRef = useRef<any>(null);
   const [replicateDialog, setReplicateDialog] = useState<{ open: boolean; feedback: Feedback | null }>({ open: false, feedback: null });
   const [replicateTargets, setReplicateTargets] = useState<string[]>([]);
   const [replicateShared, setReplicateShared] = useState<Record<string, boolean>>({});
@@ -121,6 +136,44 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onToggleVisibility }: Fe
   const availableMembers = allMembers.filter(
     (m) => replicateDialog.feedback && m.id !== (replicateDialog.feedback as any).member_id
   );
+
+  const openEditDialog = (feedback: Feedback) => {
+    setEditTitle(feedback.title || '');
+    setEditContent(feedback.content || '');
+    setEditTags(feedback.tags || []);
+    setEditOccurredAt(new Date(feedback.occurred_at || feedback.created_at));
+    setEditDialog({ open: true, feedback });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editDialog.feedback) return;
+    setIsSavingEdit(true);
+    try {
+      const { error } = await supabase
+        .from('feedbacks')
+        .update({
+          title: editTitle || null,
+          content: editContent,
+          tags: editTags,
+          occurred_at: editOccurredAt?.toISOString() || new Date().toISOString(),
+        })
+        .eq('id', editDialog.feedback.id);
+
+      if (error) throw error;
+      toast.success('Nota atualizada com sucesso! ✏️');
+      setEditDialog({ open: false, feedback: null });
+      queryClient.invalidateQueries({ queryKey: ['feedbacks'] });
+      queryClient.invalidateQueries({ queryKey: ['member-feedbacks'] });
+    } catch (err) {
+      toast.error('Erro ao salvar alterações.');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const toggleEditTag = (tag: string) => {
+    setEditTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+  };
 
   const openReplicateDialog = (feedback: Feedback) => {
     setReplicateDialog({ open: true, feedback });
@@ -286,6 +339,10 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onToggleVisibility }: Fe
                             )}
                           </DropdownMenuItem>
                         )}
+                        <DropdownMenuItem onClick={() => openEditDialog(feedback)}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Editar
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => openReplicateDialog(feedback)}>
                           <Copy className="h-4 w-4 mr-2" />
                           Replicar para liderados
@@ -395,6 +452,102 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onToggleVisibility }: Fe
           );
         })}
       </div>
+
+      {/* Dialog de Edição */}
+      <Dialog open={editDialog.open} onOpenChange={(open) => {
+        if (!open) setEditDialog({ open: false, feedback: null });
+      }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar nota</DialogTitle>
+            <DialogDescription>
+              Ajuste o título, conteúdo, tags ou data da anotação.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Título */}
+            <div className="space-y-1.5">
+              <Label>Título</Label>
+              <Input
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder="Título da nota (opcional)"
+              />
+            </div>
+
+            {/* Conteúdo */}
+            <div className="space-y-1.5">
+              <Label>Conteúdo</Label>
+              <RichTextEditor
+                content={editContent}
+                onChange={setEditContent}
+                placeholder="Escreva sua anotação..."
+                minHeight="150px"
+                editorRef={editorRef}
+              />
+            </div>
+
+            {/* Tags */}
+            <div className="space-y-1.5">
+              <Label>Tags</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {VALID_TAGS.map((tag) => (
+                  <Badge
+                    key={tag}
+                    variant="outline"
+                    className={cn(
+                      "cursor-pointer text-xs py-0.5 px-2 border transition-all",
+                      editTags.includes(tag) ? getTagColor(tag) : "opacity-40 hover:opacity-70"
+                    )}
+                    onClick={() => toggleEditTag(tag)}
+                  >
+                    {getTagEmoji(tag)} {tag}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            {/* Data do fato */}
+            <div className="space-y-1.5">
+              <Label>Data do fato</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !editOccurredAt && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {editOccurredAt ? format(editOccurredAt, "PPP", { locale: ptBR }) : "Selecionar data"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={editOccurredAt}
+                    onSelect={setEditOccurredAt}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                    locale={ptBR}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialog({ open: false, feedback: null })}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveEdit} disabled={isSavingEdit || !editContent.trim()}>
+              {isSavingEdit ? 'Salvando...' : 'Salvar alterações'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog de Replicação */}
       <Dialog open={replicateDialog.open} onOpenChange={(open) => {
