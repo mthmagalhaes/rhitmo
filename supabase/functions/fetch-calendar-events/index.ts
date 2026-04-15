@@ -287,14 +287,15 @@ Deno.serve(async (req) => {
 
     console.log(`[sync] Results: ${matchedMeetings.length} matched, ${eventsSkippedNoAttendees} no attendees, ${eventsSkippedNoMatch} no member match`);
 
-    // ── Auto-schedule Recall bots (10 min before meeting) ──
+    // ── Auto-schedule Recall bots (2 min before meeting) ──
     if (autoTranscribe && RECALL_API_KEY) {
       const autoScheduled: string[] = [];
 
       for (const meeting of matchedMeetings) {
         if (!meeting.meet_link || !meeting.id) continue;
 
-        const { data: existingBot } = await supabaseAdmin
+        // Dedup by meeting_id AND meeting_url (fallback for recurring meetings with same link)
+        const { data: existingByMeetingId } = await supabaseAdmin
           .from("recall_bots")
           .select("id")
           .eq("user_id", userId)
@@ -302,7 +303,21 @@ Deno.serve(async (req) => {
           .not("status", "eq", "error")
           .maybeSingle();
 
-        if (existingBot) continue;
+        if (existingByMeetingId) continue;
+
+        // Fallback: check by meeting_url to prevent duplicate bots for same link
+        const { data: existingByUrl } = await supabaseAdmin
+          .from("recall_bots")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("meeting_url", meeting.meet_link)
+          .not("status", "in", '("error","done","skipped_no_leader")')
+          .maybeSingle();
+
+        if (existingByUrl) {
+          console.log(`[sync] Bot already exists for URL ${meeting.meet_link}, skipping`);
+          continue;
+        }
 
         // Join 2 minutes before meeting start
         const joinAt = new Date(new Date(meeting.start_time).getTime() - 2 * 60 * 1000).toISOString();
@@ -339,6 +354,11 @@ Deno.serve(async (req) => {
                   },
                 },
               },
+              automatic_leave: {
+                waiting_room_timeout: 120,
+                in_call_not_recording_timeout: 180,
+                noone_joined_timeout: 300,
+              },
             }),
           });
 
@@ -353,6 +373,7 @@ Deno.serve(async (req) => {
               meeting_url: meeting.meet_link,
               status: "scheduled",
               scheduled_at: joinAt,
+              leader_email: authUser.email || null,
             });
 
             autoScheduled.push(meeting.id);

@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check if bot already scheduled for this meeting
+    // Check if bot already scheduled for this meeting (by meeting_id or meeting_url)
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     if (meeting_id) {
@@ -76,6 +76,22 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+    }
+
+    // Fallback dedup by meeting_url (prevents duplicate bots for recurring meetings with same link)
+    const { data: existingByUrl } = await supabaseAdmin
+      .from("recall_bots")
+      .select("id, status")
+      .eq("user_id", userId)
+      .eq("meeting_url", meeting_url)
+      .not("status", "in", '("error","done","skipped_no_leader")')
+      .maybeSingle();
+
+    if (existingByUrl) {
+      return new Response(JSON.stringify({ error: "Bot already scheduled for this meeting URL", bot: existingByUrl }), {
+        status: 409,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Schedule bot via Recall.ai API
@@ -111,6 +127,11 @@ Deno.serve(async (req) => {
               },
             },
           },
+        },
+        automatic_leave: {
+          waiting_room_timeout: 120,
+          in_call_not_recording_timeout: 180,
+          noone_joined_timeout: 300,
         },
       }),
     });
