@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Trash2, ChevronDown, Lock, Eye, MoreVertical, Mic, RefreshCw, Copy, MessageSquare } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Trash2, ChevronDown, Lock, Eye, MoreVertical, Mic, RefreshCw, Copy, MessageSquare, Pencil, CalendarIcon } from 'lucide-react';
 import { SlackIcon } from '@/components/icons/SlackIcon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -42,15 +42,22 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { getTagEmoji, getTagColor } from '@/lib/tagConfig';
+import { getTagEmoji, getTagColor, VALID_TAGS } from '@/lib/tagConfig';
 import { cleanTranscriptText, containsHtml } from '@/lib/textSanitizer';
 import DOMPurify from 'dompurify';
 import { BiasDetectionPanel } from '@/components/BiasDetectionPanel';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { useQueryClient } from '@tanstack/react-query';
 import { useQuery } from '@tanstack/react-query';
 
 interface Feedback {
