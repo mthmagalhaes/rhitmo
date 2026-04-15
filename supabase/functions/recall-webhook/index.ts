@@ -74,6 +74,18 @@ Deno.serve(async (req) => {
       console.log(`Bot ${botId} status: ${event} → ${isFatal ? "error" : newStatus}`);
     }
 
+    // ── Leader presence detection: when bot starts recording, check if leader is in the call ──
+    if (event === "bot.in_call_recording" && botRecord.leader_email) {
+      // Wait 3 minutes then check participants
+      setTimeout(async () => {
+        try {
+          await checkLeaderPresence(supabaseAdmin, botRecord, botId, RECALL_API_KEY);
+        } catch (e) {
+          console.error(`Leader presence check failed for bot ${botId}:`, e);
+        }
+      }, 3 * 60 * 1000); // 3 min grace period
+    }
+
     // When bot is done, fetch transcript via API v1 bot retrieve endpoint
     if ((event === "bot.done" || event === "bot.recording_done") && botRecord.status !== "done") {
       await handleBotDone(supabaseAdmin, botRecord, botId, RECALL_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -90,6 +102,79 @@ Deno.serve(async (req) => {
     });
   }
 });
+
+// ── Leader presence check ──────────────────────────────────────────────────
+
+async function checkLeaderPresence(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  botRecord: Record<string, unknown>,
+  botId: string,
+  recallApiKey: string,
+) {
+  const leaderEmail = (botRecord.leader_email as string).toLowerCase();
+
+  // Re-check bot status (might have ended already)
+  const { data: currentBot } = await supabaseAdmin
+    .from("recall_bots")
+    .select("status, leader_detected")
+    .eq("id", botRecord.id)
+    .single();
+
+  if (!currentBot || currentBot.status === "done" || currentBot.status === "error" || currentBot.leader_detected) {
+    console.log(`Bot ${botId}: skipping leader check — status=${currentBot?.status}, leader_detected=${currentBot?.leader_detected}`);
+    return;
+  }
+
+  // Fetch participants from Recall API
+  const botResponse = await fetch(`https://us-west-2.recall.ai/api/v1/bot/${botId}/`, {
+    headers: { Authorization: `Token ${recallApiKey}` },
+  });
+
+  if (!botResponse.ok) {
+    console.error(`Failed to fetch bot ${botId} for leader check: ${botResponse.status}`);
+    return;
+  }
+
+  const botData = await botResponse.json();
+  const participants = botData.meeting_participants || [];
+
+  console.log(`Bot ${botId}: checking ${participants.length} participants for leader email ${leaderEmail}`);
+
+  // Check if leader is among participants (by email or name containing email prefix)
+  const leaderPrefix = leaderEmail.split("@")[0].toLowerCase();
+  const leaderFound = participants.some((p: { email?: string; name?: string }) => {
+    if (p.email && p.email.toLowerCase() === leaderEmail) return true;
+    if (p.name && p.name.toLowerCase().includes(leaderPrefix)) return true;
+    return false;
+  });
+
+  if (leaderFound) {
+    console.log(`Bot ${botId}: leader detected ✓`);
+    await supabaseAdmin
+      .from("recall_bots")
+      .update({ leader_detected: true })
+      .eq("id", botRecord.id);
+    return;
+  }
+
+  // Leader not found — remove bot from call
+  console.log(`Bot ${botId}: leader NOT detected after grace period — removing bot`);
+
+  const leaveResponse = await fetch(`https://us-west-2.recall.ai/api/v1/bot/${botId}/leave/`, {
+    method: "POST",
+    headers: { Authorization: `Token ${recallApiKey}` },
+  });
+
+  console.log(`Bot ${botId}: leave response: ${leaveResponse.status}`);
+
+  await supabaseAdmin
+    .from("recall_bots")
+    .update({
+      status: "skipped_no_leader",
+      error_message: "Líder não detectado na reunião — bot removido automaticamente",
+    })
+    .eq("id", botRecord.id);
+}
 
 // ── Fetch transcript via Recall API v1 bot retrieve → media_shortcuts ──────
 
@@ -184,8 +269,17 @@ async function handleBotDone(
   supabaseUrl: string,
   serviceRoleKey: string,
 ) {
-  console.log(`Bot ${botId} done — fetching transcript via API...`);
+  // Skip processing if leader was not detected (bot was removed or call ended without leader)
+  if (botRecord.status === "skipped_no_leader" || (!botRecord.leader_detected && botRecord.leader_email)) {
+    console.log(`Bot ${botId} done but leader was not detected — skipping transcript processing`);
+    await supabaseAdmin
+      .from("recall_bots")
+      .update({ status: "skipped_no_leader" })
+      .eq("id", botRecord.id);
+    return;
+  }
 
+  console.log(`Bot ${botId} done — fetching transcript via API...`);
   const result = await fetchTranscriptFromRecall(botId, recallApiKey);
 
   if (result === "not_ready") {

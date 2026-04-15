@@ -125,7 +125,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Save bot record
+    // Save bot record with leader email for presence detection
+    const leaderEmail = authUser.email || null;
+
     const { data: botRecord, error: insertError } = await supabaseAdmin
       .from("recall_bots")
       .insert({
@@ -136,6 +138,7 @@ Deno.serve(async (req) => {
         meeting_url: meeting_url,
         status: "scheduled",
         scheduled_at: joinAt,
+        leader_email: leaderEmail,
       })
       .select("id, status, scheduled_at")
       .single();
