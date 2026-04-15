@@ -269,8 +269,17 @@ async function handleBotDone(
   supabaseUrl: string,
   serviceRoleKey: string,
 ) {
-  console.log(`Bot ${botId} done — fetching transcript via API...`);
+  // Skip processing if leader was not detected (bot was removed or call ended without leader)
+  if (botRecord.status === "skipped_no_leader" || (!botRecord.leader_detected && botRecord.leader_email)) {
+    console.log(`Bot ${botId} done but leader was not detected — skipping transcript processing`);
+    await supabaseAdmin
+      .from("recall_bots")
+      .update({ status: "skipped_no_leader" })
+      .eq("id", botRecord.id);
+    return;
+  }
 
+  console.log(`Bot ${botId} done — fetching transcript via API...`);
   const result = await fetchTranscriptFromRecall(botId, recallApiKey);
 
   if (result === "not_ready") {
