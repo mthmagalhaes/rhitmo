@@ -137,6 +137,44 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onToggleVisibility }: Fe
     (m) => replicateDialog.feedback && m.id !== (replicateDialog.feedback as any).member_id
   );
 
+  const openEditDialog = (feedback: Feedback) => {
+    setEditTitle(feedback.title || '');
+    setEditContent(feedback.content || '');
+    setEditTags(feedback.tags || []);
+    setEditOccurredAt(new Date(feedback.occurred_at || feedback.created_at));
+    setEditDialog({ open: true, feedback });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editDialog.feedback) return;
+    setIsSavingEdit(true);
+    try {
+      const { error } = await supabase
+        .from('feedbacks')
+        .update({
+          title: editTitle || null,
+          content: editContent,
+          tags: editTags,
+          occurred_at: editOccurredAt?.toISOString() || new Date().toISOString(),
+        })
+        .eq('id', editDialog.feedback.id);
+
+      if (error) throw error;
+      toast.success('Nota atualizada com sucesso! ✏️');
+      setEditDialog({ open: false, feedback: null });
+      queryClient.invalidateQueries({ queryKey: ['feedbacks'] });
+      queryClient.invalidateQueries({ queryKey: ['member-feedbacks'] });
+    } catch (err) {
+      toast.error('Erro ao salvar alterações.');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const toggleEditTag = (tag: string) => {
+    setEditTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+  };
+
   const openReplicateDialog = (feedback: Feedback) => {
     setReplicateDialog({ open: true, feedback });
     setReplicateTargets([]);
