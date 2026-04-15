@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Calendar, CalendarOff, ExternalLink, FileText, ChevronDown, Mic, Loader2, CheckCircle2, Sparkles, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Calendar, CalendarOff, ExternalLink, FileText, ChevronDown, Mic, Loader2, CheckCircle2, Sparkles, RefreshCw, AlertTriangle, Clock } from 'lucide-react';
 import { format, isToday, isTomorrow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -271,9 +271,9 @@ export const UpcomingMeetingsCard = () => {
                         </span>
                       );
                     }
-                    if (bot?.status === 'joining' || bot?.status === 'scheduled' || bot?.status === 'processing') {
+                    if (bot?.status === 'scheduled') {
                       return (
-                        <span className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
+                        <span className="flex items-center gap-1 text-xs font-medium">
                           {isAutoScheduled ? (
                             <>
                               <Sparkles className="h-3.5 w-3.5 text-primary" />
@@ -281,10 +281,18 @@ export const UpcomingMeetingsCard = () => {
                             </>
                           ) : (
                             <>
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              {bot.status === 'scheduled' ? 'Agendado' : bot.status === 'processing' ? 'Processando' : 'Entrando'}
+                              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="text-muted-foreground">Agendado</span>
                             </>
                           )}
+                        </span>
+                      );
+                    }
+                    if (bot?.status === 'joining' || bot?.status === 'processing') {
+                      return (
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          {bot.status === 'processing' ? 'Processando' : 'Entrando'}
                         </span>
                       );
                     }
