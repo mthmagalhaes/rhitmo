@@ -1,67 +1,48 @@
 
 
-## Problema
+## Correções Recall.ai + Atualização de Documentação
 
-O bot Recall.ai entra em todas as reuniões agendadas automaticamente, mesmo que o líder não participe. Isso gera custos desnecessários (~$0.15/h por reunião) e transcrições sem valor.
+### Problemas identificados
 
-## Opções de Solução
+1. **Deduplicação falha no `fetch-calendar-events`**: verifica apenas `meeting_id`, mas não `meeting_url`. Reuniões recorrentes com o mesmo link geram bots duplicados.
+2. **Sem timeouts de auto-leave no bot**: o bot fica na sala de espera ou em chamada sem gravar indefinidamente, acumulando "machine time".
+3. **`fetch-calendar-events` não salva `leader_email`** ao criar bots via auto-schedule (linha 348-356), impedindo a detecção de presença do líder.
+4. **`setTimeout` no webhook não funciona**: Edge Functions Deno encerram após o `return` — o `setTimeout` de 3 minutos nunca executa.
 
-### Opção A: Detecção de presença do líder (recomendada)
+### Plano de implementação
 
-Usar o webhook `bot.in_call_recording` para verificar a lista de participantes. Se o líder não estiver presente após X minutos, remover o bot automaticamente.
+**1. Corrigir `fetch-calendar-events/index.ts`**
+- Adicionar deduplicação por `meeting_url` como fallback (além de `meeting_id`)
+- Salvar `leader_email: authUser.email` no insert de `recall_bots`
+- Adicionar `automatic_leave` config ao body do Recall API:
+  ```
+  automatic_leave: {
+    waiting_room_timeout: 120,        // 2 min na sala de espera → sai
+    in_call_not_recording_timeout: 180, // 3 min sem gravar → sai
+    noone_joined_timeout: 300,         // 5 min sozinho → sai
+  }
+  ```
 
-**Fluxo:**
-1. Bot entra na reunião normalmente (2 min antes)
-2. Ao receber `bot.in_call_recording`, consultar a API do Recall para listar participantes
-3. Se após 3-5 minutos o líder (email do Google Calendar) não estiver na lista de participantes → chamar `DELETE /api/v1/bot/{id}/leave` para remover o bot
-4. Atualizar `recall_bots.status` para `"skipped_no_leader"`
+**2. Corrigir `schedule-recall-bot/index.ts`**
+- Adicionar deduplicação por `meeting_url` (fallback)
+- Adicionar mesmos `automatic_leave` timeouts
+- `leader_email` já está sendo salvo ✓
 
-**Prós:** Funciona automaticamente, sem ação do líder
-**Contras:** O bot ainda entra (custo mínimo ~1-2 min), depende da API de participantes do Recall
+**3. Corrigir `recall-webhook/index.ts`**
+- **Remover `setTimeout`** (não funciona em Deno Edge Functions)
+- Substituir por verificação síncrona imediata: ao receber `bot.in_call_recording`, verificar participantes direto (sem grace period) e marcar `leader_detected`. Se não encontrar, marcar para re-verificação no próximo webhook event (`bot.call_ended`/`bot.done`)
+- Alternativa: usar uma flag `recording_started_at` e verificar presença no `bot.done` — se líder nunca foi detectado, descartar transcrição
 
-### Opção B: Agendamento manual (opt-in por reunião)
+**4. Gerar `cost-analysis.md` atualizado**
+- Adicionar seção sobre custos de "machine time" (~$0.25-0.35/h) além da transcrição ($0.15/h)
+- Atualizar custo efetivo por reunião: ~$0.20-0.25 por reunião de 30min (machine + transcription)
+- Documentar otimizações implementadas (auto-leave, deduplicação, detecção de presença)
 
-Não agendar automaticamente. O líder clica "Transcrever" em cada reunião no dashboard.
+**5. Atualizar `rhitmo-technical-report-april-2026.md`**
+- Seção Recall.ai: adicionar detalhes de `automatic_leave`, deduplicação, e presença do líder
+- Atualizar modelo de billing para refletir machine time + transcription
 
-**Prós:** Zero custo desnecessário, controle total
-**Contras:** Fricção alta, líder pode esquecer
+### Detalhes técnicos
 
-### Opção C: Híbrida (recomendada para implementação)
-
-Manter auto-schedule, mas adicionar lógica de "grace period" no webhook:
-
-1. **No `recall-webhook`**, ao receber `bot.in_call_recording`:
-   - Buscar o email do líder (via `recall_bots.user_id` → `auth.users.email`)
-   - Chamar `GET /api/v1/bot/{recall_bot_id}/` para obter lista de participantes
-   - Se o líder não estiver presente, agendar uma verificação (ou usar um campo `leader_joined` no registro)
-
-2. **Adicionar um campo `leader_detected`** na tabela `recall_bots` (boolean, default false)
-
-3. **No webhook `bot.call_ended` ou `bot.done`**:
-   - Se `leader_detected = false`, descartar a transcrição (não processar) e marcar como `skipped`
-   - Isso evita o custo de processamento de IA, embora o custo do Recall ($0.15/h) já tenha sido incorrido
-
-### Limitação importante
-
-O Recall.ai cobra pelo tempo que o bot está na call, **independentemente** de processarmos ou não a transcrição. Ou seja:
-- **Opção A** minimiza o custo (bot sai em ~3 min = custo mínimo)
-- **Opção C** evita custo de IA mas não evita custo do Recall
-- **Opção B** é a única que evita 100% do custo
-
-## Recomendação
-
-**Implementar Opção A** (detecção de presença + auto-leave). É a melhor relação custo-benefício:
-- Custo de bot que sai em 3 min é negligenciável
-- Não adiciona fricção ao líder
-- Evita transcrições inúteis e custos de IA
-
-### Arquivos a modificar
-
-1. **`supabase/functions/recall-webhook/index.ts`** — Adicionar lógica no evento `bot.in_call_recording` para verificar participantes e remover bot se líder ausente
-2. **Migração SQL** — Adicionar coluna `leader_detected boolean default false` na tabela `recall_bots`
-3. **`supabase/functions/schedule-recall-bot/index.ts`** — Salvar email do líder no registro para facilitar a comparação
-
-### Nota sobre a API Recall
-
-A verificação de participantes usa `GET /api/v1/bot/{id}/` que retorna `meeting_participants`. Precisamos confirmar que o email do participante é retornado (em Google Meet, geralmente sim).
+A correção mais crítica é o `setTimeout` no webhook — Edge Functions encerram ao retornar a response, então o timer de 3 min nunca dispara. A solução é verificar presença de forma síncrona no evento `bot.in_call_recording` (imediata, sem grace) e novamente no `bot.done` antes de processar.
 
