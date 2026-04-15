@@ -1088,6 +1088,8 @@ export type Database = {
           created_at: string | null
           error_message: string | null
           id: string
+          leader_detected: boolean
+          leader_email: string | null
           meeting_id: string | null
           meeting_transcript_id: string | null
           meeting_url: string
@@ -1104,6 +1106,8 @@ export type Database = {
           created_at?: string | null
           error_message?: string | null
           id?: string
+          leader_detected?: boolean
+          leader_email?: string | null
           meeting_id?: string | null
           meeting_transcript_id?: string | null
           meeting_url: string
@@ -1120,6 +1124,8 @@ export type Database = {
           created_at?: string | null
           error_message?: string | null
           id?: string
+          leader_detected?: boolean
+          leader_email?: string | null
           meeting_id?: string | null
           meeting_transcript_id?: string | null
           meeting_url?: string
