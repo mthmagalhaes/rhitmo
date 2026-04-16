@@ -6,7 +6,7 @@ import { ActivityBadge } from '@/components/ActivityBadge';
 import { ActivitySheet } from '@/components/ActivitySheet';
 import { useAuth } from '@/hooks/useAuth';
 import { useAccount } from '@/contexts/AccountContext';
-import { ImpersonationBanner } from '@/components/admin/ImpersonationBanner';
+
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 
@@ -58,7 +58,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         />
       )}
 
-      <ImpersonationBanner />
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <SidebarInset className="flex-1">
