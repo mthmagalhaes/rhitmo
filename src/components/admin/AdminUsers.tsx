@@ -39,6 +39,9 @@ interface UserCap {
 }
 
 type CapFilter = 'all' | 'owner' | 'hr_admin' | 'leader' | 'member' | 'super_admin';
+type StatusFilter = 'all' | 'active' | 'suspended' | 'no_workspace';
+type SortField = 'name' | 'email' | 'status';
+type SortDirection = 'asc' | 'desc';
 
 export const AdminUsers = () => {
   const { toast } = useToast();
