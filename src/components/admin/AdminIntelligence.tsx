@@ -30,15 +30,14 @@ export const AdminIntelligence = () => {
         .from('workspaces')
         .select(`
           id, name, owner_id, plan_tier, is_active,
-          teams (
-            id,
-            team_members (id),
-            team_members!inner (id)
-          )
+          teams ( id, team_members ( id ) )
         `)
         .eq('is_active', true);
 
-      if (error) throw error;
+      if (error) {
+        console.error('[AdminIntelligence] workspaces query error:', error);
+        throw error;
+      }
 
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -46,55 +45,59 @@ export const AdminIntelligence = () => {
       const results: WorkspaceHealth[] = [];
 
       for (const ws of workspaces || []) {
-        const memberCount = ws.teams?.reduce((acc: number, t: any) => acc + (t.team_members?.length || 0), 0) || 0;
+        try {
+          const memberCount = ws.teams?.reduce((acc: number, t: any) => acc + (t.team_members?.length || 0), 0) || 0;
 
-        // Get member IDs for this workspace
-        const memberIds: string[] = [];
-        ws.teams?.forEach((t: any) => {
-          t.team_members?.forEach((m: any) => memberIds.push(m.id));
-        });
+          // Get member IDs for this workspace
+          const memberIds: string[] = [];
+          ws.teams?.forEach((t: any) => {
+            t.team_members?.forEach((m: any) => memberIds.push(m.id));
+          });
 
-        let feedbackCount = 0;
-        let reviewCount = 0;
-        let lastFeedbackDate: string | null = null;
+          let feedbackCount = 0;
+          let reviewCount = 0;
+          let lastFeedbackDate: string | null = null;
 
-        if (memberIds.length > 0) {
-          const [fbRes, rvRes, lastFbRes] = await Promise.all([
-            supabase.from('feedbacks').select('*', { count: 'exact', head: true })
-              .in('member_id', memberIds).gte('created_at', thirtyDaysAgo),
-            supabase.from('performance_reviews').select('*', { count: 'exact', head: true })
-              .in('member_id', memberIds),
-            supabase.from('feedbacks').select('created_at')
-              .in('member_id', memberIds).order('created_at', { ascending: false }).limit(1),
-          ]);
+          if (memberIds.length > 0) {
+            const [fbRes, rvRes, lastFbRes] = await Promise.all([
+              supabase.from('feedbacks').select('*', { count: 'exact', head: true })
+                .in('member_id', memberIds).gte('created_at', thirtyDaysAgo),
+              supabase.from('performance_reviews').select('*', { count: 'exact', head: true })
+                .in('member_id', memberIds),
+              supabase.from('feedbacks').select('created_at')
+                .in('member_id', memberIds).order('created_at', { ascending: false }).limit(1),
+            ]);
 
-          feedbackCount = fbRes.count || 0;
-          reviewCount = rvRes.count || 0;
-          lastFeedbackDate = lastFbRes.data?.[0]?.created_at || null;
+            feedbackCount = fbRes.count || 0;
+            reviewCount = rvRes.count || 0;
+            lastFeedbackDate = lastFbRes.data?.[0]?.created_at || null;
+          }
+
+          // Health score: 0-100
+          // 40% feedback coverage (at least 1 feedback per member in 30 days)
+          // 30% review coverage (at least 1 review per member)
+          // 30% recency (last feedback within 7 days = full score)
+          const fbCoverage = memberCount > 0 ? Math.min(feedbackCount / memberCount, 1) : 0;
+          const rvCoverage = memberCount > 0 ? Math.min(reviewCount / memberCount, 1) : 0;
+
+          let recencyScore = 0;
+          if (lastFeedbackDate) {
+            const daysSince = (Date.now() - new Date(lastFeedbackDate).getTime()) / (1000 * 60 * 60 * 24);
+            recencyScore = daysSince <= 7 ? 1 : daysSince <= 14 ? 0.7 : daysSince <= 30 ? 0.4 : 0.1;
+          }
+
+          const healthScore = Math.round((fbCoverage * 40 + rvCoverage * 30 + recencyScore * 30));
+          const status: 'healthy' | 'warning' | 'critical' =
+            healthScore >= 60 ? 'healthy' : healthScore >= 30 ? 'warning' : 'critical';
+
+          results.push({
+            id: ws.id, name: ws.name, owner_id: ws.owner_id, memberCount,
+            feedbackCount, reviewCount, lastFeedbackDate, healthScore, status,
+            plan_tier: ws.plan_tier,
+          });
+        } catch (err) {
+          console.error(`[AdminIntelligence] failed to compute health for workspace ${ws.id}:`, err);
         }
-
-        // Health score: 0-100
-        // 40% feedback coverage (at least 1 feedback per member in 30 days)
-        // 30% review coverage (at least 1 review per member)
-        // 30% recency (last feedback within 7 days = full score)
-        const fbCoverage = memberCount > 0 ? Math.min(feedbackCount / memberCount, 1) : 0;
-        const rvCoverage = memberCount > 0 ? Math.min(reviewCount / memberCount, 1) : 0;
-
-        let recencyScore = 0;
-        if (lastFeedbackDate) {
-          const daysSince = (Date.now() - new Date(lastFeedbackDate).getTime()) / (1000 * 60 * 60 * 24);
-          recencyScore = daysSince <= 7 ? 1 : daysSince <= 14 ? 0.7 : daysSince <= 30 ? 0.4 : 0.1;
-        }
-
-        const healthScore = Math.round((fbCoverage * 40 + rvCoverage * 30 + recencyScore * 30));
-        const status: 'healthy' | 'warning' | 'critical' =
-          healthScore >= 60 ? 'healthy' : healthScore >= 30 ? 'warning' : 'critical';
-
-        results.push({
-          id: ws.id, name: ws.name, owner_id: ws.owner_id, memberCount,
-          feedbackCount, reviewCount, lastFeedbackDate, healthScore, status,
-          plan_tier: ws.plan_tier,
-        });
       }
 
       return results.sort((a, b) => a.healthScore - b.healthScore);
