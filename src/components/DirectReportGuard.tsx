@@ -12,11 +12,13 @@ export function DirectReportGuard({ children }: DirectReportGuardProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { isLinkedMember, needsOnboarding, loading } = useAccount();
+  // isAdmin is false during impersonation by design — that lets the admin
+  // navigate the regular app while impersonating without being kicked back.
   const { isAdmin, loading: adminLoading } = useAdmin();
 
   useEffect(() => {
     if (location.pathname === '/onboarding') return;
-    // Super admin should never see the leader dashboard
+    // Super admin (not impersonating) should never see the leader dashboard
     if (!adminLoading && isAdmin) {
       navigate('/admin', { replace: true });
       return;
