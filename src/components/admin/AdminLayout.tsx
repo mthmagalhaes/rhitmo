@@ -3,7 +3,7 @@ import { RhitmoLogo } from '@/components/RhitmoLogo';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LayoutDashboard, Users, LogOut, Home, ShieldCheck, Network, Brain } from 'lucide-react';
+import { LayoutDashboard, Users, LogOut, ShieldCheck, Network, Brain } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -72,10 +72,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
           </Tabs>
         </nav>
 
-        <div className="p-4 border-t border-slate-800 space-y-2">
-          <Button variant="ghost" className="w-full justify-start gap-3 text-slate-300 hover:text-slate-100 hover:bg-slate-800" onClick={() => navigate('/')}>
-            <Home className="h-4 w-4" /> Voltar ao App
-          </Button>
+        <div className="p-4 border-t border-slate-800">
           <Button variant="ghost" className="w-full justify-start gap-3 text-slate-300 hover:text-slate-100 hover:bg-slate-800" onClick={handleSignOut}>
             <LogOut className="h-4 w-4" /> Sair
           </Button>
