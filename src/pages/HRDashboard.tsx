@@ -43,10 +43,6 @@ const HRDashboard = () => {
   const { workspaceId, workspaceName } = useHRAdmin();
   const { hasHrDashboard, isLoading: planLoading } = usePlanLimits();
 
-  if (!planLoading && !hasHrDashboard) {
-    return <Navigate to="/billing" replace />;
-  }
-
   const { data: metrics, isLoading } = useQuery<Metrics>({
     queryKey: ['hr-dashboard', workspaceId],
     queryFn: async () => {
@@ -54,7 +50,12 @@ const HRDashboard = () => {
       if (error) throw error;
       return data as unknown as Metrics;
     },
+    enabled: !!workspaceId && !planLoading && hasHrDashboard,
   });
+
+  if (!planLoading && !hasHrDashboard) {
+    return <Navigate to="/billing" replace />;
+  }
 
   const noFeedback = metrics?.members_without_recent_feedback ?? 0;
   const noReview = metrics?.members_without_recent_review ?? 0;
