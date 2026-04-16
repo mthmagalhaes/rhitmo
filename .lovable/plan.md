@@ -1,45 +1,65 @@
 
 
-## Plano de teste: Funcionalidades de poder do Admin
+## Diagnóstico: Impersonate vaza dados do Admin (Matheus) na visão da liderada (Yasmin)
 
-Vou rodar uma bateria sequencial de testes via browser no painel `/admin`, validando cada ação destrutiva e de gestão **com usuários descartáveis** (que crio e deleto durante o teste). Nenhum dado real seu será afetado — só uso usuários "fantoche" que eu mesmo crio.
+**Está MUITO errado mesmo, não é só preview.** A Yasmin yasmin.nobrega@fstr.co é uma **liderada** (`linked_user_id` populado, time CreativeOps no workspace Faster Ops). Mas o que aparece na tela impersonando-a é o **dashboard de líder do Matheus** com dados do Matheus.
 
-### O que vou testar
+### Causa raiz
 
-**Bloco 1 — Aba Usuários (`AdminUsers.tsx`)**
-1. **Sort/Filtro**: clicar nos headers Nome/Status, alternar filtro de papel e status. Confirmar que reordena e filtra corretamente.
-2. **Reset de senha**: enviar reset para um usuário e confirmar toast "Reset enviado".
-3. **Suspender/Ativar workspace**: clicar PowerOff num workspace, confirmar status muda para Suspenso; reativar.
-4. **Impersonate**: clicar no olho num usuário não-admin, confirmar redirect para `/dashboard` com banner amarelo, depois "Encerrar".
-5. **Deletar usuário**: criar via Importar em Massa um usuário fake (ex.: `qa-delete@rhitmo.dev`), depois deletá-lo via botão Trash. Confirmar que sumiu da listagem e do `auth.users`.
+A correção anterior fez `AccountContext.tsx` usar `effectiveUserId`, mas **dois hooks legados continuam usando `user.id` direto**, e o `Index.tsx` usa esses hooks para decidir qual dashboard renderizar:
 
-**Bloco 2 — Aba Estrutura (`AdminStructure.tsx`)**
-6. **Criar workspace** (com owner e plano selecionados) → confirmar criação.
-7. **Criar time** dentro do workspace → confirmar.
-8. **Criar membro** dentro do time → confirmar.
-9. **Editar** workspace/time/membro (rename) → confirmar.
-10. **Mover membro** entre times via dropdown → confirmar.
-11. **Deletar em cascata**: deletar membro → time → workspace de teste. Confirmar que cascata limpa filhos sem orphan.
+1. **`src/hooks/useLinkedMember.ts`** — usa `user.id` em todos os checks (owner, leader, linked_member). Resultado: Matheus é detectado como leader → retorna `null` → `isLinkedMember=false` para a "Yasmin impersonada".
+2. **`src/hooks/useUserRole.ts`** — mesma coisa: usa `user.id`. Resultado: Matheus é leader (workspace Rhitmo Inc.) → `isLeader=true`.
 
-**Bloco 3 — Aba Acesso (`AdminAccess.tsx`)**
-12. **Atribuir HR Admin** a um workspace via botão → validar badge HR aparece em Usuários.
-13. **Trocar Owner** de um workspace de teste → validar.
+Como `Index.tsx` linha 457 faz:
+```ts
+if (isLinkedMember && !isLeader && !isHRAdmin) → render DirectReportDashboard
+```
+…cai no `else` e renderiza o **dashboard do líder do Matheus** (com workspace, times, nome, nudges, weekly notes, tudo do Matheus). Por isso aparece "Boa tarde, Matheus", times CoS/BizOps/HR/Marketing, alerta "Próximo do limite — Pulse" do workspace Rhitmo Inc., etc.
 
-**Bloco 4 — Aba Inteligência**
-14. Carregar a aba e confirmar que Health Scores aparecem (era bug recente, validar regressão).
+Além disso, várias `useQuery` dentro do próprio `Index.tsx` continuam usando `user.id` para puxar workspace, meetings, weeklyNotes, nudges — todos do Matheus.
 
-### Como reporto
+### Plano de correção
 
-Para cada bloco, te trago:
-- ✅/❌ por ação
-- Screenshot quando há mudança visual relevante (3-4 no total, não a cada clique)
-- Lista de bugs encontrados (se houver) com fix sugerido — paro e te aviso antes de corrigir, conforme regra do projeto
+**1. Migrar hooks legados para `effectiveUserId`**
+- `useLinkedMember.ts` → ler `useImpersonation()` e usar `effectiveUserId` em todas as queries + queryKey
+- `useUserRole.ts` → mesma mudança
 
-### Salvaguardas
-- **Não toco em workspaces existentes** (`Rhitmo Inc.`, `Faster Ops`, etc.) — só nos que eu criar com prefixo `[QA]`
-- **Não deleto usuários reais** — só os fake que eu criar (ex.: `qa-*@rhitmo.dev`)
-- **No final, faço cleanup**: deleto tudo que criei
+**2. Migrar queries internas do `Index.tsx` para `effectiveUserId`**
+- `workspace`, `meetings`, `weeklyNotes`, `nudges`, `onboardingStatus` (manager_id, leader_id, user_id) — todos passam a usar `effectiveUserId`
+- `firstName` (linha 488) deve usar nome da liderada quando impersonando, não `user.user_metadata` (que é do Matheus). Ler de `linkedMember.name` ou de `auth.users` do impersonado via uma nova query leve.
+- queryKeys passam a depender de `effectiveUserId` para invalidar ao trocar impersonação.
 
-### Tempo estimado
-~10-15 minutos de execução no browser. Te trago um relatório consolidado ao final.
+**3. Auditoria varredura final**
+- Procurar `user.id` / `user!.id` / `user?.id` em outros componentes que renderizam dashboard (`AppSidebar`, `NudgesBanner`, `UpgradeBanner`, `SetupChecklist`, `TeamTabs`) e migrar onde necessário.
+
+### Padrão sugerido (DRY)
+
+Criar um hook `useEffectiveUser()` que retorna `{ id, email }` já considerando impersonação, e reusar em todos os pontos. Reduz risco de regressão futura.
+
+```ts
+// src/hooks/useEffectiveUser.ts
+export function useEffectiveUser() {
+  const { user } = useAuth();
+  const { isImpersonating, impersonatedUserId, impersonatedEmail } = useImpersonation();
+  return {
+    id: isImpersonating ? impersonatedUserId : user?.id ?? null,
+    email: isImpersonating ? impersonatedEmail : user?.email ?? null,
+    isImpersonating,
+  };
+}
+```
+
+### Arquivos modificados
+- `src/hooks/useEffectiveUser.ts` (novo)
+- `src/hooks/useLinkedMember.ts` (usar effectiveUserId)
+- `src/hooks/useUserRole.ts` (usar effectiveUserId)
+- `src/pages/Index.tsx` (5 queries + firstName)
+- Outros componentes que vazarem em testes pós-fix (AppSidebar, NudgesBanner, etc. — auditoria após o fix dos críticos)
+
+### Memory update
+- Atualizar `mem://admin/impersonation-view-mode` com a regra: **todo hook/query que dependa de identidade do usuário deve usar `useEffectiveUser()`**, não `useAuth().user.id` direto.
+
+### Escopo
+Médio. ~30 min para o fix dos 3 arquivos críticos + auditoria. Sem migrations.
 
