@@ -1,41 +1,45 @@
-## Diagnóstico: Por que Impersonate não funciona
 
-A feature está **arquiteturalmente incompleta**. O hard reload acontece, mas:
 
-1. **Landing redireciona admin para `/admin**` (linha 602 de `Landing.tsx`): como matheus continua sendo `is_admin=true`, o reload sempre o joga de volta para o painel admin. Visualmente parece que o clique "não fez nada".
-2. **AccountContext ignora impersonation**: as queries de workspace/role usam `user!.id` (sempre matheus), mesmo que `effective_user_id()` na DB já resolva para a Lais. Ou seja, mesmo se chegasse no `/dashboard`, mostraria os dados do matheus, não do impersonado.
+## Plano de teste: Funcionalidades de poder do Admin
 
-A função SQL `effective_user_id()` funciona — mas só nas RLS que a chamam. O frontend não usa esse conceito em lugar nenhum.
+Vou rodar uma bateria sequencial de testes via browser no painel `/admin`, validando cada ação destrutiva e de gestão **com usuários descartáveis** (que crio e deleto durante o teste). Nenhum dado real seu será afetado — só uso usuários "fantoche" que eu mesmo crio.
 
-## Plano de correção (mínimo viável)
+### O que vou testar
 
-### 1. Frontend: adicionar `effectiveUserId` no AccountContext
+**Bloco 1 — Aba Usuários (`AdminUsers.tsx`)**
+1. **Sort/Filtro**: clicar nos headers Nome/Status, alternar filtro de papel e status. Confirmar que reordena e filtra corretamente.
+2. **Reset de senha**: enviar reset para um usuário e confirmar toast "Reset enviado".
+3. **Suspender/Ativar workspace**: clicar PowerOff num workspace, confirmar status muda para Suspenso; reativar.
+4. **Impersonate**: clicar no olho num usuário não-admin, confirmar redirect para `/dashboard` com banner amarelo, depois "Encerrar".
+5. **Deletar usuário**: criar via Importar em Massa um usuário fake (ex.: `qa-delete@rhitmo.dev`), depois deletá-lo via botão Trash. Confirmar que sumiu da listagem e do `auth.users`.
 
-- Buscar `admin_impersonation` no boot do AccountContext
-- Expor `effectiveUserId = impersonation?.impersonated_user_id ?? user.id`
-- Trocar **todas as queries internas** que usam `user!.id` por `effectiveUserId` (workspace owner, leader, hr_admin, linked_member)
-- Trocar `queryKey: ['account-workspace', user?.id]` por `[..., effectiveUserId]` para invalidar ao trocar de impersonated user
+**Bloco 2 — Aba Estrutura (`AdminStructure.tsx`)**
+6. **Criar workspace** (com owner e plano selecionados) → confirmar criação.
+7. **Criar time** dentro do workspace → confirmar.
+8. **Criar membro** dentro do time → confirmar.
+9. **Editar** workspace/time/membro (rename) → confirmar.
+10. **Mover membro** entre times via dropdown → confirmar.
+11. **Deletar em cascata**: deletar membro → time → workspace de teste. Confirmar que cascata limpa filhos sem orphan.
 
-### 2. Roteamento: parar de jogar admin de volta em `/admin` quando está impersonando
+**Bloco 3 — Aba Acesso (`AdminAccess.tsx`)**
+12. **Atribuir HR Admin** a um workspace via botão → validar badge HR aparece em Usuários.
+13. **Trocar Owner** de um workspace de teste → validar.
 
-- `Landing.tsx` (linha 600-604): se `isImpersonating`, redirecionar para `/dashboard` (não `/admin`)
-- `DirectReportGuard.tsx`: se `isImpersonating`, **não** redirecionar admin para `/admin`
+**Bloco 4 — Aba Inteligência**
+14. Carregar a aba e confirmar que Health Scores aparecem (era bug recente, validar regressão).
 
-### 3. Banner de Impersonation: mostrar globalmente
+### Como reporto
 
-- Hoje o `<ImpersonationBanner />` só está dentro do `AdminLayout`. Mover (ou duplicar) para o `AppLayout` também, garantindo que o admin veja onde está e tenha o botão "Encerrar".
+Para cada bloco, te trago:
+- ✅/❌ por ação
+- Screenshot quando há mudança visual relevante (3-4 no total, não a cada clique)
+- Lista de bugs encontrados (se houver) com fix sugerido — paro e te aviso antes de corrigir, conforme regra do projeto
 
-### 4. Limpar `useAdmin` durante impersonation (opcional, mas importante)
+### Salvaguardas
+- **Não toco em workspaces existentes** (`Rhitmo Inc.`, `Faster Ops`, etc.) — só nos que eu criar com prefixo `[QA]`
+- **Não deleto usuários reais** — só os fake que eu criar (ex.: `qa-*@rhitmo.dev`)
+- **No final, faço cleanup**: deleto tudo que criei
 
-- Enquanto `isImpersonating === true`, fazer `useAdmin()` retornar `isAdmin = false` para o resto do app (assim os fluxos do app tratam o admin como o usuário comum impersonado, sem layouts especiais de admin)
+### Tempo estimado
+~10-15 minutos de execução no browser. Te trago um relatório consolidado ao final.
 
-### Escopo / esforço
-
-- **3 arquivos** de mudança principal: `AccountContext.tsx`, `Landing.tsx`, `DirectReportGuard.tsx`
-- **1 ajuste menor**: posicionar `ImpersonationBanner` fora do AdminLayout (em `AppLayout`)
-- **1 ajuste em `useAdmin**` para considerar impersonation
-- Sem migrations. RLS já está pronta via `effective_user_id()`.
-
-### Vale a pena agora?
-
-Sim, é médio (não pequeno, não enorme). É **a** ferramenta de suporte ao cliente — sem ela você não consegue entrar como giovanna/guilherme/lais para depurar o que eles veem. Estimativa: 1 sprint focado.
