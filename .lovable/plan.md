@@ -1,26 +1,41 @@
+## Diagnóstico: Por que Impersonate não funciona
 
+A feature está **arquiteturalmente incompleta**. O hard reload acontece, mas:
 
-## Correções no Painel Admin — Tags duplicadas + Ordenação/Filtro
+1. **Landing redireciona admin para `/admin**` (linha 602 de `Landing.tsx`): como matheus continua sendo `is_admin=true`, o reload sempre o joga de volta para o painel admin. Visualmente parece que o clique "não fez nada".
+2. **AccountContext ignora impersonation**: as queries de workspace/role usam `user!.id` (sempre matheus), mesmo que `effective_user_id()` na DB já resolva para a Lais. Ou seja, mesmo se chegasse no `/dashboard`, mostraria os dados do matheus, não do impersonado.
 
-### 1. Deduplicar badges de papel por workspace
+A função SQL `effective_user_id()` funciona — mas só nas RLS que a chamam. O frontend não usa esse conceito em lugar nenhum.
 
-**Problema:** `get_user_caps` RPC retorna um registro por **time**, mas os badges mostram `Líder @ {workspace_name}` — resultando em 9 badges idênticos para quem lidera 9 times no mesmo workspace.
+## Plano de correção (mínimo viável)
 
-**Fix em `renderCapBadges` (AdminUsers.tsx):**
-- Agrupar `leader_of` por `workspace_name`, exibir apenas 1 badge por workspace com contagem: `Líder @ Rhitmo Inc. (9 times)`
-- Agrupar `member_of` da mesma forma: `Liderado @ Faster Ops`
-- `owner_of` e `hr_admin_of` já são por workspace, não precisam de dedup
-- Se o usuário tiver apenas 1 time no workspace, não mostrar contagem
+### 1. Frontend: adicionar `effectiveUserId` no AccountContext
 
-### 2. Adicionar ordenação e filtros na tabela de usuários
+- Buscar `admin_impersonation` no boot do AccountContext
+- Expor `effectiveUserId = impersonation?.impersonated_user_id ?? user.id`
+- Trocar **todas as queries internas** que usam `user!.id` por `effectiveUserId` (workspace owner, leader, hr_admin, linked_member)
+- Trocar `queryKey: ['account-workspace', user?.id]` por `[..., effectiveUserId]` para invalidar ao trocar de impersonated user
 
-**Melhorias em AdminUsers.tsx:**
-- Adicionar **sort** clicável nos headers da tabela (Nome, Email, Status)
-- Estado: `sortField` (`name` | `email` | `status`) + `sortDirection` (`asc` | `desc`)
-- Ícone `ArrowUpDown` nos headers clicáveis
-- Manter filtro por papel e busca já existentes
-- Adicionar filtro por **status** (Ativo / Suspenso / Sem workspace) como terceiro dropdown
+### 2. Roteamento: parar de jogar admin de volta em `/admin` quando está impersonando
 
-### Arquivos modificados
-- `src/components/admin/AdminUsers.tsx` (dedup badges + sort headers + status filter)
+- `Landing.tsx` (linha 600-604): se `isImpersonating`, redirecionar para `/dashboard` (não `/admin`)
+- `DirectReportGuard.tsx`: se `isImpersonating`, **não** redirecionar admin para `/admin`
 
+### 3. Banner de Impersonation: mostrar globalmente
+
+- Hoje o `<ImpersonationBanner />` só está dentro do `AdminLayout`. Mover (ou duplicar) para o `AppLayout` também, garantindo que o admin veja onde está e tenha o botão "Encerrar".
+
+### 4. Limpar `useAdmin` durante impersonation (opcional, mas importante)
+
+- Enquanto `isImpersonating === true`, fazer `useAdmin()` retornar `isAdmin = false` para o resto do app (assim os fluxos do app tratam o admin como o usuário comum impersonado, sem layouts especiais de admin)
+
+### Escopo / esforço
+
+- **3 arquivos** de mudança principal: `AccountContext.tsx`, `Landing.tsx`, `DirectReportGuard.tsx`
+- **1 ajuste menor**: posicionar `ImpersonationBanner` fora do AdminLayout (em `AppLayout`)
+- **1 ajuste em `useAdmin**` para considerar impersonation
+- Sem migrations. RLS já está pronta via `effective_user_id()`.
+
+### Vale a pena agora?
+
+Sim, é médio (não pequeno, não enorme). É **a** ferramenta de suporte ao cliente — sem ela você não consegue entrar como giovanna/guilherme/lais para depurar o que eles veem. Estimativa: 1 sprint focado.
