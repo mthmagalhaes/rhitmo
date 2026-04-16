@@ -1,57 +1,56 @@
 
 
-## Melhorias de Inteligência do MentorChat
+## Cap de Reuniões com Bot + Atualização de Pricing
 
-### Diagnóstico dos 3 Problemas
+### Contexto
+O bot de transcrição (Recall.ai) é o recurso mais caro da plataforma. Atualmente só existe cap de **horas de gravação** (`maxRecordingHours`), mas não há limite no **número de reuniões agendadas com bot**. Um power user no Business pode agendar 40+ reuniões/mês, estourando a margem. Precisamos adicionar um cap de reuniões com bot por plano.
 
-**1. Respostas genéricas e repetitivas**
-- O modelo (`google/gemini-2.5-flash`) recebe `max_tokens: 1500`, o que limita a profundidade
-- O system prompt tem ~5.000 tokens de instruções formatação/guardrails mas pouco espaço para raciocínio profundo
-- No modo auto, envia apenas as **10 notas mais recentes** — pode não cobrir o contexto relevante
-- O `conversationHistory` envia apenas `content` (texto), **perdendo o contexto de imagens anteriores** na thread
-- O roteador semântico às vezes classifica como "NAO" perguntas que precisam de contexto (ex: "como responder a isso?")
+### Caps propostos
 
-**2. Imagem enviada sem texto resulta em fallback genérico**
-- Linha 302: quando o usuário envia só imagem sem texto, o `finalMessage` fica vazio e o default é `"Analise esta imagem no contexto do liderado."` — genérico demais
-- O texto default não instrui o modelo a fazer algo útil com a imagem
-- A mensagem salva no banco é `[Imagem enviada para análise]` — sem contexto para a thread
+| Plano | Reuniões com bot/mês | Gravação manual |
+|-------|---------------------|-----------------|
+| Pulse | 0 (sem acesso) | 0h |
+| Pro | 20 | 12h |
+| Business | 40 | 30h |
 
-**3. Qualidade inferior vs Claude/ChatGPT nas referências**
-- `gemini-2.5-flash` é bom para velocidade mas fraco em nuance empática e coaching sofisticado
-- `max_tokens: 1500` corta respostas ricas que precisariam de 2000-3000 tokens
-- O prompt pede muitas coisas (formatação + análise + coaching + drafting + identidade) diluindo o foco
+### Arquivos e mudanças
 
-### Plano de Correções
+**1. `src/hooks/usePlanLimits.ts`**
+- Adicionar `maxBotMeetings` à interface `PlanLimits` (Pulse: 0, Pro: 20, Business: 40)
+- Adicionar query para contar `recall_bots` agendados no mês (`status != 'error'`)
+- Expor `botMeetingCount`, `canScheduleBot`, `botMeetingsRemaining`
 
-**1. Upgrade de modelo: `gemini-2.5-flash` → `gemini-2.5-pro`** (para MentorChat líder)
-- Pro tem raciocínio mais profundo, melhor para coaching e empatia
-- Manter flash para Meu Rhitmo (liderado) por custo
-- Adicionar `reasoning: { effort: "medium" }` para ativar thinking
+**2. `src/hooks/useCalendarIntegration.ts`**
+- Importar `usePlanLimits` e verificar `canScheduleBot` antes de invocar `schedule-recall-bot`
+- Mostrar toast de limite atingido se bloqueado
 
-**2. Aumentar `max_tokens` de 1500 para 3000**
-- Permite respostas mais ricas e contextualizadas como as do Claude/ChatGPT
+**3. `src/components/dashboard/UpcomingMeetingsCard.tsx`**
+- Desabilitar botão de agendar bot quando `!canScheduleBot`
+- Mostrar badge "X/Y reuniões" no card
 
-**3. Melhorar fallback de imagem sem texto**
-- Trocar default de `"Analise esta imagem no contexto do liderado."` para prompt mais específico: `"Analise esta imagem detalhadamente. Se for uma conversa, identifique o contexto, as emoções envolvidas e sugira como eu poderia responder de forma empática e estratégica. Se for um documento ou gráfico, extraia os insights principais."`
+**4. `supabase/functions/schedule-recall-bot/index.ts`**
+- Adicionar verificação server-side: contar `recall_bots` do mês para o `user_id`, comparar com limite do plano via query ao `workspaces.plan_tier`
+- Retornar 403 se exceder o cap
 
-**4. Expandir contexto automático de 10 para 20 notas**
-- Mais histórico = padrões mais ricos, menos respostas genéricas
+**5. `src/pages/Billing.tsx` — Atualizar features dos planos**
+- Pulse: adicionar "Sem gravação com bot"
+- Pro: adicionar "Até 20 reuniões com bot/mês"
+- Business: adicionar "Até 40 reuniões com bot/mês"
 
-**5. Melhorar roteador semântico para imagens**
-- Quando há `imageContent`, sempre buscar contexto (bypass router)
-- Imagem com conversa de liderado PRECISA de histórico para ser útil
+**6. `src/pages/Landing.tsx` — Atualizar pricing em PT e EN**
+- Pro PT: adicionar "Até 20 reuniões com bot de transcrição/mês"
+- Business PT: adicionar "Até 40 reuniões com bot de transcrição/mês"
+- Pro EN: "Up to 20 bot-transcribed meetings/mo"
+- Business EN: "Up to 40 bot-transcribed meetings/mo"
 
-**6. Refinar system prompt — menos formatação, mais profundidade**
-- Condensar seções de formatação (redundantes)
-- Adicionar instrução explícita: "Evite respostas genéricas. Seja específico citando dados do histórico."
+**7. `src/components/billing/UpgradeBanner.tsx`**
+- Adicionar check de `botMeetingCount` vs `maxBotMeetings` nos near-limits
 
-### Arquivos modificados
+**8. Memory — Atualizar `mem://monetization/plan-limits-and-guardrails-v2`**
+- Documentar os novos caps de bot meetings
 
-- `supabase/functions/chat-mentor/index.ts` — modelo, max_tokens, prompt, router bypass, contexto
-- `src/components/MentorChat.tsx` — default text para imagem, expandir notas de 10 para 20
-
-### Impacto de custo
-- Gemini 2.5 Pro custa ~5x mais que Flash por token
-- Com ~200 msgs/mês do líder principal: de ~$2/mês para ~$10/mês
-- Justificável pelo valor de retenção do user principal
+### Detalhes técnicos
+- A contagem server-side no edge function usa: `SELECT count(*) FROM recall_bots WHERE user_id = $1 AND created_at >= $startOfMonth AND status != 'error'`
+- O `plan_tier` é obtido via join `teams -> workspaces` usando o `user_id`
+- Beta users (`is_beta_user = true`) continuam com Infinity em todos os limites
 
