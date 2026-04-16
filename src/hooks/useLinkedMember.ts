@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from './useAuth';
+import { useEffectiveUser } from './useEffectiveUser';
 
 interface LinkedMemberData {
   id: string;
@@ -33,12 +33,12 @@ interface LinkedMemberData {
 }
 
 export function useLinkedMember() {
-  const { user, loading: authLoading } = useAuth();
+  const { id: effectiveUserId, loading: effectiveLoading } = useEffectiveUser();
 
   const { data: linkedMember, isLoading: queryLoading } = useQuery({
-    queryKey: ['linked-member', user?.id],
+    queryKey: ['linked-member', effectiveUserId],
     queryFn: async (): Promise<LinkedMemberData | null> => {
-      if (!user) return null;
+      if (!effectiveUserId) return null;
 
       // CRITICAL: Wait for session before RLS-dependent queries
       const { data: { session } } = await supabase.auth.getSession();
@@ -51,14 +51,14 @@ export function useLinkedMember() {
         supabase
           .from('workspaces')
           .select('id')
-          .eq('owner_id', user.id)
+          .eq('owner_id', effectiveUserId)
           .eq('is_active', true)
           .limit(1)
           .maybeSingle(),
         supabase
           .from('teams')
           .select('id')
-          .eq('leader_user_id', user.id)
+          .eq('leader_user_id', effectiveUserId)
           .limit(1)
           .maybeSingle(),
       ]);
@@ -70,7 +70,7 @@ export function useLinkedMember() {
       const { data, error } = await supabase
         .from('team_members')
         .select('id, name, email, role, avatar, skills_data, work_style_data, chronotype, feedback_style, recognition_style, motivators, user_manual, updated_at')
-        .eq('linked_user_id', user.id)
+        .eq('linked_user_id', effectiveUserId)
         .eq('invite_status', 'accepted')
         .maybeSingle();
       
@@ -81,7 +81,7 @@ export function useLinkedMember() {
       
       return data as LinkedMemberData | null;
     },
-    enabled: !!user && !authLoading,
+    enabled: !!effectiveUserId && !effectiveLoading,
     retry: 5,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
   });
@@ -93,6 +93,6 @@ export function useLinkedMember() {
     linkedMember,
     isLinkedMember: !!linkedMember,
     needsOnboarding: !!needsOnboarding,
-    isLoading: authLoading || queryLoading,
+    isLoading: effectiveLoading || queryLoading,
   };
 }
