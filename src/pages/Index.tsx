@@ -167,7 +167,7 @@ function PendingInviteAutoLinker({ user, onLinked }: { user: { id: string; email
   );
 }
 
-  const { t } = useTranslation();
+const Index = ({ activeTab }: { activeTab?: string }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, loading: authLoading } = useAuth();
