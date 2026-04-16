@@ -1,47 +1,64 @@
 
 
-## Plano: Botão de saída de impersonate + esconder Design System de não-admins
+## Plano: Corrigir policy quebrada de HR Admin sem regressão
 
-### Diagnóstico
+### Diagnóstico confirmado
 
-**Bug 1 — Design System aparecendo para Yasmin durante impersonate:**
-Na linha 277 do `AppSidebar.tsx`:
-```tsx
-{!isInHRContext && user?.email === 'matheus@rhitmo.co' && (...)}
+- Arquivos em `meeting-recordings` são salvos como `{uploader_user_id}/{timestamp}.{ext}` (visto em `upload-meeting/index.ts:127`)
+- Policy atual `HR Admin view workspace recordings` usa `(storage.foldername(w.name))[1]::uuid = w.owner_id` — pega o **nome do workspace** (texto livre tipo "Rhitmo Inc.") e tenta cast pra UUID → **sempre falha silenciosamente**
+- **Impacto atual: zero vazamento**, mas HR Admins na prática nunca conseguem listar gravações via essa policy. As outras 4 policies do bucket continuam corretas (manager vê só a própria pasta)
+
+### Correção
+
+Substituir a policy quebrada por uma versão correta que:
+1. Extrai o user_id do **path do arquivo** (`storage.foldername(name)`), não do nome do workspace
+2. Verifica que esse user_id é líder de algum time num workspace onde o caller é HR Admin
+3. Mantém workspace ativo
+
+```sql
+DROP POLICY "HR Admin view workspace recordings" ON storage.objects;
+
+CREATE POLICY "HR Admin view workspace recordings"
+  ON storage.objects FOR SELECT TO authenticated
+  USING (
+    bucket_id = 'meeting-recordings'
+    AND EXISTS (
+      SELECT 1
+      FROM public.teams t
+      JOIN public.workspaces w ON w.id = t.workspace_id
+      WHERE t.leader_user_id::text = (storage.foldername(name))[1]
+        AND w.is_active = true
+        AND public.is_hr_admin_of_workspace(w.id)
+    )
+  );
 ```
-A checagem usa `user?.email` (auth user = Matheus), não o usuário efetivo. Como `useAdmin().isAdmin` retorna `false` durante impersonate (correto), o `isSuperAdmin` da linha 114 fica `false` e cai no `else`. Mas a checagem do bloco "Marca/Design System" continua olhando `user.email` do auth → mostra para qualquer impersonado. **Precisa adicionar `&& !isImpersonating`**.
 
-**Bug 2 — Falta botão fácil de sair do impersonate:**
-Hoje só existe o anel âmbar no avatar do footer (precisa achar e clicar) e a tag "Personificando" oculta (`showTag={false}` na linha 378). Sem affordance clara para encerrar e voltar pro `/admin`.
+### Por que isso não quebra nada
 
-### Solução
+| Risco | Mitigação |
+|---|---|
+| Manager perde acesso à própria pasta | Não — policies `Managers view own recordings` e `Users can view own recordings` continuam intactas |
+| Upload quebra | Não — policies INSERT não tocadas |
+| Delete quebra | Não — policies DELETE não tocadas |
+| HR Admin acessa gravações de outros workspaces | Não — `is_hr_admin_of_workspace(w.id)` só retorna true para workspaces onde o caller está em `hr_admin_ids` |
+| HR Admin acessa gravações de quem não é líder do workspace dele | Não — JOIN exige que o uploader (`leader_user_id`) pertença a um time **dentro** do workspace |
 
-**1. Esconder Design System durante impersonate** (`AppSidebar.tsx` linha 277):
-```tsx
-{!isInHRContext && user?.email === 'matheus@rhitmo.co' && !isImpersonating && (...)}
-```
+### Cobertura intencional
 
-**2. Botão dedicado "Voltar ao Admin" no SidebarFooter** quando `isImpersonating`:
-- Botão proeminente em âmbar, full-width, com ícone `ArrowLeft` + texto "Encerrar visualização" + sublinha discreta com o email impersonado
-- Posicionado logo acima do bloco do user, sempre visível
-- Ao clicar → chama `stopImpersonation()` (já redireciona para `/admin`)
-
-**3. Reativar a tag "Personificando"** ao lado do avatar (`showTag={true}`) para reforçar o estado visual
-
-**4. Versão colapsada** do sidebar: quando `!open`, mostrar só ícone do botão com tooltip "Encerrar visualização"
+Após o fix, HR Admin de workspace W verá gravações de qualquer líder cujos times pertencem a W. Isso casa com o modelo `Workspace = Empresa` e com a regra existente em `is_hr_admin_of_workspace`.
 
 ### Arquivos modificados
 
-- `src/components/AppSidebar.tsx` — adicionar `!isImpersonating` no guard do Design System + novo botão "Encerrar visualização" no footer + `showTag={true}`
+- 1 migration SQL (DROP + CREATE da policy)
+
+### Validação pós-fix
+
+1. Login como manager normal: continua vendo só a própria pasta ✓
+2. Login como HR Admin do workspace: lista gravações dos líderes do workspace ✓
+3. Login como HR Admin de workspace A não vê gravações de líderes do workspace B ✓
+4. Marcar finding `hr_admin_recording_policy_broken` como `mark_as_fixed` no scanner
 
 ### Escopo
 
-Pequeno. ~5 min. Sem migration, sem edge function, sem mudança de hook. Só guard de UI + botão novo no footer.
-
-### Validação
-
-1. Impersonando Yasmin → não aparece "Design System" no sidebar
-2. Botão âmbar "Encerrar visualização" visível no footer durante impersonate, leva para `/admin` ao clicar
-3. Sair de impersonate (logando como Matheus normal) → Design System volta a aparecer
-4. Sidebar colapsado → ícone do botão visível com tooltip
+Mínimo. 1 migration de ~10 linhas, sem mudança de código TS, sem mudança de função. ~3 minutos. Risco: nulo — a policy atual já está quebrada (só falha), substituí-la por uma correta só **adiciona** o acesso pretendido.
 
