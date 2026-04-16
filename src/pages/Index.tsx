@@ -1,4 +1,4 @@
-import { useState, useEffect, Component, type ReactNode } from 'react';
+import { useState, useEffect, useRef, useCallback, Component, type ReactNode } from 'react';
 import { RhythmWave } from '@/components/RhythmWave';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -385,24 +385,14 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
 
   if (!isLeader && !isHRAdmin && !isLinkedMember) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <div className="max-w-md text-center space-y-6">
-          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-            <Loader2 className="h-8 w-8 text-primary animate-spin" />
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              {t('auth.processingAccess')}
-            </h1>
-            <p className="text-muted-foreground">
-              {t('auth.processingAccessDescription')}
-            </p>
-          </div>
-          <Button variant="outline" onClick={() => window.location.reload()}>
-            {t('common.tryAgain')}
-          </Button>
-        </div>
-      </div>
+      <PendingInviteAutoLinker
+        user={user}
+        onLinked={() => {
+          queryClient.invalidateQueries({ queryKey: ['linked-member'] });
+          queryClient.invalidateQueries({ queryKey: ['account-linked-member'] });
+          queryClient.invalidateQueries({ queryKey: ['account-pending-invite'] });
+        }}
+      />
     );
   }
 
