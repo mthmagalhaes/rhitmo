@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
+import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -41,6 +42,7 @@ export const UpcomingMeetingsCard = () => {
     syncDebug,
     refetchMeetings,
   } = useCalendarIntegration();
+  const { canScheduleBot, botMeetingCount, limits } = usePlanLimits();
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
   const [schedulingMeetingId, setSchedulingMeetingId] = useState<string | null>(null);
@@ -199,6 +201,11 @@ export const UpcomingMeetingsCard = () => {
           <Badge variant="secondary" className="text-xs rounded-full">
             {upcomingMeetings.length}
           </Badge>
+          {!limits.isBetaUser && limits.maxBotMeetings > 0 && (
+            <Badge variant="outline" className="text-[10px] rounded-full px-2 py-0.5 text-muted-foreground">
+              {botMeetingCount}/{limits.maxBotMeetings} bot
+            </Badge>
+          )}
           {isSyncing && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
         </div>
         <div className="flex items-center gap-3">
@@ -307,9 +314,10 @@ export const UpcomingMeetingsCard = () => {
                     }
                     return (
                       <button
-                        className="h-8 px-2.5 rounded-lg bg-primary/10 flex items-center gap-1.5 hover:bg-primary/20 transition-colors text-xs font-medium text-primary"
+                        className="h-8 px-2.5 rounded-lg bg-primary/10 flex items-center gap-1.5 hover:bg-primary/20 transition-colors text-xs font-medium text-primary disabled:opacity-40 disabled:cursor-not-allowed"
                         onClick={(e) => {
                           e.stopPropagation();
+                          if (!canScheduleBot) return;
                           setSchedulingMeetingId(meeting.id);
                           scheduleBot.mutate({
                             meeting_id: meeting.id,
@@ -320,7 +328,8 @@ export const UpcomingMeetingsCard = () => {
                             onSettled: () => setSchedulingMeetingId(null),
                           });
                         }}
-                        disabled={schedulingMeetingId === meeting.id}
+                        disabled={schedulingMeetingId === meeting.id || !canScheduleBot}
+                        title={!canScheduleBot ? 'Limite de reuniões com bot atingido. Faça upgrade.' : undefined}
                       >
                         {schedulingMeetingId === meeting.id ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />

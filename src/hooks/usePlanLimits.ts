@@ -9,6 +9,7 @@ interface PlanLimits {
   maxTeams: number;
   maxMentorMessages: number;
   maxRecordingHours: number;
+  maxBotMeetings: number;
   analytics: boolean;
   rhitmoSync: boolean;
   formalReviews: boolean;
@@ -27,6 +28,7 @@ const PLAN_LIMITS: Record<string, Omit<PlanLimits, 'planTier' | 'isBetaUser'>> =
     maxTeams: 1,
     maxMentorMessages: 20,
     maxRecordingHours: 0,
+    maxBotMeetings: 0,
     analytics: false,
     rhitmoSync: false,
     formalReviews: true,
@@ -41,6 +43,7 @@ const PLAN_LIMITS: Record<string, Omit<PlanLimits, 'planTier' | 'isBetaUser'>> =
     maxTeams: 3,
     maxMentorMessages: Infinity,
     maxRecordingHours: 12,
+    maxBotMeetings: 20,
     analytics: true,
     rhitmoSync: true,
     formalReviews: true,
@@ -55,6 +58,7 @@ const PLAN_LIMITS: Record<string, Omit<PlanLimits, 'planTier' | 'isBetaUser'>> =
     maxTeams: Infinity,
     maxMentorMessages: Infinity,
     maxRecordingHours: 30,
+    maxBotMeetings: 40,
     analytics: true,
     rhitmoSync: true,
     formalReviews: true,
@@ -173,6 +177,27 @@ export const usePlanLimits = () => {
     refetchOnWindowFocus: true,
   });
 
+  // Count bot meetings scheduled this month (status != 'error')
+  const { data: botMeetingCount = 0, isLoading: botLoading } = useQuery({
+    queryKey: ['bot-meeting-count-month', user?.id],
+    queryFn: async () => {
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+
+      const { count, error } = await (supabase as any)
+        .from('recall_bots')
+        .select('*', { count: 'exact', head: true })
+        .neq('status', 'error')
+        .gte('created_at', startOfMonth.toISOString());
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!user,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+  });
+
   const isBeta = !!workspace?.is_beta_user;
   const recordingHoursUsed = recordingSecondsUsed / 3600;
 
@@ -187,6 +212,7 @@ export const usePlanLimits = () => {
         maxTeams: Infinity,
         maxMentorMessages: Infinity,
         maxRecordingHours: Infinity,
+        maxBotMeetings: Infinity,
         analytics: true,
         rhitmoSync: true,
         formalReviews: true,
@@ -206,7 +232,7 @@ export const usePlanLimits = () => {
     };
   }, [workspace?.plan_tier, isBeta]);
 
-  const isLoading = workspaceLoading || memberLoading || reviewLoading || teamLoading || mentorLoading || recordingLoading;
+  const isLoading = workspaceLoading || memberLoading || reviewLoading || teamLoading || mentorLoading || recordingLoading || botLoading;
 
   return {
     limits,
@@ -215,12 +241,14 @@ export const usePlanLimits = () => {
     reviewCount,
     mentorMessageCount,
     recordingHoursUsed,
+    botMeetingCount,
     isLoading,
     canAddMember: isBeta ? true : memberCount < limits.maxMembers,
     canAddTeam: isBeta ? true : teamCount < limits.maxTeams,
     canGenerateReview: isBeta ? true : reviewCount < limits.maxReviews,
     canSendMentorMessage: isBeta ? true : limits.maxMentorMessages === Infinity || mentorMessageCount < limits.maxMentorMessages,
     canRecord: isBeta ? true : limits.maxRecordingHours > 0 && recordingHoursUsed < limits.maxRecordingHours,
+    canScheduleBot: isBeta ? true : limits.maxBotMeetings > 0 && botMeetingCount < limits.maxBotMeetings,
     hasAnalytics: isBeta ? true : limits.analytics,
     hasSync: isBeta ? true : limits.rhitmoSync,
     hasMentorChat: true,
@@ -231,5 +259,6 @@ export const usePlanLimits = () => {
     reviewsRemaining: isBeta ? Infinity : limits.maxReviews - reviewCount,
     mentorMessagesRemaining: isBeta ? Infinity : limits.maxMentorMessages === Infinity ? Infinity : limits.maxMentorMessages - mentorMessageCount,
     recordingHoursRemaining: isBeta ? Infinity : limits.maxRecordingHours === Infinity ? Infinity : limits.maxRecordingHours - recordingHoursUsed,
+    botMeetingsRemaining: isBeta ? Infinity : limits.maxBotMeetings === 0 ? 0 : limits.maxBotMeetings - botMeetingCount,
   };
 };
