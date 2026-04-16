@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RhythmWave } from '@/components/RhythmWave';
-import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award, ArrowRightLeft, UserCheck, Palette, Compass, FileText, User, Download } from 'lucide-react';
+import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award, ArrowRightLeft, UserCheck, Palette, Compass, FileText, User, Download, ArrowLeft, Eye } from 'lucide-react';
+import { useImpersonation } from '@/hooks/useImpersonation';
 import { ChromeIcon } from '@/components/icons/ChromeIcon';
 import { SlackIcon } from '@/components/icons/SlackIcon';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -72,6 +73,7 @@ export function AppSidebar() {
   const { isAdmin } = useAdmin();
   const { isLeader, isHRAdmin, isUser, loading: roleLoading } = useUserRole();
   const { isLinkedMember, linkedMember } = useLinkedMember();
+  const { stopImpersonation, impersonatedEmail } = useImpersonation();
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -274,7 +276,7 @@ export function AppSidebar() {
               </SidebarGroup>
             )}
 
-            {!isInHRContext && user?.email === 'matheus@rhitmo.co' && (
+            {!isInHRContext && user?.email === 'matheus@rhitmo.co' && !isImpersonating && (
               <SidebarGroup>
                 <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">{t('sidebar.brand')}</SidebarGroupLabel>
                 <SidebarGroupContent>
@@ -324,6 +326,39 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter>
+        {/* Stop impersonation — prominent CTA back to /admin */}
+        {isImpersonating && (
+          <div className="px-3 pt-2 pb-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={stopImpersonation}
+              title="Encerrar visualização e voltar ao Admin"
+              className={
+                open
+                  ? 'w-full justify-start gap-2 rounded-xl border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 hover:text-amber-900 hover:border-amber-400 shadow-sm'
+                  : 'w-full justify-center rounded-xl border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 hover:text-amber-900 hover:border-amber-400 shadow-sm h-9 px-0'
+              }
+            >
+              {open ? (
+                <>
+                  <ArrowLeft className="h-4 w-4 shrink-0" />
+                  <div className="flex flex-col items-start min-w-0 leading-tight">
+                    <span className="text-xs font-semibold">Encerrar visualização</span>
+                    {impersonatedEmail && (
+                      <span className="text-[10px] font-normal text-amber-800/80 truncate max-w-[160px]">
+                        {impersonatedEmail}
+                      </span>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <ArrowLeft className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+        )}
+
         {/* Context switch: HR Admin → Leader view */}
         {!isSuperAdmin && isInHRContext && isHRAdmin && isLeader && open && (
           <div className="px-4 py-2">
@@ -375,7 +410,7 @@ export function AppSidebar() {
               memberName={userName}
               avatarUrl={isImpersonating ? linkedMember?.avatar : user?.user_metadata?.avatar}
               size="md"
-              showTag={false}
+              showTag={true}
             />
           )}
           {open && (
