@@ -115,6 +115,9 @@ export const MentorChat = ({
   const [editingTitle, setEditingTitle] = useState('');
   const [deletingThread, setDeletingThread] = useState<ChatThread | null>(null);
   const [attachment, setAttachment] = useState<{ name: string; content: string; imageBase64?: string; mimeType?: string; isImage?: boolean } | null>(null);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState('');
+  const editTextareaRef = useRef<HTMLTextAreaElement>(null);
   const placeholder = attachment
     ? 'Descreva o que você quer saber sobre a imagem...'
     : isLeader
