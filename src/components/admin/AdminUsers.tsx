@@ -309,6 +309,15 @@ export const AdminUsers = () => {
             <SelectItem value="member">Liderados</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={statusFilter} onValueChange={v => setStatusFilter(v as StatusFilter)}>
+          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Filtrar por status" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os status</SelectItem>
+            <SelectItem value="active">Ativo</SelectItem>
+            <SelectItem value="suspended">Suspenso</SelectItem>
+            <SelectItem value="no_workspace">Sem workspace</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <Card>
@@ -323,9 +332,13 @@ export const AdminUsers = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Usuário</TableHead>
+                  <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('name')}>
+                    Usuário <SortIcon field="name" />
+                  </TableHead>
                   <TableHead>Papéis</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('status')}>
+                    Status <SortIcon field="status" />
+                  </TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
