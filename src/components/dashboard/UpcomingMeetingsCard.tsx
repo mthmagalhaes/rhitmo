@@ -314,9 +314,10 @@ export const UpcomingMeetingsCard = () => {
                     }
                     return (
                       <button
-                        className="h-8 px-2.5 rounded-lg bg-primary/10 flex items-center gap-1.5 hover:bg-primary/20 transition-colors text-xs font-medium text-primary"
+                        className="h-8 px-2.5 rounded-lg bg-primary/10 flex items-center gap-1.5 hover:bg-primary/20 transition-colors text-xs font-medium text-primary disabled:opacity-40 disabled:cursor-not-allowed"
                         onClick={(e) => {
                           e.stopPropagation();
+                          if (!canScheduleBot) return;
                           setSchedulingMeetingId(meeting.id);
                           scheduleBot.mutate({
                             meeting_id: meeting.id,
@@ -327,7 +328,8 @@ export const UpcomingMeetingsCard = () => {
                             onSettled: () => setSchedulingMeetingId(null),
                           });
                         }}
-                        disabled={schedulingMeetingId === meeting.id}
+                        disabled={schedulingMeetingId === meeting.id || !canScheduleBot}
+                        title={!canScheduleBot ? 'Limite de reuniões com bot atingido. Faça upgrade.' : undefined}
                       >
                         {schedulingMeetingId === meeting.id ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
