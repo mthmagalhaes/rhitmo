@@ -7,7 +7,9 @@ interface AdminGuardProps {
 }
 
 export const AdminGuard = ({ children }: AdminGuardProps) => {
-  const { isAdmin, loading } = useAdmin();
+  // Use isRealAdmin so admin can still access /admin even while impersonating
+  // (e.g. to stop impersonation). isAdmin is false during impersonation by design.
+  const { isRealAdmin, loading } = useAdmin();
 
   if (loading) {
     return (
@@ -17,7 +19,7 @@ export const AdminGuard = ({ children }: AdminGuardProps) => {
     );
   }
 
-  if (!isAdmin) {
+  if (!isRealAdmin) {
     return <Navigate to="/" replace />;
   }
 

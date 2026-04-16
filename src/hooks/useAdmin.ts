@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { useImpersonation } from './useImpersonation';
 
 export const useAdmin = () => {
   const { user, loading: authLoading } = useAuth();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { isImpersonating, isLoading: impersonationLoading } = useImpersonation();
+  const [isRealAdmin, setIsRealAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -14,7 +16,7 @@ export const useAdmin = () => {
       }
 
       if (!user) {
-        setIsAdmin(false);
+        setIsRealAdmin(false);
         setLoading(false);
         return;
       }
@@ -22,10 +24,10 @@ export const useAdmin = () => {
       try {
         const { data, error } = await supabase.rpc('check_is_admin');
         if (error) throw error;
-        setIsAdmin(data === true);
+        setIsRealAdmin(data === true);
       } catch (err) {
         console.error('Error checking admin:', err);
-        setIsAdmin(false);
+        setIsRealAdmin(false);
       } finally {
         setLoading(false);
       }
@@ -34,5 +36,13 @@ export const useAdmin = () => {
     checkAdmin();
   }, [user, authLoading]);
 
-  return { isAdmin, loading };
+  // While impersonating, the admin should be treated as the impersonated user
+  // by the rest of the app — so we report isAdmin=false here.
+  const isAdmin = isRealAdmin && !isImpersonating;
+
+  return {
+    isAdmin,
+    isRealAdmin,
+    loading: loading || impersonationLoading,
+  };
 };
