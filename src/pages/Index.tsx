@@ -487,7 +487,9 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
   };
 
   const showTeamSettings = activeTeamId && activeTeam?.name !== 'Sem Time';
-  const firstName = user.user_metadata?.full_name?.split(' ')[0] || user.email?.split('@')[0] || t('common.leader');
+  const firstName = isImpersonating
+    ? (linkedMember?.name?.split(' ')[0] || effectiveEmail?.split('@')[0] || t('common.leader'))
+    : (user.user_metadata?.full_name?.split(' ')[0] || user.email?.split('@')[0] || t('common.leader'));
   const todayMeetings = meetings.filter((m: any) => isToday(new Date(m.start_time)));
   const membersNeedingAttention = teamMembers.filter(m => {
     const ref = m.last_feedback_date || m.created_at;
