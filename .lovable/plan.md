@@ -1,32 +1,46 @@
 
 
-## Editar Nota no Diário de Bordo
+## Fluidez e Edição no Mentor Chat / Meu Rhitmo
 
-### Problema
-O menu contextual do card de feedback (⋮) tem "Compartilhar", "Replicar" e "Excluir", mas não tem opção de editar. O líder não consegue corrigir título, conteúdo ou tags de uma nota já criada.
+### Problemas atuais
+1. **Visual estático/travado**: O Dialog usa bordas duras, espaçamento rígido, sem animações de entrada/transição nas mensagens. O chat parece um formulário, não uma conversa fluida.
+2. **Sem edição de mensagens do usuário**: Não existe forma de editar uma mensagem enviada (como no ChatGPT/Claude). O usuário precisa enviar uma nova mensagem para corrigir.
 
-### Solução
-Adicionar uma opção "Editar" no dropdown menu que abre um Dialog com os campos editáveis (título, conteúdo via RichTextEditor, tags, data do fato). Ao salvar, atualiza o registro no banco e recarrega a timeline.
+### Referências visuais (Claude e ChatGPT)
+- Menu contextual nas mensagens do usuário com opções de **editar** e **copiar**
+- Edição inline: ao clicar "editar", a mensagem vira um textarea editável com botões Salvar/Cancelar
+- Ao salvar edição, reenvia a mensagem e gera nova resposta da IA
+- Animações suaves de entrada nas mensagens (fade-in + slide-up)
 
-### Plano
+### Plano de implementação
 
-**1. `FeedbackTimeline.tsx`**
-- Adicionar estado para controlar o dialog de edição (`editingFeedback`, `editedTitle`, `editedContent`, `editedTags`, `editedOccurredAt`)
-- Adicionar `<DropdownMenuItem>` "Editar" com ícone `Pencil` no menu contextual, entre "Compartilhar" e "Replicar"
-- Adicionar `<Dialog>` de edição com:
-  - Input para título
-  - `RichTextEditor` para conteúdo
-  - Seletor de tags (badges clicáveis, reutilizando `VALID_TAGS` de `tagConfig`)
-  - Date picker para `occurred_at`
-- Handler `handleSave` que faz `supabase.from('feedbacks').update(...)` e chama callback de refresh
-- Adicionar prop `onEdit?: (id: string) => void` ou callback interno com invalidação de query
+**1. Animações de entrada nas mensagens**
+- Adicionar `animate-in` CSS (fade + translateY) nas mensagens ao renderizar
+- Transição suave no loading indicator (bouncing dots já existe, manter)
+- Smooth scroll behavior no container de mensagens
 
-**2. Props e callback**
-- Adicionar nova prop `onFeedbackUpdated?: () => void` ao `FeedbackTimelineProps` para que o componente pai (MemberDetails) recarregue os dados após a edição
-- Alternativa: usar `useQueryClient().invalidateQueries` diretamente no componente
+**2. Edição de mensagens do usuário**
+- Adicionar menu hover nas mensagens do usuário com ícones de **Editar** (Pencil) e **Copiar** (Copy)
+- Estado `editingMessageId` + `editingContent` para controlar edição inline
+- Ao clicar "Editar": substituir o balão por um `<textarea>` com o conteúdo original + botões "Salvar" e "Cancelar"
+- Ao salvar:
+  - Atualizar o conteúdo da mensagem no banco (`supabase.from('mentor_messages').update(...)`)
+  - Deletar todas as mensagens subsequentes na thread (a resposta da IA e mensagens depois)
+  - Reenviar a mensagem editada para a Edge Function para gerar nova resposta
+  - Invalidar queries para atualizar a UI
+
+**3. Melhorias visuais de fluidez**
+- Balões de mensagem com `transition-all duration-200` 
+- Hover effects mais suaves nos botões da sidebar
+- Input area: adicionar `transition-all duration-300` no focus state (já tem parcialmente)
+- Remover rigidez visual: bordas mais sutis, sombras mais difusas nos balões
+
+### Arquivo modificado
+- `src/components/MentorChat.tsx`
+- `src/index.css` (adicionar keyframe de animação se necessário)
 
 ### Detalhes técnicos
-- Importar `Pencil` do lucide-react, `VALID_TAGS` do tagConfig, `Calendar`/`Popover` para date picker
-- O update no Supabase usa `.update({ title, content, tags, occurred_at }).eq('id', feedbackId)`
-- Conteúdo pode ser HTML (TipTap) ou texto puro — inicializar o editor conforme o formato existente
+- Edição trunca o histórico: ao editar mensagem N, deleta mensagens N+1 em diante do banco e reenvia
+- A edição usa o mesmo `handleSend` existente, passando o `selectedThreadId` para manter a thread
+- Animação CSS: `@keyframes message-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }` com `.animate-message-in { animation: message-in 0.3s ease-out; }`
 
