@@ -1,4 +1,4 @@
-import { useState, useEffect, Component, type ReactNode } from 'react';
+import { useState, useEffect, useRef, useCallback, Component, type ReactNode } from 'react';
 import { RhythmWave } from '@/components/RhythmWave';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -89,6 +89,82 @@ interface TeamMember {
   linked_user_id?: string | null;
   invite_status?: string | null;
   invite_token?: string | null;
+}
+
+/**
+ * Auto-links a pending invite by email when a user lands on the dashboard
+ * without being recognized as a linked member.
+ */
+function PendingInviteAutoLinker({ user, onLinked }: { user: { id: string; email?: string }; onLinked: () => void }) {
+  const { t } = useTranslation();
+  const [status, setStatus] = useState<'linking' | 'failed'>('linking');
+  const attemptedRef = useRef(false);
+
+  const attemptAutoLink = useCallback(async () => {
+    if (attemptedRef.current || !user.email) return;
+    attemptedRef.current = true;
+
+    try {
+      // Find pending member by email
+      const { data: pendingMember } = await supabase
+        .from('team_members')
+        .select('id')
+        .eq('email', user.email)
+        .eq('invite_status', 'pending')
+        .is('linked_user_id', null)
+        .maybeSingle();
+
+      if (pendingMember) {
+        const { error } = await supabase
+          .from('team_members')
+          .update({
+            linked_user_id: user.id,
+            invite_status: 'accepted',
+            invite_token: null,
+          })
+          .eq('id', pendingMember.id)
+          .eq('invite_status', 'pending')
+          .is('linked_user_id', null);
+
+        if (!error) {
+          onLinked();
+          return;
+        }
+      }
+      setStatus('failed');
+    } catch {
+      setStatus('failed');
+    }
+  }, [user.id, user.email, onLinked]);
+
+  useEffect(() => {
+    attemptAutoLink();
+  }, [attemptAutoLink]);
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="max-w-md text-center space-y-6">
+        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+          <Loader2 className="h-8 w-8 text-primary animate-spin" />
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            {status === 'linking' ? t('auth.processingAccess') : t('auth.processingAccess')}
+          </h1>
+          <p className="text-muted-foreground">
+            {status === 'linking'
+              ? t('auth.processingAccessDescription')
+              : t('auth.processingAccessDescription')}
+          </p>
+        </div>
+        {status === 'failed' && (
+          <Button variant="outline" onClick={() => { attemptedRef.current = false; setStatus('linking'); attemptAutoLink(); }}>
+            {t('common.tryAgain')}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
 }
 
 const Index = ({ activeTab }: { activeTab?: string }) => {
@@ -385,24 +461,14 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
 
   if (!isLeader && !isHRAdmin && !isLinkedMember) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <div className="max-w-md text-center space-y-6">
-          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-            <Loader2 className="h-8 w-8 text-primary animate-spin" />
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              {t('auth.processingAccess')}
-            </h1>
-            <p className="text-muted-foreground">
-              {t('auth.processingAccessDescription')}
-            </p>
-          </div>
-          <Button variant="outline" onClick={() => window.location.reload()}>
-            {t('common.tryAgain')}
-          </Button>
-        </div>
-      </div>
+      <PendingInviteAutoLinker
+        user={user}
+        onLinked={() => {
+          queryClient.invalidateQueries({ queryKey: ['linked-member'] });
+          queryClient.invalidateQueries({ queryKey: ['account-linked-member'] });
+          queryClient.invalidateQueries({ queryKey: ['account-pending-invite'] });
+        }}
+      />
     );
   }
 
