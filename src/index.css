@@ -382,3 +382,18 @@ All colors MUST be HSL.
   font-weight: 600;
   color: hsl(var(--foreground));
 }
+
+/* Chat message entrance animation */
+@keyframes message-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-message-in {
+  animation: message-in 0.3s ease-out both;
+}
