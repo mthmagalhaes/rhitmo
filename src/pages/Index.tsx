@@ -17,6 +17,7 @@ import { ActivityPreview } from '@/components/ActivityPreview';
 import { UpcomingMeetingsCard } from '@/components/dashboard/UpcomingMeetingsCard';
 import { ActivitySheet } from '@/components/ActivitySheet';
 import { useAuth } from '@/hooks/useAuth';
+import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { useLinkedMember } from '@/hooks/useLinkedMember';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -172,6 +173,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, loading: authLoading } = useAuth();
+  const { id: effectiveUserId, email: effectiveEmail, isImpersonating } = useEffectiveUser();
   const { linkedMember, isLinkedMember, needsOnboarding, isLoading: linkedMemberLoading } = useLinkedMember();
   const { isLeader, isHRAdmin, loading: roleLoading } = useUserRole();
   const { canAddMember, limits } = usePlanLimits();
