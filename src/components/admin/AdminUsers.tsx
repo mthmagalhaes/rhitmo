@@ -50,6 +50,9 @@ export const AdminUsers = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [capFilter, setCapFilter] = useState<CapFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [resettingEmail, setResettingEmail] = useState<string | null>(null);
   const { startImpersonation } = useImpersonation();
 
@@ -107,19 +110,58 @@ export const AdminUsers = () => {
 
   const filteredUsers = useMemo(() => {
     if (!userCaps) return [];
-    return userCaps.filter(u => {
+    let list = userCaps.filter(u => {
       if (search) {
         const q = search.toLowerCase();
         if (!u.email.toLowerCase().includes(q) && !(u.full_name || '').toLowerCase().includes(q)) return false;
       }
-      if (capFilter === 'owner') return u.owner_of.length > 0;
-      if (capFilter === 'hr_admin') return u.hr_admin_of.length > 0;
-      if (capFilter === 'leader') return u.leader_of.length > 0;
-      if (capFilter === 'member') return u.member_of.length > 0;
-      if (capFilter === 'super_admin') return u.is_super_admin;
+      if (capFilter === 'owner' && u.owner_of.length === 0) return false;
+      if (capFilter === 'hr_admin' && u.hr_admin_of.length === 0) return false;
+      if (capFilter === 'leader' && u.leader_of.length === 0) return false;
+      if (capFilter === 'member' && u.member_of.length === 0) return false;
+      if (capFilter === 'super_admin' && !u.is_super_admin) return false;
+
+      if (statusFilter !== 'all') {
+        const wsInfo = workspaceStatusByOwner[u.user_id];
+        if (statusFilter === 'no_workspace' && wsInfo) return false;
+        if (statusFilter === 'active' && (!wsInfo || !wsInfo.is_active)) return false;
+        if (statusFilter === 'suspended' && (!wsInfo || wsInfo.is_active)) return false;
+      }
       return true;
     });
-  }, [userCaps, search, capFilter]);
+
+    const dir = sortDirection === 'asc' ? 1 : -1;
+    list = [...list].sort((a, b) => {
+      if (sortField === 'name') {
+        return (a.full_name || a.email).localeCompare(b.full_name || b.email) * dir;
+      }
+      if (sortField === 'email') {
+        return a.email.localeCompare(b.email) * dir;
+      }
+      // status
+      const wsA = workspaceStatusByOwner[a.user_id];
+      const wsB = workspaceStatusByOwner[b.user_id];
+      const rank = (ws?: { is_active: boolean }) => !ws ? 2 : ws.is_active ? 0 : 1;
+      return (rank(wsA) - rank(wsB)) * dir;
+    });
+    return list;
+  }, [userCaps, search, capFilter, statusFilter, sortField, sortDirection, workspaceStatusByOwner]);
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 ml-1 inline opacity-40" />;
+    return sortDirection === 'asc'
+      ? <ArrowUp className="h-3 w-3 ml-1 inline" />
+      : <ArrowDown className="h-3 w-3 ml-1 inline" />;
+  };
 
   const toggleWorkspaceStatus = async (workspaceId: string, currentStatus: boolean) => {
     setTogglingId(workspaceId);
@@ -213,10 +255,33 @@ export const AdminUsers = () => {
       badges.push(<Badge key={`o-${i}`} variant="outline" className="text-[10px] gap-1 bg-violet-500/10 text-violet-600 border-violet-500/30"><Building className="h-2.5 w-2.5" /> Owner @ {ws.name}</Badge>));
     user.hr_admin_of.forEach((ws, i) =>
       badges.push(<Badge key={`hr-${i}`} variant="outline" className="text-[10px] gap-1 bg-blue-500/10 text-blue-600 border-blue-500/30"><Shield className="h-2.5 w-2.5" /> HR @ {ws.name}</Badge>));
-    user.leader_of.forEach((t, i) =>
-      badges.push(<Badge key={`l-${i}`} variant="outline" className="text-[10px] gap-1 bg-emerald-500/10 text-emerald-600 border-emerald-500/30"><Crown className="h-2.5 w-2.5" /> Líder @ {t.workspace_name}</Badge>));
-    user.member_of.forEach((m, i) =>
-      badges.push(<Badge key={`m-${i}`} variant="outline" className="text-[10px] gap-1 bg-sky-500/10 text-sky-600 border-sky-500/30"><User className="h-2.5 w-2.5" /> Liderado @ {m.workspace_name}</Badge>));
+
+    // Group leader_of by workspace_name
+    const leaderByWs = user.leader_of.reduce<Record<string, number>>((acc, t) => {
+      const key = t.workspace_name || 'Desconhecido';
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+    Object.entries(leaderByWs).forEach(([wsName, count], i) =>
+      badges.push(
+        <Badge key={`l-${i}`} variant="outline" className="text-[10px] gap-1 bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+          <Crown className="h-2.5 w-2.5" /> Líder @ {wsName}{count > 1 ? ` (${count} times)` : ''}
+        </Badge>
+      ));
+
+    // Group member_of by workspace_name
+    const memberByWs = user.member_of.reduce<Record<string, number>>((acc, m) => {
+      const key = m.workspace_name || 'Desconhecido';
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+    Object.entries(memberByWs).forEach(([wsName, count], i) =>
+      badges.push(
+        <Badge key={`m-${i}`} variant="outline" className="text-[10px] gap-1 bg-sky-500/10 text-sky-600 border-sky-500/30">
+          <User className="h-2.5 w-2.5" /> Liderado @ {wsName}{count > 1 ? ` (${count} times)` : ''}
+        </Badge>
+      ));
+
     return badges.length > 0 ? badges : <span className="text-xs text-muted-foreground italic">Sem papel</span>;
   };
 
