@@ -1,65 +1,74 @@
 
 
-## Diagnóstico: Impersonate vaza dados do Admin (Matheus) na visão da liderada (Yasmin)
+## Plano: Eliminar vazamento residual + indicador discreto
 
-**Está MUITO errado mesmo, não é só preview.** A Yasmin yasmin.nobrega@fstr.co é uma **liderada** (`linked_user_id` populado, time CreativeOps no workspace Faster Ops). Mas o que aparece na tela impersonando-a é o **dashboard de líder do Matheus** com dados do Matheus.
+### Diagnóstico do vazamento residual
 
-### Causa raiz
+Os hooks principais (`useUserRole`, `useLinkedMember`, `useEffectiveUser`) já estão migrados. O dashboard correto deveria carregar pelo `Index.tsx` para qualquer impersonação. **MAS** existem queries em outros hooks/componentes que ainda usam `user.id` (do admin) direto:
 
-A correção anterior fez `AccountContext.tsx` usar `effectiveUserId`, mas **dois hooks legados continuam usando `user.id` direto**, e o `Index.tsx` usa esses hooks para decidir qual dashboard renderizar:
+| Origem | Sintoma |
+|---|---|
+| `usePlanLimits.ts` (7 queries com `user?.id`) | Banner "Próximo do limite — Pulse" mostra plano do Matheus, não do impersonado |
+| `useCalendarIntegration.ts` (4 queries) | Reuniões e bots do Matheus aparecem na visão impersonada |
+| `Analytics.tsx`, `DirectReportReviewView.tsx`, `SlackConnect.tsx`, etc. | Dados do admin se Yasmin navega para essas páginas |
+| `AppSidebar.tsx` | Avatar usa `user.id`/`user.user_metadata.avatar` (do admin) |
+| `OnboardingModal.tsx`, `NewNoteDialog.tsx`, `ReviewCommentsSection.tsx` | Escrevem com `manager_id = user.id` (correto: continua sendo o admin como autor — não devem mudar) |
 
-1. **`src/hooks/useLinkedMember.ts`** — usa `user.id` em todos os checks (owner, leader, linked_member). Resultado: Matheus é detectado como leader → retorna `null` → `isLinkedMember=false` para a "Yasmin impersonada".
-2. **`src/hooks/useUserRole.ts`** — mesma coisa: usa `user.id`. Resultado: Matheus é leader (workspace Rhitmo Inc.) → `isLeader=true`.
+**Regra simples para classificar:**
+- **Leitura de dados "meus"** → migrar para `useEffectiveUser().id`
+- **Escrita de auditoria/autoria** (manager_id, criado_por) → manter `user.id` (admin é o autor real, isso preserva accountability na DB)
 
-Como `Index.tsx` linha 457 faz:
-```ts
-if (isLinkedMember && !isLeader && !isHRAdmin) → render DirectReportDashboard
-```
-…cai no `else` e renderiza o **dashboard do líder do Matheus** (com workspace, times, nome, nudges, weekly notes, tudo do Matheus). Por isso aparece "Boa tarde, Matheus", times CoS/BizOps/HR/Marketing, alerta "Próximo do limite — Pulse" do workspace Rhitmo Inc., etc.
+### Plano de execução
 
-Além disso, várias `useQuery` dentro do próprio `Index.tsx` continuam usando `user.id` para puxar workspace, meetings, weeklyNotes, nudges — todos do Matheus.
+**1. Migrar hooks de leitura compartilhados**
+- `usePlanLimits.ts` → trocar `useAuth` por `useEffectiveUser`. Todas as 7 queries + queryKeys.
+- `useCalendarIntegration.ts` → mesmo padrão (4 queries + mutation `update auto_transcribe`).
 
-### Plano de correção
+**2. Migrar páginas/componentes de leitura**
+- `Analytics.tsx` (3 queries de feedbacks/reviews/members)
+- `DirectReportReviewView.tsx` (1 query linked-member)
+- `SlackConnect.tsx` (preferences do user)
+- `AppSidebar.tsx`: avatar/MemberAvatar usa `effectiveUserId` para resolver foto correta + `userName` já vem de `linkedMember` quando aplicável
 
-**1. Migrar hooks legados para `effectiveUserId`**
-- `useLinkedMember.ts` → ler `useImpersonation()` e usar `effectiveUserId` em todas as queries + queryKey
-- `useUserRole.ts` → mesma mudança
+**3. NÃO mudar componentes de escrita autoral**
+- `NewNoteDialog`, `ReviewCommentsSection`, `OnboardingModal` → continuam usando `user.id` (admin é o autor real)
 
-**2. Migrar queries internas do `Index.tsx` para `effectiveUserId`**
-- `workspace`, `meetings`, `weeklyNotes`, `nudges`, `onboardingStatus` (manager_id, leader_id, user_id) — todos passam a usar `effectiveUserId`
-- `firstName` (linha 488) deve usar nome da liderada quando impersonando, não `user.user_metadata` (que é do Matheus). Ler de `linkedMember.name` ou de `auth.users` do impersonado via uma nova query leve.
-- queryKeys passam a depender de `effectiveUserId` para invalidar ao trocar impersonação.
+**4. Indicador discreto de impersonação (substituir banner amarelo)**
 
-**3. Auditoria varredura final**
-- Procurar `user.id` / `user!.id` / `user?.id` em outros componentes que renderizam dashboard (`AppSidebar`, `NudgesBanner`, `UpgradeBanner`, `SetupChecklist`, `TeamTabs`) e migrar onde necessário.
+Trocar `ImpersonationBanner.tsx` por um componente sutil:
 
-### Padrão sugerido (DRY)
+- **Anel laranja/âmbar** ao redor do avatar do user no header (e no AppSidebar footer)
+- **Tag "Personificando"** ao lado do nome (pequena pílula `bg-amber-100 text-amber-900 text-[10px]`)
+- **Tooltip no anel**: "Você está vendo como {nome}. Clique para encerrar."
+- Clicar no anel/tag → chama `stopImpersonation()` 
 
-Criar um hook `useEffectiveUser()` que retorna `{ id, email }` já considerando impersonação, e reusar em todos os pontos. Reduz risco de regressão futura.
+Aproveitar componente novo `ImpersonationIndicator.tsx` que envelopa `MemberAvatar` e adiciona o ring + tag + tooltip. Substituir o uso atual no `AppLayout.tsx` (banner) e no `AppSidebar.tsx` (avatar do footer).
 
-```ts
-// src/hooks/useEffectiveUser.ts
-export function useEffectiveUser() {
-  const { user } = useAuth();
-  const { isImpersonating, impersonatedUserId, impersonatedEmail } = useImpersonation();
-  return {
-    id: isImpersonating ? impersonatedUserId : user?.id ?? null,
-    email: isImpersonating ? impersonatedEmail : user?.email ?? null,
-    isImpersonating,
-  };
-}
-```
+**5. Memory update**
+- Atualizar `mem://admin/impersonation-view-mode` com a regra de classificação leitura vs escrita autoral, e a nova UX do indicador.
 
 ### Arquivos modificados
-- `src/hooks/useEffectiveUser.ts` (novo)
-- `src/hooks/useLinkedMember.ts` (usar effectiveUserId)
-- `src/hooks/useUserRole.ts` (usar effectiveUserId)
-- `src/pages/Index.tsx` (5 queries + firstName)
-- Outros componentes que vazarem em testes pós-fix (AppSidebar, NudgesBanner, etc. — auditoria após o fix dos críticos)
 
-### Memory update
-- Atualizar `mem://admin/impersonation-view-mode` com a regra: **todo hook/query que dependa de identidade do usuário deve usar `useEffectiveUser()`**, não `useAuth().user.id` direto.
+- `src/hooks/usePlanLimits.ts` (migrar)
+- `src/hooks/useCalendarIntegration.ts` (migrar)
+- `src/pages/Analytics.tsx` (migrar)
+- `src/pages/DirectReportReviewView.tsx` (migrar)
+- `src/components/AppSidebar.tsx` (avatar usar effectiveUserId + integrar indicador)
+- `src/components/AppLayout.tsx` (remover banner)
+- `src/components/admin/ImpersonationBanner.tsx` (deprecar ou reduzir)
+- `src/components/admin/ImpersonationIndicator.tsx` (novo — anel + tag + tooltip)
+- `mem://admin/impersonation-view-mode` (atualizar regras)
 
 ### Escopo
-Médio. ~30 min para o fix dos 3 arquivos críticos + auditoria. Sem migrations.
+
+Médio. ~25 min. Sem migrations. Sem riscos arquiteturais — só substituições de hook + um componente UI novo.
+
+### Validação pós-fix
+
+Testar impersonando 3 perfis distintos:
+1. **Liderada vinculada** (Yasmin) → deve ver `DirectReportDashboard` da Yasmin, sem banner Pulse, sem times do Matheus
+2. **Líder de outro workspace** (ex.: dono Faster Ops) → ver os times Faster Ops, plano correto
+3. **HR Admin** (matheus_hr) → ver painel HR de Rhitmo Inc.
+
+Em todos: anel laranja no avatar + tag "Personificando" + clique encerra.
 
