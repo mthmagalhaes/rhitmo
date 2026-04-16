@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from './useAuth';
+import { useEffectiveUser } from './useEffectiveUser';
 
 interface PlanLimits {
   maxMembers: number;
@@ -70,7 +70,8 @@ const PLAN_LIMITS: Record<string, Omit<PlanLimits, 'planTier' | 'isBetaUser'>> =
 };
 
 export const usePlanLimits = () => {
-  const { user } = useAuth();
+  const { id: effectiveUserId } = useEffectiveUser();
+  const user = effectiveUserId ? { id: effectiveUserId } : null;
 
   const { data: workspace, isLoading: workspaceLoading } = useQuery({
     queryKey: ['workspace-plan', user?.id],

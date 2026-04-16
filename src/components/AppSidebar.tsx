@@ -8,6 +8,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
 import { MemberAvatar } from '@/components/MemberAvatar';
+import { ImpersonationIndicator } from '@/components/admin/ImpersonationIndicator';
+import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { ProfileSettingsDialog } from '@/components/ProfileSettingsDialog';
 import { ChromeExtensionSetupDialog } from '@/components/extension/ChromeExtensionSetupDialog';
 import { SlackConnectorDialog } from '@/components/slack/SlackConnectorDialog';
@@ -66,6 +68,7 @@ export function AppSidebar() {
     { title: t('sidebar.competencies'), url: '/hr/competency-framework', icon: Award },
   ];
   const { user, signOut } = useAuth();
+  const { id: effectiveUserId, isImpersonating } = useEffectiveUser();
   const { isAdmin } = useAdmin();
   const { isLeader, isHRAdmin, isUser, loading: roleLoading } = useUserRole();
   const { isLinkedMember, linkedMember } = useLinkedMember();
@@ -366,12 +369,13 @@ export function AppSidebar() {
 
         {/* User block */}
         <div className="flex items-center gap-3 p-3 mx-2 mb-4 rounded-2xl bg-white/30 shadow-sm">
-          {open && user?.id && (
-            <MemberAvatar 
-              memberId={user.id} 
+          {open && effectiveUserId && (
+            <ImpersonationIndicator
+              memberId={effectiveUserId}
               memberName={userName}
-              avatarUrl={user.user_metadata?.avatar}
+              avatarUrl={isImpersonating ? linkedMember?.avatar : user?.user_metadata?.avatar}
               size="md"
+              showTag={false}
             />
           )}
           {open && (
@@ -379,6 +383,11 @@ export function AppSidebar() {
               <p className="text-sm font-medium text-sidebar-foreground truncate">
                 {userName}
               </p>
+              {isImpersonating && (
+                <span className="inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-900 mt-0.5">
+                  Personificando
+                </span>
+              )}
             </div>
           )}
           <div className="flex gap-1">
