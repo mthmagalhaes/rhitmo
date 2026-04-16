@@ -216,9 +216,9 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
   }, []);
 
   const { data: workspace } = useQuery({
-    queryKey: ['workspace', user?.id],
+    queryKey: ['workspace', effectiveUserId],
     queryFn: async () => {
-      if (!user) return null;
+      if (!effectiveUserId) return null;
       
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -228,7 +228,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
       const { data: ownedWorkspace, error: ownedError } = await supabase
         .from('workspaces')
         .select('*')
-        .eq('owner_id', user.id)
+        .eq('owner_id', effectiveUserId)
         .eq('is_active', true)
         .limit(1)
         .maybeSingle();
@@ -239,7 +239,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
       const { data: leaderTeam } = await supabase
         .from('teams')
         .select('workspace_id')
-        .eq('leader_user_id', user.id)
+        .eq('leader_user_id', effectiveUserId)
         .limit(1)
         .maybeSingle();
 
@@ -256,7 +256,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
 
       return null;
     },
-    enabled: !!user && !authLoading,
+    enabled: !!effectiveUserId && !authLoading,
     staleTime: 30 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: true,
@@ -350,53 +350,53 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
   });
 
   const { data: meetings = [] } = useQuery({
-    queryKey: ['upcoming-meetings-db', user?.id],
+    queryKey: ['upcoming-meetings-db', effectiveUserId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!effectiveUserId) return [];
       const { data } = await supabase
         .from('upcoming_meetings')
         .select('*, team_members(name)')
-        .eq('user_id', user.id)
+        .eq('user_id', effectiveUserId)
         .gte('start_time', new Date().toISOString())
         .order('start_time')
         .limit(6);
       return data || [];
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
     staleTime: 60_000,
   });
 
   const { data: weeklyNotesCount = 0 } = useQuery({
-    queryKey: ['weekly-notes', user?.id],
+    queryKey: ['weekly-notes', effectiveUserId],
     queryFn: async () => {
-      if (!user) return 0;
+      if (!effectiveUserId) return 0;
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
       const { count } = await supabase
         .from('feedbacks')
         .select('*', { count: 'exact', head: true })
-        .eq('manager_id', user.id)
+        .eq('manager_id', effectiveUserId)
         .gte('created_at', weekAgo.toISOString());
       return count || 0;
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
     staleTime: 60_000,
   });
 
   const { data: nudges = [] } = useQuery({
-    queryKey: ['leader-nudges', user?.id],
+    queryKey: ['leader-nudges', effectiveUserId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!effectiveUserId) return [];
       const { data } = await supabase
         .from('leader_nudges')
         .select('*')
-        .eq('leader_id', user.id)
+        .eq('leader_id', effectiveUserId)
         .is('dismissed_at', null)
         .order('created_at', { ascending: false })
         .limit(5);
       return data || [];
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
     staleTime: 60_000,
   });
 
@@ -412,15 +412,15 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
   };
 
   const { data: onboardingStatus } = useQuery({
-    queryKey: ['onboarding-status', workspace?.id, user?.id],
+    queryKey: ['onboarding-status', workspace?.id, effectiveUserId],
     queryFn: async () => {
-      if (!workspace || !user) return { hasMembers: false, hasFeedbacks: false, hasAIAnalysis: false, hasMentorChat: false, hasLeaderSync: false };
+      if (!workspace || !effectiveUserId) return { hasMembers: false, hasFeedbacks: false, hasAIAnalysis: false, hasMentorChat: false, hasLeaderSync: false };
       const hasLeaderSync = !!(workspace as unknown as Record<string, unknown>).leader_sync_data;
       const memberIds = teamMembers.map(m => m.id);
       if (memberIds.length === 0) return { hasMembers: false, hasFeedbacks: false, hasAIAnalysis: false, hasMentorChat: false, hasLeaderSync };
       const { count: feedbackCount } = await supabase.from('feedbacks').select('*', { count: 'exact', head: true }).in('member_id', memberIds);
       const { count: aiCount } = await supabase.from('feedbacks').select('*', { count: 'exact', head: true }).in('member_id', memberIds).not('summary', 'is', null);
-      const { count: mentorCount } = await supabase.from('mentor_messages').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('role', 'user');
+      const { count: mentorCount } = await supabase.from('mentor_messages').select('*', { count: 'exact', head: true }).eq('user_id', effectiveUserId).eq('role', 'user');
       return {
         hasMembers: teamMembers.length > 0,
         hasFeedbacks: (feedbackCount || 0) > 0,
@@ -429,7 +429,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
         hasLeaderSync,
       };
     },
-    enabled: !!workspace && !!user && !loading,
+    enabled: !!workspace && !!effectiveUserId && !loading,
     staleTime: 30 * 1000,
   });
 
