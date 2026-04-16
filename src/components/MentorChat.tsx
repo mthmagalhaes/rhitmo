@@ -570,6 +570,56 @@ export const MentorChat = ({
     toast({ title: 'Copiado!' });
   };
 
+  const handleStartEdit = (msg: MentorMessage) => {
+    setEditingMessageId(msg.id);
+    setEditingContent(msg.content);
+    setTimeout(() => {
+      if (editTextareaRef.current) {
+        editTextareaRef.current.style.height = 'auto';
+        editTextareaRef.current.style.height = `${Math.min(editTextareaRef.current.scrollHeight, 200)}px`;
+        editTextareaRef.current.focus();
+      }
+    }, 50);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMessageId(null);
+    setEditingContent('');
+  };
+
+  const handleSaveEdit = async (msg: MentorMessage) => {
+    if (!editingContent.trim() || isLoading) return;
+    const trimmed = editingContent.trim();
+    if (trimmed === msg.content) { handleCancelEdit(); return; }
+
+    setEditingMessageId(null);
+    setEditingContent('');
+    setIsLoading(true);
+
+    try {
+      // Update message content
+      await supabase.from('mentor_messages').update({ content: trimmed }).eq('id', msg.id);
+
+      // Delete all messages after this one in the thread
+      const msgIndex = messages.findIndex(m => m.id === msg.id);
+      const subsequentMessages = messages.slice(msgIndex + 1);
+      if (subsequentMessages.length > 0) {
+        const idsToDelete = subsequentMessages.map(m => m.id);
+        await supabase.from('mentor_messages').delete().in('id', idsToDelete);
+      }
+
+      // Invalidate to show updated state
+      await queryClient.invalidateQueries({ queryKey: [messagesQueryKey, selectedThreadId] });
+
+      // Re-send edited message to get new AI response
+      await handleSend(trimmed);
+    } catch (error: any) {
+      console.error('Erro ao editar mensagem:', error);
+      toast({ title: 'Erro ao editar', description: 'Tente novamente.', variant: 'destructive' });
+      setIsLoading(false);
+    }
+  };
+
   // ── Derived state ────────────────────────────────────
   const threadGroups = groupThreadsByDate(threads);
   const showEmptyState = !isCreatingNewThread && !selectedThreadId && threads.length === 0;
