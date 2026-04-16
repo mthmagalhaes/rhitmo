@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useImpersonation } from '@/hooks/useImpersonation';
 
 export type AccountRole = 'hr_admin' | 'leader' | 'user';
 
