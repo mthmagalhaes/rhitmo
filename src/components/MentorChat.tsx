@@ -680,7 +680,7 @@ export const MentorChat = ({
   // ══════════════════════════════════════════════════════
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 gap-0 shadow-[0_2px_40px_rgba(0,0,0,0.08)] [&>button]:hidden">
+      <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 gap-0 shadow-[0_2px_40px_rgba(0,0,0,0.08)] [&>button]:hidden overflow-hidden">
         {/* ── Header ─────────────────────────────────── */}
         <DialogHeader className="px-5 py-3.5 border-b border-border flex-shrink-0">
           <div className="flex items-center justify-between">
