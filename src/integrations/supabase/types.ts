@@ -1649,7 +1649,9 @@ export type Database = {
       }
       workspaces: {
         Row: {
+          client_account: string | null
           created_at: string
+          customer_segment: string | null
           default_locale: string | null
           hr_admin_ids: string[] | null
           id: string
@@ -1663,7 +1665,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          client_account?: string | null
           created_at?: string
+          customer_segment?: string | null
           default_locale?: string | null
           hr_admin_ids?: string[] | null
           id?: string
@@ -1677,7 +1681,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          client_account?: string | null
           created_at?: string
+          customer_segment?: string | null
           default_locale?: string | null
           hr_admin_ids?: string[] | null
           id?: string
