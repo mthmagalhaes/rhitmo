@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
+import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';

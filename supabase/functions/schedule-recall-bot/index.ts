@@ -58,8 +58,66 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check if bot already scheduled for this meeting (by meeting_id or meeting_url)
+    // Check bot meeting cap based on plan
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Get user's workspace plan_tier and beta status
+    const { data: workspaceData } = await supabaseAdmin
+      .from("workspaces")
+      .select("plan_tier, is_beta_user")
+      .eq("owner_id", userId)
+      .maybeSingle();
+
+    // Also check if user is leader of a team in a workspace
+    let planTier = workspaceData?.plan_tier || "pulse";
+    let isBeta = workspaceData?.is_beta_user || false;
+
+    if (!workspaceData) {
+      const { data: teamData } = await supabaseAdmin
+        .from("teams")
+        .select("workspace_id, workspaces(plan_tier, is_beta_user)")
+        .eq("leader_user_id", userId)
+        .limit(1)
+        .maybeSingle();
+      if (teamData?.workspaces) {
+        planTier = (teamData.workspaces as any).plan_tier || "pulse";
+        isBeta = (teamData.workspaces as any).is_beta_user || false;
+      }
+    }
+
+    // Define caps per plan
+    const BOT_CAPS: Record<string, number> = { pulse: 0, pro: 20, business: 40 };
+    const maxBotMeetings = isBeta ? Infinity : (BOT_CAPS[planTier] ?? 0);
+
+    if (maxBotMeetings === 0) {
+      return new Response(JSON.stringify({ error: "Seu plano não inclui transcrição com bot. Faça upgrade para Pro ou Business." }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (maxBotMeetings !== Infinity) {
+      // Count bots scheduled this month
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+
+      const { count: botCount } = await supabaseAdmin
+        .from("recall_bots")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .neq("status", "error")
+        .gte("created_at", startOfMonth.toISOString());
+
+      if ((botCount || 0) >= maxBotMeetings) {
+        return new Response(JSON.stringify({ error: `Limite de ${maxBotMeetings} reuniões com bot atingido este mês. Faça upgrade para aumentar o limite.` }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // Check if bot already scheduled for this meeting (by meeting_id or meeting_url)
 
     if (meeting_id) {
       const { data: existing } = await supabaseAdmin
