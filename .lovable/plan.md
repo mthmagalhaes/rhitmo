@@ -1,77 +1,87 @@
 
 
-## Diagnóstico: RLS bloqueia leitura durante impersonate
+## Plano: Aba Usuários do Admin como Data Analyst
 
-### Causa raiz confirmada
+### Diagnóstico
 
-A Yasmin tem **2 avaliações formais compartilhadas** (`shared_with_member=true`) na DB. As tabelas `feedbacks` e `performance_reviews` têm RLS para liderados ler dados próprios, mas **as policies usam `auth.uid()` (Matheus admin) em vez de `effective_user_id()` (Yasmin impersonada)**:
+Tabela atual tem 4 colunas: Usuário, Papéis, Status, Ações. Sem ID visível, sem Cliente, sem Workspace explícito (só dentro dos badges). Filtros: busca por nome/email, papel, status. Falta: filtros por coluna nova + edição de Cliente/Workspace.
+
+`workspaces` não tem campo "Cliente". Vou adicionar 2 campos no schema (úteis pra Data Analyst):
+- `client_account` (text, livre — ex: "FSTR Holding", "Fictícios LTDA")
+- `customer_segment` (enum: `beta`, `paid`, `trial`, `internal`, `test`)
+
+### Schema (migration)
 
 ```sql
--- ❌ Atual: bloqueia durante impersonate
-WHERE tm.linked_user_id = auth.uid()
+ALTER TABLE workspaces 
+  ADD COLUMN client_account text,
+  ADD COLUMN customer_segment text DEFAULT 'beta' 
+    CHECK (customer_segment IN ('beta','paid','trial','internal','test'));
 
--- ✅ Correto: respeita impersonate
-WHERE tm.linked_user_id = effective_user_id()
+-- Pré-popular: workspaces de matheus@rhitmo.co e matheus_hr@rhitmo.co como 'internal'
+-- demais workspaces ficam 'beta' (default)
 ```
 
-A função `effective_user_id()` já existe e funciona (lê `admin_impersonation` e fallback `auth.uid()`). Só não é usada nas policies de leitura do liderado.
+### UI: novas colunas na tabela
 
-### Telas afetadas
+| Coluna | Conteúdo | Filtro |
+|---|---|---|
+| Usuário | avatar + nome + email (já existe) | busca texto (já existe) |
+| **ID** | UUID truncado `a1b2c3d4…` + botão copy-to-clipboard | busca por ID na busca global |
+| **Workspace(s)** | nome(s) do(s) workspace(s) onde é Owner/HR/Líder/Liderado, com ícone do papel | dropdown filtrar por workspace |
+| **Cliente** | `client_account` do workspace primário (ou “—”) + chip do `customer_segment` colorido | dropdown filtrar por segmento |
+| Papéis | badges (já existe) | dropdown (já existe) |
+| Status | Ativo/Suspenso (já existe) | dropdown (já existe) |
+| Ações | botões (já existe) | — |
 
-Tudo que o liderado deveria ver mas está vazio durante impersonate:
-- Aba **Feedbacks** (anotações compartilhadas + avaliações formais)
-- Aba **Visão Geral** (banner "Nova avaliação disponível", contagem de reviews)
-- Aba **Minha Carreira** (PDI / development_plans + items)
-- Aba **Meu Perfil** (próprio team_members row via linked_user_id)
-- **Goals** do liderado
-- **Bias detections** próprias (se for líder impersonado)
-- **Slack integration**, **user_preferences**, **extension_tokens**, **recall_bots** (escopo "meu")
-- **leader_nudges** (se impersonar líder)
-- **rhitmo_sync_notifications** (se impersonar líder)
-- **kudos** (visualização no workspace do impersonado)
+**Busca global**: estender pra buscar em `email`, `name`, `user_id`, `client_account`, `workspace.name`.
 
-### Plano de correção: migration única
+**Header de filtros refatorado**: substituir os 2 selects atuais por uma barra com 5 filtros (busca + papel + status + workspace + segmento), todos pequenos e alinhados.
 
-Recriar todas as policies SELECT/UPDATE de "dados próprios" trocando `auth.uid()` por `effective_user_id()`. Tabelas afetadas:
+### Edição (modal por usuário)
 
-| Tabela | Policy |
-|---|---|
-| `feedbacks` | `Linked users can view shared feedbacks` |
-| `performance_reviews` | `Linked members can view shared reviews` |
-| `development_plans` | view/update own |
-| `development_items` | view/update own |
-| `goals` | `Linked members can view own goals` |
-| `team_members` | `tm_read`, `tm_update` (cláusula `linked_user_id`) |
-| `user_preferences` | view/update own |
-| `slack_integrations` | view/update/delete own |
-| `extension_tokens` | view/update own |
-| `recall_bots` | view own |
-| `leader_nudges` | view/dismiss |
-| `rhitmo_sync_notifications` | view/update own |
-| `bias_detections` | view/update (leader_id) |
-| `kudos` | view in own workspace |
-| `feedback_streaks` | view own |
-| `pending_slack_invites` | view (leader scope) |
+Adicionar botão `Edit` nas Ações que abre dialog com:
+- **ID** (read-only, com botão copiar)
+- **Nome completo** (editável → atualiza `auth.users.user_metadata.full_name` via edge function `admin-update-user`)
+- **Email** (editável via edge function `admin-update-user` → `auth.admin.updateUserById`)
+- **Workspace primário** — Select dos workspaces onde o user tem alguma relação. Permite trocar `owner_id` (transfer ownership) ou trocar `team_id` se for membro
+- **Cliente (label livre)** — input texto, salva em `workspaces.client_account` do workspace primário
+- **Segmento** — select (Beta/Paid/Trial/Interno/Teste), salva em `workspaces.customer_segment`
 
-**NÃO mexer**:
-- `admin_impersonation` (sempre `auth.uid()` real para evitar loop)
-- `user_roles` (usado pra checar se admin)
-- Policies INSERT/criação de auditoria (manter `auth.uid()` para registrar autor real)
+### Edge function nova (necessária)
 
-### Validação pós-fix
+`admin-update-user` (Deno, `verify_jwt=false` mas valida `is_admin()`):
+- input: `{ user_id, full_name?, email? }`
+- usa `supabase.auth.admin.updateUserById()` (service role)
+- retorna sucesso/erro
 
-Impersonando Yasmin (`yasmin.nobrega@fstr.co`) deve mostrar:
-1. Aba Feedbacks → 2 avaliações formais (Q1/2026, Q4/2025) + qualquer nota com `visibility='shared'`
-2. Aba Visão Geral → "Nova avaliação disponível" se não vista, contagem correta
-3. Aba Meu Perfil → dados da Yasmin (Head CreativeOps), não do Matheus
-4. Aba Minha Carreira → PDI próprio se houver
+Edição de `client_account`/`customer_segment` não precisa de edge function — admin tem RLS pra `workspaces`.
+
+### Auditoria & Data Analyst extras
+
+- **Export CSV** — botão "Exportar CSV" no topo da tabela exportando o que tá filtrado (nome, email, id, workspace, cliente, segmento, papéis, status). Ajuda Data Analyst.
+- **Counter por segmento** — pequena linha de stats no topo: `Beta: 12 · Paid: 3 · Internal: 2 · Test: 4` (clique filtra)
+
+### Memory
+
+- Atualizar `mem://admin/management-tools` com: novos campos `client_account`/`customer_segment`, edge function `admin-update-user`, export CSV.
 
 ### Arquivos modificados
 
-- 1 migration SQL (recriar ~20 policies em 16 tabelas)
-- Memory update: `mem://admin/impersonation-view-mode` adicionar regra "RLS de leitura de dados próprios deve usar `effective_user_id()`"
+- `supabase/migrations/...sql` — ADD columns + seed dados internos
+- `supabase/functions/admin-update-user/index.ts` (novo) — atualizar full_name/email
+- `src/components/admin/AdminUsers.tsx` — refatorar header + 3 colunas novas + dialog de edição expandido + export CSV
+- `mem://admin/management-tools` — atualizar
 
 ### Escopo
 
-Médio. Apenas SQL — sem mudanças de código TS. ~10 min. Sem risco arquitetural — `effective_user_id()` já é STABLE SECURITY DEFINER e cai pra `auth.uid()` quando não há impersonate.
+Médio. ~30 min. 1 migration leve, 1 edge function nova pequena, refactor de 1 componente. Sem risco arquitetural.
+
+### Validação pós-fix
+
+1. Tabela mostra ID (truncado, copiável), Workspace, Cliente (label + segmento)
+2. Filtros: busca por UUID parcial funciona; dropdown de Workspace e Segmento filtram
+3. Editar usuário: trocar nome, email, label de Cliente e Segmento — persistem
+4. Stats no topo somam segmentos corretamente
+5. Export CSV baixa arquivo com colunas certas
 
