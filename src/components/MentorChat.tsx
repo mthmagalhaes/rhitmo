@@ -115,6 +115,9 @@ export const MentorChat = ({
   const [editingTitle, setEditingTitle] = useState('');
   const [deletingThread, setDeletingThread] = useState<ChatThread | null>(null);
   const [attachment, setAttachment] = useState<{ name: string; content: string; imageBase64?: string; mimeType?: string; isImage?: boolean } | null>(null);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState('');
+  const editTextareaRef = useRef<HTMLTextAreaElement>(null);
   const placeholder = attachment
     ? 'Descreva o que você quer saber sobre a imagem...'
     : isLeader
@@ -567,6 +570,56 @@ export const MentorChat = ({
     toast({ title: 'Copiado!' });
   };
 
+  const handleStartEdit = (msg: MentorMessage) => {
+    setEditingMessageId(msg.id);
+    setEditingContent(msg.content);
+    setTimeout(() => {
+      if (editTextareaRef.current) {
+        editTextareaRef.current.style.height = 'auto';
+        editTextareaRef.current.style.height = `${Math.min(editTextareaRef.current.scrollHeight, 200)}px`;
+        editTextareaRef.current.focus();
+      }
+    }, 50);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMessageId(null);
+    setEditingContent('');
+  };
+
+  const handleSaveEdit = async (msg: MentorMessage) => {
+    if (!editingContent.trim() || isLoading) return;
+    const trimmed = editingContent.trim();
+    if (trimmed === msg.content) { handleCancelEdit(); return; }
+
+    setEditingMessageId(null);
+    setEditingContent('');
+    setIsLoading(true);
+
+    try {
+      // Update message content
+      await supabase.from('mentor_messages').update({ content: trimmed }).eq('id', msg.id);
+
+      // Delete all messages after this one in the thread
+      const msgIndex = messages.findIndex(m => m.id === msg.id);
+      const subsequentMessages = messages.slice(msgIndex + 1);
+      if (subsequentMessages.length > 0) {
+        const idsToDelete = subsequentMessages.map(m => m.id);
+        await supabase.from('mentor_messages').delete().in('id', idsToDelete);
+      }
+
+      // Invalidate to show updated state
+      await queryClient.invalidateQueries({ queryKey: [messagesQueryKey, selectedThreadId] });
+
+      // Re-send edited message to get new AI response
+      await handleSend(trimmed);
+    } catch (error: any) {
+      console.error('Erro ao editar mensagem:', error);
+      toast({ title: 'Erro ao editar', description: 'Tente novamente.', variant: 'destructive' });
+      setIsLoading(false);
+    }
+  };
+
   // ── Derived state ────────────────────────────────────
   const threadGroups = groupThreadsByDate(threads);
   const showEmptyState = !isCreatingNewThread && !selectedThreadId && threads.length === 0;
@@ -627,7 +680,7 @@ export const MentorChat = ({
   // ══════════════════════════════════════════════════════
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 gap-0 shadow-[0_2px_40px_rgba(0,0,0,0.08)] [&>button]:hidden">
+      <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 gap-0 shadow-[0_2px_40px_rgba(0,0,0,0.08)] [&>button]:hidden overflow-hidden">
         {/* ── Header ─────────────────────────────────── */}
         <DialogHeader className="px-5 py-3.5 border-b border-border flex-shrink-0">
           <div className="flex items-center justify-between">
@@ -801,16 +854,62 @@ export const MentorChat = ({
                   const isLastAssistant = msg.role === 'assistant' && idx === messages.length - 1;
                   return (
                   msg.role === 'user' ? (
-                    <div key={msg.id} className="flex flex-row-reverse items-start gap-2.5 max-w-[75%] ml-auto">
+                    <div key={msg.id} className="flex flex-row-reverse items-start gap-2.5 max-w-[75%] ml-auto group animate-message-in">
                       <div className="flex items-center justify-center h-7 w-7 rounded-full bg-primary/20 text-primary text-[10px] font-semibold flex-shrink-0 mt-0.5">
                         {userInitials}
                       </div>
-                      <div className="rounded-2xl px-4 py-2.5 bg-muted/60 border border-border/60 text-foreground text-sm leading-relaxed">
-                        {msg.content}
-                      </div>
+                      {editingMessageId === msg.id ? (
+                        <div className="flex-1 min-w-0">
+                          <textarea
+                            ref={editTextareaRef}
+                            value={editingContent}
+                            onChange={(e) => {
+                              setEditingContent(e.target.value);
+                              e.target.style.height = 'auto';
+                              e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`;
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSaveEdit(msg); }
+                              if (e.key === 'Escape') handleCancelEdit();
+                            }}
+                            className="w-full bg-background border border-primary/40 rounded-xl px-4 py-2.5 text-sm text-foreground resize-none outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all min-h-[44px] max-h-[200px]"
+                          />
+                          <div className="flex items-center gap-2 mt-2 justify-end">
+                            <Button size="sm" variant="ghost" onClick={handleCancelEdit} className="h-7 text-xs rounded-lg">
+                              Cancelar
+                            </Button>
+                            <Button size="sm" onClick={() => handleSaveEdit(msg)} disabled={!editingContent.trim() || editingContent.trim() === msg.content} className="h-7 text-xs rounded-lg">
+                              Salvar
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <div className="rounded-2xl px-4 py-2.5 bg-muted/60 border border-border/40 text-foreground text-sm leading-relaxed transition-all duration-200">
+                            {msg.content}
+                          </div>
+                          <div className="absolute -bottom-1 left-0 opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center gap-0.5 translate-y-full pt-1">
+                            <button
+                              onClick={() => handleStartEdit(msg)}
+                              disabled={isLoading}
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-40"
+                              title="Editar"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleCopyMessage(msg.content)}
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                              title="Copiar"
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : (
-                    <div key={msg.id} className="flex items-start gap-3 group">
+                    <div key={msg.id} className="flex items-start gap-3 group animate-message-in">
                       <AssistantIcon />
                       <div className="flex-1 min-w-0 text-sm text-foreground">
                         {isLeader && isLastAssistant && lastSummaryApplied && (
@@ -824,7 +923,7 @@ export const MentorChat = ({
                         <ReactMarkdown components={markdownComponents}>
                           {msg.content}
                         </ReactMarkdown>
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity mt-1.5">
+                        <div className="opacity-0 group-hover:opacity-100 transition-all duration-200 mt-1.5">
                           <button
                             onClick={() => handleCopyMessage(msg.content)}
                             className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
