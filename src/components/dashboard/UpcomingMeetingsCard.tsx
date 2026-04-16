@@ -42,6 +42,7 @@ export const UpcomingMeetingsCard = () => {
     syncDebug,
     refetchMeetings,
   } = useCalendarIntegration();
+  const { canScheduleBot, botMeetingCount, limits } = usePlanLimits();
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
   const [schedulingMeetingId, setSchedulingMeetingId] = useState<string | null>(null);
@@ -200,6 +201,11 @@ export const UpcomingMeetingsCard = () => {
           <Badge variant="secondary" className="text-xs rounded-full">
             {upcomingMeetings.length}
           </Badge>
+          {!limits.isBetaUser && limits.maxBotMeetings > 0 && (
+            <Badge variant="outline" className="text-[10px] rounded-full px-2 py-0.5 text-muted-foreground">
+              {botMeetingCount}/{limits.maxBotMeetings} bot
+            </Badge>
+          )}
           {isSyncing && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
         </div>
         <div className="flex items-center gap-3">
