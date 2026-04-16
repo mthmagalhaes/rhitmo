@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from './useAuth';
+import { useEffectiveUser } from './useEffectiveUser';
 
 export type UserRole = 'hr_admin' | 'leader' | 'user';
 
@@ -13,12 +13,12 @@ interface UserRoleData {
 }
 
 export function useUserRole(): UserRoleData {
-  const { user, loading: authLoading } = useAuth();
+  const { id: effectiveUserId, loading: effectiveLoading } = useEffectiveUser();
 
   const { data: role, isLoading } = useQuery({
-    queryKey: ['user-role', user?.id],
+    queryKey: ['user-role', effectiveUserId],
     queryFn: async (): Promise<UserRole> => {
-      if (!user) return 'user';
+      if (!effectiveUserId) return 'user';
 
       // CRITICAL: Verify active session before RLS-dependent queries
       const { data: { session } } = await supabase.auth.getSession();
@@ -30,20 +30,20 @@ export function useUserRole(): UserRoleData {
         supabase
           .from('workspaces')
           .select('id')
-          .contains('hr_admin_ids', [user.id])
+          .contains('hr_admin_ids', [effectiveUserId])
           .limit(1)
           .maybeSingle(),
         supabase
           .from('workspaces')
           .select('id')
-          .eq('owner_id', user.id)
+          .eq('owner_id', effectiveUserId)
           .eq('is_active', true)
           .limit(1)
           .maybeSingle(),
         supabase
           .from('teams')
           .select('id')
-          .eq('leader_user_id', user.id)
+          .eq('leader_user_id', effectiveUserId)
           .limit(1)
           .maybeSingle(),
       ]);
@@ -60,13 +60,13 @@ export function useUserRole(): UserRoleData {
       if (ownerResult.data || teamLeaderResult.data) return 'leader';
       return 'user';
     },
-    enabled: !!user && !authLoading,
+    enabled: !!effectiveUserId && !effectiveLoading,
     staleTime: 5 * 60 * 1000,
     retry: 5,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
   });
 
-  const stillLoading = authLoading || isLoading;
+  const stillLoading = effectiveLoading || isLoading;
 
   // CRITICAL: Do not default to 'user' while still loading.
   const resolvedRole: UserRole = stillLoading ? 'leader' : (role ?? 'user');
