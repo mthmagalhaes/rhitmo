@@ -1,46 +1,57 @@
 
 
-## Fluidez e Edição no Mentor Chat / Meu Rhitmo
+## Melhorias de Inteligência do MentorChat
 
-### Problemas atuais
-1. **Visual estático/travado**: O Dialog usa bordas duras, espaçamento rígido, sem animações de entrada/transição nas mensagens. O chat parece um formulário, não uma conversa fluida.
-2. **Sem edição de mensagens do usuário**: Não existe forma de editar uma mensagem enviada (como no ChatGPT/Claude). O usuário precisa enviar uma nova mensagem para corrigir.
+### Diagnóstico dos 3 Problemas
 
-### Referências visuais (Claude e ChatGPT)
-- Menu contextual nas mensagens do usuário com opções de **editar** e **copiar**
-- Edição inline: ao clicar "editar", a mensagem vira um textarea editável com botões Salvar/Cancelar
-- Ao salvar edição, reenvia a mensagem e gera nova resposta da IA
-- Animações suaves de entrada nas mensagens (fade-in + slide-up)
+**1. Respostas genéricas e repetitivas**
+- O modelo (`google/gemini-2.5-flash`) recebe `max_tokens: 1500`, o que limita a profundidade
+- O system prompt tem ~5.000 tokens de instruções formatação/guardrails mas pouco espaço para raciocínio profundo
+- No modo auto, envia apenas as **10 notas mais recentes** — pode não cobrir o contexto relevante
+- O `conversationHistory` envia apenas `content` (texto), **perdendo o contexto de imagens anteriores** na thread
+- O roteador semântico às vezes classifica como "NAO" perguntas que precisam de contexto (ex: "como responder a isso?")
 
-### Plano de implementação
+**2. Imagem enviada sem texto resulta em fallback genérico**
+- Linha 302: quando o usuário envia só imagem sem texto, o `finalMessage` fica vazio e o default é `"Analise esta imagem no contexto do liderado."` — genérico demais
+- O texto default não instrui o modelo a fazer algo útil com a imagem
+- A mensagem salva no banco é `[Imagem enviada para análise]` — sem contexto para a thread
 
-**1. Animações de entrada nas mensagens**
-- Adicionar `animate-in` CSS (fade + translateY) nas mensagens ao renderizar
-- Transição suave no loading indicator (bouncing dots já existe, manter)
-- Smooth scroll behavior no container de mensagens
+**3. Qualidade inferior vs Claude/ChatGPT nas referências**
+- `gemini-2.5-flash` é bom para velocidade mas fraco em nuance empática e coaching sofisticado
+- `max_tokens: 1500` corta respostas ricas que precisariam de 2000-3000 tokens
+- O prompt pede muitas coisas (formatação + análise + coaching + drafting + identidade) diluindo o foco
 
-**2. Edição de mensagens do usuário**
-- Adicionar menu hover nas mensagens do usuário com ícones de **Editar** (Pencil) e **Copiar** (Copy)
-- Estado `editingMessageId` + `editingContent` para controlar edição inline
-- Ao clicar "Editar": substituir o balão por um `<textarea>` com o conteúdo original + botões "Salvar" e "Cancelar"
-- Ao salvar:
-  - Atualizar o conteúdo da mensagem no banco (`supabase.from('mentor_messages').update(...)`)
-  - Deletar todas as mensagens subsequentes na thread (a resposta da IA e mensagens depois)
-  - Reenviar a mensagem editada para a Edge Function para gerar nova resposta
-  - Invalidar queries para atualizar a UI
+### Plano de Correções
 
-**3. Melhorias visuais de fluidez**
-- Balões de mensagem com `transition-all duration-200` 
-- Hover effects mais suaves nos botões da sidebar
-- Input area: adicionar `transition-all duration-300` no focus state (já tem parcialmente)
-- Remover rigidez visual: bordas mais sutis, sombras mais difusas nos balões
+**1. Upgrade de modelo: `gemini-2.5-flash` → `gemini-2.5-pro`** (para MentorChat líder)
+- Pro tem raciocínio mais profundo, melhor para coaching e empatia
+- Manter flash para Meu Rhitmo (liderado) por custo
+- Adicionar `reasoning: { effort: "medium" }` para ativar thinking
 
-### Arquivo modificado
-- `src/components/MentorChat.tsx`
-- `src/index.css` (adicionar keyframe de animação se necessário)
+**2. Aumentar `max_tokens` de 1500 para 3000**
+- Permite respostas mais ricas e contextualizadas como as do Claude/ChatGPT
 
-### Detalhes técnicos
-- Edição trunca o histórico: ao editar mensagem N, deleta mensagens N+1 em diante do banco e reenvia
-- A edição usa o mesmo `handleSend` existente, passando o `selectedThreadId` para manter a thread
-- Animação CSS: `@keyframes message-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }` com `.animate-message-in { animation: message-in 0.3s ease-out; }`
+**3. Melhorar fallback de imagem sem texto**
+- Trocar default de `"Analise esta imagem no contexto do liderado."` para prompt mais específico: `"Analise esta imagem detalhadamente. Se for uma conversa, identifique o contexto, as emoções envolvidas e sugira como eu poderia responder de forma empática e estratégica. Se for um documento ou gráfico, extraia os insights principais."`
+
+**4. Expandir contexto automático de 10 para 20 notas**
+- Mais histórico = padrões mais ricos, menos respostas genéricas
+
+**5. Melhorar roteador semântico para imagens**
+- Quando há `imageContent`, sempre buscar contexto (bypass router)
+- Imagem com conversa de liderado PRECISA de histórico para ser útil
+
+**6. Refinar system prompt — menos formatação, mais profundidade**
+- Condensar seções de formatação (redundantes)
+- Adicionar instrução explícita: "Evite respostas genéricas. Seja específico citando dados do histórico."
+
+### Arquivos modificados
+
+- `supabase/functions/chat-mentor/index.ts` — modelo, max_tokens, prompt, router bypass, contexto
+- `src/components/MentorChat.tsx` — default text para imagem, expandir notas de 10 para 20
+
+### Impacto de custo
+- Gemini 2.5 Pro custa ~5x mais que Flash por token
+- Com ~200 msgs/mês do líder principal: de ~$2/mês para ~$10/mês
+- Justificável pelo valor de retenção do user principal
 
