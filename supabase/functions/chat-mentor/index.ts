@@ -275,8 +275,10 @@ serve(async (req) => {
     // ============================================
     // CAMADA 1: ROTEAMENTO
     // ============================================
-    const needsContext = await shouldFetchContext(question, openAIApiKey);
-    console.log('Router decision - needs context:', needsContext);
+    // Bypass router when image is present — always fetch context for images
+    const hasImage = !!imageContent?.isImage;
+    const needsContext = hasImage ? true : await shouldFetchContext(question, openAIApiKey);
+    console.log('Router decision - needs context:', needsContext, hasImage ? '(image bypass)' : '');
 
     // ============================================
     // CAMADA 2: COMPRESSÃO (apenas se necessário)
@@ -548,9 +550,15 @@ Use o perfil Rhitmo Sync para orientar o gerente:
  ### O QUE EVITAR
  
  - ❌ Parágrafos longos sem formatação
- - ❌ Respostas genéricas sem evidências do histórico
- - ❌ Excesso de cautela que dilui a mensagem
- - ❌ Jargão corporativo vazio ("sinergia", "alinhar expectativas")
+  - ❌ Respostas genéricas sem evidências do histórico — SEMPRE cite dados específicos das notas
+  - ❌ Excesso de cautela que dilui a mensagem
+  - ❌ Jargão corporativo vazio ("sinergia", "alinhar expectativas")
+  - ❌ Repetir conselhos idênticos entre mensagens — varie abordagens e traga novos ângulos
+ 
+ ### REGRA ANTI-GENERICIDADE
+ - **Toda recomendação DEVE referenciar pelo menos 1 nota específica** (data + conteúdo)
+ - Se não houver dados suficientes para ser específico, diga explicitamente o que falta e sugira ao gestor registrar
+ - Prefira profundidade em 2-3 insights do que superficialidade em 6-7 pontos genéricos
 
 ${objectivesSection}
 
@@ -652,10 +660,10 @@ Com base neste resumo, dê sugestões práticas de liderança, identifique ponto
             type: "image_url",
             image_url: { url: `data:${imageContent.mimeType};base64,${imageContent.imageBase64}` }
           },
-          {
-            type: "text",
-            text: imageContent.textMessage || "Analise esta imagem no contexto do liderado."
-          }
+           {
+             type: "text",
+             text: imageContent.textMessage || "Analise esta imagem detalhadamente. Se for uma conversa ou troca de mensagens, identifique o contexto emocional, as dinâmicas de poder, os sinais comportamentais e sugira como eu poderia responder de forma empática e estratégica. Se for um documento, gráfico ou dashboard, extraia os insights principais e conecte com o contexto do liderado."
+           }
         ]
       : processedQuestion;
 
@@ -676,7 +684,7 @@ Com base neste resumo, dê sugestões práticas de liderança, identifique ponto
       ? 'https://ai.gateway.lovable.dev/v1/chat/completions'
       : 'https://api.openai.com/v1/chat/completions';
     const apiKey = useGateway ? lovableApiKey : openAIApiKey;
-    const modelName = useGateway ? 'google/gemini-2.5-flash' : 'gpt-4o';
+    const modelName = useGateway ? 'google/gemini-2.5-pro' : 'gpt-4o';
 
     console.log(`Calling ${modelName} via ${useGateway ? 'Lovable AI Gateway' : 'OpenAI'}, context length:`, systemPrompt.length, 'history messages:', (conversationHistory || []).length);
 
@@ -694,7 +702,8 @@ Com base neste resumo, dê sugestões práticas de liderança, identifique ponto
         body: JSON.stringify({
           model: modelName,
           messages: apiMessages,
-          max_tokens: 1500,
+          max_tokens: 3000,
+          reasoning: { effort: "medium" },
         }),
         signal: controller.signal,
       });

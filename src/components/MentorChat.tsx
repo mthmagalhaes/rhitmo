@@ -299,7 +299,7 @@ export const MentorChat = ({
 
     let imageContent: { isImage: true; imageBase64: string; mimeType: string; textMessage: string } | undefined;
     if (attachment?.isImage && attachment.imageBase64 && attachment.mimeType) {
-      const defaultText = isLeader ? 'Analise esta imagem no contexto do liderado.' : 'Analise esta imagem.';
+      const defaultText = isLeader ? 'Analise esta imagem detalhadamente. Se for uma conversa, identifique o contexto emocional, os sinais comportamentais e sugira como eu poderia responder de forma empática e estratégica. Se for um documento ou gráfico, extraia os insights principais.' : 'Analise esta imagem detalhadamente e me dê insights relevantes para meu desenvolvimento.';
       imageContent = { isImage: true, imageBase64: attachment.imageBase64, mimeType: attachment.mimeType, textMessage: finalMessage || defaultText };
     } else if (attachment) {
       finalMessage = finalMessage + `\n\n--- ARQUIVO ANEXADO (${attachment.name}) ---\n${attachment.content}`;
@@ -360,7 +360,7 @@ export const MentorChat = ({
         } else {
           contextMode = 'auto';
           const sorted = [...feedbacks].sort((a, b) => new Date(b.occurred_at || b.created_at).getTime() - new Date(a.occurred_at || a.created_at).getTime());
-          contextFeedbacks = sorted.slice(0, 10);
+          contextFeedbacks = sorted.slice(0, 20);
         }
 
         const MAX_RETRIES = 3;
