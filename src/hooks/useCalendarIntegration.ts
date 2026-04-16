@@ -153,6 +153,7 @@ export const useCalendarIntegration = () => {
         body: params,
       });
       if (error) throw error;
+      if (data?.error?.includes('limit')) throw new Error(data.error);
       return data;
     },
     onSuccess: () => {

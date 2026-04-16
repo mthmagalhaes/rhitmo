@@ -5,7 +5,7 @@ import { ArrowUpRight } from 'lucide-react';
 
 export const UpgradeBanner = () => {
   const navigate = useNavigate();
-  const { limits, memberCount, teamCount, reviewCount, checkLimit } = useEnforcedLimits();
+  const { limits, memberCount, teamCount, reviewCount, botMeetingCount, checkLimit } = useEnforcedLimits();
 
   if (limits.isBetaUser) return null;
 
@@ -24,6 +24,13 @@ export const UpgradeBanner = () => {
   const reviewStatus = checkLimit(reviewCount, limits.maxReviews);
   if (reviewStatus !== 'allowed') {
     nearLimits.push({ name: 'Avaliações/mês', current: reviewCount, max: limits.maxReviews });
+  }
+
+  if (limits.maxBotMeetings > 0) {
+    const botStatus = checkLimit(botMeetingCount, limits.maxBotMeetings);
+    if (botStatus !== 'allowed') {
+      nearLimits.push({ name: 'Reuniões com bot', current: botMeetingCount, max: limits.maxBotMeetings });
+    }
   }
 
   if (nearLimits.length === 0) return null;
