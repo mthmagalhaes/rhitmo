@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import {
   Users, Power, PowerOff, Trash2, Loader2, Eye, Search, Building, Shield,
-  Crown, User, Settings, KeyRound, Edit, ArrowRightLeft,
+  Crown, User, Settings, KeyRound, Edit, ArrowRightLeft, ArrowUpDown, ArrowUp, ArrowDown,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useImpersonation } from '@/hooks/useImpersonation';
