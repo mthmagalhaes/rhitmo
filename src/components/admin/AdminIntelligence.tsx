@@ -73,28 +73,31 @@ export const AdminIntelligence = () => {
             lastFeedbackDate = lastFbRes.data?.[0]?.created_at || null;
           }
 
-        // Health score: 0-100
-        // 40% feedback coverage (at least 1 feedback per member in 30 days)
-        // 30% review coverage (at least 1 review per member)
-        // 30% recency (last feedback within 7 days = full score)
-        const fbCoverage = memberCount > 0 ? Math.min(feedbackCount / memberCount, 1) : 0;
-        const rvCoverage = memberCount > 0 ? Math.min(reviewCount / memberCount, 1) : 0;
+          // Health score: 0-100
+          // 40% feedback coverage (at least 1 feedback per member in 30 days)
+          // 30% review coverage (at least 1 review per member)
+          // 30% recency (last feedback within 7 days = full score)
+          const fbCoverage = memberCount > 0 ? Math.min(feedbackCount / memberCount, 1) : 0;
+          const rvCoverage = memberCount > 0 ? Math.min(reviewCount / memberCount, 1) : 0;
 
-        let recencyScore = 0;
-        if (lastFeedbackDate) {
-          const daysSince = (Date.now() - new Date(lastFeedbackDate).getTime()) / (1000 * 60 * 60 * 24);
-          recencyScore = daysSince <= 7 ? 1 : daysSince <= 14 ? 0.7 : daysSince <= 30 ? 0.4 : 0.1;
+          let recencyScore = 0;
+          if (lastFeedbackDate) {
+            const daysSince = (Date.now() - new Date(lastFeedbackDate).getTime()) / (1000 * 60 * 60 * 24);
+            recencyScore = daysSince <= 7 ? 1 : daysSince <= 14 ? 0.7 : daysSince <= 30 ? 0.4 : 0.1;
+          }
+
+          const healthScore = Math.round((fbCoverage * 40 + rvCoverage * 30 + recencyScore * 30));
+          const status: 'healthy' | 'warning' | 'critical' =
+            healthScore >= 60 ? 'healthy' : healthScore >= 30 ? 'warning' : 'critical';
+
+          results.push({
+            id: ws.id, name: ws.name, owner_id: ws.owner_id, memberCount,
+            feedbackCount, reviewCount, lastFeedbackDate, healthScore, status,
+            plan_tier: ws.plan_tier,
+          });
+        } catch (err) {
+          console.error(`[AdminIntelligence] failed to compute health for workspace ${ws.id}:`, err);
         }
-
-        const healthScore = Math.round((fbCoverage * 40 + rvCoverage * 30 + recencyScore * 30));
-        const status: 'healthy' | 'warning' | 'critical' =
-          healthScore >= 60 ? 'healthy' : healthScore >= 30 ? 'warning' : 'critical';
-
-        results.push({
-          id: ws.id, name: ws.name, owner_id: ws.owner_id, memberCount,
-          feedbackCount, reviewCount, lastFeedbackDate, healthScore, status,
-          plan_tier: ws.plan_tier,
-        });
       }
 
       return results.sort((a, b) => a.healthScore - b.healthScore);
