@@ -1,56 +1,46 @@
 
 
-## Cap de Reuniões com Bot + Atualização de Pricing
+## Plano: Limpeza e correções do Painel Admin
 
-### Contexto
-O bot de transcrição (Recall.ai) é o recurso mais caro da plataforma. Atualmente só existe cap de **horas de gravação** (`maxRecordingHours`), mas não há limite no **número de reuniões agendadas com bot**. Um power user no Business pode agendar 40+ reuniões/mês, estourando a margem. Precisamos adicionar um cap de reuniões com bot por plano.
+Vou quebrar em 4 ajustes pequenos, todos no mesmo sprint (são todas correções pontuais).
 
-### Caps propostos
+### 1. Deletar workspaces órfãos de liderados
+- Confirmados via SQL: `CS` (owner: Guilherme Cunha, pulse, 0 membros) e `Expansão` (owner: Giovanna, pulse, 0 membros) — criados por engano em fluxo de convite
+- Migration de DELETE: remover esses 2 workspaces (cascade leva o team "Sem Time" junto)
+- Os usuários continuam existindo em `auth.users` e nos `team_members` dos workspaces corretos onde são liderados
 
-| Plano | Reuniões com bot/mês | Gravação manual |
-|-------|---------------------|-----------------|
-| Pulse | 0 (sem acesso) | 0h |
-| Pro | 20 | 12h |
-| Business | 40 | 30h |
+### 2. Remover botão "Voltar ao App" do AdminLayout
+- Em `src/components/admin/AdminLayout.tsx`, remover o botão "Voltar ao App" (linhas 76-78)
+- Mantém apenas "Sair" no rodapé. Coerente com a memória `god's-eye-experience-refinement` — admin é interface separada, navegação para o app deve ser via Impersonation
+- Remove import `Home` que ficaria não utilizado
 
-### Arquivos e mudanças
+### 3. Consertar Impersonation
+**Diagnóstico:** Há um registro ativo na DB (`gabriela.lucas@fstr.co` impersonada por matheus), mas o admin continua na tela `/admin` sem feedback. Problemas:
+- `navigate('/')` é chamado, mas se o admin já está em rota `/admin`, alguns layouts podem não remontar o `AccountContext`
+- Falta `refetch()` explícito da query de impersonation antes do `navigate`
+- Falta toast de confirmação ("Visualizando como X")
 
-**1. `src/hooks/usePlanLimits.ts`**
-- Adicionar `maxBotMeetings` à interface `PlanLimits` (Pulse: 0, Pro: 20, Business: 40)
-- Adicionar query para contar `recall_bots` agendados no mês (`status != 'error'`)
-- Expor `botMeetingCount`, `canScheduleBot`, `botMeetingsRemaining`
+**Fix em `src/hooks/useImpersonation.ts`:**
+- Após insert: forçar `await refetchQueries({ queryKey: ['admin-impersonation'] })` antes do invalidateQueries global
+- Adicionar toast de sucesso/erro
+- Trocar `navigate('/')` por `window.location.href = '/'` (hard reload garante que `AccountContext` re-resolva o `effective_user_id` via RLS)
+- Mesma lógica em `stopImpersonation`: hard reload para `/admin`
 
-**2. `src/hooks/useCalendarIntegration.ts`**
-- Importar `usePlanLimits` e verificar `canScheduleBot` antes de invocar `schedule-recall-bot`
-- Mostrar toast de limite atingido se bloqueado
+### 4. Consertar aba Inteligência (sem dados)
+**Diagnóstico:** Bug no SELECT em `AdminIntelligence.tsx` linhas 31-39 — usa `team_members (id)` E `team_members!inner (id)` duplicados, o que pode estar quebrando o parse do PostgREST e retornando vazio.
 
-**3. `src/components/dashboard/UpcomingMeetingsCard.tsx`**
-- Desabilitar botão de agendar bot quando `!canScheduleBot`
-- Mostrar badge "X/Y reuniões" no card
+**Fix em `src/components/admin/AdminIntelligence.tsx`:**
+- Limpar SELECT: usar apenas `teams ( id, team_members ( id ) )`
+- Adicionar `console.error` no catch para futura depuração
+- Adicionar empty-state ("Sem workspaces ativos para analisar") quando `workspaceHealth` for `[]` em vez de só renderizar tabela vazia
+- O loop `for...of` com `await Promise.all` está OK, mas vou adicionar `try/catch` por workspace para não quebrar tudo se um falhar
 
-**4. `supabase/functions/schedule-recall-bot/index.ts`**
-- Adicionar verificação server-side: contar `recall_bots` do mês para o `user_id`, comparar com limite do plano via query ao `workspaces.plan_tier`
-- Retornar 403 se exceder o cap
+### Arquivos modificados
+- `src/components/admin/AdminLayout.tsx` (remover botão)
+- `src/hooks/useImpersonation.ts` (refetch + hard reload + toast)
+- `src/components/admin/AdminIntelligence.tsx` (fix SELECT + empty state)
+- Migration: DELETE dos 2 workspaces órfãos
 
-**5. `src/pages/Billing.tsx` — Atualizar features dos planos**
-- Pulse: adicionar "Sem gravação com bot"
-- Pro: adicionar "Até 20 reuniões com bot/mês"
-- Business: adicionar "Até 40 reuniões com bot/mês"
-
-**6. `src/pages/Landing.tsx` — Atualizar pricing em PT e EN**
-- Pro PT: adicionar "Até 20 reuniões com bot de transcrição/mês"
-- Business PT: adicionar "Até 40 reuniões com bot de transcrição/mês"
-- Pro EN: "Up to 20 bot-transcribed meetings/mo"
-- Business EN: "Up to 40 bot-transcribed meetings/mo"
-
-**7. `src/components/billing/UpgradeBanner.tsx`**
-- Adicionar check de `botMeetingCount` vs `maxBotMeetings` nos near-limits
-
-**8. Memory — Atualizar `mem://monetization/plan-limits-and-guardrails-v2`**
-- Documentar os novos caps de bot meetings
-
-### Detalhes técnicos
-- A contagem server-side no edge function usa: `SELECT count(*) FROM recall_bots WHERE user_id = $1 AND created_at >= $startOfMonth AND status != 'error'`
-- O `plan_tier` é obtido via join `teams -> workspaces` usando o `user_id`
-- Beta users (`is_beta_user = true`) continuam com Infinity em todos os limites
+### Memory update
+- Atualizar `mem://admin/gods-eye-experience-refinement` confirmando remoção do "Voltar ao App"
 
