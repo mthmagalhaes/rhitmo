@@ -594,14 +594,16 @@ const Landing = () => {
 
   const toggleTheme = () => setLandingTheme(prev => prev === 'light' ? 'dark' : 'light');
 
-  const { isAdmin, loading: adminLoading } = useAdmin();
+  const { isAdmin, isRealAdmin, loading: adminLoading } = useAdmin();
 
   useEffect(() => {
     if (!loading && user) {
       if (adminLoading) return;
-      navigate(isAdmin ? "/admin" : "/dashboard", { replace: true });
+      // While impersonating, send admin into the regular app instead of /admin.
+      const target = isAdmin ? "/admin" : "/dashboard";
+      navigate(target, { replace: true });
     }
-  }, [user, loading, adminLoading, isAdmin, navigate]);
+  }, [user, loading, adminLoading, isAdmin, isRealAdmin, navigate]);
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-background">

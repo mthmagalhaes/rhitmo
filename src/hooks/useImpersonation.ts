@@ -79,6 +79,7 @@ export const useImpersonation = () => {
   return {
     isImpersonating: !!impersonation,
     impersonatedEmail: impersonation?.impersonated_email ?? null,
+    impersonatedUserId: impersonation?.impersonated_user_id ?? null,
     startImpersonation,
     stopImpersonation,
     isLoading,
