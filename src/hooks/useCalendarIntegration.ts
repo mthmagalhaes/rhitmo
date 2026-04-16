@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { useToast } from '@/hooks/use-toast';
 
 interface UpcomingMeeting {
@@ -22,7 +22,8 @@ interface RecallBot {
 }
 
 export const useCalendarIntegration = () => {
-  const { user } = useAuth();
+  const { id: effectiveUserId } = useEffectiveUser();
+  const user = effectiveUserId ? { id: effectiveUserId } : null;
   const queryClient = useQueryClient();
   const { toast } = useToast();
 

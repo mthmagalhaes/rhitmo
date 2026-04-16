@@ -2,6 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Highlight from '@tiptap/extension-highlight';
@@ -15,20 +16,21 @@ export default function DirectReportReviewView() {
   const { reviewId } = useParams<{ reviewId: string }>();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { id: effectiveUserId } = useEffectiveUser();
   const queryClient = useQueryClient();
 
   const { data: member } = useQuery({
-    queryKey: ['linked-member', user?.id],
+    queryKey: ['linked-member', effectiveUserId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('team_members')
         .select('id, name, role')
-        .eq('linked_user_id', user!.id)
+        .eq('linked_user_id', effectiveUserId!)
         .maybeSingle();
       if (error) throw error;
       return data;
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 
   const { data: review, isLoading, error } = useQuery({

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { BarChart3, TrendingUp, TrendingDown, FileText, Users, Music, Lock, Sparkles } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,17 +17,19 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine, PieChart, Pi
 type PeriodType = '30d' | '90d' | '365d';
 
 const Analytics = () => {
-  const { user, loading: authLoading } = useAuth();
+  const { user: authUser, loading: authLoading } = useAuth();
+  const { id: effectiveUserId } = useEffectiveUser();
+  const user = effectiveUserId ? { id: effectiveUserId } : authUser;
   const { hasAnalytics, limits, isLoading: limitsLoading } = usePlanLimits();
   const navigate = useNavigate();
   const [period, setPeriod] = useState<PeriodType>('30d');
   const [teamFilter, setTeamFilter] = useState<string>('all');
 
   useEffect(() => {
-    if (!user && !authLoading) {
+    if (!authUser && !authLoading) {
       navigate('/auth', { replace: true });
     }
-  }, [user, authLoading, navigate]);
+  }, [authUser, authLoading, navigate]);
 
   // Queries
   const { data: feedbacks, isLoading: loadingFeedbacks } = useQuery({
