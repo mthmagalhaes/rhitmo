@@ -77,7 +77,12 @@ async function ensureSession() {
 
 export function AccountProvider({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
-  const enabled = !!user && !authLoading;
+  const { isImpersonating, impersonatedUserId, isLoading: impersonationLoading } = useImpersonation();
+
+  // The "effective" user id drives all account queries — this is the admin's
+  // own id normally, but switches to the impersonated user during impersonation.
+  const effectiveUserId = isImpersonating && impersonatedUserId ? impersonatedUserId : user?.id ?? null;
+  const enabled = !!effectiveUserId && !authLoading && !impersonationLoading;
 
   // ── 1. Resolve workspace ──────────────────────────────────────────
   const {
@@ -86,7 +91,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     error: workspaceError,
     refetch: refetchWorkspace,
   } = useQuery({
-    queryKey: ['account-workspace', user?.id],
+    queryKey: ['account-workspace', effectiveUserId],
     queryFn: async () => {
       await ensureSession();
 
@@ -94,7 +99,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       const { data: owned, error: ownedErr } = await supabase
         .from('workspaces')
         .select('id')
-        .eq('owner_id', user!.id)
+        .eq('owner_id', effectiveUserId!)
         .eq('is_active', true)
         .limit(1)
         .maybeSingle();
@@ -105,7 +110,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       const { data: leaderTeam } = await supabase
         .from('teams')
         .select('workspace_id')
-        .eq('leader_user_id', user!.id)
+        .eq('leader_user_id', effectiveUserId!)
         .limit(1)
         .maybeSingle();
       if (leaderTeam?.workspace_id) {
@@ -126,14 +131,14 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
 
   // ── 2. Resolve role ───────────────────────────────────────────────
   const { data: resolvedRole, isLoading: roleLoading } = useQuery({
-    queryKey: ['account-role', user?.id],
+    queryKey: ['account-role', effectiveUserId],
     queryFn: async (): Promise<AccountRole> => {
       await ensureSession();
 
       const [hrResult, ownerResult, teamLeaderResult] = await Promise.all([
-        supabase.from('workspaces').select('id').contains('hr_admin_ids', [user!.id]).limit(1).maybeSingle(),
-        supabase.from('workspaces').select('id').eq('owner_id', user!.id).eq('is_active', true).limit(1).maybeSingle(),
-        supabase.from('teams').select('id').eq('leader_user_id', user!.id).limit(1).maybeSingle(),
+        supabase.from('workspaces').select('id').contains('hr_admin_ids', [effectiveUserId!]).limit(1).maybeSingle(),
+        supabase.from('workspaces').select('id').eq('owner_id', effectiveUserId!).eq('is_active', true).limit(1).maybeSingle(),
+        supabase.from('teams').select('id').eq('leader_user_id', effectiveUserId!).limit(1).maybeSingle(),
       ]);
 
       if (hrResult.error && ownerResult.error && teamLeaderResult.error) {
@@ -151,23 +156,22 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   });
 
   // ── 3. Resolve linked member ──────────────────────────────────────
-  const isLeaderOrOwner = resolvedRole === 'hr_admin' || resolvedRole === 'leader';
   const { data: linkedMember, isLoading: linkedLoading } = useQuery({
-    queryKey: ['account-linked-member', user?.id],
+    queryKey: ['account-linked-member', effectiveUserId],
     queryFn: async (): Promise<LinkedMemberData | null> => {
       await ensureSession();
 
       // Leaders/owners are never linked members
       const [ownerCheck, leaderCheck] = await Promise.all([
-        supabase.from('workspaces').select('id').eq('owner_id', user!.id).eq('is_active', true).limit(1).maybeSingle(),
-        supabase.from('teams').select('id').eq('leader_user_id', user!.id).limit(1).maybeSingle(),
+        supabase.from('workspaces').select('id').eq('owner_id', effectiveUserId!).eq('is_active', true).limit(1).maybeSingle(),
+        supabase.from('teams').select('id').eq('leader_user_id', effectiveUserId!).limit(1).maybeSingle(),
       ]);
       if (ownerCheck.data || leaderCheck.data) return null;
 
       const { data, error } = await supabase
         .from('team_members')
         .select('id, name, email, role, skills_data, work_style_data, chronotype, feedback_style, recognition_style, motivators, user_manual, updated_at')
-        .eq('linked_user_id', user!.id)
+        .eq('linked_user_id', effectiveUserId!)
         .eq('invite_status', 'accepted')
         .maybeSingle();
       if (error) { console.error('[Account] linked member error:', error); return null; }
@@ -179,10 +183,11 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   });
 
   // ── 4. Check pending invite by email ──────────────────────────────
+  // Skip during impersonation — pending invites only apply to the real account.
   const { data: hasPendingInviteByEmail, isLoading: pendingLoading } = useQuery({
-    queryKey: ['account-pending-invite', user?.email],
+    queryKey: ['account-pending-invite', user?.email, isImpersonating],
     queryFn: async () => {
-      if (!user?.email) return false;
+      if (!user?.email || isImpersonating) return false;
       const { data } = await supabase
         .from('team_members')
         .select('id')
