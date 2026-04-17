@@ -1,7 +1,7 @@
 # Rhitmo — Relatório Técnico Completo
 
-> **Versão:** 1.0  
-> **Data:** 15 de Abril de 2026  
+> **Versão:** 1.1  
+> **Data:** 17 de Abril de 2026  
 > **Propósito:** Fonte da verdade consolidada para arquitetura, modelos de dados, Edge Functions, integrações e decisões técnicas.  
 > **Atualização:** Este documento deve ser consultado e atualizado periodicamente para manter a consistência entre agentes de IA e colaboradores humanos.
 
@@ -26,6 +26,7 @@
 15. [Internacionalização (i18n)](#15-internacionalização-i18n)
 16. [Administração e Super Admin](#16-administração-e-super-admin)
 17. [Custos Operacionais](#17-custos-operacionais)
+18. [Command Center — Painel Admin](#18-command-center--painel-admin)
 
 ---
 
@@ -580,6 +581,26 @@ Landing/Billing → create-checkout-session → Stripe Checkout
 | `UpcomingMeetingsCard` | Reuniões com briefs e status do bot |
 | `SetupChecklist` | Onboarding progressivo |
 | `WorkspaceOnboarding` | Wizard de configuração inicial |
+| `ActivitySheet` | **Único ponto de notificações** (sino no header) — consome `leader_nudges`, `rhitmo_sync_notifications` e alertas de sistema |
+
+### Sidebar do Líder (`AppSidebar.tsx`)
+
+Grupo **"Integrações"** (anteriormente "Conectores"):
+
+| Item | Ação | Observação |
+|---|---|---|
+| **Transcrição automática** | `navigate('/help#l-auto-transcription')` | Substituiu o atalho do "Conector Chrome" — a captura é feita pelo bot Recall.ai. Ícone `FileAudio`. |
+| **Conector Slack** | Abre `SlackConnectorDialog` | Mantido. |
+
+> O componente `ChromeExtensionSetupDialog` continua disponível para outros pontos de entrada (ex.: Configurações), mas perdeu o protagonismo na sidebar — a captura de reuniões hoje passa pelo bot Recall.ai via Google Calendar.
+
+### Help Center — Hash Anchors
+
+`HelpCenter.tsx` reage a `location.hash` para abrir cards específicos:
+
+- Detecta `#<card-id>` no `useEffect`, faz scroll suave até o card e abre o accordion "Como funciona" (`defaultValue="steps"`).
+- `FeatureGrid` aceita prop `openCardId` para destacar visualmente o card-alvo.
+- Usado pelo atalho da sidebar (`#l-auto-transcription`) e pode ser estendido para deep-links externos.
 
 ### Portal do Liderado
 
@@ -636,7 +657,7 @@ Landing/Billing → create-checkout-session → Stripe Checkout
 
 | Módulo | Features |
 |---|---|
-| **Overview** | Dashboard com métricas globais |
+| **Overview** | Command Center — funil, coortes de ativação, stats, alertas, atividade recente, waitlist (ver §18) |
 | **Users** | CRUD de usuários, reset de senha, delete, impersonação |
 | **Structure** | Gestão de workspaces, owners, HR admins |
 | **Intelligence** | Health Score por workspace (0-100) |
@@ -676,9 +697,92 @@ Landing/Billing → create-checkout-session → Stripe Checkout
 
 ---
 
+## 18. Command Center — Painel Admin
+
+O **Command Center** (rota `/admin`, aba **Overview**) é a camada de observabilidade executiva do super-admin. Após a refatoração de Abril/2026, foi quebrado em componentes especializados, com `AdminOverview.tsx` atuando como orquestrador enxuto (~24 linhas).
+
+### Arquitetura de Componentes
+
+```
+AdminOverview.tsx  (orquestrador)
+├── <FunnelCard />               — funil de conversão (lead → workspace → ativação → paid)
+├── <ActivationCohorts />        — coortes mensais D1/D7/D30 + drill-down
+│   └── <CohortDrilldownSheet /> — Sheet lateral com workspaces da coorte
+├── <StatsGrid />                — 6 big numbers (workspaces, usuários, feedbacks, reviews, assinaturas, leads)
+├── <InactiveWorkspacesAlert />  — card amber para workspaces sem atividade 30d+
+├── <RecentActivityCard />       — últimos 5 feedbacks com tipo + membro
+└── <WaitlistTable />            — leads pendentes + dialog de convite (admin-invite-user)
+```
+
+### Métricas e RPCs
+
+| Componente | RPC | Retorno |
+|---|---|---|
+| `FunnelCard` | `admin_funnel_metrics()` | leads, workspaces, ativados, pagantes + taxas de conversão |
+| `ActivationCohorts` | `admin_activation_cohorts()` | últimos 6 meses; por coorte: total, ativados D1/D7/D30, % e mediana de tempo |
+| `CohortDrilldownSheet` | `admin_cohort_workspaces(p_cohort_month)` | workspaces da coorte: nome, owner_email, `first_activation_at`, bucket (`d1`/`d7`/`d30`/`late`/`not_activated`), counts de feedbacks/reviews/transcripts |
+| `StatsGrid` | queries diretas (count) | totais agregados |
+| `RevenueOverview` | `admin_revenue_metrics()` | MRR, ARR, churn (separado em aba dedicada) |
+
+### Definição de "Ativação"
+
+Workspace é considerado **ativado** quando registra ≥1 evento de qualquer um:
+
+- `feedbacks` (Diário de Bordo)
+- `performance_reviews`
+- `meeting_transcripts`
+
+Buckets temporais (medidos a partir de `workspaces.created_at`):
+
+| Bucket | Janela | Acumulativo? |
+|---|---|---|
+| **D1** | ≤ 24h | sim |
+| **D7** | ≤ 7 dias | sim (inclui D1) |
+| **D30** | ≤ 30 dias | sim (inclui D7) |
+| **Late** | > 30 dias | exclusivo (drill-down) |
+| **Not activated** | sem eventos | exclusivo |
+
+> Na tabela de coortes, D1/D7/D30 são **acumulativos** (mais legível para tendência).  
+> No drill-down, os buckets são **exclusivos** para identificar onde cada workspace travou.
+
+### Drill-down de Coortes
+
+- Cada linha da tabela em `ActivationCohorts` é clicável (`cursor-pointer hover:bg-muted/50`).
+- Click abre `CohortDrilldownSheet` (`<Sheet>` lateral, `sm:max-w-2xl`):
+  - **Header:** "Coorte de [Mês/Ano] · N workspaces"
+  - **Tabela:** Workspace · Owner · Criado em · Status (badge por bucket) · Contadores de atividade
+  - **Ordenação default:** não-ativados primeiro (acionáveis no topo)
+- Sheet (em vez de Dialog) preserva contexto da tabela atrás.
+
+### Segurança
+
+Todas as RPCs do Command Center são `SECURITY DEFINER` com guard `is_admin()`:
+
+```sql
+IF NOT public.is_admin() THEN
+  RAISE EXCEPTION 'access denied';
+END IF;
+```
+
+Apenas usuários com `app_role = 'super_admin'` em `user_roles` conseguem invocar.
+
+### Alertas e Notificações Admin
+
+- `InactiveWorkspacesAlert` calcula em tempo real (cliente) workspaces ativos sem feedback nos últimos 30 dias e exibe botão "Ver detalhes" que dispara `CustomEvent('admin-tab-change', { detail: 'intelligence' })` para navegar à aba `Intelligence`.
+- `RecentActivityCard` é polling-free (refetch padrão do React Query) — útil para auditoria rápida de últimas notas criadas na plataforma.
+
+---
+
 ## Changelog
 
 | Data | Alteração |
 |---|---|
 | 15/04/2026 | Criação do documento (v1.0) |
 | 15/04/2026 | Correção de deduplicação por `meeting_url`, auto-leave timeouts, setTimeout → síncrono no webhook |
+| 17/04/2026 | **P0 Activation Cohorts**: nova RPC `admin_activation_cohorts` + componente `<ActivationCohorts />` adicionado abaixo do `<FunnelCard />` em `AdminOverview`. Coortes mensais (6 meses) com D1/D7/D30 acumulativos. |
+| 17/04/2026 | **P1 Refactor do Command Center**: `AdminOverview.tsx` reduzido de ~380 → ~24 linhas. Extraídos `StatsGrid`, `InactiveWorkspacesAlert`, `RecentActivityCard`, `WaitlistTable`. Zero mudança visual ou funcional — apenas organização. |
+| 17/04/2026 | **P1 Drill-down de Coortes**: nova RPC `admin_cohort_workspaces(p_cohort_month)` + componente `<CohortDrilldownSheet />`. Linhas da tabela de coortes ficaram clicáveis, abrem Sheet lateral com lista de workspaces e bucket exclusivo de ativação. |
+| 17/04/2026 | **Refinamentos do dashboard do líder**: removido atalho "Conector Chrome" da sidebar (substituído por "Transcrição automática" → `/help#l-auto-transcription`); grupo da sidebar renomeado de "Conectores" para "Integrações"; removida seção "ALERTAS" do `Index.tsx` (duplicava sino do header) e query `nudges` órfã eliminada. |
+| 17/04/2026 | **Help Center deep-links**: `HelpCenter.tsx` passa a reagir a `location.hash`, fazendo scroll suave e abrindo o accordion "Como funciona" do card alvo via prop `openCardId` em `FeatureGrid`. |
+| 17/04/2026 | **i18n**: novas chaves `sidebar.integrations` e `sidebar.autoTranscription` adicionadas em PT-BR, EN e ES. |
+
