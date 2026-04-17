@@ -18,23 +18,62 @@ export type Database = {
         Row: {
           admin_user_id: string
           created_at: string | null
+          ended_at: string | null
+          expires_at: string
           id: string
           impersonated_email: string | null
           impersonated_user_id: string
+          reason: string | null
         }
         Insert: {
           admin_user_id: string
           created_at?: string | null
+          ended_at?: string | null
+          expires_at?: string
           id?: string
           impersonated_email?: string | null
           impersonated_user_id: string
+          reason?: string | null
         }
         Update: {
           admin_user_id?: string
           created_at?: string | null
+          ended_at?: string | null
+          expires_at?: string
           id?: string
           impersonated_email?: string | null
           impersonated_user_id?: string
+          reason?: string | null
+        }
+        Relationships: []
+      }
+      admin_impersonation_audit: {
+        Row: {
+          action: string
+          admin_user_id: string
+          created_at: string
+          id: string
+          impersonated_email: string | null
+          impersonated_user_id: string
+          reason: string | null
+        }
+        Insert: {
+          action: string
+          admin_user_id: string
+          created_at?: string
+          id?: string
+          impersonated_email?: string | null
+          impersonated_user_id: string
+          reason?: string | null
+        }
+        Update: {
+          action?: string
+          admin_user_id?: string
+          created_at?: string
+          id?: string
+          impersonated_email?: string | null
+          impersonated_user_id?: string
+          reason?: string | null
         }
         Relationships: []
       }
@@ -1705,6 +1744,7 @@ export type Database = {
     Functions: {
       can_update_own_sync: { Args: { member_id: string }; Returns: boolean }
       check_is_admin: { Args: never; Returns: boolean }
+      cleanup_expired_impersonations: { Args: never; Returns: undefined }
       create_default_competency_framework: {
         Args: { p_workspace_id: string }
         Returns: undefined
@@ -1867,6 +1907,7 @@ export type Database = {
         }[]
       }
       is_admin: { Args: never; Returns: boolean }
+      is_admin_user: { Args: { _user_id: string }; Returns: boolean }
       is_hr_admin_of_workspace: {
         Args: { _workspace_id: string }
         Returns: boolean
