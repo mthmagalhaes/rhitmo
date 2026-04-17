@@ -1,79 +1,68 @@
 
-# Entrega 3 — Activation Cohorts (Command Center)
 
-Última entrega do P0. Adicionar análise de coortes de ativação no Command Center, para responder: **"workspaces que entram esse mês ativam mais rápido que os do mês passado?"**
+# P1 — Refinamentos do Command Center
 
-## O que entrega
+Dois itens do P1 propostos. Vou planejar ambos juntos pois compartilham o mesmo arquivo (`AdminOverview.tsx`).
 
-Bloco `<ActivationCohorts />` abaixo do `<FunnelCard />` em `AdminOverview.tsx` com:
+## Item 1 — Refatorar `AdminOverview.tsx`
 
-1. **Tabela de coortes mensais** — últimos 6 meses, com:
-   - Mês de criação do workspace (ex: "Nov/25")
-   - Total de workspaces criados naquele mês
-   - % ativados em D1 / D7 / D30 (≥1 feedback, review ou transcript)
-2. **Heatmap visual** — células coloridas por % ativação (verde >60%, amarelo 30-60%, vermelho <30%)
-3. **Insight automático** — comparação cohort atual vs anterior (ex: "Coorte de Nov ativando 23% mais rápido que Out")
+Hoje o arquivo tem ~380 linhas misturando: stats, alerts, recent activity, waitlist + dialog de convite. Vamos extrair em componentes próprios, mantendo `AdminOverview` como orquestrador enxuto.
 
-## Implementação técnica
+**Quebra:**
 
-### Migration: nova RPC `admin_activation_cohorts()`
+- `src/components/admin/StatsGrid.tsx` — 6 big numbers (Workspaces, Usuários, Feedbacks, Reviews, Assinaturas, Leads). Recebe stats + paidCount + leadsCount via props ou faz queries próprias.
+- `src/components/admin/InactiveWorkspacesAlert.tsx` — card amber com contagem de workspaces sem atividade 30d.
+- `src/components/admin/RecentActivityCard.tsx` — últimos 5 feedbacks. Query própria.
+- `src/components/admin/WaitlistTable.tsx` — tabela completa de leads + dialog de convite + lógica de `admin-invite-user`. Encapsula estado `invitingEmail` e `inviteDialog`.
 
-```sql
-CREATE FUNCTION admin_activation_cohorts() RETURNS jsonb
-SECURITY DEFINER ... AS $$
-BEGIN
-  IF NOT is_admin() THEN RAISE EXCEPTION 'Unauthorized'; END IF;
-  
-  -- Para cada um dos últimos 6 meses:
-  --   1. Listar workspaces criados naquele mês (cohort_month)
-  --   2. Para cada workspace, calcular primeiro evento de ativação
-  --      (min de feedbacks.created_at, performance_reviews.created_at, meeting_transcripts.created_at)
-  --   3. Classificar como ativado em D1 (≤24h), D7 (≤7d), D30 (≤30d)
-  --   4. Retornar contagens + percentuais
-  
-  RETURN jsonb_build_object(
-    'cohorts', jsonb_agg(...),
-    'insight', 'Coorte de Nov ativando 23% mais rápido que Out (D7)'
-  );
-END $$;
+**`AdminOverview.tsx` final** vira ~40 linhas:
+```tsx
+<div className="p-8 space-y-8">
+  <Header />
+  <FunnelCard />
+  <ActivationCohorts />
+  <StatsGrid />
+  <InactiveWorkspacesAlert />
+  <RecentActivityCard />
+  <WaitlistTable />
+</div>
 ```
 
-### Componente `src/components/admin/ActivationCohorts.tsx`
+Zero mudança visual ou funcional. Apenas organização.
 
-Card único Bento `rounded-2xl` com tabela de coortes:
+## Item 2 — Drill-down nas coortes
 
-```
-┌────────────────────────────────────────────────┐
-│ Coortes de Ativação                            │
-│ 💡 Coorte de Nov ativando 23% mais rápido      │
-├──────────┬──────┬────────┬────────┬────────┤
-│ Coorte   │ Total│ D1     │ D7     │ D30    │
-├──────────┼──────┼────────┼────────┼────────┤
-│ Nov/25   │  12  │ 🟢 33% │ 🟢 67% │ 🟢 83% │
-│ Out/25   │  18  │ 🟡 28% │ 🟡 54% │ 🟢 72% │
-│ Set/25   │  15  │ 🔴 13% │ 🟡 40% │ 🟡 60% │
-└────────────────────────────────────────────────┘
-```
+Tornar cada linha da tabela `ActivationCohorts` clicável → abre `<Sheet>` lateral com a lista de workspaces daquela coorte, com status individual de ativação.
 
-- React Query (`queryKey: ['admin-activation-cohorts']`)
-- Células com cores semânticas (`bg-success/10`, `bg-warning/10`, `bg-destructive/10`)
-- Insight em destaque no topo do card
-- Skeleton enquanto carrega
+**Backend:**
+- Nova RPC `admin_cohort_workspaces(p_cohort_month text)` retornando: `workspace_id`, `workspace_name`, `created_at`, `owner_email`, `first_activation_at` (min entre feedback/review/transcript), `activation_bucket` (`d1` | `d7` | `d30` | `not_activated`), `feedbacks_count`, `reviews_count`, `transcripts_count`. `SECURITY DEFINER` + `is_admin()` guard.
 
-### Integração
+**Frontend:**
+- `src/components/admin/CohortDrilldownSheet.tsx` — Sheet lateral (right side, `sm:max-w-2xl`):
+  - Header: "Coorte de Nov/25 · 12 workspaces"
+  - Tabela: Workspace · Owner · Criado em · Status (badge colorido por bucket) · Ativações (contadores)
+  - Ordenação default: não-ativados primeiro (acionáveis no topo)
+  - Loading skeleton
+- `ActivationCohorts.tsx` — adicionar `onClick` em cada `<tr>` + estilo `cursor-pointer hover:bg-muted/50`. Estado local `selectedCohort: string | null` controla abertura do Sheet.
 
-`AdminOverview.tsx` — adicionar `<ActivationCohorts />` logo abaixo do `<FunnelCard />`.
-
-## Decisões assumidas
-
-- **Ativação** = workspace registra ≥1 feedback OU ≥1 review OU ≥1 meeting_transcript na janela.
-- **D1/D7/D30** acumulativos (D7 inclui D1).
-- **6 meses** de histórico.
+**Decisões:**
+- Sheet em vez de Dialog — preserva contexto da tabela atrás.
+- Não-ativados ordenados primeiro — mais útil para ação ("quem precisa de empurrão?").
+- Buckets exclusivos no drill-down (D1, D7-not-D1, D30-not-D7, not_activated) para identificar rapidamente onde cada workspace travou.
 
 ## Arquivos
 
-- Migration: nova RPC `admin_activation_cohorts`
-- `src/components/admin/ActivationCohorts.tsx` (novo)
-- `src/components/admin/AdminOverview.tsx` (integrar)
+**Item 1 (refactor):**
+- `src/components/admin/StatsGrid.tsx` (novo)
+- `src/components/admin/InactiveWorkspacesAlert.tsx` (novo)
+- `src/components/admin/RecentActivityCard.tsx` (novo)
+- `src/components/admin/WaitlistTable.tsx` (novo)
+- `src/components/admin/AdminOverview.tsx` (enxugar para orquestrador)
 
-Zero impacto em outras telas, RLS, ou rotas.
+**Item 2 (drill-down):**
+- Migration: RPC `admin_cohort_workspaces`
+- `src/components/admin/CohortDrilldownSheet.tsx` (novo)
+- `src/components/admin/ActivationCohorts.tsx` (adicionar click + state)
+
+Zero impacto em RLS, rotas, ou outras telas.
+
