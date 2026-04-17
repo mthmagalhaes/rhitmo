@@ -16,6 +16,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useState, useMemo } from 'react';
 import type { PlanTier } from '@/types/team';
+import { FunnelCard } from './FunnelCard';
 
 export const AdminOverview = () => {
   const { toast } = useToast();
@@ -150,6 +151,9 @@ export const AdminOverview = () => {
         <h1 className="text-3xl font-bold tracking-tight">Command Center</h1>
         <p className="text-muted-foreground">Visão geral e alertas do sistema</p>
       </div>
+
+      {/* Funil de Conversão */}
+      <FunnelCard />
 
       {/* Big Numbers */}
       <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
