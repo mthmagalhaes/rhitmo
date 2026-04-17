@@ -305,6 +305,45 @@ export const AdminStructure = () => {
     setMemberDialog({ open: true, mode: 'edit', data: member });
   };
 
+  // Dispatch invites flow
+  const openDispatchDialog = async (ws: WorkspaceRow) => {
+    setDispatchDialog({ open: true, workspace: ws, loading: true, includeAlreadySent: false });
+    setDispatchResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('dispatch-bulk-invites', {
+        body: { workspace_id: ws.id, dry_run: true },
+      });
+      if (error) throw error;
+      setDispatchDialog(prev => ({ ...prev, pending: data.pending || [], loading: false }));
+    } catch (err: any) {
+      toast({ title: 'Erro ao listar pendentes', description: err.message, variant: 'destructive' });
+      setDispatchDialog({ open: false, loading: false, includeAlreadySent: false });
+    }
+  };
+
+  const handleDispatchInvites = async () => {
+    if (!dispatchDialog.workspace) return;
+    setDispatchDialog(prev => ({ ...prev, loading: true }));
+    try {
+      const { data, error } = await supabase.functions.invoke('dispatch-bulk-invites', {
+        body: {
+          workspace_id: dispatchDialog.workspace.id,
+          include_already_sent: dispatchDialog.includeAlreadySent,
+        },
+      });
+      if (error) throw error;
+      setDispatchResult({ summary: data.summary, results: data.results });
+      toast({
+        title: 'Convites disparados',
+        description: `${data.summary.sent} enviados, ${data.summary.errors} erros`,
+      });
+    } catch (err: any) {
+      toast({ title: 'Erro ao disparar', description: err.message, variant: 'destructive' });
+    } finally {
+      setDispatchDialog(prev => ({ ...prev, loading: false }));
+    }
+  };
+
   const planColors: Record<string, string> = {
     pulse: 'bg-emerald-500/20 text-emerald-400',
     pro: 'bg-blue-500/20 text-blue-400',
@@ -399,6 +438,10 @@ export const AdminStructure = () => {
                   </Badge>
                   <span className="text-xs text-muted-foreground">{wsTeams.length} times · {totalMembers} membros</span>
                   <div className="flex gap-1" onClick={e => e.stopPropagation()}>
+                    <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => openDispatchDialog(ws)} title="Disparar convites pendentes">
+                      <Mail className="h-3.5 w-3.5" />
+                      Convites
+                    </Button>
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openCreateTeam(ws.id)} title="Novo time">
                       <Plus className="h-3.5 w-3.5" />
                     </Button>
