@@ -69,11 +69,40 @@ export const BulkOnboardDialog = ({ open, onOpenChange, workspaceNames }: Props)
     link.click();
   };
 
-  const parseCSV = (text: string): ParsedRow[] => {
-    const lines = text.trim().split('\n');
-    if (lines.length < 2) return [];
+  // Parse a single CSV line respecting double-quote quoting
+  const parseCSVLine = (line: string, sep: string): string[] => {
+    const out: string[] = [];
+    let cur = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQuotes) {
+        if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+        else if (ch === '"') { inQuotes = false; }
+        else { cur += ch; }
+      } else {
+        if (ch === '"') inQuotes = true;
+        else if (ch === sep) { out.push(cur); cur = ''; }
+        else cur += ch;
+      }
+    }
+    out.push(cur);
+    return out.map(c => c.trim());
+  };
 
-    const header = lines[0].toLowerCase().split(',').map(h => h.trim());
+  const parseCSV = (text: string): { rows: ParsedRow[]; headerError?: string } => {
+    // Strip UTF-8 BOM and normalize line endings
+    const cleaned = text.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
+    const lines = cleaned.trim().split('\n').filter(l => l.trim());
+    if (lines.length < 2) return { rows: [] };
+
+    // Auto-detect separator: comma vs semicolon (whichever appears more in header)
+    const headerLine = lines[0];
+    const commaCount = (headerLine.match(/,/g) || []).length;
+    const semiCount = (headerLine.match(/;/g) || []).length;
+    const sep = semiCount > commaCount ? ';' : ',';
+
+    const header = parseCSVLine(headerLine, sep).map(h => h.toLowerCase().trim());
     const emailIdx = header.findIndex(h => h === 'email');
     const nameIdx = header.findIndex(h => h === 'nome' || h === 'name');
     const roleIdx = header.findIndex(h => h === 'papel' || h === 'role');
@@ -81,11 +110,17 @@ export const BulkOnboardDialog = ({ open, onOpenChange, workspaceNames }: Props)
     const teamIdx = header.findIndex(h => h === 'time' || h === 'team');
     const leaderIdx = header.findIndex(h => h.includes('lider') || h.includes('leader'));
 
+    if (emailIdx === -1 || roleIdx === -1) {
+      return {
+        rows: [],
+        headerError: `Cabeçalho não reconhecido (separador detectado: "${sep}"). Esperado: email, nome, papel, workspace, time, lider_email. Encontrado: ${header.join(' | ')}`,
+      };
+    }
+
     const wsNamesLower = workspaceNames.map(n => n.toLowerCase().trim());
 
-    return lines.slice(1).filter(l => l.trim()).map(line => {
-      // Simple CSV parsing (handles basic cases)
-      const cols = line.split(',').map(c => c.trim());
+    const rows = lines.slice(1).map(line => {
+      const cols = parseCSVLine(line, sep);
       const email = (cols[emailIdx] || '').toLowerCase().trim();
       const name = cols[nameIdx] || '';
       const roleRaw = (cols[roleIdx] || '').toLowerCase().trim();
@@ -119,6 +154,8 @@ export const BulkOnboardDialog = ({ open, onOpenChange, workspaceNames }: Props)
 
       return { email, name, role: role || 'member', workspace, team, leader_email: leaderEmail, errors };
     });
+
+    return { rows };
   };
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -128,20 +165,25 @@ export const BulkOnboardDialog = ({ open, onOpenChange, workspaceNames }: Props)
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
-      const parsed = parseCSV(text);
-      if (parsed.length === 0) {
+      const result = parseCSV(text);
+
+      if (result.headerError) {
+        toast({ title: 'Cabeçalho inválido', description: result.headerError, variant: 'destructive' });
+        return;
+      }
+      if (result.rows.length === 0) {
         toast({ title: 'Arquivo vazio', description: 'Nenhuma linha válida encontrada', variant: 'destructive' });
         return;
       }
       // Check duplicates
-      const emails = parsed.map(r => r.email);
-      const dupes = emails.filter((e, i) => emails.indexOf(e) !== i);
+      const emails = result.rows.map(r => r.email);
+      const dupes = emails.filter((em, i) => emails.indexOf(em) !== i);
       if (dupes.length > 0) {
-        parsed.forEach(r => {
+        result.rows.forEach(r => {
           if (dupes.includes(r.email)) r.errors.push('Email duplicado');
         });
       }
-      setRows(parsed);
+      setRows(result.rows);
       setStep('preview');
     };
     reader.readAsText(file);
