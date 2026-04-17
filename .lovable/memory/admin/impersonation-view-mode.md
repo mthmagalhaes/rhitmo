@@ -14,6 +14,7 @@ Super-admin (matheus@rhitmo.co) pode visualizar como qualquer usuário via tabel
 
 ## DB / RLS
 - Função `effective_user_id()` (STABLE SECURITY DEFINER) lê `admin_impersonation` e cai em `auth.uid()` se não houver impersonate ativo. **Ignora registros expirados (`expires_at < now()`) e encerrados (`ended_at IS NOT NULL`)**.
+- **Função `is_admin()` também respeita impersonação**: durante impersonate ativo retorna `false`, fazendo o admin perder superpoderes em policies que usam `FOR ALL USING is_admin()` (ex: `teams_admin`). Sem isso, impersonate vazaria todos os times/dados do banco. Funções RPC que precisam continuar funcionando como admin durante impersonate (ex: `get_user_caps`) devem checar diretamente `user_roles.role = 'super_admin'` em vez de `is_admin()`.
 - **Policies de leitura/update de "dados próprios" devem usar `effective_user_id()`**, não `auth.uid()`. Aplica-se a: feedbacks compartilhados, performance_reviews compartilhados, development_plans/items, goals, team_members (self via linked_user_id), user_preferences, slack_integrations, extension_tokens, recall_bots, leader_nudges, rhitmo_sync_notifications, bias_detections, kudos, feedback_streaks, pending_slack_invites.
 - **NÃO mudar**: `admin_impersonation` (sempre `auth.uid()` real para evitar loop), `user_roles` (checagem de admin), policies de INSERT autoral (manter `auth.uid()` para registrar autor real).
 
