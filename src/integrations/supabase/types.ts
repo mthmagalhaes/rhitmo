@@ -1748,6 +1748,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_funnel_metrics: { Args: never; Returns: Json }
       can_update_own_sync: { Args: { member_id: string }; Returns: boolean }
       check_is_admin: { Args: never; Returns: boolean }
       cleanup_expired_impersonations: { Args: never; Returns: undefined }
