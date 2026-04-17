@@ -383,22 +383,6 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
     staleTime: 60_000,
   });
 
-  const { data: nudges = [] } = useQuery({
-    queryKey: ['leader-nudges', effectiveUserId],
-    queryFn: async () => {
-      if (!effectiveUserId) return [];
-      const { data } = await supabase
-        .from('leader_nudges')
-        .select('*')
-        .eq('leader_id', effectiveUserId)
-        .is('dismissed_at', null)
-        .order('created_at', { ascending: false })
-        .limit(5);
-      return data || [];
-    },
-    enabled: !!effectiveUserId,
-    staleTime: 60_000,
-  });
 
   const handleOpenInviteDialog = (member: TeamMember) => {
     setInviteMember({
@@ -621,25 +605,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
         </section>
 
 
-        {/* ═══ Nudges ═══ */}
-        {nudges.length > 0 && (
-          <section className="mb-12">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-4">{t('dashboard.alerts')}</p>
-            <div className="space-y-2">
-              {nudges.slice(0, 4).map((nudge: any) => (
-                <div key={nudge.id} className="flex items-start gap-3 bg-card border border-border rounded-xl px-4 py-3">
-                  <div className="mt-0.5 h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <MessageSquare className="h-3 w-3 text-primary" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm text-foreground leading-relaxed">{nudge.message}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{formatDistanceToNow(new Date(nudge.created_at), { locale: dateLocale, addSuffix: true })}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+
 
         {/* ═══ SEU TIME ═══ */}
         <section className="mb-12">
@@ -747,7 +713,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
         </section>
 
         {/* Empty state */}
-        {meetings.length === 0 && nudges.length === 0 && teamMembers.length > 0 && (
+        {meetings.length === 0 && teamMembers.length > 0 && (
           <section className="mb-12">
             <div className="rounded-2xl bg-card border border-dashed border-border p-8 text-center">
               <CheckCircle2 className="h-8 w-8 text-primary/30 mx-auto mb-3" />
