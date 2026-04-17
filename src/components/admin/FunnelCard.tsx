@@ -103,7 +103,7 @@ export const FunnelCard = () => {
                       {conversion !== null && (
                         <div className={cn(
                           'text-xs font-medium tabular-nums mt-0.5',
-                          isDropoff ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground',
+                          isDropoff ? 'text-warning' : 'text-muted-foreground',
                         )}>
                           {formatPct(conversion)} do anterior
                         </div>
@@ -130,7 +130,7 @@ export const FunnelCard = () => {
               </div>
               <div>
                 <div className="text-xs text-muted-foreground">Lead → Pago</div>
-                <div className="text-lg font-bold tabular-nums text-emerald-600">
+                <div className="text-lg font-bold tabular-nums text-success">
                   {data.leads_total > 0 ? formatPct(data.paid / data.leads_total) : '—'}
                 </div>
               </div>
