@@ -1749,6 +1749,7 @@ export type Database = {
     }
     Functions: {
       admin_funnel_metrics: { Args: never; Returns: Json }
+      admin_revenue_metrics: { Args: never; Returns: Json }
       can_update_own_sync: { Args: { member_id: string }; Returns: boolean }
       check_is_admin: { Args: never; Returns: boolean }
       cleanup_expired_impersonations: { Args: never; Returns: undefined }

@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import {
   Brain, AlertTriangle, TrendingUp, CreditCard, Loader2, Activity,
 } from 'lucide-react';
+import { RevenueOverview } from './RevenueOverview';
 
 interface WorkspaceHealth {
   id: string;
@@ -176,6 +177,9 @@ export const AdminIntelligence = () => {
         </h1>
         <p className="text-muted-foreground">Health scores, engajamento e métricas de negócio</p>
       </div>
+
+      {/* Revenue overview (Entrega 2 P0) */}
+      <RevenueOverview />
 
       {/* Top cards */}
       <div className="grid gap-4 md:grid-cols-4">
