@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RhythmWave } from '@/components/RhythmWave';
-import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award, ArrowRightLeft, UserCheck, Palette, Compass, FileText, User, Download, ArrowLeft, Eye } from 'lucide-react';
+import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award, ArrowRightLeft, UserCheck, Palette, Compass, FileText, User, Download, ArrowLeft, Eye, FileAudio } from 'lucide-react';
 import { useImpersonation } from '@/hooks/useImpersonation';
-import { ChromeIcon } from '@/components/icons/ChromeIcon';
 import { SlackIcon } from '@/components/icons/SlackIcon';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
@@ -81,7 +80,6 @@ export function AppSidebar() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [supportDialogOpen, setSupportDialogOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [extensionDialogOpen, setExtensionDialogOpen] = useState(false);
   const [slackDialogOpen, setSlackDialogOpen] = useState(false);
   const handleCopyEmail = async () => {
     const email = 'support@rhitmo.co';
@@ -251,18 +249,18 @@ export function AppSidebar() {
               </SidebarGroup>
             )}
 
-            {/* Conectores — Chrome & Slack */}
+            {/* Integrações — Transcrição automática & Slack */}
             {!isInHRContext && !showMemberMenu && open && (
               <SidebarGroup>
-                <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">{t('sidebar.connectors')}</SidebarGroupLabel>
+                <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">{t('sidebar.integrations')}</SidebarGroupLabel>
                 <SidebarGroupContent>
                   <div className="px-2 space-y-2">
                     <button
-                      onClick={() => setExtensionDialogOpen(true)}
+                      onClick={() => navigate('/help#l-auto-transcription')}
                       className="w-full flex items-center gap-3 h-12 px-4 rounded-xl border border-border/60 bg-background hover:bg-accent/50 hover:border-primary/30 hover:-translate-y-0.5 transition-all duration-200 group"
                     >
-                      <ChromeIcon className="h-5 w-5 shrink-0" />
-                      <span className="text-sm font-medium text-foreground group-hover:text-primary tracking-tight">{t('sidebar.chromeConnector')}</span>
+                      <FileAudio className="h-5 w-5 shrink-0 text-primary" />
+                      <span className="text-sm font-medium text-foreground group-hover:text-primary tracking-tight">{t('sidebar.autoTranscription')}</span>
                     </button>
                     <button
                       onClick={() => setSlackDialogOpen(true)}
