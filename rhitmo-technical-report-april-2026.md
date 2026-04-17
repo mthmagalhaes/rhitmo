@@ -26,6 +26,7 @@
 15. [Internacionalização (i18n)](#15-internacionalização-i18n)
 16. [Administração e Super Admin](#16-administração-e-super-admin)
 17. [Custos Operacionais](#17-custos-operacionais)
+18. [Command Center — Painel Admin](#18-command-center--painel-admin)
 
 ---
 
