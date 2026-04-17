@@ -731,6 +731,153 @@ export const AdminStructure = () => {
         onOpenChange={setBulkOpen}
         workspaceNames={workspaces?.map(w => w.name) || []}
       />
+
+      {/* Dispatch Invites Dialog */}
+      <Dialog open={dispatchDialog.open} onOpenChange={open => { if (!open) { setDispatchDialog({ open: false, loading: false, includeAlreadySent: false }); setDispatchResult(null); } }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5" />
+              Disparar convites — {dispatchDialog.workspace?.name}
+            </DialogTitle>
+            <DialogDescription>
+              {dispatchResult
+                ? 'Resultado do disparo abaixo.'
+                : 'Envia o email de boas-vindas (com link de aceite) para usuários que ainda não definiram senha.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {dispatchDialog.loading && !dispatchResult && (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          )}
+
+          {!dispatchDialog.loading && !dispatchResult && dispatchDialog.pending && (
+            <div className="space-y-4">
+              {dispatchDialog.pending.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Mail className="h-10 w-10 mx-auto mb-3 opacity-40" />
+                  <p>Nenhum convite pendente neste workspace.</p>
+                  <p className="text-xs mt-1">Todos os usuários já entraram ou já receberam convite.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="text-sm">
+                    <strong>{dispatchDialog.pending.length}</strong> usuário(s) receberão o email de convite:
+                  </div>
+                  <div className="border rounded-xl max-h-72 overflow-y-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Papel</TableHead>
+                          <TableHead>Time</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {dispatchDialog.pending.map((p: any) => (
+                          <TableRow key={p.user_id}>
+                            <TableCell className="font-mono text-xs">{p.email}</TableCell>
+                            <TableCell><Badge variant="outline" className="text-xs">{p.role}</Badge></TableCell>
+                            <TableCell className="text-xs text-muted-foreground">{p.team_name || '—'}</TableCell>
+                            <TableCell className="text-xs">
+                              {p.invite_dispatched_at
+                                ? <Badge variant="outline" className="text-xs">Reenvio</Badge>
+                                : <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-600 border-0">Novo</Badge>}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={dispatchDialog.includeAlreadySent}
+                      onChange={async (e) => {
+                        const checked = e.target.checked;
+                        setDispatchDialog(prev => ({ ...prev, includeAlreadySent: checked, loading: true }));
+                        const { data } = await supabase.functions.invoke('dispatch-bulk-invites', {
+                          body: { workspace_id: dispatchDialog.workspace!.id, dry_run: true, include_already_sent: checked },
+                        });
+                        setDispatchDialog(prev => ({ ...prev, pending: data?.pending || [], loading: false }));
+                      }}
+                    />
+                    Incluir usuários que já receberam convite (reenvio)
+                  </label>
+                </>
+              )}
+            </div>
+          )}
+
+          {dispatchResult && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="text-center p-3 rounded-xl bg-muted">
+                  <p className="text-2xl font-bold">{dispatchResult.summary.pending_count}</p>
+                  <p className="text-xs text-muted-foreground">Pendentes</p>
+                </div>
+                <div className="text-center p-3 rounded-xl bg-emerald-500/10">
+                  <p className="text-2xl font-bold text-emerald-600">{dispatchResult.summary.sent}</p>
+                  <p className="text-xs text-muted-foreground">Enviados</p>
+                </div>
+                <div className="text-center p-3 rounded-xl bg-destructive/10">
+                  <p className="text-2xl font-bold text-destructive">{dispatchResult.summary.errors}</p>
+                  <p className="text-xs text-muted-foreground">Erros</p>
+                </div>
+              </div>
+              <div className="border rounded-xl max-h-64 overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Detalhes</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {dispatchResult.results.map((r: any, i: number) => (
+                      <TableRow key={i}>
+                        <TableCell className="font-mono text-xs">{r.email}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={`text-xs ${r.status === 'sent' ? 'bg-emerald-500/10 text-emerald-600' : r.status === 'error' ? 'bg-destructive/10 text-destructive' : ''} border-0`}>
+                            {r.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs">{r.message}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            {!dispatchResult ? (
+              <>
+                <Button variant="outline" onClick={() => setDispatchDialog({ open: false, loading: false, includeAlreadySent: false })}>
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleDispatchInvites}
+                  disabled={dispatchDialog.loading || !dispatchDialog.pending || dispatchDialog.pending.length === 0}
+                  className="gap-2"
+                >
+                  {dispatchDialog.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  Disparar {dispatchDialog.pending?.length || 0} convite(s)
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => { setDispatchDialog({ open: false, loading: false, includeAlreadySent: false }); setDispatchResult(null); }}>
+                Fechar
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
