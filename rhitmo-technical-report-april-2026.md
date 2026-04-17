@@ -1,7 +1,7 @@
 # Rhitmo — Relatório Técnico Completo
 
-> **Versão:** 1.0  
-> **Data:** 15 de Abril de 2026  
+> **Versão:** 1.1  
+> **Data:** 17 de Abril de 2026  
 > **Propósito:** Fonte da verdade consolidada para arquitetura, modelos de dados, Edge Functions, integrações e decisões técnicas.  
 > **Atualização:** Este documento deve ser consultado e atualizado periodicamente para manter a consistência entre agentes de IA e colaboradores humanos.
 
