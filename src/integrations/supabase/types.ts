@@ -1924,6 +1924,10 @@ export type Database = {
         Args: { _member_id: string; _user_id: string }
         Returns: boolean
       }
+      is_workspace_owner_of_member: {
+        Args: { _member_id: string }
+        Returns: boolean
+      }
       manage_hr_admin: {
         Args: { _action: string; _user_id: string; _workspace_id: string }
         Returns: undefined
@@ -2022,7 +2026,7 @@ export type Database = {
       workspace_is_active: { Args: { _workspace_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "super_admin" | "support"
+      app_role: "super_admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2150,7 +2154,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["super_admin", "support"],
+      app_role: ["super_admin"],
     },
   },
 } as const
