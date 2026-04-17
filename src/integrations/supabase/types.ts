@@ -1127,6 +1127,7 @@ export type Database = {
           created_at: string | null
           error_message: string | null
           id: string
+          leader_check_due_at: string | null
           leader_detected: boolean
           leader_email: string | null
           meeting_id: string | null
@@ -1138,6 +1139,7 @@ export type Database = {
           status: string
           transcript: string | null
           transcript_data: Json | null
+          trigger_source: string
           updated_at: string | null
           user_id: string
         }
@@ -1145,6 +1147,7 @@ export type Database = {
           created_at?: string | null
           error_message?: string | null
           id?: string
+          leader_check_due_at?: string | null
           leader_detected?: boolean
           leader_email?: string | null
           meeting_id?: string | null
@@ -1156,6 +1159,7 @@ export type Database = {
           status?: string
           transcript?: string | null
           transcript_data?: Json | null
+          trigger_source?: string
           updated_at?: string | null
           user_id: string
         }
@@ -1163,6 +1167,7 @@ export type Database = {
           created_at?: string | null
           error_message?: string | null
           id?: string
+          leader_check_due_at?: string | null
           leader_detected?: boolean
           leader_email?: string | null
           meeting_id?: string | null
@@ -1174,6 +1179,7 @@ export type Database = {
           status?: string
           transcript?: string | null
           transcript_data?: Json | null
+          trigger_source?: string
           updated_at?: string | null
           user_id?: string
         }

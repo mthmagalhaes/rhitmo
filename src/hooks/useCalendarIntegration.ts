@@ -150,8 +150,9 @@ export const useCalendarIntegration = () => {
 
   const scheduleBot = useMutation({
     mutationFn: async (params: { meeting_id: string; meeting_url: string; member_id: string; start_time: string }) => {
+      // Manual leader action: trust the explicit click, no auto-leave for missing leader.
       const { data, error } = await supabase.functions.invoke('schedule-recall-bot', {
-        body: params,
+        body: { ...params, trigger_source: 'manual' },
       });
       if (error) throw error;
       if (data?.error?.includes('limit')) throw new Error(data.error);

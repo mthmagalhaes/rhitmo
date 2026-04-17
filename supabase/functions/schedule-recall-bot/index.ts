@@ -49,7 +49,12 @@ Deno.serve(async (req) => {
 
     // Parse body
     const body = await req.json();
-    const { meeting_id, meeting_url, member_id, start_time } = body;
+    const { meeting_id, meeting_url, member_id, start_time, trigger_source } = body;
+
+    // This function is invoked manually by leaders (button click). Default to 'manual'.
+    // Auto-calendar sync uses fetch-calendar-events which inserts directly with default 'auto_calendar'.
+    const triggerSource: "manual" | "auto_calendar" =
+      trigger_source === "auto_calendar" ? "auto_calendar" : "manual";
 
     if (!meeting_url || !start_time) {
       return new Response(JSON.stringify({ error: "meeting_url and start_time are required" }), {
@@ -218,6 +223,7 @@ Deno.serve(async (req) => {
         status: "scheduled",
         scheduled_at: joinAt,
         leader_email: leaderEmail,
+        trigger_source: triggerSource,
       })
       .select("id, status, scheduled_at")
       .single();

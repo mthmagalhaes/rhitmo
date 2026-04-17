@@ -57,6 +57,8 @@ project_id = "lybkgujyezzzvbzypxed"
     verify_jwt = true
   [functions.recall-webhook]
     verify_jwt = false
+  [functions.check-pending-leader-presence]
+    verify_jwt = false
   [functions.reprocess-meeting]
     verify_jwt = false
   [functions.send-disc-invite]
