@@ -1,10 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Lightbulb, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CohortDrilldownSheet } from './CohortDrilldownSheet';
 
 type Cohort = {
   cohort_month: string;
@@ -31,6 +33,8 @@ const cellClass = (pct: number, total: number) => {
 };
 
 export const ActivationCohorts = () => {
+  const [selectedCohort, setSelectedCohort] = useState<{ month: string; label: string } | null>(null);
+
   const { data, isLoading } = useQuery({
     queryKey: ['admin-activation-cohorts'],
     queryFn: async () => {
@@ -76,7 +80,11 @@ export const ActivationCohorts = () => {
                 </TableHeader>
                 <TableBody>
                   {data?.cohorts?.map((c) => (
-                    <TableRow key={c.cohort_month}>
+                    <TableRow
+                      key={c.cohort_month}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => setSelectedCohort({ month: c.cohort_month, label: c.cohort_label })}
+                    >
                       <TableCell className="font-medium capitalize">{c.cohort_label}</TableCell>
                       <TableCell className="text-center text-muted-foreground">{c.total}</TableCell>
                       <TableCell className="text-center p-1">
@@ -101,11 +109,17 @@ export const ActivationCohorts = () => {
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Ativação = workspace registra ≥1 anotação, avaliação ou transcrição. D1/D7/D30 são acumulativos.
+              Ativação = workspace registra ≥1 anotação, avaliação ou transcrição. D1/D7/D30 são acumulativos. Clique numa coorte para drill-down.
             </p>
           </>
         )}
       </CardContent>
+
+      <CohortDrilldownSheet
+        cohortMonth={selectedCohort?.month ?? null}
+        cohortLabel={selectedCohort?.label ?? null}
+        onClose={() => setSelectedCohort(null)}
+      />
     </Card>
   );
 };
