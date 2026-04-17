@@ -1,89 +1,67 @@
-## Sim, o desenho ajuda muito — e ele revela exatamente o problema
-
-Seu modelo mental tem **4 papéis**:
-
-1. **Owner** — dono do workspace (edita tudo)
-2. **HR Admin** — vê analytics de tudo do workspace
-3. **Leader** — lidera 1 ou N times
-4. **Liderado (Direct Report)** — pertence a 1 time, sob 1 leader
-
-O sistema hoje tem **5 conceitos** circulando — ou seja, **1 a mais do que precisa**:
 
 
-| #   | Papel atual   | Onde mora                       | Equivale a quê no seu desenho?                                          |
-| --- | ------------- | ------------------------------- | ----------------------------------------------------------------------- |
-| 1   | `super_admin` | enum `app_role` em `user_roles` | **Você (Rhitmo)**. Não está no desenho do cliente, é interno. ✅ Manter. |
-| 2   | `support`     | enum `app_role` em `user_roles` | ❌ **Sobrando.** Não usado em lugar nenhum (0 users).                    |
-| 3   | `Owner`       | `workspaces.owner_id`           | ✅ Owner do desenho.                                                     |
-| 4   | `HR Admin`    | `workspaces.hr_admin_ids[]`     | ✅ HR Admin do desenho.                                                  |
-| 5   | `Leader`      | `teams.leader_user_id`          | ✅ Leader do desenho.                                                    |
-| 6   | `Liderado`    | `team_members.linked_user_id`   | ✅ Direct Report do desenho.                                             |
+Você tocou no ponto crítico. Tem 3 cenários que precisam coexistir:
 
+1. **Auto-agendado pelo calendário, líder vai** → grava normal ✅
+2. **Auto-agendado pelo calendário, líder NÃO vai** (reunião do liderado com outras pessoas) → não pode gravar ❌
+3. **Líder clica "transcrever" mid-call** → grava (líder está lá, é explícito) ✅
 
-### Problemas conceituais que o desenho expõe
+A Opção B pura (remover auto-leave) quebra o cenário 2 — vira gravação não-autorizada de reuniões que o líder nem sabia que existiam. Risco de privacidade real.
 
-**Problema A — "Owner" é vinculação de propriedade, não de papel funcional.**
-Hoje, quem é Owner também precisa ser cadastrado como Leader de cada time se quiser ver dados desse time (já que RLS de feedbacks usa `manager_id = auth.uid()`). Mas pelo seu desenho, **Owner = pode editar tudo do workspace**, então deveria ter visibilidade transversal automática, sem precisar virar Leader manualmente.
+A Opção A original (5 min de espera) resolve cenário 2 mas mantém o bug do mid-call (cenário 3).
 
-**Problema B — "Leader" não tem entidade própria, só um campo em `teams`.**
-Não existe tabela "leaders". Um líder de múltiplos times (ex: [matheus.magalhaes@fstr.co](mailto:matheus.magalhaes@fstr.co)) é só "uma pessoa que aparece como `leader_user_id` em N linhas de `teams`". Funciona, mas não há um lugar para "perfil de líder no workspace" (ex: cargo, área, observações).
+## Plano híbrido — distinguir origem do agendamento
 
-**Problema C — "support" no enum está sobrando.**
-Definido no enum `app_role` mas não usado em nenhuma policy nem código. Polui a UI (filtro "Todos os papéis" pode mostrar essa opção).
+Adicionar campo `trigger_source` em `recall_bots` com 2 valores:
+- `auto_calendar` → bot agendado automaticamente pela sync do Google Calendar. **Aplica regra dos 5 min**: se líder não detectado em 5 min, sai.
+- `manual` → líder clicou "transcrever" (seja antes da reunião, seja mid-call). **Não aplica auto-leave por presença**: confia no clique explícito, valida só no `bot.done`.
 
-**Problema D — Liderado pode existir sem leader.**
-Hoje `team_members.linked_user_id` pode estar vinculado a um time cujo `leader_user_id` é NULL (time órfão). Seu desenho diz "precisa estar associado a um time E a um leader" — então deveria ter validação.
+### Como fica o fluxo
 
-## Recomendação de simplificação
+| Cenário | trigger_source | Comportamento |
+|---|---|---|
+| 1. Calendar + líder vai | `auto_calendar` | Detecta líder em ≤5 min → grava até o fim |
+| 2. Calendar + líder NÃO vai | `auto_calendar` | Não detecta em 5 min → bot sai, status `skipped_no_leader` |
+| 3. Mid-call manual | `manual` | Grava sempre, valida no `bot.done` |
+| 4. Pré-agendado manual | `manual` | Grava sempre, valida no `bot.done` |
 
-### 1. Remover `support` do enum `app_role`
+### Implementação do delay de 5 min (sem setTimeout)
 
-Não é usado. Mantém só `super_admin`. Limpa a UI de filtros.
+Como Edge Functions Deno terminam após o response, vou usar abordagem por **timestamp + cron de 1 min**:
 
-### 2. Formalizar a regra "Owner enxerga tudo do workspace" no RLS
+1. **Migration**: 
+   - `recall_bots.trigger_source text default 'auto_calendar'`
+   - `recall_bots.leader_check_due_at timestamptz` (preenchido com `now() + 5 min` quando o bot começa a gravar, **só se trigger_source = auto_calendar**)
 
-Hoje, várias policies checam `is_workspace_owner()` mas algumas (como `feedbacks`) só checam `manager_id = effective_user_id()`. Resultado: Owner que não é Leader de um time não vê os feedbacks daquele time. Conforme seu desenho, isso deveria ser automático — Owner edita tudo do workspace.
+2. **`schedule-recall-bot/index.ts`**: aceitar parâmetro `trigger_source` (default `auto_calendar`) e gravar no insert.
 
-**Fix**: auditar policies de `feedbacks`, `meetings`, `goals`, `development_plans` para adicionar cláusula `OR is_workspace_owner_of_member(member_id)`.
+3. **`MeetingRecorder.tsx` / botão "Transcrever"**: passar `trigger_source: 'manual'` ao invocar `schedule-recall-bot`.
 
-### 3. Adicionar trigger validando "liderado precisa de time + leader"
+4. **`recall-webhook/index.ts`**: 
+   - No `bot.in_call_recording`: **remover** check síncrono de líder. Em vez disso, **se trigger_source = auto_calendar**, setar `leader_check_due_at = now() + 5 min`.
+   - No `bot.done`: validar líder uma vez (igual hoje) — vale para ambos os casos.
 
-Trigger BEFORE INSERT/UPDATE em `team_members` que rejeita se `team_id` aponta para time com `leader_user_id IS NULL`.
+5. **Nova edge function `check-pending-leader-presence`** + cron a cada 1 min:
+   - Busca bots com `leader_check_due_at <= now() AND status = 'recording' AND leader_detected = false AND trigger_source = 'auto_calendar'`.
+   - Para cada um: chama `checkLeaderPresence()`. Se líder ainda não está → `bot.leave()` e marca `skipped_no_leader`.
 
-### 4. Esclarecer hierarquia na UI do painel admin
+### Custos
+- Cenário 2 (líder não vai): paga ~5 min × $0.01 = **$0.05** por reunião descartada (vs $0.30 da reunião inteira). Aceitável.
+- Cenário 3 (mid-call): paga 100% da reunião. Mas só acontece quando líder clica explicitamente — é o resultado desejado.
+- Edge Functions adicionais: ~1.440 invocações/dia da cron, custo desprezível.
 
-Renomear coluna "Papéis" para mostrar a hierarquia visual do desenho:
+### UX leader
+- "Auto-transcrever" ligado: comportamento confiável, bot só fica se líder aparece em até 5 min.
+- Botão "Transcrever" na reunião: funciona sempre, sem race condition.
+- Próxima iteração (futuro): toggle "transcrever esta reunião?" na lista de upcoming meetings, pra dar controle explícito do cenário 2 antes de virar 5 min de bot rodando à toa.
 
-- 🟣 Super Admin (interno Rhitmo)
-- 👑 Owner (do workspace X)
-- 🛡️ HR Admin (do workspace X)
-- ⭐ Leader (de N times no workspace X)
-- 👤 Liderado (do time Y, sob leader Z)
+## Arquivos
+- Migration: `recall_bots` + cron job
+- `supabase/functions/recall-webhook/index.ts` (mudar lógica do `in_call_recording`)
+- `supabase/functions/schedule-recall-bot/index.ts` (aceitar `trigger_source`)
+- `supabase/functions/check-pending-leader-presence/index.ts` (nova)
+- `src/components/MeetingRecorder.tsx` (passar `trigger_source: 'manual'`)
+- Memory update: `mem://features/recall-ai/bot-transcription-architecture`
 
-E remover qualquer menção a "support".
+Zero mudanças visuais no frontend. Reunião perdida do matheus + Gabriela continua irrecuperável.
 
-### 5. Documentar limites/funções de cada papel
-
-
-| Papel           | Pode ver                                                                                                           | Pode editar                                                                          | Limites                                                                            |
-| --------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
-| **Super Admin** | TUDO de TODOS workspaces (exceto durante impersonate)                                                              | Configurações globais, gerenciar usuários, segmentos comerciais                      | Apenas [matheus@rhitmo.co](mailto:matheus@rhitmo.co). Não conta no plano.          |
-| **Owner**       | Tudo do SEU workspace (todos times, todos liderados, todos feedbacks, todos analytics)                             | Workspace inteiro: convidar/remover membros, criar times, definir HR Admins, billing | 1 owner por workspace. Conta como 1 assento.                                       |
-| **HR Admin**    | Analytics agregados do workspace, perfis comportamentais, riscos, engagement                                       | Convidar membros, gerenciar competências, ver formal reviews compartilhados          | N HR Admins por workspace (sem limite). Conta como 1 assento cada.                 |
-| **Leader**      | Apenas SEUS times: feedbacks que ele criou, reuniões dele, PDIs, reviews dos liderados dele                        | Criar/editar feedbacks, reuniões, reviews, PDIs dos liderados sob sua liderança      | N times por leader. Conta como 1 assento.                                          |
-| **Liderado**    | Apenas dados PRÓPRIOS: feedbacks compartilhados com ele, próprio PDI, próprio Career Compass, reviews acknowledged | Próprio PDI, próprio perfil, próprias respostas DISC, acknowledge reviews            | 1 time por liderado (no momento). Conta como 1 assento (exceto Pulse plan: 2 cap). |
-
-
-## Pergunta antes de eu implementar
-
-Pode fazer **as 5 mudanças** acima de uma vez,
-
-Sugestão de ordem (mais crítico → menos crítico):
-
-1. **Remover `support` do enum** (5 min, só limpeza)
-2. **Validar liderado → time → leader** (trigger, 10 min, evita órfãos)
-3. **Documentar matriz de papéis** (criar memory file `mem://architecture/papeis-e-permissoes`, 5 min)
-4. **Auditoria RLS Owner-vê-tudo** (mais arriscado, requer testar 4-5 tabelas — talvez 30 min)
-5. **Renomear UI "Papéis"** (cosmético, 10 min)
-
-Pode aprovar tudo, ou só o subset que quiser priorizar.
