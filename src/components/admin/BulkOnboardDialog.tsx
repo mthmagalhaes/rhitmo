@@ -154,6 +154,8 @@ export const BulkOnboardDialog = ({ open, onOpenChange, workspaceNames }: Props)
 
       return { email, name, role: role || 'member', workspace, team, leader_email: leaderEmail, errors };
     });
+
+    return { rows };
   };
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -163,20 +165,25 @@ export const BulkOnboardDialog = ({ open, onOpenChange, workspaceNames }: Props)
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
-      const parsed = parseCSV(text);
-      if (parsed.length === 0) {
+      const result = parseCSV(text);
+
+      if (result.headerError) {
+        toast({ title: 'Cabeçalho inválido', description: result.headerError, variant: 'destructive' });
+        return;
+      }
+      if (result.rows.length === 0) {
         toast({ title: 'Arquivo vazio', description: 'Nenhuma linha válida encontrada', variant: 'destructive' });
         return;
       }
       // Check duplicates
-      const emails = parsed.map(r => r.email);
-      const dupes = emails.filter((e, i) => emails.indexOf(e) !== i);
+      const emails = result.rows.map(r => r.email);
+      const dupes = emails.filter((em, i) => emails.indexOf(em) !== i);
       if (dupes.length > 0) {
-        parsed.forEach(r => {
+        result.rows.forEach(r => {
           if (dupes.includes(r.email)) r.errors.push('Email duplicado');
         });
       }
-      setRows(parsed);
+      setRows(result.rows);
       setStep('preview');
     };
     reader.readAsText(file);
