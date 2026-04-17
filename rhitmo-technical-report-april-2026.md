@@ -657,7 +657,7 @@ Grupo **"Integrações"** (anteriormente "Conectores"):
 
 | Módulo | Features |
 |---|---|
-| **Overview** | Dashboard com métricas globais |
+| **Overview** | Command Center — funil, coortes de ativação, stats, alertas, atividade recente, waitlist (ver §18) |
 | **Users** | CRUD de usuários, reset de senha, delete, impersonação |
 | **Structure** | Gestão de workspaces, owners, HR admins |
 | **Intelligence** | Health Score por workspace (0-100) |
