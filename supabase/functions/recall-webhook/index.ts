@@ -74,13 +74,22 @@ Deno.serve(async (req) => {
       console.log(`Bot ${botId} status: ${event} → ${isFatal ? "error" : newStatus}`);
     }
 
-    // ── Leader presence detection: check synchronously when recording starts ──
-    if (event === "bot.in_call_recording" && botRecord.leader_email) {
-      // Synchronous check — no setTimeout (Deno Edge Functions terminate after response)
-      try {
-        await checkLeaderPresence(supabaseAdmin, botRecord, botId, RECALL_API_KEY);
-      } catch (e) {
-        console.error(`Leader presence check failed for bot ${botId}:`, e);
+    // ── Leader presence detection ─────────────────────────────────────────
+    // When recording starts:
+    //  - auto_calendar bots → schedule a deferred check 5min from now (handled by check-pending-leader-presence cron).
+    //    The Recall participant roster takes 30-60s to populate, so synchronous checks fail.
+    //  - manual bots → trust the explicit leader action, no auto-leave. Validate only at bot.done.
+    if (event === "bot.in_call_recording" && botRecord.leader_email && !botRecord.leader_detected) {
+      const triggerSource = (botRecord.trigger_source as string) || "auto_calendar";
+      if (triggerSource === "auto_calendar" && !botRecord.leader_check_due_at) {
+        const dueAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+        await supabaseAdmin
+          .from("recall_bots")
+          .update({ leader_check_due_at: dueAt })
+          .eq("id", botRecord.id);
+        console.log(`Bot ${botId}: scheduled deferred leader check for ${dueAt}`);
+      } else {
+        console.log(`Bot ${botId}: trigger_source=${triggerSource}, no auto-leave check (validates at bot.done)`);
       }
     }
 
