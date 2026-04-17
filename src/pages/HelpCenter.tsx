@@ -362,6 +362,20 @@ const HelpCenter = () => {
   const { isHRAdmin, isUser } = useUserRole();
   const defaultTab = isHRAdmin ? 'hr' : isUser ? 'member' : 'leader';
   const [search, setSearch] = useState('');
+  const [openCardId, setOpenCardId] = useState<string | undefined>(undefined);
+  const location = useLocation();
+
+  useEffect(() => {
+    const hash = location.hash.replace('#', '');
+    if (!hash) return;
+    setOpenCardId(hash);
+    const timer = setTimeout(() => {
+      const el = document.getElementById(hash);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [location.hash]);
+
 
   const filterCards = (cards: FeatureCard[]) => {
     if (!search.trim()) return cards;
