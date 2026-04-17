@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import {
   Building, Users, UserPlus, Plus, Edit, Trash2, Loader2, ChevronDown, ChevronRight,
-  Crown, User, FileSpreadsheet,
+  Crown, User, FileSpreadsheet, Mail, Send,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -56,6 +56,8 @@ export const AdminStructure = () => {
   const [expandedTeam, setExpandedTeam] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [dispatchDialog, setDispatchDialog] = useState<{ open: boolean; workspace?: WorkspaceRow; pending?: any[]; loading: boolean; includeAlreadySent: boolean }>({ open: false, loading: false, includeAlreadySent: false });
+  const [dispatchResult, setDispatchResult] = useState<{ summary: any; results: any[] } | null>(null);
 
   // Dialogs
   const [wsDialog, setWsDialog] = useState<{ open: boolean; mode: 'create' | 'edit'; data?: WorkspaceRow }>({ open: false, mode: 'create' });
