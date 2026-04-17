@@ -69,11 +69,40 @@ export const BulkOnboardDialog = ({ open, onOpenChange, workspaceNames }: Props)
     link.click();
   };
 
-  const parseCSV = (text: string): ParsedRow[] => {
-    const lines = text.trim().split('\n');
-    if (lines.length < 2) return [];
+  // Parse a single CSV line respecting double-quote quoting
+  const parseCSVLine = (line: string, sep: string): string[] => {
+    const out: string[] = [];
+    let cur = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQuotes) {
+        if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+        else if (ch === '"') { inQuotes = false; }
+        else { cur += ch; }
+      } else {
+        if (ch === '"') inQuotes = true;
+        else if (ch === sep) { out.push(cur); cur = ''; }
+        else cur += ch;
+      }
+    }
+    out.push(cur);
+    return out.map(c => c.trim());
+  };
 
-    const header = lines[0].toLowerCase().split(',').map(h => h.trim());
+  const parseCSV = (text: string): { rows: ParsedRow[]; headerError?: string } => {
+    // Strip UTF-8 BOM and normalize line endings
+    const cleaned = text.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
+    const lines = cleaned.trim().split('\n').filter(l => l.trim());
+    if (lines.length < 2) return { rows: [] };
+
+    // Auto-detect separator: comma vs semicolon (whichever appears more in header)
+    const headerLine = lines[0];
+    const commaCount = (headerLine.match(/,/g) || []).length;
+    const semiCount = (headerLine.match(/;/g) || []).length;
+    const sep = semiCount > commaCount ? ';' : ',';
+
+    const header = parseCSVLine(headerLine, sep).map(h => h.toLowerCase().trim());
     const emailIdx = header.findIndex(h => h === 'email');
     const nameIdx = header.findIndex(h => h === 'nome' || h === 'name');
     const roleIdx = header.findIndex(h => h === 'papel' || h === 'role');
@@ -81,11 +110,17 @@ export const BulkOnboardDialog = ({ open, onOpenChange, workspaceNames }: Props)
     const teamIdx = header.findIndex(h => h === 'time' || h === 'team');
     const leaderIdx = header.findIndex(h => h.includes('lider') || h.includes('leader'));
 
+    if (emailIdx === -1 || roleIdx === -1) {
+      return {
+        rows: [],
+        headerError: `Cabeçalho não reconhecido (separador detectado: "${sep}"). Esperado: email, nome, papel, workspace, time, lider_email. Encontrado: ${header.join(' | ')}`,
+      };
+    }
+
     const wsNamesLower = workspaceNames.map(n => n.toLowerCase().trim());
 
-    return lines.slice(1).filter(l => l.trim()).map(line => {
-      // Simple CSV parsing (handles basic cases)
-      const cols = line.split(',').map(c => c.trim());
+    const rows = lines.slice(1).map(line => {
+      const cols = parseCSVLine(line, sep);
       const email = (cols[emailIdx] || '').toLowerCase().trim();
       const name = cols[nameIdx] || '';
       const roleRaw = (cols[roleIdx] || '').toLowerCase().trim();
