@@ -500,7 +500,7 @@ export const AdminUsers = () => {
                   <TableHead><Hash className="h-3 w-3 inline mr-1" /> ID</TableHead>
                   <TableHead>Workspace(s)</TableHead>
                   <TableHead>Cliente</TableHead>
-                  <TableHead>Papéis</TableHead>
+                  <TableHead>Hierarquia</TableHead>
                   <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('status')}>
                     Status <SortIcon field="status" />
                   </TableHead>
