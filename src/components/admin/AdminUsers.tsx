@@ -129,11 +129,14 @@ export const AdminUsers = () => {
     return m;
   }, [workspaces]);
 
-  const workspaceStatusByOwner = useMemo(() => {
-    const m: Record<string, { is_active: boolean; workspace_id: string }> = {};
-    workspaces?.forEach(ws => { m[ws.owner_id] = { is_active: ws.is_active, workspace_id: ws.id }; });
-    return m;
-  }, [workspaces]);
+  // Status helper: a user is "active" if their primary workspace (any link:
+  // owner / hr / leader / member) is active. Only "no_workspace" if they
+  // have zero links to any known workspace.
+  const getUserWorkspaceStatus = (user: UserCap): { is_active: boolean; workspace_id: string } | null => {
+    const ws = getPrimaryWorkspace(user);
+    if (!ws) return null;
+    return { is_active: ws.is_active, workspace_id: ws.id };
+  };
 
   // Resolve a user's primary workspace (owner > hr_admin > leader > member)
   const getPrimaryWorkspace = (user: UserCap): WorkspaceRow | null => {
