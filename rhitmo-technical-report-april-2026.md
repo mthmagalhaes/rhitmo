@@ -581,6 +581,26 @@ Landing/Billing → create-checkout-session → Stripe Checkout
 | `UpcomingMeetingsCard` | Reuniões com briefs e status do bot |
 | `SetupChecklist` | Onboarding progressivo |
 | `WorkspaceOnboarding` | Wizard de configuração inicial |
+| `ActivitySheet` | **Único ponto de notificações** (sino no header) — consome `leader_nudges`, `rhitmo_sync_notifications` e alertas de sistema |
+
+### Sidebar do Líder (`AppSidebar.tsx`)
+
+Grupo **"Integrações"** (anteriormente "Conectores"):
+
+| Item | Ação | Observação |
+|---|---|---|
+| **Transcrição automática** | `navigate('/help#l-auto-transcription')` | Substituiu o atalho do "Conector Chrome" — a captura é feita pelo bot Recall.ai. Ícone `FileAudio`. |
+| **Conector Slack** | Abre `SlackConnectorDialog` | Mantido. |
+
+> O componente `ChromeExtensionSetupDialog` continua disponível para outros pontos de entrada (ex.: Configurações), mas perdeu o protagonismo na sidebar — a captura de reuniões hoje passa pelo bot Recall.ai via Google Calendar.
+
+### Help Center — Hash Anchors
+
+`HelpCenter.tsx` reage a `location.hash` para abrir cards específicos:
+
+- Detecta `#<card-id>` no `useEffect`, faz scroll suave até o card e abre o accordion "Como funciona" (`defaultValue="steps"`).
+- `FeatureGrid` aceita prop `openCardId` para destacar visualmente o card-alvo.
+- Usado pelo atalho da sidebar (`#l-auto-transcription`) e pode ser estendido para deep-links externos.
 
 ### Portal do Liderado
 
