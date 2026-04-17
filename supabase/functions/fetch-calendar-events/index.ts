@@ -77,8 +77,9 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (tokenError || !tokenData) {
-      return new Response(JSON.stringify({ error: "Calendar not connected" }), {
-        status: 404,
+      // Return graceful empty response instead of 404 to avoid frontend crashes
+      return new Response(JSON.stringify({ meetings: [], not_connected: true }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
