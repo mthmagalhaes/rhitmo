@@ -84,13 +84,13 @@ export const FunnelCard = () => {
                           'h-12 rounded-xl flex items-center px-4 transition-all',
                           'bg-gradient-to-r from-primary/15 to-primary/5',
                           'group-hover:from-primary/25 group-hover:to-primary/10',
-                          idx === STAGES.length - 1 && 'from-emerald-500/20 to-emerald-500/5 group-hover:from-emerald-500/30 group-hover:to-emerald-500/10',
+                          idx === STAGES.length - 1 && 'from-success/25 to-success/5 group-hover:from-success/35 group-hover:to-success/10',
                         )}
                         style={{ width: `${widthPct}%`, minWidth: '180px' }}
                       >
                         <Icon className={cn(
                           'h-4 w-4 mr-2 shrink-0',
-                          idx === STAGES.length - 1 ? 'text-emerald-600' : 'text-primary',
+                          idx === STAGES.length - 1 ? 'text-success' : 'text-primary',
                         )} />
                         <span className="text-sm font-medium truncate">{stage.label}</span>
                         <span className="ml-auto text-base font-bold tabular-nums">{value}</span>
