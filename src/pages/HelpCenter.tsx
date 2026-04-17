@@ -439,13 +439,13 @@ const HelpCenter = () => {
           </TabsList>
 
           <TabsContent value="leader" className="mt-8 space-y-8">
-            <FeatureGrid cards={filteredLeader} />
+            <FeatureGrid cards={filteredLeader} openCardId={openCardId} />
           </TabsContent>
           <TabsContent value="member" className="mt-8 space-y-8">
-            <FeatureGrid cards={filteredMember} />
+            <FeatureGrid cards={filteredMember} openCardId={openCardId} />
           </TabsContent>
           <TabsContent value="hr" className="mt-8 space-y-8">
-            <FeatureGrid cards={filteredHR} />
+            <FeatureGrid cards={filteredHR} openCardId={openCardId} />
           </TabsContent>
         </Tabs>
 
@@ -532,7 +532,7 @@ function QuickStartCard({ title, steps }: { title: string; steps: QuickStartStep
   );
 }
 
-function FeatureGrid({ cards }: { cards: FeatureCard[] }) {
+function FeatureGrid({ cards, openCardId }: { cards: FeatureCard[]; openCardId?: string }) {
   if (cards.length === 0) {
     return (
       <p className="text-muted-foreground text-sm text-center py-8">
@@ -543,41 +543,45 @@ function FeatureGrid({ cards }: { cards: FeatureCard[] }) {
 
   return (
     <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-      {cards.map((card) => (
-        <Card
-          key={card.id}
-          className="rounded-2xl transition-all hover:-translate-y-1 hover:shadow-[0_4px_24px_rgba(0,0,0,0.06)]"
-        >
-          <CardContent className="p-5 space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="p-2.5 rounded-xl bg-primary/10 shrink-0">
-                <card.icon className="h-5 w-5 text-primary" />
+      {cards.map((card) => {
+        const isHighlighted = openCardId === card.id;
+        return (
+          <Card
+            key={card.id}
+            id={card.id}
+            className={`rounded-2xl transition-all hover:-translate-y-1 hover:shadow-[0_4px_24px_rgba(0,0,0,0.06)] scroll-mt-24 ${isHighlighted ? 'ring-2 ring-primary/40 shadow-[0_4px_24px_rgba(124,58,237,0.12)]' : ''}`}
+          >
+            <CardContent className="p-5 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 rounded-xl bg-primary/10 shrink-0">
+                  <card.icon className="h-5 w-5 text-primary" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-sm leading-tight">{card.title}</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">{card.subtitle}</p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <h3 className="font-semibold text-sm leading-tight">{card.title}</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">{card.subtitle}</p>
-              </div>
-            </div>
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="steps" className="border-none">
-                <AccordionTrigger className="text-xs text-muted-foreground hover:text-foreground py-1.5 hover:no-underline">
-                  Como funciona
-                </AccordionTrigger>
-                <AccordionContent>
-                  <ol className="space-y-2 text-xs text-muted-foreground">
-                    {card.steps.map((step, idx) => (
-                      <li key={idx} className="flex gap-2">
-                        <span className="font-bold text-primary shrink-0">{idx + 1}.</span>
-                        <span className="leading-relaxed">{step}</span>
-                      </li>
-                    ))}
-                  </ol>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
-      ))}
+              <Accordion type="single" collapsible className="w-full" defaultValue={isHighlighted ? 'steps' : undefined}>
+                <AccordionItem value="steps" className="border-none">
+                  <AccordionTrigger className="text-xs text-muted-foreground hover:text-foreground py-1.5 hover:no-underline">
+                    Como funciona
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <ol className="space-y-2 text-xs text-muted-foreground">
+                      {card.steps.map((step, idx) => (
+                        <li key={idx} className="flex gap-2">
+                          <span className="font-bold text-primary shrink-0">{idx + 1}.</span>
+                          <span className="leading-relaxed">{step}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }
