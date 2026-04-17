@@ -1,68 +1,43 @@
 
 
-# P1 — Refinamentos do Command Center
+# Refinamentos do dashboard do líder
 
-Dois itens do P1 propostos. Vou planejar ambos juntos pois compartilham o mesmo arquivo (`AdminOverview.tsx`).
+Dois ajustes pontuais no `src/pages/Index.tsx` + a sidebar.
 
-## Item 1 — Refatorar `AdminOverview.tsx`
+## 1. Substituir "Conector Chrome" por atalho de transcrição
 
-Hoje o arquivo tem ~380 linhas misturando: stats, alerts, recent activity, waitlist + dialog de convite. Vamos extrair em componentes próprios, mantendo `AdminOverview` como orquestrador enxuto.
+A captura do Chrome é hoje feita pelo bot Recall.ai (entra automaticamente nas reuniões via Google Calendar) — o conector Chrome perdeu o protagonismo como meio de captura. O card `l-auto-transcription` na Central de Conhecimento já documenta tudo (toggle no card de Próximas Reuniões, fluxo do bot, transcrição automática no Diário de Bordo).
 
-**Quebra:**
+**Mudança em `src/components/AppSidebar.tsx` (linhas 254-277, grupo "Conectores"):**
 
-- `src/components/admin/StatsGrid.tsx` — 6 big numbers (Workspaces, Usuários, Feedbacks, Reviews, Assinaturas, Leads). Recebe stats + paidCount + leadsCount via props ou faz queries próprias.
-- `src/components/admin/InactiveWorkspacesAlert.tsx` — card amber com contagem de workspaces sem atividade 30d.
-- `src/components/admin/RecentActivityCard.tsx` — últimos 5 feedbacks. Query própria.
-- `src/components/admin/WaitlistTable.tsx` — tabela completa de leads + dialog de convite + lógica de `admin-invite-user`. Encapsula estado `invitingEmail` e `inviteDialog`.
+- **Remover** o botão "Conector Chrome" (`setExtensionDialogOpen`).
+- **Substituir** por um botão "Transcrição automática" que navega para `/help#l-auto-transcription` (Central de Conhecimento, ancorado no card específico). Ícone: `FileAudio` (já usado lá).
+- Manter o botão "Conector Slack" intacto.
+- O label do grupo "Conectores" passa a ser "Reuniões" (ou "Integrações") — vou usar **"Integrações"** porque continua valendo para Slack.
+- Adicionar suporte a hash anchor no `HelpCenter.tsx`: ao montar, se `location.hash === '#l-auto-transcription'`, fazer scroll suave para o accordion correspondente e abri-lo.
 
-**`AdminOverview.tsx` final** vira ~40 linhas:
-```tsx
-<div className="p-8 space-y-8">
-  <Header />
-  <FunnelCard />
-  <ActivationCohorts />
-  <StatsGrid />
-  <InactiveWorkspacesAlert />
-  <RecentActivityCard />
-  <WaitlistTable />
-</div>
-```
+**Limpeza secundária:** o `ChromeExtensionSetupDialog` continua disponível em outros pontos (ex.: Configurações), então **não removo o componente** — apenas tiro o atalho da sidebar. Se nenhum outro ponto chamar, removemos depois (vou checar com `code--search_files` no momento da execução para confirmar).
 
-Zero mudança visual ou funcional. Apenas organização.
+**Adições à i18n:** novas chaves `sidebar.integrations` e `sidebar.autoTranscription` em PT-BR / EN / ES (replico o padrão das demais chaves do grupo).
 
-## Item 2 — Drill-down nas coortes
+## 2. Remover seção "ALERTAS" do dashboard
 
-Tornar cada linha da tabela `ActivationCohorts` clicável → abre `<Sheet>` lateral com a lista de workspaces daquela coorte, com status individual de ativação.
+A seção `Nudges` (linhas 624-642 em `Index.tsx`) duplica exatamente o que já aparece no sino (`ActivitySheet`), que consome a mesma tabela `leader_nudges`.
 
-**Backend:**
-- Nova RPC `admin_cohort_workspaces(p_cohort_month text)` retornando: `workspace_id`, `workspace_name`, `created_at`, `owner_email`, `first_activation_at` (min entre feedback/review/transcript), `activation_bucket` (`d1` | `d7` | `d30` | `not_activated`), `feedbacks_count`, `reviews_count`, `transcripts_count`. `SECURITY DEFINER` + `is_admin()` guard.
+**Mudança em `src/pages/Index.tsx`:**
 
-**Frontend:**
-- `src/components/admin/CohortDrilldownSheet.tsx` — Sheet lateral (right side, `sm:max-w-2xl`):
-  - Header: "Coorte de Nov/25 · 12 workspaces"
-  - Tabela: Workspace · Owner · Criado em · Status (badge colorido por bucket) · Ativações (contadores)
-  - Ordenação default: não-ativados primeiro (acionáveis no topo)
-  - Loading skeleton
-- `ActivationCohorts.tsx` — adicionar `onClick` em cada `<tr>` + estilo `cursor-pointer hover:bg-muted/50`. Estado local `selectedCohort: string | null` controla abertura do Sheet.
+- **Remover** o bloco `{nudges.length > 0 && (...)}` (linhas 624-642).
+- **Remover** a query `nudges` (linhas 386-401) — não é usada em nenhum outro lugar do arquivo após a remoção.
+- **Ajustar** o empty state (linha 750): mudar `meetings.length === 0 && nudges.length === 0` para apenas `meetings.length === 0` (já que nudges deixa de ser referenciado).
 
-**Decisões:**
-- Sheet em vez de Dialog — preserva contexto da tabela atrás.
-- Não-ativados ordenados primeiro — mais útil para ação ("quem precisa de empurrão?").
-- Buckets exclusivos no drill-down (D1, D7-not-D1, D30-not-D7, not_activated) para identificar rapidamente onde cada workspace travou.
+O sino no header continua o ponto único de notificações — alinhado com o pedido.
 
 ## Arquivos
 
-**Item 1 (refactor):**
-- `src/components/admin/StatsGrid.tsx` (novo)
-- `src/components/admin/InactiveWorkspacesAlert.tsx` (novo)
-- `src/components/admin/RecentActivityCard.tsx` (novo)
-- `src/components/admin/WaitlistTable.tsx` (novo)
-- `src/components/admin/AdminOverview.tsx` (enxugar para orquestrador)
+- `src/components/AppSidebar.tsx` — substituir botão Chrome por "Transcrição automática" com `navigate('/help#l-auto-transcription')`.
+- `src/pages/Index.tsx` — remover seção Nudges, query `nudges` e referência no empty state.
+- `src/pages/HelpCenter.tsx` — abrir accordion correspondente quando houver hash `#l-auto-transcription`.
+- `src/i18n/locales/{pt-BR,en,es}.json` — chaves `sidebar.integrations` e `sidebar.autoTranscription`.
 
-**Item 2 (drill-down):**
-- Migration: RPC `admin_cohort_workspaces`
-- `src/components/admin/CohortDrilldownSheet.tsx` (novo)
-- `src/components/admin/ActivationCohorts.tsx` (adicionar click + state)
-
-Zero impacto em RLS, rotas, ou outras telas.
+Zero impacto em RLS, rotas, dados ou no `ChromeExtensionSetupDialog` (mantido para outros usos).
 
