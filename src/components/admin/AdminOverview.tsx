@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useState, useMemo } from 'react';
 import type { PlanTier } from '@/types/team';
 import { FunnelCard } from './FunnelCard';
+import { ActivationCohorts } from './ActivationCohorts';
 
 export const AdminOverview = () => {
   const { toast } = useToast();
@@ -154,6 +155,9 @@ export const AdminOverview = () => {
 
       {/* Funil de Conversão */}
       <FunnelCard />
+
+      {/* Coortes de Ativação */}
+      <ActivationCohorts />
 
       {/* Big Numbers */}
       <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
