@@ -237,7 +237,7 @@ export const BulkOnboardDialog = ({ open, onOpenChange, workspaceNames }: Props)
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl max-h-[85vh]">
+      <DialogContent className="max-w-6xl max-h-[85vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5" />
@@ -275,41 +275,43 @@ export const BulkOnboardDialog = ({ open, onOpenChange, workspaceNames }: Props)
         )}
 
         {step === 'preview' && (
-          <ScrollArea className="max-h-[50vh]">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Papel</TableHead>
-                  <TableHead>Workspace</TableHead>
-                  <TableHead>Time</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((row, i) => (
-                  <TableRow key={i} className={row.errors.length > 0 ? 'bg-destructive/5' : ''}>
-                    <TableCell>
-                      {row.errors.length > 0 ? (
-                        <XCircle className="h-4 w-4 text-destructive" />
-                      ) : (
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      )}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">{row.email}</TableCell>
-                    <TableCell>{row.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-xs">
-                        {row.role === 'leader' ? 'Líder' : row.role === 'hr_admin' ? 'HR Admin' : 'Liderado'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{row.workspace}</TableCell>
-                    <TableCell>{row.team || '—'}</TableCell>
+          <ScrollArea className="max-h-[60vh]">
+            <div className="overflow-x-auto">
+              <Table className="min-w-[900px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="whitespace-nowrap">Status</TableHead>
+                    <TableHead className="whitespace-nowrap">Email</TableHead>
+                    <TableHead className="whitespace-nowrap">Nome</TableHead>
+                    <TableHead className="whitespace-nowrap">Papel</TableHead>
+                    <TableHead className="whitespace-nowrap">Workspace</TableHead>
+                    <TableHead className="whitespace-nowrap">Time</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((row, i) => (
+                    <TableRow key={i} className={row.errors.length > 0 ? 'bg-destructive/5' : ''}>
+                      <TableCell className="whitespace-nowrap">
+                        {row.errors.length > 0 ? (
+                          <XCircle className="h-4 w-4 text-destructive" />
+                        ) : (
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        )}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs whitespace-nowrap">{row.email}</TableCell>
+                      <TableCell className="whitespace-nowrap">{row.name}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <Badge variant="outline" className="text-xs">
+                          {row.role === 'leader' ? 'Líder' : row.role === 'hr_admin' ? 'HR Admin' : 'Liderado'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">{row.workspace}</TableCell>
+                      <TableCell className="whitespace-nowrap">{row.team || '—'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
             {rows.some(r => r.errors.length > 0) && (
               <div className="p-3 mt-2 rounded-xl bg-destructive/10 text-sm space-y-1">
                 {rows.filter(r => r.errors.length > 0).map((r, i) => (
