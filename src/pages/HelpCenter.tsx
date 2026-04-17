@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   BookOpen, Rocket, Users, Sparkles, FileText, Search, Check,
   NotebookPen, MessageSquare, BarChart3, CalendarCheck, Award,
