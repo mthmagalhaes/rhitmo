@@ -11,7 +11,7 @@ import { MemberAvatar } from '@/components/MemberAvatar';
 import { ImpersonationIndicator } from '@/components/admin/ImpersonationIndicator';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { ProfileSettingsDialog } from '@/components/ProfileSettingsDialog';
-import { ChromeExtensionSetupDialog } from '@/components/extension/ChromeExtensionSetupDialog';
+
 import { SlackConnectorDialog } from '@/components/slack/SlackConnectorDialog';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -480,10 +480,6 @@ export function AppSidebar() {
         </DialogContent>
       </Dialog>
 
-      <ChromeExtensionSetupDialog
-        open={extensionDialogOpen}
-        onOpenChange={setExtensionDialogOpen}
-      />
 
       <SlackConnectorDialog
         open={slackDialogOpen}
