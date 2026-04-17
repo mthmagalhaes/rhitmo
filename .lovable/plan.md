@@ -1,34 +1,18 @@
 
+O usuário quer melhorar a visualização da tabela de preview no `BulkOnboardDialog` — hoje colunas ficam cortadas (vide "Enfer...", "Fisiote...", "Peda...", "Coor...").
 
-## Diagnóstico
+## Fix proposto
 
-O parser CSV em `BulkOnboardDialog.tsx` (linhas 72-122) tem 3 fragilidades que combinadas explicam o erro "0 válidos, 7 com erros, todas as colunas vazias":
+Duas melhorias complementares em `src/components/admin/BulkOnboardDialog.tsx`:
 
-1. **Separador hardcoded como vírgula**: `line.split(',')`. Excel em PT-BR salva CSV com ponto-e-vírgula (`;`) por padrão. Se você abriu o template no Excel, editou e salvou, ele virou `;`.
-2. **BOM UTF-8 não tratado**: Excel/Numbers adicionam `\ufeff` no início. Isso faz `header[0]` virar `\ufeffemail`, então `emailIdx = -1`, e `cols[-1]` é `undefined` → todos emails vazios → todos "duplicados" entre si.
-3. **CRLF do Windows**: `split('\n')` deixa `\r` colado na última coluna de cada linha.
+1. **Alargar o modal** de `sm:max-w-2xl` (atual) para `sm:max-w-6xl` — aproveita melhor telas médias/grandes sem virar página cheia.
 
-## Fix
+2. **Scroll horizontal na tabela** — envolver a tabela num wrapper `overflow-x-auto` e dar `min-w-[900px]` + `whitespace-nowrap` nas células, garantindo que em qualquer viewport o usuário veja tudo (role horizontal se precisar).
 
-Refatorar o `parseCSV` em `BulkOnboardDialog.tsx` para:
+3. **Altura máxima controlada** — manter `max-h-[70vh] overflow-y-auto` no corpo pra não estourar verticalmente quando tiver 100 linhas.
 
-1. **Strip BOM** no início do texto (`text.replace(/^\uFEFF/, '')`)
-2. **Auto-detectar separador**: contar ocorrências de `,` vs `;` na linha do header e usar o que tiver mais
-3. **Normalizar quebras de linha**: `text.replace(/\r\n?/g, '\n')` antes do split
-4. **CSV parsing robusto**: respeitar aspas (`"João, Silva"` vira 1 campo, não 2) — implementar parser inline simples que lida com `"..."` quoting
-5. **Validação defensiva**: se `emailIdx === -1` ou `roleIdx === -1`, mostrar erro claro "Cabeçalho não reconhecido. Esperado: email, nome, papel, workspace, time, lider_email" em vez de processar como linhas inválidas
+## Arquivo
 
-## Arquivo a modificar
-
-- `src/components/admin/BulkOnboardDialog.tsx` — substituir função `parseCSV` (linhas 72-122) e adicionar checagem de header no `handleFileUpload`
+- `src/components/admin/BulkOnboardDialog.tsx` — ajustar `DialogContent` className e o wrapper da tabela de preview (~5 linhas)
 
 Zero edge functions, zero migrations.
-
-## Pergunta rápida (não bloqueante)
-
-O CSV que você usou foi:
-- (a) Baixado pelo botão "Baixar template CSV" e editado direto, ou
-- (b) Aberto no Excel/Numbers e salvo de novo?
-
-Se (b), provavelmente é o problema do `;`. O fix cobre os dois casos de qualquer jeito — só queria confirmar pra documentar a causa raiz.
-
