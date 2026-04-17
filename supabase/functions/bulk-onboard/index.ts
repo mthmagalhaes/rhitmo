@@ -96,34 +96,37 @@ serve(async (req) => {
           userId = existing.user_id;
           results.push({ email, status: 'skipped', message: 'Usuário já existe' });
         } else {
-          const { data: invitation, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-            data: { full_name: row.name || null },
-            redirectTo: 'https://rhitmo.co/dashboard',
+          // Silent mode: cria usuário SEM enviar email. O disparo é manual via dispatch-bulk-invites.
+          const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
+            email,
+            email_confirm: false,
+            user_metadata: {
+              full_name: row.name || null,
+              bulk_onboarded_at: new Date().toISOString(),
+              intended_role: row.role,
+              intended_workspace: row.workspace,
+              intended_team: row.team || null,
+              intended_leader_email: row.leader_email || null,
+            },
           });
-          if (inviteError) {
-            // Check if user already exists (race condition)
-            if (inviteError.message?.includes('already been registered')) {
+          if (createError) {
+            // Race condition: usuário pode ter sido criado em outro lote
+            if (createError.message?.includes('already') || createError.message?.includes('registered')) {
               const { data: { users: foundUsers } } = await supabaseAdmin.auth.admin.listUsers();
               const found = foundUsers?.find((u: any) => u.email?.toLowerCase() === email);
               if (found) {
                 userId = found.id;
               } else {
-                results.push({ email, status: 'error', message: inviteError.message });
+                results.push({ email, status: 'error', message: createError.message });
                 continue;
               }
             } else {
-              results.push({ email, status: 'error', message: inviteError.message });
+              results.push({ email, status: 'error', message: createError.message });
               continue;
             }
           } else {
-            userId = invitation?.user?.id || null;
-            if (!existing) {
-              // Update result from skipped to ok
-              const lastResult = results[results.length - 1];
-              if (!lastResult || lastResult.email !== email) {
-                results.push({ email, status: 'ok', message: 'Convite enviado' });
-              }
-            }
+            userId = created?.user?.id || null;
+            results.push({ email, status: 'ok', message: 'Usuário criado (sem email)' });
           }
         }
 
@@ -230,55 +233,8 @@ serve(async (req) => {
           }
         }
 
-        // Send role-specific welcome email (only for new users)
-        if (!existing) {
-          const templateMap: Record<string, { templateName: string; templateData: Record<string, any> }> = {
-            leader: {
-              templateName: 'leader-welcome',
-              templateData: {
-                leaderName: row.name || undefined,
-                teamName: row.team || undefined,
-                workspaceName: row.workspace || undefined,
-                dashboardUrl: 'https://app-rhitmo.lovable.app',
-              },
-            },
-            member: {
-              templateName: 'member-welcome',
-              templateData: {
-                memberName: row.name || undefined,
-                leaderName: row.leader_email ? users.find(u => u.email?.toLowerCase() === row.leader_email?.toLowerCase())?.name : undefined,
-                teamName: row.team || undefined,
-                syncUrl: 'https://app-rhitmo.lovable.app/sync',
-              },
-            },
-            hr_admin: {
-              templateName: 'hr-admin-welcome',
-              templateData: {
-                adminName: row.name || undefined,
-                workspaceName: row.workspace || undefined,
-                dashboardUrl: 'https://app-rhitmo.lovable.app/hr',
-              },
-            },
-          };
-
-          const emailConfig = templateMap[row.role];
-          if (emailConfig) {
-            try {
-              await supabaseAdmin.functions.invoke('send-transactional-email', {
-                body: {
-                  templateName: emailConfig.templateName,
-                  recipientEmail: email,
-                  idempotencyKey: `bulk-welcome-${row.role}-${userId}`,
-                  templateData: emailConfig.templateData,
-                },
-              });
-              const existingResult = results.find(r => r.email === email);
-              if (existingResult) existingResult.message += ' + Email de boas-vindas enviado';
-            } catch (emailErr: any) {
-              console.warn(`⚠️ Erro ao enviar email de boas-vindas para ${email}:`, emailErr.message);
-            }
-          }
-        }
+        // Silent mode: NÃO enviamos email aqui. O admin dispara manualmente via
+        // o botão "Disparar convites" em Admin → Estrutura (edge: dispatch-bulk-invites).
 
         // Ensure there's a result for this email
         if (!results.find(r => r.email === email)) {

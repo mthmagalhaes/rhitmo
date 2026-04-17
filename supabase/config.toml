@@ -89,3 +89,5 @@ project_id = "lybkgujyezzzvbzypxed"
     verify_jwt = false
   [functions.bulk-onboard]
     verify_jwt = true
+  [functions.dispatch-bulk-invites]
+    verify_jwt = true

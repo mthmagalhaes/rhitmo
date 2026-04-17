@@ -202,10 +202,10 @@ export const BulkOnboardDialog = ({ open, onOpenChange, workspaceNames }: Props)
             Importar em Massa
           </DialogTitle>
           <DialogDescription>
-            {step === 'upload' && 'Faça upload de um CSV com os dados dos usuários para cadastrar em lote.'}
-            {step === 'preview' && `${validCount} válidos, ${errorCount} com erros. Revise antes de confirmar.`}
-            {step === 'processing' && 'Processando convites...'}
-            {step === 'results' && 'Importação concluída!'}
+            {step === 'upload' && 'Cadastra usuários, times e papéis em lote — SEM enviar email. Você dispara os convites manualmente em Estrutura → "Disparar convites" no card do workspace.'}
+            {step === 'preview' && `${validCount} válidos, ${errorCount} com erros. Revise antes de confirmar. Nenhum email será enviado nesta etapa.`}
+            {step === 'processing' && 'Criando usuários e estrutura (modo silencioso)...'}
+            {step === 'results' && 'Importação concluída! Próximo passo: dispare os convites em Estrutura.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -283,7 +283,7 @@ export const BulkOnboardDialog = ({ open, onOpenChange, workspaceNames }: Props)
         {step === 'processing' && (
           <div className="flex flex-col items-center justify-center py-12 gap-4">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-muted-foreground">Enviando convites e configurando papéis...</p>
+            <p className="text-muted-foreground">Criando usuários e configurando papéis (sem email)...</p>
             <p className="text-xs text-muted-foreground">Processando {validCount} usuários</p>
           </div>
         )}
