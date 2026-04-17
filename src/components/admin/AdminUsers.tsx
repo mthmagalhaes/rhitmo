@@ -194,7 +194,7 @@ export const AdminUsers = () => {
       if (capFilter === 'super_admin' && !u.is_super_admin) return false;
 
       if (statusFilter !== 'all') {
-        const wsInfo = workspaceStatusByOwner[u.user_id];
+        const wsInfo = getUserWorkspaceStatus(u);
         if (statusFilter === 'no_workspace' && wsInfo) return false;
         if (statusFilter === 'active' && (!wsInfo || !wsInfo.is_active)) return false;
         if (statusFilter === 'suspended' && (!wsInfo || wsInfo.is_active)) return false;
@@ -215,13 +215,13 @@ export const AdminUsers = () => {
     list = [...list].sort((a, b) => {
       if (sortField === 'name') return (a.full_name || a.email).localeCompare(b.full_name || b.email) * dir;
       if (sortField === 'email') return a.email.localeCompare(b.email) * dir;
-      const wsA = workspaceStatusByOwner[a.user_id];
-      const wsB = workspaceStatusByOwner[b.user_id];
-      const rank = (ws?: { is_active: boolean }) => !ws ? 2 : ws.is_active ? 0 : 1;
+      const wsA = getUserWorkspaceStatus(a);
+      const wsB = getUserWorkspaceStatus(b);
+      const rank = (ws?: { is_active: boolean } | null) => !ws ? 2 : ws.is_active ? 0 : 1;
       return (rank(wsA) - rank(wsB)) * dir;
     });
     return list;
-  }, [userCaps, search, capFilter, statusFilter, workspaceFilter, segmentFilter, sortField, sortDirection, workspaceStatusByOwner, workspaceById]);
+  }, [userCaps, search, capFilter, statusFilter, workspaceFilter, segmentFilter, sortField, sortDirection, workspaceById]);
 
   // Segment counters across ALL users (not filtered)
   const segmentCounts = useMemo(() => {
@@ -349,7 +349,7 @@ export const AdminUsers = () => {
     const rows = filteredUsers.map(u => {
       const ws = getPrimaryWorkspace(u);
       const allWss = getUserWorkspaces(u).map(w => `${w.name} (${w.role})`).join(' | ');
-      const wsInfo = workspaceStatusByOwner[u.user_id];
+      const wsInfo = getUserWorkspaceStatus(u);
       const status = !wsInfo ? 'Sem workspace' : wsInfo.is_active ? 'Ativo' : 'Suspenso';
       const roles: string[] = [];
       if (u.is_super_admin) roles.push('Super Admin');
@@ -509,7 +509,7 @@ export const AdminUsers = () => {
               </TableHeader>
               <TableBody>
                 {filteredUsers.map((user) => {
-                  const wsInfo = workspaceStatusByOwner[user.user_id];
+                  const wsInfo = getUserWorkspaceStatus(user);
                   const avatarVariant = getUserAvatar(user.user_id);
                   const userWss = getUserWorkspaces(user);
                   const primaryWs = getPrimaryWorkspace(user);
