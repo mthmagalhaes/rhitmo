@@ -34,6 +34,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
 
 // ============== TRANSLATIONS ==============
 
@@ -122,56 +130,50 @@ const translations = {
     hrP2: "Coaching personalizado no fluxo de trabalho, visibilidade total de métricas de saúde dos times. ROI mensurável, não promessa de consultoria.",
     // Pricing
     pricingTitle: "Simples. Transparente.",
-    pricingSubtitle: "Comece grátis. Evolua quando seu time crescer.",
+    pricingSubtitle: "Sem plano mensal. A mudança de cultura na liderança exige no mínimo 90 dias de consistência.",
+    pricingTooltip: "Por que não temos plano mensal? Porque a ciência comportamental mostra que cultura de feedback só se firma após 90 dias de prática consistente. Cobramos pelo ciclo de valor — não pelo mês.",
+    cycleQuarterly: "Trimestral",
+    cycleSemiannual: "Semestral",
+    cycleAnnual: "Anual",
+    cycleAnnualBadge: "Melhor valor",
+    perCyclePeriodQuarterly: "/trimestre",
+    perCyclePeriodSemiannual: "/semestre",
+    perCyclePeriodAnnual: "/ano",
+    equivPerMonthLabel: "Equivale a",
+    perMonthShort: "/mês",
     // Pulse
     pulseSubtitle: "Para o líder que quer começar a registrar e desenvolver seu time.",
     pulseFree: "Grátis",
     pulseForever: "· para sempre",
     pulseCTA: "Começar grátis",
     pulseFeatures: [
-      "Até 2 liderados",
-      "20 mensagens de Mentor Chat por mês",
+      "Acesso ao Meu Rhitmo (portal do liderado)",
+      "1 avaliação com IA por mês",
+      "Upload manual de áudio",
+      "Mentor Chat limitado (20 mensagens/mês)",
       "Notas e anotações ilimitadas",
-      "1 avaliação formal por mês",
-      "1 time",
     ],
     pulseLocked: [
-      "Meu Rhitmo para liderados",
-      "Gravação com bot de transcrição",
-      "Gravação manual de reuniões",
-      "Analytics completo",
+      "Bot de transcrição automática (Recall.ai)",
+      "Pre-meeting Briefs",
+      "Detecção de viés em tempo real",
+      "Avaliações com IA ilimitadas",
     ],
     // Pro
-    proSubtitle: "Para líderes que gerenciam até 5 pessoas e querem desenvolver cada uma com intenção.",
-    proPerMonth: "/líder/mês",
-    proNote: "14 dias grátis · cancele quando quiser",
-    proCTA: "Começar com 14 dias grátis",
+    proSubtitle: "Para líderes que querem operar no rítmo certo: liderados ilimitados, com IA em todas as etapas.",
+    proNote: "Cobrança única por ciclo · cancele a qualquer momento",
+    proCTA: "Começar agora",
     proBadge: "Mais popular",
     proFeatures: [
-      "Até 5 liderados",
+      "Liderados ilimitados",
+      "15 horas/mês de bot de transcrição (Recall.ai)",
+      "Avaliações com IA ilimitadas",
+      "Pre-meeting Briefs com contexto histórico",
+      "Detecção de viés em tempo real",
       "Mentor Chat ilimitado",
-      "Notas e anotações ilimitadas",
-      "Avaliações formais ilimitadas",
-      "Meu Rhitmo para seus liderados",
-      "Até 20 reuniões com bot de transcrição/mês",
-      "Gravação manual (até 12h/mês)",
+      "Acesso ao Meu Rhitmo para todo o time",
       "Analytics completo",
-      "Até 3 times",
-    ],
-    // Business
-    businessSubtitle: "Para empresas que querem uma cultura de feedback consistente em todos os times.",
-    businessPerMonth: "/líder/mês",
-    businessNote: "Mínimo 3 líderes · R$207/mês",
-    businessCTA: "Falar com a equipe",
-    businessFeatures: [
-      "Até 8 liderados por líder",
-      "Tudo do plano Pro",
       "Times ilimitados",
-      "Até 40 reuniões com bot de transcrição/mês",
-      "Gravação manual (até 30h/mês)",
-      "HR Dashboard com métricas agregadas",
-      "Onboarding assistido",
-      "Suporte prioritário",
     ],
     // Chat mockup
     mentorChatLabel: "Liderada: Maria Santos",
@@ -189,20 +191,20 @@ const translations = {
     footerPrivacy: "Política de Privacidade",
     launchBadge: "Preço de Lançamento",
     launchDisclaimer: "Preço de lançamento garantido enquanto sua assinatura estiver ativa.",
-    // Enterprise
+    // Enterprise / Corporate
     enterpriseNav: "Enterprise",
-    enterpriseSubtitle: "Para empresas estruturadas com 100+ colaboradores que querem IA nativa de verdade.",
-    enterprisePrice: "A partir de R$15",
-    enterprisePer: "/colaborador/mês",
-    enterpriseNote: "Mínimo 100 colaboradores · contrato anual",
-    enterpriseCTA: "Falar com Vendas",
+    enterpriseSubtitle: "Para a organização inteira: HR Dashboard, blindagem jurídica, integrações HRIS e SSO.",
+    enterprisePrice: "Sob consulta",
+    enterprisePer: "· faturamento anual",
+    enterpriseNote: "Cobrança exclusivamente anual · proposta personalizada",
+    enterpriseCTA: "Fale com Vendas",
     enterpriseFeatures: [
-      "Tudo do Business",
-      "SSO e API personalizada",
-      "CSM dedicado",
-      "SLA garantido",
-      "Onboarding white-glove",
-      "Integrações enterprise (SAP, TOTVS)",
+      "Tudo do Pro, para a organização inteira",
+      "HR Dashboard (Radar de Risco / Heatmap)",
+      "Dossiê de Blindagem Jurídica",
+      "Integração com HRIS",
+      "SSO (Single Sign-On)",
+      "CSM dedicado e SLA garantido",
     ],
     // Footer comparisons
     footerCompare: "Compare",
@@ -328,53 +330,48 @@ const translations = {
     hrP1: "Your managers spend 4h per review. With Rhitmo, it's 2 minutes. That's hundreds of hours returned per review cycle, without losing quality.",
     hrP2: "Personalized coaching in the flow of work, full visibility into team health metrics. Measurable ROI, not consulting promises.",
     pricingTitle: "Simple. Transparent.",
-    pricingSubtitle: "Start free. Scale when your team grows.",
+    pricingSubtitle: "No monthly plan. Building a real feedback culture requires at least 90 days of consistency.",
+    pricingTooltip: "Why no monthly plan? Behavioral science shows leadership culture only takes hold after 90 days of consistent practice. We bill by value cycle — not by month.",
+    cycleQuarterly: "Quarterly",
+    cycleSemiannual: "Semiannual",
+    cycleAnnual: "Annual",
+    cycleAnnualBadge: "Best value",
+    perCyclePeriodQuarterly: "/quarter",
+    perCyclePeriodSemiannual: "/semester",
+    perCyclePeriodAnnual: "/year",
+    equivPerMonthLabel: "Equivalent to",
+    perMonthShort: "/mo",
     pulseSubtitle: "For the leader who wants to start tracking and developing their team.",
     pulseFree: "Free",
     pulseForever: "· forever",
     pulseCTA: "Get started free",
     pulseFeatures: [
-      "Up to 2 direct reports",
-      "20 Mentor Chat messages per month",
+      "Access to My Rhitmo (direct report portal)",
+      "1 AI review per month",
+      "Manual audio upload",
+      "Limited Mentor Chat (20 messages/mo)",
       "Unlimited notes and annotations",
-      "1 formal review per month",
-      "1 team",
     ],
     pulseLocked: [
-      "My Rhitmo for direct reports",
-      "Bot-assisted meeting transcription",
-      "Manual meeting recording",
-      "Full analytics",
+      "Automated transcription bot (Recall.ai)",
+      "Pre-meeting Briefs",
+      "Real-time bias detection",
+      "Unlimited AI reviews",
     ],
-    proSubtitle: "For leaders managing up to 5 people who want to develop each one with intention.",
-    proPerMonth: "/leader/mo",
-    proNote: "14-day free trial · cancel anytime",
-    proCTA: "Start your 14-day free trial",
+    proSubtitle: "For leaders who want to operate at the right rhythm: unlimited direct reports, AI at every step.",
+    proNote: "One charge per cycle · cancel anytime",
+    proCTA: "Get started",
     proBadge: "Most popular",
     proFeatures: [
-      "Up to 5 direct reports",
+      "Unlimited direct reports",
+      "15 hours/mo of transcription bot (Recall.ai)",
+      "Unlimited AI reviews",
+      "Pre-meeting Briefs with historical context",
+      "Real-time bias detection",
       "Unlimited Mentor Chat",
-      "Unlimited notes and annotations",
-      "Unlimited formal reviews",
-      "My Rhitmo for your direct reports",
-      "Up to 20 bot-transcribed meetings/mo",
-      "Manual recording (up to 12h/mo)",
+      "My Rhitmo for the whole team",
       "Full analytics",
-      "Up to 3 teams",
-    ],
-    businessSubtitle: "For companies that want a consistent feedback culture across all teams.",
-    businessPerMonth: "/leader/mo",
-    businessNote: "Minimum 3 leaders · R$207/mo",
-    businessCTA: "Talk to our team",
-    businessFeatures: [
-      "Up to 8 direct reports per leader",
-      "Everything in Pro",
       "Unlimited teams",
-      "Up to 40 bot-transcribed meetings/mo",
-      "Manual recording (up to 30h/mo)",
-      "HR Dashboard with aggregated metrics",
-      "Assisted onboarding",
-      "Priority support",
     ],
     mentorChatLabel: "Direct report: Maria Santos",
     chatQuestion: "How to give feedback about tardiness without demotivating?",
@@ -390,18 +387,18 @@ const translations = {
     launchBadge: "Launch Price",
     launchDisclaimer: "Launch price guaranteed while your subscription is active.",
     enterpriseNav: "Enterprise",
-    enterpriseSubtitle: "For structured companies with 100+ employees who want truly native AI.",
-    enterprisePrice: "Starting at R$15",
-    enterprisePer: "/employee/mo",
-    enterpriseNote: "Minimum 100 employees · annual contract",
+    enterpriseSubtitle: "For the entire organization: HR Dashboard, legal protection dossier, HRIS integration and SSO.",
+    enterprisePrice: "Custom",
+    enterprisePer: "· annual billing",
+    enterpriseNote: "Annual billing only · tailored proposal",
     enterpriseCTA: "Talk to Sales",
     enterpriseFeatures: [
-      "Everything in Business",
-      "SSO and custom API",
-      "Dedicated CSM",
-      "Guaranteed SLA",
-      "White-glove onboarding",
-      "Enterprise integrations (SAP, TOTVS)",
+      "Everything in Pro, for the whole organization",
+      "HR Dashboard (Risk Radar / Heatmap)",
+      "Legal Protection Dossier",
+      "HRIS integration",
+      "SSO (Single Sign-On)",
+      "Dedicated CSM and guaranteed SLA",
     ],
      footerCompare: "Compare",
      footerVsQulture: "Rhitmo vs. National platforms",
@@ -555,6 +552,199 @@ const SimpleChatMockup = ({ t }: { t: Translations }) => <div className="bg-card
       </div>
     </div>
   </div>;
+
+// ============== PRICING SECTION ==============
+// Estratégia 18/04/2026: removemos plano mensal. Pro agora é vendido em ciclos
+// Trimestral / Semestral / Anual para alinhar faturamento ao ciclo de valor.
+
+type BillingCycle = 'quarterly' | 'semiannual' | 'annual';
+
+const CYCLE_PRICING: Record<BillingCycle, { total: number; perMonth: number }> = {
+  quarterly: { total: 267, perMonth: 89 },
+  semiannual: { total: 504, perMonth: 84 },
+  annual: { total: 948, perMonth: 79 },
+};
+
+const PricingSection = ({
+  t,
+  lang,
+  navigate,
+}: {
+  t: any;
+  lang: 'pt' | 'en';
+  navigate: (to: string) => void;
+}) => {
+  const [cycle, setCycle] = useState<BillingCycle>('annual');
+  const pricing = CYCLE_PRICING[cycle];
+  const periodLabel =
+    cycle === 'quarterly'
+      ? t.perCyclePeriodQuarterly
+      : cycle === 'semiannual'
+      ? t.perCyclePeriodSemiannual
+      : t.perCyclePeriodAnnual;
+
+  return (
+    <section id="pricing" className="py-28 bg-background">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="text-center space-y-3 mb-10">
+          <p className="uppercase text-xs font-semibold tracking-widest text-primary">
+            {lang === 'pt' ? 'Planos' : 'Plans'}
+          </p>
+          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
+            {t.pricingTitle}
+          </h2>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            {t.pricingSubtitle}
+          </p>
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mt-1"
+                >
+                  <Info className="h-3.5 w-3.5" />
+                  {lang === 'pt' ? 'Por que sem plano mensal?' : 'Why no monthly plan?'}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-sm text-sm leading-relaxed">
+                {t.pricingTooltip}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+
+        {/* Cycle selector */}
+        <div className="flex justify-center mb-12">
+          <Tabs value={cycle} onValueChange={(v) => setCycle(v as BillingCycle)}>
+            <TabsList className="h-11 rounded-full p-1 bg-muted">
+              <TabsTrigger value="quarterly" className="rounded-full px-5 h-9 data-[state=active]:bg-background">
+                {t.cycleQuarterly}
+              </TabsTrigger>
+              <TabsTrigger value="semiannual" className="rounded-full px-5 h-9 data-[state=active]:bg-background">
+                {t.cycleSemiannual}
+              </TabsTrigger>
+              <TabsTrigger value="annual" className="rounded-full px-5 h-9 data-[state=active]:bg-background gap-2">
+                {t.cycleAnnual}
+                <span className="bg-primary/15 text-primary text-[10px] font-semibold rounded-full px-2 py-0.5">
+                  {t.cycleAnnualBadge}
+                </span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
+        {/* Cards Grid — 3 plans */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* ── Pulse ── */}
+          <div className="bg-card rounded-2xl shadow-md p-8 border flex flex-col hover:shadow-lg transition-shadow duration-300">
+            <div className="min-h-[28px] mb-4" />
+            <div className="min-h-[72px] mb-4">
+              <h3 className="text-2xl font-bold tracking-tight text-foreground">Pulse</h3>
+              <p className="text-sm text-muted-foreground mt-2">{t.pulseSubtitle}</p>
+            </div>
+            <div className="min-h-[100px] mb-6">
+              <span className="text-4xl font-bold text-foreground">{t.pulseFree}</span>
+              <span className="text-sm text-muted-foreground ml-1">{t.pulseForever}</span>
+            </div>
+            <Button className="w-full min-h-[44px] mb-6" onClick={() => navigate('/auth?mode=signup')}>
+              {t.pulseCTA}
+            </Button>
+            <ul className="space-y-3 flex-1">
+              {t.pulseFeatures.map((f: string) => (
+                <li key={f} className="flex items-start gap-2 text-sm text-foreground">
+                  <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                  <span>{f}</span>
+                </li>
+              ))}
+              {t.pulseLocked.map((f: string) => (
+                <li key={f} className="flex items-start gap-2 text-sm text-muted-foreground opacity-60">
+                  <Lock className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>{f}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* ── Pro (highlighted) ── */}
+          <div className="relative">
+            <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
+              <span className="bg-primary text-primary-foreground text-xs font-semibold px-4 py-1 rounded-full">
+                {t.proBadge}
+              </span>
+            </div>
+            <div className="bg-card rounded-2xl shadow-lg p-8 border-2 border-primary flex flex-col h-full">
+              <div className="min-h-[28px] mb-4" />
+              <div className="min-h-[72px] mb-4">
+                <h3 className="text-2xl font-bold tracking-tight text-foreground">Pro</h3>
+                <p className="text-sm text-muted-foreground mt-2">{t.proSubtitle}</p>
+              </div>
+              <div className="min-h-[100px] mb-6">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-bold text-foreground">R$ {pricing.total}</span>
+                  <span className="text-sm text-muted-foreground">{periodLabel}</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  {t.equivPerMonthLabel} <span className="font-semibold text-foreground">R$ {pricing.perMonth}</span>{t.perMonthShort}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">{t.proNote}</p>
+              </div>
+              <Button
+                className="w-full min-h-[44px] mb-6"
+                onClick={() => navigate(`/auth?mode=signup&plan=pro&cycle=${cycle}`)}
+              >
+                {t.proCTA}
+              </Button>
+              <ul className="space-y-3 flex-1">
+                {t.proFeatures.map((f: string) => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-foreground">
+                    <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* ── Enterprise ── */}
+          <div className="bg-card rounded-2xl shadow-md p-8 border flex flex-col hover:shadow-lg transition-shadow duration-300">
+            <div className="min-h-[28px] mb-4">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                <Building className="h-3 w-3" />
+                Enterprise
+              </div>
+            </div>
+            <div className="min-h-[72px] mb-4">
+              <h3 className="text-2xl font-bold tracking-tight text-foreground">Enterprise</h3>
+              <p className="text-sm text-muted-foreground mt-2">{t.enterpriseSubtitle}</p>
+            </div>
+            <div className="min-h-[100px] mb-6">
+              <div className="flex items-baseline gap-1">
+                <span className="text-3xl font-bold text-foreground">{t.enterprisePrice}</span>
+                <span className="text-sm text-muted-foreground">{t.enterprisePer}</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1.5">{t.enterpriseNote}</p>
+            </div>
+            <Button variant="outline" className="w-full min-h-[44px] mb-6" asChild>
+              <Link to="/enterprise">{t.enterpriseCTA}</Link>
+            </Button>
+            <ul className="space-y-3 flex-1">
+              {t.enterpriseFeatures.map((f: string) => (
+                <li key={f} className="flex items-start gap-2 text-sm text-foreground">
+                  <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                  <span>{f}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <p className="text-center text-sm text-muted-foreground mt-6">{t.launchDisclaimer}</p>
+      </div>
+    </section>
+  );
+};
 
 // ============== MAIN COMPONENT ==============
 
@@ -1151,187 +1341,9 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Pricing Section */}
+      {/* Pricing Section — Sem mensal. Trimestral / Semestral / Anual. */}
       <WaveDivider className="bg-background" />
-      <section id="pricing" className="py-28 bg-background">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header */}
-          <div className="text-center space-y-3 mb-16">
-            <p className="uppercase text-xs font-semibold tracking-widest text-primary">{lang === 'pt' ? 'Planos' : 'Plans'}</p>
-            <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
-              {t.pricingTitle}
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              {t.pricingSubtitle}
-            </p>
-          </div>
-
-          {/* Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-
-            {/* ── Pulse ── */}
-            <div className="bg-card rounded-2xl shadow-md p-8 border flex flex-col hover:shadow-lg transition-shadow duration-300">
-              {/* Slot: Badge placeholder */}
-              <div className="xl:min-h-[28px] mb-4">
-                {/* No badge for Pulse */}
-              </div>
-              {/* Slot: Title + Subtitle */}
-              <div className="xl:min-h-[72px] mb-4">
-                <h3 className="text-2xl font-bold tracking-tight text-foreground">Pulse</h3>
-                <p className="text-sm text-muted-foreground mt-2">
-                  {t.pulseSubtitle}
-                </p>
-              </div>
-              {/* Slot: Price */}
-              <div className="xl:min-h-[80px] mb-6">
-                <span className="text-4xl font-bold text-foreground">{t.pulseFree}</span>
-                <span className="text-sm text-muted-foreground ml-1">{t.pulseForever}</span>
-              </div>
-              {/* Slot: CTA */}
-              <Button className="w-full min-h-[44px] mb-6" onClick={() => navigate('/auth?mode=signup')}>
-                {t.pulseCTA}
-              </Button>
-              {/* Slot: Features */}
-              <ul className="space-y-3 flex-1">
-                {t.pulseFeatures.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-foreground">
-                    <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                    <span>{f}</span>
-                  </li>
-                ))}
-                {t.pulseLocked.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-muted-foreground opacity-50">
-                    <Lock className="h-4 w-4 mt-0.5 shrink-0" />
-                    <span>{f}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* ── Pro (destacado) ── */}
-            <div className="relative">
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-                <span className="bg-primary text-primary-foreground text-xs font-semibold px-4 py-1 rounded-full">
-                  {t.proBadge}
-                </span>
-              </div>
-              <div className="bg-card rounded-2xl shadow-lg p-8 border-2 border-primary flex flex-col h-full">
-                {/* Slot: Badge placeholder */}
-                <div className="xl:min-h-[28px] mb-4">
-                  {/* Badge is absolutely positioned above */}
-                </div>
-                {/* Slot: Title + Subtitle */}
-                <div className="xl:min-h-[72px] mb-4">
-                  <h3 className="text-2xl font-bold tracking-tight text-foreground">Pro</h3>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    {t.proSubtitle}
-                  </p>
-                </div>
-                {/* Slot: Price */}
-                <div className="xl:min-h-[80px] mb-6">
-                  <span className="bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400 rounded-full px-3 py-1 text-xs font-medium inline-block mb-2">{t.launchBadge}</span>
-                  <div>
-                    <span className="text-4xl font-bold text-foreground">R$49</span>
-                    <span className="text-sm text-muted-foreground ml-1">{t.proPerMonth}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">{t.proNote}</p>
-                </div>
-                {/* Slot: CTA */}
-                <Button className="w-full min-h-[44px] mb-6" onClick={() => navigate('/auth?mode=signup&plan=pro')}>
-                  {t.proCTA}
-                </Button>
-                {/* Slot: Features */}
-                <ul className="space-y-3 flex-1">
-                  {t.proFeatures.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm text-foreground">
-                      <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      <span>{f}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-
-            {/* ── Business ── */}
-            <div className="bg-card rounded-2xl shadow-md p-8 border flex flex-col hover:shadow-lg transition-shadow duration-300">
-              {/* Slot: Badge placeholder */}
-              <div className="xl:min-h-[28px] mb-4">
-                {/* No badge for Business */}
-              </div>
-              {/* Slot: Title + Subtitle */}
-              <div className="xl:min-h-[72px] mb-4">
-                <h3 className="text-2xl font-bold tracking-tight text-foreground">Business</h3>
-                <p className="text-sm text-muted-foreground mt-2">
-                  {t.businessSubtitle}
-                </p>
-              </div>
-              {/* Slot: Price */}
-              <div className="xl:min-h-[80px] mb-6">
-                <span className="bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400 rounded-full px-3 py-1 text-xs font-medium inline-block mb-2">{t.launchBadge}</span>
-                <div>
-                  <span className="text-4xl font-bold text-foreground">R$69</span>
-                  <span className="text-sm text-muted-foreground ml-1">{t.businessPerMonth}</span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">{t.businessNote}</p>
-              </div>
-              {/* Slot: CTA */}
-              <Button variant="outline" className="w-full min-h-[44px] mb-6" asChild>
-                <a href="mailto:matheus@rhitmo.co">{t.businessCTA}</a>
-              </Button>
-              {/* Slot: Features */}
-              <ul className="space-y-3 flex-1">
-                {t.businessFeatures.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-foreground">
-                    <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                    <span>{f}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* ── Enterprise ── */}
-            <div className="bg-card rounded-2xl shadow-md p-8 border flex flex-col hover:shadow-lg transition-shadow duration-300">
-              {/* Slot: Badge */}
-              <div className="xl:min-h-[28px] mb-4">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                  <Building className="h-3 w-3" />
-                  Enterprise
-                </div>
-              </div>
-              {/* Slot: Title + Subtitle */}
-              <div className="xl:min-h-[72px] mb-4">
-                <h3 className="text-2xl font-bold tracking-tight text-foreground">Enterprise</h3>
-                <p className="text-sm text-muted-foreground mt-2">
-                  {t.enterpriseSubtitle}
-                </p>
-              </div>
-              {/* Slot: Price */}
-              <div className="xl:min-h-[80px] mb-6">
-                <div>
-                  <span className="text-3xl font-bold text-foreground">{t.enterprisePrice}</span>
-                  <span className="text-sm text-muted-foreground ml-1">{t.enterprisePer}</span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">{t.enterpriseNote}</p>
-              </div>
-              {/* Slot: CTA */}
-              <Button variant="outline" className="w-full min-h-[44px] mb-6" asChild>
-                <Link to="/enterprise">{t.enterpriseCTA}</Link>
-              </Button>
-              {/* Slot: Features */}
-              <ul className="space-y-3 flex-1">
-                {t.enterpriseFeatures.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-foreground">
-                    <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                    <span>{f}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-          </div>
-          <p className="text-center text-sm text-muted-foreground mt-6">{t.launchDisclaimer}</p>
-        </div>
-      </section>
+      <PricingSection t={t} lang={lang} navigate={navigate} />
 
       {/* Footer */}
       <WaveDivider className="bg-muted/30" />

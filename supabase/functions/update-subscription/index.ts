@@ -6,10 +6,14 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const PRICE_IDS: Record<string, string> = {
-  pro: "price_1TCQeZIF4fHxJpjH7w0wOhaf",
-  business: "price_1TCQf0IF4fHxJpjH4Bx2aIbg",
+// Pro plan billing cycles (ver create-checkout-session/index.ts).
+const PRO_PRICE_IDS: Record<string, string> = {
+  quarterly: "price_1TNNnEIF4fHxJpjHA4cMp1tm",
+  semiannual: "price_1TNNnXIF4fHxJpjH6uHkOIIJ",
+  annual: "price_1TNNnlIF4fHxJpjHfVwPUqAb",
 };
+
+type BillingCycle = keyof typeof PRO_PRICE_IDS;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -40,20 +44,22 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { newPlan, quantity = 1 } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const newPlan: string = body.newPlan ?? "pro";
+    const billingCycle: BillingCycle = (body.billingCycle ?? body.cycle ?? "annual") as BillingCycle;
 
-    if (!newPlan || !PRICE_IDS[newPlan]) {
-      return new Response(JSON.stringify({ error: "Invalid plan" }), {
+    if (newPlan !== "pro") {
+      return new Response(JSON.stringify({ error: "Apenas o plano Pro pode ser alterado por aqui." }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (newPlan === "business" && quantity < 3) {
-      return new Response(
-        JSON.stringify({ error: "O plano Business requer no mínimo 3 líderes." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (!PRO_PRICE_IDS[billingCycle]) {
+      return new Response(JSON.stringify({ error: "Ciclo de faturamento inválido." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Get workspace
@@ -70,7 +76,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get current subscription from DB
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -93,7 +98,6 @@ Deno.serve(async (req) => {
     const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
     const stripeSubId = subscription.stripe_subscription_id;
 
-    // Fetch current subscription from Stripe to get item ID
     const subRes = await fetch(
       `https://api.stripe.com/v1/subscriptions/${stripeSubId}`,
       { headers: { Authorization: `Bearer ${STRIPE_SECRET_KEY}` } }
@@ -116,15 +120,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Update subscription in Stripe
     const updateParams = new URLSearchParams({
       [`items[0][id]`]: itemId,
-      [`items[0][price]`]: PRICE_IDS[newPlan],
-      [`items[0][quantity]`]: String(quantity),
+      [`items[0][price]`]: PRO_PRICE_IDS[billingCycle],
+      [`items[0][quantity]`]: "1",
       proration_behavior: "create_prorations",
     });
 
-    console.log("Updating subscription:", { stripeSubId, newPlan, quantity, itemId });
+    console.log("Updating subscription:", { stripeSubId, newPlan, billingCycle, itemId });
 
     const updateRes = await fetch(
       `https://api.stripe.com/v1/subscriptions/${stripeSubId}`,
@@ -149,9 +152,8 @@ Deno.serve(async (req) => {
 
     console.log("Subscription updated successfully:", updatedSub.id);
 
-    // Webhook will handle DB sync via customer.subscription.updated
     return new Response(
-      JSON.stringify({ success: true, plan: newPlan, quantity }),
+      JSON.stringify({ success: true, plan: newPlan, billingCycle }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {

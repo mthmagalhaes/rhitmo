@@ -6,10 +6,16 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const PRICE_IDS: Record<string, string> = {
-  pro: "price_1TCQeZIF4fHxJpjH7w0wOhaf",
-  business: "price_1TCQf0IF4fHxJpjH4Bx2aIbg",
+// Pro is the only paid plan now. Three billing cycles, no monthly.
+// Behavior change shipped 18/04/2026: Mensal removed in favor of cycles >= 90 dias
+// to align billing with the time required for real leadership behavior change.
+const PRO_PRICE_IDS: Record<string, string> = {
+  quarterly: "price_1TNNnEIF4fHxJpjHA4cMp1tm",   // R$ 267 / 3 meses
+  semiannual: "price_1TNNnXIF4fHxJpjH6uHkOIIJ",  // R$ 504 / 6 meses
+  annual: "price_1TNNnlIF4fHxJpjHfVwPUqAb",      // R$ 948 / ano
 };
+
+type BillingCycle = keyof typeof PRO_PRICE_IDS;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -43,20 +49,24 @@ Deno.serve(async (req) => {
     const userId = user.id;
     const userEmail = user.email!;
 
-    const { plan, quantity = 1 } = await req.json();
+    // Accept { plan: 'pro', billingCycle: 'quarterly'|'semiannual'|'annual' }.
+    // For backwards compatibility, default to 'annual' if not specified.
+    const body = await req.json().catch(() => ({}));
+    const plan: string = body.plan ?? "pro";
+    const billingCycle: BillingCycle = (body.billingCycle ?? body.cycle ?? "annual") as BillingCycle;
 
-    if (!plan || !PRICE_IDS[plan]) {
-      return new Response(JSON.stringify({ error: "Invalid plan" }), {
+    if (plan !== "pro") {
+      return new Response(
+        JSON.stringify({ error: "Apenas o plano Pro está disponível para auto-checkout. Para Enterprise, fale com vendas." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!PRO_PRICE_IDS[billingCycle]) {
+      return new Response(JSON.stringify({ error: "Ciclo de faturamento inválido. Use quarterly, semiannual ou annual." }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-    }
-
-    if (plan === "business" && quantity < 3) {
-      return new Response(
-        JSON.stringify({ error: "O plano Business requer no mínimo 3 líderes." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
     }
 
     // Get workspace
@@ -88,7 +98,6 @@ Deno.serve(async (req) => {
     if (searchData.data?.length > 0) {
       customerId = searchData.data[0].id;
     } else {
-      // Create customer
       const createRes = await fetch("https://api.stripe.com/v1/customers", {
         method: "POST",
         headers: {
@@ -105,24 +114,24 @@ Deno.serve(async (req) => {
       customerId = createData.id;
     }
 
-    console.log("Creating checkout session:", { plan, quantity, customerId, workspaceId: workspace.id });
+    console.log("Creating checkout session:", { plan, billingCycle, customerId, workspaceId: workspace.id });
 
-    // Create Checkout Session — metered prices don't accept quantity in line_items
     const params = new URLSearchParams({
       mode: "subscription",
       customer: customerId,
-      "line_items[0][price]": PRICE_IDS[plan],
-      "line_items[0][quantity]": String(quantity),
+      "line_items[0][price]": PRO_PRICE_IDS[billingCycle],
+      "line_items[0][quantity]": "1",
       allow_promotion_codes: "true",
       success_url: "https://rhitmo.co/billing?success=true",
       cancel_url: "https://rhitmo.co/billing",
       "metadata[workspace_id]": workspace.id,
-      "metadata[quantity]": String(quantity),
+      "metadata[billing_cycle]": billingCycle,
       "subscription_data[metadata][workspace_id]": workspace.id,
-      "subscription_data[metadata][quantity]": String(quantity),
+      "subscription_data[metadata][billing_cycle]": billingCycle,
     });
 
-    if (plan === "pro") {
+    // 14-day trial only for the entry tier (quarterly).
+    if (billingCycle === "quarterly") {
       params.set("subscription_data[trial_period_days]", "14");
     }
 
