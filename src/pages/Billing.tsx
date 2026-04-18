@@ -8,7 +8,8 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Input } from '@/components/ui/input';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,78 +21,64 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogClose,
-} from '@/components/ui/dialog';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Check, Lock, CreditCard, Loader2, AlertTriangle, Download, RotateCcw, Users, Minus, Plus, Crown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Check, Lock, CreditCard, Loader2, AlertTriangle, Download, RotateCcw, Crown, Info, Building } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
-const PLANS = {
+// ============================================================================
+// PRICING (atualizado em 18/04/2026)
+// Removido: plano mensal e plano Business. Pro agora oferece 3 ciclos de
+// faturamento (Trimestral / Semestral / Anual) com liderados ilimitados.
+// Workspaces legados em "business" são apresentados como Pro automaticamente.
+// ============================================================================
+
+type BillingCycle = 'quarterly' | 'semiannual' | 'annual';
+type PlanKey = 'pulse' | 'pro' | 'business';
+
+const CYCLE_PRICING: Record<BillingCycle, { total: number; perMonth: number; periodLabel: string }> = {
+  quarterly: { total: 267, perMonth: 89, periodLabel: '/trimestre' },
+  semiannual: { total: 504, perMonth: 84, periodLabel: '/semestre' },
+  annual: { total: 948, perMonth: 79, periodLabel: '/ano' },
+};
+
+const STRIPE_PRICE_TO_CYCLE: Record<string, BillingCycle> = {
+  price_1TNNnEIF4fHxJpjHA4cMp1tm: 'quarterly',
+  price_1TNNnXIF4fHxJpjH6uHkOIIJ: 'semiannual',
+  price_1TNNnlIF4fHxJpjHfVwPUqAb: 'annual',
+};
+
+const PLAN_FEATURES = {
   pulse: {
     name: 'Pulse',
-    price: 'Grátis',
-    priceDetail: 'para sempre',
     features: [
-      'Até 2 liderados',
-      '20 mensagens de Mentor Chat por mês',
+      'Acesso ao Meu Rhitmo (portal do liderado)',
+      '1 avaliação com IA por mês',
+      'Upload manual de áudio',
+      'Mentor Chat limitado (20 mensagens/mês)',
       'Notas e anotações ilimitadas',
-      '1 avaliação formal por mês',
-      '1 time',
     ],
     lockedFeatures: [
-      'Meu Rhitmo para liderados',
-      'Gravação com bot de transcrição',
-      'Gravação manual de reuniões',
-      'Analytics completo',
+      'Bot de transcrição automática (Recall.ai)',
+      'Pre-meeting Briefs',
+      'Detecção de viés em tempo real',
+      'Avaliações com IA ilimitadas',
     ],
   },
   pro: {
     name: 'Pro',
-    price: 'R$49',
-    priceDetail: '/mês por líder',
     features: [
-      'Até 5 liderados',
+      'Liderados ilimitados',
+      '15 horas/mês de bot de transcrição (Recall.ai)',
+      'Avaliações com IA ilimitadas',
+      'Pre-meeting Briefs com contexto histórico',
+      'Detecção de viés em tempo real',
       'Mentor Chat ilimitado',
-      'Notas e anotações ilimitadas',
-      'Avaliações formais ilimitadas',
-      'Meu Rhitmo para seus liderados',
-      'Até 20 reuniões com bot de transcrição/mês',
-      'Gravação manual (até 12h/mês)',
+      'Acesso ao Meu Rhitmo para todo o time',
       'Analytics completo',
-      'Até 3 times',
-    ],
-    lockedFeatures: [],
-  },
-  business: {
-    name: 'Business',
-    price: 'R$69',
-    priceDetail: '/mês por líder',
-    features: [
-      'Até 8 liderados por líder',
-      'Tudo do plano Pro',
       'Times ilimitados',
-      'Até 40 reuniões com bot de transcrição/mês',
-      'Gravação manual (até 30h/mês)',
-      'HR Dashboard com métricas agregadas',
-      'Onboarding assistido',
-      'Suporte prioritário',
     ],
-    lockedFeatures: [],
   },
 };
-
-type PlanKey = 'pulse' | 'pro' | 'business';
-
-const LAUNCH_PRICE_IDS = [
-  'price_1TC52fIF4fHxJpjHPaJXH14r', // Pro launch
-  'price_1TCPcjIF4fHxJpjHWtZucdwy', // Business launch
-];
 
 interface Invoice {
   id: string;
@@ -107,26 +94,15 @@ interface Invoice {
 
 function formatDatePtBR(dateStr: string | null) {
   if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleDateString('pt-BR', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
+  return new Date(dateStr).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function formatTimestamp(ts: number) {
-  return new Date(ts * 1000).toLocaleDateString('pt-BR', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
+  return new Date(ts * 1000).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function formatCentsBRL(cents: number) {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(cents / 100);
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cents / 100);
 }
 
 // --- Sub-components ---
@@ -176,33 +152,21 @@ function InvoicesSection({ invoices, isLoading }: { invoices: Invoice[]; isLoadi
       <h2 className="text-xl font-semibold tracking-tight">Faturas</h2>
       {isLoading ? (
         <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-14 rounded-xl" />
-          ))}
+          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-14 rounded-xl" />)}
         </div>
       ) : invoices.length === 0 ? (
         <p className="text-base text-muted-foreground">Nenhuma fatura ainda.</p>
       ) : (
         <div className="space-y-2">
           {invoices.map((inv) => (
-            <div
-              key={inv.id}
-              className="flex items-center justify-between gap-4 rounded-xl border p-4 text-sm hover:bg-muted/50 transition-colors"
-            >
+            <div key={inv.id} className="flex items-center justify-between gap-4 rounded-xl border p-4 text-sm hover:bg-muted/50 transition-colors">
               <div className="flex items-center gap-4 min-w-0">
-                <span className="text-muted-foreground shrink-0">
-                  {formatTimestamp(inv.created)}
-                </span>
+                <span className="text-muted-foreground shrink-0">{formatTimestamp(inv.created)}</span>
                 <span className="font-medium text-base">{formatCentsBRL(inv.amount)}</span>
                 <InvoiceStatusBadge status={inv.status} />
               </div>
               {inv.invoice_pdf && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 shrink-0 rounded-xl"
-                  asChild
-                >
+                <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 rounded-xl" asChild>
                   <a href={inv.invoice_pdf} target="_blank" rel="noopener noreferrer">
                     <Download className="h-4 w-4" />
                   </a>
@@ -216,105 +180,9 @@ function InvoicesSection({ invoices, isLoading }: { invoices: Invoice[]; isLoadi
   );
 }
 
-// --- Business Quantity Dialog ---
-
-function BusinessQuantityDialog({
-  open,
-  onOpenChange,
-  onConfirm,
-  loading,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onConfirm: (quantity: number) => void;
-  loading: boolean;
-}) {
-  const [quantity, setQuantity] = useState(3);
-
-  const total = quantity * 69;
-  const isValid = quantity >= 3;
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="rounded-3xl max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-bold tracking-tight">Upgrade para Business</DialogTitle>
-          <DialogDescription className="text-base text-muted-foreground">
-            Quantos líderes vão usar o Rhitmo?
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-6 py-2">
-          <div className="flex items-center justify-center gap-4">
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-11 w-11 rounded-xl"
-              onClick={() => setQuantity(Math.max(3, quantity - 1))}
-              disabled={quantity <= 3}
-            >
-              <Minus className="h-4 w-4" />
-            </Button>
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                min={3}
-                max={50}
-                value={quantity}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value);
-                  if (!isNaN(val)) setQuantity(Math.max(1, Math.min(50, val)));
-                }}
-                className="w-20 text-center text-2xl font-bold rounded-xl h-14 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              />
-              <Users className="h-5 w-5 text-muted-foreground" />
-            </div>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-11 w-11 rounded-xl"
-              onClick={() => setQuantity(Math.min(50, quantity + 1))}
-              disabled={quantity >= 50}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {!isValid && (
-            <p className="text-sm text-destructive text-center">Mínimo de 3 líderes para o plano Business.</p>
-          )}
-
-          <div className="rounded-2xl bg-muted/50 p-5 text-center space-y-1">
-            <p className="text-sm text-muted-foreground">
-              {quantity} {quantity === 1 ? 'líder' : 'líderes'} × R$69
-            </p>
-            <p className="text-3xl font-bold tracking-tight">
-              R${total}<span className="text-base font-normal text-muted-foreground">/mês</span>
-            </p>
-          </div>
-        </div>
-
-        <DialogFooter className="gap-2 sm:gap-0">
-          <DialogClose asChild>
-            <Button variant="outline" className="rounded-xl h-11">
-              Cancelar
-            </Button>
-          </DialogClose>
-          <Button
-            className="rounded-xl h-11"
-            onClick={() => onConfirm(quantity)}
-            disabled={!isValid || loading}
-          >
-            {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-            Continuar para pagamento
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// --- Main Component ---
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
 
 const Billing = () => {
   const { user, loading } = useAuth();
@@ -322,24 +190,20 @@ const Billing = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [upgradeLoading, setUpgradeLoading] = useState<string | null>(null);
+  const [upgradeLoading, setUpgradeLoading] = useState<BillingCycle | null>(null);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [reactivateLoading, setReactivateLoading] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
-  const [businessDialogOpen, setBusinessDialogOpen] = useState(false);
-  const [planChangeLoading, setPlanChangeLoading] = useState(false);
-  const [downgradeDialogOpen, setDowngradeDialogOpen] = useState(false);
+  const [planChangeLoading, setPlanChangeLoading] = useState<BillingCycle | null>(null);
+  const [selectedCycle, setSelectedCycle] = useState<BillingCycle>('annual');
 
   useEffect(() => {
-    if (!user && !loading) {
-      navigate('/auth', { replace: true });
-    }
+    if (!user && !loading) navigate('/auth', { replace: true });
   }, [user, loading, navigate]);
 
-  // URL param toasts
   useEffect(() => {
     if (searchParams.get('success') === 'true') {
-      toast({ title: 'Assinatura ativada! 🎉', description: 'Bem-vindo ao seu novo plano Rhitmo!' });
+      toast({ title: 'Assinatura ativada! 🎉', description: 'Bem-vindo ao Rhitmo Pro!' });
       setSearchParams({}, { replace: true });
     }
     if (searchParams.get('payment_updated') === 'true') {
@@ -383,17 +247,20 @@ const Billing = () => {
     enabled: !!subscription,
   });
 
-  const currentPlan: PlanKey = subscription ? (subscription.plan_tier as PlanKey) : 'pulse';
+  // Tier semântico do workspace. 'business' (legado) é tratado como 'pro'.
+  const rawTier: PlanKey = subscription ? (subscription.plan_tier as PlanKey) : 'pulse';
+  const currentPlan: 'pulse' | 'pro' = rawTier === 'pulse' ? 'pulse' : 'pro';
   const isCancelScheduled = !!(subscription as any)?.cancel_at_period_end;
+  const currentCycle: BillingCycle | null = subscription?.stripe_price_id
+    ? STRIPE_PRICE_TO_CYCLE[subscription.stripe_price_id] ?? null
+    : null;
 
-  const handleUpgrade = async (plan: string, quantity: number = 1) => {
-    if (plan === 'business' && quantity < 3) {
-      toast({ title: 'Mínimo de 3 líderes', description: 'O plano Business requer no mínimo 3 líderes.', variant: 'destructive' });
-      return;
-    }
-    setUpgradeLoading(plan);
+  const handleUpgrade = async (billingCycle: BillingCycle) => {
+    setUpgradeLoading(billingCycle);
     try {
-      const { data, error } = await supabase.functions.invoke('create-checkout-session', { body: { plan, quantity } });
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        body: { plan: 'pro', billingCycle },
+      });
       if (error) throw error;
       if (data?.url) { window.location.href = data.url; return; }
       throw new Error('No checkout URL returned');
@@ -445,34 +312,28 @@ const Billing = () => {
     } catch {
       toast({ title: 'Erro ao reativar', description: 'Tente novamente.', variant: 'destructive' });
     } finally {
-    setReactivateLoading(false);
+      setReactivateLoading(false);
     }
   };
 
-  const handlePlanChange = async (newPlan: 'pro' | 'business', quantity: number = 1) => {
-    setPlanChangeLoading(true);
+  const handleChangeCycle = async (newCycle: BillingCycle) => {
+    setPlanChangeLoading(newCycle);
     try {
       const { data, error } = await supabase.functions.invoke('update-subscription', {
-        body: { newPlan, quantity },
+        body: { newPlan: 'pro', billingCycle: newCycle },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       toast({
-        title: newPlan === 'business' ? 'Upgrade realizado! 🎉' : 'Downgrade realizado',
-        description: newPlan === 'business'
-          ? 'Seu plano Business está ativo. Mudanças aplicadas imediatamente.'
-          : 'Seu plano foi alterado para Pro. Créditos proporcionais serão aplicados.',
+        title: 'Ciclo atualizado!',
+        description: 'Mudança aplicada com proratação automática.',
       });
       queryClient.invalidateQueries({ queryKey: ['subscription'] });
       queryClient.invalidateQueries({ queryKey: ['workspace-billing'] });
     } catch (err: any) {
-      toast({
-        title: 'Erro ao alterar plano',
-        description: err?.message || 'Tente novamente ou entre em contato: support@rhitmo.co',
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro ao alterar ciclo', description: err?.message || 'Tente novamente.', variant: 'destructive' });
     } finally {
-      setPlanChangeLoading(false);
+      setPlanChangeLoading(null);
     }
   };
 
@@ -484,17 +345,13 @@ const Billing = () => {
     );
   }
 
-  // Active subscription (Pro or Business)
-  if (currentPlan === 'pro' || currentPlan === 'business') {
-    const plan = PLANS[currentPlan];
-
+  // ===== ASSINATURA ATIVA (Pro) =====
+  if (currentPlan === 'pro') {
     const statusLabel = isCancelScheduled
       ? 'Cancelamento agendado'
-      : subscription?.status === 'trialing'
-        ? 'Trial'
-        : subscription?.status === 'past_due'
-          ? 'Pendente'
-          : 'Ativo';
+      : subscription?.status === 'trialing' ? 'Trial'
+      : subscription?.status === 'past_due' ? 'Pendente'
+      : 'Ativo';
 
     const statusClass = isCancelScheduled
       ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400 border-0'
@@ -504,11 +361,14 @@ const Billing = () => {
           ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400 border-0'
           : 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 border-0';
 
+    const cyclePricing = currentCycle ? CYCLE_PRICING[currentCycle] : null;
+    const cycleNameMap: Record<BillingCycle, string> = { quarterly: 'Trimestral', semiannual: 'Semestral', annual: 'Anual' };
+
     return (
       <div className="px-4 sm:px-6 lg:px-10 py-8 md:py-10 max-w-4xl mx-auto space-y-8 pb-20">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Seu plano</h1>
-          <p className="text-base text-muted-foreground mt-2">Gerencie sua assinatura Rhitmo.</p>
+          <p className="text-base text-muted-foreground mt-2">Gerencie sua assinatura Rhitmo Pro.</p>
         </div>
 
         {workspace?.is_beta_user && (
@@ -518,7 +378,7 @@ const Billing = () => {
               ⭐ Early Adopter — Acesso Vitalício
             </AlertTitle>
             <AlertDescription className="text-purple-800 dark:text-purple-300">
-              Obrigado por acreditar na Rhitmo desde o início! Seu acesso é ilimitado e gratuito para sempre como agradecimento por nos ajudar a construir o produto. 🎉
+              Obrigado por acreditar na Rhitmo desde o início! Seu acesso é ilimitado e gratuito para sempre. 🎉
             </AlertDescription>
           </Alert>
         )}
@@ -526,17 +386,15 @@ const Billing = () => {
         {subscription?.status === 'trialing' && subscription.trial_ends_at && (
           <TrialBanner trialEndsAt={subscription.trial_ends_at} onUpdateCard={handleUpdatePayment} />
         )}
-        {subscription?.status === 'past_due' && (
-          <PastDueBanner onUpdateCard={handleUpdatePayment} />
-        )}
+        {subscription?.status === 'past_due' && <PastDueBanner onUpdateCard={handleUpdatePayment} />}
 
         <Card className="rounded-3xl shadow-lg border">
           <CardHeader className="p-8 pb-0 flex flex-row items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3 flex-wrap">
-              <CardTitle className="text-2xl font-bold tracking-tight">{plan.name}</CardTitle>
-              {subscription?.stripe_price_id && LAUNCH_PRICE_IDS.includes(subscription.stripe_price_id) && (
-                <span className="bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400 rounded-full px-3 py-1 text-xs font-medium">
-                  Preço de Lançamento
+              <CardTitle className="text-2xl font-bold tracking-tight">Pro</CardTitle>
+              {currentCycle && (
+                <span className="bg-primary/10 text-primary rounded-full px-3 py-1 text-xs font-medium">
+                  {cycleNameMap[currentCycle]}
                 </span>
               )}
             </div>
@@ -548,18 +406,19 @@ const Billing = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-sm">
               <div className="space-y-1">
                 <p className="text-muted-foreground">Valor</p>
-                <p className="text-xl font-bold">{plan.price}<span className="text-muted-foreground font-normal text-sm ml-1">{plan.priceDetail}</span></p>
+                {cyclePricing ? (
+                  <>
+                    <p className="text-xl font-bold">R$ {cyclePricing.total}<span className="text-muted-foreground font-normal text-sm ml-1">{cyclePricing.periodLabel}</span></p>
+                    <p className="text-xs text-muted-foreground">Equivale a R$ {cyclePricing.perMonth}/mês</p>
+                  </>
+                ) : (
+                  <p className="text-xl font-bold">—</p>
+                )}
               </div>
               <div className="space-y-1">
                 <p className="text-muted-foreground">Próxima cobrança</p>
                 <p className="text-xl font-bold">{formatDatePtBR(subscription?.current_period_end ?? null)}</p>
               </div>
-              {(subscription?.quantity ?? 0) > 1 && (
-                <div className="space-y-1">
-                  <p className="text-muted-foreground">Seats</p>
-                  <p className="text-xl font-bold">{subscription?.quantity}</p>
-                </div>
-              )}
             </div>
 
             {isCancelScheduled && (
@@ -573,30 +432,60 @@ const Billing = () => {
                 {paymentLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CreditCard className="h-4 w-4 mr-2" />}
                 Trocar cartão
               </Button>
-              {isCancelScheduled ? (
+              {isCancelScheduled && (
                 <Button className="rounded-xl h-11" onClick={handleReactivate} disabled={reactivateLoading}>
                   {reactivateLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RotateCcw className="h-4 w-4 mr-2" />}
                   Reativar assinatura
                 </Button>
-              ) : currentPlan === 'pro' ? (
-                <Button className="rounded-xl h-11" onClick={() => setBusinessDialogOpen(true)} disabled={planChangeLoading}>
-                  {planChangeLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowUp className="h-4 w-4 mr-2" />}
-                  Fazer upgrade para Business
-                </Button>
-              ) : currentPlan === 'business' ? (
-                <Button variant="outline" className="rounded-xl h-11" onClick={() => setDowngradeDialogOpen(true)} disabled={planChangeLoading}>
-                  {planChangeLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowDown className="h-4 w-4 mr-2" />}
-                  Fazer downgrade para Pro
-                </Button>
-              ) : null}
+              )}
             </div>
           </CardContent>
         </Card>
 
+        {/* Cycle switcher */}
+        {!isCancelScheduled && (
+          <Card className="rounded-3xl border shadow-sm">
+            <CardHeader className="p-8 pb-3">
+              <CardTitle className="text-lg font-semibold tracking-tight">Trocar ciclo de faturamento</CardTitle>
+              <p className="text-sm text-muted-foreground">Cobrança recorrente. Mudanças aplicam proratação automática.</p>
+            </CardHeader>
+            <CardContent className="p-8 pt-2 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {(['quarterly', 'semiannual', 'annual'] as BillingCycle[]).map((c) => {
+                  const p = CYCLE_PRICING[c];
+                  const isCurrent = c === currentCycle;
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => !isCurrent && handleChangeCycle(c)}
+                      disabled={isCurrent || planChangeLoading !== null}
+                      className={`text-left rounded-2xl border p-4 transition-all ${isCurrent ? 'border-primary bg-primary/5 cursor-default' : 'hover:border-primary/50 hover:bg-muted/30'} ${planChangeLoading && !isCurrent ? 'opacity-50' : ''}`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-semibold">{cycleNameMap[c]}</span>
+                        {c === 'annual' && (
+                          <span className="bg-primary/15 text-primary text-[10px] font-semibold rounded-full px-2 py-0.5">
+                            Melhor valor
+                          </span>
+                        )}
+                        {isCurrent && <Check className="h-4 w-4 text-primary" />}
+                      </div>
+                      <p className="text-xl font-bold">R$ {p.total}<span className="text-xs font-normal text-muted-foreground ml-1">{p.periodLabel}</span></p>
+                      <p className="text-xs text-muted-foreground mt-1">≈ R$ {p.perMonth}/mês</p>
+                      {planChangeLoading === c && <Loader2 className="h-3 w-3 animate-spin mt-2" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="space-y-5">
           <h2 className="text-xl font-semibold tracking-tight">O que está incluso no seu plano</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {plan.features.map((f) => (
+            {PLAN_FEATURES.pro.features.map((f) => (
               <div key={f} className="flex items-center gap-2.5 text-base">
                 <Check className="h-5 w-5 text-primary shrink-0" />
                 <span>{f}</span>
@@ -610,26 +499,18 @@ const Billing = () => {
         {!isCancelScheduled && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <button className="text-sm text-muted-foreground hover:underline">
-                Cancelar assinatura
-              </button>
+              <button className="text-sm text-muted-foreground hover:underline">Cancelar assinatura</button>
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-3xl">
               <AlertDialogHeader>
                 <AlertDialogTitle>Cancelar assinatura?</AlertDialogTitle>
                 <AlertDialogDescription className="text-base">
-                  Seu plano {plan.name} continuará ativo até{' '}
-                  {formatDatePtBR(subscription?.current_period_end ?? null)}.
-                  Após essa data, você voltará automaticamente para o Pulse.
+                  Seu plano Pro continuará ativo até {formatDatePtBR(subscription?.current_period_end ?? null)}. Após essa data, você voltará automaticamente para o Pulse.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel className="rounded-xl h-11">Manter assinatura</AlertDialogCancel>
-                <AlertDialogAction
-                  className="rounded-xl h-11 bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  onClick={handleCancel}
-                  disabled={cancelLoading}
-                >
+                <AlertDialogAction className="rounded-xl h-11 bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleCancel} disabled={cancelLoading}>
                   {cancelLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                   Confirmar cancelamento
                 </AlertDialogAction>
@@ -637,64 +518,19 @@ const Billing = () => {
             </AlertDialogContent>
           </AlertDialog>
         )}
-
-        <BusinessQuantityDialog
-          open={businessDialogOpen}
-          onOpenChange={setBusinessDialogOpen}
-          onConfirm={(qty) => {
-            setBusinessDialogOpen(false);
-            if (subscription) {
-              handlePlanChange('business', qty);
-            } else {
-              handleUpgrade('business', qty);
-            }
-          }}
-          loading={planChangeLoading || upgradeLoading === 'business'}
-        />
-
-        <AlertDialog open={downgradeDialogOpen} onOpenChange={setDowngradeDialogOpen}>
-          <AlertDialogContent className="rounded-3xl">
-            <AlertDialogHeader>
-              <AlertDialogTitle>Fazer downgrade para Pro?</AlertDialogTitle>
-              <AlertDialogDescription className="text-base space-y-3">
-                <span className="block">Ao mudar para o plano Pro, você perderá acesso a:</span>
-                <ul className="list-disc pl-5 space-y-1 text-sm">
-                  <li>HR Dashboard com métricas agregadas</li>
-                  <li>Mais de 5 liderados por líder</li>
-                  <li>Times ilimitados (limite de 3 no Pro)</li>
-                  <li>Gravação acima de 12h/mês</li>
-                  <li>Onboarding assistido e suporte prioritário</li>
-                </ul>
-                <span className="block">Créditos proporcionais serão aplicados automaticamente.</span>
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel className="rounded-xl h-11">Manter Business</AlertDialogCancel>
-              <AlertDialogAction
-                className="rounded-xl h-11"
-                onClick={() => {
-                  setDowngradeDialogOpen(false);
-                  handlePlanChange('pro', 1);
-                }}
-                disabled={planChangeLoading}
-              >
-                {planChangeLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                Confirmar downgrade
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </div>
     );
   }
 
-  // Pulse (free) — upgrade grid
+  // ===== PULSE (free) → grade de upgrade =====
+  const cyclePricing = CYCLE_PRICING[selectedCycle];
+
   return (
     <div className="px-4 sm:px-6 lg:px-10 py-8 md:py-10 max-w-6xl mx-auto space-y-8 pb-20">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Seu plano</h1>
         <p className="text-base text-muted-foreground mt-2">
-          Você está no plano Pulse (gratuito). Faça upgrade para desbloquear mais recursos.
+          Você está no plano Pulse (gratuito). Faça upgrade para desbloquear todos os recursos do Rhitmo.
         </p>
       </div>
 
@@ -705,105 +541,137 @@ const Billing = () => {
             ⭐ Early Adopter — Acesso Vitalício
           </AlertTitle>
           <AlertDescription className="text-purple-800 dark:text-purple-300">
-            Obrigado por acreditar na Rhitmo desde o início! Seu acesso é ilimitado e gratuito para sempre como agradecimento por nos ajudar a construir o produto. 🎉
+            Obrigado por acreditar na Rhitmo desde o início! Seu acesso é ilimitado e gratuito para sempre. 🎉
           </AlertDescription>
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {(Object.entries(PLANS) as [PlanKey, typeof PLANS.pulse][]).map(([key, plan]) => {
-          const isCurrent = key === currentPlan;
-          const isPro = key === 'pro';
-          const isBusiness = key === 'business';
-
-          return (
-            <Card
-              key={key}
-              className={`rounded-3xl shadow-lg border transition-all duration-300 hover:-translate-y-1 ${
-                isPro ? 'border-2 border-primary/50 ring-2 ring-primary/10 md:-translate-y-2 hover:md:-translate-y-3' : ''
-              }`}
-            >
-              <CardHeader className="p-8 pb-4 space-y-3">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <CardTitle className="text-2xl font-bold tracking-tight">{plan.name}</CardTitle>
-                  <div className="flex items-center gap-2">
-                    {(isPro || isBusiness) && (
-                      <span className="bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400 rounded-full px-3 py-1 text-xs font-medium">
-                        Lançamento
-                      </span>
-                    )}
-                    {isPro && (
-                      <span className="bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400 rounded-full px-3 py-1 text-xs font-medium">
-                        Recomendado
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="pt-1">
-                  <span className="text-5xl font-bold tracking-tight">{plan.price}</span>
-                  <span className="text-base text-muted-foreground ml-1">{plan.priceDetail}</span>
-                </div>
-                {isBusiness && (
-                  <p className="text-sm text-muted-foreground">Mínimo 3 líderes · R$207/mês</p>
-                )}
-              </CardHeader>
-              <CardContent className="p-8 pt-0 space-y-5">
-                <div className="space-y-3">
-                  {plan.features.map((f) => (
-                    <div key={f} className="flex items-center gap-2.5 text-base">
-                      <Check className="h-5 w-5 text-primary shrink-0" />
-                      <span>{f}</span>
-                    </div>
-                  ))}
-                  {plan.lockedFeatures.map((f) => (
-                    <div key={f} className="flex items-center gap-2.5 text-base text-muted-foreground">
-                      <Lock className="h-5 w-5 shrink-0" />
-                      <span>{f}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {isCurrent && (
-                  <Badge variant="outline" className="w-full justify-center py-2.5 rounded-xl text-sm">
-                    Plano atual
-                  </Badge>
-                )}
-                {isPro && (
-                  <Button
-                    onClick={() => handleUpgrade('pro')}
-                    className="w-full rounded-xl h-11 text-base"
-                    disabled={upgradeLoading === 'pro'}
-                  >
-                    {upgradeLoading === 'pro' && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                    Fazer upgrade para Pro
-                  </Button>
-                )}
-                {isBusiness && (
-                  <Button
-                    variant="outline"
-                    className="w-full rounded-xl h-11 text-base"
-                    onClick={() => setBusinessDialogOpen(true)}
-                    disabled={upgradeLoading === 'business'}
-                  >
-                    {upgradeLoading === 'business' && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                    Fazer upgrade para Business
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+      {/* Cycle selector + tooltip */}
+      <div className="flex flex-col items-center gap-3">
+        <Tabs value={selectedCycle} onValueChange={(v) => setSelectedCycle(v as BillingCycle)}>
+          <TabsList className="h-11 rounded-full p-1 bg-muted">
+            <TabsTrigger value="quarterly" className="rounded-full px-5 h-9 data-[state=active]:bg-background">Trimestral</TabsTrigger>
+            <TabsTrigger value="semiannual" className="rounded-full px-5 h-9 data-[state=active]:bg-background">Semestral</TabsTrigger>
+            <TabsTrigger value="annual" className="rounded-full px-5 h-9 data-[state=active]:bg-background gap-2">
+              Anual
+              <span className="bg-primary/15 text-primary text-[10px] font-semibold rounded-full px-2 py-0.5">Melhor valor</span>
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <TooltipProvider delayDuration={150}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button type="button" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                <Info className="h-3.5 w-3.5" />
+                Por que sem plano mensal?
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-sm text-sm leading-relaxed">
+              A ciência comportamental mostra que cultura de feedback só se firma após 90 dias de prática consistente. Cobramos pelo ciclo de valor — não pelo mês.
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
-      <BusinessQuantityDialog
-        open={businessDialogOpen}
-        onOpenChange={setBusinessDialogOpen}
-        onConfirm={(qty) => {
-          setBusinessDialogOpen(false);
-          handleUpgrade('business', qty);
-        }}
-        loading={upgradeLoading === 'business'}
-      />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Pulse */}
+        <Card className="rounded-3xl shadow-lg border transition-all duration-300 hover:-translate-y-1">
+          <CardHeader className="p-8 pb-4 space-y-3">
+            <CardTitle className="text-2xl font-bold tracking-tight">Pulse</CardTitle>
+            <div className="pt-1">
+              <span className="text-5xl font-bold tracking-tight">Grátis</span>
+              <span className="text-base text-muted-foreground ml-1">para sempre</span>
+            </div>
+          </CardHeader>
+          <CardContent className="p-8 pt-0 space-y-5">
+            <div className="space-y-3">
+              {PLAN_FEATURES.pulse.features.map((f) => (
+                <div key={f} className="flex items-center gap-2.5 text-base">
+                  <Check className="h-5 w-5 text-primary shrink-0" />
+                  <span>{f}</span>
+                </div>
+              ))}
+              {PLAN_FEATURES.pulse.lockedFeatures.map((f) => (
+                <div key={f} className="flex items-center gap-2.5 text-base text-muted-foreground">
+                  <Lock className="h-5 w-5 shrink-0" />
+                  <span>{f}</span>
+                </div>
+              ))}
+            </div>
+            <Badge variant="outline" className="w-full justify-center py-2.5 rounded-xl text-sm">
+              Plano atual
+            </Badge>
+          </CardContent>
+        </Card>
+
+        {/* Pro (highlighted) */}
+        <Card className="rounded-3xl shadow-lg border-2 border-primary/50 ring-2 ring-primary/10 transition-all duration-300 md:-translate-y-2 hover:md:-translate-y-3">
+          <CardHeader className="p-8 pb-4 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <CardTitle className="text-2xl font-bold tracking-tight">Pro</CardTitle>
+              <span className="bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400 rounded-full px-3 py-1 text-xs font-medium">
+                Recomendado
+              </span>
+            </div>
+            <div className="pt-1">
+              <div className="flex items-baseline gap-1">
+                <span className="text-5xl font-bold tracking-tight">R$ {cyclePricing.total}</span>
+                <span className="text-base text-muted-foreground">{cyclePricing.periodLabel}</span>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Equivale a <span className="font-semibold text-foreground">R$ {cyclePricing.perMonth}/mês</span>
+              </p>
+            </div>
+          </CardHeader>
+          <CardContent className="p-8 pt-0 space-y-5">
+            <div className="space-y-3">
+              {PLAN_FEATURES.pro.features.map((f) => (
+                <div key={f} className="flex items-center gap-2.5 text-base">
+                  <Check className="h-5 w-5 text-primary shrink-0" />
+                  <span>{f}</span>
+                </div>
+              ))}
+            </div>
+            <Button
+              onClick={() => handleUpgrade(selectedCycle)}
+              className="w-full rounded-xl h-11 text-base"
+              disabled={upgradeLoading !== null}
+            >
+              {upgradeLoading === selectedCycle && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Fazer upgrade para Pro
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Enterprise */}
+        <Card className="rounded-3xl shadow-lg border transition-all duration-300 hover:-translate-y-1">
+          <CardHeader className="p-8 pb-4 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <CardTitle className="text-2xl font-bold tracking-tight">Enterprise</CardTitle>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                <Building className="h-3 w-3" />
+                Corporate
+              </span>
+            </div>
+            <div className="pt-1">
+              <span className="text-3xl font-bold tracking-tight">Sob consulta</span>
+              <p className="text-sm text-muted-foreground mt-1">Cobrança exclusivamente anual</p>
+            </div>
+          </CardHeader>
+          <CardContent className="p-8 pt-0 space-y-5">
+            <div className="space-y-3 text-base">
+              <div className="flex items-center gap-2.5"><Check className="h-5 w-5 text-primary shrink-0" /><span>Tudo do Pro, organização inteira</span></div>
+              <div className="flex items-center gap-2.5"><Check className="h-5 w-5 text-primary shrink-0" /><span>HR Dashboard (Radar de Risco)</span></div>
+              <div className="flex items-center gap-2.5"><Check className="h-5 w-5 text-primary shrink-0" /><span>Dossiê de Blindagem Jurídica</span></div>
+              <div className="flex items-center gap-2.5"><Check className="h-5 w-5 text-primary shrink-0" /><span>Integração HRIS + SSO</span></div>
+              <div className="flex items-center gap-2.5"><Check className="h-5 w-5 text-primary shrink-0" /><span>CSM dedicado e SLA garantido</span></div>
+            </div>
+            <Button variant="outline" className="w-full rounded-xl h-11 text-base" asChild>
+              <Link to="/enterprise">Fale com Vendas</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
