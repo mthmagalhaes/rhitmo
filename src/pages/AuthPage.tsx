@@ -1,20 +1,23 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Auth } from '@/components/Auth';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 
+type BillingCycle = 'quarterly' | 'semiannual' | 'annual';
+
 const AuthPage = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const checkoutTriggered = useRef(false);
+  const [checkoutTriggered, setCheckoutTriggered] = useState(false);
 
-  // Read URL params
+  // URL params
   const mode = searchParams.get('mode') as 'login' | 'signup' | null;
   const emailParam = searchParams.get('email');
-  const planParam = searchParams.get('plan') as 'pro' | 'business' | null;
+  const planParam = searchParams.get('plan'); // currently only 'pro' is auto-checkoutable
+  const cycleParam = (searchParams.get('cycle') ?? 'annual') as BillingCycle;
 
   // Detect invite flow
   const hasPendingInvite = typeof window !== 'undefined' && !!localStorage.getItem('pending_invite');
@@ -22,14 +25,17 @@ const AuthPage = () => {
 
   useEffect(() => {
     if (!user || loading) return;
-    if (checkoutTriggered.current) return;
+    if (checkoutTriggered) return;
 
-    // If plan param exists, trigger auto-checkout after workspace is ready
-    if (planParam && (planParam === 'pro' || planParam === 'business')) {
-      checkoutTriggered.current = true;
+    // Auto-checkout for the Pro plan only.
+    if (planParam === 'pro') {
+      setCheckoutTriggered(true);
+
+      const validCycle: BillingCycle = (['quarterly', 'semiannual', 'annual'] as const).includes(cycleParam)
+        ? cycleParam
+        : 'annual';
 
       const pollAndCheckout = async () => {
-        // Poll for workspace (max ~5s)
         let workspace = null;
         for (let i = 0; i < 10; i++) {
           const { data } = await supabase
@@ -44,14 +50,13 @@ const AuthPage = () => {
         }
 
         if (!workspace) {
-          // Workspace not created yet, go to dashboard (onboarding will handle it)
           navigate('/dashboard', { replace: true });
           return;
         }
 
         try {
           const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-            body: { plan: planParam },
+            body: { plan: 'pro', billingCycle: validCycle },
           });
           if (!error && data?.url) {
             window.location.href = data.url;
@@ -61,7 +66,6 @@ const AuthPage = () => {
           console.error('Auto-checkout error:', err);
         }
 
-        // Fallback: go to dashboard
         navigate('/dashboard', { replace: true });
       };
 
@@ -69,7 +73,7 @@ const AuthPage = () => {
       return;
     }
 
-    // Check if user is HR Admin → redirect to /hr
+    // Default routing: HR Admin → /hr, otherwise /dashboard
     const checkAndRedirect = async () => {
       const { data: hrWorkspace } = await supabase
         .from('workspaces')
@@ -77,7 +81,7 @@ const AuthPage = () => {
         .contains('hr_admin_ids', [user.id])
         .limit(1)
         .maybeSingle();
-      
+
       if (hrWorkspace) {
         navigate('/hr', { replace: true });
       } else {
@@ -85,7 +89,7 @@ const AuthPage = () => {
       }
     };
     checkAndRedirect();
-  }, [user, loading, navigate, planParam]);
+  }, [user, loading, navigate, planParam, cycleParam, checkoutTriggered]);
 
   if (loading) {
     return (
@@ -95,8 +99,7 @@ const AuthPage = () => {
     );
   }
 
-  // Show loading while auto-checkout is in progress
-  if (user && planParam) {
+  if (user && planParam === 'pro') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background flex-col gap-3">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -108,7 +111,7 @@ const AuthPage = () => {
   if (user) return null;
 
   return (
-    <Auth 
+    <Auth
       defaultMode={isInviteFlow ? 'signup' : 'login'}
       defaultEmail={emailParam || undefined}
       isInviteFlow={isInviteFlow}
