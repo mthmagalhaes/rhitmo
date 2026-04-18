@@ -38,40 +38,45 @@ const TermsOfService = () => {
 
         <p><strong>Pulse (Gratuito):</strong></p>
         <ul className="list-disc ml-6 space-y-2">
-          <li>Até 2 liderados</li>
-          <li>20 mensagens de Mentor Chat por mês</li>
+          <li>Acesso ao Meu Rhitmo (portal do liderado)</li>
+          <li>1 avaliação com IA por mês</li>
+          <li>Upload manual de áudio</li>
+          <li>Mentor Chat limitado (20 mensagens/mês)</li>
           <li>Notas e anotações ilimitadas</li>
-          <li>1 avaliação formal por mês</li>
-          <li>1 time</li>
         </ul>
 
-        <p className="mt-4"><strong>Pro (R$ 49 por líder/mês):</strong></p>
+        <p className="mt-4"><strong>Pro:</strong></p>
         <ul className="list-disc ml-6 space-y-2">
-          <li>Até 5 liderados</li>
+          <li>Trimestral: R$ 267 (equivalente a R$ 89/mês)</li>
+          <li>Semestral: R$ 504 (equivalente a R$ 84/mês)</li>
+          <li>Anual: R$ 948 (equivalente a R$ 79/mês)</li>
+          <li>Liderados ilimitados</li>
+          <li>15 horas/mês de bot de transcrição (Recall.ai)</li>
+          <li>Avaliações com IA ilimitadas</li>
+          <li>Pre-meeting Briefs com contexto histórico</li>
+          <li>Detecção de viés em tempo real</li>
           <li>Mentor Chat ilimitado</li>
-          <li>Avaliações formais ilimitadas</li>
-          <li>Meu Rhitmo para liderados</li>
-          <li>Gravação de reuniões (até 12h/mês)</li>
+          <li>Acesso ao Meu Rhitmo para todo o time</li>
           <li>Analytics completo</li>
-          <li>Até 3 times</li>
+          <li>Times ilimitados</li>
         </ul>
 
-        <p className="mt-4"><strong>Business (R$ 69 por líder/mês, mínimo 3 líderes):</strong></p>
+        <p className="mt-4"><strong>Enterprise / Corporate (sob consulta):</strong></p>
         <ul className="list-disc ml-6 space-y-2">
-          <li>Até 8 liderados por líder</li>
-          <li>Tudo do plano Pro</li>
-          <li>Times ilimitados</li>
-          <li>Gravação de reuniões (até 30h/mês)</li>
-          <li>HR Dashboard com métricas agregadas</li>
-          <li>Onboarding assistido</li>
-          <li>Suporte prioritário</li>
+          <li>Tudo do Pro, para a organização inteira</li>
+          <li>HR Dashboard (Radar de Risco / Heatmap)</li>
+          <li>Dossiê de Blindagem Jurídica</li>
+          <li>Integração com HRIS</li>
+          <li>SSO (Single Sign-On)</li>
+          <li>CSM dedicado e SLA garantido</li>
+          <li>Cobrança exclusivamente anual</li>
         </ul>
 
         <h3 className="text-xl font-medium mt-6 mb-3">3.2 Período de Teste</h3>
-        <p>O plano Pro oferece 14 dias de teste gratuito para novos usuários. Após o período de teste, o cartão de crédito cadastrado será cobrado automaticamente, a menos que a assinatura seja cancelada antes do término do trial.</p>
+        <p>O plano Pro oferece 14 dias de teste gratuito apenas no ciclo trimestral para novos usuários. Após o período de teste, o cartão de crédito cadastrado será cobrado automaticamente, a menos que a assinatura seja cancelada antes do término do trial.</p>
 
         <h3 className="text-xl font-medium mt-6 mb-3">3.3 Cobrança e Renovação</h3>
-        <p>As assinaturas são cobradas mensalmente de forma recorrente. O valor será debitado automaticamente no mesmo dia de cada mês. Você é responsável por manter seus dados de pagamento atualizados.</p>
+        <p>Não oferecemos plano mensal. As assinaturas Pro são cobradas em ciclos de 3, 6 ou 12 meses, de forma recorrente. O valor é debitado automaticamente no início de cada ciclo. A escolha de ciclos mais longos reflete o tempo necessário para que mudanças de comportamento de liderança se consolidem (mínimo de 90 dias). Você é responsável por manter seus dados de pagamento atualizados.</p>
 
         <h3 className="text-xl font-medium mt-6 mb-3">3.4 Impostos</h3>
         <p>Os preços exibidos não incluem impostos aplicáveis. Você é responsável pelo pagamento de quaisquer tributos relacionados ao uso do Serviço.</p>
@@ -79,13 +84,13 @@ const TermsOfService = () => {
         <h2 className="text-2xl font-semibold mt-8 mb-4">4. Cancelamento e Reembolsos</h2>
 
         <h3 className="text-xl font-medium mt-6 mb-3">4.1 Cancelamento</h3>
-        <p>Você pode cancelar sua assinatura a qualquer momento através da página de Assinatura dentro da plataforma. O cancelamento terá efeito ao final do período de cobrança atual, e você manterá acesso aos recursos do plano contratado até essa data.</p>
+        <p>Você pode cancelar sua assinatura a qualquer momento através da página de Assinatura dentro da plataforma. O cancelamento terá efeito ao final do ciclo de cobrança atual, e você manterá acesso aos recursos do plano contratado até essa data.</p>
 
         <h3 className="text-xl font-medium mt-6 mb-3">4.2 Política de Reembolso</h3>
         <p>Não oferecemos reembolsos por períodos parciais de serviço. Se você cancelar durante um ciclo de cobrança, continuará tendo acesso até o final do período já pago.</p>
 
-        <h3 className="text-xl font-medium mt-6 mb-3">4.3 Downgrade de Plano</h3>
-        <p>Ao fazer downgrade de plano (por exemplo, de Business para Pro), a mudança entrará em vigor no próximo ciclo de cobrança. Funcionalidades exclusivas do plano anterior poderão ser desativadas.</p>
+        <h3 className="text-xl font-medium mt-6 mb-3">4.3 Mudança de Ciclo</h3>
+        <p>Você pode alternar entre os ciclos Trimestral, Semestral e Anual a qualquer momento. As mudanças aplicam proratação automática conforme o tempo restante do ciclo atual.</p>
 
         <h2 className="text-2xl font-semibold mt-8 mb-4">5. Uso Aceitável</h2>
 
