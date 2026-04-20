@@ -454,8 +454,8 @@ const Billing = () => {
           </CardContent>
         </Card>
 
-        {/* Cycle switcher */}
-        {!isCancelScheduled && (
+        {/* Cycle switcher — escondido para Business legado (já no máximo) */}
+        {!isCancelScheduled && rawTier !== 'business' && (
           <Card className="rounded-3xl border shadow-sm">
             <CardHeader className="p-8 pb-3">
               <CardTitle className="text-lg font-semibold tracking-tight">Trocar ciclo de faturamento</CardTitle>
