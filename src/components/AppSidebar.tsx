@@ -47,6 +47,7 @@ import {
 export function AppSidebar() {
   const { t } = useTranslation();
   const { open } = useSidebar();
+  const { isConnected: calendarConnected, connectCalendar } = useCalendarIntegration();
 
   const menuItems = [
     { title: t('sidebar.home'), url: '/dashboard', icon: Home },
