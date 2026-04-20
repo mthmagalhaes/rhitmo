@@ -102,6 +102,8 @@
     "integrations": "Integrations",
     "chromeConnector": "Chrome Connector",
     "autoTranscription": "Auto Transcription",
+    "googleCalendar": "Google Calendar",
+    "connected": "Connected",
     "slackConnector": "Slack Connector",
     "brand": "Brand",
     "designSystem": "Design System",

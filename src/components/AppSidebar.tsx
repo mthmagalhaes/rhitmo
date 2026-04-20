@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RhythmWave } from '@/components/RhythmWave';
-import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award, ArrowRightLeft, UserCheck, Palette, Compass, FileText, User, Download, ArrowLeft, Eye, FileAudio } from 'lucide-react';
+import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award, ArrowRightLeft, UserCheck, Palette, Compass, FileText, User, Download, ArrowLeft, Eye } from 'lucide-react';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { SlackIcon } from '@/components/icons/SlackIcon';
+import { GoogleCalendarIcon } from '@/components/icons/GoogleCalendarIcon';
+import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
@@ -45,6 +47,7 @@ import {
 export function AppSidebar() {
   const { t } = useTranslation();
   const { open } = useSidebar();
+  const { isConnected: calendarConnected, connectCalendar } = useCalendarIntegration();
 
   const menuItems = [
     { title: t('sidebar.home'), url: '/dashboard', icon: Home },
@@ -256,11 +259,22 @@ export function AppSidebar() {
                 <SidebarGroupContent>
                   <div className="px-2 space-y-2">
                     <button
-                      onClick={() => navigate('/help#l-auto-transcription')}
+                      onClick={() => {
+                        if (calendarConnected) {
+                          navigate('/help#l-auto-transcription');
+                        } else {
+                          connectCalendar();
+                        }
+                      }}
                       className="w-full flex items-center gap-3 h-12 px-4 rounded-xl border border-border/60 bg-background hover:bg-accent/50 hover:border-primary/30 hover:-translate-y-0.5 transition-all duration-200 group"
                     >
-                      <FileAudio className="h-5 w-5 shrink-0 text-primary" />
-                      <span className="text-sm font-medium text-foreground group-hover:text-primary tracking-tight">{t('sidebar.autoTranscription')}</span>
+                      <GoogleCalendarIcon className="h-5 w-5 shrink-0" />
+                      <span className="flex-1 text-left text-sm font-medium text-foreground group-hover:text-primary tracking-tight">{t('sidebar.googleCalendar')}</span>
+                      {calendarConnected && (
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600 bg-emerald-500/10 px-1.5 py-0.5 rounded-md">
+                          {t('sidebar.connected')}
+                        </span>
+                      )}
                     </button>
                     <button
                       onClick={() => setSlackDialogOpen(true)}
