@@ -383,6 +383,18 @@ const Billing = () => {
           </Alert>
         )}
 
+        {rawTier === 'business' && !workspace?.is_beta_user && (
+          <Alert className="mb-6 border-2 border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/30 dark:to-yellow-900/20 dark:border-amber-700/50">
+            <Crown className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            <AlertTitle className="text-lg font-bold text-amber-900 dark:text-amber-200 flex items-center gap-2">
+              👑 Cliente Fundador — Plano Business
+            </AlertTitle>
+            <AlertDescription className="text-amber-800 dark:text-amber-300">
+              Você é cliente fundador do plano Business. Mantemos todas as suas capacidades originais (HR Dashboard, onboarding assistido, liderados ilimitados) + os novos recursos do Pro, sem alteração na sua cobrança atual.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {subscription?.status === 'trialing' && subscription.trial_ends_at && (
           <TrialBanner trialEndsAt={subscription.trial_ends_at} onUpdateCard={handleUpdatePayment} />
         )}
