@@ -1,14 +1,23 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Mapeamento de price IDs Stripe → tier no DB.
+// IMPORTANTE: preços "business" são mantidos APENAS para grandfathering de
+// clientes legados (ex: Faster Ops). Novos checkouts usam exclusivamente os
+// 3 preços Pro (quarterly/semiannual/annual). Manter o tier "business" no DB
+// preserva acesso a HR Dashboard + assisted onboarding desses clientes
+// fundadores, sem cobrança extra e sem ação requerida deles.
 const PRICE_TO_PLAN: Record<string, string> = {
-  // Licensed prices (current)
+  // === Pro (novo modelo — 18/04/2026) ===
+  "price_1TNNnEIF4fHxJpjHA4cMp1tm": "pro", // Pro Trimestral R$267
+  "price_1TNNnXIF4fHxJpjH6uHkOIIJ": "pro", // Pro Semestral R$504
+  "price_1TNNnlIF4fHxJpjHfVwPUqAb": "pro", // Pro Anual R$948
+  // === Pro legado (mensal — descontinuado, mantido para webhooks tardios) ===
   "price_1TCQeZIF4fHxJpjH7w0wOhaf": "pro",
-  "price_1TCQf0IF4fHxJpjH4Bx2aIbg": "business",
-  // Metered prices (legacy)
   "price_1TC52fIF4fHxJpjHPaJXH14r": "pro",
-  "price_1TCPcjIF4fHxJpjHWtZucdwy": "business",
-  // Legacy prices (backward compat)
   "price_1TB0QgIF4fHxJpjHoIlCeHP6": "pro",
+  // === Business legado (grandfathering — NÃO oferecido em novos checkouts) ===
+  "price_1TCQf0IF4fHxJpjH4Bx2aIbg": "business",
+  "price_1TCPcjIF4fHxJpjHWtZucdwy": "business",
   "price_1TB0QgIF4fHxJpjH032DMzZH": "business",
 };
 
