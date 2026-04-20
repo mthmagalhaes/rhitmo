@@ -69,7 +69,7 @@ const PLAN_LIMITS: Record<string, Omit<PlanLimits, 'planTier' | 'isBetaUser'>> =
     hrDashboard: true,
     prioritySupport: true,
     assistedOnboarding: true,
-    planName: 'Pro',
+    planName: 'Pro (Legacy Business)',
   },
 };
 

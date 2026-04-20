@@ -90,12 +90,19 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Define caps per plan
-    const BOT_CAPS: Record<string, number> = { pulse: 0, pro: 20, business: 40 };
+    // Define caps per plan.
+    // Pro (novo modelo) e Business (legado/grandfathering) têm bot ilimitado,
+    // alinhado com usePlanLimits.ts. Mantemos a chave "business" para preservar
+    // a paridade dos clientes fundadores legados.
+    const BOT_CAPS: Record<string, number> = {
+      pulse: 0,
+      pro: Infinity,
+      business: Infinity,
+    };
     const maxBotMeetings = isBeta ? Infinity : (BOT_CAPS[planTier] ?? 0);
 
     if (maxBotMeetings === 0) {
-      return new Response(JSON.stringify({ error: "Seu plano não inclui transcrição com bot. Faça upgrade para Pro ou Business." }), {
+      return new Response(JSON.stringify({ error: "Seu plano não inclui transcrição com bot. Faça upgrade para Pro." }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
