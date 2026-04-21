@@ -290,6 +290,15 @@ export function MonthlyRecapSection({ memberId }: Props) {
     return m;
   }, [recaps]);
 
+  // Recaps no banco que estão FORA da janela dos últimos 6 meses base.
+  // Isso garante que nada "some" da UI mesmo se o líder gerar um mês antigo.
+  const outOfWindowRecaps = useMemo(() => {
+    const baseSet = new Set(months);
+    return recaps
+      .filter((r) => !baseSet.has(r.period_month.slice(0, 10)))
+      .sort((a, b) => (a.period_month < b.period_month ? 1 : -1));
+  }, [recaps, months]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8 text-muted-foreground">
@@ -310,6 +319,23 @@ export function MonthlyRecapSection({ memberId }: Props) {
         {months.map((m) => (
           <RecapCard key={m} memberId={memberId} periodMonth={m} recap={recapByMonth.get(m)} />
         ))}
+        {outOfWindowRecaps.length > 0 && (
+          <>
+            <div className="pt-2">
+              <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                {t('recap.monthly.outOfWindowSection')}
+              </h3>
+            </div>
+            {outOfWindowRecaps.map((r) => (
+              <RecapCard
+                key={r.id}
+                memberId={memberId}
+                periodMonth={r.period_month.slice(0, 10)}
+                recap={r}
+              />
+            ))}
+          </>
+        )}
       </div>
     </div>
   );
