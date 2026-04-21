@@ -10,6 +10,8 @@ import { useMonthlyRecaps, useQuarterlyRecaps } from '@/hooks/useRecaps';
 
 interface Props {
   memberId: string;
+  /** Optional: when provided, summary buttons switch the parent sub-tab instead of just scrolling. */
+  onSwitchSection?: (section: 'quarterly' | 'monthly') => void;
 }
 
 function smoothScrollTo(id: string) {
@@ -23,10 +25,18 @@ function getCurrentQuarterStart(): string {
   return format(new Date(Date.UTC(d.getUTCFullYear(), qStartMonth - 3, 1)), 'yyyy-MM-01');
 }
 
-export function RhitmoTabSummary({ memberId }: Props) {
+export function RhitmoTabSummary({ memberId, onSwitchSection }: Props) {
   const { t, i18n } = useTranslation('rhitmo');
-  const { data: monthly = [], isLoading: mLoading } = useMonthlyRecaps(memberId, 6);
+  const { data: monthly = [], isLoading: mLoading } = useMonthlyRecaps(memberId, 12);
   const { data: quarterly = [], isLoading: qLoading } = useQuarterlyRecaps(memberId, 4);
+
+  const handleJump = (section: 'quarterly' | 'monthly') => {
+    if (onSwitchSection) {
+      onSwitchSection(section);
+    } else {
+      smoothScrollTo(section === 'quarterly' ? 'rhitmo-quarterly' : 'rhitmo-monthly');
+    }
+  };
 
   const currentMonthLabel = useMemo(
     () => format(new Date(), 'MMMM', { locale: getDateLocale(i18n.language) }),
@@ -69,7 +79,7 @@ export function RhitmoTabSummary({ memberId }: Props) {
         {/* Quarterly */}
         <button
           type="button"
-          onClick={() => smoothScrollTo('rhitmo-quarterly')}
+          onClick={() => handleJump('quarterly')}
           className="text-left rounded-xl p-3 -m-1 hover:bg-foreground/[0.03] transition-colors flex flex-col gap-1.5"
         >
           <div className="flex items-center gap-2">
@@ -94,7 +104,7 @@ export function RhitmoTabSummary({ memberId }: Props) {
         {/* Monthly */}
         <button
           type="button"
-          onClick={() => smoothScrollTo('rhitmo-monthly')}
+          onClick={() => handleJump('monthly')}
           className="text-left rounded-xl p-3 -m-1 hover:bg-foreground/[0.03] transition-colors flex flex-col gap-1.5"
         >
           <div className="flex items-center gap-2">
@@ -131,7 +141,7 @@ export function RhitmoTabSummary({ memberId }: Props) {
       {quarterlyReady && (
         <div className="mt-3 pt-3 border-t border-border/50 flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm text-foreground/80">{t('summary.quarterlyHint')}</p>
-          <Button size="sm" variant="outline" className="rounded-xl gap-2" onClick={() => smoothScrollTo('rhitmo-quarterly')}>
+          <Button size="sm" variant="outline" className="rounded-xl gap-2" onClick={() => handleJump('quarterly')}>
             {t('summary.goToQuarterly')}
             <ArrowDown className="h-3.5 w-3.5" />
           </Button>

@@ -47,15 +47,15 @@ export function RhitmoTimelineCard({ memberId, feedbacksLastMonthCount, onJumpTo
               <Music className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <p className="text-sm font-semibold flex items-center gap-2">
-                {t('recap.timeline.thisPersonsRhitmo')}
+              <div className="text-sm font-semibold flex items-center gap-2 flex-wrap">
+                <span>{t('recap.timeline.thisPersonsRhitmo')}</span>
                 {confirmedCount > 0 && (
                   <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-xs">
                     <CheckCircle2 className="h-3 w-3 mr-1" />
                     {t('recap.timeline.confirmedCount', { count: confirmedCount })}
                   </Badge>
                 )}
-              </p>
+              </div>
               <p className="text-xs text-muted-foreground">
                 {t('recap.timeline.historyLine', { monthly: monthly.length, quarterly: quarterly.length })}
               </p>

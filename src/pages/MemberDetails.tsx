@@ -40,6 +40,7 @@ import { QuarterlyRecapSection } from '@/components/recaps/QuarterlyRecapSection
 import { RhitmoTimelineCard } from '@/components/recaps/RhitmoTimelineCard';
 import { RhitmoTabSummary } from '@/components/recaps/RhitmoTabSummary';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface WorkStyleData {
   completed_at: string;
@@ -72,19 +73,45 @@ const MemberDetails = () => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [activeTab, setActiveTab] = useState<'diary' | 'rhitmo' | 'reviews'>('diary');
+  const [activeRhitmoSub, setActiveRhitmoSub] = useState<'quarterly' | 'monthly'>('quarterly');
+  const { t: tRhitmo } = useTranslation('rhitmo');
   const { toast } = useToast();
   const {
     hasSync
   } = usePlanLimits();
 
-  // Deep link: open note dialog from ?openNote=true
+  // Deep link: open note dialog from ?openNote=true, plus tab/sub-tab from ?tab=&sub=
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('openNote') === 'true') {
       setDialogOpen(true);
+    }
+    const tab = params.get('tab');
+    if (tab === 'rhitmo' || tab === 'reviews' || tab === 'diary') {
+      setActiveTab(tab);
+    }
+    const sub = params.get('sub');
+    if (sub === 'quarterly' || sub === 'monthly') {
+      setActiveRhitmoSub(sub);
+    }
+    if (params.has('openNote') || params.has('tab') || params.has('sub')) {
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
+
+  // Robust deep-link: switch to Rhitmo tab + monthly sub-tab and scroll, even from another tab.
+  const jumpToRhitmoTimeline = (sub: 'quarterly' | 'monthly' = 'monthly') => {
+    setActiveTab('rhitmo');
+    setActiveRhitmoSub(sub);
+    // Wait for the tab content to mount before scrolling.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = document.getElementById('rhitmo-tab-trigger');
+        el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+  };
 
   // Query para carregar membro
   const {
@@ -743,16 +770,12 @@ const MemberDetails = () => {
             <RhitmoTimelineCard
               memberId={member.id}
               feedbacksLastMonthCount={fbLastMonth}
-              onJumpToRhitmo={() => {
-                const el = document.getElementById('rhitmo-tab-trigger');
-                el?.click();
-                setTimeout(() => el?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
-              }}
+              onJumpToRhitmo={() => jumpToRhitmoTimeline('monthly')}
             />
           );
         })()}
 
-        <Tabs defaultValue="diary" className="w-full">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="diary" className="flex items-center gap-2">
               <BookOpen className="h-4 w-4" />
@@ -813,11 +836,36 @@ const MemberDetails = () => {
           </TabsContent>
           
           <TabsContent value="rhitmo">
-            <div className="space-y-8">
-              <RhitmoTabSummary memberId={member.id} />
-              <QuarterlyRecapSection memberId={member.id} />
-              <div className="border-t border-border/50" />
-              <MonthlyRecapSection memberId={member.id} />
+            <div className="space-y-6">
+              <RhitmoTabSummary
+                memberId={member.id}
+                onSwitchSection={(section) => setActiveRhitmoSub(section)}
+              />
+
+              <Tabs
+                value={activeRhitmoSub}
+                onValueChange={(v) => setActiveRhitmoSub(v as typeof activeRhitmoSub)}
+                className="w-full"
+              >
+                <TabsList className="grid w-full max-w-sm grid-cols-2 rounded-xl">
+                  <TabsTrigger value="quarterly" className="rounded-lg flex items-center gap-2">
+                    <FileText className="h-3.5 w-3.5" />
+                    {tRhitmo('summary.subtabs.quarterly')}
+                  </TabsTrigger>
+                  <TabsTrigger value="monthly" className="rounded-lg flex items-center gap-2">
+                    <Music className="h-3.5 w-3.5" />
+                    {tRhitmo('summary.subtabs.monthly')}
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="quarterly" className="mt-6">
+                  <QuarterlyRecapSection memberId={member.id} />
+                </TabsContent>
+
+                <TabsContent value="monthly" className="mt-6">
+                  <MonthlyRecapSection memberId={member.id} />
+                </TabsContent>
+              </Tabs>
             </div>
           </TabsContent>
 
