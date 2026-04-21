@@ -40,6 +40,7 @@ import { QuarterlyRecapSection } from '@/components/recaps/QuarterlyRecapSection
 import { RhitmoTimelineCard } from '@/components/recaps/RhitmoTimelineCard';
 import { RhitmoTabSummary } from '@/components/recaps/RhitmoTabSummary';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface WorkStyleData {
   completed_at: string;
@@ -74,6 +75,7 @@ const MemberDetails = () => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [activeTab, setActiveTab] = useState<'diary' | 'rhitmo' | 'reviews'>('diary');
   const [activeRhitmoSub, setActiveRhitmoSub] = useState<'quarterly' | 'monthly'>('quarterly');
+  const { t: tRhitmo } = useTranslation('rhitmo');
   const { toast } = useToast();
   const {
     hasSync
@@ -848,11 +850,11 @@ const MemberDetails = () => {
                 <TabsList className="grid w-full max-w-sm grid-cols-2 rounded-xl">
                   <TabsTrigger value="quarterly" className="rounded-lg flex items-center gap-2">
                     <FileText className="h-3.5 w-3.5" />
-                    {t_rhitmo_quarterly_tab}
+                    {tRhitmo('summary.subtabs.quarterly')}
                   </TabsTrigger>
                   <TabsTrigger value="monthly" className="rounded-lg flex items-center gap-2">
                     <Music className="h-3.5 w-3.5" />
-                    {t_rhitmo_monthly_tab}
+                    {tRhitmo('summary.subtabs.monthly')}
                   </TabsTrigger>
                 </TabsList>
 
