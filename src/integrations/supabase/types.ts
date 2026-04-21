@@ -1155,6 +1155,7 @@ export type Database = {
           highlight_evidence: Json
           highlight_text: string | null
           id: string
+          low_evidence: boolean
           manager_id: string
           meetings_count: number
           member_id: string
@@ -1176,6 +1177,7 @@ export type Database = {
           highlight_evidence?: Json
           highlight_text?: string | null
           id?: string
+          low_evidence?: boolean
           manager_id: string
           meetings_count?: number
           member_id: string
@@ -1197,6 +1199,7 @@ export type Database = {
           highlight_evidence?: Json
           highlight_text?: string | null
           id?: string
+          low_evidence?: boolean
           manager_id?: string
           meetings_count?: number
           member_id?: string
