@@ -5,6 +5,9 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 import ptBR from './locales/pt-BR.json';
 import en from './locales/en.json';
 import es from './locales/es.json';
+import rhitmoPt from './locales/rhitmo-pt.json';
+import rhitmoEn from './locales/rhitmo-en.json';
+import rhitmoEs from './locales/rhitmo-es.json';
 
 export const SUPPORTED_LANGUAGES = [
   { code: 'pt-BR', label: 'Português', flag: '🇧🇷' },
@@ -19,10 +22,12 @@ i18n
   .use(initReactI18next)
   .init({
     resources: {
-      'pt-BR': { translation: ptBR },
-      en: { translation: en },
-      es: { translation: es },
+      'pt-BR': { translation: ptBR, rhitmo: rhitmoPt },
+      en: { translation: en, rhitmo: rhitmoEn },
+      es: { translation: es, rhitmo: rhitmoEs },
     },
+    ns: ['translation', 'rhitmo'],
+    defaultNS: 'translation',
     fallbackLng: 'pt-BR',
     supportedLngs: ['pt-BR', 'en', 'es'],
     interpolation: {
