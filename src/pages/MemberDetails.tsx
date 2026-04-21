@@ -38,6 +38,7 @@ import { FormalReviewSheet } from '@/components/review/FormalReviewSheet';
 import { MonthlyRecapSection } from '@/components/recaps/MonthlyRecapSection';
 import { QuarterlyRecapSection } from '@/components/recaps/QuarterlyRecapSection';
 import { RhitmoTimelineCard } from '@/components/recaps/RhitmoTimelineCard';
+import { RhitmoTabSummary } from '@/components/recaps/RhitmoTabSummary';
 import React from 'react';
 
 interface WorkStyleData {

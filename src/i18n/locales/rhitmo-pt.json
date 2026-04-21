@@ -27,7 +27,10 @@
       "regenerate": "Regerar com IA",
       "confirmedBadge": "Confirmado {{date}}",
       "draftBadge": "Rascunho — aguardando você",
-      "loading": "Carregando mensais..."
+      "loading": "Carregando mensais...",
+      "inProgressTitle": "{{month}}",
+      "inProgressBadge": "Mês em curso",
+      "inProgressDesc": "Fechamento automático em {{date}}. Você terá ~3 min para revisar e confirmar."
     },
     "quarterly": {
       "title": "Rhitmo Trimestral",
