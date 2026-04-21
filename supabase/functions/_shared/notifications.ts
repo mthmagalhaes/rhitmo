@@ -124,32 +124,31 @@ async function sendSlack(
   text: string,
   blocks?: unknown[],
 ): Promise<boolean> {
-  // Look up slack user mapping
+  const slackToken = Deno.env.get('SLACK_BOT_TOKEN');
+  if (!slackToken) return false;
+
   const { data: link } = await admin
     .from('slack_integrations')
-    .select('slack_user_id, slack_team_id')
+    .select('slack_user_id')
     .eq('user_id', userId)
     .maybeSingle();
   if (!link?.slack_user_id) return false;
 
-  // Delegate to slack-bot edge function (which handles workspace token resolution)
-  const url = `${Deno.env.get('SUPABASE_URL')}/functions/v1/slack-bot`;
-  const res = await fetch(url, {
+  const openRes = await fetch('https://slack.com/api/conversations.open', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-      'x-internal-dm': '1',
-    },
-    body: JSON.stringify({
-      type: 'internal_dm',
-      slack_user_id: link.slack_user_id,
-      slack_team_id: link.slack_team_id,
-      text,
-      blocks,
-    }),
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${slackToken}` },
+    body: JSON.stringify({ users: link.slack_user_id }),
   });
-  return res.ok;
+  const openData = await openRes.json();
+  if (!openData?.ok || !openData?.channel?.id) return false;
+
+  const postRes = await fetch('https://slack.com/api/chat.postMessage', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${slackToken}` },
+    body: JSON.stringify({ channel: openData.channel.id, text, blocks }),
+  });
+  const postData = await postRes.json();
+  return !!postData?.ok;
 }
 
 /**
