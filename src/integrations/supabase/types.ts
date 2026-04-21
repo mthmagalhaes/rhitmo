@@ -1141,6 +1141,72 @@ export type Database = {
           },
         ]
       }
+      monthly_recaps: {
+        Row: {
+          ai_generated_at: string | null
+          ai_model: string | null
+          concern_evidence: Json
+          concern_text: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          dominant_pattern: string | null
+          feedbacks_count: number
+          highlight_evidence: Json
+          highlight_text: string | null
+          id: string
+          manager_id: string
+          meetings_count: number
+          member_id: string
+          period_month: string
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          ai_generated_at?: string | null
+          ai_model?: string | null
+          concern_evidence?: Json
+          concern_text?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          dominant_pattern?: string | null
+          feedbacks_count?: number
+          highlight_evidence?: Json
+          highlight_text?: string | null
+          id?: string
+          manager_id: string
+          meetings_count?: number
+          member_id: string
+          period_month: string
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          ai_generated_at?: string | null
+          ai_model?: string | null
+          concern_evidence?: Json
+          concern_text?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          dominant_pattern?: string | null
+          feedbacks_count?: number
+          highlight_evidence?: Json
+          highlight_text?: string | null
+          id?: string
+          manager_id?: string
+          meetings_count?: number
+          member_id?: string
+          period_month?: string
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       pending_slack_invites: {
         Row: {
           accepted_at: string | null
@@ -1254,6 +1320,90 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      quarterly_recaps: {
+        Row: {
+          ai_generated_at: string | null
+          ai_model: string | null
+          ai_suggested_classification: string | null
+          ai_suggested_next_action_key: string | null
+          classification: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          evolution_vs_previous: string | null
+          highlights: Json
+          id: string
+          manager_id: string
+          member_id: string
+          next_action_key: string | null
+          next_action_note: string | null
+          period_quarter: string
+          recurring_patterns: Json
+          source_feedbacks_count: number
+          source_meetings_count: number
+          source_monthly_recap_ids: string[]
+          status: string
+          turnover_risk: string | null
+          turnover_risk_reason: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          ai_generated_at?: string | null
+          ai_model?: string | null
+          ai_suggested_classification?: string | null
+          ai_suggested_next_action_key?: string | null
+          classification?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          evolution_vs_previous?: string | null
+          highlights?: Json
+          id?: string
+          manager_id: string
+          member_id: string
+          next_action_key?: string | null
+          next_action_note?: string | null
+          period_quarter: string
+          recurring_patterns?: Json
+          source_feedbacks_count?: number
+          source_meetings_count?: number
+          source_monthly_recap_ids?: string[]
+          status?: string
+          turnover_risk?: string | null
+          turnover_risk_reason?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          ai_generated_at?: string | null
+          ai_model?: string | null
+          ai_suggested_classification?: string | null
+          ai_suggested_next_action_key?: string | null
+          classification?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          evolution_vs_previous?: string | null
+          highlights?: Json
+          id?: string
+          manager_id?: string
+          member_id?: string
+          next_action_key?: string | null
+          next_action_note?: string | null
+          period_quarter?: string
+          recurring_patterns?: Json
+          source_feedbacks_count?: number
+          source_meetings_count?: number
+          source_monthly_recap_ids?: string[]
+          status?: string
+          turnover_risk?: string | null
+          turnover_risk_reason?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: []
       }
       recall_bots: {
         Row: {
