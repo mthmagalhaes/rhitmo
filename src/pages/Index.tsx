@@ -42,7 +42,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Workspace, Team } from '@/types/team';
 import { PendingInvitesSection } from '@/components/team/PendingInvitesSection';
-import { UpgradeBanner } from '@/components/billing/UpgradeBanner';
+// UpgradeBanner removed from dashboard (Sprint 1.1) — kept only in /billing.
 import { InviteMemberDialog } from '@/components/InviteMemberDialog';
 import { format, formatDistanceToNow, isToday, isTomorrow, differenceInDays } from 'date-fns';
 import { useTranslation } from 'react-i18next';
@@ -417,7 +417,8 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
     staleTime: 30 * 1000,
   });
 
-  const isSetupComplete = onboardingStatus?.hasMembers && onboardingStatus?.hasFeedbacks && onboardingStatus?.hasAIAnalysis && onboardingStatus?.hasMentorChat && onboardingStatus?.hasLeaderSync;
+  // Sprint 1.1: reduced to 3 critical steps (members + 1st note + leader sync)
+  const isSetupComplete = onboardingStatus?.hasMembers && onboardingStatus?.hasFeedbacks && onboardingStatus?.hasLeaderSync;
 
   const handleSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ['workspace'] });
@@ -583,8 +584,6 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
           onNewTeam={() => setNewTeamOpen(true)}
         />
 
-        <UpgradeBanner />
-
         {onboardingStatus && !isSetupComplete && (
           <SetupChecklist
             hasMembers={onboardingStatus.hasMembers}
@@ -592,6 +591,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
             hasAIAnalysis={onboardingStatus.hasAIAnalysis}
             hasMentorChat={onboardingStatus.hasMentorChat}
             hasLeaderSync={onboardingStatus.hasLeaderSync}
+            workspaceCreatedAt={workspace?.created_at}
             onAddMember={() => setMemberDialogOpen(true)}
             onAddNote={() => setDialogOpen(true)}
             onOpenMentor={handleOpenMentor}

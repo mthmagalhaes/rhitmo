@@ -24,6 +24,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { detectBiasWithPositions, type BiasMatch } from '@/lib/biasDetection';
 import { BiasSuggestionsPanel } from '@/components/feedback/BiasSuggestionsPanel';
+import { NOTE_TEMPLATES, getTemplateById, type NoteTemplateId } from '@/lib/noteTemplates';
+import { useTranslation } from 'react-i18next';
 
 // Smart Date Extraction - analisa as primeiras 20 linhas do texto
 const extractDateFromText = (text: string): Date | null => {
@@ -482,6 +484,39 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
         </DialogHeader>
         
         <div className="flex-1 overflow-y-auto px-6 space-y-4 pb-4">
+          {/* Sprint 1.4: Templates de Nota — reduzem fricção da página em branco */}
+          <div className="space-y-2">
+            <Label>Template</Label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {NOTE_TEMPLATES.map((tpl) => (
+                <button
+                  key={tpl.id}
+                  type="button"
+                  onClick={() => {
+                    const html = tpl.buildHtml(t);
+                    if (editorRef.current) {
+                      if (html) {
+                        editorRef.current.commands.setContent(html);
+                      } else {
+                        editorRef.current.commands.clearContent();
+                      }
+                    }
+                    setContent(html);
+                    if (tpl.defaultTags && tags.length === 0) setTags(tpl.defaultTags);
+                    if (tpl.buildTitle && !title) {
+                      const tt = tpl.buildTitle(t);
+                      if (tt) setTitle(tt);
+                    }
+                  }}
+                  className="flex flex-col items-start gap-1 p-3 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all text-left"
+                >
+                  <span className="text-lg">{tpl.emoji}</span>
+                  <span className="text-xs font-medium text-foreground">{t(tpl.labelKey)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Member selection */}
           {!selectedMemberId && (
             <div className="space-y-2">

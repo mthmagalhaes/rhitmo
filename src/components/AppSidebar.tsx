@@ -49,26 +49,27 @@ export function AppSidebar() {
   const { open } = useSidebar();
   const { isConnected: calendarConnected, connectCalendar } = useCalendarIntegration();
 
+  // Sprint 1.2: removed "Analytics" from leader sidebar — kept only for HR Admin context.
   const menuItems = [
     { title: t('sidebar.home'), url: '/dashboard', icon: Home },
-    { title: t('sidebar.analytics'), url: '/analytics', icon: BarChart3 },
     { title: t('sidebar.knowledgeCenter'), url: '/help', icon: BookOpen },
     { title: t('sidebar.subscription'), url: '/billing', icon: CreditCard },
   ];
 
+  // Sprint 1.8: removed "Feedbacks" tab from direct report sidebar.
+  // Shared feedbacks are visible inline in the dashboard.
   const memberMenuItems = [
     { title: t('sidebar.home'), url: '/dashboard', icon: Home },
     { title: t('sidebar.myCareer'), url: '/dashboard/carreira', icon: Compass },
-    { title: t('sidebar.feedbacks'), url: '/dashboard/feedbacks', icon: FileText },
     { title: t('sidebar.myProfile'), url: '/dashboard/perfil', icon: User },
   ];
 
+  // Sprint 1.7: "Competências" moved out of HR top-level menu (still accessible via direct URL /hr/competency-framework or from Liderados page).
   const hrMenuItems = [
     { title: t('sidebar.overview'), url: '/hr', icon: LayoutDashboard },
     { title: t('sidebar.teamsAndLeaders'), url: '/hr/teams', icon: Users },
     { title: t('sidebar.directReports'), url: '/hr/members', icon: UserCheck },
     { title: t('sidebar.analytics'), url: '/hr/analytics', icon: BarChart3 },
-    { title: t('sidebar.competencies'), url: '/hr/competency-framework', icon: Award },
   ];
   const { user, signOut } = useAuth();
   const { id: effectiveUserId, isImpersonating } = useEffectiveUser();

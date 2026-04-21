@@ -13,6 +13,8 @@ interface SetupChecklistProps {
   hasAIAnalysis: boolean;
   hasMentorChat: boolean;
   hasLeaderSync?: boolean;
+  /** Workspace creation date — used to auto-hide checklist after 7 days. */
+  workspaceCreatedAt?: string | null;
   onAddMember: () => void;
   onAddNote: () => void;
   onOpenMentor: () => void;
@@ -22,50 +24,45 @@ interface SetupChecklistProps {
 export const SetupChecklist = ({
   hasMembers,
   hasFeedbacks,
-  hasAIAnalysis,
-  hasMentorChat,
+  hasAIAnalysis: _hasAIAnalysis,
+  hasMentorChat: _hasMentorChat,
   hasLeaderSync = false,
+  workspaceCreatedAt,
   onAddMember,
   onAddNote,
-  onOpenMentor,
+  onOpenMentor: _onOpenMentor,
   onOpenLeaderSync,
 }: SetupChecklistProps) => {
   const { t } = useTranslation();
 
+  // Auto-hide after 7 days from workspace creation, even if incomplete
+  if (workspaceCreatedAt) {
+    const ageDays = (Date.now() - new Date(workspaceCreatedAt).getTime()) / (1000 * 60 * 60 * 24);
+    if (ageDays > 7) return null;
+  }
+
+  // Reduced from 5 → 3 critical steps (members + 1st note + leader sync)
   const steps = [
-    { 
-      label: t('setup.registerFirstMember'), 
-      done: hasMembers, 
+    {
+      label: t('setup.registerFirstMember'),
+      done: hasMembers,
       action: onAddMember,
-      actionLabel: t('setup.addAction')
+      actionLabel: t('setup.addAction'),
+      disabled: false,
     },
-    { 
-      label: t('setup.configureLeadership'), 
-      done: hasLeaderSync, 
+    {
+      label: t('setup.createTestNote'),
+      done: hasFeedbacks,
+      action: onAddNote,
+      actionLabel: t('setup.createNoteAction'),
+      disabled: !hasMembers,
+    },
+    {
+      label: t('setup.configureLeadership'),
+      done: hasLeaderSync,
       action: onOpenLeaderSync,
       actionLabel: t('setup.threeMin'),
-      disabled: false
-    },
-    { 
-      label: t('setup.createTestNote'), 
-      done: hasFeedbacks, 
-      action: onAddNote,
-      actionLabel: t('setup.createNoteAction'),
-      disabled: !hasMembers
-    },
-    { 
-      label: t('setup.generateAISummary'), 
-      done: hasAIAnalysis, 
-      action: onAddNote,
-      actionLabel: t('setup.createNoteAction'),
-      disabled: !hasMembers
-    },
-    { 
-      label: t('setup.askMentor'), 
-      done: hasMentorChat, 
-      action: onOpenMentor,
-      actionLabel: t('setup.chatAction'),
-      disabled: !hasMembers
+      disabled: false,
     },
   ];
 
