@@ -294,13 +294,14 @@ Gere HTML estruturado usando EXATAMENTE este formato. Use as classes CSS indicad
 6. **Foco em ${memberName}**: Analise APENAS ações de ${firstName}. Ignore ações de outras pessoas.
 7. Liste 2-4 pontos fortes e 1-3 áreas de desenvolvimento.
 8. **NÃO use Markdown** (##, **, -, etc.). Use APENAS o HTML com classes indicado acima.
-9. **NÃO use blocos de código**. Retorne HTML puro.`;
+9. **NÃO use blocos de código**. Retorne HTML puro.
+10. **PRIORIDADE DOS RECAPS RHITMO**: Se houver "CALIBRAÇÕES TRIMESTRAIS CONFIRMADAS PELO LÍDER" ou "RESUMOS MENSAIS CONFIRMADOS PELO LÍDER" no contexto, eles são a **espinha** da review — o líder já calibrou esses padrões. Estruture a review em cima deles. Use os feedbacks brutos APENAS como suporte/citação. NÃO refaça a calibração que o líder já validou. Quando citar, prefira referências aos trimestres/meses confirmados (ex: <span class="evidence-tag">(Trimestral Q1 2026)</span> ou <span class="evidence-tag">(Mensal de fev/2026)</span>).`;
 
-    const userPrompt = `EVIDÊNCIAS DO PERÍODO (${totalEvidence} no total):
+    const userPrompt = `EVIDÊNCIAS DO PERÍODO (${quarterlyCount} trimestral${quarterlyCount === 1 ? "" : "is"} confirmado${quarterlyCount === 1 ? "" : "s"}, ${monthlyCount} mensal${monthlyCount === 1 ? "" : "is"} confirmado${monthlyCount === 1 ? "" : "s"}, ${totalEvidence} registros brutos):
 
 ${evidenceText}
 
-Gere a avaliação formal de desempenho de ${memberName} em HTML puro, seguindo a estrutura obrigatória.`;
+Gere a avaliação formal de desempenho de ${memberName} em HTML puro, seguindo a estrutura obrigatória.${hasConfirmedRecaps ? " Lembre-se: os recaps confirmados pelo líder são a espinha — não recomece do zero." : ""}`;
 
     // Call Lovable AI Gateway
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
