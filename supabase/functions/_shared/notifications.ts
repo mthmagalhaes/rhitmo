@@ -126,7 +126,7 @@ async function sendSlack(
 ): Promise<boolean> {
   // Look up slack user mapping
   const { data: link } = await admin
-    .from('slack_user_links')
+    .from('slack_integrations')
     .select('slack_user_id, slack_team_id')
     .eq('user_id', userId)
     .maybeSingle();
