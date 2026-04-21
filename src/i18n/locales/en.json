@@ -1055,5 +1055,48 @@
       "skillGoal": "What do you want to learn/develop?",
       "skillGoalPlaceholder": "E.g.: Public speaking, project management..."
     }
+  },
+  "newNote": {
+    "templates": {
+      "blank": "Blank",
+      "blankDesc": "Start from scratch",
+      "oneOnOne": "Weekly 1:1",
+      "oneOnOneDesc": "Classic check-in structure",
+      "oneOnOneTitle": "Weekly 1:1",
+      "postProject": "Post-project",
+      "postProjectDesc": "Capture contribution and learnings",
+      "postProjectTitle": "Project retrospective",
+      "difficultFeedback": "Difficult feedback",
+      "difficultFeedbackDesc": "SBI model for alignment conversations",
+      "difficultFeedbackTitle": "Alignment conversation",
+      "sections": {
+        "howAreYou": "How are you doing?",
+        "progress": "Progress since last 1:1",
+        "blockers": "Blockers and questions",
+        "nextSteps": "Next steps",
+        "context": "Project context",
+        "contribution": "Direct report's contribution",
+        "impact": "Impact and results",
+        "learning": "Learnings",
+        "situation": "Observed situation",
+        "behavior": "Specific behavior",
+        "impactObserved": "Observed impact",
+        "expectation": "Expectation going forward"
+      },
+      "prompts": {
+        "howAreYou": "Energy, workload, personal life...",
+        "progress": "What moved forward? What didn't?",
+        "blockers": "Anything stuck? How can I help?",
+        "nextSteps": "Commitments for next week",
+        "projectContext": "What was the goal? Deadline? Stakeholders?",
+        "contribution": "What did this person specifically do?",
+        "impact": "Measurable or qualitative outcome",
+        "learning": "What was learned for next cycles",
+        "situation": "When did it happen? In what context?",
+        "behavior": "What did this person do or say exactly?",
+        "impactObserved": "What effect did it have on team / project / client?",
+        "expectation": "What do I expect different next time?"
+      }
+    }
   }
 }

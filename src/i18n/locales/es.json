@@ -1055,5 +1055,48 @@
       "skillGoal": "¿Qué quieres aprender/desarrollar?",
       "skillGoalPlaceholder": "Ej: Presentaciones en público, gestión de proyectos..."
     }
+  },
+  "newNote": {
+    "templates": {
+      "blank": "En blanco",
+      "blankDesc": "Empezar desde cero",
+      "oneOnOne": "1:1 semanal",
+      "oneOnOneDesc": "Estructura clásica de check-in",
+      "oneOnOneTitle": "1:1 semanal",
+      "postProject": "Post-proyecto",
+      "postProjectDesc": "Registrar contribución y aprendizajes",
+      "postProjectTitle": "Retrospectiva de proyecto",
+      "difficultFeedback": "Feedback difícil",
+      "difficultFeedbackDesc": "Modelo SBI para conversaciones de alineación",
+      "difficultFeedbackTitle": "Conversación de alineación",
+      "sections": {
+        "howAreYou": "¿Cómo estás?",
+        "progress": "Progreso desde el último 1:1",
+        "blockers": "Bloqueos y dudas",
+        "nextSteps": "Próximos pasos",
+        "context": "Contexto del proyecto",
+        "contribution": "Contribución del colaborador",
+        "impact": "Impacto y resultados",
+        "learning": "Aprendizajes",
+        "situation": "Situación observada",
+        "behavior": "Comportamiento específico",
+        "impactObserved": "Impacto observado",
+        "expectation": "Expectativa de aquí en adelante"
+      },
+      "prompts": {
+        "howAreYou": "Energía, carga de trabajo, vida personal...",
+        "progress": "¿Qué avanzó? ¿Qué quedó pendiente?",
+        "blockers": "¿Algo trabado? ¿Cómo puedo ayudar?",
+        "nextSteps": "Compromisos para la próxima semana",
+        "projectContext": "¿Cuál era el objetivo? ¿Plazo? ¿Stakeholders?",
+        "contribution": "¿Qué hizo esta persona específicamente?",
+        "impact": "Resultado medible o cualitativo",
+        "learning": "Qué se aprendió para próximos ciclos",
+        "situation": "¿Cuándo pasó? ¿En qué contexto?",
+        "behavior": "¿Qué hizo o dijo esta persona exactamente?",
+        "impactObserved": "¿Qué efecto tuvo en equipo / proyecto / cliente?",
+        "expectation": "¿Qué espero diferente la próxima vez?"
+      }
+    }
   }
 }
