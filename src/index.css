@@ -310,6 +310,118 @@ All colors MUST be HSL.
   font-weight: bold;
 }
 
+/* ── Review v2: Contributions, Patterns, Dimensions, Classification ── */
+.contribution-item,
+.pattern-item {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: hsl(var(--muted) / 0.25);
+}
+
+.contribution-title,
+.pattern-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem;
+  color: hsl(var(--foreground));
+}
+
+.contribution-detail,
+.pattern-detail {
+  line-height: 1.6;
+  color: hsl(var(--foreground) / 0.9);
+  margin: 0;
+}
+
+.pattern-positive {
+  border-left: 3px solid hsl(142 70% 45%);
+}
+
+.pattern-negative {
+  border-left: 3px solid hsl(38 92% 50%);
+}
+
+.dimension-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-top: 0.5rem;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border));
+}
+
+.dimension-table th,
+.dimension-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid hsl(var(--border));
+  line-height: 1.55;
+}
+
+.dimension-table tr:last-child th,
+.dimension-table tr:last-child td {
+  border-bottom: none;
+}
+
+.dimension-table th {
+  background: hsl(var(--muted) / 0.4);
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  width: 30%;
+  font-size: 0.9rem;
+}
+
+.dimension-table td {
+  color: hsl(var(--foreground) / 0.9);
+}
+
+.classification-grid {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.classification-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.75rem;
+  background: hsl(var(--muted) / 0.3);
+  border: 1px solid hsl(var(--border));
+}
+
+.classification-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: hsl(var(--muted-foreground));
+}
+
+.classification-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.merit-suggestion {
+  font-size: 0.85rem;
+  color: hsl(var(--muted-foreground));
+  margin: 0.25rem 0 0;
+  line-height: 1.5;
+}
+
+.calibration-hint {
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+  font-style: italic;
+  color: hsl(var(--muted-foreground));
+}
+
 /* Bias detection underlines */
 .bias-underline {
   border-bottom: 2px wavy hsl(var(--destructive) / 0.6);
