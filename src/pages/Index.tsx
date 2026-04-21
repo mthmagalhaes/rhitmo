@@ -15,6 +15,7 @@ import { SetupChecklist } from '@/components/SetupChecklist';
 import { LeaderSyncWizard } from '@/components/LeaderSyncWizard';
 import { ActivityPreview } from '@/components/ActivityPreview';
 import { UpcomingMeetingsCard } from '@/components/dashboard/UpcomingMeetingsCard';
+import { MirrorInsightCard } from '@/components/dashboard/MirrorInsightCard';
 import { ActivitySheet } from '@/components/ActivitySheet';
 import { useAuth } from '@/hooks/useAuth';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
@@ -598,6 +599,11 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
             onOpenLeaderSync={() => setLeaderSyncOpen(true)}
           />
         )}
+
+        {/* ═══ MIRROR INSIGHT (S3.2) ═══ */}
+        <section className="mb-8">
+          <MirrorInsightCard />
+        </section>
 
         {/* ═══ PRÓXIMAS 1:1s ═══ */}
         <section className="mb-12">

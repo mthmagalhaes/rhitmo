@@ -19,6 +19,7 @@ import { template as memberWelcome } from './member-welcome.tsx'
 import { template as hrAdminWelcome } from './hr-admin-welcome.tsx'
 import { template as waitlistConfirmation } from './waitlist-confirmation.tsx'
 import { template as syncCompleted } from './sync-completed.tsx'
+import { template as weeklySummary } from './weekly-summary.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'sync-invite': syncInvite,
@@ -31,4 +32,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'hr-admin-welcome': hrAdminWelcome,
   'waitlist-confirmation': waitlistConfirmation,
   'sync-completed': syncCompleted,
+  'weekly-summary': weeklySummary,
 }
