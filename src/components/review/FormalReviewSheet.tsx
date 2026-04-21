@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -27,9 +28,12 @@ import {
   Share2,
   CheckCircle2,
   TrendingUp,
+  Scale,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { ShareReviewDialog } from './ShareReviewDialog';
+import { ReviewCalibrationPanel, type PromotionRecommendation, type LossRisk, type MeritRecommendation } from './ReviewCalibrationPanel';
+import type { RecapClassification } from '@/lib/recapActions';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
