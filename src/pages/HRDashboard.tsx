@@ -10,6 +10,8 @@ import {
   Users, AlertCircle, CheckCircle, Bell, Target, ShieldAlert,
   ShieldCheck, Activity
 } from 'lucide-react';
+import { HRAutoAlertsSection } from '@/components/hr/HRAutoAlertsSection';
+import { MonthlyReportButton } from '@/components/hr/MonthlyReportButton';
 
 interface LeaderActivity {
   manager_id: string;
@@ -85,6 +87,14 @@ const HRDashboard = () => {
       </div>
 
       <div className="max-w-6xl mx-auto px-6 pt-8 space-y-12">
+        {/* ═══ AÇÕES RÁPIDAS ═══ */}
+        <section className="flex items-center justify-end gap-3">
+          <MonthlyReportButton workspaceId={workspaceId} />
+        </section>
+
+        {/* ═══ ALERTAS AUTOMÁTICOS (S3.5) ═══ */}
+        <HRAutoAlertsSection />
+
         {/* ═══ MÉTRICAS — Sprint 1.6: 5 → 3 KPIs (Cobertura, Maturidade, Risco) ═══ */}
         <section>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-4">Métricas-chave</p>
