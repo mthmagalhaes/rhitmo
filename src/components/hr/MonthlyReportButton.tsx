@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Download, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -9,6 +10,7 @@ interface MonthlyReportButtonProps {
 }
 
 export function MonthlyReportButton({ workspaceId }: MonthlyReportButtonProps) {
+  const { t } = useTranslation();
   const [generating, setGenerating] = useState(false);
 
   const handleGenerate = async () => {
@@ -20,14 +22,14 @@ export function MonthlyReportButton({ workspaceId }: MonthlyReportButtonProps) {
       });
       if (error) throw error;
       if (!data?.url) {
-        toast.error('Não foi possível gerar o PDF');
+        toast.error(t('monthlyReport.error'));
         return;
       }
       window.open(data.url, '_blank', 'noopener,noreferrer');
-      toast.success('Relatório mensal gerado');
+      toast.success(t('monthlyReport.success'));
     } catch (err) {
       console.error('[MonthlyReportButton]', err);
-      const msg = err instanceof Error ? err.message : 'Erro ao gerar relatório';
+      const msg = err instanceof Error ? err.message : t('monthlyReport.error');
       toast.error(msg);
     } finally {
       setGenerating(false);
@@ -42,7 +44,7 @@ export function MonthlyReportButton({ workspaceId }: MonthlyReportButtonProps) {
       className="rounded-xl gap-2 h-10"
     >
       {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-      {generating ? 'Gerando...' : 'Exportar PDF do mês'}
+      {generating ? t('monthlyReport.generating') : t('monthlyReport.button')}
     </Button>
   );
 }

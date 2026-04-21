@@ -1,19 +1,23 @@
 import { formatDistanceToNow } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ptBR, enUS, es } from 'date-fns/locale';
 import { Bell, X, ShieldAlert, AlertTriangle, Info } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { useHRRiskAlerts } from '@/hooks/useHRRiskAlerts';
 
 export function HRAutoAlertsSection() {
+  const { t, i18n } = useTranslation();
   const { alerts, isLoading, dismiss } = useHRRiskAlerts();
 
   if (isLoading) return null;
+
+  const dateLocale = i18n.language?.startsWith('en') ? enUS : i18n.language?.startsWith('es') ? es : ptBR;
 
   return (
     <section>
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-4 flex items-center gap-2">
         <Bell className="h-3 w-3" />
-        Alertas Automáticos
+        {t('hrAlerts.sectionTitle')}
         {alerts.length > 0 && (
           <span className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">
             {alerts.length}
@@ -23,7 +27,7 @@ export function HRAutoAlertsSection() {
       <div className="bg-card rounded-2xl border border-border shadow-sm p-6">
         {alerts.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-2">
-            Nenhum alerta ativo. Tudo sob controle. ✨
+            {t('hrAlerts.empty')}
           </p>
         ) : (
           <div className="space-y-2">
@@ -52,7 +56,7 @@ export function HRAutoAlertsSection() {
                     <p className="text-[10px] text-muted-foreground mt-0.5">
                       {formatDistanceToNow(new Date(alert.created_at), {
                         addSuffix: true,
-                        locale: ptBR,
+                        locale: dateLocale,
                       })}
                     </p>
                   </div>
@@ -61,7 +65,7 @@ export function HRAutoAlertsSection() {
                     size="icon"
                     onClick={() => dismiss(alert.id)}
                     className="h-6 w-6 shrink-0 hover:bg-background/50"
-                    aria-label="Reconhecer alerta"
+                    aria-label={t('hrAlerts.dismiss')}
                   >
                     <X className="h-3.5 w-3.5" />
                   </Button>
