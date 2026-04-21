@@ -143,6 +143,7 @@ function RecapCard({
                   className="rounded-xl min-h-[68px] text-sm"
                 />
               )}
+              <EvidenceChips evidence={recap.highlight_evidence as any} />
             </div>
 
             <div className="space-y-1.5">
@@ -161,6 +162,7 @@ function RecapCard({
                   className="rounded-xl min-h-[68px] text-sm"
                 />
               )}
+              <EvidenceChips evidence={recap.concern_evidence as any} />
             </div>
 
             <div className="space-y-1.5">

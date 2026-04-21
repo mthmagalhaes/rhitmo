@@ -54,18 +54,26 @@ async function callMonthlyRecapAI(
 
 Você é o "Rhitmo Mensal" — uma função especializada em transformar o registro bruto do mês de um líder sobre um liderado em um resumo estruturado de 3 elementos:
 
-1. HIGHLIGHT: o que se destacou positivamente — sempre com evidência (cite o ID e a data da nota/1:1 de origem)
-2. CONCERN: o que preocupou ou ficou abaixo — linguagem factual, sem drama, sempre com evidência
+1. HIGHLIGHT: o que se destacou positivamente — vinculado a evidência real (no campo evidence)
+2. CONCERN: o que preocupou ou ficou abaixo — linguagem factual, sem drama, vinculado a evidência real
 3. DOMINANT_PATTERN: uma frase única descrevendo o comportamento dominante do mês
 
 ${GUARDRAILS_PROMPT}
 
 REGRAS ESPECÍFICAS DO MENSAL:
-1. **Anti-alucinação absoluta**: cada highlight e concern PRECISA citar pelo menos 1 evidência real (feedback_id ou meeting_id) das listas fornecidas. Nunca invente IDs.
+1. **Anti-alucinação absoluta**: cada highlight e concern PRECISA ter pelo menos 1 evidência real (feedback_id ou meeting_id) no array evidence. Nunca invente IDs.
 2. Se não houver evidência clara para highlight ou concern, retorne text="" e evidence=[] para aquele bloco.
-3. Linguagem factual e seca. Não use "incrível", "fantástico", "preocupante demais". Use "entregou X", "atrasou Y", "comunicou de forma proativa".
-4. Foque APENAS em ações de ${memberName}. Ignore o que outras pessoas fizeram.
-5. Resposta deve ser JSON válido em português brasileiro.`;
+3. **PROSA LIMPA NO TEXT**: o campo "text" deve ser uma frase factual sobre o que ${memberName} fez, em linguagem natural. NUNCA inclua "(feedback_id=...)", "(meeting_id=...)", "(data=...)", UUIDs, IDs técnicos ou datas em parênteses dentro do text. As referências e datas vão SOMENTE no campo evidence — elas serão renderizadas como chips visuais separadas, fora do parágrafo.
+4. Linguagem factual e seca. Não use "incrível", "fantástico", "preocupante demais". Use "entregou X", "atrasou Y", "comunicou de forma proativa".
+5. Foque APENAS em ações de ${memberName}. Ignore o que outras pessoas fizeram.
+6. Resposta deve ser JSON válido em português brasileiro.
+
+EXEMPLO BOM (faça assim):
+  text: "Apresentou as análises de LTV e CAC no All Hands, recebendo feedback positivo pela didática e clareza."
+  evidence: [{"feedback_id": "c7d155ec-4709-4ef9-b671-ff395474ab40", "date": "2026-03-12"}]
+
+EXEMPLO RUIM (NÃO faça assim):
+  text: "Apresentou as análises de LTV e CAC (feedback_id=c7d155ec-4709-4ef9-b671-ff395474ab40, data=2026-03-12)."`;
 
   const evidenceText = [
     feedbacks.length > 0
@@ -91,17 +99,17 @@ REGRAS ESPECÍFICAS DO MENSAL:
 EVIDÊNCIAS DO MÊS:
 ${evidenceText}
 
-Responda APENAS com JSON no formato exato:
+Responda APENAS com JSON no formato exato (text em prosa limpa, evidence com IDs reais):
 {
   "highlight": {
-    "text": "frase factual com evidência (1-2 linhas)",
+    "text": "frase factual em prosa limpa, SEM IDs e SEM datas em parênteses (1-2 linhas)",
     "evidence": [{"feedback_id": "uuid-real", "date": "YYYY-MM-DD"}]
   },
   "concern": {
-    "text": "frase factual com evidência (1-2 linhas) ou string vazia",
+    "text": "frase factual em prosa limpa, SEM IDs e SEM datas em parênteses (1-2 linhas) ou string vazia",
     "evidence": [{"meeting_id": "uuid-real", "date": "YYYY-MM-DD"}]
   },
-  "dominant_pattern": "uma frase única descrevendo o comportamento dominante do período"
+  "dominant_pattern": "uma frase única descrevendo o comportamento dominante do período, sem IDs"
 }`;
 
   const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
