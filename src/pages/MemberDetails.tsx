@@ -19,7 +19,13 @@ import { PerformanceReviewList } from '@/components/PerformanceReviewList';
 import { useAuth } from '@/hooks/useAuth';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Music, BookOpen, FileText, Clock, Lock, ArrowRight, Briefcase, Heart, Megaphone, Compass, DollarSign, Shield, GraduationCap, Crown, HelpCircle, Sunrise, Moon, Search, CheckCircle, Monitor, MessageSquare, CheckCircle2, Sprout } from 'lucide-react';
+import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Music, BookOpen, FileText, Clock, Lock, ArrowRight, Briefcase, Heart, Megaphone, Compass, DollarSign, Shield, GraduationCap, Crown, HelpCircle, Sunrise, Moon, Search, CheckCircle, Monitor, MessageSquare, CheckCircle2, Sprout, MoreHorizontal } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { GoalsManager } from '@/components/GoalsManager';
 
@@ -410,18 +416,29 @@ const MemberDetails = () => {
             Início
           </Button>
           <div className="flex gap-2">
+            {/* Sprint 1.3: 1 botão primário "Nova Nota" + dropdown "Mais ações" */}
             <Button onClick={() => setDialogOpen(true)} className="gap-2">
               <PenSquare className="h-4 w-4" />
               <span className="hidden sm:inline">Nova Nota</span>
             </Button>
-            <Button variant="outline" onClick={() => setRecorderOpen(true)} className="gap-2">
-              <Monitor className="h-4 w-4" />
-              <span className="hidden sm:inline">Gravar Reunião</span>
-            </Button>
-            <Button variant="outline" onClick={() => setChatOpen(true)} className="gap-2">
-              <Sparkles className="h-4 w-4" />
-              <span className="hidden sm:inline">Mentor Chat</span>
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2" aria-label="Mais ações">
+                  <MoreHorizontal className="h-4 w-4" />
+                  <span className="hidden sm:inline">Mais ações</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem onClick={() => setRecorderOpen(true)} className="gap-2">
+                  <Monitor className="h-4 w-4" />
+                  Gravar Reunião
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setChatOpen(true)} className="gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Mentor Chat
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
         <div className="mb-8">

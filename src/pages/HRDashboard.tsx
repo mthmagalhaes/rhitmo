@@ -5,10 +5,19 @@ import { useHRAdmin } from '@/components/HRAdminGuard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { Navigate } from 'react-router-dom';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
-  Users, UserCheck, AlertCircle, CheckCircle, FileText,
-  Bell, Activity, Target, ShieldAlert
+  Users, AlertCircle, CheckCircle, Bell, Target, ShieldAlert,
+  ShieldCheck, Activity
 } from 'lucide-react';
+
+interface LeaderActivity {
+  manager_id: string;
+  manager_name: string;
+  manager_email?: string | null;
+  note_count: number;
+  member_count: number;
+}
 
 interface Metrics {
   total_leaders: number;
@@ -19,24 +28,17 @@ interface Metrics {
   reviews_last_90_days: number;
   pdi_coverage_percentage: number;
   bias_detected_last_7d: number;
-  notes_per_leader_last_30d: { manager_id: string; note_count: number; member_count: number }[];
+  members_at_risk?: number;
+  coverage_percentage?: number;
+  notes_per_leader_last_30d: LeaderActivity[];
   sentiment_distribution: Record<string, number>;
 }
 
-const SENTIMENT_COLORS: Record<string, string> = {
-  muito_positivo: 'bg-emerald-400',
-  positivo: 'bg-green-400',
-  neutro: 'bg-muted-foreground/30',
-  construtivo: 'bg-amber-400',
-  critico: 'bg-destructive',
-};
-
-const SENTIMENT_LABELS: Record<string, string> = {
-  muito_positivo: 'Muito Positivo',
-  positivo: 'Positivo',
-  neutro: 'Neutro',
-  construtivo: 'Construtivo',
-  critico: 'Crítico',
+const getInitials = (name: string) => {
+  if (!name) return '??';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
 
 const HRDashboard = () => {
