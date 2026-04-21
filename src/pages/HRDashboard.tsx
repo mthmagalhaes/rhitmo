@@ -42,6 +42,7 @@ const getInitials = (name: string) => {
 };
 
 const HRDashboard = () => {
+  const navigate = useNavigate();
   const { workspaceId, workspaceName } = useHRAdmin();
   const { hasHrDashboard, isLoading: planLoading } = usePlanLimits();
 
