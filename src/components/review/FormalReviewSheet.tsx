@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -27,9 +28,12 @@ import {
   Share2,
   CheckCircle2,
   TrendingUp,
+  Scale,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { ShareReviewDialog } from './ShareReviewDialog';
+import { ReviewCalibrationPanel, type PromotionRecommendation, type LossRisk, type MeritRecommendation } from './ReviewCalibrationPanel';
+import type { RecapClassification } from '@/lib/recapActions';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -63,6 +67,7 @@ export function FormalReviewSheet({
 }: FormalReviewSheetProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation('rhitmo');
 
   const [draftText, setDraftText] = useState('');
   const [competencyEvaluations, setCompetencyEvaluations] = useState<CompetencyEvaluation[]>([]);
@@ -297,14 +302,18 @@ export function FormalReviewSheet({
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
           <div className="px-6 pt-4">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="draft" className="gap-1.5">
                 <FileText className="h-3.5 w-3.5" />
-                Rascunho Geral
+                {t('review.tabs.draft', 'Rascunho Geral')}
               </TabsTrigger>
               <TabsTrigger value="competencies" className="gap-1.5">
                 <Award className="h-3.5 w-3.5" />
-                Competências
+                {t('review.tabs.competencies', 'Competências')}
+              </TabsTrigger>
+              <TabsTrigger value="calibration" className="gap-1.5">
+                <Scale className="h-3.5 w-3.5" />
+                {t('review.tabs.calibration', 'Calibração')}
               </TabsTrigger>
             </TabsList>
           </div>
@@ -412,6 +421,24 @@ export function FormalReviewSheet({
                     );
                   })
                 )}
+              </div>
+            </ScrollArea>
+          </TabsContent>
+
+          {/* Calibration tab */}
+          <TabsContent value="calibration" className="flex-1 px-6 mt-4 min-h-0">
+            <ScrollArea className="h-[calc(100vh-280px)]">
+              <div className="pr-4 pb-4">
+                <ReviewCalibrationPanel
+                  reviewId={reviewId}
+                  initial={{
+                    classification: ((review as any).classification ?? null) as RecapClassification | null,
+                    promotion_recommendation: ((review as any).promotion_recommendation ?? null) as PromotionRecommendation | null,
+                    loss_risk: ((review as any).loss_risk ?? null) as LossRisk | null,
+                    merit_recommendation: ((review as any).merit_recommendation ?? null) as MeritRecommendation | null,
+                  }}
+                  disabled={!!review.acknowledged_at}
+                />
               </div>
             </ScrollArea>
           </TabsContent>

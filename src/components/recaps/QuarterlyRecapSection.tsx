@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,34 +25,6 @@ interface Props {
   memberId: string;
 }
 
-const CLASSIFICATION_LABELS: Record<RecapClassification, { title: string; sub: string }> = {
-  precisa_subir: { title: 'Precisa subir a barra', sub: 'Gaps recorrentes em entrega ou comportamento.' },
-  dentro_esperado: { title: 'Dentro do esperado', sub: 'Cumpre consistentemente, sem destaques.' },
-  subindo_barra: { title: 'Subindo a barra', sub: 'Crescimento visível, entrega acima em vários aspectos.' },
-  acima_esperado: { title: 'Acima do esperado', sub: 'Performance excepcional, padrão claro.' },
-};
-
-const RISK_LABELS: Record<RecapTurnoverRisk, string> = {
-  low: 'Baixo',
-  medium: 'Médio',
-  high: 'Alto',
-};
-
-const ACTION_LABELS: Record<string, string> = {
-  improvement_plan_30_60_90: 'Montar plano de melhoria 30/60/90',
-  direct_conversation: 'Conversa direta sobre o que precisa mudar',
-  increase_1on1_frequency: 'Aumentar frequência de 1:1 para semanal',
-  define_new_challenge: 'Definir um desafio novo para evitar estagnação',
-  public_recognition: 'Reconhecer publicamente uma entrega específica',
-  growth_conversation: 'Perguntar o que falta para ela querer crescer mais',
-  high_visibility_project: 'Dar projeto de maior visibilidade ou complexidade',
-  promotion_path_conversation: 'Iniciar conversa sobre próximo nível e promoção',
-  stakeholder_exposure: 'Apresentar a stakeholders que ainda não a conhecem',
-  anticipate_promotion: 'Antecipar conversa de promoção ou movimentação',
-  protect_from_overload: 'Proteger o tempo dela de demandas que não condizem com o nível',
-  external_mentorship: 'Conectar com mentores externos ou oportunidades de aprendizado',
-};
-
 function quarterLabel(periodQuarter: string) {
   const d = new Date(periodQuarter + 'T00:00:00Z');
   const q = Math.floor(d.getUTCMonth() / 3) + 1;
@@ -66,6 +38,7 @@ function getCurrentQuarterStart(): string {
 }
 
 function QuarterCard({ memberId, recap, periodQuarter }: { memberId: string; recap: QuarterlyRecap | undefined; periodQuarter: string }) {
+  const { t } = useTranslation('rhitmo');
   const generate = useGenerateQuarterlyRecap(memberId);
   const confirm = useConfirmQuarterlyRecap(memberId);
 
@@ -95,32 +68,34 @@ function QuarterCard({ memberId, recap, periodQuarter }: { memberId: string; rec
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="text-base font-semibold tracking-tight flex items-center gap-2">
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
-            Rhitmo Trimestral — {quarterLabel(periodQuarter)}
+            {t('recap.quarterly.cardTitle', { quarter: quarterLabel(periodQuarter) })}
           </CardTitle>
           {isConfirmed && (
             <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
               <CheckCircle2 className="h-3 w-3 mr-1" />
-              Confirmado
+              {t('recap.quarterly.confirmedBadge')}
             </Badge>
           )}
           {recap?.status === 'draft' && (
             <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">
-              Rascunho
+              {t('recap.quarterly.draftBadge')}
             </Badge>
           )}
         </div>
         {recap && (
           <p className="text-xs text-muted-foreground mt-1">
-            Baseado em {recap.source_monthly_recap_ids.length} mensa{recap.source_monthly_recap_ids.length === 1 ? 'l' : 'is'} confirmado{recap.source_monthly_recap_ids.length === 1 ? '' : 's'} • {recap.source_feedbacks_count} notas • {recap.source_meetings_count} 1:1s
+            {t('recap.quarterly.basedOn', {
+              count: recap.source_monthly_recap_ids.length,
+              feedbacks: recap.source_feedbacks_count,
+              meetings: recap.source_meetings_count,
+            })}
           </p>
         )}
       </CardHeader>
       <CardContent className="space-y-5">
         {!recap && (
           <div className="text-center py-6 space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Confirme ao menos um Rhitmo Mensal do trimestre para gerar a calibração trimestral.
-            </p>
+            <p className="text-sm text-muted-foreground">{t('recap.quarterly.needConfirmedMonthly')}</p>
             <Button
               onClick={() => generate.mutate({ periodQuarter })}
               disabled={generate.isPending}
@@ -130,12 +105,12 @@ function QuarterCard({ memberId, recap, periodQuarter }: { memberId: string; rec
               {generate.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Gerando...
+                  {t('recap.monthly.generating')}
                 </>
               ) : (
                 <>
                   <Sparkles className="h-4 w-4 mr-2" />
-                  Gerar trimestral com IA
+                  {t('recap.quarterly.generateButton')}
                 </>
               )}
             </Button>
@@ -144,10 +119,9 @@ function QuarterCard({ memberId, recap, periodQuarter }: { memberId: string; rec
 
         {recap && (
           <>
-            {/* Highlights */}
             {recap.highlights.length > 0 && (
               <div className="space-y-2">
-                <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Destaques do trimestre</h3>
+                <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t('recap.quarterly.highlights')}</h3>
                 <ul className="space-y-2">
                   {recap.highlights.map((h, i) => (
                     <li key={i} className="text-sm bg-muted/40 rounded-xl p-3">
@@ -160,10 +134,9 @@ function QuarterCard({ memberId, recap, periodQuarter }: { memberId: string; rec
               </div>
             )}
 
-            {/* Patterns */}
             {recap.recurring_patterns.length > 0 && (
               <div className="space-y-2">
-                <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Padrões recorrentes</h3>
+                <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t('recap.quarterly.patterns')}</h3>
                 <ul className="space-y-1.5">
                   {recap.recurring_patterns.map((p, i) => (
                     <li key={i} className="text-sm flex items-start gap-2">
@@ -179,7 +152,7 @@ function QuarterCard({ memberId, recap, periodQuarter }: { memberId: string; rec
 
             {recap.evolution_vs_previous && (
               <div className="text-sm bg-primary/5 rounded-xl p-3 border border-primary/10">
-                <span className="text-xs font-semibold uppercase tracking-wider text-primary mr-1">vs trimestre anterior:</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-primary mr-1">{t('recap.quarterly.evolutionPrefix')}</span>
                 {recap.evolution_vs_previous}
               </div>
             )}
@@ -187,7 +160,12 @@ function QuarterCard({ memberId, recap, periodQuarter }: { memberId: string; rec
             {/* Classification */}
             <div className="space-y-2">
               <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Classificação {recap.ai_suggested_classification && <span className="ml-1 normal-case text-foreground/50">(IA sugere: {CLASSIFICATION_LABELS[recap.ai_suggested_classification].title})</span>}
+                {t('recap.quarterly.classification')}{' '}
+                {recap.ai_suggested_classification && (
+                  <span className="ml-1 normal-case text-foreground/50">
+                    ({t('recap.quarterly.aiSuggests')}: {t(`recap.classifications.${recap.ai_suggested_classification}`)})
+                  </span>
+                )}
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {CLASSIFICATIONS.map((c) => (
@@ -197,7 +175,6 @@ function QuarterCard({ memberId, recap, periodQuarter }: { memberId: string; rec
                     disabled={isConfirmed}
                     onClick={() => {
                       setClassification(c);
-                      // reset action if it doesn't belong to new classification
                       if (actionKey && !ACTIONS_BY_CLASSIFICATION[c].includes(actionKey)) setActionKey(null);
                     }}
                     className={cn(
@@ -208,8 +185,8 @@ function QuarterCard({ memberId, recap, periodQuarter }: { memberId: string; rec
                       isConfirmed && 'opacity-70 cursor-not-allowed',
                     )}
                   >
-                    <div className="text-sm font-semibold">{CLASSIFICATION_LABELS[c].title}</div>
-                    <div className="text-xs text-muted-foreground">{CLASSIFICATION_LABELS[c].sub}</div>
+                    <div className="text-sm font-semibold">{t(`recap.classifications.${c}`)}</div>
+                    <div className="text-xs text-muted-foreground">{t(`recap.classifications.${c}_sub`)}</div>
                   </button>
                 ))}
               </div>
@@ -219,7 +196,7 @@ function QuarterCard({ memberId, recap, periodQuarter }: { memberId: string; rec
             <div className="space-y-2">
               <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                 <AlertTriangle className="h-3 w-3" />
-                Risco de turnover
+                {t('recap.quarterly.turnoverRisk')}
               </h3>
               <div className="flex flex-wrap gap-2">
                 {TURNOVER_RISKS.map((r) => (
@@ -234,7 +211,7 @@ function QuarterCard({ memberId, recap, periodQuarter }: { memberId: string; rec
                       isConfirmed && 'opacity-70 cursor-not-allowed',
                     )}
                   >
-                    {RISK_LABELS[r]}
+                    {t(`recap.risks.${r}`)}
                   </button>
                 ))}
               </div>
@@ -242,7 +219,7 @@ function QuarterCard({ memberId, recap, periodQuarter }: { memberId: string; rec
                 <Textarea
                   value={riskReason}
                   onChange={(e) => setRiskReason(e.target.value)}
-                  placeholder="Motivo (1 linha) — opcional mas recomendado se risco médio/alto"
+                  placeholder={t('recap.quarterly.riskReasonPlaceholder')}
                   className="rounded-xl min-h-[52px] text-sm"
                 />
               )}
@@ -254,7 +231,7 @@ function QuarterCard({ memberId, recap, periodQuarter }: { memberId: string; rec
             {/* Next action */}
             <div className="space-y-2">
               <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Próxima ação para o trimestre
+                {t('recap.quarterly.nextAction')}
               </h3>
               {classification ? (
                 <div className="space-y-2">
@@ -270,9 +247,9 @@ function QuarterCard({ memberId, recap, periodQuarter }: { memberId: string; rec
                         isConfirmed && 'opacity-70 cursor-not-allowed',
                       )}
                     >
-                      {ACTION_LABELS[key]}
+                      {t(`recap.actions.${key}`)}
                       {recap.ai_suggested_next_action_key === key && (
-                        <span className="ml-2 text-xs text-primary">(IA sugere)</span>
+                        <span className="ml-2 text-xs text-primary">({t('recap.quarterly.aiSuggests')})</span>
                       )}
                     </button>
                   ))}
@@ -280,13 +257,13 @@ function QuarterCard({ memberId, recap, periodQuarter }: { memberId: string; rec
                     <Textarea
                       value={actionNote}
                       onChange={(e) => setActionNote(e.target.value)}
-                      placeholder="Observação (opcional)"
+                      placeholder={t('recap.quarterly.actionNotePlaceholder')}
                       className="rounded-xl min-h-[52px] text-sm mt-2"
                     />
                   )}
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground italic">Escolha uma classificação acima para ver as ações sugeridas.</p>
+                <p className="text-xs text-muted-foreground italic">{t('recap.quarterly.chooseClassificationFirst')}</p>
               )}
             </div>
 
@@ -314,7 +291,7 @@ function QuarterCard({ memberId, recap, periodQuarter }: { memberId: string; rec
                   ) : (
                     <CheckCircle2 className="h-4 w-4 mr-2" />
                   )}
-                  Confirmar trimestral
+                  {t('recap.quarterly.confirm')}
                 </Button>
                 <Button
                   size="sm"
@@ -328,7 +305,7 @@ function QuarterCard({ memberId, recap, periodQuarter }: { memberId: string; rec
                   ) : (
                     <RefreshCw className="h-4 w-4 mr-2" />
                   )}
-                  Regerar com IA
+                  {t('recap.quarterly.regenerate')}
                 </Button>
               </div>
             )}
@@ -340,6 +317,7 @@ function QuarterCard({ memberId, recap, periodQuarter }: { memberId: string; rec
 }
 
 export function QuarterlyRecapSection({ memberId }: Props) {
+  const { t } = useTranslation('rhitmo');
   const { data: recaps = [], isLoading } = useQuarterlyRecaps(memberId, 4);
   const lastQuarter = getCurrentQuarterStart();
   const recapForLastQuarter = recaps.find((r) => r.period_quarter.slice(0, 10) === lastQuarter);
@@ -348,28 +326,24 @@ export function QuarterlyRecapSection({ memberId }: Props) {
     return (
       <div className="flex items-center justify-center py-8 text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin mr-2" />
-        Carregando trimestrais...
+        {t('recap.quarterly.loading')}
       </div>
     );
   }
 
-  // Show: last quarter (always — even if no recap, so the leader can generate it),
-  // plus all previous recaps.
   const previous = recaps.filter((r) => r.period_quarter.slice(0, 10) !== lastQuarter);
 
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-lg font-bold tracking-tight">Rhitmo Trimestral</h2>
-        <p className="text-sm text-muted-foreground">
-          A cada 3 meses, a IA junta os mensais e sugere classificação, risco e próxima ação. Você calibra em ~5 min.
-        </p>
+        <h2 className="text-lg font-bold tracking-tight">{t('recap.quarterly.title')}</h2>
+        <p className="text-sm text-muted-foreground">{t('recap.quarterly.subtitle')}</p>
       </div>
       <QuarterCard memberId={memberId} periodQuarter={lastQuarter} recap={recapForLastQuarter} />
       {previous.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground pt-2">
-            Trimestres anteriores
+            {t('recap.quarterly.previousQuarters')}
           </h3>
           {previous.map((r) => (
             <QuarterCard key={r.id} memberId={memberId} periodQuarter={r.period_quarter.slice(0, 10)} recap={r} />
