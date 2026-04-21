@@ -93,11 +93,32 @@ Deno.serve(async (req) => {
       .eq("processing_status", "completed")
       .order("created_at", { ascending: true });
 
+    // Fetch confirmed Rhitmo recaps in period — these are the calibrated spine of the review
+    const { data: quarterlies } = await supabase
+      .from("quarterly_recaps")
+      .select("period_quarter, highlights, recurring_patterns, evolution_vs_previous, classification, turnover_risk, turnover_risk_reason, next_action_key, next_action_note, source_monthly_recap_ids")
+      .eq("member_id", member.id)
+      .eq("status", "confirmed")
+      .gte("period_quarter", periodStart)
+      .lte("period_quarter", periodEnd)
+      .order("period_quarter", { ascending: true });
+
+    const { data: monthlies } = await supabase
+      .from("monthly_recaps")
+      .select("period_month, highlight_text, concern_text, dominant_pattern, low_evidence")
+      .eq("member_id", member.id)
+      .eq("status", "confirmed")
+      .gte("period_month", periodStart)
+      .lte("period_month", periodEnd)
+      .order("period_month", { ascending: true });
+
     const feedbackCount = feedbacks?.length || 0;
     const meetingCount = meetings?.length || 0;
+    const quarterlyCount = quarterlies?.length || 0;
+    const monthlyCount = monthlies?.length || 0;
     const totalEvidence = feedbackCount + meetingCount;
 
-    console.log(`Evidence: ${feedbackCount} feedbacks, ${meetingCount} meetings`);
+    console.log(`Evidence: ${feedbackCount} feedbacks, ${meetingCount} meetings, ${quarterlyCount} quarterlies, ${monthlyCount} monthlies`);
 
     if (totalEvidence === 0) {
       // Update with empty message
