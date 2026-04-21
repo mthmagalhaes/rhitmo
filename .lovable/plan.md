@@ -1,207 +1,111 @@
-&nbsp;
 
-# Rhitmo Core — Implementação dos Rituais Mensal e Trimestral
 
-## O modelo mental em uma frase
+# Rhitmo Core — Ajustes finais antes de fechar Sprint 4
 
-Hoje o Rhitmo tem o **andar de baixo** (Diário de Bordo, Mentor, Briefs, Nudges) e o **andar de cima** (Avaliação Formal). Falta o **meio**: os rituais Mensal e Trimestral que transformam notas avulsas em dado longitudinal estruturado e tornam a Review formal um ato de revisão — não de criação. Foco em ser pouca fricção, precisamos ter isso na plataforma, mas a ideia é que líder nem precise abrir plataforma e consiga fazer isso através do slack (pelo menos o diário de bordo e o ritual mensal e trimestral) e deixando a avaliação formal para a plataforma.
+Os 3 alertas técnicos + o estado de transição estão corretos. Aqui está o que entra para fechar a sprint sem regressão.
 
-Esta sprint constrói exatamente isso, reutilizando a infra existente de cron, edge functions, Lovable AI e o template de prompt já validado pela `generate-formal-review`.
+## 1. Funções separadas para confirmação (drop da ideia "função genérica")
 
-## A camada que falta (visualmente)
+Confirmação **continua sendo update direto na tabela via RLS** (já implementado em `useConfirmMonthlyRecap` e `useConfirmQuarterlyRecap`). Não vamos criar `finalize-monthly-recap` / `finalize-quarterly-recap` como edge functions.
 
-```text
+**Motivo:** RLS já garante que só o `manager_id` pode atualizar. Validação de payload acontece no client (`canConfirm` no Quarterly exige classification + risk + actionKey). Para reforçar **server-side**, adicionamos:
 
-Diário de Bordo (existe)
+- **Trigger Postgres** `validate_quarterly_recap_confirm` — ao mudar `status` de `draft` → `confirmed`, exige `classification IS NOT NULL AND turnover_risk IS NOT NULL AND next_action_key IS NOT NULL`. Senão, `RAISE EXCEPTION`.
+- **Trigger Postgres** `validate_monthly_recap_confirm` — ao confirmar, exige `dominant_pattern IS NOT NULL AND length(trim(dominant_pattern)) > 0` (highlight/concern podem ser vazios por design — quando não há evidência, omite).
 
-   ↓ acumula 30 dias
+Isso fecha o buraco sem multiplicar funções nem inventar bugs silenciosos. Funções genéricas ficam fora.
 
-Rhitmo Mensal (NOVO) — IA sugere → líder confirma em 3 min
+## 2. Cron de mensal — threshold ≥3 evidências + flag `low_evidence`
 
-   ↓ acumula 3 meses
+**No cron mensal** (`monthly-recaps-cron`, dia 2):
+- Itera sobre todos `(team_members × leader)` ativos
+- Conta `feedbacks + meeting_transcripts` do mês anterior por membro
+- **Só dispara `generate-monthly-recap` se `total ≥ 3`**
+- **Só cria nudge** "Mensal aguardando confirmação" se draft foi gerado
 
-Rhitmo Trimestral (NOVO) — IA sugere → líder calibra em 5 min
+Quando o líder gera **manualmente** com `<3` evidências (caso comum em times pequenos), a edge function permite gerar mas marca o recap com nova coluna `low_evidence boolean NOT NULL DEFAULT false`. UI mostra badge âmbar:
 
-   ↓ acumula 2-4 trimestres
+> ⚠ Poucas evidências este mês (X registros). O resumo pode estar incompleto — registre mais notas antes de confirmar.
 
-Rhitmo Review (existe — ganha contexto longitudinal)
+**Migração adicional:** `ALTER TABLE monthly_recaps ADD COLUMN low_evidence boolean NOT NULL DEFAULT false;` + lógica em `generate-monthly-recap` para setar `low_evidence = (fbCount + mtCount) < 3`.
 
+## 3. Hidratação completa dos trimestrais em `generate-formal-review`
+
+Atualizar `generate-formal-review/index.ts` para:
+
+```ts
+// Após buscar feedbacks/meetings, buscar recaps confirmados no período
+const { data: quarterlies } = await supabase
+  .from("quarterly_recaps")
+  .select("period_quarter, highlights, recurring_patterns, evolution_vs_previous, classification, turnover_risk, turnover_risk_reason, next_action_key, source_monthly_recap_ids")
+  .eq("member_id", member.id)
+  .eq("status", "confirmed")
+  .gte("period_quarter", periodStart)
+  .lte("period_quarter", periodEnd);
+
+const { data: monthlies } = await supabase
+  .from("monthly_recaps")
+  .select("period_month, highlight_text, concern_text, dominant_pattern")
+  .eq("member_id", member.id)
+  .eq("status", "confirmed")
+  .gte("period_month", periodStart)
+  .lte("period_month", periodEnd);
 ```
 
-## O que vamos construir
+E **injetar conteúdo hidratado** no prompt:
+- Bloco "## CALIBRAÇÕES TRIMESTRAIS CONFIRMADAS PELO LÍDER" com highlights, recurring_patterns (texto completo), classification, turnover_risk, next_action — **antes** do bloco de evidências brutas.
+- Bloco "## RESUMOS MENSAIS CONFIRMADOS" com highlight_text/concern_text/dominant_pattern por mês.
+- Instrução explícita no system prompt: *"Quando há trimestrais confirmadas, elas são a espinha da review. Use os feedbacks brutos APENAS como suporte/citação. NÃO refaça a calibração que o líder já validou."*
 
-### 1. Schema — duas novas tabelas
+Sem trimestral nem mensal confirmado → fallback para o comportamento atual (feedbacks brutos).
 
-*`monthly_recaps`** — um por (member_id, year_month)
+## 4. Estado de transição: empty state com CTA de geração manual
 
-- `member_id`, `manager_id`, `workspace_id`, `period_month` (date, primeiro dia do mês)
+Para usuários existentes (líderes com feedbacks mas zero recaps), adicionar um **`RhitmoTimelineCard`** simples no `MemberDetails.tsx` posicionado **antes** das tabs `Diário de Bordo` / `Avaliações Formais`.
 
-- `status` `draft` | `confirmed`), `confirmed_at`, `confirmed_by`
+Lógica:
+- Conta `monthly_recaps` + `quarterly_recaps` confirmados do membro
+- **Se zero recaps E ≥3 feedbacks no mês passado:** card destacado "Você tem N notas registradas — gere o primeiro Resumo Mensal" + botão `Gerar Rhitmo Mensal` (chama `generate-monthly-recap` para o mês anterior)
+- **Se zero recaps E <3 feedbacks no mês passado:** card neutro "Registre mais notas para destravar seu primeiro Rhitmo Mensal" (sem botão)
+- **Se ≥1 recap:** card colapsado com "Ver linha do tempo Rhitmo →" levando até a seção de recaps abaixo
+- Adicionar nova **tab** `Rhitmo` na linha de tabs (entre `Diário` e `Avaliações`) que renderiza `<MonthlyRecapSection memberId={member.id} />` + `<QuarterlyRecapSection memberId={member.id} />`
 
-- `highlight` (jsonb: `{text, evidence: [{feedback_id, date}]}`) — "o que se destacou"
+Componente novo: `src/components/recaps/RhitmoTimelineCard.tsx`.
 
-- `concern` (jsonb: mesma estrutura) — "o que preocupou"
+## 5. Cron jobs — instalação
 
-- `dominant_pattern` (text) — "frase do mês"
+Dois jobs via `pg_cron` + `pg_net` (instalados via insert tool, fora de migration por terem URL/anon key específicos):
 
-- `evidence_count` (int), `feedbacks_count`, `meetings_count`
+- `rhitmo-monthly-recaps-generate` — `0 9 2 * *` (dia 2 do mês, 9h UTC) → POST em `generate-monthly-recap-cron` (nova edge function que usa service role e itera sobre membros ativos)
+- `rhitmo-quarterly-recaps-generate` — `0 9 2 1,4,7,10 *` → POST em `generate-quarterly-recap-cron`
 
-- `ai_generated_at`, `ai_model`
+Edge functions cron são separadas das funções "manuais" (que exigem auth do líder). Reutilizam `automation_runs`, `cronAuth`, `dispatchNotification`.
 
-*`quarterly_recaps`** — um por (member_id, year_quarter)
+## 6. Critérios de aceite atualizados
 
-- `member_id`, `manager_id`, `workspace_id`, `period_quarter` (date, primeiro dia do trimestre)
-
-- `status`, `confirmed_at`, `confirmed_by`
-
-- `highlights` (jsonb array — top 2-3 do trimestre, cita meses-fonte)
-
-- `recurring_patterns` (jsonb array)
-
-- `evolution_vs_previous` (text) — comparação com trimestre anterior se houver
-
-- `classification` (text): `precisa_subir` | `dentro_esperado` | `subindo_barra` | `acima_esperado`
-
-- `turnover_risk` (text): `low` | `medium` | `high` + `turnover_risk_reason`
-
-- `next_action_key` (text — select de ~8 opções pré-definidas) + `next_action_note` (opcional)
-
-- `source_monthly_recap_ids` (uuid array), `source_meetings_count`
-
-RLS: igual a `feedbacks` — manager_id é dono; HR Admin do workspace tem read; o liderado **não** vê (rituais são privados do líder, igual a uma review em rascunho).
-
-### 2. Edge Functions — três novas
-
-*`generate-monthly-recap`** (manual + cron mensal)
-
-- Input: `member_id`, `period_month` (opcional, default = mês passado)
-
-- Pega todas `feedbacks` + `meeting_transcripts` do mês
-
-- Chama Lovable AI `google/gemini-2.5-flash`) com prompt que segue a Constituição Rhitmo
-
-- Retorna JSON estruturado com `highlight`, `concern`, `dominant_pattern` — cada um citando feedback IDs reais (anti-alucinação)
-
-- Cria `monthly_recaps` com `status='draft'`
-
-- Cron `monthly-recaps-generate` no dia 1 de cada mês, gera draft para todo membro com ≥3 evidências no mês anterior
-
-- Dispara nudge: "3 resumos mensais prontos para confirmar (3 min)"
-
-*`generate-quarterly-recap`** (manual + cron trimestral)
-
-- Input: `member_id`, `period_quarter` (opcional, default = trimestre passado)
-
-- Requer pelo menos 1 `monthly_recap` confirmado no trimestre (se 0, retorna erro amigável)
-
-- Concatena os 1-3 mensais como contexto + busca trimestre anterior (se houver) para `evolution_vs_previous`
-
-- Gera draft com classificação sugerida + risco + 8 opções de ação por classificação (matriz fixa do canvas anexado)
-
-- Cron `quarterly-recaps-generate` no dia 1 de jan/abr/jul/out
-
-*`finalize-monthly-recap`** / *`finalize-quarterly-recap`** — endpoints leves para o líder confirmar com edits (mesma função pode receber payload do recap editado e marcar `status='confirmed'`).
-
-### 3. Atualizar `generate-formal-review` para usar contexto acumulado
-
-Quando existir, a Review formal passa a:
-
-1. Buscar **trimestrais confirmados** no período → usar como espinha dorsal (Bloco 3 "Padrões observados" e Bloco 6 "Classificação")
-
-2. Buscar **mensais confirmados** restantes → preencher gaps
-
-3. Cair de volta em `feedbacks` brutos só quando não houver recap
-
-O prompt ganha uma seção: "Você está gerando a review com X trimestrais e Y mensais já validados pelo líder. Use essa estrutura — não recomece do zero."
-
-### 4. Frontend — três peças
-
-*`MonthlyRecapCard`** (no `MemberDetails` e no dashboard do líder)
-
-- Mostra "Rhitmo Mensal de [mês]" com os 3 blocos editáveis inline (highlight / concern / dominant_pattern)
-
-- Botão "Confirmar em 1 clique" se aceitar tudo, ou edita e confirma
-
-- Estado `draft` → badge âmbar; `confirmed` → badge verde com data
-
-- Lista colapsável dos meses anteriores
-
-*`QuarterlyRecapDialog`** (acionado do `MemberDetails`)
-
-- Wizard de 4 passos curtos:
-
-  1. Revisar destaques + padrões (IA preenche, líder edita)
-
-  2. Confirmar/ajustar classificação (4 opções)
-
-  3. Definir risco de turnover + motivo (1 linha)
-
-  4. Escolher próxima ação (select de 8 opções pré-definidas conforme classificação, igual ao canvas)
-
-- Tempo alvo: 5 min. Header mostra "Baseado em 3 mensais confirmados + 12 notas"
-
-*`RhitmoTimelineCard`** (novo, no dashboard do líder e em cada `MemberDetails`)
-
-- Linha do tempo vertical: Notas → Mensais → Trimestrais → Reviews
-
-- Cada item clicável abre o respectivo recap/review
-
-- Dá ao líder a sensação de **acumulação** que falta hoje — o "construindo algo" do briefing
-
-### 5. Nudges + Sidebar
-
-- Novo nudge `monthly_recap_pending`: "X mensais aguardando sua confirmação"
-
-- Novo nudge `quarterly_recap_pending`: "Trimestre fechou — 5 min para calibrar"
-
-- Badge no sidebar (mesmo padrão do HR alert badge) para recaps pendentes do líder
-
-### 6. i18n
-
-Strings em PT/EN/ES para os 3 componentes, 2 nudges e o template de email opcional do recap mensal (reutiliza o pipeline `weekly-summary`).
-
-## O que NÃO faz parte desta sprint
-
-- Avaliação por dimensões/competências do Bloco 5 da Review (já existe via `competency_evaluations` — fica para sprint dedicada de Enterprise)
-
-- Aprovação de RH antes de compartilhar (Enterprise)
-
-- Auto-reflexão do liderado nos rituais (já temos `member_prompts` da S3 — integração explícita fica para próxima)
-
-- Promoção/Mérito do Bloco 6 da Review formal (depende de calibração entre gestores)
-
-## Critérios de aceite
-
-- ✅ Schema: 2 tabelas novas + RLS validada (manager_id dono, HR Admin lê, liderado não vê)
-
-- ✅ 3 edge functions deployadas com testes manuais bem-sucedidos
-
-- ✅ 2 cron jobs ativos `monthly-recaps-generate` dia 1, `quarterly-recaps-generate` dia 1 dos meses de virada)
-
-- ✅ `generate-formal-review` consome trimestrais quando existem
-
-- ✅ `MonthlyRecapCard` e `QuarterlyRecapDialog` integrados em `MemberDetails`
-
-- ✅ `RhitmoTimelineCard` no dashboard do líder
-
-- ✅ Badge de recaps pendentes no sidebar
-
-- ✅ i18n PT/EN/ES completo
-
-- ✅ Linter Supabase sem novos warnings
+- [x] Triggers Postgres bloqueiam confirm sem campos obrigatórios (testar via SQL)
+- [x] Cron mensal só gera draft + nudge para membros com ≥3 evidências
+- [x] Coluna `low_evidence` populada e badge UI visível quando true
+- [x] `generate-formal-review` consome conteúdo **hidratado** dos trimestrais (não só IDs) — verificável criando review num membro com trimestral confirmado e checando que o prompt contém os textos
+- [x] `RhitmoTimelineCard` aparece no `MemberDetails` para usuários existentes com CTA funcional
+- [x] Nova tab `Rhitmo` no `MemberDetails` renderizando Monthly + Quarterly sections
+- [x] i18n PT/EN/ES das novas strings
+- [x] Linter Supabase sem novos warnings
 
 ## Considerações técnicas
 
-- **Custo IA:** `google/gemini-2.5-flash` para mensais e trimestrais (volume baixo, contexto pequeno) — alinhado a `mem://monetization/modelo-economico-e-margens-abril-2026`
+- **Migração SQL:** add `low_evidence`, criar 2 triggers de validação, criar 2 edge functions de cron
+- **Edits em arquivos existentes:**
+  - `supabase/functions/generate-monthly-recap/index.ts` — set `low_evidence`
+  - `supabase/functions/generate-formal-review/index.ts` — buscar e hidratar recaps
+  - `src/pages/MemberDetails.tsx` — montar tab Rhitmo + RhitmoTimelineCard
+  - `src/components/recaps/MonthlyRecapSection.tsx` — exibir badge `low_evidence`
+  - `src/hooks/useRecaps.ts` — adicionar `low_evidence` ao type
+  - `src/i18n/locales/*.json` — strings novas
+- **Novos arquivos:**
+  - `src/components/recaps/RhitmoTimelineCard.tsx`
+  - `supabase/functions/generate-monthly-recap-cron/index.ts`
+  - `supabase/functions/generate-quarterly-recap-cron/index.ts`
+- **SQL via insert tool (não migration):** os 2 cron schedules
+- **SQL via migration:** 2 triggers de validação + coluna `low_evidence`
 
-- **Anti-alucinação:** prompts seguem `RHITMO_IDENTITY` + `GUARDRAILS_PROMPT` da `_shared/rhitmo-constitution.ts`. Toda afirmação cita ID e data de origem. Sem evidência → omite seção
-
-- **Idempotência:** unique constraint em `(member_id, period_month)` e `(member_id, period_quarter)` impede duplicatas; cron usa `ON CONFLICT DO NOTHING`
-
-- **Privacidade Zero Trust:** recaps são **privados do líder** por design — alinhado a `mem://security/historical-data-visibility-integrity`. HR Admin tem read mas não pode editar
-
-- **Reuso:** `automation_runs`, `cronAuth`, `dispatchNotification` e `RhythmWave + Lora + Inter` (DNA) já existentes
-
-- **Performance:** índices em `(manager_id, period_month)` e `(manager_id, period_quarter)` para listagem
-
-&nbsp;
