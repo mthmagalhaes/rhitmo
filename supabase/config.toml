@@ -107,3 +107,7 @@ project_id = "lybkgujyezzzvbzypxed"
     verify_jwt = true
   [functions.generate-quarterly-recap]
     verify_jwt = true
+  [functions.generate-monthly-recap-cron]
+    verify_jwt = false
+  [functions.generate-quarterly-recap-cron]
+    verify_jwt = false
