@@ -120,12 +120,12 @@ Deno.serve(async (req) => {
 
     console.log(`Evidence: ${feedbackCount} feedbacks, ${meetingCount} meetings, ${quarterlyCount} quarterlies, ${monthlyCount} monthlies`);
 
-    if (totalEvidence === 0) {
+    if (totalEvidence === 0 && quarterlyCount === 0 && monthlyCount === 0) {
       // Update with empty message
       await supabase
         .from("performance_reviews")
         .update({
-          content: "<p>Nenhuma evidência encontrada no período selecionado. Adicione anotações ou registre 1:1s para gerar uma avaliação com IA.</p>",
+          content: "<p>Nenhuma evidência encontrada no período selecionado. Adicione anotações, registre 1:1s ou confirme um Resumo Mensal/Trimestral antes de gerar a review.</p>",
           evidence_count: 0,
           updated_at: new Date().toISOString(),
         })
