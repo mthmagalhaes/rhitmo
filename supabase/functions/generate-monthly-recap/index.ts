@@ -282,17 +282,29 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Defesa em profundidade: mesmo com prompt ajustado, sanitizamos qualquer
+    // marker técnico (feedback_id=, meeting_id=, data=) que sobre no texto.
+    const stripMarkers = (s: string) =>
+      s
+        .replace(/\s*[\(\[]\s*(?:feedback_id|meeting_id|recap_id|note_id|id)\s*=\s*[a-f0-9-]+\s*(?:[,;]\s*(?:data|date)\s*=\s*[\d\-\/]+)?\s*[\)\]]/gi, '')
+        .replace(/\s*[\(\[]\s*(?:data|date)\s*=\s*[\d\-\/]+\s*[\)\]]/gi, '')
+        .replace(/\s*(?:feedback_id|meeting_id|recap_id|note_id)\s*=\s*[a-f0-9-]+/gi, '')
+        .replace(/\s+([.,;:!?])/g, '$1')
+        .replace(/\s{2,}/g, ' ')
+        .replace(/\.{2,}/g, '.')
+        .trim();
+
     const payload = {
       member_id: member.id,
       manager_id: user.id,
       workspace_id: workspaceId,
       period_month: periodMonth,
       status: 'draft' as const,
-      highlight_text: ai.highlight?.text ?? '',
+      highlight_text: stripMarkers(ai.highlight?.text ?? ''),
       highlight_evidence: ai.highlight?.evidence ?? [],
-      concern_text: ai.concern?.text ?? '',
+      concern_text: stripMarkers(ai.concern?.text ?? ''),
       concern_evidence: ai.concern?.evidence ?? [],
-      dominant_pattern: ai.dominant_pattern ?? '',
+      dominant_pattern: stripMarkers(ai.dominant_pattern ?? ''),
       feedbacks_count: fbCount,
       meetings_count: mtCount,
       low_evidence: totalEvidence < 3,

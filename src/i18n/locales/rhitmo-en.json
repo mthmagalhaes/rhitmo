@@ -30,7 +30,12 @@
       "loading": "Loading monthlies...",
       "inProgressTitle": "{{month}}",
       "inProgressBadge": "Month in progress",
-      "inProgressDesc": "Auto-closes on {{date}}. You'll have ~3 min to review and confirm."
+      "inProgressDesc": "Auto-closes on {{date}}. You'll have ~3 min to review and confirm.",
+      "evidence": {
+        "loading": "Loading evidence...",
+        "feedback": "Note",
+        "meeting": "1:1"
+      }
     },
     "quarterly": {
       "title": "Quarterly Rhitmo",
