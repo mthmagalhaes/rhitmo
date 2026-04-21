@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Sparkles, ArrowDown, Music, CheckCircle2 } from 'lucide-react';
 import { format, subMonths, startOfMonth } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { getDateLocale } from '@/lib/dateLocale';
 import { useMonthlyRecaps, useQuarterlyRecaps, useGenerateMonthlyRecap } from '@/hooks/useRecaps';
 
 interface Props {
@@ -13,11 +14,8 @@ interface Props {
   onJumpToRhitmo: () => void;
 }
 
-/**
- * Empty-state / transition card for users who already have feedbacks but no recaps yet.
- * Shows up before the tabs in MemberDetails to bridge the gap toward the Rhitmo ritual.
- */
 export function RhitmoTimelineCard({ memberId, feedbacksLastMonthCount, onJumpToRhitmo }: Props) {
+  const { t, i18n } = useTranslation('rhitmo');
   const { data: monthly = [], isLoading: mLoading } = useMonthlyRecaps(memberId, 6);
   const { data: quarterly = [], isLoading: qLoading } = useQuarterlyRecaps(memberId, 4);
   const generate = useGenerateMonthlyRecap(memberId);
@@ -28,8 +26,8 @@ export function RhitmoTimelineCard({ memberId, feedbacksLastMonthCount, onJumpTo
   }, []);
   const lastMonthLabel = useMemo(() => {
     const d = subMonths(startOfMonth(new Date()), 1);
-    return format(d, "MMMM 'de' yyyy", { locale: ptBR });
-  }, []);
+    return format(d, 'MMMM yyyy', { locale: getDateLocale(i18n.language) });
+  }, [i18n.language]);
 
   if (mLoading || qLoading) return null;
 
@@ -39,7 +37,7 @@ export function RhitmoTimelineCard({ memberId, feedbacksLastMonthCount, onJumpTo
     quarterly.filter((q) => q.status === 'confirmed').length;
   const hasLastMonthRecap = monthly.some((m) => m.period_month.slice(0, 10) === lastMonth);
 
-  // State A — has recaps already → collapsed pointer
+  // State A — has recaps already
   if (totalRecaps > 0) {
     return (
       <Card className="p-4 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] mb-6 bg-gradient-to-r from-primary/5 to-transparent">
@@ -50,21 +48,21 @@ export function RhitmoTimelineCard({ memberId, feedbacksLastMonthCount, onJumpTo
             </div>
             <div>
               <p className="text-sm font-semibold flex items-center gap-2">
-                Rhitmo desta pessoa
+                {t('recap.timeline.thisPersonsRhitmo')}
                 {confirmedCount > 0 && (
                   <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-xs">
                     <CheckCircle2 className="h-3 w-3 mr-1" />
-                    {confirmedCount} confirmado{confirmedCount === 1 ? '' : 's'}
+                    {t('recap.timeline.confirmedCount', { count: confirmedCount })}
                   </Badge>
                 )}
               </p>
               <p className="text-xs text-muted-foreground">
-                {monthly.length} mensa{monthly.length === 1 ? 'l' : 'is'} • {quarterly.length} trimestra{quarterly.length === 1 ? 'l' : 'is'} no histórico
+                {t('recap.timeline.historyLine', { monthly: monthly.length, quarterly: quarterly.length })}
               </p>
             </div>
           </div>
           <Button variant="outline" size="sm" className="rounded-xl gap-2" onClick={onJumpToRhitmo}>
-            Ver linha do tempo Rhitmo
+            {t('recap.timeline.viewTimeline')}
             <ArrowDown className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -82,10 +80,10 @@ export function RhitmoTimelineCard({ memberId, feedbacksLastMonthCount, onJumpTo
           </div>
           <div className="flex-1 min-w-[240px]">
             <p className="font-semibold text-foreground">
-              Você tem {feedbacksLastMonthCount} notas de {lastMonthLabel} sem resumo.
+              {t('recap.timeline.hasNotesNoRecap', { count: feedbacksLastMonthCount, month: lastMonthLabel })}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
-              Gere o primeiro Rhitmo Mensal — a IA condensa o mês em 3 pontos. Você confirma em ~3 minutos. É o que vai alimentar suas próximas reviews.
+              {t('recap.timeline.generateFirstMonthlyDesc')}
             </p>
           </div>
           <Button
@@ -99,14 +97,14 @@ export function RhitmoTimelineCard({ memberId, feedbacksLastMonthCount, onJumpTo
             ) : (
               <Sparkles className="h-4 w-4" />
             )}
-            Gerar Rhitmo Mensal
+            {t('recap.timeline.generateFirstMonthly')}
           </Button>
         </div>
       </Card>
     );
   }
 
-  // State C — too few evidences yet → soft prompt
+  // State C — too few evidences yet
   return (
     <Card className="p-4 rounded-2xl border border-dashed border-border bg-muted/20 mb-6">
       <div className="flex items-center gap-3 flex-wrap">
@@ -114,10 +112,8 @@ export function RhitmoTimelineCard({ memberId, feedbacksLastMonthCount, onJumpTo
           <Music className="h-4 w-4 text-muted-foreground" />
         </div>
         <div className="flex-1 min-w-[240px]">
-          <p className="text-sm font-medium text-foreground">Rhitmo ainda não tem ritmo</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Registre ao menos 3 notas em um mês para destravar seu primeiro Rhitmo Mensal — ele vira a base das próximas reviews.
-          </p>
+          <p className="text-sm font-medium text-foreground">{t('recap.timeline.noRhythmYet')}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{t('recap.timeline.needMoreNotes')}</p>
         </div>
       </div>
     </Card>
