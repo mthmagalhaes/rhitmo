@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { format, subMonths, startOfMonth } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Sparkles, CheckCircle2, RefreshCw, Calendar, AlertTriangle } from 'lucide-react';
+import { getDateLocale } from '@/lib/dateLocale';
 import {
   useMonthlyRecaps,
   useGenerateMonthlyRecap,
@@ -18,13 +19,7 @@ interface Props {
   memberId: string;
 }
 
-function monthLabel(periodMonth: string) {
-  const d = new Date(periodMonth + 'T00:00:00Z');
-  return format(d, "MMMM 'de' yyyy", { locale: ptBR });
-}
-
 function buildLast6Months(): string[] {
-  // Excludes current month — only fully closed months can be recapped
   const out: string[] = [];
   const base = subMonths(startOfMonth(new Date()), 1);
   for (let i = 0; i < 6; i++) {
@@ -43,6 +38,7 @@ function RecapCard({
   periodMonth: string;
   recap: MonthlyRecap | undefined;
 }) {
+  const { t, i18n } = useTranslation('rhitmo');
   const generate = useGenerateMonthlyRecap(memberId);
   const update = useUpdateMonthlyRecap(memberId);
   const confirm = useConfirmMonthlyRecap(memberId);
@@ -55,7 +51,11 @@ function RecapCard({
   const isDraft = recap?.status === 'draft';
   const isEmpty = !recap;
 
-  // Sync local edits when recap changes (e.g. after AI regen)
+  const monthStr = useMemo(
+    () => format(new Date(periodMonth + 'T00:00:00Z'), 'MMMM yyyy', { locale: getDateLocale(i18n.language) }),
+    [periodMonth, i18n.language]
+  );
+
   useMemo(() => {
     if (recap) {
       setHighlight(recap.highlight_text ?? '');
@@ -70,31 +70,30 @@ function RecapCard({
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="text-base font-semibold tracking-tight flex items-center gap-2">
             <Calendar className="h-4 w-4 text-muted-foreground" />
-            Rhitmo Mensal — <span className="capitalize">{monthLabel(periodMonth)}</span>
+            <span className="capitalize">{t('recap.monthly.cardTitle', { month: monthStr })}</span>
           </CardTitle>
           {isConfirmed && (
             <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
               <CheckCircle2 className="h-3 w-3 mr-1" />
-              Confirmado {recap.confirmed_at ? format(new Date(recap.confirmed_at), "dd/MM") : ''}
+              {t('recap.monthly.confirmedBadge', { date: recap.confirmed_at ? format(new Date(recap.confirmed_at), 'dd/MM') : '' })}
             </Badge>
           )}
           {isDraft && (
             <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">
-              Rascunho — aguardando você
+              {t('recap.monthly.draftBadge')}
             </Badge>
           )}
         </div>
         {recap && (
           <p className="text-xs text-muted-foreground mt-1">
-            Baseado em {recap.feedbacks_count} nota{recap.feedbacks_count === 1 ? '' : 's'} e {recap.meetings_count} 1:1
-            {recap.meetings_count === 1 ? '' : 's'} do mês.
+            {t('recap.monthly.basedOn', { feedbacks: recap.feedbacks_count, meetings: recap.meetings_count })}
           </p>
         )}
         {recap?.low_evidence && !isConfirmed && (
           <div className="mt-2 flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
             <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
             <span>
-              Poucas evidências este mês ({(recap.feedbacks_count ?? 0) + (recap.meetings_count ?? 0)} registros). O resumo pode estar incompleto — considere registrar mais notas antes de confirmar.
+              {t('recap.monthly.lowEvidenceWarning', { count: (recap.feedbacks_count ?? 0) + (recap.meetings_count ?? 0) })}
             </span>
           </div>
         )}
@@ -102,9 +101,7 @@ function RecapCard({
       <CardContent className="space-y-4">
         {isEmpty && (
           <div className="text-center py-6 space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Sem resumo gerado para {monthLabel(periodMonth)}.
-            </p>
+            <p className="text-sm text-muted-foreground">{t('recap.monthly.noRecapForMonth', { month: monthStr })}</p>
             <Button
               onClick={() => generate.mutate({ periodMonth })}
               disabled={generate.isPending}
@@ -114,12 +111,12 @@ function RecapCard({
               {generate.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Gerando...
+                  {t('recap.monthly.generating')}
                 </>
               ) : (
                 <>
                   <Sparkles className="h-4 w-4 mr-2" />
-                  Gerar mensal com IA
+                  {t('recap.monthly.generateButton')}
                 </>
               )}
             </Button>
@@ -130,17 +127,17 @@ function RecapCard({
           <>
             <div className="space-y-1.5">
               <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                1. Mandou bem
+                {t('recap.monthly.labels.highlight')}
               </label>
               {isConfirmed ? (
                 <p className="text-sm text-foreground/90 leading-relaxed">
-                  {highlight || <span className="italic text-muted-foreground">Sem destaque registrado.</span>}
+                  {highlight || <span className="italic text-muted-foreground">{t('recap.monthly.emptyHighlight')}</span>}
                 </p>
               ) : (
                 <Textarea
                   value={highlight}
                   onChange={(e) => setHighlight(e.target.value)}
-                  placeholder="O que se destacou positivamente, com evidência e data..."
+                  placeholder={t('recap.monthly.placeholders.highlight')}
                   className="rounded-xl min-h-[68px] text-sm"
                 />
               )}
@@ -148,17 +145,17 @@ function RecapCard({
 
             <div className="space-y-1.5">
               <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                2. Atenção
+                {t('recap.monthly.labels.concern')}
               </label>
               {isConfirmed ? (
                 <p className="text-sm text-foreground/90 leading-relaxed">
-                  {concern || <span className="italic text-muted-foreground">Sem ponto de atenção.</span>}
+                  {concern || <span className="italic text-muted-foreground">{t('recap.monthly.emptyConcern')}</span>}
                 </p>
               ) : (
                 <Textarea
                   value={concern}
                   onChange={(e) => setConcern(e.target.value)}
-                  placeholder="O que preocupou — sem drama, factual, com evidência..."
+                  placeholder={t('recap.monthly.placeholders.concern')}
                   className="rounded-xl min-h-[68px] text-sm"
                 />
               )}
@@ -166,17 +163,17 @@ function RecapCard({
 
             <div className="space-y-1.5">
               <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                3. Padrão do mês
+                {t('recap.monthly.labels.pattern')}
               </label>
               {isConfirmed ? (
                 <p className="text-sm font-medium text-foreground/90 leading-relaxed">
-                  {pattern || <span className="italic text-muted-foreground">Sem padrão identificado.</span>}
+                  {pattern || <span className="italic text-muted-foreground">{t('recap.monthly.emptyPattern')}</span>}
                 </p>
               ) : (
                 <Textarea
                   value={pattern}
                   onChange={(e) => setPattern(e.target.value)}
-                  placeholder="Uma frase descrevendo o comportamento dominante..."
+                  placeholder={t('recap.monthly.placeholders.pattern')}
                   className="rounded-xl min-h-[52px] text-sm"
                 />
               )}
@@ -204,7 +201,7 @@ function RecapCard({
                   ) : (
                     <CheckCircle2 className="h-4 w-4 mr-2" />
                   )}
-                  Confirmar mensal
+                  {t('recap.monthly.confirm')}
                 </Button>
                 <Button
                   size="sm"
@@ -222,7 +219,7 @@ function RecapCard({
                   }
                   disabled={update.isPending}
                 >
-                  Salvar rascunho
+                  {t('recap.monthly.saveDraft')}
                 </Button>
                 <Button
                   size="sm"
@@ -236,7 +233,7 @@ function RecapCard({
                   ) : (
                     <RefreshCw className="h-4 w-4 mr-2" />
                   )}
-                  Regerar com IA
+                  {t('recap.monthly.regenerate')}
                 </Button>
               </div>
             )}
@@ -248,6 +245,7 @@ function RecapCard({
 }
 
 export function MonthlyRecapSection({ memberId }: Props) {
+  const { t } = useTranslation('rhitmo');
   const { data: recaps = [], isLoading } = useMonthlyRecaps(memberId, 6);
   const months = buildLast6Months();
   const recapByMonth = useMemo(() => {
@@ -260,7 +258,7 @@ export function MonthlyRecapSection({ memberId }: Props) {
     return (
       <div className="flex items-center justify-center py-8 text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin mr-2" />
-        Carregando mensais...
+        {t('recap.monthly.loading')}
       </div>
     );
   }
@@ -268,10 +266,8 @@ export function MonthlyRecapSection({ memberId }: Props) {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-lg font-bold tracking-tight">Rhitmo Mensal</h2>
-        <p className="text-sm text-muted-foreground">
-          A IA condensa o mês em 3 pontos. Você confirma em ~3 minutos. É o que alimenta o trimestral.
-        </p>
+        <h2 className="text-lg font-bold tracking-tight">{t('recap.monthly.title')}</h2>
+        <p className="text-sm text-muted-foreground">{t('recap.monthly.subtitle')}</p>
       </div>
       <div className="grid gap-4">
         {months.map((m) => (
