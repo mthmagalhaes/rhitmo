@@ -79,7 +79,7 @@ export function RhitmoTabSummary({ memberId, onSwitchSection }: Props) {
         {/* Quarterly */}
         <button
           type="button"
-          onClick={() => smoothScrollTo('rhitmo-quarterly')}
+          onClick={() => handleJump('quarterly')}
           className="text-left rounded-xl p-3 -m-1 hover:bg-foreground/[0.03] transition-colors flex flex-col gap-1.5"
         >
           <div className="flex items-center gap-2">
@@ -104,7 +104,7 @@ export function RhitmoTabSummary({ memberId, onSwitchSection }: Props) {
         {/* Monthly */}
         <button
           type="button"
-          onClick={() => smoothScrollTo('rhitmo-monthly')}
+          onClick={() => handleJump('monthly')}
           className="text-left rounded-xl p-3 -m-1 hover:bg-foreground/[0.03] transition-colors flex flex-col gap-1.5"
         >
           <div className="flex items-center gap-2">
@@ -141,7 +141,7 @@ export function RhitmoTabSummary({ memberId, onSwitchSection }: Props) {
       {quarterlyReady && (
         <div className="mt-3 pt-3 border-t border-border/50 flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm text-foreground/80">{t('summary.quarterlyHint')}</p>
-          <Button size="sm" variant="outline" className="rounded-xl gap-2" onClick={() => smoothScrollTo('rhitmo-quarterly')}>
+          <Button size="sm" variant="outline" className="rounded-xl gap-2" onClick={() => handleJump('quarterly')}>
             {t('summary.goToQuarterly')}
             <ArrowDown className="h-3.5 w-3.5" />
           </Button>
