@@ -130,5 +130,19 @@
       "save": "Save calibration",
       "saved": "Calibration saved"
     }
+  },
+  "summary": {
+    "loading": "Loading summary...",
+    "quarterly": "Quarterly",
+    "monthly": "Monthly",
+    "inProgress": "Month in progress",
+    "noQuarterlyYet": "None yet",
+    "quarterlyCount": "{{count}} in history ({{confirmed}} confirmed)",
+    "monthlyCount": "{{count}} in history ({{confirmed}} confirmed)",
+    "monthlyDraftPending": "{{count}} draft waiting on you",
+    "quarterlyReady": "Ready to generate",
+    "quarterlyHint": "You already have confirmed monthly(ies) for last quarter — generate the quarterly in ~5 min.",
+    "goToQuarterly": "Go to quarterly",
+    "autoCloseHint": "Auto-closes on {{date}}"
   }
 }
