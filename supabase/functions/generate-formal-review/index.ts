@@ -137,11 +137,50 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Build evidence context
+    // Build evidence context — recaps confirmados pelo líder vêm PRIMEIRO (são a espinha)
     let evidenceText = "";
+    const hasConfirmedRecaps = quarterlyCount > 0 || monthlyCount > 0;
+
+    if (quarterlies && quarterlies.length > 0) {
+      evidenceText += "\n## CALIBRAÇÕES TRIMESTRAIS CONFIRMADAS PELO LÍDER (espinha da review):\n\n";
+      quarterlies.forEach((q: any) => {
+        const qDate = new Date(q.period_quarter);
+        const qLabel = `Q${Math.floor(qDate.getUTCMonth() / 3) + 1} ${qDate.getUTCFullYear()}`;
+        evidenceText += `### Trimestre ${qLabel}\n`;
+        if (Array.isArray(q.highlights) && q.highlights.length > 0) {
+          evidenceText += `Destaques validados:\n`;
+          q.highlights.forEach((h: any) => {
+            evidenceText += `- ${h.title}: ${h.detail} (origem: ${h.source_month})\n`;
+          });
+        }
+        if (Array.isArray(q.recurring_patterns) && q.recurring_patterns.length > 0) {
+          evidenceText += `Padrões recorrentes:\n`;
+          q.recurring_patterns.forEach((p: any) => {
+            evidenceText += `- [${p.polarity}] ${p.pattern} — ${p.frequency_note}\n`;
+          });
+        }
+        if (q.evolution_vs_previous) evidenceText += `Evolução vs trimestre anterior: ${q.evolution_vs_previous}\n`;
+        if (q.classification) evidenceText += `Classificação validada: ${q.classification}\n`;
+        if (q.turnover_risk) evidenceText += `Risco turnover: ${q.turnover_risk}${q.turnover_risk_reason ? ` (${q.turnover_risk_reason})` : ""}\n`;
+        if (q.next_action_key) evidenceText += `Próxima ação acordada: ${q.next_action_key}${q.next_action_note ? ` — ${q.next_action_note}` : ""}\n`;
+        evidenceText += "\n";
+      });
+    }
+
+    if (monthlies && monthlies.length > 0) {
+      evidenceText += "\n## RESUMOS MENSAIS CONFIRMADOS PELO LÍDER:\n\n";
+      monthlies.forEach((m: any) => {
+        const monthLabel = new Date(m.period_month).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+        evidenceText += `### ${monthLabel}${m.low_evidence ? " (poucas evidências)" : ""}\n`;
+        if (m.highlight_text) evidenceText += `Mandou bem: ${m.highlight_text}\n`;
+        if (m.concern_text) evidenceText += `Atenção: ${m.concern_text}\n`;
+        if (m.dominant_pattern) evidenceText += `Padrão do mês: ${m.dominant_pattern}\n`;
+        evidenceText += "\n";
+      });
+    }
 
     if (feedbacks && feedbacks.length > 0) {
-      evidenceText += "\n## ANOTAÇÕES E FEEDBACKS DO LÍDER:\n\n";
+      evidenceText += `\n## ANOTAÇÕES E FEEDBACKS DO LÍDER ${hasConfirmedRecaps ? "(suporte/citação para os recaps acima)" : ""}:\n\n`;
       feedbacks.forEach((f, idx) => {
         const date = new Date(f.occurred_at).toLocaleDateString("pt-BR");
         evidenceText += `[Anotação ${idx + 1} - ${date}] Tipo: ${f.type}\n`;
