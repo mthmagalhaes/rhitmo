@@ -1,0 +1,131 @@
+{
+  "recap": {
+    "monthly": {
+      "title": "Rhitmo Mensal",
+      "subtitle": "A IA condensa o mês em 3 pontos. Você confirma em ~3 minutos. É o que alimenta o trimestral.",
+      "cardTitle": "Rhitmo Mensal — {{month}}",
+      "basedOn": "Baseado em {{feedbacks}} nota(s) e {{meetings}} 1:1(s) do mês.",
+      "lowEvidenceWarning": "Poucas evidências este mês ({{count}} registros). O resumo pode estar incompleto — considere registrar mais notas antes de confirmar.",
+      "noRecapForMonth": "Sem resumo gerado para {{month}}.",
+      "generateButton": "Gerar mensal com IA",
+      "generating": "Gerando...",
+      "labels": {
+        "highlight": "1. Mandou bem",
+        "concern": "2. Atenção",
+        "pattern": "3. Padrão do mês"
+      },
+      "placeholders": {
+        "highlight": "O que se destacou positivamente, com evidência e data...",
+        "concern": "O que preocupou — sem drama, factual, com evidência...",
+        "pattern": "Uma frase descrevendo o comportamento dominante..."
+      },
+      "emptyHighlight": "Sem destaque registrado.",
+      "emptyConcern": "Sem ponto de atenção.",
+      "emptyPattern": "Sem padrão identificado.",
+      "confirm": "Confirmar mensal",
+      "saveDraft": "Salvar rascunho",
+      "regenerate": "Regerar com IA",
+      "confirmedBadge": "Confirmado {{date}}",
+      "draftBadge": "Rascunho — aguardando você",
+      "loading": "Carregando mensais..."
+    },
+    "quarterly": {
+      "title": "Rhitmo Trimestral",
+      "subtitle": "A cada 3 meses, a IA junta os mensais e sugere classificação, risco e próxima ação. Você calibra em ~5 min.",
+      "cardTitle": "Rhitmo Trimestral — {{quarter}}",
+      "basedOn": "Baseado em {{count}} mensa(is) confirmado(s) • {{feedbacks}} notas • {{meetings}} 1:1s",
+      "needConfirmedMonthly": "Confirme ao menos um Rhitmo Mensal do trimestre para gerar a calibração trimestral.",
+      "generateButton": "Gerar trimestral com IA",
+      "highlights": "Destaques do trimestre",
+      "patterns": "Padrões recorrentes",
+      "evolutionPrefix": "vs trimestre anterior:",
+      "classification": "Classificação",
+      "aiSuggests": "IA sugere",
+      "turnoverRisk": "Risco de turnover",
+      "riskReasonPlaceholder": "Motivo (1 linha) — opcional mas recomendado se risco médio/alto",
+      "nextAction": "Próxima ação para o trimestre",
+      "chooseClassificationFirst": "Escolha uma classificação acima para ver as ações sugeridas.",
+      "actionNotePlaceholder": "Observação (opcional)",
+      "confirm": "Confirmar trimestral",
+      "regenerate": "Regerar com IA",
+      "confirmedBadge": "Confirmado",
+      "draftBadge": "Rascunho",
+      "previousQuarters": "Trimestres anteriores",
+      "loading": "Carregando trimestrais..."
+    },
+    "timeline": {
+      "thisPersonsRhitmo": "Rhitmo desta pessoa",
+      "confirmedCount": "{{count}} confirmado(s)",
+      "historyLine": "{{monthly}} mensa(is) • {{quarterly}} trimestra(is) no histórico",
+      "viewTimeline": "Ver linha do tempo Rhitmo",
+      "hasNotesNoRecap": "Você tem {{count}} notas de {{month}} sem resumo.",
+      "generateFirstMonthlyDesc": "Gere o primeiro Rhitmo Mensal — a IA condensa o mês em 3 pontos. Você confirma em ~3 minutos. É o que vai alimentar suas próximas reviews.",
+      "generateFirstMonthly": "Gerar Rhitmo Mensal",
+      "noRhythmYet": "Rhitmo ainda não tem ritmo",
+      "needMoreNotes": "Registre ao menos 3 notas em um mês para destravar seu primeiro Rhitmo Mensal — ele vira a base das próximas reviews."
+    },
+    "classifications": {
+      "precisa_subir": "Precisa subir a barra",
+      "dentro_esperado": "Dentro do esperado",
+      "subindo_barra": "Subindo a barra",
+      "acima_esperado": "Acima do esperado",
+      "precisa_subir_sub": "Gaps recorrentes em entrega ou comportamento.",
+      "dentro_esperado_sub": "Cumpre consistentemente, sem destaques.",
+      "subindo_barra_sub": "Crescimento visível, entrega acima em vários aspectos.",
+      "acima_esperado_sub": "Performance excepcional, padrão claro."
+    },
+    "risks": {
+      "low": "Baixo",
+      "medium": "Médio",
+      "high": "Alto"
+    },
+    "actions": {
+      "improvement_plan_30_60_90": "Montar plano de melhoria 30/60/90",
+      "direct_conversation": "Conversa direta sobre o que precisa mudar",
+      "increase_1on1_frequency": "Aumentar frequência de 1:1 para semanal",
+      "define_new_challenge": "Definir um desafio novo para evitar estagnação",
+      "public_recognition": "Reconhecer publicamente uma entrega específica",
+      "growth_conversation": "Perguntar o que falta para ela querer crescer mais",
+      "high_visibility_project": "Dar projeto de maior visibilidade ou complexidade",
+      "promotion_path_conversation": "Iniciar conversa sobre próximo nível e promoção",
+      "stakeholder_exposure": "Apresentar a stakeholders que ainda não a conhecem",
+      "anticipate_promotion": "Antecipar conversa de promoção ou movimentação",
+      "protect_from_overload": "Proteger o tempo dela de demandas que não condizem com o nível",
+      "external_mentorship": "Conectar com mentores externos ou oportunidades de aprendizado"
+    }
+  },
+  "review": {
+    "tabs": {
+      "draft": "Rascunho Geral",
+      "competencies": "Competências",
+      "calibration": "Calibração"
+    },
+    "calibration": {
+      "title": "Calibração formal",
+      "intro": "A IA sugere com base nos trimestrais confirmados. Você confirma. As escolhas alimentam o histórico longitudinal.",
+      "classificationLabel": "Classificação de desempenho",
+      "promotionLabel": "Promoção",
+      "lossRiskLabel": "Risco de perder se não promover",
+      "meritLabel": "Mérito",
+      "promotion": {
+        "not_now": "Não neste ciclo",
+        "in_1_2_cycles": "Em 1-2 ciclos",
+        "ready_now": "Pronta agora",
+        "not_now_sub": "Mantém no nível atual.",
+        "in_1_2_cycles_sub": "Está construindo a maturidade.",
+        "ready_now_sub": "Atende ao próximo nível."
+      },
+      "merit": {
+        "none": "Sem ajuste",
+        "inflation_only": "Somente inflação",
+        "inflation_plus_merit": "Inflação + mérito",
+        "none_sub": "Sem mudança salarial neste ciclo.",
+        "inflation_only_sub": "Reposição do poder de compra.",
+        "inflation_plus_merit_sub": "Reconhecimento do desempenho."
+      },
+      "summary": "Resumo da calibração",
+      "save": "Salvar calibração",
+      "saved": "Calibração salva"
+    }
+  }
+}

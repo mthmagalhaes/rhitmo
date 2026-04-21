@@ -811,6 +811,13 @@ const MemberDetails = () => {
             </div>
           </TabsContent>
           
+          <TabsContent value="rhitmo">
+            <div className="space-y-8">
+              <MonthlyRecapSection memberId={member.id} />
+              <QuarterlyRecapSection memberId={member.id} />
+            </div>
+          </TabsContent>
+
           <TabsContent value="reviews">
             <PerformanceReviewList memberId={member.id} memberName={member.name} onCreateReview={() => setFormalReviewOpen(true)} />
           </TabsContent>

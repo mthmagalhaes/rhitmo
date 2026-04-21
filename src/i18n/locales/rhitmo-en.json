@@ -1,0 +1,131 @@
+{
+  "recap": {
+    "monthly": {
+      "title": "Monthly Rhitmo",
+      "subtitle": "AI condenses the month into 3 points. You confirm in ~3 minutes. This feeds the quarterly.",
+      "cardTitle": "Monthly Rhitmo — {{month}}",
+      "basedOn": "Based on {{feedbacks}} note(s) and {{meetings}} 1:1(s) this month.",
+      "lowEvidenceWarning": "Few signals this month ({{count}} entries). The summary may be incomplete — consider adding more notes before confirming.",
+      "noRecapForMonth": "No recap generated for {{month}}.",
+      "generateButton": "Generate monthly with AI",
+      "generating": "Generating...",
+      "labels": {
+        "highlight": "1. Did well",
+        "concern": "2. Watch out",
+        "pattern": "3. Pattern of the month"
+      },
+      "placeholders": {
+        "highlight": "What stood out positively, with evidence and date...",
+        "concern": "What concerned you — no drama, factual, with evidence...",
+        "pattern": "One sentence describing the dominant behavior..."
+      },
+      "emptyHighlight": "No highlight recorded.",
+      "emptyConcern": "No concern recorded.",
+      "emptyPattern": "No pattern identified.",
+      "confirm": "Confirm monthly",
+      "saveDraft": "Save draft",
+      "regenerate": "Regenerate with AI",
+      "confirmedBadge": "Confirmed {{date}}",
+      "draftBadge": "Draft — waiting on you",
+      "loading": "Loading monthlies..."
+    },
+    "quarterly": {
+      "title": "Quarterly Rhitmo",
+      "subtitle": "Every 3 months, AI joins the monthlies and suggests classification, risk and next action. You calibrate in ~5 min.",
+      "cardTitle": "Quarterly Rhitmo — {{quarter}}",
+      "basedOn": "Based on {{count}} confirmed monthly(ies) • {{feedbacks}} notes • {{meetings}} 1:1s",
+      "needConfirmedMonthly": "Confirm at least one Monthly Rhitmo of the quarter to generate the quarterly calibration.",
+      "generateButton": "Generate quarterly with AI",
+      "highlights": "Quarter highlights",
+      "patterns": "Recurring patterns",
+      "evolutionPrefix": "vs previous quarter:",
+      "classification": "Classification",
+      "aiSuggests": "AI suggests",
+      "turnoverRisk": "Turnover risk",
+      "riskReasonPlaceholder": "Reason (1 line) — optional but recommended for medium/high risk",
+      "nextAction": "Next action for the quarter",
+      "chooseClassificationFirst": "Pick a classification above to see suggested actions.",
+      "actionNotePlaceholder": "Note (optional)",
+      "confirm": "Confirm quarterly",
+      "regenerate": "Regenerate with AI",
+      "confirmedBadge": "Confirmed",
+      "draftBadge": "Draft",
+      "previousQuarters": "Previous quarters",
+      "loading": "Loading quarterlies..."
+    },
+    "timeline": {
+      "thisPersonsRhitmo": "This person's Rhitmo",
+      "confirmedCount": "{{count}} confirmed",
+      "historyLine": "{{monthly}} monthly(ies) • {{quarterly}} quarterly(ies) in history",
+      "viewTimeline": "View Rhitmo timeline",
+      "hasNotesNoRecap": "You have {{count}} notes from {{month}} without a recap.",
+      "generateFirstMonthlyDesc": "Generate the first Monthly Rhitmo — AI condenses the month into 3 points. You confirm in ~3 minutes. This will feed your next reviews.",
+      "generateFirstMonthly": "Generate Monthly Rhitmo",
+      "noRhythmYet": "Rhitmo doesn't have a rhythm yet",
+      "needMoreNotes": "Record at least 3 notes in a month to unlock your first Monthly Rhitmo — it becomes the foundation of future reviews."
+    },
+    "classifications": {
+      "precisa_subir": "Needs to step up",
+      "dentro_esperado": "Meeting expectations",
+      "subindo_barra": "Raising the bar",
+      "acima_esperado": "Exceeding expectations",
+      "precisa_subir_sub": "Recurring gaps in delivery or behavior.",
+      "dentro_esperado_sub": "Consistently meets, no standouts.",
+      "subindo_barra_sub": "Visible growth, above in several aspects.",
+      "acima_esperado_sub": "Exceptional performance, clear pattern."
+    },
+    "risks": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High"
+    },
+    "actions": {
+      "improvement_plan_30_60_90": "Build a 30/60/90 improvement plan",
+      "direct_conversation": "Direct conversation about what needs to change",
+      "increase_1on1_frequency": "Increase 1:1 frequency to weekly",
+      "define_new_challenge": "Define a new challenge to avoid stagnation",
+      "public_recognition": "Publicly recognize a specific delivery",
+      "growth_conversation": "Ask what's missing for them to want to grow more",
+      "high_visibility_project": "Give a higher-visibility or more complex project",
+      "promotion_path_conversation": "Start conversation about next level and promotion",
+      "stakeholder_exposure": "Introduce to stakeholders who don't know them yet",
+      "anticipate_promotion": "Anticipate promotion or movement conversation",
+      "protect_from_overload": "Protect their time from demands below their level",
+      "external_mentorship": "Connect with external mentors or learning opportunities"
+    }
+  },
+  "review": {
+    "tabs": {
+      "draft": "Draft",
+      "competencies": "Competencies",
+      "calibration": "Calibration"
+    },
+    "calibration": {
+      "title": "Formal calibration",
+      "intro": "AI suggests based on confirmed quarterlies. You confirm. Your choices feed the longitudinal record.",
+      "classificationLabel": "Performance classification",
+      "promotionLabel": "Promotion",
+      "lossRiskLabel": "Risk of losing if not promoted",
+      "meritLabel": "Merit",
+      "promotion": {
+        "not_now": "Not this cycle",
+        "in_1_2_cycles": "In 1-2 cycles",
+        "ready_now": "Ready now",
+        "not_now_sub": "Stay at current level.",
+        "in_1_2_cycles_sub": "Building maturity.",
+        "ready_now_sub": "Meets the next level."
+      },
+      "merit": {
+        "none": "No adjustment",
+        "inflation_only": "Inflation only",
+        "inflation_plus_merit": "Inflation + merit",
+        "none_sub": "No salary change this cycle.",
+        "inflation_only_sub": "Restore purchasing power.",
+        "inflation_plus_merit_sub": "Recognition of performance."
+      },
+      "summary": "Calibration summary",
+      "save": "Save calibration",
+      "saved": "Calibration saved"
+    }
+  }
+}

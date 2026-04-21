@@ -1252,6 +1252,7 @@ export type Database = {
       performance_reviews: {
         Row: {
           acknowledged_at: string | null
+          classification: string | null
           coaching_tip: string | null
           competency_evaluations: Json | null
           content: string
@@ -1259,11 +1260,14 @@ export type Database = {
           evidence_count: number | null
           id: string
           job_role_id: string | null
+          loss_risk: string | null
           member_id: string
           member_viewed_at: string | null
+          merit_recommendation: string | null
           period_end: string | null
           period_start: string | null
           period_type: string
+          promotion_recommendation: string | null
           sent_at: string | null
           shared_with_member: boolean | null
           title: string
@@ -1271,6 +1275,7 @@ export type Database = {
         }
         Insert: {
           acknowledged_at?: string | null
+          classification?: string | null
           coaching_tip?: string | null
           competency_evaluations?: Json | null
           content: string
@@ -1278,11 +1283,14 @@ export type Database = {
           evidence_count?: number | null
           id?: string
           job_role_id?: string | null
+          loss_risk?: string | null
           member_id: string
           member_viewed_at?: string | null
+          merit_recommendation?: string | null
           period_end?: string | null
           period_start?: string | null
           period_type?: string
+          promotion_recommendation?: string | null
           sent_at?: string | null
           shared_with_member?: boolean | null
           title: string
@@ -1290,6 +1298,7 @@ export type Database = {
         }
         Update: {
           acknowledged_at?: string | null
+          classification?: string | null
           coaching_tip?: string | null
           competency_evaluations?: Json | null
           content?: string
@@ -1297,11 +1306,14 @@ export type Database = {
           evidence_count?: number | null
           id?: string
           job_role_id?: string | null
+          loss_risk?: string | null
           member_id?: string
           member_viewed_at?: string | null
+          merit_recommendation?: string | null
           period_end?: string | null
           period_start?: string | null
           period_type?: string
+          promotion_recommendation?: string | null
           sent_at?: string | null
           shared_with_member?: boolean | null
           title?: string
