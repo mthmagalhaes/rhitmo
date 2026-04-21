@@ -8,6 +8,7 @@ import {
   type NotificationChannel,
 } from '@/hooks/useNotificationPreferences';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useAccount } from '@/contexts/AccountContext';
 
 interface NotificationRow {
   type: NotificationType;
@@ -26,7 +27,8 @@ const ROWS: NotificationRow[] = [
 export function NotificationsTab() {
   const { t } = useTranslation();
   const { get, set, isLoading, isSaving } = useNotificationPreferences();
-  const { isLeader, isHRAdmin, isLinkedMember } = useUserRole();
+  const { isLeader, isHRAdmin } = useUserRole();
+  const { isLinkedMember } = useAccount();
 
   const visibleRows = ROWS.filter((r) => {
     if (r.showFor === 'all') return true;
