@@ -1617,6 +1617,33 @@ export type Database = {
           },
         ]
       }
+      user_notification_preferences: {
+        Row: {
+          channel: string
+          created_at: string
+          id: string
+          notification_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          id?: string
+          notification_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          id?: string
+          notification_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_preferences: {
         Row: {
           created_at: string | null
@@ -1878,6 +1905,18 @@ export type Database = {
           role_title: string
         }[]
       }
+      get_leaders_at_risk: {
+        Args: { _workspace_id: string }
+        Returns: {
+          last_activity_at: string
+          last_mentor_chat_at: string
+          manager_email: string
+          manager_id: string
+          manager_name: string
+          members_without_note_30d: number
+          risk_reason: string
+        }[]
+      }
       get_member_for_sync: {
         Args: { p_member_id: string }
         Returns: {
@@ -1887,6 +1926,7 @@ export type Database = {
           work_style_data: Json
         }[]
       }
+      get_member_skill_radar: { Args: { _member_id: string }; Returns: Json }
       get_review_evidence: {
         Args: { _member_id: string; _period_end: string; _period_start: string }
         Returns: {
