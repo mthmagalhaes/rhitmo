@@ -93,3 +93,13 @@ project_id = "lybkgujyezzzvbzypxed"
     verify_jwt = true
   [functions.dispatch-bulk-invites]
     verify_jwt = true
+  [functions.mirror-weekly]
+    verify_jwt = false
+  [functions.weekly-summary]
+    verify_jwt = false
+  [functions.self-reflection]
+    verify_jwt = false
+  [functions.hr-risk-alerts]
+    verify_jwt = false
+  [functions.generate-monthly-report]
+    verify_jwt = true

@@ -77,6 +77,39 @@ export type Database = {
         }
         Relationships: []
       }
+      automation_runs: {
+        Row: {
+          error: string | null
+          finished_at: string | null
+          id: string
+          items_processed: number
+          job_name: string
+          metadata: Json
+          started_at: string
+          status: string
+        }
+        Insert: {
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          items_processed?: number
+          job_name: string
+          metadata?: Json
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          items_processed?: number
+          job_name?: string
+          metadata?: Json
+          started_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
       bias_detections: {
         Row: {
           bias_type: string
@@ -963,6 +996,53 @@ export type Database = {
           },
         ]
       }
+      member_prompts: {
+        Row: {
+          answered_at: string | null
+          created_at: string
+          id: string
+          linked_user_id: string | null
+          member_id: string
+          prompt_key: string
+          prompt_text: string
+          response: string | null
+          shared_with_leader: boolean
+          week_starting: string
+        }
+        Insert: {
+          answered_at?: string | null
+          created_at?: string
+          id?: string
+          linked_user_id?: string | null
+          member_id: string
+          prompt_key: string
+          prompt_text: string
+          response?: string | null
+          shared_with_leader?: boolean
+          week_starting: string
+        }
+        Update: {
+          answered_at?: string | null
+          created_at?: string
+          id?: string
+          linked_user_id?: string | null
+          member_id?: string
+          prompt_key?: string
+          prompt_text?: string
+          response?: string | null
+          shared_with_leader?: boolean
+          week_starting?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_prompts_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mentor_messages: {
         Row: {
           content: string
@@ -1004,6 +1084,59 @@ export type Database = {
             columns: ["thread_id"]
             isOneToOne: false
             referencedRelation: "chat_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mirror_insights: {
+        Row: {
+          contradiction_score: number
+          created_at: string
+          declared_priorities: Json
+          dismissed_at: string | null
+          evidence: Json
+          id: string
+          manager_id: string
+          observed_themes: Json
+          recommended_action: string | null
+          summary: string
+          week_starting: string
+          workspace_id: string | null
+        }
+        Insert: {
+          contradiction_score: number
+          created_at?: string
+          declared_priorities?: Json
+          dismissed_at?: string | null
+          evidence?: Json
+          id?: string
+          manager_id: string
+          observed_themes?: Json
+          recommended_action?: string | null
+          summary: string
+          week_starting: string
+          workspace_id?: string | null
+        }
+        Update: {
+          contradiction_score?: number
+          created_at?: string
+          declared_priorities?: Json
+          dismissed_at?: string | null
+          evidence?: Json
+          id?: string
+          manager_id?: string
+          observed_themes?: Json
+          recommended_action?: string | null
+          summary?: string
+          week_starting?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mirror_insights_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
