@@ -19,6 +19,8 @@ export function validateCronSecret(req: Request): { valid: boolean; error?: Resp
   const userSecret = Deno.env.get('CRON_SECRET');
   const provided = req.headers.get('x-cron-secret');
 
+  console.log('[cronAuth] provided header present:', !!provided, 'len:', provided?.length, 'userSecret present:', !!userSecret);
+
   if (!provided) {
     return {
       valid: false,
