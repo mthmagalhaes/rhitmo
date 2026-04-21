@@ -67,6 +67,7 @@ export function FormalReviewSheet({
 }: FormalReviewSheetProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation('rhitmo');
 
   const [draftText, setDraftText] = useState('');
   const [competencyEvaluations, setCompetencyEvaluations] = useState<CompetencyEvaluation[]>([]);
@@ -420,6 +421,24 @@ export function FormalReviewSheet({
                     );
                   })
                 )}
+              </div>
+            </ScrollArea>
+          </TabsContent>
+
+          {/* Calibration tab */}
+          <TabsContent value="calibration" className="flex-1 px-6 mt-4 min-h-0">
+            <ScrollArea className="h-[calc(100vh-280px)]">
+              <div className="pr-4 pb-4">
+                <ReviewCalibrationPanel
+                  reviewId={reviewId}
+                  initial={{
+                    classification: ((review as any).classification ?? null) as RecapClassification | null,
+                    promotion_recommendation: ((review as any).promotion_recommendation ?? null) as PromotionRecommendation | null,
+                    loss_risk: ((review as any).loss_risk ?? null) as LossRisk | null,
+                    merit_recommendation: ((review as any).merit_recommendation ?? null) as MeritRecommendation | null,
+                  }}
+                  disabled={!!review.acknowledged_at}
+                />
               </div>
             </ScrollArea>
           </TabsContent>
