@@ -1,56 +1,84 @@
-# Melhoria: Tornar a navegação da tab Rhitmo mais óbvia
 
-O fluxo está funcional mas a hierarquia visual não orienta. Você esperava ver março imediatamente e não viu porque o card de fevereiro (rascunho aguardando) ocupa o viewport inicial. E o trimestral fica "escondido" abaixo de 6 cards mensais.
+
+# Limpar citações do Rhitmo Mensal: prosa + chips de evidência
+
+## Problema
+
+Hoje os blocos "Mandou bem" e "Atenção" mostram o texto puro da IA, que vem assim:
+
+> "Gabriela apresentou as análises de LTV... (feedback_id=c7d155ec-4709-4ef9-b671-ff395474ab40, data=2026-03-12)."
+
+Dois bugs combinados:
+
+1. **Prompt**: instruímos a IA a "citar o ID e a data" dentro do texto — então ela faz isso literalmente, com UUID no meio da frase.
+2. **UI**: o campo `highlight_evidence` (JSONB) já é salvo estruturado no banco mas **não é renderizado**. A gente só mostra `highlight_text` cru.
+
+A Avaliação Formal já tem o padrão certo (chips com nome + data, renderizadas separadamente do texto). Vamos trazer o mesmo padrão para o Mensal.
 
 ## O que muda
 
-### 1. Sumário no topo da tab Rhitmo
+### 1. Prompt da `generate-monthly-recap` — texto limpo
 
-Acima do `MonthlyRecapSection`, adicionar um **strip de resumo** mostrando:
+Trocar a regra do system prompt:
 
-- "3 mensais no histórico (1 rascunho aguardando)"
-- "0 trimestrais — Q1 2026 pronto para gerar" + botão âncora "Ir para trimestral ↓"
-- "Abril — mês em andamento. Fechamento dia 2/mai" 
+- **Antes**: "cite o ID e a data da nota/1:1 de origem" dentro do texto.
+- **Depois**: "escreva em prosa limpa, **sem IDs e sem datas no meio do texto**. As evidências vão no campo `evidence` separado, onde você cita os UUIDs reais — eles serão renderizados como chips na UI, não no parágrafo."
 
-Isso responde "o que tem aqui?" sem precisar rolar.
+E adicionar uma instrução explícita no formato de saída:
+> "O campo `text` deve ser uma frase factual sobre o que a pessoa fez. NÃO inclua `(feedback_id=...)`, `(data=...)`, nem qualquer marcação técnica. As referências vão no `evidence`."
 
-### 2. Reordenar: trimestral antes do mensal
+### 2. Renderização das evidências como chips
 
-Inverter a ordem na tab. Trimestral é o ritual de **calibração** (mais raro, mais importante para Performance Review). Mensal é fonte. Hoje mostramos fonte primeiro, calibração depois — fica enterrado.
+Criar um sub-componente `EvidenceChips` em `MonthlyRecapSection.tsx` que, dado o array `evidence`, busca em paralelo os títulos das notas/1:1s e renderiza chips no estilo Creme/Bento:
 
-Nova ordem:
+```text
+[📝 Apresentação de LTV/CAC no All Hands · 12/03]
+[💬 1:1 sobre churn geral · 18/03]
+```
 
-1. **Strip de sumário** (acima)
-2. **Rhitmo Trimestral** (1 card focal Q1 2026 + anteriores)
-3. Separador sutil
-4. **Rhitmo Mensal** (6 cards — fonte de evidência)
+- Ícone diferente para `feedback_id` (📝 ScrollText) vs `meeting_id` (💬 MessageSquare)
+- Hover mostra borda violeta sutil
+- Click abre a nota/transcrição original (link para `/member/{id}` com âncora ao feedback, padrão já usado no FeedbackTimeline)
+- Chip com `rounded-xl`, `bg-muted/40`, `text-xs`, padding apertado
 
-### 3. Card do mês em curso (abril)
+### 3. Hook `useEvidenceResolver`
 
-Em vez de simplesmente omitir abril, mostrar um card desabilitado:
+Hook novo `src/hooks/useEvidenceResolver.ts` que recebe array de `{feedback_id?, meeting_id?, date}` e devolve `{ id, label, date, type, href }[]`:
 
-> "**Abril 2026 — em curso.** Fechamento automático em 02/05. Você terá ~3 min para revisar e confirmar."
+- Faz **uma** query no Supabase: `feedbacks(id, content, summary)` + `meeting_transcripts(id, leader_notes)` filtrando por IDs presentes
+- O "label" é: `summary` da nota se existir, senão primeiros ~60 chars do `content`/`leader_notes`. Sem aspas, sem ID.
+- Cacheia via React Query com chave `['evidence-resolver', sortedIds]`
 
-Tira a dúvida "cadê abril?".
+### 4. Limpeza retroativa (opcional, sugerido)
 
-### 4. Destaque do rascunho pendente
+Para os rascunhos que já existem com IDs no texto (como o de fevereiro na imagem): adicionar um util `stripInlineEvidenceMarkers(text)` que remove regex `\s*\(feedback_id=[^)]+\)` e `\s*\(meeting_id=[^)]+\)` e `\s*\(data=[^)]+\)` antes de renderizar/editar. Aplicado no `useState` inicial do `RecapCard`.
 
-Quando há mensal em status `draft` aguardando confirmação, o card ganha borda âmbar mais marcada + chip "Aguardando você há X dias" no topo da seção. Hoje o badge é discreto.
+Isso resolve o caso da imagem **sem precisar regerar** — quando o líder confirmar o rascunho, salva já limpo.
 
 ## Detalhes técnicos
 
-- **Arquivos editados:**
-  - `src/pages/MemberDetails.tsx` — inverter ordem dentro de `<TabsContent value="rhitmo">` (Quarterly antes de Monthly) + adicionar `<RhitmoTabSummary memberId={...} />` no topo
-  - `src/components/recaps/MonthlyRecapSection.tsx` — `buildLast6Months()` passa a incluir o mês corrente como card "in_progress" (nova prop `currentMonth`)
-- **Arquivo novo:**
-  - `src/components/recaps/RhitmoTabSummary.tsx` — strip de resumo com âncoras (smooth scroll para `#rhitmo-quarterly` / `#rhitmo-monthly`)
-- **i18n:** novas chaves em `rhitmo.summary.*` e `rhitmo.recap.monthly.inProgress` para PT/EN/ES
-- **Sem migration, sem edge function nova.** Tudo frontend.
+**Arquivos editados:**
+- `supabase/functions/generate-monthly-recap/index.ts` — reescrever `systemPrompt` regras 1, 5 + ajustar `userPrompt` formato de saída
+- `src/components/recaps/MonthlyRecapSection.tsx` — adicionar `<EvidenceChips>` abaixo dos textareas de highlight e concern; aplicar `stripInlineEvidenceMarkers` no setState inicial
+
+**Arquivos novos:**
+- `src/hooks/useEvidenceResolver.ts` — hook React Query
+- `src/components/recaps/EvidenceChips.tsx` — componente visual
+
+**i18n:** novas chaves em `rhitmo-pt/en/es.json`:
+- `recap.monthly.evidence.label` ("Evidências")
+- `recap.monthly.evidence.empty` ("Nenhuma evidência vinculada")
+- `recap.monthly.evidence.feedback` ("Anotação")
+- `recap.monthly.evidence.meeting` ("1:1")
+
+**Sem migration. Sem alterar schema.** O `highlight_evidence` JSONB já existe e já é populado.
 
 ## Critérios de aceite
 
-- Ao abrir a tab Rhitmo, vejo o strip de sumário com contadores reais
-- Trimestral aparece antes do mensal
-- Card de "Abril 2026 — em curso" visível e desabilitado
-- Rascunho pendente tem destaque âmbar mais forte
-- Strings novas em PT/EN/ES
+- [ ] Novas mensais geradas vêm com texto limpo, sem `(feedback_id=...)` no parágrafo
+- [ ] Abaixo do texto de "Mandou bem" e "Atenção" aparecem chips com nome curto da nota + data formatada (12/03)
+- [ ] Click em uma chip leva à nota original
+- [ ] Rascunhos antigos (como o de fev/2026 na imagem) ficam limpos automaticamente ao reabrir o card
+- [ ] Strings em PT/EN/ES
+- [ ] Padrão visual Creme/Bento (rounded-xl, ícones lucide, sem borda dura)
+
