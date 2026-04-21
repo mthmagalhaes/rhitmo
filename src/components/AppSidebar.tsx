@@ -21,6 +21,7 @@ import { useAdmin } from '@/hooks/useAdmin';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useToast } from '@/hooks/use-toast';
 import { useLinkedMember } from '@/hooks/useLinkedMember';
+import { useHRRiskAlerts } from '@/hooks/useHRRiskAlerts';
 import {
   Sidebar,
   SidebarContent,
@@ -76,6 +77,7 @@ export function AppSidebar() {
   const { isAdmin } = useAdmin();
   const { isLeader, isHRAdmin, isUser, loading: roleLoading } = useUserRole();
   const { isLinkedMember, linkedMember } = useLinkedMember();
+  const { count: hrAlertsCount } = useHRRiskAlerts();
   const { stopImpersonation, impersonatedEmail } = useImpersonation();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -182,21 +184,32 @@ export function AppSidebar() {
                 <SidebarGroupLabel className="text-sidebar-foreground/60 tracking-tight uppercase text-[11px] font-semibold">{t('sidebar.hrPanel')}</SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
-                    {hrMenuItems.map((item) => (
-                      <SidebarMenuItem key={item.title}>
-                        <SidebarMenuButton asChild tooltip={item.title}>
-                          <NavLink 
-                            to={item.url} 
-                            end
-                            className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
-                            activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
-                          >
-                            <item.icon className="h-5 w-5" />
-                            <span>{item.title}</span>
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
+                    {hrMenuItems.map((item) => {
+                      const showBadge = item.url === '/hr' && hrAlertsCount > 0;
+                      return (
+                        <SidebarMenuItem key={item.title}>
+                          <SidebarMenuButton asChild tooltip={item.title}>
+                            <NavLink 
+                              to={item.url} 
+                              end
+                              className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
+                              activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
+                            >
+                              <item.icon className="h-5 w-5" />
+                              <span className="flex-1">{item.title}</span>
+                              {showBadge && (
+                                <span
+                                  className="ml-auto inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground"
+                                  aria-label={t('hrAlerts.badgeTitle')}
+                                >
+                                  {hrAlertsCount}
+                                </span>
+                              )}
+                            </NavLink>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      );
+                    })}
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>
