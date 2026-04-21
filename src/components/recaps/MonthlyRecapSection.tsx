@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Sparkles, CheckCircle2, RefreshCw, Calendar, AlertTriangle, Clock } from 'lucide-react';
 import { getDateLocale } from '@/lib/dateLocale';
+import { stripInlineEvidenceMarkers } from '@/lib/recapTextSanitizer';
+import { EvidenceChips } from '@/components/recaps/EvidenceChips';
 import {
   useMonthlyRecaps,
   useGenerateMonthlyRecap,
@@ -43,9 +45,9 @@ function RecapCard({
   const update = useUpdateMonthlyRecap(memberId);
   const confirm = useConfirmMonthlyRecap(memberId);
 
-  const [highlight, setHighlight] = useState(recap?.highlight_text ?? '');
-  const [concern, setConcern] = useState(recap?.concern_text ?? '');
-  const [pattern, setPattern] = useState(recap?.dominant_pattern ?? '');
+  const [highlight, setHighlight] = useState(stripInlineEvidenceMarkers(recap?.highlight_text));
+  const [concern, setConcern] = useState(stripInlineEvidenceMarkers(recap?.concern_text));
+  const [pattern, setPattern] = useState(stripInlineEvidenceMarkers(recap?.dominant_pattern));
 
   const isConfirmed = recap?.status === 'confirmed';
   const isDraft = recap?.status === 'draft';
@@ -58,9 +60,9 @@ function RecapCard({
 
   useMemo(() => {
     if (recap) {
-      setHighlight(recap.highlight_text ?? '');
-      setConcern(recap.concern_text ?? '');
-      setPattern(recap.dominant_pattern ?? '');
+      setHighlight(stripInlineEvidenceMarkers(recap.highlight_text));
+      setConcern(stripInlineEvidenceMarkers(recap.concern_text));
+      setPattern(stripInlineEvidenceMarkers(recap.dominant_pattern));
     }
   }, [recap?.id, recap?.ai_generated_at]);
 
@@ -141,6 +143,7 @@ function RecapCard({
                   className="rounded-xl min-h-[68px] text-sm"
                 />
               )}
+              <EvidenceChips evidence={recap.highlight_evidence as any} />
             </div>
 
             <div className="space-y-1.5">
@@ -159,6 +162,7 @@ function RecapCard({
                   className="rounded-xl min-h-[68px] text-sm"
                 />
               )}
+              <EvidenceChips evidence={recap.concern_evidence as any} />
             </div>
 
             <div className="space-y-1.5">

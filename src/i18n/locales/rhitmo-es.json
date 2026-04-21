@@ -30,7 +30,12 @@
       "loading": "Cargando mensuales...",
       "inProgressTitle": "{{month}}",
       "inProgressBadge": "Mes en curso",
-      "inProgressDesc": "Cierre automático el {{date}}. Tendrás ~3 min para revisar y confirmar."
+      "inProgressDesc": "Cierre automático el {{date}}. Tendrás ~3 min para revisar y confirmar.",
+      "evidence": {
+        "loading": "Cargando evidencias...",
+        "feedback": "Nota",
+        "meeting": "1:1"
+      }
     },
     "quarterly": {
       "title": "Rhitmo Trimestral",
