@@ -301,14 +301,18 @@ export function FormalReviewSheet({
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
           <div className="px-6 pt-4">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="draft" className="gap-1.5">
                 <FileText className="h-3.5 w-3.5" />
-                Rascunho Geral
+                {t('review.tabs.draft', 'Rascunho Geral')}
               </TabsTrigger>
               <TabsTrigger value="competencies" className="gap-1.5">
                 <Award className="h-3.5 w-3.5" />
-                Competências
+                {t('review.tabs.competencies', 'Competências')}
+              </TabsTrigger>
+              <TabsTrigger value="calibration" className="gap-1.5">
+                <Scale className="h-3.5 w-3.5" />
+                {t('review.tabs.calibration', 'Calibração')}
               </TabsTrigger>
             </TabsList>
           </div>
