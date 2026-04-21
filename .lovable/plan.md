@@ -1,93 +1,63 @@
 
 
-# Sprint 3 — Ondas 3B + 3C (execução)
+# Sprint 3 — Finalização
 
-## Status verificado
+Estado atual após inspeção: a maior parte do código já está em produção, mas há gaps que impedem a sprint de ser "fechada".
 
-- ✅ Onda 3A funcional: 4 cron jobs ativos, runs com `status=success`, 6 prompts criados, 7 alertas HR, 2 weekly summaries
-- ✅ 0 mirror insights (esperado — workspace de teste sem contradições)
-- ✅ Linter Supabase: 6 warnings, todos pré-existentes (não introduzidos pela S3A)
+## O que está pronto ✅
 
-Podemos seguir.
+- `MirrorInsightCard` integrado em `Index.tsx` (linha 605)
+- `SelfReflectionCard` integrado no `DirectReportDashboard` (linha 486)
+- `HRAutoAlertsSection` e `MonthlyReportButton` integrados no `HRDashboard.tsx`
+- `EngagementHeatmap` já existia (usa RPC `get_hr_analytics_advanced`) — não precisa novo RPC
+- 4 cron jobs ativos, edge functions deployadas, executadas com sucesso
 
-## Onda 3B — Conteúdo proativo
+## O que falta ❌
 
-### S3.2 Mirror Insight Card
-- `src/hooks/useMirrorInsight.ts` — busca insight ativo do líder logado (não dismissado, semana corrente)
-- `src/components/dashboard/MirrorInsightCard.tsx` — card no topo do `Index.tsx` (acima do `SmartInbox`), só aparece se houver insight
-- Sheet lateral com evidências (notas/transcrições citadas por ID, clicáveis), botão "Reconhecer" → `dismissed_at = now()`
-- Visual: usa Brand Kit (Lora headline + ícone espelho), tom reflexivo não acusatório
+### 1. i18n (bloqueio crítico)
 
-### S3.3 Weekly Summary — Email + Slack
-- Template `supabase/functions/_shared/transactional-email-templates/weekly-summary.tsx` (Lora/Inter, RhythmWave, suporta variantes líder/HR/reflexão)
-- Registrar em `transactional-email-templates/registry.ts`
-- Slack DM já dispara via `dispatchNotification` existente
-- Atualizar `weekly-summary` edge function para passar dados estruturados (tópicos da semana, próximas reuniões, liderados estagnados)
+Os componentes usam `t('mirror.cardTitle')`, `t('selfReflection.placeholder')`, etc., mas **nenhuma chave nova foi adicionada** em `pt-BR.json`, `en.json`, `es.json`. Hoje a UI renderiza as próprias keys como texto. Adicionar nos 3 idiomas:
 
-### S3.4 Self-Reflection Card
-- Card "Reflexão da semana" no `DirectReportDashboard.tsx` (acima do PulseCard)
-- Hook `useWeeklyReflection.ts` busca prompt da semana corrente do membro
-- Resposta opcional (textarea, max 500 chars) → grava em `member_prompts.response` + `answered_at`
-- Se membro escolher compartilhar com líder → cria `feedbacks` com `source='self_reflection'`, `visibility='shared'`, `manager_id` do líder do time
+- `mirror.*` — cardTitle, scoreLabel, recommendation, viewEvidence, acknowledge, sheetTitle, declared, observed, evidence
+- `selfReflection.*` — cardTitle, placeholder, shareWithLeader, submit, noResponse, sharedConfirmed, privateConfirmed, privacyNote
+- `hrAlerts.*` — sectionTitle, badgeTitle, empty, viewLeader, severity (high/medium/low)
+- `monthlyReport.*` — button, generating, history, downloadLast, success
+- `weeklySummary.*` — usado só em template de email (já com texto inline em PT), sem necessidade no front
 
-### S3.5 HR Risk Alerts UI
-- Badge no item "RH" do `AppSidebar.tsx` com count de alertas não lidos (de `leader_nudges` com `nudge_type='hr_risk_alert'` últimos 7d)
-- Seção "Alertas automáticos" em `HRDashboard.tsx` listando os últimos alertas com link para o líder em risco
-- Hook `useHRRiskAlerts.ts`
+### 2. Badge de alertas no AppSidebar (S3.5)
 
-## Onda 3C — HR Intelligence Layer
+Adicionar contagem de alertas HR não lidos (últimos 7 dias) no item "Visão geral" do menu HR. Reutilizar `useHRRiskAlerts` — somar `total_unread` e renderizar pequeno badge `bg-destructive` ao lado do label quando > 0.
 
-### S3.6 Engagement Heatmap
-- Migration: RPC `get_workspace_engagement_heatmap(_workspace_id)` retorna `{member_id, member_name, week_starting, activity_count, status}` para últimas 12 semanas
-  - `status`: verde (≥3 atividades), amarelo (1-2), vermelho (0) — alinhado a `mem://features/team-management/health-status-logic`
-  - Atividades = notas + 1:1s + reflexões respondidas
-- `src/components/hr/EngagementHeatmap.tsx`: matriz CSS Grid (linhas=membros, 12 colunas=semanas), células coloridas com tooltip
-- Inserir em `HRAnalytics.tsx` em nova seção "Engagement Heatmap"
+### 3. Validação final
 
-### S3.7 PDF Export Mensal
-- Edge function `generate-monthly-report` usando `@react-pdf/renderer` via `https://esm.sh/@react-pdf/renderer`
-- Bucket privado `monthly-reports` + RLS por `workspace_id`
-- Conteúdo do PDF: capa com Brand Kit (RhythmWave + Lora), Health Score, Heatmap snapshot, top 5 líderes ativos, alertas do mês, ações recomendadas
-- Botão "Exportar PDF do mês" em `HRDashboard.tsx` (HR Admin only) + lista dos últimos 6 relatórios
-- Síntese executiva por IA: `google/gemini-2.5-flash` (custo) — fallback `gemini-2.5-pro` se síntese mais profunda for pedida
-- **Sem cron automático** nesta sprint (só on-demand). Cron mensal fica para Sprint 4.
+- Rodar Supabase linter (confirmar 0 novos warnings em cima dos 6 pré-existentes)
+- Smoke test manual via `curl_edge_functions`:
+  - `weekly-summary` (uma execução)
+  - `mirror-weekly` (uma execução)
+- Verificar `automation_runs` mais recente para garantir `status=success`
 
-## i18n
+### 4. Observação registrada (não bloqueia)
 
-Novas chaves em PT-BR / EN / ES:
-- `mirror.cardTitle`, `mirror.evidence`, `mirror.acknowledge`
-- `weeklySummary.subject`, `weeklySummary.intro`, `weeklySummary.staleAlert`
-- `selfReflection.cardTitle`, `selfReflection.shareWithLeader`, `selfReflection.placeholder`
-- `hrAlerts.badgeTitle`, `hrAlerts.empty`, `hrAlerts.viewLeader`
-- `heatmap.title`, `heatmap.legendActive`, `heatmap.legendLow`, `heatmap.legendInactive`
-- `monthlyReport.button`, `monthlyReport.generating`, `monthlyReport.history`
+O `weekly-summary` edge fn entrega `notesCount`, `meetingsCount`, `membersCount`, `staleCount` — alinhado ao template atual. Os campos opcionais "tópicos da semana" e "próximas reuniões" mencionados no plano original ficam para Sprint 4 (precisam de classificação de notas + leitura de calendar events agregados).
 
 ## Ordem de execução
 
-1. Hook + Card Mirror (S3.2)
-2. Template email weekly-summary + atualizar edge fn (S3.3)
-3. Self-reflection card no Direct Report Dashboard (S3.4)
-4. Badge HR + seção alertas automáticos (S3.5)
-5. RPC heatmap + componente (S3.6)
-6. PDF export edge fn + bucket + UI (S3.7)
-7. i18n PT/EN/ES completo
-8. Typecheck + linter Supabase final
+1. Adicionar chaves i18n PT/EN/ES nos 3 JSONs
+2. Adicionar badge HR no `AppSidebar.tsx` (usando `useHRRiskAlerts`)
+3. Rodar Supabase linter
+4. Smoke test `weekly-summary` + `mirror-weekly` via curl
+5. Confirmar runs com `status=success`
 
 ## Critérios de conclusão
 
-- ✅ MirrorInsightCard renderiza quando há insight ativo, dismiss funciona
-- ✅ Weekly summary entregue por email com template Lora/Inter + Slack DM
-- ✅ Self-reflection card aparece no dashboard do liderado, resposta opcional grava em DB
-- ✅ Badge HR mostra count + seção lista alertas automáticos
-- ✅ Heatmap renderiza 12 semanas × N membros para HR Admin
-- ✅ PDF mensal baixável, alinhado ao Brand Kit, salvo em bucket privado
-- ✅ i18n completo nos 3 idiomas
-- ✅ Linter Supabase sem novos warnings, typecheck limpo
+- ✅ UI sem chaves cruas (`mirror.cardTitle` etc.) em nenhum dos 3 idiomas
+- ✅ Badge de alerta HR renderiza no sidebar quando há alertas não lidos
+- ✅ Linter Supabase sem warnings novos
+- ✅ Última execução manual de cada edge function = `success`
 
 ## Observações técnicas
 
-- **RLS:** RPC heatmap valida `has_role(auth.uid(), 'hr_admin')` ou `is_workspace_owner()`. Bucket `monthly-reports` com policy por workspace.
-- **Custo IA:** Síntese executiva do PDF usa `gemini-2.5-flash` por padrão (memo `mem://monetization/modelo-economico-e-margens-abril-2026`).
-- **Brand Kit:** PDF e email seguem RhythmWave + Lora headline + Inter body (memo `mem://design/rhythm-wave-dna`).
-- **Anti-alucinação:** PDF cita números reais; nenhuma seção qualitativa sem evidência numérica.
+- Reutilizar o hook `useHRRiskAlerts` já existente no badge — sem nova query
+- Chaves de email do `weekly-summary` já estão hardcoded em PT no template; manter assim por enquanto (templates de email seguem padrão atual da plataforma)
+- Sem mudanças de schema, sem novas migrations
 
