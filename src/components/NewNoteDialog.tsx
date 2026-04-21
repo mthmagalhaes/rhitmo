@@ -91,6 +91,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<ReturnType<typeof useEditor> | null>(null);
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [biasMatches, setBiasMatches] = useState<BiasMatch[]>([]);
   const [biasDismissCount, setBiasDismissCount] = useState(0);
   const biasTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
