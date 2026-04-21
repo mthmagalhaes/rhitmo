@@ -72,19 +72,44 @@ const MemberDetails = () => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [activeTab, setActiveTab] = useState<'diary' | 'rhitmo' | 'reviews'>('diary');
+  const [activeRhitmoSub, setActiveRhitmoSub] = useState<'quarterly' | 'monthly'>('quarterly');
   const { toast } = useToast();
   const {
     hasSync
   } = usePlanLimits();
 
-  // Deep link: open note dialog from ?openNote=true
+  // Deep link: open note dialog from ?openNote=true, plus tab/sub-tab from ?tab=&sub=
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('openNote') === 'true') {
       setDialogOpen(true);
+    }
+    const tab = params.get('tab');
+    if (tab === 'rhitmo' || tab === 'reviews' || tab === 'diary') {
+      setActiveTab(tab);
+    }
+    const sub = params.get('sub');
+    if (sub === 'quarterly' || sub === 'monthly') {
+      setActiveRhitmoSub(sub);
+    }
+    if (params.has('openNote') || params.has('tab') || params.has('sub')) {
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
+
+  // Robust deep-link: switch to Rhitmo tab + monthly sub-tab and scroll, even from another tab.
+  const jumpToRhitmoTimeline = (sub: 'quarterly' | 'monthly' = 'monthly') => {
+    setActiveTab('rhitmo');
+    setActiveRhitmoSub(sub);
+    // Wait for the tab content to mount before scrolling.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = document.getElementById('rhitmo-tab-trigger');
+        el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+  };
 
   // Query para carregar membro
   const {
