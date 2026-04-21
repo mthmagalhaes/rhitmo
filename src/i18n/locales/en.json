@@ -1098,5 +1098,40 @@
         "expectation": "What do I expect different next time?"
       }
     }
+  },
+  "mirror": {
+    "cardTitle": "Leader's Mirror",
+    "scoreLabel": "Score {{score}}",
+    "recommendation": "Recommendation",
+    "viewEvidence": "View evidence",
+    "acknowledge": "Acknowledge",
+    "sheetTitle": "What the Mirror noticed",
+    "declared": "Stated priorities",
+    "observed": "Observed themes",
+    "evidence": "Evidence"
+  },
+  "selfReflection": {
+    "cardTitle": "Weekly reflection",
+    "placeholder": "Write a few sentences. No rush, no judgment.",
+    "shareWithLeader": "Share with my leader",
+    "submit": "Save reflection",
+    "noResponse": "(no response recorded)",
+    "sharedConfirmed": "Shared with your leader",
+    "privateConfirmed": "Kept private",
+    "privacyNote": "Your answer is private by default"
+  },
+  "hrAlerts": {
+    "sectionTitle": "Automatic alerts",
+    "badgeTitle": "Alerts",
+    "empty": "No active alerts. All under control. ✨",
+    "viewLeader": "View leader",
+    "dismiss": "Dismiss alert"
+  },
+  "monthlyReport": {
+    "button": "Export monthly PDF",
+    "generating": "Generating...",
+    "success": "Monthly report generated",
+    "error": "Could not generate PDF",
+    "history": "Recent reports"
   }
 }

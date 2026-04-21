@@ -1098,5 +1098,40 @@
         "expectation": "¿Qué espero diferente la próxima vez?"
       }
     }
+  },
+  "mirror": {
+    "cardTitle": "Espejo del Líder",
+    "scoreLabel": "Score {{score}}",
+    "recommendation": "Recomendación",
+    "viewEvidence": "Ver evidencias",
+    "acknowledge": "Reconocer",
+    "sheetTitle": "Lo que el Espejo notó",
+    "declared": "Prioridades declaradas",
+    "observed": "Temas observados",
+    "evidence": "Evidencias"
+  },
+  "selfReflection": {
+    "cardTitle": "Reflexión de la semana",
+    "placeholder": "Escribe en pocas frases. Sin prisa, sin juicio.",
+    "shareWithLeader": "Compartir con mi líder",
+    "submit": "Guardar reflexión",
+    "noResponse": "(sin respuesta registrada)",
+    "sharedConfirmed": "Compartida con tu líder",
+    "privateConfirmed": "Mantenida privada",
+    "privacyNote": "Tu respuesta es privada por defecto"
+  },
+  "hrAlerts": {
+    "sectionTitle": "Alertas Automáticas",
+    "badgeTitle": "Alertas",
+    "empty": "Sin alertas activas. Todo bajo control. ✨",
+    "viewLeader": "Ver líder",
+    "dismiss": "Reconocer alerta"
+  },
+  "monthlyReport": {
+    "button": "Exportar PDF del mes",
+    "generating": "Generando...",
+    "success": "Informe mensual generado",
+    "error": "No se pudo generar el PDF",
+    "history": "Últimos informes"
   }
 }
