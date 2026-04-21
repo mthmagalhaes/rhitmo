@@ -17,12 +17,13 @@ function getWeekStarting(d: Date = new Date()): string {
 }
 
 interface RiskRow {
-  leader_user_id: string;
-  leader_name: string;
-  team_id: string;
-  team_name: string;
-  reason: string;
-  risk_score: number;
+  manager_id: string;
+  manager_name: string;
+  manager_email: string;
+  members_without_note_30d: number;
+  last_mentor_chat_at: string | null;
+  last_activity_at: string | null;
+  risk_reason: string;
 }
 
 Deno.serve(async (req) => {
@@ -71,11 +72,11 @@ Deno.serve(async (req) => {
             .eq('leader_id', hrId)
             .eq('nudge_type', 'hr_auto_alert')
             .gte('created_at', weekStarting + 'T00:00:00Z')
-            .ilike('message', `%${risk.leader_name}%`)
+            .ilike('message', `%${risk.manager_name}%`)
             .maybeSingle();
           if (existing) continue;
 
-          const message = `🚨 Líder em risco: ${risk.leader_name} (${risk.team_name}) — ${risk.reason}`;
+          const message = `🚨 Líder em risco: ${risk.manager_name} — ${risk.risk_reason}`;
           const result = await dispatchNotification(admin, {
             userId: hrId,
             notificationType: 'hr_alerts',
@@ -84,7 +85,7 @@ Deno.serve(async (req) => {
               nudgeType: 'hr_auto_alert',
               message,
               actionUrl: '/hr',
-              severity: risk.risk_score >= 70 ? 'critical' : 'warning',
+              severity: risk.members_without_note_30d >= 3 ? 'critical' : 'warning',
             },
             slack: { text: message },
           });
