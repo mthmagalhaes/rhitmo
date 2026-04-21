@@ -10,6 +10,8 @@ import { useMonthlyRecaps, useQuarterlyRecaps } from '@/hooks/useRecaps';
 
 interface Props {
   memberId: string;
+  /** Optional: when provided, summary buttons switch the parent sub-tab instead of just scrolling. */
+  onSwitchSection?: (section: 'quarterly' | 'monthly') => void;
 }
 
 function smoothScrollTo(id: string) {
@@ -23,10 +25,18 @@ function getCurrentQuarterStart(): string {
   return format(new Date(Date.UTC(d.getUTCFullYear(), qStartMonth - 3, 1)), 'yyyy-MM-01');
 }
 
-export function RhitmoTabSummary({ memberId }: Props) {
+export function RhitmoTabSummary({ memberId, onSwitchSection }: Props) {
   const { t, i18n } = useTranslation('rhitmo');
-  const { data: monthly = [], isLoading: mLoading } = useMonthlyRecaps(memberId, 6);
+  const { data: monthly = [], isLoading: mLoading } = useMonthlyRecaps(memberId, 12);
   const { data: quarterly = [], isLoading: qLoading } = useQuarterlyRecaps(memberId, 4);
+
+  const handleJump = (section: 'quarterly' | 'monthly') => {
+    if (onSwitchSection) {
+      onSwitchSection(section);
+    } else {
+      smoothScrollTo(section === 'quarterly' ? 'rhitmo-quarterly' : 'rhitmo-monthly');
+    }
+  };
 
   const currentMonthLabel = useMemo(
     () => format(new Date(), 'MMMM', { locale: getDateLocale(i18n.language) }),

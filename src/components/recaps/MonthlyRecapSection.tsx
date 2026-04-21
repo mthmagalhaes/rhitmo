@@ -282,7 +282,7 @@ function CurrentMonthCard() {
 
 export function MonthlyRecapSection({ memberId }: Props) {
   const { t } = useTranslation('rhitmo');
-  const { data: recaps = [], isLoading } = useMonthlyRecaps(memberId, 6);
+  const { data: recaps = [], isLoading } = useMonthlyRecaps(memberId, 12);
   const months = buildLast6Months();
   const recapByMonth = useMemo(() => {
     const m = new Map<string, MonthlyRecap>();
