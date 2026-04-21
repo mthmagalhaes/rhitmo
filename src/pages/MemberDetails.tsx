@@ -813,8 +813,10 @@ const MemberDetails = () => {
           
           <TabsContent value="rhitmo">
             <div className="space-y-8">
-              <MonthlyRecapSection memberId={member.id} />
+              <RhitmoTabSummary memberId={member.id} />
               <QuarterlyRecapSection memberId={member.id} />
+              <div className="border-t border-border/50" />
+              <MonthlyRecapSection memberId={member.id} />
             </div>
           </TabsContent>
 

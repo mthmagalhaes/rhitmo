@@ -334,7 +334,7 @@ export function QuarterlyRecapSection({ memberId }: Props) {
   const previous = recaps.filter((r) => r.period_quarter.slice(0, 10) !== lastQuarter);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" id="rhitmo-quarterly">
       <div>
         <h2 className="text-lg font-bold tracking-tight">{t('recap.quarterly.title')}</h2>
         <p className="text-sm text-muted-foreground">{t('recap.quarterly.subtitle')}</p>
