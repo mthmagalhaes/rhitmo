@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Sparkles, CheckCircle2, RefreshCw, Calendar } from 'lucide-react';
+import { Loader2, Sparkles, CheckCircle2, RefreshCw, Calendar, AlertTriangle } from 'lucide-react';
 import {
   useMonthlyRecaps,
   useGenerateMonthlyRecap,
@@ -89,6 +89,14 @@ function RecapCard({
             Baseado em {recap.feedbacks_count} nota{recap.feedbacks_count === 1 ? '' : 's'} e {recap.meetings_count} 1:1
             {recap.meetings_count === 1 ? '' : 's'} do mês.
           </p>
+        )}
+        {recap?.low_evidence && !isConfirmed && (
+          <div className="mt-2 flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+            <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+            <span>
+              Poucas evidências este mês ({(recap.feedbacks_count ?? 0) + (recap.meetings_count ?? 0)} registros). O resumo pode estar incompleto — considere registrar mais notas antes de confirmar.
+            </span>
+          </div>
         )}
       </CardHeader>
       <CardContent className="space-y-4">

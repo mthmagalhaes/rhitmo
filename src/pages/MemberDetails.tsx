@@ -35,6 +35,9 @@ import { InviteMemberDialog } from '@/components/InviteMemberDialog';
 import { MeetingRecorder } from '@/components/MeetingRecorder';
 import { CreateFormalReviewDialog } from '@/components/review/CreateFormalReviewDialog';
 import { FormalReviewSheet } from '@/components/review/FormalReviewSheet';
+import { MonthlyRecapSection } from '@/components/recaps/MonthlyRecapSection';
+import { QuarterlyRecapSection } from '@/components/recaps/QuarterlyRecapSection';
+import { RhitmoTimelineCard } from '@/components/recaps/RhitmoTimelineCard';
 import React from 'react';
 
 interface WorkStyleData {
@@ -724,11 +727,39 @@ const MemberDetails = () => {
           </Card>
         )}
 
+        {/* Rhitmo timeline transition card — bridges existing users into the new ritual */}
+        {(() => {
+          const lastMonthStart = new Date();
+          lastMonthStart.setUTCDate(1);
+          lastMonthStart.setUTCMonth(lastMonthStart.getUTCMonth() - 1);
+          const thisMonthStart = new Date();
+          thisMonthStart.setUTCDate(1);
+          const fbLastMonth = feedbacks.filter((f: any) => {
+            const d = new Date(f.occurred_at || f.created_at);
+            return d >= lastMonthStart && d < thisMonthStart;
+          }).length;
+          return (
+            <RhitmoTimelineCard
+              memberId={member.id}
+              feedbacksLastMonthCount={fbLastMonth}
+              onJumpToRhitmo={() => {
+                const el = document.getElementById('rhitmo-tab-trigger');
+                el?.click();
+                setTimeout(() => el?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+              }}
+            />
+          );
+        })()}
+
         <Tabs defaultValue="diary" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="diary" className="flex items-center gap-2">
               <BookOpen className="h-4 w-4" />
               Diário de Bordo
+            </TabsTrigger>
+            <TabsTrigger value="rhitmo" id="rhitmo-tab-trigger" className="flex items-center gap-2">
+              <Music className="h-4 w-4" />
+              Rhitmo
             </TabsTrigger>
             <TabsTrigger value="reviews" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />

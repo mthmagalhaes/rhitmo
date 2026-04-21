@@ -93,18 +93,39 @@ Deno.serve(async (req) => {
       .eq("processing_status", "completed")
       .order("created_at", { ascending: true });
 
+    // Fetch confirmed Rhitmo recaps in period — these are the calibrated spine of the review
+    const { data: quarterlies } = await supabase
+      .from("quarterly_recaps")
+      .select("period_quarter, highlights, recurring_patterns, evolution_vs_previous, classification, turnover_risk, turnover_risk_reason, next_action_key, next_action_note, source_monthly_recap_ids")
+      .eq("member_id", member.id)
+      .eq("status", "confirmed")
+      .gte("period_quarter", periodStart)
+      .lte("period_quarter", periodEnd)
+      .order("period_quarter", { ascending: true });
+
+    const { data: monthlies } = await supabase
+      .from("monthly_recaps")
+      .select("period_month, highlight_text, concern_text, dominant_pattern, low_evidence")
+      .eq("member_id", member.id)
+      .eq("status", "confirmed")
+      .gte("period_month", periodStart)
+      .lte("period_month", periodEnd)
+      .order("period_month", { ascending: true });
+
     const feedbackCount = feedbacks?.length || 0;
     const meetingCount = meetings?.length || 0;
+    const quarterlyCount = quarterlies?.length || 0;
+    const monthlyCount = monthlies?.length || 0;
     const totalEvidence = feedbackCount + meetingCount;
 
-    console.log(`Evidence: ${feedbackCount} feedbacks, ${meetingCount} meetings`);
+    console.log(`Evidence: ${feedbackCount} feedbacks, ${meetingCount} meetings, ${quarterlyCount} quarterlies, ${monthlyCount} monthlies`);
 
-    if (totalEvidence === 0) {
+    if (totalEvidence === 0 && quarterlyCount === 0 && monthlyCount === 0) {
       // Update with empty message
       await supabase
         .from("performance_reviews")
         .update({
-          content: "<p>Nenhuma evidência encontrada no período selecionado. Adicione anotações ou registre 1:1s para gerar uma avaliação com IA.</p>",
+          content: "<p>Nenhuma evidência encontrada no período selecionado. Adicione anotações, registre 1:1s ou confirme um Resumo Mensal/Trimestral antes de gerar a review.</p>",
           evidence_count: 0,
           updated_at: new Date().toISOString(),
         })
@@ -116,11 +137,50 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Build evidence context
+    // Build evidence context — recaps confirmados pelo líder vêm PRIMEIRO (são a espinha)
     let evidenceText = "";
+    const hasConfirmedRecaps = quarterlyCount > 0 || monthlyCount > 0;
+
+    if (quarterlies && quarterlies.length > 0) {
+      evidenceText += "\n## CALIBRAÇÕES TRIMESTRAIS CONFIRMADAS PELO LÍDER (espinha da review):\n\n";
+      quarterlies.forEach((q: any) => {
+        const qDate = new Date(q.period_quarter);
+        const qLabel = `Q${Math.floor(qDate.getUTCMonth() / 3) + 1} ${qDate.getUTCFullYear()}`;
+        evidenceText += `### Trimestre ${qLabel}\n`;
+        if (Array.isArray(q.highlights) && q.highlights.length > 0) {
+          evidenceText += `Destaques validados:\n`;
+          q.highlights.forEach((h: any) => {
+            evidenceText += `- ${h.title}: ${h.detail} (origem: ${h.source_month})\n`;
+          });
+        }
+        if (Array.isArray(q.recurring_patterns) && q.recurring_patterns.length > 0) {
+          evidenceText += `Padrões recorrentes:\n`;
+          q.recurring_patterns.forEach((p: any) => {
+            evidenceText += `- [${p.polarity}] ${p.pattern} — ${p.frequency_note}\n`;
+          });
+        }
+        if (q.evolution_vs_previous) evidenceText += `Evolução vs trimestre anterior: ${q.evolution_vs_previous}\n`;
+        if (q.classification) evidenceText += `Classificação validada: ${q.classification}\n`;
+        if (q.turnover_risk) evidenceText += `Risco turnover: ${q.turnover_risk}${q.turnover_risk_reason ? ` (${q.turnover_risk_reason})` : ""}\n`;
+        if (q.next_action_key) evidenceText += `Próxima ação acordada: ${q.next_action_key}${q.next_action_note ? ` — ${q.next_action_note}` : ""}\n`;
+        evidenceText += "\n";
+      });
+    }
+
+    if (monthlies && monthlies.length > 0) {
+      evidenceText += "\n## RESUMOS MENSAIS CONFIRMADOS PELO LÍDER:\n\n";
+      monthlies.forEach((m: any) => {
+        const monthLabel = new Date(m.period_month).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+        evidenceText += `### ${monthLabel}${m.low_evidence ? " (poucas evidências)" : ""}\n`;
+        if (m.highlight_text) evidenceText += `Mandou bem: ${m.highlight_text}\n`;
+        if (m.concern_text) evidenceText += `Atenção: ${m.concern_text}\n`;
+        if (m.dominant_pattern) evidenceText += `Padrão do mês: ${m.dominant_pattern}\n`;
+        evidenceText += "\n";
+      });
+    }
 
     if (feedbacks && feedbacks.length > 0) {
-      evidenceText += "\n## ANOTAÇÕES E FEEDBACKS DO LÍDER:\n\n";
+      evidenceText += `\n## ANOTAÇÕES E FEEDBACKS DO LÍDER ${hasConfirmedRecaps ? "(suporte/citação para os recaps acima)" : ""}:\n\n`;
       feedbacks.forEach((f, idx) => {
         const date = new Date(f.occurred_at).toLocaleDateString("pt-BR");
         evidenceText += `[Anotação ${idx + 1} - ${date}] Tipo: ${f.type}\n`;
@@ -234,13 +294,14 @@ Gere HTML estruturado usando EXATAMENTE este formato. Use as classes CSS indicad
 6. **Foco em ${memberName}**: Analise APENAS ações de ${firstName}. Ignore ações de outras pessoas.
 7. Liste 2-4 pontos fortes e 1-3 áreas de desenvolvimento.
 8. **NÃO use Markdown** (##, **, -, etc.). Use APENAS o HTML com classes indicado acima.
-9. **NÃO use blocos de código**. Retorne HTML puro.`;
+9. **NÃO use blocos de código**. Retorne HTML puro.
+10. **PRIORIDADE DOS RECAPS RHITMO**: Se houver "CALIBRAÇÕES TRIMESTRAIS CONFIRMADAS PELO LÍDER" ou "RESUMOS MENSAIS CONFIRMADOS PELO LÍDER" no contexto, eles são a **espinha** da review — o líder já calibrou esses padrões. Estruture a review em cima deles. Use os feedbacks brutos APENAS como suporte/citação. NÃO refaça a calibração que o líder já validou. Quando citar, prefira referências aos trimestres/meses confirmados (ex: <span class="evidence-tag">(Trimestral Q1 2026)</span> ou <span class="evidence-tag">(Mensal de fev/2026)</span>).`;
 
-    const userPrompt = `EVIDÊNCIAS DO PERÍODO (${totalEvidence} no total):
+    const userPrompt = `EVIDÊNCIAS DO PERÍODO (${quarterlyCount} trimestral${quarterlyCount === 1 ? "" : "is"} confirmado${quarterlyCount === 1 ? "" : "s"}, ${monthlyCount} mensal${monthlyCount === 1 ? "" : "is"} confirmado${monthlyCount === 1 ? "" : "s"}, ${totalEvidence} registros brutos):
 
 ${evidenceText}
 
-Gere a avaliação formal de desempenho de ${memberName} em HTML puro, seguindo a estrutura obrigatória.`;
+Gere a avaliação formal de desempenho de ${memberName} em HTML puro, seguindo a estrutura obrigatória.${hasConfirmedRecaps ? " Lembre-se: os recaps confirmados pelo líder são a espinha — não recomece do zero." : ""}`;
 
     // Call Lovable AI Gateway
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");

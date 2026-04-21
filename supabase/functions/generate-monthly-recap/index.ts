@@ -287,6 +287,7 @@ Deno.serve(async (req) => {
       dominant_pattern: ai.dominant_pattern ?? '',
       feedbacks_count: fbCount,
       meetings_count: mtCount,
+      low_evidence: totalEvidence < 3,
       ai_generated_at: new Date().toISOString(),
       ai_model: 'google/gemini-2.5-flash',
     };

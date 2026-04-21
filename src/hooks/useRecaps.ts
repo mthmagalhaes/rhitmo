@@ -20,6 +20,7 @@ export interface MonthlyRecap {
   dominant_pattern: string | null;
   feedbacks_count: number;
   meetings_count: number;
+  low_evidence: boolean;
   ai_generated_at: string | null;
   ai_model: string | null;
   created_at: string;
