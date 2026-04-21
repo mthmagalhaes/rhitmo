@@ -27,7 +27,10 @@
       "regenerate": "Regenerar con IA",
       "confirmedBadge": "Confirmado {{date}}",
       "draftBadge": "Borrador — esperándote",
-      "loading": "Cargando mensuales..."
+      "loading": "Cargando mensuales...",
+      "inProgressTitle": "{{month}}",
+      "inProgressBadge": "Mes en curso",
+      "inProgressDesc": "Cierre automático el {{date}}. Tendrás ~3 min para revisar y confirmar."
     },
     "quarterly": {
       "title": "Rhitmo Trimestral",
@@ -127,5 +130,19 @@
       "save": "Guardar calibración",
       "saved": "Calibración guardada"
     }
+  },
+  "summary": {
+    "loading": "Cargando resumen...",
+    "quarterly": "Trimestral",
+    "monthly": "Mensual",
+    "inProgress": "Mes en curso",
+    "noQuarterlyYet": "Ninguno aún",
+    "quarterlyCount": "{{count}} en el historial ({{confirmed}} confirmado(s))",
+    "monthlyCount": "{{count}} en el historial ({{confirmed}} confirmado(s))",
+    "monthlyDraftPending": "{{count}} borrador esperándote",
+    "quarterlyReady": "Listo para generar",
+    "quarterlyHint": "Ya tienes mensual(es) confirmado(s) del trimestre pasado — genera el trimestral en ~5 min.",
+    "goToQuarterly": "Ir al trimestral",
+    "autoCloseHint": "Cierre automático el {{date}}"
   }
 }

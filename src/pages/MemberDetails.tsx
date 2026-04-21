@@ -38,6 +38,7 @@ import { FormalReviewSheet } from '@/components/review/FormalReviewSheet';
 import { MonthlyRecapSection } from '@/components/recaps/MonthlyRecapSection';
 import { QuarterlyRecapSection } from '@/components/recaps/QuarterlyRecapSection';
 import { RhitmoTimelineCard } from '@/components/recaps/RhitmoTimelineCard';
+import { RhitmoTabSummary } from '@/components/recaps/RhitmoTabSummary';
 import React from 'react';
 
 interface WorkStyleData {
@@ -813,8 +814,10 @@ const MemberDetails = () => {
           
           <TabsContent value="rhitmo">
             <div className="space-y-8">
-              <MonthlyRecapSection memberId={member.id} />
+              <RhitmoTabSummary memberId={member.id} />
               <QuarterlyRecapSection memberId={member.id} />
+              <div className="border-t border-border/50" />
+              <MonthlyRecapSection memberId={member.id} />
             </div>
           </TabsContent>
 

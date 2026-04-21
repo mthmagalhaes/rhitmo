@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Sparkles, CheckCircle2, RefreshCw, Calendar, AlertTriangle } from 'lucide-react';
+import { Loader2, Sparkles, CheckCircle2, RefreshCw, Calendar, AlertTriangle, Clock } from 'lucide-react';
 import { getDateLocale } from '@/lib/dateLocale';
 import {
   useMonthlyRecaps,
@@ -244,6 +244,38 @@ function RecapCard({
   );
 }
 
+function CurrentMonthCard() {
+  const { t, i18n } = useTranslation('rhitmo');
+  const monthLabel = useMemo(
+    () => format(startOfMonth(new Date()), 'MMMM yyyy', { locale: getDateLocale(i18n.language) }),
+    [i18n.language]
+  );
+  const closingDate = useMemo(() => {
+    const next = new Date();
+    next.setMonth(next.getMonth() + 1, 2);
+    return format(next, 'dd/MM');
+  }, []);
+
+  return (
+    <Card className="rounded-2xl border-dashed border-border/70 bg-muted/20 shadow-none">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <CardTitle className="text-base font-semibold tracking-tight flex items-center gap-2 text-muted-foreground">
+            <Clock className="h-4 w-4" />
+            <span className="capitalize">{t('recap.monthly.inProgressTitle', { month: monthLabel })}</span>
+          </CardTitle>
+          <Badge variant="outline" className="border-border text-muted-foreground">
+            {t('recap.monthly.inProgressBadge')}
+          </Badge>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          {t('recap.monthly.inProgressDesc', { date: closingDate })}
+        </p>
+      </CardHeader>
+    </Card>
+  );
+}
+
 export function MonthlyRecapSection({ memberId }: Props) {
   const { t } = useTranslation('rhitmo');
   const { data: recaps = [], isLoading } = useMonthlyRecaps(memberId, 6);
@@ -264,12 +296,13 @@ export function MonthlyRecapSection({ memberId }: Props) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" id="rhitmo-monthly">
       <div>
         <h2 className="text-lg font-bold tracking-tight">{t('recap.monthly.title')}</h2>
         <p className="text-sm text-muted-foreground">{t('recap.monthly.subtitle')}</p>
       </div>
       <div className="grid gap-4">
+        <CurrentMonthCard />
         {months.map((m) => (
           <RecapCard key={m} memberId={memberId} periodMonth={m} recap={recapByMonth.get(m)} />
         ))}
