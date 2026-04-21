@@ -35,7 +35,8 @@
         "loading": "Loading evidence...",
         "feedback": "Note",
         "meeting": "1:1"
-      }
+      },
+      "outOfWindowSection": "Earlier history"
     },
     "quarterly": {
       "title": "Quarterly Rhitmo",
@@ -148,6 +149,10 @@
     "quarterlyReady": "Ready to generate",
     "quarterlyHint": "You already have confirmed monthly(ies) for last quarter — generate the quarterly in ~5 min.",
     "goToQuarterly": "Go to quarterly",
-    "autoCloseHint": "Auto-closes on {{date}}"
+    "autoCloseHint": "Auto-closes on {{date}}",
+    "subtabs": {
+      "quarterly": "Quarterly",
+      "monthly": "Monthly"
+    }
   }
 }

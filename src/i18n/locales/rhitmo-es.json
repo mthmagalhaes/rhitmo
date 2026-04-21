@@ -35,7 +35,8 @@
         "loading": "Cargando evidencias...",
         "feedback": "Nota",
         "meeting": "1:1"
-      }
+      },
+      "outOfWindowSection": "Historial anterior"
     },
     "quarterly": {
       "title": "Rhitmo Trimestral",
@@ -148,6 +149,10 @@
     "quarterlyReady": "Listo para generar",
     "quarterlyHint": "Ya tienes mensual(es) confirmado(s) del trimestre pasado — genera el trimestral en ~5 min.",
     "goToQuarterly": "Ir al trimestral",
-    "autoCloseHint": "Cierre automático el {{date}}"
+    "autoCloseHint": "Cierre automático el {{date}}",
+    "subtabs": {
+      "quarterly": "Trimestral",
+      "monthly": "Mensual"
+    }
   }
 }
