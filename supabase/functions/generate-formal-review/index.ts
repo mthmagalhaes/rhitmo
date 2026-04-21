@@ -220,7 +220,7 @@ Deno.serve(async (req) => {
     const firstName = memberName.split(" ")[0];
     const periodLabel = `de ${new Date(periodStart).toLocaleDateString("pt-BR")} a ${new Date(periodEnd).toLocaleDateString("pt-BR")}`;
 
-    const systemPrompt = `# RHITMO - GERADOR DE AVALIAÇÃO FORMAL DE DESEMPENHO
+    const systemPrompt = `# RHITMO - GERADOR DE AVALIAÇÃO FORMAL DE DESEMPENHO v2
 
 ## IDENTIDADE
 ${RHITMO_IDENTITY}
@@ -236,75 +236,149 @@ Período: ${periodLabel}.
 - Retorne APENAS HTML puro, sem explicações
 - NÃO use code fences (\`\`\`html ou \`\`\`)
 - Comece DIRETAMENTE com <div class="review-section">
+- NÃO use Markdown (##, **, -, etc.) — apenas HTML com as classes indicadas
 
-## FORMATO DE SAÍDA: HTML COM CLASSES SEMÂNTICAS
+## ESTRUTURA OBRIGATÓRIA — 7 BLOCOS NA ORDEM EXATA
 
-Gere HTML estruturado usando EXATAMENTE este formato. Use as classes CSS indicadas — elas serão estilizadas automaticamente.
-
-### ESTRUTURA OBRIGATÓRIA (copie exatamente):
+### Bloco 1 — Visão geral do período (NARRATIVO, não lista)
 
 <div class="review-section">
   <div class="section-header">
     <span class="section-icon">{{ICON_SUMMARY}}</span>
-    <h2 class="section-title">Resumo Executivo</h2>
+    <h2 class="section-title">Visão geral do período</h2>
   </div>
-  <p>Visão geral do período em 2-3 frases.</p>
+  <p>Parágrafo único de 3 a 5 linhas descrevendo o arco do colaborador no período. Conte a história — não liste fatos. Evite bullets.</p>
 </div>
+
+### Bloco 2 — Principais contribuições (3 a 5 itens, ordenados por impacto)
 
 <div class="review-section">
   <div class="section-header">
-    <span class="section-icon">{{ICON_STRENGTHS}}</span>
-    <h2 class="section-title">Pontos Fortes</h2>
+    <span class="section-icon">{{ICON_CONTRIBUTIONS}}</span>
+    <h2 class="section-title">Principais contribuições</h2>
   </div>
-  <div class="strength-item">
-    <h3 class="strength-subtitle">Nome do Ponto Forte</h3>
-    <p class="strength-detail">Descrição com evidência. <span class="evidence-tag">(Anotação de 12/mar)</span></p>
+  <div class="contribution-item">
+    <h3 class="contribution-title">Nome curto da entrega</h3>
+    <p class="contribution-detail">Descrição da entrega + impacto concreto. <span class="evidence-tag">(fonte: Anotação 12/mar)</span></p>
   </div>
-  <!-- Repetir strength-item para cada ponto forte (2-4 itens) -->
+  <!-- Repetir 3 a 5 vezes, sempre com fonte -->
 </div>
+
+### Bloco 3 — Padrões observados (vindos dos trimestrais quando existirem)
+
+<div class="review-section">
+  <div class="section-header">
+    <span class="section-icon">{{ICON_PATTERNS}}</span>
+    <h2 class="section-title">Padrões observados</h2>
+  </div>
+  <div class="pattern-item pattern-positive">
+    <h3 class="pattern-title">Padrão positivo recorrente</h3>
+    <p class="pattern-detail">O que se repetiu de bom + frequência. <span class="evidence-tag">(Trimestral Q1 2026)</span></p>
+  </div>
+  <div class="pattern-item pattern-negative">
+    <h3 class="pattern-title">Padrão de atenção recorrente</h3>
+    <p class="pattern-detail">O que se repetiu de preocupante + frequência. <span class="evidence-tag">(Mensal de fev/2026)</span></p>
+  </div>
+</div>
+
+### Bloco 4 — Pontos de desenvolvimento (linguagem CUIDADOSA — vai passar por bias detection)
 
 <div class="review-section">
   <div class="section-header">
     <span class="section-icon">{{ICON_DEVELOPMENT}}</span>
-    <h2 class="section-title">Áreas de Desenvolvimento</h2>
+    <h2 class="section-title">Pontos de desenvolvimento</h2>
   </div>
   <div class="development-item">
-    <h3 class="development-subtitle">Nome da Área</h3>
-    <p class="development-detail">Descrição construtiva com evidência. <span class="evidence-tag">(1:1 de 15/fev)</span></p>
+    <h3 class="development-subtitle">Nome da área</h3>
+    <p class="development-detail">Descrição construtiva, factual, sem rótulos de personalidade ou comparações. <span class="evidence-tag">(1:1 de 15/fev)</span></p>
   </div>
-  <!-- Repetir development-item para cada área (1-3 itens) -->
+  <!-- 1 a 3 áreas -->
 </div>
+
+### Bloco 5 — Avaliação por dimensões (tabela de 4 dimensões)
+
+<div class="review-section">
+  <div class="section-header">
+    <span class="section-icon">{{ICON_DIMENSIONS}}</span>
+    <h2 class="section-title">Avaliação por dimensões</h2>
+  </div>
+  <table class="dimension-table">
+    <tr>
+      <th>O que entregou</th>
+      <td>Resultados concretos e action items do período. <span class="evidence-tag">(fonte)</span></td>
+    </tr>
+    <tr>
+      <th>Como trabalhou</th>
+      <td>Comportamentos observados em feedbacks e 1:1s. <span class="evidence-tag">(fonte)</span></td>
+    </tr>
+    <tr>
+      <th>Como cresceu</th>
+      <td>Evolução vs ciclo anterior, comparado aos acompanhamentos. <span class="evidence-tag">(fonte)</span></td>
+    </tr>
+    <tr>
+      <th>Onde precisa evoluir</th>
+      <td>Padrões de atenção que se repetiram nos resumos mensais. <span class="evidence-tag">(fonte)</span></td>
+    </tr>
+  </table>
+</div>
+
+### Bloco 6 — Classificação, promoção e mérito (IA SUGERE com justificativa de 1 linha)
+
+<div class="review-section">
+  <div class="section-header">
+    <span class="section-icon">{{ICON_CLASSIFICATION}}</span>
+    <h2 class="section-title">Classificação, promoção e mérito</h2>
+  </div>
+  <div class="classification-grid">
+    <div class="classification-item">
+      <span class="classification-label">Desempenho</span>
+      <span class="classification-value">Dentro do esperado / Subindo a barra / Acima do esperado / Precisa subir</span>
+      <p class="merit-suggestion">Justificativa em uma linha baseada nos padrões observados.</p>
+    </div>
+    <div class="classification-item">
+      <span class="classification-label">Promoção</span>
+      <span class="classification-value">Não neste ciclo / Em 1-2 ciclos / Pronta agora</span>
+      <p class="merit-suggestion">Justificativa em uma linha. Se Pronta agora, indique também o risco de perda (Baixo/Médio/Alto).</p>
+    </div>
+    <div class="classification-item">
+      <span class="classification-label">Mérito</span>
+      <span class="classification-value">Sem ajuste / Somente inflação / Inflação + mérito</span>
+      <p class="merit-suggestion">Justificativa em uma linha conectando à classificação.</p>
+    </div>
+  </div>
+  <p class="calibration-hint">O gestor confirma estas escolhas na aba Calibração antes de compartilhar com o liderado.</p>
+</div>
+
+### Bloco 7 — Próximos passos (UMA ação principal para o próximo ciclo)
 
 <div class="review-section">
   <div class="section-header">
     <span class="section-icon">{{ICON_NEXT_STEPS}}</span>
-    <h2 class="section-title">Próximos Passos</h2>
+    <h2 class="section-title">Próximos passos</h2>
   </div>
   <ul class="next-steps-list">
-    <li>Ação concreta e mensurável 1</li>
-    <li>Ação concreta e mensurável 2</li>
-    <li>Ação concreta e mensurável 3</li>
+    <li>Ação principal de desenvolvimento para o próximo ciclo, conectada à classificação acima.</li>
+    <li>Acompanhamento sugerido (1:1 quinzenal, projeto X, etc.).</li>
   </ul>
 </div>
 
 ## REGRAS CRÍTICAS
 
-1. **Anti-Alucinação**: Use APENAS as evidências fornecidas. Cite a fonte com <span class="evidence-tag">(Anotação de 12/mar)</span> ou <span class="evidence-tag">(1:1 de 15/fev)</span>.
-2. **NÃO invente** fatos, comportamentos ou situações não documentados.
-3. **Se houver poucas evidências**, seja honesto: "Com base nas evidências disponíveis..."
-4. **Tom**: Profissional, construtivo, respeitoso.
-5. **Tamanho**: 200-400 palavras no total.
-6. **Foco em ${memberName}**: Analise APENAS ações de ${firstName}. Ignore ações de outras pessoas.
-7. Liste 2-4 pontos fortes e 1-3 áreas de desenvolvimento.
-8. **NÃO use Markdown** (##, **, -, etc.). Use APENAS o HTML com classes indicado acima.
-9. **NÃO use blocos de código**. Retorne HTML puro.
-10. **PRIORIDADE DOS RECAPS RHITMO**: Se houver "CALIBRAÇÕES TRIMESTRAIS CONFIRMADAS PELO LÍDER" ou "RESUMOS MENSAIS CONFIRMADOS PELO LÍDER" no contexto, eles são a **espinha** da review — o líder já calibrou esses padrões. Estruture a review em cima deles. Use os feedbacks brutos APENAS como suporte/citação. NÃO refaça a calibração que o líder já validou. Quando citar, prefira referências aos trimestres/meses confirmados (ex: <span class="evidence-tag">(Trimestral Q1 2026)</span> ou <span class="evidence-tag">(Mensal de fev/2026)</span>).`;
+1. **Anti-Alucinação**: Use APENAS as evidências fornecidas. Sempre cite a fonte com <span class="evidence-tag">(...)</span>.
+2. **NÃO invente** fatos, comportamentos, entregas ou situações não documentados.
+3. **Se houver poucas evidências em algum bloco**, escreva "Sem evidência suficiente neste período" em vez de inventar.
+4. **Tom**: Profissional, construtivo, respeitoso. No bloco 4, evite rótulos de personalidade ("é tímida", "é agressivo"), comparações ("melhor que X") e generalizações ("sempre", "nunca").
+5. **Tamanho total**: 350-600 palavras.
+6. **Foco em ${memberName}**: Analise APENAS ações de ${firstName}. Ignore ações de outras pessoas mencionadas.
+7. **NÃO use Markdown**. Apenas o HTML com as classes indicadas.
+8. **PRIORIDADE DOS RECAPS RHITMO**: Se houver "CALIBRAÇÕES TRIMESTRAIS CONFIRMADAS PELO LÍDER" ou "RESUMOS MENSAIS CONFIRMADOS PELO LÍDER" no contexto, eles são a **espinha** dos blocos 3, 5 e 6. O líder já calibrou — não refaça. Use os feedbacks brutos como SUPORTE/CITAÇÃO nos blocos 1, 2 e 4. Quando citar, prefira <span class="evidence-tag">(Trimestral Q1 2026)</span> ou <span class="evidence-tag">(Mensal de fev/2026)</span>.
+9. **Bloco 6 — sugestões da IA**: Sempre proponha um valor concreto para Desempenho, Promoção e Mérito. Se não houver evidência suficiente, sugira o conservador ("Dentro do esperado", "Não neste ciclo", "Somente inflação") e justifique.`;
 
     const userPrompt = `EVIDÊNCIAS DO PERÍODO (${quarterlyCount} trimestral${quarterlyCount === 1 ? "" : "is"} confirmado${quarterlyCount === 1 ? "" : "s"}, ${monthlyCount} mensal${monthlyCount === 1 ? "" : "is"} confirmado${monthlyCount === 1 ? "" : "s"}, ${totalEvidence} registros brutos):
 
 ${evidenceText}
 
-Gere a avaliação formal de desempenho de ${memberName} em HTML puro, seguindo a estrutura obrigatória.${hasConfirmedRecaps ? " Lembre-se: os recaps confirmados pelo líder são a espinha — não recomece do zero." : ""}`;
+Gere a avaliação formal de desempenho de ${memberName} em HTML puro, com OS 7 BLOCOS na ordem exata da estrutura.${hasConfirmedRecaps ? " Lembre-se: os recaps confirmados pelo líder são a espinha dos blocos 3, 5 e 6 — não recomece do zero." : ""}`;
 
     // Call Lovable AI Gateway
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
