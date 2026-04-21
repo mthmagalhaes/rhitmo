@@ -1,115 +1,93 @@
 
 
-# Sprint 3 — Execução (plano revisado pós-inspeção)
+# Sprint 3 — Ondas 3B + 3C (execução)
 
-## Ajustes vs plano original
+## Status verificado
 
-1. **`pg_cron` + `pg_net` já habilitados** (4 jobs ativos). Pulo o `CREATE EXTENSION` e só adiciono os 4 novos jobs.
-2. **`_shared/notifications.ts` não existe** — assumi que tinha sido criado em S2.3 mas não foi. Vou criar como parte da onda 3A (helper compartilhado: enfileira email via `enqueue_email`, posta no Slack via `slack-bot`, ou cria nudge in-app conforme `user_notification_preferences`).
-3. **Tabelas existentes confirmadas:** `user_notification_preferences`, `leader_nudges`, `meeting_transcripts`, `goals`, `team_members`, `workspaces`, `user_roles`. Posso referenciá-las direto.
+- ✅ Onda 3A funcional: 4 cron jobs ativos, runs com `status=success`, 6 prompts criados, 7 alertas HR, 2 weekly summaries
+- ✅ 0 mirror insights (esperado — workspace de teste sem contradições)
+- ✅ Linter Supabase: 6 warnings, todos pré-existentes (não introduzidos pela S3A)
 
-## Onda 3A — Infra de automação
+Podemos seguir.
 
-**1. Solicitar `CRON_SECRET`** via `add_secret` (bloqueio até o usuário colar).
+## Onda 3B — Conteúdo proativo
 
-**2. Migração schema:**
-- `automation_runs` (id, job_name, started_at, finished_at, status, items_processed, error)
-- `mirror_insights` (id, manager_id, week_starting, summary, contradiction_score, evidence jsonb, dismissed_at, created_at) + RLS estrita por `manager_id` via `effective_user_id()`
-- `member_prompts` (id, member_id, prompt_text, week_starting, answered_at, response, created_at) + RLS pelo próprio member
-- Índices: `mirror_insights(manager_id, week_starting desc)`, `member_prompts(member_id, week_starting desc)`
+### S3.2 Mirror Insight Card
+- `src/hooks/useMirrorInsight.ts` — busca insight ativo do líder logado (não dismissado, semana corrente)
+- `src/components/dashboard/MirrorInsightCard.tsx` — card no topo do `Index.tsx` (acima do `SmartInbox`), só aparece se houver insight
+- Sheet lateral com evidências (notas/transcrições citadas por ID, clicáveis), botão "Reconhecer" → `dismissed_at = now()`
+- Visual: usa Brand Kit (Lora headline + ícone espelho), tom reflexivo não acusatório
 
-**3. Helpers em `_shared/`:**
-- `cronAuth.ts` — valida header `x-cron-secret`
-- `notifications.ts` — função `dispatchNotification({ userId, channel: 'email'|'slack'|'in_app', payload })` que respeita `user_notification_preferences`
-- `automationRun.ts` — wrapper start/finish em `automation_runs`
-
-**4. Edge functions (4):**
-- `mirror-weekly` (S3.2)
-- `weekly-summary` (S3.3)
-- `self-reflection` (S3.4)
-- `hr-risk-alerts` (S3.5)
-
-Cada uma: importa `cronAuth`, `rhitmo-constitution`, `automationRun`. Usa `google/gemini-2.5-flash` quando precisar de IA.
-
-**5. Cron jobs** (via insert tool, não migração — contém URL/key):
-```text
-mirror-weekly       → 0 6  * * 1   (seg 6h UTC)
-self-reflection     → 0 12 * * 1   (seg 12h UTC = 9h BRT)
-weekly-summary      → 0 20 * * 5   (sex 20h UTC = 17h BRT)
-hr-risk-alerts      → 0 11 * * *   (diário 11h UTC = 8h BRT)
-```
-
-## Onda 3B — Conteúdo proativo (após 3A funcional)
-
-**S3.2 Mirror — Frontend:**
-- Componente `src/components/dashboard/MirrorInsightCard.tsx` no topo do `Index.tsx` (acima do `SmartInbox`) quando há insight ativo
-- Sheet com evidências (notas citadas por ID), botão "Reconhecer" → `dismissed_at`
-- Hook `useMirrorInsight()`
-
-**S3.3 Weekly Summary — Email + Slack:**
-- Template `weekly-summary.tsx` em `_shared/transactional-email-templates/` (Lora/Inter)
+### S3.3 Weekly Summary — Email + Slack
+- Template `supabase/functions/_shared/transactional-email-templates/weekly-summary.tsx` (Lora/Inter, RhythmWave, suporta variantes líder/HR/reflexão)
 - Registrar em `transactional-email-templates/registry.ts`
-- Slack: DM via `slack-bot`
+- Slack DM já dispara via `dispatchNotification` existente
+- Atualizar `weekly-summary` edge function para passar dados estruturados (tópicos da semana, próximas reuniões, liderados estagnados)
 
-**S3.4 Self-Reflection:**
-- 8 prompts curados (PT-BR, EN, ES) em `supabase/functions/self-reflection/prompts.ts`
-- Card "Reflexão da semana" em `DirectReportDashboard.tsx`
-- Resposta opcional vira nota privada do líder com `source='self_reflection'`
+### S3.4 Self-Reflection Card
+- Card "Reflexão da semana" no `DirectReportDashboard.tsx` (acima do PulseCard)
+- Hook `useWeeklyReflection.ts` busca prompt da semana corrente do membro
+- Resposta opcional (textarea, max 500 chars) → grava em `member_prompts.response` + `answered_at`
+- Se membro escolher compartilhar com líder → cria `feedbacks` com `source='self_reflection'`, `visibility='shared'`, `manager_id` do líder do time
 
-**S3.5 HR Risk Alerts:**
-- Reusa RPC `get_leaders_at_risk` existente
-- Dedupe via `metadata->>'week_starting'` em `leader_nudges`
-- Badge no menu HR + seção "Alertas automáticos" em `HRDashboard.tsx`
+### S3.5 HR Risk Alerts UI
+- Badge no item "RH" do `AppSidebar.tsx` com count de alertas não lidos (de `leader_nudges` com `nudge_type='hr_risk_alert'` últimos 7d)
+- Seção "Alertas automáticos" em `HRDashboard.tsx` listando os últimos alertas com link para o líder em risco
+- Hook `useHRRiskAlerts.ts`
 
 ## Onda 3C — HR Intelligence Layer
 
-**S3.6 Heatmap:**
-- RPC `get_workspace_engagement_heatmap(_workspace_id)` retorna matriz time × 12 semanas
-- Componente `src/components/hr/EngagementHeatmap.tsx` (matriz CSS, cores verde/amarelo/vermelho via `mem://features/team-management/health-status-logic`)
-- Posicionado em `HRAnalytics.tsx`
+### S3.6 Engagement Heatmap
+- Migration: RPC `get_workspace_engagement_heatmap(_workspace_id)` retorna `{member_id, member_name, week_starting, activity_count, status}` para últimas 12 semanas
+  - `status`: verde (≥3 atividades), amarelo (1-2), vermelho (0) — alinhado a `mem://features/team-management/health-status-logic`
+  - Atividades = notas + 1:1s + reflexões respondidas
+- `src/components/hr/EngagementHeatmap.tsx`: matriz CSS Grid (linhas=membros, 12 colunas=semanas), células coloridas com tooltip
+- Inserir em `HRAnalytics.tsx` em nova seção "Engagement Heatmap"
 
-**S3.7 PDF Export:**
-- `bun add @react-pdf/renderer` (rodando no edge runtime via esm.sh)
-- Edge function `generate-monthly-report`
-- Bucket privado `monthly-reports` + RLS por workspace
-- Botão "Exportar PDF do mês" em `/hr` (HR Admin only) + lista de relatórios anteriores
-- **Sem cron automático nesta sprint** (só on-demand) para reduzir risco; cron mensal fica para sprint 4
+### S3.7 PDF Export Mensal
+- Edge function `generate-monthly-report` usando `@react-pdf/renderer` via `https://esm.sh/@react-pdf/renderer`
+- Bucket privado `monthly-reports` + RLS por `workspace_id`
+- Conteúdo do PDF: capa com Brand Kit (RhythmWave + Lora), Health Score, Heatmap snapshot, top 5 líderes ativos, alertas do mês, ações recomendadas
+- Botão "Exportar PDF do mês" em `HRDashboard.tsx` (HR Admin only) + lista dos últimos 6 relatórios
+- Síntese executiva por IA: `google/gemini-2.5-flash` (custo) — fallback `gemini-2.5-pro` se síntese mais profunda for pedida
+- **Sem cron automático** nesta sprint (só on-demand). Cron mensal fica para Sprint 4.
 
 ## i18n
 
 Novas chaves em PT-BR / EN / ES:
-`mirror.*`, `weeklySummary.*`, `selfReflection.*`, `hrAlerts.*`, `heatmap.*`, `monthlyReport.*`, `automationRuns.*`
+- `mirror.cardTitle`, `mirror.evidence`, `mirror.acknowledge`
+- `weeklySummary.subject`, `weeklySummary.intro`, `weeklySummary.staleAlert`
+- `selfReflection.cardTitle`, `selfReflection.shareWithLeader`, `selfReflection.placeholder`
+- `hrAlerts.badgeTitle`, `hrAlerts.empty`, `hrAlerts.viewLeader`
+- `heatmap.title`, `heatmap.legendActive`, `heatmap.legendLow`, `heatmap.legendInactive`
+- `monthlyReport.button`, `monthlyReport.generating`, `monthlyReport.history`
+
+## Ordem de execução
+
+1. Hook + Card Mirror (S3.2)
+2. Template email weekly-summary + atualizar edge fn (S3.3)
+3. Self-reflection card no Direct Report Dashboard (S3.4)
+4. Badge HR + seção alertas automáticos (S3.5)
+5. RPC heatmap + componente (S3.6)
+6. PDF export edge fn + bucket + UI (S3.7)
+7. i18n PT/EN/ES completo
+8. Typecheck + linter Supabase final
 
 ## Critérios de conclusão
 
-- ✅ 4 jobs cron novos visíveis em `cron.job` e logados em `automation_runs`
-- ✅ Mirror insight gerado em workspace de teste
-- ✅ Weekly summary entregue via email + slack respeitando preferências
-- ✅ Self-reflection prompt aparece no dashboard do liderado
-- ✅ Heatmap renderiza para HR Admin
-- ✅ PDF mensal baixável e alinhado ao Brand Kit
-- ✅ Linter Supabase sem novos warnings críticos
-- ✅ Typecheck limpo
+- ✅ MirrorInsightCard renderiza quando há insight ativo, dismiss funciona
+- ✅ Weekly summary entregue por email com template Lora/Inter + Slack DM
+- ✅ Self-reflection card aparece no dashboard do liderado, resposta opcional grava em DB
+- ✅ Badge HR mostra count + seção lista alertas automáticos
+- ✅ Heatmap renderiza 12 semanas × N membros para HR Admin
+- ✅ PDF mensal baixável, alinhado ao Brand Kit, salvo em bucket privado
+- ✅ i18n completo nos 3 idiomas
+- ✅ Linter Supabase sem novos warnings, typecheck limpo
 
-## Observações técnicas críticas
+## Observações técnicas
 
-- **Custo IA:** Mirror + Weekly Summary usam `google/gemini-2.5-flash` (memo `mem://monetization/modelo-economico-e-margens-abril-2026`). PDF pode usar `gemini-2.5-pro` se síntese executiva exigir.
-- **Anti-alucinação:** Mirror cita IDs de transcrições/notas como evidência, nunca generaliza.
-- **RLS:** todas tabelas novas com policies via `effective_user_id()` para respeitar impersonation.
-- **Constituição Rhitmo:** importada em todas funções com IA.
-
-## Ordem de execução imediata
-
-1. `add_secret` `CRON_SECRET` (bloqueio)
-2. Migração 3A (tabelas + RLS)
-3. Helpers `_shared/` (cronAuth, notifications, automationRun)
-4. Edge functions 4x + deploy
-5. Cron jobs (insert SQL com URL/key)
-6. Frontend Mirror (S3.2)
-7. Templates email + Slack (S3.3)
-8. Self-reflection card (S3.4)
-9. HR badge + seção alertas (S3.5)
-10. RPC heatmap + componente (S3.6)
-11. PDF export (S3.7)
-12. i18n completo + typecheck + linter Supabase
+- **RLS:** RPC heatmap valida `has_role(auth.uid(), 'hr_admin')` ou `is_workspace_owner()`. Bucket `monthly-reports` com policy por workspace.
+- **Custo IA:** Síntese executiva do PDF usa `gemini-2.5-flash` por padrão (memo `mem://monetization/modelo-economico-e-margens-abril-2026`).
+- **Brand Kit:** PDF e email seguem RhythmWave + Lora headline + Inter body (memo `mem://design/rhythm-wave-dna`).
+- **Anti-alucinação:** PDF cita números reais; nenhuma seção qualitativa sem evidência numérica.
 
