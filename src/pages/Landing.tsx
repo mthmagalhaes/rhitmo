@@ -7,7 +7,7 @@ import { WaveDivider } from "@/components/WaveDivider";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
-import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X, Check, Lock, Moon, Sun, Globe, Building, Clock, AlertCircle, DollarSign, Shield, Mic, XCircle, CheckCircle2, Target, Users, FileText, ArrowRight } from "lucide-react";
+import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X, Check, Moon, Sun, Globe, Building, Clock, AlertCircle, DollarSign, Shield, Mic, XCircle, CheckCircle2, Target, Users, FileText, ArrowRight } from "lucide-react";
 import analyticsScreenshot from "@/assets/analytics-screenshot.png";
 import heroLeaderFlow from "@/assets/hero-leader-flow.png";
 import heroDuoFeedback from "@/assets/hero-duo-feedback.png";
