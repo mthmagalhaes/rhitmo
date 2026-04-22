@@ -1,49 +1,50 @@
 
 
-# Slack aparece como "não conectado" no primeiro momento — fix para todos os usuários
+# Execução: alinhar pricing aos limites reais da plataforma
 
-## Diagnóstico
+Plano já aprovado. Vou executar as 5 mudanças exatamente como combinado, sem mexer em preços, caps reais ou lógica de beta user.
 
-O botão **Conector Slack** na sidebar (`AppSidebar.tsx`, linhas 293-299) é o único ponto que o usuário vê **antes** de abrir o diálogo. Hoje ele **não consulta** o status da conexão — sempre renderiza sem badge, parecendo desconectado, mesmo quando o `slack_integrations` já existe no banco.
+## Ordem de execução
 
-Comparativo:
-- ✅ **Google Calendar** (linha 287-291): renderiza badge "CONECTADO" quando `calendarConnected === true`.
-- ❌ **Slack** (linha 293-299): nunca renderiza badge. Status só aparece **dentro** do diálogo, depois de o usuário clicar.
+### 1. `src/components/billing/UpgradeBanner.tsx` (PRIORITÁRIO — item 3)
+Adicionar 2 checagens novas via `checkLimit`, **antes** das checagens existentes não atrapalharem:
 
-Bônus: o hook `useSlackConnection` usa `useAuth().user.id` direto, enquanto o resto do app (calendar, etc.) usa `useEffectiveUser()` para respeitar impersonação de admin. Pequena inconsistência que vale alinhar.
+- **Mentor Chat msgs**: `mentorMessageCount` vs `limits.maxMentorMessages` → label "Mensagens Mentor Chat"
+  - Crítico no Pulse (cap = 20). Com 17/20 (= 85%), `checkLimit` retorna `'warning'` e o banner deve aparecer.
+- **Horas de transcrição**: `recordingHoursUsed` vs `limits.maxRecordingHours` (só se `maxRecordingHours > 0` e ≠ Infinity) → label "Horas de transcrição"
+  - Cobre Pro consumindo 25/30h.
 
-## Mudanças (3 arquivos)
+Importar os campos extras já expostos por `useEnforcedLimits` (que estende `usePlanLimits`): `mentorMessageCount`, `recordingHoursUsed`. Format: `recordingHoursUsed.toFixed(1)` para não mostrar "24.7833333".
 
-### 1. `src/components/AppSidebar.tsx`
+### 2. `src/pages/Landing.tsx`
+- **PT (l.149-155)**: remover `"Upload manual de áudio"` de `pulseFeatures`.
+- **PT (l.169)**: `"15 horas/mês de bot de transcrição (Recall.ai)"` → `"30 horas/mês de transcrição automatizada (Recall.ai + upload manual)"`.
+- **EN (l.348-354)**: remover `"Manual audio upload"` de `pulseFeatures`.
+- **EN equivalente do l.169**: trocar para `"30 hours/month of automated transcription (Recall.ai + manual upload)"`.
+- Confirmar se há também bloco `es` no arquivo — se sim, mesma mudança.
 
-- Importar `useSlackConnection`.
-- Após `useCalendarIntegration`, ler `const { isConnected: slackConnected, isLoading: slackLoading } = useSlackConnection();`.
-- No botão Slack (linha 293), espelhar o padrão do Google Calendar:
-  - Adicionar `flex-1 text-left` no `<span>` do nome (paridade visual).
-  - Renderizar o badge "CONECTADO" quando `slackConnected && !slackLoading`, usando exatamente o mesmo estilo do badge do Calendar (verde esmeralda, `t('sidebar.connected')`).
-- Não mostrar nada (nem "desconectado", nem skeleton) durante `slackLoading` — evita flash incorreto. O badge aparece quando confirmado.
+### 3. `src/pages/Billing.tsx`
+No objeto `PLAN_FEATURES` (l.50-81):
+- **`pulse.features` (l.53-59)**: remover `'Upload manual de áudio'`.
+- **`pro.features` (l.71)**: trocar para `'30 horas/mês de transcrição automatizada (Recall.ai + upload manual)'`.
 
-### 2. `src/hooks/useSlackConnection.ts`
+### 4. `src/pages/TermsOfService.tsx`
+- **l.54**: `"15 horas/mês de bot de transcrição (Recall.ai)"` → `"30 horas/mês de transcrição automatizada (Recall.ai + upload manual)"`.
 
-- Trocar `useAuth` por `useEffectiveUser` (consistência com calendar e correto sob impersonação de admin).
-- Manter o restante intacto. `staleTime` de 60s já é razoável.
+### 5. i18n
+Verificar se `src/i18n/locales/{pt-BR,en,es}.json` têm chaves espelhando essas strings. Strings da landing/billing/termos hoje vivem inline nos próprios `.tsx`, então provavelmente não há o que mudar nos JSON. Se houver, alinhar.
 
-### 3. `src/components/slack/SlackConnectorDialog.tsx`
+## Validação pós-execução
 
-- Pequeno polish: enquanto `isLoading` for true, desabilitar o botão "Conectar/Reconectar" e ocultar o aviso de "Slack conectado com sucesso!" (que hoje aparece como "não conectado" durante o fetch). Trivial — adicionar `if (isLoading) return <Loader2 spinning/>` no ramo de status no topo do conteúdo.
+Confirmar os 4 critérios de aceite:
 
-## O que NÃO mudo
+1. **Busca por "Upload manual de áudio"** em `src/pages/Landing.tsx` e `src/pages/Billing.tsx` retorna **0** ocorrências.
+2. **Busca por "15 horas/mês"** em `src/` retorna **0** ocorrências; busca por "30 horas/mês" aparece em landing, billing, termos — todas batendo com `usePlanLimits` (`maxRecordingHours: 30`) e `MeetingRecorder.tsx` (toast cita 30h).
+3. **Mentor Chat banner**: simular Pulse com `mentorMessageCount = 17`, `maxMentorMessages = 20` → `17/20 = 85%` ≥ 80% → `checkLimit` retorna `'warning'` → banner renderiza com chip "17/20 Mensagens Mentor Chat".
+4. **Recording banner**: Pro com 25/30h → 83% → banner renderiza com chip "25.0/30 Horas de transcrição".
 
-- `useSlackConnection` query key e tabela: corretas.
-- Badge styling: reuso exato do padrão do Calendar (sem desviar do Design System).
-- RLS, edge functions, OAuth: fora do escopo — não há problema lá, apenas UX.
-- i18n: chaves `sidebar.connected` e `sidebar.slackConnector` já existem em PT/EN/ES.
-
-## Critério de aceite
-
-- [ ] Usuário com `slack_integrations` populado vê badge "CONECTADO" no botão Slack da sidebar **antes** de abrir o diálogo.
-- [ ] Usuário sem conexão vê o botão sem badge (estado atual preservado).
-- [ ] Durante o fetch inicial, nenhum estado "errado" pisca — badge aparece só quando confirmado.
-- [ ] Admin impersonando outro usuário vê o status do Slack do **usuário impersonado**, não o próprio.
-- [ ] Diálogo do Slack mostra loader enquanto verifica, não o ramo "Conectar" antes da confirmação.
+Após execução, retorno com:
+- Confirmação dos 4 critérios.
+- Lista exata de strings/linhas alteradas.
+- Nada fora do escopo aprovado.
 
