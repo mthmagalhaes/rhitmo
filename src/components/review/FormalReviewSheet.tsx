@@ -364,34 +364,137 @@ export function FormalReviewSheet({
           {/* Draft tab */}
           <TabsContent value="draft" className="flex-1 px-6 mt-4 min-h-0">
             <ScrollArea className="h-[calc(100vh-280px)]">
-              <div className="space-y-3 pr-4">
-                {/* Coaching tip card - visible only to leader, hidden in print */}
+              <div className="space-y-3 pr-4 pb-6">
+                {/* Coaching tip — collapsible, persisted per review */}
                 {review.coaching_tip && (
-                  <div className="print:hidden rounded-xl border border-blue-200 bg-blue-50/80 dark:border-blue-800 dark:bg-blue-950/30 p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                      <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">
-                        Dicas para Apresentação
-                      </span>
+                  <Collapsible open={coachingOpen} onOpenChange={toggleCoaching}>
+                    <div className="print:hidden rounded-xl border border-blue-200 bg-blue-50/60 dark:border-blue-800 dark:bg-blue-950/20 overflow-hidden">
+                      <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-blue-100/40 dark:hover:bg-blue-900/20 transition-colors">
+                        <div className="flex items-center gap-2 text-left">
+                          <TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                          <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+                            Dicas para Apresentação
+                          </span>
+                          <span className="text-[11px] text-blue-600/70 dark:text-blue-400/70 font-normal">
+                            · Visível apenas para você
+                          </span>
+                        </div>
+                        <ChevronDown
+                          className={`h-4 w-4 text-blue-600 dark:text-blue-400 transition-transform ${coachingOpen ? 'rotate-180' : ''}`}
+                        />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="px-4 pb-4 pt-1 text-sm text-blue-800 dark:text-blue-200 prose prose-sm dark:prose-invert prose-p:my-1 prose-li:my-0.5 max-w-none">
+                          <ReactMarkdown>{review.coaching_tip}</ReactMarkdown>
+                        </div>
+                      </CollapsibleContent>
                     </div>
-                    <div className="text-sm text-blue-800 dark:text-blue-200 prose prose-sm dark:prose-invert prose-p:my-1 prose-li:my-0.5 max-w-none">
-                      <ReactMarkdown>{review.coaching_tip}</ReactMarkdown>
+                  </Collapsible>
+                )}
+
+                {/* Legacy HTML banner */}
+                {isLegacyHtmlContent(draftText) && !editMode && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50/80 dark:border-amber-800 dark:bg-amber-950/20 p-4 flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                        Rascunho em formato antigo
+                      </p>
+                      <p className="text-xs text-amber-800 dark:text-amber-300 mt-0.5">
+                        Esta avaliação foi gerada num formato anterior e não renderiza corretamente.
+                        Regenere com IA para ver no novo layout (sem perder a calibração).
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="mt-3 h-8 gap-1.5 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-100 hover:bg-amber-100 dark:hover:bg-amber-900/40"
+                        disabled={regenerating}
+                        onClick={async () => {
+                          setRegenerating(true);
+                          try {
+                            const { error } = await supabase.functions.invoke('generate-formal-review', {
+                              body: { reviewId },
+                            });
+                            if (error) throw error;
+                            await queryClient.invalidateQueries({ queryKey: ['formal-review', reviewId] });
+                            toast({ title: 'Rascunho regenerado!' });
+                          } catch (err: any) {
+                            toast({ title: 'Erro ao regenerar', description: err.message, variant: 'destructive' });
+                          } finally {
+                            setRegenerating(false);
+                          }
+                        }}
+                      >
+                        {regenerating ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-3.5 w-3.5" />
+                        )}
+                        Regenerar com IA
+                      </Button>
                     </div>
                   </div>
                 )}
-                <div>
-                  <Label className="text-sm font-medium">Avaliação geral do período</Label>
-                  <p className="text-xs text-muted-foreground mt-1 mb-3">
-                    Revise e ajuste o texto gerado pela IA. Estrutura sugerida:
-                    Pontos fortes • Áreas de desenvolvimento • Próximos passos
-                  </p>
+
+                {/* Header with title + edit toggle */}
+                <div className="flex items-center justify-between pt-1">
+                  <div>
+                    <Label className="text-sm font-medium">Avaliação geral do período</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {editMode
+                        ? 'Editando — clique em Visualizar para voltar ao modo leitura.'
+                        : 'Texto gerado pela IA com base nas evidências do período.'}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 shrink-0"
+                    onClick={() => setEditMode((m) => !m)}
+                  >
+                    {editMode ? (
+                      <>
+                        <Eye className="h-3.5 w-3.5" /> Visualizar
+                      </>
+                    ) : (
+                      <>
+                        <Pencil className="h-3.5 w-3.5" /> Editar texto
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {/* Reading mode: styled markdown render */}
+                {!editMode ? (
+                  <div className="rounded-xl border border-border/60 bg-card p-5 sm:p-6">
+                    <div
+                      className="prose prose-sm max-w-none dark:prose-invert
+                        prose-headings:tracking-tight prose-headings:font-semibold
+                        prose-h2:text-base prose-h2:mt-7 prose-h2:mb-3 prose-h2:pb-2
+                        prose-h2:border-b prose-h2:border-border/60 prose-h2:flex prose-h2:items-center prose-h2:gap-2
+                        first:prose-h2:mt-0
+                        prose-h3:text-sm prose-h3:mt-4 prose-h3:mb-1 prose-h3:text-foreground prose-h3:font-semibold
+                        prose-p:text-sm prose-p:leading-relaxed prose-p:text-foreground/85 prose-p:my-2
+                        prose-strong:text-foreground prose-strong:font-semibold
+                        prose-li:text-sm prose-li:my-1 prose-li:text-foreground/85
+                        prose-ul:my-2 prose-ol:my-2
+                        prose-blockquote:border-l-2 prose-blockquote:border-primary/30 prose-blockquote:pl-3
+                        prose-blockquote:text-muted-foreground prose-blockquote:not-italic prose-blockquote:text-xs
+                        prose-blockquote:my-1.5 prose-blockquote:font-normal"
+                    >
+                      <ReactMarkdown components={{ em: EvidenceTag }}>
+                        {draftText || '_Sem conteúdo ainda._'}
+                      </ReactMarkdown>
+                    </div>
+                  </div>
+                ) : (
                   <RichTextEditor
                     content={draftText}
                     onChange={setDraftText}
                     placeholder="Digite a avaliação geral do liderado no período..."
                     minHeight="400px"
                   />
-                </div>
+                )}
               </div>
             </ScrollArea>
           </TabsContent>
