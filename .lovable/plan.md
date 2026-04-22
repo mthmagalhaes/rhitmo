@@ -1,41 +1,48 @@
 
 
-# Trocar ícone do Google Calendar no sidebar
+# Refazer GoogleCalendarIcon com a estrutura oficial correta
 
-## Problema
+## O que está errado hoje
 
-Olhando a screenshot, o ícone atual do `GoogleCalendarIcon` renderiza mal no `h-5 w-5` do sidebar:
-- o "31" central fica diminuto e ilegível
-- os "chips" coloridos nos cantos (azul/vermelho/verde/amarelo) saem desproporcionais
-- o SVG tem paths com `opacity="0"` (lixo) e geometria com pequenas distorções
+A versão atual desenha 4 "chips" pequenos nos cantos de um quadrado branco — isso **não é** o logo do Google Calendar. O logo oficial (anexo) é construído de outra forma:
 
-A logo oficial 2020+ do Google Calendar tem desenho mais simples: **moldura branca + canto inferior-direito azul (page fold) + número "31" centralizado em azul Google**. Os chips coloridos só aparecem em tamanhos grandes (>48px) — em tamanhos de UI/sidebar a versão oficial do Google omite os chips e mantém só folha + 31.
+- Um **quadrado branco central** com o "31" em azul `#1A73E8`
+- **4 bandas coloridas** ao redor formando uma moldura:
+  - Topo: faixa azul `#4285F4`
+  - Direita: faixa amarela `#FBBC04`
+  - Base: faixa verde `#34A853`
+  - "Page fold" (dobra de página) vermelha `#EA4335` no canto inferior-direito sobreposta
+- O "31" ocupa a maior parte do quadrado branco — bem grosso e legível
 
-## O que muda
+## Mudança
 
-### Substituir `src/components/icons/GoogleCalendarIcon.tsx`
+**Arquivo único:** `src/components/icons/GoogleCalendarIcon.tsx`
 
-Trocar o SVG por uma versão otimizada da logo oficial Google Calendar (Material/Workspace 2020+), no formato que o próprio Google usa em favicons e barras laterais:
+Substituir o SVG por uma reconstrução fiel do logo oficial 2020+:
 
-- **Base:** quadrado branco com sombra sutil (folha de calendário)
-- **Cantos:** os 4 chips coloridos oficiais (azul `#4285F4`, vermelho `#EA4335`, verde `#34A853`, amarelo `#FBBC04`) — mas redesenhados com proporções corretas para que fiquem visíveis em 20px
-- **Centro:** "31" em Google Sans azul `#1A73E8`, peso bold, ocupando ~50% do viewBox (vs ~30% atual)
-- **viewBox:** manter `0 0 200 200` para não quebrar nenhum consumidor
-- **API:** mesma assinatura `({ className }: { className?: string })` — drop-in replacement, nenhum outro arquivo precisa mudar
+1. **viewBox `0 0 48 48`** mantido (drop-in)
+2. **Bandas coloridas externas** desenhadas como `<path>` (não 4 quadradinhos):
+   - Banda superior azul (largura total, altura ~6)
+   - Banda direita amarela
+   - Banda inferior verde
+   - "Page fold" vermelha como triângulo sobreposto no canto inf-dir, com sombra sutil
+3. **Quadrado branco central** (`~6,12 → 36,36`) com `rx=1`
+4. **"31"** em `font-weight: 800`, `font-size ~14`, fill `#1A73E8`, centralizado, font-family Google Sans / Product Sans / Roboto fallback
+5. Remover qualquer path com `opacity=0` ou geometria redundante
+6. Manter assinatura `({ className })` — nenhum outro arquivo muda
 
-### Fonte da arte
+## Validação visual (skill de design)
 
-Vou usar a versão SVG oficial publicada pelo Google em Wikimedia Commons (Google_Calendar_icon_(2020).svg), que é a referência canônica usada por documentação técnica e está em domínio público de uso de marca. É o mesmo desenho que aparece no Google Workspace, Material Icons brand assets e no favicon de calendar.google.com.
-
-## Arquivos editados
-
-- `src/components/icons/GoogleCalendarIcon.tsx` — substituir conteúdo do SVG (1 arquivo)
-
-Sem mudanças em `AppSidebar.tsx`, sem i18n, sem migration.
+Após editar o componente, vou:
+1. Renderizar o ícone isolado num PNG (24px, 48px e 96px) usando um pequeno script
+2. Comparar lado-a-lado com o `user-uploads://google_calendar.png`
+3. Iterar até as proporções (banda azul, page-fold vermelha, tamanho do "31") baterem com o oficial
+4. Confirmar legibilidade no tamanho `h-5 w-5` (20px) do sidebar
 
 ## Critério de aceite
 
-- O ícone do Google Calendar no sidebar mostra claramente os 4 chips coloridos + "31" legível em `h-5 w-5`
-- Mantém alinhamento com o ícone do Slack ao lado (ambos brand-colored, mesma altura óptica)
-- Continua escalando bem se algum dia for usado em tamanho maior (ex: dialog de integrações)
+- Ícone tem a moldura azul/amarela/verde + page-fold vermelha (não 4 chips iguais)
+- "31" azul ocupa a maior parte do quadrado branco e é legível em 20px
+- Visualmente indistinguível do logo oficial em tamanhos de UI
+- Drop-in: nenhum outro arquivo alterado
 
