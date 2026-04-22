@@ -13,25 +13,29 @@ interface SetupChecklistProps {
   hasAIAnalysis: boolean;
   hasMentorChat: boolean;
   hasLeaderSync?: boolean;
+  hasInvitedMember?: boolean;
   /** Workspace creation date — used to auto-hide checklist after 7 days. */
   workspaceCreatedAt?: string | null;
   onAddMember: () => void;
   onAddNote: () => void;
   onOpenMentor: () => void;
   onOpenLeaderSync?: () => void;
+  onOpenInvite?: () => void;
 }
 
 export const SetupChecklist = ({
   hasMembers,
   hasFeedbacks,
   hasAIAnalysis: _hasAIAnalysis,
-  hasMentorChat: _hasMentorChat,
+  hasMentorChat,
   hasLeaderSync = false,
+  hasInvitedMember = false,
   workspaceCreatedAt,
   onAddMember,
   onAddNote,
-  onOpenMentor: _onOpenMentor,
+  onOpenMentor,
   onOpenLeaderSync,
+  onOpenInvite,
 }: SetupChecklistProps) => {
   const { t } = useTranslation();
 
@@ -41,7 +45,7 @@ export const SetupChecklist = ({
     if (ageDays > 7) return null;
   }
 
-  // Reduced from 5 → 3 critical steps (members + 1st note + leader sync)
+  // 5 critical onboarding steps for Programa Fundadores.
   const steps = [
     {
       label: t('setup.registerFirstMember'),
@@ -51,11 +55,25 @@ export const SetupChecklist = ({
       disabled: false,
     },
     {
+      label: t('setup.inviteFirstMember'),
+      done: hasInvitedMember,
+      action: onOpenInvite,
+      actionLabel: t('setup.inviteAction'),
+      disabled: !hasMembers || !onOpenInvite,
+    },
+    {
       label: t('setup.createTestNote'),
       done: hasFeedbacks,
       action: onAddNote,
       actionLabel: t('setup.createNoteAction'),
       disabled: !hasMembers,
+    },
+    {
+      label: t('setup.openMentorChat'),
+      done: hasMentorChat,
+      action: onOpenMentor,
+      actionLabel: t('setup.mentorChatAction'),
+      disabled: false,
     },
     {
       label: t('setup.configureLeadership'),
