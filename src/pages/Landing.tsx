@@ -1148,7 +1148,7 @@ const Landing = () => {
       </section>
 
       {/* Seção: Números Concretos */}
-      <section className="py-28 bg-gradient-to-br from-muted/30 to-primary/5">
+      <section id="impacto" className="py-28 bg-gradient-to-br from-muted/30 to-primary/5">
         <div className="container mx-auto px-4">
           <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{t.numbersOverline}</p>
           <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-4 text-foreground">
