@@ -192,6 +192,7 @@ const translations = {
     launchDisclaimer: "Preço de lançamento garantido enquanto sua assinatura estiver ativa.",
     // Enterprise / Corporate
     enterpriseNav: "Enterprise",
+    featuresNav: "Recursos",
     pricingNav: "Preços",
     faqNav: "FAQ",
     enterpriseSubtitle: "Para a organização inteira: HR Dashboard, blindagem jurídica, integrações HRIS e SSO.",
@@ -387,6 +388,7 @@ const translations = {
     launchBadge: "Launch Price",
     launchDisclaimer: "Launch price guaranteed while your subscription is active.",
     enterpriseNav: "Enterprise",
+    featuresNav: "Features",
     pricingNav: "Pricing",
     faqNav: "FAQ",
     enterpriseSubtitle: "For the entire organization: HR Dashboard, legal protection dossier, HRIS integration and SSO.",
@@ -837,16 +839,6 @@ const Landing = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <a href="#pricing">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground min-h-[44px]">
-                {t.pricingNav}
-              </Button>
-            </a>
-            <a href="#faq">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground min-h-[44px]">
-                {t.faqNav}
-              </Button>
-            </a>
             <Link to="/auth">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground min-h-[44px]">
                 {t.signIn}
