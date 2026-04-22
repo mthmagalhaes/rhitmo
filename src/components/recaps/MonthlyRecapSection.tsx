@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Sparkles, CheckCircle2, RefreshCw, Calendar, AlertTriangle, Clock } from 'lucide-react';
-import { getDateLocale, formatPeriodMonth } from '@/lib/dateLocale';
+import { getDateLocale, formatPeriodMonth, formatMonthYearLabel } from '@/lib/dateLocale';
 import { stripInlineEvidenceMarkers } from '@/lib/recapTextSanitizer';
 import { EvidenceChips } from '@/components/recaps/EvidenceChips';
 import {
@@ -74,7 +74,7 @@ function RecapCard({
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="text-base font-semibold tracking-tight flex items-center gap-2">
             <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span className="capitalize">{t('recap.monthly.cardTitle', { month: monthStr })}</span>
+            <span>{t('recap.monthly.cardTitle', { month: monthStr })}</span>
           </CardTitle>
           {isConfirmed && (
             <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
@@ -253,7 +253,7 @@ function RecapCard({
 function CurrentMonthCard() {
   const { t, i18n } = useTranslation('rhitmo');
   const monthLabel = useMemo(
-    () => format(startOfMonth(new Date()), 'MMMM yyyy', { locale: getDateLocale(i18n.language) }),
+    () => formatMonthYearLabel(new Date(), i18n.language),
     [i18n.language]
   );
   const closingDate = useMemo(() => {
@@ -268,7 +268,7 @@ function CurrentMonthCard() {
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="text-base font-semibold tracking-tight flex items-center gap-2 text-muted-foreground">
             <Clock className="h-4 w-4" />
-            <span className="capitalize">{t('recap.monthly.inProgressTitle', { month: monthLabel })}</span>
+            <span>{t('recap.monthly.inProgressTitle', { month: monthLabel })}</span>
           </CardTitle>
           <Badge variant="outline" className="border-border text-muted-foreground">
             {t('recap.monthly.inProgressBadge')}
