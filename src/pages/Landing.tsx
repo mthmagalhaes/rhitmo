@@ -387,6 +387,8 @@ const translations = {
     launchBadge: "Launch Price",
     launchDisclaimer: "Launch price guaranteed while your subscription is active.",
     enterpriseNav: "Enterprise",
+    pricingNav: "Pricing",
+    faqNav: "FAQ",
     enterpriseSubtitle: "For the entire organization: HR Dashboard, legal protection dossier, HRIS integration and SSO.",
     enterprisePrice: "Custom",
     enterprisePer: "· annual billing",
