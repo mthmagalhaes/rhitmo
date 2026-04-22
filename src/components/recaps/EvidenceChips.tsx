@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import { format } from 'date-fns';
 import { ScrollText, MessageSquare, Loader2 } from 'lucide-react';
-import { getDateLocale } from '@/lib/dateLocale';
+import { formatEvidenceDate } from '@/lib/dateLocale';
 import { useEvidenceResolver, type EvidenceRef } from '@/hooks/useEvidenceResolver';
 
 interface Props {
@@ -29,14 +28,8 @@ export function EvidenceChips({ evidence, onOpen }: Props) {
   const items = resolved ?? [];
   if (items.length === 0) return null;
 
-  const formatChipDate = (iso: string) => {
-    if (!iso) return '';
-    try {
-      return format(new Date(iso + 'T00:00:00Z'), 'dd/MM', { locale: getDateLocale(i18n.language) });
-    } catch {
-      return iso;
-    }
-  };
+  // UTC-locked — date-fns `format` would shift YYYY-MM-DD by one day in BRT.
+  const formatChipDate = (iso: string) => formatEvidenceDate(iso, i18n.language);
 
   return (
     <div className="mt-2 flex flex-wrap gap-1.5">

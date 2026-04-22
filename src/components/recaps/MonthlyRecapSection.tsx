@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Sparkles, CheckCircle2, RefreshCw, Calendar, AlertTriangle, Clock } from 'lucide-react';
-import { getDateLocale } from '@/lib/dateLocale';
+import { getDateLocale, formatPeriodMonth } from '@/lib/dateLocale';
 import { stripInlineEvidenceMarkers } from '@/lib/recapTextSanitizer';
 import { EvidenceChips } from '@/components/recaps/EvidenceChips';
 import {
@@ -53,8 +53,10 @@ function RecapCard({
   const isDraft = recap?.status === 'draft';
   const isEmpty = !recap;
 
+  // UTC-locked formatting — see src/lib/dateLocale.ts. Using date-fns `format`
+  // here would shift `2026-03-01T00:00Z` to "fevereiro 2026" in BRT.
   const monthStr = useMemo(
-    () => format(new Date(periodMonth + 'T00:00:00Z'), 'MMMM yyyy', { locale: getDateLocale(i18n.language) }),
+    () => formatPeriodMonth(periodMonth, i18n.language),
     [periodMonth, i18n.language]
   );
 
