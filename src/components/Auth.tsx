@@ -106,6 +106,10 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
         }
       });
       if (error) throw error;
+
+      // Fire Google Ads signup conversion (idempotent per email)
+      trackSignupConversion(email);
+
       toast({
         title: t('auth.accountCreated'),
         description: t('auth.accountCreatedDesc')
