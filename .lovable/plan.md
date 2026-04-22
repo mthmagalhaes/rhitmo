@@ -1,79 +1,53 @@
 
 
-# Trimestral funcional para qualquer usuário (novos e existentes)
+# Revisão de qualidade — fluxo de novos usuários
 
-## Diagnóstico — o fix anterior só corrigiu o rótulo, não o fluxo
+Sem novas features, sem refator estético. Só os problemas reais que afetam o líder novo no primeiro cadastro.
 
-Hoje (22/04/2026), o trimestre **vigente** é Q2 2026, mas Q2 mal começou. A correção anterior fez o frontend pedir `period_quarter=2026-04-01` (Q2). O backend então busca mensais entre abril e junho — **e não encontra nenhum**, porque os 3 mensais confirmados do usuário são de Q1 (jan/fev/mar). Resultado: **erro 422 continua**, e qualquer usuário (novo ou antigo) fica travado.
+## Mudanças (6 arquivos)
 
-O modelo certo, espelhando o `MonthlyRecapSection` (que já tem `CurrentMonthCard` "em andamento" + meses fechados acionáveis), é:
+### 1. `src/components/NewMemberDialog.tsx` (linha 391)
+`plano Flow` → `plano Pro`
 
-| Card | Período | Ação |
-|---|---|---|
-| **Em andamento** (novo) | Trimestre vigente (Q2 2026) | Sem botão. Só badge "Fecha em DD/MM". |
-| **Card principal** | **Último trimestre fechado** (Q1 2026) | Gera/calibra/confirma — usa os mensais confirmados de jan/fev/mar. |
-| Trimestres anteriores | Q4 2025, Q3 2025, etc. | Read-only (já vinha assim). |
+### 2. `src/components/NewReviewDialog.tsx` (linhas 320 e 398)
+`Faça upgrade para Flow.` → `Faça upgrade para Pro.` (2 ocorrências)
 
-Isso resolve **simultaneamente**:
-- Usuário existente: Q1 fica acionável e usa os 3 mensais já confirmados → trimestral gera com sucesso.
-- Usuário novo (chegou em abril): vê o "em andamento" de Q2 e a promessa de que assim que confirmar 1+ mensal de Q2 e o trimestre fechar, terá o trimestral. Não vê erro nenhum.
-- Usuário em qualquer fuso: cálculo continua UTC-locked.
+### 3. `src/pages/MemberDetails.tsx`
+- Linha 430: `navigate('/')` → `navigate('/dashboard')` (Membro não encontrado mandava para landing pública)
+- Linha 550: `Disponível no plano Flow ou superior` → `Disponível no plano Pro`
 
-## Mudanças
+### 4. `src/i18n/locales/pt-BR.json`, `en.json`, `es.json` (linha 539, chave `syncLocked`)
+- PT: `🔒 Disponível no plano Pro.`
+- EN: `🔒 Available on the Pro plan.`
+- ES: `🔒 Disponible en el plan Pro.`
 
-### 1. `src/components/recaps/QuarterlyRecapSection.tsx`
+### 5. `src/pages/Index.tsx`
+- **Badge do plano (linha 502-509)**: usar `usePlanLimits().limits.isBetaUser` para mostrar badge "Beta" (estilo destacado roxo) quando `is_beta_user=true`. Renderizar `business` como "Pro" no rótulo.
+- **handleOpenMentor (linha 431-433)**: quando `teamMembers.length === 0`, mostrar toast "Adicione o primeiro membro para conversar com o Mentor sobre ele" + abrir `setMemberDialogOpen(true)`. Remove o botão morto.
+- **Empty state sem workspace (linha 669-670)**: trocar copy genérica "Sem conteúdo disponível" por loader (caso raro mas trivial).
 
-- Renomear `getCurrentQuarterStart` → manter como está (calcula Q vigente para o card "em andamento").
-- Adicionar `getLastClosedQuarterStart()` — retorna o trimestre **anterior** ao vigente (Q1 quando hoje é Q2). Usa a mesma matemática UTC, mas subtrai 3 meses com tratamento de virada de ano (ex: Q1 → Q4 do ano anterior).
-- Criar componente `CurrentQuarterCard` (espelho do `CurrentMonthCard` do mensal): card pontilhado, ícone `Clock`, título "Rhitmo Trimestral — Q2 2026 (em andamento)", badge "Em andamento", subtítulo "Fecha em 02/07/2026" (1º dia do mês após o fim do trimestre + 1).
-- Reescrever o `QuarterlyRecapSection` (export default):
-  - Renderiza `<CurrentQuarterCard>` no topo.
-  - Renderiza o `<QuarterCard>` principal apontando para `getLastClosedQuarterStart()` (acionável: gera, confirma, calibra).
-  - Lista "Trimestres anteriores" para todos os recaps no banco que **não** sejam o vigente nem o último fechado (lógica atual já filtra; só atualizar o filtro).
-- Manter `quarterLabel()` como está (já é UTC-locked).
+### 6. `src/pages/NotFound.tsx` (reescrever)
+Padronizar com brand Rhitmo:
+- `RhitmoLogo` no topo
+- Copy em PT: "Página não encontrada" / "Não encontramos o endereço que você tentou acessar"
+- Dois CTAs: "Voltar ao Dashboard" (`/dashboard`, primário) e "Ir para a Home" (`/`, outline)
+- Standalone (sem AppLayout — catch-all pode ser hit sem auth)
 
-### 2. `src/components/recaps/RhitmoTabSummary.tsx`
+## O que NÃO vou mudar
 
-A badge "Trimestral pronto" também aponta para o trimestre vigente, então tem o mesmo bug semântico. Trocar `getCurrentQuarterStart` por `getLastClosedQuarterStart` nesse arquivo (mesma helper, mesma lógica). A badge passa a acender quando: existem mensais confirmados em Q1 **e** ainda não há recap de Q1 — que é o significado correto de "pronto para gerar".
-
-### 3. `supabase/functions/generate-quarterly-recap/index.ts`
-
-Sem mudança funcional — `lastQuarterStart()` já está correto (retorna Q anterior). Só **defesa adicional** na mensagem de erro 422: incluir o `period_quarter` solicitado para facilitar debug (`"Confirme ao menos um Rhitmo Mensal do trimestre Q1 2026 antes de gerar..."`). Custa 2 linhas e ajuda usuários novos a entender o que precisa ser feito.
-
-### 4. `src/i18n/locales/rhitmo-pt.json` (+ en/es para paridade)
-
-Adicionar 3 chaves novas em `recap.quarterly`:
-- `inProgressTitle: "Rhitmo Trimestral — {{quarter}} (em andamento)"`
-- `inProgressBadge: "Em andamento"`
-- `inProgressDesc: "Fecha em {{date}}. Geração disponível após o trimestre encerrar."`
-
-(en: "in progress" / "Closes on …", es: "en curso" / "Cierra el …".)
-
-## Diagrama do que o usuário vê (depois)
-
-```text
-┌──────────────────────────────────────────┐
-│ 🕒 Rhitmo Trimestral — Q2 2026 (em       │
-│    andamento)         [ Em andamento ]   │
-│ Fecha em 02/07/2026.                     │
-└──────────────────────────────────────────┘
-
-┌──────────────────────────────────────────┐
-│ 📊 Rhitmo Trimestral — Q1 2026           │
-│ [Gerar trimestral com IA] ← ACIONÁVEL    │
-│ Baseado em 3 mensais confirmados.        │
-└──────────────────────────────────────────┘
-
-▸ Trimestres anteriores
-  · Q4 2025  · Q3 2025  …
-```
+- `usePlanLimits.ts` — lógica correta (Pulse default, beta opt-in via DB).
+- `AccountContext`, `AuthContext`, `AuthEventProvider` — sólidos, sem race conditions.
+- `WorkspaceOnboarding` — funciona, leader-welcome com idempotency OK.
+- Guards (`DirectReportGuard`, `HRAdminGuard`) — corretos.
+- Reset password / Auth — fluxo end-to-end OK.
+- Sidebar, navegação, rotas — todas resolvem.
+- Mobile — sem overflow detectado, classes responsivas presentes.
 
 ## Critério de aceite
 
-- [ ] Em 22/04/2026, usuário existente vê card **"Q2 2026 (em andamento)"** + card **"Q1 2026"** acionável.
-- [ ] Botão "Gerar trimestral com IA" no card de Q1 funciona — consome jan/fev/mar e gera o draft.
-- [ ] Novo usuário (sem mensais ainda) vê o card "em andamento" de Q2, e o card de Q1 com mensagem "Confirme ao menos um Rhitmo Mensal do trimestre Q1 2026 antes de gerar" (sem 422 silencioso).
-- [ ] Badge "Trimestral pronto" no `RhitmoTabSummary` acende quando há mensal confirmado em Q1 e não há recap de Q1 (não mais Q2).
-- [ ] Em virada de ano (1º trimestre do ano), `getLastClosedQuarterStart` retorna corretamente Q4 do ano anterior.
-- [ ] Em qualquer fuso (BRT, UTC, PST), os trimestres batem com o calendário civil.
+- [ ] Buscar `Flow` em `src/` retorna **0** ocorrências em copy user-facing
+- [ ] Badge no dashboard mostra "Beta" se `is_beta_user=true`, "Pro" para tier business legado, "Pulse" caso contrário
+- [ ] Clicar "Abrir Mentor" sem membros abre o diálogo de novo membro com toast explicativo
+- [ ] `/rota-inexistente` mostra 404 com branding Rhitmo, em PT, com botão "Voltar ao Dashboard"
+- [ ] `Membro não encontrado` em `/member/:id` vai para `/dashboard`, não `/`
 
