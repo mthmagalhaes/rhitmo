@@ -536,7 +536,7 @@
     "createNewTeam": "+ Crear nuevo equipo...",
     "newTeamPlaceholder": "Nombre del nuevo equipo (ej: Marketing)",
     "sendSyncInvite": "Enviar invitación para mapeo de perfil Rhitmo Sync",
-    "syncLocked": "🔒 Disponible en el plan Flow.",
+    "syncLocked": "🔒 Disponible en el plan Pro.",
     "seePlans": "Ver planes",
     "memberRegistered": "¡Miembro registrado!",
     "memberRegisteredDescription": "{{name}} ha sido agregado a tu equipo",
