@@ -192,6 +192,8 @@ const translations = {
     launchDisclaimer: "Preço de lançamento garantido enquanto sua assinatura estiver ativa.",
     // Enterprise / Corporate
     enterpriseNav: "Enterprise",
+    pricingNav: "Preços",
+    faqNav: "FAQ",
     enterpriseSubtitle: "Para a organização inteira: HR Dashboard, blindagem jurídica, integrações HRIS e SSO.",
     enterprisePrice: "Sob consulta",
     enterprisePer: "· faturamento anual",
@@ -385,6 +387,8 @@ const translations = {
     launchBadge: "Launch Price",
     launchDisclaimer: "Launch price guaranteed while your subscription is active.",
     enterpriseNav: "Enterprise",
+    pricingNav: "Pricing",
+    faqNav: "FAQ",
     enterpriseSubtitle: "For the entire organization: HR Dashboard, legal protection dossier, HRIS integration and SSO.",
     enterprisePrice: "Custom",
     enterprisePer: "· annual billing",
@@ -833,11 +837,16 @@ const Landing = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Link to="/enterprise">
+            <a href="#pricing">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground min-h-[44px]">
-                {t.enterpriseNav}
+                {t.pricingNav}
               </Button>
-            </Link>
+            </a>
+            <a href="#faq">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground min-h-[44px]">
+                {t.faqNav}
+              </Button>
+            </a>
             <Link to="/auth">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground min-h-[44px]">
                 {t.signIn}
@@ -884,11 +893,18 @@ const Landing = () => {
             <SheetContent side="right" className="w-[280px] pt-12">
               <nav className="flex flex-col gap-4">
                 <SheetClose asChild>
-                  <Link to="/enterprise">
+                  <a href="#pricing">
                     <Button variant="outline" className="w-full justify-start min-h-[44px]">
-                      {t.enterpriseNav}
+                      {t.pricingNav}
                     </Button>
-                  </Link>
+                  </a>
+                </SheetClose>
+                <SheetClose asChild>
+                  <a href="#faq">
+                    <Button variant="outline" className="w-full justify-start min-h-[44px]">
+                      {t.faqNav}
+                    </Button>
+                  </a>
                 </SheetClose>
                 <SheetClose asChild>
                   <Link to="/auth">
@@ -1318,7 +1334,7 @@ const Landing = () => {
 
 
       {/* FAQ Section */}
-      <section className="py-24 bg-muted/30">
+      <section id="faq" className="py-24 bg-muted/30">
         <div className="container mx-auto px-4 max-w-3xl">
           <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">FAQ</p>
           <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
