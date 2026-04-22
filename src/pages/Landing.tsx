@@ -192,6 +192,7 @@ const translations = {
     launchDisclaimer: "Preço de lançamento garantido enquanto sua assinatura estiver ativa.",
     // Enterprise / Corporate
     enterpriseNav: "Enterprise",
+    featuresNav: "Recursos",
     pricingNav: "Preços",
     faqNav: "FAQ",
     enterpriseSubtitle: "Para a organização inteira: HR Dashboard, blindagem jurídica, integrações HRIS e SSO.",
@@ -387,6 +388,7 @@ const translations = {
     launchBadge: "Launch Price",
     launchDisclaimer: "Launch price guaranteed while your subscription is active.",
     enterpriseNav: "Enterprise",
+    featuresNav: "Features",
     pricingNav: "Pricing",
     faqNav: "FAQ",
     enterpriseSubtitle: "For the entire organization: HR Dashboard, legal protection dossier, HRIS integration and SSO.",
@@ -815,6 +817,21 @@ const Landing = () => {
 
           {/* Desktop: Botões normais */}
           <div className="hidden md:flex items-center gap-3">
+            <a href="#impacto">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground min-h-[44px]">
+                {t.featuresNav}
+              </Button>
+            </a>
+            <a href="#pricing">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground min-h-[44px]">
+                {t.pricingNav}
+              </Button>
+            </a>
+            <a href="#faq">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground min-h-[44px]">
+                {t.faqNav}
+              </Button>
+            </a>
             <Button variant="ghost" size="icon" className="rounded-full" onClick={toggleTheme}>
               {landingTheme === 'light' ? <Moon className="h-[18px] w-[18px]" /> : <Sun className="h-[18px] w-[18px]" />}
               <span className="sr-only">{t.toggleTheme}</span>
@@ -837,16 +854,6 @@ const Landing = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <a href="#pricing">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground min-h-[44px]">
-                {t.pricingNav}
-              </Button>
-            </a>
-            <a href="#faq">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground min-h-[44px]">
-                {t.faqNav}
-              </Button>
-            </a>
             <Link to="/auth">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground min-h-[44px]">
                 {t.signIn}
@@ -892,6 +899,13 @@ const Landing = () => {
               </SheetTrigger>
             <SheetContent side="right" className="w-[280px] pt-12">
               <nav className="flex flex-col gap-4">
+                <SheetClose asChild>
+                  <a href="#impacto">
+                    <Button variant="outline" className="w-full justify-start min-h-[44px]">
+                      {t.featuresNav}
+                    </Button>
+                  </a>
+                </SheetClose>
                 <SheetClose asChild>
                   <a href="#pricing">
                     <Button variant="outline" className="w-full justify-start min-h-[44px]">
@@ -1134,7 +1148,7 @@ const Landing = () => {
       </section>
 
       {/* Seção: Números Concretos */}
-      <section className="py-28 bg-gradient-to-br from-muted/30 to-primary/5">
+      <section id="impacto" className="py-28 bg-gradient-to-br from-muted/30 to-primary/5">
         <div className="container mx-auto px-4">
           <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{t.numbersOverline}</p>
           <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-4 text-foreground">
