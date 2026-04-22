@@ -1,100 +1,73 @@
 
 
-# Polish do Programa Fundadores — execução
+# i18n sweep — páginas de Líder, Liderado e RH Admin
 
-Plano aprovado anteriormente, agora formalizado para execução. Inclui as 3 decisões finais:
-1. **`isFounderProgram`**: re-fetch `is_beta_user` após criar workspace (try/catch silencioso, não bloqueia).
-2. **WhatsApp**: placeholder `wa.me/5541999999999` com TODO no comentário.
-3. **`leaderName`**: nunca passar email cru — só `display_name`/`full_name`. Se vazio, omite a prop e o template usa fallback `"Olá, Líder!"`.
+## Diagnóstico
 
-## Execução
+A infra de i18n está pronta (`react-i18next`, 3 locales, ~1141 chaves em `pt-BR/en/es.json`), mas várias páginas de uso diário ainda têm strings PT-BR hardcoded. Já confirmado por screenshot: dashboard do líder (badge "Próximas 1:1s", "Sincronizar", "Desconectar", "Transcrição automática", "Transcrever") e perfil do liderado ("Nova Nota", "Mais ações", "Usuário Ativo", "Diário de Bordo", "Avaliações Formais", "Objetivos / Metas", "Filtrar data", "Mais recentes", "Reunião Geral", "Minhas anotações", "X notas registradas"). Audit cruzado revelou os mesmos buracos em HR Dashboard / HR Members / HR Teams / HR Analytics, FeedbackFilters, NewTeamDialog, TeamTabs, InviteMemberDialog, PerformanceReviewList, BatchSyncDialog, WorkStyleCard, parte do Analytics e parte do Onboarding.
 
-### P0
+`DirectReportDashboard` (portal do liderado) já tem 126 ocorrências de `t()` — está OK e fica de fora.
 
-1. **`leader-welcome.tsx`** — adicionar prop `isFounderProgram?: boolean`. Subject vira função: retorna `"Bem-vindo ao Programa Fundadores Rhitmo 🎟️"` se `isFounderProgram`, senão mantém atual. Quando `true`: heading "Você está entre os 20 primeiros, {leaderName}", copy sobre os 6 meses gratuitos, lista de 4 passos para os primeiros 7 dias, bloco lateral com `matheus@rhitmo.co` + SLA de 4h. Fallback `dashboardUrl` → `https://rhitmo.co/dashboard`. Branch genérico inalterado.
+## O que entra (3 ondas)
 
-2. **`member-welcome.tsx`** — fallback `syncUrl` → `https://rhitmo.co`.
+### Onda 1 — Dashboard do líder (página inicial pós-login)
 
-3. **`WorkspaceOnboarding.tsx`** — após `INSERT` do workspace e antes do `invoke('send-transactional-email')`, re-fetch:
-   ```ts
-   let isFounderProgram = false;
-   try {
-     const { data: ws } = await supabase
-       .from('workspaces')
-       .select('is_beta_user')
-       .eq('id', workspace.id)
-       .maybeSingle();
-     isFounderProgram = !!ws?.is_beta_user;
-   } catch { /* silencioso, segue genérico */ }
-   ```
-   Trocar `leaderName` para usar **só** `user.user_metadata?.full_name || user.user_metadata?.display_name || undefined` (remover o `email.split('@')[0]` que vaza email).
+Arquivo: `src/components/dashboard/UpcomingMeetingsCard.tsx`
 
-4. **`InviteMemberDialog.tsx`** — adicionar botão **"Enviar convite por email"** (apenas quando `member.email` existe), na branch `pending`. Ao clicar:
-   - Buscar `display_name`/`full_name` via `supabase.auth.getUser()` (nunca email).
-   - `supabase.functions.invoke('send-transactional-email', { body: { templateName: 'member-welcome', recipientEmail: member.email, idempotencyKey: 'invite-${member.id}-${invite_token}', templateData: { memberName: member.name, leaderName: <nome ou undefined>, syncUrl: 'https://rhitmo.co/invite?code=${invite_token}' } } })`.
-   - Loading state, toast sucesso/erro. "Copiar link" continua como secundário.
+- "Próximas 1:1s", "Conectar Google Calendar", "Conecte o Google Calendar para ver…", "Sincronizar / Sincronizando…", "Desconectar", "Reconectar", "Tentar novamente", "Sessão do Google Calendar expirou", "Falha ao sincronizar calendário", "Reconecte sua conta…", "Tente sincronizar novamente…", "Nenhuma reunião nas próximas 48h", "X eventos encontrados, mas nenhum com liderados…", "Verifique se os e-mails…", "Transcrição automática", "Transcrito", "Gravando", "Agendado", "Auto ✓", "Processando", "Entrando", "Pendente", "Transcrever", tooltip "Limite de reuniões com bot atingido…", `Hoje HH:mm` / `Amanhã HH:mm` (só os labels "Hoje"/"Amanhã" — formatação fica).
 
-5. **`SetupChecklist.tsx`** — voltar para 5 passos:
-   - Cadastrar primeiro liderado (`hasMembers`)
-   - Convidar liderado por email (novo: `onOpenInvite`, `disabled: !hasMembers`)
-   - Criar nota de teste (`hasFeedbacks`, `disabled: !hasMembers`)
-   - Abrir Mentor Chat (restaurar `hasMentorChat` — remover prefixo `_`)
-   - Configurar Leader Sync (`hasLeaderSync`)
-   
-   Adicionar prop `onOpenInvite: () => void`.
+### Onda 2 — Perfil do liderado (visão do líder) + filtros + diálogos
 
-6. **`Index.tsx`** — passar `onOpenInvite` ao `<SetupChecklist>` que abre o `InviteMemberDialog` para o primeiro membro com `invite_status !== 'accepted'`. Trocar label `'Beta'` (l.520) por `'Fundador'`.
+- `src/pages/MemberDetails.tsx`: "Início", "Nova Nota", "Mais ações", "Gravar Reunião", "Mentor Chat", "Usuário Ativo", "Convidar" / "Ver Convite", "X notas registradas", "Rhitmo Sync", "Preenchido" / "Pendente", "Recurso Premium", "Disponível no plano Pro ou superior", "Desbloquear", "Aguardando preenchimento do Rhitmo Sync", "Copiar Link", "Reenviar Convite", "Objetivos / Metas", "Diário de Bordo", "Avaliações Formais", "Minhas anotações", "Adicionar Primeira Nota", labels do PDI ("Concluído", "Em andamento", "Prazo: …", "X de Y objetivos concluídos"), labels V1/V2 do Rhitmo Sync ("Cronotipo", "Estilo de Feedback", "Estilo de Reconhecimento", "Motivadores Principais", "Processamento de informações", "Estilo de feedback", "Estilo de trabalho", "Horário de pico", "Motivação principal").
+- `src/components/FeedbackFilters.tsx`: "Filtrar data", "Mais recentes", "Mais antigos", e os labels das tag-pills (1:1, PDI, Check-in, Feedback, Melhoria, Destaque, Risco, Reunião Geral, Brainstorming, Feedback Difícil).
+- `src/lib/tagConfig.ts`: as tags são chaves persistidas no banco — **mantemos a chave em PT-BR** e adicionamos um helper `getTagLabel(tag, t)` que mapeia a chave para a tradução exibida (ex.: chave "Reunião Geral" → label `tags.generalMeeting`). Isso preserva os dados existentes.
+- `src/components/InviteMemberDialog.tsx`: "Usuário Ativo" e textos de status do convite.
+- `src/components/PerformanceReviewList.tsx`: "Avaliações Formais" e contadores.
+- `src/components/WorkStyleCard.tsx`: "Preferências de trabalho • Preenchido em…".
+- `src/components/NewTeamDialog.tsx` + `src/components/TeamTabs.tsx`: "Novo Time".
+- `src/components/BatchSyncDialog.tsx`: "Sincronizar Inteligência do Sistema" e descrições.
 
-### P1
+### Onda 3 — Páginas de RH Admin
 
-7. **`HelpCenter.tsx`** — atualizar descrição do Slack (l.315): listar `/rhitmo`, `/nota`, `/kudos`, `/brief`, `/mentor`, `/meu-rhitmo`. Atualizar passo do card `h-integrations` (l.295) também.
+- `src/pages/HRDashboard.tsx`: "Painel de Liderança", "Visão Geral", "Pontos de Atenção", "Nenhuma atividade no período", cabeçalhos da tabela ("Líder", "Notas registradas", "Liderados cobertos").
+- `src/pages/HRMembers.tsx`: "Liderados", "Todos os líderes", "Todos / Com PDI / Sem PDI", "Nenhum liderado encontrado".
+- `src/pages/HRTeams.tsx`: "Times e Líderes", "Sem feedback", "Nenhum liderado cadastrado", "Nunca".
+- `src/pages/HRAnalytics.tsx`: "Liderados", "Líderes Ativos", "Cobertura PDI", abas ("Visão Geral", "Tendências", "Riscos", "Engajamento"), "Todos os times", "Todos os líderes".
+- `src/pages/Analytics.tsx` (líder Pro): banner de upgrade, períodos ("Últimos 30 dias", "Último Trimestre", "Último Ano"), títulos dos cards ("Cobertura de Atenção", "Termômetro de Sentimento", "Adoção do Rhitmo Sync") e respectivas descriptions.
 
-8. **`AppSidebar.tsx`** — no `SupportDialog` (l.491-516), adicionar bloco condicional `{limits.isBetaUser && ...}` com:
-   - Texto "Você é Fundador. Resposta em até 4h em horário comercial."
-   - Botão WhatsApp `wa.me/5541999999999` com `{/* TODO: substituir pelo número real */}`.
-   - Importar `useEnforcedLimits` (que já expõe `isBetaUser`).
+## Implementação técnica
 
-### i18n — adicionar 3 chaves em pt-BR/en/es
+1. **Novos namespaces no JSON** (em `pt-BR.json`, `en.json`, `es.json`):
+   - `meetings.*` (UpcomingMeetingsCard)
+   - `member.*` (MemberDetails — header, accordions, abas, PDI, work-style)
+   - `tags.*` (labels traduzidos das 9 tags do tagConfig)
+   - `filters.*` (date, sort)
+   - `hr.dashboard.*`, `hr.members.*`, `hr.teams.*`, `hr.analytics.*`
+   - `analytics.*` (charts do líder)
+   - Reutilizar `common.*` (Concluído, Em andamento, Pendente, Hoje, Amanhã, Nunca etc.) onde já existir.
 
-```json
-"setup": {
-  ...
-  "inviteFirstMember": "Convide seu primeiro liderado por email",
-  "inviteAction": "Convidar →",
-  "openMentorChat": "Faça sua primeira pergunta ao Mentor Chat",
-  "mentorChatAction": "Abrir Mentor →"
-}
-```
+2. **Padrão de troca**: cada componente recebe `const { t } = useTranslation()` (vários já têm) e cada literal vira `t('chave')`. Datas continuam usando `date-fns/locale` — adicionar resolução dinâmica em `src/lib/dateLocale.ts` (já existe) para retornar `enUS` / `es` / `ptBR` conforme `i18n.language`, e propagar para os 3 pontos que ainda fixam `ptBR`: `UpcomingMeetingsCard`, `FeedbackFilters` (Calendar `locale`) e `MemberDetails` (`formatDate`).
 
-### Deploy
+3. **Tags persistidas**: não renomear chaves no banco. Criar `getTagLabel(tagKey: string): string` em `src/lib/tagConfig.ts` que faz lookup por chave PT-BR fixa → `i18n.t('tags.<slug>')`. Usar em FeedbackFilters, FeedbackTimeline e onde quer que o label da tag seja renderizado.
 
-`supabase--deploy_edge_functions(["send-transactional-email"])` para recarregar templates.
+4. **Garantir fallback**: chaves novas adicionadas nos 3 locales na mesma migração; nada de chave faltando em EN/ES.
+
+5. **QA manual**: alternar idioma via `useLocale()` e percorrer Dashboard líder → MemberDetails → Filtros → HR Dashboard → HR Members → HR Teams → HR Analytics → Analytics em PT/EN/ES.
+
+## Fora do escopo desta sprint
+
+- `PrivacyPolicy.tsx`, `TermsOfService.tsx` (textos jurídicos longos — exigem revisão legal por idioma).
+- `Landing.tsx`, `Enterprise.tsx`, `HelpCenter.tsx` (páginas públicas/marketing — sweep próprio em sprint separada).
+- `Onboarding.tsx` (já parcialmente i18n, requer auditoria dedicada do wizard).
+- `AdminStructure.tsx` e demais páginas em `/admin/*` (uso interno do super admin matheus@rhitmo.co — fica em PT-BR).
+- `DirectReportDashboard.tsx` — já internacionalizado, sem mudanças.
+- Toasts e mensagens de Edge Functions (servidor) — escopo de backend, não desta sprint.
+- Não vamos renomear tags no banco nem migrar dados.
 
 ## Critérios de aceite
 
-- [ ] Líder beta criando workspace → email com subject "Programa Fundadores 🎟️" e copy pessoal.
-- [ ] Líder não-beta → email genérico atual, sem regressão.
-- [ ] Re-fetch falha silenciosamente → segue com template genérico, sem toast de erro.
-- [ ] `leaderName` nunca contém email — se sem nome, fallback do template ("Olá, Líder!") é exibido.
-- [ ] Invite dialog mostra botão "Enviar por email" quando há email; liderado recebe `member-welcome` com link `rhitmo.co/invite?code=...`.
-- [ ] SetupChecklist mostra 5 passos, some quando todos done ou >7 dias.
-- [ ] HelpCenter Slack lista os 6 comandos.
-- [ ] Footer da sidebar mostra WhatsApp + SLA somente para `isBetaUser`.
-- [ ] Badge no header mostra "Fundador" para beta.
-
-## Arquivos editados
-
-- `supabase/functions/_shared/transactional-email-templates/leader-welcome.tsx`
-- `supabase/functions/_shared/transactional-email-templates/member-welcome.tsx`
-- `src/components/WorkspaceOnboarding.tsx`
-- `src/components/InviteMemberDialog.tsx`
-- `src/components/SetupChecklist.tsx`
-- `src/pages/Index.tsx`
-- `src/pages/HelpCenter.tsx`
-- `src/components/AppSidebar.tsx`
-- `src/i18n/locales/pt-BR.json`, `en.json`, `es.json`
-
-## Fora do escopo
-
-P2 (landing `/founder-welcome`, check-in semanal). Sem mudança em `usePlanLimits`, `UpgradeBanner`, `Billing.tsx`, Stripe webhook, RLS, preços ou número real do WhatsApp.
+- Trocar idioma para EN ou ES e percorrer as 7 páginas-alvo (Dashboard líder, MemberDetails, HR Dashboard, HR Members, HR Teams, HR Analytics, Analytics) sem encontrar string PT-BR visível nas áreas marcadas.
+- Tag pills nos filtros aparecem traduzidas, mesmo com a chave continuando em PT-BR no banco.
+- Datas formatadas no idioma ativo ("Tomorrow 10:00" / "Mañana 10:00").
+- Nenhuma regressão em PT-BR (default).
 
