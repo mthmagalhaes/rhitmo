@@ -10,6 +10,10 @@ All colors MUST be HSL.
 */
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   :root {
     /* ── Backgrounds ── */
     --background:   38 25% 95%;   /* #F5F3EE creme quente */
