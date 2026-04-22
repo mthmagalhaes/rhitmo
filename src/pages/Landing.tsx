@@ -7,7 +7,7 @@ import { WaveDivider } from "@/components/WaveDivider";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
-import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X, Check, Lock, Moon, Sun, Globe, Building, Clock, AlertCircle, DollarSign, Shield, Mic, XCircle, CheckCircle2, Target, Users, FileText, ArrowRight } from "lucide-react";
+import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X, Check, Moon, Sun, Globe, Building, Clock, AlertCircle, DollarSign, Shield, Mic, XCircle, CheckCircle2, Target, Users, FileText, ArrowRight } from "lucide-react";
 import analyticsScreenshot from "@/assets/analytics-screenshot.png";
 import heroLeaderFlow from "@/assets/hero-leader-flow.png";
 import heroDuoFeedback from "@/assets/hero-duo-feedback.png";
@@ -147,16 +147,11 @@ const translations = {
     pulseForever: "· para sempre",
     pulseCTA: "Começar grátis",
     pulseFeatures: [
-      "Acesso ao Meu Rhitmo (portal do liderado)",
+      "Até 2 liderados diretos",
+      "Diário de bordo ilimitado",
       "1 avaliação com IA por mês",
-      "Mentor Chat limitado (20 mensagens/mês)",
-      "Notas e anotações ilimitadas",
-    ],
-    pulseLocked: [
-      "Bot de transcrição automática (Recall.ai)",
-      "Pre-meeting Briefs",
-      "Detecção de viés em tempo real",
-      "Avaliações com IA ilimitadas",
+      "Mentor AI — até 20 conversas por mês",
+      "Notas e registros ilimitados",
     ],
     // Pro
     proSubtitle: "Para líderes que querem operar no rítmo certo: liderados ilimitados, com IA em todas as etapas.",
@@ -164,15 +159,16 @@ const translations = {
     proCTA: "Começar agora",
     proBadge: "Mais popular",
     proFeatures: [
-      "Liderados ilimitados",
-      "30 horas/mês de transcrição automatizada (Recall.ai + upload manual)",
-      "Avaliações com IA ilimitadas",
-      "Pre-meeting Briefs com contexto histórico",
-      "Detecção de viés em tempo real",
-      "Mentor Chat ilimitado",
-      "Acesso ao Meu Rhitmo para todo o time",
-      "Analytics completo",
-      "Times ilimitados",
+      { label: "Liderados ilimitados" },
+      { label: "Diário de bordo + resumo mensal automático", isNew: true },
+      { label: "Acompanhamento trimestral guiado por IA", isNew: true },
+      { label: "Avaliações formais ilimitadas com evidências citadas" },
+      { label: "Transcrição automática de reuniões — 30h/mês" },
+      { label: "Pre-meeting briefs com contexto histórico" },
+      { label: "Detecção de viés em tempo real" },
+      { label: "Mentor AI ilimitado" },
+      { label: "Time acessa feedbacks e metas em tempo real" },
+      { label: "Analytics completo · Times ilimitados" },
     ],
     // Chat mockup
     mentorChatLabel: "Liderada: Maria Santos",
@@ -190,6 +186,11 @@ const translations = {
     footerPrivacy: "Política de Privacidade",
     launchBadge: "Preço de Lançamento",
     launchDisclaimer: "Preço de lançamento garantido enquanto sua assinatura estiver ativa.",
+    pricingAnchor: "Comece grátis. Escale quando fizer sentido.",
+    pricingTrustLine: "Sem cartão de crédito para começar · Cancele quando quiser · Preço de lançamento garantido enquanto sua assinatura estiver ativa",
+    proSocialProof: "Usado por líderes de times de tecnologia, saúde e serviços no Brasil",
+    enterpriseFloor: "A partir de 50 colaboradores · mínimo R$ 750/mês",
+    newBadge: "Novo",
     // Enterprise / Corporate
     enterpriseNav: "Enterprise",
     featuresNav: "Recursos",
@@ -201,12 +202,13 @@ const translations = {
     enterpriseNote: "Cobrança exclusivamente anual · proposta personalizada",
     enterpriseCTA: "Fale com Vendas",
     enterpriseFeatures: [
-      "Tudo do Pro, para a organização inteira",
-      "HR Dashboard (Radar de Risco / Heatmap)",
-      "Dossiê de Blindagem Jurídica",
-      "Integração com HRIS",
+      "Tudo do Pro, para toda a organização",
+      "HR Dashboard com radar de risco e heatmap",
+      "Calibração entre gestores automatizada",
+      "Dossiê de blindagem jurídica (trilha de auditoria)",
+      "Integração com sistemas de RH (HRIS)",
       "SSO (Single Sign-On)",
-      "CSM dedicado e SLA garantido",
+      "Gerente de sucesso dedicado e SLA garantido",
     ],
     // Footer comparisons
     footerCompare: "Compare",
@@ -348,31 +350,27 @@ const translations = {
     pulseForever: "· forever",
     pulseCTA: "Get started free",
     pulseFeatures: [
-      "Access to My Rhitmo (direct report portal)",
+      "Up to 2 direct reports",
+      "Unlimited journal",
       "1 AI review per month",
-      "Limited Mentor Chat (20 messages/mo)",
-      "Unlimited notes and annotations",
-    ],
-    pulseLocked: [
-      "Automated transcription bot (Recall.ai)",
-      "Pre-meeting Briefs",
-      "Real-time bias detection",
-      "Unlimited AI reviews",
+      "Mentor AI — up to 20 conversations per month",
+      "Unlimited notes and records",
     ],
     proSubtitle: "For leaders who want to operate at the right rhythm: unlimited direct reports, AI at every step.",
     proNote: "One charge per cycle · cancel anytime",
     proCTA: "Get started",
     proBadge: "Most popular",
     proFeatures: [
-      "Unlimited direct reports",
-      "30 hours/mo of automated transcription (Recall.ai + manual upload)",
-      "Unlimited AI reviews",
-      "Pre-meeting Briefs with historical context",
-      "Real-time bias detection",
-      "Unlimited Mentor Chat",
-      "My Rhitmo for the whole team",
-      "Full analytics",
-      "Unlimited teams",
+      { label: "Unlimited direct reports" },
+      { label: "Journal + automatic monthly recap", isNew: true },
+      { label: "Quarterly AI-guided performance reviews", isNew: true },
+      { label: "Unlimited formal reviews with cited evidence" },
+      { label: "Automatic meeting transcription — 30h/month" },
+      { label: "Pre-meeting briefs with historical context" },
+      { label: "Real-time bias detection" },
+      { label: "Unlimited Mentor AI" },
+      { label: "Your team accesses feedback and goals in real time" },
+      { label: "Full analytics · Unlimited teams" },
     ],
     mentorChatLabel: "Direct report: Maria Santos",
     chatQuestion: "How to give feedback about tardiness without demotivating?",
@@ -387,6 +385,11 @@ const translations = {
     footerPrivacy: "Privacy Policy",
     launchBadge: "Launch Price",
     launchDisclaimer: "Launch price guaranteed while your subscription is active.",
+    pricingAnchor: "Start free. Scale when it makes sense.",
+    pricingTrustLine: "No credit card to start · Cancel anytime · Launch price guaranteed while your subscription is active",
+    proSocialProof: "Used by leaders in tech, healthcare, and services teams in Brazil",
+    enterpriseFloor: "Starting at 50 employees · minimum R$ 750/month",
+    newBadge: "New",
     enterpriseNav: "Enterprise",
     featuresNav: "Features",
     pricingNav: "Pricing",
@@ -398,11 +401,12 @@ const translations = {
     enterpriseCTA: "Talk to Sales",
     enterpriseFeatures: [
       "Everything in Pro, for the whole organization",
-      "HR Dashboard (Risk Radar / Heatmap)",
-      "Legal Protection Dossier",
+      "HR Dashboard with risk radar and heatmap",
+      "Automated cross-manager calibration",
+      "Legal protection dossier (audit trail)",
       "HRIS integration",
       "SSO (Single Sign-On)",
-      "Dedicated CSM and guaranteed SLA",
+      "Dedicated success manager and guaranteed SLA",
     ],
      footerCompare: "Compare",
      footerVsQulture: "Rhitmo vs. National platforms",
@@ -598,6 +602,9 @@ const PricingSection = ({
           <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
             {t.pricingTitle}
           </h2>
+          <p className="font-serif text-xl text-foreground/80 max-w-2xl mx-auto pt-1">
+            {t.pricingAnchor}
+          </p>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             {t.pricingSubtitle}
           </p>
@@ -620,7 +627,7 @@ const PricingSection = ({
         </div>
 
         {/* Cycle selector */}
-        <div className="flex justify-center mb-12">
+        <div className="flex justify-center mb-6">
           <Tabs value={cycle} onValueChange={(v) => setCycle(v as BillingCycle)}>
             <TabsList className="h-11 rounded-full p-1 bg-muted">
               <TabsTrigger value="quarterly" className="rounded-full px-5 h-9 data-[state=active]:bg-background">
@@ -638,6 +645,11 @@ const PricingSection = ({
             </TabsList>
           </Tabs>
         </div>
+
+        {/* Trust line */}
+        <p className="text-center text-xs text-muted-foreground mb-10 max-w-2xl mx-auto px-4">
+          {t.pricingTrustLine}
+        </p>
 
         {/* Cards Grid — 3 plans */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -659,12 +671,6 @@ const PricingSection = ({
               {t.pulseFeatures.map((f: string) => (
                 <li key={f} className="flex items-start gap-2 text-sm text-foreground">
                   <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                  <span>{f}</span>
-                </li>
-              ))}
-              {t.pulseLocked.map((f: string) => (
-                <li key={f} className="flex items-start gap-2 text-sm text-muted-foreground opacity-60">
-                  <Lock className="h-4 w-4 mt-0.5 shrink-0" />
                   <span>{f}</span>
                 </li>
               ))}
@@ -695,16 +701,26 @@ const PricingSection = ({
                 <p className="text-xs text-muted-foreground mt-1">{t.proNote}</p>
               </div>
               <Button
-                className="w-full min-h-[44px] mb-6"
+                className="w-full min-h-[44px] mb-2"
                 onClick={() => navigate(`/auth?mode=signup&plan=pro&cycle=${cycle}`)}
               >
                 {t.proCTA}
               </Button>
+              <p className="text-xs text-muted-foreground text-center mb-6">
+                {t.proSocialProof}
+              </p>
               <ul className="space-y-3 flex-1">
-                {t.proFeatures.map((f: string) => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-foreground">
+                {t.proFeatures.map((f: { label: string; isNew?: boolean }) => (
+                  <li key={f.label} className="flex items-start gap-2 text-sm text-foreground">
                     <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                    <span>{f}</span>
+                    <span>
+                      {f.label}
+                      {f.isNew && (
+                        <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-primary/15 text-primary uppercase tracking-wide align-middle">
+                          {t.newBadge}
+                        </span>
+                      )}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -729,6 +745,7 @@ const PricingSection = ({
                 <span className="text-sm text-muted-foreground">{t.enterprisePer}</span>
               </div>
               <p className="text-xs text-muted-foreground mt-1.5">{t.enterpriseNote}</p>
+              <p className="text-xs text-foreground/70 font-medium mt-1">{t.enterpriseFloor}</p>
             </div>
             <Button variant="outline" className="w-full min-h-[44px] mb-6" asChild>
               <Link to="/enterprise">{t.enterpriseCTA}</Link>
@@ -744,7 +761,6 @@ const PricingSection = ({
           </div>
         </div>
 
-        <p className="text-center text-sm text-muted-foreground mt-6">{t.launchDisclaimer}</p>
       </div>
     </section>
   );
