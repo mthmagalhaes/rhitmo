@@ -306,7 +306,7 @@ export function CreateFormalReviewDialog({
                   Criando...
                 </>
               ) : (
-                'Criar Avaliação'
+                'Avançar para revisão →'
               )}
             </Button>
           </div>
