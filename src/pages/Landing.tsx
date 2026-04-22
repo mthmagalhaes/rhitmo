@@ -745,6 +745,7 @@ const PricingSection = ({
                 <span className="text-sm text-muted-foreground">{t.enterprisePer}</span>
               </div>
               <p className="text-xs text-muted-foreground mt-1.5">{t.enterpriseNote}</p>
+              <p className="text-xs text-foreground/70 font-medium mt-1">{t.enterpriseFloor}</p>
             </div>
             <Button variant="outline" className="w-full min-h-[44px] mb-6" asChild>
               <Link to="/enterprise">{t.enterpriseCTA}</Link>
