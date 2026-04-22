@@ -292,7 +292,7 @@ const hrCards: FeatureCard[] = [
     title: 'Conectores',
     subtitle: 'Slack, Chrome e automações',
     steps: [
-      'Configure o Conector Slack para registrar notas e kudos pelo chat.',
+      'Configure o Conector Slack — comandos /rhitmo, /nota, /kudos, /brief, /mentor e /meu-rhitmo.',
       'Gerencie templates de email e convites do Rhitmo Sync.',
       'Acompanhe o status de adoção da plataforma por time.',
     ],
@@ -312,7 +312,7 @@ const integrations: Integration[] = [
     id: 'slack',
     icon: Slack,
     name: 'Conector Slack',
-    description: 'Use comandos como /rhitmo, /nota e /kudos direto no Slack para registrar observações e reconhecimentos.',
+    description: 'Comandos disponíveis: /rhitmo (menu), /nota (feedback), /kudos (reconhecimento), /brief (resumo pré-1:1), /mentor (chat IA) e /meu-rhitmo (resumo do liderado).',
     status: 'available',
   },
   {
