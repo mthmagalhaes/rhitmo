@@ -11,8 +11,8 @@ const supabase = createClient(
 );
 
 // ── Privacy Constants ────────────────────────────────────
-const SENSITIVE_COMMANDS = ['/nota', '/brief', '/review', '/meu-pdi', '/mentor', '/meu-rhitmo'];
-const DM_ONLY_COMMANDS = ['/review'];
+const SENSITIVE_COMMANDS = ['/nota', '/brief', '/meu-pdi', '/mentor', '/meu-rhitmo'];
+const DM_ONLY_COMMANDS: string[] = [];
 
 // ── Channel Type Cache (5min TTL) ────────────────────────
 const channelCache = new Map<string, { isPublic: boolean; ts: number }>();
@@ -361,13 +361,15 @@ function buildRhitmoMenu(persona: PersonaResult, stateToken?: string): Record<st
         { type: 'button', text: { type: 'plain_text', text: '👏 Enviar kudos' }, action_id: 'open_send_kudos' },
       ]},
       { type: 'section', text: { type: 'mrkdwn', text: '\n*💬 Comandos rápidos:*\n• `/nota @membro texto` — Feedback privado\n• `/kudos @membro texto` — Reconhecimento público\n• `/brief @membro` — Resumo do membro\n• `/mentor <pergunta>` — Consultar mentor de IA\n• `/rhitmo` — Este menu' }},
+      { type: 'section', text: { type: 'mrkdwn', text: '\n*📊 No Rhitmo Web:*\n• *Rhitmo Mensal & Trimestral* — recaps automáticos do time\n• *Avaliação Formal* — gerar com IA em 2 passos (briefing → revisão)\n→ <https://rhitmo.co|Abrir Rhitmo>' }},
     );
   } else if (persona.persona === 'direct_report') {
     blocks.push(
       { type: 'section', text: { type: 'mrkdwn', text: '*👤 Seu Desenvolvimento*' } },
-      { type: 'section', text: { type: 'mrkdwn', text: 'Acesse seu PDI, feedbacks e reviews diretamente pelo Slack ou no Rhitmo.' }},
+      { type: 'section', text: { type: 'mrkdwn', text: 'Acesse seu PDI e suas avaliações compartilhadas diretamente pelo Slack ou no Rhitmo.' }},
       { type: 'actions', elements: [
         { type: 'button', text: { type: 'plain_text', text: '📋 Meu PDI' }, action_id: 'action_meu_pdi', style: 'primary' },
+        { type: 'button', text: { type: 'plain_text', text: '📄 Minhas Avaliações' }, url: 'https://rhitmo.co/avaliacoes', action_id: 'open_my_reviews' },
         { type: 'button', text: { type: 'plain_text', text: '🚀 Abrir Rhitmo' }, url: 'https://rhitmo.co', action_id: 'open_app' },
       ]},
       { type: 'section', text: { type: 'mrkdwn', text: '\n*💬 Comandos rápidos:*\n• `/meu-pdi` — Ver seu Plano de Desenvolvimento\n• `/meu-rhitmo` — Ver seu perfil e feedbacks\n• `/rhitmo` — Este menu' }},
@@ -375,8 +377,11 @@ function buildRhitmoMenu(persona: PersonaResult, stateToken?: string): Record<st
   } else if (persona.persona === 'hr_admin') {
     blocks.push(
       { type: 'section', text: { type: 'mrkdwn', text: '*📈 Analytics Organizacional*' } },
+      { type: 'section', text: { type: 'mrkdwn', text: '• Health Score do workspace (0–100)\n• Alertas de risco (turnover, viés, silêncio de líder)\n• Visão consolidada de PDIs e avaliações' }},
       { type: 'actions', elements: [
-        { type: 'button', text: { type: 'plain_text', text: '📊 Abrir Dashboard HR' }, url: 'https://rhitmo.co/hr', action_id: 'open_hr', style: 'primary' },
+        { type: 'button', text: { type: 'plain_text', text: '📊 Dashboard HR' }, url: 'https://rhitmo.co/hr', action_id: 'open_hr', style: 'primary' },
+        { type: 'button', text: { type: 'plain_text', text: '🚨 Alertas de Risco' }, url: 'https://rhitmo.co/hr', action_id: 'open_hr_alerts' },
+        { type: 'button', text: { type: 'plain_text', text: '📈 Analytics Avançado' }, url: 'https://rhitmo.co/hr/analytics', action_id: 'open_hr_analytics' },
       ]},
     );
   }
