@@ -149,7 +149,6 @@ const translations = {
     pulseFeatures: [
       "Acesso ao Meu Rhitmo (portal do liderado)",
       "1 avaliação com IA por mês",
-      "Upload manual de áudio",
       "Mentor Chat limitado (20 mensagens/mês)",
       "Notas e anotações ilimitadas",
     ],
@@ -166,7 +165,7 @@ const translations = {
     proBadge: "Mais popular",
     proFeatures: [
       "Liderados ilimitados",
-      "15 horas/mês de bot de transcrição (Recall.ai)",
+      "30 horas/mês de transcrição automatizada (Recall.ai + upload manual)",
       "Avaliações com IA ilimitadas",
       "Pre-meeting Briefs com contexto histórico",
       "Detecção de viés em tempo real",
@@ -348,7 +347,6 @@ const translations = {
     pulseFeatures: [
       "Access to My Rhitmo (direct report portal)",
       "1 AI review per month",
-      "Manual audio upload",
       "Limited Mentor Chat (20 messages/mo)",
       "Unlimited notes and annotations",
     ],
@@ -364,7 +362,7 @@ const translations = {
     proBadge: "Most popular",
     proFeatures: [
       "Unlimited direct reports",
-      "15 hours/mo of transcription bot (Recall.ai)",
+      "30 hours/mo of automated transcription (Recall.ai + manual upload)",
       "Unlimited AI reviews",
       "Pre-meeting Briefs with historical context",
       "Real-time bias detection",

@@ -40,7 +40,6 @@ const TermsOfService = () => {
         <ul className="list-disc ml-6 space-y-2">
           <li>Acesso ao Meu Rhitmo (portal do liderado)</li>
           <li>1 avaliação com IA por mês</li>
-          <li>Upload manual de áudio</li>
           <li>Mentor Chat limitado (20 mensagens/mês)</li>
           <li>Notas e anotações ilimitadas</li>
         </ul>
@@ -51,7 +50,7 @@ const TermsOfService = () => {
           <li>Semestral: R$ 504 (equivalente a R$ 84/mês)</li>
           <li>Anual: R$ 948 (equivalente a R$ 79/mês)</li>
           <li>Liderados ilimitados</li>
-          <li>15 horas/mês de bot de transcrição (Recall.ai)</li>
+          <li>30 horas/mês de transcrição automatizada (Recall.ai + upload manual)</li>
           <li>Avaliações com IA ilimitadas</li>
           <li>Pre-meeting Briefs com contexto histórico</li>
           <li>Detecção de viés em tempo real</li>
