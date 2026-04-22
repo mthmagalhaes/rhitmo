@@ -1,53 +1,49 @@
 
 
-# Revisão de qualidade — fluxo de novos usuários
+# Slack aparece como "não conectado" no primeiro momento — fix para todos os usuários
 
-Sem novas features, sem refator estético. Só os problemas reais que afetam o líder novo no primeiro cadastro.
+## Diagnóstico
 
-## Mudanças (6 arquivos)
+O botão **Conector Slack** na sidebar (`AppSidebar.tsx`, linhas 293-299) é o único ponto que o usuário vê **antes** de abrir o diálogo. Hoje ele **não consulta** o status da conexão — sempre renderiza sem badge, parecendo desconectado, mesmo quando o `slack_integrations` já existe no banco.
 
-### 1. `src/components/NewMemberDialog.tsx` (linha 391)
-`plano Flow` → `plano Pro`
+Comparativo:
+- ✅ **Google Calendar** (linha 287-291): renderiza badge "CONECTADO" quando `calendarConnected === true`.
+- ❌ **Slack** (linha 293-299): nunca renderiza badge. Status só aparece **dentro** do diálogo, depois de o usuário clicar.
 
-### 2. `src/components/NewReviewDialog.tsx` (linhas 320 e 398)
-`Faça upgrade para Flow.` → `Faça upgrade para Pro.` (2 ocorrências)
+Bônus: o hook `useSlackConnection` usa `useAuth().user.id` direto, enquanto o resto do app (calendar, etc.) usa `useEffectiveUser()` para respeitar impersonação de admin. Pequena inconsistência que vale alinhar.
 
-### 3. `src/pages/MemberDetails.tsx`
-- Linha 430: `navigate('/')` → `navigate('/dashboard')` (Membro não encontrado mandava para landing pública)
-- Linha 550: `Disponível no plano Flow ou superior` → `Disponível no plano Pro`
+## Mudanças (3 arquivos)
 
-### 4. `src/i18n/locales/pt-BR.json`, `en.json`, `es.json` (linha 539, chave `syncLocked`)
-- PT: `🔒 Disponível no plano Pro.`
-- EN: `🔒 Available on the Pro plan.`
-- ES: `🔒 Disponible en el plan Pro.`
+### 1. `src/components/AppSidebar.tsx`
 
-### 5. `src/pages/Index.tsx`
-- **Badge do plano (linha 502-509)**: usar `usePlanLimits().limits.isBetaUser` para mostrar badge "Beta" (estilo destacado roxo) quando `is_beta_user=true`. Renderizar `business` como "Pro" no rótulo.
-- **handleOpenMentor (linha 431-433)**: quando `teamMembers.length === 0`, mostrar toast "Adicione o primeiro membro para conversar com o Mentor sobre ele" + abrir `setMemberDialogOpen(true)`. Remove o botão morto.
-- **Empty state sem workspace (linha 669-670)**: trocar copy genérica "Sem conteúdo disponível" por loader (caso raro mas trivial).
+- Importar `useSlackConnection`.
+- Após `useCalendarIntegration`, ler `const { isConnected: slackConnected, isLoading: slackLoading } = useSlackConnection();`.
+- No botão Slack (linha 293), espelhar o padrão do Google Calendar:
+  - Adicionar `flex-1 text-left` no `<span>` do nome (paridade visual).
+  - Renderizar o badge "CONECTADO" quando `slackConnected && !slackLoading`, usando exatamente o mesmo estilo do badge do Calendar (verde esmeralda, `t('sidebar.connected')`).
+- Não mostrar nada (nem "desconectado", nem skeleton) durante `slackLoading` — evita flash incorreto. O badge aparece quando confirmado.
 
-### 6. `src/pages/NotFound.tsx` (reescrever)
-Padronizar com brand Rhitmo:
-- `RhitmoLogo` no topo
-- Copy em PT: "Página não encontrada" / "Não encontramos o endereço que você tentou acessar"
-- Dois CTAs: "Voltar ao Dashboard" (`/dashboard`, primário) e "Ir para a Home" (`/`, outline)
-- Standalone (sem AppLayout — catch-all pode ser hit sem auth)
+### 2. `src/hooks/useSlackConnection.ts`
 
-## O que NÃO vou mudar
+- Trocar `useAuth` por `useEffectiveUser` (consistência com calendar e correto sob impersonação de admin).
+- Manter o restante intacto. `staleTime` de 60s já é razoável.
 
-- `usePlanLimits.ts` — lógica correta (Pulse default, beta opt-in via DB).
-- `AccountContext`, `AuthContext`, `AuthEventProvider` — sólidos, sem race conditions.
-- `WorkspaceOnboarding` — funciona, leader-welcome com idempotency OK.
-- Guards (`DirectReportGuard`, `HRAdminGuard`) — corretos.
-- Reset password / Auth — fluxo end-to-end OK.
-- Sidebar, navegação, rotas — todas resolvem.
-- Mobile — sem overflow detectado, classes responsivas presentes.
+### 3. `src/components/slack/SlackConnectorDialog.tsx`
+
+- Pequeno polish: enquanto `isLoading` for true, desabilitar o botão "Conectar/Reconectar" e ocultar o aviso de "Slack conectado com sucesso!" (que hoje aparece como "não conectado" durante o fetch). Trivial — adicionar `if (isLoading) return <Loader2 spinning/>` no ramo de status no topo do conteúdo.
+
+## O que NÃO mudo
+
+- `useSlackConnection` query key e tabela: corretas.
+- Badge styling: reuso exato do padrão do Calendar (sem desviar do Design System).
+- RLS, edge functions, OAuth: fora do escopo — não há problema lá, apenas UX.
+- i18n: chaves `sidebar.connected` e `sidebar.slackConnector` já existem em PT/EN/ES.
 
 ## Critério de aceite
 
-- [ ] Buscar `Flow` em `src/` retorna **0** ocorrências em copy user-facing
-- [ ] Badge no dashboard mostra "Beta" se `is_beta_user=true`, "Pro" para tier business legado, "Pulse" caso contrário
-- [ ] Clicar "Abrir Mentor" sem membros abre o diálogo de novo membro com toast explicativo
-- [ ] `/rota-inexistente` mostra 404 com branding Rhitmo, em PT, com botão "Voltar ao Dashboard"
-- [ ] `Membro não encontrado` em `/member/:id` vai para `/dashboard`, não `/`
+- [ ] Usuário com `slack_integrations` populado vê badge "CONECTADO" no botão Slack da sidebar **antes** de abrir o diálogo.
+- [ ] Usuário sem conexão vê o botão sem badge (estado atual preservado).
+- [ ] Durante o fetch inicial, nenhum estado "errado" pisca — badge aparece só quando confirmado.
+- [ ] Admin impersonando outro usuário vê o status do Slack do **usuário impersonado**, não o próprio.
+- [ ] Diálogo do Slack mostra loader enquanto verifica, não o ramo "Conectar" antes da confirmação.
 
