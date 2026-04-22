@@ -399,10 +399,14 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
   const { data: onboardingStatus } = useQuery({
     queryKey: ['onboarding-status', workspace?.id, effectiveUserId],
     queryFn: async () => {
-      if (!workspace || !effectiveUserId) return { hasMembers: false, hasFeedbacks: false, hasAIAnalysis: false, hasMentorChat: false, hasLeaderSync: false };
+      const emptyState = { hasMembers: false, hasFeedbacks: false, hasAIAnalysis: false, hasMentorChat: false, hasLeaderSync: false, hasInvitedMember: false };
+      if (!workspace || !effectiveUserId) return emptyState;
       const hasLeaderSync = !!(workspace as unknown as Record<string, unknown>).leader_sync_data;
       const memberIds = teamMembers.map(m => m.id);
-      if (memberIds.length === 0) return { hasMembers: false, hasFeedbacks: false, hasAIAnalysis: false, hasMentorChat: false, hasLeaderSync };
+      const hasInvitedMember = teamMembers.some(
+        m => m.invite_status === 'pending' || m.invite_status === 'accepted' || !!m.linked_user_id
+      );
+      if (memberIds.length === 0) return { ...emptyState, hasLeaderSync };
       const { count: feedbackCount } = await supabase.from('feedbacks').select('*', { count: 'exact', head: true }).in('member_id', memberIds);
       const { count: aiCount } = await supabase.from('feedbacks').select('*', { count: 'exact', head: true }).in('member_id', memberIds).not('summary', 'is', null);
       const { count: mentorCount } = await supabase.from('mentor_messages').select('*', { count: 'exact', head: true }).eq('user_id', effectiveUserId).eq('role', 'user');
@@ -412,14 +416,20 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
         hasAIAnalysis: (aiCount || 0) > 0,
         hasMentorChat: (mentorCount || 0) > 0,
         hasLeaderSync,
+        hasInvitedMember,
       };
     },
     enabled: !!workspace && !!effectiveUserId && !loading,
     staleTime: 30 * 1000,
   });
 
-  // Sprint 1.1: reduced to 3 critical steps (members + 1st note + leader sync)
-  const isSetupComplete = onboardingStatus?.hasMembers && onboardingStatus?.hasFeedbacks && onboardingStatus?.hasLeaderSync;
+  // Programa Fundadores: 5 critical steps (member + invite + 1st note + mentor + leader sync)
+  const isSetupComplete =
+    onboardingStatus?.hasMembers &&
+    onboardingStatus?.hasFeedbacks &&
+    onboardingStatus?.hasLeaderSync &&
+    onboardingStatus?.hasMentorChat &&
+    onboardingStatus?.hasInvitedMember;
 
   const handleSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ['workspace'] });
@@ -517,7 +527,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
                       ? tier.charAt(0).toUpperCase() + tier.slice(1)
                       : 'Pulse';
                   const label = isBeta
-                    ? 'Beta'
+                    ? 'Fundador'
                     : `${tierLabel}${activeSubscription?.status === 'trialing' ? ' · Trial' : ''}`;
                   const className = isBeta
                     ? 'bg-primary text-primary-foreground hover:bg-primary/90'
@@ -618,11 +628,18 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
             hasAIAnalysis={onboardingStatus.hasAIAnalysis}
             hasMentorChat={onboardingStatus.hasMentorChat}
             hasLeaderSync={onboardingStatus.hasLeaderSync}
+            hasInvitedMember={onboardingStatus.hasInvitedMember}
             workspaceCreatedAt={workspace?.created_at}
             onAddMember={() => setMemberDialogOpen(true)}
             onAddNote={() => setDialogOpen(true)}
             onOpenMentor={handleOpenMentor}
             onOpenLeaderSync={() => setLeaderSyncOpen(true)}
+            onOpenInvite={() => {
+              const target =
+                teamMembers.find(m => !m.linked_user_id && (m.invite_status ?? 'none') !== 'accepted') ||
+                teamMembers[0];
+              if (target) handleOpenInviteDialog(target);
+            }}
           />
         )}
 

@@ -249,6 +249,10 @@
     "generateAISummary": "Generate an AI summary",
     "askMentor": "Ask the Leadership Mentor for guidance",
     "chatAction": "Chat →",
+    "openMentorChat": "Ask your first question to Mentor Chat",
+    "mentorChatAction": "Open Mentor →",
+    "inviteFirstMember": "Invite your first direct report by email",
+    "inviteAction": "Invite →",
     "stepsCompleted": "{{completed}} of {{total}} steps completed"
   },
   "activity": {

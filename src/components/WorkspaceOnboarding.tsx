@@ -59,18 +59,38 @@ export function WorkspaceOnboarding({ userId, userMetadata, onComplete }: Worksp
 
       if (teamError) throw teamError;
 
-      // Fire-and-forget: enviar leader-welcome para o próprio líder
+      // Re-fetch is_beta_user para detectar Programa Fundadores (não bloqueia o fluxo).
+      let isFounderProgram = false;
+      try {
+        const { data: ws } = await supabase
+          .from('workspaces')
+          .select('is_beta_user')
+          .eq('id', workspace.id)
+          .maybeSingle();
+        isFounderProgram = !!ws?.is_beta_user;
+      } catch (err) {
+        console.warn('Re-fetch is_beta_user falhou — segue com template genérico:', err);
+      }
+
+      // Fire-and-forget: enviar leader-welcome para o próprio líder.
+      // Nunca derivar leaderName do email — usa só nome real do perfil.
       const { data: { user } } = await supabase.auth.getUser();
       if (user?.email) {
+        const leaderName =
+          (user.user_metadata?.full_name as string | undefined) ||
+          (user.user_metadata?.display_name as string | undefined) ||
+          undefined;
+
         supabase.functions.invoke('send-transactional-email', {
           body: {
             templateName: 'leader-welcome',
             recipientEmail: user.email,
             idempotencyKey: `leader-welcome-${userId}`,
             templateData: {
-              leaderName: user.user_metadata?.full_name || user.email.split('@')[0],
+              leaderName,
               workspaceName: workspaceName.trim(),
-              dashboardUrl: `${window.location.origin}/dashboard`,
+              dashboardUrl: 'https://rhitmo.co/dashboard',
+              isFounderProgram,
             }
           }
         }).catch((err) => {

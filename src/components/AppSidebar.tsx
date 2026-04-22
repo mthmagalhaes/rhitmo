@@ -23,6 +23,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useToast } from '@/hooks/use-toast';
 import { useLinkedMember } from '@/hooks/useLinkedMember';
 import { useHRRiskAlerts } from '@/hooks/useHRRiskAlerts';
+import { usePlanLimits } from '@/hooks/usePlanLimits';
 import {
   Sidebar,
   SidebarContent,
@@ -80,6 +81,8 @@ export function AppSidebar() {
   const { isLeader, isHRAdmin, isUser, loading: roleLoading } = useUserRole();
   const { isLinkedMember, linkedMember } = useLinkedMember();
   const { count: hrAlertsCount } = useHRRiskAlerts();
+  const { limits: planLimits } = usePlanLimits();
+  const isFounder = !!planLimits?.isBetaUser;
   const { stopImpersonation, impersonatedEmail } = useImpersonation();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -512,6 +515,32 @@ export function AppSidebar() {
               {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>
+
+          {isFounder && (
+            <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Você é Fundador 🎟️</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Resposta em até 4h em horário comercial. Falamos diretamente.
+                </p>
+              </div>
+              {/* TODO: substituir wa.me/5541999999999 pelo número real do Matheus */}
+              <Button
+                asChild
+                variant="default"
+                size="sm"
+                className="w-full"
+              >
+                <a
+                  href="https://wa.me/5541999999999"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Falar pelo WhatsApp
+                </a>
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

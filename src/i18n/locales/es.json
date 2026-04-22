@@ -249,6 +249,10 @@
     "generateAISummary": "Genera un resumen con IA",
     "askMentor": "Pide orientación al Mentor de Liderazgo",
     "chatAction": "Conversar →",
+    "openMentorChat": "Hazle tu primera pregunta al Mentor Chat",
+    "mentorChatAction": "Abrir Mentor →",
+    "inviteFirstMember": "Invita a tu primer colaborador por email",
+    "inviteAction": "Invitar →",
     "stepsCompleted": "{{completed}} de {{total}} pasos completados"
   },
   "activity": {

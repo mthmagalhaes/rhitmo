@@ -43,7 +43,7 @@ const MemberWelcomeEmail = ({ memberName, leaderName, teamName, syncUrl }: Membe
           <Text style={listItem}>🔥 O que mais te motiva</Text>
         </Section>
         <Section style={buttonSection}>
-          <Button style={button} href={syncUrl || 'https://app-rhitmo.lovable.app'}>
+          <Button style={button} href={syncUrl || 'https://rhitmo.co'}>
             Preencher Rhitmo Sync ⚡
           </Button>
         </Section>

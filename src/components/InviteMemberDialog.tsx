@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Copy, Loader2, Mail, CheckCircle, UserCheck } from 'lucide-react';
+import { Copy, Loader2, Mail, CheckCircle, UserCheck, Send } from 'lucide-react';
 
 interface InviteMemberDialogProps {
   open: boolean;
@@ -27,6 +27,8 @@ export const InviteMemberDialog = ({
   onSuccess 
 }: InviteMemberDialogProps) => {
   const [loading, setLoading] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
   const { toast } = useToast();
 
   // Gerar link de convite — sempre usar domínio de produção
@@ -40,7 +42,6 @@ export const InviteMemberDialog = ({
   const handleGenerateInvite = async () => {
     setLoading(true);
     try {
-      // Gerar novo token UUID
       const newToken = crypto.randomUUID();
       
       const { error } = await supabase
@@ -77,6 +78,48 @@ export const InviteMemberDialog = ({
         title: "Link copiado!",
         description: "Cole no WhatsApp ou envie por e-mail."
       });
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!member.email || !member.invite_token) return;
+    setEmailSending(true);
+    try {
+      // Buscar nome real do líder — nunca usar email como fallback visível.
+      const { data: { user } } = await supabase.auth.getUser();
+      const leaderName =
+        (user?.user_metadata?.full_name as string | undefined) ||
+        (user?.user_metadata?.display_name as string | undefined) ||
+        undefined;
+
+      const { error } = await supabase.functions.invoke('send-transactional-email', {
+        body: {
+          templateName: 'member-welcome',
+          recipientEmail: member.email,
+          idempotencyKey: `invite-${member.id}-${member.invite_token}`,
+          templateData: {
+            memberName: member.name,
+            leaderName,
+            syncUrl: `${APP_URL}/invite?code=${member.invite_token}`,
+          },
+        },
+      });
+
+      if (error) throw error;
+
+      setEmailSent(true);
+      toast({
+        title: "Convite enviado!",
+        description: `Email enviado para ${member.email}.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao enviar email",
+        description: error.message || 'Tente novamente em instantes.',
+        variant: "destructive",
+      });
+    } finally {
+      setEmailSending(false);
     }
   };
 
@@ -124,6 +167,42 @@ export const InviteMemberDialog = ({
               Copiar
             </Button>
           </div>
+
+          {member.email && (
+            <div className="rounded-xl border bg-primary/5 p-4 space-y-3">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">
+                  Enviar convite por email
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Mandamos o template oficial do Rhitmo para <strong>{member.email}</strong> com o link acima.
+                </p>
+              </div>
+              <Button
+                onClick={handleSendEmail}
+                disabled={emailSending || emailSent}
+                className="w-full gap-2"
+                size="sm"
+              >
+                {emailSending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Enviando...
+                  </>
+                ) : emailSent ? (
+                  <>
+                    <CheckCircle className="h-4 w-4" />
+                    Email enviado
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4" />
+                    Enviar convite por email
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
           
           <p className="text-xs text-muted-foreground">
             Ao acessar o link, {member.name} poderá criar uma conta e visualizar os feedbacks compartilhados.
