@@ -65,6 +65,28 @@ const ratingLabels: Record<string, string> = {
   excellence: 'Excelência',
 };
 
+// Detects strings like "(fonte: ...)", "(Trimestral ...)", "(Mensal de ...)", "(1:1 de ...)"
+const EVIDENCE_PREFIX_REGEX = /^\(\s*(fonte:|Trimestral|Mensal|1:1|Anotação|fonte\s)/i;
+
+function EvidenceTag({ children }: { children: React.ReactNode }) {
+  const text = String(children ?? '');
+  if (EVIDENCE_PREFIX_REGEX.test(text.trim())) {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 text-[11px] font-medium border border-blue-100 dark:border-blue-900 not-italic ml-1 align-middle">
+        {children}
+      </span>
+    );
+  }
+  return <em>{children}</em>;
+}
+
+function isLegacyHtmlContent(content: string | null | undefined): boolean {
+  if (!content) return false;
+  return /class="(review-section|section-header|section-icon|dimension-table|classification-grid|evidence-tag|contribution-item|pattern-item|development-item|next-steps-list)"/.test(content)
+    || /\bICON_[A-Z_]+\b/.test(content)
+    || /\{\{ICON_[A-Z_]+\}\}/.test(content);
+}
+
 export function FormalReviewSheet({
   open,
   onOpenChange,
@@ -79,6 +101,21 @@ export function FormalReviewSheet({
   const [competencyEvaluations, setCompetencyEvaluations] = useState<CompetencyEvaluation[]>([]);
   const [activeTab, setActiveTab] = useState('draft');
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [coachingOpen, setCoachingOpen] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+
+  // Persist coaching tip open/closed per review
+  useEffect(() => {
+    if (!reviewId) return;
+    const stored = localStorage.getItem(`coaching-tip-open-${reviewId}`);
+    setCoachingOpen(stored === 'true');
+  }, [reviewId]);
+
+  const toggleCoaching = (next: boolean) => {
+    setCoachingOpen(next);
+    if (reviewId) localStorage.setItem(`coaching-tip-open-${reviewId}`, String(next));
+  };
 
   // Fetch review data
   const { data: review, isLoading } = useQuery({
