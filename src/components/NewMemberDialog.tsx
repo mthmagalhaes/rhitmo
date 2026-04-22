@@ -388,7 +388,7 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
               </div>
               {!hasSync && (
                 <p className="text-xs text-amber-600 dark:text-amber-400 pl-6">
-                  🔒 Disponível no plano Flow.{' '}
+                  🔒 Disponível no plano Pro.{' '}
                   <Link to="/billing" className="underline hover:no-underline">
                     Ver planos
                   </Link>

@@ -536,7 +536,7 @@
     "createNewTeam": "+ Criar novo time...",
     "newTeamPlaceholder": "Nome do novo time (ex: Marketing)",
     "sendSyncInvite": "Enviar convite para mapeamento de perfil Rhitmo Sync",
-    "syncLocked": "🔒 Disponível no plano Flow.",
+    "syncLocked": "🔒 Disponível no plano Pro.",
     "seePlans": "Ver planos",
     "memberRegistered": "Membro cadastrado!",
     "memberRegisteredDescription": "{{name}} foi adicionado à sua equipe",

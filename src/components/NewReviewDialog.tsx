@@ -317,7 +317,7 @@ export const NewReviewDialog = ({
                       <TooltipContent className="max-w-xs">
                         <p className="font-medium">Limite do plano {limits.planName} atingido</p>
                         <p className="text-sm text-muted-foreground">
-                          {limits.maxReviews} avaliação(ões)/mês. Faça upgrade para Flow.
+                          {limits.maxReviews} avaliação(ões)/mês. Faça upgrade para Pro.
                         </p>
                       </TooltipContent>
                     )}
@@ -395,7 +395,7 @@ export const NewReviewDialog = ({
                   <TooltipContent className="max-w-xs">
                     <p className="font-medium">Limite do plano {limits.planName} atingido</p>
                     <p className="text-sm text-muted-foreground">
-                      {limits.maxReviews} avaliação(ões)/mês. Faça upgrade para Flow.
+                      {limits.maxReviews} avaliação(ões)/mês. Faça upgrade para Pro.
                     </p>
                   </TooltipContent>
                 )}

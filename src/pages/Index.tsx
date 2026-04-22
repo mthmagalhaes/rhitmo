@@ -429,7 +429,15 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
   };
 
   const handleOpenMentor = () => {
-    if (teamMembers.length > 0) navigate(`/member/${teamMembers[0].id}?openMentor=true`);
+    if (teamMembers.length > 0) {
+      navigate(`/member/${teamMembers[0].id}?openMentor=true`);
+      return;
+    }
+    toast({
+      title: 'Adicione o primeiro membro',
+      description: 'O Mentor conversa com você sobre cada liderado. Cadastre o primeiro para começar.',
+    });
+    setMemberDialogOpen(true);
   };
 
   if (authLoading || linkedMemberLoading || roleLoading || loading) {
@@ -499,14 +507,32 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
                 <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground font-serif">
                   {getGreeting()}, {firstName}
                 </h1>
-                <Badge
-                  variant={activeSubscription ? 'default' : 'outline'}
-                  className={activeSubscription?.plan_tier === 'business' ? 'bg-foreground text-background hover:bg-foreground/90' : ''}
-                >
-                  {activeSubscription
-                    ? `${activeSubscription.plan_tier.charAt(0).toUpperCase() + activeSubscription.plan_tier.slice(1)}${activeSubscription.status === 'trialing' ? ' · Trial' : ''}`
-                    : 'Pulse'}
-                </Badge>
+                {(() => {
+                  const isBeta = !!limits?.isBetaUser;
+                  const tier = activeSubscription?.plan_tier;
+                  // 'business' é legado e deve ser apresentado como Pro
+                  const tierLabel = tier === 'business'
+                    ? 'Pro'
+                    : tier
+                      ? tier.charAt(0).toUpperCase() + tier.slice(1)
+                      : 'Pulse';
+                  const label = isBeta
+                    ? 'Beta'
+                    : `${tierLabel}${activeSubscription?.status === 'trialing' ? ' · Trial' : ''}`;
+                  const className = isBeta
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    : tier === 'business'
+                      ? 'bg-foreground text-background hover:bg-foreground/90'
+                      : '';
+                  return (
+                    <Badge
+                      variant={isBeta || activeSubscription ? 'default' : 'outline'}
+                      className={className}
+                    >
+                      {label}
+                    </Badge>
+                  );
+                })()}
                 <Button variant="ghost" size="icon" onClick={() => setEditWorkspaceOpen(true)} className="h-8 w-8" aria-label={t('dashboard.editWorkspace')}>
                   <Pencil className="h-4 w-4" />
                 </Button>
@@ -667,7 +693,9 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
                   </>
                 )}
                 {!workspace && (
-                  <p className="text-muted-foreground text-sm">{t('dashboard.noContentAvailable')}</p>
+                  <div className="flex justify-center py-6">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  </div>
                 )}
               </div>
             </div>

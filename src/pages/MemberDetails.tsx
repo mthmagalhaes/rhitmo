@@ -427,7 +427,7 @@ const MemberDetails = () => {
     return <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Membro não encontrado</h1>
-          <Button onClick={() => navigate('/')}>Voltar ao Dashboard</Button>
+          <Button onClick={() => navigate('/dashboard')}>Voltar ao Dashboard</Button>
         </div>
       </div>;
   }
@@ -547,7 +547,7 @@ const MemberDetails = () => {
                         </div>
                         <p className="text-sm font-medium">Recurso Premium</p>
                         <p className="text-xs text-muted-foreground">
-                          Disponível no plano Flow ou superior
+                          Disponível no plano Pro ou superior
                         </p>
                         <Button size="sm" variant="outline" onClick={() => navigate('/billing')} className="gap-2">
                           Desbloquear
