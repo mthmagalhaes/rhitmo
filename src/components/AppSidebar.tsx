@@ -81,7 +81,7 @@ export function AppSidebar() {
   const { isLeader, isHRAdmin, isUser, loading: roleLoading } = useUserRole();
   const { isLinkedMember, linkedMember } = useLinkedMember();
   const { count: hrAlertsCount } = useHRRiskAlerts();
-  const planLimits = usePlanLimits();
+  const { limits: planLimits } = usePlanLimits();
   const isFounder = !!planLimits?.isBetaUser;
   const { stopImpersonation, impersonatedEmail } = useImpersonation();
   const { toast } = useToast();
