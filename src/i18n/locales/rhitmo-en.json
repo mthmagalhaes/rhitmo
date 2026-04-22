@@ -60,7 +60,10 @@
       "confirmedBadge": "Confirmed",
       "draftBadge": "Draft",
       "previousQuarters": "Previous quarters",
-      "loading": "Loading quarterlies..."
+      "loading": "Loading quarterlies...",
+      "inProgressTitle": "Quarterly Rhitmo — {{quarter}}",
+      "inProgressBadge": "In progress",
+      "inProgressDesc": "Quarter in progress. Closes on {{date}} — generation available after you confirm the monthlies."
     },
     "timeline": {
       "thisPersonsRhitmo": "This person's Rhitmo",

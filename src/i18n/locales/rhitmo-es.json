@@ -60,7 +60,10 @@
       "confirmedBadge": "Confirmado",
       "draftBadge": "Borrador",
       "previousQuarters": "Trimestres anteriores",
-      "loading": "Cargando trimestrales..."
+      "loading": "Cargando trimestrales...",
+      "inProgressTitle": "Rhitmo Trimestral — {{quarter}}",
+      "inProgressBadge": "En curso",
+      "inProgressDesc": "Trimestre en curso. Cierra el {{date}} — generación disponible después de que confirmes los mensuales."
     },
     "timeline": {
       "thisPersonsRhitmo": "Rhitmo de esta persona",

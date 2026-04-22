@@ -19,15 +19,17 @@ function smoothScrollTo(id: string) {
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// Returns the first day (UTC) of the CURRENT quarter — e.g., on April 22, 2026
-// returns "2026-04-01" (start of Q2). Previously did `qStartMonth - 3` which
-// pointed to the *previous* quarter and made the "Trimestral pronto" badge
-// fire one quarter too early.
-function getCurrentQuarterStart(): string {
+// First day (UTC) of the LAST CLOSED quarter — the one with confirmable
+// monthlies. The "Trimestral pronto" badge should fire when monthlies of the
+// LAST CLOSED quarter are confirmed and the trimestral hasn't been generated
+// yet. The current (in-progress) quarter is never actionable.
+function getLastClosedQuarterStart(): string {
   const d = new Date();
   const qStartMonth = Math.floor(d.getUTCMonth() / 3) * 3;
-  const m = String(qStartMonth + 1).padStart(2, '0');
-  return `${d.getUTCFullYear()}-${m}-01`;
+  const prev = qStartMonth - 3;
+  const year = prev < 0 ? d.getUTCFullYear() - 1 : d.getUTCFullYear();
+  const month = ((prev % 12) + 12) % 12;
+  return `${year}-${String(month + 1).padStart(2, '0')}-01`;
 }
 
 export function RhitmoTabSummary({ memberId, onSwitchSection }: Props) {
@@ -66,7 +68,7 @@ export function RhitmoTabSummary({ memberId, onSwitchSection }: Props) {
   const confirmedMonthly = monthly.filter((m) => m.status === 'confirmed').length;
   const draftQuarterly = quarterly.filter((q) => q.status === 'draft').length;
   const confirmedQuarterly = quarterly.filter((q) => q.status === 'confirmed').length;
-  const lastQuarter = getCurrentQuarterStart();
+  const lastQuarter = getLastClosedQuarterStart();
   const hasLastQuarter = quarterly.some((q) => q.period_quarter.slice(0, 10) === lastQuarter);
   const hasConfirmedMonthlyInLastQuarter = monthly.some((m) => {
     if (m.status !== 'confirmed') return false;
