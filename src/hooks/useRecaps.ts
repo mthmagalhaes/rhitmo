@@ -86,7 +86,10 @@ export function useGenerateMonthlyRecap(memberId: string | undefined) {
           regenerate: args.regenerate ?? false,
         },
       });
-      if (error) throw error;
+      if (error) {
+        const msg = await extractEdgeFunctionError(error, 'Falha ao chamar a função');
+        throw new Error(msg);
+      }
       if ((data as any)?.error) throw new Error((data as any).error);
       return data;
     },
@@ -218,7 +221,10 @@ export function useGenerateQuarterlyRecap(memberId: string | undefined) {
           regenerate: args.regenerate ?? false,
         },
       });
-      if (error) throw error;
+      if (error) {
+        const msg = await extractEdgeFunctionError(error, 'Falha ao chamar a função');
+        throw new Error(msg);
+      }
       if ((data as any)?.error) throw new Error((data as any).error);
       return data;
     },
