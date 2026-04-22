@@ -138,9 +138,24 @@ export function CreateFormalReviewDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Nova Avaliação Formal</DialogTitle>
+          {/* Stepper */}
+          <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-1.5">
+              <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-semibold flex items-center justify-center">1</div>
+              <span className="text-xs font-medium text-foreground">Briefing</span>
+            </div>
+            <div className="flex-1 h-px bg-border" />
+            <div className="flex items-center gap-1.5">
+              <div className="h-6 w-6 rounded-full bg-muted text-muted-foreground text-xs font-semibold flex items-center justify-center">2</div>
+              <span className="text-xs font-medium text-muted-foreground">Revisão & Compartilhamento</span>
+            </div>
+          </div>
+          <DialogTitle>Briefing da Avaliação Formal</DialogTitle>
           <DialogDescription>
             {member?.name} • {member?.role || 'Cargo não definido'}
+            <span className="block text-xs mt-1 text-muted-foreground/80">
+              Definimos o escopo aqui. No próximo passo você revisa, ajusta e compartilha.
+            </span>
           </DialogDescription>
         </DialogHeader>
 
@@ -291,7 +306,7 @@ export function CreateFormalReviewDialog({
                   Criando...
                 </>
               ) : (
-                'Criar Avaliação'
+                'Avançar para revisão →'
               )}
             </Button>
           </div>
