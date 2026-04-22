@@ -900,6 +900,13 @@ const Landing = () => {
             <SheetContent side="right" className="w-[280px] pt-12">
               <nav className="flex flex-col gap-4">
                 <SheetClose asChild>
+                  <a href="#impacto">
+                    <Button variant="outline" className="w-full justify-start min-h-[44px]">
+                      {t.featuresNav}
+                    </Button>
+                  </a>
+                </SheetClose>
+                <SheetClose asChild>
                   <a href="#pricing">
                     <Button variant="outline" className="w-full justify-start min-h-[44px]">
                       {t.pricingNav}
