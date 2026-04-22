@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Sparkles } from 'lucide-react';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
 import { RhythmWave } from '@/components/RhythmWave';
+import { trackSignupConversion } from '@/lib/analytics';
 
 interface AuthProps {
   defaultMode?: 'login' | 'signup';
@@ -106,6 +107,10 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
         }
       });
       if (error) throw error;
+
+      // Fire Google Ads signup conversion (idempotent per email)
+      trackSignupConversion(email);
+
       toast({
         title: t('auth.accountCreated'),
         description: t('auth.accountCreatedDesc')
