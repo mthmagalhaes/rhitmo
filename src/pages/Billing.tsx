@@ -53,7 +53,6 @@ const PLAN_FEATURES = {
     features: [
       'Acesso ao Meu Rhitmo (portal do liderado)',
       '1 avaliação com IA por mês',
-      'Upload manual de áudio',
       'Mentor Chat limitado (20 mensagens/mês)',
       'Notas e anotações ilimitadas',
     ],
@@ -68,7 +67,7 @@ const PLAN_FEATURES = {
     name: 'Pro',
     features: [
       'Liderados ilimitados',
-      '15 horas/mês de bot de transcrição (Recall.ai)',
+      '30 horas/mês de transcrição automatizada (Recall.ai + upload manual)',
       'Avaliações com IA ilimitadas',
       'Pre-meeting Briefs com contexto histórico',
       'Detecção de viés em tempo real',

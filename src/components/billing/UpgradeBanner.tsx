@@ -5,31 +5,63 @@ import { ArrowUpRight } from 'lucide-react';
 
 export const UpgradeBanner = () => {
   const navigate = useNavigate();
-  const { limits, memberCount, teamCount, reviewCount, botMeetingCount, checkLimit } = useEnforcedLimits();
+  const {
+    limits,
+    memberCount,
+    teamCount,
+    reviewCount,
+    botMeetingCount,
+    mentorMessageCount,
+    recordingHoursUsed,
+    checkLimit,
+  } = useEnforcedLimits();
 
   if (limits.isBetaUser) return null;
 
-  const nearLimits: { name: string; current: number; max: number }[] = [];
+  const nearLimits: { name: string; current: string; max: string }[] = [];
 
   const memberStatus = checkLimit(memberCount, limits.maxMembers);
   if (memberStatus !== 'allowed') {
-    nearLimits.push({ name: 'Liderados', current: memberCount, max: limits.maxMembers });
+    nearLimits.push({ name: 'Liderados', current: String(memberCount), max: String(limits.maxMembers) });
   }
 
   const teamStatus = checkLimit(teamCount, limits.maxTeams);
   if (teamStatus !== 'allowed') {
-    nearLimits.push({ name: 'Times', current: teamCount, max: limits.maxTeams });
+    nearLimits.push({ name: 'Times', current: String(teamCount), max: String(limits.maxTeams) });
   }
 
   const reviewStatus = checkLimit(reviewCount, limits.maxReviews);
   if (reviewStatus !== 'allowed') {
-    nearLimits.push({ name: 'Avaliações/mês', current: reviewCount, max: limits.maxReviews });
+    nearLimits.push({ name: 'Avaliações/mês', current: String(reviewCount), max: String(limits.maxReviews) });
+  }
+
+  // Mentor Chat — primeira feature usada por novos usuários no Pulse (cap 20/mês).
+  // checkLimit já trata Infinity, então só renderiza quando faz sentido.
+  const mentorStatus = checkLimit(mentorMessageCount, limits.maxMentorMessages);
+  if (mentorStatus !== 'allowed') {
+    nearLimits.push({
+      name: 'Mensagens Mentor Chat',
+      current: String(mentorMessageCount),
+      max: String(limits.maxMentorMessages),
+    });
+  }
+
+  // Horas de transcrição (gravação manual + bot Recall). Só faz sentido quando há cap real.
+  if (limits.maxRecordingHours > 0 && limits.maxRecordingHours !== Infinity) {
+    const recordingStatus = checkLimit(recordingHoursUsed, limits.maxRecordingHours);
+    if (recordingStatus !== 'allowed') {
+      nearLimits.push({
+        name: 'Horas de transcrição',
+        current: recordingHoursUsed.toFixed(1),
+        max: String(limits.maxRecordingHours),
+      });
+    }
   }
 
   if (limits.maxBotMeetings > 0) {
     const botStatus = checkLimit(botMeetingCount, limits.maxBotMeetings);
     if (botStatus !== 'allowed') {
-      nearLimits.push({ name: 'Reuniões com bot', current: botMeetingCount, max: limits.maxBotMeetings });
+      nearLimits.push({ name: 'Reuniões com bot', current: String(botMeetingCount), max: String(limits.maxBotMeetings) });
     }
   }
 
