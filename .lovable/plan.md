@@ -1,57 +1,59 @@
 
 
-# Trocar "Enterprise" do header por "Preços" e "FAQ"
+# Reordenar header da landing + adicionar botão "Recursos"
 
 ## O que muda
 
-No header da landing (`src/pages/Landing.tsx`), substituir o botão **Enterprise** por dois links de âncora: **Preços / Pricing / Precios** e **FAQ**. Aplicar tanto no menu desktop quanto no Sheet mobile.
+Reorganizar a ordem dos itens no header da landing (`src/pages/Landing.tsx`) e adicionar um novo link "Recursos" como primeiro item dos links de navegação. Aplicar tanto no menu desktop quanto no Sheet mobile.
 
-A página `/enterprise` continua existindo e acessível pelo botão **"Fale com Vendas"** dentro do card Enterprise (na seção de pricing) e pelo card "Empresas estruturadas" mais abaixo. Só perde o atalho do header.
+## Ordem final (esquerda → direita, depois do logo)
+
+1. **Recursos** (novo) → âncora `#impacto`
+2. **Preços** (já existe) → âncora `#pricing`
+3. **FAQ** (já existe) → âncora `#faq`
+4. Ícone Light/Dark (já existe)
+5. Ícone de língua (já existe)
+6. **Entrar** (já existe)
+7. **Começar grátis** (já existe)
 
 ## Detalhes
 
-**1. Strings (i18n inline do `Landing.tsx`, blocos `pt` e `en`)**
+**1. Strings i18n (blocos `pt` e `en` em `Landing.tsx`)**
 
-Adicionar em cada bloco de tradução, ao lado de `enterpriseNav`:
+Adicionar ao lado de `pricingNav` / `faqNav`:
+- PT: `featuresNav: "Recursos"`
+- EN: `featuresNav: "Features"`
+- (ES futuro: `featuresNav: "Recursos"`)
 
-- PT: `pricingNav: "Preços"`, `faqNav: "FAQ"`
-- EN: `pricingNav: "Pricing"`, `faqNav: "FAQ"`
-- (Quando o ES da landing for ativado: `pricingNav: "Precios"`, `faqNav: "FAQ"`)
+**2. Identificar âncora da seção "Impacto mensurável"**
 
-`enterpriseNav` permanece nas strings (ainda é usado no card de pricing/CTA), só não é mais renderizado no header.
+Verificar na seção correspondente (próximo das stats de ROI / "21 horas/semana") se já existe `id`. Se não, adicionar `id="impacto"` no `<section>` apropriado para o link funcionar.
 
-**2. Header desktop (linhas ~836-840)**
+**3. Header desktop**
 
-Remover o `<Link to="/enterprise">…{t.enterpriseNav}…</Link>` e colocar antes de "Entrar":
-
+Antes do botão "Preços", inserir:
 ```
-<a href="#pricing"><Button variant="ghost" size="sm" …>{t.pricingNav}</Button></a>
-<a href="#faq"><Button variant="ghost" size="sm" …>{t.faqNav}</Button></a>
+<a href="#impacto"><Button variant="ghost" size="sm" …>{t.featuresNav}</Button></a>
 ```
+Garantir que a sequência fique: Recursos → Preços → FAQ → ThemeToggle → LanguageToggle → Entrar → Começar grátis.
 
-**3. Header mobile / Sheet (linhas ~886-892)**
+**4. Header mobile / Sheet**
 
-Mesma troca: remover o item "Enterprise" e adicionar dois `SheetClose` com `<a href="#pricing">` e `<a href="#faq">`, mantendo `variant="outline"` e `min-h-[44px]`.
+Mesma adição: novo `SheetClose` com `<a href="#impacto">` antes de Preços, mantendo `variant="outline"` e `min-h-[44px]`.
 
-**4. Adicionar `id="faq"` na seção FAQ (linha ~1321)**
+**5. Verificar ordem dos toggles**
 
-A seção `#pricing` já tem id. A seção FAQ ainda não — adicionar `id="faq"` no `<section className="py-24 bg-muted/30">` para o link âncora funcionar.
-
-**5. Scroll suave**
-
-Verificar se `html { scroll-behavior: smooth }` está em `src/index.css`. Se não estiver, adicionar — caso contrário o salto fica seco. (Adição de 1 linha.)
+Confirmar que ThemeToggle aparece antes de LanguageToggle no JSX desktop (conforme print do usuário). Se estiver invertido, trocar.
 
 ## Não muda
 
-- Página `/enterprise` continua publicada e linkada via "Fale com Vendas" no card de pricing e no card "Empresas estruturadas" da seção "Pra quem é".
-- Conteúdo da seção de pricing (3 cards: Pulse, Pro, Enterprise) intocado.
-- Conteúdo do FAQ intocado.
-- Nenhum arquivo além de `src/pages/Landing.tsx` (e possivelmente `src/index.css` para o scroll suave).
+- Conteúdo das seções de Impacto, Preços e FAQ.
+- Página `/enterprise` continua acessível via "Fale com Vendas" no card de pricing.
+- Nenhum arquivo além de `src/pages/Landing.tsx`.
 
 ## Critério de aceite
 
-- Header desktop e mobile mostram **Preços** e **FAQ** no lugar de Enterprise, em PT e EN.
-- Clicar em "Preços" rola até a seção de planos; "FAQ" rola até as perguntas.
-- Botão "Fale com Vendas" no card Enterprise continua levando para `/enterprise`.
-- Sem regressão visual no resto do header (toggle de tema, idioma, Entrar, Começar grátis).
+- Header desktop e mobile mostram, em ordem: **Recursos · Preços · FAQ · 🌙 · 🌐 · Entrar · Começar grátis**, em PT e EN.
+- Clicar em "Recursos" rola até a seção de Impacto mensurável; "Preços" rola até planos; "FAQ" rola até perguntas.
+- Sem regressão visual no resto do header.
 
