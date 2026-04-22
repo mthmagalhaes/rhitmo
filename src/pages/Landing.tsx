@@ -761,7 +761,6 @@ const PricingSection = ({
           </div>
         </div>
 
-        <p className="text-center text-sm text-muted-foreground mt-6">{t.launchDisclaimer}</p>
       </div>
     </section>
   );
