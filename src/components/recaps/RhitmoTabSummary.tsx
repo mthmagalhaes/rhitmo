@@ -19,10 +19,15 @@ function smoothScrollTo(id: string) {
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+// Returns the first day (UTC) of the CURRENT quarter — e.g., on April 22, 2026
+// returns "2026-04-01" (start of Q2). Previously did `qStartMonth - 3` which
+// pointed to the *previous* quarter and made the "Trimestral pronto" badge
+// fire one quarter too early.
 function getCurrentQuarterStart(): string {
   const d = new Date();
   const qStartMonth = Math.floor(d.getUTCMonth() / 3) * 3;
-  return format(new Date(Date.UTC(d.getUTCFullYear(), qStartMonth - 3, 1)), 'yyyy-MM-01');
+  const m = String(qStartMonth + 1).padStart(2, '0');
+  return `${d.getUTCFullYear()}-${m}-01`;
 }
 
 export function RhitmoTabSummary({ memberId, onSwitchSection }: Props) {
