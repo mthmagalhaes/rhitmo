@@ -1,4 +1,5 @@
 import { Search, CalendarIcon, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,8 +12,9 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { getDateLocale } from '@/lib/dateLocale';
 import { cn } from '@/lib/utils';
+import { getTagLabel } from '@/lib/tagConfig';
 import type { DateRange } from 'react-day-picker';
 
 interface FeedbackFiltersProps {
@@ -27,13 +29,13 @@ interface FeedbackFiltersProps {
 }
 
 const FILTER_TAGS = [
-  { key: '1:1', emoji: '🎯', label: '1:1' },
-  { key: 'PDI', emoji: '🚀', label: 'PDI' },
-  { key: 'Check-in', emoji: '✅', label: 'Check-in' },
-  { key: 'Feedback Difícil', emoji: '🚨', label: 'Feedback' },
-  { key: 'Oportunidade de Melhoria', emoji: '⚠️', label: 'Melhoria' },
-  { key: 'Destaque Positivo', emoji: '⭐', label: 'Destaque' },
-  { key: 'Risco', emoji: '🔴', label: 'Risco' },
+  { key: '1:1', emoji: '🎯' },
+  { key: 'PDI', emoji: '🚀' },
+  { key: 'Check-in', emoji: '✅' },
+  { key: 'Feedback Difícil', emoji: '🚨' },
+  { key: 'Oportunidade de Melhoria', emoji: '⚠️' },
+  { key: 'Destaque Positivo', emoji: '⭐' },
+  { key: 'Risco', emoji: '🔴' },
 ];
 
 export const FeedbackFilters = ({
@@ -46,6 +48,9 @@ export const FeedbackFilters = ({
   dateRange,
   onDateRangeChange,
 }: FeedbackFiltersProps) => {
+  const { t } = useTranslation();
+  const dateLocale = getDateLocale();
+
   const toggleTag = (tagKey: string) => {
     if (selectedTags.includes(tagKey)) {
       onTagsChange(selectedTags.filter(t => t !== tagKey));
@@ -56,9 +61,9 @@ export const FeedbackFilters = ({
 
   const formatDateRange = () => {
     if (!dateRange?.from) return null;
-    const from = format(dateRange.from, "dd MMM", { locale: ptBR });
+    const from = format(dateRange.from, "dd MMM", { locale: dateLocale });
     if (!dateRange.to) return from;
-    const to = format(dateRange.to, "dd MMM", { locale: ptBR });
+    const to = format(dateRange.to, "dd MMM", { locale: dateLocale });
     return `${from} – ${to}`;
   };
 
@@ -66,18 +71,16 @@ export const FeedbackFilters = ({
 
   return (
     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-6 p-3 bg-muted/30 rounded-lg border">
-      {/* Input de Busca */}
       <div className="relative flex-1 min-w-0 w-full sm:w-auto">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Pesquisar por palavras-chave..."
+          placeholder={t('filters.searchPlaceholder')}
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           className="pl-9 h-9"
         />
       </div>
 
-      {/* Filtros de Tags (Toggle Buttons) */}
       <div className="flex items-center gap-1.5 flex-wrap">
         {FILTER_TAGS.map(tag => (
           <Button
@@ -87,12 +90,11 @@ export const FeedbackFilters = ({
             onClick={() => toggleTag(tag.key)}
             className="h-8 text-xs gap-1"
           >
-            {tag.emoji} {tag.label}
+            {tag.emoji} {getTagLabel(tag.key)}
           </Button>
         ))}
       </div>
 
-      {/* Filtro de Período */}
       {onDateRangeChange && (
         <Popover>
           <PopoverTrigger asChild>
@@ -105,7 +107,7 @@ export const FeedbackFilters = ({
               )}
             >
               <CalendarIcon className="h-3.5 w-3.5" />
-              {hasDateFilter ? formatDateRange() : "Filtrar data"}
+              {hasDateFilter ? formatDateRange() : t('filters.filterDate')}
               {hasDateFilter && (
                 <X
                   className="h-3.5 w-3.5 ml-1 hover:text-destructive"
@@ -123,21 +125,20 @@ export const FeedbackFilters = ({
               selected={dateRange}
               onSelect={onDateRangeChange}
               numberOfMonths={2}
-              locale={ptBR}
+              locale={dateLocale}
               className={cn("p-3 pointer-events-auto")}
             />
           </PopoverContent>
         </Popover>
       )}
 
-      {/* Select de Ordenação */}
       <Select value={sortOrder} onValueChange={(value) => onSortChange(value as 'newest' | 'oldest')}>
         <SelectTrigger className="w-[140px] h-9 shrink-0">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="newest">Mais recentes</SelectItem>
-          <SelectItem value="oldest">Mais antigos</SelectItem>
+          <SelectItem value="newest">{t('filters.newest')}</SelectItem>
+          <SelectItem value="oldest">{t('filters.oldest')}</SelectItem>
         </SelectContent>
       </Select>
     </div>
