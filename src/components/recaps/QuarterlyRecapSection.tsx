@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 // (date-fns format no longer needed — quarter math is done in plain JS UTC)
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Sparkles, CheckCircle2, RefreshCw, BarChart3, AlertTriangle } from 'lucide-react';
+import { Loader2, Sparkles, CheckCircle2, RefreshCw, BarChart3, AlertTriangle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   useQuarterlyRecaps,
@@ -31,16 +31,62 @@ function quarterLabel(periodQuarter: string) {
   return `Q${q} ${d.getUTCFullYear()}`;
 }
 
-// Returns the first day (UTC) of the CURRENT quarter — e.g., on April 22, 2026
-// returns "2026-04-01" (start of Q2). The previous version subtracted 3 months
-// and pointed to the *previous* quarter, which both mislabeled the card
-// ("Q4 2025" instead of "Q1 2026") and made the edge function fetch the wrong
-// month range, returning 422 with no monthlies found.
+// First day (UTC) of the CURRENT quarter — the one in progress. Used only for
+// the read-only "Em andamento" card; never sent to the edge function (it would
+// 422 because there are no confirmed monthlies inside an unfinished quarter).
 function getCurrentQuarterStart(): string {
   const d = new Date();
   const qStartMonth = Math.floor(d.getUTCMonth() / 3) * 3;
   const m = String(qStartMonth + 1).padStart(2, '0');
   return `${d.getUTCFullYear()}-${m}-01`;
+}
+
+// First day (UTC) of the LAST CLOSED quarter — the one the leader can actually
+// generate the trimestral for (the previous one is finished, so the 3 monthlies
+// inside it can be confirmed). On April 22, 2026 → "2026-01-01" (Q1 2026).
+// Handles year rollover: if current quarter starts at month 0 (Q1), subtracting
+// 3 lands at month -3 → wrap to month 9 (Q4) of the previous year.
+function getLastClosedQuarterStart(): string {
+  const d = new Date();
+  const qStartMonth = Math.floor(d.getUTCMonth() / 3) * 3;
+  const prev = qStartMonth - 3;
+  const year = prev < 0 ? d.getUTCFullYear() - 1 : d.getUTCFullYear();
+  const month = ((prev % 12) + 12) % 12;
+  return `${year}-${String(month + 1).padStart(2, '0')}-01`;
+}
+
+// First day of the month AFTER the quarter ends (when monthlies become
+// confirmable and the trimestral can be generated). Q2 2026 (Apr-Jun) closes
+// on 01/07/2026, displayed as "01/07".
+function quarterClosingDate(periodQuarter: string): string {
+  const [y, m] = periodQuarter.split('-').map((x) => parseInt(x, 10));
+  const closing = new Date(Date.UTC(y, m - 1 + 3, 1));
+  const dd = String(closing.getUTCDate()).padStart(2, '0');
+  const mm = String(closing.getUTCMonth() + 1).padStart(2, '0');
+  return `${dd}/${mm}/${closing.getUTCFullYear()}`;
+}
+
+function CurrentQuarterCard({ periodQuarter }: { periodQuarter: string }) {
+  const { t } = useTranslation('rhitmo');
+  const closingDate = useMemo(() => quarterClosingDate(periodQuarter), [periodQuarter]);
+  return (
+    <Card className="rounded-2xl border-dashed border-border/70 bg-muted/20 shadow-none">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <CardTitle className="text-base font-semibold tracking-tight flex items-center gap-2 text-muted-foreground">
+            <Clock className="h-4 w-4" />
+            <span>{t('recap.quarterly.inProgressTitle', { quarter: quarterLabel(periodQuarter) })}</span>
+          </CardTitle>
+          <Badge variant="outline" className="border-border text-muted-foreground">
+            {t('recap.quarterly.inProgressBadge')}
+          </Badge>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          {t('recap.quarterly.inProgressDesc', { date: closingDate })}
+        </p>
+      </CardHeader>
+    </Card>
+  );
 }
 
 function QuarterCard({ memberId, recap, periodQuarter }: { memberId: string; recap: QuarterlyRecap | undefined; periodQuarter: string }) {
@@ -325,8 +371,9 @@ function QuarterCard({ memberId, recap, periodQuarter }: { memberId: string; rec
 export function QuarterlyRecapSection({ memberId }: Props) {
   const { t } = useTranslation('rhitmo');
   const { data: recaps = [], isLoading } = useQuarterlyRecaps(memberId, 4);
-  const lastQuarter = getCurrentQuarterStart();
-  const recapForLastQuarter = recaps.find((r) => r.period_quarter.slice(0, 10) === lastQuarter);
+  const currentQuarter = getCurrentQuarterStart();
+  const lastClosedQuarter = getLastClosedQuarterStart();
+  const recapForLastClosed = recaps.find((r) => r.period_quarter.slice(0, 10) === lastClosedQuarter);
 
   if (isLoading) {
     return (
@@ -337,7 +384,12 @@ export function QuarterlyRecapSection({ memberId }: Props) {
     );
   }
 
-  const previous = recaps.filter((r) => r.period_quarter.slice(0, 10) !== lastQuarter);
+  // Anything in the DB that's neither the current (in-progress) nor the last
+  // closed quarter shows up under "Trimestres anteriores".
+  const previous = recaps.filter((r) => {
+    const q = r.period_quarter.slice(0, 10);
+    return q !== currentQuarter && q !== lastClosedQuarter;
+  });
 
   return (
     <div className="space-y-4" id="rhitmo-quarterly">
@@ -345,7 +397,8 @@ export function QuarterlyRecapSection({ memberId }: Props) {
         <h2 className="text-lg font-bold tracking-tight">{t('recap.quarterly.title')}</h2>
         <p className="text-sm text-muted-foreground">{t('recap.quarterly.subtitle')}</p>
       </div>
-      <QuarterCard memberId={memberId} periodQuarter={lastQuarter} recap={recapForLastQuarter} />
+      <CurrentQuarterCard periodQuarter={currentQuarter} />
+      <QuarterCard memberId={memberId} periodQuarter={lastClosedQuarter} recap={recapForLastClosed} />
       {previous.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground pt-2">

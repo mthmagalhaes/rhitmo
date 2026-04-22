@@ -270,10 +270,11 @@ Deno.serve(async (req) => {
     if (monthErr) throw monthErr;
 
     if (!monthlies || monthlies.length === 0) {
+      const [qy, qm] = periodQuarter.split('-').map((x) => parseInt(x, 10));
+      const qLabel = `Q${Math.floor((qm - 1) / 3) + 1} ${qy}`;
       return new Response(
         JSON.stringify({
-          error:
-            'Confirme ao menos um Rhitmo Mensal do trimestre antes de gerar o trimestral. Sem mensais confirmados, o trimestral perde a base.',
+          error: `Confirme ao menos um Rhitmo Mensal do trimestre ${qLabel} antes de gerar o trimestral. Sem mensais confirmados, o trimestral perde a base.`,
         }),
         { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
