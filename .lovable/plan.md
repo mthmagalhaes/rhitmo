@@ -1,123 +1,144 @@
 
 
-# Bug crítico: nomes dos meses fora do lugar (off-by-one por timezone)
+# Avaliação Formal — 4 ajustes do passo 2
 
-## Causa-raiz (confirmada no banco)
+Resposta a cada item do feedback, com causa-raiz e solução.
 
-Confirmei no banco que os recaps existem corretamente:
+## 1. "Passo 1 de 2" no modal de criação
 
-| `period_month` (banco) | `feedbacks_count` | Aparece no UI como |
-|---|---|---|
-| `2026-03-01` | 8 | "Rhitmo Mensal — Fevereiro 2026" ❌ |
-| `2026-02-01` | 3 | "Rhitmo Mensal — Janeiro 2026" ❌ |
+**Onde:** `CreateFormalReviewDialog.tsx`
 
-Ou seja, o **dado está certo**. O **render do título está errado por 1 mês**. O Rhitmo Mensal de março **existe** — só está sendo etiquetado como fevereiro.
+- Adicionar um stepper minimalista no topo do `DialogHeader`: `● Passo 1 de 2 — Briefing` com um indicador visual leve (linha + bolinhas), e renomear o `DialogTitle` para "Briefing da Avaliação Formal".
+- Trocar o botão final "Criar Avaliação" → **"Avançar para revisão →"**, deixando explícito que o próximo passo é abrir o painel de revisão (Sheet).
+- Adicionar uma linha curta abaixo da descrição: *"Definimos o escopo aqui. No próximo passo você revisa, ajusta e compartilha."*
 
-### Por quê
+Sem mudar lógica de mutação — só copy + UI do header e do CTA.
 
-Em `MonthlyRecapSection.tsx` (linha 57):
+## 2. Minimizar "Dicas para Apresentação"
 
-```ts
-format(new Date(periodMonth + 'T00:00:00Z'), 'MMMM yyyy', { locale: ... })
+**Onde:** `FormalReviewSheet.tsx` (linhas 326–338)
+
+Hoje o card azul de coaching ocupa 200–300px no topo da aba "Rascunho Geral" e empurra a avaliação real para baixo. Solução:
+
+- Transformar o card num **Collapsible** (`@/components/ui/collapsible`, já disponível no Shadcn).
+- Default: **fechado** (mostra só o header `↗ Dicas para Apresentação · Visível apenas para você` + chevron).
+- Persistir o estado aberto/fechado em `localStorage` por `reviewId` (ex: `coaching-tip-open-${reviewId}`) para respeitar a preferência do usuário entre sessões.
+- Quando aberto, mantém o conteúdo Markdown atual.
+
+## 3. Ícones não aparecem (causa-raiz arquitetural)
+
+Esse é o item mais sério e explica também o ponto 4.
+
+### Diagnóstico
+
+A edge function `generate-formal-review` gera um **HTML estruturado** com:
+- `<div class="review-section">`, `<div class="section-header">`, `<span class="section-icon">{SVG}</span>`
+- `<table class="dimension-table">`, `<div class="classification-grid">`, `<span class="evidence-tag">`
+- 7 blocos com classes específicas para tipografia hierárquica.
+
+Esse HTML é jogado dentro do `RichTextEditor` (TipTap + StarterKit). O TipTap **só conhece** `p`, `h1-3`, `ul`, `ol`, `strong`, `em`, `highlight`. Ao fazer parse:
+- `<div>`, `<table>`, `<span class="...">` → **descartados** (sem schema).
+- Os SVGs dentro de `<span>` → **descartados junto**.
+- Restam só os textos soltos. Quando o placeholder `{{ICON_SUMMARY}}` por algum motivo não é substituído (ex: a IA escapou as chaves), o texto literal vaza para a UI — exatamente o que aparece nas screenshots.
+
+Além disso, **não existe CSS** no projeto para `.review-section`, `.dimension-table`, `.classification-grid`, `.evidence-tag`, etc. → mesmo se o HTML sobrevivesse, renderizaria sem estilo.
+
+### Solução
+
+Trocar o pipeline de **HTML rico não-suportado** por **Markdown estruturado renderizado fora do editor**:
+
+**a) Backend (`generate-formal-review/index.ts`)**
+
+- Reescrever o prompt para gerar **Markdown puro** (sem HTML), seguindo a estrutura de 7 blocos:
+  ```md
+  ## 📋 Visão geral do período
+  Parágrafo único…
+
+  ## 🏆 Principais contribuições
+  ### Nome curto da entrega
+  Descrição + impacto. *(fonte: Anotação 12/mar)*
+  ```
+- Trocar os placeholders `{{ICON_*}}` por **emojis nativos** (📋 🏆 📈 🎯 📊 ⚖️ ➡️) — renderizam sempre, sem JS, sem CSS, sem perda no parse.
+- Manter o tamanho 350–600 palavras e regras anti-alucinação.
+- Remover a substituição `.replace(/\{\{ICON_*\}\}/g, …)` do código — não precisa mais.
+
+**b) Frontend (`FormalReviewSheet.tsx`)**
+
+Separar **modo leitura** de **modo edição** na aba "Rascunho Geral":
+
+- **Modo leitura (default)**: renderiza `review.content` com `<ReactMarkdown>` (já está no projeto, usado no `coaching_tip`) num container `prose prose-sm` com classes Tailwind ricas para hierarquia (ver item 4).
+- **Botão "Editar texto" no canto**: ao clicar, alterna para o `RichTextEditor` (modo atual). Ao salvar, volta pra leitura.
+- Isso resolve dois problemas: ícones aparecem (são emojis no Markdown) **e** o usuário só usa o editor quando realmente quer editar — a leitura fica bonita por padrão.
+
+**c) Migração do conteúdo legado**
+
+Reviews já criadas têm HTML quebrado salvo em `content`. Duas opções:
+- Detectar HTML legado (`content.includes('class="review-section"')`) e exibir aviso "Este rascunho foi gerado num formato antigo. Clique em **Regenerar** para usar o novo formato." com botão que chama `generate-formal-review` de novo.
+- Não tentar conversão automática — risco de corromper conteúdo que o líder já editou.
+
+## 4. Padrão de formatação inteligente
+
+Hoje "está tudo um formato só" porque o HTML estruturado morre no TipTap (item 3). Resolvendo o item 3 com Markdown + `ReactMarkdown`, definimos um sistema visual claro via classes `prose-*` do Tailwind Typography:
+
+| Elemento Markdown | Render visual |
+|---|---|
+| `## Título do bloco` (com emoji) | Header de seção com emoji 20px, fonte 16px semibold, border-top sutil, padding-top 16px, margem superior 24px |
+| `### Subtítulo` | 14px font-semibold, color foreground, sem margin-top exagerada |
+| Parágrafo | 14px, line-height 1.65, color muted-foreground-90 |
+| `*(fonte: ...)*` (itálico entre parênteses) | Pílula visual via regex no remark — fundo `bg-blue-50`, borda `border-blue-200`, fonte 11px, `rounded-full`, padding 2px 8px |
+| Lista `-` | Marcador discreto, espaçamento confortável entre itens |
+| `**negrito**` | Para "labels" tipo "Desempenho:", "Promoção:", "Mérito:" no bloco de classificação |
+
+Implementação concreta no `FormalReviewSheet.tsx`:
+
+```tsx
+<div className="prose prose-sm max-w-none
+  prose-headings:tracking-tight prose-headings:font-semibold
+  prose-h2:text-base prose-h2:mt-8 prose-h2:mb-3 prose-h2:pb-2 
+  prose-h2:border-b prose-h2:border-border/50 prose-h2:flex prose-h2:items-center prose-h2:gap-2
+  prose-h3:text-sm prose-h3:mt-4 prose-h3:mb-1 prose-h3:text-foreground
+  prose-p:text-sm prose-p:leading-relaxed prose-p:text-muted-foreground
+  prose-strong:text-foreground
+  prose-li:text-sm prose-li:my-0.5
+">
+  <ReactMarkdown components={{ em: EvidenceTag }}>
+    {review.content}
+  </ReactMarkdown>
+</div>
 ```
 
-- `new Date('2026-03-01T00:00:00Z')` é parseado em **UTC** (correto)
-- `format()` do date-fns renderiza no **timezone local do navegador** (Brasília, UTC-3)
-- `2026-03-01 00:00 UTC` = `2026-02-28 21:00 BRT`
-- Resultado: `format(..., 'MMMM yyyy')` retorna **"fevereiro 2026"**
+Onde `EvidenceTag` é um componente custom que detecta `*(fonte: ...)*` e renderiza como pílula:
 
-Reproduzi com `TZ=America/Sao_Paulo`:
-- `'2026-03-01T00:00:00Z'` → `"fevereiro 2026"`
-- `'2026-02-01T00:00:00Z'` → `"janeiro 2026"`
-
-O bug afeta **todos os usuários em qualquer fuso oeste de UTC** (toda a América, inclusive Brasil). Em fusos a leste (Europa/Ásia) o bug não aparece — por isso passou batido em alguns testes.
-
-### Outros pontos contaminados pelo mesmo padrão
-
-| Arquivo | Linha | Sintoma |
-|---|---|---|
-| `MonthlyRecapSection.tsx` :57 | título do card mensal | "Março" vira "Fevereiro" |
-| `EvidenceChips.tsx` :35 | data do chip de evidência (`dd/MM`) | `2026-03-01` aparece como `28/02`. Datas com hora ≥ 03:00 UTC sobrevivem (por isso `11/03` na screenshot ficou ok) |
-| `QuarterlyRecapSection.tsx` :29-31 | label `Q1 2026` etc | usa `getUTCMonth` na data — esse está correto, falso positivo, não mexer |
-| `RhitmoTabSummary.tsx` :22-26 (`getCurrentQuarterStart`) | cálculo do "trimestre atual" | bug separado: faz `qStartMonth - 3`, ou seja, devolve o trimestre **anterior** em vez do atual. Já em produção. |
-| `MonthlyRecapSection.tsx` :253-261 (`CurrentMonthCard`) | "Mês em curso" | usa `new Date()` direto, então mostra o mês local correto — OK |
-
-## Correção
-
-### 1. Helper único `formatPeriodMonth(periodMonth, locale)`
-
-Criar um utilitário em `src/lib/dateLocale.ts` (ou novo `src/lib/recapDates.ts`) que **renderiza no fuso UTC**, sem nunca cair na conversão para timezone local:
-
-```ts
-export function formatPeriodMonth(periodMonth: string, locale: Locale) {
-  // periodMonth = 'YYYY-MM-DD' → parse manual, sem Date()
-  const [y, m] = periodMonth.split('-').map(Number);
-  // mês em UTC + format com timeZone forçado, OU formatação manual via locale.localize
-  return format(new Date(Date.UTC(y, m - 1, 1)), 'MMMM yyyy', {
-    locale,
-  }).replace(/.*/, (s) => s); // — substituído por abordagem explícita abaixo
-}
+```tsx
+const EvidenceTag = ({ children }) => {
+  const text = String(children);
+  if (text.startsWith('(fonte:') || text.startsWith('(Trimestral') || text.startsWith('(Mensal') || text.startsWith('(1:1')) {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/30 
+                       text-blue-700 dark:text-blue-300 text-[11px] font-medium border border-blue-100 
+                       dark:border-blue-900 not-italic ml-1">
+        {children}
+      </span>
+    );
+  }
+  return <em>{children}</em>;
+};
 ```
-
-A abordagem **mais segura e zero-dependência de tz**: usar `Intl.DateTimeFormat` com `timeZone: 'UTC'`, que respeita o locale do i18n e não depende do fuso do navegador:
-
-```ts
-export function formatPeriodMonth(periodMonth: string, lang: string) {
-  const [y, m] = periodMonth.split('-').map(Number);
-  return new Intl.DateTimeFormat(lang, {
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(Date.UTC(y, m - 1, 1)));
-}
-
-export function formatEvidenceDate(iso: string, lang: string) {
-  // iso pode ser 'YYYY-MM-DD' ou ISO completo — fixa em UTC
-  const d = iso.length <= 10 ? new Date(iso + 'T12:00:00Z') : new Date(iso);
-  return new Intl.DateTimeFormat(lang, {
-    day: '2-digit',
-    month: '2-digit',
-    timeZone: 'UTC',
-  }).format(d);
-}
-```
-
-(`T12:00:00Z` no caso de data-only garante que mesmo em fusos extremos não há salto de dia.)
-
-### 2. Substituir as chamadas
-
-- `MonthlyRecapSection.tsx` :57 → `formatPeriodMonth(periodMonth, i18n.language)`
-- `EvidenceChips.tsx` :35 → `formatEvidenceDate(iso, i18n.language)`
-
-### 3. Corrigir `getCurrentQuarterStart` em `RhitmoTabSummary.tsx`
-
-Trocar `qStartMonth - 3` por `qStartMonth` (era para apontar pro trimestre **vigente**, não o anterior). Manter a versão correta em `QuarterlyRecapSection.tsx` (que já usa `- 3` deliberadamente para "trimestre fechado anterior"; vou conferir contexto antes de mexer e só ajustar se realmente estiver inconsistente — aplicar com cautela).
-
-### 4. Não é necessário tocar no banco
-
-Os registros estão corretos (`period_month = 2026-03-01` significa "março de 2026"). Nenhuma migração, nenhum reprocessamento de IA, nenhum custo de tokens. **Só correção de render**.
-
-## Impacto para usuários atuais
-
-- O **março 2026** do Rhitmo do liderado em questão vai aparecer **com o título correto** assim que a correção subir — sem regenerar nada.
-- Mesma correção retroativa para todos os outros líderes/liderados em todos os fusos a oeste de UTC.
-- Os chips de evidência com data `YYYY-MM-DD` (ex: `2026-03-01`) deixam de mostrar `28/02`.
 
 ## Arquivos alterados
 
-1. `src/lib/dateLocale.ts` — adicionar `formatPeriodMonth` + `formatEvidenceDate`
-2. `src/components/recaps/MonthlyRecapSection.tsx` — usar o novo helper no título
-3. `src/components/recaps/EvidenceChips.tsx` — usar o novo helper no chip
-4. `src/components/recaps/RhitmoTabSummary.tsx` — corrigir `getCurrentQuarterStart` (off-by-one trimestre)
+1. `supabase/functions/generate-formal-review/index.ts` — prompt para Markdown + emojis, remover placeholders `{{ICON_*}}` e o bloco de SVGs
+2. `src/components/review/CreateFormalReviewDialog.tsx` — stepper "Passo 1 de 2", copy do CTA
+3. `src/components/review/FormalReviewSheet.tsx` — Collapsible para coaching tip, modo leitura/edição na aba Rascunho, ReactMarkdown estilizado, componente `EvidenceTag`, detecção de HTML legado
 
-Sem novas dependências. Sem migration. Sem mudança de copy/i18n.
+Sem migração de banco. Sem novas dependências (`react-markdown` e `@/components/ui/collapsible` já existem).
 
 ## Critério de aceite
 
-- [ ] Card "Rhitmo Mensal — Março 2026" aparece com título "Março 2026" (não mais "Fevereiro 2026")
-- [ ] Card de Janeiro deixa de aparecer; Fevereiro aparece com o conteúdo de fevereiro; Março aparece com o conteúdo de março
-- [ ] Chip de evidência com `date = "2026-03-01"` mostra `01/03` (não `28/02`)
-- [ ] Em qualquer fuso (testar com `TZ=America/Sao_Paulo`, `TZ=America/Los_Angeles`, `TZ=Europe/Lisbon`) o título do card bate com o `period_month` do banco
-- [ ] Trimestre vigente no summary aponta pro Q correto (não pro Q anterior)
-- [ ] Nenhuma regeneração de IA precisou ser disparada
+- Modal de criação mostra "Passo 1 de 2 — Briefing" e CTA "Avançar para revisão →"
+- Card "Dicas para Apresentação" inicia fechado, com toggle, persistido por review
+- Novas avaliações renderizam com emojis visíveis nos títulos de seção e tipografia hierárquica clara (H2 ≠ H3 ≠ parágrafo ≠ pílula de fonte)
+- "Fonte: Anotação X/Y" aparece como pílula azul, não como texto inline
+- Avaliações antigas (HTML legado) mostram banner pedindo regeneração — sem quebrar
+- Sem `ICON_SUMMARY`, `ICON_CONTRIBUTIONS`, `ICON_DIMENSIONS`, `ICON_NEXT_STEPS` aparecendo como texto literal
 
