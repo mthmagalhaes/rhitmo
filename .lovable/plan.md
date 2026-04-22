@@ -1,144 +1,180 @@
 
 
-# Avaliação Formal — 4 ajustes do passo 2
+# Slack — atualização dos comandos pós-mudanças das últimas 24h
 
-Resposta a cada item do feedback, com causa-raiz e solução.
+## TL;DR
 
-## 1. "Passo 1 de 2" no modal de criação
+**Sim, vale atualizar — mas pouca coisa.** O conjunto de slash commands (`/rhitmo`, `/nota`, `/kudos`, `/brief`, `/mentor`, `/meu-pdi`, `/meu-rhitmo`) cobre bem o uso conversacional e **nenhuma feature nova das últimas 24h** justifica criar comando novo. As mudanças foram em UI da web (ícone do Google Calendar, fix de timezone dos recaps, redesenho do passo 2 da Avaliação Formal) — fluxos que **acontecem dentro do app**, não no Slack.
 
-**Onde:** `CreateFormalReviewDialog.tsx`
+O que precisa de ajuste é **menu `/rhitmo` + copy** para refletir que existem novos artefatos consultáveis e empurrar o usuário pro lugar certo no app.
 
-- Adicionar um stepper minimalista no topo do `DialogHeader`: `● Passo 1 de 2 — Briefing` com um indicador visual leve (linha + bolinhas), e renomear o `DialogTitle` para "Briefing da Avaliação Formal".
-- Trocar o botão final "Criar Avaliação" → **"Avançar para revisão →"**, deixando explícito que o próximo passo é abrir o painel de revisão (Sheet).
-- Adicionar uma linha curta abaixo da descrição: *"Definimos o escopo aqui. No próximo passo você revisa, ajusta e compartilha."*
+## Estado atual (mapeado em `supabase/functions/slack-bot/index.ts`)
 
-Sem mudar lógica de mutação — só copy + UI do header e do CTA.
-
-## 2. Minimizar "Dicas para Apresentação"
-
-**Onde:** `FormalReviewSheet.tsx` (linhas 326–338)
-
-Hoje o card azul de coaching ocupa 200–300px no topo da aba "Rascunho Geral" e empurra a avaliação real para baixo. Solução:
-
-- Transformar o card num **Collapsible** (`@/components/ui/collapsible`, já disponível no Shadcn).
-- Default: **fechado** (mostra só o header `↗ Dicas para Apresentação · Visível apenas para você` + chevron).
-- Persistir o estado aberto/fechado em `localStorage` por `reviewId` (ex: `coaching-tip-open-${reviewId}`) para respeitar a preferência do usuário entre sessões.
-- Quando aberto, mantém o conteúdo Markdown atual.
-
-## 3. Ícones não aparecem (causa-raiz arquitetural)
-
-Esse é o item mais sério e explica também o ponto 4.
-
-### Diagnóstico
-
-A edge function `generate-formal-review` gera um **HTML estruturado** com:
-- `<div class="review-section">`, `<div class="section-header">`, `<span class="section-icon">{SVG}</span>`
-- `<table class="dimension-table">`, `<div class="classification-grid">`, `<span class="evidence-tag">`
-- 7 blocos com classes específicas para tipografia hierárquica.
-
-Esse HTML é jogado dentro do `RichTextEditor` (TipTap + StarterKit). O TipTap **só conhece** `p`, `h1-3`, `ul`, `ol`, `strong`, `em`, `highlight`. Ao fazer parse:
-- `<div>`, `<table>`, `<span class="...">` → **descartados** (sem schema).
-- Os SVGs dentro de `<span>` → **descartados junto**.
-- Restam só os textos soltos. Quando o placeholder `{{ICON_SUMMARY}}` por algum motivo não é substituído (ex: a IA escapou as chaves), o texto literal vaza para a UI — exatamente o que aparece nas screenshots.
-
-Além disso, **não existe CSS** no projeto para `.review-section`, `.dimension-table`, `.classification-grid`, `.evidence-tag`, etc. → mesmo se o HTML sobrevivesse, renderizaria sem estilo.
-
-### Solução
-
-Trocar o pipeline de **HTML rico não-suportado** por **Markdown estruturado renderizado fora do editor**:
-
-**a) Backend (`generate-formal-review/index.ts`)**
-
-- Reescrever o prompt para gerar **Markdown puro** (sem HTML), seguindo a estrutura de 7 blocos:
-  ```md
-  ## 📋 Visão geral do período
-  Parágrafo único…
-
-  ## 🏆 Principais contribuições
-  ### Nome curto da entrega
-  Descrição + impacto. *(fonte: Anotação 12/mar)*
-  ```
-- Trocar os placeholders `{{ICON_*}}` por **emojis nativos** (📋 🏆 📈 🎯 📊 ⚖️ ➡️) — renderizam sempre, sem JS, sem CSS, sem perda no parse.
-- Manter o tamanho 350–600 palavras e regras anti-alucinação.
-- Remover a substituição `.replace(/\{\{ICON_*\}\}/g, …)` do código — não precisa mais.
-
-**b) Frontend (`FormalReviewSheet.tsx`)**
-
-Separar **modo leitura** de **modo edição** na aba "Rascunho Geral":
-
-- **Modo leitura (default)**: renderiza `review.content` com `<ReactMarkdown>` (já está no projeto, usado no `coaching_tip`) num container `prose prose-sm` com classes Tailwind ricas para hierarquia (ver item 4).
-- **Botão "Editar texto" no canto**: ao clicar, alterna para o `RichTextEditor` (modo atual). Ao salvar, volta pra leitura.
-- Isso resolve dois problemas: ícones aparecem (são emojis no Markdown) **e** o usuário só usa o editor quando realmente quer editar — a leitura fica bonita por padrão.
-
-**c) Migração do conteúdo legado**
-
-Reviews já criadas têm HTML quebrado salvo em `content`. Duas opções:
-- Detectar HTML legado (`content.includes('class="review-section"')`) e exibir aviso "Este rascunho foi gerado num formato antigo. Clique em **Regenerar** para usar o novo formato." com botão que chama `generate-formal-review` de novo.
-- Não tentar conversão automática — risco de corromper conteúdo que o líder já editou.
-
-## 4. Padrão de formatação inteligente
-
-Hoje "está tudo um formato só" porque o HTML estruturado morre no TipTap (item 3). Resolvendo o item 3 com Markdown + `ReactMarkdown`, definimos um sistema visual claro via classes `prose-*` do Tailwind Typography:
-
-| Elemento Markdown | Render visual |
+| Persona | Comandos hoje |
 |---|---|
-| `## Título do bloco` (com emoji) | Header de seção com emoji 20px, fonte 16px semibold, border-top sutil, padding-top 16px, margem superior 24px |
-| `### Subtítulo` | 14px font-semibold, color foreground, sem margin-top exagerada |
-| Parágrafo | 14px, line-height 1.65, color muted-foreground-90 |
-| `*(fonte: ...)*` (itálico entre parênteses) | Pílula visual via regex no remark — fundo `bg-blue-50`, borda `border-blue-200`, fonte 11px, `rounded-full`, padding 2px 8px |
-| Lista `-` | Marcador discreto, espaçamento confortável entre itens |
-| `**negrito**` | Para "labels" tipo "Desempenho:", "Promoção:", "Mérito:" no bloco de classificação |
+| **Líder** | `/rhitmo`, `/nota`, `/kudos`, `/brief`, `/mentor` |
+| **Liderado** | `/rhitmo`, `/meu-pdi`, `/meu-rhitmo` |
+| **HR Admin** | `/rhitmo` (só mostra botão "Abrir Dashboard HR") |
 
-Implementação concreta no `FormalReviewSheet.tsx`:
+Privacidade já protegida: `/nota`, `/brief`, `/review`, `/meu-pdi`, `/mentor`, `/meu-rhitmo` em canal público disparam aviso "use DM".
 
-```tsx
-<div className="prose prose-sm max-w-none
-  prose-headings:tracking-tight prose-headings:font-semibold
-  prose-h2:text-base prose-h2:mt-8 prose-h2:mb-3 prose-h2:pb-2 
-  prose-h2:border-b prose-h2:border-border/50 prose-h2:flex prose-h2:items-center prose-h2:gap-2
-  prose-h3:text-sm prose-h3:mt-4 prose-h3:mb-1 prose-h3:text-foreground
-  prose-p:text-sm prose-p:leading-relaxed prose-p:text-muted-foreground
-  prose-strong:text-foreground
-  prose-li:text-sm prose-li:my-0.5
-">
-  <ReactMarkdown components={{ em: EvidenceTag }}>
-    {review.content}
-  </ReactMarkdown>
-</div>
+## Gaps identificados
+
+### 1. Líder — menu `/rhitmo` não cita Avaliação Formal nem Rhitmo Mensal/Trimestral
+O menu menciona "nota / kudos / brief / mentor / rhitmo" mas o líder hoje tem dois novos artefatos críticos:
+- **Avaliação Formal v2** (Briefing → Sheet com Markdown + emojis)
+- **Rhitmo Mensal/Trimestral** (recaps automáticos)
+
+Esses fluxos são **multi-step e visuais demais pro Slack** (sheet lateral, tabs, edição inline). Não faz sentido criar `/avaliacao` ou `/recap` — faz sentido **adicionar atalhos no menu** que abrem direto a tela certa no app.
+
+### 2. Liderado — menu não cita "Meu Rhitmo Mensal"
+Liderado também recebe recaps mensais compartilhados. O menu só fala de PDI e perfil. Falta atalho para "Minhas avaliações" (quando o líder compartilha) e "Meu histórico mensal".
+
+### 3. HR Admin — menu praticamente vazio
+Só tem 1 botão. Hoje o HR Admin tem analytics avançado, gestão de membros, alertas de risco. Vale acrescentar 2-3 atalhos de deep-link.
+
+### 4. Copy desatualizada
+- "Acesse seu PDI, feedbacks e **reviews**" → trocar "reviews" por "**avaliações de desempenho**" (alinhado com a UI nova)
+- Dica final ("você receberá notificações antes de 1:1s") está genérica — pode reforçar Smart Nudges do Activity Center
+
+## O que **não** vou criar
+
+- ❌ `/avaliacao` ou `/review` para líder — fluxo é UI-heavy (Sheet, tabs, Markdown editor). Slack seria UX pior.
+- ❌ `/recap` — recaps são longos e renderizam mal em texto puro. Melhor enviar **notificação** quando recap fica pronto (já existe via `notify-review-shared` para avaliações; podemos espelhar pra recaps depois, mas não nessa task).
+- ❌ Novos slash commands na config do Slack App — zero mudança no manifest, só código no `slack-bot/index.ts`.
+
+## Mudanças propostas (1 arquivo, ~40 linhas)
+
+**Arquivo:** `supabase/functions/slack-bot/index.ts` — função `buildRhitmoMenu`
+
+### Líder (linhas 356-364)
+```
+*📋 Gestão de Time*
+[✍️ Adicionar nota]  [👏 Enviar kudos]  [📊 Avaliação Formal →app]  [📅 Rhitmo Mensal →app]
+
+*💬 Comandos rápidos:*
+• /nota @membro texto — Feedback privado
+• /kudos @membro texto — Reconhecimento público
+• /brief @membro — Resumo pré-1:1
+• /mentor <pergunta> — Consultar mentor de IA
+• /rhitmo — Este menu
 ```
 
-Onde `EvidenceTag` é um componente custom que detecta `*(fonte: ...)*` e renderiza como pílula:
+### Liderado (linhas 365-374)
+```
+*👤 Seu Desenvolvimento*
+[📋 Meu PDI]  [📊 Minhas avaliações →app]  [🚀 Abrir Rhitmo]
 
-```tsx
-const EvidenceTag = ({ children }) => {
-  const text = String(children);
-  if (text.startsWith('(fonte:') || text.startsWith('(Trimestral') || text.startsWith('(Mensal') || text.startsWith('(1:1')) {
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/30 
-                       text-blue-700 dark:text-blue-300 text-[11px] font-medium border border-blue-100 
-                       dark:border-blue-900 not-italic ml-1">
-        {children}
-      </span>
-    );
-  }
-  return <em>{children}</em>;
-};
+*💬 Comandos rápidos:*
+• /meu-pdi — Plano de Desenvolvimento
+• /meu-rhitmo — Perfil, feedbacks e Rhitmo Mensal
+• /rhitmo — Este menu
 ```
 
-## Arquivos alterados
+Adicional: dentro de `handleMeuRhitmoCommand`, **acrescentar uma seção** "📅 Último Rhitmo Mensal disponível" com link pro app (sem renderizar o conteúdo no Slack).
 
-1. `supabase/functions/generate-formal-review/index.ts` — prompt para Markdown + emojis, remover placeholders `{{ICON_*}}` e o bloco de SVGs
-2. `src/components/review/CreateFormalReviewDialog.tsx` — stepper "Passo 1 de 2", copy do CTA
-3. `src/components/review/FormalReviewSheet.tsx` — Collapsible para coaching tip, modo leitura/edição na aba Rascunho, ReactMarkdown estilizado, componente `EvidenceTag`, detecção de HTML legado
+### HR Admin (linhas 375-381)
+```
+*📈 Analytics Organizacional*
+[📊 Dashboard HR]  [🚨 Alertas de Risco]  [👥 Membros]
 
-Sem migração de banco. Sem novas dependências (`react-markdown` e `@/components/ui/collapsible` já existem).
+*💬 Atalhos:*
+• /rhitmo — Este menu
+(sem comandos próprios — gestão é feita no painel web)
+```
+
+### Copy/footer
+- Trocar "reviews" → "avaliações de desempenho" (linha 368)
+- Atualizar dica final: "💡 *Dica:* Notificações automáticas chegam antes de 1:1s, quando uma avaliação é compartilhada e quando um Rhitmo Mensal fica pronto."
 
 ## Critério de aceite
 
-- Modal de criação mostra "Passo 1 de 2 — Briefing" e CTA "Avançar para revisão →"
-- Card "Dicas para Apresentação" inicia fechado, com toggle, persistido por review
-- Novas avaliações renderizam com emojis visíveis nos títulos de seção e tipografia hierárquica clara (H2 ≠ H3 ≠ parágrafo ≠ pílula de fonte)
-- "Fonte: Anotação X/Y" aparece como pílula azul, não como texto inline
-- Avaliações antigas (HTML legado) mostram banner pedindo regeneração — sem quebrar
-- Sem `ICON_SUMMARY`, `ICON_CONTRIBUTIONS`, `ICON_DIMENSIONS`, `ICON_NEXT_STEPS` aparecendo como texto literal
+- `/rhitmo` como líder mostra os 2 novos atalhos (Avaliação Formal, Rhitmo Mensal) abrindo deep-links no app
+- `/rhitmo` como liderado mostra "Minhas avaliações" e a seção do `/meu-rhitmo` lista o último recap mensal
+- `/rhitmo` como HR Admin mostra 3 atalhos (Dashboard, Alertas, Membros)
+- Zero mudança em `manifest.json` do Slack App / scopes — só código
+- Comandos existentes (`/nota`, `/kudos`, `/brief`, `/mentor`, `/meu-pdi`, `/meu-rhitmo`) continuam funcionando idênticos
+- Copy não menciona mais "reviews" como termo solto
+
+## O que fica fora desta task (registrar como follow-ups)
+
+1. **Notificação Slack quando Rhitmo Mensal/Trimestral fica pronto** — já existe infra (`dispatchNotification` em `_shared/notifications.ts`), mas precisa cron disparar. Vale uma task separada.
+2. **Notificação Slack quando líder compartilha Avaliação Formal** — análogo ao item 1.
+3. **App Home tab redesign** — o menu hoje só aparece via `/rhitmo`. Poderia espelhar no Home tab.
+
+</plan><lov-plan>
+
+# Slack: o que precisa atualizar depois das mudanças das últimas 24h
+
+## Diagnóstico: o que mudou no produto vs. o que o Slack expõe
+
+Mapeei os comandos atuais (`/rhitmo`, `/nota`, `/kudos`, `/brief`, `/mentor`, `/meu-pdi`, `/meu-rhitmo`) contra o que mudamos recentemente (Rhitmo Mensal/Trimestral com fix de timezone, Avaliação Formal v2 em 2 passos com Markdown + emojis, etc.).
+
+**Conclusão:** o Slack não precisa de nenhum comando novo, mas tem 4 ajustes pequenos no menu `/rhitmo` para refletir a realidade atual e tirar promessas quebradas.
+
+| Persona | Estado atual no Slack | Problema |
+|---|---|---|
+| **Líder** | Menu OK, mas cita "reviews" só no copy do liderado | Não menciona Avaliação Formal nem Rhitmo Mensal/Trimestral que existem |
+| **Liderado** | Botão "📋 Meu PDI" + cita "reviews" no texto | Promete "reviews" mas não tem botão pra abrir avaliação compartilhada; PDI direciona pra fluxo que mudou |
+| **HR Admin** | Só botão "Abrir Dashboard HR" | Subutilizado — não menciona Analytics avançado, Health Score, alertas de risco |
+| **Todos** | Comando `/review` listado em `SENSITIVE_COMMANDS` e `DM_ONLY_COMMANDS` | **Comando não existe no switch** — se alguém digitar dá "Comando desconhecido". Código morto. |
+
+## O que vou ajustar
+
+### 1. Líder — menu `/rhitmo`
+
+Adicionar 1 linha no bloco "Comandos rápidos":
+- Manter tudo que existe (`/nota`, `/kudos`, `/brief`, `/mentor`)
+- **Adicionar referência ao "Rhitmo Mensal" e "Avaliação Formal"** com link direto pro app, sem criar slash command novo (esses fluxos vivem no app por design — são longos, multi-step, exigem leitura de evidências).
+
+Texto novo:
+```
+📊 *No Rhitmo Web:*
+• Rhitmo Mensal & Trimestral — recaps automáticos do time
+• Avaliação Formal — gerar com IA em 2 passos
+→ <https://rhitmo.co|Abrir Rhitmo>
+```
+
+### 2. Liderado — menu `/rhitmo`
+
+- Trocar copy de "Acesse seu PDI, feedbacks e **reviews**" → **"Acesse seu PDI e suas avaliações compartilhadas"** (palavra "review" em PT é confusa)
+- Adicionar botão **"📄 Minhas Avaliações"** que abre `https://rhitmo.co/avaliacoes` (usuário vê apenas avaliações com status `shared` — RLS já garante)
+- Manter `/meu-pdi` e `/meu-rhitmo`
+
+### 3. HR Admin — menu `/rhitmo` (mais carente)
+
+Hoje é só 1 botão. Expandir pra refletir o que HR Admin realmente faz:
+```
+📊 Analytics Organizacional
+• Health Score do workspace
+• Alertas de risco (turnover, viés, silêncio de líder)
+• Visão consolidada de PDIs e avaliações
+
+[📊 Dashboard HR] [🚨 Alertas de Risco] [📈 Analytics Avançado]
+```
+Os 3 botões viram `url` direto (`/hr`, `/hr/alerts`, `/hr/analytics`) — HR Admin não tem comandos slash dedicados (consumo é visual, não conversacional).
+
+### 4. Limpeza: remover `/review` morto
+
+- Tirar `/review` de `SENSITIVE_COMMANDS` (linha 14)
+- Tirar `/review` de `DM_ONLY_COMMANDS` (linha 15)
+- Não há case `/review` no switch — confirmado código morto
+
+## O que **não** vou mexer (e por quê)
+
+- **`/nota`, `/kudos`, `/brief`, `/mentor`**: handlers funcionando, lógica não foi tocada nas últimas 24h
+- **Não criar `/avaliacao` ou `/recap-mensal`**: fluxos exigem UI rica (tabs, edição de texto, gráficos) — slash command degrada UX
+- **Não mexer em `slack-link`, OAuth, privacidade**: nada mudou no fluxo de autenticação
+
+## Arquivos alterados
+
+- `supabase/functions/slack-bot/index.ts` — `buildRhitmoMenu` (linhas 334–390) + constantes (linhas 14–15)
+
+## Critério de aceite
+
+- [ ] `/rhitmo` como líder mostra referência a Rhitmo Mensal + Avaliação Formal com link pro app
+- [ ] `/rhitmo` como liderado mostra botão "Minhas Avaliações" + copy ajustado
+- [ ] `/rhitmo` como HR Admin mostra 3 botões (Dashboard, Alertas, Analytics)
+- [ ] `/review` removido dos arrays de privacidade (sem regressão funcional)
+- [ ] Nenhum handler novo, nenhum comando novo, nenhuma migração
 
