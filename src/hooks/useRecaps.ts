@@ -3,6 +3,30 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { RecapClassification, RecapTurnoverRisk } from '@/lib/recapActions';
 
+/**
+ * Supabase `functions.invoke` only surfaces "Edge function returned a non-2xx
+ * status code" as the error message — the actual body lives on
+ * `error.context.body` (a Response object). Read it once and return the most
+ * useful string for the user.
+ */
+async function extractEdgeFunctionError(error: any, fallback: string): Promise<string> {
+  try {
+    const body = error?.context?.body ?? error?.context;
+    if (body && typeof body.text === 'function') {
+      const txt = await body.text();
+      try {
+        const parsed = JSON.parse(txt);
+        if (parsed?.error) return String(parsed.error);
+      } catch {
+        if (txt) return txt;
+      }
+    }
+  } catch {
+    // ignore parsing issues
+  }
+  return error?.message || fallback;
+}
+
 // ─── Monthly ────────────────────────────────────────────────────────────────
 
 export interface MonthlyRecap {
