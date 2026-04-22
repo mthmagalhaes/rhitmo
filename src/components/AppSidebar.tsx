@@ -15,6 +15,7 @@ import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { ProfileSettingsDialog } from '@/components/ProfileSettingsDialog';
 
 import { SlackConnectorDialog } from '@/components/slack/SlackConnectorDialog';
+import { useSlackConnection } from '@/hooks/useSlackConnection';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
@@ -49,6 +50,7 @@ export function AppSidebar() {
   const { t } = useTranslation();
   const { open } = useSidebar();
   const { isConnected: calendarConnected, connectCalendar } = useCalendarIntegration();
+  const { isConnected: slackConnected, isLoading: slackLoading } = useSlackConnection();
 
   // Sprint 1.2: removed "Analytics" from leader sidebar — kept only for HR Admin context.
   const menuItems = [
@@ -295,7 +297,12 @@ export function AppSidebar() {
                       className="w-full flex items-center gap-3 h-12 px-4 rounded-xl border border-border/60 bg-background hover:bg-accent/50 hover:border-primary/30 hover:-translate-y-0.5 transition-all duration-200 group"
                     >
                       <SlackIcon className="h-5 w-5 shrink-0" />
-                      <span className="text-sm font-medium text-foreground group-hover:text-primary tracking-tight">{t('sidebar.slackConnector')}</span>
+                      <span className="flex-1 text-left text-sm font-medium text-foreground group-hover:text-primary tracking-tight">{t('sidebar.slackConnector')}</span>
+                      {!slackLoading && slackConnected && (
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600 bg-emerald-500/10 px-1.5 py-0.5 rounded-md">
+                          {t('sidebar.connected')}
+                        </span>
+                      )}
                     </button>
                   </div>
                 </SidebarGroupContent>
