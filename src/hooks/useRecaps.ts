@@ -3,6 +3,30 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { RecapClassification, RecapTurnoverRisk } from '@/lib/recapActions';
 
+/**
+ * Supabase `functions.invoke` only surfaces "Edge function returned a non-2xx
+ * status code" as the error message — the actual body lives on
+ * `error.context.body` (a Response object). Read it once and return the most
+ * useful string for the user.
+ */
+async function extractEdgeFunctionError(error: any, fallback: string): Promise<string> {
+  try {
+    const body = error?.context?.body ?? error?.context;
+    if (body && typeof body.text === 'function') {
+      const txt = await body.text();
+      try {
+        const parsed = JSON.parse(txt);
+        if (parsed?.error) return String(parsed.error);
+      } catch {
+        if (txt) return txt;
+      }
+    }
+  } catch {
+    // ignore parsing issues
+  }
+  return error?.message || fallback;
+}
+
 // ─── Monthly ────────────────────────────────────────────────────────────────
 
 export interface MonthlyRecap {
@@ -62,7 +86,10 @@ export function useGenerateMonthlyRecap(memberId: string | undefined) {
           regenerate: args.regenerate ?? false,
         },
       });
-      if (error) throw error;
+      if (error) {
+        const msg = await extractEdgeFunctionError(error, 'Falha ao chamar a função');
+        throw new Error(msg);
+      }
       if ((data as any)?.error) throw new Error((data as any).error);
       return data;
     },
@@ -194,7 +221,10 @@ export function useGenerateQuarterlyRecap(memberId: string | undefined) {
           regenerate: args.regenerate ?? false,
         },
       });
-      if (error) throw error;
+      if (error) {
+        const msg = await extractEdgeFunctionError(error, 'Falha ao chamar a função');
+        throw new Error(msg);
+      }
       if ((data as any)?.error) throw new Error((data as any).error);
       return data;
     },
