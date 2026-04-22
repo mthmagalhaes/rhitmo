@@ -29,14 +29,35 @@ function resolveIntlLocale(lang?: string): string {
  * timezone, so `new Date('2026-03-01T00:00:00Z')` in BRT (UTC-3) becomes
  * `2026-02-28 21:00` and is formatted as "fevereiro 2026" — the bug we fix.
  */
+function capitalizeFirst(s: string): string {
+  if (!s) return s;
+  return s.charAt(0).toLocaleUpperCase() + s.slice(1);
+}
+
 export function formatPeriodMonth(periodMonth: string, lang?: string): string {
   const [y, m] = periodMonth.slice(0, 10).split('-').map(Number);
   if (!y || !m) return periodMonth;
-  return new Intl.DateTimeFormat(resolveIntlLocale(lang), {
+  const raw = new Intl.DateTimeFormat(resolveIntlLocale(lang), {
     month: 'long',
     year: 'numeric',
     timeZone: 'UTC',
   }).format(new Date(Date.UTC(y, m - 1, 1)));
+  // Capitalize ONLY the first letter — never use CSS `capitalize`, which would
+  // also uppercase connector words ("Março **D**e 2026" 🤮).
+  return capitalizeFirst(raw);
+}
+
+/**
+ * Format the current-month label ("Abril de 2026") with the same
+ * first-letter-only capitalization rule as `formatPeriodMonth`.
+ */
+export function formatMonthYearLabel(date: Date, lang?: string): string {
+  const raw = new Intl.DateTimeFormat(resolveIntlLocale(lang), {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1)));
+  return capitalizeFirst(raw);
 }
 
 /**

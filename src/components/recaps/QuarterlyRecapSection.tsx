@@ -31,10 +31,16 @@ function quarterLabel(periodQuarter: string) {
   return `Q${q} ${d.getUTCFullYear()}`;
 }
 
+// Returns the first day (UTC) of the CURRENT quarter — e.g., on April 22, 2026
+// returns "2026-04-01" (start of Q2). The previous version subtracted 3 months
+// and pointed to the *previous* quarter, which both mislabeled the card
+// ("Q4 2025" instead of "Q1 2026") and made the edge function fetch the wrong
+// month range, returning 422 with no monthlies found.
 function getCurrentQuarterStart(): string {
   const d = new Date();
   const qStartMonth = Math.floor(d.getUTCMonth() / 3) * 3;
-  return format(new Date(Date.UTC(d.getUTCFullYear(), qStartMonth - 3, 1)), 'yyyy-MM-01');
+  const m = String(qStartMonth + 1).padStart(2, '0');
+  return `${d.getUTCFullYear()}-${m}-01`;
 }
 
 function QuarterCard({ memberId, recap, periodQuarter }: { memberId: string; recap: QuarterlyRecap | undefined; periodQuarter: string }) {
