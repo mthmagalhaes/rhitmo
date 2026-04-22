@@ -392,21 +392,12 @@ Gere a avaliação formal de desempenho de ${memberName} em HTML puro, com OS 7 
       throw new Error("IA não retornou conteúdo");
     }
 
-    // Replace icon placeholders with Lucide SVGs
+    // Strip code fences and any leftover ICON_* placeholders from previous prompt versions
     generatedContent = generatedContent
-      .replace(/\{\{ICON_SUMMARY\}\}/g, ICON_SUMMARY)
-      .replace(/\{\{ICON_CONTRIBUTIONS\}\}/g, ICON_CONTRIBUTIONS)
-      .replace(/\{\{ICON_PATTERNS\}\}/g, ICON_PATTERNS)
-      .replace(/\{\{ICON_DEVELOPMENT\}\}/g, ICON_DEVELOPMENT)
-      .replace(/\{\{ICON_DIMENSIONS\}\}/g, ICON_DIMENSIONS)
-      .replace(/\{\{ICON_CLASSIFICATION\}\}/g, ICON_CLASSIFICATION)
-      .replace(/\{\{ICON_NEXT_STEPS\}\}/g, ICON_NEXT_STEPS);
-
-    // Strip Markdown code fences
-    generatedContent = generatedContent
-      .replace(/^```html\n?/gm, '')
-      .replace(/^```[\w]*\n?/gm, '')
+      .replace(/^```(?:html|markdown|md)?\n?/gm, '')
       .replace(/\n?```$/gm, '')
+      .replace(/\{\{ICON_[A-Z_]+\}\}/g, '')
+      .replace(/\bICON_[A-Z_]+\b/g, '')
       .trim();
 
     console.log("Review generated successfully");
