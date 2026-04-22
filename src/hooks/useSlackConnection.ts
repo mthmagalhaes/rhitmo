@@ -1,25 +1,25 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 
 const SLACK_CLIENT_ID = '590136271282.10821512589809';
 
 export const useSlackConnection = () => {
-  const { user } = useAuth();
+  const { id: effectiveUserId } = useEffectiveUser();
 
   const { data: slackIntegration, isLoading } = useQuery({
-    queryKey: ['slack-connection', user?.id],
+    queryKey: ['slack-connection', effectiveUserId],
     queryFn: async () => {
-      if (!user) return null;
+      if (!effectiveUserId) return null;
       const { data } = await supabase
         .from('slack_integrations')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', effectiveUserId)
         .limit(1)
         .maybeSingle();
       return data;
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
     staleTime: 60 * 1000,
   });
 
