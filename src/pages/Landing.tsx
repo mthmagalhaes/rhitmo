@@ -701,16 +701,26 @@ const PricingSection = ({
                 <p className="text-xs text-muted-foreground mt-1">{t.proNote}</p>
               </div>
               <Button
-                className="w-full min-h-[44px] mb-6"
+                className="w-full min-h-[44px] mb-2"
                 onClick={() => navigate(`/auth?mode=signup&plan=pro&cycle=${cycle}`)}
               >
                 {t.proCTA}
               </Button>
+              <p className="text-xs text-muted-foreground text-center mb-6">
+                {t.proSocialProof}
+              </p>
               <ul className="space-y-3 flex-1">
-                {t.proFeatures.map((f: string) => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-foreground">
+                {t.proFeatures.map((f: { label: string; isNew?: boolean }) => (
+                  <li key={f.label} className="flex items-start gap-2 text-sm text-foreground">
                     <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                    <span>{f}</span>
+                    <span>
+                      {f.label}
+                      {f.isNew && (
+                        <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-primary/15 text-primary uppercase tracking-wide align-middle">
+                          {t.newBadge}
+                        </span>
+                      )}
+                    </span>
                   </li>
                 ))}
               </ul>
