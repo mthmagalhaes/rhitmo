@@ -517,7 +517,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
                       ? tier.charAt(0).toUpperCase() + tier.slice(1)
                       : 'Pulse';
                   const label = isBeta
-                    ? 'Beta'
+                    ? 'Fundador'
                     : `${tierLabel}${activeSubscription?.status === 'trialing' ? ' · Trial' : ''}`;
                   const className = isBeta
                     ? 'bg-primary text-primary-foreground hover:bg-primary/90'
@@ -618,11 +618,18 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
             hasAIAnalysis={onboardingStatus.hasAIAnalysis}
             hasMentorChat={onboardingStatus.hasMentorChat}
             hasLeaderSync={onboardingStatus.hasLeaderSync}
+            hasInvitedMember={onboardingStatus.hasInvitedMember}
             workspaceCreatedAt={workspace?.created_at}
             onAddMember={() => setMemberDialogOpen(true)}
             onAddNote={() => setDialogOpen(true)}
             onOpenMentor={handleOpenMentor}
             onOpenLeaderSync={() => setLeaderSyncOpen(true)}
+            onOpenInvite={() => {
+              const target =
+                teamMembers.find(m => !m.linked_user_id && (m.invite_status ?? 'none') !== 'accepted') ||
+                teamMembers[0];
+              if (target) handleOpenInviteDialog(target);
+            }}
           />
         )}
 
