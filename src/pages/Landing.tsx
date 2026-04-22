@@ -674,12 +674,6 @@ const PricingSection = ({
                   <span>{f}</span>
                 </li>
               ))}
-              {t.pulseLocked.map((f: string) => (
-                <li key={f} className="flex items-start gap-2 text-sm text-muted-foreground opacity-60">
-                  <Lock className="h-4 w-4 mt-0.5 shrink-0" />
-                  <span>{f}</span>
-                </li>
-              ))}
             </ul>
           </div>
 
