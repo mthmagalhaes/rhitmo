@@ -1,4 +1,4 @@
-import { CheckCircle2, ExternalLink } from 'lucide-react';
+import { CheckCircle2, ExternalLink, Loader2 } from 'lucide-react';
 import { SlackIcon } from '@/components/icons/SlackIcon';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -34,12 +34,17 @@ export function SlackConnectorDialog({ open, onOpenChange }: SlackConnectorDialo
 
         <div className="space-y-4 mt-2">
           {/* Connection status */}
-          {isConnected && (
+          {isLoading ? (
+            <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
+              <Loader2 className="h-5 w-5 text-muted-foreground animate-spin shrink-0" />
+              <p className="text-sm text-muted-foreground">Verificando status da conexão…</p>
+            </div>
+          ) : isConnected ? (
             <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-800 px-4 py-3">
               <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Slack conectado com sucesso!</p>
             </div>
-          )}
+          ) : null}
 
           {/* Connect / Reconnect button */}
           <Button
