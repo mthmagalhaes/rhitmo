@@ -817,6 +817,21 @@ const Landing = () => {
 
           {/* Desktop: Botões normais */}
           <div className="hidden md:flex items-center gap-3">
+            <a href="#impacto">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground min-h-[44px]">
+                {t.featuresNav}
+              </Button>
+            </a>
+            <a href="#pricing">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground min-h-[44px]">
+                {t.pricingNav}
+              </Button>
+            </a>
+            <a href="#faq">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground min-h-[44px]">
+                {t.faqNav}
+              </Button>
+            </a>
             <Button variant="ghost" size="icon" className="rounded-full" onClick={toggleTheme}>
               {landingTheme === 'light' ? <Moon className="h-[18px] w-[18px]" /> : <Sun className="h-[18px] w-[18px]" />}
               <span className="sr-only">{t.toggleTheme}</span>
