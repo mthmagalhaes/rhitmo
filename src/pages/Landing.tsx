@@ -602,6 +602,9 @@ const PricingSection = ({
           <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
             {t.pricingTitle}
           </h2>
+          <p className="font-serif text-xl text-foreground/80 max-w-2xl mx-auto pt-1">
+            {t.pricingAnchor}
+          </p>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             {t.pricingSubtitle}
           </p>
@@ -624,7 +627,7 @@ const PricingSection = ({
         </div>
 
         {/* Cycle selector */}
-        <div className="flex justify-center mb-12">
+        <div className="flex justify-center mb-6">
           <Tabs value={cycle} onValueChange={(v) => setCycle(v as BillingCycle)}>
             <TabsList className="h-11 rounded-full p-1 bg-muted">
               <TabsTrigger value="quarterly" className="rounded-full px-5 h-9 data-[state=active]:bg-background">
@@ -642,6 +645,11 @@ const PricingSection = ({
             </TabsList>
           </Tabs>
         </div>
+
+        {/* Trust line */}
+        <p className="text-center text-xs text-muted-foreground mb-10 max-w-2xl mx-auto px-4">
+          {t.pricingTrustLine}
+        </p>
 
         {/* Cards Grid — 3 plans */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
