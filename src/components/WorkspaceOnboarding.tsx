@@ -103,6 +103,9 @@ export function WorkspaceOnboarding({ userId, userMetadata, onComplete }: Worksp
         description: 'Seu ambiente está pronto para uso.',
       });
 
+      // Clear persona intent now that the leader workspace is set up.
+      try { localStorage.removeItem('signup_persona'); } catch { /* ignore */ }
+
       onComplete();
     } catch (error: any) {
       console.error('Erro ao criar workspace:', error);

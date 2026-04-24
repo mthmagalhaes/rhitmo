@@ -16,9 +16,10 @@ interface AuthProps {
   defaultMode?: 'login' | 'signup';
   defaultEmail?: string;
   isInviteFlow?: boolean;
+  persona?: 'leader' | 'member';
 }
 
-export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = false }: AuthProps) => {
+export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = false, persona }: AuthProps) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(defaultMode === 'signup');
@@ -27,6 +28,21 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const { toast } = useToast();
+
+  // Persist persona for OAuth round-trip
+  if (typeof window !== 'undefined' && persona) {
+    try {
+      localStorage.setItem('signup_persona', persona);
+    } catch {
+      // ignore
+    }
+  }
+
+  const personaTitle = isSignUp && persona === 'leader'
+    ? (t('auth.createLeaderAccount', { defaultValue: 'Criar conta de Líder' }) as string)
+    : isSignUp && persona === 'member'
+    ? (t('auth.createMemberAccount', { defaultValue: 'Criar conta de Liderado' }) as string)
+    : null;
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -172,7 +188,11 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
           
           <div className="space-y-2">
             <h1 className="text-3xl font-bold text-foreground">
-              {isForgotPassword ? t('auth.recoverPassword') : isSignUp ? t('auth.createAccount') : t('auth.restrictedAccess')}
+              {isForgotPassword
+                ? t('auth.recoverPassword')
+                : isSignUp
+                ? (personaTitle ?? t('auth.createAccount'))
+                : t('auth.restrictedAccess')}
             </h1>
             <p className="text-muted-foreground text-lg">
               {isForgotPassword ? t('auth.recoverPasswordDesc') : isSignUp ? t('auth.completeSignup') : t('auth.inviteOnly')}
