@@ -1,118 +1,166 @@
 
 
-# Seletor de Persona no Signup — "Sou Líder" vs "Sou Liderado"
+# Diagnóstico final do Google Cloud Console — TUDO está certo no Google
 
-## Problema atual
+## ✅ O que vi no print do Público-alvo
 
-Quando a `andygziemer@gmail.com` clicou em "Começar grátis":
-1. Foi direto pro signup sem declarar se era líder ou liderado
-2. Após criar conta, o sistema tentou adivinhar o papel:
-   - Sem workspace próprio → não é líder
-   - Sem convite pendente pelo email → não é liderado vinculado
-   - Resultado: caiu numa zona cinzenta ("Processando seu acesso...") em vez de receber o modal de criar workspace
-3. Sem ser líder, **nunca veria** a opção de conectar Google Calendar — bloqueando o teste de OAuth
+| Campo | Valor | Status |
+|---|---|---|
+| Status de publicação | **Em produção** | ✅ Perfeito (não está em modo Teste) |
+| Tipo de usuário | **Externo** | ✅ Correto (qualquer Google account pode autenticar) |
+| Limite de usuários OAuth | **0/100** | ✅ Folga total pra testar |
+| Aviso amarelo | "Seu aplicativo precisa ser verificado..." | ⚠️ Esperado — é exatamente isso que vamos resolver com a Central de Verificação depois |
 
-## Solução: Persona Selector explícito
+**Conclusão consolidada do Google Cloud Console:**
 
-Adicionar uma etapa intermediária entre "Começar grátis" e o signup, onde o usuário declara seu papel. Isso elimina ambiguidade e remove a tela "Processando..." pra novos signups.
+| Aba | Status |
+|---|---|
+| Branding | ✅ 100% certo (Rhitmo, logo, support@rhitmo.co, rhitmo.co autorizado) |
+| Público-alvo | ✅ 100% certo (Em produção, Externo, 0/100) |
+| Credentials | ✅ 1 OAuth Client ID ("Rhitmo Login") |
+| Central de verificação | ⏳ Aguardando vídeo + submissão |
 
-### Fluxo novo
+---
 
-```text
-Landing "Começar grátis"
-        │
-        ▼
-┌─────────────────────────────────┐
-│  Você quer usar o Rhitmo como?  │
-│                                  │
-│  ┌──────────┐  ┌──────────┐    │
-│  │  LÍDER   │  │ LIDERADO │    │
-│  │ de time  │  │          │    │
-│  └──────────┘  └──────────┘    │
-└─────────────────────────────────┘
-        │              │
-        ▼              ▼
-   /auth?mode=     /auth?mode=
-   signup&         signup&
-   persona=leader  persona=member
-        │              │
-        ▼              ▼
-  Cria workspace   Pede código de
-  automaticamente  convite OU avisa
-  (modal)          "peça ao seu líder"
+## 🎯 O verdadeiro bloqueio (confirmado)
+
+O `lybkgujyezzzvbzypxed.supabase.co` aparece na tela de consentimento **única e exclusivamente** porque o redirect URI configurado aponta pra lá. Não tem nada errado no Google — é configuração técnica do nosso lado.
+
+E o aviso "Seu aplicativo precisa ser verificado" só vai sumir depois que:
+1. ✅ Trocarmos o redirect pra `rhitmo.co/auth/google/callback` (Fase 1)
+2. ✅ Gravarmos o vídeo mostrando o fluxo completo com `rhitmo.co` na tela de consentimento
+3. ✅ Submetermos pra Central de Verificação
+
+Sem o passo 1, o passo 2 não funciona (o vídeo mostraria `supabase.co` e o reviewer rejeitaria).
+
+---
+
+## 🚀 Plano de implementação (Opção A — Proxy de redirect)
+
+### Fase 1 — Código (eu implemento)
+
+**Novo arquivo:** `src/pages/GoogleCalendarCallback.tsx`
+
+Página React pública que:
+1. Extrai `code`, `state`, `error` da URL via `useSearchParams`
+2. Mostra spinner editorial: "Conectando seu Google Calendar..." (estilo Creme/Bento, fonte Lora, fundo creme com onda Rhythm)
+3. Faz POST pra `${SUPABASE_URL}/functions/v1/google-calendar-oauth?action=callback` com body `{ code, state }`
+4. Em sucesso: `navigate('/?calendar=connected')` + toast "Google Calendar conectado!"
+5. Em erro: mostra card editorial com mensagem amigável + botão "Tentar novamente" (volta pra `/`)
+6. Trata caso `error=access_denied` (usuário cancelou no Google) com mensagem específica
+
+**Editar:** `src/App.tsx`
+
+Adicionar rota pública (fora do `<AppLayout>`, junto com as outras rotas públicas tipo `/invite`, `/reset-password`):
+
+```tsx
+<Route path="/auth/google/callback" element={<GoogleCalendarCallback />} />
 ```
 
-## Mudanças necessárias
+**Editar:** `supabase/functions/google-calendar-oauth/index.ts`
 
-### 1. Nova rota `/auth/start` — Persona Selector
-- Tela limpa, split-screen (segue Design System Creme/Bento)
-- 2 cards grandes: **Líder de Time** (destaque, badge "Recomendado para testar") vs **Liderado** (secundário)
-- Cada card explica em 1 linha o que vai acontecer:
-  - Líder: "Crie seu workspace e convide seu time. Acesso a Google Calendar, AI Mentor e Reviews."
-  - Liderado: "Você foi convidado pelo seu líder? Use o link do convite ou crie sua conta de acesso."
-- Botão "Voltar para Landing" no header
+Modificar a função pra suportar 2 modos de callback:
+- **Modo legado (GET)**: `?action=callback&code=...&state=...` — continua funcionando, retorna redirect 302 (compatibilidade durante migração)
+- **Modo novo (POST)**: `?action=callback` com body `{ code, state }` — retorna JSON `{ success: true, calendar_email: "..." }`
 
-### 2. Atualizar todos os CTAs "Começar grátis" da Landing
-- Substituir `navigate('/auth?mode=signup')` por `navigate('/auth/start')` nos 6 pontos:
-  - Header desktop (linha 878)
-  - Sheet mobile (linha 947)
-  - Hero (linha 987)
-  - Card Pulse pricing (linha 667)
-  - Card Líder persona (linha 1327)
-  - Card PME persona (linha 1340)
-- Manter `?plan=pro&cycle=...` no botão Pro (vai direto pro signup de líder + checkout)
+A action `authorize` continua igual, só o valor de `GOOGLE_REDIRECT_URI` (secret) vai mudar pro novo URL.
 
-### 3. Atualizar `AuthPage.tsx`
-- Ler novo param `persona` da URL (`leader` | `member`)
-- Passar pra `<Auth />` como prop
-- Após signup bem-sucedido com `persona=leader`: garantir que cai no `WorkspaceOnboarding` (modal) — não no "Processando..."
-- Após signup com `persona=member`: redirecionar pra tela de "Insira código de convite ou peça ao seu líder"
+Lógica de troca code→tokens, validação do state contra `auth.uid()`, e persistência em `google_calendar_tokens` continuam idênticas.
 
-### 4. Atualizar `Auth.tsx`
-- Receber prop `persona`
-- Persistir intenção em `localStorage.setItem('signup_persona', persona)` durante o fluxo de signup com Google (sobrevive ao roundtrip OAuth)
-- Mostrar título contextual: "Criar conta de Líder" vs "Criar conta de Liderado"
+### Fase 2 — Atualizar secret (eu disparo o pedido)
 
-### 5. Atualizar `AppLayout.tsx` / `WorkspaceOnboarding.tsx`
-- Ler `localStorage.signup_persona` no momento de decidir mostrar o `WorkspaceOnboarding`:
-  - Se `persona === 'leader'` E sem workspace → força modal de criar workspace (mesmo se a heurística atual falhar)
-  - Se `persona === 'member'` → não mostra workspace onboarding, redireciona pra tela de "aguardando vínculo / código de convite"
-- Limpar `localStorage.signup_persona` após processar
+Atualizar secret `GOOGLE_REDIRECT_URI`:
+- **De:** `https://lybkgujyezzzvbzypxed.supabase.co/functions/v1/google-calendar-oauth?action=callback`
+- **Para:** `https://rhitmo.co/auth/google/callback`
 
-### 6. Atualizar `DirectReportGuard.tsx`
-- Antes de mostrar "Processando seu acesso...", checar `localStorage.signup_persona`:
-  - Se `persona === 'leader'`, não bloqueia — deixa o `WorkspaceOnboarding` assumir
-- Adicionar botão "Sou líder, não liderado" na tela de processamento (escape hatch pra quem caiu por engano)
+### Fase 3 — Configurar no Google Cloud Console (você faz, ~3 min)
 
-### 7. Nova tela "Aguardando vínculo de convite" (para liderados sem invite)
-- Substitui a tela genérica "Processando seu acesso..."
-- Mostra: "Você se cadastrou como liderado mas não encontramos um convite pro seu email."
-- 2 ações:
-  - **"Tenho um código de convite"** → input pra colar código → chama `/invite?code=...`
-  - **"Sou líder, na verdade"** → reseta persona pra `leader` e mostra `WorkspaceOnboarding`
+1. **APIs & Services → Credentials → Rhitmo Login**
+2. Em **URIs de redirecionamento autorizados**, **adicionar** (não remover o antigo ainda):
+   ```
+   https://rhitmo.co/auth/google/callback
+   ```
+3. Salvar
 
-## Detalhes técnicos
+(Opcional, depois do teste passar) Remover o URL antigo do Supabase.
 
-- **Roteamento:** adicionar `<Route path="/auth/start" element={<PersonaSelector />} />` em `src/App.tsx`
-- **Novo arquivo:** `src/pages/PersonaSelector.tsx`
-- **Novo arquivo:** `src/pages/AwaitingInvite.tsx` (substitui o estado órfão atual)
-- **Persistência:** `localStorage.signup_persona` (mais confiável que query params durante OAuth roundtrip do Google)
-- **Cleanup:** limpar localStorage em 3 pontos: após criar workspace, após vincular invite, após escolher "sou líder na verdade"
+### Fase 4 — Testar juntos (~5 min)
 
-## Impacto na verificação Google OAuth
+1. Login com `andygziemer@gmail.com` na Rhitmo
+2. Dashboard → "Conectar Google Calendar"
+3. Confirmar tela de consentimento mostra:
+   > "Rhitmo quer acessar... compartilhará com **rhitmo.co**" ✨
+4. Aprovar
+5. Confirmar redirect: Google → `rhitmo.co/auth/google/callback` → spinner → `/?calendar=connected`
+6. Confirmar dashboard mostra "Calendário conectado" + lista próximas reuniões
 
-✅ **Resolve o bloqueio do teste** — `andygziemer@gmail.com` poderá:
-1. Clicar "Começar grátis"
-2. Escolher "Sou Líder de time"
-3. Fazer signup com Google
-4. Cair direto no modal de criar workspace
-5. Ver o dashboard de líder com opção de conectar Google Calendar
-6. Você grava o vídeo pra Central de Verificação ✨
+### Fase 5 — Gravar vídeo + Central de Verificação (você faz)
 
-## Fora de escopo (não fazer agora)
+1. Gravar tela do fluxo completo: login → conectar calendar → tela de consentimento mostra `rhitmo.co` → aprovar → calendário sincronizado
+2. Google Cloud → **Central de verificação** → submeter app com:
+   - Vídeo gravado
+   - Link da Política de Privacidade: `https://rhitmo.co/privacidade`
+   - Link dos Termos: `https://rhitmo.co/termos`
+   - Justificativa de uso de cada scope
+3. Aguardar revisão (~4-6 semanas)
 
-- Reformular o Onboarding de 3 etapas existente (Identidade/Job Crafting/Futuro) — esse é o onboarding do **liderado já vinculado**, fluxo diferente
-- Mexer no fluxo de convite via email (`/invite?code=...`) — já funciona
-- Mexer no fluxo de HR Admin (vem via bulk-onboard, não pela landing)
-- Tradução EN/ES dos textos novos — fazer junto, mas não bloquear
+---
+
+## 🔧 Detalhes técnicos importantes
+
+### Por que precisa de página React intermediária?
+
+O Google só aceita redirect URIs em domínios listados em **Authorized domains**. A tela de consentimento mostra esse domínio pro usuário ("você está dando acesso a [domínio]") — é uma proteção de transparência da Google, **não dá pra esconder**.
+
+A única forma de mostrar `rhitmo.co` é o redirect realmente ir pra `rhitmo.co`. A página React serve como "trampolim": recebe o `code`, repassa pra Edge Function processar, e mostra UI bonita.
+
+### Validação de segurança no `state`
+
+O `state` continua sendo o `user_id` gerado quando o líder clicou em "Conectar Calendar" (já implementado). A Edge Function valida via `supabase.auth.getUser()` se o user_id bate com a sessão atual antes de salvar tokens. Isso protege contra CSRF.
+
+### Compatibilidade durante migração
+
+A Edge Function aceita os 2 formatos (GET legado e POST novo) durante a transição. Se algo der errado no front novo, o backend ainda funciona. Depois de validar, podemos remover o caminho legado.
+
+### Por que rota pública (`/auth/google/callback` fora do AppLayout)?
+
+O Google redireciona o browser cru, sem garantia de sessão Supabase ainda hidratada. A página precisa funcionar mesmo se a sessão estiver carregando — ela só repassa o `code` pra Edge Function, que valida via service role + state.
+
+---
+
+## ✅ Resultado esperado na tela de consentimento
+
+**Antes:**
+> Para continuar, o Google compartilhará seu nome, endereço de e-mail, idioma de preferência e foto do perfil com **lybkgujyezzzvbzypxed.supabase.co**.
+
+**Depois:**
+> Para continuar, o Google compartilhará seu nome, endereço de e-mail, idioma de preferência e foto do perfil com **rhitmo.co**.
+
+---
+
+## 📌 Fora de escopo (não fazer agora)
+
+- Refatorar OAuth do Slack pro mesmo padrão (já funciona via `slack-oauth-callback` → `rhitmo.co/slack/connect`)
+- Criar arquitetura genérica de OAuth proxy reutilizável (overengineering pra 1 integração)
+- Submeter Central de Verificação automaticamente (precisa de input humano: vídeo + justificativas)
+- Mexer em Recall.ai/Stripe/Resend (não usam OAuth do usuário final)
+
+---
+
+## ⏱️ Timeline estimada
+
+| Fase | Quem | Tempo |
+|---|---|---|
+| Fase 1 — Código | Lovable | ~15 min |
+| Fase 2 — Atualizar secret | Você (1 clique no prompt) | 30s |
+| Fase 3 — Google Cloud Console | Você | 3 min |
+| Fase 4 — Teste juntos | Nós dois | 5 min |
+| Fase 5 — Vídeo + submissão | Você | 30 min |
+| **Total até desbloqueio do teste visual** | | **~25 min** |
+
+---
+
+## 🎬 Aprovação
+
+Aprova a implementação da Opção A? Eu posso começar imediatamente após o seu OK — começo pela Fase 1 (código), depois disparo o pedido de atualização do secret, te passo as instruções exatas pro Google Cloud Console, e testamos juntos.
 
