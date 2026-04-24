@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RhythmWave } from '@/components/RhythmWave';
-import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award, ArrowRightLeft, UserCheck, Palette, Compass, FileText, User, Download, ArrowLeft, Eye } from 'lucide-react';
+import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award, ArrowRightLeft, UserCheck, Palette, Compass, FileText, User, Download, ArrowLeft, Eye, Sparkles } from 'lucide-react';
+import { useEvidencePendingCount } from '@/hooks/useEvidence';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { SlackIcon } from '@/components/icons/SlackIcon';
 import { GoogleCalendarIcon } from '@/components/icons/GoogleCalendarIcon';
@@ -56,6 +57,7 @@ export function AppSidebar() {
   // Sprint 1.2: removed "Analytics" from leader sidebar — kept only for HR Admin context.
   const menuItems = [
     { title: t('sidebar.home'), url: '/dashboard', icon: Home },
+    { title: 'Evidências', url: '/evidence', icon: Sparkles, badgeKind: 'evidence' as const },
     { title: t('sidebar.knowledgeCenter'), url: '/help', icon: BookOpen },
     { title: t('sidebar.subscription'), url: '/billing', icon: CreditCard },
   ];

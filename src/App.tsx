@@ -42,6 +42,7 @@ import Enterprise from "./pages/Enterprise";
 import Roadmap from "./pages/Roadmap";
 import ResetPassword from "./pages/ResetPassword";
 import GoogleCalendarCallback from "./pages/GoogleCalendarCallback";
+import Evidence from "./pages/Evidence";
 
 
 const queryClient = new QueryClient();
@@ -106,6 +107,11 @@ const App = () => (
             <Route path="/help" element={
               <DirectReportGuard>
                 <AppLayout><HelpCenter /></AppLayout>
+              </DirectReportGuard>
+            } />
+            <Route path="/evidence" element={
+              <DirectReportGuard>
+                <AppLayout><Evidence /></AppLayout>
               </DirectReportGuard>
             } />
             
