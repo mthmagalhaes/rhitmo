@@ -110,8 +110,8 @@ export default function GoogleCalendarCallback() {
 
           {status === "success" && (
             <>
-              <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-green-500/10 flex items-center justify-center">
-                <CheckCircle2 className="w-8 h-8 text-green-600" />
+              <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-primary/10 flex items-center justify-center">
+                <CheckCircle2 className="w-8 h-8 text-primary" />
               </div>
               <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground mb-3">
                 Calendário conectado
