@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { WorkspaceOnboarding } from '@/components/WorkspaceOnboarding';
+import { HRAdminWorkspaceOnboarding } from '@/components/HRAdminWorkspaceOnboarding';
 import { ActivityBadge } from '@/components/ActivityBadge';
 import { ActivitySheet } from '@/components/ActivitySheet';
 import { useAuth } from '@/hooks/useAuth';
@@ -27,11 +28,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   // Read persona intent from localStorage (set during signup persona selector or OAuth round-trip).
-  const [signupPersona, setSignupPersona] = useState<'leader' | 'member' | null>(() => {
+  const [signupPersona, setSignupPersona] = useState<'leader' | 'hr_admin' | null>(() => {
     if (typeof window === 'undefined') return null;
     try {
       const v = localStorage.getItem('signup_persona');
-      return v === 'leader' || v === 'member' ? v : null;
+      return v === 'leader' || v === 'hr_admin' ? v : null;
     } catch {
       return null;
     }
@@ -62,18 +63,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     && !hasPendingInviteByEmail
     && signupPersona === 'leader';
 
-  const needsWorkspaceSetup = baseNeedsWorkspaceSetup || personaForcesLeader;
-
-  // Persona === 'member' but no invite found → show "awaiting invite" landing.
-  const showAwaitingInvite = allContextResolved
+  const personaForcesHRAdmin = allContextResolved
     && user
     && !workspaceId
     && !hasError
     && !isLinkedMember
     && !hasPendingInviteByEmail
-    && !isLeader
-    && !isHRAdmin
-    && signupPersona === 'member';
+    && signupPersona === 'hr_admin';
+
+  const needsWorkspaceSetup = (baseNeedsWorkspaceSetup && signupPersona !== 'hr_admin') || personaForcesLeader;
+  const needsHRAdminWorkspaceSetup = personaForcesHRAdmin;
+
+  // Direct reports can only enter through invitations; standalone signup is no longer public.
+  const showAwaitingInvite = false;
 
   const showActivity = !!user;
 
@@ -101,6 +103,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
+      {needsHRAdminWorkspaceSetup && (
+        <HRAdminWorkspaceOnboarding
+          onComplete={() => {
+            handleWorkspaceComplete();
+            window.location.href = '/hr';
+          }}
+        />
+      )}
+
       {needsWorkspaceSetup && (
         <WorkspaceOnboarding 
           userId={user.id}
