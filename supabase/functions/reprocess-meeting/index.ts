@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase: any = createClient(supabaseUrl, supabaseServiceKey);
 
     // Find the bot record
     const { data: botRecord, error: findError } = await supabase
@@ -250,7 +250,7 @@ function formatTranscript(
 }
 
 async function findAllMeetingMembers(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   userId: string,
   meetingUrl: string,
   meetingId: string | null,
@@ -304,7 +304,7 @@ async function findAllMeetingMembers(
 }
 
 async function createTranscriptAndFeedback(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   managerId: string,
   memberId: string,
   fullTranscript: string,
