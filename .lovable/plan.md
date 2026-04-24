@@ -1,81 +1,116 @@
-Plano de implementação
+## Sprint 1 — Slack Ambient Mode (Versão Completa)
 
-1. Remover o posicionamento de “Acesso Restrito” do login
-- Trocar o título/subtítulo da tela de login de:
-  - “Acesso Restrito”
-  - “Exclusivo para convidados”
-- Para uma mensagem aberta e coerente com produto público, por exemplo:
-  - “Entrar no Rhitmo”
-  - “Acesse sua conta ou continue com Google”
-- Remover do login o bloco “Ainda não tem conta? Entre na Lista de Espera”.
-- Manter “Esqueci minha senha” e “Entrar com Google”.
+### Reposicionamento estratégico (importante)
 
-2. Substituir o seletor atual de cadastro
-- Alterar a rota `/auth/start`, hoje com:
-  - “Sou Líder de time”
-  - “Sou Liderado”
-- Para:
-  - “Sou Líder de time”
-  - “Sou RH / People Admin”
-- Remover totalmente a opção de “Sou Liderado” desse fluxo público.
-- Ajustar textos para deixar claro:
-  - Líder começa no plano Pulse, cria workspace e adiciona até 2 liderados.
-  - RH Admin começa configurando uma visão de RH limitada, pode criar workspace/adicionar líder no Pulse e precisa fazer upgrade para liberar recursos Enterprise.
-- Atualizar o armazenamento de intenção de cadastro de `leader/member` para `leader/hr_admin`.
+**Slack Ambient NÃO é alternativa ao Recall.ai.** É uma nova camada de captura que reposiciona Rhitmo como:
 
-3. Ajustar fluxo de cadastro e pós-login
-- Atualizar `AuthPage` e `Auth` para aceitar a nova persona `hr_admin`.
-- “Começar grátis” da landing continua apontando para `/auth/start`, mas agora o usuário escolhe entre Líder e RH Admin, não mais Liderado.
-- Cadastro como Líder: continua criando workspace Pulse via onboarding atual.
-- Cadastro como RH Admin: criar um onboarding próprio para criar workspace no modo RH Admin.
+> "A plataforma que consolida múltiplas fontes de evidência (1:1s gravadas, conversas no Slack, anotações manuais, sentimentos do time) e transforma tudo em **performance reviews fáceis, justas e rápidas**."
 
-4. Criar onboarding inicial para RH Admin
-- Criar uma variação do onboarding de workspace que permita ao RH Admin informar:
-  - nome da empresa/workspace;
-  - nome do primeiro time ou área;
-  - e-mail do primeiro líder a convidar/adicionar.
-- Ao concluir:
-  - criar workspace com `plan_tier = pulse`;
-  - adicionar o usuário atual em `hr_admin_ids`;
-  - criar um time inicial;
-  - convidar ou preparar vínculo do primeiro líder, usando a estrutura existente de times/líderes quando possível.
-- Redirecionar o RH Admin para `/hr`.
+- **Recall.ai** continua sendo a fonte premium para 1:1s gravados (alta precisão, contexto profundo).
+- **Slack Ambient** captura o "dia-a-dia" que nunca aparece em 1:1 (entregas no canal, conflitos, reconhecimento espontâneo, bloqueios).
+- **Magic Paste** continua para times que usam Tactiq/Fireflies/Meet.
+- **Anotações manuais** continuam como espinha dorsal.
 
-5. Liberar uma “amostra” do Enterprise para RH Admin no Pulse
-- Hoje as páginas de RH usam `hasHrDashboard`; no Pulse isso redireciona para Billing.
-- Ajustar a experiência para RH Admin Pulse liberar apenas uma funcionalidade de gostinho:
-  - liberar `/hr` com uma visão limitada/preview do dashboard de liderança;
-  - bloquear `/hr/teams`, `/hr/members` e `/hr/analytics` com CTA de upgrade para Enterprise/Pro conforme naming atual.
-- A navegação lateral do RH Admin em Pulse deve mostrar o que está liberado e o que está bloqueado, sem parecer erro.
+→ Pricing dos bots Recall.ai NÃO muda. Slack Ambient entra como diferencial dos planos Pro+ (sem canibalização).
+→ Narrativa de venda muda de "ferramenta de notas" para "**evidence engine** que alimenta reviews justas".
 
-6. Manter acesso de liderado somente por convite
-- O fluxo público não terá “Sou Liderado”.
-- O liderado continuará acessando via link de convite (`/invite`) ou por vínculo criado por Líder/RH Admin.
-- Se um usuário sem convite tentar entrar e não tiver workspace, manter uma tela explicativa, mas sem convidá-lo a se cadastrar como liderado sozinho.
+---
 
-Detalhes técnicos
+### Decisões já fechadas
+- **Resolução de membros:** Auto via email + fallback manual sob demanda.
+- **Esfera de captura:** Híbrido modelo Windmill — autojoin em todos os canais públicos por default; admin pode adicionar bot manualmente em canais privados via `/invite`. DMs nunca capturadas.
+- **Modo de captura:** Auto-captura silenciosa + revisão batch pelo líder.
+- **Digest:** Slack DM (canal nativo do líder) + card no app. **Sem email.** Cadência configurável (semanal default, quinzenal ou mensal).
 
-Arquivos principais a alterar:
-- `src/components/Auth.tsx`
-  - trocar textos de login;
-  - remover link de lista de espera no login;
-  - aceitar persona `hr_admin`.
-- `src/pages/AuthPage.tsx`
-  - trocar tipo `Persona` para `leader | hr_admin`;
-  - persistir intenção correta no OAuth round-trip;
-  - redirecionar HR Admin para `/hr` após resolver o workspace.
-- `src/pages/PersonaSelector.tsx`
-  - substituir card de liderado por card de RH Admin;
-  - atualizar labels, descrições e navegação.
-- `src/components/AppLayout.tsx`
-  - interpretar `signup_persona = hr_admin`;
-  - exibir onboarding de workspace RH Admin quando necessário.
-- Novo/ajustado componente de onboarding RH Admin
-  - reaproveitar o padrão visual Creme/Bento do `WorkspaceOnboarding`.
-- `src/hooks/usePlanLimits.ts`, `src/pages/HRDashboard.tsx`, `src/pages/HRTeams.tsx`, `src/pages/HRMembers.tsx`, `src/pages/HRAnalytics.tsx`, `src/components/AppSidebar.tsx`
-  - aplicar bloqueios/preview para HR Admin em Pulse.
+---
 
-Possível necessidade de backend
-- Se as permissões atuais não permitirem que o próprio RH Admin recém-cadastrado adicione seu ID em `hr_admin_ids` ou convide/crie líderes, será necessária uma migration/RPC segura ou uma backend function específica.
-- A regra será: o usuário só pode se tornar HR Admin no workspace que acabou de criar durante onboarding, não em workspaces existentes.
-- Não armazenaremos papéis em `profiles` ou metadata como fonte de autorização; o papel efetivo continuará derivado de workspace/times/RLS.
+### Item 1 — Schema do banco (migration)
+
+**`workspace_slack_settings`** (config por workspace)
+- `workspace_id` (PK), `ambient_mode_enabled` (default true), `autojoin_public_channels` (default true), `excluded_channel_ids` (text[]), `last_classifier_run_at`.
+- RLS: owner + HR admin do workspace.
+
+**`team_members.slack_user_id`** (coluna nova)
+- `text`, nullable, índice único parcial por workspace. Populada via auto-match por email.
+
+**`slack_ambient_evidence`**
+- `id`, `workspace_id`, `manager_id`, `member_id`, `slack_channel_id`, `slack_message_ts`
+- `message_text`, `permalink`, `category` (entrega | bloqueio | reconhecimento | conflito | outro)
+- `relevance_score` (0-1), `summary`
+- `status` (pending | approved | dismissed | converted_to_feedback)
+- `feedback_id` (FK feedbacks, nullable), `captured_at`, `reviewed_at`, `created_at`
+- RLS: só `manager_id` lê/escreve. HR admin lê agregado anonimizado.
+- Índice em `(manager_id, status, captured_at desc)`.
+
+**`leader_digest_preferences`** (novo — config de cadência do digest)
+- `user_id` (PK), `cadence` (weekly | biweekly | monthly, default weekly)
+- `channel` (slack | in_app | both, default both)
+- `day_of_week` (0-6, default 1 = segunda), `hour_local` (default 9)
+- `timezone` (default America/Sao_Paulo), `last_sent_at`
+- RLS: usuário só vê/edita o próprio.
+
+### Item 2 — Slack manifest & scopes
+
+Adicionar ao app Slack custom:
+- **Bot scopes novos:** `channels:history`, `channels:join`, `groups:history`, `users:read.email`.
+- **Message shortcut:** "Salvar como evidência no Rhitmo" (callback_id: `save_as_evidence`).
+- **Event subscription:** `channel_created` (autojoin de novos canais públicos).
+
+Vou gerar JSON manifest atualizado, te peço pra colar em api.slack.com/apps, depois reconnect via tool de connectors.
+
+### Item 3 — Edge Function `slack-ambient-classifier`
+
+Cron diário (3h BRT):
+1. Pra cada workspace com `ambient_mode_enabled = true`: lista canais, filtra excluídos, autojoin em novos públicos.
+2. Pra cada canal: `conversations.history` desde último run, filtros baratos (regex/length, descarta < 20 chars, emoji-only, links puros, bots).
+3. Resolução de autor: `users.info` → email → match em `team_members.email`. Cache em `slack_user_id`. Sem match = descarta.
+4. Classificação semântica: `google/gemini-2.0-flash-lite` em batch (20 msgs/call) → `{relevance_score, category, summary}`. Persiste se score >= 0.6.
+5. Insere em `slack_ambient_evidence` (status `pending`), identifica `manager_id` via `teams.leader_user_id`.
+6. Logging em `automation_runs` (job: `slack_ambient_classifier`).
+
+**Cron:** `pg_cron` + `pg_net`, schedule `0 6 * * *` UTC.
+
+---
+
+### Itens que ficam pra próximas mensagens
+- **Item 4:** Painel `/evidence` de revisão batch (UI no app — onde líder aprova/dispensa em lote).
+- **Item 5:** **Digest via Slack DM + card in-app** (NÃO email).
+  - Edge Function `send-evidence-digest` que respeita `leader_digest_preferences.cadence`.
+  - Mensagem Slack DM no formato:
+    ```
+    📊 Resumo Rhitmo da semana
+
+    Você tem 12 evidências esperando revisão sobre 4 liderados:
+    • João: 3 entregas no #engenharia
+    • Maria: 2 reconhecimentos no #vendas
+    • ...
+
+    [Revisar agora] [Mudar cadência]
+    ```
+  - Card persistente no app (componente novo no dashboard) com mesma info + CTA.
+  - Config em `Settings > Notificações`: switch de cadência (semanal | quinzenal | mensal) e canal (Slack DM | só in-app | ambos).
+- **Item 6:** Conversão evidência → feedback (1-click, popula `feedbacks.source = 'slack_ambient'`).
+- **Item 7:** Dashboard HR com métricas agregadas (cobertura de captura, % evidências viraram review, etc).
+
+---
+
+### Custos estimados
+- ~50 canais × 100 msgs/dia = 5k msgs/workspace/dia → ~500 vão pro LLM após filtros.
+- Gemini Flash Lite: ~R$ 0,02/workspace/dia = **R$ 0,60/workspace/mês**.
+- Não substitui custo Recall.ai — adiciona valor (nova fonte de evidência) por custo marginal baixíssimo.
+
+### Riscos & mitigações
+- **Rate limit Slack:** paginação com backoff, processa workspaces serialmente.
+- **LGPD:** captura só de canais onde bot foi explicitamente adicionado/autojoined. `pending` exige aprovação humana antes de virar feedback. Onboarding com aviso explícito + Privacy Onboarding já existente (`SlackPrivacyOnboarding.tsx`).
+- **Falsos positivos:** threshold 0.6 conservador, log de score distribution pra calibrar depois.
+
+---
+
+### Aprovação
+
+Quando aprovar, executo em sequência sem interromper:
+1. Crio tasks no tracker.
+2. Migration (Item 1) → Manifest/scopes (Item 2) → Edge Function classifier (Item 3).
+3. Te aviso ao final do Item 3 com link pra testar (ou ao bloquear).
+
+Confirma esse escopo ajustado?
