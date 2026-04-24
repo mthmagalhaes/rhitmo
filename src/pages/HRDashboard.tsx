@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useHRAdmin } from '@/components/HRAdminGuard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Users, AlertCircle, CheckCircle, Bell, Target, ShieldAlert,
@@ -47,6 +47,7 @@ const HRDashboard = () => {
   const navigate = useNavigate();
   const { workspaceId, workspaceName } = useHRAdmin();
   const { hasHrDashboard, isLoading: planLoading } = usePlanLimits();
+  const isPreview = !planLoading && !hasHrDashboard;
 
   const { data: metrics, isLoading } = useQuery<Metrics>({
     queryKey: ['hr-dashboard', workspaceId],
@@ -57,10 +58,6 @@ const HRDashboard = () => {
     },
     enabled: !!workspaceId && !planLoading && hasHrDashboard,
   });
-
-  if (!planLoading && !hasHrDashboard) {
-    return <Navigate to="/billing" replace />;
-  }
 
   const noFeedback = metrics?.members_without_recent_feedback ?? 0;
   const noReview = metrics?.members_without_recent_review ?? 0;
@@ -87,13 +84,25 @@ const HRDashboard = () => {
       </div>
 
       <div className="max-w-6xl mx-auto px-6 pt-8 space-y-12">
-        {/* ═══ AÇÕES RÁPIDAS ═══ */}
-        <section className="flex items-center justify-end gap-3">
-          <MonthlyReportButton workspaceId={workspaceId} />
-        </section>
+        {isPreview && (
+          <section className="bg-card rounded-3xl border shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary mb-2">Amostra Enterprise</p>
+              <h2 className="text-xl font-bold tracking-tight text-foreground">Sua visão de RH está pronta</h2>
+              <p className="text-sm text-muted-foreground mt-1">No Pulse, você acessa esta prévia. Times, liderados e analytics avançado ficam disponíveis no upgrade Enterprise.</p>
+            </div>
+            <button type="button" onClick={() => navigate('/enterprise')} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors">Conhecer Enterprise</button>
+          </section>
+        )}
 
-        {/* ═══ ALERTAS AUTOMÁTICOS (S3.5) ═══ */}
-        <HRAutoAlertsSection />
+        {!isPreview && (
+          <>
+            <section className="flex items-center justify-end gap-3">
+              <MonthlyReportButton workspaceId={workspaceId} />
+            </section>
+            <HRAutoAlertsSection />
+          </>
+        )}
 
         {/* ═══ MÉTRICAS — Sprint 1.6: 5 → 3 KPIs (Cobertura, Maturidade, Risco) ═══ */}
         <section>

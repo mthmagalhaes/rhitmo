@@ -30,7 +30,8 @@ import { BarChart3, Users, MessageSquare, TrendingUp, Filter, Activity, AlertTri
 import { RiskTable } from '@/components/hr/RiskTable';
 import { EngagementHeatmap } from '@/components/hr/EngagementHeatmap';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
-import { Navigate } from 'react-router-dom';
+import { HRUpgradeGate } from '@/components/hr/HRUpgradeGate';
+
 import { Badge } from '@/components/ui/badge';
 
 interface Metrics {
@@ -93,7 +94,7 @@ export default function HRAnalytics() {
   const [selectedTeam, setSelectedTeam] = useState('all');
 
   if (!planLoading && !hasHrDashboard) {
-    return <Navigate to="/billing" replace />;
+    return <HRUpgradeGate title="Analytics avançado exige Enterprise" description="Dashboards avançados, segmentações e mapas de risco fazem parte do plano Enterprise." />;
   }
 
   const { data: metrics, isLoading: metricsLoading } = useQuery({

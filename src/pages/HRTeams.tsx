@@ -18,7 +18,8 @@ import {
   FileText, CheckCircle, XCircle
 } from 'lucide-react';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
-import { Navigate } from 'react-router-dom';
+import { HRUpgradeGate } from '@/components/hr/HRUpgradeGate';
+
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -49,7 +50,7 @@ const HRTeams = () => {
   const [search, setSearch] = useState('');
 
   if (!planLoading && !hasHrDashboard) {
-    return <Navigate to="/billing" replace />;
+    return <HRUpgradeGate title="Times e líderes exigem Enterprise" description="A prévia Pulse mostra a visão geral. Para cadastrar e acompanhar múltiplos líderes, faça upgrade para o plano Enterprise." />;
   }
   const [selectedLeader, setSelectedLeader] = useState<Leader | null>(null);
 
