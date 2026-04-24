@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
       limit: 12,
     });
 
-    const simplified = invoices.data.map((inv) => ({
+    const simplified = invoices.data.map((inv: any) => ({
       id: inv.id,
       amount: inv.amount_paid ?? inv.total ?? 0,
       status: inv.status,
