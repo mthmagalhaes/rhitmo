@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
     for (const bot of pendingBots) {
       try {
         const result = await processBot(
-          supabaseAdmin,
+          supabaseAdmin as any,
           bot,
           RECALL_API_KEY,
         );
@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
 });
 
 async function processBot(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: any,
   bot: {
     id: string;
     recall_bot_id: string;
