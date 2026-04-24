@@ -277,7 +277,7 @@ export const usePlanLimits = () => {
     hasSync: isBeta ? true : limits.rhitmoSync,
     hasMentorChat: true,
     hasHrDashboard: isBeta ? true : limits.hrDashboard,
-    hasHrPreview: true,
+    hasHrPreview: isBeta || isHrAdmin,
     hasFormalReviews: isBeta ? true : limits.formalReviews,
     membersRemaining: isBeta ? Infinity : limits.maxMembers - memberCount,
     teamsRemaining: isBeta ? Infinity : limits.maxTeams - teamCount,
