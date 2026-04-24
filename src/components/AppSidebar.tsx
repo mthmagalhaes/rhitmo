@@ -81,8 +81,9 @@ export function AppSidebar() {
   const { isLeader, isHRAdmin, isUser, loading: roleLoading } = useUserRole();
   const { isLinkedMember, linkedMember } = useLinkedMember();
   const { count: hrAlertsCount } = useHRRiskAlerts();
-  const { limits: planLimits } = usePlanLimits();
+  const { limits: planLimits, hasHrDashboard } = usePlanLimits();
   const isFounder = !!planLimits?.isBetaUser;
+  const lockedHRItems = new Set(['/hr/teams', '/hr/members', '/hr/analytics']);
   const { stopImpersonation, impersonatedEmail } = useImpersonation();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -202,6 +203,9 @@ export function AppSidebar() {
                             >
                               <item.icon className="h-5 w-5" />
                               <span className="flex-1">{item.title}</span>
+                              {!hasHrDashboard && lockedHRItems.has(item.url) && open && (
+                                <span className="ml-auto rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">Upgrade</span>
+                              )}
                               {showBadge && (
                                 <span
                                   className="ml-auto inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground"
