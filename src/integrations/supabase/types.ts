@@ -893,6 +893,42 @@ export type Database = {
           },
         ]
       }
+      leader_digest_preferences: {
+        Row: {
+          cadence: Database["public"]["Enums"]["digest_cadence"]
+          channel: Database["public"]["Enums"]["digest_channel"]
+          created_at: string
+          day_of_week: number
+          hour_local: number
+          last_sent_at: string | null
+          timezone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cadence?: Database["public"]["Enums"]["digest_cadence"]
+          channel?: Database["public"]["Enums"]["digest_channel"]
+          created_at?: string
+          day_of_week?: number
+          hour_local?: number
+          last_sent_at?: string | null
+          timezone?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cadence?: Database["public"]["Enums"]["digest_cadence"]
+          channel?: Database["public"]["Enums"]["digest_channel"]
+          created_at?: string
+          day_of_week?: number
+          hour_local?: number
+          last_sent_at?: string | null
+          timezone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       leader_nudges: {
         Row: {
           action_url: string | null
@@ -1626,6 +1662,88 @@ export type Database = {
           },
         ]
       }
+      slack_ambient_evidence: {
+        Row: {
+          captured_at: string
+          category: Database["public"]["Enums"]["slack_evidence_category"]
+          created_at: string
+          feedback_id: string | null
+          id: string
+          manager_id: string
+          member_id: string
+          message_text: string
+          permalink: string | null
+          relevance_score: number
+          reviewed_at: string | null
+          slack_channel_id: string
+          slack_channel_name: string | null
+          slack_message_ts: string
+          status: Database["public"]["Enums"]["slack_evidence_status"]
+          summary: string | null
+          workspace_id: string
+        }
+        Insert: {
+          captured_at?: string
+          category?: Database["public"]["Enums"]["slack_evidence_category"]
+          created_at?: string
+          feedback_id?: string | null
+          id?: string
+          manager_id: string
+          member_id: string
+          message_text: string
+          permalink?: string | null
+          relevance_score?: number
+          reviewed_at?: string | null
+          slack_channel_id: string
+          slack_channel_name?: string | null
+          slack_message_ts: string
+          status?: Database["public"]["Enums"]["slack_evidence_status"]
+          summary?: string | null
+          workspace_id: string
+        }
+        Update: {
+          captured_at?: string
+          category?: Database["public"]["Enums"]["slack_evidence_category"]
+          created_at?: string
+          feedback_id?: string | null
+          id?: string
+          manager_id?: string
+          member_id?: string
+          message_text?: string
+          permalink?: string | null
+          relevance_score?: number
+          reviewed_at?: string | null
+          slack_channel_id?: string
+          slack_channel_name?: string | null
+          slack_message_ts?: string
+          status?: Database["public"]["Enums"]["slack_evidence_status"]
+          summary?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "slack_ambient_evidence_feedback_id_fkey"
+            columns: ["feedback_id"]
+            isOneToOne: false
+            referencedRelation: "feedbacks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "slack_ambient_evidence_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "slack_ambient_evidence_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       slack_integrations: {
         Row: {
           created_at: string | null
@@ -1761,6 +1879,7 @@ export type Database = {
           recognition_style: string | null
           role: string
           skills_data: Json | null
+          slack_user_id: string | null
           team_id: string
           updated_at: string
           user_id: string | null
@@ -1786,6 +1905,7 @@ export type Database = {
           recognition_style?: string | null
           role: string
           skills_data?: Json | null
+          slack_user_id?: string | null
           team_id: string
           updated_at?: string
           user_id?: string | null
@@ -1811,6 +1931,7 @@ export type Database = {
           recognition_style?: string | null
           role?: string
           skills_data?: Json | null
+          slack_user_id?: string | null
           team_id?: string
           updated_at?: string
           user_id?: string | null
@@ -2016,6 +2137,44 @@ export type Database = {
           team_size?: string | null
         }
         Relationships: []
+      }
+      workspace_slack_settings: {
+        Row: {
+          ambient_mode_enabled: boolean
+          autojoin_public_channels: boolean
+          created_at: string
+          excluded_channel_ids: string[]
+          last_classifier_run_at: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          ambient_mode_enabled?: boolean
+          autojoin_public_channels?: boolean
+          created_at?: string
+          excluded_channel_ids?: string[]
+          last_classifier_run_at?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          ambient_mode_enabled?: boolean
+          autojoin_public_channels?: boolean
+          created_at?: string
+          excluded_channel_ids?: string[]
+          last_classifier_run_at?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_slack_settings_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       workspaces: {
         Row: {
@@ -2386,6 +2545,19 @@ export type Database = {
     }
     Enums: {
       app_role: "super_admin"
+      digest_cadence: "weekly" | "biweekly" | "monthly"
+      digest_channel: "slack" | "in_app" | "both"
+      slack_evidence_category:
+        | "entrega"
+        | "bloqueio"
+        | "reconhecimento"
+        | "conflito"
+        | "outro"
+      slack_evidence_status:
+        | "pending"
+        | "approved"
+        | "dismissed"
+        | "converted_to_feedback"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2514,6 +2686,21 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["super_admin"],
+      digest_cadence: ["weekly", "biweekly", "monthly"],
+      digest_channel: ["slack", "in_app", "both"],
+      slack_evidence_category: [
+        "entrega",
+        "bloqueio",
+        "reconhecimento",
+        "conflito",
+        "outro",
+      ],
+      slack_evidence_status: [
+        "pending",
+        "approved",
+        "dismissed",
+        "converted_to_feedback",
+      ],
     },
   },
 } as const
