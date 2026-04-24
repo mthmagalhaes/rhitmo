@@ -16,7 +16,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Search, Users, CheckCircle2, Calendar, Loader2, UserCheck, Sparkles } from 'lucide-react';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
-import { Navigate } from 'react-router-dom';
+import { HRUpgradeGate } from '@/components/hr/HRUpgradeGate';
+
 
 const ITEMS_PER_PAGE = 20;
 
@@ -33,7 +34,7 @@ export default function HRMembers() {
   const [search, setSearch] = useState('');
 
   if (!planLoading && !hasHrDashboard) {
-    return <Navigate to="/billing" replace />;
+    return <HRUpgradeGate title="Liderados exigem Enterprise" description="A gestão completa de liderados por RH Admin fica disponível no upgrade Enterprise." />;
   }
   const [selectedLeader, setSelectedLeader] = useState('all');
   const [pdiFilter, setPdiFilter] = useState('all');

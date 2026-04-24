@@ -2087,6 +2087,14 @@ export type Database = {
         Args: { p_workspace_id: string }
         Returns: undefined
       }
+      create_hr_admin_starter_workspace: {
+        Args: {
+          _leader_email?: string
+          _team_name?: string
+          _workspace_name: string
+        }
+        Returns: string
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean

@@ -2,9 +2,9 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
-import { ArrowLeft, ArrowRight, Target, Users, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Target, Building2, Sparkles } from 'lucide-react';
 
-type Persona = 'leader' | 'member';
+type Persona = 'leader' | 'hr_admin';
 
 export default function PersonaSelector() {
   const navigate = useNavigate();
@@ -23,49 +23,49 @@ export default function PersonaSelector() {
   const t = {
     pt: {
       back: 'Voltar para a página inicial',
-      title: 'Como você vai usar o Rhitmo?',
-      subtitle: 'Escolha o seu papel para personalizarmos sua experiência.',
-      leaderBadge: 'Recomendado para experimentar',
+      title: 'Como você quer começar?',
+      subtitle: 'Escolha o ponto de entrada para configurarmos seu workspace corretamente.',
+      leaderBadge: 'Plano Pulse grátis',
       leaderTitle: 'Sou Líder de time',
       leaderDesc:
-        'Crie seu workspace, convide seu time e tenha acesso a Google Calendar, AI Mentor, Reviews e Briefs pré-1:1.',
-      leaderCta: 'Continuar como Líder',
-      memberTitle: 'Sou Liderado',
-      memberDesc:
-        'Você foi convidado pelo seu líder? Use o link do convite que recebeu por e-mail ou crie sua conta de acesso.',
-      memberCta: 'Continuar como Liderado',
+        'Crie seu workspace Pulse, adicione até 2 liderados e experimente notas, Mentor e avaliações baseadas em evidências.',
+      leaderCta: 'Começar como Líder',
+      hrTitle: 'Sou RH / People Admin',
+      hrDesc:
+        'Crie a visão inicial da empresa, adicione o primeiro líder e conheça uma amostra do painel Enterprise antes do upgrade.',
+      hrCta: 'Começar como RH Admin',
       footer: 'Já tem conta?',
       footerCta: 'Entrar',
     },
     en: {
       back: 'Back to homepage',
-      title: 'How will you use Rhitmo?',
-      subtitle: 'Choose your role so we can tailor your experience.',
-      leaderBadge: 'Recommended for trying it out',
+      title: 'How do you want to start?',
+      subtitle: 'Choose your entry point so we can configure your workspace correctly.',
+      leaderBadge: 'Free Pulse plan',
       leaderTitle: "I'm a Team Leader",
       leaderDesc:
-        'Create your workspace, invite your team, and unlock Google Calendar, AI Mentor, Reviews and pre-1:1 Briefs.',
-      leaderCta: 'Continue as Leader',
-      memberTitle: "I'm a Team Member",
-      memberDesc:
-        'Were you invited by your leader? Use the invite link you received via email or create your access account.',
-      memberCta: 'Continue as Member',
+        'Create your Pulse workspace, add up to 2 direct reports, and try notes, Mentor and evidence-based reviews.',
+      leaderCta: 'Start as Leader',
+      hrTitle: "I'm HR / People Admin",
+      hrDesc:
+        'Create the company view, add the first leader, and preview a slice of the Enterprise panel before upgrading.',
+      hrCta: 'Start as HR Admin',
       footer: 'Already have an account?',
       footerCta: 'Sign in',
     },
     es: {
       back: 'Volver al inicio',
-      title: '¿Cómo vas a usar Rhitmo?',
-      subtitle: 'Elige tu rol para personalizar tu experiencia.',
-      leaderBadge: 'Recomendado para probar',
+      title: '¿Cómo quieres empezar?',
+      subtitle: 'Elige el punto de entrada para configurar tu workspace correctamente.',
+      leaderBadge: 'Plan Pulse gratis',
       leaderTitle: 'Soy Líder de equipo',
       leaderDesc:
-        'Crea tu workspace, invita a tu equipo y accede a Google Calendar, AI Mentor, Reviews y Briefs pre-1:1.',
-      leaderCta: 'Continuar como Líder',
-      memberTitle: 'Soy Miembro del equipo',
-      memberDesc:
-        '¿Te invitó tu líder? Usa el enlace de invitación que recibiste por correo o crea tu cuenta de acceso.',
-      memberCta: 'Continuar como Miembro',
+        'Crea tu workspace Pulse, agrega hasta 2 colaboradores y prueba notas, Mentor y evaluaciones basadas en evidencia.',
+      leaderCta: 'Empezar como Líder',
+      hrTitle: 'Soy RH / People Admin',
+      hrDesc:
+        'Crea la vista inicial de la empresa, agrega el primer líder y prueba una muestra del panel Enterprise antes del upgrade.',
+      hrCta: 'Empezar como RH Admin',
       footer: '¿Ya tienes cuenta?',
       footerCta: 'Iniciar sesión',
     },
@@ -73,7 +73,6 @@ export default function PersonaSelector() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
       <header className="border-b">
         <div className="max-w-6xl mx-auto px-6 lg:px-8 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 text-foreground">
@@ -89,7 +88,6 @@ export default function PersonaSelector() {
         </div>
       </header>
 
-      {/* Main */}
       <main className="flex-1 flex items-center justify-center px-6 py-12 lg:py-20">
         <div className="w-full max-w-5xl space-y-10 animate-fade-in">
           <div className="text-center space-y-3">
@@ -102,7 +100,6 @@ export default function PersonaSelector() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Leader card (highlighted) */}
             <button
               type="button"
               onClick={() => choose('leader')}
@@ -125,21 +122,20 @@ export default function PersonaSelector() {
               </Button>
             </button>
 
-            {/* Member card */}
             <button
               type="button"
-              onClick={() => choose('member')}
+              onClick={() => choose('hr_admin')}
               className="group text-left bg-card rounded-3xl border p-8 lg:p-10 shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col"
             >
               <div className="w-14 h-14 rounded-2xl bg-accent/50 flex items-center justify-center mb-5">
-                <Users className="h-7 w-7 text-accent-foreground" />
+                <Building2 className="h-7 w-7 text-accent-foreground" />
               </div>
               <h3 className="text-xl lg:text-2xl font-bold text-foreground mb-3 tracking-tight">
-                {t.memberTitle}
+                {t.hrTitle}
               </h3>
-              <p className="text-muted-foreground leading-relaxed flex-1">{t.memberDesc}</p>
+              <p className="text-muted-foreground leading-relaxed flex-1">{t.hrDesc}</p>
               <Button variant="outline" className="w-full rounded-xl mt-6 h-12 font-semibold" size="lg">
-                {t.memberCta}
+                {t.hrCta}
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </button>

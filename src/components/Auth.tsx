@@ -16,7 +16,7 @@ interface AuthProps {
   defaultMode?: 'login' | 'signup';
   defaultEmail?: string;
   isInviteFlow?: boolean;
-  persona?: 'leader' | 'member';
+  persona?: 'leader' | 'hr_admin';
 }
 
 export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = false, persona }: AuthProps) => {
@@ -40,8 +40,8 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
 
   const personaTitle = isSignUp && persona === 'leader'
     ? (t('auth.createLeaderAccount', { defaultValue: 'Criar conta de Líder' }) as string)
-    : isSignUp && persona === 'member'
-    ? (t('auth.createMemberAccount', { defaultValue: 'Criar conta de Liderado' }) as string)
+    : isSignUp && persona === 'hr_admin'
+    ? (t('auth.createHRAdminAccount', { defaultValue: 'Criar conta de RH Admin' }) as string)
     : null;
 
   const handleForgotPassword = async (e: React.FormEvent) => {
@@ -192,10 +192,10 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
                 ? t('auth.recoverPassword')
                 : isSignUp
                 ? (personaTitle ?? t('auth.createAccount'))
-                : t('auth.restrictedAccess')}
+                : t('auth.loginTitle')}
             </h1>
             <p className="text-muted-foreground text-lg">
-              {isForgotPassword ? t('auth.recoverPasswordDesc') : isSignUp ? t('auth.completeSignup') : t('auth.inviteOnly')}
+              {isForgotPassword ? t('auth.recoverPasswordDesc') : isSignUp ? t('auth.completeSignup') : t('auth.loginSubtitle')}
             </p>
           </div>
 
@@ -416,14 +416,6 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
                 </div>
               )}
 
-              <div className="text-center pt-6">
-                <p className="text-sm text-muted-foreground">
-                  {t('auth.noAccountYet')}{' '}
-                  <Link to="/" className="text-primary hover:underline font-medium">
-                    {t('auth.joinWaitlist')}
-                  </Link>
-                </p>
-              </div>
             </form>
           ) : null}
         </div>
