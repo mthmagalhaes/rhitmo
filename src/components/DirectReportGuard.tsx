@@ -8,11 +8,11 @@ interface DirectReportGuardProps {
   children: React.ReactNode;
 }
 
-function readPersona(): 'leader' | 'member' | null {
+function readPersona(): 'leader' | 'hr_admin' | null {
   if (typeof window === 'undefined') return null;
   try {
     const v = localStorage.getItem('signup_persona');
-    return v === 'leader' || v === 'member' ? v : null;
+    return v === 'leader' || v === 'hr_admin' ? v : null;
   } catch {
     return null;
   }
@@ -25,7 +25,7 @@ export function DirectReportGuard({ children }: DirectReportGuardProps) {
   // isAdmin is false during impersonation by design — that lets the admin
   // navigate the regular app while impersonating without being kicked back.
   const { isAdmin, loading: adminLoading } = useAdmin();
-  const [persona, setPersona] = useState<'leader' | 'member' | null>(() => readPersona());
+  const [persona, setPersona] = useState<'leader' | 'hr_admin' | null>(() => readPersona());
 
   useEffect(() => {
     if (location.pathname === '/onboarding') return;
@@ -45,7 +45,7 @@ export function DirectReportGuard({ children }: DirectReportGuardProps) {
         <div className="text-center max-w-sm mx-auto px-6">
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
           <p className="mt-4 text-muted-foreground">Carregando...</p>
-          {persona === 'member' && (
+          {false && persona === 'hr_admin' && (
             <button
               type="button"
               onClick={() => {

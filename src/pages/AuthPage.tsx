@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 
 type BillingCycle = 'quarterly' | 'semiannual' | 'annual';
-type Persona = 'leader' | 'member';
+type Persona = 'leader' | 'hr_admin';
 
 const AuthPage = () => {
   const { user, loading } = useAuth();
@@ -25,7 +25,7 @@ const AuthPage = () => {
   // Plan=pro implies leader (only leaders can subscribe).
   useEffect(() => {
     const persona: Persona | null = personaParam ?? (planParam === 'pro' ? 'leader' : null);
-    if (persona === 'leader' || persona === 'member') {
+    if (persona === 'leader' || persona === 'hr_admin') {
       try {
         localStorage.setItem('signup_persona', persona);
       } catch {
