@@ -9,8 +9,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAccount } from '@/contexts/AccountContext';
 
 import { useQueryClient } from '@tanstack/react-query';
-import { Loader2 } from 'lucide-react';
-import AwaitingInvite from '@/pages/AwaitingInvite';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
@@ -74,9 +72,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const needsWorkspaceSetup = (baseNeedsWorkspaceSetup && signupPersona !== 'hr_admin') || personaForcesLeader;
   const needsHRAdminWorkspaceSetup = personaForcesHRAdmin;
 
-  // Direct reports can only enter through invitations; standalone signup is no longer public.
-  const showAwaitingInvite = false;
-
   const showActivity = !!user;
 
   const handleWorkspaceComplete = () => {
@@ -95,11 +90,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       if (signupPersona !== null) setSignupPersona(null);
     }
   }, [allContextResolved, workspaceId, isLinkedMember, isHRAdmin, signupPersona]);
-
-  // Awaiting invite takes over the whole layout (no sidebar)
-  if (showAwaitingInvite) {
-    return <AwaitingInvite onPersonaSwitch={() => setSignupPersona('leader')} />;
-  }
 
   return (
     <SidebarProvider>
