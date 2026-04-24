@@ -140,6 +140,7 @@ const App = () => (
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/enterprise" element={<Enterprise />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/auth/google/callback" element={<GoogleCalendarCallback />} />
             <Route path="/roadmap" element={<Roadmap />} />
             
             {/* Rota Admin */}
