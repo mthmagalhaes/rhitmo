@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const supabaseAdmin: any = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const { data: botRecord, error: findError } = await supabaseAdmin
       .from("recall_bots")
@@ -131,8 +131,8 @@ Deno.serve(async (req) => {
 // ── Leader presence check ──────────────────────────────────────────────────
 
 async function checkLeaderPresence(
-  supabaseAdmin: ReturnType<typeof createClient>,
-  botRecord: Record<string, unknown>,
+  supabaseAdmin: any,
+  botRecord: any,
   botId: string,
   recallApiKey: string,
 ) {
@@ -287,8 +287,8 @@ async function fetchTranscriptFromRecall(
 // ── Main handler for bot.done ──────────────────────────────────────────────
 
 async function handleBotDone(
-  supabaseAdmin: ReturnType<typeof createClient>,
-  botRecord: Record<string, unknown>,
+  supabaseAdmin: any,
+  botRecord: any,
   botId: string,
   recallApiKey: string,
   supabaseUrl: string,
@@ -421,7 +421,7 @@ function formatTranscript(
 // ── Helper: Find all member_ids associated with this meeting ───────────────
 
 async function findAllMeetingMembers(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: any,
   userId: string,
   meetingUrl: string,
   meetingId: string | null,
@@ -477,7 +477,7 @@ async function findAllMeetingMembers(
 // ── Helper: Create meeting_transcript + feedback for a member ──────────────
 
 async function createTranscriptAndFeedback(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: any,
   managerId: string,
   memberId: string,
   fullTranscript: string,
