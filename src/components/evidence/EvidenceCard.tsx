@@ -48,7 +48,7 @@ export function EvidenceCard({ evidence, selected, onSelect, onApprove, onDismis
         <div className="flex-1 min-w-0">
           {/* Header */}
           <div className="flex items-center gap-2 mb-3 flex-wrap">
-            {member && <MemberAvatar memberId={member.id} name={member.name} size="sm" />}
+            {member && <MemberAvatar memberId={member.id} memberName={member.name} size="sm" />}
             <span className="font-semibold text-sm tracking-tight">{member?.name || 'Liderado'}</span>
             <span className="text-muted-foreground text-xs">·</span>
             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
