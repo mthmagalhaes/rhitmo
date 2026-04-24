@@ -100,7 +100,7 @@ serve(async (req) => {
         const existing = existingByEmail.get(email);
 
         if (existing) {
-          userId = existing.user_id;
+          userId = existing.user_id ?? null;
           results.push({ email, status: 'skipped', message: 'Usuário já existe' });
         } else {
           // Silent mode: cria usuário SEM enviar email. O disparo é manual via dispatch-bulk-invites.
