@@ -21,6 +21,11 @@ interface ResultRow {
   message: string;
 }
 
+interface ExistingUserMetadataRow {
+  email?: string | null;
+  user_id?: string | null;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -69,7 +74,9 @@ serve(async (req) => {
 
     // Pre-fetch existing users by email
     const { data: existingUsersData } = await supabaseAdmin.rpc('get_all_users_with_metadata');
-    const existingByEmail = new Map((existingUsersData || []).map((u: any) => [u.email?.toLowerCase(), u]));
+    const existingByEmail = new Map(
+      ((existingUsersData || []) as ExistingUserMetadataRow[]).map((u) => [u.email?.toLowerCase(), u])
+    );
 
     const results: ResultRow[] = [];
 
