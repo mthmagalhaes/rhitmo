@@ -84,6 +84,7 @@ export function AppSidebar() {
   const { isLinkedMember, linkedMember } = useLinkedMember();
   const { count: hrAlertsCount } = useHRRiskAlerts();
   const { limits: planLimits, hasHrDashboard } = usePlanLimits();
+  const { data: evidencePendingCount = 0 } = useEvidencePendingCount();
   const isFounder = !!planLimits?.isBetaUser;
   const lockedHRItems = new Set(['/hr/teams', '/hr/members', '/hr/analytics']);
   const { stopImpersonation, impersonatedEmail } = useImpersonation();
@@ -257,21 +258,32 @@ export function AppSidebar() {
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {(showMemberMenu ? memberMenuItems : menuItems)
-                      .map((item) => (
-                      <SidebarMenuItem key={item.title}>
-                        <SidebarMenuButton asChild tooltip={item.title}>
-                          <NavLink 
-                            to={item.url} 
-                            end
-                            className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
-                            activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
-                          >
-                            <item.icon className="h-5 w-5" />
-                            <span>{item.title}</span>
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
+                      .map((item) => {
+                        const showEvidenceBadge = (item as { badgeKind?: string }).badgeKind === 'evidence' && evidencePendingCount > 0;
+                        return (
+                          <SidebarMenuItem key={item.title}>
+                            <SidebarMenuButton asChild tooltip={item.title}>
+                              <NavLink 
+                                to={item.url} 
+                                end
+                                className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
+                                activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
+                              >
+                                <item.icon className="h-5 w-5" />
+                                <span className="flex-1">{item.title}</span>
+                                {showEvidenceBadge && open && (
+                                  <span
+                                    className="ml-auto inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground"
+                                    aria-label={`${evidencePendingCount} evidências pendentes`}
+                                  >
+                                    {evidencePendingCount}
+                                  </span>
+                                )}
+                              </NavLink>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        );
+                      })}
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>
