@@ -41,6 +41,7 @@ import RecorderPopup from "./pages/RecorderPopup";
 import Enterprise from "./pages/Enterprise";
 import Roadmap from "./pages/Roadmap";
 import ResetPassword from "./pages/ResetPassword";
+import GoogleCalendarCallback from "./pages/GoogleCalendarCallback";
 
 
 const queryClient = new QueryClient();
