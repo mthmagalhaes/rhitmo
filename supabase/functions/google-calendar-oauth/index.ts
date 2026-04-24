@@ -75,12 +75,39 @@ Deno.serve(async (req) => {
 
     // ═══════════════════════════════════
     // ACTION: callback
+    // Suporta 2 modos:
+    //   - GET (legado): redirect direto do Google → ?code=...&state=... → retorna 302
+    //   - POST (novo): chamado pelo proxy /auth/google/callback no front com { code, state } → retorna JSON
     // ═══════════════════════════════════
     if (action === "callback") {
-      const code = url.searchParams.get("code");
-      const state = url.searchParams.get("state"); // user_id
+      const isPost = req.method === "POST";
+
+      let code: string | null = null;
+      let state: string | null = null;
+
+      if (isPost) {
+        try {
+          const body = await req.json();
+          code = body.code ?? null;
+          state = body.state ?? null;
+        } catch {
+          return new Response(
+            JSON.stringify({ error: "Invalid JSON body" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      } else {
+        code = url.searchParams.get("code");
+        state = url.searchParams.get("state");
+      }
 
       if (!code || !state) {
+        if (isPost) {
+          return new Response(
+            JSON.stringify({ error: "Missing code or state" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
         return new Response("Missing code or state", { status: 400, headers: corsHeaders });
       }
 
@@ -100,6 +127,12 @@ Deno.serve(async (req) => {
 
       if (!tokenResponse.ok || !tokens.access_token) {
         console.error("Token exchange failed:", tokens);
+        if (isPost) {
+          return new Response(
+            JSON.stringify({ error: "Token exchange failed", details: tokens }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
         return new Response("Token exchange failed", { status: 400, headers: corsHeaders });
       }
 
@@ -137,15 +170,29 @@ Deno.serve(async (req) => {
 
       if (upsertError) {
         console.error("Failed to save tokens:", upsertError);
+        if (isPost) {
+          return new Response(
+            JSON.stringify({ error: "Failed to save tokens" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
         return new Response("Failed to save tokens", { status: 500, headers: corsHeaders });
       }
 
-      // Redirect back to the app dashboard
+      // POST → retorna JSON pro front decidir navegação
+      if (isPost) {
+        return new Response(
+          JSON.stringify({ success: true, calendar_email: calendarEmail }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // GET legado → redirect direto pro app
       return new Response(null, {
         status: 302,
         headers: {
           ...corsHeaders,
-          Location: "https://app-rhitmo.lovable.app/?calendar=connected",
+          Location: "https://rhitmo.co/dashboard?calendar=connected",
         },
       });
     }
