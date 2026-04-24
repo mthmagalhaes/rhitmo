@@ -1375,6 +1375,160 @@ async function processInteraction(body: string, timestamp: string, signature: st
     }
   }
 
+  // ── Handle message_action (shortcut from message ⋯ menu) ──
+  else if (interactionType === 'message_action') {
+    const callbackId = payload.callback_id;
+    const slackUserId = payload.user?.id;
+    const triggerId = payload.trigger_id;
+    const message = payload.message;
+    const channel = payload.channel;
+    const team = payload.team;
+    console.log('[INTERACT] message_action callback:', callbackId, '| user:', slackUserId, '| msg_ts:', message?.ts);
+
+    if (callbackId === 'save_as_evidence') {
+      const persona = await getUserPersona(slackUserId);
+
+      // Only leaders/HR/owners can capture evidence
+      if (persona.persona === 'unauthenticated' || persona.persona === 'direct_report') {
+        await slackApi('chat.postEphemeral', {
+          channel: channel?.id,
+          user: slackUserId,
+          text: '🔒 Apenas líderes e HR Admins podem salvar evidências. Conecte sua conta em rhitmo.co.',
+        });
+        return;
+      }
+
+      const messageText = message?.text || '';
+      const messageTs = message?.ts;
+      const channelId = channel?.id;
+      const authorSlackId = message?.user;
+
+      if (!messageText || !messageTs || !channelId || !authorSlackId) {
+        console.error('[EVIDENCE] Missing required fields', { messageText: !!messageText, messageTs, channelId, authorSlackId });
+        await slackApi('chat.postEphemeral', {
+          channel: channelId,
+          user: slackUserId,
+          text: '❌ Não consegui capturar essa mensagem. Pode ser uma mensagem de bot ou sistema.',
+        });
+        return;
+      }
+
+      // Resolve author: Slack user → email → team_member
+      const authorInfo = await slackApi('users.info', { user: authorSlackId });
+      const authorEmail = authorInfo.ok ? authorInfo.user?.profile?.email : null;
+
+      let memberId: string | null = null;
+      if (authorEmail) {
+        // Try by cached slack_user_id first
+        const { data: byCached } = await supabase
+          .from('team_members')
+          .select('id, name, leader_id')
+          .eq('slack_user_id', authorSlackId)
+          .maybeSingle();
+
+        if (byCached) {
+          memberId = byCached.id;
+        } else {
+          // Try by email + cache slack_user_id
+          const { data: byEmail } = await supabase
+            .from('team_members')
+            .select('id, name, leader_id')
+            .ilike('email', authorEmail)
+            .maybeSingle();
+
+          if (byEmail) {
+            memberId = byEmail.id;
+            // Cache for next time
+            await supabase
+              .from('team_members')
+              .update({ slack_user_id: authorSlackId })
+              .eq('id', byEmail.id);
+          }
+        }
+      }
+
+      if (!memberId) {
+        await slackApi('chat.postEphemeral', {
+          channel: channelId,
+          user: slackUserId,
+          text: '⚠️ Não consegui identificar quem escreveu essa mensagem. Verifique se a pessoa está cadastrada como liderado em rhitmo.co com o mesmo email do Slack.',
+        });
+        return;
+      }
+
+      // Build permalink
+      let permalink: string | null = null;
+      const linkRes = await slackApi('chat.getPermalink', {
+        channel: channelId,
+        message_ts: messageTs,
+      });
+      if (linkRes.ok) permalink = linkRes.permalink;
+
+      // Insert evidence (status approved — manual capture is implicitly approved)
+      const { data: inserted, error: insErr } = await supabase
+        .from('slack_ambient_evidence')
+        .upsert({
+          workspace_id: persona.workspaceId,
+          manager_id: persona.userId,
+          member_id: memberId,
+          slack_channel_id: channelId,
+          slack_message_ts: messageTs,
+          message_text: messageText.substring(0, 4000),
+          permalink,
+          category: 'outro',
+          relevance_score: 1.0,
+          summary: messageText.substring(0, 200),
+          status: 'approved',
+          captured_at: new Date().toISOString(),
+          reviewed_at: new Date().toISOString(),
+        }, {
+          onConflict: 'slack_channel_id,slack_message_ts,member_id',
+        })
+        .select('id')
+        .single();
+
+      if (insErr) {
+        console.error('[EVIDENCE] Insert error:', insErr);
+        await slackApi('chat.postEphemeral', {
+          channel: channelId,
+          user: slackUserId,
+          text: '❌ Erro ao salvar evidência. Tente novamente em instantes.',
+        });
+        return;
+      }
+
+      console.log('[EVIDENCE] Saved id:', inserted?.id);
+
+      // Get member name for confirmation
+      const { data: memberData } = await supabase
+        .from('team_members')
+        .select('name')
+        .eq('id', memberId)
+        .single();
+
+      await slackApi('chat.postEphemeral', {
+        channel: channelId,
+        user: slackUserId,
+        blocks: [
+          {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: `✅ Evidência salva sobre *${memberData?.name || 'liderado'}*.`,
+            },
+          },
+          {
+            type: 'context',
+            elements: [
+              { type: 'mrkdwn', text: `<https://app-rhitmo.lovable.app/evidence|Ver no Rhitmo →>` },
+            ],
+          },
+        ],
+        text: `✅ Evidência salva sobre ${memberData?.name || 'liderado'}.`,
+      });
+    }
+  }
+
   console.log('[INTERACT] Done');
 }
 

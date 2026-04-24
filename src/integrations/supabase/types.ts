@@ -636,6 +636,7 @@ export type Database = {
           content: string
           created_at: string
           embedding: string | null
+          evidence_id: string | null
           id: string
           manager_id: string
           meeting_transcript_id: string | null
@@ -657,6 +658,7 @@ export type Database = {
           content: string
           created_at?: string
           embedding?: string | null
+          evidence_id?: string | null
           id?: string
           manager_id: string
           meeting_transcript_id?: string | null
@@ -678,6 +680,7 @@ export type Database = {
           content?: string
           created_at?: string
           embedding?: string | null
+          evidence_id?: string | null
           id?: string
           manager_id?: string
           meeting_transcript_id?: string | null
@@ -693,6 +696,13 @@ export type Database = {
           visibility?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "feedbacks_evidence_id_fkey"
+            columns: ["evidence_id"]
+            isOneToOne: false
+            referencedRelation: "slack_ambient_evidence"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "feedbacks_meeting_transcript_id_fkey"
             columns: ["meeting_transcript_id"]

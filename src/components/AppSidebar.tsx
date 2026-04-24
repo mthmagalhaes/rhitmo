@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RhythmWave } from '@/components/RhythmWave';
-import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award, ArrowRightLeft, UserCheck, Palette, Compass, FileText, User, Download, ArrowLeft, Eye } from 'lucide-react';
+import { Home, BarChart3, CreditCard, LogOut, Settings, ShieldCheck, LifeBuoy, BookOpen, Copy, Check, Users, LayoutDashboard, Award, ArrowRightLeft, UserCheck, Palette, Compass, FileText, User, Download, ArrowLeft, Eye, Sparkles } from 'lucide-react';
+import { useEvidencePendingCount } from '@/hooks/useEvidence';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { SlackIcon } from '@/components/icons/SlackIcon';
 import { GoogleCalendarIcon } from '@/components/icons/GoogleCalendarIcon';
@@ -56,6 +57,7 @@ export function AppSidebar() {
   // Sprint 1.2: removed "Analytics" from leader sidebar — kept only for HR Admin context.
   const menuItems = [
     { title: t('sidebar.home'), url: '/dashboard', icon: Home },
+    { title: 'Evidências', url: '/evidence', icon: Sparkles, badgeKind: 'evidence' as const },
     { title: t('sidebar.knowledgeCenter'), url: '/help', icon: BookOpen },
     { title: t('sidebar.subscription'), url: '/billing', icon: CreditCard },
   ];
@@ -82,6 +84,7 @@ export function AppSidebar() {
   const { isLinkedMember, linkedMember } = useLinkedMember();
   const { count: hrAlertsCount } = useHRRiskAlerts();
   const { limits: planLimits, hasHrDashboard } = usePlanLimits();
+  const { data: evidencePendingCount = 0 } = useEvidencePendingCount();
   const isFounder = !!planLimits?.isBetaUser;
   const lockedHRItems = new Set(['/hr/teams', '/hr/members', '/hr/analytics']);
   const { stopImpersonation, impersonatedEmail } = useImpersonation();
@@ -255,21 +258,32 @@ export function AppSidebar() {
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {(showMemberMenu ? memberMenuItems : menuItems)
-                      .map((item) => (
-                      <SidebarMenuItem key={item.title}>
-                        <SidebarMenuButton asChild tooltip={item.title}>
-                          <NavLink 
-                            to={item.url} 
-                            end
-                            className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
-                            activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
-                          >
-                            <item.icon className="h-5 w-5" />
-                            <span>{item.title}</span>
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
+                      .map((item) => {
+                        const showEvidenceBadge = (item as { badgeKind?: string }).badgeKind === 'evidence' && evidencePendingCount > 0;
+                        return (
+                          <SidebarMenuItem key={item.title}>
+                            <SidebarMenuButton asChild tooltip={item.title}>
+                              <NavLink 
+                                to={item.url} 
+                                end
+                                className="rounded-[10px] tracking-tight font-medium transition-all duration-200 hover:translate-x-1 hover:bg-[rgba(124,58,237,0.05)] hover:text-primary text-muted-foreground"
+                                activeClassName="bg-[rgba(124,58,237,0.08)] text-primary font-bold"
+                              >
+                                <item.icon className="h-5 w-5" />
+                                <span className="flex-1">{item.title}</span>
+                                {showEvidenceBadge && open && (
+                                  <span
+                                    className="ml-auto inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground"
+                                    aria-label={`${evidencePendingCount} evidências pendentes`}
+                                  >
+                                    {evidencePendingCount}
+                                  </span>
+                                )}
+                              </NavLink>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        );
+                      })}
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>
