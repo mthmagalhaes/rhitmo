@@ -15,6 +15,7 @@ import MemberDetails from "./pages/MemberDetails";
 import Analytics from "./pages/Analytics";
 import Billing from "./pages/Billing";
 import AuthPage from "./pages/AuthPage";
+import PersonaSelector from "./pages/PersonaSelector";
 import RhitmoSync from "./pages/RhitmoSync";
 import Invite from "./pages/Invite";
 import Onboarding from "./pages/Onboarding";
@@ -59,6 +60,7 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             
             {/* Auth */}
+            <Route path="/auth/start" element={<PersonaSelector />} />
             <Route path="/auth" element={<AuthPage />} />
             
             {/* Onboarding para liderados */}
