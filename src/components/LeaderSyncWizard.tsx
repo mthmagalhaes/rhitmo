@@ -233,12 +233,12 @@ export function LeaderSyncWizard({ open, onOpenChange, workspaceId, existingData
         completed_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase
-        .from('workspaces')
+      const { error } = await (supabase
+        .from('workspaces') as any)
         .update({
           leader_sync_data: payload,
           leader_sync_completed_at: new Date().toISOString(),
-        } as Record<string, unknown>)
+        })
         .eq('id', workspaceId)
         .eq('owner_id', user.id);
 

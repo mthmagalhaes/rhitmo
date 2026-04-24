@@ -93,6 +93,25 @@ export const usePlanLimits = () => {
     refetchOnReconnect: true,
   });
 
+  // Detecta se o usuário atual é HR Admin de algum workspace.
+  // Só HR Admins (ou beta) enxergam o preview da experiência Enterprise no app.
+  const { data: isHrAdmin = false } = useQuery({
+    queryKey: ['is-hr-admin', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return false;
+      const { data, error } = await supabase
+        .from('workspaces')
+        .select('id')
+        .contains('hr_admin_ids', [user.id])
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return !!data;
+    },
+    enabled: !!user,
+    staleTime: 60 * 1000,
+  });
+
   const { data: memberCount = 0, isLoading: memberLoading } = useQuery({
     queryKey: ['member-count', user?.id],
     queryFn: async () => {
@@ -258,7 +277,7 @@ export const usePlanLimits = () => {
     hasSync: isBeta ? true : limits.rhitmoSync,
     hasMentorChat: true,
     hasHrDashboard: isBeta ? true : limits.hrDashboard,
-    hasHrPreview: true,
+    hasHrPreview: isBeta || isHrAdmin,
     hasFormalReviews: isBeta ? true : limits.formalReviews,
     membersRemaining: isBeta ? Infinity : limits.maxMembers - memberCount,
     teamsRemaining: isBeta ? Infinity : limits.maxTeams - teamCount,
