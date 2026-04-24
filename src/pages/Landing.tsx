@@ -664,7 +664,7 @@ const PricingSection = ({
               <span className="text-4xl font-bold text-foreground">{t.pulseFree}</span>
               <span className="text-sm text-muted-foreground ml-1">{t.pulseForever}</span>
             </div>
-            <Button className="w-full min-h-[44px] mb-6" onClick={() => navigate('/auth?mode=signup')}>
+            <Button className="w-full min-h-[44px] mb-6" onClick={() => navigate('/auth/start')}>
               {t.pulseCTA}
             </Button>
             <ul className="space-y-3 flex-1">
@@ -875,7 +875,7 @@ const Landing = () => {
                 {t.signIn}
               </Button>
             </Link>
-            <Link to="/auth?mode=signup">
+            <Link to="/auth/start">
               <Button className="min-h-[44px]">
                 {t.getStarted}
               </Button>
@@ -944,7 +944,7 @@ const Landing = () => {
                   </Link>
                 </SheetClose>
                 <SheetClose asChild>
-                  <Link to="/auth?mode=signup">
+                  <Link to="/auth/start">
                     <Button className="w-full min-h-[44px]">
                       {t.getStarted}
                     </Button>
@@ -984,7 +984,7 @@ const Landing = () => {
               </p>
               
               <div className="pt-4 flex flex-wrap gap-3">
-                <Button size="lg" className="text-base px-8 rounded-xl" onClick={() => navigate('/auth?mode=signup')}>
+                <Button size="lg" className="text-base px-8 rounded-xl" onClick={() => navigate('/auth/start')}>
                   {t.getStarted}
                 </Button>
                 <Button size="lg" variant="outline" className="text-base px-8 rounded-xl" asChild>
@@ -1324,7 +1324,7 @@ const Landing = () => {
               </div>
               <h3 className="text-xl font-bold text-foreground mb-3">{t.forWhoLeaderTitle}</h3>
               <p className="text-muted-foreground leading-relaxed flex-1">{t.forWhoLeaderText}</p>
-              <Button className="w-full rounded-xl mt-6" onClick={() => navigate('/auth?mode=signup')}>
+              <Button className="w-full rounded-xl mt-6" onClick={() => navigate('/auth/start')}>
                 {lang === 'pt' ? 'Começar grátis' : 'Get started free'}
               </Button>
             </div>
@@ -1337,7 +1337,7 @@ const Landing = () => {
               </div>
               <h3 className="text-xl font-bold text-foreground mb-3">{t.forWhoPmeTitle}</h3>
               <p className="text-muted-foreground leading-relaxed flex-1">{t.forWhoPmeText}</p>
-              <Button variant="outline" className="w-full rounded-xl mt-6" onClick={() => navigate('/auth?mode=signup')}>
+              <Button variant="outline" className="w-full rounded-xl mt-6" onClick={() => navigate('/auth/start')}>
                 {lang === 'pt' ? 'Começar grátis' : 'Get started free'}
               </Button>
             </div>

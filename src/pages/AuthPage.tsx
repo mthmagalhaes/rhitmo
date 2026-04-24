@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 
 type BillingCycle = 'quarterly' | 'semiannual' | 'annual';
+type Persona = 'leader' | 'member';
 
 const AuthPage = () => {
   const { user, loading } = useAuth();
@@ -18,6 +19,20 @@ const AuthPage = () => {
   const emailParam = searchParams.get('email');
   const planParam = searchParams.get('plan'); // currently only 'pro' is auto-checkoutable
   const cycleParam = (searchParams.get('cycle') ?? 'annual') as BillingCycle;
+  const personaParam = searchParams.get('persona') as Persona | null;
+
+  // Persist persona to localStorage so it survives the Google OAuth round-trip.
+  // Plan=pro implies leader (only leaders can subscribe).
+  useEffect(() => {
+    const persona: Persona | null = personaParam ?? (planParam === 'pro' ? 'leader' : null);
+    if (persona === 'leader' || persona === 'member') {
+      try {
+        localStorage.setItem('signup_persona', persona);
+      } catch {
+        // ignore
+      }
+    }
+  }, [personaParam, planParam]);
 
   // Detect invite flow
   const hasPendingInvite = typeof window !== 'undefined' && !!localStorage.getItem('pending_invite');
@@ -115,6 +130,7 @@ const AuthPage = () => {
       defaultMode={isInviteFlow ? 'signup' : 'login'}
       defaultEmail={emailParam || undefined}
       isInviteFlow={isInviteFlow}
+      persona={personaParam ?? undefined}
     />
   );
 };
