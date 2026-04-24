@@ -45,20 +45,7 @@ export function DirectReportGuard({ children }: DirectReportGuardProps) {
         <div className="text-center max-w-sm mx-auto px-6">
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
           <p className="mt-4 text-muted-foreground">Carregando...</p>
-          {false && persona === 'hr_admin' && (
-            <button
-              type="button"
-              onClick={() => {
-                try { localStorage.setItem('signup_persona', 'leader'); } catch { /* ignore */ }
-                setPersona('leader');
-                window.location.reload();
-              }}
-              className="mt-6 text-sm text-primary hover:underline font-medium"
-            >
-              Sou líder, na verdade →
-            </button>
-          )}
-        </div>
+       </div>
       </div>
     );
   }
