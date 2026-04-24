@@ -188,7 +188,11 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
           
           <div className="space-y-2">
             <h1 className="text-3xl font-bold text-foreground">
-              {isForgotPassword ? t('auth.recoverPassword') : isSignUp ? t('auth.createAccount') : t('auth.restrictedAccess')}
+              {isForgotPassword
+                ? t('auth.recoverPassword')
+                : isSignUp
+                ? (personaTitle ?? t('auth.createAccount'))
+                : t('auth.restrictedAccess')}
             </h1>
             <p className="text-muted-foreground text-lg">
               {isForgotPassword ? t('auth.recoverPasswordDesc') : isSignUp ? t('auth.completeSignup') : t('auth.inviteOnly')}

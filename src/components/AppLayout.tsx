@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { WorkspaceOnboarding } from '@/components/WorkspaceOnboarding';
@@ -9,6 +9,7 @@ import { useAccount } from '@/contexts/AccountContext';
 
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
+import AwaitingInvite from '@/pages/AwaitingInvite';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
@@ -25,28 +26,78 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
+  // Read persona intent from localStorage (set during signup persona selector or OAuth round-trip).
+  const [signupPersona, setSignupPersona] = useState<'leader' | 'member' | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const v = localStorage.getItem('signup_persona');
+      return v === 'leader' || v === 'member' ? v : null;
+    } catch {
+      return null;
+    }
+  });
+
   // CRITICAL: All context must be fully resolved before deciding on onboarding.
   const allContextResolved = !authLoading && !accountLoading;
 
   // CRITICAL: Never show onboarding if there was an error resolving workspace.
   // RLS errors return null workspace + error, and treating that as "no workspace"
   // would trap existing users in onboarding.
-  const needsWorkspaceSetup = allContextResolved
-    && user 
-    && !workspaceId 
+  const baseNeedsWorkspaceSetup = allContextResolved
+    && user
+    && !workspaceId
     && !hasError
     && !isLinkedMember
     && !hasPendingInviteByEmail
     && !isLeader
     && !isHRAdmin;
 
+  // Persona === 'leader' should ALWAYS get the workspace onboarding modal,
+  // even if the heuristic above fails (e.g., RLS resolved but no traces yet).
+  const personaForcesLeader = allContextResolved
+    && user
+    && !workspaceId
+    && !hasError
+    && !isLinkedMember
+    && !hasPendingInviteByEmail
+    && signupPersona === 'leader';
+
+  const needsWorkspaceSetup = baseNeedsWorkspaceSetup || personaForcesLeader;
+
+  // Persona === 'member' but no invite found → show "awaiting invite" landing.
+  const showAwaitingInvite = allContextResolved
+    && user
+    && !workspaceId
+    && !hasError
+    && !isLinkedMember
+    && !hasPendingInviteByEmail
+    && !isLeader
+    && !isHRAdmin
+    && signupPersona === 'member';
+
   const showActivity = !!user;
 
   const handleWorkspaceComplete = () => {
+    try { localStorage.removeItem('signup_persona'); } catch { /* ignore */ }
+    setSignupPersona(null);
     refetchWorkspace();
     queryClient.invalidateQueries({ queryKey: ['workspace'] });
     queryClient.invalidateQueries({ queryKey: ['teams'] });
   };
+
+  // Clean up persona once the user is properly resolved as leader/HR/linked member.
+  useEffect(() => {
+    if (!allContextResolved) return;
+    if (workspaceId || isLinkedMember || isHRAdmin) {
+      try { localStorage.removeItem('signup_persona'); } catch { /* ignore */ }
+      if (signupPersona !== null) setSignupPersona(null);
+    }
+  }, [allContextResolved, workspaceId, isLinkedMember, isHRAdmin, signupPersona]);
+
+  // Awaiting invite takes over the whole layout (no sidebar)
+  if (showAwaitingInvite) {
+    return <AwaitingInvite onPersonaSwitch={() => setSignupPersona('leader')} />;
+  }
 
   return (
     <SidebarProvider>
