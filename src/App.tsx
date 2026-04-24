@@ -41,6 +41,7 @@ import RecorderPopup from "./pages/RecorderPopup";
 import Enterprise from "./pages/Enterprise";
 import Roadmap from "./pages/Roadmap";
 import ResetPassword from "./pages/ResetPassword";
+import GoogleCalendarCallback from "./pages/GoogleCalendarCallback";
 
 
 const queryClient = new QueryClient();
@@ -139,6 +140,7 @@ const App = () => (
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/enterprise" element={<Enterprise />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/auth/google/callback" element={<GoogleCalendarCallback />} />
             <Route path="/roadmap" element={<Roadmap />} />
             
             {/* Rota Admin */}
