@@ -717,7 +717,7 @@ const PricingSection = ({
                   <span className="text-4xl font-bold text-foreground">R$ {pricing.total}</span>
                   <span className="text-sm text-muted-foreground">{periodLabel}</span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1.5">
+                <p className="text-sm font-medium text-muted-foreground mt-1.5">
                   {t.equivPerMonthLabel} <span className="font-semibold text-foreground">R$ {pricing.perMonth}</span>{t.perMonthShort}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">{t.proNote}</p>
@@ -731,21 +731,33 @@ const PricingSection = ({
               <p className="text-xs text-muted-foreground text-center mb-6">
                 {t.proSocialProof}
               </p>
-              <ul className="space-y-3 flex-1">
-                {t.proFeatures.map((f: { label: string; isNew?: boolean }) => (
-                  <li key={f.label} className="flex items-start gap-2 text-sm text-foreground">
-                    <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                    <span>
-                      {f.label}
-                      {f.isNew && (
-                        <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-primary/15 text-primary uppercase tracking-wide align-middle">
-                          {t.newBadge}
-                        </span>
-                      )}
-                    </span>
-                  </li>
+              <div className="flex-1">
+                {t.proFeatures.map((group: { groupLabel: string; items: { label: string; isNew?: boolean }[] }, groupIdx: number) => (
+                  <div
+                    key={group.groupLabel}
+                    className={groupIdx > 0 ? "border-t border-border/40 pt-4 mt-4" : ""}
+                  >
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-3">
+                      {group.groupLabel}
+                    </p>
+                    <ul className="space-y-3">
+                      {group.items.map((f) => (
+                        <li key={f.label} className="flex items-start gap-2 text-sm text-foreground">
+                          <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                          <span>
+                            {f.label}
+                            {f.isNew && (
+                              <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-primary/15 text-primary uppercase tracking-wide align-middle">
+                                {t.newBadge}
+                              </span>
+                            )}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           </div>
 
@@ -760,6 +772,7 @@ const PricingSection = ({
             <div className="min-h-[72px] mb-4">
               <h3 className="text-2xl font-bold tracking-tight text-foreground">Enterprise</h3>
               <p className="text-sm text-muted-foreground mt-2">{t.enterpriseSubtitle}</p>
+              <p className="text-sm italic text-muted-foreground mt-3">{t.enterpriseImpact}</p>
             </div>
             <div className="min-h-[100px] mb-6">
               <div className="flex items-baseline gap-1">
