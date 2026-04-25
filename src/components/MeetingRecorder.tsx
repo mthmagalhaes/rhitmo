@@ -50,6 +50,7 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
   const channelRef = useRef<BroadcastChannel | null>(null);
   const { toast } = useToast();
   const { canRecord, limits, recordingHoursRemaining } = usePlanLimits();
+  const navigate = useNavigate();
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
