@@ -80,6 +80,10 @@ All colors MUST be HSL.
     --shadow-xl:  0 16px 48px rgba(26,16,53,0.11);
     --shadow-2xl: 0 24px 64px rgba(26,16,53,0.13);
 
+    /* ── Shadows roxas (CTAs em destaque) ── */
+    --shadow-purple:    0 10px 30px -8px hsl(262 83% 58% / 0.35);
+    --shadow-purple-lg: 0 20px 50px -12px hsl(262 83% 58% / 0.4);
+
     /* ── Sidebar ── */
     --sidebar-background:          0  0% 100%;
     --sidebar-foreground:        258 52% 15%;
