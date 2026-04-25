@@ -47,35 +47,54 @@ const STRIPE_PRICE_TO_CYCLE: Record<string, BillingCycle> = {
   price_1TNNnlIF4fHxJpjHfVwPUqAb: 'annual',
 };
 
+// Estrutura alinhada com src/pages/Landing.tsx (pulseFeatures / proFeatures / enterpriseImpact)
+// para garantir que a promessa de valor mostrada na landing seja a MESMA exibida em /billing.
 const PLAN_FEATURES = {
   pulse: {
     name: 'Pulse',
     features: [
-      'Acesso ao Meu Rhitmo (portal do liderado)',
+      'Diário de bordo ilimitado',
+      'Mentor AI — até 20 conversas por mês',
       '1 avaliação com IA por mês',
-      'Mentor Chat limitado (20 mensagens/mês)',
-      'Notas e anotações ilimitadas',
+      'Notas e registros ilimitados',
+      'Até 2 liderados diretos',
     ],
     lockedFeatures: [
-      'Bot de transcrição automática (Recall.ai)',
-      'Pre-meeting Briefs',
+      'Transcrição automática de reuniões (30h/mês)',
+      'Pre-meeting Briefs com contexto histórico',
       'Detecção de viés em tempo real',
       'Avaliações com IA ilimitadas',
     ],
   },
   pro: {
     name: 'Pro',
-    features: [
-      'Liderados ilimitados',
-      '30 horas/mês de transcrição automatizada (Recall.ai + upload manual)',
-      'Avaliações com IA ilimitadas',
-      'Pre-meeting Briefs com contexto histórico',
-      'Detecção de viés em tempo real',
-      'Mentor Chat ilimitado',
-      'Acesso ao Meu Rhitmo para todo o time',
-      'Analytics completo',
-      'Times ilimitados',
+    // Agrupado em "Ciclo de Performance" + "Ferramentas de Apoio" — mesma hierarquia visual da landing.
+    groups: [
+      {
+        groupLabel: 'Ciclo de Performance',
+        items: [
+          'Diário de bordo + resumo mensal automático',
+          'Acompanhamento trimestral guiado por IA',
+          'Avaliações formais com evidências citadas',
+        ],
+      },
+      {
+        groupLabel: 'Ferramentas de Apoio',
+        items: [
+          'Transcrição automática de reuniões — 30h/mês',
+          'Pre-meeting briefs com contexto histórico',
+          'Detecção de viés em tempo real',
+          'Mentor AI ilimitado',
+          'Time acessa feedbacks e metas em tempo real',
+          'Analytics completo · Times ilimitados',
+          'Liderados ilimitados',
+        ],
+      },
     ],
+  },
+  enterprise: {
+    impact:
+      'Ciclo completo de performance para toda a organização — calibração entre gestores, blindagem jurídica e visibilidade do RH em tempo real.',
   },
 };
 
