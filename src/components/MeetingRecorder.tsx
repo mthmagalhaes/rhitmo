@@ -284,15 +284,23 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
               </div>
 
               {!canRecord ? (
-                <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 rounded-xl p-4 text-center space-y-2">
+                <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 rounded-xl p-4 text-center space-y-3">
                   <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
                     {limits.maxRecordingHours === 0
                       ? `Gravação não disponível no plano ${limits.planName}`
                       : `Limite de ${limits.maxRecordingHours}h de gravação/mês atingido`}
                   </p>
-                  <p className="text-xs text-amber-600 dark:text-amber-400">
-                    Faça upgrade para gravar reuniões.
-                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="rounded-xl"
+                    onClick={() => {
+                      onOpenChange(false);
+                      navigate('/billing');
+                    }}
+                  >
+                    Ver planos
+                  </Button>
                 </div>
               ) : (
                 <>
