@@ -514,11 +514,20 @@ const Billing = () => {
 
         <div className="space-y-5">
           <h2 className="text-xl font-semibold tracking-tight">O que está incluso no seu plano</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {PLAN_FEATURES.pro.features.map((f) => (
-              <div key={f} className="flex items-center gap-2.5 text-base">
-                <Check className="h-5 w-5 text-primary shrink-0" />
-                <span>{f}</span>
+          <div className="space-y-5">
+            {PLAN_FEATURES.pro.groups.map((group, gIdx) => (
+              <div key={group.groupLabel} className={gIdx > 0 ? 'pt-5 border-t border-border/40' : ''}>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+                  {group.groupLabel}
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {group.items.map((f) => (
+                    <div key={f} className="flex items-center gap-2.5 text-base">
+                      <Check className="h-5 w-5 text-primary shrink-0" />
+                      <span>{f}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
