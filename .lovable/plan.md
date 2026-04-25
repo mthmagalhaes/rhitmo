@@ -1,95 +1,105 @@
-## Objetivo
+## Escala de roxo (50→900) + shadows roxas para o design system
 
-A landing já tem a nova narrativa de pricing (Pulse com 2 liderados ao final, Pro agrupado em "Ciclo de Performance" + "Ferramentas de Apoio", Enterprise com frase de impacto). A tela `/slack/channels` foi criada e a Evidence já linka pra ela. Agora falta **ajustar o resto do app** para que a informação se converse:
+Adicionar uma escala completa de roxo como tokens HSL e shadows roxas para CTAs destacados. **Sem alterar `--primary` atual** (262 83% 58%) — apenas estender o sistema com novas variáveis e mapeá-las no Tailwind.
 
-1. **Billing** ainda reflete a estrutura antiga (lista plana, copy genérica, sem agrupamento, sem menção a "2 liderados" no Pulse).
-2. **AppSidebar** abre o `SlackConnectorDialog` mesmo quando o Slack já está conectado — deveria levar a `/slack/channels` (para gerenciar) e adicionar item de nav explícito.
-3. **SlackConnectorDialog** não aponta para a nova tela de canais nem menciona evidências — passos 4 e 5 estão desatualizados (`/nota`, `/kudos` em vez de captura ambient).
-4. **PersonaSelector** ("Plano Pulse grátis"): mantém, mas reforçar a paridade de copy com landing ("até 2 liderados, Mentor com 20 conversas/mês").
-5. **MeetingRecorder** mostra "Gravação não disponível no plano Pulse" — copy está OK mas o CTA "Faça upgrade" é texto morto, sem botão pra `/billing`.
-6. **usePlanLimits** tem comentário stale ("15h/mês de bot conforme contrato") quando o limite real é 30h.
+### Mudanças
 
-Sem mexer em preços, lógica de billing, Stripe IDs, ou na narrativa da landing.
+**1. `src/index.css` — bloco `:root` (light)**
 
----
+Adicionar dentro de `:root`, logo após o bloco `Primária — Roxo Rhitmo`:
 
-## Mudanças
-
-### 1. `src/pages/Billing.tsx` — alinhar `PLAN_FEATURES` com a landing
-
-**Pulse** (`PLAN_FEATURES.pulse`):
-- Reordenar e usar a mesma copy da landing:
-  - Diário de bordo ilimitado
-  - Mentor AI — até 20 conversas por mês
-  - 1 avaliação com IA por mês
-  - Notas e registros ilimitados
-  - **Até 2 liderados diretos** (último item)
-- `lockedFeatures`: trocar "Bot de transcrição automática (Recall.ai)" por "Transcrição automática de reuniões (30h/mês)" para bater com a landing.
-
-**Pro** (`PLAN_FEATURES.pro`): trocar lista plana por estrutura agrupada idêntica à landing:
-```
-Ciclo de Performance:
-  - Diário de bordo + resumo mensal automático
-  - Acompanhamento trimestral guiado por IA
-  - Avaliações formais com evidências citadas
-
-Ferramentas de Apoio:
-  - Transcrição automática de reuniões — 30h/mês
-  - Pre-meeting briefs com contexto histórico
-  - Detecção de viés em tempo real
-  - Mentor AI ilimitado
-  - Time acessa feedbacks e metas em tempo real
-  - Analytics completo · Times ilimitados
-  - Liderados ilimitados
+```css
+/* ── Escala de roxo (Primary scale) ── */
+--primary-50:  262 100% 97%;
+--primary-100: 262 90% 94%;
+--primary-200: 262 85% 87%;
+--primary-300: 262 83% 76%;
+--primary-400: 262 83% 66%;
+--primary-500: 262 83% 58%;   /* = --primary */
+--primary-600: 262 75% 50%;
+--primary-700: 262 70% 42%;
+--primary-800: 262 65% 32%;
+--primary-900: 262 60% 22%;
 ```
 
-Adaptar o JSX (`PLAN_FEATURES.pro.features.map(...)`) tanto na tela de upgrade (linha ~639) quanto no painel "O que está incluso" (linha ~499) para renderizar `groupLabel` em uppercase `text-[11px] tracking-wide text-muted-foreground` + divider `border-t border-border/40` entre grupos. Mesmo padrão visual da landing.
+E também os tokens de shadow roxa, junto ao bloco de Shadows:
 
-**Enterprise** (mesma lista do array `enterpriseFeatures` da landing): adicionar acima do bloco "Sob consulta" (linha ~668) a frase italic `text-sm text-muted-foreground`:  
-*"Ciclo completo de performance para toda a organização — calibração entre gestores, blindagem jurídica e visibilidade do RH em tempo real."*
+```css
+--shadow-purple:    0 10px 30px -8px hsl(262 83% 58% / 0.35);
+--shadow-purple-lg: 0 20px 50px -12px hsl(262 83% 58% / 0.4);
+```
 
-### 2. `src/components/AppSidebar.tsx` — Slack inteligente
+**2. `src/index.css` — bloco `.dark`**
 
-No botão Slack (linha ~316):
-- Se `slackConnected` → `navigate('/slack/channels')` (gerenciar canais)
-- Se não conectado → continua abrindo `SlackConnectorDialog`
+No dark, a primária base é `263 86% 76%` (mais clara). Para preservar contraste, a escala dark é "invertida" — tons claros (50/100) são desaturados/escuros e tons escuros (800/900) ficam mais claros e vivos:
 
-### 3. `src/components/slack/SlackConnectorDialog.tsx` — atualizar onboarding
+```css
+/* ── Escala de roxo (dark) ── */
+--primary-50:  263 30% 18%;
+--primary-100: 263 35% 24%;
+--primary-200: 263 45% 32%;
+--primary-300: 263 60% 45%;
+--primary-400: 263 75% 60%;
+--primary-500: 263 86% 76%;   /* = --primary dark */
+--primary-600: 263 88% 82%;
+--primary-700: 263 90% 87%;
+--primary-800: 263 92% 92%;
+--primary-900: 263 95% 96%;
+```
 
-Substituir os passos 4-5 e a lista de comandos por uma seção curta que reflete o novo fluxo principal (captura ambient + evidências):
-- Passo 4: "Convide o bot @Rhitmo nos canais públicos onde seu time conversa, ou ative o **autojoin** em **Gerenciar canais**."
-- Passo 5: "O Rhitmo captura sinais relevantes automaticamente. Você revisa em **Evidências** e converte em notas."
-- Adicionar dois botões secundários (visíveis quando `isConnected`): "Gerenciar canais" → `/slack/channels` e "Ver evidências" → `/evidence`.
-- Manter a lista de comandos slash (`/rhitmo`, `/nota`, `/kudos`, `/brief`, `/meu-pdi`) num bloco "Comandos disponíveis" abaixo, sem alterá-la.
+Shadows roxas no dark (mais sutis sobre fundo escuro):
 
-### 4. `src/components/MeetingRecorder.tsx` — CTA de upgrade clicável
+```css
+--shadow-purple:    0 10px 30px -8px hsl(263 86% 76% / 0.25);
+--shadow-purple-lg: 0 20px 50px -12px hsl(263 86% 76% / 0.3);
+```
 
-Bloco "Gravação não disponível no plano Pulse" (linha ~284): trocar o `<p>Faça upgrade…</p>` por um `<Button size="sm" variant="outline" onClick={() => navigate('/billing')}>Ver planos</Button>`. Importar `useNavigate`.
+**3. `tailwind.config.ts` — `theme.extend.colors.primary`**
 
-### 5. `src/hooks/usePlanLimits.ts` — comentário stale
+Estender o objeto `primary` mantendo `DEFAULT` e `foreground` intactos:
 
-Linha 41-42: trocar comentário `"15h/mês de bot conforme contrato"` por `"30h/mês de transcrição (manual + bot Recall) conforme pricing 2026"` para evitar confusão futura.
+```ts
+primary: {
+  DEFAULT:    "hsl(var(--primary))",
+  foreground: "hsl(var(--primary-foreground))",
+  50:  "hsl(var(--primary-50))",
+  100: "hsl(var(--primary-100))",
+  200: "hsl(var(--primary-200))",
+  300: "hsl(var(--primary-300))",
+  400: "hsl(var(--primary-400))",
+  500: "hsl(var(--primary-500))",
+  600: "hsl(var(--primary-600))",
+  700: "hsl(var(--primary-700))",
+  800: "hsl(var(--primary-800))",
+  900: "hsl(var(--primary-900))",
+},
+```
 
-### 6. `src/pages/PersonaSelector.tsx` — paridade de copy
+**4. `tailwind.config.ts` — `theme.extend.boxShadow`**
 
-Atualizar `leaderDesc` (PT/EN/ES) para mencionar Mentor com 20 conversas/mês, mantendo "até 2 liderados":
-- PT: "Crie seu workspace Pulse: até 2 liderados, Mentor AI com 20 conversas/mês e 1 avaliação com IA. Tudo grátis pra sempre."
-- EN: "Create your Pulse workspace: up to 2 direct reports, Mentor AI with 20 conversations/month and 1 AI review. Free forever."
-- ES: "Crea tu workspace Pulse: hasta 2 colaboradores, Mentor AI con 20 conversaciones/mes y 1 evaluación con IA. Gratis para siempre."
+Adicionar as shadows roxas ao mapa existente:
 
----
+```ts
+boxShadow: {
+  // ... tokens existentes
+  purple:    "var(--shadow-purple)",
+  "purple-lg": "var(--shadow-purple-lg)",
+},
+```
 
-## Fora de escopo (intencional)
+### Como usar (hierarquia recomendada)
 
-- Sem alterações em preços, Stripe IDs, ciclos, RLS, tabelas Supabase, ou na landing (já refinada na rodada anterior).
-- Sem mexer no `Roadmap.tsx` (a menção a "Pulse surveys" é um nome de feature futura, não relacionado ao plano Pulse).
-- Sem mexer no `HRAdminWorkspaceOnboarding` ("Comece no Pulse com amostra do Enterprise" continua válido).
-- Sem mexer nas tabelas i18n PT/EN/ES de `pt-BR.json` etc — as mudanças acima estão em strings hardcoded ou em `translations` locais.
+- `bg-primary-50` / `bg-primary-100` — superfícies sutis (badges, hover de itens)
+- `bg-primary-200` / `text-primary-300` — bordas, dividers, decoração
+- `bg-primary-500` / `bg-primary` — CTAs principais (mantido como hoje)
+- `bg-primary-600` / `bg-primary-700` — hover/active de CTAs
+- `bg-primary-800` / `bg-primary-900` — superfícies escuras com texto branco
+- `shadow-purple` — CTAs destacados na landing (botão "Começar agora")
+- `shadow-purple-lg` — heros e cards de pricing em destaque
 
-## Esperado
+### Garantias
 
-- `/billing` (Pulse) e `/billing` (Pro ativo) mostram exatamente a mesma estrutura de features que a landing.
-- Sidebar leva direto para `/slack/channels` quando Slack já está conectado, em vez de abrir o dialog inútil.
-- Dialog de conexão menciona o fluxo real (autojoin + evidências), não só comandos slash.
-- MeetingRecorder no Pulse: usuário consegue clicar "Ver planos" e ir pra billing.
-- PersonaSelector reforça a mesma promessa de valor que a landing.
+- `--primary` atual (262 83% 58%) **não é alterado** — `bg-primary` continua exatamente igual
+- Nenhum componente existente quebra (escalas são aditivas)
+- Dark mode tem escala consistente com a inversão de luminância já usada na primary do `.dark`
+- Sem mudança em código de componentes — apenas novos tokens disponíveis

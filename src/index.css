@@ -29,6 +29,18 @@ All colors MUST be HSL.
     --primary:            262 83% 58%;  /* #7C3AED */
     --primary-foreground:   0  0% 100%;
 
+    /* ── Escala de roxo (Primary scale) ── */
+    --primary-50:  262 100% 97%;
+    --primary-100: 262 90% 94%;
+    --primary-200: 262 85% 87%;
+    --primary-300: 262 83% 76%;
+    --primary-400: 262 83% 66%;
+    --primary-500: 262 83% 58%;   /* = --primary */
+    --primary-600: 262 75% 50%;
+    --primary-700: 262 70% 42%;
+    --primary-800: 262 65% 32%;
+    --primary-900: 262 60% 22%;
+
     /* ── Secundária ── */
     --secondary:          258 52% 15%;
     --secondary-foreground: 0  0% 100%;
