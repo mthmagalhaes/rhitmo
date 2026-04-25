@@ -314,7 +314,13 @@ export function AppSidebar() {
                       )}
                     </button>
                     <button
-                      onClick={() => setSlackDialogOpen(true)}
+                      onClick={() => {
+                        if (slackConnected) {
+                          navigate('/slack/channels');
+                        } else {
+                          setSlackDialogOpen(true);
+                        }
+                      }}
                       className="w-full flex items-center gap-3 h-12 px-4 rounded-xl border border-border/60 bg-background hover:bg-accent/50 hover:border-primary/30 hover:-translate-y-0.5 transition-all duration-200 group"
                     >
                       <SlackIcon className="h-5 w-5 shrink-0" />

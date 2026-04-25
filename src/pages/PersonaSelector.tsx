@@ -28,7 +28,7 @@ export default function PersonaSelector() {
       leaderBadge: 'Plano Pulse grátis',
       leaderTitle: 'Sou Líder de time',
       leaderDesc:
-        'Crie seu workspace Pulse, adicione até 2 liderados e experimente notas, Mentor e avaliações baseadas em evidências.',
+        'Crie seu workspace Pulse: até 2 liderados, Mentor AI com 20 conversas/mês e 1 avaliação com IA. Tudo grátis pra sempre.',
       leaderCta: 'Começar como Líder',
       hrTitle: 'Sou RH / People Admin',
       hrDesc:
@@ -44,7 +44,7 @@ export default function PersonaSelector() {
       leaderBadge: 'Free Pulse plan',
       leaderTitle: "I'm a Team Leader",
       leaderDesc:
-        'Create your Pulse workspace, add up to 2 direct reports, and try notes, Mentor and evidence-based reviews.',
+        'Create your Pulse workspace: up to 2 direct reports, Mentor AI with 20 conversations/month and 1 AI review. Free forever.',
       leaderCta: 'Start as Leader',
       hrTitle: "I'm HR / People Admin",
       hrDesc:
@@ -60,7 +60,7 @@ export default function PersonaSelector() {
       leaderBadge: 'Plan Pulse gratis',
       leaderTitle: 'Soy Líder de equipo',
       leaderDesc:
-        'Crea tu workspace Pulse, agrega hasta 2 colaboradores y prueba notas, Mentor y evaluaciones basadas en evidencia.',
+        'Crea tu workspace Pulse: hasta 2 colaboradores, Mentor AI con 20 conversaciones/mes y 1 evaluación con IA. Gratis para siempre.',
       leaderCta: 'Empezar como Líder',
       hrTitle: 'Soy RH / People Admin',
       hrDesc:
