@@ -1464,7 +1464,7 @@ async function processInteraction(body: string, timestamp: string, signature: st
       });
       if (linkRes.ok) permalink = linkRes.permalink;
 
-      // Insert evidence (status approved — manual capture is implicitly approved)
+      // Insert evidence as pending — leader reviews on /evidence and decides to convert or dismiss
       const { data: inserted, error: insErr } = await supabase
         .from('slack_ambient_evidence')
         .upsert({
@@ -1478,9 +1478,8 @@ async function processInteraction(body: string, timestamp: string, signature: st
           category: 'outro',
           relevance_score: 1.0,
           summary: messageText.substring(0, 200),
-          status: 'approved',
+          status: 'pending',
           captured_at: new Date().toISOString(),
-          reviewed_at: new Date().toISOString(),
         }, {
           onConflict: 'slack_channel_id,slack_message_ts,member_id',
         })
@@ -1514,17 +1513,17 @@ async function processInteraction(body: string, timestamp: string, signature: st
             type: 'section',
             text: {
               type: 'mrkdwn',
-              text: `✅ Evidência salva sobre *${memberData?.name || 'liderado'}*.`,
+              text: `✅ Evidência sobre *${memberData?.name || 'liderado'}* enviada para revisão.`,
             },
           },
           {
             type: 'context',
             elements: [
-              { type: 'mrkdwn', text: `<https://app-rhitmo.lovable.app/evidence|Ver no Rhitmo →>` },
+              { type: 'mrkdwn', text: `<https://rhitmo.co/evidence|Revisar no Rhitmo →>` },
             ],
           },
         ],
-        text: `✅ Evidência salva sobre ${memberData?.name || 'liderado'}.`,
+        text: `✅ Evidência sobre ${memberData?.name || 'liderado'} enviada para revisão.`,
       });
     }
   }

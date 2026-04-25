@@ -33,7 +33,6 @@ export function EvidenceFilters({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="pending">Pendentes</SelectItem>
-          <SelectItem value="approved">Aprovadas</SelectItem>
           <SelectItem value="converted_to_feedback">Viraram notas</SelectItem>
           <SelectItem value="dismissed">Dispensadas</SelectItem>
           <SelectItem value="all">Todas</SelectItem>

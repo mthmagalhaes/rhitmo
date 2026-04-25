@@ -1,4 +1,4 @@
-import { Check, X, FileText, ExternalLink, Hash } from 'lucide-react';
+import { X, FileText, ExternalLink, Hash } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -19,13 +19,12 @@ interface Props {
   evidence: SlackEvidence;
   selected: boolean;
   onSelect: (id: string, checked: boolean) => void;
-  onApprove: (id: string) => void;
   onDismiss: (id: string) => void;
   onConvert: (evidence: SlackEvidence) => void;
   busy?: boolean;
 }
 
-export function EvidenceCard({ evidence, selected, onSelect, onApprove, onDismiss, onConvert, busy }: Props) {
+export function EvidenceCard({ evidence, selected, onSelect, onDismiss, onConvert, busy }: Props) {
   const cat = CATEGORY_LABEL[evidence.category] || CATEGORY_LABEL.outro;
   const member = evidence.member;
   const captured = formatDistanceToNow(new Date(evidence.captured_at), { addSuffix: true, locale: ptBR });
@@ -89,15 +88,6 @@ export function EvidenceCard({ evidence, selected, onSelect, onApprove, onDismis
             <Button
               size="sm"
               variant="default"
-              disabled={busy}
-              onClick={() => onApprove(evidence.id)}
-              className="rounded-xl"
-            >
-              <Check className="h-4 w-4 mr-1" /> Aprovar
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
               disabled={busy}
               onClick={() => onConvert(evidence)}
               className="rounded-xl"

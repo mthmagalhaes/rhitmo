@@ -16,7 +16,7 @@ export default function Evidence() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const { data: evidences = [], isLoading } = useEvidence({ status, memberId, category });
-  const { approve, dismiss, convertToFeedback } = useEvidenceMutations();
+  const { dismiss, convertToFeedback } = useEvidenceMutations();
   const { isConnected: slackConnected } = useSlackConnection();
 
   const members = useMemo(() => {
@@ -28,7 +28,7 @@ export default function Evidence() {
   }, [evidences]);
 
   const uniqueMembersCount = members.length;
-  const busy = approve.isPending || dismiss.isPending || convertToFeedback.isPending;
+  const busy = dismiss.isPending || convertToFeedback.isPending;
 
   const toggleSelect = (id: string, checked: boolean) => {
     setSelected((prev) => {
@@ -41,9 +41,10 @@ export default function Evidence() {
   const selectAll = () => setSelected(new Set(evidences.map((e) => e.id)));
   const clearSelection = () => setSelected(new Set());
 
-  const handleBulkApprove = async () => {
+  const handleBulkConvert = async () => {
     if (selected.size === 0) return;
-    await approve.mutateAsync(Array.from(selected));
+    const items = evidences.filter((e) => selected.has(e.id));
+    await Promise.all(items.map((ev) => convertToFeedback.mutateAsync(ev)));
     clearSelection();
   };
 
@@ -102,8 +103,8 @@ export default function Evidence() {
         {selected.size > 0 ? (
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">{selected.size} selecionada{selected.size === 1 ? '' : 's'}</span>
-            <Button size="sm" variant="default" disabled={busy} onClick={handleBulkApprove} className="rounded-xl">
-              Aprovar
+            <Button size="sm" variant="default" disabled={busy} onClick={handleBulkConvert} className="rounded-xl">
+              Virar notas
             </Button>
             <Button size="sm" variant="ghost" disabled={busy} onClick={handleBulkDismiss} className="rounded-xl">
               Dispensar
@@ -148,7 +149,6 @@ export default function Evidence() {
               evidence={ev}
               selected={selected.has(ev.id)}
               onSelect={toggleSelect}
-              onApprove={(id) => approve.mutate([id])}
               onDismiss={(id) => dismiss.mutate([id])}
               onConvert={(e) => convertToFeedback.mutate(e)}
               busy={busy}
