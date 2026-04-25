@@ -71,6 +71,11 @@ export default function Evidence() {
               {isLoading ? 'Carregando…' : `${evidences.length} ${status === 'pending' ? 'pendentes' : 'no filtro'} · ${uniqueMembersCount} liderado${uniqueMembersCount === 1 ? '' : 's'}`}
             </p>
           </div>
+          <Link to="/slack/channels">
+            <Button variant="ghost" size="sm" className="rounded-xl text-muted-foreground hover:text-foreground">
+              <Hash className="h-3.5 w-3.5 mr-1" /> Gerenciar canais
+            </Button>
+          </Link>
         </div>
       </div>
 
