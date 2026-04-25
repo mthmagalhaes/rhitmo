@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Sparkles, Inbox, ArrowLeft } from 'lucide-react';
+import { Sparkles, Inbox, ArrowLeft, Hash } from 'lucide-react';
 import { useEvidence, useEvidenceMutations, type EvidenceStatus, type EvidenceCategory } from '@/hooks/useEvidence';
 import { EvidenceCard } from '@/components/evidence/EvidenceCard';
 import { EvidenceFilters } from '@/components/evidence/EvidenceFilters';
