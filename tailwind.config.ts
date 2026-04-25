@@ -140,7 +140,9 @@ export default {
         md:    "var(--shadow-md)",
         lg:    "var(--shadow-lg)",
         xl:    "var(--shadow-xl)",
-        "2xl": "var(--shadow-2xl)"
+        "2xl": "var(--shadow-2xl)",
+        purple:      "var(--shadow-purple)",
+        "purple-lg": "var(--shadow-purple-lg)"
       },
 
       /* ── Spacing extra ── */
