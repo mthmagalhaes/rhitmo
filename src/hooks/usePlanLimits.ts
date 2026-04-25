@@ -38,8 +38,8 @@ const PLAN_LIMITS: Record<string, Omit<PlanLimits, 'planTier' | 'isBetaUser'>> =
     planName: 'Pulse',
   },
   pro: {
-    // Pricing 18/04/2026: Pro agora oferece liderados, times e bot ilimitados
-    // (15h/mês de bot conforme contrato), alinhado à remoção do plano Business.
+    // Pricing 2026: Pro oferece liderados, times e bot ilimitados, com cap de
+    // 30h/mês de transcrição (manual + bot Recall). Plano Business removido.
     maxMembers: Infinity,
     maxReviews: Infinity,
     maxTeams: Infinity,
