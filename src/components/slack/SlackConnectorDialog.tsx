@@ -1,4 +1,5 @@
-import { CheckCircle2, ExternalLink, Loader2 } from 'lucide-react';
+import { CheckCircle2, ExternalLink, Hash, Loader2, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { SlackIcon } from '@/components/icons/SlackIcon';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -18,6 +19,12 @@ interface SlackConnectorDialogProps {
 
 export function SlackConnectorDialog({ open, onOpenChange }: SlackConnectorDialogProps) {
   const { isConnected, isLoading, connectSlack } = useSlackConnection();
+  const navigate = useNavigate();
+
+  const goTo = (path: string) => {
+    onOpenChange(false);
+    navigate(path);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -28,7 +35,7 @@ export function SlackConnectorDialog({ open, onOpenChange }: SlackConnectorDialo
             Conector Slack — Rhitmo Bot
           </DialogTitle>
           <DialogDescription>
-            Use comandos como <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">/rhitmo</code> direto no Slack para registrar notas, consultar briefs e receber nudges sem sair do chat.
+            O Rhitmo captura sinais relevantes do dia-a-dia direto dos canais públicos onde o bot estiver presente — sem invadir DMs nem canais privados.
           </DialogDescription>
         </DialogHeader>
 
@@ -57,6 +64,28 @@ export function SlackConnectorDialog({ open, onOpenChange }: SlackConnectorDialo
             {isConnected ? 'Reconectar Slack' : 'Conectar ao Slack'}
           </Button>
 
+          {/* Quick links — only when connected */}
+          {isConnected && (
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                className="rounded-xl gap-2"
+                onClick={() => goTo('/slack/channels')}
+              >
+                <Hash className="h-4 w-4" />
+                Gerenciar canais
+              </Button>
+              <Button
+                variant="outline"
+                className="rounded-xl gap-2"
+                onClick={() => goTo('/evidence')}
+              >
+                <Sparkles className="h-4 w-4" />
+                Ver evidências
+              </Button>
+            </div>
+          )}
+
           <Separator />
 
           {/* Instructions */}
@@ -65,16 +94,15 @@ export function SlackConnectorDialog({ open, onOpenChange }: SlackConnectorDialo
             <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
               <li>Clique em <strong>"Conectar ao Slack"</strong> acima e autorize o app Rhitmo no seu workspace.</li>
               <li>Após autorizar, o bot <strong>Rhitmo</strong> aparecerá no seu Slack.</li>
-              <li>Use <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">/rhitmo</code> para acessar o menu de ações.</li>
-              <li>Use <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">/nota</code> para registrar uma observação rápida sobre um liderado.</li>
-              <li>Use <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">/kudos</code> para reconhecer publicamente um membro do time.</li>
+              <li>Convide o bot <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">@Rhitmo</code> nos canais públicos onde seu time conversa, ou ative o autojoin em <strong>Gerenciar canais</strong>.</li>
+              <li>O Rhitmo identifica entregas, reconhecimentos, bloqueios e conflitos automaticamente. Você revisa em <strong>Evidências</strong> e converte em notas com 1 clique.</li>
             </ol>
           </div>
 
           <Separator />
 
           <div className="space-y-3">
-            <p className="text-sm font-semibold text-foreground">Comandos disponíveis:</p>
+            <p className="text-sm font-semibold text-foreground">Comandos disponíveis (opcional):</p>
             <div className="grid gap-2">
               {[
                 { cmd: '/rhitmo', desc: 'Menu principal com todas as ações' },
