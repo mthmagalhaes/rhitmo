@@ -169,6 +169,10 @@ All colors MUST be HSL.
     --shadow-xl:  0 16px 48px rgba(0,0,0,0.4);
     --shadow-2xl: 0 24px 64px rgba(0,0,0,0.45);
 
+    /* ── Shadows roxas (dark) ── */
+    --shadow-purple:    0 10px 30px -8px hsl(263 86% 76% / 0.25);
+    --shadow-purple-lg: 0 20px 50px -12px hsl(263 86% 76% / 0.3);
+
     /* ── Sidebar (dark glass) ── */
     --sidebar-background:          240 10% 11%;
     --sidebar-foreground:          250 10% 95%;
