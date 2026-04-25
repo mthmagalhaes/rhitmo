@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Sparkles, Inbox, ArrowLeft } from 'lucide-react';
+import { Sparkles, Inbox, ArrowLeft, Hash } from 'lucide-react';
 import { useEvidence, useEvidenceMutations, type EvidenceStatus, type EvidenceCategory } from '@/hooks/useEvidence';
 import { EvidenceCard } from '@/components/evidence/EvidenceCard';
 import { EvidenceFilters } from '@/components/evidence/EvidenceFilters';
@@ -71,6 +71,11 @@ export default function Evidence() {
               {isLoading ? 'Carregando…' : `${evidences.length} ${status === 'pending' ? 'pendentes' : 'no filtro'} · ${uniqueMembersCount} liderado${uniqueMembersCount === 1 ? '' : 's'}`}
             </p>
           </div>
+          <Link to="/slack/channels">
+            <Button variant="ghost" size="sm" className="rounded-xl text-muted-foreground hover:text-foreground">
+              <Hash className="h-3.5 w-3.5 mr-1" /> Gerenciar canais
+            </Button>
+          </Link>
         </div>
       </div>
 
