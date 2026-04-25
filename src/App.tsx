@@ -43,6 +43,7 @@ import Roadmap from "./pages/Roadmap";
 import ResetPassword from "./pages/ResetPassword";
 import GoogleCalendarCallback from "./pages/GoogleCalendarCallback";
 import Evidence from "./pages/Evidence";
+import SlackChannels from "./pages/SlackChannels";
 
 
 const queryClient = new QueryClient();
@@ -112,6 +113,11 @@ const App = () => (
             <Route path="/evidence" element={
               <DirectReportGuard>
                 <AppLayout><Evidence /></AppLayout>
+              </DirectReportGuard>
+            } />
+            <Route path="/slack/channels" element={
+              <DirectReportGuard>
+                <AppLayout><SlackChannels /></AppLayout>
               </DirectReportGuard>
             } />
             
