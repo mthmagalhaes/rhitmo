@@ -147,11 +147,11 @@ const translations = {
     pulseForever: "· para sempre",
     pulseCTA: "Começar grátis",
     pulseFeatures: [
-      "Até 2 liderados diretos",
       "Diário de bordo ilimitado",
-      "1 avaliação com IA por mês",
       "Mentor AI — até 20 conversas por mês",
+      "1 avaliação com IA por mês",
       "Notas e registros ilimitados",
+      "Até 2 liderados diretos",
     ],
     // Pro
     proSubtitle: "Para líderes que querem operar no rítmo certo: liderados ilimitados, com IA em todas as etapas.",
@@ -159,16 +159,26 @@ const translations = {
     proCTA: "Começar agora",
     proBadge: "Mais popular",
     proFeatures: [
-      { label: "Liderados ilimitados" },
-      { label: "Diário de bordo + resumo mensal automático", isNew: true },
-      { label: "Acompanhamento trimestral guiado por IA", isNew: true },
-      { label: "Avaliações formais ilimitadas com evidências citadas" },
-      { label: "Transcrição automática de reuniões — 30h/mês" },
-      { label: "Pre-meeting briefs com contexto histórico" },
-      { label: "Detecção de viés em tempo real" },
-      { label: "Mentor AI ilimitado" },
-      { label: "Time acessa feedbacks e metas em tempo real" },
-      { label: "Analytics completo · Times ilimitados" },
+      {
+        groupLabel: "Ciclo de Performance",
+        items: [
+          { label: "Diário de bordo + resumo mensal automático", isNew: true },
+          { label: "Acompanhamento trimestral guiado por IA", isNew: true },
+          { label: "Avaliações formais com evidências citadas" },
+        ],
+      },
+      {
+        groupLabel: "Ferramentas de Apoio",
+        items: [
+          { label: "Transcrição automática de reuniões — 30h/mês" },
+          { label: "Pre-meeting briefs com contexto histórico" },
+          { label: "Detecção de viés em tempo real" },
+          { label: "Mentor AI ilimitado" },
+          { label: "Time acessa feedbacks e metas em tempo real" },
+          { label: "Analytics completo · Times ilimitados" },
+          { label: "Liderados ilimitados" },
+        ],
+      },
     ],
     // Chat mockup
     mentorChatLabel: "Liderada: Maria Santos",
@@ -197,6 +207,7 @@ const translations = {
     pricingNav: "Preços",
     faqNav: "FAQ",
     enterpriseSubtitle: "Para a organização inteira: HR Dashboard, blindagem jurídica, integrações HRIS e SSO.",
+    enterpriseImpact: "Ciclo completo de performance para toda a organização — calibração entre gestores, blindagem jurídica e visibilidade do RH em tempo real.",
     enterprisePrice: "Sob consulta",
     enterprisePer: "· faturamento anual",
     enterpriseNote: "Cobrança exclusivamente anual · proposta personalizada",
@@ -350,27 +361,37 @@ const translations = {
     pulseForever: "· forever",
     pulseCTA: "Get started free",
     pulseFeatures: [
-      "Up to 2 direct reports",
       "Unlimited journal",
-      "1 AI review per month",
       "Mentor AI — up to 20 conversations per month",
+      "1 AI review per month",
       "Unlimited notes and records",
+      "Up to 2 direct reports",
     ],
     proSubtitle: "For leaders who want to operate at the right rhythm: unlimited direct reports, AI at every step.",
     proNote: "One charge per cycle · cancel anytime",
     proCTA: "Get started",
     proBadge: "Most popular",
     proFeatures: [
-      { label: "Unlimited direct reports" },
-      { label: "Journal + automatic monthly recap", isNew: true },
-      { label: "Quarterly AI-guided performance reviews", isNew: true },
-      { label: "Unlimited formal reviews with cited evidence" },
-      { label: "Automatic meeting transcription — 30h/month" },
-      { label: "Pre-meeting briefs with historical context" },
-      { label: "Real-time bias detection" },
-      { label: "Unlimited Mentor AI" },
-      { label: "Your team accesses feedback and goals in real time" },
-      { label: "Full analytics · Unlimited teams" },
+      {
+        groupLabel: "Performance Cycle",
+        items: [
+          { label: "Journal + automatic monthly recap", isNew: true },
+          { label: "Quarterly AI-guided performance reviews", isNew: true },
+          { label: "Formal reviews with cited evidence" },
+        ],
+      },
+      {
+        groupLabel: "Support Tools",
+        items: [
+          { label: "Automatic meeting transcription — 30h/month" },
+          { label: "Pre-meeting briefs with historical context" },
+          { label: "Real-time bias detection" },
+          { label: "Unlimited Mentor AI" },
+          { label: "Your team accesses feedback and goals in real time" },
+          { label: "Full analytics · Unlimited teams" },
+          { label: "Unlimited direct reports" },
+        ],
+      },
     ],
     mentorChatLabel: "Direct report: Maria Santos",
     chatQuestion: "How to give feedback about tardiness without demotivating?",
@@ -395,6 +416,7 @@ const translations = {
     pricingNav: "Pricing",
     faqNav: "FAQ",
     enterpriseSubtitle: "For the entire organization: HR Dashboard, legal protection dossier, HRIS integration and SSO.",
+    enterpriseImpact: "Complete performance cycle for the entire organization — cross-manager calibration, legal protection, and real-time HR visibility.",
     enterprisePrice: "Custom",
     enterprisePer: "· annual billing",
     enterpriseNote: "Annual billing only · tailored proposal",
@@ -695,7 +717,7 @@ const PricingSection = ({
                   <span className="text-4xl font-bold text-foreground">R$ {pricing.total}</span>
                   <span className="text-sm text-muted-foreground">{periodLabel}</span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1.5">
+                <p className="text-sm font-medium text-muted-foreground mt-1.5">
                   {t.equivPerMonthLabel} <span className="font-semibold text-foreground">R$ {pricing.perMonth}</span>{t.perMonthShort}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">{t.proNote}</p>
@@ -709,21 +731,33 @@ const PricingSection = ({
               <p className="text-xs text-muted-foreground text-center mb-6">
                 {t.proSocialProof}
               </p>
-              <ul className="space-y-3 flex-1">
-                {t.proFeatures.map((f: { label: string; isNew?: boolean }) => (
-                  <li key={f.label} className="flex items-start gap-2 text-sm text-foreground">
-                    <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                    <span>
-                      {f.label}
-                      {f.isNew && (
-                        <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-primary/15 text-primary uppercase tracking-wide align-middle">
-                          {t.newBadge}
-                        </span>
-                      )}
-                    </span>
-                  </li>
+              <div className="flex-1">
+                {t.proFeatures.map((group: { groupLabel: string; items: { label: string; isNew?: boolean }[] }, groupIdx: number) => (
+                  <div
+                    key={group.groupLabel}
+                    className={groupIdx > 0 ? "border-t border-border/40 pt-4 mt-4" : ""}
+                  >
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-3">
+                      {group.groupLabel}
+                    </p>
+                    <ul className="space-y-3">
+                      {group.items.map((f) => (
+                        <li key={f.label} className="flex items-start gap-2 text-sm text-foreground">
+                          <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                          <span>
+                            {f.label}
+                            {f.isNew && (
+                              <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-primary/15 text-primary uppercase tracking-wide align-middle">
+                                {t.newBadge}
+                              </span>
+                            )}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           </div>
 
@@ -738,6 +772,7 @@ const PricingSection = ({
             <div className="min-h-[72px] mb-4">
               <h3 className="text-2xl font-bold tracking-tight text-foreground">Enterprise</h3>
               <p className="text-sm text-muted-foreground mt-2">{t.enterpriseSubtitle}</p>
+              <p className="text-sm italic text-muted-foreground mt-3">{t.enterpriseImpact}</p>
             </div>
             <div className="min-h-[100px] mb-6">
               <div className="flex items-baseline gap-1">

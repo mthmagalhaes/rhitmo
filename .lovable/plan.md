@@ -1,120 +1,111 @@
-## Página `/slack/channels` — Gerenciar canais monitorados
+# Polish da seção de pricing — Landing
 
-Tela pra líder escolher quais canais públicos do Slack o Rhitmo deve monitorar (capturar evidências automaticamente). Reaproveita a infra que já existe: `workspace_slack_settings.excluded_channel_ids` + `autojoin_public_channels`.
-
----
-
-### Modelo conceitual
-
-Em vez de "lista de canais a monitorar" (allowlist), uso o que já está no banco: **denylist via `excluded_channel_ids`** + flag `autojoin_public_channels`. Isso evita migration nova e mantém o classifier funcionando sem mudanças.
-
-**Lógica final que o líder vê:**
-- Se `autojoin_public_channels = true` → "monitora todos públicos, exceto os que eu excluí"
-- Se `autojoin_public_channels = false` → "monitora só os canais onde já fui convidado manualmente, exceto os excluídos"
-
-Default novo workspace: `autojoin_public_channels = true`, `excluded_channel_ids = []`.
+Ajustes pontuais em `src/pages/Landing.tsx` para melhorar hierarquia visual e percepção de valor. **Nenhuma mudança em preços, planos, lógica de billing, Stripe IDs, CTAs ou toggles.**
 
 ---
 
-### Backend — nova edge function `slack-list-channels`
+## Mudança 1 — Pulse: reordenar features
 
-Centraliza chamadas ao Slack pra evitar expor o token no frontend.
+Em `pulseFeatures` (PT linha 149-155 e EN linha 352-358), mover "Até 2 liderados diretos" / "Up to 2 direct reports" para o **último** item.
 
-**Endpoints (POST único, action no body):**
-- `action: 'list'` → retorna `[{ id, name, is_member, is_private, num_members, topic }]` paginando `conversations.list` (`types=public_channel,private_channel`, limit 200, segue cursor).
-- `action: 'join'` → `conversations.join` em um channel_id (só públicos).
-- `action: 'leave'` → `conversations.leave` em um channel_id.
+Nova ordem:
+1. Diário de bordo ilimitado
+2. Mentor AI — até 20 conversas por mês
+3. 1 avaliação com IA por mês
+4. Notas e registros ilimitados
+5. Até 2 liderados diretos
 
-**Auth:** valida JWT, busca `slack_connections` do workspace do usuário pra pegar `bot_access_token`.
-
-**Resposta enriquecida:** combina dados do Slack com o `excluded_channel_ids` atual pra o frontend já renderizar o estado certo (Monitorando / Excluído / Não-membro).
+(Mesma reordenação aplicada na versão EN.)
 
 ---
 
-### Frontend — `src/pages/SlackChannels.tsx`
+## Mudança 2 — Pro: dois grupos visuais de features
 
-**Layout (Bento/Creme):**
-```
-┌──────────────────────────────────────────────────────┐
-│ ← Voltar                                             │
-│                                                      │
-│ Canais do Slack                                      │
-│ Escolha o que o Rhitmo deve observar                 │
-│                                                      │
-│ ┌─ Modo geral ──────────────────────────────────┐  │
-│ │ ◉ Monitorar todos os canais públicos            │  │
-│ │   (recomendado — ativa captura automática)      │  │
-│ │ ○ Só canais que eu convidar manualmente          │  │
-│ └─────────────────────────────────────────────────┘  │
-│                                                      │
-│ Buscar canal: [_____________]                        │
-│                                                      │
-│ Canais (38)         [Todos] [Monitorando] [Privados] │
-│ ┌─────────────────────────────────────────────────┐ │
-│ │ # engenharia-time-joao        🟢 Monitorando    │ │
-│ │ 12 membros · público        [⊘ Pausar]          │ │
-│ ├─────────────────────────────────────────────────┤ │
-│ │ # vendas-norte                ⊘ Excluído        │ │
-│ │ 8 membros · público         [✓ Reativar]        │ │
-│ ├─────────────────────────────────────────────────┤ │
-│ │ 🔒 design-conf                ➕ Não sou membro │ │
-│ │ 4 membros · privado    Convide @Rhitmo no Slack │ │
-│ └─────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────┘
+Reestruturar `proFeatures` (PT linha 161-172 e EN linha 363-374) de uma lista plana para uma estrutura agrupada. Vou usar uma forma compatível com o render existente: trocar o array de itens por um array de **grupos**, cada grupo com `label` e `items`.
+
+Exemplo de shape (PT):
+```ts
+proFeatures: [
+  {
+    groupLabel: "Ciclo de Performance",
+    items: [
+      { label: "Diário de bordo + resumo mensal automático", isNew: true },
+      { label: "Acompanhamento trimestral guiado por IA", isNew: true },
+      { label: "Avaliações formais com evidências citadas" },
+    ],
+  },
+  {
+    groupLabel: "Ferramentas de Apoio",
+    items: [
+      { label: "Transcrição automática de reuniões — 30h/mês" },
+      { label: "Pre-meeting briefs com contexto histórico" },
+      { label: "Detecção de viés em tempo real" },
+      { label: "Mentor AI ilimitado" },
+      { label: "Time acessa feedbacks e metas em tempo real" },
+      { label: "Analytics completo · Times ilimitados" },
+      { label: "Liderados ilimitados" },
+    ],
+  },
+]
 ```
 
-**Componentes:**
-- `SlackChannels.tsx` — página principal com toggle de modo, busca, lista
-- `ChannelRow.tsx` — linha individual com estado (monitorando/excluído/privado-não-membro) e ação contextual
-- `useSlackChannels.ts` — hook com fetch via `slack-list-channels` + mutations (toggleExclude, updateAutojoin)
+EN espelhado com labels traduzidas ("Performance Cycle" / "Support Tools").
 
-**Estados por canal:**
-| Tipo | Bot é membro? | Excluído? | UI mostra |
-|---|---|---|---|
-| Público | sim | não | 🟢 Monitorando · botão "Pausar" |
-| Público | sim | sim | ⊘ Excluído · botão "Reativar" |
-| Público | não | — | ⚪ Disponível · botão "Adicionar" (chama `join`) |
-| Privado | sim | não | 🟢 Monitorando · botão "Pausar" |
-| Privado | sim | sim | ⊘ Excluído · botão "Reativar" |
-| Privado | não | — | 🔒 "Convide @Rhitmo no Slack" (não dá pra fazer pelo app) |
+**Notas de copy importantes:**
+- "Liderados ilimitados" sai da posição 1 e vai para o **fim do grupo 2** (conforme briefing).
+- "Avaliações formais ilimitadas com evidências citadas" passa a ser "Avaliações formais com evidências citadas" (briefing remove "ilimitadas").
+- Badges "Novo" preservados exatamente onde estão hoje.
 
-**Ações:**
-- **Pausar** → adiciona ID em `excluded_channel_ids`
-- **Reativar** → remove ID de `excluded_channel_ids`
-- **Adicionar (público não-membro)** → chama `slack-list-channels` com `action: 'join'`
-- **Toggle modo geral** → atualiza `autojoin_public_channels`
+**Render** (linhas 712-726): substituir o `.map` único por um `.map` de grupos que renderiza:
+- Subtítulo do grupo: `<p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-3">`
+- Lista de itens com o mesmo markup atual (Check + label + badge Novo).
+- A partir do segundo grupo, adicionar `border-t border-border/40 pt-4 mt-4` no wrapper para criar o divider sutil entre grupos.
 
 ---
 
-### Sidebar + navegação
+## Mudança 3 — Pro: destacar equivalência mensal
 
-- Adiciona item "Canais Slack" em `AppSidebar.tsx` dentro da seção de configurações (ou no menu Slack se existir).
-- Link pequeno "Gerenciar canais →" no header de `/evidence` pra dar atalho.
-- Rota nova em `App.tsx`: `/slack/channels` (protegida, mesma proteção do `/evidence`).
+Linha 698-700 (bloco "Equivale a R$ X/mês"):
+
+De:
+```tsx
+<p className="text-xs text-muted-foreground mt-1.5">
+  {t.equivPerMonthLabel} <span className="font-semibold text-foreground">R$ {pricing.perMonth}</span>{t.perMonthShort}
+</p>
+```
+
+Para:
+```tsx
+<p className="text-sm font-medium text-muted-foreground mt-1.5">
+  {t.equivPerMonthLabel} <span className="font-semibold text-foreground">R$ {pricing.perMonth}</span>{t.perMonthShort}
+</p>
+```
+
+Isso já cobre os ciclos trimestral/semestral/anual porque `pricing.perMonth` é dinâmico via toggle. Posição mantida.
 
 ---
 
-### Detalhes técnicos
+## Mudança 4 — Enterprise: frase de impacto
 
-- **Sem migration**: tudo cabe em `workspace_slack_settings` que já existe.
-- **Cache**: lista de canais via React Query, `staleTime: 60s` pra não martelar Slack API.
-- **Paginação interna**: `conversations.list` da edge function junta tudo antes de devolver (workspaces com >500 canais ficam ok porque o limite Slack é 1000 por página).
-- **Permissão**: edge function valida que o usuário é owner ou HR admin do workspace antes de retornar/modificar.
-- **Scope necessário**: `channels:join` e `channels:read` (já estão no manifest atualizado da Sprint 1, conforme aprovação anterior).
+Adicionar duas chaves novas em ambos os blocos `t`:
+- PT: `enterpriseImpact: "Ciclo completo de performance para toda a organização — calibração entre gestores, blindagem jurídica e visibilidade do RH em tempo real."`
+- EN: `enterpriseImpact: "Complete performance cycle for the entire organization — cross-manager calibration, legal protection, and real-time HR visibility."`
+
+No card Enterprise (entre `enterpriseSubtitle` na linha 740 e o bloco de preço na linha 742), inserir:
+```tsx
+<p className="text-sm italic text-muted-foreground mt-3">{t.enterpriseImpact}</p>
+```
+
+A frase aparece **abaixo** do subtítulo "Para a organização inteira: HR Dashboard..." e **antes** do "Sob consulta", como pedido.
 
 ---
 
-### Arquivos novos
-
-- `supabase/functions/slack-list-channels/index.ts`
-- `src/pages/SlackChannels.tsx`
-- `src/components/slack/ChannelRow.tsx`
-- `src/hooks/useSlackChannels.ts`
-
-### Arquivos editados
-
-- `src/App.tsx` — registra rota `/slack/channels`
-- `src/components/AppSidebar.tsx` — link novo
-- `src/pages/Evidence.tsx` — atalho "Gerenciar canais" no header
-
-Pronto pra executar.
+## Validação final
+- Pulse: "Até 2 liderados diretos" como último item ✓
+- Pro: dois grupos com labels uppercase + divider sutil ✓
+- Pro: "Equivale a R$X/mês" em `text-sm font-medium` ✓
+- Enterprise: frase em itálico antes de "Sob consulta" ✓
+- Badges "Novo" preservados ✓
+- Preços, toggles, CTAs, Stripe, lógica de billing: intocados ✓
+- Sem novos arquivos ou componentes — tudo inline em `src/pages/Landing.tsx` ✓
+- Paridade PT/EN mantida ✓
