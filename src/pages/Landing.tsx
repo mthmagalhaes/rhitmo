@@ -147,11 +147,11 @@ const translations = {
     pulseForever: "· para sempre",
     pulseCTA: "Começar grátis",
     pulseFeatures: [
-      "Até 2 liderados diretos",
       "Diário de bordo ilimitado",
-      "1 avaliação com IA por mês",
       "Mentor AI — até 20 conversas por mês",
+      "1 avaliação com IA por mês",
       "Notas e registros ilimitados",
+      "Até 2 liderados diretos",
     ],
     // Pro
     proSubtitle: "Para líderes que querem operar no rítmo certo: liderados ilimitados, com IA em todas as etapas.",
@@ -159,16 +159,26 @@ const translations = {
     proCTA: "Começar agora",
     proBadge: "Mais popular",
     proFeatures: [
-      { label: "Liderados ilimitados" },
-      { label: "Diário de bordo + resumo mensal automático", isNew: true },
-      { label: "Acompanhamento trimestral guiado por IA", isNew: true },
-      { label: "Avaliações formais ilimitadas com evidências citadas" },
-      { label: "Transcrição automática de reuniões — 30h/mês" },
-      { label: "Pre-meeting briefs com contexto histórico" },
-      { label: "Detecção de viés em tempo real" },
-      { label: "Mentor AI ilimitado" },
-      { label: "Time acessa feedbacks e metas em tempo real" },
-      { label: "Analytics completo · Times ilimitados" },
+      {
+        groupLabel: "Ciclo de Performance",
+        items: [
+          { label: "Diário de bordo + resumo mensal automático", isNew: true },
+          { label: "Acompanhamento trimestral guiado por IA", isNew: true },
+          { label: "Avaliações formais com evidências citadas" },
+        ],
+      },
+      {
+        groupLabel: "Ferramentas de Apoio",
+        items: [
+          { label: "Transcrição automática de reuniões — 30h/mês" },
+          { label: "Pre-meeting briefs com contexto histórico" },
+          { label: "Detecção de viés em tempo real" },
+          { label: "Mentor AI ilimitado" },
+          { label: "Time acessa feedbacks e metas em tempo real" },
+          { label: "Analytics completo · Times ilimitados" },
+          { label: "Liderados ilimitados" },
+        ],
+      },
     ],
     // Chat mockup
     mentorChatLabel: "Liderada: Maria Santos",
