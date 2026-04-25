@@ -148,5 +148,5 @@ export function useEvidenceMutations() {
     onError: (e: Error) => toast({ title: 'Erro ao converter', description: e.message, variant: 'destructive' }),
   });
 
-  return { approve, dismiss, convertToFeedback };
+  return { dismiss, convertToFeedback };
 }
