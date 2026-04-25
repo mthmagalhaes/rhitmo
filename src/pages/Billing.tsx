@@ -702,6 +702,7 @@ const Billing = () => {
               </span>
             </div>
             <div className="pt-1">
+              <p className="text-sm italic text-muted-foreground mb-3">{PLAN_FEATURES.enterprise.impact}</p>
               <span className="text-3xl font-bold tracking-tight">Sob consulta</span>
               <p className="text-sm text-muted-foreground mt-1">Cobrança exclusivamente anual</p>
             </div>
