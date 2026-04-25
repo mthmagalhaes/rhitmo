@@ -663,11 +663,20 @@ const Billing = () => {
             </div>
           </CardHeader>
           <CardContent className="p-8 pt-0 space-y-5">
-            <div className="space-y-3">
-              {PLAN_FEATURES.pro.features.map((f) => (
-                <div key={f} className="flex items-center gap-2.5 text-base">
-                  <Check className="h-5 w-5 text-primary shrink-0" />
-                  <span>{f}</span>
+            <div className="space-y-5">
+              {PLAN_FEATURES.pro.groups.map((group, gIdx) => (
+                <div key={group.groupLabel} className={gIdx > 0 ? 'pt-4 border-t border-border/40' : ''}>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+                    {group.groupLabel}
+                  </p>
+                  <div className="space-y-3">
+                    {group.items.map((f) => (
+                      <div key={f} className="flex items-center gap-2.5 text-base">
+                        <Check className="h-5 w-5 text-primary shrink-0" />
+                        <span>{f}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
