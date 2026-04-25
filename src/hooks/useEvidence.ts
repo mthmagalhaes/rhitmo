@@ -88,21 +88,6 @@ export function useEvidenceMutations() {
     qc.invalidateQueries({ queryKey: ['slack-evidence-count'] });
   };
 
-  const approve = useMutation({
-    mutationFn: async (ids: string[]) => {
-      const { error } = await supabase
-        .from('slack_ambient_evidence')
-        .update({ status: 'approved', reviewed_at: new Date().toISOString() })
-        .in('id', ids);
-      if (error) throw error;
-    },
-    onSuccess: (_, ids) => {
-      invalidate();
-      toast({ title: ids.length === 1 ? 'Evidência aprovada' : `${ids.length} evidências aprovadas` });
-    },
-    onError: (e: Error) => toast({ title: 'Erro ao aprovar', description: e.message, variant: 'destructive' }),
-  });
-
   const dismiss = useMutation({
     mutationFn: async (ids: string[]) => {
       const { error } = await supabase
