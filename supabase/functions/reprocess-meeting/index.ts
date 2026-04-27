@@ -306,6 +306,28 @@ async function findAllMeetingMembers(
     }
   }
 
+  // Name-matching against this leader's team_members
+  if (participants.length > 0) {
+    try {
+      const { data: leaderTeams } = await supabase
+        .from('teams')
+        .select('id')
+        .eq('leader_user_id', userId);
+      const teamIds = (leaderTeams ?? []).map((t: { id: string }) => t.id);
+      if (teamIds.length > 0) {
+        const { data: members } = await supabase
+          .from('team_members')
+          .select('id, name, email')
+          .in('team_id', teamIds);
+        const matched = matchMembersToParticipants(participants, members ?? []);
+        for (const id of matched) memberIds.add(id);
+        console.log(`[reprocess] name-matched ${matched.length} of ${participants.length} participants → ${members?.length ?? 0} candidate members`);
+      }
+    } catch (e) {
+      console.error('[reprocess] name-matching failed:', e);
+    }
+  }
+
   if (memberIds.size === 0 && fallbackMemberId) {
     memberIds.add(fallbackMemberId);
   }
