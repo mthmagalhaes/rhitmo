@@ -1,37 +1,36 @@
-# Recovery do meeting + botão "Reprocessar" no UI
+## Diagnóstico
 
-## Parte 1 — Recovery imediato (bot do Matheus)
+### Problema 1 — "Descartar" não remove o card
+No `PendingTranscriptsCard.tsx`, o botão **Descartar** está dentro do `<AlertDialog>` (envolvendo todo o bloco do card). Quando você clica, o `AlertDialog` interpreta como clique no trigger e abre o modal de confirmação do **Reprocessar**. Além disso, o `handleDismiss` faz `UPDATE recall_bots SET status = 'dismissed'`, mas o filtro do query usa `.in('status', PROBLEMATIC_STATUSES)` que **inclui `unrecoverable`** — ou seja, sem invalidar com status novo, ele de fato sairia. O bug visual é só o modal abrindo por cima.
 
-Invocar `reprocess-meeting` com **service role** para o bot `75b92845-2acc-4ae2-af4e-2bac94469923` (já confirmado: transcrição existe na Recall, 5 liderados detectados via name-matching).
+**Correção:** mover o botão Descartar para FORA do `<AlertDialog>` e adicionar `e.stopPropagation()` defensivo. Já há invalidação de query, então o card desaparece sozinho após o update.
 
-Resultado esperado: 5 transcrições + 5 feedbacks criados (Yasmin, Giovanna, Laís, Guilherme, Gabriela) com análise IA disparada em background. O bot passa de `skipped_no_leader` → `done`.
+### Problema 2 — Transcrição "cortada"
+Confirmei no banco:
+- A `meeting_transcripts.transcript` da reunião 27/04 tem **71.187 caracteres** (transcrição COMPLETA, não corrompida ✅).
+- Mas o `feedbacks.content` (que é o que aparece no Diário de Bordo do liderado) tem só **15.000 caracteres** — exatamente o `truncatedContent.slice(0, 15000)` aplicado no `reprocess-meeting/index.ts` linha 182.
 
-## Parte 2 — Botão "Reprocessar" no dashboard
+Por isso a fala da Laís termina abrupta: o conteúdo é truncado em 15k chars antes de ser salvo no feedback. A transcrição original na tabela `meeting_transcripts` está íntegra.
 
-### Onde aparece
-No card de cada bot Recall (lista de reuniões gravadas no MemberDetails e/ou Dashboard), exibir o botão **"Reprocessar transcrição"** quando `status` for um destes:
-- `skipped_no_leader`
-- `failed`
-- `done` (caso o líder queira re-distribuir após adicionar novos liderados)
+**Correção:** salvar a transcrição **completa** no `feedbacks.content` (sem `.slice(0, 15000)`). O truncamento foi pensado para a IA de análise, mas não deve afetar o que o líder/liderado leem. A `analyze-feedback-background` já pode lidar com truncamento internamente se precisar.
 
-### Comportamento
-1. Líder clica → confirm dialog ("Isso irá baixar a transcrição novamente da Recall e redistribuir para os liderados detectados na reunião. Continuar?")
-2. Chama `supabase.functions.invoke('reprocess-meeting', { body: { recallBotId } })` com auth do usuário (já suportado).
-3. Toast de loading → sucesso ("X feedback(s) criado(s) para: [nomes]") ou erro.
-4. Refetch da lista de bots e feedbacks.
+## Mudanças
 
-### Arquivos a modificar
-- **Localizar componente do bot card** (provavelmente em `src/components/MeetingRecorder.tsx` ou `src/components/dashboard/`) — usar `rg "recall_bots"` para confirmar.
-- Adicionar botão `<Button variant="outline" size="sm">` com ícone `RefreshCw` da lucide-react.
-- Criar handler `handleReprocess(botId)` com toast + invalidate de queries.
+### 1. `src/components/dashboard/PendingTranscriptsCard.tsx`
+- Reorganizar JSX: o `<AlertDialog>` envolve apenas o botão "Reprocessar". O botão "Descartar" fica como irmão, fora do dialog.
+- Adicionar `e.stopPropagation()` no `onClick` do Descartar por segurança.
 
-### Edge function
-Nenhuma mudança — `reprocess-meeting` já aceita user auth e já usa o name-matching helper criado anteriormente.
+### 2. `supabase/functions/reprocess-meeting/index.ts`
+- Linha 182: remover `truncatedContent` ou usar `formattedTranscript` direto no `feedbacks.content`.
+- Linha 209: passar `formattedTranscript` (completo) em vez de `truncatedContent` para `createTranscriptAndFeedback`.
+- Aplicar a mesma mudança em `supabase/functions/recall-webhook/index.ts` (mesma lógica de truncamento provavelmente está lá).
+- Re-deploy das duas functions.
 
-## Parte 3 — Telemetria (opcional, mesma pass)
-Adicionar log `console.log` no handler indicando origem (`source: 'manual_user_reprocess'`) para futura análise de quão frequente o auto-discovery falha.
+### 3. Recuperar a transcrição já distribuída de hoje
+Como a transcrição completa está em `meeting_transcripts.transcript` (71k chars) mas os 6 feedbacks distribuídos têm só 15k, vou rodar um UPDATE para sincronizar o `feedbacks.content` com o transcript completo correspondente (apenas para os 6 feedbacks da reunião 27/04 do Matheus).
 
-## Próximos passos após aprovar
-1. Executar recovery do bot do Matheus (curl service-role).
-2. Implementar botão no card do bot.
-3. Validar com o Matheus na próxima reunião.
+## Resultado esperado
+
+- Botão Descartar funciona em 1 clique (sem abrir modal de Reprocessar).
+- Os 5 liderados (Yasmin, Giovanna, Laís, Guilherme, Gabriela) passam a ver a transcrição **completa** (~71k chars) no Diário de Bordo, incluindo o trecho com Yas/Giovanna que estava cortado.
+- Próximas reuniões processadas via Recall já gravam o conteúdo completo desde o início.
