@@ -15,6 +15,7 @@ import { SetupChecklist } from '@/components/SetupChecklist';
 import { LeaderSyncWizard } from '@/components/LeaderSyncWizard';
 import { ActivityPreview } from '@/components/ActivityPreview';
 import { UpcomingMeetingsCard } from '@/components/dashboard/UpcomingMeetingsCard';
+import { PendingTranscriptsCard } from '@/components/dashboard/PendingTranscriptsCard';
 import { MirrorInsightCard } from '@/components/dashboard/MirrorInsightCard';
 import { ActivitySheet } from '@/components/ActivitySheet';
 import { useAuth } from '@/hooks/useAuth';
@@ -649,8 +650,9 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
         </section>
 
         {/* ═══ PRÓXIMAS 1:1s ═══ */}
-        <section className="mb-12">
+        <section className="mb-12 space-y-4">
           <CalendarCardBoundary />
+          <PendingTranscriptsCard />
         </section>
 
 
