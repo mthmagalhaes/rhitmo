@@ -84,6 +84,52 @@ async function verifySlackSignature(body: string, timestamp: string, slackSignat
   return match;
 }
 
+// ── Helper: Welcome Throttle ──────────────────────────────
+// Prevents flooding the user's DM when they re-open the app/Messages tab.
+// - Authenticated users: max 1 welcome per 24h
+// - Unauthenticated users: max 1 welcome per 7 days (avoid pestering)
+async function shouldSendWelcome(
+  slackUserId: string,
+  slackTeamId: string,
+  isAuthenticated: boolean,
+  surface: 'app_home' | 'dm',
+): Promise<boolean> {
+  try {
+    const { data } = await supabase
+      .from('slack_app_home_throttle')
+      .select('last_welcome_sent_at, last_dm_menu_sent_at')
+      .eq('slack_user_id', slackUserId)
+      .maybeSingle();
+
+    const now = Date.now();
+    const windowMs = isAuthenticated ? 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000;
+
+    if (data) {
+      const last = surface === 'app_home'
+        ? data.last_welcome_sent_at
+        : (data.last_dm_menu_sent_at || data.last_welcome_sent_at);
+      if (last && now - new Date(last).getTime() < windowMs) {
+        console.log(`[THROTTLE] Skipping ${surface} welcome for ${slackUserId} (last sent ${last})`);
+        return false;
+      }
+    }
+
+    // Update timestamp (upsert)
+    const updates: Record<string, string> = { slack_user_id: slackUserId, slack_team_id: slackTeamId };
+    if (surface === 'app_home') updates.last_welcome_sent_at = new Date().toISOString();
+    else updates.last_dm_menu_sent_at = new Date().toISOString();
+
+    await supabase
+      .from('slack_app_home_throttle')
+      .upsert(updates, { onConflict: 'slack_user_id' });
+
+    return true;
+  } catch (err) {
+    console.error('[THROTTLE] Error checking throttle, defaulting to allow:', err);
+    return true;
+  }
+}
+
 // ── Helper: Get User Persona ──────────────────────────────
 interface PersonaResult {
   persona: 'leader' | 'direct_report' | 'hr_admin' | 'unauthenticated';
