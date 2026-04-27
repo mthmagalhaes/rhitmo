@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, RefreshCw, Loader2 } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -28,7 +28,7 @@ type RecallBot = {
   created_at: string;
 };
 
-const PROBLEMATIC_STATUSES = ['skipped_no_leader', 'failed', 'fatal'];
+const PROBLEMATIC_STATUSES = ['skipped_no_leader', 'failed', 'fatal', 'unrecoverable'];
 
 export const PendingTranscriptsCard = () => {
   const { user } = useAuth();
