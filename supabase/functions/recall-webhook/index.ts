@@ -101,9 +101,15 @@ Deno.serve(async (req) => {
     }
 
     // ── Re-check leader presence on bot.done if not yet detected ──
+    // Manual bots: NEVER discard the transcript on missing leader (the leader
+    // explicitly clicked "Transcrever"). We still try to detect presence so the
+    // flag is informative, but the transcript is always processed.
+    // Auto-calendar bots: keep the cost-protective behavior (discard if leader
+    // never showed up to a meeting we transcribed proactively).
     if (event === "bot.done" && botRecord.leader_email && !botRecord.leader_detected) {
+      const triggerSource = (botRecord.trigger_source as string) || "auto_calendar";
       try {
-        await checkLeaderPresence(supabaseAdmin, botRecord, botId, RECALL_API_KEY);
+        await checkLeaderPresence(supabaseAdmin, botRecord, botId, RECALL_API_KEY, triggerSource === "manual");
       } catch (e) {
         console.error(`Final leader presence check failed for bot ${botId}:`, e);
       }
