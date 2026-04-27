@@ -1,8 +1,6 @@
 project_id = "lybkgujyezzzvbzypxed"
 
 [functions]
-  [functions.backfill-truncated-feedbacks]
-    verify_jwt = false
   [functions.adjust-competency]
     verify_jwt = false
   [functions.admin-delete-user]
