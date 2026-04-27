@@ -464,6 +464,14 @@ function formatTranscript(
 }
 
 // ── Helper: Find all member_ids associated with this meeting ───────────────
+//
+// Resolution order (union of all sources, deduplicated):
+//   1. upcoming_meetings rows that share the same google_event_id
+//   2. upcoming_meetings rows with the exact same meet_link
+//   3. NAME-matching: Recall participants ↔ leader's team_members (the
+//      authoritative source for ad-hoc / non-calendar meetings, which is the
+//      common case for manually triggered bots)
+//   4. fallbackMemberId (the member from whose card the leader clicked Transcribe)
 
 async function findAllMeetingMembers(
   supabaseAdmin: any,
@@ -471,6 +479,7 @@ async function findAllMeetingMembers(
   meetingUrl: string,
   meetingId: string | null,
   fallbackMemberId: string | null,
+  participants: RecallParticipant[] = [],
 ): Promise<string[]> {
   const memberIds = new Set<string>();
 
@@ -509,6 +518,31 @@ async function findAllMeetingMembers(
       for (const m of urlMatches) {
         if (m.member_id) memberIds.add(m.member_id);
       }
+    }
+  }
+
+  // Name matching from Recall participants against this leader's team_members.
+  if (participants.length > 0) {
+    try {
+      const { data: leaderTeams } = await supabaseAdmin
+        .from("teams")
+        .select("id")
+        .eq("leader_user_id", userId);
+      const teamIds = (leaderTeams ?? []).map((t: { id: string }) => t.id);
+      if (teamIds.length > 0) {
+        const { data: members } = await supabaseAdmin
+          .from("team_members")
+          .select("id, name, email")
+          .in("team_id", teamIds);
+        const matched = matchMembersToParticipants(participants, members ?? []);
+        const beforeCount = memberIds.size;
+        for (const id of matched) memberIds.add(id);
+        if (matched.length > 0) {
+          console.log(`[findAllMeetingMembers] name-matched ${matched.length} member(s) from ${participants.length} participant(s) (added ${memberIds.size - beforeCount} new).`);
+        }
+      }
+    } catch (e) {
+      console.error("[findAllMeetingMembers] name-matching failed:", e);
     }
   }
 
