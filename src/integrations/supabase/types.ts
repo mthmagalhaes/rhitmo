@@ -1754,6 +1754,27 @@ export type Database = {
           },
         ]
       }
+      slack_app_home_throttle: {
+        Row: {
+          last_dm_menu_sent_at: string | null
+          last_welcome_sent_at: string
+          slack_team_id: string
+          slack_user_id: string
+        }
+        Insert: {
+          last_dm_menu_sent_at?: string | null
+          last_welcome_sent_at?: string
+          slack_team_id: string
+          slack_user_id: string
+        }
+        Update: {
+          last_dm_menu_sent_at?: string | null
+          last_welcome_sent_at?: string
+          slack_team_id?: string
+          slack_user_id?: string
+        }
+        Relationships: []
+      }
       slack_integrations: {
         Row: {
           created_at: string | null

@@ -1,64 +1,54 @@
-# Slides de Onboarding — Turma FAP (Programa Fundadores)
+# Diagnóstico do comportamento atual
 
-Vou gerar um arquivo PPTX usando `pptxgenjs` seguindo a identidade visual da Rhitmo (Creme/Bento, ondas roxas, tipografia editorial). O arquivo final ficará em `/mnt/documents/rhitmo-onboarding-fap.pptx`.
+## 1. Por que o bot "floda" sua DM
 
-## Identidade visual
+No arquivo `supabase/functions/slack-bot/index.ts` (linhas 1628–1654), o handler do evento `app_home_opened` dispara `chat.postMessage` com o menu de boas-vindas **toda vez que você abre ou volta para a aba Mensagens** do app Rhitmo no Slack — sem qualquer controle de frequência. Por isso, ao alternar entre abas (Início → Mensagens → Sobre → Mensagens), você vê mensagens repetidas.
 
-- **Paleta:** creme (`#FAF7F2`) como fundo principal, roxo Rhitmo (`#7C3AED` / `262 83% 58%`) como cor primária, navy escuro (`#1A1B3A`) para slides "premium" de abertura/encerramento, cinza grafite (`#2D2D3A`) para texto.
-- **Tipografia:** Georgia (headlines, editorial) + Calibri (corpo). Títulos 36-44pt bold tracking-tight, body 16-18pt.
-- **Motivo visual:** Rhythm Wave (ondas senoidais roxas em camadas) usadas como detalhe sutil em rodapés e slides de transição.
-- **Layout:** Bento Grid (cards com `rounded` simulado via shapes), sombras suaves, generoso whitespace, alternância dark/light (sandwich).
+Não é configuração no painel do Slack — é lógica do nosso bot que precisa mudar.
 
-## Estrutura dos slides (12 slides)
+## 2. Comportamento em canais públicos (auditoria)
 
-1. **Capa — Boas-vindas FAP** *(dark navy)*
-   Título: "Bem-vindos, Fundadores FAP" · Subtítulo: "Programa Fundadores · Onboarding Sync · Abril 2026" · Logo Rhitmo + ondas decorativas.
+Boa notícia: o bot **não envia nada espontaneamente** em canais públicos. Não há listeners para `app_mention`, `message.channels` nem `member_joined_channel`. Você pode adicionar o app a canais sem risco de spam.
 
-2. **Programa Fundadores** *(creme)*
-   3 cards bento: "6 meses Pro grátis" · "Acesso direto ao time fundador" · "Voz ativa no roadmap". Stat callout: "R$ 0 pelos próximos 6 meses".
+Sobre os slash commands em canais públicos:
 
-3. **O que é a Rhitmo** *(creme, two-column)*
-   Coluna esquerda: definição editorial — *"Parceiro de IA para liderança baseada em evidências"*. Coluna direita: 3 pilares com ícones em círculos roxos: Brief (preparação) · Bias (qualidade) · Nudges (consistência).
+| Comando | Comportamento atual em canal público | Quem vê |
+|---|---|---|
+| `/rhitmo` | Resposta ephemeral (default) | Só quem digitou ✅ |
+| `/nota`, `/brief`, `/meu-pdi`, `/mentor`, `/meu-rhitmo` | Aviso de privacidade ("Canal Público Detectado") com Continuar/Cancelar | Só quem digitou ✅ |
+| `/kudos` | Posta reconhecimento visível pra todos | Todos do canal (intencional — kudos é público) |
 
-4. **A dor que resolvemos** *(creme, stat-driven)*
-   Headline grande: "21h/semana" com label "tempo médio que líderes gastam com gestão de pessoas". Bullets: avaliações sem evidência · feedbacks esquecidos · 1:1s sem contexto · decisões enviesadas.
-   Comparativo "Antes Rhitmo / Com Rhitmo".
+Ou seja: o `/rhitmo` por engano em canal público **já é seguro hoje** — só quem digitou vê o menu, ninguém mais é notificado. Você pode adicionar tranquilamente.
 
-5. **Primeiros passos · Configuração** *(creme, numbered steps)*
-   1. Aceitar convite e definir senha · 2. Completar perfil (estilo de liderança + DISC) · 3. Conectar Google Calendar · 4. Personalizar notificações (Perfil → Notificações).
+# Mudanças propostas
 
-6. **Primeiros passos · Adicionar liderados** *(creme, two-column)*
-   Esquerda: passo a passo (Time → Adicionar membro → enviar convite por e-mail/Slack). Direita: card destaque "Cadastro em massa" (até 100 por vez) e "Sync via Slack" (vinculação automática).
+## A. Throttle do `app_home_opened` (corrige o flood)
 
-7. **Capturando notas · Visão geral** *(creme, 2x2 bento)*
-   4 cards com ícones: **Magic Paste** (colar de Tactiq/Meet/Fireflies) · **Gravação manual** (até 30h/mês no Pro) · **Bot Recall.ai** (entra automaticamente na reunião) · **Slack** (`/nota`, `/kudos`, classificação ambiente).
+Adicionar uma tabela leve de cache para registrar quando cada usuário recebeu a mensagem de boas-vindas via app_home, e só reenviar se passou um período mínimo.
 
-8. **Capturando notas · Detalhes** *(creme, two-column)*
-   Esquerda: tabela comparativa rápida (quando usar cada método). Direita: destaque para **Extensão Chrome** (gravação no Google Meet) e **comandos Slack** (`/nota`, `/kudos`, `/brief`, `/meu-rhitmo`).
+**Regra:** enviar a mensagem de boas-vindas no máximo **1x a cada 24h** por usuário Slack. Se o usuário já mandou alguma DM real nas últimas 24h, também não reenviar (ele já viu o menu).
 
-9. **IA do dia a dia** *(creme, 3 cards)*
-   Brief pré-1:1 · Mentor Chat (RAG das suas notas) · Avaliação formal baseada em evidências. Reforça: "Tudo privado por padrão. Compartilhar é uma ação explícita."
+**Implementação:**
+- Nova tabela `slack_app_home_throttle` com colunas: `slack_user_id` (PK), `slack_team_id`, `last_welcome_sent_at`.
+- Antes de postar o welcome no handler `app_home_opened`, consultar a tabela. Se `last_welcome_sent_at` > now - 24h → ignora silenciosamente. Caso contrário, envia e atualiza o timestamp.
+- Para usuários **não autenticados** (`persona === 'unauthenticated'`), reduzir ainda mais: enviar no máximo 1x a cada 7 dias, já que o objetivo do menu é convidar a conectar — repetir todo dia vira spam.
 
-10. **Suporte & SLA** *(creme, two-column)*
-    Esquerda: canais — e-mail `suporte@rhitmo.co` · Slack do Programa Fundadores · WhatsApp direto com fundadores. Direita: card grande "SLA: resposta em até 24h úteis" + "Bugs críticos: prioridade imediata".
+## B. Throttle leve no `message.im` (DM)
 
-11. **Próximos passos** *(creme, checklist)*
-    ☐ Hoje: aceitar convite + completar perfil · ☐ Esta semana: adicionar primeiros 3 liderados + 1ª nota · ☐ Em 7 dias: 1ª 1:1 com brief · ☐ Em 30 dias: 1ª avaliação formal. CTA final: "Vamos construir juntos."
+Hoje, cada mensagem do usuário em DM dispara o menu inteiro de volta. Vamos:
+- Sempre responder à **primeira mensagem** do dia normalmente (UX de boas-vindas).
+- Para mensagens subsequentes no mesmo dia, responder com algo mais discreto: apenas o menu compacto sem o "👋 Olá! Aqui estão suas ações disponíveis" repetitivo. Isso já reduz a percepção de spam.
 
-12. **Q&A — Obrigado** *(dark navy)*
-    "Perguntas?" grande · contatos do time fundador · ondas roxas decorativas · logo Rhitmo.
+## C. Reforço de privacidade no `/rhitmo`
 
-## Implementação técnica
+Embora o `/rhitmo` já seja ephemeral por default, vou garantir explicitamente `response_type: 'ephemeral'` no `sendDelayedResponse` da rota `/rhitmo` (defesa em profundidade). Sem mudança visível para o usuário, mas blinda contra regressões futuras.
 
-- Script Node.js usando `pptxgenjs` (já documentado no skill/pptx).
-- Cada slide usa shapes `rectangle` com `rectRadius` para simular `rounded-2xl`, sombras suaves via `shadow: { type: 'outer', blur: 20, opacity: 0.08 }`.
-- Ondas decorativas via `addShape` com tipo `curvedConnector` ou imagem PNG gerada à parte.
-- Font pairing: `Georgia` (headers) + `Calibri` (body) — universalmente disponíveis.
-- Após gerar: converter para PDF com LibreOffice e inspecionar cada slide como JPG (QA visual obrigatório do skill PPTX) antes de entregar.
-- Entregar via `<lov-artifact path="rhitmo-onboarding-fap.pptx" mime_type="application/vnd.openxmlformats-officedocument.presentationml.presentation">`.
+# Riscos & rollback
 
-## O que NÃO está no escopo
+- Mudança é isolada à edge function `slack-bot` + 1 migração de tabela nova (sem alterar tabelas existentes).
+- Se algo der errado, basta reverter a edge function — a tabela de throttle pode ficar inerte sem causar problema.
 
-- Não vou alterar código do app (é apenas geração de artifact).
-- Não vou criar uma rota web nem integrar os slides ao Rhitmo.
-- Não vou incluir vídeo embarcado (PPTX terá só elementos estáticos + shapes).
+# Resposta direta às suas perguntas
+
+1. **"Posso adicionar o app aos canais públicos do `matheus.magalhaes@fstr.co`?"** → Sim, é seguro. O bot não posta nada espontaneamente em canais e o `/rhitmo` por engano só aparece para quem digitou.
+2. **"Tem como configurar para enviar 1x ao dia?"** → Sim, é o que vou implementar (throttle de 24h no welcome do app_home).
