@@ -1645,17 +1645,30 @@ Deno.serve(async (req) => {
               const persona = await getUserPersona(slackUserId);
               console.log('[DM] Persona:', persona.persona);
 
+              // Throttle: only respond with full menu once per window per user.
+              // Subsequent messages in the same window are silently ignored to avoid flooding the DM.
+              const isAuthenticated = persona.persona !== 'unauthenticated';
+              const allow = await shouldSendWelcome(
+                slackUserId,
+                json.team_id || '',
+                isAuthenticated,
+                'dm',
+              );
+              if (!allow) {
+                console.log('[DM] Throttled — not re-sending menu');
+                return;
+              }
+
               let stateToken: string | undefined;
-              if (persona.persona === 'unauthenticated') {
+              if (!isAuthenticated) {
                 stateToken = await generateStateToken(slackUserId, json.team_id || '');
               }
 
               const menu = buildRhitmoMenu(persona, stateToken);
 
-              // Add a friendly intro before the menu
-              const introText = persona.persona === 'unauthenticated'
+              const introText = !isAuthenticated
                 ? undefined
-                : '👋 Olá! Aqui estão suas ações disponíveis:';
+                : '👋 Olá! Aqui estão suas ações disponíveis. Use os comandos `/rhitmo`, `/nota`, `/kudos`, `/brief` ou `/mentor` a qualquer momento.';
 
               await slackApi('chat.postMessage', {
                 channel: event.channel,
@@ -1670,7 +1683,7 @@ Deno.serve(async (req) => {
           return new Response('', { status: 200, headers: corsHeaders });
         }
 
-        // Handle app_home_opened (messages tab) — send welcome
+        // Handle app_home_opened (messages tab) — send welcome (throttled)
         if (event?.type === 'app_home_opened' && event?.tab === 'messages') {
           (async () => {
             try {
@@ -1678,9 +1691,23 @@ Deno.serve(async (req) => {
               console.log('[HOME] Messages tab opened by:', slackUserId);
 
               const persona = await getUserPersona(slackUserId);
+              const isAuthenticated = persona.persona !== 'unauthenticated';
+
+              // Throttle: prevent flooding when user toggles tabs.
+              // Authenticated: 1x / 24h. Unauthenticated: 1x / 7 days.
+              const allow = await shouldSendWelcome(
+                slackUserId,
+                json.team_id || '',
+                isAuthenticated,
+                'app_home',
+              );
+              if (!allow) {
+                console.log('[HOME] Throttled — not re-sending welcome');
+                return;
+              }
 
               let stateToken: string | undefined;
-              if (persona.persona === 'unauthenticated') {
+              if (!isAuthenticated) {
                 stateToken = await generateStateToken(slackUserId, json.team_id || '');
               }
 
