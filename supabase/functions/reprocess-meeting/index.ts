@@ -1,4 +1,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  fetchAllRecallParticipants,
+  matchMembersToParticipants,
+  type RecallParticipant,
+} from "../_shared/recallParticipants.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -150,16 +155,20 @@ Deno.serve(async (req) => {
 
     console.log(`Transcript: ${formattedTranscript.length} chars, ${Object.keys(speakerNameMap).length} speakers`);
 
-    // Find members for this meeting
+    // Fetch participants from Recall (combines legacy + participant_events).
+    const participants = await fetchAllRecallParticipants(recallBotId, recallApiKey);
+
+    // Find members for this meeting (now including name-matching against participants)
     const memberIds = await findAllMeetingMembers(
       supabase,
       botRecord.user_id,
       botRecord.meeting_url,
       botRecord.meeting_id,
       botRecord.member_id,
+      participants,
     );
 
-    console.log(`Found ${memberIds.length} member(s)`);
+    console.log(`Found ${memberIds.length} member(s) (${participants.length} Recall participants seen)`);
 
     const createdIds: { memberId: string; transcriptId: string; feedbackId: string }[] = [];
 
@@ -255,6 +264,7 @@ async function findAllMeetingMembers(
   meetingUrl: string,
   meetingId: string | null,
   fallbackMemberId: string | null,
+  participants: RecallParticipant[] = [],
 ): Promise<string[]> {
   const memberIds = new Set<string>();
 
@@ -293,6 +303,28 @@ async function findAllMeetingMembers(
       for (const m of urlMatches) {
         if (m.member_id) memberIds.add(m.member_id);
       }
+    }
+  }
+
+  // Name-matching against this leader's team_members
+  if (participants.length > 0) {
+    try {
+      const { data: leaderTeams } = await supabase
+        .from('teams')
+        .select('id')
+        .eq('leader_user_id', userId);
+      const teamIds = (leaderTeams ?? []).map((t: { id: string }) => t.id);
+      if (teamIds.length > 0) {
+        const { data: members } = await supabase
+          .from('team_members')
+          .select('id, name, email')
+          .in('team_id', teamIds);
+        const matched = matchMembersToParticipants(participants, members ?? []);
+        for (const id of matched) memberIds.add(id);
+        console.log(`[reprocess] name-matched ${matched.length} of ${participants.length} participants → ${members?.length ?? 0} candidate members`);
+      }
+    } catch (e) {
+      console.error('[reprocess] name-matching failed:', e);
     }
   }
 

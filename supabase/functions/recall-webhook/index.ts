@@ -1,4 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  fetchAllRecallParticipants,
+  isLeaderPresent,
+  matchMembersToParticipants,
+  type RecallParticipant,
+} from "../_shared/recallParticipants.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -94,9 +100,15 @@ Deno.serve(async (req) => {
     }
 
     // ── Re-check leader presence on bot.done if not yet detected ──
+    // Manual bots: NEVER discard the transcript on missing leader (the leader
+    // explicitly clicked "Transcrever"). We still try to detect presence so the
+    // flag is informative, but the transcript is always processed.
+    // Auto-calendar bots: keep the cost-protective behavior (discard if leader
+    // never showed up to a meeting we transcribed proactively).
     if (event === "bot.done" && botRecord.leader_email && !botRecord.leader_detected) {
+      const triggerSource = (botRecord.trigger_source as string) || "auto_calendar";
       try {
-        await checkLeaderPresence(supabaseAdmin, botRecord, botId, RECALL_API_KEY);
+        await checkLeaderPresence(supabaseAdmin, botRecord, botId, RECALL_API_KEY, triggerSource === "manual");
       } catch (e) {
         console.error(`Final leader presence check failed for bot ${botId}:`, e);
       }
@@ -129,12 +141,17 @@ Deno.serve(async (req) => {
 });
 
 // ── Leader presence check ──────────────────────────────────────────────────
-
+//
+// `skipDiscard = true` is used for manual bots: we still try to detect the
+// leader (so the flag is informative), but we NEVER mark the bot as
+// `skipped_no_leader` — the leader explicitly clicked "Transcrever", we trust
+// that and process the transcript regardless.
 async function checkLeaderPresence(
   supabaseAdmin: any,
   botRecord: any,
   botId: string,
   recallApiKey: string,
+  skipDiscard = false,
 ) {
   const leaderEmail = (botRecord.leader_email as string).toLowerCase();
 
@@ -150,27 +167,37 @@ async function checkLeaderPresence(
     return;
   }
 
-  // Fetch participants from Recall API
-  const botResponse = await fetch(`https://us-west-2.recall.ai/api/v1/bot/${botId}/`, {
-    headers: { Authorization: `Token ${recallApiKey}` },
-  });
-
-  if (!botResponse.ok) {
-    console.error(`Failed to fetch bot ${botId} for leader check: ${botResponse.status}`);
-    return;
+  // Resolve leader display-name candidates so we can match by NAME
+  // (Google Meet hides emails for non-Calendar attendees).
+  const nameCandidates: string[] = [];
+  try {
+    const { data: leaderUser } = await supabaseAdmin.auth.admin.getUserById(botRecord.user_id);
+    const meta = leaderUser?.user?.user_metadata ?? {};
+    if (meta.full_name) nameCandidates.push(meta.full_name as string);
+    if (meta.name) nameCandidates.push(meta.name as string);
+  } catch (e) {
+    console.warn(`Bot ${botId}: could not load leader user_metadata:`, e);
   }
+  // Also include any team_member row whose email matches the leader (some leaders
+  // appear as their own member for testing).
+  try {
+    const { data: selfMember } = await supabaseAdmin
+      .from("team_members")
+      .select("name")
+      .eq("email", leaderEmail)
+      .limit(5);
+    for (const m of selfMember ?? []) if (m.name) nameCandidates.push(m.name);
+  } catch { /* non-fatal */ }
 
-  const botData = await botResponse.json();
-  const participants = botData.meeting_participants || [];
+  // Fetch participants from BOTH legacy field and participant_events.
+  const participants: RecallParticipant[] = await fetchAllRecallParticipants(botId, recallApiKey);
+  console.log(
+    `Bot ${botId}: ${participants.length} participant(s) resolved | leader email=${leaderEmail} | name candidates=${JSON.stringify(nameCandidates)}`,
+  );
 
-  console.log(`Bot ${botId}: checking ${participants.length} participants for leader email ${leaderEmail}`);
-
-  // Check if leader is among participants (by email or name containing email prefix)
-  const leaderPrefix = leaderEmail.split("@")[0].toLowerCase();
-  const leaderFound = participants.some((p: { email?: string; name?: string }) => {
-    if (p.email && p.email.toLowerCase() === leaderEmail) return true;
-    if (p.name && p.name.toLowerCase().includes(leaderPrefix)) return true;
-    return false;
+  const leaderFound = isLeaderPresent(participants, {
+    email: leaderEmail,
+    names: nameCandidates,
   });
 
   if (leaderFound) {
@@ -182,7 +209,15 @@ async function checkLeaderPresence(
     return;
   }
 
-  // Leader not found — remove bot from call
+  if (skipDiscard) {
+    // Manual trigger: trust the leader's click. Do NOT discard transcript.
+    console.warn(
+      `Bot ${botId}: leader NOT detected by name/email, but trigger_source=manual — keeping transcript (leader_detected stays false).`,
+    );
+    return;
+  }
+
+  // Auto-calendar bot: leader never showed up, remove bot to limit cost.
   console.log(`Bot ${botId}: leader NOT detected after grace period — removing bot`);
 
   const leaveResponse = await fetch(`https://us-west-2.recall.ai/api/v1/bot/${botId}/leave/`, {
@@ -294,14 +329,23 @@ async function handleBotDone(
   supabaseUrl: string,
   serviceRoleKey: string,
 ) {
-  // Skip processing if leader was not detected (bot was removed or call ended without leader)
-  if (botRecord.status === "skipped_no_leader" || (!botRecord.leader_detected && botRecord.leader_email)) {
-    console.log(`Bot ${botId} done but leader was not detected — skipping transcript processing`);
+  // Skip processing only for AUTO_CALENDAR bots whose leader was absent
+  // (manual bots are always processed — leader explicitly clicked Transcribe).
+  const triggerSource = (botRecord.trigger_source as string) || "auto_calendar";
+  const leaderAbsent = !botRecord.leader_detected && botRecord.leader_email;
+  if (
+    botRecord.status === "skipped_no_leader" ||
+    (triggerSource === "auto_calendar" && leaderAbsent)
+  ) {
+    console.log(`Bot ${botId} done but leader was not detected (trigger=${triggerSource}) — skipping transcript processing`);
     await supabaseAdmin
       .from("recall_bots")
       .update({ status: "skipped_no_leader" })
       .eq("id", botRecord.id);
     return;
+  }
+  if (triggerSource === "manual" && leaderAbsent) {
+    console.warn(`Bot ${botId}: trigger=manual, leader not auto-detected — processing transcript anyway.`);
   }
 
   console.log(`Bot ${botId} done — fetching transcript via API...`);
@@ -325,6 +369,9 @@ async function handleBotDone(
   // Format transcript with real speaker names
   const formattedTranscript = formatTranscript(transcriptData, speakerNameMap);
 
+  // Resolve participants once and reuse for member matching.
+  const participants = await fetchAllRecallParticipants(botId, recallApiKey);
+
   // Find all member_ids for this meeting
   const memberIds = await findAllMeetingMembers(
     supabaseAdmin,
@@ -332,6 +379,7 @@ async function handleBotDone(
     botRecord.meeting_url as string,
     botRecord.meeting_id as string | null,
     botRecord.member_id as string | null,
+    participants,
   );
 
   console.log(`Found ${memberIds.length} member(s) for this meeting`);
@@ -419,6 +467,14 @@ function formatTranscript(
 }
 
 // ── Helper: Find all member_ids associated with this meeting ───────────────
+//
+// Resolution order (union of all sources, deduplicated):
+//   1. upcoming_meetings rows that share the same google_event_id
+//   2. upcoming_meetings rows with the exact same meet_link
+//   3. NAME-matching: Recall participants ↔ leader's team_members (the
+//      authoritative source for ad-hoc / non-calendar meetings, which is the
+//      common case for manually triggered bots)
+//   4. fallbackMemberId (the member from whose card the leader clicked Transcribe)
 
 async function findAllMeetingMembers(
   supabaseAdmin: any,
@@ -426,6 +482,7 @@ async function findAllMeetingMembers(
   meetingUrl: string,
   meetingId: string | null,
   fallbackMemberId: string | null,
+  participants: RecallParticipant[] = [],
 ): Promise<string[]> {
   const memberIds = new Set<string>();
 
@@ -464,6 +521,31 @@ async function findAllMeetingMembers(
       for (const m of urlMatches) {
         if (m.member_id) memberIds.add(m.member_id);
       }
+    }
+  }
+
+  // Name matching from Recall participants against this leader's team_members.
+  if (participants.length > 0) {
+    try {
+      const { data: leaderTeams } = await supabaseAdmin
+        .from("teams")
+        .select("id")
+        .eq("leader_user_id", userId);
+      const teamIds = (leaderTeams ?? []).map((t: { id: string }) => t.id);
+      if (teamIds.length > 0) {
+        const { data: members } = await supabaseAdmin
+          .from("team_members")
+          .select("id, name, email")
+          .in("team_id", teamIds);
+        const matched = matchMembersToParticipants(participants, members ?? []);
+        const beforeCount = memberIds.size;
+        for (const id of matched) memberIds.add(id);
+        if (matched.length > 0) {
+          console.log(`[findAllMeetingMembers] name-matched ${matched.length} member(s) from ${participants.length} participant(s) (added ${memberIds.size - beforeCount} new).`);
+        }
+      }
+    } catch (e) {
+      console.error("[findAllMeetingMembers] name-matching failed:", e);
     }
   }
 

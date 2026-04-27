@@ -1,54 +1,104 @@
-# Diagnóstico do comportamento atual
 
-## 1. Por que o bot "floda" sua DM
+## Diagnóstico (causa raiz encontrada)
 
-No arquivo `supabase/functions/slack-bot/index.ts` (linhas 1628–1654), o handler do evento `app_home_opened` dispara `chat.postMessage` com o menu de boas-vindas **toda vez que você abre ou volta para a aba Mensagens** do app Rhitmo no Slack — sem qualquer controle de frequência. Por isso, ao alternar entre abas (Início → Mensagens → Sobre → Mensagens), você vê mensagens repetidas.
+A reunião do Matheus (27/04, 14:30, link `meet.google.com/bhc-mqxi-imr`, duração 1h12) foi gravada e transcrita com sucesso pelo Recall — **a transcrição ainda está disponível na API do Recall agora**. O problema foi do nosso webhook, não do Recall.
 
-Não é configuração no painel do Slack — é lógica do nosso bot que precisa mudar.
+### O que aconteceu, passo a passo
 
-## 2. Comportamento em canais públicos (auditoria)
+1. Matheus clicou "Transcrever" no card da Gabriela Lucas no dashboard. `schedule-recall-bot` criou o registro com `trigger_source = 'manual'`, `member_id = Gabriela`, `leader_email = matheus.magalhaes@fstr.co`.
+2. Bot entrou na call, gravou 1h12, gerou transcrição completa (status `done` no Recall, `download_url` válido).
+3. Webhook `bot.done` chegou. Como `leader_email` está setado e `leader_detected = false`, entrou no bloco da linha 97 do `recall-webhook/index.ts`, que chama `checkLeaderPresence`.
+4. `checkLeaderPresence` consulta `GET /api/v1/bot/{id}/` e lê `meeting_participants` (linha 164). O Recall retornou **`meeting_participants: []`** nesse endpoint.
+5. Como `leaderFound = false`, marcou `status = 'skipped_no_leader'` + `error_message = "Líder não detectado na reunião — bot removido automaticamente"` (linha 198) e **descartou a transcrição**.
+6. Resultado: nada salvo para Gabriela nem para nenhum outro liderado. Última nota da Gabriela continua sendo a de 24/04.
 
-Boa notícia: o bot **não envia nada espontaneamente** em canais públicos. Não há listeners para `app_mention`, `message.channels` nem `member_joined_channel`. Você pode adicionar o app a canais sem risco de spam.
+### Por que `meeting_participants` veio vazio
 
-Sobre os slash commands em canais públicos:
+A lista real de participantes existe — confirmei baixando `recordings[0].media_shortcuts.participant_events.data.participants_download_url`, que retorna os 6 participantes reais: Matheus Magalhaes (host), Yasmin Nobrega, Giovanna Barletta, Laís Isfer, Guilherme Cunha, Gabriela Lucas. Eles têm `email: null` (Google Meet não expõe email do participante por padrão), só nomes.
 
-| Comando | Comportamento atual em canal público | Quem vê |
-|---|---|---|
-| `/rhitmo` | Resposta ephemeral (default) | Só quem digitou ✅ |
-| `/nota`, `/brief`, `/meu-pdi`, `/mentor`, `/meu-rhitmo` | Aviso de privacidade ("Canal Público Detectado") com Continuar/Cancelar | Só quem digitou ✅ |
-| `/kudos` | Posta reconhecimento visível pra todos | Todos do canal (intencional — kudos é público) |
+O `meeting_participants` no objeto raiz do bot é uma view legacy/agregada do Recall que vem **vazia em alguns formatos de Google Meet** (provavelmente porque ninguém entrou via convite calendar com email vinculado). A fonte correta é `media_shortcuts.participant_events`.
 
-Ou seja: o `/rhitmo` por engano em canal público **já é seguro hoje** — só quem digitou vê o menu, ninguém mais é notificado. Você pode adicionar tranquilamente.
+Além disso, a `checkLeaderPresence` tenta casar **só por email** ou por nome contendo o prefixo do email (`matheus.magalhaes`). Mesmo se a lista viesse populada, o nome no Google Meet é "Matheus Magalhaes" (sem ponto), então o match `name.includes('matheus.magalhaes')` falharia.
 
-# Mudanças propostas
+### Por que a memória dizia que `manual` não tinha auto-leave (e dizia errado)
 
-## A. Throttle do `app_home_opened` (corrige o flood)
+A memória `mem://features/recall-ai/bot-transcription-architecture` afirma que bots `manual` **não aplicam auto-leave por presença, validam só no bot.done**. O código faz exatamente isso: pula a checagem em `in_call_recording` (linha 91-93). Mas no `bot.done` (linha 97), **a checagem roda para os dois trigger_sources**, e como ela usa o `meeting_participants` vazio do Recall, qualquer bot manual cuja call não tenha emails expostos é descartado. **Isso é um bug — o contrato prometido pela arquitetura está quebrado.**
 
-Adicionar uma tabela leve de cache para registrar quando cada usuário recebeu a mensagem de boas-vindas via app_home, e só reenviar se passou um período mínimo.
+---
 
-**Regra:** enviar a mensagem de boas-vindas no máximo **1x a cada 24h** por usuário Slack. Se o usuário já mandou alguma DM real nas últimas 24h, também não reenviar (ele já viu o menu).
+## Plano de correção
 
-**Implementação:**
-- Nova tabela `slack_app_home_throttle` com colunas: `slack_user_id` (PK), `slack_team_id`, `last_welcome_sent_at`.
-- Antes de postar o welcome no handler `app_home_opened`, consultar a tabela. Se `last_welcome_sent_at` > now - 24h → ignora silenciosamente. Caso contrário, envia e atualiza o timestamp.
-- Para usuários **não autenticados** (`persona === 'unauthenticated'`), reduzir ainda mais: enviar no máximo 1x a cada 7 dias, já que o objetivo do menu é convidar a conectar — repetir todo dia vira spam.
+### 1. Corrigir o bug do `checkLeaderPresence` (recall-webhook/index.ts)
 
-## B. Throttle leve no `message.im` (DM)
+Três mudanças complementares:
 
-Hoje, cada mensagem do usuário em DM dispara o menu inteiro de volta. Vamos:
-- Sempre responder à **primeira mensagem** do dia normalmente (UX de boas-vindas).
-- Para mensagens subsequentes no mesmo dia, responder com algo mais discreto: apenas o menu compacto sem o "👋 Olá! Aqui estão suas ações disponíveis" repetitivo. Isso já reduz a percepção de spam.
+**a) Ler participantes da fonte correta.** Em vez de usar só `botData.meeting_participants` (frequentemente vazio em Meet), também baixar `recordings[0].media_shortcuts.participant_events.data.participants_download_url` e mesclar os participantes únicos por nome.
 
-## C. Reforço de privacidade no `/rhitmo`
+**b) Casar por nome de líder, não só prefixo de email.** Buscar o `display_name` do líder em `auth.users.user_metadata.full_name` e em `team_members` (alguns líderes também aparecem como liderados) e fazer match case-insensitive normalizado. Manter o casamento por email/prefixo como fallback.
 
-Embora o `/rhitmo` já seja ephemeral por default, vou garantir explicitamente `response_type: 'ephemeral'` no `sendDelayedResponse` da rota `/rhitmo` (defesa em profundidade). Sem mudança visível para o usuário, mas blinda contra regressões futuras.
+**c) Para `trigger_source = 'manual'`, NUNCA descartar a transcrição.** Confiar no clique explícito do líder. Se não conseguir confirmar presença, marcar `leader_detected = false` mas processar a transcrição normalmente (criar `meeting_transcripts` e `feedbacks`). Bots `auto_calendar` mantêm o comportamento atual (descartar para não cobrar minutos por reuniões em que o líder não foi).
 
-# Riscos & rollback
+```text
+trigger_source = 'manual'  → SEMPRE processa transcrição. leader_detected é informativo.
+trigger_source = 'auto_calendar' → Descarta se líder ausente (comportamento atual).
+```
 
-- Mudança é isolada à edge function `slack-bot` + 1 migração de tabela nova (sem alterar tabelas existentes).
-- Se algo der errado, basta reverter a edge function — a tabela de throttle pode ficar inerte sem causar problema.
+### 2. Replicar a transcrição perdida do Matheus para os 5 liderados
 
-# Resposta direta às suas perguntas
+A transcrição ainda está disponível na Recall API. Vou criar uma Edge Function pontual `reprocess-recall-bot` (one-shot, invocada manualmente via curl) que:
 
-1. **"Posso adicionar o app aos canais públicos do `matheus.magalhaes@fstr.co`?"** → Sim, é seguro. O bot não posta nada espontaneamente em canais e o `/rhitmo` por engano só aparece para quem digitou.
-2. **"Tem como configurar para enviar 1x ao dia?"** → Sim, é o que vou implementar (throttle de 24h no welcome do app_home).
+- Recebe `recall_bot_id`.
+- Baixa a transcrição via `media_shortcuts.transcript.data.download_url`.
+- Aplica a nova lógica de matching de membros (via `participant_events` + nomes).
+- Cria `meeting_transcripts` + `feedbacks` para os 5 membros que estavam na call (Yasmin, Giovanna, Laís, Guilherme, Gabriela), todos com `manager_id = matheus`.
+- Atualiza o `recall_bots.0bb0c084...` para `status = 'done'`, `leader_detected = true`, limpa `error_message`.
+- Dispara `analyze-feedback-background` para cada feedback.
+
+Após criada, eu mesmo invoco a função uma vez com o ID do bot do Matheus para recuperar a transcrição perdida.
+
+### 3. Endurecer a UX do erro
+
+No estado atual, quando um bot vira `skipped_no_leader`, o líder não recebe **nenhuma notificação**. Para evitar que o problema se repita silenciosamente:
+
+- Quando um bot `manual` for marcado como `skipped_no_leader` (cenário que não vai mais acontecer após o fix, mas defesa em profundidade), enviar uma notificação no `notifications` apontando o problema com link para recuperar.
+- Adicionar um log estruturado (`console.warn`) com `bot_id`, `meeting_url`, `participants_count` sempre que `participants` vier vazio do `meeting_participants` raiz mas não-vazio em `participant_events` — para detectar regressões.
+
+### 4. Atualizar a memória de arquitetura
+
+Atualizar `mem://features/recall-ai/bot-transcription-architecture` para refletir:
+- Bots `manual` **nunca** descartam transcrição (mesmo no `bot.done`), apenas marcam `leader_detected` como informativo.
+- A fonte correta de participantes do Google Meet é `media_shortcuts.participant_events`, não `meeting_participants` raiz.
+
+---
+
+## Detalhes técnicos
+
+### Arquivos a editar
+
+- `supabase/functions/recall-webhook/index.ts` — refatorar `checkLeaderPresence` (novo nome interno: `resolveMeetingParticipantsAndLeader`); ajustar bloco do `bot.done` (linhas 97-112) para respeitar `trigger_source`.
+- `supabase/functions/_shared/recallParticipants.ts` (novo) — helper para baixar participants_download_url e normalizar nomes.
+
+### Arquivos a criar
+
+- `supabase/functions/reprocess-recall-bot/index.ts` — função one-shot, autenticada com service role, recebe `{ recall_bot_id }`.
+
+### Mudanças de schema
+
+Nenhuma. Os campos `leader_detected`, `trigger_source` e `error_message` já existem.
+
+### Migrations
+
+Nenhuma.
+
+### Validação pós-deploy
+
+1. Invocar `reprocess-recall-bot` com `bot_id = 0bb0c084-86ef-4239-8d6c-25a3db0d9ab6`.
+2. Confirmar 5 novas linhas em `meeting_transcripts` (uma por liderado), 5 novas em `feedbacks` com `source = 'recall_bot'`, todas com `manager_id = matheus`.
+3. Confirmar visualmente no painel da Gabriela (Diário de Bordo) que a transcrição apareceu com data 27/04.
+4. Confirmar nos painéis de Yasmin, Giovanna, Laís e Guilherme.
+
+### O que NÃO vou mudar
+
+- Política de `auto_calendar` (continua descartando se líder ausente — protege custo de Recall).
+- Cron `check-pending-leader-presence` (continua para `auto_calendar`; bots `manual` nunca entram nele porque a query filtra por `trigger_source = 'auto_calendar'`).
+- Limite de chars (`truncatedContent.slice(0, 15000)`) — fora de escopo.
