@@ -264,6 +264,7 @@ async function findAllMeetingMembers(
   meetingUrl: string,
   meetingId: string | null,
   fallbackMemberId: string | null,
+  participants: RecallParticipant[] = [],
 ): Promise<string[]> {
   const memberIds = new Set<string>();
 
