@@ -155,16 +155,20 @@ Deno.serve(async (req) => {
 
     console.log(`Transcript: ${formattedTranscript.length} chars, ${Object.keys(speakerNameMap).length} speakers`);
 
-    // Find members for this meeting
+    // Fetch participants from Recall (combines legacy + participant_events).
+    const participants = await fetchAllRecallParticipants(recallBotId, recallApiKey);
+
+    // Find members for this meeting (now including name-matching against participants)
     const memberIds = await findAllMeetingMembers(
       supabase,
       botRecord.user_id,
       botRecord.meeting_url,
       botRecord.meeting_id,
       botRecord.member_id,
+      participants,
     );
 
-    console.log(`Found ${memberIds.length} member(s)`);
+    console.log(`Found ${memberIds.length} member(s) (${participants.length} Recall participants seen)`);
 
     const createdIds: { memberId: string; transcriptId: string; feedbackId: string }[] = [];
 
