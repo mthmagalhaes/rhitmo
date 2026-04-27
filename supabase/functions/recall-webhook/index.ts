@@ -3,7 +3,6 @@ import {
   fetchAllRecallParticipants,
   isLeaderPresent,
   matchMembersToParticipants,
-  normalizeName,
   type RecallParticipant,
 } from "../_shared/recallParticipants.ts";
 
