@@ -2289,6 +2289,7 @@ export type Database = {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
       }
+      dismiss_recall_bot: { Args: { _bot_id: string }; Returns: boolean }
       effective_user_id: { Args: never; Returns: string }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
