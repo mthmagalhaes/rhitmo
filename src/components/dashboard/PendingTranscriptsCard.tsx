@@ -109,12 +109,17 @@ export const PendingTranscriptsCard = () => {
     e.stopPropagation();
     setDismissing(bot.id);
     const toastId = toast.loading('Descartando...');
-    const { error } = await supabase
-      .from('recall_bots')
-      .update({ status: 'dismissed' })
-      .eq('id', bot.id);
+    const { data, error } = await supabase.rpc('dismiss_recall_bot', { _bot_id: bot.id });
     if (error) {
       toast.error('Não foi possível descartar', { id: toastId, description: error.message });
+      setDismissing(null);
+      return;
+    }
+    if (data !== true) {
+      toast.error('Não foi possível descartar', {
+        id: toastId,
+        description: 'Recarregue a página e tente novamente.',
+      });
       setDismissing(null);
       return;
     }
