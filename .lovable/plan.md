@@ -1,105 +1,64 @@
-## Escala de roxo (50→900) + shadows roxas para o design system
+# Slides de Onboarding — Turma FAP (Programa Fundadores)
 
-Adicionar uma escala completa de roxo como tokens HSL e shadows roxas para CTAs destacados. **Sem alterar `--primary` atual** (262 83% 58%) — apenas estender o sistema com novas variáveis e mapeá-las no Tailwind.
+Vou gerar um arquivo PPTX usando `pptxgenjs` seguindo a identidade visual da Rhitmo (Creme/Bento, ondas roxas, tipografia editorial). O arquivo final ficará em `/mnt/documents/rhitmo-onboarding-fap.pptx`.
 
-### Mudanças
+## Identidade visual
 
-**1. `src/index.css` — bloco `:root` (light)**
+- **Paleta:** creme (`#FAF7F2`) como fundo principal, roxo Rhitmo (`#7C3AED` / `262 83% 58%`) como cor primária, navy escuro (`#1A1B3A`) para slides "premium" de abertura/encerramento, cinza grafite (`#2D2D3A`) para texto.
+- **Tipografia:** Georgia (headlines, editorial) + Calibri (corpo). Títulos 36-44pt bold tracking-tight, body 16-18pt.
+- **Motivo visual:** Rhythm Wave (ondas senoidais roxas em camadas) usadas como detalhe sutil em rodapés e slides de transição.
+- **Layout:** Bento Grid (cards com `rounded` simulado via shapes), sombras suaves, generoso whitespace, alternância dark/light (sandwich).
 
-Adicionar dentro de `:root`, logo após o bloco `Primária — Roxo Rhitmo`:
+## Estrutura dos slides (12 slides)
 
-```css
-/* ── Escala de roxo (Primary scale) ── */
---primary-50:  262 100% 97%;
---primary-100: 262 90% 94%;
---primary-200: 262 85% 87%;
---primary-300: 262 83% 76%;
---primary-400: 262 83% 66%;
---primary-500: 262 83% 58%;   /* = --primary */
---primary-600: 262 75% 50%;
---primary-700: 262 70% 42%;
---primary-800: 262 65% 32%;
---primary-900: 262 60% 22%;
-```
+1. **Capa — Boas-vindas FAP** *(dark navy)*
+   Título: "Bem-vindos, Fundadores FAP" · Subtítulo: "Programa Fundadores · Onboarding Sync · Abril 2026" · Logo Rhitmo + ondas decorativas.
 
-E também os tokens de shadow roxa, junto ao bloco de Shadows:
+2. **Programa Fundadores** *(creme)*
+   3 cards bento: "6 meses Pro grátis" · "Acesso direto ao time fundador" · "Voz ativa no roadmap". Stat callout: "R$ 0 pelos próximos 6 meses".
 
-```css
---shadow-purple:    0 10px 30px -8px hsl(262 83% 58% / 0.35);
---shadow-purple-lg: 0 20px 50px -12px hsl(262 83% 58% / 0.4);
-```
+3. **O que é a Rhitmo** *(creme, two-column)*
+   Coluna esquerda: definição editorial — *"Parceiro de IA para liderança baseada em evidências"*. Coluna direita: 3 pilares com ícones em círculos roxos: Brief (preparação) · Bias (qualidade) · Nudges (consistência).
 
-**2. `src/index.css` — bloco `.dark`**
+4. **A dor que resolvemos** *(creme, stat-driven)*
+   Headline grande: "21h/semana" com label "tempo médio que líderes gastam com gestão de pessoas". Bullets: avaliações sem evidência · feedbacks esquecidos · 1:1s sem contexto · decisões enviesadas.
+   Comparativo "Antes Rhitmo / Com Rhitmo".
 
-No dark, a primária base é `263 86% 76%` (mais clara). Para preservar contraste, a escala dark é "invertida" — tons claros (50/100) são desaturados/escuros e tons escuros (800/900) ficam mais claros e vivos:
+5. **Primeiros passos · Configuração** *(creme, numbered steps)*
+   1. Aceitar convite e definir senha · 2. Completar perfil (estilo de liderança + DISC) · 3. Conectar Google Calendar · 4. Personalizar notificações (Perfil → Notificações).
 
-```css
-/* ── Escala de roxo (dark) ── */
---primary-50:  263 30% 18%;
---primary-100: 263 35% 24%;
---primary-200: 263 45% 32%;
---primary-300: 263 60% 45%;
---primary-400: 263 75% 60%;
---primary-500: 263 86% 76%;   /* = --primary dark */
---primary-600: 263 88% 82%;
---primary-700: 263 90% 87%;
---primary-800: 263 92% 92%;
---primary-900: 263 95% 96%;
-```
+6. **Primeiros passos · Adicionar liderados** *(creme, two-column)*
+   Esquerda: passo a passo (Time → Adicionar membro → enviar convite por e-mail/Slack). Direita: card destaque "Cadastro em massa" (até 100 por vez) e "Sync via Slack" (vinculação automática).
 
-Shadows roxas no dark (mais sutis sobre fundo escuro):
+7. **Capturando notas · Visão geral** *(creme, 2x2 bento)*
+   4 cards com ícones: **Magic Paste** (colar de Tactiq/Meet/Fireflies) · **Gravação manual** (até 30h/mês no Pro) · **Bot Recall.ai** (entra automaticamente na reunião) · **Slack** (`/nota`, `/kudos`, classificação ambiente).
 
-```css
---shadow-purple:    0 10px 30px -8px hsl(263 86% 76% / 0.25);
---shadow-purple-lg: 0 20px 50px -12px hsl(263 86% 76% / 0.3);
-```
+8. **Capturando notas · Detalhes** *(creme, two-column)*
+   Esquerda: tabela comparativa rápida (quando usar cada método). Direita: destaque para **Extensão Chrome** (gravação no Google Meet) e **comandos Slack** (`/nota`, `/kudos`, `/brief`, `/meu-rhitmo`).
 
-**3. `tailwind.config.ts` — `theme.extend.colors.primary`**
+9. **IA do dia a dia** *(creme, 3 cards)*
+   Brief pré-1:1 · Mentor Chat (RAG das suas notas) · Avaliação formal baseada em evidências. Reforça: "Tudo privado por padrão. Compartilhar é uma ação explícita."
 
-Estender o objeto `primary` mantendo `DEFAULT` e `foreground` intactos:
+10. **Suporte & SLA** *(creme, two-column)*
+    Esquerda: canais — e-mail `suporte@rhitmo.co` · Slack do Programa Fundadores · WhatsApp direto com fundadores. Direita: card grande "SLA: resposta em até 24h úteis" + "Bugs críticos: prioridade imediata".
 
-```ts
-primary: {
-  DEFAULT:    "hsl(var(--primary))",
-  foreground: "hsl(var(--primary-foreground))",
-  50:  "hsl(var(--primary-50))",
-  100: "hsl(var(--primary-100))",
-  200: "hsl(var(--primary-200))",
-  300: "hsl(var(--primary-300))",
-  400: "hsl(var(--primary-400))",
-  500: "hsl(var(--primary-500))",
-  600: "hsl(var(--primary-600))",
-  700: "hsl(var(--primary-700))",
-  800: "hsl(var(--primary-800))",
-  900: "hsl(var(--primary-900))",
-},
-```
+11. **Próximos passos** *(creme, checklist)*
+    ☐ Hoje: aceitar convite + completar perfil · ☐ Esta semana: adicionar primeiros 3 liderados + 1ª nota · ☐ Em 7 dias: 1ª 1:1 com brief · ☐ Em 30 dias: 1ª avaliação formal. CTA final: "Vamos construir juntos."
 
-**4. `tailwind.config.ts` — `theme.extend.boxShadow`**
+12. **Q&A — Obrigado** *(dark navy)*
+    "Perguntas?" grande · contatos do time fundador · ondas roxas decorativas · logo Rhitmo.
 
-Adicionar as shadows roxas ao mapa existente:
+## Implementação técnica
 
-```ts
-boxShadow: {
-  // ... tokens existentes
-  purple:    "var(--shadow-purple)",
-  "purple-lg": "var(--shadow-purple-lg)",
-},
-```
+- Script Node.js usando `pptxgenjs` (já documentado no skill/pptx).
+- Cada slide usa shapes `rectangle` com `rectRadius` para simular `rounded-2xl`, sombras suaves via `shadow: { type: 'outer', blur: 20, opacity: 0.08 }`.
+- Ondas decorativas via `addShape` com tipo `curvedConnector` ou imagem PNG gerada à parte.
+- Font pairing: `Georgia` (headers) + `Calibri` (body) — universalmente disponíveis.
+- Após gerar: converter para PDF com LibreOffice e inspecionar cada slide como JPG (QA visual obrigatório do skill PPTX) antes de entregar.
+- Entregar via `<lov-artifact path="rhitmo-onboarding-fap.pptx" mime_type="application/vnd.openxmlformats-officedocument.presentationml.presentation">`.
 
-### Como usar (hierarquia recomendada)
+## O que NÃO está no escopo
 
-- `bg-primary-50` / `bg-primary-100` — superfícies sutis (badges, hover de itens)
-- `bg-primary-200` / `text-primary-300` — bordas, dividers, decoração
-- `bg-primary-500` / `bg-primary` — CTAs principais (mantido como hoje)
-- `bg-primary-600` / `bg-primary-700` — hover/active de CTAs
-- `bg-primary-800` / `bg-primary-900` — superfícies escuras com texto branco
-- `shadow-purple` — CTAs destacados na landing (botão "Começar agora")
-- `shadow-purple-lg` — heros e cards de pricing em destaque
-
-### Garantias
-
-- `--primary` atual (262 83% 58%) **não é alterado** — `bg-primary` continua exatamente igual
-- Nenhum componente existente quebra (escalas são aditivas)
-- Dark mode tem escala consistente com a inversão de luminância já usada na primary do `.dark`
-- Sem mudança em código de componentes — apenas novos tokens disponíveis
+- Não vou alterar código do app (é apenas geração de artifact).
+- Não vou criar uma rota web nem integrar os slides ao Rhitmo.
+- Não vou incluir vídeo embarcado (PPTX terá só elementos estáticos + shapes).
