@@ -330,14 +330,23 @@ async function handleBotDone(
   supabaseUrl: string,
   serviceRoleKey: string,
 ) {
-  // Skip processing if leader was not detected (bot was removed or call ended without leader)
-  if (botRecord.status === "skipped_no_leader" || (!botRecord.leader_detected && botRecord.leader_email)) {
-    console.log(`Bot ${botId} done but leader was not detected — skipping transcript processing`);
+  // Skip processing only for AUTO_CALENDAR bots whose leader was absent
+  // (manual bots are always processed — leader explicitly clicked Transcribe).
+  const triggerSource = (botRecord.trigger_source as string) || "auto_calendar";
+  const leaderAbsent = !botRecord.leader_detected && botRecord.leader_email;
+  if (
+    botRecord.status === "skipped_no_leader" ||
+    (triggerSource === "auto_calendar" && leaderAbsent)
+  ) {
+    console.log(`Bot ${botId} done but leader was not detected (trigger=${triggerSource}) — skipping transcript processing`);
     await supabaseAdmin
       .from("recall_bots")
       .update({ status: "skipped_no_leader" })
       .eq("id", botRecord.id);
     return;
+  }
+  if (triggerSource === "manual" && leaderAbsent) {
+    console.warn(`Bot ${botId}: trigger=manual, leader not auto-detected — processing transcript anyway.`);
   }
 
   console.log(`Bot ${botId} done — fetching transcript via API...`);
