@@ -370,6 +370,9 @@ async function handleBotDone(
   // Format transcript with real speaker names
   const formattedTranscript = formatTranscript(transcriptData, speakerNameMap);
 
+  // Resolve participants once and reuse for member matching.
+  const participants = await fetchAllRecallParticipants(botId, recallApiKey);
+
   // Find all member_ids for this meeting
   const memberIds = await findAllMeetingMembers(
     supabaseAdmin,
@@ -377,6 +380,7 @@ async function handleBotDone(
     botRecord.meeting_url as string,
     botRecord.meeting_id as string | null,
     botRecord.member_id as string | null,
+    participants,
   );
 
   console.log(`Found ${memberIds.length} member(s) for this meeting`);
