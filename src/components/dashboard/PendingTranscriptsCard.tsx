@@ -34,6 +34,7 @@ export const PendingTranscriptsCard = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [reprocessing, setReprocessing] = useState<string | null>(null);
+  const [dismissing, setDismissing] = useState<string | null>(null);
 
   const { data: bots = [] } = useQuery({
     queryKey: ['pending-recall-bots', user?.id],
@@ -69,7 +70,6 @@ export const PendingTranscriptsCard = () => {
       });
       if (error) throw error;
       if (!data?.success) {
-        // Server returned 200 with success:false (e.g. unrecoverable / not ready)
         const msg = data?.error || 'Falha desconhecida';
         if (data?.unrecoverable) {
           toast.error('Sem transcrição na Recall', {
@@ -104,7 +104,10 @@ export const PendingTranscriptsCard = () => {
     }
   };
 
-  const handleDismiss = async (bot: RecallBot) => {
+  const handleDismiss = async (bot: RecallBot, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDismissing(bot.id);
     const toastId = toast.loading('Descartando...');
     const { error } = await supabase
       .from('recall_bots')
@@ -112,10 +115,12 @@ export const PendingTranscriptsCard = () => {
       .eq('id', bot.id);
     if (error) {
       toast.error('Não foi possível descartar', { id: toastId, description: error.message });
+      setDismissing(null);
       return;
     }
     toast.success('Reunião removida da lista', { id: toastId });
     await queryClient.invalidateQueries({ queryKey: ['pending-recall-bots'] });
+    setDismissing(null);
   };
 
   return (
@@ -137,6 +142,7 @@ export const PendingTranscriptsCard = () => {
       <div className="space-y-2">
         {bots.map((bot) => {
           const isLoading = reprocessing === bot.id;
+          const isDismissing = dismissing === bot.id;
           const isUnrecoverable = bot.status === 'unrecoverable';
           return (
             <div
@@ -159,7 +165,7 @@ export const PendingTranscriptsCard = () => {
                         size="sm"
                         variant="outline"
                         className="rounded-xl gap-2"
-                        disabled={isLoading}
+                        disabled={isLoading || isDismissing}
                       >
                         {isLoading ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -189,10 +195,15 @@ export const PendingTranscriptsCard = () => {
                   size="sm"
                   variant="ghost"
                   className="rounded-xl gap-2 text-muted-foreground hover:text-foreground"
-                  onClick={() => handleDismiss(bot)}
+                  onClick={(e) => handleDismiss(bot, e)}
+                  disabled={isDismissing || isLoading}
                   title="Descartar"
                 >
-                  <X className="h-3.5 w-3.5" />
+                  {isDismissing ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <X className="h-3.5 w-3.5" />
+                  )}
                   Descartar
                 </Button>
               </div>

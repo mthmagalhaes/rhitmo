@@ -384,10 +384,7 @@ async function handleBotDone(
 
   console.log(`Found ${memberIds.length} member(s) for this meeting`);
 
-  // Truncate content for feedbacks (15k chars max to save on analysis tokens)
-  const truncatedContent = formattedTranscript.slice(0, 15000);
-
-  // Create meeting_transcript + feedback for each member
+  // Save full transcript to feedbacks (no truncation — leaders/members read this directly)
   const createdIds: { memberId: string; transcriptId: string; feedbackId: string }[] = [];
 
   for (const memberId of memberIds) {
@@ -396,7 +393,7 @@ async function handleBotDone(
       botRecord.user_id as string,
       memberId,
       formattedTranscript,
-      truncatedContent,
+      formattedTranscript,
     );
     if (created) {
       createdIds.push({ memberId, ...created });

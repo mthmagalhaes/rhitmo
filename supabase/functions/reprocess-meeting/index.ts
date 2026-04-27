@@ -179,7 +179,6 @@ Deno.serve(async (req) => {
 
     // Format transcript
     const formattedTranscript = formatTranscript(transcriptData, speakerNameMap);
-    const truncatedContent = formattedTranscript.slice(0, 15000);
 
     console.log(`Transcript: ${formattedTranscript.length} chars, ${Object.keys(speakerNameMap).length} speakers`);
 
@@ -206,7 +205,7 @@ Deno.serve(async (req) => {
         botRecord.user_id,
         memberId,
         formattedTranscript,
-        truncatedContent,
+        formattedTranscript,
       );
       if (result) {
         createdIds.push({ memberId, ...result });
