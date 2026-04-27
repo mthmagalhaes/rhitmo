@@ -142,12 +142,17 @@ Deno.serve(async (req) => {
 });
 
 // ── Leader presence check ──────────────────────────────────────────────────
-
+//
+// `skipDiscard = true` is used for manual bots: we still try to detect the
+// leader (so the flag is informative), but we NEVER mark the bot as
+// `skipped_no_leader` — the leader explicitly clicked "Transcrever", we trust
+// that and process the transcript regardless.
 async function checkLeaderPresence(
   supabaseAdmin: any,
   botRecord: any,
   botId: string,
   recallApiKey: string,
+  skipDiscard = false,
 ) {
   const leaderEmail = (botRecord.leader_email as string).toLowerCase();
 
@@ -163,27 +168,37 @@ async function checkLeaderPresence(
     return;
   }
 
-  // Fetch participants from Recall API
-  const botResponse = await fetch(`https://us-west-2.recall.ai/api/v1/bot/${botId}/`, {
-    headers: { Authorization: `Token ${recallApiKey}` },
-  });
-
-  if (!botResponse.ok) {
-    console.error(`Failed to fetch bot ${botId} for leader check: ${botResponse.status}`);
-    return;
+  // Resolve leader display-name candidates so we can match by NAME
+  // (Google Meet hides emails for non-Calendar attendees).
+  const nameCandidates: string[] = [];
+  try {
+    const { data: leaderUser } = await supabaseAdmin.auth.admin.getUserById(botRecord.user_id);
+    const meta = leaderUser?.user?.user_metadata ?? {};
+    if (meta.full_name) nameCandidates.push(meta.full_name as string);
+    if (meta.name) nameCandidates.push(meta.name as string);
+  } catch (e) {
+    console.warn(`Bot ${botId}: could not load leader user_metadata:`, e);
   }
+  // Also include any team_member row whose email matches the leader (some leaders
+  // appear as their own member for testing).
+  try {
+    const { data: selfMember } = await supabaseAdmin
+      .from("team_members")
+      .select("name")
+      .eq("email", leaderEmail)
+      .limit(5);
+    for (const m of selfMember ?? []) if (m.name) nameCandidates.push(m.name);
+  } catch { /* non-fatal */ }
 
-  const botData = await botResponse.json();
-  const participants = botData.meeting_participants || [];
+  // Fetch participants from BOTH legacy field and participant_events.
+  const participants: RecallParticipant[] = await fetchAllRecallParticipants(botId, recallApiKey);
+  console.log(
+    `Bot ${botId}: ${participants.length} participant(s) resolved | leader email=${leaderEmail} | name candidates=${JSON.stringify(nameCandidates)}`,
+  );
 
-  console.log(`Bot ${botId}: checking ${participants.length} participants for leader email ${leaderEmail}`);
-
-  // Check if leader is among participants (by email or name containing email prefix)
-  const leaderPrefix = leaderEmail.split("@")[0].toLowerCase();
-  const leaderFound = participants.some((p: { email?: string; name?: string }) => {
-    if (p.email && p.email.toLowerCase() === leaderEmail) return true;
-    if (p.name && p.name.toLowerCase().includes(leaderPrefix)) return true;
-    return false;
+  const leaderFound = isLeaderPresent(participants, {
+    email: leaderEmail,
+    names: nameCandidates,
   });
 
   if (leaderFound) {
@@ -195,7 +210,15 @@ async function checkLeaderPresence(
     return;
   }
 
-  // Leader not found — remove bot from call
+  if (skipDiscard) {
+    // Manual trigger: trust the leader's click. Do NOT discard transcript.
+    console.warn(
+      `Bot ${botId}: leader NOT detected by name/email, but trigger_source=manual — keeping transcript (leader_detected stays false).`,
+    );
+    return;
+  }
+
+  // Auto-calendar bot: leader never showed up, remove bot to limit cost.
   console.log(`Bot ${botId}: leader NOT detected after grace period — removing bot`);
 
   const leaveResponse = await fetch(`https://us-west-2.recall.ai/api/v1/bot/${botId}/leave/`, {
