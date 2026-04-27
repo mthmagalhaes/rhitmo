@@ -109,18 +109,46 @@ Deno.serve(async (req) => {
     const recordings = botData.recordings;
 
     if (!recordings || recordings.length === 0) {
+      // Mark bot as unrecoverable so the user can dismiss it
+      await supabase
+        .from('recall_bots')
+        .update({
+          status: 'unrecoverable',
+          error_message: 'O bot entrou na chamada mas nunca chegou a gravar (provavelmente ficou na sala de espera). Não há transcrição para recuperar.',
+        })
+        .eq('id', botRecord.id);
       return new Response(
-        JSON.stringify({ success: false, error: 'No recordings found for this bot' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        JSON.stringify({
+          success: false,
+          unrecoverable: true,
+          error: 'O bot não chegou a gravar essa reunião (ficou na sala de espera ou foi removido antes do início). Não há transcrição disponível na Recall para recuperar.',
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
     const transcriptShortcut = recordings[0]?.media_shortcuts?.transcript;
     if (!transcriptShortcut || !transcriptShortcut.data?.download_url) {
-      const status = transcriptShortcut?.status || 'missing';
+      const status = transcriptShortcut?.status?.code || transcriptShortcut?.status || 'missing';
+      const isProcessing = ['processing', 'in_progress', 'recording'].includes(String(status));
+      if (!isProcessing) {
+        await supabase
+          .from('recall_bots')
+          .update({
+            status: 'unrecoverable',
+            error_message: `Transcrição não disponível na Recall (status: ${status}).`,
+          })
+          .eq('id', botRecord.id);
+      }
       return new Response(
-        JSON.stringify({ success: false, error: `Transcript not ready (status: ${status})` }),
-        { status: 425, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        JSON.stringify({
+          success: false,
+          unrecoverable: !isProcessing,
+          error: isProcessing
+            ? `A transcrição ainda está sendo processada pela Recall (status: ${status}). Tente novamente em alguns minutos.`
+            : `A Recall não tem transcrição disponível para essa reunião (status: ${status}).`,
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 

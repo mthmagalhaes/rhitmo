@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, RefreshCw, Loader2 } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -28,7 +28,7 @@ type RecallBot = {
   created_at: string;
 };
 
-const PROBLEMATIC_STATUSES = ['skipped_no_leader', 'failed', 'fatal'];
+const PROBLEMATIC_STATUSES = ['skipped_no_leader', 'failed', 'fatal', 'unrecoverable'];
 
 export const PendingTranscriptsCard = () => {
   const { user } = useAuth();
@@ -68,7 +68,20 @@ export const PendingTranscriptsCard = () => {
         body: { recallBotId: bot.recall_bot_id },
       });
       if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || 'Falha desconhecida');
+      if (!data?.success) {
+        // Server returned 200 with success:false (e.g. unrecoverable / not ready)
+        const msg = data?.error || 'Falha desconhecida';
+        if (data?.unrecoverable) {
+          toast.error('Sem transcrição na Recall', {
+            id: toastId,
+            description: msg + ' Você pode descartar essa reunião.',
+          });
+          await queryClient.invalidateQueries({ queryKey: ['pending-recall-bots'] });
+        } else {
+          toast.error('Não foi possível reprocessar', { id: toastId, description: msg });
+        }
+        return;
+      }
 
       const count = data.feedbacks?.length ?? 0;
       toast.success(
@@ -91,6 +104,20 @@ export const PendingTranscriptsCard = () => {
     }
   };
 
+  const handleDismiss = async (bot: RecallBot) => {
+    const toastId = toast.loading('Descartando...');
+    const { error } = await supabase
+      .from('recall_bots')
+      .update({ status: 'dismissed' })
+      .eq('id', bot.id);
+    if (error) {
+      toast.error('Não foi possível descartar', { id: toastId, description: error.message });
+      return;
+    }
+    toast.success('Reunião removida da lista', { id: toastId });
+    await queryClient.invalidateQueries({ queryKey: ['pending-recall-bots'] });
+  };
+
   return (
     <div className="rounded-3xl bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-6">
       <div className="flex items-start gap-3 mb-4">
@@ -102,7 +129,7 @@ export const PendingTranscriptsCard = () => {
             Transcrições não distribuídas
           </h3>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Detectamos {bots.length} reunião(ões) cuja transcrição não foi vinculada automaticamente. Clique em reprocessar para baixar da Recall e redistribuir.
+            Detectamos {bots.length} reunião(ões) cuja transcrição não foi vinculada automaticamente. Clique em reprocessar para baixar da Recall e redistribuir, ou descarte se não houver gravação.
           </p>
         </div>
       </div>
@@ -110,6 +137,7 @@ export const PendingTranscriptsCard = () => {
       <div className="space-y-2">
         {bots.map((bot) => {
           const isLoading = reprocessing === bot.id;
+          const isUnrecoverable = bot.status === 'unrecoverable';
           return (
             <div
               key={bot.id}
@@ -123,37 +151,51 @@ export const PendingTranscriptsCard = () => {
                   {bot.error_message || `Status: ${bot.status}`}
                 </p>
               </div>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="rounded-xl gap-2 flex-shrink-0"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <RefreshCw className="h-3.5 w-3.5" />
-                    )}
-                    Reprocessar
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Reprocessar transcrição?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Vamos baixar a transcrição novamente da Recall e tentar distribuí-la para todos os liderados detectados na reunião (por nome). Isso pode criar novas anotações no diário de bordo de cada liderado identificado.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handleReprocess(bot)}>
-                      Reprocessar agora
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {!isUnrecoverable && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-xl gap-2"
+                        disabled={isLoading}
+                      >
+                        {isLoading ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-3.5 w-3.5" />
+                        )}
+                        Reprocessar
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Reprocessar transcrição?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Vamos baixar a transcrição novamente da Recall e tentar distribuí-la para todos os liderados detectados na reunião (por nome). Isso pode criar novas anotações no diário de bordo de cada liderado identificado.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleReprocess(bot)}>
+                          Reprocessar agora
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="rounded-xl gap-2 text-muted-foreground hover:text-foreground"
+                  onClick={() => handleDismiss(bot)}
+                  title="Descartar"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Descartar
+                </Button>
+              </div>
             </div>
           );
         })}
