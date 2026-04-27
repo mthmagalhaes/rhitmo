@@ -1,4 +1,11 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  fetchAllRecallParticipants,
+  isLeaderPresent,
+  matchMembersToParticipants,
+  normalizeName,
+  type RecallParticipant,
+} from "../_shared/recallParticipants.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
