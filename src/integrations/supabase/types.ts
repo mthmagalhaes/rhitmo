@@ -1256,6 +1256,30 @@ export type Database = {
         }
         Relationships: []
       }
+      oauth_states: {
+        Row: {
+          created_at: string
+          expires_at: string
+          provider: string
+          state_token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          provider?: string
+          state_token: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          provider?: string
+          state_token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pending_slack_invites: {
         Row: {
           accepted_at: string | null
@@ -2276,6 +2300,7 @@ export type Database = {
       can_update_own_sync: { Args: { member_id: string }; Returns: boolean }
       check_is_admin: { Args: never; Returns: boolean }
       cleanup_expired_impersonations: { Args: never; Returns: undefined }
+      cleanup_expired_oauth_states: { Args: never; Returns: undefined }
       create_default_competency_framework: {
         Args: { p_workspace_id: string }
         Returns: undefined

@@ -51,15 +51,40 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Fetch review with member info
+    // Fetch review with member info AND ownership chain
     const { data: review, error: reviewError } = await supabase
       .from("performance_reviews")
-      .select("*, team_members!performance_reviews_member_id_fkey(id, name, role, work_style_data, feedback_style, recognition_style, chronotype, motivators)")
+      .select("*, team_members!performance_reviews_member_id_fkey(id, name, role, work_style_data, feedback_style, recognition_style, chronotype, motivators, teams!inner(leader_user_id, workspaces!inner(owner_id)))")
       .eq("id", reviewId)
       .single();
 
     if (reviewError || !review) {
       throw new Error("Avaliação não encontrada");
+    }
+
+    // SECURITY: ownership check — caller must be the review author, the
+    // member's current team leader, or the workspace owner. Without this,
+    // any signed-in user could regenerate any other workspace's reviews
+    // because the data fetches above run under service_role.
+    const callerId = userData.user.id;
+    const reviewAuthorId = (review as any).manager_id ?? (review as any).author_id ?? null;
+    const team = (review as any).team_members?.teams;
+    const teamLeaderId = team?.leader_user_id ?? null;
+    const workspaceOwnerId = team?.workspaces?.owner_id ?? null;
+
+    const allowed =
+      callerId === reviewAuthorId ||
+      callerId === teamLeaderId ||
+      callerId === workspaceOwnerId;
+
+    if (!allowed) {
+      console.error("[generate-formal-review] ownership check failed", {
+        callerId, reviewAuthorId, teamLeaderId, workspaceOwnerId, reviewId,
+      });
+      return new Response(
+        JSON.stringify({ error: "Você não tem permissão para gerar esta avaliação" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const member = review.team_members;

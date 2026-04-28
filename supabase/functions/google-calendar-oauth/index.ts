@@ -56,6 +56,30 @@ Deno.serve(async (req) => {
 
       const userId = user.id;
 
+      // SECURITY (Issue 2 fix): generate a server-side single-use state nonce
+      // and persist it. The callback will validate the state against this row
+      // and use the stored user_id (never trusting the value Google echoes).
+      const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      // Best-effort cleanup of expired nonces — don't fail authorize if it errors.
+      await supabaseAdmin.rpc("cleanup_expired_oauth_states").catch(() => {});
+
+      const stateToken = crypto.randomUUID();
+      const { error: stateInsertError } = await supabaseAdmin
+        .from("oauth_states")
+        .insert({
+          state_token: stateToken,
+          user_id: userId,
+          provider: "google_calendar",
+        });
+
+      if (stateInsertError) {
+        console.error("Failed to persist oauth state:", stateInsertError);
+        return new Response(JSON.stringify({ error: "Failed to start OAuth flow" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       const params = new URLSearchParams({
         client_id: GOOGLE_CLIENT_ID,
         redirect_uri: GOOGLE_REDIRECT_URI,
@@ -63,7 +87,7 @@ Deno.serve(async (req) => {
         scope: "https://www.googleapis.com/auth/calendar.readonly",
         access_type: "offline",
         prompt: "consent",
-        state: userId,
+        state: stateToken,
       });
 
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
@@ -111,6 +135,40 @@ Deno.serve(async (req) => {
         return new Response("Missing code or state", { status: 400, headers: corsHeaders });
       }
 
+      const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+      // SECURITY (Issue 2 fix): validate the state token against the
+      // server-side nonce store. Single-use: delete-and-return ensures the
+      // same state cannot be replayed. We trust ONLY the user_id stored
+      // here, never the raw value echoed by Google.
+      const { data: stateRows, error: stateLookupError } = await supabaseAdmin
+        .from("oauth_states")
+        .delete()
+        .eq("state_token", state)
+        .eq("provider", "google_calendar")
+        .gt("expires_at", new Date().toISOString())
+        .select("user_id")
+        .limit(1);
+
+      if (stateLookupError) {
+        console.error("oauth_states lookup failed:", stateLookupError);
+        const errBody = JSON.stringify({ error: "Failed to validate state" });
+        return isPost
+          ? new Response(errBody, { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } })
+          : new Response("Failed to validate state", { status: 500, headers: corsHeaders });
+      }
+
+      const stateRow = stateRows?.[0];
+      if (!stateRow) {
+        console.warn("Invalid or expired oauth state:", state);
+        const errBody = JSON.stringify({ error: "Invalid or expired state. Please retry the connection." });
+        return isPost
+          ? new Response(errBody, { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } })
+          : new Response("Invalid or expired state", { status: 400, headers: corsHeaders });
+      }
+
+      const trustedUserId: string = stateRow.user_id;
+
       const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -152,13 +210,11 @@ Deno.serve(async (req) => {
         console.error("Failed to fetch calendar email:", e);
       }
 
-      const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
       const { error: upsertError } = await supabaseAdmin
         .from("google_calendar_tokens")
         .upsert(
           {
-            user_id: state,
+            user_id: trustedUserId,
             access_token: tokens.access_token,
             refresh_token: tokens.refresh_token || null,
             token_expiry: tokenExpiry,
