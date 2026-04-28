@@ -77,10 +77,24 @@ export const useCalendarIntegration = () => {
     const { data, error } = await supabase.functions.invoke('google-calendar-oauth', {
       body: { action: 'authorize' },
     });
+
+    // Surface the real edge-function error message when available, instead of a generic toast.
+    let errorDetail: string | null = null;
+    if (error) {
+      try {
+        if (typeof (error as any).context?.json === 'function') {
+          const body = await (error as any).context.json();
+          errorDetail = body?.error || body?.message || null;
+        }
+      } catch {}
+      if (!errorDetail) errorDetail = error.message || null;
+    }
+
     if (error || !data?.authUrl) {
+      console.error('connectCalendar failed', { error, data });
       toast({
         title: 'Erro ao conectar',
-        description: 'Não foi possível iniciar a conexão com o Google Calendar.',
+        description: errorDetail || 'Não foi possível iniciar a conexão com o Google Calendar.',
         variant: 'destructive',
       });
       return;
