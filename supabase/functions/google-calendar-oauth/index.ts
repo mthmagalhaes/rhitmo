@@ -158,7 +158,7 @@ Deno.serve(async (req) => {
         return new Response("Missing code or state", { status: 400, headers: corsHeaders });
       }
 
-      const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      const supabaseAdmin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
       // SECURITY (Issue 2 fix): validate the state token against the
       // server-side nonce store. Single-use: delete-and-return ensures the
@@ -288,7 +288,7 @@ Deno.serve(async (req) => {
         });
       }
 
-      const supabase = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      const supabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
         global: { headers: { Authorization: authHeader } },
       });
 
@@ -301,7 +301,7 @@ Deno.serve(async (req) => {
       }
 
       const userId = user.id;
-      const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      const supabaseAdmin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
       await supabaseAdmin.from("google_calendar_tokens").delete().eq("user_id", userId);
       await supabaseAdmin.from("upcoming_meetings").delete().eq("user_id", userId);
