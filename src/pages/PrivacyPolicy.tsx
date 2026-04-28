@@ -1,3 +1,7 @@
+// IMPORTANTE: Esta página é renderizada apenas para usuários com a SPA carregada.
+// Crawlers (ex.: validador OAuth do Google) recebem o HTML estático em
+// `public/privacy-policy/index.html`. Ao alterar o conteúdo aqui, atualize
+// também o arquivo estático para manter consistência.
 import { LegalPageLayout } from "@/components/LegalPageLayout";
 
 const PrivacyPolicy = () => {
