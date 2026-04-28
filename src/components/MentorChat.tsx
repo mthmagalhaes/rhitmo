@@ -954,22 +954,27 @@ export const MentorChat = ({
                 );
                 })}
 
-                {/* Loading indicator */}
+                {/* Loading indicator — skeleton bubble + progresso suave */}
                 {isLoading && (
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-3 animate-in fade-in slide-in-from-bottom-1 duration-300">
                     <AssistantIcon />
-                    {loadingMessage ? (
-                      <div className="flex items-center gap-2 py-3">
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">{loadingMessage}</span>
+                    <div className="flex flex-col gap-2 max-w-[75%]">
+                      <div className="rounded-2xl bg-muted/50 px-4 py-3 space-y-2">
+                        <Skeleton className="h-3 w-48 rounded-full" />
+                        <Skeleton className="h-3 w-64 rounded-full" />
+                        <Skeleton className="h-3 w-40 rounded-full" />
                       </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5 py-3">
-                        <span className="h-2 w-2 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:0ms]" />
-                        <span className="h-2 w-2 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:200ms]" />
-                        <span className="h-2 w-2 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:400ms]" />
+                      <div className="flex items-center gap-2 px-1">
+                        <span className="flex gap-1">
+                          <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:0ms]" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:150ms]" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:300ms]" />
+                        </span>
+                        <span className="text-xs text-muted-foreground italic transition-opacity duration-300">
+                          {loadingMessage || 'Pensando…'}
+                        </span>
                       </div>
-                    )}
+                    </div>
                   </div>
                 )}
               </div>
