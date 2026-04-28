@@ -101,6 +101,38 @@ serve(async (req) => {
       );
     }
 
+    // SECURITY: if a member_id was provided, verify the caller is the team
+    // leader OR workspace owner for that member. Without this check, any
+    // authenticated user (or anyone holding a valid extension token) could
+    // attach a meeting to ANY member in the database because the writes below
+    // run under the service_role client.
+    if (memberId) {
+      if (!userId) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Authentication required to attach meeting to a member' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      const { data: ownership, error: ownErr } = await supabase
+        .from('team_members')
+        .select('id, teams!inner(leader_user_id, workspaces!inner(owner_id))')
+        .eq('id', memberId)
+        .maybeSingle();
+
+      const team = (ownership as any)?.teams;
+      const leaderId = team?.leader_user_id;
+      const ownerId = team?.workspaces?.owner_id;
+      const allowed = !ownErr && ownership && (leaderId === userId || ownerId === userId);
+
+      if (!allowed) {
+        console.error('[upload-meeting] ownership check failed', { userId, memberId, leaderId, ownerId });
+        return new Response(
+          JSON.stringify({ success: false, error: 'Você não tem permissão para anexar reunião a este liderado' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     // Server-side file size validation (25MB Whisper limit)
     const MAX_FILE_SIZE = 25 * 1024 * 1024;
     if (file.size > MAX_FILE_SIZE) {
