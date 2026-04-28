@@ -182,6 +182,7 @@ export interface QuarterlyRecap {
   source_meetings_count: number;
   ai_generated_at: string | null;
   ai_model: string | null;
+  generation_mode: 'from_monthly' | 'from_raw' | null;
   created_at: string;
 }
 
@@ -212,13 +213,14 @@ export function useGenerateQuarterlyRecap(memberId: string | undefined) {
   const qc = useQueryClient();
   const { toast } = useToast();
   return useMutation({
-    mutationFn: async (args: { periodQuarter?: string; regenerate?: boolean }) => {
+    mutationFn: async (args: { periodQuarter?: string; regenerate?: boolean; mode?: 'auto' | 'from_raw' }) => {
       if (!memberId) throw new Error('memberId required');
       const { data, error } = await supabase.functions.invoke('generate-quarterly-recap', {
         body: {
           member_id: memberId,
           period_quarter: args.periodQuarter,
           regenerate: args.regenerate ?? false,
+          mode: args.mode ?? 'auto',
         },
       });
       if (error) {
@@ -228,9 +230,13 @@ export function useGenerateQuarterlyRecap(memberId: string | undefined) {
       if ((data as any)?.error) throw new Error((data as any).error);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       qc.invalidateQueries({ queryKey: ['quarterly-recaps', memberId] });
-      toast({ title: 'Rhitmo Trimestral gerado', description: 'Revise, calibre e confirme.' });
+      const isFast = data?.generation_mode === 'from_raw';
+      toast({
+        title: isFast ? 'Trimestral gerado em modo rápido' : 'Rhitmo Trimestral gerado',
+        description: isFast ? 'Sem mensais confirmados — revise com atenção extra.' : 'Revise, calibre e confirme.',
+      });
     },
     onError: (e: Error) => {
       toast({ title: 'Erro ao gerar trimestral', description: e.message, variant: 'destructive' });
