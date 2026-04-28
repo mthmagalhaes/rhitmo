@@ -1393,6 +1393,7 @@ export type Database = {
           confirmed_by: string | null
           created_at: string
           evolution_vs_previous: string | null
+          generation_mode: string
           highlights: Json
           id: string
           manager_id: string
@@ -1420,6 +1421,7 @@ export type Database = {
           confirmed_by?: string | null
           created_at?: string
           evolution_vs_previous?: string | null
+          generation_mode?: string
           highlights?: Json
           id?: string
           manager_id: string
@@ -1447,6 +1449,7 @@ export type Database = {
           confirmed_by?: string | null
           created_at?: string
           evolution_vs_previous?: string | null
+          generation_mode?: string
           highlights?: Json
           id?: string
           manager_id?: string
