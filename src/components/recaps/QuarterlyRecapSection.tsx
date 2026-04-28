@@ -144,6 +144,12 @@ function QuarterCard({ memberId, recap, periodQuarter }: { memberId: string; rec
               {t('recap.quarterly.draftBadge')}
             </Badge>
           )}
+          {recap?.generation_mode === 'from_raw' && (
+            <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/5">
+              <Zap className="h-3 w-3 mr-1" />
+              Modo rápido
+            </Badge>
+          )}
         </div>
         {recap && (
           <p className="text-xs text-muted-foreground mt-1">
