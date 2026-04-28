@@ -1,77 +1,64 @@
-## Diagnóstico
+## Causa raiz (confirmada nos logs)
 
-O Google está rejeitando a verificação OAuth por dois motivos distintos:
-
-### 1. URL da Política de Privacidade "não funcionando" — problema técnico (resolvível no código)
-
-O Rhitmo é uma SPA React. Quando o crawler do Google OAuth Consent Screen acessa `https://rhitmo.co/privacy-policy`, ele **não executa JavaScript** — recebe apenas o HTML do `index.html`, que tem `<div id="root"></div>` vazio e `<title>` da landing page. Validei agora com `curl` simulando Googlebot: retorna 200, mas zero ocorrências das palavras "política", "privacidade" ou "privacy" no HTML. Para o revisor, isso significa "URL inválida".
-
-A página existe e está completa em `src/pages/PrivacyPolicy.tsx` — só não é vista por crawlers.
-
-### 2. Vídeo de demonstração insuficiente — ação manual fora do código
-
-O Google quer um vídeo mostrando: (a) o fluxo de consentimento OAuth do Google sendo executado de ponta a ponta no app, e (b) o que o app faz com os dados do Google Calendar depois. **Isso não tem fix técnico** — é um deliverable de processo (regravar e reenviar pelo Console). Vou explicar abaixo o que o vídeo precisa mostrar, mas o plano de código foca apenas no item 1.
-
----
-
-## Plano (código)
-
-Servir versões HTML estáticas (pré-renderizadas) das páginas legais diretamente via `public/`, para que crawlers sem JS leiam o conteúdo completo. Estratégia: arquivos físicos em `public/privacy-policy.html` e `public/terms-of-service.html` que o servidor entrega antes do fallback da SPA.
-
-Como a SPA usa `BrowserRouter`, precisamos garantir que o request pra `/privacy-policy` sirva o HTML estático e **não** o `index.html` da SPA. A forma mais simples e à prova de hospedagem (Lovable / Vercel-like) é:
-
-- Criar os arquivos como **pastas com `index.html`**: `public/privacy-policy/index.html` e `public/terms-of-service/index.html`. A maioria das hospedagens estáticas resolve `/privacy-policy` para `/privacy-policy/index.html` antes do fallback SPA. Isso evita conflito com a rota React.
-- Manter as rotas React existentes (`/privacy-policy`, `/terms-of-service`) — usuários autenticados que já carregaram a SPA continuam tendo a experiência rica. O HTML estático só é usado quando o request chega "frio" (crawler, link direto sem cache de SPA).
-
-### Conteúdo dos HTMLs estáticos
-
-Auto-contidos, sem dependências externas:
-- `<!doctype html>` com `lang="pt-BR"`, charset, viewport
-- `<title>` específico (ex.: "Política de Privacidade — Rhitmo")
-- `<meta name="description">` adequado
-- `<link rel="canonical" href="https://rhitmo.co/privacy-policy">`
-- CSS inline minimalista (system font stack, max-width, espaçamento) para parecer apresentável se um humano abrir
-- Conteúdo textual completo replicando `src/pages/PrivacyPolicy.tsx` (13 seções da LGPD) e `src/pages/TermsOfService.tsx`
-- Link "Voltar para rhitmo.co" no topo
-- Footer simples com links cruzados entre Política e Termos
-
-### Sincronização do conteúdo
-
-Como o conteúdo agora vive em dois lugares (TSX + HTML estático), adicionar um comentário no topo de ambos os arquivos avisando: "Ao alterar este texto, atualize também `public/privacy-policy/index.html` (e vice-versa)". Manter os dois é trivial — são páginas que mudam raramente.
-
-### Arquivos a criar/editar
+A Edge Function `google-calendar-oauth` está quebrando no início do fluxo `authorize` com:
 
 ```
-public/privacy-policy/index.html      ← novo (HTML estático completo)
-public/terms-of-service/index.html    ← novo (HTML estático completo)
-src/pages/PrivacyPolicy.tsx           ← adicionar comentário de sincronização no topo
-src/pages/TermsOfService.tsx          ← adicionar comentário de sincronização no topo
+TypeError: supabaseAdmin.rpc(...).catch is not a function
+    at index.ts:69:68
 ```
 
-### Validação após o deploy
+Linha culpada (linha 64 do arquivo):
+```ts
+await supabaseAdmin.rpc("cleanup_expired_oauth_states").catch(() => {});
+```
 
-1. `curl -A "Googlebot" https://rhitmo.co/privacy-policy` deve retornar HTML com o conteúdo real (palavras "política", "privacidade", seções LGPD visíveis no HTML bruto).
-2. `curl -A "Googlebot" https://rhitmo.co/terms-of-service` idem.
-3. Acessar as URLs no navegador como usuário normal continua funcionando (a hospedagem serve o HTML estático; usuários conseguem clicar para voltar à landing).
-4. Reenviar a verificação no Google Cloud Console.
+**Por que quebra:** o builder retornado por `supabase.rpc(...)` é um `PostgrestBuilder` "thenable", não uma `Promise` real. Ele expõe `.then()` (por isso `await` funciona em quase todos os lugares), mas **não expõe `.catch()`**. Encadear `.catch(() => {})` direto no builder dispara `TypeError` em runtime — que é exatamente o que aconteceu com o Matheus e vai acontecer com **todo usuário** que clicar em "Conectar Google Calendar".
 
----
+Isso explica o toast "Erro ao conectar / Não foi possível iniciar a conexão com o Google Calendar" — a função 500a antes mesmo de gerar a `authUrl`, então o front nunca recebe a URL pra redirecionar pro Google.
 
-## Sobre o vídeo de demonstração (sem ação de código)
+Esse bug é universal (não é específico do Matheus, da conta `fstr.co`, nem do Lovable Preview). Está em produção, em `rhitmo.co`, bloqueando 100% das novas conexões de calendário desde o último deploy que introduziu essa linha.
 
-O vídeo precisa mostrar, na ordem:
+## Correção
 
-1. **Tela inicial do app** com o botão/CTA de "Conectar Google Calendar" (na página de configurações ou no fluxo de agendamento de reuniões).
-2. **Clique no botão** → redirecionamento para a tela de consentimento do Google → escolha de conta Google → tela mostrando os escopos solicitados (`calendar.readonly` ou similar) → clique em "Permitir".
-3. **Retorno ao app** com confirmação visual de que a conexão foi feita.
-4. **Uso real dos dados**: o app listando eventos do calendário do usuário, agendando o bot Recall.ai numa reunião, e o brief sendo gerado a partir do evento. Ou seja, demonstrar **por que** o app pediu o escopo.
-5. **Tela de revogação/desconexão** (opcional, mas recomendado): mostrar onde o usuário pode desconectar a conta Google.
+Trocar o `.catch()` no builder por `try/catch` em volta do `await`. Cleanup de nonces expirados é "best effort" — não pode derrubar o fluxo de autorização.
 
-Duração ideal: 2 a 4 minutos. Sem cortes longos, sem música por cima da narração, e o áudio em PT-BR ou EN — o revisor do Google avalia em inglês, então legendas em EN ajudam. Subir como vídeo público (não-listado) no YouTube e colar a URL no Console.
+### Mudança em `supabase/functions/google-calendar-oauth/index.ts` (linha 64)
 
----
+De:
+```ts
+await supabaseAdmin.rpc("cleanup_expired_oauth_states").catch(() => {});
+```
 
-## Resumo
+Para:
+```ts
+try {
+  await supabaseAdmin.rpc("cleanup_expired_oauth_states");
+} catch (cleanupErr) {
+  console.warn("Best-effort cleanup_expired_oauth_states failed:", cleanupErr);
+}
+```
 
-- **Código**: criar 2 arquivos HTML estáticos auto-contidos em `public/` para que o Googlebot leia o conteúdo das páginas legais. Não altera comportamento para usuários autenticados nem rotas React existentes.
-- **Manual (você)**: regravar o vídeo seguindo o roteiro acima e reenviar a verificação no Google Console. Sem isso, mesmo com a Política funcionando, o item "Funcionalidade do app" continuará reprovado.
+## Hardening adicional (mesma função, mesmo deploy)
+
+Aproveitar a edição para blindar o resto do arquivo contra a mesma classe de bug e melhorar diagnóstico:
+
+1. **Auditar todos os `.catch(` da função** — confirmar que nenhum outro está encadeado direto em builder do Supabase (`from().select()`, `from().delete()`, `rpc()`). Se houver, converter pro mesmo padrão `try/catch`.
+
+2. **Mensagem de erro mais útil no front** — hoje o `useCalendarIntegration.connectCalendar` mostra um toast genérico ("Não foi possível iniciar a conexão"). Vou propagar a mensagem real vinda da Edge Function (quando existir) pra facilitar diagnóstico futuro pelo usuário e pelo suporte. O erro técnico continua no console; o toast ganha o motivo legível.
+
+3. **Validação de variáveis de ambiente no boot** — adicionar checagem explícita no início da função para `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `SUPABASE_SERVICE_ROLE_KEY`. Se faltar alguma, retornar 500 com mensagem clara em vez de estourar `TypeError` no `!` non-null assertion. Previne uma classe inteira de "tela vermelha sem explicação" em deploys futuros.
+
+## Arquivos afetados
+
+- `supabase/functions/google-calendar-oauth/index.ts` — fix do `.catch`, hardening de env vars, log melhor.
+- `src/hooks/useCalendarIntegration.ts` — propagar mensagem real do erro pro toast em `connectCalendar`.
+
+## Validação pós-deploy
+
+1. Verificar logs da Edge Function (`supabase--edge_function_logs google-calendar-oauth`) — não deve mais aparecer `TypeError`.
+2. Testar fluxo: clicar "Conectar Google Calendar" → deve redirecionar pro consent screen do Google sem toast vermelho.
+3. Confirmar com o Matheus (matheus.magalhaes@fstr.co) que a conexão completa.
+
+## Por que isso é bloqueante para a verificação Google
+
+Sem essa correção, o vídeo de demonstração do OAuth que você precisa gravar para o Google Cloud Console **não tem como ser gravado** — o fluxo quebra no primeiro clique. Esse fix precisa subir antes da regravação do vídeo.

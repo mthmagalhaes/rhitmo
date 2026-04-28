@@ -12,11 +12,28 @@ Deno.serve(async (req) => {
   }
 
   const url = new URL(req.url);
-  const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID")!;
-  const GOOGLE_CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET")!;
-  const GOOGLE_REDIRECT_URI = Deno.env.get("GOOGLE_REDIRECT_URI")!;
-  const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID");
+  const GOOGLE_CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET");
+  const GOOGLE_REDIRECT_URI = Deno.env.get("GOOGLE_REDIRECT_URI");
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+
+  // Fail fast with a clear message instead of crashing on `!` non-null assertions.
+  const missingEnv: string[] = [];
+  if (!GOOGLE_CLIENT_ID) missingEnv.push("GOOGLE_CLIENT_ID");
+  if (!GOOGLE_CLIENT_SECRET) missingEnv.push("GOOGLE_CLIENT_SECRET");
+  if (!GOOGLE_REDIRECT_URI) missingEnv.push("GOOGLE_REDIRECT_URI");
+  if (!SUPABASE_URL) missingEnv.push("SUPABASE_URL");
+  if (!SUPABASE_SERVICE_ROLE_KEY) missingEnv.push("SUPABASE_SERVICE_ROLE_KEY");
+  if (!SUPABASE_ANON_KEY) missingEnv.push("SUPABASE_ANON_KEY");
+  if (missingEnv.length > 0) {
+    console.error("Missing required env vars:", missingEnv);
+    return new Response(
+      JSON.stringify({ error: `Server misconfigured: missing ${missingEnv.join(", ")}` }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
 
   let action = url.searchParams.get("action");
 
@@ -42,7 +59,7 @@ Deno.serve(async (req) => {
         });
       }
 
-      const supabase = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      const supabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
         global: { headers: { Authorization: authHeader } },
       });
 
@@ -59,9 +76,15 @@ Deno.serve(async (req) => {
       // SECURITY (Issue 2 fix): generate a server-side single-use state nonce
       // and persist it. The callback will validate the state against this row
       // and use the stored user_id (never trusting the value Google echoes).
-      const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      const supabaseAdmin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
       // Best-effort cleanup of expired nonces — don't fail authorize if it errors.
-      await supabaseAdmin.rpc("cleanup_expired_oauth_states").catch(() => {});
+      // NOTE: PostgrestBuilder is thenable but NOT a real Promise — `.catch()` on
+      // it throws `TypeError: ... .catch is not a function`. Use try/catch.
+      try {
+        await supabaseAdmin.rpc("cleanup_expired_oauth_states");
+      } catch (cleanupErr) {
+        console.warn("Best-effort cleanup_expired_oauth_states failed:", cleanupErr);
+      }
 
       const stateToken = crypto.randomUUID();
       const { error: stateInsertError } = await supabaseAdmin
