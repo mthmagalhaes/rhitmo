@@ -357,30 +357,7 @@ Deno.serve(async (req) => {
     }
 
     const { startMonth, endMonth } = quarterRange(periodQuarter);
-
-    // Fetch confirmed monthly recaps within the quarter
-    const { data: monthlies, error: monthErr } = await admin
-      .from('monthly_recaps')
-      .select('id, period_month, highlight_text, concern_text, dominant_pattern, feedbacks_count, meetings_count')
-      .eq('member_id', member.id)
-      .eq('manager_id', user.id)
-      .eq('status', 'confirmed')
-      .gte('period_month', startMonth)
-      .lt('period_month', endMonth)
-      .order('period_month', { ascending: true });
-
-    if (monthErr) throw monthErr;
-
-    if (!monthlies || monthlies.length === 0) {
-      const [qy, qm] = periodQuarter.split('-').map((x) => parseInt(x, 10));
-      const qLabel = `Q${Math.floor((qm - 1) / 3) + 1} ${qy}`;
-      return new Response(
-        JSON.stringify({
-          error: `Confirme ao menos um Rhitmo Mensal do trimestre ${qLabel} antes de gerar o trimestral. Sem mensais confirmados, o trimestral perde a base.`,
-        }),
-        { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
-    }
+    const mode = body.mode === 'from_raw' ? 'from_raw' : 'auto';
 
     // Previous quarter (for evolution) — confirmed only
     const prevQuarter = previousQuarterStart(periodQuarter);
@@ -405,11 +382,84 @@ Deno.serve(async (req) => {
         }
       : null;
 
-    const ai = await callQuarterlyRecapAI(
-      (member as any).name,
-      monthlies as any,
-      previous,
-    );
+    let ai: QuarterlyRecapAI | null = null;
+    let sourceMonthlyIds: string[] = [];
+    let totalFeedbacks = 0;
+    let totalMeetings = 0;
+    let generationMode: 'from_monthly' | 'from_raw' = 'from_monthly';
+
+    if (mode === 'auto') {
+      // Fetch confirmed monthly recaps within the quarter
+      const { data: monthlies, error: monthErr } = await admin
+        .from('monthly_recaps')
+        .select('id, period_month, highlight_text, concern_text, dominant_pattern, feedbacks_count, meetings_count')
+        .eq('member_id', member.id)
+        .eq('manager_id', user.id)
+        .eq('status', 'confirmed')
+        .gte('period_month', startMonth)
+        .lt('period_month', endMonth)
+        .order('period_month', { ascending: true });
+
+      if (monthErr) throw monthErr;
+
+      if (!monthlies || monthlies.length === 0) {
+        const [qy, qm] = periodQuarter.split('-').map((x) => parseInt(x, 10));
+        const qLabel = `Q${Math.floor((qm - 1) / 3) + 1} ${qy}`;
+        return new Response(
+          JSON.stringify({
+            error: `Confirme ao menos um Rhitmo Mensal do trimestre ${qLabel} antes de gerar o trimestral. Sem mensais confirmados, o trimestral perde a base.`,
+          }),
+          { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+
+      ai = await callQuarterlyRecapAI((member as any).name, monthlies as any, previous);
+      sourceMonthlyIds = (monthlies as any[]).map((m) => m.id);
+      totalFeedbacks = (monthlies as any[]).reduce((acc, m) => acc + (m.feedbacks_count ?? 0), 0);
+      totalMeetings = (monthlies as any[]).reduce((acc, m) => acc + (m.meetings_count ?? 0), 0);
+      generationMode = 'from_monthly';
+    } else {
+      // FROM_RAW: pull raw feedbacks + 1:1s of the quarter directly
+      const startIso = new Date(startMonth + 'T00:00:00Z').toISOString();
+      const endIso = new Date(endMonth + 'T00:00:00Z').toISOString();
+      const [{ data: feedbacks }, { data: meetings }] = await Promise.all([
+        admin
+          .from('feedbacks')
+          .select('id, content, type, sentiment, tags, occurred_at, summary')
+          .eq('member_id', member.id)
+          .eq('manager_id', user.id)
+          .gte('occurred_at', startIso)
+          .lt('occurred_at', endIso)
+          .order('occurred_at', { ascending: true })
+          .limit(40),
+        admin
+          .from('meeting_transcripts')
+          .select('id, leader_notes, extracted_themes, created_at')
+          .eq('member_id', member.id)
+          .eq('manager_id', user.id)
+          .gte('created_at', startIso)
+          .lt('created_at', endIso)
+          .eq('processing_status', 'completed')
+          .order('created_at', { ascending: true })
+          .limit(15),
+      ]);
+
+      const fbList = feedbacks ?? [];
+      const mtList = meetings ?? [];
+      if (fbList.length === 0 && mtList.length === 0) {
+        return new Response(
+          JSON.stringify({
+            error: 'Nenhum feedback ou 1:1 encontrado no trimestre. Registre evidências antes de tentar o modo rápido.',
+          }),
+          { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+
+      ai = await callQuarterlyRecapFromRawAI((member as any).name, fbList as any, mtList as any, previous);
+      totalFeedbacks = fbList.length;
+      totalMeetings = mtList.length;
+      generationMode = 'from_raw';
+    }
 
     if (!ai) {
       return new Response(JSON.stringify({ error: 'AI generation failed' }), {
@@ -417,9 +467,6 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    const totalFeedbacks = (monthlies as any[]).reduce((acc, m) => acc + (m.feedbacks_count ?? 0), 0);
-    const totalMeetings = (monthlies as any[]).reduce((acc, m) => acc + (m.meetings_count ?? 0), 0);
 
     const payload = {
       member_id: member.id,
@@ -431,15 +478,16 @@ Deno.serve(async (req) => {
       recurring_patterns: ai.recurring_patterns ?? [],
       evolution_vs_previous: ai.evolution_vs_previous ?? null,
       ai_suggested_classification: ai.suggested_classification ?? null,
-      classification: null, // leader confirms
+      classification: null,
       ai_suggested_next_action_key: ai.suggested_next_action_key ?? null,
       next_action_key: null,
       turnover_risk: ai.suggested_turnover_risk ?? null,
-      source_monthly_recap_ids: (monthlies as any[]).map((m) => m.id),
+      source_monthly_recap_ids: sourceMonthlyIds,
       source_feedbacks_count: totalFeedbacks,
       source_meetings_count: totalMeetings,
       ai_generated_at: new Date().toISOString(),
       ai_model: 'google/gemini-2.5-flash',
+      generation_mode: generationMode,
     };
 
     let recapId: string;
@@ -467,7 +515,8 @@ Deno.serve(async (req) => {
         ok: true,
         recap_id: recapId,
         period_quarter: periodQuarter,
-        sources: { monthlies: monthlies.length, feedbacks: totalFeedbacks, meetings: totalMeetings },
+        generation_mode: generationMode,
+        sources: { monthlies: sourceMonthlyIds.length, feedbacks: totalFeedbacks, meetings: totalMeetings },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
