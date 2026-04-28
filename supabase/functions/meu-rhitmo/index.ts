@@ -304,7 +304,7 @@ Pergunta do usuário: ${question.slice(0, 300)}`;
       ? 'https://ai.gateway.lovable.dev/v1/chat/completions'
       : 'https://api.openai.com/v1/chat/completions';
     const apiKey = useGateway ? lovableApiKey : openAIApiKey;
-    const modelName = useGateway ? 'google/gemini-2.5-flash' : 'gpt-4o';
+    const modelName = useGateway ? 'google/gemini-3-flash-preview' : 'gpt-4o-mini';
 
     console.log(`Calling ${modelName} via ${useGateway ? 'Lovable AI Gateway' : 'OpenAI'}`);
 
