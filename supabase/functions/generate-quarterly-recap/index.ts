@@ -14,6 +14,7 @@ interface Body {
   member_id: string;
   period_quarter?: string; // ISO yyyy-mm-dd, normalized to first day of quarter
   regenerate?: boolean;
+  mode?: 'auto' | 'from_raw'; // 'auto' = uses confirmed monthlies (default); 'from_raw' = fast mode from raw feedbacks
 }
 
 type Classification = 'precisa_subir' | 'dentro_esperado' | 'subindo_barra' | 'acima_esperado';
