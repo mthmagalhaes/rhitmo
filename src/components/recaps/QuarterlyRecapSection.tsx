@@ -5,7 +5,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Sparkles, CheckCircle2, RefreshCw, BarChart3, AlertTriangle, Clock } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Loader2, Sparkles, CheckCircle2, RefreshCw, BarChart3, AlertTriangle, Clock, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   useQuarterlyRecaps,
@@ -133,6 +144,12 @@ function QuarterCard({ memberId, recap, periodQuarter }: { memberId: string; rec
               {t('recap.quarterly.draftBadge')}
             </Badge>
           )}
+          {recap?.generation_mode === 'from_raw' && (
+            <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/5">
+              <Zap className="h-3 w-3 mr-1" />
+              Modo rápido
+            </Badge>
+          )}
         </div>
         {recap && (
           <p className="text-xs text-muted-foreground mt-1">
@@ -148,24 +165,67 @@ function QuarterCard({ memberId, recap, periodQuarter }: { memberId: string; rec
         {!recap && (
           <div className="text-center py-6 space-y-3">
             <p className="text-sm text-muted-foreground">{t('recap.quarterly.needConfirmedMonthly')}</p>
-            <Button
-              onClick={() => generate.mutate({ periodQuarter })}
-              disabled={generate.isPending}
-              size="sm"
-              className="rounded-xl"
-            >
-              {generate.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {t('recap.monthly.generating')}
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  {t('recap.quarterly.generateButton')}
-                </>
-              )}
-            </Button>
+            <div className="flex flex-col items-center gap-2">
+              <Button
+                onClick={() => generate.mutate({ periodQuarter, mode: 'auto' })}
+                disabled={generate.isPending}
+                size="sm"
+                className="rounded-xl"
+              >
+                {generate.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    {t('recap.monthly.generating')}
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    {t('recap.quarterly.generateButton')}
+                  </>
+                )}
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="rounded-xl text-xs text-muted-foreground hover:text-foreground"
+                    disabled={generate.isPending}
+                  >
+                    <Zap className="h-3 w-3 mr-1.5" />
+                    Gerar em modo rápido (sem mensais)
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="rounded-2xl">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2">
+                      <Zap className="h-5 w-5 text-amber-600" />
+                      Modo rápido — atalho com ressalvas
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="space-y-2 pt-2">
+                      <span className="block">
+                        Esse modo gera o trimestral direto dos feedbacks e 1:1s brutos do trimestre, <strong>sem a curadoria mensal</strong>.
+                      </span>
+                      <span className="block">
+                        A qualidade tende a ser menor: padrões isolados podem pesar mais e a IA tem menos contexto editorial. O recap fica marcado com badge <strong>"Modo rápido"</strong> permanentemente, para auditoria.
+                      </span>
+                      <span className="block text-xs">
+                        Recomendado só quando você não confirmou nenhum mensal e precisa destravar o trimestral agora.
+                      </span>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="rounded-xl"
+                      onClick={() => generate.mutate({ periodQuarter, mode: 'from_raw' })}
+                    >
+                      Gerar mesmo assim
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </div>
         )}
 

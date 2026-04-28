@@ -1,0 +1,2 @@
+ALTER TABLE public.quarterly_recaps ADD COLUMN IF NOT EXISTS generation_mode text NOT NULL DEFAULT 'from_monthly';
+ALTER TABLE public.quarterly_recaps ADD CONSTRAINT quarterly_recaps_generation_mode_check CHECK (generation_mode IN ('from_monthly', 'from_raw'));
