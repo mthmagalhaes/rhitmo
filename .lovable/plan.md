@@ -1,85 +1,98 @@
-## Diagnóstico: por que o app ficou mais lento
+## Auditoria de segurança — resultado por issue
 
-Investiguei os pontos que rodam em **toda página autenticada** e identifiquei 4 gargalos cumulativos:
+### Issue 1 — CRÍTICO: ownership check em edge functions com `service_role`
 
-### 1. AccountContext dispara 4 queries em paralelo + retries agressivos (gargalo principal)
-Em `src/contexts/AccountContext.tsx`, a cada mount o app faz **simultaneamente** para o mesmo usuário:
-- workspace (`workspaces` por owner_id + fallback `teams` por leader_user_id)
-- role (3 queries em paralelo dentro de uma única `useQuery`)
-- linked member (mais 2 queries `workspaces`+`teams` antes do `team_members`)
-- pending invite por email
+**Já estão protegidas (nenhuma ação):**
+- `generate-review` — verifica `workspace.owner_id === user.id` (linhas 36-75)
+- `analyze-feedback` — verifica `team.leader_user_id === user.id` (linhas 108-144)
+- `generate-brief` — verifica `meeting.user_id === userId` (linha 69)
+- `reprocess-meeting` — verifica `botRecord.user_id !== userId` (linha 83)
+- `chat-mentor` / `meu-rhitmo` — não escrevem em tabelas escopadas por `member_id`
 
-Resultado: **~9 round-trips ao Supabase só para descobrir quem é o usuário**, com queries duplicadas (workspace+team_leader são consultados 3 vezes). Pior: `retry: 5` com backoff exponencial até 10s — se uma falha por RLS transitória, trava o boot por dezenas de segundos. E **nenhuma dessas queries tem `staleTime`**, então elas refazem a cada navegação que remonta o provider.
+**Vulneráveis — precisam fix:**
 
-### 2. Sem QueryClient global com `staleTime`
-`src/App.tsx` cria `new QueryClient()` sem defaults. Cada `useQuery` do app considera dados "stale" imediatamente, refazendo no foco de janela, reconexão e remontagem.
+1. **`upload-meeting/index.ts`** — recebe `member_id` de `formData` (linha 95) e insere em `meeting_transcripts` + `feedbacks` sob service_role sem verificar ownership. Qualquer usuário autenticado (ou portador de extension token válido) consegue anexar uma reunião a qualquer membro do banco.
+   
+   Fix: depois de obter `userId`, se `memberId` veio no payload, validar:
+   ```
+   SELECT 1 FROM team_members tm
+     JOIN teams t ON t.id = tm.team_id
+     JOIN workspaces w ON w.id = t.workspace_id
+   WHERE tm.id = memberId
+     AND (t.leader_user_id = userId OR w.owner_id = userId)
+   ```
+   Caso contrário, retornar 403.
 
-### 3. ActivityBadge faz polling de 30s em todas as páginas
-`refetchInterval: 30000` com 2 `count(*)` em tabelas — ok individualmente, mas soma à carga geral e segura conexões.
+2. **`generate-formal-review/index.ts`** — recebe `reviewId` e busca o review via service_role (linhas 55-63) sem checar se o caller é dono. Qualquer usuário autenticado pode regenerar avaliações de outros workspaces.
+   
+   Fix: após o fetch do review, validar que `caller.id` é igual a um de:
+   - `review.manager_id` (autor original)
+   - `team.leader_user_id` (líder atual do membro)
+   - `workspace.owner_id` (dono do workspace)
+   
+   Caso contrário, retornar 403.
 
-### 4. Sem code-splitting de rotas
-`src/App.tsx` importa estaticamente **40+ páginas** (Admin, HR, DesignSystem, Recorder, etc.). O bundle inicial carrega tudo, mesmo quando o usuário só vai ao `/dashboard`. Isso impacta o **primeiro carregamento** (TTI/LCP), que é a sensação principal de "está mais lento".
+### Issue 2 — CRÍTICO: validação server-side do `state` no OAuth do Google Calendar
+
+Confirmado: `google-calendar-oauth/index.ts` usa o `state` recebido do Google diretamente como `user_id` no upsert da tabela `google_calendar_tokens` (linha 161). Não há validação contra um valor armazenado server-side. Atacante pode forjar `state = uuid_da_vítima` e sequestrar a conexão.
+
+**Fix em duas partes:**
+
+**a) Migration:** criar tabela `oauth_states`:
+- `state_token text PRIMARY KEY` (UUID gerado pelo backend)
+- `user_id uuid NOT NULL`
+- `provider text DEFAULT 'google_calendar'`
+- `created_at`, `expires_at` (default now+10min)
+- RLS habilitado, **só** policy para `service_role`
+- Função utilitária `cleanup_expired_oauth_states()`
+
+**b) Edge function `google-calendar-oauth`:**
+- No action `authorize`: gerar `crypto.randomUUID()`, INSERT em `oauth_states { state_token, user_id }`, usar esse token no `state=` da URL do Google.
+- No action `callback`: SELECT pelo `state_token` recebido, validar `expires_at > now()`, DELETE do registro (uso único). Se inválido/expirado → 400. Usar o `user_id` da tabela (não confiar no que veio na request) para o upsert dos tokens.
+- Limpar registros expirados oportunisticamente.
+
+Frontend (`GoogleCalendarCallback.tsx`) **não muda** — continua passando `code` e `state` exatamente como recebe do Google.
+
+### Issue 3 — IMPORTANTE: policies faltantes em `enterprise_leads`
+
+Confirmado: tabela só tem policy de `SELECT` para admin. Sem INSERT a function `enterprise-contact` consegue gravar **só porque usa service_role** — funcional, mas removido service_role, formulário público quebra. Sem DELETE, limpeza administrativa só via dashboard SQL.
+
+**Fix (migration):**
+- `INSERT` policy para `anon` + `authenticated` com `WITH CHECK (true)`
+- `DELETE` policy para `service_role` com `USING (true)`
+
+Edge function `enterprise-contact` continua funcionando exatamente como hoje (já usa service_role).
+
+### Issue 4 — BOA PRÁTICA: `search_path` em funções
+
+**Já está resolvido.** Query no catálogo (`pg_proc` × `proconfig`) confirmou: zero funções no schema `public` sem `search_path` definido. Os 91 warnings remanescentes do linter são de outra natureza (`Public Can Execute SECURITY DEFINER Function` — código `0028/0029`), não relacionados ao Issue 4 e não solicitados nesta auditoria.
 
 ---
 
-## Plano de otimização
+## Resumo de mudanças propostas
 
-### Etapa 1 — Consolidar AccountContext em uma RPC única
-Criar uma função SQL `get_account_context(p_user_id uuid)` (SECURITY DEFINER) que retorna em **uma única chamada** um JSON com `{ workspace_id, role, linked_member, has_pending_invite }`. Substituir as 4 `useQuery` do `AccountContext` por uma única query.
+### 1 migration nova
+Cria `oauth_states` (Issue 2) + 2 policies em `enterprise_leads` (Issue 3) + função helper `cleanup_expired_oauth_states`.
 
-Ganhos: de ~9 round-trips para 1, eliminando duplicação e tornando o boot determinístico.
+### 3 arquivos de código
+- `supabase/functions/google-calendar-oauth/index.ts` — gerar/validar state token (Issue 2)
+- `supabase/functions/upload-meeting/index.ts` — ownership check quando `member_id` é fornecido (Issue 1)
+- `supabase/functions/generate-formal-review/index.ts` — ownership check do `reviewId` (Issue 1)
 
-### Etapa 2 — Reduzir retries e adicionar `staleTime`
-- Trocar `retry: 5` (até 10s/tentativa) por `retry: 2` com `retryDelay` máx de 2s.
-- Adicionar `staleTime: 5 * 60_000` para a query consolidada (perfil/role muda raramente).
-- Remover o loop `ensureSession()` que joga erro para forçar retry — usar `enabled` corretamente.
+### Não muda
+- Nenhuma RLS policy existente é alterada
+- Nenhuma lógica de negócio de edge function é alterada
+- Frontend não muda
+- `generate-review`, `analyze-feedback`, `generate-brief`, `reprocess-meeting`, `chat-mentor`, `meu-rhitmo` ficam como estão (já protegidos)
 
-### Etapa 3 — Configurar defaults globais do QueryClient
-Em `src/App.tsx`:
-```ts
-new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 60_000,           // 1 min de cache padrão
-      gcTime: 10 * 60_000,         // 10 min em memória
-      refetchOnWindowFocus: false, // evita refetch ao voltar para a aba
-      retry: 1,
-    },
-  },
-});
-```
-Queries críticas que precisam ser sempre frescas (ActivityBadge polling, mutations) já controlam isso explicitamente.
+## Validação após deploy
 
-### Etapa 4 — Code-splitting das rotas pesadas
-Converter para `React.lazy()` as páginas que **não fazem parte do fluxo principal de líder**:
-- Admin, AdminLayout, DesignSystem
-- HRDashboard, HRTeams, HRMembers, HRAnalytics, CompetencyFramework
-- RecorderPopup, SlackConnect, SlackChannels, GoogleCalendarCallback
-- Enterprise, Roadmap, TermsOfService, PrivacyPolicy, Unsubscribe, ResetPassword
-
-Manter eager: Landing, AuthPage, Index/Dashboard, AppLayout (caminho crítico).
-Envelopar `<Routes>` em `<Suspense fallback={<LoadingScreen/>}>`.
-
-Ganho esperado: bundle inicial **30-50% menor**, primeiro paint do `/dashboard` bem mais rápido.
-
-### Etapa 5 — Reduzir polling do ActivityBadge
-Aumentar `refetchInterval` de 30s para **60s** e adicionar `refetchIntervalInBackground: false` (não faz sentido fazer polling com a aba escondida).
-
-### Etapa 6 — Medição
-Após as mudanças, rodar `browser--performance_profile` no `/dashboard` autenticado para confirmar Web Vitals e tempo até a primeira query útil.
-
----
-
-## Arquivos afetados
-
-- **Migration nova**: criar função `get_account_context`
-- `src/contexts/AccountContext.tsx` — substituir 4 queries por 1 RPC
-- `src/App.tsx` — defaults do QueryClient + lazy imports + Suspense
-- `src/components/ActivityBadge.tsx` — polling 60s
-
-## Fora do escopo (mas vale registrar)
-- Migrar páginas pesadas (Index, MemberDetails, HRAnalytics) para `useQueries`/RPCs agregadas — fica para uma segunda rodada se ainda houver lentidão após as mudanças acima.
-- Edge functions lentas (chat-mentor, generate-quarterly-recap) já foram tratadas em conversas anteriores e não afetam o tempo de carregamento das páginas.
+1. Líder gera avaliação (`generate-review` + `generate-formal-review`) dos próprios liderados → continua funcionando.
+2. Conexão Google Calendar end-to-end (`/dashboard` → "Conectar Google Calendar" → OAuth → callback) → continua funcionando, agora com state token válido.
+3. Tentativa manual de POST no callback com state forjado → retorna 400.
+4. Formulário público enterprise (`/enterprise`) → continua salvando lead.
+5. Upload de meeting com `member_id` próprio → funciona; com `member_id` de outro workspace → 403.
+6. `generate-formal-review` invocado por não-dono do review → 403.
 
 ## Risco
-Baixo. A RPC consolidada precisa replicar fielmente a lógica atual de fallback (owner → leader → linked member). Vou validar com `supabase--read_query` antes de ativar.
+Baixo. Cada mudança adiciona uma verificação ANTES da operação sensível e preserva o caminho feliz dos usuários legítimos. A única quebra possível seria em `upload-meeting` se a Chrome Extension estivesse mandando `member_id` cross-workspace — mas isso seria justamente o vetor de ataque que estamos fechando.
