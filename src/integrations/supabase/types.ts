@@ -2298,6 +2298,10 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      get_account_context: {
+        Args: { p_user_email?: string; p_user_id: string }
+        Returns: Json
+      }
       get_all_users_with_metadata: {
         Args: never
         Returns: {
