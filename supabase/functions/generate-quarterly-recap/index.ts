@@ -170,6 +170,107 @@ Responda APENAS com JSON no formato:
   }
 }
 
+async function callQuarterlyRecapFromRawAI(
+  memberName: string,
+  feedbacks: Array<{ id: string; content: string; type: string; sentiment: string | null; tags: string[] | null; occurred_at: string; summary: string | null }>,
+  meetings: Array<{ id: string; leader_notes: string | null; extracted_themes: string[] | null; created_at: string }>,
+  previous: { classification: Classification | null; turnover_risk: TurnoverRisk | null; dominant_summary: string | null } | null,
+): Promise<QuarterlyRecapAI | null> {
+  const apiKey = Deno.env.get('LOVABLE_API_KEY');
+  if (!apiKey) throw new Error('LOVABLE_API_KEY not configured');
+
+  const systemPrompt = `${RHITMO_IDENTITY}
+
+Você é o "Rhitmo Trimestral — Modo Rápido". O líder NÃO confirmou os resumos mensais, então você está consolidando feedbacks e notas brutas do trimestre direto. Por isso, redobre o rigor anti-alucinação.
+
+${GUARDRAILS_PROMPT}
+
+REGRAS CRÍTICAS DO MODO RÁPIDO:
+1. **Cada highlight DEVE referenciar pelo menos 1 feedback_id real do trimestre.** Use o mês do occurred_at como source_month (formato YYYY-MM).
+2. **Padrão recorrente** só conta como recurring_pattern se aparecer em pelo menos 2 evidências distintas. Senão, deixe array vazio. Não invente padrões.
+3. Linguagem factual e seca. Sem "incrível", "preocupante demais". Use "entregou X", "atrasou Y".
+4. Foque APENAS em ações de ${memberName}.
+5. Como você está olhando dados brutos sem curadoria humana, seja CONSERVADOR na classificação — prefira "dentro_esperado" se não houver sinal forte.
+6. Resposta JSON válida em português brasileiro.
+
+Mesma estrutura do trimestral padrão: highlights, recurring_patterns, evolution_vs_previous, suggested_classification, suggested_turnover_risk, suggested_next_action_key.
+
+Matriz de next_action_key (escolha UMA conforme classificação):
+- "precisa_subir": "improvement_plan_30_60_90" | "direct_conversation" | "increase_1on1_frequency"
+- "dentro_esperado": "define_new_challenge" | "public_recognition" | "growth_conversation"
+- "subindo_barra": "high_visibility_project" | "promotion_path_conversation" | "stakeholder_exposure"
+- "acima_esperado": "anticipate_promotion" | "protect_from_overload" | "external_mentorship"`;
+
+  const feedbacksText = feedbacks.length > 0
+    ? feedbacks.map((f) => `[feedback_id=${f.id} | ${f.occurred_at.slice(0, 10)} | type=${f.type} | sentiment=${f.sentiment ?? '?'}]\n${f.summary || f.content.slice(0, 400)}`).join('\n\n')
+    : '(sem feedbacks no período)';
+  const meetingsText = meetings.length > 0
+    ? meetings.map((m) => `[meeting_id=${m.id} | ${m.created_at.slice(0, 10)}]\nNotas líder: ${m.leader_notes?.slice(0, 400) || '(vazio)'}`).join('\n\n')
+    : '(sem 1:1s registrados no período)';
+
+  const previousText = previous
+    ? `Trimestre anterior:\n- Classificação: ${previous.classification ?? 'não informada'}\n- Risco turnover: ${previous.turnover_risk ?? 'não informado'}\n- Padrão geral: ${previous.dominant_summary ?? 'não informado'}`
+    : 'Trimestre anterior: (sem histórico)';
+
+  const userPrompt = `Liderado: ${memberName}
+
+DADOS BRUTOS DO TRIMESTRE (modo rápido — sem curadoria mensal):
+
+## FEEDBACKS / NOTAS (${feedbacks.length}):
+${feedbacksText}
+
+## 1:1s (${meetings.length}):
+${meetingsText}
+
+${previousText}
+
+Responda APENAS com JSON no formato:
+{
+  "highlights": [{"title": "...", "detail": "...", "source_month": "YYYY-MM"}],
+  "recurring_patterns": [{"pattern": "...", "polarity": "positive|negative", "frequency_note": "apareceu em N evidências"}],
+  "evolution_vs_previous": "string ou null",
+  "suggested_classification": "precisa_subir|dentro_esperado|subindo_barra|acima_esperado",
+  "suggested_turnover_risk": "low|medium|high",
+  "suggested_next_action_key": "chave-da-matriz"
+}`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 50000);
+  try {
+    const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        response_format: { type: 'json_object' },
+      }),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      console.error('[generate-quarterly-recap from_raw] AI error', res.status, txt);
+      if (res.status === 429) throw new Error('AI rate limit exceeded');
+      if (res.status === 402) throw new Error('AI credits exhausted');
+      return null;
+    }
+    const json = await res.json();
+    const content = json?.choices?.[0]?.message?.content;
+    if (!content) return null;
+    try {
+      return JSON.parse(content) as QuarterlyRecapAI;
+    } catch (e) {
+      console.error('[generate-quarterly-recap from_raw] failed to parse AI JSON', e);
+      return null;
+    }
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
