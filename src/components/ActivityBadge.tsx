@@ -33,7 +33,9 @@ export function ActivityBadge({ onClick }: ActivityBadgeProps) {
 
       return (syncResult.count || 0) + (nudgesResult.count || 0);
     },
-    refetchInterval: 30000,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
+    staleTime: 30_000,
   });
 
   return (
