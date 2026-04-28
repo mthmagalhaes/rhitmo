@@ -56,6 +56,30 @@ Deno.serve(async (req) => {
 
       const userId = user.id;
 
+      // SECURITY (Issue 2 fix): generate a server-side single-use state nonce
+      // and persist it. The callback will validate the state against this row
+      // and use the stored user_id (never trusting the value Google echoes).
+      const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      // Best-effort cleanup of expired nonces — don't fail authorize if it errors.
+      await supabaseAdmin.rpc("cleanup_expired_oauth_states").catch(() => {});
+
+      const stateToken = crypto.randomUUID();
+      const { error: stateInsertError } = await supabaseAdmin
+        .from("oauth_states")
+        .insert({
+          state_token: stateToken,
+          user_id: userId,
+          provider: "google_calendar",
+        });
+
+      if (stateInsertError) {
+        console.error("Failed to persist oauth state:", stateInsertError);
+        return new Response(JSON.stringify({ error: "Failed to start OAuth flow" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       const params = new URLSearchParams({
         client_id: GOOGLE_CLIENT_ID,
         redirect_uri: GOOGLE_REDIRECT_URI,
@@ -63,7 +87,7 @@ Deno.serve(async (req) => {
         scope: "https://www.googleapis.com/auth/calendar.readonly",
         access_type: "offline",
         prompt: "consent",
-        state: userId,
+        state: stateToken,
       });
 
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
