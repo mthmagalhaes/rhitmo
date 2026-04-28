@@ -684,12 +684,12 @@ Com base neste resumo, dê sugestões práticas de liderança, identifique ponto
       ? 'https://ai.gateway.lovable.dev/v1/chat/completions'
       : 'https://api.openai.com/v1/chat/completions';
     const apiKey = useGateway ? lovableApiKey : openAIApiKey;
-    const modelName = useGateway ? 'google/gemini-2.5-pro' : 'gpt-4o';
+    const modelName = useGateway ? 'google/gemini-3-flash-preview' : 'gpt-4o-mini';
 
     console.log(`Calling ${modelName} via ${useGateway ? 'Lovable AI Gateway' : 'OpenAI'}, context length:`, systemPrompt.length, 'history messages:', (conversationHistory || []).length);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 45000);
+    const timeoutId = setTimeout(() => controller.abort(), 50000);
 
     let response;
     try {
@@ -702,8 +702,7 @@ Com base neste resumo, dê sugestões práticas de liderança, identifique ponto
         body: JSON.stringify({
           model: modelName,
           messages: apiMessages,
-          max_tokens: 3000,
-          reasoning: { effort: "medium" },
+          max_tokens: 2500,
         }),
         signal: controller.signal,
       });

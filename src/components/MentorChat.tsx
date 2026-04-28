@@ -310,24 +310,34 @@ export const MentorChat = ({
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
     setIsLoading(true);
 
-    // Progressive loading for long transcripts
+    // Progressive loading messages — sensação de progresso real
     const wordCount = finalMessage.split(/\s+/).length;
     const isLongMessage = wordCount > 800;
     let loadingInterval: ReturnType<typeof setInterval> | null = null;
 
-    if (isLongMessage) {
-      const loadingSteps = [
-        'Analisando transcrição...',
-        'Extraindo tópicos e decisões...',
-        'Gerando sugestões contextualizadas...',
-      ];
-      let stepIndex = 0;
-      setLoadingMessage(loadingSteps[0]);
-      loadingInterval = setInterval(() => {
-        stepIndex = Math.min(stepIndex + 1, loadingSteps.length - 1);
-        setLoadingMessage(loadingSteps[stepIndex]);
-      }, 3000);
-    }
+    const defaultSteps = isLeader
+      ? [
+          `Lendo o histórico de ${memberName}…`,
+          'Analisando padrões e contradições…',
+          'Estruturando a resposta…',
+        ]
+      : [
+          'Revendo seu contexto…',
+          'Conectando insights…',
+          'Preparando sua resposta…',
+        ];
+    const longSteps = [
+      'Analisando transcrição…',
+      'Extraindo tópicos e decisões…',
+      'Gerando sugestões contextualizadas…',
+    ];
+    const loadingSteps = isLongMessage ? longSteps : defaultSteps;
+    let stepIndex = 0;
+    setLoadingMessage(loadingSteps[0]);
+    loadingInterval = setInterval(() => {
+      stepIndex = Math.min(stepIndex + 1, loadingSteps.length - 1);
+      setLoadingMessage(loadingSteps[stepIndex]);
+    }, 2500);
 
     try {
       let currentThreadId = selectedThreadId;
@@ -347,7 +357,7 @@ export const MentorChat = ({
         queryClient.invalidateQueries({ queryKey: [messagesQueryKey, currentThreadId] });
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000);
+        const timeoutId = setTimeout(() => controller.abort(), 60000);
         const { data: session } = await supabase.auth.getSession();
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         const managerName = currentUser?.user_metadata?.full_name || currentUser?.user_metadata?.name || 'Gestor';
@@ -380,7 +390,7 @@ export const MentorChat = ({
               question: finalMessage,
               feedbacks: contextFeedbacks,
               memberName, memberRole, managerName, workStyleData, keyObjectives, contextMode, leaderSyncData,
-              conversationHistory: messages.map(msg => ({ role: msg.role, content: msg.content })),
+              conversationHistory: messages.slice(-10).map(msg => ({ role: msg.role, content: msg.content })),
               imageContent
             }),
             signal: controller.signal
@@ -420,7 +430,7 @@ export const MentorChat = ({
 
         const { data: session } = await supabase.auth.getSession();
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 45000);
+        const timeoutId = setTimeout(() => controller.abort(), 60000);
 
         const MAX_RETRIES = 3;
         let data: any = null;
@@ -485,9 +495,16 @@ export const MentorChat = ({
     } catch (error: any) {
       console.error('Erro no chat:', error);
       let errorMessage = isLeader ? 'Erro ao conectar com o Mentor. Tente novamente.' : 'Erro ao conectar. Tente novamente.';
-      if (error.name === 'AbortError') errorMessage = 'Tempo de resposta excedido. Tente novamente.';
-      else if (error.message) errorMessage = error.message;
-      toast({ title: isLeader ? "Erro ao consultar mentor" : "Erro no Meu Rhitmo", description: errorMessage, variant: "destructive" });
+      if (error.name === 'AbortError') {
+        errorMessage = 'A resposta está demorando mais que o normal. Tente reformular com uma pergunta mais específica ou envie de novo.';
+      } else if (error.message?.includes('429') || error.message?.toLowerCase().includes('ocupado')) {
+        errorMessage = 'O serviço de IA está com muitas requisições agora. Aguarde 30 segundos e tente de novo.';
+      } else if (error.message?.includes('402') || error.message?.toLowerCase().includes('crédito')) {
+        errorMessage = 'Créditos de IA esgotados no workspace. Avise o administrador.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      toast({ title: isLeader ? "Erro ao consultar mentor" : "Erro no Meu Rhitmo", description: errorMessage, variant: "destructive", duration: 7000 });
     } finally { setIsLoading(false); setLoadingMessage(''); if (loadingInterval) clearInterval(loadingInterval); }
   };
 
@@ -937,22 +954,27 @@ export const MentorChat = ({
                 );
                 })}
 
-                {/* Loading indicator */}
+                {/* Loading indicator — skeleton bubble + progresso suave */}
                 {isLoading && (
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-3 animate-in fade-in slide-in-from-bottom-1 duration-300">
                     <AssistantIcon />
-                    {loadingMessage ? (
-                      <div className="flex items-center gap-2 py-3">
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">{loadingMessage}</span>
+                    <div className="flex flex-col gap-2 max-w-[75%]">
+                      <div className="rounded-2xl bg-muted/50 px-4 py-3 space-y-2">
+                        <Skeleton className="h-3 w-48 rounded-full" />
+                        <Skeleton className="h-3 w-64 rounded-full" />
+                        <Skeleton className="h-3 w-40 rounded-full" />
                       </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5 py-3">
-                        <span className="h-2 w-2 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:0ms]" />
-                        <span className="h-2 w-2 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:200ms]" />
-                        <span className="h-2 w-2 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:400ms]" />
+                      <div className="flex items-center gap-2 px-1">
+                        <span className="flex gap-1">
+                          <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:0ms]" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:150ms]" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:300ms]" />
+                        </span>
+                        <span className="text-xs text-muted-foreground italic transition-opacity duration-300">
+                          {loadingMessage || 'Pensando…'}
+                        </span>
                       </div>
-                    )}
+                    </div>
                   </div>
                 )}
               </div>
