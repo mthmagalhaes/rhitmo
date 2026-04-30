@@ -37,6 +37,8 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { citationMarkdownComponents } from '@/lib/markdownCitations';
+import { CitationCounterProvider } from '@/components/context/CitationCounterProvider';
 import { ShareReviewDialog } from './ShareReviewDialog';
 import { ReviewCalibrationPanel, type PromotionRecommendation, type LossRisk, type MeritRecommendation } from './ReviewCalibrationPanel';
 import type { RecapClassification } from '@/lib/recapActions';
@@ -385,7 +387,9 @@ export function FormalReviewSheet({
                       </CollapsibleTrigger>
                       <CollapsibleContent>
                         <div className="px-4 pb-4 pt-1 text-sm text-blue-800 dark:text-blue-200 prose prose-sm dark:prose-invert prose-p:my-1 prose-li:my-0.5 max-w-none">
-                          <ReactMarkdown>{review.coaching_tip}</ReactMarkdown>
+                          <CitationCounterProvider>
+                            <ReactMarkdown components={citationMarkdownComponents}>{review.coaching_tip}</ReactMarkdown>
+                          </CitationCounterProvider>
                         </div>
                       </CollapsibleContent>
                     </div>
@@ -482,9 +486,11 @@ export function FormalReviewSheet({
                         prose-blockquote:text-muted-foreground prose-blockquote:not-italic prose-blockquote:text-xs
                         prose-blockquote:my-1.5 prose-blockquote:font-normal"
                     >
-                      <ReactMarkdown components={{ em: EvidenceTag }}>
-                        {draftText || '_Sem conteúdo ainda._'}
-                      </ReactMarkdown>
+                      <CitationCounterProvider>
+                        <ReactMarkdown components={{ em: EvidenceTag, ...citationMarkdownComponents }}>
+                          {draftText || '_Sem conteúdo ainda._'}
+                        </ReactMarkdown>
+                      </CitationCounterProvider>
                     </div>
                   </div>
                 ) : (

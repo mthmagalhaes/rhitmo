@@ -10,6 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
+import { citationMarkdownComponents } from '@/lib/markdownCitations';
+import { CitationCounterProvider } from '@/components/context/CitationCounterProvider';
 import { VoiceInput } from './VoiceInput';
 import { ContextPicker } from './ContextPicker';
 import { extractTextFromFile, isFileSupported } from '@/lib/fileParser';
@@ -654,7 +656,8 @@ export const MentorChat = ({
     ? <div className="flex items-center justify-center h-7 w-7 rounded-full bg-primary/10 text-sm flex-shrink-0 mt-0.5">🎯</div>
     : <div className="flex items-center justify-center h-7 w-7 rounded-full bg-primary/10 flex-shrink-0 mt-0.5"><Sparkles className="h-3.5 w-3.5 text-primary" /></div>;
 
-  // ── Markdown components ──────────────────────────────
+  // ── Markdown components (with citation chip support) ──────────
+  // citation-aware p/li/strong come LAST so they override the styled defaults below.
   const markdownComponents = {
     h1: ({ children }: any) => <h1 className="text-lg font-semibold text-foreground mt-5 mb-2">{children}</h1>,
     h2: ({ children }: any) => <h2 className="text-base font-semibold text-foreground mt-5 mb-2">{children}</h2>,
@@ -690,6 +693,8 @@ export const MentorChat = ({
       );
     },
     pre: ({ children }: any) => <>{children}</>,
+    // Citation-aware overrides (last wins):
+    ...citationMarkdownComponents,
   };
 
   // ══════════════════════════════════════════════════════
@@ -937,9 +942,11 @@ export const MentorChat = ({
                             </Badge>
                           </div>
                         )}
-                        <ReactMarkdown components={markdownComponents}>
-                          {msg.content}
-                        </ReactMarkdown>
+                        <CitationCounterProvider>
+                          <ReactMarkdown components={markdownComponents}>
+                            {msg.content}
+                          </ReactMarkdown>
+                        </CitationCounterProvider>
                         <div className="opacity-0 group-hover:opacity-100 transition-all duration-200 mt-1.5">
                           <button
                             onClick={() => handleCopyMessage(msg.content)}
