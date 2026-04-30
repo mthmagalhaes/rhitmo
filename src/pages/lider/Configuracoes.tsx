@@ -1,9 +1,8 @@
 import { useAccount } from '@/contexts/AccountContext';
 import { PageTabs, type PageTab } from '@/components/PageTabs';
-import { EmptyStateHero } from '@/components/EmptyStateHero';
 import { BillingContent } from '@/pages/Billing';
 import { HelpCenterContent } from '@/pages/HelpCenter';
-import ProfileSettingsDialog from '@/components/ProfileSettingsDialog';
+import { ProfileSettingsDialog } from '@/components/ProfileSettingsDialog';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -32,7 +31,7 @@ function ProfileTab() {
 }
 
 function WorkspaceTab() {
-  const { workspace } = useAccount();
+  const { workspaceId } = useAccount();
   return (
     <Card className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
       <CardHeader>
@@ -41,12 +40,8 @@ function WorkspaceTab() {
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         <div className="flex items-center justify-between border-b border-border/40 pb-3">
-          <span className="text-muted-foreground">Nome</span>
-          <span className="font-medium">{workspace?.name ?? '—'}</span>
-        </div>
-        <div className="flex items-center justify-between border-b border-border/40 pb-3">
           <span className="text-muted-foreground">ID</span>
-          <span className="font-mono text-xs text-muted-foreground">{workspace?.id ?? '—'}</span>
+          <span className="font-mono text-xs text-muted-foreground">{workspaceId ?? '—'}</span>
         </div>
         <p className="text-xs text-muted-foreground pt-2">
           Para alterar nome ou owner do workspace, acesse o painel administrativo.
