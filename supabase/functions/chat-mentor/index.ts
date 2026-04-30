@@ -263,19 +263,20 @@ serve(async (req) => {
     const managerFirstName = targetManagerName.split(' ')[0];
 
     if (!question || !feedbacks || !memberName) {
+      log.warn('invalid_params', { hasQuestion: !!question, hasFeedbacks: !!feedbacks, hasMemberName: !!memberName });
       return new Response(
         JSON.stringify({ error: 'Parâmetros inválidos: question, feedbacks e memberName são obrigatórios' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: respHeaders }
       );
     }
 
     // Verificar API Key
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
-      console.error('OPENAI_API_KEY não configurada');
+      log.error('missing_openai_key');
       return new Response(
         JSON.stringify({ error: 'Configuração de API ausente. Contate o administrador.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: respHeaders }
       );
     }
 
