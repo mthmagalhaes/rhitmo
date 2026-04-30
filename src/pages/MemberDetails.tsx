@@ -458,11 +458,18 @@ const MemberDetails = () => {
             Início
           </Button>
           <div className="flex gap-2">
-            {/* Sprint 1.3: 1 botão primário "Nova Nota" + dropdown "Mais ações" */}
-            <Button onClick={() => setDialogOpen(true)} className="gap-2">
-              <PenSquare className="h-4 w-4" />
-              <span className="hidden sm:inline">Nova Nota</span>
-            </Button>
+            {/* CTA contextual: vindo do fluxo de Avaliações, prioriza "Nova Avaliação" */}
+            {cameFromReviews ? (
+              <Button onClick={() => setFormalReviewOpen(true)} className="gap-2">
+                <Sparkles className="h-4 w-4" />
+                <span className="hidden sm:inline">Nova Avaliação</span>
+              </Button>
+            ) : (
+              <Button onClick={() => setDialogOpen(true)} className="gap-2">
+                <PenSquare className="h-4 w-4" />
+                <span className="hidden sm:inline">Nova Nota</span>
+              </Button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="gap-2" aria-label="Mais ações">
@@ -471,6 +478,12 @@ const MemberDetails = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">
+                {cameFromReviews && (
+                  <DropdownMenuItem onClick={() => setDialogOpen(true)} className="gap-2">
+                    <PenSquare className="h-4 w-4" />
+                    Nova Nota
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => setRecorderOpen(true)} className="gap-2">
                   <Monitor className="h-4 w-4" />
                   Gravar Reunião
