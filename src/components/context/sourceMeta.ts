@@ -51,6 +51,11 @@ const MAP: Record<string, SourceMeta> = {
     icon: Sparkles,
     badgeClass: 'bg-sky-50 text-sky-800 dark:bg-sky-950/40 dark:text-sky-200',
   },
+  pulse_surveys: {
+    label: 'Pulse Survey',
+    icon: Sparkles,
+    badgeClass: 'bg-cyan-50 text-cyan-800 dark:bg-cyan-950/40 dark:text-cyan-200',
+  },
   goals: {
     label: 'Meta',
     icon: Target,
