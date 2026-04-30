@@ -27,6 +27,7 @@ import { MemberAvatar } from '@/components/MemberAvatar';
 import { SelfReflectionCard } from '@/components/dashboard/SelfReflectionCard';
 import { PendingPulseAlert } from '@/components/pulse/PendingPulseAlert';
 import { StartSelfReviewCard } from '@/components/self-review/StartSelfReviewCard';
+import { StartUpwardsReviewCard } from '@/components/upwards-review/StartUpwardsReviewCard';
 import { PendingPeerReviewsAlert } from '@/components/peer-review/PendingPeerReviewsAlert';
 import { getDateLocale } from '@/lib/dateLocale';
 import { format } from 'date-fns';
@@ -263,9 +264,27 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
         .select('id, title, content, period_type, period_start, period_end, created_at, member_viewed_at, acknowledged_at, sent_at, review_type')
         .eq('member_id', linkedMember.id)
         .eq('shared_with_member', true)
-        .neq('review_type', 'self')
+        // Sprint 10.4 — excluir self e upwards (são autorias do próprio liderado)
+        .not('review_type', 'in', '(self,upwards)')
         .order('created_at', { ascending: false });
       if (error) { console.error('Error fetching shared reviews:', error); return []; }
+      return data || [];
+    },
+  });
+
+  // Sprint 10.4 — feedbacks ascendentes (upwards) que o próprio liderado enviou.
+  const { data: myUpwardsReviews = [] } = useQuery({
+    queryKey: ['my-upwards-reviews', linkedMember.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('performance_reviews')
+        .select('id, title, content, created_at, review_type')
+        .eq('member_id', linkedMember.id)
+        .eq('review_type', 'upwards')
+        .eq('author_user_id', user!.id)
+        .order('created_at', { ascending: false });
+      if (error) { console.error('Error fetching upwards reviews:', error); return []; }
       return data || [];
     },
   });
