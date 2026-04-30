@@ -27,6 +27,7 @@ import { MemberAvatar } from '@/components/MemberAvatar';
 import { SelfReflectionCard } from '@/components/dashboard/SelfReflectionCard';
 import { PendingPulseAlert } from '@/components/pulse/PendingPulseAlert';
 import { StartSelfReviewCard } from '@/components/self-review/StartSelfReviewCard';
+import { PendingPeerReviewsAlert } from '@/components/peer-review/PendingPeerReviewsAlert';
 import { getDateLocale } from '@/lib/dateLocale';
 import { format } from 'date-fns';
 
@@ -505,6 +506,7 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
           <TabsContent value="visao-geral">
             {/* Sprint 9.2 — Pulse Surveys pendentes (aparece só se houver) */}
             <PendingPulseAlert memberId={linkedMember.id} />
+            <PendingPeerReviewsAlert />
 
             {/* S3.4 — Self-reflection card semanal */}
             <div className="mb-6">

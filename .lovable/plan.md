@@ -1,104 +1,118 @@
-# Sprint 10.2 — Self-Review Wizard Conversacional
+# Sprint 10.3 — Peer Review: Solicitação (Líder) e Resposta (Par)
 
-Liderado preenche autoavaliação via chat passo-a-passo no portal "Meu Painel". Resultado é um INSERT em `performance_reviews` (`review_type='self'`, `author_user_id=auth.uid()`, `shared_with_member=true`), que dispara automaticamente o trigger `ctx_evidence_from_review` (Sprint 10.1) e propaga para o Context Graph do líder.
+Líder solicita feedback de pares para um liderado; pares convidados respondem 3 perguntas no próprio painel. INSERT em `performance_reviews` (review_type='peer', shared_with_member=false) + N rows em `review_peers`. Pares completam via UPDATE (`status='completed'`). Trigger `review_peers_restrict_peer_update` (Sprint 10.1) já garante integridade.
 
 ## Decisões de arquitetura
 
-- **Sem AI/Edge Function** — Sprint 10.2 só faz concatenação Markdown das perguntas+respostas. Sumarização AI fica para Sprint 10.3.
-- **Componente isolado**, NÃO reaproveita `MentorChat` (que tem lógica de RAG/threads/tools). Reutilizamos só os padrões visuais (bubbles, ScrollArea, Textarea com Enter-to-send) num componente novo enxuto: `SelfReviewWizard`.
-- **Modal full-screen `Dialog`** (padrão do projeto, igual ao `selectedReview` dialog), não rota nova — evita mexer em `App.tsx` e mantém o liderado no contexto do dashboard.
-- **Catálogo de perguntas estático** em `src/lib/selfReviewQuestions.ts` (mesmo padrão do `pulseTemplates.ts` da Sprint 9.2). Reutilizável por Slack/AI no futuro.
-- **RLS já permite o INSERT**: a policy "Linked members can insert own self upwards reviews" exige `author_user_id = auth.uid() AND review_type IN ('self','upwards')`.
+- **Reuso máximo dos padrões da Sprint 9.2** (Pulse): mesmo estilo de Modal, Card de alerta amber, hook `useQuery` separado, lógica de invalidação.
+- **Catálogo de perguntas estático** em `src/lib/peerReviewQuestions.ts` (mesmo padrão de `pulseTemplates.ts` e `selfReviewQuestions.ts`).
+- **Sem mexer em UI de leitura do líder**: nesta sprint o líder só dispara a solicitação. A consolidação/visualização das respostas dos pares fica para Sprint 10.4 (junto com Upwards review).
+- **Nenhuma migration nova nesta sprint** — a infraestrutura completa (review_peers + RLS + triggers de integridade e validação de workspace) já foi entregue em 10.1.
+
+## Restrição crítica do trigger (10.1)
+
+`review_peers_validate_workspace` exige que `peer_user_id` seja **um auth.uid()** que pertence ao mesmo workspace via uma destas vias:
+- `team_members.linked_user_id` (liderado vinculado)
+- `workspaces.owner_id` ou em `hr_admin_ids`
+- `teams.leader_user_id`
+
+→ O Multi-Select de pares deve listar **usuários (auth uids)**, com label = nome do membro. Liderados sem `linked_user_id` (ainda não conectados) ficam ocultos para não causar erro de validação.
 
 ## Arquivos a criar
 
 ```text
-src/lib/selfReviewQuestions.ts                     # array estático de perguntas
-src/components/self-review/SelfReviewWizard.tsx    # modal com fluxo conversacional
-src/components/self-review/StartSelfReviewCard.tsx # card de entrada na seção Avaliações Formais
+src/lib/peerReviewQuestions.ts                                # array estático de 3 perguntas
+src/components/peer-review/RequestPeerReviewModal.tsx         # modal do líder
+src/components/peer-review/RequestPeerReviewButton.tsx        # trigger reutilizável
+src/components/peer-review/PendingPeerReviewsAlert.tsx        # card alerta no dashboard
+src/components/peer-review/AnswerPeerReviewModal.tsx          # modal do par
+src/hooks/usePendingPeerReviews.ts                            # hook do par
 ```
 
 ## Arquivos a editar
 
 ```text
+src/pages/lider/Contexto.tsx
+  - Adicionar <RequestPeerReviewButton/> ao lado do <SendPulseButton/> no header.
 src/components/dashboard/DirectReportDashboard.tsx
-  - Filtrar query 'shared-reviews' para excluir review_type='self'
-    (selfs vão para uma sub-seção separada para não confundir com avaliações do líder)
-  - Adicionar nova query 'my-self-reviews' (apenas review_type='self', author_user_id=user.id)
-  - Renderizar <StartSelfReviewCard/> no topo da seção "Avaliações Formais"
-  - Listar self-reviews abaixo num accordion/sub-card discreto
-src/i18n/locales/pt-BR.json + en.json + es.json    # chaves selfReview.*
+  - Logo abaixo de <PendingPulseAlert/> (linha ~486), montar <PendingPeerReviewsAlert/>.
 ```
 
 ## Detalhes técnicos
 
-### `selfReviewQuestions.ts`
+### `peerReviewQuestions.ts`
 ```ts
-export interface SelfReviewQuestion { id: string; question: string; placeholder?: string }
-export const SELF_REVIEW_QUESTIONS: SelfReviewQuestion[] = [
-  { id: 'q1', question: 'Quais foram as suas maiores entregas/conquistas neste ciclo?',
-    placeholder: 'Pense em projetos, resultados, marcos…' },
-  { id: 'q2', question: 'Onde você sente que poderia ter tido um desempenho melhor?',
-    placeholder: 'Seja honesto consigo mesmo — isto é um espaço seguro.' },
-  { id: 'q3', question: 'Quais recursos ou apoios você precisa do seu líder para o próximo ciclo?',
-    placeholder: 'Treinamentos, mentoria, ferramentas, mudanças de processo…' },
+export interface PeerReviewQuestion { id: string; question: string; placeholder?: string }
+export const PEER_REVIEW_QUESTIONS: PeerReviewQuestion[] = [
+  { id: 'strengths',   question: 'O que esta pessoa faz de melhor?',
+    placeholder: 'Pontos fortes que se destacam no dia a dia...' },
+  { id: 'improvement', question: 'Onde ela poderia melhorar?',
+    placeholder: 'Áreas de oportunidade — seja construtivo.' },
+  { id: 'collab',      question: 'Como é trabalhar com ela?',
+    placeholder: 'Estilo de colaboração, comunicação, ritmo...' },
 ];
 ```
 
-### `SelfReviewWizard.tsx` — fluxo
-- Estado: `currentStep` (0 → N), `responses: Record<string, string>`, `inputValue`, `submitting`.
-- Render: Header com "Auto-avaliação" + barra de progresso (`step/total`), `ScrollArea` com bubbles (system → pergunta atual; user → respostas anteriores), Textarea + botão "Próxima" (Enter envia; Shift+Enter quebra linha).
-- Após última resposta: substitui Textarea por banner "Tudo pronto! Revise e gere seu resumo" + Card mostrando preview Markdown via `<ReactMarkdown>` + botão **"Gerar e Enviar Auto-avaliação"**.
-- Submit: monta string Markdown:
-  ```md
-  # Auto-avaliação
+### `RequestPeerReviewModal` (líder)
+Estrutura idêntica ao `SendPulseModal`:
+1. Query `peer-review-target-members` → liderados diretos do líder atual (mesmo padrão da query do Pulse: `team_members` join `teams.leader_user_id = userId`).
+2. Query `peer-review-candidates` → todos os `team_members` do workspace **com `linked_user_id NOT NULL`**, excluindo o liderado-alvo e o próprio líder. Retorna `{ user_id: linked_user_id, name }`.
+3. Multi-select de pares via toggleable badge list (sem componente shadcn novo — botões com estado).
+4. Submit faz **2 passos sequenciais**:
+   - **A)** `INSERT into performance_reviews` com `member_id`, `review_type='peer'`, `title='Avaliação de Pares: ${name} — ${data}'`, `shared_with_member=false`, `period_type='manual'`. `.select('id').single()` para pegar o ID.
+   - **B)** `INSERT into review_peers` (array) com `review_id` + cada `peer_user_id`, `status='pending'`.
+   - Em caso de falha em B, rollback manual: `DELETE from performance_reviews where id = newReview.id`.
+5. Em sucesso: toast + `invalidateQueries(['pending-peer-reviews'])` + reset.
 
-  ## {pergunta1}
-  {resposta1}
-
-  ## {pergunta2}
-  {resposta2}
-  …
-  ```
-  Insert:
+### `PendingPeerReviewsAlert` (par)
+- Hook `usePendingPeerReviews()` — sem `memberId`; usa `auth.uid()`. Query:
   ```ts
-  await supabase.from('performance_reviews').insert({
-    member_id: linkedMember.id,
-    review_type: 'self',
-    author_user_id: user.id,
-    title: `Auto-avaliação de ${linkedMember.name} - ${format(new Date(), 'dd MMM yyyy', { locale: ptBR })}`,
-    content: markdown,
-    shared_with_member: true,
-    period_type: 'manual',
-  });
+  supabase
+    .from('review_peers')
+    .select('id, review_id, invited_at, performance_reviews:review_id(title, member_id, team_members:member_id(name))')
+    .eq('peer_user_id', user.id)
+    .eq('status', 'pending')
+    .order('invited_at', { ascending: false });
   ```
-- Em sucesso: toast + invalida `['my-self-reviews']` + fecha modal. Trigger `ctx_evidence_from_review` (Sprint 10.1) propaga automaticamente.
+  RLS já filtra (peer_user_id = auth.uid() OR is_team_leader …).
+- Se vazio → `return null`.
+- Card amber idêntico ao Pulse, com lista clicável de itens "Avaliar **{nome do membro}**".
 
-### `StartSelfReviewCard.tsx`
-- Card destacado `rounded-2xl` com fundo gradiente suave (Sparkles + Lora), texto "Conte sua versão da história" + botão primário "Iniciar Auto-avaliação". Abre `<SelfReviewWizard/>`.
-- Mostra contador "X auto-avaliações enviadas" se houver entries em `my-self-reviews`.
-
-### Mudança em `DirectReportDashboard.tsx`
-1. Linha 260: adicionar `.neq('review_type', 'self')` na query `shared-reviews` (não quebra reviews legados que têm `review_type='manager'` por default).
-2. Adicionar novo `useQuery(['my-self-reviews', linkedMember.id])` filtrando `review_type='self'` e `author_user_id=user.id`.
-3. Linha ~755: antes do header "Avaliações Formais", inserir `<StartSelfReviewCard ... />`.
-4. Após o map de `sharedReviews`, adicionar sub-seção colapsada "Suas auto-avaliações" listando os selfs (reutilizando o mesmo Card visual, abre `selectedReview` Dialog que já existe — 100% compatível porque é só conteúdo Markdown).
+### `AnswerPeerReviewModal` (par)
+- Mesmo layout do `AnswerPulseModal`: 3 perguntas em sequência (Textarea por pergunta), todas obrigatórias.
+- Submit:
+  ```ts
+  await supabase.from('review_peers').update({
+    status: 'completed',
+    completed_at: new Date().toISOString(),
+    response_jsonb: {
+      questions: PEER_REVIEW_QUESTIONS.map((q) => ({
+        id: q.id,
+        question: q.question,
+        answer: answers[q.id].trim(),
+      })),
+      submitted_at: new Date().toISOString(),
+    },
+  }).eq('id', peerInvite.id);
+  ```
+  Trigger `review_peers_restrict_peer_update` aceita: peer pode mudar `status` para `completed` e gravar `response_jsonb`. `completed_at` é forçado pelo trigger se nulo.
+- `invalidateQueries(['pending-peer-reviews'])` em sucesso.
 
 ## Riscos & mitigações
 
 | Risco | Mitigação |
 |---|---|
-| Self review aparecer misturada com manager review na lista | Query principal usa `.neq('review_type', 'self')`; selfs ficam em sub-seção separada. |
-| Liderado tentar editar/apagar review depois de enviar | Trigger `performance_reviews_restrict_self_upwards_update` (Sprint 10.1) bloqueia mudança de campos sensíveis. UI desta sprint é write-only. |
-| Quebrar tela do líder | Líder vê review via `is_team_leader()` policy + ctx_evidence trigger emite tag `['review','self']` — não toca em código de líder. |
-| `linkedMember.name` ausente | Fallback para `linkedMember.email` ou `'Você'` no título. |
-| Nada salvo se modal fecha no meio | Aceito para esta sprint (rascunho local-only). Persistência de draft fica para 10.3+. |
+| Liderado sem `linked_user_id` selecionado como peer → trigger erra | Filtrar `linked_user_id NOT NULL` no `select` de candidatos. |
+| Falha no INSERT B (review_peers) deixa review-pai órfã | Rollback manual via `DELETE` no review-pai recém criado. |
+| Líder sem liderados diretos | Modal exibe estado vazio, botão fica desabilitado (mesmo padrão do Pulse). |
+| Peer review aparece "fantasma" no dashboard de líderes que também são liderados | Aceitável — o alerta é específico para "convites para avaliar colegas" e RLS garante que só apareça para o `peer_user_id` certo. |
+| Confusão entre "self" e "peer" reviews na sub-seção de auto-avaliações do dashboard (Sprint 10.2) | Já filtrado: a query `my-self-reviews` exige `review_type='self'`, então peers nunca aparecem ali. |
 
-## Fora de escopo
+## Fora de escopo (sprints futuras)
 
-- Sumarização AI das respostas (Sprint 10.3 — chamará `ai-router` task `summarize_text`).
-- Edição de auto-avaliação após envio.
-- Persistência de rascunho entre sessões.
-- Notificação Slack/email ao líder quando auto-avaliação é enviada (trigger ctx_evidence + Activity Feed já cobrem visibilidade).
-- Upwards review (preencher avaliação sobre o líder) — Sprint 10.4.
-- Peer review trigger pelo líder — Sprint 10.5.
+- UI do líder para revisar/consolidar respostas dos pares (Sprint 10.4).
+- Compartilhar peer review consolidada com o liderado (UPDATE `shared_with_member=true` aciona ctx_evidence — já implementado em 10.1).
+- Notificação Slack/email aos pares convidados.
+- Upwards review (liderado avaliando líder) — Sprint 10.4.
+- Editar/cancelar convite após enviado.
+- Sumarização AI das respostas dos pares.
