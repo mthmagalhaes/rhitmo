@@ -774,54 +774,105 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
               </Card>
 
               {/* Seção de Avaliações Formais */}
-              <div className="mt-8">
-                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-foreground">
+              <div className="mt-8 space-y-6">
+                <h2 className="text-lg font-semibold flex items-center gap-2 text-foreground">
                   <FileText className="h-5 w-5 text-primary" />
                   {t('directReport.formalReviews')}
                 </h2>
-                {loadingReviews ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                  </div>
-                ) : sharedReviews.length === 0 ? (
-                  <Card className="p-8 text-center rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
-                    <FileText className="h-8 w-8 mx-auto mb-3 text-muted-foreground/30" />
-                    <p className="text-sm text-muted-foreground">
-                      {t('directReport.noSharedReviews')}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {t('directReport.leaderWillShare')}
-                    </p>
-                  </Card>
-                ) : (
-                  <div className="space-y-3">
-                    {sharedReviews.map((review: any) => (
-                      <Card
-                        key={review.id}
-                        className="p-5 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] cursor-pointer hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200"
-                        onClick={() => setSelectedReview(review)}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-semibold text-sm text-foreground">{review.title}</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {formatLocalDate(review.created_at, 'dd MMMM yyyy')}
-                            </p>
+
+                {/* Sprint 10.2 — Card de auto-avaliação (sempre visível) */}
+                {user?.id && (
+                  <StartSelfReviewCard
+                    memberId={linkedMember.id}
+                    memberName={linkedMember.name}
+                    authorUserId={user.id}
+                    selfReviewCount={mySelfReviews.length}
+                  />
+                )}
+
+                {/* Reviews compartilhadas pelo líder */}
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
+                    Avaliações do seu líder
+                  </h3>
+                  {loadingReviews ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    </div>
+                  ) : sharedReviews.length === 0 ? (
+                    <Card className="p-8 text-center rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
+                      <FileText className="h-8 w-8 mx-auto mb-3 text-muted-foreground/30" />
+                      <p className="text-sm text-muted-foreground">
+                        {t('directReport.noSharedReviews')}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {t('directReport.leaderWillShare')}
+                      </p>
+                    </Card>
+                  ) : (
+                    <div className="space-y-3">
+                      {sharedReviews.map((review: any) => (
+                        <Card
+                          key={review.id}
+                          className="p-5 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] cursor-pointer hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200"
+                          onClick={() => setSelectedReview(review)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-semibold text-sm text-foreground">{review.title}</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {formatLocalDate(review.created_at, 'dd MMMM yyyy')}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {review.acknowledged_at ? (
+                                <Badge className="bg-green-500/10 text-green-700 dark:text-green-400 border-0 text-[10px]">
+                                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                                  {t('directReport.confirmed')}
+                                </Badge>
+                              ) : !review.member_viewed_at ? (
+                                <Badge className="bg-primary/10 text-primary border-0 text-[10px]">{t('directReport.new')}</Badge>
+                              ) : null}
+                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            {review.acknowledged_at ? (
-                              <Badge className="bg-green-500/10 text-green-700 dark:text-green-400 border-0 text-[10px]">
-                                <CheckCircle2 className="h-3 w-3 mr-1" />
-                                {t('directReport.confirmed')}
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Sprint 10.2 — Suas auto-avaliações enviadas */}
+                {mySelfReviews.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
+                      Suas auto-avaliações
+                    </h3>
+                    <div className="space-y-3">
+                      {mySelfReviews.map((review: any) => (
+                        <Card
+                          key={review.id}
+                          className="p-5 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] cursor-pointer hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200"
+                          onClick={() => setSelectedReview(review)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-semibold text-sm text-foreground">{review.title}</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {formatLocalDate(review.created_at, 'dd MMMM yyyy')}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge className="bg-primary/10 text-primary border-0 text-[10px]">
+                                <Sparkles className="h-3 w-3 mr-1" />
+                                Auto-avaliação
                               </Badge>
-                            ) : !review.member_viewed_at ? (
-                              <Badge className="bg-primary/10 text-primary border-0 text-[10px]">{t('directReport.new')}</Badge>
-                            ) : null}
-                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                            </div>
                           </div>
-                        </div>
-                      </Card>
-                    ))}
+                        </Card>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
