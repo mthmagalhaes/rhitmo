@@ -2652,6 +2652,30 @@ export type Database = {
           team_name: string
         }[]
       }
+      get_team_timeline: {
+        Args: {
+          _before?: string
+          _limit?: number
+          _member_ids?: string[]
+          _source_tables?: string[]
+          _workspace_id?: string
+        }
+        Returns: {
+          evidence_type: string
+          id: string
+          member_avatar: string
+          member_id: string
+          member_name: string
+          metadata: Json
+          occurred_at: string
+          sentiment: string
+          source_id: string
+          source_table: string
+          summary: string
+          title: string
+          visibility: string
+        }[]
+      }
       get_user_caps: {
         Args: never
         Returns: {

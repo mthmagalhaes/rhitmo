@@ -1,112 +1,120 @@
-## Sprint 8.2 — Citações Clicáveis (Rastro Auditável da IA)
+## Sprint 8.3 — Página `/contexto` (Feed Universal do Context Graph)
 
-Objetivo: transformar referências `[doc:UUID]` geradas pela IA em chips clicáveis que abrem um drawer lateral mostrando a evidência original do `context_evidence`. O líder lê o conselho da IA → clica no chip → o drawer desliza pela direita com o fato real → fecha e segue lendo.
+Página unificada onde o líder vê todas as evidências de toda a equipe em ordem cronológica reversa, com filtros por liderado e por fonte. Cada item abre o `EvidenceDrawer` já existente.
 
-### Arquitetura de UX
+### Diretriz de estabilidade aplicada
+
+Antes de codar, mapeei a arquitetura. Identifiquei dois pontos onde seguir o briefing literal causaria fricção e proponho ajustes:
+
+1. **`useContextTimeline` é por-membro** (RPC `get_member_timeline(_member_id)`). Carregar a timeline do time em cima desse hook obrigaria N requisições paralelas (uma por liderado), N+1 com membros novos sendo adicionados, e perderíamos a ordenação correta nas bordas. **Proposta:** criar uma RPC nova `get_team_timeline` que devolve evidências de todos os membros visíveis ao usuário em uma única query, com paginação por cursor (`occurred_at`). Mais barato e mais rápido. O hook por-membro de 8.1 segue intacto para os outros consumidores.
+
+2. **A sidebar do líder hoje tem 5 itens + Configurações** (regra documentada no `navigation.ts`). Adicionar "Contexto" estoura o limite. **Proposta:** adicionar como 6º item antes de Configurações (Configurações continua sendo a última). Mantém a hierarquia visual e a regra de "Settings sempre por último".
+
+3. **Reuso máximo:** `EvidenceDrawer`, `getSourceMeta`, `useEvidenceById` e o evento global `rhitmo:open-evidence` (entregues no 8.2) são reaproveitados sem alteração. Card clicável dispara o mesmo evento → drawer abre.
+
+### Backend (1 migration)
+
+**Nova RPC `get_team_timeline`** — retorna evidências de todos os `team_members` para os quais `effective_user_id()` é líder, owner ou HR Admin do workspace.
 
 ```text
-Resposta da IA (markdown)
-   "...você priorizou X em vez de Y [doc:8af1...]..."
-                         │
-                         ▼ (parser regex no react-markdown)
-   "...você priorizou X em vez de Y  [📄 1]"  ← CitationChip
-                         │ click
-                         ▼
-   ┌─ Sheet lateral (right) ─────────────────┐
-   │ Badge fonte (Recall.ai)                  │
-   │ Título · 12 mar 2026                     │
-   │ ─────────────────────────────────────── │
-   │ Conteúdo completo da evidência           │
-   │ (transcrição / nota / kudo / pulse)      │
-   └──────────────────────────────────────────┘
+get_team_timeline(
+  _workspace_id uuid DEFAULT NULL,   -- opcional; quando NULL usa o workspace ativo
+  _member_ids uuid[] DEFAULT NULL,    -- filtro: lista de liderados (NULL = todos)
+  _source_tables text[] DEFAULT NULL, -- filtro: ['feedbacks','meeting_transcripts',...]
+  _before timestamptz DEFAULT NULL,   -- cursor: traz evidências com occurred_at < _before
+  _limit int DEFAULT 30
+) RETURNS TABLE (
+  id, member_id, member_name, member_avatar,  -- join leve em team_members
+  evidence_type, source_table, source_id,
+  occurred_at, title, summary, sentiment,
+  visibility, metadata
+)
 ```
 
-### Componentes a criar
+- `LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public`.
+- Autorização replicada do `get_member_timeline`: workspace owner/HR/líder ou liderado vendo a si mesmo. Liderado só vê o próprio member_id.
+- Performance: `WHERE ce.member_id = ANY(allowed_member_ids) AND occurred_at < COALESCE(_before, now()) ORDER BY occurred_at DESC LIMIT _limit`. Já existe índice `(member_id, occurred_at DESC)`.
+- `GRANT EXECUTE ... TO authenticated`.
 
-1. **`src/components/context/CitationChip.tsx`**
-   - Props: `docId: string`, `index?: number` (numeração visual), `inline?: boolean`.
-   - Visual: `inline-flex` rounded-full, `bg-primary/8`, ícone `FileText` (lucide) 12px + número. Hover lift sutil. Estética Creme/Bento (`rounded-full`, sombra muito leve).
-   - Ação: `onClick` despacha um custom event `rhitmo:open-evidence` com `{ docId }` (evita prop drilling pelo react-markdown).
+### Frontend
 
-2. **`src/components/context/EvidenceDrawer.tsx`**
-   - Monta um `<Sheet side="right">` (shadcn) controlado por estado interno.
-   - Escuta `rhitmo:open-evidence` no `window` → abre com o `docId`.
-   - Usa `useEvidenceById(docId)` para carregar a linha de `context_evidence`.
-   - Mostra:
-     - **Badge de fonte** (mapeia `source_table` → label/cor/ícone): `meeting_transcripts` → "Recall.ai", `feedbacks` → "Diário", `slack_ambient_evidence` → "Slack", `kudos` → "Kudo", `member_prompts` → "Pulse", `goals` → "Meta", `performance_reviews` → "Avaliação", `leader_nudges` → "Nudge".
-     - **Título** (`title` ou fallback por tipo) e **data** (`occurred_at` formatada `dd MMM yyyy · HH:mm` em pt-BR via date-fns).
-     - **Conteúdo completo**: busca lazy do conteúdo original no `source_table` (ex: `meeting_transcripts.transcript_text`, `feedbacks.content`, `slack_ambient_evidence.message_text`, etc.). Se RLS bloquear, mostra fallback com `summary`.
-     - Footer: link "Ver no contexto completo" → futura `/contexto/:memberId`.
-   - Estados: loading skeleton, erro ("Evidência não encontrada ou sem permissão"), vazio.
-   - Montado uma vez globalmente em `App.tsx` (singleton listener).
+**Arquivos novos:**
 
-3. **`src/hooks/useEvidenceById.ts`**
-   - `useQuery(['evidence', docId])`.
-   - Passo 1: `select * from context_evidence where id = docId` (RLS já protege).
-   - Passo 2: com base em `source_table` + `source_id`, busca o conteúdo bruto na tabela origem (switch/case com selects mínimos). Retorna `{ evidence, fullContent }`.
+- `src/hooks/useTeamTimeline.ts` — `useInfiniteQuery` que chama a nova RPC. Aceita `{ memberIds?, sourceTables?, pageSize? }`. Cursor = `occurred_at` do último item.
+- `src/components/context/EvidenceCard.tsx` — card clicável que dispara `openEvidence(docId)`. Layout: avatar + nome do liderado, badge de fonte (via `getSourceMeta`), título, snippet do summary (2 linhas, `line-clamp-2`), data relativa em PT-BR. Estética Creme/Bento (`rounded-2xl`, hover lift sutil).
+- `src/components/context/SourceFilterChips.tsx` — pills toggleable das 8 fontes do `sourceMeta.ts`. "Todas" default. Multi-seleção.
+- `src/components/context/MemberFilterSelect.tsx` — `<Select>` com lista de liderados (reusa a query de team_members do `MembersGrid` — extraída para hook `useWorkspaceMembers` se ainda não existir, senão duplica o select de forma enxuta).
+- `src/pages/lider/Contexto.tsx` — página host. Header com título "Contexto", subtítulo "Tudo o que aconteceu com sua equipe". Filtros sticky no topo. Lista virtualizada simples (sem libs novas — apenas `slice` + botão "Carregar mais" usando `fetchNextPage` do infinite query). Empty state amigável. Skeleton loading.
 
-### Renderização nas respostas da IA
+**Arquivos editados:**
 
-4. **Helper compartilhado `src/lib/markdownCitations.tsx`**
-   - Exporta `withCitations(markdown: string): string` que **mantém** o texto mas garante que `[doc:UUID]` esteja em uma forma estável (ex: nada a fazer — só normaliza espaçamento ao redor).
-   - Exporta `citationMarkdownComponents` — `components` para `react-markdown` que sobrescreve `p`, `li`, `td`, `strong`, `em` (qualquer nó com `children` string) usando uma função `renderWithCitations(children)` que faz `String.split` no regex `/\[doc:([0-9a-f-]{36})\]/gi` e substitui por `<CitationChip docId={uuid} index={n} />`. Numeração sequencial por mensagem (passada via contexto React `CitationCounterProvider`).
+- `src/lib/navigation.ts` — adicionar item `contexto` em `LEADER_NAV_ITEMS` antes de `configuracoes`. Ícone: `Layers` (lucide). `labelKey: 'nav.lider.contexto'`.
+- `src/locales/pt-BR/nav.json` (e en/es se existirem) — adicionar chave `nav.lider.contexto: "Contexto"`.
+- `src/App.tsx` — registrar rota `<Route path="/lider/contexto" element={Leader(<Contexto />)} />` (lazy import seguindo o padrão das outras páginas do líder).
 
-5. **Integração nos consumers**:
-   - **`src/components/MentorChat.tsx`** (linha ~658-693): mesclar `citationMarkdownComponents` ao `markdownComponents` existente (sobrescreve `p`/`li`/`strong`). Envolver cada bolha de assistente com `<CitationCounterProvider>` para resetar numeração por mensagem.
-   - **`src/components/review/FormalReviewSheet.tsx`** (linha 485): trocar `components={{ em: EvidenceTag }}` por `components={{ em: EvidenceTag, ...citationMarkdownComponents }}`.
-   - **`src/components/ReviewViewDialog.tsx`** (linhas 443, 473): aplicar mesmo `components`.
+### UX
 
-6. **Montagem global do Drawer**:
-   - Em `src/App.tsx`, adicionar `<EvidenceDrawer />` perto dos `<Toaster />`. Singleton, escuta evento global → não polui árvores filhas.
+```text
+┌─ Contexto ────────────────────────────────── [filtros sticky] ─┐
+│ Tudo o que aconteceu com sua equipe                              │
+│                                                                  │
+│ [ Liderado: Todos ▾ ]  [Diário] [Recall.ai] [Slack] [Pulse]…    │
+├──────────────────────────────────────────────────────────────────┤
+│ ╭──────────────────────────────────────────────────────────────╮│
+│ │ 👤 Yasmin Silva   • [Recall.ai]            há 2 horas        ││
+│ │ 1:1 semanal — discussão sobre escopo do Q2                    ││
+│ │ "Yasmin levantou preocupação com a carga de trabalho do…"   ││
+│ ╰──────────────────────────────────────────────────────────────╯│
+│ ╭──────────────────────────────────────────────────────────────╮│
+│ │ 👤 Pedro Costa    • [Slack]                ontem             ││
+│ │ Sinal ambient capturado em #produto                          ││
+│ │ "Pedro compartilhou aprendizado sobre…"                       ││
+│ ╰──────────────────────────────────────────────────────────────╯│
+│                          [ Carregar mais ]                      │
+└──────────────────────────────────────────────────────────────────┘
 
-### Atualização dos prompts da IA (gera o `[doc:UUID]`)
+(click no card)
+        │
+        ▼
+EvidenceDrawer → desliza pela direita com conteúdo completo
+```
 
-O backend já tem `context_evidence.id` por evidência, mas hoje os prompts não pedem citação nesse formato. Atualizar **prompts-only** (sem mudar lógica RAG):
-
-7. **`supabase/functions/chat-mentor/index.ts`** — no system prompt do RAG, adicionar bloco:
-   > "Sempre que afirmar um fato baseado em evidência, anexe a citação no formato `[doc:UUID]` imediatamente após a frase. Use o `id` recebido em `context_evidence` no contexto. Não invente IDs. Não cite se não houver evidência."
-   - Garantir que o contexto enviado ao modelo já inclua `id` de cada chunk (ajustar a montagem do contexto se necessário).
-
-8. **`supabase/functions/generate-formal-review/index.ts`** e **`generate-review/index.ts`** — mesma instrução de citação. Manter `(fonte: ...)` legacy funcionando (EvidenceTag continua) — adicionamos citações estruturadas em paralelo.
-
-> Não tocar `generate-brief`, `generate-nudges`, recaps neste sprint para limitar escopo. Backlog explícito.
-
-### Segurança / RLS
-
-- `context_evidence` já tem RLS (Sprint 8.1) — leitor só vê o que tem direito. O `useEvidenceById` confia 100% nisso.
-- A busca no `source_table` original também passa por RLS de cada tabela. Se falhar, mostramos summary.
-- Nenhuma RPC nova necessária neste sprint.
+- Container `max-w-5xl mx-auto px-4 sm:px-6 py-8` (regra do projeto).
+- Filtros aplicáveis em conjunto (AND): liderado + fontes selecionadas.
+- Mudar filtro → reset do cursor + nova query.
+- Estado vazio: ilustração leve + texto "Sem evidências para os filtros selecionados".
+- Liderado (direct_report) que entrar pela URL `/lider/contexto` cai no `RoleRouteGuard expects="leader"` → redireciona. Sem mudança aqui.
 
 ### Aceitação
 
-- IA do Mentor Chat e da Review gera respostas com `[doc:UUID]` e a UI renderiza chips numerados (`[📄 1]`, `[📄 2]`) inline com o texto.
-- Clicar em qualquer chip abre o `<Sheet>` à direita (slide animation padrão shadcn) sem mudar de rota.
-- Drawer mostra badge da fonte, título, data formatada PT-BR e conteúdo completo (ou summary fallback).
-- Liderado A não consegue abrir evidência do liderado B (RLS bloqueia → estado de erro amigável).
-- Fechar o Sheet preserva a posição de scroll da conversa/review.
-- UUID inválido ou removido → drawer mostra "Evidência não disponível" sem quebrar.
+- Item "Contexto" aparece na sidebar do líder, entre Avaliações e Configurações.
+- `/lider/contexto` carrega timeline ordenada por `occurred_at DESC` com até 30 itens iniciais.
+- Filtro por liderado → restringe a cards daquele membro.
+- Filtro por fonte (multi-pill) → restringe a `source_table IN (...)`.
+- "Carregar mais" pagina sem duplicar e sem recarregar.
+- Click no card abre o `EvidenceDrawer` global com conteúdo completo (mesma UX do Sprint 8.2).
+- Liderado de outro workspace **não aparece** (RPC valida via workspace + leader/HR/owner).
+- Performance: query inicial < 200ms para workspaces típicos (índice `(member_id, occurred_at DESC)` já existe + filtro por `member_id = ANY(allowed)` é eficiente).
 
-### Arquivos
+### Fora de escopo (Sprint 8.4+)
+
+- Busca textual full-text (usar embedding HNSW para "encontrar evidências sobre X").
+- Agrupamento por dia/semana ("hoje", "ontem", "esta semana").
+- Exportação CSV.
+- Filtro por `evidence_type` (já dá pra fazer client-side, mas backlog).
+- Realtime via Supabase Realtime channel para inserts novos.
+
+### Resumo dos arquivos
 
 Criar:
-- `src/components/context/CitationChip.tsx`
-- `src/components/context/EvidenceDrawer.tsx`
-- `src/components/context/CitationCounterProvider.tsx`
-- `src/components/context/sourceMeta.ts` (mapa source_table → {label, icon, color})
-- `src/hooks/useEvidenceById.ts`
-- `src/lib/markdownCitations.tsx`
+- 1 migration: nova RPC `get_team_timeline`
+- `src/hooks/useTeamTimeline.ts`
+- `src/components/context/EvidenceCard.tsx`
+- `src/components/context/SourceFilterChips.tsx`
+- `src/components/context/MemberFilterSelect.tsx`
+- `src/pages/lider/Contexto.tsx`
 
 Editar:
-- `src/App.tsx` (montar `<EvidenceDrawer />` global)
-- `src/components/MentorChat.tsx` (mesclar components + provider)
-- `src/components/review/FormalReviewSheet.tsx` (mesclar components)
-- `src/components/ReviewViewDialog.tsx` (mesclar components)
-- `supabase/functions/chat-mentor/index.ts` (prompt + incluir id no contexto)
-- `supabase/functions/generate-formal-review/index.ts` (prompt)
-- `supabase/functions/generate-review/index.ts` (prompt)
-
-### Fora de escopo (Sprint 8.3+)
-
-- Página `/contexto/:memberId` (timeline cheia).
-- Citações em recaps mensais/trimestrais e nudges.
-- Highlight bidirecional (hover no chip → highlight no drawer aberto).
+- `src/lib/navigation.ts` (adicionar item)
+- `src/App.tsx` (rota lazy)
+- `src/locales/pt-BR/nav.json` (label) + outros idiomas existentes
