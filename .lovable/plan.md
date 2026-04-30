@@ -1,113 +1,104 @@
-# Sprint 10.1 — Fundação 360° (Self / Peer / Manager / Upwards)
+# Sprint 10.2 — Self-Review Wizard Conversacional
 
-> **Nota de nomenclatura.** A tabela em produção chama-se `performance_reviews` (não `formal_reviews`). Vou tratá-la como a "tabela de reviews formais" do pedido — não vou renomeá-la para evitar quebrar absolutamente tudo (RLS, triggers `ctx_evidence`, edge functions `generate-formal-review`, hooks, componentes, types.ts).
-
-## Estado atual relevante
-
-- `performance_reviews` **não tem coluna de autor** (`manager_id`/`author_user_id`). Hoje o autor é implícito: o líder do time do `member_id`. Insert/Update só passam pelas políticas se o usuário for líder do time ou workspace owner.
-- Linked member só faz `SELECT` quando `shared_with_member = true`. **Nunca insere/atualiza.**
-- Trigger `ctx_evidence_from_review` propaga reviews compartilhadas para `context_evidence` baseando-se em `shared_with_member` + `period_type`.
-
-Isto significa que para suportar Self/Upwards (preenchidos pelo liderado) e Peer (preenchidos por colega), precisamos introduzir **autor explícito** + adaptar RLS, sem quebrar o caminho `'manager'` atual.
+Liderado preenche autoavaliação via chat passo-a-passo no portal "Meu Painel". Resultado é um INSERT em `performance_reviews` (`review_type='self'`, `author_user_id=auth.uid()`, `shared_with_member=true`), que dispara automaticamente o trigger `ctx_evidence_from_review` (Sprint 10.1) e propaga para o Context Graph do líder.
 
 ## Decisões de arquitetura
 
-1. **Adicionar `review_type` com default `'manager'`** (CHECK constraint, não enum nativo — segue o padrão `classification_check` já usado nessa tabela e evita migração de tipo). Backfill automático via DEFAULT cobre todos os registros existentes.
+- **Sem AI/Edge Function** — Sprint 10.2 só faz concatenação Markdown das perguntas+respostas. Sumarização AI fica para Sprint 10.3.
+- **Componente isolado**, NÃO reaproveita `MentorChat` (que tem lógica de RAG/threads/tools). Reutilizamos só os padrões visuais (bubbles, ScrollArea, Textarea com Enter-to-send) num componente novo enxuto: `SelfReviewWizard`.
+- **Modal full-screen `Dialog`** (padrão do projeto, igual ao `selectedReview` dialog), não rota nova — evita mexer em `App.tsx` e mantém o liderado no contexto do dashboard.
+- **Catálogo de perguntas estático** em `src/lib/selfReviewQuestions.ts` (mesmo padrão do `pulseTemplates.ts` da Sprint 9.2). Reutilizável por Slack/AI no futuro.
+- **RLS já permite o INSERT**: a policy "Linked members can insert own self upwards reviews" exige `author_user_id = auth.uid() AND review_type IN ('self','upwards')`.
 
-2. **Adicionar `author_user_id uuid`** (nullable, para retrocompat). Necessário porque:
-   - Em `self` o autor é o `linked_user_id` do membro.
-   - Em `upwards` o autor é o membro avaliando o líder.
-   - Em `peer` o "review pai" continua sendo do líder, mas as **respostas individuais ficam em `review_peers`** (autor por linha).
-   - Em `manager` continua null/líder — resolvido implicitamente como hoje.
-
-3. **Nova tabela `review_peers`** com FK para `performance_reviews(id) ON DELETE CASCADE`. Cada par convidado vira uma linha. RLS permite o líder ler tudo, e o `peer_user_id` ler/atualizar **apenas** sua própria linha (somente `response_jsonb`, `status`, `completed_at`).
-
-4. **RLS de `performance_reviews` estendida — sem remover nada existente:**
-   - Adicionar policies SELECT/INSERT/UPDATE para o **linked member** quando `review_type IN ('self','upwards')` E `author_user_id = auth.uid()` (member preenche o próprio self/upwards).
-   - Manter intactas todas as policies atuais ("Owners podem...", "Linked members can view shared reviews", "Admin Full Access", workspace owner SELECT).
-
-5. **Trigger `ctx_evidence_from_review` — alteração mínima:**
-   - Continuar disparando para `manager` reviews compartilhadas (comportamento atual preservado).
-   - Adicionar `self` (sempre visível ao líder do membro como evidência `private_leader`) e `peer`/`upwards` quando `shared_with_member = true`. Tag inclui `review_type` para filtragem no `/contexto`.
-   - **Não** quebra o trigger atual: muda apenas a CTE/condição com fallback para o tipo `'manager'` quando `review_type` é null (registros legados).
-
-6. **Frontend retrocompatível.** Como `review_type` tem `DEFAULT 'manager'` e `author_user_id` é nullable, **nenhum INSERT existente quebra**. Os hooks/componentes (`PerformanceReviewList`, `NewReviewDialog`, `CreateFormalReviewDialog`, `FormalReviewSheet`, `ReviewViewDialog`, `useLeaderInbox`) continuam funcionando sem mudança nesta sprint. UI 360° vem na Sprint 10.2.
-
-## Esquema SQL (resumo)
+## Arquivos a criar
 
 ```text
-ALTER TABLE performance_reviews
-  ADD COLUMN review_type text NOT NULL DEFAULT 'manager',
-  ADD COLUMN author_user_id uuid,
-  ADD CONSTRAINT performance_reviews_review_type_check
-    CHECK (review_type IN ('manager','self','peer','upwards'));
-
-CREATE INDEX idx_perf_reviews_member_type ON performance_reviews(member_id, review_type);
-CREATE INDEX idx_perf_reviews_author ON performance_reviews(author_user_id) WHERE author_user_id IS NOT NULL;
-
-CREATE TABLE review_peers (
-  id uuid PK default gen_random_uuid(),
-  review_id uuid NOT NULL REFERENCES performance_reviews(id) ON DELETE CASCADE,
-  peer_user_id uuid NOT NULL,           -- auth.users.id (sem FK direta — padrão do projeto)
-  status text NOT NULL DEFAULT 'pending'
-    CHECK (status IN ('pending','completed','declined','expired')),
-  response_jsonb jsonb NOT NULL DEFAULT '{}',
-  invited_at timestamptz NOT NULL DEFAULT now(),
-  completed_at timestamptz,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (review_id, peer_user_id)
-);
-
-CREATE INDEX idx_review_peers_review ON review_peers(review_id);
-CREATE INDEX idx_review_peers_peer ON review_peers(peer_user_id);
+src/lib/selfReviewQuestions.ts                     # array estático de perguntas
+src/components/self-review/SelfReviewWizard.tsx    # modal com fluxo conversacional
+src/components/self-review/StartSelfReviewCard.tsx # card de entrada na seção Avaliações Formais
 ```
 
-## RLS planejada
+## Arquivos a editar
 
-**`performance_reviews` (apenas adições, sem DROPs):**
-- `"Linked members can write own self/upwards"` (INSERT): `author_user_id = auth.uid() AND review_type IN ('self','upwards') AND EXISTS(SELECT 1 FROM team_members WHERE id = member_id AND linked_user_id = auth.uid())` — para `'self'`. Para `'upwards'` o `member_id` referencia o **líder sendo avaliado** (nota: validamos via trigger BEFORE INSERT que `member_id` representa um team_member válido no mesmo workspace do autor).
-- `"Linked members can update own self/upwards"` (UPDATE): mesma condição, restringe colunas via trigger BEFORE UPDATE (similar ao padrão `pulse_surveys_restrict_member_update` da Sprint 9.1) — só permite mudar `content`, `competency_evaluations`, `shared_with_member`, `sent_at`.
-- `"Linked members can view own self/upwards"` (SELECT): `author_user_id = auth.uid()`.
+```text
+src/components/dashboard/DirectReportDashboard.tsx
+  - Filtrar query 'shared-reviews' para excluir review_type='self'
+    (selfs vão para uma sub-seção separada para não confundir com avaliações do líder)
+  - Adicionar nova query 'my-self-reviews' (apenas review_type='self', author_user_id=user.id)
+  - Renderizar <StartSelfReviewCard/> no topo da seção "Avaliações Formais"
+  - Listar self-reviews abaixo num accordion/sub-card discreto
+src/i18n/locales/pt-BR.json + en.json + es.json    # chaves selfReview.*
+```
 
-**`review_peers` (nova):**
-- SELECT: `peer_user_id = auth.uid()` OR líder do membro avaliado (via join `performance_reviews → team_members → teams.leader_user_id`) OR workspace owner OR `is_admin()`.
-- INSERT: somente líder do membro avaliado (insere convites).
-- UPDATE: 
-  - Líder pode atualizar `status` (cancel/expirar) e qualquer campo administrativo.
-  - Peer pode atualizar **apenas** `response_jsonb`, `status` (somente `pending → completed`), `completed_at` — garantido por trigger BEFORE UPDATE (`review_peers_restrict_peer_update`).
-- DELETE: somente líder ou workspace owner.
+## Detalhes técnicos
 
-## Triggers de integridade (padrão da Sprint 9.1)
+### `selfReviewQuestions.ts`
+```ts
+export interface SelfReviewQuestion { id: string; question: string; placeholder?: string }
+export const SELF_REVIEW_QUESTIONS: SelfReviewQuestion[] = [
+  { id: 'q1', question: 'Quais foram as suas maiores entregas/conquistas neste ciclo?',
+    placeholder: 'Pense em projetos, resultados, marcos…' },
+  { id: 'q2', question: 'Onde você sente que poderia ter tido um desempenho melhor?',
+    placeholder: 'Seja honesto consigo mesmo — isto é um espaço seguro.' },
+  { id: 'q3', question: 'Quais recursos ou apoios você precisa do seu líder para o próximo ciclo?',
+    placeholder: 'Treinamentos, mentoria, ferramentas, mudanças de processo…' },
+];
+```
 
-1. `review_peers_restrict_peer_update` — espelha `pulse_surveys_restrict_member_update`: se `auth.uid() = peer_user_id` (e não é líder/owner), só pode mexer em `response_jsonb / status / completed_at`; status restrito a `pending → completed`.
-2. `performance_reviews_restrict_self_upwards_update` — se `auth.uid() = author_user_id` E `review_type IN ('self','upwards')`, bloqueia mudanças em `member_id`, `review_type`, `author_user_id`, `classification`, `loss_risk`, `merit_recommendation`, `promotion_recommendation` (campos de calibração do líder).
-3. `set_updated_at` em `review_peers` (trigger genérico já existente no projeto).
+### `SelfReviewWizard.tsx` — fluxo
+- Estado: `currentStep` (0 → N), `responses: Record<string, string>`, `inputValue`, `submitting`.
+- Render: Header com "Auto-avaliação" + barra de progresso (`step/total`), `ScrollArea` com bubbles (system → pergunta atual; user → respostas anteriores), Textarea + botão "Próxima" (Enter envia; Shift+Enter quebra linha).
+- Após última resposta: substitui Textarea por banner "Tudo pronto! Revise e gere seu resumo" + Card mostrando preview Markdown via `<ReactMarkdown>` + botão **"Gerar e Enviar Auto-avaliação"**.
+- Submit: monta string Markdown:
+  ```md
+  # Auto-avaliação
 
-## ctx_evidence — extensão segura
+  ## {pergunta1}
+  {resposta1}
 
-Atualizar `ctx_evidence_from_review`:
-- Caso `review_type = 'manager'` (ou null): comportamento atual.
-- Caso `review_type = 'self'`: cria evidência com `visibility = 'private_leader'`, tag `['review','self']` — sempre que existir conteúdo.
-- Caso `review_type IN ('peer','upwards')`: cria evidência apenas se `shared_with_member = true` (peer agregado fica visível no Context Graph).
+  ## {pergunta2}
+  {resposta2}
+  …
+  ```
+  Insert:
+  ```ts
+  await supabase.from('performance_reviews').insert({
+    member_id: linkedMember.id,
+    review_type: 'self',
+    author_user_id: user.id,
+    title: `Auto-avaliação de ${linkedMember.name} - ${format(new Date(), 'dd MMM yyyy', { locale: ptBR })}`,
+    content: markdown,
+    shared_with_member: true,
+    period_type: 'manual',
+  });
+  ```
+- Em sucesso: toast + invalida `['my-self-reviews']` + fecha modal. Trigger `ctx_evidence_from_review` (Sprint 10.1) propaga automaticamente.
 
-## Fora de escopo
+### `StartSelfReviewCard.tsx`
+- Card destacado `rounded-2xl` com fundo gradiente suave (Sparkles + Lora), texto "Conte sua versão da história" + botão primário "Iniciar Auto-avaliação". Abre `<SelfReviewWizard/>`.
+- Mostra contador "X auto-avaliações enviadas" se houver entries em `my-self-reviews`.
 
-- UI/Frontend (formulários self/peer/upwards, dashboard 360°) — Sprint 10.2.
-- Função AI para gerar perguntas de peer review — Sprint 10.3.
-- Notificação por email/Slack ao convidar pares — depois.
-- Agregação de respostas peer em sumário no review pai — Sprint 10.3.
+### Mudança em `DirectReportDashboard.tsx`
+1. Linha 260: adicionar `.neq('review_type', 'self')` na query `shared-reviews` (não quebra reviews legados que têm `review_type='manager'` por default).
+2. Adicionar novo `useQuery(['my-self-reviews', linkedMember.id])` filtrando `review_type='self'` e `author_user_id=user.id`.
+3. Linha ~755: antes do header "Avaliações Formais", inserir `<StartSelfReviewCard ... />`.
+4. Após o map de `sharedReviews`, adicionar sub-seção colapsada "Suas auto-avaliações" listando os selfs (reutilizando o mesmo Card visual, abre `selectedReview` Dialog que já existe — 100% compatível porque é só conteúdo Markdown).
 
 ## Riscos & mitigações
 
 | Risco | Mitigação |
 |---|---|
-| Quebrar generate-formal-review (edge function) | `review_type` tem default `'manager'`; nada muda no payload atual. |
-| Frontend espera `manager_id` ou colunas novas | Não introduzimos `manager_id`; `author_user_id` é nullable e ignorado pelos componentes atuais. |
-| Liderado tentar abrir review como outro user | INSERT policy força `author_user_id = auth.uid()`; trigger valida workspace match. |
-| Ctx evidence duplicada para reviews legados | Trigger usa `ON CONFLICT (source_table, source_id)` já existente — UPSERT idempotente. |
-| Constraint quebrar registros existentes | `DEFAULT 'manager'` aplicado ao `ADD COLUMN`, todos os legados ficam válidos. |
+| Self review aparecer misturada com manager review na lista | Query principal usa `.neq('review_type', 'self')`; selfs ficam em sub-seção separada. |
+| Liderado tentar editar/apagar review depois de enviar | Trigger `performance_reviews_restrict_self_upwards_update` (Sprint 10.1) bloqueia mudança de campos sensíveis. UI desta sprint é write-only. |
+| Quebrar tela do líder | Líder vê review via `is_team_leader()` policy + ctx_evidence trigger emite tag `['review','self']` — não toca em código de líder. |
+| `linkedMember.name` ausente | Fallback para `linkedMember.email` ou `'Você'` no título. |
+| Nada salvo se modal fecha no meio | Aceito para esta sprint (rascunho local-only). Persistência de draft fica para 10.3+. |
 
-## Arquivo único de migração
+## Fora de escopo
 
-`supabase/migrations/<timestamp>_sprint_10_1_360_reviews_foundation.sql` contendo as 6 partes acima em ordem (ALTER → CREATE TABLE → INDEXES → RLS → triggers → ctx_evidence update). Tudo idempotente (`IF NOT EXISTS` / `DROP POLICY IF EXISTS` antes do CREATE).
+- Sumarização AI das respostas (Sprint 10.3 — chamará `ai-router` task `summarize_text`).
+- Edição de auto-avaliação após envio.
+- Persistência de rascunho entre sessões.
+- Notificação Slack/email ao líder quando auto-avaliação é enviada (trigger ctx_evidence + Activity Feed já cobrem visibilidade).
+- Upwards review (preencher avaliação sobre o líder) — Sprint 10.4.
+- Peer review trigger pelo líder — Sprint 10.5.
