@@ -102,15 +102,32 @@ serve(async (req) => {
 
     console.log('✅ User invited:', email);
 
+    // Onda 4.3 Fluxo C: registra evento member.invited no Event Bus.
+    // Email do convite continua via Supabase Auth (template nativo).
+    // O bus serve para auditoria e futuras integrações (in-app, slack).
+    await emit(supabaseAdmin, {
+      type: 'member.invited',
+      workspace_id: workspace_id ?? null,
+      target_user_id: invitation?.user?.id ?? null,
+      channels: ['inapp'],
+      payload: {
+        email,
+        name: name ?? null,
+        assigned_plan: plan,
+        role: role ?? 'member',
+        delivery_method: 'email',
+      },
+    });
+
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         message: `Convite enviado para ${email}`,
         assigned_plan: plan
       }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
 
