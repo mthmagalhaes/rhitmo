@@ -12,6 +12,7 @@ import {
   type SourceKey,
 } from '@/components/context/SourceFilterChips';
 import { MemberFilterSelect } from '@/components/context/MemberFilterSelect';
+import { SendPulseButton } from '@/components/pulse/SendPulseButton';
 
 export default function LiderContexto() {
   const { workspaceId } = useAccount();
@@ -70,6 +71,9 @@ export default function LiderContexto() {
             onToggle={toggleSource}
             onClear={() => setSources([])}
           />
+          <div className="sm:ml-auto">
+            <SendPulseButton />
+          </div>
         </div>
       </div>
 
