@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { emit } from "../_shared/emit.ts";
 import { createLogger, getOrCreateRequestId } from "../_shared/logger.ts";
+import { flag } from "../_shared/featureFlags.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,6 +16,11 @@ const handler = async (req: Request): Promise<Response> => {
 
   const requestId = getOrCreateRequestId(req);
   const log = createLogger({ functionName: 'notify-review-shared', requestId });
+
+  // Onda 4.5: USE_EVENT_BUS_FOR_REVIEW_SHARED (default true)
+  // = true  → email vai pelo bus (template review-shared via send-transactional-email)
+  // = false → mantém Resend direto (rollback de emergência)
+  const useEventBus = flag('USE_EVENT_BUS_FOR_REVIEW_SHARED', true);
 
   try {
     const { reviewId } = await req.json();
@@ -30,7 +36,6 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // Fetch review + member
     const { data: review, error: reviewErr } = await supabaseAdmin
       .from('performance_reviews')
       .select('id, title, period_type, created_at, member_id')
@@ -41,10 +46,9 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error(`Review não encontrada: ${reviewErr?.message}`);
     }
 
-    // Fetch member info
     const { data: member, error: memberErr } = await supabaseAdmin
       .from('team_members')
-      .select('name, email, team_id')
+      .select('name, email, team_id, linked_user_id')
       .eq('id', review.member_id)
       .single();
 
@@ -52,7 +56,6 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error(`Membro não encontrado ou sem email: ${memberErr?.message}`);
     }
 
-    // Fetch manager name via workspace owner
     const { data: team } = await supabaseAdmin
       .from('teams')
       .select('workspace_id')
@@ -75,103 +78,68 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    const resendApiKey = Deno.env.get('RESEND_API_KEY');
-    if (!resendApiKey) {
-      throw new Error('RESEND_API_KEY não configurada');
-    }
-
     const periodLabel = review.period_type === 'manual' ? review.title : review.period_type;
     const formattedDate = new Date(review.created_at).toLocaleDateString('pt-BR', {
       day: '2-digit', month: 'long', year: 'numeric',
     });
     const reviewLink = `https://rhitmo.co/review/${reviewId}`;
 
-    const resendResponse = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${resendApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'Rhitmo <noreply@rhitmo.co>',
-        to: [member.email],
-        subject: `${managerName} compartilhou sua avaliação de desempenho`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="text-align: center; margin-bottom: 30px;">
-              <h1 style="color: #4F46E5; font-size: 32px; margin: 0;">🎵 <strong>Rhitmo</strong></h1>
-            </div>
-            
-            <h2 style="color: #333; margin-bottom: 20px;">Olá, ${member.name}! 👋</h2>
-            
-            <p style="font-size: 16px; line-height: 1.6; color: #666; margin-bottom: 20px;">
-              Seu líder <strong>${managerName}</strong> compartilhou sua avaliação formal de desempenho no Rhitmo.
-            </p>
-            
-            <div style="background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 30px;">
-              <ul style="margin: 0; padding-left: 20px; color: #666; font-size: 14px; line-height: 2; list-style: none;">
-                <li>📝 <strong>${periodLabel}</strong></li>
-                <li>📅 Gerada em ${formattedDate}</li>
-                <li>🔓 Disponível no seu portal do colaborador</li>
-              </ul>
-            </div>
-            
-            <div style="text-align: center; margin: 40px 0;">
-              <a href="${reviewLink}" 
-                 style="background-color: #7C3AED; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">
-                Ver minha avaliação →
-              </a>
-            </div>
-            
-            <p style="font-size: 14px; color: #666; text-align: center;">
-              Você pode adicionar comentários e confirmar a leitura diretamente no Rhitmo.
-            </p>
-            
-            <hr style="border: none; border-top: 1px solid #eee; margin: 40px 0;" />
-            
-            <p style="font-size: 12px; color: #999; text-align: center;">
-              Atenciosamente,<br>
-              <strong>Equipe Rhitmo</strong>
-            </p>
-          </div>
-        `,
-      }),
-    });
-
-    if (!resendResponse.ok) {
-      const errorData = await resendResponse.json();
-      console.error('❌ Erro Resend:', errorData);
-      throw new Error(`Resend API error: ${JSON.stringify(errorData)}`);
-    }
-
-    const emailData = await resendResponse.json();
-    log.info('email_sent', { resend_id: emailData.id });
-
-    // Onda 4.3: emit shadow event for in-app + slack notification.
-    // Email continues via Resend (existing template). Dispatcher fan-out adds in-app + slack.
-    const { data: memberLink } = await supabaseAdmin
-      .from('team_members')
-      .select('linked_user_id')
-      .eq('id', review.member_id)
-      .single();
+    const channels: Array<'inapp' | 'slack' | 'email'> = ['inapp', 'slack'];
+    if (useEventBus) channels.push('email');
 
     await emit(supabaseAdmin, {
       type: 'review.shared',
       workspace_id: team?.workspace_id ?? null,
-      target_user_id: memberLink?.linked_user_id ?? null,
-      channels: ['inapp', 'slack'],
+      target_user_id: member.linked_user_id ?? null,
+      channels,
       payload: {
         review_id: reviewId,
         review_title: review.title,
         period: periodLabel,
-        manager_name: managerName,
-        member_name: member.name,
-        review_url: reviewLink,
+        // Campos consumidos pelo template review-shared.tsx:
+        memberName: member.name,
+        managerName,
+        periodLabel,
+        formattedDate,
+        reviewLink,
+        // Garantia: dispatcher pode resolver o destinatário sem buscar auth
+        recipient_email: member.email,
       },
     });
 
+    // Rollback path — mantém Resend direto se a flag estiver desligada.
+    let emailId: string | null = null;
+    if (!useEventBus) {
+      const resendApiKey = Deno.env.get('RESEND_API_KEY');
+      if (!resendApiKey) {
+        throw new Error('RESEND_API_KEY não configurada (flag USE_EVENT_BUS_FOR_REVIEW_SHARED=false)');
+      }
+      const resendResponse = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: 'Rhitmo <noreply@rhitmo.co>',
+          to: [member.email],
+          subject: `${managerName} compartilhou sua avaliação de desempenho`,
+          html: `<p>Olá ${member.name}, ${managerName} compartilhou sua avaliação. <a href="${reviewLink}">Ver avaliação</a></p>`,
+        }),
+      });
+      if (!resendResponse.ok) {
+        const errorData = await resendResponse.json();
+        throw new Error(`Resend API error: ${JSON.stringify(errorData)}`);
+      }
+      const emailData = await resendResponse.json();
+      emailId = emailData.id;
+      log.info('email_sent_legacy', { resend_id: emailData.id });
+    } else {
+      log.info('email_via_bus', { event_type: 'review.shared' });
+    }
+
     return new Response(
-      JSON.stringify({ success: true, emailId: emailData.id, requestId }),
+      JSON.stringify({ success: true, emailId, requestId, channel: useEventBus ? 'bus' : 'resend' }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'x-request-id': requestId } }
     );
   } catch (error: any) {

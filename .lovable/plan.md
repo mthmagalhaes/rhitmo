@@ -1,131 +1,119 @@
-# Onda 4 — Solidificar a infra das Ondas 2 e 3
+# Onda 4.5 — Fechamento das Ondas 3 e 4
 
-Três frentes que se reforçam: ver o que está acontecendo (observabilidade), garantir que continue funcionando (testes), e fazer o Event Bus deixar de ser órfão (migração emit).
+Objetivo: zerar os 6 itens pendentes identificados na auditoria, sem abrir frente nova. Tudo aqui é "terminar o combinado".
 
-## Estado atual relevante
+## Estado atual (recap)
 
-- `_shared/emit.ts` existe mas **só é usado por ele mesmo** (zero produção real).
-- 7 funções chamam Slack direto (`slack-bot`, `invite-member-slack`, `send-evidence-digest`, `slack-ambient-classifier`, etc.) — fora do bus.
-- `_shared/notifications.ts` é o caminho legado paralelo, com seu próprio sistema de canais.
-- 69 Edge Functions em produção, **zero testes Deno**.
-- Logs hoje: só `console.log` esparsos. Sem `request_id`, sem correlação cross-function.
+- Testes shared OK (`aiGateway`, `emit`, `logger`, `safeSupabase`).
+- Faltam testes de `event-dispatcher` e `ai-router`.
+- Trigger `feedback.shared` emite eventos, mas não há template de email correspondente — quando o dispatcher enfileira `email`, o `process-email-queue` não tem template para renderizar.
+- `notify-review-shared` duplica entrega: manda Resend direto **e** emite evento (fan-out duplicado para in-app/slack só, mas a memória promete migração completa).
+- `invite-member-slack` e `bulk-onboard` ainda chamam Slack/email direto, sem `emit()`.
+- Sem feature flags para rollback seguro.
+- Dashboard observabilidade não mostra custo AI estimado por workspace; maioria dos `aiGateway` não recebe logger.
 
-## 4.1 — Observabilidade unificada
+## 4.5.1 — Testes faltantes (event-dispatcher + ai-router)
 
-**Tabela `function_logs`** (append-only, particionada mentalmente por dia via índice em `created_at`):
+**`event-dispatcher/index_test.ts`**
+- Mock do supabase client (`@supabase/supabase-js` stub local).
+- Casos:
+  - Sem eventos pendentes → retorna `processed: 0`.
+  - Evento `inapp` com `target_user_id` → insere em `notifications` e marca `dispatched`.
+  - Evento `inapp` sem `target_user_id` → marca `failed` com erro descritivo após 3 tentativas.
+  - Evento multi-canal (`email`+`inapp`) → chama `enqueue_email` e insere notification.
+  - Evento que falha no canal → incrementa `attempts`, mantém `pending` até 3, depois `failed`.
+  - Idempotência: chamar duas vezes seguidas não duplica `notifications` (segundo run encontra status `dispatched`, ignora).
 
-```text
-id              uuid PK
-request_id      uuid           -- propagado entre funções via header
-function_name   text
-level           text           -- 'debug' | 'info' | 'warn' | 'error'
-event           text           -- 'start' | 'end' | 'ai_call' | 'db_query' | custom
-duration_ms     int            -- nullable
-user_id         uuid           -- nullable
-workspace_id    uuid           -- nullable
-metadata        jsonb          -- payload livre (model, tokens, status_code, etc.)
-error_message   text           -- nullable
-created_at      timestamptz default now()
-```
+**`ai-router/index_test.ts`**
+- Mock de auth: `Authorization` ausente → 401.
+- Body sem `task` → 400.
+- `task` desconhecida → 400 com lista `available`.
+- `task` válida (`summarize_text`) com input mínimo → roteia para handler (mock do handler para evitar chamada real ao gateway).
+- `GatewayError` propagado → response usa `gatewayErrorResponse`.
 
-Índices: `(function_name, created_at DESC)`, `(request_id)`, `(level, created_at DESC) WHERE level IN ('warn','error')`.
+Rodar via `supabase--test_edge_functions` no fim.
 
-RLS: `SELECT` só para super_admin via `has_role(auth.uid(), 'super_admin')`. `INSERT` só via service_role.
+## 4.5.2 — Template `feedback-shared` para o dispatcher
 
-**Helper `_shared/logger.ts`**:
+Hoje o trigger `trg_emit_feedback_shared` insere evento com canal `email`, o dispatcher chama `enqueue_email`, mas `process-email-queue` não tem template `feedback-shared` na registry transacional.
 
+Ações:
+1. Criar `supabase/functions/_shared/transactional-email-templates/feedback-shared.tsx` (React Email, brand Rhitmo: Lora headings, max-w-5xl mental, fundo `#ffffff`, botão "Ver feedback" levando para `https://rhitmo.co/dashboard?feedback=<id>`).
+2. Registrar em `_shared/transactional-email-templates/registry.ts` como `'feedback-shared'`.
+3. Garantir que o payload do evento (`feedback_id`, `summary`, `actor_name`, `target_name`) seja repassado como `templateData` quando `process-email-queue` chamar `send-transactional-email`. Se o dispatcher hoje envia tudo dentro de `data`, ajustar `process-email-queue` para mapear `event_type → templateName` e `data → templateData` para os tipos canônicos do Event Bus.
+4. Deploy de `process-email-queue` + `send-transactional-email`.
+
+## 4.5.3 — Migração completa do `notify-review-shared`
+
+Hoje: chama Resend direto **e** emite evento (canais `inapp`, `slack`).
+
+Plano:
+1. Criar template transacional `review-shared` na registry (já existe `_shared/transactional-email-templates/review-shared.tsx` — confirmar e reutilizar).
+2. No `notify-review-shared`, **remover** chamada direta ao Resend.
+3. Trocar `emit({ channels: ['inapp','slack'] })` por `emit({ channels: ['inapp','slack','email'] })`.
+4. Adicionar feature flag de segurança: env `USE_EVENT_BUS_FOR_REVIEW_SHARED` (default `true`). Se `false`, mantém o caminho antigo (Resend direto + evento sem email). Permite rollback de 1 comando sem deploy.
+5. Logar via `createLogger` qual caminho foi usado.
+
+## 4.5.4 — Migrar `invite-member-slack` e `bulk-onboard` para `emit()`
+
+**`invite-member-slack`**: hoje chama Slack API direto. Migrar para emitir `member.invited` com `channels: ['slack']` e `payload.delivery_method: 'slack'`. Dispatcher já sabe rotear `slack` para `slack_outbound` queue. Manter chamada direta atrás de flag `USE_EVENT_BUS_FOR_SLACK_INVITE`.
+
+**`bulk-onboard` / `dispatch-bulk-invites`**: cada item do batch passa a emitir `member.invited` (canais conforme `delivery_method` do item). Remove a duplicação com `admin-invite-user` (que já emite). Flag `USE_EVENT_BUS_FOR_BULK_INVITE`.
+
+Atualizar `mem://architecture/event-bus.md` listando os novos emissores e o contrato de `payload.delivery_method`.
+
+## 4.5.5 — Feature flags (mecanismo único)
+
+Helper novo `_shared/featureFlags.ts`:
 ```ts
-const log = createLogger({ functionName: 'chat-mentor', requestId, userId, workspaceId });
-log.info('start', { model: 'gemini-2.5-flash' });
-log.aiCall({ model, durationMs, tokensIn, tokensOut });
-log.error('failed', err);
-await log.flush(); // batch insert no fim da request
+export function flag(name: string, defaultValue = true): boolean {
+  const v = Deno.env.get(name);
+  if (v == null) return defaultValue;
+  return v.toLowerCase() === 'true' || v === '1';
+}
 ```
 
-Buffer in-memory, flush no `finally` da request. Flush não bloqueia a resposta ao usuário (fire-and-forget com timeout 500ms).
+Flags introduzidas: `USE_EVENT_BUS_FOR_REVIEW_SHARED`, `USE_EVENT_BUS_FOR_SLACK_INVITE`, `USE_EVENT_BUS_FOR_BULK_INVITE`. Documentar em `mem://infrastructure/feature-flags.md` com instruções "para reverter, setar = false e redeploy zero — basta atualizar secret".
 
-**Propagação de `request_id`**: aceitar header `x-request-id` na entrada; gerar `crypto.randomUUID()` se ausente; sempre devolver no response. `aiGateway.ts` e `safeSupabase.ts` recebem o logger via parâmetro opcional.
+## 4.5.6 — Métrica de custo AI por workspace
 
-**Página admin `/admin/observability`** (super_admin only):
-- Filtros: function_name, level, range de tempo, request_id.
-- Painel: top 10 funções por erro nas últimas 24h, latência p50/p95 por função, custo AI estimado por workspace (token_count × preço do modelo).
+No `_shared/aiGateway.ts`, quando o logger é passado:
+- Após resposta OK, calcular custo estimado: `tokensIn * priceIn[model] + tokensOut * priceOut[model]`.
+- Tabela de preços hardcoded em `_shared/aiPricing.ts` (USD por 1M tokens) cobrindo modelos usados: `gemini-2.5-flash`, `gemini-2.5-pro`, `gemini-2.5-flash-lite`, `gpt-5`, `gpt-5-mini`, `gpt-5-nano`.
+- `log.aiCall({ ..., estimatedCostUsd })` grava em `metadata` do `function_logs`.
 
-## 4.2 — Testes Deno para infra crítica
+No `AdminObservability.tsx`:
+- Adicionar card "Custo AI estimado (últimos 7d)" agrupado por `workspace_id`, ordenado desc.
+- Query: `SELECT workspace_id, SUM((metadata->>'estimatedCostUsd')::numeric) FROM function_logs WHERE event='ai_call' AND created_at > now() - interval '7 days' GROUP BY workspace_id ORDER BY 2 DESC LIMIT 20`.
 
-Cobertura mínima nos shared helpers (que sustentam tudo):
+Passar logger explicitamente em pelo menos 4 funções de alto tráfego que ainda não recebem: `analyze-feedback`, `generate-brief`, `generate-formal-review`, `meu-rhitmo`. Não migrar todas — apenas o suficiente para o dashboard ter dados representativos.
 
-- `_shared/aiGateway.test.ts`
-  - 200 OK retorna conteúdo parseado
-  - 429 propaga erro tipado `RateLimitError`
-  - 402 propaga erro tipado `NoCreditsError`
-  - timeout de fetch
-  - mock do `fetch` global
+## 4.5.7 — Memória
 
-- `_shared/emit.test.ts`
-  - insere row em `events` com payload correto
-  - rejeita `type` vazio
-  - rejeita `channels` fora do enum
-
-- `_shared/safeSupabase.test.ts`
-  - `safeRpc` retorna `{ data, error }` sem throw
-  - `tryRpc` faz throw com mensagem útil
-  - `safeFunctionInvoke` lida com 500 do edge function
-
-- `event-dispatcher` (integration-style com supabase mock):
-  - processa apenas eventos com `dispatched_at IS NULL`
-  - fan-out para `email`, `inapp`, `slack`
-  - marca `dispatched_at` no sucesso, `error` no fail
-  - idempotência: rodar duas vezes não duplica
-
-- `ai-router` skeleton: roteamento por `task`, validação Zod, 404 em task inexistente.
-
-Testes rodam via `supabase--test_edge_functions`. Adicionar `import "https://deno.land/std@0.224.0/dotenv/load.ts"` em cada arquivo.
-
-## 4.3 — Migrar 3 fluxos críticos para `emit()`
-
-Os 3 com maior tráfego e maior dor de manutenção:
-
-**Fluxo A — Feedback compartilhado**
-- Hoje: o frontend marca `visibility='shared'` e nada notifica explicitamente o liderado.
-- Depois: trigger ou hook no momento do share dispara `emit({ type: 'feedback.shared', ... })`.
-- Dispatcher manda: in-app (sino) + email (template `feedback-shared`).
-
-**Fluxo B — Review compartilhado**
-- Hoje: `share-review` chama Slack/email direto misturado com lógica de domínio.
-- Depois: `share-review` faz só `emit({ type: 'review.shared', target_user_id, channels: ['email','inapp','slack'] })`.
-- Dispatcher cuida do fan-out.
-
-**Fluxo C — Convite enviado (`invite-member-slack` + email de invite)**
-- Hoje: lógica duplicada entre `invite-member-slack` e `bulk-invite`.
-- Depois: ambas emitem `member.invited` com payload comum. Dispatcher resolve canal pelo `payload.delivery_method`.
-
-**Não migrar nesta onda**: ambient-classifier, slack-bot interativo, evidence-digest agendado (têm timing/UX próprios).
-
-## 4.4 — Memória e documentação
-
-- Atualizar `mem://architecture/event-bus.md` com lista canônica de tipos de evento.
-- Criar `mem://infrastructure/observability-logger.md` explicando como usar `createLogger`.
-- Adicionar à Core: "Toda Edge Function nova deve usar `createLogger` e emitir via `emit()` em vez de chamar email/Slack direto."
+- Atualizar `mem://architecture/event-bus.md`: adicionar `feedback-shared` template, novos emissores (`invite-member-slack`, `bulk-onboard`, `notify-review-shared` totalmente migrado).
+- Criar `mem://infrastructure/feature-flags.md` listando flags + helper.
+- Atualizar `mem://infrastructure/observability-logger.md` com seção "Custo AI" e tabela `aiPricing`.
+- Atualizar Core: adicionar linha "Use `flag()` de `_shared/featureFlags.ts` para todo rollback de migração de bus."
 
 ## Ordem de execução
 
-1. Migration `function_logs` + RLS.
-2. `_shared/logger.ts` + integração em `aiGateway.ts` (test bench: chat-mentor).
-3. Página `/admin/observability` (read-only, simples).
-4. Testes Deno dos 5 módulos shared + dispatcher + router.
-5. Migração Fluxo A (feedback.shared) — menor blast radius.
-6. Migração Fluxo B (review.shared).
-7. Migração Fluxo C (member.invited) + remoção do código legado duplicado.
-8. Memória atualizada.
+1. Testes do dispatcher e do router (4.5.1).
+2. Template `feedback-shared` + ajuste no `process-email-queue` (4.5.2).
+3. Helper `featureFlags.ts` + `aiPricing.ts` (base para 4.5.3-4.5.6).
+4. Migração `notify-review-shared` (4.5.3).
+5. Migração `invite-member-slack` e `bulk-onboard` (4.5.4).
+6. Custo AI: gateway + dashboard + 4 funções instrumentadas (4.5.6).
+7. Memórias atualizadas (4.5.7).
+8. Rodar `supabase--test_edge_functions` final + deploy de todas as funções tocadas.
 
-## Riscos e mitigações
+## Riscos
 
-- **Logger derrubando latência**: flush async com timeout duro de 500ms; falha no insert nunca propaga.
-- **Migração de notificação quebrando entrega**: para cada fluxo, manter o caminho antigo por trás de feature flag `USE_EVENT_BUS_FOR_<X>` por 1 semana antes de remover.
-- **Volume de `function_logs`**: política de retenção via `pg_cron` semanal — apagar `level IN ('debug','info')` com mais de 14 dias; manter `warn/error` por 90 dias.
+- **Template `feedback-shared` mal mapeado** → email não envia. Mitigação: testar com curl no `send-transactional-email` antes de habilitar o caminho do dispatcher.
+- **Flag default errado** → comportamento muda silenciosamente. Mitigação: defaults preservam comportamento antigo só onde houver risco real (review/invites). Para `feedback-shared` (novo, não tem caminho antigo), não há flag.
+- **Custo AI impreciso** → preços mudam. Mitigação: documentar em `aiPricing.ts` que os valores são estimativas e a fonte da verdade segue sendo a fatura do provider.
 
-## Fora de escopo (Onda 5)
+## Fora de escopo (continua para Onda 5)
 
-- Migração de 5-10 tasks reais para `ai-router` (analyze-feedback, generate-brief, classify-tag, etc.).
-- Rate limiting / quotas por workspace no AI Gateway.
-- Migração dos fluxos Slack restantes (ambient, bot interativo).
+- Migrar 5-10 tasks reais para `ai-router`.
+- Rate limiting por workspace.
+- Migração dos fluxos Slack restantes (ambient, bot interativo, evidence-digest).

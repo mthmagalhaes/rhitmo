@@ -18,6 +18,14 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const BATCH_SIZE = 50;
 const MAX_ATTEMPTS = 3;
 
+// Onda 4.5 — mapeamento canônico de event_type → template transacional.
+// Quando o canal "email" é despachado, esses templates são usados pelo
+// `process-email-queue` via `send-transactional-email`.
+const EVENT_EMAIL_TEMPLATE: Record<string, string> = {
+  "feedback.shared": "feedback-shared",
+  "review.shared": "review-shared",
+};
+
 interface EventRow {
   id: string;
   event_type: string;
@@ -51,18 +59,32 @@ async function dispatchEvent(
         });
         if (error) errors.push(`inapp: ${error.message}`);
       } else if (channel === "email") {
-        // enqueue email via existing pgmq queue
-        const { error } = await supabase.rpc("enqueue_email", {
-          queue_name: "emails_outbound",
-          payload: {
-            event_type: ev.event_type,
-            workspace_id: ev.workspace_id,
-            actor_user_id: ev.actor_user_id,
-            target_user_id: ev.target_user_id,
-            data: ev.payload,
+        // Onda 4.5: invoca send-transactional-email diretamente.
+        // Resolve email do destinatário e mapeia evento → template.
+        const templateName = EVENT_EMAIL_TEMPLATE[ev.event_type];
+        if (!templateName) {
+          errors.push(`email: no template registered for ${ev.event_type}`);
+          continue;
+        }
+        // Tenta resolver email: prioriza payload.recipient_email, senão busca via auth.admin.
+        let recipientEmail = (ev.payload as any)?.recipient_email as string | undefined;
+        if (!recipientEmail && ev.target_user_id) {
+          const { data: userInfo } = await supabase.auth.admin.getUserById(ev.target_user_id);
+          recipientEmail = userInfo?.user?.email ?? undefined;
+        }
+        if (!recipientEmail) {
+          errors.push("email: missing recipient (no payload.recipient_email and target_user has no email)");
+          continue;
+        }
+        const { error } = await supabase.functions.invoke("send-transactional-email", {
+          body: {
+            templateName,
+            recipientEmail,
+            idempotencyKey: `event-${ev.id}-email`,
+            templateData: ev.payload,
           },
         });
-        if (error) errors.push(`email: ${error.message}`);
+        if (error) errors.push(`email: ${(error as any)?.message ?? error}`);
       } else if (channel === "slack") {
         // enqueue slack via existing pgmq queue
         const { error } = await supabase.rpc("enqueue_email", {

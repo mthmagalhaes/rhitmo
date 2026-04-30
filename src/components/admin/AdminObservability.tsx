@@ -92,7 +92,19 @@ export const AdminObservability = () => {
     const avgLatency = aiCalls.length
       ? Math.round(aiCalls.reduce((acc, l) => acc + (l.duration_ms ?? 0), 0) / aiCalls.length)
       : 0;
-    return { errors, warns, aiCalls: aiCalls.length, avgLatency };
+    // Onda 4.5: custo IA estimado por workspace (USD)
+    const costByWorkspace = new Map<string, number>();
+    for (const l of aiCalls) {
+      const cost = Number((l.metadata as any)?.estimatedCostUsd ?? 0);
+      if (!cost) continue;
+      const ws = l.workspace_id ?? 'sem workspace';
+      costByWorkspace.set(ws, (costByWorkspace.get(ws) ?? 0) + cost);
+    }
+    const topCost = Array.from(costByWorkspace.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10);
+    const totalCost = topCost.reduce((acc, [, v]) => acc + v, 0);
+    return { errors, warns, aiCalls: aiCalls.length, avgLatency, topCost, totalCost };
   }, [logs]);
 
   return (
@@ -131,6 +143,28 @@ export const AdminObservability = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Custo IA estimado por workspace (Onda 4.5) */}
+      {stats.topCost.length > 0 && (
+        <Card className="rounded-2xl">
+          <CardHeader>
+            <CardTitle className="text-base">
+              Custo IA estimado · ${stats.totalCost.toFixed(4)} (top {stats.topCost.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {stats.topCost.map(([ws, cost]) => (
+              <div key={ws} className="flex items-center justify-between text-sm">
+                <span className="font-mono text-xs truncate max-w-[60%]" title={ws}>{ws}</span>
+                <span className="font-semibold">${cost.toFixed(4)}</span>
+              </div>
+            ))}
+            <p className="text-[11px] text-muted-foreground pt-2">
+              Estimativa baseada em tokens × tabela `aiPricing.ts`. Fonte da verdade segue sendo a fatura do gateway.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filtros */}
       <Card className="rounded-2xl">
