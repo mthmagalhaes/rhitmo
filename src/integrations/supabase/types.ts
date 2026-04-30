@@ -331,6 +331,74 @@ export type Database = {
         }
         Relationships: []
       }
+      context_evidence: {
+        Row: {
+          actor_user_id: string | null
+          created_at: string
+          embedding: string | null
+          evidence_type: string
+          id: string
+          member_id: string
+          metadata: Json
+          occurred_at: string
+          sentiment: string | null
+          source_id: string
+          source_table: string
+          summary: string | null
+          tags: string[]
+          title: string | null
+          updated_at: string
+          visibility: string
+          workspace_id: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          created_at?: string
+          embedding?: string | null
+          evidence_type: string
+          id?: string
+          member_id: string
+          metadata?: Json
+          occurred_at: string
+          sentiment?: string | null
+          source_id: string
+          source_table: string
+          summary?: string | null
+          tags?: string[]
+          title?: string | null
+          updated_at?: string
+          visibility?: string
+          workspace_id: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          created_at?: string
+          embedding?: string | null
+          evidence_type?: string
+          id?: string
+          member_id?: string
+          metadata?: Json
+          occurred_at?: string
+          sentiment?: string | null
+          source_id?: string
+          source_table?: string
+          summary?: string | null
+          tags?: string[]
+          title?: string | null
+          updated_at?: string
+          visibility?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "context_evidence_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       development_items: {
         Row: {
           category: string | null
@@ -2377,6 +2445,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _ctx_resolve_workspace: { Args: { _member_id: string }; Returns: string }
       admin_activation_cohorts: { Args: never; Returns: Json }
       admin_cohort_workspaces: {
         Args: { p_cohort_month: string }
@@ -2384,6 +2453,10 @@ export type Database = {
       }
       admin_funnel_metrics: { Args: never; Returns: Json }
       admin_revenue_metrics: { Args: never; Returns: Json }
+      backfill_context_evidence: {
+        Args: { _workspace_id?: string }
+        Returns: Json
+      }
       can_update_own_sync: { Args: { member_id: string }; Returns: boolean }
       check_is_admin: { Args: never; Returns: boolean }
       cleanup_expired_impersonations: { Args: never; Returns: undefined }
@@ -2543,6 +2616,23 @@ export type Database = {
         }[]
       }
       get_member_skill_radar: { Args: { _member_id: string }; Returns: Json }
+      get_member_timeline: {
+        Args: { _limit?: number; _member_id: string; _types?: string[] }
+        Returns: {
+          actor_user_id: string
+          evidence_type: string
+          id: string
+          metadata: Json
+          occurred_at: string
+          sentiment: string
+          source_id: string
+          source_table: string
+          summary: string
+          tags: string[]
+          title: string
+          visibility: string
+        }[]
+      }
       get_review_evidence: {
         Args: { _member_id: string; _period_end: string; _period_start: string }
         Returns: {
