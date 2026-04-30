@@ -13,6 +13,9 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = getOrCreateRequestId(req);
+  const log = createLogger({ functionName: 'notify-review-shared', requestId });
+
   try {
     const { reviewId } = await req.json();
     if (!reviewId) {
