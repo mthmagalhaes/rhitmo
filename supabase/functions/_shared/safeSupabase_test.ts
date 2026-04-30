@@ -1,53 +1,38 @@
-// Onda 4.2 — Testes do safeSupabase wrapper
+// Onda 4.2 — Testes do safeSupabase wrapper (Deno side)
 
 import "https://deno.land/std@0.224.0/dotenv/load.ts";
 import { assertEquals, assertRejects } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { safeRpc, safeFunctionInvoke, SafeSupabaseError } from "./safeSupabase.ts";
+import { safeRpc, tryRpc, SupabaseSafeError } from "./safeSupabase.ts";
 
-// Mock cliente Supabase mínimo
-function makeClient(opts: {
-  rpcResult?: { data?: unknown; error?: { message: string; code?: string } | null };
-  invokeResult?: { data?: unknown; error?: { message: string } | null };
-}) {
+function makeClient(rpcResult: { data?: unknown; error?: { message: string; code?: string } | null }) {
   return {
-    rpc: (_name: string, _args?: Record<string, unknown>) =>
-      Promise.resolve(opts.rpcResult ?? { data: null, error: null }),
-    functions: {
-      invoke: (_name: string, _opts?: unknown) =>
-        Promise.resolve(opts.invokeResult ?? { data: null, error: null }),
-    },
+    rpc: (_name: string, _args?: Record<string, unknown>) => Promise.resolve(rpcResult),
   } as any;
 }
 
 Deno.test("safeRpc — sucesso retorna data", async () => {
-  const client = makeClient({ rpcResult: { data: { ok: true }, error: null } });
+  const client = makeClient({ data: { ok: true }, error: null });
   const data = await safeRpc<{ ok: boolean }>(client, "any_rpc");
   assertEquals(data.ok, true);
 });
 
-Deno.test("safeRpc — erro lança SafeSupabaseError tipado", async () => {
-  const client = makeClient({
-    rpcResult: { data: null, error: { message: "permission denied", code: "42501" } },
-  });
+Deno.test("safeRpc — erro lança SupabaseSafeError com nome do RPC", async () => {
+  const client = makeClient({ data: null, error: { message: "permission denied", code: "42501" } });
   await assertRejects(
-    () => safeRpc(client, "any_rpc"),
-    SafeSupabaseError,
-    "any_rpc",
+    () => safeRpc(client, "secret_rpc"),
+    SupabaseSafeError,
+    "secret_rpc",
   );
 });
 
-Deno.test("safeFunctionInvoke — sucesso retorna data", async () => {
-  const client = makeClient({ invokeResult: { data: { hello: "world" }, error: null } });
-  const data = await safeFunctionInvoke<{ hello: string }>(client, "fn", {});
-  assertEquals(data.hello, "world");
+Deno.test("tryRpc — engole erro e devolve null", async () => {
+  const client = makeClient({ data: null, error: { message: "boom" } });
+  const result = await tryRpc(client, "cleanup_things");
+  assertEquals(result, null);
 });
 
-Deno.test("safeFunctionInvoke — erro lança SafeSupabaseError", async () => {
-  const client = makeClient({
-    invokeResult: { data: null, error: { message: "boom" } },
-  });
-  await assertRejects(
-    () => safeFunctionInvoke(client, "fn", {}),
-    SafeSupabaseError,
-  );
+Deno.test("tryRpc — em sucesso devolve mesmo data que safeRpc", async () => {
+  const client = makeClient({ data: { count: 3 }, error: null });
+  const result = await tryRpc<{ count: number }>(client, "cleanup_things");
+  assertEquals(result?.count, 3);
 });
