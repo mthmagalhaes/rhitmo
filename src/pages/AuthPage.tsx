@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Auth } from '@/components/Auth';
 import { useAuth } from '@/hooks/useAuth';
+import { useHomeRoute } from '@/hooks/useHomeRoute';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 
@@ -11,6 +12,7 @@ type Persona = 'leader' | 'hr_admin';
 const AuthPage = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const home = useHomeRoute();
   const [searchParams] = useSearchParams();
   const [checkoutTriggered, setCheckoutTriggered] = useState(false);
 
@@ -65,7 +67,7 @@ const AuthPage = () => {
         }
 
         if (!workspace) {
-          navigate('/dashboard', { replace: true });
+          navigate(home, { replace: true });
           return;
         }
 
@@ -81,14 +83,14 @@ const AuthPage = () => {
           console.error('Auto-checkout error:', err);
         }
 
-        navigate('/dashboard', { replace: true });
+        navigate(home, { replace: true });
       };
 
       pollAndCheckout();
       return;
     }
 
-    // Default routing: HR Admin → /hr, otherwise /dashboard
+    // Default routing: HR Admin → /hr, otherwise persona home
     const checkAndRedirect = async () => {
       const { data: hrWorkspace } = await supabase
         .from('workspaces')
@@ -100,11 +102,11 @@ const AuthPage = () => {
       if (hrWorkspace) {
         navigate('/hr', { replace: true });
       } else {
-        navigate('/dashboard', { replace: true });
+        navigate(home, { replace: true });
       }
     };
     checkAndRedirect();
-  }, [user, loading, navigate, planParam, cycleParam, checkoutTriggered]);
+  }, [user, loading, navigate, planParam, cycleParam, checkoutTriggered, home]);
 
   if (loading) {
     return (
