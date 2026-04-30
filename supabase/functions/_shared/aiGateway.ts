@@ -31,6 +31,8 @@ export interface AIChatOptions {
   stream?: boolean;
   response_format?: { type: "json_object" } | { type: "text" };
   reasoning?: { effort: "minimal" | "low" | "medium" | "high" | "xhigh" | "none" };
+  /** Optional logger — when provided, an `ai_call` entry is emitted with timing/status. */
+  logger?: Logger;
 }
 
 // ----- Errors (caller can pattern-match) -----
