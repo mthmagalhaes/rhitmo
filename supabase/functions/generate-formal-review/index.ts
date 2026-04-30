@@ -202,7 +202,7 @@ Deno.serve(async (req) => {
       evidenceText += `\n## ANOTAÇÕES E FEEDBACKS DO LÍDER ${hasConfirmedRecaps ? "(suporte/citação para os recaps acima)" : ""}:\n\n`;
       feedbacks.forEach((f, idx) => {
         const date = new Date(f.occurred_at).toLocaleDateString("pt-BR");
-        evidenceText += `[Anotação ${idx + 1} - ${date}] Tipo: ${f.type}\n`;
+        evidenceText += `[Anotação ${idx + 1} - ${date}] [doc_id: ${f.id}] Tipo: ${f.type}\n`;
         evidenceText += `${f.content}\n`;
         if (f.tags && f.tags.length > 0) {
           evidenceText += `Tags: ${f.tags.join(", ")}\n`;
@@ -218,7 +218,7 @@ Deno.serve(async (req) => {
       evidenceText += "\n## REUNIÕES 1:1:\n\n";
       meetings.forEach((m, idx) => {
         const date = new Date(m.created_at).toLocaleDateString("pt-BR");
-        evidenceText += `[1:1 ${idx + 1} - ${date}]\n`;
+        evidenceText += `[1:1 ${idx + 1} - ${date}] [doc_id: ${m.id}]\n`;
         if (m.leader_notes) {
           evidenceText += `Notas do líder: ${m.leader_notes}\n`;
         }
@@ -254,6 +254,7 @@ Período: ${periodLabel}.
 - NÃO use HTML (sem <div>, <span>, <table>, etc.).
 - Comece DIRETAMENTE com "## 📋 Visão geral do período".
 - Cite SEMPRE a fonte de cada afirmação entre parênteses em itálico, ex: *(fonte: Anotação 12/mar)* ou *(Trimestral Q1 2026)* ou *(Mensal de fev/2026)* ou *(1:1 de 15/fev)*. O frontend transforma isso em pílula visual automaticamente.
+- ADICIONALMENTE, para cada anotação ou 1:1 citado que tenha um \`[doc_id: <UUID>]\` no contexto de evidências abaixo, anexe ao final da frase a referência estruturada no formato \`[doc:<UUID>]\` (sem parênteses, sem itálico). Exemplo: "Entregou o redesign do checkout. *(fonte: Anotação 12/mar)* [doc:8af1b2c3-...]". Use APENAS UUIDs que apareceram em \`doc_id\` — nunca invente.
 
 ## ESTRUTURA OBRIGATÓRIA — 7 BLOCOS NA ORDEM EXATA
 
