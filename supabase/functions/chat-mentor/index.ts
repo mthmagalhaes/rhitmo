@@ -90,6 +90,7 @@ const compressContext = (feedbacks: any[]): string => {
     const fb = limited[idx];
     const date = new Date(fb.occurred_at || fb.created_at).toLocaleDateString('pt-BR');
     const typeLabel = fb.type || 'Nota';
+    const docId = fb.id ?? null;
     
     // Compressão inteligente: prefere summary, senão corta content em 800 chars
     let text = fb.summary;
@@ -98,7 +99,8 @@ const compressContext = (feedbacks: any[]): string => {
       if (fb.content.length > 800) text += '...';
     }
     
-    const noteText = `[Data: ${date}] [Tipo: ${typeLabel}]\n${text}\n---\n\n`;
+    const docHeader = docId ? ` [doc_id: ${docId}]` : '';
+    const noteText = `[Data: ${date}] [Tipo: ${typeLabel}]${docHeader}\n${text}\n---\n\n`;
     
     if (totalChars + noteText.length > maxChars) break;
     
@@ -613,6 +615,18 @@ ${formatLeaderProfile(leaderSyncData)}
 - Considere TODO o histórico fornecido para identificar padrões
 - Mesmo notas antigas são valiosas para análise comportamental
 - Ao responder, cite as datas das notas relevantes para dar contexto temporal
+
+## RASTREABILIDADE — CITAÇÕES OBRIGATÓRIAS
+
+Cada nota acima vem com um identificador no formato \`[doc_id: <UUID>]\`.
+Sempre que afirmar um fato baseado em uma evidência específica, anexe a citação
+no formato exato \`[doc:<UUID>]\` IMEDIATAMENTE após a frase ou parágrafo correspondente.
+
+Regras:
+- Use APENAS UUIDs que apareceram em \`doc_id\` no contexto acima. NUNCA invente um ID.
+- Se uma afirmação for baseada em múltiplas evidências, cite todas: \`...frase. [doc:UUID-A] [doc:UUID-B]\`.
+- Se a afirmação não puder ser ancorada em uma evidência específica, NÃO adicione citação.
+- A UI converte \`[doc:UUID]\` em uma pílula clicável que abre o conteúdo original. Não envolva em parênteses, aspas ou markdown.
 
 ## HISTÓRICO DE NOTAS (CONTEXT_DOCUMENTS)
 
