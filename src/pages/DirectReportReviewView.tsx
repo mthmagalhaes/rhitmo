@@ -86,8 +86,8 @@ export default function DirectReportReviewView() {
       <div className="container max-w-4xl mx-auto py-8 px-4 text-center space-y-4">
         <h1 className="text-2xl font-bold tracking-tight">Avaliação não encontrada</h1>
         <p className="text-muted-foreground">Esta avaliação não existe ou não foi compartilhada com você.</p>
-        <Button variant="outline" onClick={() => navigate('/dashboard')}>
-          <ArrowLeft className="w-4 h-4 mr-2" /> Voltar ao Dashboard
+        <Button variant="outline" onClick={() => navigate(home)}>
+          <ArrowLeft className="w-4 h-4 mr-2" /> Voltar
         </Button>
       </div>
     );
@@ -97,8 +97,8 @@ export default function DirectReportReviewView() {
 
   return (
     <div className="container max-w-4xl mx-auto py-8 px-4">
-      <Button variant="ghost" className="mb-4 gap-2" onClick={() => navigate('/dashboard')}>
-        <ArrowLeft className="w-4 h-4" /> Voltar ao Dashboard
+      <Button variant="ghost" className="mb-4 gap-2" onClick={() => navigate(home)}>
+        <ArrowLeft className="w-4 h-4" /> Voltar
       </Button>
 
       <Card className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">

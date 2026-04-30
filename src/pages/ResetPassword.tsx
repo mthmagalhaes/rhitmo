@@ -10,6 +10,7 @@ import { Loader2, CheckCircle2 } from 'lucide-react';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
 import { RhythmWave } from '@/components/RhythmWave';
 import { useEffect } from 'react';
+import { useHomeRoute } from '@/hooks/useHomeRoute';
 
 const ResetPassword = () => {
   const { t } = useTranslation();
@@ -20,6 +21,7 @@ const ResetPassword = () => {
   const [success, setSuccess] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const home = useHomeRoute();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
@@ -55,7 +57,7 @@ const ResetPassword = () => {
       if (error) throw error;
       setSuccess(true);
       toast({ title: t('auth.passwordUpdated'), description: t('auth.passwordUpdatedDesc') });
-      setTimeout(() => navigate('/dashboard', { replace: true }), 2000);
+      setTimeout(() => navigate(home, { replace: true }), 2000);
     } catch (error: any) {
       toast({ title: t('common.error'), description: error.message, variant: "destructive" });
     } finally {

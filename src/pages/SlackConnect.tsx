@@ -94,7 +94,7 @@ export default function SlackConnect() {
               </p>
             </div>
             <div className="flex flex-col gap-2">
-              <Button variant="outline" onClick={() => navigate('/dashboard')}>
+              <Button variant="outline" onClick={() => navigate(home)}>
                 Ir para o Dashboard
               </Button>
             </div>
@@ -116,7 +116,7 @@ export default function SlackConnect() {
             <p className="text-muted-foreground mt-2">{errorMsg}</p>
           </div>
           <div className="flex flex-col gap-2">
-            <Button onClick={() => navigate('/dashboard')}>Voltar ao Dashboard</Button>
+            <Button onClick={() => navigate(home)}>Voltar ao início</Button>
           </div>
         </div>
       </div>
@@ -134,8 +134,8 @@ export default function SlackConnect() {
             Execute <code className="bg-muted px-1.5 py-0.5 rounded text-sm">/rhitmo</code> no Slack para iniciar a vinculação.
           </p>
         </div>
-        <Button variant="outline" onClick={() => navigate('/dashboard')}>
-          Voltar ao Dashboard
+        <Button variant="outline" onClick={() => navigate(home)}>
+          Voltar ao início
         </Button>
       </div>
     </div>

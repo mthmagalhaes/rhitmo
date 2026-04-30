@@ -4,12 +4,14 @@ import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { RhythmWave } from "@/components/RhythmWave";
+import { useHomeRoute } from "@/hooks/useHomeRoute";
 
 type Status = "processing" | "success" | "error" | "cancelled";
 
 export default function GoogleCalendarCallback() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const home = useHomeRoute();
   const [status, setStatus] = useState<Status>("processing");
   const [errorMessage, setErrorMessage] = useState<string>("");
 
@@ -69,7 +71,7 @@ export default function GoogleCalendarCallback() {
 
         // Pequeno delay pra o usuário ver o feedback
         setTimeout(() => {
-          navigate("/dashboard?calendar=connected");
+          navigate(`${home}?calendar=connected`);
         }, 1200);
       } catch (err) {
         console.error("Calendar callback error:", err);
@@ -83,7 +85,7 @@ export default function GoogleCalendarCallback() {
     };
 
     exchangeCode();
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, home]);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6 relative overflow-hidden">
@@ -134,7 +136,7 @@ export default function GoogleCalendarCallback() {
                 Tudo bem — você pode conectar o Google Calendar a qualquer momento pelo dashboard.
               </p>
               <Button
-                onClick={() => navigate("/dashboard")}
+                onClick={() => navigate(home)}
                 className="rounded-xl"
                 size="lg"
               >
@@ -156,7 +158,7 @@ export default function GoogleCalendarCallback() {
               </p>
               <div className="flex flex-col gap-3">
                 <Button
-                  onClick={() => navigate("/dashboard")}
+                  onClick={() => navigate(home)}
                   className="rounded-xl"
                   size="lg"
                 >
