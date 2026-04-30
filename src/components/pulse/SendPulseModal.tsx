@@ -54,7 +54,22 @@ export function SendPulseModal({ open, onOpenChange }: SendPulseModalProps) {
     enabled: open && !!workspaceId && !!userId,
     queryFn: async (): Promise<MemberOption[]> => {
       // Busca liderados diretos do líder atual (via teams.leader_user_id).
-      const { data, error } = await supabase
+      // Cast para evitar inferência profunda do supabase-js no join.
+      const client = supabase as unknown as {
+        from: (t: string) => {
+          select: (s: string) => {
+            eq: (col: string, v: string) => {
+              eq: (col: string, v: string) => {
+                order: (
+                  c: string,
+                  o: { ascending: boolean },
+                ) => Promise<{ data: Array<{ id: string; name: string }> | null; error: unknown }>;
+              };
+            };
+          };
+        };
+      };
+      const { data, error } = await client
         .from('team_members')
         .select('id, name, teams!inner(leader_user_id)')
         .eq('workspace_id', workspaceId!)
@@ -65,7 +80,7 @@ export function SendPulseModal({ open, onOpenChange }: SendPulseModalProps) {
         console.error('[SendPulseModal] members query', error);
         return [];
       }
-      return (data ?? []).map((r) => ({ id: r.id as string, name: r.name as string }));
+      return (data ?? []).map((r) => ({ id: r.id, name: r.name }));
     },
   });
 
