@@ -18,6 +18,14 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const BATCH_SIZE = 50;
 const MAX_ATTEMPTS = 3;
 
+// Onda 4.5 — mapeamento canônico de event_type → template transacional.
+// Quando o canal "email" é despachado, esses templates são usados pelo
+// `process-email-queue` via `send-transactional-email`.
+const EVENT_EMAIL_TEMPLATE: Record<string, string> = {
+  "feedback.shared": "feedback-shared",
+  "review.shared": "review-shared",
+};
+
 interface EventRow {
   id: string;
   event_type: string;
