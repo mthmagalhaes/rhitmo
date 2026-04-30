@@ -19,6 +19,7 @@ import NotFound from "./pages/NotFound";
 import { AdminGuard } from "./components/admin/AdminGuard";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { HRAdminGuard } from "./components/HRAdminGuard";
+import { EvidenceDrawer } from "./components/context/EvidenceDrawer";
 
 // ── Lazy-loaded pages ──
 const MemberDetails = lazy(() => import("./pages/MemberDetails"));
@@ -110,6 +111,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <EvidenceDrawer />
       <AuthEventProvider>
         <BrowserRouter>
           <Suspense fallback={<RouteFallback />}>
