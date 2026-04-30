@@ -1,161 +1,131 @@
-## Onda 2 + Onda 3 — Plano Consolidado
+# Onda 4 — Solidificar a infra das Ondas 2 e 3
 
-### Onda 2: Invariantes de Schema (Option D)
+Três frentes que se reforçam: ver o que está acontecendo (observabilidade), garantir que continue funcionando (testes), e fazer o Event Bus deixar de ser órfão (migração emit).
 
-**Decisão:** Em vez de splittar `chat_threads` em duas tabelas (Option A), aplicar invariantes na tabela existente. Análise dos dados confirma 100% das linhas (19 threads, 69 mensagens) já têm `member_id` populado — split seria over-engineering.
+## Estado atual relevante
 
-**Migration SQL:**
-```sql
--- 1. Backfill defensivo (no-op esperado, mas seguro)
-UPDATE chat_threads SET type = 'mentor' WHERE type IS NULL;
+- `_shared/emit.ts` existe mas **só é usado por ele mesmo** (zero produção real).
+- 7 funções chamam Slack direto (`slack-bot`, `invite-member-slack`, `send-evidence-digest`, `slack-ambient-classifier`, etc.) — fora do bus.
+- `_shared/notifications.ts` é o caminho legado paralelo, com seu próprio sistema de canais.
+- 69 Edge Functions em produção, **zero testes Deno**.
+- Logs hoje: só `console.log` esparsos. Sem `request_id`, sem correlação cross-function.
 
--- 2. NOT NULL + CHECK type
-ALTER TABLE chat_threads
-  ALTER COLUMN member_id SET NOT NULL,
-  ALTER COLUMN type SET NOT NULL,
-  ADD CONSTRAINT chat_threads_type_check
-    CHECK (type IN ('mentor', 'career', 'assistant'));
+## 4.1 — Observabilidade unificada
 
-ALTER TABLE mentor_messages
-  ALTER COLUMN thread_id SET NOT NULL;
-
--- 3. Índices compostos para hot paths
-CREATE INDEX IF NOT EXISTS idx_chat_threads_user_member_updated
-  ON chat_threads(user_id, member_id, updated_at DESC);
-
-CREATE INDEX IF NOT EXISTS idx_mentor_messages_thread_created
-  ON mentor_messages(thread_id, created_at ASC);
-```
-
-**Atualização TS:** Tipos em `src/integrations/supabase/types.ts` regerarão automaticamente refletindo `member_id: string` (não-nulável).
-
----
-
-### Onda 3.1: AI Gateway Consolidation
-
-**Diagnóstico:** 6 funções ainda chamam `api.openai.com` direto, perdendo o benefício do gateway (sem rate limit unificado, sem cobrança em LOVABLE_API_KEY, sem retry padronizado):
-- `chat-mentor`
-- `meu-rhitmo`
-- `analyze-feedback`
-- `analyze-feedback-background`
-- `reanalyze-feedback`
-- `extract-text-vision`
-
-**Exceções (continuam OpenAI direto):** `transcribe-audio`, `upload-meeting` (Whisper não está no gateway).
-
-**Implementação:**
-
-1. Criar `supabase/functions/_shared/aiGateway.ts`:
-   - `aiChat({ model, messages, tools?, stream? })` → wrapper com retry e tratamento 429/402
-   - `aiChatText(opts)` → retorna string direto
-   - `aiToolCall(opts)` → extrai tool call args como JSON
-   - `aiEmbedding(text)` → embeddings via gateway (quando disponível; fallback OpenAI direto até gateway suportar)
-   - Todas usam `LOVABLE_API_KEY` e endpoint `https://ai.gateway.lovable.dev/v1/chat/completions`
-   - Erros padronizados: `RateLimitError`, `PaymentRequiredError`, `GatewayError`
-
-2. Migrar as 6 funções uma por uma, com testes de fumaça via `curl_edge_functions` após cada deploy.
-
-3. Padronizar modelo default: `google/gemini-2.5-flash` para análise; `google/gemini-2.5-pro` apenas onde já era usado GPT-5/4o full.
-
----
-
-### Onda 3.2: Event Bus para Notificações
-
-**Problema atual:** Cada feature dispara email/Slack/in-app inline (ex: feedback compartilhado chama `send-email`, `slack-notify`, `insert notification` em 3 lugares diferentes). Difícil auditar, retentar e desligar canais.
-
-**Arquitetura proposta:**
+**Tabela `function_logs`** (append-only, particionada mentalmente por dia via índice em `created_at`):
 
 ```text
-[Feature code] → INSERT events → [dispatcher edge fn] → fanout
-                                       ↓
-                  ┌────────────────────┼────────────────────┐
-                  ↓                    ↓                    ↓
-            email queue          slack queue         in-app insert
-            (pgmq existente)     (pgmq existente)    (notifications)
+id              uuid PK
+request_id      uuid           -- propagado entre funções via header
+function_name   text
+level           text           -- 'debug' | 'info' | 'warn' | 'error'
+event           text           -- 'start' | 'end' | 'ai_call' | 'db_query' | custom
+duration_ms     int            -- nullable
+user_id         uuid           -- nullable
+workspace_id    uuid           -- nullable
+metadata        jsonb          -- payload livre (model, tokens, status_code, etc.)
+error_message   text           -- nullable
+created_at      timestamptz default now()
 ```
 
-**Schema:**
-```sql
-CREATE TABLE events (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  event_type text NOT NULL,        -- 'feedback.shared', 'review.acknowledged', etc
-  workspace_id uuid,
-  actor_user_id uuid,
-  target_user_id uuid,
-  payload jsonb NOT NULL DEFAULT '{}',
-  channels text[] NOT NULL,        -- ['email','slack','inapp']
-  status text NOT NULL DEFAULT 'pending',  -- pending|dispatched|failed
-  created_at timestamptz DEFAULT now(),
-  dispatched_at timestamptz,
-  error text
-);
-CREATE INDEX idx_events_pending ON events(status, created_at) WHERE status = 'pending';
+Índices: `(function_name, created_at DESC)`, `(request_id)`, `(level, created_at DESC) WHERE level IN ('warn','error')`.
+
+RLS: `SELECT` só para super_admin via `has_role(auth.uid(), 'super_admin')`. `INSERT` só via service_role.
+
+**Helper `_shared/logger.ts`**:
+
+```ts
+const log = createLogger({ functionName: 'chat-mentor', requestId, userId, workspaceId });
+log.info('start', { model: 'gemini-2.5-flash' });
+log.aiCall({ model, durationMs, tokensIn, tokensOut });
+log.error('failed', err);
+await log.flush(); // batch insert no fim da request
 ```
 
-**Componentes:**
-- Edge function `event-dispatcher`: lê `events.status='pending'`, encaminha para queues/inserts apropriados, marca dispatched.
-- `pg_cron` rodando dispatcher a cada 30s (ou trigger via webhook se latência crítica).
-- Helper `_shared/emit.ts` → `emit({ type, workspace_id, channels, payload })`.
+Buffer in-memory, flush no `finally` da request. Flush não bloqueia a resposta ao usuário (fire-and-forget com timeout 500ms).
 
-**Migração gradual:** Novas features usam `emit()`. Features existentes migradas em PRs separados (não bloqueante).
+**Propagação de `request_id`**: aceitar header `x-request-id` na entrada; gerar `crypto.randomUUID()` se ausente; sempre devolver no response. `aiGateway.ts` e `safeSupabase.ts` recebem o logger via parâmetro opcional.
 
----
+**Página admin `/admin/observability`** (super_admin only):
+- Filtros: function_name, level, range de tempo, request_id.
+- Painel: top 10 funções por erro nas últimas 24h, latência p50/p95 por função, custo AI estimado por workspace (token_count × preço do modelo).
 
-### Onda 3.3: AI Router (Consolidação de Edge Functions)
+## 4.2 — Testes Deno para infra crítica
 
-**Problema:** ~80 edge functions, muitas são variações finas (`analyze-feedback`, `reanalyze-feedback`, `analyze-feedback-background` fazem quase a mesma coisa com prompts ligeiramente diferentes). Cold start, deploy, observabilidade fragmentada.
+Cobertura mínima nos shared helpers (que sustentam tudo):
 
-**Proposta:** Função única `ai-router` que roteia por `task` no body:
+- `_shared/aiGateway.test.ts`
+  - 200 OK retorna conteúdo parseado
+  - 429 propaga erro tipado `RateLimitError`
+  - 402 propaga erro tipado `NoCreditsError`
+  - timeout de fetch
+  - mock do `fetch` global
 
-```typescript
-POST /ai-router
-{ "task": "analyze_feedback", "input": {...} }
-{ "task": "generate_brief", "input": {...} }
-{ "task": "review_section", "input": {...} }
-```
+- `_shared/emit.test.ts`
+  - insere row em `events` com payload correto
+  - rejeita `type` vazio
+  - rejeita `channels` fora do enum
 
-Estrutura interna:
-```
-supabase/functions/ai-router/
-  index.ts              // valida JWT, faz routing
-  tasks/
-    analyze_feedback.ts
-    generate_brief.ts
-    review_section.ts
-    mentor_chat.ts
-    ...
-  prompts/              // prompts versionados
-```
+- `_shared/safeSupabase.test.ts`
+  - `safeRpc` retorna `{ data, error }` sem throw
+  - `tryRpc` faz throw com mensagem útil
+  - `safeFunctionInvoke` lida com 500 do edge function
 
-**Benefícios:**
-- 1 deploy ao invés de 80
-- Prompts em arquivo separado (versionável, testável)
-- Logging unificado por `task`
-- Permite A/B de prompts e modelos por task
-- Cold start amortizado
+- `event-dispatcher` (integration-style com supabase mock):
+  - processa apenas eventos com `dispatched_at IS NULL`
+  - fan-out para `email`, `inapp`, `slack`
+  - marca `dispatched_at` no sucesso, `error` no fail
+  - idempotência: rodar duas vezes não duplica
 
-**Funções que NÃO migram para router:** webhooks externos (Stripe, Slack, Recall.ai, Google OAuth callbacks), streaming chat (precisa response.body direto), uploads multipart.
+- `ai-router` skeleton: roteamento por `task`, validação Zod, 404 em task inexistente.
 
-**Migração:** Faseada — 5 funções por sprint, manter as antigas como aliases por 2 semanas, depois `delete_edge_functions`.
+Testes rodam via `supabase--test_edge_functions`. Adicionar `import "https://deno.land/std@0.224.0/dotenv/load.ts"` em cada arquivo.
 
----
+## 4.3 — Migrar 3 fluxos críticos para `emit()`
 
-### Ordem de Execução
+Os 3 com maior tráfego e maior dor de manutenção:
 
-1. **Onda 2** (migration única, baixíssimo risco) — ~10 min
-2. **Onda 3.1** (criar `aiGateway.ts` + migrar 6 funções + smoke tests) — ~30 min
-3. **Onda 3.2** (events table + dispatcher + pg_cron + 1 feature piloto migrada) — ~45 min
-4. **Onda 3.3** (criar `ai-router` skeleton + migrar 3 tasks como prova de conceito) — ~45 min
+**Fluxo A — Feedback compartilhado**
+- Hoje: o frontend marca `visibility='shared'` e nada notifica explicitamente o liderado.
+- Depois: trigger ou hook no momento do share dispara `emit({ type: 'feedback.shared', ... })`.
+- Dispatcher manda: in-app (sino) + email (template `feedback-shared`).
 
-Total estimado: ~2h. Cada onda é independente e pode ser revertida sem afetar as anteriores.
+**Fluxo B — Review compartilhado**
+- Hoje: `share-review` chama Slack/email direto misturado com lógica de domínio.
+- Depois: `share-review` faz só `emit({ type: 'review.shared', target_user_id, channels: ['email','inapp','slack'] })`.
+- Dispatcher cuida do fan-out.
 
----
+**Fluxo C — Convite enviado (`invite-member-slack` + email de invite)**
+- Hoje: lógica duplicada entre `invite-member-slack` e `bulk-invite`.
+- Depois: ambas emitem `member.invited` com payload comum. Dispatcher resolve canal pelo `payload.delivery_method`.
 
-### Pontos de Atenção
-- **Onda 2:** Após `NOT NULL`, qualquer código que tente `INSERT chat_threads` sem `member_id` quebrará. Audit prévio confirma que todos os call sites já passam `member_id`.
-- **Onda 3.1:** `LOVABLE_API_KEY` já está disponível como secret; não exige ação do usuário.
-- **Onda 3.2:** `pgmq` e `pg_cron` já estão habilitados no projeto (usados pelo email system).
-- **Onda 3.3:** A migração completa das 80 funções está fora do escopo desta passada — entregamos apenas o skeleton + 3 tasks piloto.
+**Não migrar nesta onda**: ambient-classifier, slack-bot interativo, evidence-digest agendado (têm timing/UX próprios).
 
-### Aprovação
-Aprovando este plano, executo as 4 sub-ondas em sequência, parando se algum smoke test falhar.
+## 4.4 — Memória e documentação
+
+- Atualizar `mem://architecture/event-bus.md` com lista canônica de tipos de evento.
+- Criar `mem://infrastructure/observability-logger.md` explicando como usar `createLogger`.
+- Adicionar à Core: "Toda Edge Function nova deve usar `createLogger` e emitir via `emit()` em vez de chamar email/Slack direto."
+
+## Ordem de execução
+
+1. Migration `function_logs` + RLS.
+2. `_shared/logger.ts` + integração em `aiGateway.ts` (test bench: chat-mentor).
+3. Página `/admin/observability` (read-only, simples).
+4. Testes Deno dos 5 módulos shared + dispatcher + router.
+5. Migração Fluxo A (feedback.shared) — menor blast radius.
+6. Migração Fluxo B (review.shared).
+7. Migração Fluxo C (member.invited) + remoção do código legado duplicado.
+8. Memória atualizada.
+
+## Riscos e mitigações
+
+- **Logger derrubando latência**: flush async com timeout duro de 500ms; falha no insert nunca propaga.
+- **Migração de notificação quebrando entrega**: para cada fluxo, manter o caminho antigo por trás de feature flag `USE_EVENT_BUS_FOR_<X>` por 1 semana antes de remover.
+- **Volume de `function_logs`**: política de retenção via `pg_cron` semanal — apagar `level IN ('debug','info')` com mais de 14 dias; manter `warn/error` por 90 dias.
+
+## Fora de escopo (Onda 5)
+
+- Migração de 5-10 tasks reais para `ai-router` (analyze-feedback, generate-brief, classify-tag, etc.).
+- Rate limiting / quotas por workspace no AI Gateway.
+- Migração dos fluxos Slack restantes (ambient, bot interativo).
