@@ -1,4 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { emit } from '../_shared/emit.ts';
+import { flag } from '../_shared/featureFlags.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -209,6 +211,25 @@ Deno.serve(async (req) => {
       },
       { onConflict: 'member_id' }
     );
+
+    // Onda 4.5: registra member.invited no Event Bus (auditoria + futuras integrações).
+    // Default ON. Para reverter, setar USE_EVENT_BUS_FOR_SLACK_INVITE=false.
+    if (flag('USE_EVENT_BUS_FOR_SLACK_INVITE', true)) {
+      await emit(serviceClient, {
+        type: 'member.invited',
+        actor_user_id: user.id,
+        target_user_id: hasExistingAccount && existingUser ? existingUser.id : null,
+        channels: ['inapp'],
+        payload: {
+          member_id,
+          member_name,
+          member_email,
+          slack_user_id: slackUserId,
+          delivery_method: 'slack',
+          has_existing_account: hasExistingAccount,
+        },
+      });
+    }
 
     return new Response(JSON.stringify({
       success: true,
