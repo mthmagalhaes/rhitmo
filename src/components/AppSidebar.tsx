@@ -273,7 +273,7 @@ export function AppSidebar() {
         {open && persona === 'leader' && (
           <button
             type="button"
-            onClick={() => navigate(LEADER_HOME)}
+            onClick={() => setInviteOpen(true)}
             className="mx-2 flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 transition-colors"
           >
             <UserPlus className="h-3.5 w-3.5" />
@@ -315,6 +315,28 @@ export function AppSidebar() {
       </SidebarFooter>
 
       <ProfileSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+
+      {/* Mentor / Meu Rhitmo chat */}
+      <MentorChat
+        open={mentorOpen}
+        onOpenChange={setMentorOpen}
+        userType={persona === 'leader' ? 'leader' : 'direct_report'}
+        memberName={userName}
+        memberId={persona === 'direct_report' ? linkedMember?.id : undefined}
+        userId={effectiveUserId ?? undefined}
+      />
+
+      {/* Global cmdk search */}
+      <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} persona={persona} />
+
+      {/* Bulk-onboard members */}
+      {persona === 'leader' && (
+        <BulkOnboardDialog
+          open={inviteOpen}
+          onOpenChange={setInviteOpen}
+          workspaceNames={workspaceNames}
+        />
+      )}
 
       <Dialog open={supportOpen} onOpenChange={setSupportOpen}>
         <DialogContent className="sm:max-w-md">
