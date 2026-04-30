@@ -27,6 +27,7 @@ import { MemberAvatar } from '@/components/MemberAvatar';
 import { SelfReflectionCard } from '@/components/dashboard/SelfReflectionCard';
 import { PendingPulseAlert } from '@/components/pulse/PendingPulseAlert';
 import { StartSelfReviewCard } from '@/components/self-review/StartSelfReviewCard';
+import { PendingPeerReviewsAlert } from '@/components/peer-review/PendingPeerReviewsAlert';
 import { getDateLocale } from '@/lib/dateLocale';
 import { format } from 'date-fns';
 

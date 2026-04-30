@@ -13,6 +13,7 @@ import {
 } from '@/components/context/SourceFilterChips';
 import { MemberFilterSelect } from '@/components/context/MemberFilterSelect';
 import { SendPulseButton } from '@/components/pulse/SendPulseButton';
+import { RequestPeerReviewButton } from '@/components/peer-review/RequestPeerReviewButton';
 
 export default function LiderContexto() {
   const { workspaceId } = useAccount();
@@ -71,7 +72,8 @@ export default function LiderContexto() {
             onToggle={toggleSource}
             onClear={() => setSources([])}
           />
-          <div className="sm:ml-auto">
+          <div className="sm:ml-auto flex items-center gap-2 flex-wrap">
+            <RequestPeerReviewButton />
             <SendPulseButton />
           </div>
         </div>
