@@ -73,7 +73,7 @@ export interface Logger {
   info(event: string, metadata?: Record<string, unknown>): void;
   warn(event: string, metadata?: Record<string, unknown>): void;
   error(event: string, err?: unknown, metadata?: Record<string, unknown>): void;
-  aiCall(args: { model: string; durationMs: number; tokensIn?: number; tokensOut?: number; status?: number; error?: string }): void;
+  aiCall(args: { model: string; durationMs: number; tokensIn?: number; tokensOut?: number; status?: number; error?: string; estimatedCostUsd?: number | null }): void;
   flush(): Promise<void>;
 }
 
@@ -125,12 +125,18 @@ export function createLogger(initial: LoggerContext): Logger {
     error(event, err, metadata) {
       enqueue({ level: 'error', event, metadata, error_message: errMsg(err) });
     },
-    aiCall({ model, durationMs, tokensIn, tokensOut, status, error }) {
+    aiCall({ model, durationMs, tokensIn, tokensOut, status, error, estimatedCostUsd }) {
       enqueue({
         level: error ? 'error' : 'info',
         event: 'ai_call',
         duration_ms: durationMs,
-        metadata: { model, tokens_in: tokensIn, tokens_out: tokensOut, status },
+        metadata: {
+          model,
+          tokens_in: tokensIn,
+          tokens_out: tokensOut,
+          status,
+          estimatedCostUsd: estimatedCostUsd ?? null,
+        },
         error_message: error,
       });
     },
