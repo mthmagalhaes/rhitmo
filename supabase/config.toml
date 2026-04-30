@@ -3,6 +3,8 @@ project_id = "lybkgujyezzzvbzypxed"
 [functions]
   [functions.adjust-competency]
     verify_jwt = false
+  [functions.ai-router]
+    verify_jwt = true
   [functions.admin-delete-user]
     verify_jwt = true
   [functions.admin-invite-user]
@@ -26,6 +28,8 @@ project_id = "lybkgujyezzzvbzypxed"
   [functions.create-checkout-session]
     verify_jwt = false
   [functions.create-portal-session]
+    verify_jwt = false
+  [functions.event-dispatcher]
     verify_jwt = false
   [functions.extract-text-vision]
     verify_jwt = true

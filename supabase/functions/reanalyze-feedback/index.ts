@@ -79,16 +79,16 @@ serve(async (req) => {
     
     console.log(`Reprocessamento: ${wordCount} palavras - Modo: ${isShortNote ? 'CURTO' : 'COMPLETO'}`);
 
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
-      console.error('OPENAI_API_KEY não configurada');
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    if (!lovableApiKey) {
+      console.error('LOVABLE_API_KEY não configurada');
       return new Response(
         JSON.stringify({ error: 'Configuração de IA não disponível' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Enviando para OpenAI...');
+    console.log('Enviando para Lovable AI Gateway...');
 
     // System Prompt - Constituição Rhitmo Analyst
     const systemPrompt = `# RHITMO ANALYST - CONSTITUIÇÃO
@@ -218,14 +218,14 @@ ${truncatedContent}`;
 
     let openAIResponse;
     try {
-      openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      openAIResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
+          'Authorization': `Bearer ${lovableApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'google/gemini-2.5-flash',
           messages: [
             {
               role: 'system',
