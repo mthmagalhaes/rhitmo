@@ -25,6 +25,7 @@ import { marked } from 'marked';
 import { AvatarLibrary } from '@/components/avatar/AvatarLibrary';
 import { MemberAvatar } from '@/components/MemberAvatar';
 import { SelfReflectionCard } from '@/components/dashboard/SelfReflectionCard';
+import { PendingPulseAlert } from '@/components/pulse/PendingPulseAlert';
 import { getDateLocale } from '@/lib/dateLocale';
 import { format } from 'date-fns';
 
@@ -481,6 +482,9 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
 
           {/* ═══ TAB 1: Visão Geral ═══ */}
           <TabsContent value="visao-geral">
+            {/* Sprint 9.2 — Pulse Surveys pendentes (aparece só se houver) */}
+            <PendingPulseAlert memberId={linkedMember.id} />
+
             {/* S3.4 — Self-reflection card semanal */}
             <div className="mb-6">
               <SelfReflectionCard memberId={linkedMember.id} />
