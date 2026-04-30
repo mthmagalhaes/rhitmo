@@ -32,16 +32,18 @@ export function useLeaderInfo(memberId: string | undefined) {
       const leaderUserId: string | null = team?.leader_user_id ?? null;
       if (!team || !leaderUserId) return null;
 
-      // 2. Buscar nome do líder na profiles (fail-soft, opcional)
+      // 2. Tenta resolver o nome do líder via team_members (caso ele também seja membro
+      // em algum time do mesmo workspace). Fail-soft: nome opcional.
       let leaderName: string | null = null;
-      const { data: prof } = await supabase
-        .from('profiles')
-        .select('full_name, email')
-        .eq('id', leaderUserId)
+      const { data: leaderAsMember } = await supabase
+        .from('team_members')
+        .select('name')
+        .eq('linked_user_id', leaderUserId)
+        .limit(1)
         .maybeSingle();
 
-      if (prof) {
-        leaderName = (prof as any).full_name || (prof as any).email || null;
+      if (leaderAsMember?.name) {
+        leaderName = leaderAsMember.name as string;
       }
 
       return {
