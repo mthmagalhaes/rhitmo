@@ -5,6 +5,8 @@
 // IMPORTANT: Audio transcription (Whisper) is NOT supported by the gateway
 // yet — keep transcribe-audio / upload-meeting on direct OpenAI for now.
 
+import type { Logger } from "./logger.ts";
+
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 // ----- Types -----
