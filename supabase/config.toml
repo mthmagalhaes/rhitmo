@@ -27,6 +27,8 @@ project_id = "lybkgujyezzzvbzypxed"
     verify_jwt = false
   [functions.create-portal-session]
     verify_jwt = false
+  [functions.event-dispatcher]
+    verify_jwt = false
   [functions.extract-text-vision]
     verify_jwt = true
   [functions.fetch-calendar-events]
