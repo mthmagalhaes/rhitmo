@@ -41,6 +41,7 @@ const Admin = () => {
       {activeTab === 'structure' && <AdminStructure />}
       {activeTab === 'access' && <AdminAccess />}
       {activeTab === 'intelligence' && <AdminIntelligence />}
+      {activeTab === 'observability' && <AdminObservability />}
     </>
   );
 };
