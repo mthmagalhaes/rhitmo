@@ -154,16 +154,12 @@ const App = () => (
 
               {/* Other in-app routes (kept) */}
               <Route path="/member/:id" element={Leader(<MemberDetails />)} />
-              <Route path="/analytics" element={Leader(<Analytics />)} />
-              <Route path="/billing" element={Leader(<Billing />)} />
-              <Route path="/help" element={
-                <DirectReportGuard>
-                  <AppLayout><HelpCenter /></AppLayout>
-                </DirectReportGuard>
-              } />
+              {/* Legacy deep-links → redirect to new host pages with tab pre-selected */}
+              <Route path="/analytics" element={<Navigate to="/lider/pessoas?tab=analytics" replace />} />
+              <Route path="/billing" element={<Navigate to="/lider/configuracoes?tab=faturamento" replace />} />
+              <Route path="/help" element={<Navigate to="/lider/configuracoes?tab=ajuda" replace />} />
               <Route path="/evidence" element={Leader(<Evidence />)} />
               <Route path="/slack/channels" element={Leader(<SlackChannels />)} />
-
               {/* Legacy brief redirect */}
               <Route path="/brief/:meetingId" element={Leader(<BriefPage />)} />
 
