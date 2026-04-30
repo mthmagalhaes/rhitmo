@@ -1271,5 +1271,44 @@
     "positive": "Positivo",
     "neutral": "Neutro",
     "constructive": "Construtivo"
+  },
+  "nav": {
+    "lider": {
+      "um_pra_um": "1:1s",
+      "diario": "Diário de Bordo",
+      "pulse": "Pulse",
+      "avaliacoes": "Avaliações",
+      "configuracoes": "Configurações"
+    },
+    "liderado": {
+      "compass": "Career Compass",
+      "um_pra_um": "Próximas 1:1s",
+      "pulse": "Meu Pulse",
+      "pdi": "Meu PDI",
+      "avaliacoes": "Avaliações que recebi",
+      "configuracoes": "Configurações"
+    },
+    "cta": {
+      "pergunte_mentor": "Pergunte ao Mentor",
+      "meu_rhitmo": "Meu Rhitmo",
+      "privado": "privado"
+    },
+    "threads": {
+      "conversas_hoje": "Conversas hoje",
+      "conversas_privadas": "Conversas privadas"
+    },
+    "quick": {
+      "home": "Início",
+      "calendar": "Calendário",
+      "people": "Pessoas",
+      "chat": "Conversas",
+      "search": "Buscar"
+    },
+    "placeholder": {
+      "pulse_title": "Em breve",
+      "pulse_desc": "Pulse Surveys conversacionais chegam em breve."
+    },
+    "convidar_membros": "Convidar membros",
+    "skip_to_content": "Pular para o conteúdo"
   }
 }
