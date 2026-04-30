@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { tryRpc } from "../_shared/safeSupabase.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -77,14 +78,9 @@ Deno.serve(async (req) => {
       // and persist it. The callback will validate the state against this row
       // and use the stored user_id (never trusting the value Google echoes).
       const supabaseAdmin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
-      // Best-effort cleanup of expired nonces — don't fail authorize if it errors.
-      // NOTE: PostgrestBuilder is thenable but NOT a real Promise — `.catch()` on
-      // it throws `TypeError: ... .catch is not a function`. Use try/catch.
-      try {
-        await supabaseAdmin.rpc("cleanup_expired_oauth_states");
-      } catch (cleanupErr) {
-        console.warn("Best-effort cleanup_expired_oauth_states failed:", cleanupErr);
-      }
+      // Best-effort cleanup of expired nonces — `tryRpc` swallows errors safely
+      // (replaces the unsafe `.catch()` direct on PostgrestBuilder pattern).
+      await tryRpc(supabaseAdmin, "cleanup_expired_oauth_states");
 
       const stateToken = crypto.randomUUID();
       const { error: stateInsertError } = await supabaseAdmin
