@@ -4,18 +4,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { PageTabs, type PageTab } from '@/components/PageTabs';
 import { EmptyStateHero } from '@/components/EmptyStateHero';
 import { ClipboardList, Sparkles, FileEdit, CheckCircle2, Loader2 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import Index from '@/pages/Index';
 
 interface Review {
   id: string;
-  title: string | null;
-  status: string | null;
+  title: string;
   created_at: string;
-  shared_at: string | null;
+  sent_at: string | null;
   acknowledged_at: string | null;
-  member_id: string | null;
+  shared_with_member: boolean | null;
+  member_id: string;
 }
 
 function ReviewList({ reviews }: { reviews: Review[] }) {
@@ -28,19 +27,24 @@ function ReviewList({ reviews }: { reviews: Review[] }) {
   }
   return (
     <div className="space-y-2">
-      {reviews.map((r) => (
-        <Card key={r.id} className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
-          <CardContent className="flex items-center justify-between py-3">
-            <div>
-              <p className="font-medium text-sm">{r.title ?? 'Avaliação'}</p>
-              <p className="text-xs text-muted-foreground">
-                Criada em {new Date(r.created_at).toLocaleDateString('pt-BR')}
-              </p>
-            </div>
-            <Badge variant="outline" className="text-xs capitalize">{r.status ?? 'rascunho'}</Badge>
-          </CardContent>
-        </Card>
-      ))}
+      {reviews.map((r) => {
+        const isAck = !!r.acknowledged_at;
+        const isShared = !!r.shared_with_member || !!r.sent_at;
+        const label = isAck ? 'concluída' : isShared ? 'compartilhada' : 'rascunho';
+        return (
+          <Card key={r.id} className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
+            <CardContent className="flex items-center justify-between py-3">
+              <div>
+                <p className="font-medium text-sm">{r.title}</p>
+                <p className="text-xs text-muted-foreground">
+                  Criada em {new Date(r.created_at).toLocaleDateString('pt-BR')}
+                </p>
+              </div>
+              <Badge variant="outline" className="text-xs capitalize">{label}</Badge>
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }
@@ -52,7 +56,7 @@ export default function LiderAvaliacoes() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('performance_reviews')
-        .select('id, title, status, created_at, shared_at, acknowledged_at, member_id')
+        .select('id, title, created_at, sent_at, acknowledged_at, shared_with_member, member_id')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data ?? []) as Review[];
@@ -87,9 +91,9 @@ export default function LiderAvaliacoes() {
     );
   }
 
-  const ativos = reviews.filter((r) => r.shared_at && !r.acknowledged_at);
-  const rascunhos = reviews.filter((r) => !r.shared_at);
-  const concluidos = reviews.filter((r) => r.acknowledged_at);
+  const ativos = reviews.filter((r) => (r.shared_with_member || r.sent_at) && !r.acknowledged_at);
+  const rascunhos = reviews.filter((r) => !r.shared_with_member && !r.sent_at);
+  const concluidos = reviews.filter((r) => !!r.acknowledged_at);
 
   const tabs: PageTab[] = [
     { value: 'ativos', label: 'Ativos', icon: ClipboardList, count: ativos.length, content: <ReviewList reviews={ativos} /> },
