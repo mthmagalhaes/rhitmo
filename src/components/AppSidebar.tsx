@@ -172,7 +172,12 @@ export function AppSidebar() {
         {/* Zone B — Quick actions row */}
         {open && (
           <div className="pt-1 pb-3">
-            <QuickActionsRow homeRoute={homeRoute} actions={quickActions} />
+            <QuickActionsRow
+              homeRoute={homeRoute}
+              actions={quickActions}
+              onOpenMentor={() => setMentorOpen(true)}
+              onOpenSearch={() => setSearchOpen(true)}
+            />
           </div>
         )}
 
