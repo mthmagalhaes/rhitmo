@@ -506,6 +506,7 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
           <TabsContent value="visao-geral">
             {/* Sprint 9.2 — Pulse Surveys pendentes (aparece só se houver) */}
             <PendingPulseAlert memberId={linkedMember.id} />
+            <PendingPeerReviewsAlert />
 
             {/* S3.4 — Self-reflection card semanal */}
             <div className="mb-6">
