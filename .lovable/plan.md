@@ -1,120 +1,161 @@
-## Sprint 8.3 — Página `/contexto` (Feed Universal do Context Graph)
+## Sprint 9.1 — Fundação de dados para Pulse Surveys (4º pilar do Context Graph)
 
-Página unificada onde o líder vê todas as evidências de toda a equipe em ordem cronológica reversa, com filtros por liderado e por fonte. Cada item abre o `EvidenceDrawer` já existente.
+Esta sprint cria a infraestrutura de banco para **Pulse Surveys conversacionais** — surveys multi-pergunta disparados pelo líder (ou por automação) e respondidos pelo liderado, com resumo de IA. É o canal estruturado para capturar "perspectivas" do liderado.
 
-### Diretriz de estabilidade aplicada
+### Análise prévia e ajustes propostos
 
-Antes de codar, mapeei a arquitetura. Identifiquei dois pontos onde seguir o briefing literal causaria fricção e proponho ajustes:
+Inspecionei o schema atual antes de planejar. Três pontos importantes:
 
-1. **`useContextTimeline` é por-membro** (RPC `get_member_timeline(_member_id)`). Carregar a timeline do time em cima desse hook obrigaria N requisições paralelas (uma por liderado), N+1 com membros novos sendo adicionados, e perderíamos a ordenação correta nas bordas. **Proposta:** criar uma RPC nova `get_team_timeline` que devolve evidências de todos os membros visíveis ao usuário em uma única query, com paginação por cursor (`occurred_at`). Mais barato e mais rápido. O hook por-membro de 8.1 segue intacto para os outros consumidores.
+1. **`member_prompts` já existe e integra ao `context_evidence`** (Sprint 8.1, source_table = `member_prompts`). É um sistema de **1 pergunta semanal** ("Pulse Card" do dashboard do liderado). O novo `pulse_surveys` é diferente: **N perguntas, conversacional, disparado sob demanda pelo líder, com tipos** (blockers/priorities/retro/goal_progress) e resumo de IA. **Os dois coexistem** — não há duplicação. O `member_prompts` continua sendo o pulse leve recorrente; `pulse_surveys` é o survey formal.
 
-2. **A sidebar do líder hoje tem 5 itens + Configurações** (regra documentada no `navigation.ts`). Adicionar "Contexto" estoura o limite. **Proposta:** adicionar como 6º item antes de Configurações (Configurações continua sendo a última). Mantém a hierarquia visual e a regra de "Settings sempre por último".
+2. **Padrão de escrita em `context_evidence`:** todas as triggers existentes usam `SECURITY DEFINER` + `_ctx_resolve_workspace()` + `ON CONFLICT (source_table, source_id) DO UPDATE`. Vamos seguir exatamente esse padrão. A tabela já tem `CONSTRAINT context_evidence_source_uniq UNIQUE (source_table, source_id)` que protege contra duplicação.
 
-3. **Reuso máximo:** `EvidenceDrawer`, `getSourceMeta`, `useEvidenceById` e o evento global `rhitmo:open-evidence` (entregues no 8.2) são reaproveitados sem alteração. Card clicável dispara o mesmo evento → drawer abre.
+3. **Fonte canônica de `workspace_id`:** o briefing pede `workspace_id` na tabela. Mantemos a coluna (consistência com `kudos`, `slack_ambient_evidence`), mas garantimos via trigger BEFORE INSERT que ela bate com o workspace do `member_id` (evita inconsistência cross-workspace).
 
-### Backend (1 migration)
+### Migration única
 
-**Nova RPC `get_team_timeline`** — retorna evidências de todos os `team_members` para os quais `effective_user_id()` é líder, owner ou HR Admin do workspace.
-
-```text
-get_team_timeline(
-  _workspace_id uuid DEFAULT NULL,   -- opcional; quando NULL usa o workspace ativo
-  _member_ids uuid[] DEFAULT NULL,    -- filtro: lista de liderados (NULL = todos)
-  _source_tables text[] DEFAULT NULL, -- filtro: ['feedbacks','meeting_transcripts',...]
-  _before timestamptz DEFAULT NULL,   -- cursor: traz evidências com occurred_at < _before
-  _limit int DEFAULT 30
-) RETURNS TABLE (
-  id, member_id, member_name, member_avatar,  -- join leve em team_members
-  evidence_type, source_table, source_id,
-  occurred_at, title, summary, sentiment,
-  visibility, metadata
-)
-```
-
-- `LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public`.
-- Autorização replicada do `get_member_timeline`: workspace owner/HR/líder ou liderado vendo a si mesmo. Liderado só vê o próprio member_id.
-- Performance: `WHERE ce.member_id = ANY(allowed_member_ids) AND occurred_at < COALESCE(_before, now()) ORDER BY occurred_at DESC LIMIT _limit`. Já existe índice `(member_id, occurred_at DESC)`.
-- `GRANT EXECUTE ... TO authenticated`.
-
-### Frontend
-
-**Arquivos novos:**
-
-- `src/hooks/useTeamTimeline.ts` — `useInfiniteQuery` que chama a nova RPC. Aceita `{ memberIds?, sourceTables?, pageSize? }`. Cursor = `occurred_at` do último item.
-- `src/components/context/EvidenceCard.tsx` — card clicável que dispara `openEvidence(docId)`. Layout: avatar + nome do liderado, badge de fonte (via `getSourceMeta`), título, snippet do summary (2 linhas, `line-clamp-2`), data relativa em PT-BR. Estética Creme/Bento (`rounded-2xl`, hover lift sutil).
-- `src/components/context/SourceFilterChips.tsx` — pills toggleable das 8 fontes do `sourceMeta.ts`. "Todas" default. Multi-seleção.
-- `src/components/context/MemberFilterSelect.tsx` — `<Select>` com lista de liderados (reusa a query de team_members do `MembersGrid` — extraída para hook `useWorkspaceMembers` se ainda não existir, senão duplica o select de forma enxuta).
-- `src/pages/lider/Contexto.tsx` — página host. Header com título "Contexto", subtítulo "Tudo o que aconteceu com sua equipe". Filtros sticky no topo. Lista virtualizada simples (sem libs novas — apenas `slice` + botão "Carregar mais" usando `fetchNextPage` do infinite query). Empty state amigável. Skeleton loading.
-
-**Arquivos editados:**
-
-- `src/lib/navigation.ts` — adicionar item `contexto` em `LEADER_NAV_ITEMS` antes de `configuracoes`. Ícone: `Layers` (lucide). `labelKey: 'nav.lider.contexto'`.
-- `src/locales/pt-BR/nav.json` (e en/es se existirem) — adicionar chave `nav.lider.contexto: "Contexto"`.
-- `src/App.tsx` — registrar rota `<Route path="/lider/contexto" element={Leader(<Contexto />)} />` (lazy import seguindo o padrão das outras páginas do líder).
-
-### UX
+**1) Tabela `pulse_surveys`**
 
 ```text
-┌─ Contexto ────────────────────────────────── [filtros sticky] ─┐
-│ Tudo o que aconteceu com sua equipe                              │
-│                                                                  │
-│ [ Liderado: Todos ▾ ]  [Diário] [Recall.ai] [Slack] [Pulse]…    │
-├──────────────────────────────────────────────────────────────────┤
-│ ╭──────────────────────────────────────────────────────────────╮│
-│ │ 👤 Yasmin Silva   • [Recall.ai]            há 2 horas        ││
-│ │ 1:1 semanal — discussão sobre escopo do Q2                    ││
-│ │ "Yasmin levantou preocupação com a carga de trabalho do…"   ││
-│ ╰──────────────────────────────────────────────────────────────╯│
-│ ╭──────────────────────────────────────────────────────────────╮│
-│ │ 👤 Pedro Costa    • [Slack]                ontem             ││
-│ │ Sinal ambient capturado em #produto                          ││
-│ │ "Pedro compartilhou aprendizado sobre…"                       ││
-│ ╰──────────────────────────────────────────────────────────────╯│
-│                          [ Carregar mais ]                      │
-└──────────────────────────────────────────────────────────────────┘
+id              uuid PK default gen_random_uuid()
+workspace_id    uuid NOT NULL                          -- denormalized, validated by trigger
+member_id       uuid NOT NULL → team_members(id) ON DELETE CASCADE
+requested_by    uuid NOT NULL                          -- líder (auth.users.id)
+type            text NOT NULL CHECK IN
+                  ('blockers','priorities','retro','goal_progress')
+status          text NOT NULL DEFAULT 'pending' CHECK IN ('pending','completed','expired')
+questions       jsonb NOT NULL DEFAULT '[]'::jsonb     -- [{id, text, type}]
+responses       jsonb NOT NULL DEFAULT '[]'::jsonb     -- [{question_id, answer}]
+summary         jsonb                                   -- {tldr, themes[], sentiment, action_items[]}
+context_metadata jsonb NOT NULL DEFAULT '{}'::jsonb    -- goal_id ref, etc
+sent_at         timestamptz NOT NULL DEFAULT now()
+expires_at      timestamptz                             -- opcional, p/ status auto-expired
+completed_at    timestamptz
+created_at      timestamptz NOT NULL DEFAULT now()
+updated_at      timestamptz NOT NULL DEFAULT now()
 
-(click no card)
-        │
-        ▼
-EvidenceDrawer → desliza pela direita com conteúdo completo
+INDEX (member_id, sent_at DESC)
+INDEX (workspace_id, status, sent_at DESC)
+INDEX (requested_by, sent_at DESC)
 ```
 
-- Container `max-w-5xl mx-auto px-4 sm:px-6 py-8` (regra do projeto).
-- Filtros aplicáveis em conjunto (AND): liderado + fontes selecionadas.
-- Mudar filtro → reset do cursor + nova query.
-- Estado vazio: ilustração leve + texto "Sem evidências para os filtros selecionados".
-- Liderado (direct_report) que entrar pela URL `/lider/contexto` cai no `RoleRouteGuard expects="leader"` → redireciona. Sem mudança aqui.
+Trigger `update_updated_at_column` (já existe globalmente).
+
+Trigger BEFORE INSERT/UPDATE valida `workspace_id = _ctx_resolve_workspace(member_id)` — rejeita se inconsistente.
+
+**2) RLS** (espelhando `feedbacks` e `member_prompts`)
+
+```text
+SELECT:
+  - líder do member (is_team_leader(effective_user_id(), member_id))
+  - workspace owner (is_workspace_owner_of_member(member_id))
+  - HR admin do workspace
+  - liderado vinculado (team_members.linked_user_id = auth.uid())
+  - super admin
+
+INSERT:
+  - líder: requested_by = effective_user_id() AND is_team_leader(effective_user_id(), member_id)
+
+UPDATE:
+  - líder do member (pode editar perguntas enquanto pending, cancelar)
+  - liderado vinculado (apenas para preencher responses + flipar status para 'completed')
+
+DELETE:
+  - líder do member ou workspace owner
+```
+
+Não criamos política aberta para o liderado mexer em `summary` ou `requested_by` — campos sensíveis. Isso fica garantido por uma trigger BEFORE UPDATE: se o ator é o liderado (não líder), apenas `responses`, `status`, `completed_at` podem mudar.
+
+**3) Integração com Context Graph** (segue padrão `ctx_evidence_from_*`)
+
+```text
+FUNCTION ctx_evidence_from_pulse_survey()
+  SECURITY DEFINER, search_path = public
+  Disparada AFTER INSERT OR UPDATE OF status, summary, responses
+
+  IF NEW.status <> 'completed' THEN
+    -- Se voltar de completed → não-completed, remove a evidence
+    IF TG_OP = 'UPDATE' AND OLD.status = 'completed' THEN
+      DELETE FROM context_evidence
+      WHERE source_table='pulse_surveys' AND source_id=NEW.id;
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  v_summary_text :=
+    COALESCE(
+      NEW.summary->>'tldr',
+      -- fallback: concatena respostas
+      (SELECT string_agg(r->>'answer', ' • ')
+       FROM jsonb_array_elements(NEW.responses) r),
+      'Pulse Survey respondido'
+    );
+
+  v_sentiment := COALESCE(NEW.summary->>'sentiment', 'neutral');
+  v_themes    := ARRAY(SELECT jsonb_array_elements_text(
+                         COALESCE(NEW.summary->'themes','[]'::jsonb)));
+
+  INSERT INTO context_evidence (
+    workspace_id, member_id, source_table, source_id, evidence_type,
+    occurred_at, title, summary, sentiment, tags, actor_user_id,
+    visibility, metadata
+  ) VALUES (
+    NEW.workspace_id, NEW.member_id, 'pulse_surveys', NEW.id, 'pulse_response',
+    NEW.completed_at,
+    'Pulse Survey: ' || NEW.type,
+    LEFT(v_summary_text, 500),
+    v_sentiment,
+    ARRAY['pulse_survey', NEW.type] || v_themes,
+    NEW.requested_by,
+    'shared',                       -- líder requisitou e liderado respondeu = compartilhado
+    jsonb_build_object(
+      'survey_type', NEW.type,
+      'questions_count', jsonb_array_length(NEW.questions),
+      'responses_count', jsonb_array_length(NEW.responses),
+      'summary', NEW.summary,
+      'context_metadata', NEW.context_metadata
+    )
+  )
+  ON CONFLICT (source_table, source_id) DO UPDATE SET
+    summary    = EXCLUDED.summary,
+    sentiment  = EXCLUDED.sentiment,
+    tags       = EXCLUDED.tags,
+    metadata   = EXCLUDED.metadata,
+    occurred_at= EXCLUDED.occurred_at,
+    embedding  = NULL,                -- conteúdo mudou → re-embed via worker existente
+    updated_at = now();
+
+  RETURN NEW;
+END;
+```
+
+**4) Constants/source registry**
+
+Adicionar `'pulse_surveys'` ao `sourceMeta.ts` (já existe pattern). Apenas a entrada de mapeamento — sem criar componentes UI nesta sprint.
+
+### O que NÃO está nesta sprint (próximas)
+
+- UI: criar/visualizar surveys (Sprint 9.2).
+- Edge function de geração de perguntas com IA por tipo (Sprint 9.2/9.3).
+- Notificação Slack/Email do survey enviado (Sprint 9.3).
+- Backfill — não há dados legados.
 
 ### Aceitação
 
-- Item "Contexto" aparece na sidebar do líder, entre Avaliações e Configurações.
-- `/lider/contexto` carrega timeline ordenada por `occurred_at DESC` com até 30 itens iniciais.
-- Filtro por liderado → restringe a cards daquele membro.
-- Filtro por fonte (multi-pill) → restringe a `source_table IN (...)`.
-- "Carregar mais" pagina sem duplicar e sem recarregar.
-- Click no card abre o `EvidenceDrawer` global com conteúdo completo (mesma UX do Sprint 8.2).
-- Liderado de outro workspace **não aparece** (RPC valida via workspace + leader/HR/owner).
-- Performance: query inicial < 200ms para workspaces típicos (índice `(member_id, occurred_at DESC)` já existe + filtro por `member_id = ANY(allowed)` é eficiente).
+- Inserir `pulse_surveys` com `status='pending'` → nada vai pro `context_evidence`.
+- Atualizar para `status='completed'` com `summary` populado → uma row aparece em `context_evidence` com `source_table='pulse_surveys'` e visível na timeline `/contexto`.
+- `workspace_id` mismatch com `member_id.team.workspace_id` → INSERT/UPDATE rejeitado.
+- Liderado consegue dar UPDATE só em `responses/status/completed_at` (trigger barra outras colunas).
+- Liderado de outro workspace não vê via SELECT (RLS).
+- Reverter `status` de `completed` para `pending` remove a evidência (consistência com pattern de `slack_ambient_evidence`).
+- `sourceMeta.ts` reconhece `pulse_surveys` (label "Pulse Survey", ícone `Sparkles` ou `MessagesSquare`).
 
-### Fora de escopo (Sprint 8.4+)
+### Arquivos
 
-- Busca textual full-text (usar embedding HNSW para "encontrar evidências sobre X").
-- Agrupamento por dia/semana ("hoje", "ontem", "esta semana").
-- Exportação CSV.
-- Filtro por `evidence_type` (já dá pra fazer client-side, mas backlog).
-- Realtime via Supabase Realtime channel para inserts novos.
+**Criar:**
+- 1 migration: `pulse_surveys` (tabela + RLS + 2 triggers: validação workspace + integração context_evidence).
 
-### Resumo dos arquivos
+**Editar:**
+- `src/components/context/sourceMeta.ts` — adicionar entrada `pulse_surveys`.
 
-Criar:
-- 1 migration: nova RPC `get_team_timeline`
-- `src/hooks/useTeamTimeline.ts`
-- `src/components/context/EvidenceCard.tsx`
-- `src/components/context/SourceFilterChips.tsx`
-- `src/components/context/MemberFilterSelect.tsx`
-- `src/pages/lider/Contexto.tsx`
-
-Editar:
-- `src/lib/navigation.ts` (adicionar item)
-- `src/App.tsx` (rota lazy)
-- `src/locales/pt-BR/nav.json` (label) + outros idiomas existentes
+`src/integrations/supabase/types.ts` regenera automaticamente.

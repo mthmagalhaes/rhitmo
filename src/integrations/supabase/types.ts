@@ -1561,6 +1561,68 @@ export type Database = {
           },
         ]
       }
+      pulse_surveys: {
+        Row: {
+          completed_at: string | null
+          context_metadata: Json
+          created_at: string
+          expires_at: string | null
+          id: string
+          member_id: string
+          questions: Json
+          requested_by: string
+          responses: Json
+          sent_at: string
+          status: string
+          summary: Json | null
+          type: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          context_metadata?: Json
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          member_id: string
+          questions?: Json
+          requested_by: string
+          responses?: Json
+          sent_at?: string
+          status?: string
+          summary?: Json | null
+          type: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          context_metadata?: Json
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          member_id?: string
+          questions?: Json
+          requested_by?: string
+          responses?: Json
+          sent_at?: string
+          status?: string
+          summary?: Json | null
+          type?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pulse_surveys_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quarterly_recaps: {
         Row: {
           ai_generated_at: string | null
