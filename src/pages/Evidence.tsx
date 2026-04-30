@@ -8,8 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSlackConnection } from '@/hooks/useSlackConnection';
 import { SlackIcon } from '@/components/icons/SlackIcon';
+import { useHomeRoute } from '@/hooks/useHomeRoute';
 
 export default function Evidence() {
+  const home = useHomeRoute();
   const [status, setStatus] = useState<EvidenceStatus | 'all'>('pending');
   const [category, setCategory] = useState<EvidenceCategory | 'all'>('all');
   const [memberId, setMemberId] = useState<string | 'all'>('all');
@@ -58,7 +60,7 @@ export default function Evidence() {
     <div className="container max-w-5xl mx-auto py-8 px-4 md:px-6">
       {/* Header */}
       <div className="mb-8">
-        <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-3">
+        <Link to={home} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-3">
           <ArrowLeft className="h-3.5 w-3.5" /> Voltar
         </Link>
         <div className="flex items-start justify-between gap-4 flex-wrap">

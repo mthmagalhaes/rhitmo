@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Loader2, CheckCircle2, XCircle, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SlackPrivacyOnboarding } from '@/components/slack/SlackPrivacyOnboarding';
+import { useHomeRoute } from '@/hooks/useHomeRoute';
 
 type Status = 'loading' | 'success' | 'error' | 'no-state';
 
@@ -12,6 +13,7 @@ export default function SlackConnect() {
   const [searchParams] = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const home = useHomeRoute();
   const [status, setStatus] = useState<Status>('loading');
   const [errorMsg, setErrorMsg] = useState('');
   const [showPrivacy, setShowPrivacy] = useState(false);
