@@ -1477,6 +1477,7 @@ export type Database = {
       performance_reviews: {
         Row: {
           acknowledged_at: string | null
+          author_user_id: string | null
           classification: string | null
           coaching_tip: string | null
           competency_evaluations: Json | null
@@ -1493,6 +1494,7 @@ export type Database = {
           period_start: string | null
           period_type: string
           promotion_recommendation: string | null
+          review_type: string
           sent_at: string | null
           shared_with_member: boolean | null
           title: string
@@ -1500,6 +1502,7 @@ export type Database = {
         }
         Insert: {
           acknowledged_at?: string | null
+          author_user_id?: string | null
           classification?: string | null
           coaching_tip?: string | null
           competency_evaluations?: Json | null
@@ -1516,6 +1519,7 @@ export type Database = {
           period_start?: string | null
           period_type?: string
           promotion_recommendation?: string | null
+          review_type?: string
           sent_at?: string | null
           shared_with_member?: boolean | null
           title: string
@@ -1523,6 +1527,7 @@ export type Database = {
         }
         Update: {
           acknowledged_at?: string | null
+          author_user_id?: string | null
           classification?: string | null
           coaching_tip?: string | null
           competency_evaluations?: Json | null
@@ -1539,6 +1544,7 @@ export type Database = {
           period_start?: string | null
           period_type?: string
           promotion_recommendation?: string | null
+          review_type?: string
           sent_at?: string | null
           shared_with_member?: boolean | null
           title?: string
@@ -1826,6 +1832,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "review_comments_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "performance_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      review_peers: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          invited_at: string
+          peer_user_id: string
+          response_jsonb: Json
+          review_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          invited_at?: string
+          peer_user_id: string
+          response_jsonb?: Json
+          review_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          invited_at?: string
+          peer_user_id?: string
+          response_jsonb?: Json
+          review_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_peers_review_id_fkey"
             columns: ["review_id"]
             isOneToOne: false
             referencedRelation: "performance_reviews"
