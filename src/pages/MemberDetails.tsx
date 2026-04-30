@@ -84,6 +84,8 @@ const MemberDetails = () => {
   } = usePlanLimits();
 
   // Deep link: open note dialog from ?openNote=true, plus tab/sub-tab from ?tab=&sub=
+  // Also: ?action=new on tab=reviews opens the formal review dialog automatically.
+  const [cameFromReviews, setCameFromReviews] = useState(false);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('openNote') === 'true') {
@@ -93,11 +95,18 @@ const MemberDetails = () => {
     if (tab === 'rhitmo' || tab === 'reviews' || tab === 'diary') {
       setActiveTab(tab);
     }
+    if (tab === 'reviews') {
+      setCameFromReviews(true);
+    }
     const sub = params.get('sub');
     if (sub === 'quarterly' || sub === 'monthly') {
       setActiveRhitmoSub(sub);
     }
-    if (params.has('openNote') || params.has('tab') || params.has('sub')) {
+    const action = params.get('action');
+    if (tab === 'reviews' && action === 'new') {
+      setFormalReviewOpen(true);
+    }
+    if (params.has('openNote') || params.has('tab') || params.has('sub') || params.has('action')) {
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
