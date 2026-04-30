@@ -811,6 +811,16 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                   />
                 )}
 
+                {/* Sprint 10.4 — Card de avaliação ascendente (só aparece se houver líder vinculado) */}
+                {user?.id && (
+                  <StartUpwardsReviewCard
+                    memberId={linkedMember.id}
+                    memberName={linkedMember.name}
+                    authorUserId={user.id}
+                    upwardsReviewCount={myUpwardsReviews.length}
+                  />
+                )}
+
                 {/* Reviews compartilhadas pelo líder */}
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
