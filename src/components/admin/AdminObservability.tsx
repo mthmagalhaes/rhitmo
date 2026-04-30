@@ -65,8 +65,13 @@ export const AdminObservability = () => {
       }
     }
 
-    const { data, error } = await safeQuery<FunctionLog[]>(query as any);
-    if (!error && data) setLogs(data);
+    try {
+      const data = await safeQuery<FunctionLog[]>(query as any);
+      setLogs(data ?? []);
+    } catch (e) {
+      console.error('[AdminObservability] failed to load logs', e);
+      setLogs([]);
+    }
     setLoading(false);
   };
 
