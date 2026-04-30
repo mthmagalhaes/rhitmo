@@ -136,11 +136,12 @@ serve(async (req) => {
 
     const keyObjectives = member?.key_objectives;
 
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
-      console.error('OpenAI API key not found');
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY'); // Still needed for embeddings (Whisper/Embeddings not on gateway)
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    if (!lovableApiKey) {
+      console.error('LOVABLE_API_KEY not found');
       return new Response(
-        JSON.stringify({ error: 'OpenAI API key not configured' }),
+        JSON.stringify({ error: 'AI gateway not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
