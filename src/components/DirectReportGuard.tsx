@@ -3,31 +3,51 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAccount } from '@/contexts/AccountContext';
 import { useAdmin } from '@/hooks/useAdmin';
 import { Loader2 } from 'lucide-react';
+import { LEADER_HOME, DIRECT_REPORT_HOME, resolvePersona } from '@/lib/navigation';
 
 interface DirectReportGuardProps {
   children: React.ReactNode;
 }
 
-
 export function DirectReportGuard({ children }: DirectReportGuardProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isLinkedMember, needsOnboarding, loading } = useAccount();
-  // isAdmin is false during impersonation by design — that lets the admin
-  // navigate the regular app while impersonating without being kicked back.
+  const { isLinkedMember, isLeader, isHRAdmin, needsOnboarding, loading } = useAccount();
   const { isAdmin, loading: adminLoading } = useAdmin();
 
   useEffect(() => {
     if (location.pathname === '/onboarding') return;
-    // Super admin (not impersonating) should never see the leader dashboard
+
+    // Super admin (not impersonating) → /admin
     if (!adminLoading && isAdmin) {
       navigate('/admin', { replace: true });
       return;
     }
-    if (!loading && isLinkedMember && needsOnboarding) {
+
+    if (loading) return;
+
+    // Linked members needing onboarding go through wizard.
+    if (isLinkedMember && needsOnboarding) {
       navigate('/onboarding', { replace: true });
+      return;
     }
-  }, [loading, adminLoading, isAdmin, isLinkedMember, needsOnboarding, location.pathname, navigate]);
+
+    // Smart redirect from legacy /dashboard → role-based home.
+    if (location.pathname === '/dashboard') {
+      const persona = resolvePersona({ isLinkedMember, isLeader, isHRAdmin });
+      navigate(persona === 'leader' ? LEADER_HOME : DIRECT_REPORT_HOME, { replace: true });
+    }
+  }, [
+    loading,
+    adminLoading,
+    isAdmin,
+    isLinkedMember,
+    isLeader,
+    isHRAdmin,
+    needsOnboarding,
+    location.pathname,
+    navigate,
+  ]);
 
   if (loading || adminLoading) {
     return (

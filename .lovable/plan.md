@@ -1,145 +1,109 @@
-# Plano: Relatório Detalhado Rhitmo — Landing + Plataforma (Abril/2026)
+# Refatoração de Navegação: Sidebar por Papel + Rotas Separadas
 
-## Objetivo
+Substitui a sidebar e o roteamento atuais por uma arquitetura clara: Líder e Liderado têm navs e árvores de rotas distintas, workspace switcher sempre presente, threads de IA como cidadãos de primeira classe, CTA de IA fixo no rodapé.
 
-Entregar um documento consolidado, executivo e técnico, sobre o **estado atual** da Rhitmo — combinando a perspectiva de **Landing Page** (marketing/posicionamento), **Plataforma** (produto/UX/features) e **Engenharia** (arquitetura, banco, IA, integrações, custos, observabilidade pós Ondas 3/4/4.5).
+## Princípios
+- Máximo 5–6 itens primários por papel
+- Workspace switcher sempre no topo (mesmo com 1 workspace)
+- CTA de IA persistente no rodapé
+- Estado ativo é a única ênfase (sem badges/contadores)
+- Estética Creme/Bento mantida (rounded-2xl, shadows soft)
 
-Não é uma reescrita do `rhitmo-technical-report-april-2026.md` (que cobre até 17/Abr). É uma **fotografia atual de 30/Abr/2026** que incorpora as Ondas 3, 4 e 4.5 (Event Bus, ai-router, observabilidade, feature flags, custo IA, testes).
+## Diferenças importantes vs. spec original (alinhamento com base atual)
 
-## Formato de entrega
+1. **Tabela `chat_threads`**: o `type` atual aceita só `'mentor' | 'career' | 'assistant'` (CHECK constraint) e exige `member_id NOT NULL`. Vou:
+   - Estender o CHECK para incluir `'meu_rhitmo'` e `'brief'` via migration.
+   - Tornar `member_id` nullable (threads de líder com Mentor podem não ter membro alvo) — ou manter NOT NULL e criar um "self-member" sentinel? **Proposta**: tornar `member_id` nullable e atualizar RLS/índices. Confirmo no momento da migration.
+2. **Locales**: o projeto usa `pt-BR.json` / `en.json` / `es.json` (não `pt.ts`). Adicionarei o namespace `nav` nesses JSONs.
+3. **Rotas legadas**: vou mapear cada rota existente para a nova com `<Navigate replace>` (SPA não tem 301 real; replace cumpre o papel).
+4. **Páginas placeholder**: `/lider/pulse`, `/liderado/pulse`, `/liderado/pdi`, `/liderado/compass` ainda não têm telas dedicadas. Vou criar páginas finas que reutilizam componentes existentes (`DirectReportDashboard`, `Career Compass card`, `GoalsManager` para PDI) ou um EmptyState quando não houver conteúdo.
+5. **Super Admin (`matheus@rhitmo.co`) impersonando** continua funcionando: a sidebar de líder será mostrada quando o usuário efetivo for líder.
 
-Como tem dimensão de **deliverable** (não feature de produto), gero como **artefato baixável**:
+## Arquivos
 
-- **Markdown** em `/mnt/documents/rhitmo-relatorio-completo-abril-2026.md` (fonte editável)
-- **PDF** em `/mnt/documents/rhitmo-relatorio-completo-abril-2026.pdf` (apresentável)
+### Criar
+- `src/lib/navigation.ts` — arrays tipados `LEADER_NAV_ITEMS` e `DIRECT_REPORT_NAV_ITEMS` + ícones do topo + helper `resolveRoleNav(role)`.
+- `src/components/sidebar/WorkspaceSwitcher.tsx` — logo + nome + chevron, dropdown com workspaces do usuário (RLS), entrada extra "· RH" quando HR Admin.
+- `src/components/sidebar/ThreadsList.tsx` — query `chat_threads` (5 mais recentes), heading variável, navega para `/chat/:threadId`, empty silencioso.
+- `src/components/sidebar/SidebarFooterCTA.tsx` — CTA "Pergunte ao Mentor" (líder, abre Sheet com `MentorChat`) ou "Meu Rhitmo · privado" (liderado, navega).
+- `src/components/sidebar/SidebarProfileBlock.tsx` — avatar + nome + toggle Sun/Moon (`useTheme`).
+- `src/components/sidebar/QuickActionsRow.tsx` — linha de ícones contextuais (calendário, pessoas, conversas, busca placeholder).
+- `src/components/RoleRouteGuard.tsx` — guard que redireciona `/lider/*` para `/liderado/inicio` se for liderado puro e vice-versa.
+- Páginas novas (todas finas, reaproveitando componentes existentes):
+  - `src/pages/lider/Inicio.tsx` (wrapper de `Index`)
+  - `src/pages/lider/OneOnOnes.tsx`
+  - `src/pages/lider/Diario.tsx`
+  - `src/pages/lider/Pulse.tsx` (EmptyState "Em breve")
+  - `src/pages/lider/Avaliacoes.tsx` (wrapper para `PerformanceReviewList`)
+  - `src/pages/lider/Pessoas.tsx`
+  - `src/pages/lider/Configuracoes.tsx`
+  - `src/pages/liderado/Inicio.tsx` (Career Compass hero)
+  - `src/pages/liderado/Compass.tsx`
+  - `src/pages/liderado/OneOnOnes.tsx`
+  - `src/pages/liderado/Pulse.tsx`
+  - `src/pages/liderado/PDI.tsx`
+  - `src/pages/liderado/Avaliacoes.tsx`
+  - `src/pages/liderado/MeuRhitmo.tsx`
+  - `src/pages/liderado/Configuracoes.tsx`
+- Migration: `supabase/migrations/<ts>_chat_threads_extend_types.sql`
+  - Drop + recriar CHECK incluindo `'meu_rhitmo'` e `'brief'`
+  - `ALTER COLUMN member_id DROP NOT NULL`
+  - Adicionar índice parcial para `type='meu_rhitmo'`
 
-PDF gerado via `pandoc` + `weasyprint` ou `pandoc + xelatex`, com capa, sumário e estilo "Rhitmo" (creme, Lora nos títulos).
+### Atualizar
+- `src/components/AppSidebar.tsx` — reescrita completa nas 4 zonas, detecção de papel via `useUserRole` + `useLinkedMember`, consumo de `src/lib/navigation.ts`.
+- `src/App.tsx` — duas árvores `/lider/*` e `/liderado/*` envolvidas em `RoleRouteGuard`, redirects das rotas legadas, redirect inteligente em `/dashboard`.
+- `src/components/DirectReportGuard.tsx` — passa a redirecionar para `/lider/inicio` ou `/liderado/inicio` em vez de `/onboarding` quando aplicável.
+- `src/i18n/locales/pt-BR.json`, `en.json`, `es.json` — adicionar namespace `nav` (líder, liderado, cta, threads, ações).
 
-## Estrutura do relatório (capítulos)
+## Layout vertical do novo Sidebar
 
-```
-1. Sumário Executivo
-   - O que é Rhitmo, problema, solução, momento atual
-   - Métricas-chave e estado de maturidade
-
-2. Landing Page (rhitmo.co)
-   2.1 Posicionamento e mensagens (hero, headlines PT/EN/ES)
-   2.2 Estrutura de seções (hero, prova, features, pricing, FAQ, CTAs)
-   2.3 Estratégia de conversão (sem cartão, plano grátis Pulse, "preço de lançamento")
-   2.4 i18n (PT/EN/ES) e tom Early Adopter
-   2.5 SEO/legal (Privacy Policy, Terms, Roadmap, Help Center)
-
-3. Plataforma — Visão de Produto
-   3.1 Personas (Líder, Liderado, HR Admin, Owner, Super Admin)
-   3.2 Jornadas principais (onboarding líder, onboarding HR, convite liderado, ciclo 1:1, ciclo Review)
-   3.3 Modelo "Workspace = Empresa"
-   3.4 Planos e limites (Pulse 2 / Pro 5 / Business 10 / Enterprise)
-
-4. UX e Design System
-   4.1 Estética "Creme / Bento" (Soft UI, rounded-2xl/3xl, shadows difusas)
-   4.2 Tipografia (Lora headings, Inter body, sem em-dash)
-   4.3 Componentes-chave (Bento Grid dashboard, Floating Sidebar, Split Auth)
-   4.4 Avatares proprietários (24 SVGs) e Rhythm Wave
-   4.5 Acessibilidade e responsivo (max-w-5xl)
-   4.6 Padrões críticos: Padlock vs Eye (privado vs shared), "Magic Paste"
-
-5. Features por Área
-   5.1 Diário de Bordo (FeedbackTimeline, filtros, manual tags)
-   5.2 Mentor Chat (3 layers, RAG, threads multimodais)
-   5.3 Avaliações Formais (Tiptap, evidências, competências, lifecycle)
-   5.4 PDI (member-owned, NewPDIDialog)
-   5.5 Career Compass + Pulse Card (portal liderado)
-   5.6 Meu Rhitmo (parceiro de carreira IA)
-   5.7 Pre-meeting Briefs e Smart Nudges
-   5.8 Bias Detection (client-side ProseMirror)
-   5.9 Recall.ai (bot, multi-member diarization, leader presence)
-   5.10 Slack (comandos, App Home, ambient, privacidade)
-   5.11 Google Calendar + Extensão Chrome (legado)
-   5.12 HR Dashboard (Health Score, Risk Table, Engagement Heatmap)
-   5.13 Admin / Command Center (Funnel, Cohorts, Drill-down)
-
-6. Arquitetura Técnica
-   6.1 Stack (React 18, Vite 5, TS, Tailwind v3, Shadcn, Tiptap, react-i18next)
-   6.2 Backend (Supabase: ~53 tabelas, ~67 Edge Functions Deno, pgvector, pgmq)
-   6.3 RLS e Roles (5 papéis, has_role, effective_user_id, security definer)
-   6.4 AccountContext + role resolution priority
-   6.5 Integrações (OpenAI, Lovable AI Gateway, Recall.ai, Stripe, Resend, Slack, Google)
-
-7. Plataforma de IA
-   7.1 Constituição Rhitmo (centralizada)
-   7.2 Mentor Chat — pipeline de 3 camadas
-   7.3 ai-router (Onda 3) — tasks: classify_intent, summarize_text, extract_action_items
-   7.4 RAG e embeddings (text-embedding-3-small, threshold 0.5)
-   7.5 Modelos por uso (Gemini 2.5 Flash padrão, gpt-4o-mini router, Whisper)
-   7.6 Bias detection client-side
-   7.7 Performance Reviews — anti-alucinação + citação obrigatória
-
-8. Infraestrutura de Notificações
-   8.1 Event Bus (Onda 3.2 + 4.3 + 4.5) — tabela `events`, `emit()`, dispatcher
-   8.2 Templates registry (feedback-shared, review-shared, etc.)
-   8.3 Feature flags (USE_EVENT_BUS_FOR_*) — rollback seguro
-   8.4 ActivitySheet — único ponto de notificações in-app
-   8.5 Fila pgmq + Resend (notify.rhitmo.co)
-
-9. Observabilidade e Qualidade (Onda 4 + 4.5)
-   9.1 Logger centralizado (`_shared/logger.ts`)
-   9.2 `function_logs` + AdminObservability dashboard
-   9.3 Custo IA por workspace (aiPricing.ts + estimatedCostUsd)
-   9.4 Testes Deno (event-dispatcher, ai-router, helpers)
-   9.5 Safe Supabase wrappers (safeRpc, tryRpc, safeFunctionInvoke)
-
-10. Segurança e Privacy
-    10.1 Email verification obrigatória, sem signup anônimo
-    10.2 Strict ownership (manager_id apenas)
-    10.3 Edge function ownership chain check + OAuth nonce
-    10.4 Storage privado (meeting-recordings, chat-attachments)
-    10.5 Impersonação auditada
-    10.6 Slack 3-layer privacy
-
-11. Monetização
-    11.1 Stripe customizado (não Lovable Payments)
-    11.2 Funil checkout → webhook → workspace.plan_tier
-    11.3 Limites enforced (usePlanLimits + edge validation)
-    11.4 Modelo econômico Abril/2026 (margens 58-70%)
-
-12. Estado Atual (Abril/2026) — Ondas concluídas
-    - Onda 1: Refactor Command Center
-    - Onda 2: ActivationCohorts + drill-down
-    - Onda 3: ai-router + Event Bus
-    - Onda 4: Observabilidade + testes + emit migration
-    - Onda 4.5: Closure (cost tracking, feature flags, full migration)
-
-13. Backlog e Próximas Ondas
-    - Wave 5 candidatos: migrar 5–10 funções para ai-router, Rate Limiting
-    - Cobertura de testes além de helpers
-    - Possível instrumentação total das funções AI restantes
-
-14. Anexos
-    A. Catálogo completo de Edge Functions (~67)
-    B. Lista de tabelas (53)
-    C. Comandos Slack
-    D. Eventos canônicos do Event Bus
-    E. Modelos de IA por função
+```text
+┌──────────────────────────────┐
+│ WorkspaceSwitcher            │ ← sempre visível
+├──────────────────────────────┤
+│ [Início] [Cal] [Pess] [Chat] │ ← QuickActionsRow
+├──────────────────────────────┤
+│ Nav primária (5-6 itens)     │
+│  • por papel                  │
+├──────────────────────────────┤
+│ Conversas hoje / privadas    │ ← ThreadsList (oculto se vazio)
+├──────────────────────────────┤
+│ [CTA IA persistente]         │
+│ [Convidar membros] (líder)   │
+│ ── Profile + ☀/🌙 toggle ──  │
+└──────────────────────────────┘
 ```
 
-## Como vou montar (passos de execução)
+## Mapeamento de rotas legadas → novas
 
-1. Ler em chunks o `Landing.tsx` (1453 linhas) para extrair seções, headlines e CTAs reais (PT/EN/ES).
-2. Mapear `AppSidebar.tsx`, `Index.tsx`, `HRDashboard.tsx`, `MemberDetails.tsx`, `Admin.tsx` para inventário definitivo de telas/features.
-3. Cruzar com memórias já indexadas (`event-bus`, `feature-flags`, `observability-logger`, `ai-router`, `papeis-e-permissoes`, design system, AI specs).
-4. Consultar `psql` para contagens reais (workspaces, feedbacks, reviews, edge function logs últimos 7d) — dá vida ao "Estado Atual".
-5. Escrever Markdown em `/mnt/documents/`.
-6. Converter para PDF via pandoc com CSS estilizado (creme + Lora). Renderizar páginas como imagem para QA visual antes de entregar.
-7. Emitir `<lov-artifact>` para .md e .pdf.
+| Legada | Nova (líder) | Nova (liderado) |
+|---|---|---|
+| `/dashboard` | `/lider/inicio` | `/liderado/inicio` |
+| `/dashboard/carreira` | — | `/liderado/compass` |
+| `/dashboard/feedbacks` | `/lider/diario` | (inline no inicio) |
+| `/dashboard/perfil` | `/lider/configuracoes` | `/liderado/configuracoes` |
+| `/analytics` | `/lider/pessoas` (+ aba) | redir `/liderado/inicio` |
+| `/billing` | mantida (acessada via configurações) | redir |
+| `/brief/:id` | `/lider/1on1s/:id` (mantém também antiga) | — |
 
-## O que NÃO está no escopo
+Rotas mantidas como estão: `/admin`, `/hr/*`, `/auth`, `/invite`, `/sync/:memberId`, `/review/:id`, páginas legais, `/recorder`, `/slack/connect`.
 
-- Nenhuma alteração de código no projeto.
-- Não mexo em memórias nem migrations.
-- Não atualizo o `rhitmo-technical-report-april-2026.md` existente (esse é histórico v1.1 de 17/Abr; o novo é v2.0 de 30/Abr e fica em `/mnt/documents`).
+## Validações finais
+- Líder → `/lider/inicio`, vê 5 itens + "Pergunte ao Mentor"
+- Liderado → `/liderado/inicio`, vê 6 itens + "Meu Rhitmo · privado"
+- HR Admin → sidebar líder + workspace switcher mostra "· RH"
+- Liderado tentando `/lider/*` → redirect para `/liderado/inicio`
+- Líder tentando `/liderado/*` → redirect para `/lider/inicio`
+- Trocar idioma → labels da nav atualizam
+- Toggle tema funciona no rodapé
+- `aria-current="page"` no item ativo
+- Threads aparecem; sem threads → seção oculta
+- Mobile: sidebar colapsa em drawer mantendo as 4 zonas
 
-## Resultado
+## Riscos / pontos de atenção
+- **Quebra temporária**: links espalhados pelo código que apontam para `/dashboard`, `/dashboard/carreira`, `/member/:id`, `/brief/:id` continuarão funcionando via redirect, mas vou rodar `rg "to=\"/dashboard"` etc. e atualizar os mais críticos (sidebar, dashboards, emails) para evitar redirect duplo.
+- **Migration `chat_threads`**: tornar `member_id` nullable é mudança não-trivial. Vou pedir confirmação no momento de aplicar a migration. Alternativa: manter NOT NULL e usar o próprio `linked_member.id` do líder para threads de mentor genéricas (já é o padrão atual).
+- **Pulse / PDI dedicados**: páginas placeholder na primeira iteração; conteúdo real é trabalho futuro.
 
-Dois arquivos baixáveis prontos para uso interno (deck para investidor, brief para novo dev/designer, base para due diligence) com a fotografia consolidada de tudo que existe hoje na Rhitmo.
-
-Aprova para gerar?
+Posso prosseguir com a implementação?
