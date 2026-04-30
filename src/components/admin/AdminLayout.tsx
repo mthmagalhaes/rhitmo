@@ -43,6 +43,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
     { value: 'structure', icon: Network, label: 'Estrutura' },
     { value: 'access', icon: ShieldCheck, label: 'Acessos & Export' },
     { value: 'intelligence', icon: Brain, label: 'Inteligência' },
+    { value: 'observability', icon: Activity, label: 'Observabilidade' },
   ];
 
   return (
