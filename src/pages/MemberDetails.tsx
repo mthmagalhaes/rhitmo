@@ -57,6 +57,7 @@ const MemberDetails = () => {
     id
   } = useParams();
   const navigate = useNavigate();
+  const home = useHomeRoute();
   const {
     user,
     loading: authLoading
@@ -428,7 +429,7 @@ const MemberDetails = () => {
     return <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Membro não encontrado</h1>
-          <Button onClick={() => navigate('/dashboard')}>Voltar ao Dashboard</Button>
+          <Button onClick={() => navigate(home)}>Voltar ao início</Button>
         </div>
       </div>;
   }
