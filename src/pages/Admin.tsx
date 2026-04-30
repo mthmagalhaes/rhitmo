@@ -4,6 +4,7 @@ import { AdminUsers } from '@/components/admin/AdminUsers';
 import { AdminAccess } from '@/components/admin/AdminAccess';
 import { AdminStructure } from '@/components/admin/AdminStructure';
 import { AdminIntelligence } from '@/components/admin/AdminIntelligence';
+import { AdminObservability } from '@/components/admin/AdminObservability';
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState('overview');
