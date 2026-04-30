@@ -248,7 +248,7 @@ export function AppSidebar() {
         {open && persona === 'leader' && (
           <button
             type="button"
-            onClick={() => setInviteOpen(true)}
+            onClick={() => navigate(LEADER_HOME)}
             className="mx-2 flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 transition-colors"
           >
             <UserPlus className="h-3.5 w-3.5" />
