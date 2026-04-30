@@ -11,6 +11,7 @@ import {
   Users,
   MessageSquare,
   Search,
+  Layers,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -33,6 +34,7 @@ export const LEADER_NAV_ITEMS: NavItem[] = [
   { id: 'pulse', labelKey: 'nav.lider.pulse', icon: Activity, to: '/lider/pulse' },
   { id: 'objetivos', labelKey: 'nav.lider.objetivos', icon: Target, to: '/lider/objetivos' },
   { id: 'avaliacoes', labelKey: 'nav.lider.avaliacoes', icon: ClipboardList, to: '/lider/avaliacoes' },
+  { id: 'contexto', labelKey: 'nav.lider.contexto', icon: Layers, to: '/lider/contexto' },
   { id: 'configuracoes', labelKey: 'nav.lider.configuracoes', icon: Settings, to: '/lider/configuracoes' },
 ];
 
