@@ -1,83 +1,49 @@
-## Diagnóstico
+## Refazer fluxo de Avaliações
 
-A causa raiz do banner "Bom dia, Matheus" aparecer em todo lugar é simples: hoje **`/lider/inicio`, `/lider/diario`, `/lider/1on1s` (em duas das três abas) e a aba "Membros" de `/lider/pessoas` renderizam o componente `<Index />` inteiro** — e o `<Index />` desenha o hero strip, o setup checklist, o Mirror, as próximas 1:1s e o grid do time, tudo de uma vez. O banner não é da página, é do Index reaproveitado em todo lugar.
+### 1. Modal de seleção (`src/pages/lider/Avaliacoes.tsx`)
 
-A correção é separar as **partes** do `Index` em blocos reutilizáveis e montar cada host page com só o que faz sentido.
+Reduzir o modal de 3 cards para **2 cards principais**, removendo "Diário de Bordo" e "Objetivo/Meta" (já existem no sidebar):
 
----
+- **Rhitmo** (card principal)
+  - Ícone: `Music` (mantém DNA da marca)
+  - Descrição: "Resumos automáticos do mês e do trimestre, com destaques, riscos e ações."
+  - Sub-opções inline (dois botões pill dentro do card): **Mensal** | **Trimestral**
+  - Mensal → `/member/:id?tab=rhitmo&sub=monthly`
+  - Trimestral → `/member/:id?tab=rhitmo&sub=quarterly`
 
-## Plano
+- **Avaliações Formais** (card principal)
+  - Ícone: `Sparkles`
+  - Descrição: "Performance Review fundamentada em evidências reais. Você revisa, ajusta e compartilha."
+  - Click → `/member/:id?tab=reviews&action=new` (deep-link já abre a aba + sinaliza criação)
 
-### 1. Refatorar `src/pages/Index.tsx` em blocos exportáveis
+Layout: dois cards `rounded-2xl` empilhados; dentro do card "Rhitmo", as duas sub-opções aparecem como botões secundários alinhados à direita, separados visualmente do título/descrição.
 
-Sem mexer no comportamento atual, extrair três blocos nomeados (mantendo `Index` como wrapper que continua rodando em `/lider/inicio` e `/dashboard`):
+### 2. CTA contextual no MemberDetails (`src/pages/MemberDetails.tsx`)
 
-- `LeaderHero` — banner com saudação, badge de plano, contadores (liderados, reuniões hoje, notas semana, atenção), botões "Novo Membro" e "Nova Nota".
-- `LeaderUpcomingMeetings` — wrapper que usa `UpcomingMeetingsCard` + `PendingTranscriptsCard` + boundary.
-- `MembersGrid` — grid responsivo de `TeamMemberCard` com `TeamTabs` (filtro por time), checklist e o Mirror Insight ficam só no `Inicio`.
+Hoje o botão primário do header é fixo "Nova Nota". Vamos torná-lo **contextual ao deep-link**:
 
-Exportar `LeaderHero`, `LeaderUpcomingMeetings`, `MembersGrid` como named exports. `Index` continua sendo o default export e compõe os três (inicio mantém visual idêntico ao atual).
+- Quando a URL contém `?tab=reviews` (ou seja, o usuário veio do fluxo de Avaliações):
+  - Botão primário vira **"Nova Avaliação"** (ícone `Sparkles`)
+  - Click → abre `CreateFormalReviewDialog` (já existe em `src/components/review/CreateFormalReviewDialog.tsx`) com o membro pré-selecionado
+  - "Nova Nota" desce para dentro do dropdown "Mais ações"
+- Caso contrário (qualquer outro tab): mantém "Nova Nota" como hoje
 
-### 2. Remover o banner das páginas onde não faz sentido
+Adicionalmente, se `?action=new` estiver presente junto com `?tab=reviews`, abrir o dialog automaticamente após mount (e limpar o param da URL via `setSearchParams`).
 
-- `src/pages/lider/Diario.tsx`: parar de renderizar `<Index />`. Renderiza só `MembersGrid` com header próprio "Diário de Bordo / Selecione um liderado". `TeamMemberCard.onClick` já navega para `/member/:id` (que é o diário do liderado). Comportamento Tako alcançado sem novo componente.
-- `src/pages/lider/Pessoas.tsx` aba "Membros": idem — trocar `<Index />` por `<MembersGrid />`.
-- `src/pages/lider/OneOnOnes.tsx` (ver passo 3).
-- `src/pages/lider/Avaliacoes.tsx` (ver passo 5).
+### 3. Limpeza
 
-### 3. `1:1s` — focar no Google Calendar
+- Remover do array `cycles` os 3 cards atuais e a iteração `.map(cycles)`; substituir por JSX explícito dos 2 cards.
+- Manter `MembersGrid` (seleção de liderado) inalterado.
+- Sem mudanças em rotas, navegação, ou MembersGrid.
 
-Reescrever `src/pages/lider/OneOnOnes.tsx`:
-- Header próprio "1:1s — Reuniões individuais com cada liderado".
-- Manter o banner educacional (Conecte seu Google Calendar) só quando não conectado.
-- Conteúdo principal: `LeaderUpcomingMeetings` (cards de próximas 1:1s do Google Calendar + transcrições pendentes), seguido de uma segunda seção "Por liderado" usando o `MembersGrid` em modo compacto que ao clicar leva para `/member/:id?tab=1on1s` (deep-link já suportado por `MemberDetails`).
-- Remover as abas "Próximos / Todos / Estatísticas" — viraram seções na mesma página, sem repetir banner.
+### Arquivos
 
-### 4. Novo item de menu **Objetivos**
+- **Editar** `src/pages/lider/Avaliacoes.tsx` — novo conteúdo do modal (2 cards + sub-opções Rhitmo)
+- **Editar** `src/pages/MemberDetails.tsx` — CTA contextual no header + auto-open do dialog formal quando `action=new`
+- Sem novos componentes, sem mudanças de schema, sem i18n novo (textos PT-BR já no padrão da página)
 
-- Adicionar entrada em `src/lib/navigation.ts` (`LEADER_NAV_ITEMS`) entre `diario` e `avaliacoes`:  
-  `{ id: 'objetivos', labelKey: 'nav.lider.objetivos', icon: Target, to: '/lider/objetivos' }`.
-- Adicionar a chave `nav.lider.objetivos` ("Objetivos" / "Goals" / "Objetivos") nos três arquivos `src/i18n/locales/{pt-BR,en,es}.json`.
-- Criar `src/pages/lider/Objetivos.tsx`: header próprio + `<MembersGrid mode="objetivos" />`. Em vez de navegar para `/member/:id`, abre o `NewGoalDialog` (`src/components/NewGoalDialog.tsx`) já existente passando o `memberId` selecionado. Adicionar prop opcional `onMemberSelect` em `MembersGrid` para suportar esse comportamento sem duplicar código.
-- Registrar a rota `/lider/objetivos` em `src/App.tsx` apontando para `LiderObjetivos` dentro do helper `Leader(...)`.
+### Detalhes técnicos
 
-### 5. `Avaliações` — selecionar liderado e abrir ciclos
-
-Reescrever `src/pages/lider/Avaliacoes.tsx`:
-- Header próprio + `<MembersGrid mode="avaliacoes" />`.
-- Ao clicar num liderado, abre um `Dialog` com três opções de ciclo: **Rhitmo Mensal**, **Rhitmo Trimestral**, **Rhitmo Formal**. Cada uma chama os fluxos já existentes:
-  - Mensal/Trimestral → função `generate-monthly-recap` / `generate-quarterly-recap` (chamadas via `safeFunctionInvoke`) seguidas de redirect para `/member/:id?tab=recaps`.
-  - Formal → navega para `/member/:id?tab=reviews&new=formal` (a tela `MemberDetails` já hospeda o `generate-formal-review`).
-- Manter abaixo a lista atual de avaliações (Ativos / Rascunhos / Concluídos) como seção secundária — não como abas que escondem o seletor.
-
-### 6. Hero estatístico só no Início
-
-- `src/pages/lider/Inicio.tsx` continua sendo o único lugar com o `LeaderHero` (banner "Bom dia, Matheus" + analytics inline). Esse é o "início" que o usuário pediu: visão geral + métricas vivem aqui.
-- Como bônus de coerência, o setup checklist e o Mirror Insight ficam no Início, não vazam pras outras páginas.
-
-### 7. Limpezas
-
-- Remover o `<Index />` reaproveitado em `Diario.tsx`, `Pessoas.tsx` (aba membros) e `OneOnOnes.tsx`.
-- Garantir que `/dashboard` continua renderizando `<Index />` (compatibilidade).
-- Deep-links existentes (`/member/:id?tab=...`) continuam funcionando — só estamos mudando o ponto de entrada.
-
----
-
-## Detalhes técnicos
-
-- **Componentização**: `MembersGrid` recebe `mode?: 'navigate' | 'objetivos' | 'avaliacoes'` e `onMemberSelect?: (m) => void`. Default `navigate` mantém o `navigate('/member/'+id)` atual.
-- **i18n**: três entradas nuevas (`nav.lider.objetivos`, `objetivos.title`, `objetivos.subtitle`).
-- **Rotas adicionadas**: `/lider/objetivos`. Nenhuma removida.
-- **Sem mudanças em backend, RLS, edge functions ou schema** — usa `NewGoalDialog`, `generate-monthly-recap`, `generate-quarterly-recap` e `generate-formal-review` já existentes.
-- **Risco**: baixo. `Index` permanece intacto (exporta default + named); apenas as host pages de `Diário`, `1on1s`, `Pessoas/membros` e `Avaliações` mudam a composição.
-
-```text
-Sidebar (líder)              Conteúdo
-─────────────────            ───────────────────────────────────
-Início          ─────────►   Hero "Bom dia" + analytics + Mirror
-1:1s            ─────────►   Calendar meetings + por liderado
-Diário de Bordo ─────────►   Grid Tako → /member/:id (diário)
-Objetivos (NEW) ─────────►   Grid Tako → NewGoalDialog
-Avaliações      ─────────►   Grid Tako → modal Mensal/Trim/Formal
-Configurações   ─────────►   (sem mudança)
-```
+- `useSearchParams` já está em uso em MemberDetails para `tab`/`sub`/`openNote` — adicionar leitura de `action` e do estado `formalReviewDialogOpen`.
+- Reaproveitar `CreateFormalReviewDialog` passando `member={{ id, name, role }}` e `workspaceId` (ambos já disponíveis no escopo do componente).
+- Garantir que ao fechar o dialog, o param `action` seja removido para evitar reabertura em refresh.
