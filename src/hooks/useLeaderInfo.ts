@@ -1,0 +1,54 @@
+// Sprint 10.4 — Hook leve para descobrir o líder do liderado a partir do team_members.id.
+// Retorna { leaderUserId, leaderName } ou null se o liderado não estiver vinculado a um time com líder.
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+
+export interface LeaderInfo {
+  leaderUserId: string;
+  leaderName: string | null;
+  teamId: string;
+}
+
+export function useLeaderInfo(memberId: string | undefined) {
+  return useQuery<LeaderInfo | null>({
+    queryKey: ['leader-info', memberId],
+    enabled: !!memberId,
+    queryFn: async () => {
+      if (!memberId) return null;
+
+      // 1. Resolve team_id e leader_user_id via team_members → teams
+      const { data: tm, error: tmErr } = await supabase
+        .from('team_members')
+        .select('team_id, teams:team_id(id, leader_user_id, name)')
+        .eq('id', memberId)
+        .maybeSingle();
+
+      if (tmErr) {
+        console.error('[useLeaderInfo] team_members', tmErr);
+        return null;
+      }
+
+      const team = (tm as any)?.teams;
+      const leaderUserId: string | null = team?.leader_user_id ?? null;
+      if (!team || !leaderUserId) return null;
+
+      // 2. Buscar nome do líder na profiles (fail-soft, opcional)
+      let leaderName: string | null = null;
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('full_name, email')
+        .eq('id', leaderUserId)
+        .maybeSingle();
+
+      if (prof) {
+        leaderName = (prof as any).full_name || (prof as any).email || null;
+      }
+
+      return {
+        leaderUserId,
+        leaderName,
+        teamId: team.id,
+      };
+    },
+  });
+}
