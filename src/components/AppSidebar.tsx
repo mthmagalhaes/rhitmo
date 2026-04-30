@@ -38,7 +38,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ProfileSettingsDialog } from '@/components/ProfileSettingsDialog';
-import { InviteMemberDialog } from '@/components/InviteMemberDialog';
 import { WorkspaceSwitcher } from '@/components/sidebar/WorkspaceSwitcher';
 import { QuickActionsRow } from '@/components/sidebar/QuickActionsRow';
 import { ThreadsList } from '@/components/sidebar/ThreadsList';
@@ -59,7 +58,7 @@ export function AppSidebar() {
   const { isLeader, isHRAdmin, isLinkedMember, linkedMember } = useAccount();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [inviteOpen, setInviteOpen] = useState(false);
+  // (invite handled via navigation to leader home where the existing dialogs live)
   const [supportOpen, setSupportOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
