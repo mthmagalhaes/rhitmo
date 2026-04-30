@@ -138,7 +138,7 @@ serve(async (req) => {
     const feedbacksText = feedbacks && feedbacks.length > 0
       ? feedbacks.map(f => {
           const date = new Date(f.occurred_at || f.created_at).toLocaleDateString('pt-BR');
-          return `[${date}] Tipo: ${f.type}\n${f.content}\n${f.summary ? `Resumo IA: ${f.summary}` : ''}`;
+          return `[${date}] [doc_id: ${f.id}] Tipo: ${f.type}\n${f.content}\n${f.summary ? `Resumo IA: ${f.summary}` : ''}`;
         }).join('\n\n---\n\n')
       : 'Nenhum feedback registrado neste período.';
 
@@ -277,7 +277,16 @@ Sugira como **${targetManagerName}** deve conduzir a reunião de feedback com **
 - Se não houver dados suficientes sobre ${targetMemberName}, diga claramente
 - Mantenha tom profissional, respeitoso e construtivo
 - Use APENAS sintaxe Markdown padrão
-- Sempre cite datas quando mencionar eventos específicos`;
+- Sempre cite datas quando mencionar eventos específicos
+
+## RASTREABILIDADE — CITAÇÕES ESTRUTURADAS
+
+Cada feedback acima vem com um identificador no formato \`[doc_id: <UUID>]\`. Sempre que basear uma afirmação em uma evidência específica, anexe ao final da frase a citação no formato exato \`[doc:<UUID>]\` (sem parênteses, sem itálico, sem aspas). A UI converte isso em uma pílula clicável que abre o conteúdo original.
+
+Regras:
+- Use APENAS UUIDs que apareceram em \`doc_id\` no contexto. NUNCA invente um ID.
+- Se uma afirmação se apoia em múltiplas evidências, cite todas: \`...frase. [doc:UUID-A] [doc:UUID-B]\`.
+- Se a afirmação não puder ser ancorada em uma evidência específica, NÃO adicione citação.`;
 
     // Seção de Objetivos (condicional)
     const objectivesSection = keyObjectives && keyObjectives.trim()
