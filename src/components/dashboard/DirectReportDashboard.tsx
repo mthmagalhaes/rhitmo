@@ -27,6 +27,7 @@ import { MemberAvatar } from '@/components/MemberAvatar';
 import { SelfReflectionCard } from '@/components/dashboard/SelfReflectionCard';
 import { PendingPulseAlert } from '@/components/pulse/PendingPulseAlert';
 import { StartSelfReviewCard } from '@/components/self-review/StartSelfReviewCard';
+import { StartUpwardsReviewCard } from '@/components/upwards-review/StartUpwardsReviewCard';
 import { PendingPeerReviewsAlert } from '@/components/peer-review/PendingPeerReviewsAlert';
 import { getDateLocale } from '@/lib/dateLocale';
 import { format } from 'date-fns';
@@ -263,9 +264,27 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
         .select('id, title, content, period_type, period_start, period_end, created_at, member_viewed_at, acknowledged_at, sent_at, review_type')
         .eq('member_id', linkedMember.id)
         .eq('shared_with_member', true)
-        .neq('review_type', 'self')
+        // Sprint 10.4 — excluir self e upwards (são autorias do próprio liderado)
+        .not('review_type', 'in', '(self,upwards)')
         .order('created_at', { ascending: false });
       if (error) { console.error('Error fetching shared reviews:', error); return []; }
+      return data || [];
+    },
+  });
+
+  // Sprint 10.4 — feedbacks ascendentes (upwards) que o próprio liderado enviou.
+  const { data: myUpwardsReviews = [] } = useQuery({
+    queryKey: ['my-upwards-reviews', linkedMember.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('performance_reviews')
+        .select('id, title, content, created_at, review_type')
+        .eq('member_id', linkedMember.id)
+        .eq('review_type', 'upwards')
+        .eq('author_user_id', user!.id)
+        .order('created_at', { ascending: false });
+      if (error) { console.error('Error fetching upwards reviews:', error); return []; }
       return data || [];
     },
   });
@@ -792,6 +811,16 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                   />
                 )}
 
+                {/* Sprint 10.4 — Card de avaliação ascendente (só aparece se houver líder vinculado) */}
+                {user?.id && (
+                  <StartUpwardsReviewCard
+                    memberId={linkedMember.id}
+                    memberName={linkedMember.name}
+                    authorUserId={user.id}
+                    upwardsReviewCount={myUpwardsReviews.length}
+                  />
+                )}
+
                 {/* Reviews compartilhadas pelo líder */}
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
@@ -868,6 +897,39 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                               <Badge className="bg-primary/10 text-primary border-0 text-[10px]">
                                 <Sparkles className="h-3 w-3 mr-1" />
                                 Auto-avaliação
+                              </Badge>
+                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Sprint 10.4 — Seus feedbacks ascendentes enviados */}
+                {myUpwardsReviews.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
+                      Seus feedbacks ascendentes
+                    </h3>
+                    <div className="space-y-3">
+                      {myUpwardsReviews.map((review: any) => (
+                        <Card
+                          key={review.id}
+                          className="p-5 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] cursor-pointer hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200"
+                          onClick={() => setSelectedReview(review)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-semibold text-sm text-foreground">{review.title}</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {formatLocalDate(review.created_at, 'dd MMMM yyyy')}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge className="bg-primary/10 text-primary border-0 text-[10px]">
+                                Upwards
                               </Badge>
                               <ChevronRight className="h-4 w-4 text-muted-foreground" />
                             </div>
