@@ -1,158 +1,83 @@
-## Objetivo
-Fechar o que sobrou da refatoração de navegação:
-- **Fase A** — eliminar de vez os 16 `navigate('/dashboard')` restantes nos fluxos críticos de entrada (Auth, Invite, Onboarding, Reset, OAuth).
-- **Fase B** — aplicar o padrão Windmill: cada item da sidebar é uma página única que agrupa features relacionadas em **sub-abas no topo**, em vez de inflar a sidebar com Analytics, Billing, Help, etc.
+## Diagnóstico
+
+A causa raiz do banner "Bom dia, Matheus" aparecer em todo lugar é simples: hoje **`/lider/inicio`, `/lider/diario`, `/lider/1on1s` (em duas das três abas) e a aba "Membros" de `/lider/pessoas` renderizam o componente `<Index />` inteiro** — e o `<Index />` desenha o hero strip, o setup checklist, o Mirror, as próximas 1:1s e o grid do time, tudo de uma vez. O banner não é da página, é do Index reaproveitado em todo lugar.
+
+A correção é separar as **partes** do `Index` em blocos reutilizáveis e montar cada host page com só o que faz sentido.
 
 ---
 
-## Fase A — Limpeza de navegação legada (rápida)
+## Plano
 
-Substituir os 16 `navigate('/dashboard')` por `useHomeRoute()` (já existente em `src/hooks/useHomeRoute.ts`):
+### 1. Refatorar `src/pages/Index.tsx` em blocos exportáveis
 
-| Arquivo | Ocorrências |
-|---|---|
-| `src/pages/AuthPage.tsx` | 3 (login, signup, OAuth callback) |
-| `src/pages/Invite.tsx` | 3 |
-| `src/pages/Onboarding.tsx` | 1 (fim do wizard) |
-| `src/pages/ResetPassword.tsx` | 1 |
-| `src/pages/GoogleCalendarCallback.tsx` | 3 |
-| `src/pages/SlackConnect.tsx` | 3 (botões "Voltar") |
-| `src/pages/DirectReportReviewView.tsx` | 2 |
+Sem mexer no comportamento atual, extrair três blocos nomeados (mantendo `Index` como wrapper que continua rodando em `/lider/inicio` e `/dashboard`):
 
-Padrão por arquivo:
-```tsx
-const home = useHomeRoute();
-// ...
-navigate(home, { replace: true });
-```
+- `LeaderHero` — banner com saudação, badge de plano, contadores (liderados, reuniões hoje, notas semana, atenção), botões "Novo Membro" e "Nova Nota".
+- `LeaderUpcomingMeetings` — wrapper que usa `UpcomingMeetingsCard` + `PendingTranscriptsCard` + boundary.
+- `MembersGrid` — grid responsivo de `TeamMemberCard` com `TeamTabs` (filtro por time), checklist e o Mirror Insight ficam só no `Inicio`.
 
-Em arquivos onde `useAccount` ainda não está hidratado (ex.: `AuthPage` logo após signIn), adicionar pequena espera pelo `loading=false` antes de redirecionar — `useHomeRoute` já cai em `LEADER_HOME` durante loading, mas no Auth queremos evitar flash. Solução: aguardar `!loading` no `useEffect` de redirect.
+Exportar `LeaderHero`, `LeaderUpcomingMeetings`, `MembersGrid` como named exports. `Index` continua sendo o default export e compõe os três (inicio mantém visual idêntico ao atual).
 
-`HRAdminGuard` e `DesignSystem` permanecem com `<Navigate to="/dashboard">` (smart redirect, 1 hop aceitável — explicitado no plano original).
+### 2. Remover o banner das páginas onde não faz sentido
 
----
+- `src/pages/lider/Diario.tsx`: parar de renderizar `<Index />`. Renderiza só `MembersGrid` com header próprio "Diário de Bordo / Selecione um liderado". `TeamMemberCard.onClick` já navega para `/member/:id` (que é o diário do liderado). Comportamento Tako alcançado sem novo componente.
+- `src/pages/lider/Pessoas.tsx` aba "Membros": idem — trocar `<Index />` por `<MembersGrid />`.
+- `src/pages/lider/OneOnOnes.tsx` (ver passo 3).
+- `src/pages/lider/Avaliacoes.tsx` (ver passo 5).
 
-## Fase B — Padrão Windmill (host pages com sub-abas)
+### 3. `1:1s` — focar no Google Calendar
 
-### Princípios
-- Sidebar continua com 5–6 itens primários
-- Cada página-host abriga features legadas como abas no header
-- Empty states grandes com 1 CTA (estilo "Set Up Your First Cycle")
-- Deep-links legados (`/analytics`, `/billing`, `/help`) continuam válidos: redirecionam para a página-host com aba pré-selecionada via `?tab=`
+Reescrever `src/pages/lider/OneOnOnes.tsx`:
+- Header próprio "1:1s — Reuniões individuais com cada liderado".
+- Manter o banner educacional (Conecte seu Google Calendar) só quando não conectado.
+- Conteúdo principal: `LeaderUpcomingMeetings` (cards de próximas 1:1s do Google Calendar + transcrições pendentes), seguido de uma segunda seção "Por liderado" usando o `MembersGrid` em modo compacto que ao clicar leva para `/member/:id?tab=1on1s` (deep-link já suportado por `MemberDetails`).
+- Remover as abas "Próximos / Todos / Estatísticas" — viraram seções na mesma página, sem repetir banner.
 
-### Novos componentes compartilhados
+### 4. Novo item de menu **Objetivos**
 
-**`src/components/PageTabs.tsx`** — wrapper sobre `Tabs` do shadcn com look Windmill:
-- Pílulas com underline ativo
-- Suporte a `searchParams` para sincronizar aba na URL (`?tab=analytics`)
-- Props: `tabs: { value, label, icon?, count? }[]`, `defaultValue`, `syncParam?`
+- Adicionar entrada em `src/lib/navigation.ts` (`LEADER_NAV_ITEMS`) entre `diario` e `avaliacoes`:  
+  `{ id: 'objetivos', labelKey: 'nav.lider.objetivos', icon: Target, to: '/lider/objetivos' }`.
+- Adicionar a chave `nav.lider.objetivos` ("Objetivos" / "Goals" / "Objetivos") nos três arquivos `src/i18n/locales/{pt-BR,en,es}.json`.
+- Criar `src/pages/lider/Objetivos.tsx`: header próprio + `<MembersGrid mode="objetivos" />`. Em vez de navegar para `/member/:id`, abre o `NewGoalDialog` (`src/components/NewGoalDialog.tsx`) já existente passando o `memberId` selecionado. Adicionar prop opcional `onMemberSelect` em `MembersGrid` para suportar esse comportamento sem duplicar código.
+- Registrar a rota `/lider/objetivos` em `src/App.tsx` apontando para `LiderObjetivos` dentro do helper `Leader(...)`.
 
-**`src/components/EmptyStateHero.tsx`** — card grande estilo Windmill:
-- Ícone (rocket/sparkle) em círculo soft
-- Título tracking-tight, descrição muted, 1 CTA primário
-- Variant opcional `compact` para topo de listas
+### 5. `Avaliações` — selecionar liderado e abrir ciclos
 
-### Extrações para reuso
+Reescrever `src/pages/lider/Avaliacoes.tsx`:
+- Header próprio + `<MembersGrid mode="avaliacoes" />`.
+- Ao clicar num liderado, abre um `Dialog` com três opções de ciclo: **Rhitmo Mensal**, **Rhitmo Trimestral**, **Rhitmo Formal**. Cada uma chama os fluxos já existentes:
+  - Mensal/Trimestral → função `generate-monthly-recap` / `generate-quarterly-recap` (chamadas via `safeFunctionInvoke`) seguidas de redirect para `/member/:id?tab=recaps`.
+  - Formal → navega para `/member/:id?tab=reviews&new=formal` (a tela `MemberDetails` já hospeda o `generate-formal-review`).
+- Manter abaixo a lista atual de avaliações (Ativos / Rascunhos / Concluídos) como seção secundária — não como abas que escondem o seletor.
 
-Hoje `Analytics.tsx` (534 linhas), `Billing.tsx` (728), `HelpCenter.tsx` (714) são páginas full-shell. Extrair o conteúdo (sem header/sidebar) para componentes embutíveis em abas:
+### 6. Hero estatístico só no Início
 
-- `src/pages/Analytics.tsx` → expõe `<AnalyticsContent />`; rota `/analytics` vira wrapper que renderiza `<AnalyticsContent />` dentro do shell padrão
-- `src/pages/Billing.tsx` → expõe `<BillingContent />`
-- `src/pages/HelpCenter.tsx` → expõe `<HelpCenterContent />`
+- `src/pages/lider/Inicio.tsx` continua sendo o único lugar com o `LeaderHero` (banner "Bom dia, Matheus" + analytics inline). Esse é o "início" que o usuário pediu: visão geral + métricas vivem aqui.
+- Como bônus de coerência, o setup checklist e o Mirror Insight ficam no Início, não vazam pras outras páginas.
 
-Manter os arquivos atuais funcionando como rotas standalone (compatibilidade de deep-links externos / e-mails antigos).
+### 7. Limpezas
 
-### Refatoração das páginas-host
-
-#### `/lider/pessoas`
-```text
-Pessoas
-[ Membros ] [ Times ] [ Analytics ] [ Convites ]
-```
-- **Membros**: lista de team members (extraída de `Index.tsx`, seção de cards)
-- **Times**: conteúdo de `HRTeams` quando HR Admin; senão oculta a aba
-- **Analytics**: `<AnalyticsContent />` (líder vê próprio time, HR vê org)
-- **Convites**: pendentes + botão "Convidar" → `BulkOnboardDialog`
-
-#### `/lider/configuracoes`
-```text
-Configurações
-[ Perfil ] [ Workspace ] [ Faturamento ] [ Integrações ] [ Ajuda ]
-```
-- **Perfil**: form inline (extraído de `ProfileSettingsDialog`)
-- **Workspace**: nome, locale, timezone, owner
-- **Faturamento**: `<BillingContent />`
-- **Integrações**: cards Slack + Google Calendar + Chrome Extension
-- **Ajuda**: `<HelpCenterContent />`
-
-#### `/lider/1on1s`
-```text
-1:1s
-[ Próximos ] [ Todos ] [ Estatísticas ]
-```
-Banner educacional dismissable no topo (estilo Windmill "1:1s with Others").
-
-#### `/lider/avaliacoes`
-- Vazio → `EmptyStateHero` "Set Up Your First Cycle" + CTA único
-- Com dados → `[ Ativos ] [ Rascunhos ] [ Concluídos ]`
-
-#### `/liderado/configuracoes`
-```text
-Configurações
-[ Perfil ] [ Notificações ] [ Privacidade ] [ Ajuda ]
-```
-
-#### `/liderado/1on1s` e `/liderado/avaliacoes`
-- 1on1s: `[ Próximos ] [ Histórico ]`
-- Avaliações: `[ Para revisar ] [ Concluídas ]` + empty state quando vazio
-
-### Redirects de deep-link legados
-
-Em `src/App.tsx`, `/analytics`, `/billing`, `/help` continuam montados como rotas independentes (atualmente envolvidas em `Leader(...)`). Adicionar nova lógica:
-```text
-/analytics  → render direto (compat) E também acessível via /lider/pessoas?tab=analytics
-/billing    → render direto E /lider/configuracoes?tab=faturamento
-/help       → render direto E /lider/configuracoes?tab=ajuda (líder) ou /liderado/configuracoes?tab=ajuda
-```
-Sem redirect forçado — apenas duas formas de chegar. `PageTabs` lê `?tab=` para abrir na aba certa.
+- Remover o `<Index />` reaproveitado em `Diario.tsx`, `Pessoas.tsx` (aba membros) e `OneOnOnes.tsx`.
+- Garantir que `/dashboard` continua renderizando `<Index />` (compatibilidade).
+- Deep-links existentes (`/member/:id?tab=...`) continuam funcionando — só estamos mudando o ponto de entrada.
 
 ---
 
-## Estrutura técnica
+## Detalhes técnicos
 
-### Novos arquivos
-- `src/components/PageTabs.tsx`
-- `src/components/EmptyStateHero.tsx`
-- `src/components/people/MembersTab.tsx`, `TeamsTab.tsx`, `InvitesTab.tsx` (extrações de `Index.tsx`)
-- `src/components/settings/ProfileTab.tsx`, `WorkspaceTab.tsx`, `IntegrationsTab.tsx`
-- `src/components/settings/MemberSettingsTabs.tsx` (notificações + privacidade do liderado)
+- **Componentização**: `MembersGrid` recebe `mode?: 'navigate' | 'objetivos' | 'avaliacoes'` e `onMemberSelect?: (m) => void`. Default `navigate` mantém o `navigate('/member/'+id)` atual.
+- **i18n**: três entradas nuevas (`nav.lider.objetivos`, `objetivos.title`, `objetivos.subtitle`).
+- **Rotas adicionadas**: `/lider/objetivos`. Nenhuma removida.
+- **Sem mudanças em backend, RLS, edge functions ou schema** — usa `NewGoalDialog`, `generate-monthly-recap`, `generate-quarterly-recap` e `generate-formal-review` já existentes.
+- **Risco**: baixo. `Index` permanece intacto (exporta default + named); apenas as host pages de `Diário`, `1on1s`, `Pessoas/membros` e `Avaliações` mudam a composição.
 
-### Editados
-- `src/pages/Analytics.tsx` — extrair `AnalyticsContent`
-- `src/pages/Billing.tsx` — extrair `BillingContent`
-- `src/pages/HelpCenter.tsx` — extrair `HelpCenterContent`
-- `src/pages/lider/Pessoas.tsx` — abas reais (substitui `<Index/>` placeholder)
-- `src/pages/lider/Configuracoes.tsx` — abas reais (substitui `<Billing/>` placeholder)
-- `src/pages/lider/OneOnOnes.tsx`, `Avaliacoes.tsx` — abas + empty state
-- `src/pages/liderado/Configuracoes.tsx`, `OneOnOnes.tsx`, `Avaliacoes.tsx` — abas
-- `src/pages/AuthPage.tsx`, `Invite.tsx`, `Onboarding.tsx`, `ResetPassword.tsx`, `GoogleCalendarCallback.tsx`, `SlackConnect.tsx`, `DirectReportReviewView.tsx` — `useHomeRoute()`
-- `src/i18n/locales/{pt-BR,en,es}.json` — chaves `tabs.*` e `emptyState.*`
-
-### Sem migração de banco
-Nenhuma mudança de schema.
-
----
-
-## Validação
-- Login/signup/aceite-de-convite/onboarding/reset-password vão **direto** para o home certo, sem flash em `/dashboard`
-- `/lider/pessoas` mostra 4 abas; `?tab=analytics` abre direto na aba Analytics
-- `/lider/configuracoes` mostra 5 abas; `/billing` redireciona ou renderiza como aba "Faturamento"
-- `/lider/avaliacoes` sem ciclos exibe `EmptyStateHero` com 1 CTA
-- HR Admin vê aba "Times" em Pessoas; líder simples não vê
-- `/liderado/configuracoes` mostra 4 abas (sem Faturamento)
-- Build sem warnings; deep-links de e-mails antigos (`/analytics`, `/billing`, `/help`) continuam funcionando
-
-## Riscos
-- **Tamanho dos arquivos extraídos**: Analytics/Billing/HelpCenter são grandes — extração mecânica (cortar header/wrapper, manter resto) reduz risco de regressão
-- **Estado das abas**: usar `searchParams` (não `useState`) para preservar aba em refresh e permitir deep-link
-- **Index.tsx (823 linhas)**: a aba "Membros" reusa o JSX existente; não vou reescrever a lógica de fetch, apenas componentizar a seção de cards
+```text
+Sidebar (líder)              Conteúdo
+─────────────────            ───────────────────────────────────
+Início          ─────────►   Hero "Bom dia" + analytics + Mirror
+1:1s            ─────────►   Calendar meetings + por liderado
+Diário de Bordo ─────────►   Grid Tako → /member/:id (diário)
+Objetivos (NEW) ─────────►   Grid Tako → NewGoalDialog
+Avaliações      ─────────►   Grid Tako → modal Mensal/Trim/Formal
+Configurações   ─────────►   (sem mudança)
+```
