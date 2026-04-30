@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { emit } from "../_shared/emit.ts";
+import { flag } from "../_shared/featureFlags.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -134,6 +136,23 @@ serve(async (req) => {
           } else {
             userId = created?.user?.id || null;
             results.push({ email, status: 'ok', message: 'Usuário criado (sem email)' });
+            // Onda 4.5: emit member.invited (auditoria, in-app). Email é disparado depois via dispatch-bulk-invites.
+            if (userId && flag('USE_EVENT_BUS_FOR_BULK_INVITE', true)) {
+              await emit(supabaseAdmin, {
+                type: 'member.invited',
+                workspace_id: ws.id,
+                target_user_id: userId,
+                channels: ['inapp'],
+                payload: {
+                  email,
+                  name: row.name ?? null,
+                  role: row.role,
+                  team: row.team ?? null,
+                  delivery_method: 'bulk_silent',
+                  workspace_name: row.workspace,
+                },
+              });
+            }
           }
         }
 
