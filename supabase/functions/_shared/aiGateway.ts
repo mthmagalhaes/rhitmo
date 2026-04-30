@@ -125,13 +125,32 @@ export async function aiChatRaw(opts: AIChatOptions): Promise<Response> {
 
 /**
  * Returns the parsed JSON body of a non-streaming chat completion.
+ * Also enriches the logger entry with token usage and estimated cost
+ * when a logger is provided.
  */
 export async function aiChat(opts: AIChatOptions): Promise<any> {
   if (opts.stream) {
     throw new Error("Use aiChatRaw() for streaming responses");
   }
-  const resp = await aiChatRaw(opts);
-  return await resp.json();
+  const startedAt = Date.now();
+  const resp = await aiChatRaw({ ...opts, logger: undefined });
+  const data = await resp.json();
+  if (opts.logger) {
+    const usage = data?.usage ?? {};
+    const tokensIn = Number(usage.prompt_tokens ?? usage.input_tokens ?? 0) || 0;
+    const tokensOut = Number(usage.completion_tokens ?? usage.output_tokens ?? 0) || 0;
+    const model = opts.model ?? DEFAULT_MODEL;
+    const estimatedCostUsd = estimateCostUsd(model, tokensIn, tokensOut);
+    opts.logger.aiCall({
+      model,
+      durationMs: Date.now() - startedAt,
+      tokensIn,
+      tokensOut,
+      status: resp.status,
+      estimatedCostUsd,
+    });
+  }
+  return data;
 }
 
 /**
