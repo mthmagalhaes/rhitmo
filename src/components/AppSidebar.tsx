@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { ShieldCheck, Palette, ArrowLeft, ArrowRightLeft, UserPlus, LifeBuoy, Copy, Check, Settings } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
@@ -8,6 +9,7 @@ import { useAccount } from '@/contexts/AccountContext';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import {
   LEADER_NAV_ITEMS,
   DIRECT_REPORT_NAV_ITEMS,
@@ -43,6 +45,9 @@ import { QuickActionsRow } from '@/components/sidebar/QuickActionsRow';
 import { ThreadsList } from '@/components/sidebar/ThreadsList';
 import { SidebarFooterCTA } from '@/components/sidebar/SidebarFooterCTA';
 import { SidebarProfileBlock } from '@/components/sidebar/SidebarProfileBlock';
+import { GlobalSearchDialog } from '@/components/sidebar/GlobalSearchDialog';
+import { MentorChat } from '@/components/MentorChat';
+import { BulkOnboardDialog } from '@/components/admin/BulkOnboardDialog';
 import { cn } from '@/lib/utils';
 
 export function AppSidebar() {
@@ -58,9 +63,24 @@ export function AppSidebar() {
   const { isLeader, isHRAdmin, isLinkedMember, linkedMember } = useAccount();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
-  // (invite handled via navigation to leader home where the existing dialogs live)
+  const [mentorOpen, setMentorOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Workspace names for the bulk-onboard dialog (loaded only on demand).
+  const { data: workspaceNames = [] } = useQuery({
+    queryKey: ['sidebar-workspace-names', effectiveUserId],
+    queryFn: async (): Promise<string[]> => {
+      if (!effectiveUserId) return [];
+      const { data, error } = await supabase.from('workspaces').select('name');
+      if (error) return [];
+      return (data ?? []).map((w: { name: string }) => w.name);
+    },
+    enabled: !!effectiveUserId && inviteOpen,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const isSuperAdmin = isAdmin && user?.email === 'matheus@rhitmo.co' && !isImpersonating;
   const isInHRContext = location.pathname.startsWith('/hr');
