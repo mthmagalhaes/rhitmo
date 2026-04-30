@@ -18,6 +18,7 @@ import { styleConfig } from '@/components/WorkStyleCard';
 import { PerformanceReviewList } from '@/components/PerformanceReviewList';
 import { useAuth } from '@/hooks/useAuth';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
+import { useHomeRoute } from '@/hooks/useHomeRoute';
 import { supabase } from '@/integrations/supabase/client';
 import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Music, BookOpen, FileText, Clock, Lock, ArrowRight, Briefcase, Heart, Megaphone, Compass, DollarSign, Shield, GraduationCap, Crown, HelpCircle, Sunrise, Moon, Search, CheckCircle, Monitor, MessageSquare, CheckCircle2, Sprout, MoreHorizontal } from 'lucide-react';
 import {
@@ -56,6 +57,7 @@ const MemberDetails = () => {
     id
   } = useParams();
   const navigate = useNavigate();
+  const home = useHomeRoute();
   const {
     user,
     loading: authLoading
@@ -427,7 +429,7 @@ const MemberDetails = () => {
     return <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Membro não encontrado</h1>
-          <Button onClick={() => navigate('/dashboard')}>Voltar ao Dashboard</Button>
+          <Button onClick={() => navigate(home)}>Voltar ao início</Button>
         </div>
       </div>;
   }

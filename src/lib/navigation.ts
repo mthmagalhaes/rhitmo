@@ -82,3 +82,16 @@ export function resolvePersona(opts: {
 
 export const LEADER_HOME = '/lider/inicio';
 export const DIRECT_REPORT_HOME = '/liderado/inicio';
+
+/**
+ * Returns the correct home route for a given persona context.
+ * Use inside authenticated pages (NotFound, MemberDetails, etc.)
+ * to avoid the legacy /dashboard hop.
+ */
+export function getHomeRoute(opts: {
+  isLinkedMember: boolean;
+  isLeader: boolean;
+  isHRAdmin: boolean;
+}): string {
+  return resolvePersona(opts) === 'leader' ? LEADER_HOME : DIRECT_REPORT_HOME;
+}

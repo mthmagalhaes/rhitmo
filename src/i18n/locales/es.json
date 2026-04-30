@@ -1295,7 +1295,15 @@
     },
     "threads": {
       "conversas_hoje": "Conversaciones hoy",
-      "conversas_privadas": "Conversaciones privadas"
+      "conversas_privadas": "Conversaciones privadas",
+      "untitled": "Sin título"
+    },
+    "search": {
+      "placeholder": "Buscar páginas, personas, conversaciones...",
+      "empty": "Sin resultados",
+      "pages": "Páginas",
+      "people": "Personas",
+      "threads": "Conversaciones"
     },
     "quick": {
       "home": "Inicio",

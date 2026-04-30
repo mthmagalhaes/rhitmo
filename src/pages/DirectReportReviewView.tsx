@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
+import { useHomeRoute } from '@/hooks/useHomeRoute';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Highlight from '@tiptap/extension-highlight';
@@ -15,6 +16,7 @@ import { toast } from 'sonner';
 export default function DirectReportReviewView() {
   const { reviewId } = useParams<{ reviewId: string }>();
   const navigate = useNavigate();
+  const home = useHomeRoute();
   const { user, loading: authLoading } = useAuth();
   const { id: effectiveUserId } = useEffectiveUser();
   const queryClient = useQueryClient();

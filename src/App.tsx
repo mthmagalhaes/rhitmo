@@ -153,43 +153,19 @@ const App = () => (
               <Route path="/liderado/configuracoes" element={DirectReport(<LideradoConfiguracoes />)} />
 
               {/* Other in-app routes (kept) */}
-              <Route path="/member/:id" element={
-                <DirectReportGuard>
-                  <AppLayout><MemberDetails /></AppLayout>
-                </DirectReportGuard>
-              } />
-              <Route path="/analytics" element={
-                <DirectReportGuard>
-                  <AppLayout><Analytics /></AppLayout>
-                </DirectReportGuard>
-              } />
-              <Route path="/billing" element={
-                <DirectReportGuard>
-                  <AppLayout><Billing /></AppLayout>
-                </DirectReportGuard>
-              } />
+              <Route path="/member/:id" element={Leader(<MemberDetails />)} />
+              <Route path="/analytics" element={Leader(<Analytics />)} />
+              <Route path="/billing" element={Leader(<Billing />)} />
               <Route path="/help" element={
                 <DirectReportGuard>
                   <AppLayout><HelpCenter /></AppLayout>
                 </DirectReportGuard>
               } />
-              <Route path="/evidence" element={
-                <DirectReportGuard>
-                  <AppLayout><Evidence /></AppLayout>
-                </DirectReportGuard>
-              } />
-              <Route path="/slack/channels" element={
-                <DirectReportGuard>
-                  <AppLayout><SlackChannels /></AppLayout>
-                </DirectReportGuard>
-              } />
+              <Route path="/evidence" element={Leader(<Evidence />)} />
+              <Route path="/slack/channels" element={Leader(<SlackChannels />)} />
 
               {/* Legacy brief redirect */}
-              <Route path="/brief/:meetingId" element={
-                <DirectReportGuard>
-                  <AppLayout><BriefPage /></AppLayout>
-                </DirectReportGuard>
-              } />
+              <Route path="/brief/:meetingId" element={Leader(<BriefPage />)} />
 
               {/* Design System (super admin) */}
               <Route path="/design-system" element={

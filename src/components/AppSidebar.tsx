@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { ShieldCheck, Palette, ArrowLeft, ArrowRightLeft, UserPlus, LifeBuoy, Copy, Check, Settings } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
@@ -8,6 +9,7 @@ import { useAccount } from '@/contexts/AccountContext';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import {
   LEADER_NAV_ITEMS,
   DIRECT_REPORT_NAV_ITEMS,
@@ -43,6 +45,9 @@ import { QuickActionsRow } from '@/components/sidebar/QuickActionsRow';
 import { ThreadsList } from '@/components/sidebar/ThreadsList';
 import { SidebarFooterCTA } from '@/components/sidebar/SidebarFooterCTA';
 import { SidebarProfileBlock } from '@/components/sidebar/SidebarProfileBlock';
+import { GlobalSearchDialog } from '@/components/sidebar/GlobalSearchDialog';
+import { MentorChat } from '@/components/MentorChat';
+import { BulkOnboardDialog } from '@/components/admin/BulkOnboardDialog';
 import { cn } from '@/lib/utils';
 
 export function AppSidebar() {
@@ -58,9 +63,24 @@ export function AppSidebar() {
   const { isLeader, isHRAdmin, isLinkedMember, linkedMember } = useAccount();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
-  // (invite handled via navigation to leader home where the existing dialogs live)
+  const [mentorOpen, setMentorOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Workspace names for the bulk-onboard dialog (loaded only on demand).
+  const { data: workspaceNames = [] } = useQuery({
+    queryKey: ['sidebar-workspace-names', effectiveUserId],
+    queryFn: async (): Promise<string[]> => {
+      if (!effectiveUserId) return [];
+      const { data, error } = await supabase.from('workspaces').select('name');
+      if (error) return [];
+      return (data ?? []).map((w: { name: string }) => w.name);
+    },
+    enabled: !!effectiveUserId && inviteOpen,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const isSuperAdmin = isAdmin && user?.email === 'matheus@rhitmo.co' && !isImpersonating;
   const isInHRContext = location.pathname.startsWith('/hr');
@@ -152,7 +172,12 @@ export function AppSidebar() {
         {/* Zone B — Quick actions row */}
         {open && (
           <div className="pt-1 pb-3">
-            <QuickActionsRow homeRoute={homeRoute} actions={quickActions} />
+            <QuickActionsRow
+              homeRoute={homeRoute}
+              actions={quickActions}
+              onOpenMentor={() => setMentorOpen(true)}
+              onOpenSearch={() => setSearchOpen(true)}
+            />
           </div>
         )}
 
@@ -248,7 +273,7 @@ export function AppSidebar() {
         {open && persona === 'leader' && (
           <button
             type="button"
-            onClick={() => navigate(LEADER_HOME)}
+            onClick={() => setInviteOpen(true)}
             className="mx-2 flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 transition-colors"
           >
             <UserPlus className="h-3.5 w-3.5" />
@@ -290,6 +315,28 @@ export function AppSidebar() {
       </SidebarFooter>
 
       <ProfileSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+
+      {/* Mentor / Meu Rhitmo chat */}
+      <MentorChat
+        open={mentorOpen}
+        onOpenChange={setMentorOpen}
+        userType={persona === 'leader' ? 'leader' : 'direct_report'}
+        memberName={userName}
+        memberId={persona === 'direct_report' ? linkedMember?.id : undefined}
+        userId={effectiveUserId ?? undefined}
+      />
+
+      {/* Global cmdk search */}
+      <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} persona={persona} />
+
+      {/* Bulk-onboard members */}
+      {persona === 'leader' && (
+        <BulkOnboardDialog
+          open={inviteOpen}
+          onOpenChange={setInviteOpen}
+          workspaceNames={workspaceNames}
+        />
+      )}
 
       <Dialog open={supportOpen} onOpenChange={setSupportOpen}>
         <DialogContent className="sm:max-w-md">

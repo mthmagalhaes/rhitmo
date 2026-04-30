@@ -3,10 +3,12 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { RhitmoLogo } from "@/components/RhitmoLogo";
 import { Home, ArrowLeft } from "lucide-react";
+import { useHomeRoute } from "@/hooks/useHomeRoute";
 
 const NotFound = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const home = useHomeRoute();
 
   useEffect(() => {
     console.error("404 Error: User attempted to access non-existent route:", location.pathname);
@@ -33,11 +35,11 @@ const NotFound = () => {
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate(home)}
               className="rounded-full px-6 gap-2"
             >
               <ArrowLeft className="h-4 w-4" />
-              Voltar ao Dashboard
+              Voltar ao início
             </Button>
             <Button
               variant="outline"
