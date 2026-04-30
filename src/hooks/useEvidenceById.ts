@@ -62,11 +62,11 @@ async function loadFullContent(ev: EvidenceData): Promise<string | null> {
       case 'meeting_transcripts': {
         const { data } = await supabase
           .from('meeting_transcripts')
-          .select('transcript_text, summary')
+          .select('transcript, leader_notes')
           .eq('id', id)
           .maybeSingle();
-        const row = data as { transcript_text?: string; summary?: string } | null;
-        return row?.transcript_text ?? row?.summary ?? null;
+        const row = data as { transcript?: string; leader_notes?: string } | null;
+        return row?.transcript ?? row?.leader_notes ?? null;
       }
       case 'slack_ambient_evidence': {
         const { data } = await supabase
@@ -84,12 +84,12 @@ async function loadFullContent(ev: EvidenceData): Promise<string | null> {
       case 'member_prompts': {
         const { data } = await supabase
           .from('member_prompts')
-          .select('prompt_text, response_text')
+          .select('prompt_text, response')
           .eq('id', id)
           .maybeSingle();
-        const row = data as { prompt_text?: string; response_text?: string } | null;
+        const row = data as { prompt_text?: string; response?: string } | null;
         if (!row) return null;
-        return [row.prompt_text, row.response_text].filter(Boolean).join('\n\n— Resposta —\n');
+        return [row.prompt_text, row.response].filter(Boolean).join('\n\n— Resposta —\n');
       }
       case 'goals': {
         const { data } = await supabase
