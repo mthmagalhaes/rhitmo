@@ -1278,7 +1278,8 @@
       "diario": "Journal",
       "pulse": "Pulse",
       "avaliacoes": "Reviews",
-      "configuracoes": "Settings"
+      "configuracoes": "Settings",
+      "objetivos": "Goals"
     },
     "liderado": {
       "compass": "Career Compass",
@@ -1318,5 +1319,10 @@
     },
     "convidar_membros": "Invite members",
     "skip_to_content": "Skip to content"
+  },
+  "membersGrid": {
+    "defaultTitle": "Select a direct report",
+    "empty": "No direct reports yet.",
+    "emptyInTeam": "No direct reports in this team."
   }
 }

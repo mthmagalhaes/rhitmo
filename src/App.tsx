@@ -57,6 +57,7 @@ const LiderOneOnOnes = lazy(() => import("./pages/lider/OneOnOnes"));
 const LiderDiario = lazy(() => import("./pages/lider/Diario"));
 const LiderPulse = lazy(() => import("./pages/lider/Pulse"));
 const LiderAvaliacoes = lazy(() => import("./pages/lider/Avaliacoes"));
+const LiderObjetivos = lazy(() => import("./pages/lider/Objetivos"));
 const LiderPessoas = lazy(() => import("./pages/lider/Pessoas"));
 const LiderConfiguracoes = lazy(() => import("./pages/lider/Configuracoes"));
 const LideradoInicio = lazy(() => import("./pages/liderado/Inicio"));
@@ -140,6 +141,7 @@ const App = () => (
               <Route path="/lider/diario" element={Leader(<LiderDiario />)} />
               <Route path="/lider/pulse" element={Leader(<LiderPulse />)} />
               <Route path="/lider/avaliacoes" element={Leader(<LiderAvaliacoes />)} />
+              <Route path="/lider/objetivos" element={Leader(<LiderObjetivos />)} />
               <Route path="/lider/pessoas" element={Leader(<LiderPessoas />)} />
               <Route path="/lider/configuracoes" element={Leader(<LiderConfiguracoes />)} />
 

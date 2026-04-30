@@ -1278,7 +1278,8 @@
       "diario": "Diario",
       "pulse": "Pulse",
       "avaliacoes": "Evaluaciones",
-      "configuracoes": "Ajustes"
+      "configuracoes": "Ajustes",
+      "objetivos": "Objetivos"
     },
     "liderado": {
       "compass": "Career Compass",
@@ -1318,5 +1319,10 @@
     },
     "convidar_membros": "Invitar miembros",
     "skip_to_content": "Saltar al contenido"
+  },
+  "membersGrid": {
+    "defaultTitle": "Selecciona un liderado",
+    "empty": "Aún no hay liderados.",
+    "emptyInTeam": "Sin liderados en este equipo."
   }
 }
