@@ -245,10 +245,15 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = getOrCreateRequestId(req);
+  const log = createLogger({ functionName: 'chat-mentor', requestId });
+  const requestStart = Date.now();
+  const respHeaders = { ...corsHeaders, 'Content-Type': 'application/json', 'x-request-id': requestId };
+
   try {
     const { question, feedbacks, memberName, memberRole, managerName, workStyleData, keyObjectives, contextMode, leaderSyncData, conversationHistory, imageContent } = await req.json();
 
-    console.log('Chat mentor 2.0 request:', { memberName, memberRole, managerName, feedbacksCount: feedbacks?.length, hasWorkStyle: !!workStyleData, hasLeaderSync: !!leaderSyncData, contextMode: contextMode || 'auto' });
+    log.info('start', { memberName, memberRole, feedbacksCount: feedbacks?.length, hasImage: !!imageContent?.isImage, contextMode: contextMode || 'auto' });
     
     // Extrair primeiro nome para flexibilidade de apelidos
     const firstName = memberName ? memberName.split(' ')[0] : '';
