@@ -60,12 +60,12 @@ export function WorkspaceSwitcher() {
       <div className="flex-1 min-w-0">
         <p className="font-semibold truncate text-sidebar-foreground leading-tight">
           {current?.name ?? 'Workspace'}
+          {showHRContext && (
+            <span className="ml-1.5 text-[10px] uppercase tracking-wide text-muted-foreground/70 font-medium">
+              · RH
+            </span>
+          )}
         </p>
-        {showHRContext && (
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground/70 leading-tight">
-            · RH
-          </p>
-        )}
       </div>
       <ChevronsUpDown
         className={cn(
