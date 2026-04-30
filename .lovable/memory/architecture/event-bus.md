@@ -1,19 +1,17 @@
 ---
-name: Event Bus Architecture
-description: Centralized notification dispatch via events table + event-dispatcher edge function
+name: Event Bus
+description: Tabela events + emit() helper + event-dispatcher (pg_cron 30s) com fan-out para inapp/email/slack
 type: feature
 ---
-Notifications (email, slack, in-app) flow through a single event bus.
 
-**Producer:** edge functions call `emit(supabaseAdmin, { type, workspace_id, actor_user_id, target_user_id, channels, payload })` from `supabase/functions/_shared/emit.ts`. Each call inserts a row into `public.events` with `status='pending'`.
+Onda 3.2 + 4.3. `public.events` (status: pending/dispatched/failed, attempts<3). Helper `_shared/emit.ts` insere com `event_type`, `channels[]`, `payload jsonb`. Dispatcher `event-dispatcher` puxa pendentes e despacha:
+- `inapp` → insert direto em `notifications`
+- `email` → `enqueue_email('emails_outbound', ...)`
+- `slack` → `enqueue_email('slack_outbound', ...)`
 
-**Dispatcher:** `event-dispatcher` edge function (verify_jwt=false), called every 30s by 2 staggered pg_cron jobs (`event-dispatcher-30s-a` and `-b`). Pulls up to 50 pending events, fans out to channels:
-- `inapp` → INSERT into `notifications` table
-- `email` → `pgmq.send('emails_outbound', payload)` via `enqueue_email` RPC
-- `slack` → `pgmq.send('slack_outbound', payload)`
+Tipos canônicos em produção (Onda 4.3):
+- `feedback.shared` — disparado por trigger SQL `trg_emit_feedback_shared` em `feedbacks` (AFTER INSERT/UPDATE OF visibility) quando `visibility='shared'`. Canais: inapp+email. Target: `team_members.linked_user_id`.
+- `review.shared` — emitido pela função `notify-review-shared` em paralelo ao email Resend. Canais: inapp+slack (email continua direto via Resend para preservar template).
+- `member.invited` — emitido por `admin-invite-user` após `auth.admin.inviteUserByEmail`. Canais: inapp. Email do convite via Supabase Auth nativo.
 
-Retries up to 3 attempts; after that status becomes `failed` with `error` populated.
-
-**RLS:** Only super_admin can read/write `events` from API. Service role (used by dispatcher) bypasses RLS.
-
-**Migration policy:** New features should use `emit()`. Existing inline notifications migrate gradually in feature PRs — no big-bang.
+Toda Edge Function nova deve usar `emit()` em vez de chamar Resend/Slack direto.
