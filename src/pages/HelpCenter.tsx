@@ -358,7 +358,7 @@ const faqItems = [
   },
 ];
 
-const HelpCenter = () => {
+export const HelpCenterContent = () => {
   const { isHRAdmin, isUser } = useUserRole();
   const defaultTab = isHRAdmin ? 'hr' : isUser ? 'member' : 'leader';
   const [search, setSearch] = useState('');
@@ -711,4 +711,5 @@ function IntegrationsSection({ filteredIntegrations }: { filteredIntegrations: I
   );
 }
 
+const HelpCenter = HelpCenterContent;
 export default HelpCenter;

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useHomeRoute } from '@/hooks/useHomeRoute';
 import { useToast } from '@/hooks/use-toast';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,6 +29,7 @@ export default function Invite() {
   
   const { user } = useAuth();
   const navigate = useNavigate();
+  const home = useHomeRoute();
   const { toast } = useToast();
 
   // Validate invite token
@@ -84,9 +86,9 @@ export default function Invite() {
   // Smart redirect: if user is logged in and invite is already accepted by them
   useEffect(() => {
     if (user && status === 'already_accepted' && inviteData?.linkedUserId === user.id) {
-      navigate('/dashboard', { replace: true });
+      navigate(home, { replace: true });
     }
-  }, [user, status, inviteData, navigate]);
+  }, [user, status, inviteData, navigate, home]);
 
   // Auto-process if user is already logged in and invite is pending
   useEffect(() => {
@@ -141,7 +143,7 @@ export default function Invite() {
       
       // Auto-redirect after 6 seconds
       setTimeout(() => {
-        navigate('/dashboard', { replace: true });
+        navigate(home, { replace: true });
       }, 6000);
     } catch (err: any) {
       console.error('Error accepting invite:', err);
@@ -276,7 +278,7 @@ export default function Invite() {
               </p>
             </div>
             <Button 
-              onClick={() => navigate('/dashboard', { replace: true })}
+              onClick={() => navigate(home, { replace: true })}
               size="lg"
               className="w-full"
             >

@@ -1,5 +1,151 @@
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useAccount } from '@/contexts/AccountContext';
+import { supabase } from '@/integrations/supabase/client';
+import { PageTabs, type PageTab } from '@/components/PageTabs';
+import { EmptyStateHero } from '@/components/EmptyStateHero';
+import { AnalyticsContent } from '@/pages/Analytics';
+import { BulkOnboardDialog } from '@/components/admin/BulkOnboardDialog';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Users, Building2, BarChart3, MailPlus, Rocket, UserPlus, Mail } from 'lucide-react';
 import Index from '@/pages/Index';
-// Pessoas: dashboard mostra times e membros como hub principal.
-export default function LiderPessoas() {
+
+function MembersTab() {
+  // Reaproveita o dashboard atual que já lista membros como cards.
   return <Index />;
+}
+
+function TeamsTab() {
+  const { workspaceId } = useAccount();
+  const { data: teams, isLoading } = useQuery({
+    queryKey: ['workspace-teams', workspaceId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('teams')
+        .select('id, name, leader_user_id, created_at')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!workspaceId,
+  });
+
+  if (isLoading) return <div className="text-sm text-muted-foreground">Carregando times...</div>;
+  if (!teams?.length) {
+    return (
+      <EmptyStateHero
+        icon={Building2}
+        title="Nenhum time ainda"
+        description="Times agrupam liderados por squad, área ou projeto. Crie o primeiro para organizar a operação."
+        ctaLabel="Em breve"
+      />
+    );
+  }
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      {teams.map((t) => (
+        <Card key={t.id} className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
+          <CardHeader>
+            <CardTitle className="text-base font-serif tracking-tight">{t.name}</CardTitle>
+            <CardDescription className="text-xs">Líder: {t.leader_user_id?.slice(0, 8) ?? '—'}</CardDescription>
+          </CardHeader>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function InvitesTab({ onInvite }: { onInvite: () => void }) {
+  const { data: pending } = useQuery({
+    queryKey: ['pending-invites'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('id, name, email, created_at')
+        .eq('invite_status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="font-serif text-lg font-bold tracking-tight">Convites pendentes</h2>
+          <p className="text-sm text-muted-foreground">
+            {pending?.length ?? 0} liderado(s) ainda não aceitaram o convite.
+          </p>
+        </div>
+        <Button onClick={onInvite} className="rounded-xl gap-2">
+          <UserPlus className="w-4 h-4" /> Convidar liderados
+        </Button>
+      </div>
+
+      {!pending?.length ? (
+        <EmptyStateHero
+          icon={MailPlus}
+          title="Sem convites pendentes"
+          description="Adicione liderados em massa colando uma lista de e-mails. Cada um recebe um convite personalizado."
+          ctaLabel="Convidar liderados"
+          ctaIcon={UserPlus}
+          onCta={onInvite}
+          variant="compact"
+        />
+      ) : (
+        <div className="space-y-2">
+          {pending.map((p) => (
+            <Card key={p.id} className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
+              <CardContent className="flex items-center justify-between py-3">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl bg-primary/10 p-2"><Mail className="w-4 h-4 text-primary" /></div>
+                  <div>
+                    <p className="font-medium text-sm">{p.name}</p>
+                    <p className="text-xs text-muted-foreground">{p.email ?? 'sem e-mail'}</p>
+                  </div>
+                </div>
+                <Badge variant="outline" className="text-xs">Pendente</Badge>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function LiderPessoas() {
+  const { isHRAdmin, workspaceId } = useAccount();
+  const [inviteOpen, setInviteOpen] = useState(false);
+
+  const tabs: PageTab[] = [
+    { value: 'membros', label: 'Membros', icon: Users, content: <MembersTab /> },
+    { value: 'times', label: 'Times', icon: Building2, hidden: !isHRAdmin, content: <TeamsTab /> },
+    { value: 'analytics', label: 'Analytics', icon: BarChart3, content: <AnalyticsContent /> },
+    { value: 'convites', label: 'Convites', icon: MailPlus, content: <InvitesTab onInvite={() => setInviteOpen(true)} /> },
+  ];
+
+  return (
+    <div className="max-w-5xl mx-auto p-6">
+      <header className="mb-6 flex items-center justify-between gap-3">
+        <div>
+          <h1 className="font-serif text-3xl font-bold tracking-tight">Pessoas</h1>
+          <p className="text-muted-foreground text-sm mt-1">Liderados, times, analytics e convites.</p>
+        </div>
+        <Button onClick={() => setInviteOpen(true)} variant="outline" className="rounded-xl gap-2">
+          <UserPlus className="w-4 h-4" /> Convidar
+        </Button>
+      </header>
+      <PageTabs tabs={tabs} defaultValue="membros" />
+      <BulkOnboardDialog
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        workspaceNames={workspaceId ? [workspaceId] : []}
+      />
+    </div>
+  );
 }

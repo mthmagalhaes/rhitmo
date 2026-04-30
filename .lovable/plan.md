@@ -1,140 +1,158 @@
 ## Objetivo
-Fechar os 6 pontos pendentes da refatoração de navegação, usando o Windmill como benchmark visual: cada item primário da sidebar é uma "página única" que pode conter sub-abas/seções no topo, em vez de inflar a sidebar. Itens legados (Analytics, Billing, Help, Evidence) viram sub-rotas dentro de Configurações ou Pessoas.
-
-## Princípio Windmill aplicado
-- Sidebar continua com 5–6 itens primários
-- Páginas-host agrupam features relacionadas via abas/seções no header (Performance Reviews, 1:1s, etc.)
-- Empty states grandes com CTA único (estilo "Set Up Your First Cycle")
-- Rotas legadas redirecionam **direto** para o destino final, sem passar por `/dashboard`
+Fechar o que sobrou da refatoração de navegação:
+- **Fase A** — eliminar de vez os 16 `navigate('/dashboard')` restantes nos fluxos críticos de entrada (Auth, Invite, Onboarding, Reset, OAuth).
+- **Fase B** — aplicar o padrão Windmill: cada item da sidebar é uma página única que agrupa features relacionadas em **sub-abas no topo**, em vez de inflar a sidebar com Analytics, Billing, Help, etc.
 
 ---
 
-## Ponto 1 — Substituir `navigate('/dashboard')` espalhado (21 ocorrências)
+## Fase A — Limpeza de navegação legada (rápida)
 
-Criar helper `src/lib/navigation.ts` → `getHomeRoute(persona)` e usar em todos os lugares. Atualizar:
+Substituir os 16 `navigate('/dashboard')` por `useHomeRoute()` (já existente em `src/hooks/useHomeRoute.ts`):
 
-- `src/pages/Invite.tsx` (3x), `src/pages/AuthPage.tsx` (3x), `src/pages/Onboarding.tsx` (1x), `src/pages/ResetPassword.tsx` (1x): usar `useAccount` + `resolvePersona` para navegar direto ao home certo.
-- `src/pages/NotFound.tsx`, `src/pages/SlackConnect.tsx` (3x), `src/pages/MemberDetails.tsx`, `src/pages/DirectReportReviewView.tsx` (2x), `src/pages/Evidence.tsx`, `src/pages/GoogleCalendarCallback.tsx` (3x): mesmo padrão.
-- `src/components/HRAdminGuard.tsx`, `src/pages/DesignSystem.tsx`: trocar `<Navigate to="/dashboard">` por redirect role-aware.
+| Arquivo | Ocorrências |
+|---|---|
+| `src/pages/AuthPage.tsx` | 3 (login, signup, OAuth callback) |
+| `src/pages/Invite.tsx` | 3 |
+| `src/pages/Onboarding.tsx` | 1 (fim do wizard) |
+| `src/pages/ResetPassword.tsx` | 1 |
+| `src/pages/GoogleCalendarCallback.tsx` | 3 |
+| `src/pages/SlackConnect.tsx` | 3 (botões "Voltar") |
+| `src/pages/DirectReportReviewView.tsx` | 2 |
 
-Para componentes sem contexto fácil (`HRAdminGuard`), continuar usando `/dashboard` que já tem o smart redirect — aceitável (1 hop).
-
-## Ponto 2 — Redirects corretos para liderado em `/analytics` e `/billing`
-
-No `src/App.tsx`, envolver `/analytics` em `RoleRouteGuard expects="leader"` (analytics é leader-only). `/billing` continua acessível a líder; liderado é redirecionado para `/liderado/inicio`.
-
-```text
-/analytics  → Leader(<Analytics />)
-/billing    → Leader(<Billing />)
-/help       → acessível a ambos (manter)
-/evidence   → Leader(<Evidence />)
+Padrão por arquivo:
+```tsx
+const home = useHomeRoute();
+// ...
+navigate(home, { replace: true });
 ```
 
-## Ponto 3 — Sidebar: confirmar e polir "· RH" no WorkspaceSwitcher
+Em arquivos onde `useAccount` ainda não está hidratado (ex.: `AuthPage` logo após signIn), adicionar pequena espera pelo `loading=false` antes de redirecionar — `useHomeRoute` já cai em `LEADER_HOME` durante loading, mas no Auth queremos evitar flash. Solução: aguardar `!loading` no `useEffect` de redirect.
 
-`WorkspaceSwitcher.tsx` já mostra "· RH" quando `isHRAdmin && current`. Mover o sufixo para inline ao lado do nome (linha única, mais Windmill-like):
+`HRAdminGuard` e `DesignSystem` permanecem com `<Navigate to="/dashboard">` (smart redirect, 1 hop aceitável — explicitado no plano original).
 
-```text
-[icon] Faster · RH    [chevron]
-```
+---
 
-## Ponto 4 — Tornar `QuickActionsRow` funcional
+## Fase B — Padrão Windmill (host pages com sub-abas)
 
-Hoje os ícones Calendar/People/Chat/Search recebem callbacks que nunca são passados pelo `AppSidebar`. Implementar:
+### Princípios
+- Sidebar continua com 5–6 itens primários
+- Cada página-host abriga features legadas como abas no header
+- Empty states grandes com 1 CTA (estilo "Set Up Your First Cycle")
+- Deep-links legados (`/analytics`, `/billing`, `/help`) continuam válidos: redirecionam para a página-host com aba pré-selecionada via `?tab=`
 
-- **Calendar**: navega para `/lider/1on1s` (já funciona via `to`)
-- **People**: navega para `/lider/pessoas` (já funciona)
-- **Chat**: abre Sheet com `MentorChat` (criar estado local em `AppSidebar` + passar `onOpenMentor`)
-- **Search**: abre `CommandDialog` global (cmdk) com busca em membros, threads e ações rápidas — primeira versão lista membros do workspace e threads recentes
+### Novos componentes compartilhados
 
-Adicionar `MentorChatSheet` (Sheet do shadcn envolvendo `MentorChat` existente) e `GlobalSearchDialog` (cmdk) montados no `AppSidebar`.
+**`src/components/PageTabs.tsx`** — wrapper sobre `Tabs` do shadcn com look Windmill:
+- Pílulas com underline ativo
+- Suporte a `searchParams` para sincronizar aba na URL (`?tab=analytics`)
+- Props: `tabs: { value, label, icon?, count? }[]`, `defaultValue`, `syncParam?`
 
-## Ponto 5 — Botão "Convidar membros" funcional
+**`src/components/EmptyStateHero.tsx`** — card grande estilo Windmill:
+- Ícone (rocket/sparkle) em círculo soft
+- Título tracking-tight, descrição muted, 1 CTA primário
+- Variant opcional `compact` para topo de listas
 
-Hoje navega para `/lider/inicio` (placeholder). Trocar por abertura direta do `BulkOnboardDialog` (já existe em `src/components/admin/`). Estado local em `AppSidebar` controla o `open`.
+### Extrações para reuso
 
-## Ponto 6 — Aplicar padrão Windmill: sub-navegação por abas nas páginas-host
+Hoje `Analytics.tsx` (534 linhas), `Billing.tsx` (728), `HelpCenter.tsx` (714) são páginas full-shell. Extrair o conteúdo (sem header/sidebar) para componentes embutíveis em abas:
 
-Refatorar as páginas finas para abrigar features legadas como abas no header, em vez de espalhar mais itens na sidebar:
+- `src/pages/Analytics.tsx` → expõe `<AnalyticsContent />`; rota `/analytics` vira wrapper que renderiza `<AnalyticsContent />` dentro do shell padrão
+- `src/pages/Billing.tsx` → expõe `<BillingContent />`
+- `src/pages/HelpCenter.tsx` → expõe `<HelpCenterContent />`
 
-### `/lider/pessoas` (host de People + Analytics + HR)
+Manter os arquivos atuais funcionando como rotas standalone (compatibilidade de deep-links externos / e-mails antigos).
+
+### Refatoração das páginas-host
+
+#### `/lider/pessoas`
 ```text
 Pessoas
 [ Membros ] [ Times ] [ Analytics ] [ Convites ]
 ```
-- **Membros**: lista atual (`MemberDetails` summary cards)
-- **Times**: conteúdo de `HRTeams` (se HR Admin)
-- **Analytics**: conteúdo de `Analytics.tsx` embutido (líder vê seu time; HR vê org)
-- **Convites**: pendentes + botão "Convidar"
+- **Membros**: lista de team members (extraída de `Index.tsx`, seção de cards)
+- **Times**: conteúdo de `HRTeams` quando HR Admin; senão oculta a aba
+- **Analytics**: `<AnalyticsContent />` (líder vê próprio time, HR vê org)
+- **Convites**: pendentes + botão "Convidar" → `BulkOnboardDialog`
 
-### `/lider/configuracoes` (host de Settings + Billing + Slack + Calendar + Help)
+#### `/lider/configuracoes`
 ```text
 Configurações
 [ Perfil ] [ Workspace ] [ Faturamento ] [ Integrações ] [ Ajuda ]
 ```
-- **Perfil**: `ProfileSettingsDialog` inline
-- **Workspace**: nome, locale, time zone
-- **Faturamento**: conteúdo de `Billing.tsx`
-- **Integrações**: Slack + Google Calendar + Chrome Extension
-- **Ajuda**: `HelpCenter.tsx` embedado
+- **Perfil**: form inline (extraído de `ProfileSettingsDialog`)
+- **Workspace**: nome, locale, timezone, owner
+- **Faturamento**: `<BillingContent />`
+- **Integrações**: cards Slack + Google Calendar + Chrome Extension
+- **Ajuda**: `<HelpCenterContent />`
 
-### `/liderado/configuracoes`
+#### `/lider/1on1s`
+```text
+1:1s
+[ Próximos ] [ Todos ] [ Estatísticas ]
+```
+Banner educacional dismissable no topo (estilo Windmill "1:1s with Others").
+
+#### `/lider/avaliacoes`
+- Vazio → `EmptyStateHero` "Set Up Your First Cycle" + CTA único
+- Com dados → `[ Ativos ] [ Rascunhos ] [ Concluídos ]`
+
+#### `/liderado/configuracoes`
 ```text
 Configurações
 [ Perfil ] [ Notificações ] [ Privacidade ] [ Ajuda ]
 ```
 
-Manter `/billing`, `/analytics`, `/help` como rotas válidas (deep-link), mas que renderizam dentro do shell de `/lider/configuracoes` ou `/lider/pessoas` com a aba correta selecionada (via `searchParams` ou rota aninhada `/lider/configuracoes/faturamento`).
+#### `/liderado/1on1s` e `/liderado/avaliacoes`
+- 1on1s: `[ Próximos ] [ Histórico ]`
+- Avaliações: `[ Para revisar ] [ Concluídas ]` + empty state quando vazio
 
-### `/lider/1on1s` (host)
+### Redirects de deep-link legados
+
+Em `src/App.tsx`, `/analytics`, `/billing`, `/help` continuam montados como rotas independentes (atualmente envolvidas em `Leader(...)`). Adicionar nova lógica:
 ```text
-1:1s
-[ Próximos ] [ Todos ] [ Estatísticas ]
+/analytics  → render direto (compat) E também acessível via /lider/pessoas?tab=analytics
+/billing    → render direto E /lider/configuracoes?tab=faturamento
+/help       → render direto E /lider/configuracoes?tab=ajuda (líder) ou /liderado/configuracoes?tab=ajuda
 ```
-Reaproveita o card "1:1s with Others" estilo Windmill no topo (educational banner dismissable).
-
-### `/lider/avaliacoes` (host)
-Layout Windmill: empty state grande "Set Up Your First Cycle" → CTA único quando vazio; quando há ciclos, abas `[ Ativos ] [ Rascunhos ] [ Concluídos ]`.
+Sem redirect forçado — apenas duas formas de chegar. `PageTabs` lê `?tab=` para abrir na aba certa.
 
 ---
 
 ## Estrutura técnica
 
-### Novos componentes
-- `src/components/PageTabs.tsx` — wrapper sobre Tabs do shadcn com estilo Windmill (pill + underline)
-- `src/components/sidebar/MentorChatSheet.tsx` — Sheet com `MentorChat`
-- `src/components/sidebar/GlobalSearchDialog.tsx` — cmdk dialog
-- `src/components/EmptyStateHero.tsx` — card grande estilo Windmill (rocket icon + titulo + desc + CTA único)
+### Novos arquivos
+- `src/components/PageTabs.tsx`
+- `src/components/EmptyStateHero.tsx`
+- `src/components/people/MembersTab.tsx`, `TeamsTab.tsx`, `InvitesTab.tsx` (extrações de `Index.tsx`)
+- `src/components/settings/ProfileTab.tsx`, `WorkspaceTab.tsx`, `IntegrationsTab.tsx`
+- `src/components/settings/MemberSettingsTabs.tsx` (notificações + privacidade do liderado)
 
-### Arquivos editados
-- `src/App.tsx` — guards corretos em `/analytics`, `/billing`, `/evidence`; remover redirects desnecessários
-- `src/components/AppSidebar.tsx` — passar `onOpenMentor`/`onOpenSearch` para `QuickActionsRow`; estado para Sheet/Dialog/Invite
-- `src/components/sidebar/WorkspaceSwitcher.tsx` — "· RH" inline
-- `src/components/DirectReportGuard.tsx` — sem mudanças (já funciona)
-- `src/lib/navigation.ts` — adicionar `getHomeRoute(persona)` helper
-- `src/pages/lider/Pessoas.tsx`, `Configuracoes.tsx`, `OneOnOnes.tsx`, `Avaliacoes.tsx` — implementar abas via `PageTabs`
+### Editados
+- `src/pages/Analytics.tsx` — extrair `AnalyticsContent`
+- `src/pages/Billing.tsx` — extrair `BillingContent`
+- `src/pages/HelpCenter.tsx` — extrair `HelpCenterContent`
+- `src/pages/lider/Pessoas.tsx` — abas reais (substitui `<Index/>` placeholder)
+- `src/pages/lider/Configuracoes.tsx` — abas reais (substitui `<Billing/>` placeholder)
+- `src/pages/lider/OneOnOnes.tsx`, `Avaliacoes.tsx` — abas + empty state
 - `src/pages/liderado/Configuracoes.tsx`, `OneOnOnes.tsx`, `Avaliacoes.tsx` — abas
-- 21 arquivos com `navigate('/dashboard')` — usar helper role-aware
-- `src/i18n/locales/{pt-BR,en,es}.json` — labels das novas abas (`tabs.*`)
+- `src/pages/AuthPage.tsx`, `Invite.tsx`, `Onboarding.tsx`, `ResetPassword.tsx`, `GoogleCalendarCallback.tsx`, `SlackConnect.tsx`, `DirectReportReviewView.tsx` — `useHomeRoute()`
+- `src/i18n/locales/{pt-BR,en,es}.json` — chaves `tabs.*` e `emptyState.*`
 
 ### Sem migração de banco
-Nenhuma mudança de schema necessária.
+Nenhuma mudança de schema.
 
 ---
 
 ## Validação
-- Liderado em `/analytics` ou `/billing` → redirect para `/liderado/inicio`
-- Líder em `/lider/configuracoes` → vê 5 abas, deep-link `/billing` abre na aba certa
-- HR Admin → workspace switcher mostra "Faster · RH"
-- Quick action Search abre cmdk; Chat abre Sheet de Mentor
-- Botão "Convidar membros" abre dialog imediatamente (sem navegação)
-- Onboarding/Auth/Invite/Reset → vão direto para home certo (sem hop pelo `/dashboard`)
-- Páginas-host (Pessoas, Config, 1:1s, Avaliações) com abas estilo Windmill
-- Empty states usam `EmptyStateHero` com CTA único
+- Login/signup/aceite-de-convite/onboarding/reset-password vão **direto** para o home certo, sem flash em `/dashboard`
+- `/lider/pessoas` mostra 4 abas; `?tab=analytics` abre direto na aba Analytics
+- `/lider/configuracoes` mostra 5 abas; `/billing` redireciona ou renderiza como aba "Faturamento"
+- `/lider/avaliacoes` sem ciclos exibe `EmptyStateHero` com 1 CTA
+- HR Admin vê aba "Times" em Pessoas; líder simples não vê
+- `/liderado/configuracoes` mostra 4 abas (sem Faturamento)
+- Build sem warnings; deep-links de e-mails antigos (`/analytics`, `/billing`, `/help`) continuam funcionando
 
 ## Riscos
-- **Embed de Analytics dentro de Pessoas**: `Analytics.tsx` é página completa hoje; vou extrair `<AnalyticsContent />` para reuso (mantém a rota `/analytics` funcionando como wrapper)
-- **Billing dentro de Configurações**: mesmo padrão — extrair `<BillingContent />`
-- **Search global**: primeira versão simples (membros + threads); evolução futura
-
-Posso prosseguir?
+- **Tamanho dos arquivos extraídos**: Analytics/Billing/HelpCenter são grandes — extração mecânica (cortar header/wrapper, manter resto) reduz risco de regressão
+- **Estado das abas**: usar `searchParams` (não `useState`) para preservar aba em refresh e permitir deep-link
+- **Index.tsx (823 linhas)**: a aba "Membros" reusa o JSX existente; não vou reescrever a lógica de fetch, apenas componentizar a seção de cards

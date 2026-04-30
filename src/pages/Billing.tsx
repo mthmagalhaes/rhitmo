@@ -202,7 +202,7 @@ function InvoicesSection({ invoices, isLoading }: { invoices: Invoice[]; isLoadi
 // MAIN COMPONENT
 // ============================================================================
 
-const Billing = () => {
+export const BillingContent = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -725,4 +725,5 @@ const Billing = () => {
   );
 };
 
+const Billing = BillingContent;
 export default Billing;

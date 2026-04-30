@@ -15,6 +15,7 @@ import { Loader2, ChevronLeft, ChevronRight, CheckCircle2, Bot, Sparkles } from 
 import { cn } from '@/lib/utils';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
 import type { Json } from '@/integrations/supabase/types';
+import { useHomeRoute } from '@/hooks/useHomeRoute';
 
 // AI Analysis response type
 interface AIAnalysis {
@@ -151,6 +152,7 @@ function MultiSelectChips({
 export default function Onboarding() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const home = useHomeRoute();
   const { toast } = useToast();
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -317,7 +319,7 @@ export default function Onboarding() {
       
       // Redirecionar após pequeno delay para mostrar feedback
       setTimeout(() => {
-        navigate('/dashboard', { replace: true });
+        navigate(home, { replace: true });
       }, 2000);
     } catch (err) {
       console.error('Onboarding error:', err);
