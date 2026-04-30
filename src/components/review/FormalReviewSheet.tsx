@@ -37,6 +37,8 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { citationMarkdownComponents } from '@/lib/markdownCitations';
+import { CitationCounterProvider } from '@/components/context/CitationCounterProvider';
 import { ShareReviewDialog } from './ShareReviewDialog';
 import { ReviewCalibrationPanel, type PromotionRecommendation, type LossRisk, type MeritRecommendation } from './ReviewCalibrationPanel';
 import type { RecapClassification } from '@/lib/recapActions';
@@ -482,9 +484,11 @@ export function FormalReviewSheet({
                         prose-blockquote:text-muted-foreground prose-blockquote:not-italic prose-blockquote:text-xs
                         prose-blockquote:my-1.5 prose-blockquote:font-normal"
                     >
-                      <ReactMarkdown components={{ em: EvidenceTag }}>
-                        {draftText || '_Sem conteúdo ainda._'}
-                      </ReactMarkdown>
+                      <CitationCounterProvider>
+                        <ReactMarkdown components={{ em: EvidenceTag, ...citationMarkdownComponents }}>
+                          {draftText || '_Sem conteúdo ainda._'}
+                        </ReactMarkdown>
+                      </CitationCounterProvider>
                     </div>
                   </div>
                 ) : (
