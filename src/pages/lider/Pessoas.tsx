@@ -10,11 +10,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Users, Building2, BarChart3, MailPlus, Rocket, UserPlus, Mail } from 'lucide-react';
-import Index from '@/pages/Index';
+import { MembersGrid } from '@/components/leader/MembersGrid';
 
 function MembersTab() {
-  // Reaproveita o dashboard atual que já lista membros como cards.
-  return <Index />;
+  return <MembersGrid />;
 }
 
 function TeamsTab() {
