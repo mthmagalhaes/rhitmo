@@ -35,9 +35,7 @@ function EducationalBanner({ onDismiss }: { onDismiss: () => void }) {
 
 export default function LiderOneOnOnes() {
   const navigate = useNavigate();
-  const { isConnected } = useCalendarIntegration() as unknown as {
-    isConnected: boolean;
-  };
+  const { isConnected } = useCalendarIntegration();
 
   const [bannerOpen, setBannerOpen] = useState(() => {
     if (typeof window === 'undefined') return true;
