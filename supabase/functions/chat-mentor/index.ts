@@ -1,10 +1,12 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { RHITMO_IDENTITY, GUARDRAILS_PROMPT, ANALYSIS_RULES } from "../_shared/rhitmo-constitution.ts";
+import { createLogger, getOrCreateRequestId } from "../_shared/logger.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-request-id',
+  'Access-Control-Expose-Headers': 'x-request-id',
 };
 
 // ============================================
@@ -243,10 +245,15 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = getOrCreateRequestId(req);
+  const log = createLogger({ functionName: 'chat-mentor', requestId });
+  const requestStart = Date.now();
+  const respHeaders = { ...corsHeaders, 'Content-Type': 'application/json', 'x-request-id': requestId };
+
   try {
     const { question, feedbacks, memberName, memberRole, managerName, workStyleData, keyObjectives, contextMode, leaderSyncData, conversationHistory, imageContent } = await req.json();
 
-    console.log('Chat mentor 2.0 request:', { memberName, memberRole, managerName, feedbacksCount: feedbacks?.length, hasWorkStyle: !!workStyleData, hasLeaderSync: !!leaderSyncData, contextMode: contextMode || 'auto' });
+    log.info('start', { memberName, memberRole, feedbacksCount: feedbacks?.length, hasImage: !!imageContent?.isImage, contextMode: contextMode || 'auto' });
     
     // Extrair primeiro nome para flexibilidade de apelidos
     const firstName = memberName ? memberName.split(' ')[0] : '';
@@ -256,19 +263,20 @@ serve(async (req) => {
     const managerFirstName = targetManagerName.split(' ')[0];
 
     if (!question || !feedbacks || !memberName) {
+      log.warn('invalid_params', { hasQuestion: !!question, hasFeedbacks: !!feedbacks, hasMemberName: !!memberName });
       return new Response(
         JSON.stringify({ error: 'Parâmetros inválidos: question, feedbacks e memberName são obrigatórios' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: respHeaders }
       );
     }
 
     // Verificar API Key
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
-      console.error('OPENAI_API_KEY não configurada');
+      log.error('missing_openai_key');
       return new Response(
         JSON.stringify({ error: 'Configuração de API ausente. Contate o administrador.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: respHeaders }
       );
     }
 
@@ -766,32 +774,34 @@ Com base neste resumo, dê sugestões práticas de liderança, identifique ponto
 
     const mentorResponse = data.choices[0].message.content;
 
-    console.log('Mentor 2.0 response generated successfully', {
-      contextUsed: needsContext,
-      responseLength: mentorResponse.length
+    log.info('end', {
+      duration_ms: Date.now() - requestStart,
+      context_used: needsContext,
+      response_length: mentorResponse.length,
+      summary_applied: summaryApplied,
     });
 
     const processingTimeMs = Date.now() - startTime;
 
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         response: mentorResponse,
         metadata: {
           processed_as_long_transcript: summaryApplied,
           summary_applied: summaryApplied,
-          processing_time_ms: processingTimeMs
+          processing_time_ms: processingTimeMs,
+          request_id: requestId,
         }
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: respHeaders }
     );
   } catch (error: any) {
-    console.error('Error in chat-mentor function:', error);
+    log.error('failed', error, { duration_ms: Date.now() - requestStart });
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
+      JSON.stringify({ error: error.message, request_id: requestId }),
+      { status: 500, headers: respHeaders }
     );
+  } finally {
+    await log.flush();
   }
 });

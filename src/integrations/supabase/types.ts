@@ -764,6 +764,48 @@ export type Database = {
           },
         ]
       }
+      function_logs: {
+        Row: {
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          event: string
+          function_name: string
+          id: string
+          level: string
+          metadata: Json
+          request_id: string
+          user_id: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          event: string
+          function_name: string
+          id?: string
+          level: string
+          metadata?: Json
+          request_id: string
+          user_id?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          event?: string
+          function_name?: string
+          id?: string
+          level?: string
+          metadata?: Json
+          request_id?: string
+          user_id?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: []
+      }
       goals: {
         Row: {
           completed_at: string | null

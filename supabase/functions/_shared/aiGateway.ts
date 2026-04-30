@@ -5,6 +5,8 @@
 // IMPORTANT: Audio transcription (Whisper) is NOT supported by the gateway
 // yet — keep transcribe-audio / upload-meeting on direct OpenAI for now.
 
+import type { Logger } from "./logger.ts";
+
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 // ----- Types -----
@@ -29,6 +31,8 @@ export interface AIChatOptions {
   stream?: boolean;
   response_format?: { type: "json_object" } | { type: "text" };
   reasoning?: { effort: "minimal" | "low" | "medium" | "high" | "xhigh" | "none" };
+  /** Optional logger — when provided, an `ai_call` entry is emitted with timing/status. */
+  logger?: Logger;
 }
 
 // ----- Errors (caller can pattern-match) -----
@@ -67,8 +71,9 @@ function getApiKey(): string {
  * or raw access to headers). Throws typed errors on 429/402.
  */
 export async function aiChatRaw(opts: AIChatOptions): Promise<Response> {
+  const model = opts.model ?? DEFAULT_MODEL;
   const body = {
-    model: opts.model ?? DEFAULT_MODEL,
+    model,
     messages: opts.messages,
     ...(opts.tools ? { tools: opts.tools } : {}),
     ...(opts.tool_choice ? { tool_choice: opts.tool_choice } : {}),
@@ -79,28 +84,41 @@ export async function aiChatRaw(opts: AIChatOptions): Promise<Response> {
     ...(opts.reasoning ? { reasoning: opts.reasoning } : {}),
   };
 
-  const resp = await fetch(GATEWAY_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${getApiKey()}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+  const startedAt = Date.now();
+  let resp: Response;
+  try {
+    resp = await fetch(GATEWAY_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${getApiKey()}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    opts.logger?.aiCall({ model, durationMs: Date.now() - startedAt, error: (e as Error).message });
+    throw e;
+  }
+
+  const durationMs = Date.now() - startedAt;
 
   if (resp.status === 429) {
     const t = await resp.text().catch(() => "");
+    opts.logger?.aiCall({ model, durationMs, status: 429, error: "rate_limit" });
     throw new RateLimitError(t);
   }
   if (resp.status === 402) {
     const t = await resp.text().catch(() => "");
+    opts.logger?.aiCall({ model, durationMs, status: 402, error: "no_credits" });
     throw new PaymentRequiredError(t);
   }
   if (!resp.ok) {
     const t = await resp.text().catch(() => "");
+    opts.logger?.aiCall({ model, durationMs, status: resp.status, error: `gateway_${resp.status}` });
     throw new GatewayError(`Gateway error ${resp.status}`, resp.status, t);
   }
 
+  opts.logger?.aiCall({ model, durationMs, status: resp.status });
   return resp;
 }
 

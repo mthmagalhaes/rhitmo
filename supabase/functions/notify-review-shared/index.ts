@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { emit } from "../_shared/emit.ts";
+import { createLogger, getOrCreateRequestId } from "../_shared/logger.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,6 +12,9 @@ const handler = async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const requestId = getOrCreateRequestId(req);
+  const log = createLogger({ functionName: 'notify-review-shared', requestId });
 
   try {
     const { reviewId } = await req.json();
@@ -140,18 +145,43 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const emailData = await resendResponse.json();
-    console.log('✅ Email de notificação enviado:', emailData);
+    log.info('email_sent', { resend_id: emailData.id });
+
+    // Onda 4.3: emit shadow event for in-app + slack notification.
+    // Email continues via Resend (existing template). Dispatcher fan-out adds in-app + slack.
+    const { data: memberLink } = await supabaseAdmin
+      .from('team_members')
+      .select('linked_user_id')
+      .eq('id', review.member_id)
+      .single();
+
+    await emit(supabaseAdmin, {
+      type: 'review.shared',
+      workspace_id: team?.workspace_id ?? null,
+      target_user_id: memberLink?.linked_user_id ?? null,
+      channels: ['inapp', 'slack'],
+      payload: {
+        review_id: reviewId,
+        review_title: review.title,
+        period: periodLabel,
+        manager_name: managerName,
+        member_name: member.name,
+        review_url: reviewLink,
+      },
+    });
 
     return new Response(
-      JSON.stringify({ success: true, emailId: emailData.id }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ success: true, emailId: emailData.id, requestId }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'x-request-id': requestId } }
     );
   } catch (error: any) {
-    console.error('Erro ao enviar notificação de review:', error);
+    log.error('failed', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: error.message, requestId }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'x-request-id': requestId } }
     );
+  } finally {
+    await log.flush();
   }
 };
 
