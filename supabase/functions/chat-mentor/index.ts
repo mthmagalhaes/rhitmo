@@ -774,32 +774,34 @@ Com base neste resumo, dê sugestões práticas de liderança, identifique ponto
 
     const mentorResponse = data.choices[0].message.content;
 
-    console.log('Mentor 2.0 response generated successfully', {
-      contextUsed: needsContext,
-      responseLength: mentorResponse.length
+    log.info('end', {
+      duration_ms: Date.now() - requestStart,
+      context_used: needsContext,
+      response_length: mentorResponse.length,
+      summary_applied: summaryApplied,
     });
 
     const processingTimeMs = Date.now() - startTime;
 
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         response: mentorResponse,
         metadata: {
           processed_as_long_transcript: summaryApplied,
           summary_applied: summaryApplied,
-          processing_time_ms: processingTimeMs
+          processing_time_ms: processingTimeMs,
+          request_id: requestId,
         }
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: respHeaders }
     );
   } catch (error: any) {
-    console.error('Error in chat-mentor function:', error);
+    log.error('failed', error, { duration_ms: Date.now() - requestStart });
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
+      JSON.stringify({ error: error.message, request_id: requestId }),
+      { status: 500, headers: respHeaders }
     );
+  } finally {
+    await log.flush();
   }
 });
