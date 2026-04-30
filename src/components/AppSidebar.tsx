@@ -285,20 +285,12 @@ export function AppSidebar() {
           <SidebarProfileBlock
             memberId={effectiveUserId}
             name={userName}
-            avatarUrl={
-              isImpersonating
-                ? linkedMember?.avatar ?? null
-                : (user?.user_metadata?.avatar as string | undefined) ?? null
-            }
+            avatarUrl={(user?.user_metadata?.avatar as string | undefined) ?? null}
           />
         )}
       </SidebarFooter>
 
       <ProfileSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
-
-      {persona === 'leader' && (
-        <InviteMemberDialog open={inviteOpen} onOpenChange={setInviteOpen} />
-      )}
 
       <Dialog open={supportOpen} onOpenChange={setSupportOpen}>
         <DialogContent className="sm:max-w-md">
