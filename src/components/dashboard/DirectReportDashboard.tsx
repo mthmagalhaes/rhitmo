@@ -250,17 +250,37 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
   const aiAnalysis = linkedMember.skills_data?.ai_analysis;
   const hasRhitmoSync = !!(linkedMember.work_style_data || linkedMember.chronotype || linkedMember.feedback_style || linkedMember.recognition_style);
 
-  // Query shared performance reviews
+  // Query shared performance reviews — apenas reviews do líder (manager). Auto-avaliações
+  // do próprio liderado vão em uma sub-seção separada (`my-self-reviews`) para não confundir
+  // a visualização do que é "feedback recebido" vs "auto-reflexão".
   const { data: sharedReviews = [], isLoading: loadingReviews } = useQuery({
     queryKey: ['shared-reviews', linkedMember.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('performance_reviews')
-        .select('id, title, content, period_type, period_start, period_end, created_at, member_viewed_at, acknowledged_at, sent_at')
+        .select('id, title, content, period_type, period_start, period_end, created_at, member_viewed_at, acknowledged_at, sent_at, review_type')
         .eq('member_id', linkedMember.id)
         .eq('shared_with_member', true)
+        .neq('review_type', 'self')
         .order('created_at', { ascending: false });
       if (error) { console.error('Error fetching shared reviews:', error); return []; }
+      return data || [];
+    },
+  });
+
+  // Sprint 10.2 — auto-avaliações do próprio liderado.
+  const { data: mySelfReviews = [] } = useQuery({
+    queryKey: ['my-self-reviews', linkedMember.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('performance_reviews')
+        .select('id, title, content, created_at, review_type')
+        .eq('member_id', linkedMember.id)
+        .eq('review_type', 'self')
+        .eq('author_user_id', user!.id)
+        .order('created_at', { ascending: false });
+      if (error) { console.error('Error fetching self reviews:', error); return []; }
       return data || [];
     },
   });
