@@ -1,113 +1,108 @@
-import { useQuery } from '@tanstack/react-query';
-import { useEffectiveUser } from '@/hooks/useEffectiveUser';
-import { supabase } from '@/integrations/supabase/client';
-import { PageTabs, type PageTab } from '@/components/PageTabs';
-import { EmptyStateHero } from '@/components/EmptyStateHero';
-import { ClipboardList, Sparkles, FileEdit, CheckCircle2, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { MembersGrid } from '@/components/leader/MembersGrid';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Calendar, ClipboardList, Sparkles } from 'lucide-react';
 
-interface Review {
+interface Selected {
   id: string;
-  title: string;
-  created_at: string;
-  sent_at: string | null;
-  acknowledged_at: string | null;
-  shared_with_member: boolean | null;
-  member_id: string;
+  name: string;
 }
 
-function ReviewList({ reviews }: { reviews: Review[] }) {
-  if (!reviews.length) {
-    return (
-      <p className="text-sm text-muted-foreground text-center py-12">
-        Nenhuma avaliação nesta categoria ainda.
-      </p>
-    );
-  }
-  return (
-    <div className="space-y-2">
-      {reviews.map((r) => {
-        const isAck = !!r.acknowledged_at;
-        const isShared = !!r.shared_with_member || !!r.sent_at;
-        const label = isAck ? 'concluída' : isShared ? 'compartilhada' : 'rascunho';
-        return (
-          <Card key={r.id} className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
-            <CardContent className="flex items-center justify-between py-3">
-              <div>
-                <p className="font-medium text-sm">{r.title}</p>
-                <p className="text-xs text-muted-foreground">
-                  Criada em {new Date(r.created_at).toLocaleDateString('pt-BR')}
-                </p>
-              </div>
-              <Badge variant="outline" className="text-xs capitalize">{label}</Badge>
-            </CardContent>
-          </Card>
-        );
-      })}
-    </div>
-  );
-}
+const cycles = [
+  {
+    id: 'monthly',
+    title: 'Rhitmo Mensal',
+    description:
+      'Resumo executivo do último mês com destaques, riscos e ações sugeridas pelo Mentor.',
+    icon: Calendar,
+    deepLink: (id: string) => `/member/${id}?tab=rhitmo&sub=monthly`,
+  },
+  {
+    id: 'quarterly',
+    title: 'Rhitmo Trimestral',
+    description:
+      'Visão consolidada do trimestre conectando objetivos, evidências e padrões de comportamento.',
+    icon: ClipboardList,
+    deepLink: (id: string) => `/member/${id}?tab=rhitmo&sub=quarterly`,
+  },
+  {
+    id: 'formal',
+    title: 'Rhitmo Formal',
+    description:
+      'Performance Review fundamentada em evidências reais. Você revisa, ajusta e compartilha.',
+    icon: Sparkles,
+    deepLink: (id: string) => `/member/${id}?tab=reviews`,
+  },
+] as const;
 
 export default function LiderAvaliacoes() {
-  const { id: userId } = useEffectiveUser();
-  const { data: reviews, isLoading } = useQuery({
-    queryKey: ['leader-reviews', userId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('performance_reviews')
-        .select('id, title, created_at, sent_at, acknowledged_at, shared_with_member, member_id')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as Review[];
-    },
-    enabled: !!userId,
-  });
-
-  if (isLoading) {
-    return (
-      <div className="max-w-5xl mx-auto p-6 flex items-center justify-center min-h-[40vh]">
-        <Loader2 className="w-6 h-6 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!reviews?.length) {
-    return (
-      <div className="max-w-5xl mx-auto p-6">
-        <header className="mb-8">
-          <h1 className="font-serif text-3xl font-bold tracking-tight">Avaliações</h1>
-          <p className="text-muted-foreground text-sm mt-1">Performance Reviews fundamentadas em evidências reais.</p>
-        </header>
-        <EmptyStateHero
-          icon={Sparkles}
-          title="Configure seu primeiro ciclo"
-          description="Crie uma avaliação a partir do dashboard de qualquer liderado. O Rhitmo gera um rascunho com base em notas, 1:1s e feedbacks compartilhados — você só revisa e compartilha."
-          ctaLabel="Ir para liderados"
-          ctaIcon={ClipboardList}
-          onCta={() => (window.location.href = '/lider/pessoas')}
-        />
-      </div>
-    );
-  }
-
-  const ativos = reviews.filter((r) => (r.shared_with_member || r.sent_at) && !r.acknowledged_at);
-  const rascunhos = reviews.filter((r) => !r.shared_with_member && !r.sent_at);
-  const concluidos = reviews.filter((r) => !!r.acknowledged_at);
-
-  const tabs: PageTab[] = [
-    { value: 'ativos', label: 'Ativos', icon: ClipboardList, count: ativos.length, content: <ReviewList reviews={ativos} /> },
-    { value: 'rascunhos', label: 'Rascunhos', icon: FileEdit, count: rascunhos.length, content: <ReviewList reviews={rascunhos} /> },
-    { value: 'concluidos', label: 'Concluídos', icon: CheckCircle2, count: concluidos.length, content: <ReviewList reviews={concluidos} /> },
-  ];
+  const navigate = useNavigate();
+  const [selected, setSelected] = useState<Selected | null>(null);
 
   return (
-    <div className="max-w-5xl mx-auto p-6">
-      <header className="mb-6">
-        <h1 className="font-serif text-3xl font-bold tracking-tight">Avaliações</h1>
-        <p className="text-muted-foreground text-sm mt-1">Performance Reviews por liderado, status e ciclo.</p>
-      </header>
-      <PageTabs tabs={tabs} defaultValue="ativos" />
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      <MembersGrid
+        eyebrow="Avaliações"
+        title="Para quem você vai gerar uma avaliação?"
+        subtitle="Escolha um liderado e selecione o ciclo: mensal, trimestral ou formal."
+        mode="select"
+        onMemberSelect={(m) => setSelected(m)}
+      />
+
+      <Dialog
+        open={!!selected}
+        onOpenChange={(open) => {
+          if (!open) setSelected(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-2xl tracking-tight">
+              Avaliações de {selected?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Escolha o ciclo. O Rhitmo gera o rascunho com base em notas, 1:1s e
+              feedbacks compartilhados.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-3 mt-2">
+            {cycles.map((c) => {
+              const Icon = c.icon;
+              return (
+                <Card
+                  key={c.id}
+                  className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 transition-all cursor-pointer"
+                  onClick={() => {
+                    if (!selected) return;
+                    navigate(c.deepLink(selected.id));
+                  }}
+                >
+                  <CardContent className="flex items-start gap-4 py-5">
+                    <div className="rounded-xl bg-primary/10 p-2.5 shrink-0">
+                      <Icon className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-serif font-bold tracking-tight">{c.title}</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {c.description}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
