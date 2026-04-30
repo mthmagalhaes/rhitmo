@@ -656,10 +656,9 @@ export const MentorChat = ({
     ? <div className="flex items-center justify-center h-7 w-7 rounded-full bg-primary/10 text-sm flex-shrink-0 mt-0.5">🎯</div>
     : <div className="flex items-center justify-center h-7 w-7 rounded-full bg-primary/10 flex-shrink-0 mt-0.5"><Sparkles className="h-3.5 w-3.5 text-primary" /></div>;
 
-  // ── Markdown components ──────────────────────────────
   // ── Markdown components (with citation chip support) ──────────
+  // citation-aware p/li/strong come LAST so they override the styled defaults below.
   const markdownComponents = {
-    ...citationMarkdownComponents,
     h1: ({ children }: any) => <h1 className="text-lg font-semibold text-foreground mt-5 mb-2">{children}</h1>,
     h2: ({ children }: any) => <h2 className="text-base font-semibold text-foreground mt-5 mb-2">{children}</h2>,
     h3: ({ children }: any) => <h3 className="text-[15px] font-semibold text-foreground mt-4 mb-1.5">{children}</h3>,
@@ -694,6 +693,8 @@ export const MentorChat = ({
       );
     },
     pre: ({ children }: any) => <>{children}</>,
+    // Citation-aware overrides (last wins):
+    ...citationMarkdownComponents,
   };
 
   // ══════════════════════════════════════════════════════
