@@ -147,27 +147,27 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          member_id: string | null
+          member_id: string
           title: string
-          type: string | null
+          type: string
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
-          member_id?: string | null
+          member_id: string
           title?: string
-          type?: string | null
+          type?: string
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
-          member_id?: string | null
+          member_id?: string
           title?: string
-          type?: string | null
+          type?: string
           updated_at?: string
           user_id?: string
         }
@@ -1096,7 +1096,7 @@ export type Database = {
           id: string
           member_id: string
           role: string
-          thread_id: string | null
+          thread_id: string
           user_id: string
         }
         Insert: {
@@ -1105,7 +1105,7 @@ export type Database = {
           id?: string
           member_id: string
           role: string
-          thread_id?: string | null
+          thread_id: string
           user_id: string
         }
         Update: {
@@ -1114,7 +1114,7 @@ export type Database = {
           id?: string
           member_id?: string
           role?: string
-          thread_id?: string | null
+          thread_id?: string
           user_id?: string
         }
         Relationships: [
