@@ -4,14 +4,20 @@ description: Tabela events + emit() helper + event-dispatcher (pg_cron 30s) com 
 type: feature
 ---
 
-Onda 3.2 + 4.3. `public.events` (status: pending/dispatched/failed, attempts<3). Helper `_shared/emit.ts` insere com `event_type`, `channels[]`, `payload jsonb`. Dispatcher `event-dispatcher` puxa pendentes e despacha:
+Onda 3.2 + 4.3 + 4.5. `public.events` (status: pending/dispatched/failed, attempts<3). Helper `_shared/emit.ts`.
+
+Dispatcher `event-dispatcher` puxa pendentes e despacha:
 - `inapp` → insert direto em `notifications`
-- `email` → `enqueue_email('emails_outbound', ...)`
+- `email` → invoca `send-transactional-email` mapeando `event_type → templateName` via `EVENT_EMAIL_TEMPLATE` (Onda 4.5). Resolve `recipientEmail` por `payload.recipient_email` ou `auth.admin.getUserById(target_user_id)`.
 - `slack` → `enqueue_email('slack_outbound', ...)`
 
-Tipos canônicos em produção (Onda 4.3):
-- `feedback.shared` — disparado por trigger SQL `trg_emit_feedback_shared` em `feedbacks` (AFTER INSERT/UPDATE OF visibility) quando `visibility='shared'`. Canais: inapp+email. Target: `team_members.linked_user_id`.
-- `review.shared` — emitido pela função `notify-review-shared` em paralelo ao email Resend. Canais: inapp+slack (email continua direto via Resend para preservar template).
-- `member.invited` — emitido por `admin-invite-user` após `auth.admin.inviteUserByEmail`. Canais: inapp. Email do convite via Supabase Auth nativo.
+Mapa canônico evento → template:
+- `feedback.shared` → `feedback-shared.tsx`
+- `review.shared` → `review-shared.tsx`
 
-Toda Edge Function nova deve usar `emit()` em vez de chamar Resend/Slack direto.
+Tipos canônicos em produção:
+- `feedback.shared` — trigger SQL `trg_emit_feedback_shared` em `feedbacks`. Payload já no formato dos props do template (`memberName`, `actorName`, `summary`, `feedbackUrl`). Canais: inapp+email.
+- `review.shared` — `notify-review-shared`. Canais: inapp+slack+email (email controlado por flag `USE_EVENT_BUS_FOR_REVIEW_SHARED`).
+- `member.invited` — `admin-invite-user`, `invite-member-slack` (flag `USE_EVENT_BUS_FOR_SLACK_INVITE`), `bulk-onboard` (flag `USE_EVENT_BUS_FOR_BULK_INVITE`). Canal: inapp (auditoria). `payload.delivery_method` ∈ {`email`, `slack`, `bulk_silent`}.
+
+Toda Edge Function nova deve usar `emit()` em vez de chamar Resend/Slack direto. Para rollback de migração, ver `mem://infrastructure/feature-flags`.
