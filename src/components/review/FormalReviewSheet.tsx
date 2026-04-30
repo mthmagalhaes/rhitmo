@@ -387,7 +387,9 @@ export function FormalReviewSheet({
                       </CollapsibleTrigger>
                       <CollapsibleContent>
                         <div className="px-4 pb-4 pt-1 text-sm text-blue-800 dark:text-blue-200 prose prose-sm dark:prose-invert prose-p:my-1 prose-li:my-0.5 max-w-none">
-                          <ReactMarkdown>{review.coaching_tip}</ReactMarkdown>
+                          <CitationCounterProvider>
+                            <ReactMarkdown components={citationMarkdownComponents}>{review.coaching_tip}</ReactMarkdown>
+                          </CitationCounterProvider>
                         </div>
                       </CollapsibleContent>
                     </div>
