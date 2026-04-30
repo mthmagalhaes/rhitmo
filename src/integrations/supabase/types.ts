@@ -557,6 +557,51 @@ export type Database = {
         }
         Relationships: []
       }
+      events: {
+        Row: {
+          actor_user_id: string | null
+          attempts: number
+          channels: string[]
+          created_at: string
+          dispatched_at: string | null
+          error: string | null
+          event_type: string
+          id: string
+          payload: Json
+          status: string
+          target_user_id: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          actor_user_id?: string | null
+          attempts?: number
+          channels?: string[]
+          created_at?: string
+          dispatched_at?: string | null
+          error?: string | null
+          event_type: string
+          id?: string
+          payload?: Json
+          status?: string
+          target_user_id?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          actor_user_id?: string | null
+          attempts?: number
+          channels?: string[]
+          created_at?: string
+          dispatched_at?: string | null
+          error?: string | null
+          event_type?: string
+          id?: string
+          payload?: Json
+          status?: string
+          target_user_id?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: []
+      }
       extension_tokens: {
         Row: {
           created_at: string
