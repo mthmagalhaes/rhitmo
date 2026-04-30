@@ -16,7 +16,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine, PieChart, Pi
 
 type PeriodType = '30d' | '90d' | '365d';
 
-const Analytics = () => {
+export const AnalyticsContent = () => {
   const { user: authUser, loading: authLoading } = useAuth();
   const { id: effectiveUserId } = useEffectiveUser();
   const user = effectiveUserId ? { id: effectiveUserId } : authUser;
