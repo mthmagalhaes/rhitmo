@@ -531,4 +531,5 @@ export const AnalyticsContent = () => {
   );
 };
 
+const Analytics = AnalyticsContent;
 export default Analytics;
