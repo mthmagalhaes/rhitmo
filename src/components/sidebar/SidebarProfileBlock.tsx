@@ -9,11 +9,12 @@ import { MemberAvatar } from '@/components/MemberAvatar';
 import { cn } from '@/lib/utils';
 
 interface Props {
+  memberId: string;
   name: string;
   avatarUrl?: string | null;
 }
 
-export function SidebarProfileBlock({ name, avatarUrl }: Props) {
+export function SidebarProfileBlock({ memberId, name, avatarUrl }: Props) {
   const { resolvedTheme, setTheme } = useTheme();
   const { signOut } = useAuth();
   const { toast } = useToast();
@@ -36,8 +37,9 @@ export function SidebarProfileBlock({ name, avatarUrl }: Props) {
       )}
     >
       <MemberAvatar
-        name={name}
-        avatar={avatarUrl ?? undefined}
+        memberId={memberId}
+        memberName={name}
+        avatarUrl={avatarUrl}
         size="sm"
         className="h-7 w-7"
       />
