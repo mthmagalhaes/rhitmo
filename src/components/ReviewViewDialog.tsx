@@ -8,6 +8,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import ReactMarkdown from 'react-markdown';
+import { citationMarkdownComponents } from '@/lib/markdownCitations';
+import { CitationCounterProvider } from '@/components/context/CitationCounterProvider';
 import { marked } from 'marked';
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import DOMPurify from 'dompurify';
@@ -440,7 +442,9 @@ export const ReviewViewDialog = ({
                 💡 Dicas para Apresentação (Visível apenas para você)
               </p>
               <div className="text-sm text-muted-foreground prose prose-sm max-w-none">
-                <ReactMarkdown>{review.coaching_tip}</ReactMarkdown>
+                <CitationCounterProvider>
+                  <ReactMarkdown components={citationMarkdownComponents}>{review.coaching_tip}</ReactMarkdown>
+                </CitationCounterProvider>
               </div>
             </div>
           )}
@@ -470,7 +474,9 @@ export const ReviewViewDialog = ({
               {review.content.includes('</') ? (
                 <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(review.content) }} />
               ) : (
-                <ReactMarkdown>{review.content}</ReactMarkdown>
+                <CitationCounterProvider>
+                  <ReactMarkdown components={citationMarkdownComponents}>{review.content}</ReactMarkdown>
+                </CitationCounterProvider>
               )}
             </div>
           )}
