@@ -309,21 +309,21 @@ ${truncatedContent}`;
 
     let openAIResponse;
     try {
-      openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      openAIResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
+          'Authorization': `Bearer ${Deno.env.get('LOVABLE_API_KEY')}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'google/gemini-2.5-flash',
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt }
           ],
           tools: isShortNote ? toolsShortNote : toolsRichText,
           tool_choice: { type: "function", function: { name: "analyze_feedback" } },
-          max_completion_tokens: 4000
+          max_tokens: 4000
         }),
         signal: controller.signal,
       });
