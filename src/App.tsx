@@ -3,13 +3,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { AuthProvider } from "./contexts/AuthContext";
 import { AccountProvider } from "./contexts/AccountContext";
 import { AppLayout } from "./components/AppLayout";
 import { AuthEventProvider } from "./components/AuthEventProvider";
 import { DirectReportGuard } from "./components/DirectReportGuard";
+import { RoleRouteGuard } from "./components/RoleRouteGuard";
 // ── Critical-path pages (kept eager for fast first paint) ──
 import Landing from "./pages/Landing";
 import Index from "./pages/Index";
@@ -19,7 +20,7 @@ import { AdminGuard } from "./components/admin/AdminGuard";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { HRAdminGuard } from "./components/HRAdminGuard";
 
-// ── Lazy-loaded pages (split out of the initial bundle) ──
+// ── Lazy-loaded pages ──
 const MemberDetails = lazy(() => import("./pages/MemberDetails"));
 const Analytics = lazy(() => import("./pages/Analytics"));
 const Billing = lazy(() => import("./pages/Billing"));
@@ -49,6 +50,23 @@ const GoogleCalendarCallback = lazy(() => import("./pages/GoogleCalendarCallback
 const Evidence = lazy(() => import("./pages/Evidence"));
 const SlackChannels = lazy(() => import("./pages/SlackChannels"));
 
+// ── New role-based pages ──
+const LiderInicio = lazy(() => import("./pages/lider/Inicio"));
+const LiderOneOnOnes = lazy(() => import("./pages/lider/OneOnOnes"));
+const LiderDiario = lazy(() => import("./pages/lider/Diario"));
+const LiderPulse = lazy(() => import("./pages/lider/Pulse"));
+const LiderAvaliacoes = lazy(() => import("./pages/lider/Avaliacoes"));
+const LiderPessoas = lazy(() => import("./pages/lider/Pessoas"));
+const LiderConfiguracoes = lazy(() => import("./pages/lider/Configuracoes"));
+const LideradoInicio = lazy(() => import("./pages/liderado/Inicio"));
+const LideradoCompass = lazy(() => import("./pages/liderado/Compass"));
+const LideradoOneOnOnes = lazy(() => import("./pages/liderado/OneOnOnes"));
+const LideradoPulse = lazy(() => import("./pages/liderado/Pulse"));
+const LideradoPDI = lazy(() => import("./pages/liderado/PDI"));
+const LideradoAvaliacoes = lazy(() => import("./pages/liderado/Avaliacoes"));
+const LideradoMeuRhitmo = lazy(() => import("./pages/liderado/MeuRhitmo"));
+const LideradoConfiguracoes = lazy(() => import("./pages/liderado/Configuracoes"));
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -66,6 +84,22 @@ const RouteFallback = () => (
   </div>
 );
 
+// Helper: wrap a leaf in DirectReportGuard + AppLayout + RoleRouteGuard
+const Leader = (node: React.ReactNode) => (
+  <DirectReportGuard>
+    <AppLayout>
+      <RoleRouteGuard expects="leader">{node}</RoleRouteGuard>
+    </AppLayout>
+  </DirectReportGuard>
+);
+const DirectReport = (node: React.ReactNode) => (
+  <DirectReportGuard>
+    <AppLayout>
+      <RoleRouteGuard expects="direct_report">{node}</RoleRouteGuard>
+    </AppLayout>
+  </DirectReportGuard>
+);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -78,37 +112,47 @@ const App = () => (
         <BrowserRouter>
           <Suspense fallback={<RouteFallback />}>
             <Routes>
-              {/* Landing Page pública com redirect inteligente */}
+              {/* Landing */}
               <Route path="/" element={<Landing />} />
 
               {/* Auth */}
               <Route path="/auth/start" element={<PersonaSelector />} />
               <Route path="/auth" element={<AuthPage />} />
 
-              {/* Onboarding para liderados */}
+              {/* Onboarding */}
               <Route path="/onboarding" element={<Onboarding />} />
 
-              {/* Dashboard (antigo Index) - autenticado com guard para linked members */}
+              {/* Legacy redirects → DirectReportGuard decides leader vs direct report */}
               <Route path="/dashboard" element={
                 <DirectReportGuard>
                   <AppLayout><Index /></AppLayout>
                 </DirectReportGuard>
               } />
-              <Route path="/dashboard/carreira" element={
-                <DirectReportGuard>
-                  <AppLayout><Index activeTab="carreira" /></AppLayout>
-                </DirectReportGuard>
-              } />
-              <Route path="/dashboard/feedbacks" element={
-                <DirectReportGuard>
-                  <AppLayout><Index activeTab="feedbacks" /></AppLayout>
-                </DirectReportGuard>
-              } />
-              <Route path="/dashboard/perfil" element={
-                <DirectReportGuard>
-                  <AppLayout><Index activeTab="perfil" /></AppLayout>
-                </DirectReportGuard>
-              } />
+              <Route path="/dashboard/carreira" element={<Navigate to="/liderado/compass" replace />} />
+              <Route path="/dashboard/feedbacks" element={<Navigate to="/lider/diario" replace />} />
+              <Route path="/dashboard/perfil" element={<Navigate to="/lider/configuracoes" replace />} />
+
+              {/* ── Leader routes (/lider/*) ── */}
+              <Route path="/lider/inicio" element={Leader(<LiderInicio />)} />
+              <Route path="/lider/1on1s" element={Leader(<LiderOneOnOnes />)} />
+              <Route path="/lider/1on1s/:meetingId" element={Leader(<BriefPage />)} />
+              <Route path="/lider/diario" element={Leader(<LiderDiario />)} />
+              <Route path="/lider/pulse" element={Leader(<LiderPulse />)} />
+              <Route path="/lider/avaliacoes" element={Leader(<LiderAvaliacoes />)} />
+              <Route path="/lider/pessoas" element={Leader(<LiderPessoas />)} />
+              <Route path="/lider/configuracoes" element={Leader(<LiderConfiguracoes />)} />
+
+              {/* ── Direct report routes (/liderado/*) ── */}
+              <Route path="/liderado/inicio" element={DirectReport(<LideradoInicio />)} />
+              <Route path="/liderado/compass" element={DirectReport(<LideradoCompass />)} />
+              <Route path="/liderado/1on1s" element={DirectReport(<LideradoOneOnOnes />)} />
+              <Route path="/liderado/pulse" element={DirectReport(<LideradoPulse />)} />
+              <Route path="/liderado/pdi" element={DirectReport(<LideradoPDI />)} />
+              <Route path="/liderado/avaliacoes" element={DirectReport(<LideradoAvaliacoes />)} />
+              <Route path="/liderado/meu-rhitmo" element={DirectReport(<LideradoMeuRhitmo />)} />
+              <Route path="/liderado/configuracoes" element={DirectReport(<LideradoConfiguracoes />)} />
+
+              {/* Other in-app routes (kept) */}
               <Route path="/member/:id" element={
                 <DirectReportGuard>
                   <AppLayout><MemberDetails /></AppLayout>
@@ -140,30 +184,27 @@ const App = () => (
                 </DirectReportGuard>
               } />
 
-              {/* Brief pré-reunião */}
+              {/* Legacy brief redirect */}
               <Route path="/brief/:meetingId" element={
                 <DirectReportGuard>
                   <AppLayout><BriefPage /></AppLayout>
                 </DirectReportGuard>
               } />
 
-              {/* Design System (matheus@rhitmo.co only) */}
+              {/* Design System (super admin) */}
               <Route path="/design-system" element={
                 <AdminGuard>
-                  <AdminLayout>
-                    <DesignSystem />
-                  </AdminLayout>
+                  <AdminLayout><DesignSystem /></AdminLayout>
                 </AdminGuard>
               } />
 
-
-              {/* Recorder popup (standalone, no layout) */}
+              {/* Recorder standalone */}
               <Route path="/recorder" element={<RecorderPopup />} />
 
               {/* Slack OAuth connect */}
               <Route path="/slack/connect" element={<SlackConnect />} />
 
-              {/* Rotas públicas (sem sidebar) */}
+              {/* Public routes */}
               <Route path="/sync/:memberId" element={<RhitmoSync />} />
               <Route path="/invite" element={<Invite />} />
               <Route path="/review/:reviewId" element={<DirectReportReviewView />} />
@@ -174,59 +215,24 @@ const App = () => (
               <Route path="/auth/google/callback" element={<GoogleCalendarCallback />} />
               <Route path="/roadmap" element={<Roadmap />} />
 
-              {/* Rota Admin */}
-              <Route
-                path="/admin"
-                element={
-                  <AdminGuard>
-                    <AdminLayout>
-                      <Admin />
-                    </AdminLayout>
-                  </AdminGuard>
-                }
-              />
+              {/* Admin */}
+              <Route path="/admin" element={
+                <AdminGuard>
+                  <AdminLayout><Admin /></AdminLayout>
+                </AdminGuard>
+              } />
 
-              {/* Rota HR Admin */}
-              <Route path="/hr" element={
-                <AppLayout>
-                  <HRAdminGuard>
-                    <HRDashboard />
-                  </HRAdminGuard>
-                </AppLayout>
-              } />
-              <Route path="/hr/teams" element={
-                <AppLayout>
-                  <HRAdminGuard>
-                    <HRTeams />
-                  </HRAdminGuard>
-                </AppLayout>
-              } />
-              <Route path="/hr/analytics" element={
-                <AppLayout>
-                  <HRAdminGuard>
-                    <HRAnalytics />
-                  </HRAdminGuard>
-                </AppLayout>
-              } />
-              <Route path="/hr/members" element={
-                <AppLayout>
-                  <HRAdminGuard>
-                    <HRMembers />
-                  </HRAdminGuard>
-                </AppLayout>
-              } />
-              <Route path="/hr/competency-framework" element={
-                <AppLayout>
-                  <HRAdminGuard>
-                    <CompetencyFramework />
-                  </HRAdminGuard>
-                </AppLayout>
-              } />
+              {/* HR */}
+              <Route path="/hr" element={<AppLayout><HRAdminGuard><HRDashboard /></HRAdminGuard></AppLayout>} />
+              <Route path="/hr/teams" element={<AppLayout><HRAdminGuard><HRTeams /></HRAdminGuard></AppLayout>} />
+              <Route path="/hr/analytics" element={<AppLayout><HRAdminGuard><HRAnalytics /></HRAdminGuard></AppLayout>} />
+              <Route path="/hr/members" element={<AppLayout><HRAdminGuard><HRMembers /></HRAdminGuard></AppLayout>} />
+              <Route path="/hr/competency-framework" element={<AppLayout><HRAdminGuard><CompetencyFramework /></HRAdminGuard></AppLayout>} />
 
               {/* Unsubscribe */}
               <Route path="/unsubscribe" element={<Unsubscribe />} />
 
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              {/* CATCH-ALL */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
