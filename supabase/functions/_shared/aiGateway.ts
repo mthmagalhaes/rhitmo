@@ -6,6 +6,7 @@
 // yet — keep transcribe-audio / upload-meeting on direct OpenAI for now.
 
 import type { Logger } from "./logger.ts";
+import { estimateCostUsd } from "./aiPricing.ts";
 
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
