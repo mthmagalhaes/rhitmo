@@ -3,7 +3,7 @@ import { RhitmoLogo } from '@/components/RhitmoLogo';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LayoutDashboard, Users, LogOut, ShieldCheck, Network, Brain } from 'lucide-react';
+import { LayoutDashboard, Users, LogOut, ShieldCheck, Network, Brain, Activity } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
