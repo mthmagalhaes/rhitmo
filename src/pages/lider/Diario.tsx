@@ -1,26 +1,27 @@
-// Sprint 12.1 — Diário de Bordo estilo Windmill.
-// Título da página dentro da coluna direita; banner de privacidade vira inline.
+// Sprint 12.3 — Diário de Bordo Master-Detail estilo Notion/Windmill.
+// - Banner de privacidade fixo no topo da coluna direita
+// - Captura rápida sempre visível (sem modal)
+// - Feed cronológico abaixo
+// - placeholderData evita "piscar" ao trocar de liderado
 import { useMemo, useState } from 'react';
 import { isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Lock, PenSquare, Search } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Lock, Search } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { MemberAvatar } from '@/components/MemberAvatar';
 import { MemberMasterList } from '@/components/leader/MemberMasterList';
 import { EmptyMemberDetail } from '@/components/leader/EmptyMemberDetail';
 import { FeedbackTimeline } from '@/components/FeedbackTimeline';
 import { FeedbackFilters } from '@/components/FeedbackFilters';
-import { NewNoteDialog } from '@/components/NewNoteDialog';
+import { QuickPrivateNoteInput } from '@/components/diario/QuickPrivateNoteInput';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useLeaderMembers, type LeaderMemberRow } from '@/hooks/useLeaderMembers';
 
 export default function LiderDiario() {
-  const { workspace } = useLeaderMembers();
+  useLeaderMembers(); // pré-aquece cache de workspace/liderados
   const [selected, setSelected] = useState<LeaderMemberRow | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
@@ -31,6 +32,9 @@ export default function LiderDiario() {
   const { data: feedbacks = [] } = useQuery({
     queryKey: ['feedbacks', selected?.id],
     enabled: !!selected,
+    // Mantém os dados anteriores enquanto o próximo liderado carrega:
+    // troca de pessoa fica instantânea, sem flicker de tela inteira.
+    placeholderData: (prev) => prev,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('feedbacks')
@@ -119,43 +123,53 @@ export default function LiderDiario() {
             </header>
             <EmptyMemberDetail
               icon={Lock}
-              title="Selecione um liderado"
-              description="Cada liderado tem seu próprio diário privado. Escolha alguém à esquerda para começar a anotar."
+              title="Selecione alguém na lista ao lado"
+              description="Cada liderado tem seu próprio diário privado. Escolha alguém à esquerda para acessar suas anotações privadas."
             />
           </div>
         ) : (
-          <div className="max-w-2xl mx-auto px-6 lg:px-10 py-10 space-y-8">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground inline-flex items-center gap-1.5">
-              <Lock className="h-3 w-3" />
-              Diário privado
+          <div className="max-w-2xl mx-auto px-6 lg:px-10 py-10 space-y-6">
+            {/* Eyebrow */}
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Diário de Bordo
             </p>
 
             {/* Cabeçalho do liderado */}
-            <header className="flex items-center justify-between gap-3 -mt-4">
-              <div className="flex items-center gap-3">
-                <MemberAvatar
-                  memberId={selected.id}
-                  memberName={selected.name}
-                  avatarUrl={selected.avatar}
-                  size="lg"
-                />
-                <div>
-                  <h1 className="font-serif text-2xl font-bold tracking-tight">
-                    {selected.name}
-                  </h1>
-                  {selected.role && (
-                    <p className="text-sm text-muted-foreground">
-                      {selected.role}
-                    </p>
-                  )}
-                </div>
+            <header className="flex items-center gap-3 -mt-3">
+              <MemberAvatar
+                memberId={selected.id}
+                memberName={selected.name}
+                avatarUrl={selected.avatar}
+                size="lg"
+              />
+              <div>
+                <h1 className="font-serif text-2xl font-bold tracking-tight">
+                  {selected.name}
+                </h1>
+                {selected.role && (
+                  <p className="text-sm text-muted-foreground">
+                    {selected.role}
+                  </p>
+                )}
               </div>
-              <Button onClick={() => setDialogOpen(true)} className="rounded-xl gap-2">
-                <PenSquare className="h-4 w-4" />
-                Nova nota
-              </Button>
             </header>
 
+            {/* Banner de privacidade — fixo, discreto, inconfundível */}
+            <div className="flex items-start gap-2.5 rounded-xl bg-muted/60 border border-border/60 px-3.5 py-2.5">
+              <Lock className="h-3.5 w-3.5 text-foreground/70 mt-0.5 shrink-0" />
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                <span className="font-medium text-foreground">Diário privado.</span>{' '}
+                Estas anotações são 100% confidenciais e visíveis apenas para você.
+              </p>
+            </div>
+
+            {/* Captura rápida — sempre visível, sem modal */}
+            <QuickPrivateNoteInput
+              memberId={selected.id}
+              memberName={selected.name}
+            />
+
+            {/* Filtros (só quando há notas) */}
             {feedbacks.length > 0 && (
               <FeedbackFilters
                 searchQuery={searchQuery}
@@ -169,18 +183,16 @@ export default function LiderDiario() {
               />
             )}
 
+            {/* Feed cronológico */}
             {feedbacks.length === 0 ? (
-              <Card className="p-10 text-center rounded-2xl border-dashed">
-                <Lock className="h-7 w-7 text-muted-foreground/50 mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground mb-4">
-                  Nenhuma nota privada para este liderado ainda.
+              <Card className="p-8 text-center rounded-2xl border-dashed bg-transparent">
+                <p className="text-sm text-muted-foreground">
+                  Você ainda não tem anotações privadas para{' '}
+                  <span className="font-medium text-foreground">
+                    {selected.name.split(' ')[0]}
+                  </span>
+                  . Que tal registrar a primeira observação acima?
                 </p>
-                <Button
-                  onClick={() => setDialogOpen(true)}
-                  className="rounded-xl"
-                >
-                  Adicionar primeira nota
-                </Button>
               </Card>
             ) : filtered.length === 0 ? (
               <Card className="p-8 text-center rounded-2xl border-dashed">
@@ -198,19 +210,6 @@ export default function LiderDiario() {
           </div>
         )}
       </main>
-
-      {selected && (
-        <NewNoteDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          selectedMemberId={selected.id}
-          memberName={selected.name}
-          workspaceId={workspace?.id}
-          onSuccess={() =>
-            queryClient.invalidateQueries({ queryKey: ['feedbacks', selected.id] })
-          }
-        />
-      )}
     </div>
   );
 }

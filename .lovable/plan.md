@@ -1,67 +1,50 @@
 ## Contexto
 
-A página `/lider/1on1s` **já implementa Master-Detail** (Sprint 12.1):
-- `MemberMasterList` à esquerda (sticky 280px, ScrollArea, active state, mobile Sheet, footer "Novo liderado")
-- Coluna direita com `OneOnOnePrepCard` (sugestões da Rhitmo via `get_team_timeline`), `UpcomingMeetingsCard`, `AgendaBlock` shared + private
+A página `/lider/diario` **já está em Master-Detail** (Sprint 12.1) com `MemberMasterList` à esquerda e detalhe à direita. O que ainda não bate com o pedido:
 
-O que ainda não bate com a referência Windmill/Notion:
-1. Não há seção de **Action Items** (checklist).
-2. `UpcomingMeetingsCard` é o card pesado do dashboard (toggle de transcrição, badges de plano, lista global) — quebra o respiro Notion e mostra reuniões de **todos** os liderados, não só do selecionado.
-3. Pauta Compartilhada e Anotação Privada têm contraste invertido: a Shared hoje é colorida (verde), a Private é igual ao card. Pedido: Private com `bg-muted` + cadeado proeminente, Shared mais neutra.
-4. Falta polish na hierarquia do header do liderado para ficar editorial (menos chrome).
+1. **Falta banner de privacidade fixo** no topo da coluna direita (cadeado + "Diário Privado. Estas anotações são 100% confidenciais…").
+2. **Captura rápida ainda usa modal** (`NewNoteDialog` aberto via botão "Nova nota"). Precisa virar Textarea inline sempre visível com botão "Salvar nota".
+3. **Empty state "sem notas"** ainda chama o modal — precisa apontar para o Quick Input.
+4. **Troca de liderado pisca a tela** porque `useQuery` zera o cache visualmente — falta `placeholderData: (prev) => prev`.
 
 ## Mudanças
 
-### 1. Novo componente `src/components/oneonone/MemberUpcomingMeetings.tsx`
-Versão enxuta e filtrada por `memberId` das próximas 1:1s deste liderado.
-- Reusa `useCalendarIntegration().upcomingMeetings` e filtra por `meeting.member_id === memberId`.
-- Layout limpo: lista de até 3 próximas reuniões, badge "Hoje 14:00 / Amanhã 09:30 / dd/MM", link Meet, botão "Abrir brief". Sem toggle de auto-transcribe, sem "Desconectar", sem badge de plano.
-- Empty state inline: "Nenhuma 1:1 agendada com {nome} nas próximas 48h."
-- Estado "Calendar não conectado": uma linha discreta com link "Conectar Google Calendar".
+### 1. Novo `src/components/diario/QuickPrivateNoteInput.tsx`
+Captura rápida inline, sem modal:
+- `Textarea` `min-h-[100px]` sempre visível com placeholder `Anotação privada sobre {primeiroNome}…`
+- Botão **"Salvar nota"** (disabled quando vazio); atalho **⌘/Ctrl + Enter** envia
+- INSERT em `feedbacks` reusando exatamente os campos do `NewNoteDialog`:
+  - `manager_id`, `member_id`, `content`, `type: 'neutral'`, `occurred_at: now`, `tags: ['diario-bordo']`, `title: 'Anotação do diário'`, `visibility: 'private_leader'`, `source: 'manual'`
+- Após save: limpa o textarea + `queryClient.invalidateQueries(['feedbacks', memberId])`
+- Visual: card `rounded-2xl bg-card`, header com `PenSquare` + "Captura rápida"
 
-### 2. Novo componente `src/components/oneonone/ActionItemsBlock.tsx`
-Checklist simples persistido em `feedbacks` (sem alterar schema), seguindo o padrão de `AgendaBlock`:
-- `tags: ['action-items-1on1']`, `visibility: 'shared'`, `title: 'Itens de ação 1:1'`, `type: 'manual'`, `source: 'manual'`.
-- Estado local: array de `{ id, text, done }`. Usuário adiciona linhas via input + Enter, marca/desmarca, remove.
-- Botão "Salvar itens de ação" serializa o array em markdown (`- [ ] item` / `- [x] item`) no `content` e insere uma nova linha em `feedbacks`. Não tenta editar registros antigos (mantém o padrão happy-path do AgendaBlock).
-- Visual: card `rounded-2xl`, ícone `ListChecks`, badge "Compartilhado".
+### 2. Refatorar `src/pages/lider/Diario.tsx`
+Coluna direita reordenada (mantendo o eyebrow + header do liderado):
+1. Eyebrow "DIÁRIO DE BORDO"
+2. Header (avatar + nome + cargo) — **remover botão "Nova nota"** (não abre mais modal)
+3. **Banner de privacidade** fixo: `rounded-xl bg-muted/60 border border-border/60 px-3.5 py-2.5`, ícone `Lock` + texto "**Diário privado.** Estas anotações são 100% confidenciais e visíveis apenas para você."
+4. **`QuickPrivateNoteInput`** sempre visível
+5. `FeedbackFilters` (só quando `feedbacks.length > 0`)
+6. Feed cronológico (`FeedbackTimeline`) ou empty state textual ("Você ainda não tem anotações privadas para {nome}. Que tal registrar a primeira observação acima?")
 
-### 3. Ajustes em `src/components/oneonone/AgendaBlock.tsx`
-Inverter o peso visual:
-- **Shared**: card neutro (`bg-card`, borda sutil `border-border`), badge verde menor "Visível para o liderado", ícone `Eye` muted.
-- **Private**: card com `bg-muted/50` + borda `border-dashed border-border/60`, ícone `Lock` mais proeminente (`text-foreground`), badge "Só você vê" em tom muted.
-- Mantém todo o resto (refs, save, queryClient invalidations).
+Outras melhorias:
+- Remover `import NewNoteDialog` e o estado `dialogOpen` (não é mais usado)
+- Adicionar `placeholderData: (prev) => prev` no `useQuery` para evitar piscar ao trocar liderado
+- Empty state sem liderado: trocar para "Selecione alguém na lista ao lado para acessar suas anotações privadas" (texto pedido)
 
-### 4. Refatorar `src/pages/lider/OneOnOnes.tsx`
-Reordenar a coluna direita para o padrão Notion (escaneável, com white-space):
-1. Eyebrow "1:1S" + header do liderado (avatar + h1 + role + botão "Abrir ficha")
-2. **OneOnOnePrepCard** (sugestões da Rhitmo) — já existe
-3. **MemberUpcomingMeetings** (novo, filtrado pelo liderado)
-4. **AgendaBlock variant="shared"** (full-width, não mais grid 2-col)
-5. **ActionItemsBlock** (novo)
-6. **AgendaBlock variant="private"** (full-width, visualmente destacado pelo `bg-muted` + cadeado)
-7. CTA "Histórico de 1:1s e notas" → `/member/{id}?tab=diary`
+### 3. Atualizar memória
+Em `.lovable/memory/design/dashboard/master-detail-pages.md`, adicionar bloco específico de `/lider/diario` (Sprint 12.3): banner de privacidade, captura rápida sem modal, `placeholderData` para evitar flicker. E atualizar o índice (`mem://index.md`) com a referência atualizada.
 
-Empilhar full-width (em vez de grid 2-col) deixa mais respiro Notion-like dentro do `max-w-2xl`.
+## Fora de escopo
 
-### 5. Atualizar memória `mem://design/dashboard/master-detail-pages`
-Adicionar seção sobre /lider/1on1s especificamente:
-- Ordem das seções na coluna direita
-- Regra: Pauta Shared = neutra, Anotação Private = `bg-muted` + dashed (contraste inverso para reforçar privacidade)
-- Action Items são append-only em `feedbacks` (não editam registros antigos)
-- `MemberUpcomingMeetings` é a versão enxuta; o `UpcomingMeetingsCard` continua sendo usado só na Home (`/lider/inicio`)
-
-## Fora de escopo (intencional)
-
-- **Não** altero schema de `meetings`, `feedbacks` ou `context_evidence`.
-- **Não** mexo em `MemberMasterList`, `EmptyMemberDetail`, `OneOnOnePrepCard` (já estão no padrão).
-- **Não** mexo em `/lider/diario` nem `/lider/objetivos` (mesmo padrão Master-Detail, fora do pedido).
-- **Não** mexo em `/lider/inicio` (Home V3 — `UpcomingMeetingsCard` continua lá com toggle/badges).
+- Não altero schema (continua `feedbacks` + `visibility='private_leader'`)
+- Não mexo em `NewNoteDialog` (ainda é usado em `MemberDetails` e outras telas)
+- Não mexo em `MemberMasterList`, `EmptyMemberDetail`, `FeedbackTimeline`, `FeedbackFilters`
+- Não mexo em `/lider/1on1s`, `/lider/objetivos`
 
 ## Arquivos
 
-- novo: `src/components/oneonone/MemberUpcomingMeetings.tsx`
-- novo: `src/components/oneonone/ActionItemsBlock.tsx`
-- editar: `src/components/oneonone/AgendaBlock.tsx` (cores Shared/Private)
-- editar: `src/pages/lider/OneOnOnes.tsx` (ordem + componentes novos)
+- novo: `src/components/diario/QuickPrivateNoteInput.tsx`
+- editar: `src/pages/lider/Diario.tsx`
 - editar: `.lovable/memory/design/dashboard/master-detail-pages.md`
+- editar: `mem://index.md` (uma linha)
