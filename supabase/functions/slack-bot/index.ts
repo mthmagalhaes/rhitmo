@@ -520,6 +520,7 @@ function buildRhitmoMenu(persona: PersonaResult, stateToken?: string): Record<st
       { type: 'actions', elements: [
         { type: 'button', text: { type: 'plain_text', text: '✍️ Adicionar nota' }, action_id: 'open_add_note', style: 'primary' },
         { type: 'button', text: { type: 'plain_text', text: '👏 Enviar kudos' }, action_id: 'open_send_kudos' },
+        { type: 'button', text: { type: 'plain_text', text: '🌀 Conversar com a Rhitmo' }, action_id: 'start_rhitmo_chat' },
       ]},
       { type: 'section', text: { type: 'mrkdwn', text: '\n*💬 Comandos rápidos:*\n• `/nota @membro texto` — Feedback privado\n• `/kudos @membro texto` — Reconhecimento público\n• `/brief @membro` — Resumo do membro\n• `/mentor <pergunta>` — Consultar mentor de IA\n• `/rhitmo` — Este menu' }},
       { type: 'section', text: { type: 'mrkdwn', text: '\n*📊 No Rhitmo Web:*\n• *Rhitmo Mensal & Trimestral* — recaps automáticos do time\n• *Avaliação Formal* — gerar com IA em 2 passos (briefing → revisão)\n→ <https://rhitmo.co|Abrir Rhitmo>' }},
@@ -531,6 +532,7 @@ function buildRhitmoMenu(persona: PersonaResult, stateToken?: string): Record<st
       { type: 'actions', elements: [
         { type: 'button', text: { type: 'plain_text', text: '📋 Meu PDI' }, action_id: 'action_meu_pdi', style: 'primary' },
         { type: 'button', text: { type: 'plain_text', text: '📄 Minhas Avaliações' }, url: 'https://rhitmo.co/avaliacoes', action_id: 'open_my_reviews' },
+        { type: 'button', text: { type: 'plain_text', text: '🌀 Conversar com a Rhitmo' }, action_id: 'start_rhitmo_chat' },
         { type: 'button', text: { type: 'plain_text', text: '🚀 Abrir Rhitmo' }, url: 'https://rhitmo.co', action_id: 'open_app' },
       ]},
       { type: 'section', text: { type: 'mrkdwn', text: '\n*💬 Comandos rápidos:*\n• `/meu-pdi` — Ver seu Plano de Desenvolvimento\n• `/meu-rhitmo` — Ver seu perfil e feedbacks\n• `/rhitmo` — Este menu' }},
