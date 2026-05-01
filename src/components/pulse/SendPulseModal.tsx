@@ -52,6 +52,15 @@ export function SendPulseModal({ open, onOpenChange }: SendPulseModalProps) {
   const [pulseType, setPulseType] = useState<PulseType>('blockers');
   const [submitting, setSubmitting] = useState(false);
 
+  // Sprint 10.5 — reset state every time the modal opens (evita seleção residual).
+  useEffect(() => {
+    if (open) {
+      setMemberId('');
+      setPulseType('blockers');
+      setSubmitting(false);
+    }
+  }, [open]);
+
   const { data: members, isLoading: loadingMembers } = useQuery({
     queryKey: ['send-pulse-members', workspaceId, userId],
     enabled: open && !!workspaceId && !!userId,
