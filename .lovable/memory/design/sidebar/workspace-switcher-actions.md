@@ -24,6 +24,7 @@ O `ProfileSettingsDialog` (perfil pessoal: nome, avatar, senha) abre **clicando 
 
 ## O que foi REMOVIDO (e por quê)
 
+- **Item "Configurações" da nav principal** (`LEADER_NAV_ITEMS` / `DIRECT_REPORT_NAV_ITEMS`): removido. Duplicava o "Configurações" do WorkspaceSwitcher dropdown (mesma rota). Settings é ação utilitária da org, não fluxo de trabalho — não pertence à nav primária. Padrão Linear/Notion/Slack.
 - **`QuickActionsRow`** (linha de ícones Home/Calendar/People/Mentor/Search): deletada. 3 dos 4 botões duplicavam o nav primário 2cm abaixo. Mentor já tem `SidebarFooterCTA` persistente. Search virou link discreto + atalho `cmd+K`.
 - **Botão "Configurações" do footer** (que abria `ProfileSettingsDialog`): removido. Conflitava com o item de nav e com o do WorkspaceSwitcher (mesmo nome, comportamentos diferentes).
 - **Botão "LifeBuoy/Suporte" do footer**: removido. "Central de Ajuda" já vive no WorkspaceSwitcher dropdown.
