@@ -9,9 +9,6 @@ import {
   Home,
   Target,
   FileText,
-  Users,
-  MessageSquare,
-  Search,
   Layers,
   type LucideIcon,
 } from 'lucide-react';

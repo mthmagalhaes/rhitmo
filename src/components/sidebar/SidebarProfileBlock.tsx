@@ -12,9 +12,10 @@ interface Props {
   memberId: string;
   name: string;
   avatarUrl?: string | null;
+  onOpenProfileSettings?: () => void;
 }
 
-export function SidebarProfileBlock({ memberId, name, avatarUrl }: Props) {
+export function SidebarProfileBlock({ memberId, name, avatarUrl, onOpenProfileSettings }: Props) {
   const { resolvedTheme, setTheme } = useTheme();
   const { signOut } = useAuth();
   const { toast } = useToast();
@@ -29,12 +30,18 @@ export function SidebarProfileBlock({ memberId, name, avatarUrl }: Props) {
     navigate('/auth', { replace: true });
   };
 
-  return (
-    <div
+  const profileTrigger = (
+    <button
+      type="button"
+      onClick={onOpenProfileSettings}
+      disabled={!onOpenProfileSettings}
       className={cn(
-        'flex items-center gap-2 px-2 py-2 mx-2 mb-2 rounded-xl',
-        'border border-border/40 bg-sidebar-accent/20',
+        'flex items-center gap-2 flex-1 min-w-0 text-left rounded-lg -mx-1 px-1 py-0.5',
+        'transition-colors',
+        onOpenProfileSettings && 'hover:bg-sidebar-accent/40 cursor-pointer',
       )}
+      title={onOpenProfileSettings ? t('sidebar.editProfile', 'Editar perfil') : undefined}
+      aria-label={onOpenProfileSettings ? t('sidebar.editProfile', 'Editar perfil') : name}
     >
       <MemberAvatar
         memberId={memberId}
@@ -44,6 +51,17 @@ export function SidebarProfileBlock({ memberId, name, avatarUrl }: Props) {
         className="h-7 w-7"
       />
       <p className="flex-1 text-sm font-medium text-sidebar-foreground truncate">{name}</p>
+    </button>
+  );
+
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-2 px-2 py-2 mx-2 mb-2 rounded-xl',
+        'border border-border/40 bg-sidebar-accent/20',
+      )}
+    >
+      {profileTrigger}
       <Button
         variant="ghost"
         size="icon"
