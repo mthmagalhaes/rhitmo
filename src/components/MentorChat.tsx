@@ -96,6 +96,7 @@ export const MentorChat = ({
   latestReview,
   userId,
   initialPrompt,
+  initialThreadId,
 }: MentorChatProps) => {
   const isLeader = userType === 'leader';
   
