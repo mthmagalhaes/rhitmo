@@ -79,6 +79,9 @@ export function AnswerPeerReviewModal({ invite, onClose }: AnswerPeerReviewModal
         description: 'Obrigado por contribuir com a evolução do seu colega.',
       });
       queryClient.invalidateQueries({ queryKey: ['pending-peer-reviews'] });
+      // Sprint 10.5 — peer responses propagam para context_evidence (Sprint 10.1 trigger),
+      // o líder precisa ver o novo evidence no /lider/contexto sem F5.
+      queryClient.invalidateQueries({ queryKey: ['team-timeline'] });
       onClose();
     } finally {
       setSubmitting(false);
