@@ -39,14 +39,13 @@ export function useLeaderInfo(memberId: string | undefined) {
       // 2. Tenta resolver o nome do líder via team_members. Em multi-workspace,
       // restringimos ao workspace ativo para evitar pegar o nome do líder em outro tenant.
       let leaderName: string | null = null;
-      const leaderQuery = supabase
-        .from('team_members')
-        .select('name')
-        .eq('linked_user_id', leaderUserId);
-
-      const scoped = workspaceId ? leaderQuery.eq('workspace_id', workspaceId) : leaderQuery;
-
-      const { data: leaderAsMember } = await scoped.limit(1).maybeSingle();
+      // Cast leve para preservar a inferência sem entrar no inferno de tipos do supabase-js.
+      const client = supabase as unknown as {
+        from: (t: string) => any;
+      };
+      let q = client.from('team_members').select('name').eq('linked_user_id', leaderUserId);
+      if (workspaceId) q = q.eq('workspace_id', workspaceId);
+      const { data: leaderAsMember } = await q.limit(1).maybeSingle();
 
       if (leaderAsMember?.name) {
         leaderName = leaderAsMember.name as string;
