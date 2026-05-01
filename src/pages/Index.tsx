@@ -615,165 +615,23 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
       </div>
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-8">
-        <TeamTabs
-          teams={teams}
-          activeTeamId={activeTeamId}
-          onTeamChange={setActiveTeamId}
-          onNewTeam={() => setNewTeamOpen(true)}
+        {/* ═══ 1. ACCOUNT SETUP ═══ */}
+        <AccountSetupBento
+          workspaceId={workspace?.id ?? null}
+          memberCount={teamMembers.length}
+          onOpenInvite={() => setMemberDialogOpen(true)}
         />
 
-        {onboardingStatus && !isSetupComplete && (
-          <SetupChecklist
-            hasMembers={onboardingStatus.hasMembers}
-            hasFeedbacks={onboardingStatus.hasFeedbacks}
-            hasAIAnalysis={onboardingStatus.hasAIAnalysis}
-            hasMentorChat={onboardingStatus.hasMentorChat}
-            hasLeaderSync={onboardingStatus.hasLeaderSync}
-            hasInvitedMember={onboardingStatus.hasInvitedMember}
-            workspaceCreatedAt={workspace?.created_at}
-            onAddMember={() => setMemberDialogOpen(true)}
-            onAddNote={() => setDialogOpen(true)}
-            onOpenMentor={handleOpenMentor}
-            onOpenLeaderSync={() => setLeaderSyncOpen(true)}
-            onOpenInvite={() => {
-              const target =
-                teamMembers.find(m => !m.linked_user_id && (m.invite_status ?? 'none') !== 'accepted') ||
-                teamMembers[0];
-              if (target) handleOpenInviteDialog(target);
-            }}
-          />
-        )}
-
-        {/* ═══ MIRROR INSIGHT (S3.2) ═══ */}
-        <section className="mb-8">
-          <MirrorInsightCard />
-        </section>
-
-        {/* ═══ PRÓXIMAS 1:1s ═══ */}
-        <section className="mb-12 space-y-4">
-          <CalendarCardBoundary />
-          <PendingTranscriptsCard />
-        </section>
-
-
-
-
-        {/* ═══ SEU TIME ═══ */}
+        {/* ═══ 2. PRÓXIMAS 1:1s ═══ */}
         <section className="mb-12">
-          <div className="flex items-center gap-2 mb-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{t('dashboard.yourTeam')}</p>
-            {showTeamSettings && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={t('dashboard.teamSettings')}>
-                    <Settings className="h-3.5 w-3.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  <DropdownMenuItem onClick={() => setEditTeamOpen(true)}>
-                    <Pencil className="h-4 w-4 mr-2" />{t('dashboard.renameTeam')}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setDeleteTeamOpen(true)} className="text-destructive focus:text-destructive">
-                    <Trash2 className="h-4 w-4 mr-2" />{t('dashboard.deleteTeam')}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-muted-foreground">
-              {filteredMembers.length === 1
-                ? t('dashboard.membersCount', { count: 1 })
-                : t('dashboard.membersCount_plural', { count: filteredMembers.length })}
-              {' — '}{getPageTitle()}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mb-4">
-            <span className="font-medium text-foreground/70">{t('dashboard.lastNote')}</span>
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" /> {t('dashboard.recent')}</span>
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-yellow-500" /> {t('dashboard.attention')}</span>
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-destructive" /> {t('dashboard.noRecord')}</span>
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-muted-foreground/40" /> {t('dashboard.noNotes')}</span>
-          </div>
-
-          {loading ? (
-            <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-          ) : teamMembers.length === 0 ? (
-            <div className="rounded-2xl bg-card border border-border shadow-sm p-12 text-center">
-              <div className="max-w-md mx-auto">
-                {workspace && (
-                  <>
-                    <p className="text-muted-foreground mb-3 text-sm">{t('dashboard.watchDemo')}</p>
-                    <div className="aspect-video w-full rounded-xl shadow-md overflow-hidden mb-6">
-                      <iframe className="w-full h-full" src="https://www.youtube.com/embed/bRQiwrBGlsc" title="Demo do Rhitmo" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-                    </div>
-                    <Button onClick={() => setMemberDialogOpen(true)} className="rounded-full px-8 h-11">{t('dashboard.addFirstMember')}</Button>
-                  </>
-                )}
-                {!workspace && (
-                  <div className="flex justify-center py-6">
-                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : filteredMembers.length === 0 ? (
-            <div className="rounded-2xl bg-card border border-border shadow-sm p-12 text-center">
-              <p className="text-muted-foreground mb-4">{t('dashboard.noMembersInTeam')}</p>
-              <Button onClick={() => setActiveTeamId(null)} variant="outline" className="rounded-full">{t('dashboard.viewAllMembers')}</Button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredMembers.map((member) => (
-                <TeamMemberCard
-                  key={member.id}
-                  member={{
-                    id: member.id,
-                    name: member.name,
-                    role: member.role,
-                    avatar: member.avatar || null,
-                    lastFeedback: member.last_feedback_date || member.created_at,
-                    feedbackCount: member.feedback_count || 0,
-                    performanceScore: member.performance_score,
-                    teamId: member.teamId,
-                    linked_user_id: member.linked_user_id,
-                    email: member.email,
-                    invite_status: member.invite_status,
-                    invite_token: member.invite_token,
-                  } as any}
-                  pendingInvite={pendingInvitesMap.get(member.id) || null}
-                  onSendInvite={
-                    !member.linked_user_id && member.email
-                      ? () => handleOpenInviteDialog(member)
-                      : undefined
-                  }
-                  teamName={teams.find(t => t.id === member.teamId)?.name}
-                  onEdit={() => {
-                    setSelectedMember({
-                      id: member.id, name: member.name, role: member.role,
-                      teamId: member.teamId || '', avatar: member.avatar || null,
-                      lastFeedback: member.last_feedback_date || member.created_at, feedbackCount: member.feedback_count || 0,
-                      performanceScore: member.performance_score, performance_score: member.performance_score, created_at: member.created_at,
-                    });
-                    setEditMemberOpen(true);
-                  }}
-                  onClick={() => navigate(`/member/${member.id}`)}
-                />
-              ))}
-            </div>
-          )}
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-4">
+            Próximas 1:1s
+          </p>
+          <CalendarCardBoundary />
         </section>
 
-        {/* Empty state */}
-        {meetings.length === 0 && teamMembers.length > 0 && (
-          <section className="mb-12">
-            <div className="rounded-2xl bg-card border border-dashed border-border p-8 text-center">
-              <CheckCircle2 className="h-8 w-8 text-primary/30 mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">{t('dashboard.allCaughtUp')}</p>
-            </div>
-          </section>
-        )}
+        {/* ═══ 3. HISTÓRICO DO MENTOR ═══ */}
+        <MentorHistoryCard onOpenMentor={handleOpenMentor} />
       </main>
 
       {/* ═══ DIALOGS ═══ */}
