@@ -13,6 +13,7 @@ interface Thread {
   title: string;
   type: string;
   updated_at: string;
+  member_id: string | null;
 }
 
 interface Props {
@@ -29,7 +30,7 @@ export function MentorHistoryCard({ onOpenMentor }: Props) {
       if (!userId) return [];
       const { data, error } = await supabase
         .from('chat_threads')
-        .select('id, title, type, updated_at')
+        .select('id, title, type, updated_at, member_id')
         .eq('user_id', userId)
         .in('type', ['mentor', 'brief'])
         .order('updated_at', { ascending: false })
@@ -84,7 +85,13 @@ export function MentorHistoryCard({ onOpenMentor }: Props) {
               <li key={thread.id}>
                 <button
                   type="button"
-                  onClick={() => navigate(`/chat/${thread.id}`)}
+                  onClick={() => {
+                    if (thread.member_id) {
+                      navigate(`/member/${thread.member_id}?thread=${thread.id}`);
+                    } else {
+                      onOpenMentor();
+                    }
+                  }}
                   className={cn(
                     'group w-full flex items-center gap-3 px-5 py-3.5 text-left',
                     'hover:bg-muted/40 transition-colors'

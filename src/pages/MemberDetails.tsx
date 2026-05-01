@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
 import { isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
@@ -65,6 +65,23 @@ const MemberDetails = () => {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [initialThreadId, setInitialThreadId] = useState<string | null>(null);
+
+  // Open MentorChat from external links (Home history, sidebar threads, ?openMentor=true)
+  useEffect(() => {
+    const threadParam = searchParams.get('thread');
+    const openParam = searchParams.get('openMentor');
+    if (openParam === 'true' || threadParam) {
+      if (threadParam) setInitialThreadId(threadParam);
+      setChatOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete('openMentor');
+      next.delete('thread');
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [resendingInvite, setResendingInvite] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [recorderOpen, setRecorderOpen] = useState(false);
@@ -910,7 +927,7 @@ const MemberDetails = () => {
         })} 
       />
 
-      <MentorChat open={chatOpen} onOpenChange={setChatOpen} userType="leader" memberName={member.name} memberId={member.id} memberRole={member.role} feedbacks={feedbacks} workStyleData={member.work_style_data} keyObjectives={member.key_objectives} leaderSyncData={workspace?.leader_sync_data} />
+      <MentorChat open={chatOpen} onOpenChange={setChatOpen} userType="leader" memberName={member.name} memberId={member.id} memberRole={member.role} feedbacks={feedbacks} workStyleData={member.work_style_data} keyObjectives={member.key_objectives} leaderSyncData={workspace?.leader_sync_data} initialThreadId={initialThreadId} />
 
       <InviteMemberDialog
         open={inviteDialogOpen}

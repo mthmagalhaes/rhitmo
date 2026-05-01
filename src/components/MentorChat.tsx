@@ -63,6 +63,7 @@ interface MentorChatProps {
   latestReview?: string | null;
   userId?: string;
   initialPrompt?: string;
+  initialThreadId?: string | null;
 }
 
 const leaderSuggestions = [
@@ -95,6 +96,7 @@ export const MentorChat = ({
   latestReview,
   userId,
   initialPrompt,
+  initialThreadId,
 }: MentorChatProps) => {
   const isLeader = userType === 'leader';
   
@@ -163,6 +165,14 @@ export const MentorChat = ({
     enabled: open && !!threadQueryId && !!effectiveUserId,
     staleTime: 1000 * 60 * 5,
   });
+
+  // Apply initialThreadId when sheet opens (overrides auto-select of most recent)
+  useEffect(() => {
+    if (open && initialThreadId) {
+      setSelectedThreadId(initialThreadId);
+      setIsCreatingNewThread(false);
+    }
+  }, [open, initialThreadId]);
 
   useEffect(() => {
     if (!isLoadingThreads && threads.length > 0 && !selectedThreadId && !isCreatingNewThread) {
