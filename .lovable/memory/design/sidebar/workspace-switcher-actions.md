@@ -1,6 +1,6 @@
 ---
 name: Workspace Switcher Actions
-description: Sidebar tem UM ponto de entrada por ação — WorkspaceSwitcher concentra ações da org (Settings, Ajuda, Convidar); avatar abre perfil pessoal; sem QuickActionsRow nem botões duplicados no footer
+description: Sidebar tem UM ponto de entrada por ação — WorkspaceSwitcher concentra ações da org (Settings, Ajuda, Convidar); Configurações NUNCA aparece na nav principal; avatar abre perfil pessoal
 type: design
 ---
 
