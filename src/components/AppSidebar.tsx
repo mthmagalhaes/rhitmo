@@ -14,7 +14,7 @@ import {
   LEADER_NAV_ITEMS,
   DIRECT_REPORT_NAV_ITEMS,
   LEADER_HOME,
-  DIRECT_REPORT_HOME,
+  
   resolvePersona,
 } from '@/lib/navigation';
 import { NavLink } from '@/components/NavLink';
