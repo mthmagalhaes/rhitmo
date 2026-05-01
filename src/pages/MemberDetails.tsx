@@ -66,16 +66,17 @@ const MemberDetails = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialThreadId = searchParams.get('thread');
+  const [initialThreadId, setInitialThreadId] = useState<string | null>(null);
 
   // Open MentorChat from external links (Home history, sidebar threads, ?openMentor=true)
   useEffect(() => {
-    if (searchParams.get('openMentor') === 'true' || searchParams.get('thread')) {
+    const threadParam = searchParams.get('thread');
+    const openParam = searchParams.get('openMentor');
+    if (openParam === 'true' || threadParam) {
+      if (threadParam) setInitialThreadId(threadParam);
       setChatOpen(true);
-      // Clean up params so the sheet doesn't reopen on re-renders / back-nav
       const next = new URLSearchParams(searchParams);
       next.delete('openMentor');
-      // keep `thread` until sheet mounts? Remove to avoid re-applying after user picks another thread
       next.delete('thread');
       setSearchParams(next, { replace: true });
     }
