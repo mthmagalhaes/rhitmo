@@ -1572,6 +1572,7 @@ export type Database = {
           completed_at: string | null
           context_metadata: Json
           created_at: string
+          dm_sent_at: string | null
           expires_at: string | null
           id: string
           member_id: string
@@ -1589,6 +1590,7 @@ export type Database = {
           completed_at?: string | null
           context_metadata?: Json
           created_at?: string
+          dm_sent_at?: string | null
           expires_at?: string | null
           id?: string
           member_id: string
@@ -1606,6 +1608,7 @@ export type Database = {
           completed_at?: string | null
           context_metadata?: Json
           created_at?: string
+          dm_sent_at?: string | null
           expires_at?: string | null
           id?: string
           member_id?: string
@@ -2351,6 +2354,7 @@ export type Database = {
         Row: {
           attendees: Json | null
           brief_cache: Json | null
+          brief_dm_sent_at: string | null
           brief_generated_at: string | null
           end_time: string | null
           google_event_id: string
@@ -2365,6 +2369,7 @@ export type Database = {
         Insert: {
           attendees?: Json | null
           brief_cache?: Json | null
+          brief_dm_sent_at?: string | null
           brief_generated_at?: string | null
           end_time?: string | null
           google_event_id: string
@@ -2379,6 +2384,7 @@ export type Database = {
         Update: {
           attendees?: Json | null
           brief_cache?: Json | null
+          brief_dm_sent_at?: string | null
           brief_generated_at?: string | null
           end_time?: string | null
           google_event_id?: string
