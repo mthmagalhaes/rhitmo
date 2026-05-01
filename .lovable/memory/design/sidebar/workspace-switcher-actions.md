@@ -14,9 +14,9 @@ Dropdown sempre renderizado:
 1. **Workspaces** (lista, só aparece se houver >1)
 2. **Configurações** → `/lider/configuracoes` (ou `/liderado/configuracoes`)
 3. **Central de Ajuda** → `…/configuracoes?tab=ajuda`
-4. **Convidar membros** → abre `BulkOnboardDialog` (só persona `leader`, via prop `onOpenInvite`)
+4. **Convidar membros** → abre `NewMemberDialog` (formulário **individual** de 1 liderado: nome, cargo, e-mail, time, opção de enviar convite DISC). Mesmo componente do "Novo Membro" do dashboard e do "Novo liderado" da `MemberMasterList`. Só persona `leader`. **NÃO** é o bulk onboarding — esse continua disponível só para o RH Admin via `/admin` (`AdminStructure`) e dentro da aba "Convites" em `/lider/pessoas`.
 
-`BulkOnboardDialog` é instanciado UMA ÚNICA VEZ no `AppSidebar`. Headers de páginas internas (Diário, Objetivos, Avaliações) NÃO duplicam o botão "Convidar".
+`NewMemberDialog` é instanciado uma vez no `AppSidebar`. Headers de páginas internas (Diário, Objetivos, Avaliações) NÃO duplicam o botão "Convidar".
 
 ## Perfil pessoal → clique no avatar (`SidebarProfileBlock`)
 
