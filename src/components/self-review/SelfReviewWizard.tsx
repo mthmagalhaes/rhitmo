@@ -244,25 +244,48 @@ export function SelfReviewWizard({
               </Button>
             </div>
           ) : (
-            <div className="flex items-end gap-2">
-              <Textarea
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={handleKey}
-                placeholder={SELF_REVIEW_QUESTIONS[currentStep]?.placeholder ?? 'Sua resposta...'}
-                rows={2}
-                className="rounded-xl resize-none flex-1"
-                disabled={submitting}
-                autoFocus
-              />
-              <Button
-                onClick={handleSend}
-                disabled={!inputValue.trim() || submitting}
-                size="icon"
-                className="rounded-xl h-10 w-10 shrink-0"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
+            <div className="space-y-2">
+              <div className="flex items-end gap-2">
+                <Textarea
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={handleKey}
+                  placeholder={SELF_REVIEW_QUESTIONS[currentStep]?.placeholder ?? 'Sua resposta...'}
+                  rows={2}
+                  className="rounded-xl resize-none flex-1"
+                  disabled={submitting}
+                  autoFocus
+                />
+                <Button
+                  onClick={handleSend}
+                  disabled={!inputValue.trim() || submitting}
+                  size="icon"
+                  className="rounded-xl h-10 w-10 shrink-0"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+              {/* Sprint 10.5 — saída suave mid-flow (sem perder a sessão por engano) */}
+              <div className="flex justify-end">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    if (Object.keys(responses).length > 0) {
+                      toast('Sair sem enviar?', {
+                        description: 'Suas respostas serão descartadas.',
+                        action: { label: 'Sair', onClick: onClose },
+                      });
+                    } else {
+                      onClose();
+                    }
+                  }}
+                  disabled={submitting}
+                  className="text-xs text-muted-foreground"
+                >
+                  Sair
+                </Button>
+              </div>
             </div>
           )}
         </div>
