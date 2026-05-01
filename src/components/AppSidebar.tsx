@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ShieldCheck, Palette, ArrowLeft, ArrowRightLeft, UserPlus, LifeBuoy, Copy, Check, Settings } from 'lucide-react';
+import { ShieldCheck, Palette, ArrowLeft, ArrowRightLeft, LifeBuoy, Copy, Check, Settings } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useAccount } from '@/contexts/AccountContext';
@@ -162,7 +162,9 @@ export function AppSidebar() {
       {/* Zone A — Workspace Switcher */}
       <SidebarHeader className={cn('pt-4 pb-2', open ? 'px-3' : 'px-2')}>
         {open ? (
-          <WorkspaceSwitcher />
+          <WorkspaceSwitcher
+            onOpenInvite={persona === 'leader' ? () => setInviteOpen(true) : undefined}
+          />
         ) : (
           <RhitmoLogo size="sm" className="text-primary mx-auto" />
         )}
@@ -268,18 +270,6 @@ export function AppSidebar() {
 
         {/* Persistent AI CTA */}
         {open && <SidebarFooterCTA persona={persona} />}
-
-        {/* Invite (leader only) */}
-        {open && persona === 'leader' && (
-          <button
-            type="button"
-            onClick={() => setInviteOpen(true)}
-            className="mx-2 flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 transition-colors"
-          >
-            <UserPlus className="h-3.5 w-3.5" />
-            <span>{t('nav.convidar_membros')}</span>
-          </button>
-        )}
 
         {/* Settings + Support quick links */}
         {open && (

@@ -130,14 +130,9 @@ export default function LiderPessoas() {
 
   return (
     <div className="max-w-5xl mx-auto p-6">
-      <header className="mb-6 flex items-center justify-between gap-3">
-        <div>
-          <h1 className="font-serif text-3xl font-bold tracking-tight">Pessoas</h1>
-          <p className="text-muted-foreground text-sm mt-1">Liderados, times, analytics e convites.</p>
-        </div>
-        <Button onClick={() => setInviteOpen(true)} variant="outline" className="rounded-xl gap-2">
-          <UserPlus className="w-4 h-4" /> Convidar
-        </Button>
+      <header className="mb-6">
+        <h1 className="font-serif text-3xl font-bold tracking-tight">Pessoas</h1>
+        <p className="text-muted-foreground text-sm mt-1">Liderados, times, analytics e convites.</p>
       </header>
       <PageTabs tabs={tabs} defaultValue="membros" />
       <BulkOnboardDialog

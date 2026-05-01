@@ -125,7 +125,12 @@
     "settingsTooltip": "Configuración",
     "logoutTooltip": "Cerrar sesión",
     "signOut": "Cerrar sesión",
-    "feedbacks": "Feedbacks"
+    "feedbacks": "Feedbacks",
+    "workspace": {
+      "settings": "Configuración",
+      "helpCenter": "Centro de Ayuda",
+      "inviteMembers": "Invitar miembros"
+    }
   },
   "auth": {
     "restrictedAccess": "Acceso Restringido",
