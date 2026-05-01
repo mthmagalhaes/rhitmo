@@ -37,7 +37,7 @@ import { SidebarFooterCTA } from '@/components/sidebar/SidebarFooterCTA';
 import { SidebarProfileBlock } from '@/components/sidebar/SidebarProfileBlock';
 import { GlobalSearchDialog } from '@/components/sidebar/GlobalSearchDialog';
 import { MentorChat } from '@/components/MentorChat';
-import { BulkOnboardDialog } from '@/components/admin/BulkOnboardDialog';
+import { NewMemberDialog } from '@/components/NewMemberDialog';
 import { cn } from '@/lib/utils';
 
 export function AppSidebar() {
@@ -50,25 +50,13 @@ export function AppSidebar() {
   const { isAdmin } = useAdmin();
   const { id: effectiveUserId, isImpersonating } = useEffectiveUser();
   const { stopImpersonation, impersonatedEmail } = useImpersonation();
-  const { isLeader, isHRAdmin, isLinkedMember, linkedMember } = useAccount();
+  const { isLeader, isHRAdmin, isLinkedMember, linkedMember, workspaceId } = useAccount();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mentorOpen, setMentorOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
 
-  // Workspace names for the bulk-onboard dialog (loaded only on demand).
-  const { data: workspaceNames = [] } = useQuery({
-    queryKey: ['sidebar-workspace-names', effectiveUserId],
-    queryFn: async (): Promise<string[]> => {
-      if (!effectiveUserId) return [];
-      const { data, error } = await supabase.from('workspaces').select('name');
-      if (error) return [];
-      return (data ?? []).map((w: { name: string }) => w.name);
-    },
-    enabled: !!effectiveUserId && inviteOpen,
-    staleTime: 5 * 60 * 1000,
-  });
 
   const isSuperAdmin = isAdmin && user?.email === 'matheus@rhitmo.co' && !isImpersonating;
   const isInHRContext = location.pathname.startsWith('/hr');
@@ -280,12 +268,12 @@ export function AppSidebar() {
       {/* Global cmdk search */}
       <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} persona={persona} />
 
-      {/* Bulk-onboard members */}
-      {persona === 'leader' && (
-        <BulkOnboardDialog
+      {/* Add member (single, leader-style) */}
+      {persona === 'leader' && workspaceId && (
+        <NewMemberDialog
           open={inviteOpen}
           onOpenChange={setInviteOpen}
-          workspaceNames={workspaceNames}
+          workspaceId={workspaceId}
         />
       )}
 
