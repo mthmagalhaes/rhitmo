@@ -1,38 +1,39 @@
-## Auditoria — Resultado
+## Plano: Refinos de Navegação do Líder
 
-A maior parte do checklist já foi resolvida na **Sprint 10.5 (Feedback Ecosystem UX Polish)**. Verifiquei file-by-file e o sistema está robusto:
+Aplicar duas pequenas melhorias de UX para fechar as lacunas identificadas na auditoria.
 
-| Verificação | Status |
-|---|---|
-| `disabled={submitting}` + spinner em todos os submits | ✅ Pulse, Peer, Self, Upwards |
-| Modal fecha + toast + invalidate em sucesso | ✅ Todas as queries certas |
-| Bloqueio de fechar overlay durante submit | ✅ `!submitting && onClose()` em todos |
-| Cancelar mid-flow sem erro de console | ✅ Wizards com confirm toast; modais simples com botão Cancelar |
-| Empty states (`/lider/contexto`, alerts, dashboard) | ✅ Alerts retornam `null`; Contexto tem empty card; Upwards card só renderiza com líder vinculado |
-| Reset on open (estado residual) | ✅ Send Pulse + ambos Wizards |
-| Rollback em multi-insert (Peer Review) | ✅ Deleta review-pai órfã se convites falham |
+### 1. Adicionar "Início" à sidebar do Líder
 
-## Lacunas pequenas que vou corrigir
+Arquivo: `src/lib/navigation.ts`
 
-### 1. Discard confirmation nos modais de resposta (Pulse + Peer)
-Hoje `AnswerPulseModal` e `AnswerPeerReviewModal` descartam silenciosamente respostas digitadas se o usuário clica em "Cancelar" ou fora do modal. Os Wizards (Self/Upwards) já têm confirm via `toast(..., { action: { label: 'Sair', onClick } })`. Vou aplicar o mesmo padrão para consistência: se houver pelo menos uma resposta com texto, perguntar antes de fechar.
+Adicionar um novo item como primeiro elemento de `LEADER_NAV_ITEMS`:
 
-### 2. Empty state inline no `SendPulseModal`
-Quando o líder não tem liderados, a mensagem "Você ainda não tem liderados diretos" fica escondida **dentro** do dropdown — só aparece se o usuário clicar no Select. Vou aplicar o mesmo padrão do `RequestPeerReviewModal`: card inline visível imediatamente, escondendo o resto do form. Mais discoverable.
+- id: `inicio`
+- labelKey: `nav.lider.inicio`
+- icon: `Home` (lucide-react)
+- to: `/lider/inicio`
 
-### 3. Cleanup
-Cabeçalho duplicado em `SendPulseModal.tsx` (linhas 1–4 repetem o mesmo comentário).
+Também adicionar a chave `nav.lider.inicio` ("Início") nos arquivos de tradução PT-BR e EN do namespace `nav` para evitar fallback.
 
-## Arquivos a editar
-- `src/components/pulse/AnswerPulseModal.tsx`
-- `src/components/peer-review/AnswerPeerReviewModal.tsx`
-- `src/components/pulse/SendPulseModal.tsx`
+### 2. CTA de download do Conector Chrome
 
-## Não vou tocar
-- Banco / RLS / triggers (intactos por design).
-- Wizards Self/Upwards (já têm o padrão de discard).
-- Alerts e Cards de entrada (já bem feitos).
-- `/lider/contexto` (empty state já elegante).
+Arquivo: `src/pages/lider/Configuracoes.tsx`
 
-## Resumo final
-Vou entregar um pequeno PR de polimento em 3 arquivos + um resumo `.lovable/memory/features/performance/feedback-ux-polish.md` atualizado para registrar essa segunda passagem (Sprint 10.6 — sanity check pre-Slack).
+No card do "Conector Chrome" (linhas 72–78 / render no map):
+
+- Adicionar um botão "Instalar extensão" no `CardContent`, ao lado do status.
+- O botão dispara um download via fetch+blob de `/rhitmo-recorder-extension.zip` (já existe em `public/`).
+- Abrir um popover/dialog curto com instruções (Unzip → `chrome://extensions` → Developer mode → Load unpacked).
+
+Para manter o `items` como array genérico, vou converter o card do Chrome em renderização customizada (ou adicionar um campo opcional `action?: ReactNode` em cada item e renderizá-lo dentro de `CardContent`).
+
+### Arquivos a editar
+
+- `src/lib/navigation.ts` (adicionar item Início)
+- `src/locales/pt-BR/nav.json` e `src/locales/en/nav.json` (chave `lider.inicio`)
+- `src/pages/lider/Configuracoes.tsx` (CTA Chrome com download + instruções)
+
+### Fora de escopo
+
+- UI de gestão de bots Recall.ai (gap menor, fica para sprint futura junto com a integração de Calendar).
+- Mudanças em rotas, RLS ou Edge Functions.
