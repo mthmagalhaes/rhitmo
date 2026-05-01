@@ -65,6 +65,22 @@ const MemberDetails = () => {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialThreadId = searchParams.get('thread');
+
+  // Open MentorChat from external links (Home history, sidebar threads, ?openMentor=true)
+  useEffect(() => {
+    if (searchParams.get('openMentor') === 'true' || searchParams.get('thread')) {
+      setChatOpen(true);
+      // Clean up params so the sheet doesn't reopen on re-renders / back-nav
+      const next = new URLSearchParams(searchParams);
+      next.delete('openMentor');
+      // keep `thread` until sheet mounts? Remove to avoid re-applying after user picks another thread
+      next.delete('thread');
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [resendingInvite, setResendingInvite] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [recorderOpen, setRecorderOpen] = useState(false);
