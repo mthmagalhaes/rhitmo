@@ -68,6 +68,67 @@ async function appendConversationTurn(
   }
 }
 
+// ── Conversational LLM (Sprint 11.2) ─────────────────────
+// System prompts per intent. Default = general_chat.
+function buildSystemPromptForIntent(intent: string): string {
+  switch (intent) {
+    case 'pulse_survey':
+      return 'Você é a Rhitmo conduzindo um Pulse Survey. Faça uma pergunta por vez, em português do Brasil, com tom acolhedor e breve. Use formatação Slack (*negrito*).';
+    case '1v1_prep':
+      return 'Você é a Rhitmo ajudando a preparar uma 1:1. Seja extremamente conciso, ofereça 2–3 tópicos práticos, em português do Brasil, formatação Slack (*negrito*, listas com •).';
+    case 'self_review':
+      return 'Você é a Rhitmo guiando uma autoavaliação. Faça perguntas reflexivas, uma por vez, em português do Brasil, formatação Slack (*negrito*).';
+    case 'general_chat':
+    default:
+      return 'Você é a inteligência artificial da Rhitmo, atuando como um mentor de liderança. Seja extremamente conciso, amigável e direto ao ponto. Responda usando formatação nativa do Slack (*negrito*, _itálico_, listas com •). Responda sempre em português do Brasil. Não invente dados sobre o time se não estiverem no histórico desta conversa.';
+  }
+}
+
+// Calls Lovable AI Gateway. Always returns a string — never throws.
+async function callLovableAI(
+  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+): Promise<string> {
+  const apiKey = Deno.env.get('LOVABLE_API_KEY');
+  if (!apiKey) {
+    console.error('[AI] LOVABLE_API_KEY missing');
+    return '⚠️ A IA da Rhitmo não está configurada no momento.';
+  }
+  try {
+    const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages,
+        temperature: 0.6,
+      }),
+    });
+    if (resp.status === 429) {
+      console.warn('[AI] Rate limited (429)');
+      return '⏳ A Rhitmo está sobrecarregada agora. Tente em instantes.';
+    }
+    if (resp.status === 402) {
+      console.warn('[AI] No credits (402)');
+      return '⚠️ Créditos de IA da workspace esgotados. Avise quem administra a Rhitmo.';
+    }
+    if (!resp.ok) {
+      const t = await resp.text().catch(() => '');
+      console.error('[AI] Gateway error', resp.status, t.slice(0, 300));
+      return '⚠️ Tive um problema para pensar agora. Pode tentar de novo?';
+    }
+    const data = await resp.json();
+    const content = data?.choices?.[0]?.message?.content;
+    if (typeof content === 'string' && content.trim().length > 0) return content.trim();
+    return '⚠️ Não consegui formular uma resposta agora.';
+  } catch (err) {
+    console.error('[AI] callLovableAI threw:', err);
+    return '⚠️ Tive um problema para pensar agora. Pode tentar de novo?';
+  }
+}
+
 // ── Channel Type Cache (5min TTL) ────────────────────────
 const channelCache = new Map<string, { isPublic: boolean; ts: number }>();
 const CACHE_TTL = 5 * 60 * 1000;
