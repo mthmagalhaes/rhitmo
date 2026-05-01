@@ -1,4 +1,5 @@
-// Sprint 12.1 — 1:1s estilo Windmill: título da página vive na coluna direita.
+// Sprint 12.2 — /lider/1on1s estilo Windmill/Notion: master-detail + ordem
+// editorial (Sugestões → Próximas → Pauta → Action items → Privada).
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Calendar as CalendarIcon } from 'lucide-react';
@@ -9,7 +10,8 @@ import { MemberMasterList } from '@/components/leader/MemberMasterList';
 import { EmptyMemberDetail } from '@/components/leader/EmptyMemberDetail';
 import { OneOnOnePrepCard } from '@/components/oneonone/OneOnOnePrepCard';
 import { AgendaBlock, type AgendaBlockRef } from '@/components/oneonone/AgendaBlock';
-import { UpcomingMeetingsCard } from '@/components/dashboard/UpcomingMeetingsCard';
+import { ActionItemsBlock } from '@/components/oneonone/ActionItemsBlock';
+import { MemberUpcomingMeetings } from '@/components/oneonone/MemberUpcomingMeetings';
 import { useLeaderMembers, type LeaderMemberRow } from '@/hooks/useLeaderMembers';
 
 export default function LiderOneOnOnes() {
@@ -47,7 +49,7 @@ export default function LiderOneOnOnes() {
           </div>
         ) : (
           <div className="max-w-2xl mx-auto px-6 lg:px-10 py-10 space-y-8">
-            {/* Subtítulo da seção (não compete com o nome do liderado) */}
+            {/* Eyebrow da seção */}
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               1:1s
             </p>
@@ -83,35 +85,44 @@ export default function LiderOneOnOnes() {
               </Button>
             </header>
 
-            {/* AI Prep */}
+            {/* AI Prep — sugestões da Rhitmo */}
             <OneOnOnePrepCard
               workspaceId={workspace?.id ?? null}
               memberId={selected.id}
               onAdd={(text) => sharedRef.current?.appendLine(text)}
             />
 
-            {/* Próximas reuniões */}
+            {/* Próximas reuniões deste liderado (versão enxuta) */}
             <section className="space-y-3">
               <h2 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
                 Próximas reuniões
               </h2>
-              <UpcomingMeetingsCard />
+              <MemberUpcomingMeetings
+                memberId={selected.id}
+                memberName={selected.name}
+              />
             </section>
 
-            {/* Pauta + Anotação */}
-            <section className="grid gap-4 md:grid-cols-2">
-              <AgendaBlock
-                ref={sharedRef}
-                variant="shared"
-                memberId={selected.id}
-                workspaceId={workspace?.id ?? null}
-              />
-              <AgendaBlock
-                variant="private"
-                memberId={selected.id}
-                workspaceId={workspace?.id ?? null}
-              />
-            </section>
+            {/* Pauta compartilhada (full-width, neutra) */}
+            <AgendaBlock
+              ref={sharedRef}
+              variant="shared"
+              memberId={selected.id}
+              workspaceId={workspace?.id ?? null}
+            />
+
+            {/* Itens de ação */}
+            <ActionItemsBlock
+              memberId={selected.id}
+              workspaceId={workspace?.id ?? null}
+            />
+
+            {/* Anotação privada (full-width, bg-muted + dashed + cadeado) */}
+            <AgendaBlock
+              variant="private"
+              memberId={selected.id}
+              workspaceId={workspace?.id ?? null}
+            />
 
             {/* CTA: histórico completo */}
             <Card

@@ -141,7 +141,7 @@ export const AgendaBlock = forwardRef<AgendaBlockRef, AgendaBlockProps>(
       >
         <header className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <Icon className="h-4 w-4 text-foreground/70" />
+            <Icon className={cn('h-4 w-4', cfg.iconClass)} />
             <h3 className="font-serif text-sm font-bold tracking-tight">
               {cfg.label}
             </h3>
