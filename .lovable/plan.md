@@ -1,111 +1,145 @@
-## Sprint 11.2 — Plug LLM (Lovable AI Gateway) into the Slack Conversational Machine
+## Sprint 11.3 — Rhitmo Orchestrator (Proactive Slack DMs)
 
-### Stability guarantees (what stays untouched)
-- All slash commands (`/rhitmo`, `/nota`, `/kudos`, `/brief`, `/mentor`, `/meu-pdi`, `/meu-rhitmo`, `/review`, `/pdi`).
-- All existing `block_actions` (`open_add_note`, `open_send_kudos`, `privacy_continue`, `action_meu_pdi`, URL buttons, etc.).
-- `app_home_opened` welcome flow + throttle.
-- Signature verification, persona resolution, modal handling, `processInteraction` / `processCommand` async pattern.
+A new cron-driven Edge Function scans the system every 30 min and fires contextual DMs to leaders (1:1 prep) and direct reports (pending Pulse). Reuses **all** infrastructure from Sprints 11.1/11.2 (`SLACK_BOT_TOKEN`, `slackApi` pattern, `slack_integrations` mapping). The existing `general_chat` flow and slash commands are not touched.
 
-The new LLM path lives **only** inside the existing conversational hook (lines ~1707–1722 of `slack-bot/index.ts`), and the new "Conversar com a Rhitmo" button only adds a new `case` to the existing `block_actions` switch.
-
-We use **Lovable AI Gateway** (`LOVABLE_API_KEY`, model `google/gemini-2.5-flash`), matching `chat-mentor` and project standards — no new secret needed.
+### Stability guarantees (untouched)
+- `slack-bot/index.ts` — no changes.
+- `general_chat`, `start_rhitmo_chat`, all slash commands, App Home flow.
+- `slack_conversations` table and RPCs.
+- Button clicks (`prep_1on1_brief`, `answer_pulse`) are **not** wired in this sprint — they fall through to the `default` log in the existing `block_actions` switch. Wiring is the next sprint's scope.
 
 ---
 
-### 1. Replace the placeholder ack with a real LLM turn
+### 1. New Edge Function: `slack-rhitmo-orchestrator`
 
-Inside the DM hook (right after `appendConversationTurn` of the user turn), instead of sending the "Recebi sua mensagem…" placeholder:
+**Path**: `supabase/functions/slack-rhitmo-orchestrator/index.ts`
 
-1. Return the Slack 200 OK **immediately** (already the pattern — the IIFE runs detached and the outer handler already returns 200 at line 1759). Wrap the LLM work in `EdgeRuntime.waitUntil(...)` when available so the runtime doesn't terminate the task; fall back to the existing fire-and-forget IIFE if not.
-2. Build messages:
-   - **System prompt** chosen by `conv.intent`. New helper `buildSystemPromptForIntent(intent)` with cases:
-     - `general_chat` (and default): "Você é a inteligência artificial da Rhitmo, atuando como um mentor de liderança. Seja extremamente conciso, amigável e direto ao ponto. Responda usando formatação nativa do Slack (`*negrito*`, `_itálico_`, listas com `•`). Responda sempre em português do Brasil. Não invente dados sobre o time se não estiverem no histórico desta conversa."
-     - `pulse_survey`, `1v1_prep`, `self_review` → minimal placeholder strings now (real prompts come in 11.3+). Keep the switch so adding intents is trivial.
-   - Map `conv.state_data.turns` → `[{ role: 'user'|'assistant', content: turn.text }]`. Cap at the last 20 turns to bound context size.
-3. New helper `callLovableAI(messages)` (top of file, near `slackApi`):
-   - POST `https://ai.gateway.lovable.dev/v1/chat/completions`
-   - `model: 'google/gemini-2.5-flash'`, `temperature: 0.6`, no streaming.
-   - Reads `Deno.env.get('LOVABLE_API_KEY')`.
-   - Handles 429 → returns "⏳ Rhitmo está sobrecarregado, tente em instantes." and 402 → "⚠️ Créditos de IA da workspace esgotados." Other errors → generic friendly message. Always returns a string so downstream code never throws.
-4. After getting `assistantText`:
-   - `appendConversationTurn(conv.id, { role: 'assistant', text: assistantText, ts: String(Date.now()/1000) })` (the existing helper already updates `last_message_at` and refreshes TTL).
-   - `slackApi('chat.postMessage', { channel: event.channel, text: assistantText, mrkdwn: true })`.
-5. `return` — keep short-circuit behavior so the welcome menu never fires when a conversation is active. Behavior on failure: log + post a friendly fallback message; never throw out of the hook.
+Standard cron pattern, mirroring `generate-monthly-recap-cron`:
+- `validateCronSecret(req)` for auth (`x-cron-secret` header).
+- Service-role `supabase` client.
+- Inline `slackApi(method, body)` helper using `SLACK_BOT_TOKEN` (identical to slack-bot's helper — copy in, no shared import to avoid coupling).
+- Idempotency key columns added by migration (see §3) so each meeting / pulse only triggers once.
 
-This is the **only** change inside the DM branch. Welcome menu / throttle / persona / app_home logic remain bit-identical.
+Returns `{ ok, processed: { briefs: N, pulses: M }, errors: [...] }`.
 
-### 2. "Conversar com a Rhitmo" trigger button
+### 2. Routine 1 — Leader 1:1 prep DMs
 
-`buildRhitmoMenu(persona)` (lines ~434–495) already branches per persona and emits an `actions` block. Add a new button to **leader** and **direct_report** branches (skip `hr_admin` for now — they have a different operational menu):
+Query window: meetings starting between **now + 12h and now + 36h** (covers the "tomorrow" framing without being noisy on edge cases of hourly runs).
 
 ```text
-{ type: 'button',
-  text: { type: 'plain_text', text: '🌀 Conversar com a Rhitmo' },
-  action_id: 'start_rhitmo_chat' }
+SELECT um.id, um.user_id (=leader), um.member_id, um.title, um.start_time,
+       tm.name AS member_name,
+       si.slack_user_id
+  FROM upcoming_meetings um
+  JOIN team_members tm        ON tm.id = um.member_id
+  JOIN slack_integrations si  ON si.user_id = um.user_id
+ WHERE um.start_time BETWEEN now() + interval '12 hours'
+                          AND now() + interval '36 hours'
+   AND um.brief_dm_sent_at IS NULL
 ```
 
-Place it as a secondary button next to the existing primary actions to avoid visual disruption.
-
-### 3. Handle the new action_id
-
-In the `block_actions` switch (`processInteraction`, lines ~1256–1360), add:
+For each row → DM the leader's `slack_user_id` with Block Kit:
 
 ```text
-case 'start_rhitmo_chat': {
-  const persona = await getUserPersona(slackUserId);
-  if (persona.persona === 'unauthenticated' || !persona.workspaceId) {
-    // Politely tell them to connect first. No conversation row created.
-    await slackApi('chat.postMessage', {
-      channel: slackUserId, // DM
-      text: 'Conecte sua conta Rhitmo para conversar comigo. Use /rhitmo para começar.',
-    });
-    break;
-  }
-
-  // Idempotency: if an active conversation already exists, just nudge.
-  const existing = await getActiveConversation(slackUserId);
-  if (existing) {
-    await slackApi('chat.postMessage', {
-      channel: slackUserId,
-      text: 'Já estamos numa conversa ativa 🌀 — é só me responder por aqui.',
-    });
-    break;
-  }
-
-  // Direct INSERT via service role client (already used elsewhere in the file).
-  await supabaseAdmin.from('slack_conversations').insert({
-    workspace_id: persona.workspaceId,
-    slack_user_id: slackUserId,
-    intent: 'general_chat',
-    status: 'active',
-    state_data: { turns: [] },
-  });
-
-  await slackApi('chat.postMessage', {
-    channel: slackUserId,
-    text: 'Olá! Eu sou o Mentor da Rhitmo 🌀, conectado ao seu Context Graph. Sobre o que você quer falar ou refletir hoje?',
-  });
-  break;
-}
+section: "👋 Olá! Vi que você tem uma 1:1 com *{member_name}* {amanhã/em X horas}.
+         Quer que eu puxe o Context Graph e monte uma sugestão de pauta?"
+context: "📅 {dia/hora formatada pt-BR}"
+actions: [
+  { type: button, style: primary, text: "🧠 Gerar Pauta",
+    action_id: "prep_1on1_brief",
+    value: "<meeting_id>:<member_id>" }
+]
 ```
 
-The partial unique index on `(slack_user_id) WHERE status='active'` (Sprint 11.1) protects against double-creation if the user spams the button.
+After successful `chat.postMessage`, mark `upcoming_meetings.brief_dm_sent_at = now()`.
 
-### 4. Tiny housekeeping
-- `default` log in the action switch already exists — no regression for unrelated buttons.
-- Update `mem://features/slack/conversational-state-machine`: mark Sprint 11.2 as done, add the LLM call + `start_rhitmo_chat` trigger to the doc, keep "no LLM" line removed.
+### 3. Routine 2 — Direct report Pulse alerts
 
-### 5. Files touched
-- **Edited**: `supabase/functions/slack-bot/index.ts`
-  - +`callLovableAI()` and `buildSystemPromptForIntent()` helpers near the top.
-  - LLM call replaces the placeholder inside the conversational hook.
-  - New button in `buildRhitmoMenu` (leader + direct_report).
-  - New `start_rhitmo_chat` case in `block_actions` switch.
-- **Edited**: `.lovable/memory/features/slack/conversational-state-machine.md` (status update).
-- **No DB migration**, **no frontend changes**, **no new secrets**.
+```text
+SELECT ps.id, ps.member_id, ps.type, ps.sent_at,
+       tm.name AS member_name, tm.linked_user_id,
+       si.slack_user_id
+  FROM pulse_surveys ps
+  JOIN team_members tm        ON tm.id = ps.member_id
+  JOIN slack_integrations si  ON si.user_id = tm.linked_user_id
+ WHERE ps.status = 'pending'
+   AND ps.sent_at > now() - interval '7 days'   -- avoid resurrecting stale ones
+   AND (ps.expires_at IS NULL OR ps.expires_at > now())
+   AND ps.dm_sent_at IS NULL
+```
 
-### Out of scope (next sprints)
-- Per-intent prompt templates and structured flows (Pulse, 1:1 prep, Self-Review).
-- Cron sweep for `expire_stale_slack_conversations()`.
-- "Encerrar conversa" button to flip `status='completed'` (currently happens only via TTL expiration / manual cleanup).
-- Streaming responses to Slack (Slack does not support SSE; would require chunked `chat.update` — explicitly out of scope).
+DM the member's `slack_user_id`:
+
+```text
+section: "🌀 Oi! Seu líder enviou um *Pulse rápido* sobre *{tipo legível}*.
+         Quer responder agora por aqui mesmo?"
+context: "⏱️ Leva ~2 minutos"
+actions: [
+  { type: button, style: primary, text: "✍️ Responder Pulse",
+    action_id: "answer_pulse",
+    value: "<pulse_id>" },
+  { type: button, text: "Mais tarde",
+    action_id: "snooze_pulse",
+    value: "<pulse_id>" }
+]
+```
+
+After successful send, mark `pulse_surveys.dm_sent_at = now()`.
+
+### 4. DB migration — idempotency columns
+
+```sql
+ALTER TABLE public.upcoming_meetings
+  ADD COLUMN IF NOT EXISTS brief_dm_sent_at timestamptz;
+
+ALTER TABLE public.pulse_surveys
+  ADD COLUMN IF NOT EXISTS dm_sent_at timestamptz;
+
+CREATE INDEX IF NOT EXISTS idx_upcoming_meetings_brief_dm
+  ON public.upcoming_meetings (start_time)
+  WHERE brief_dm_sent_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_pulse_surveys_dm_pending
+  ON public.pulse_surveys (sent_at)
+  WHERE dm_sent_at IS NULL AND status = 'pending';
+```
+
+### 5. Cron schedule (separate INSERT, not migration)
+
+Runs every 30 minutes — frequent enough to feel proactive, cheap enough not to spam. Calls the function with `INTERNAL_CRON_TRIGGER` and the project anon key.
+
+```sql
+SELECT cron.schedule(
+  'rhitmo-orchestrator-every-30min',
+  '*/30 * * * *',
+  $$ SELECT net.http_post(
+       url:='https://lybkgujyezzzvbzypxed.supabase.co/functions/v1/slack-rhitmo-orchestrator',
+       headers:='{"Content-Type":"application/json","x-cron-secret":"INTERNAL_CRON_TRIGGER","Authorization":"Bearer <anon>"}'::jsonb,
+       body:='{}'::jsonb
+     ) $$
+);
+```
+
+### 6. Error handling & observability
+- Per-row try/catch — one failure never blocks the whole batch.
+- Skip rows where `slackApi` returns `ok:false` (don't mark as sent → retried next tick), with the standard `[SLACK_API]` log line we already use.
+- Top-level `console.log('[ORCHESTRATOR] briefs=X pulses=Y errors=Z')` for log greppability.
+- Hard cap: process at most 100 briefs + 100 pulses per run.
+
+### 7. Files
+
+**Created**
+- `supabase/functions/slack-rhitmo-orchestrator/index.ts`
+- Migration: `ALTER TABLE` for the two `*_dm_sent_at` columns + indexes.
+- `mem://features/slack/proactive-dms-orchestrator.md`
+
+**Edited**
+- `mem://index.md` — add new memory reference.
+- `.lovable/plan.md` — replace 11.2 entry with 11.3.
+
+**No changes**: `slack-bot/index.ts`, frontend, `slack_conversations`, secrets.
+
+### Out of scope (next sprint)
+- `prep_1on1_brief`, `answer_pulse`, `snooze_pulse` button handlers (will live in `slack-bot` and bridge to `generate-brief` / open a `pulse_survey` intent conversation).
+- Quiet hours / per-user notification preferences for proactive DMs.
+- Aggregating multiple same-day 1:1s into a single digest DM.
