@@ -1,11 +1,10 @@
 // Sprint 9.2 — Modal do líder para disparar um Pulse Survey.
 // RLS de INSERT em pulse_surveys garante que apenas líderes do membro consigam criar.
-// Sprint 9.2 — Modal do líder para disparar um Pulse Survey.
-// RLS de INSERT em pulse_surveys garante que apenas líderes do membro consigam criar.
 // Sprint 10.5 — guard !submitting + reset on open para UX limpa.
+// Sprint 10.6 — empty state inline (em vez de escondido dentro do Select).
 import { useEffect, useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAccount } from '@/contexts/AccountContext';

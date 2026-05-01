@@ -88,8 +88,22 @@ export function AnswerPeerReviewModal({ invite, onClose }: AnswerPeerReviewModal
     }
   };
 
+  // Sprint 10.6 — confirma descarte se já houver respostas iniciadas.
+  const requestClose = () => {
+    if (submitting) return;
+    const hasContent = Object.values(answers).some((v) => (v ?? '').trim().length > 0);
+    if (hasContent) {
+      toast('Sair sem enviar?', {
+        description: 'Suas respostas serão descartadas.',
+        action: { label: 'Sair', onClick: onClose },
+      });
+      return;
+    }
+    onClose();
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && !submitting && onClose()}>
+    <Dialog open={open} onOpenChange={(o) => !o && requestClose()}>
       <DialogContent className="rounded-2xl max-w-xl">
         <DialogHeader>
           <DialogTitle className="font-serif flex items-center gap-2">
@@ -124,7 +138,7 @@ export function AnswerPeerReviewModal({ invite, onClose }: AnswerPeerReviewModal
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={onClose} disabled={submitting}>
+          <Button variant="ghost" onClick={requestClose} disabled={submitting}>
             Cancelar
           </Button>
           <Button onClick={handleSubmit} disabled={submitting}>
