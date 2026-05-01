@@ -1,4 +1,5 @@
-// Sprint 12 — Empty-state for the right pane of Master-Detail leader pages.
+// Sprint 12.1 — Empty-state minimalista para o painel direito Master-Detail.
+// Sem card colorido invasor: apenas ícone outline + título + descrição.
 import { Users, type LucideIcon } from 'lucide-react';
 
 interface EmptyMemberDetailProps {
@@ -14,12 +15,17 @@ export function EmptyMemberDetail({
 }: EmptyMemberDetailProps) {
   return (
     <div className="h-full min-h-[60vh] flex items-center justify-center px-6">
-      <div className="text-center max-w-sm">
-        <div className="mx-auto h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-5">
-          <Icon className="h-7 w-7 text-primary" />
-        </div>
-        <h2 className="font-serif text-xl font-bold tracking-tight mb-2">{title}</h2>
-        <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+      <div className="text-center max-w-xs">
+        <Icon
+          className="h-10 w-10 mx-auto mb-4 text-muted-foreground/40"
+          strokeWidth={1.5}
+        />
+        <h2 className="font-serif text-lg font-bold tracking-tight mb-1.5">
+          {title}
+        </h2>
+        <p className="text-xs text-muted-foreground/80 leading-relaxed">
+          {description}
+        </p>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-// Sprint 12 — Objetivos com layout Master-Detail.
+// Sprint 12.1 — Objetivos com layout Master-Detail estilo Windmill.
 import { useState } from 'react';
 import { Plus, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,14 +16,23 @@ export default function LiderObjetivos() {
   return (
     <div className="flex min-h-[calc(100vh-4rem)]">
       <MemberMasterList
-        title="Objetivos"
         selectedMemberId={selected?.id ?? null}
         onSelect={(m) => setSelected(m)}
       />
 
       <main className="flex-1 min-w-0">
+        <div className="lg:hidden px-4 sm:px-6 pt-4" />
+
         {!selected ? (
-          <div className="px-4 sm:px-6 py-8">
+          <div className="max-w-2xl mx-auto px-6 lg:px-10 py-10">
+            <header className="mb-2">
+              <h1 className="font-serif text-2xl font-bold tracking-tight">
+                Objetivos
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Acompanhe metas, indicadores e datas de cada liderado.
+              </p>
+            </header>
             <EmptyMemberDetail
               icon={Target}
               title="Selecione um liderado"
@@ -31,8 +40,12 @@ export default function LiderObjetivos() {
             />
           </div>
         ) : (
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-            <header className="flex items-center justify-between gap-3">
+          <div className="max-w-2xl mx-auto px-6 lg:px-10 py-10 space-y-8">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Objetivos
+            </p>
+
+            <header className="flex items-center justify-between gap-3 -mt-4">
               <div className="flex items-center gap-3">
                 <MemberAvatar
                   memberId={selected.id}
@@ -41,18 +54,20 @@ export default function LiderObjetivos() {
                   size="lg"
                 />
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                    Objetivos
-                  </p>
                   <h1 className="font-serif text-2xl font-bold tracking-tight">
                     {selected.name}
                   </h1>
                   {selected.role && (
-                    <p className="text-sm text-muted-foreground">{selected.role}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {selected.role}
+                    </p>
                   )}
                 </div>
               </div>
-              <Button onClick={() => setNewGoalOpen(true)} className="rounded-xl gap-2">
+              <Button
+                onClick={() => setNewGoalOpen(true)}
+                className="rounded-xl gap-2"
+              >
                 <Plus className="h-4 w-4" />
                 Novo objetivo
               </Button>

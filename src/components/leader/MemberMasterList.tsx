@@ -1,14 +1,27 @@
-// Sprint 12 — Master list for leader Master-Detail pages (1:1s, Diário, Objetivos).
-// Renders a sticky vertical list of liderados with health dots and a `Sheet`
-// fallback for mobile. Selection is fully controlled by the parent page.
+// Sprint 12.1 — Master list disciplinada estilo Windmill.
+// - Header neutro "Liderados · N" (nunca o nome da página)
+// - Filtro de times via Select compacto (não vaza)
+// - Footer "Novo liderado" como item de menu sutil
 import { useState, type ReactNode } from 'react';
 import { Loader2, Menu, UserPlus, Users } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { MemberAvatar } from '@/components/MemberAvatar';
-import { TeamTabs } from '@/components/TeamTabs';
 import { NewMemberDialog } from '@/components/NewMemberDialog';
 import { cn } from '@/lib/utils';
 import { useLeaderMembers, type LeaderMemberRow } from '@/hooks/useLeaderMembers';
@@ -22,7 +35,10 @@ export interface MemberMasterListProps {
   showTeamFilter?: boolean;
   /** Show the "Novo liderado" footer button. */
   showNewMemberCta?: boolean;
-  /** Title rendered above the list. */
+  /**
+   * Deprecated: o título da página NUNCA vive na master list.
+   * Mantido para compat, mas ignorado.
+   */
   title?: string;
 }
 
@@ -39,14 +55,13 @@ function getHealth(lastFeedbackIso: string): keyof typeof HEALTH_CLASSES {
   return 'cold';
 }
 
-interface InnerListProps extends MemberMasterListProps {
+interface InnerListProps extends Omit<MemberMasterListProps, 'title'> {
   members: LeaderMemberRow[];
   isLoading: boolean;
   activeTeamId: string | null;
   onTeamChange: (id: string | null) => void;
   teams: ReturnType<typeof useLeaderMembers>['teams'];
   onAddMember: () => void;
-  showHeader?: boolean;
 }
 
 function InnerList({
@@ -61,36 +76,43 @@ function InnerList({
   showTeamFilter,
   showNewMemberCta,
   onAddMember,
-  title,
-  showHeader = true,
 }: InnerListProps) {
   const filtered = activeTeamId
     ? members.filter((m) => m.team_id === activeTeamId)
     : members;
 
   return (
-    <div className="flex flex-col h-full">
-      {showHeader && (
-        <div className="px-4 pt-5 pb-3 border-b border-border/40">
-          <h2 className="font-serif text-lg font-bold tracking-tight">
-            {title ?? 'Liderados'}
-          </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {filtered.length} {filtered.length === 1 ? 'pessoa' : 'pessoas'}
-          </p>
-        </div>
-      )}
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="px-4 pt-5 pb-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          Liderados
+        </p>
+        <p className="text-xs text-muted-foreground/70 mt-1">
+          {filtered.length} {filtered.length === 1 ? 'pessoa' : 'pessoas'}
+        </p>
+      </div>
 
       {showTeamFilter && teams.length > 1 && (
-        <div className="px-3 pt-3">
-          <TeamTabs
-            teams={teams}
-            activeTeamId={activeTeamId}
-            onTeamChange={onTeamChange}
-            onNewTeam={() => {
-              /* gerenciado em /lider/pessoas */
-            }}
-          />
+        <div className="px-3 pb-3">
+          <Select
+            value={activeTeamId ?? 'all'}
+            onValueChange={(v) => onTeamChange(v === 'all' ? null : v)}
+          >
+            <SelectTrigger className="h-8 rounded-lg text-xs bg-muted/40 border-border/40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os times</SelectItem>
+              {teams
+                .slice()
+                .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+                .map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
         </div>
       )}
 
@@ -109,7 +131,7 @@ function InnerList({
             </p>
           </div>
         ) : (
-          <ul className="py-2">
+          <ul className="py-1">
             {filtered.map((m) => {
               const isActive = m.id === selectedMemberId;
               const health = getHealth(m.last_feedback_date);
@@ -161,16 +183,15 @@ function InnerList({
       </ScrollArea>
 
       {showNewMemberCta && (
-        <div className="px-3 py-3 border-t border-border/40">
-          <Button
+        <div className="px-2 py-2 border-t border-border/40">
+          <button
+            type="button"
             onClick={onAddMember}
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start gap-2 rounded-xl"
+            className="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
           >
-            <UserPlus className="h-4 w-4" />
+            <UserPlus className="h-3.5 w-3.5" />
             Novo liderado
-          </Button>
+          </button>
         </div>
       )}
     </div>
@@ -186,32 +207,32 @@ export function MemberMasterList(props: MemberMasterListProps) {
   const showTeamFilter = props.showTeamFilter ?? true;
   const showNewMemberCta = props.showNewMemberCta ?? !!workspace;
 
-  const inner = (
-    <InnerList
-      {...props}
-      members={members}
-      isLoading={isLoading}
-      teams={teams}
-      activeTeamId={activeTeamId}
-      onTeamChange={setActiveTeamId}
-      onAddMember={() => {
-        setMobileOpen(false);
-        setNewMemberOpen(true);
-      }}
-      showTeamFilter={showTeamFilter}
-      showNewMemberCta={showNewMemberCta}
-    />
-  );
+  const innerProps = {
+    selectedMemberId: props.selectedMemberId,
+    onSelect: props.onSelect,
+    renderBadge: props.renderBadge,
+    members,
+    isLoading,
+    teams,
+    activeTeamId,
+    onTeamChange: setActiveTeamId,
+    showTeamFilter,
+    showNewMemberCta,
+    onAddMember: () => {
+      setMobileOpen(false);
+      setNewMemberOpen(true);
+    },
+  };
 
   return (
     <>
       {/* Desktop: sticky sidebar */}
-      <aside className="hidden lg:flex shrink-0 w-[320px] sticky top-0 self-start h-[calc(100vh-4rem)] border-r border-border/40 bg-card/40">
-        {inner}
+      <aside className="hidden lg:flex shrink-0 w-[280px] sticky top-0 self-start h-[calc(100vh-4rem)] border-r border-border/40 bg-card/30">
+        <InnerList {...innerProps} />
       </aside>
 
       {/* Mobile: trigger + Sheet */}
-      <div className="lg:hidden mb-4 flex items-center gap-2">
+      <div className="lg:hidden flex items-center gap-2">
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger asChild>
             <Button variant="outline" size="sm" className="rounded-xl gap-2">
@@ -219,24 +240,13 @@ export function MemberMasterList(props: MemberMasterListProps) {
               Liderados
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-[320px] p-0">
+          <SheetContent side="left" className="w-[300px] p-0">
             <SheetHeader className="sr-only">
               <SheetTitle>Liderados</SheetTitle>
             </SheetHeader>
             <div className="h-full flex flex-col">
               <InnerList
-                {...props}
-                members={members}
-                isLoading={isLoading}
-                teams={teams}
-                activeTeamId={activeTeamId}
-                onTeamChange={setActiveTeamId}
-                onAddMember={() => {
-                  setMobileOpen(false);
-                  setNewMemberOpen(true);
-                }}
-                showTeamFilter={showTeamFilter}
-                showNewMemberCta={showNewMemberCta}
+                {...innerProps}
                 onSelect={(m) => {
                   props.onSelect(m);
                   setMobileOpen(false);
