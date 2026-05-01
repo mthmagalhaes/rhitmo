@@ -45,7 +45,7 @@ const DesignSystem = lazy(() => import("./pages/DesignSystem"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 const RecorderPopup = lazy(() => import("./pages/RecorderPopup"));
 const Enterprise = lazy(() => import("./pages/Enterprise"));
-const Roadmap = lazy(() => import("./pages/Roadmap"));
+
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const GoogleCalendarCallback = lazy(() => import("./pages/GoogleCalendarCallback"));
 const Evidence = lazy(() => import("./pages/Evidence"));
@@ -192,7 +192,7 @@ const App = () => (
               <Route path="/enterprise" element={<Enterprise />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/auth/google/callback" element={<GoogleCalendarCallback />} />
-              <Route path="/roadmap" element={<Roadmap />} />
+              
 
               {/* Admin */}
               <Route path="/admin" element={
