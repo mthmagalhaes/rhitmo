@@ -1699,6 +1699,28 @@ Deno.serve(async (req) => {
               const persona = await getUserPersona(slackUserId);
               console.log('[DM] Persona:', persona.persona);
 
+              // ── Conversational State Machine hook (Sprint 11.1) ─────────
+              // If the user has an active multi-turn conversation, persist the
+              // turn and acknowledge. Short-circuits the welcome menu path.
+              // Conversations are CREATED elsewhere (slash commands / buttons)
+              // in later sprints — this hook is read/append only.
+              if (persona.persona !== 'unauthenticated' && persona.workspaceId) {
+                const conv = await getActiveConversation(slackUserId);
+                if (conv) {
+                  console.log('[CONV] Active conversation found:', conv.id, '| intent:', conv.intent);
+                  await appendConversationTurn(conv.id, {
+                    role: 'user',
+                    text: event.text ?? '',
+                    ts: event.ts,
+                  });
+                  await slackApi('chat.postMessage', {
+                    channel: event.channel,
+                    text: '✅ Recebi sua mensagem. (estado atualizado — fluxo conversacional em construção)',
+                  });
+                  return; // do NOT fall through to the welcome menu
+                }
+              }
+
               // Throttle: only respond with full menu once per window per user.
               // Subsequent messages in the same window are silently ignored to avoid flooding the DM.
               const isAuthenticated = persona.persona !== 'unauthenticated';
