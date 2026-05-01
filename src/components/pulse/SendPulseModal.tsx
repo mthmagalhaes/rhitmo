@@ -1,11 +1,10 @@
 // Sprint 9.2 — Modal do líder para disparar um Pulse Survey.
 // RLS de INSERT em pulse_surveys garante que apenas líderes do membro consigam criar.
-// Sprint 9.2 — Modal do líder para disparar um Pulse Survey.
-// RLS de INSERT em pulse_surveys garante que apenas líderes do membro consigam criar.
 // Sprint 10.5 — guard !submitting + reset on open para UX limpa.
+// Sprint 10.6 — empty state inline (em vez de escondido dentro do Select).
 import { useEffect, useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAccount } from '@/contexts/AccountContext';
@@ -134,6 +133,7 @@ export function SendPulseModal({ open, onOpenChange }: SendPulseModalProps) {
   };
 
   const canSubmit = !!memberId && !!pulseType && !submitting;
+  const noMembers = !loadingMembers && (members ?? []).length === 0;
 
   return (
     <Dialog open={open} onOpenChange={(o) => !submitting && onOpenChange(o)}>
@@ -149,77 +149,86 @@ export function SendPulseModal({ open, onOpenChange }: SendPulseModalProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-5 py-2">
-          <div className="space-y-2">
-            <Label>Liderado</Label>
-            <Select value={memberId} onValueChange={setMemberId}>
-              <SelectTrigger className="rounded-xl">
-                <SelectValue
-                  placeholder={loadingMembers ? 'Carregando...' : 'Escolha um liderado'}
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {(members ?? []).length === 0 && !loadingMembers ? (
-                  <div className="px-3 py-2 text-xs text-muted-foreground">
-                    Você ainda não tem liderados diretos.
-                  </div>
-                ) : (
-                  (members ?? []).map((m) => (
+        {/* Sprint 10.6 — empty state inline (mais discoverable que dropdown vazio). */}
+        {noMembers ? (
+          <div className="rounded-xl bg-muted/40 p-5 text-center my-2">
+            <Users className="h-6 w-6 mx-auto mb-2 text-muted-foreground/60" />
+            <p className="text-sm font-medium text-foreground">
+              Você ainda não tem liderados diretos
+            </p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+              Adicione um liderado ao seu time para começar a enviar Pulses.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-5 py-2">
+            <div className="space-y-2">
+              <Label>Liderado</Label>
+              <Select value={memberId} onValueChange={setMemberId}>
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue
+                    placeholder={loadingMembers ? 'Carregando...' : 'Escolha um liderado'}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {(members ?? []).map((m) => (
                     <SelectItem key={m.id} value={m.id}>
                       {m.name}
                     </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div className="space-y-2">
-            <Label>Tipo de Pulse</Label>
-            <Select value={pulseType} onValueChange={(v) => setPulseType(v as PulseType)}>
-              <SelectTrigger className="rounded-xl">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PULSE_TYPE_ORDER.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {PULSE_TEMPLATES[t].label}
-                  </SelectItem>
+            <div className="space-y-2">
+              <Label>Tipo de Pulse</Label>
+              <Select value={pulseType} onValueChange={(v) => setPulseType(v as PulseType)}>
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PULSE_TYPE_ORDER.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {PULSE_TEMPLATES[t].label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">{template.description}</p>
+            </div>
+
+            <div className="rounded-xl bg-muted/40 p-3 space-y-1.5">
+              <p className="text-[11px] uppercase tracking-wide font-medium text-muted-foreground">
+                Perguntas que serão enviadas
+              </p>
+              <ul className="space-y-1.5">
+                {template.questions.map((q, idx) => (
+                  <li key={q.id} className="text-sm text-foreground">
+                    <span className="text-muted-foreground mr-1.5">{idx + 1}.</span>
+                    {q.text}
+                  </li>
                 ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">{template.description}</p>
+              </ul>
+            </div>
           </div>
-
-          <div className="rounded-xl bg-muted/40 p-3 space-y-1.5">
-            <p className="text-[11px] uppercase tracking-wide font-medium text-muted-foreground">
-              Perguntas que serão enviadas
-            </p>
-            <ul className="space-y-1.5">
-              {template.questions.map((q, idx) => (
-                <li key={q.id} className="text-sm text-foreground">
-                  <span className="text-muted-foreground mr-1.5">{idx + 1}.</span>
-                  {q.text}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
+        )}
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting}>
-            Cancelar
+            {noMembers ? 'Fechar' : 'Cancelar'}
           </Button>
-          <Button onClick={handleSubmit} disabled={!canSubmit}>
-            {submitting ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Enviando...
-              </>
-            ) : (
-              'Enviar Pulse'
-            )}
-          </Button>
+          {!noMembers && (
+            <Button onClick={handleSubmit} disabled={!canSubmit}>
+              {submitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                'Enviar Pulse'
+              )}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
