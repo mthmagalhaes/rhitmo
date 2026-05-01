@@ -68,6 +68,67 @@ async function appendConversationTurn(
   }
 }
 
+// ── Conversational LLM (Sprint 11.2) ─────────────────────
+// System prompts per intent. Default = general_chat.
+function buildSystemPromptForIntent(intent: string): string {
+  switch (intent) {
+    case 'pulse_survey':
+      return 'Você é a Rhitmo conduzindo um Pulse Survey. Faça uma pergunta por vez, em português do Brasil, com tom acolhedor e breve. Use formatação Slack (*negrito*).';
+    case '1v1_prep':
+      return 'Você é a Rhitmo ajudando a preparar uma 1:1. Seja extremamente conciso, ofereça 2–3 tópicos práticos, em português do Brasil, formatação Slack (*negrito*, listas com •).';
+    case 'self_review':
+      return 'Você é a Rhitmo guiando uma autoavaliação. Faça perguntas reflexivas, uma por vez, em português do Brasil, formatação Slack (*negrito*).';
+    case 'general_chat':
+    default:
+      return 'Você é a inteligência artificial da Rhitmo, atuando como um mentor de liderança. Seja extremamente conciso, amigável e direto ao ponto. Responda usando formatação nativa do Slack (*negrito*, _itálico_, listas com •). Responda sempre em português do Brasil. Não invente dados sobre o time se não estiverem no histórico desta conversa.';
+  }
+}
+
+// Calls Lovable AI Gateway. Always returns a string — never throws.
+async function callLovableAI(
+  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+): Promise<string> {
+  const apiKey = Deno.env.get('LOVABLE_API_KEY');
+  if (!apiKey) {
+    console.error('[AI] LOVABLE_API_KEY missing');
+    return '⚠️ A IA da Rhitmo não está configurada no momento.';
+  }
+  try {
+    const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages,
+        temperature: 0.6,
+      }),
+    });
+    if (resp.status === 429) {
+      console.warn('[AI] Rate limited (429)');
+      return '⏳ A Rhitmo está sobrecarregada agora. Tente em instantes.';
+    }
+    if (resp.status === 402) {
+      console.warn('[AI] No credits (402)');
+      return '⚠️ Créditos de IA da workspace esgotados. Avise quem administra a Rhitmo.';
+    }
+    if (!resp.ok) {
+      const t = await resp.text().catch(() => '');
+      console.error('[AI] Gateway error', resp.status, t.slice(0, 300));
+      return '⚠️ Tive um problema para pensar agora. Pode tentar de novo?';
+    }
+    const data = await resp.json();
+    const content = data?.choices?.[0]?.message?.content;
+    if (typeof content === 'string' && content.trim().length > 0) return content.trim();
+    return '⚠️ Não consegui formular uma resposta agora.';
+  } catch (err) {
+    console.error('[AI] callLovableAI threw:', err);
+    return '⚠️ Tive um problema para pensar agora. Pode tentar de novo?';
+  }
+}
+
 // ── Channel Type Cache (5min TTL) ────────────────────────
 const channelCache = new Map<string, { isPublic: boolean; ts: number }>();
 const CACHE_TTL = 5 * 60 * 1000;
@@ -459,6 +520,7 @@ function buildRhitmoMenu(persona: PersonaResult, stateToken?: string): Record<st
       { type: 'actions', elements: [
         { type: 'button', text: { type: 'plain_text', text: '✍️ Adicionar nota' }, action_id: 'open_add_note', style: 'primary' },
         { type: 'button', text: { type: 'plain_text', text: '👏 Enviar kudos' }, action_id: 'open_send_kudos' },
+        { type: 'button', text: { type: 'plain_text', text: '🌀 Conversar com a Rhitmo' }, action_id: 'start_rhitmo_chat' },
       ]},
       { type: 'section', text: { type: 'mrkdwn', text: '\n*💬 Comandos rápidos:*\n• `/nota @membro texto` — Feedback privado\n• `/kudos @membro texto` — Reconhecimento público\n• `/brief @membro` — Resumo do membro\n• `/mentor <pergunta>` — Consultar mentor de IA\n• `/rhitmo` — Este menu' }},
       { type: 'section', text: { type: 'mrkdwn', text: '\n*📊 No Rhitmo Web:*\n• *Rhitmo Mensal & Trimestral* — recaps automáticos do time\n• *Avaliação Formal* — gerar com IA em 2 passos (briefing → revisão)\n→ <https://rhitmo.co|Abrir Rhitmo>' }},
@@ -470,6 +532,7 @@ function buildRhitmoMenu(persona: PersonaResult, stateToken?: string): Record<st
       { type: 'actions', elements: [
         { type: 'button', text: { type: 'plain_text', text: '📋 Meu PDI' }, action_id: 'action_meu_pdi', style: 'primary' },
         { type: 'button', text: { type: 'plain_text', text: '📄 Minhas Avaliações' }, url: 'https://rhitmo.co/avaliacoes', action_id: 'open_my_reviews' },
+        { type: 'button', text: { type: 'plain_text', text: '🌀 Conversar com a Rhitmo' }, action_id: 'start_rhitmo_chat' },
         { type: 'button', text: { type: 'plain_text', text: '🚀 Abrir Rhitmo' }, url: 'https://rhitmo.co', action_id: 'open_app' },
       ]},
       { type: 'section', text: { type: 'mrkdwn', text: '\n*💬 Comandos rápidos:*\n• `/meu-pdi` — Ver seu Plano de Desenvolvimento\n• `/meu-rhitmo` — Ver seu perfil e feedbacks\n• `/rhitmo` — Este menu' }},
@@ -1355,6 +1418,53 @@ async function processInteraction(body: string, timestamp: string, signature: st
         if (responseUrl) await sendDelayedResponse(responseUrl, pdiMsg);
         break;
       }
+      case 'start_rhitmo_chat': {
+        console.log('[INTERACT] Start Rhitmo chat clicked by:', slackUserId);
+        try {
+          const chatPersona = await getUserPersona(slackUserId);
+          if (chatPersona.persona === 'unauthenticated' || !chatPersona.workspaceId) {
+            await slackApi('chat.postMessage', {
+              channel: slackUserId,
+              text: '🔗 Conecte sua conta Rhitmo primeiro. Use `/rhitmo` para começar.',
+            });
+            break;
+          }
+
+          // Idempotency: if already in an active conversation, just nudge.
+          const existing = await getActiveConversation(slackUserId);
+          if (existing) {
+            await slackApi('chat.postMessage', {
+              channel: slackUserId,
+              text: 'Já estamos numa conversa ativa 🌀 — é só me responder por aqui.',
+            });
+            break;
+          }
+
+          const { error: insertErr } = await supabase.from('slack_conversations').insert({
+            workspace_id: chatPersona.workspaceId,
+            slack_user_id: slackUserId,
+            intent: 'general_chat',
+            status: 'active',
+            state_data: { turns: [] },
+          });
+          if (insertErr) {
+            console.error('[INTERACT] Failed to insert slack_conversation:', insertErr.message);
+            await slackApi('chat.postMessage', {
+              channel: slackUserId,
+              text: '⚠️ Não consegui abrir nossa conversa agora. Tente em instantes.',
+            });
+            break;
+          }
+
+          await slackApi('chat.postMessage', {
+            channel: slackUserId,
+            text: 'Olá! Eu sou o Mentor da Rhitmo 🌀, conectado ao seu Context Graph. Sobre o que você quer falar ou refletir hoje?',
+          });
+        } catch (err) {
+          console.error('[INTERACT] start_rhitmo_chat error:', err);
+        }
+        break;
+      }
       default:
         console.log('[INTERACT] Unhandled action:', action.action_id);
     }
@@ -1713,10 +1823,58 @@ Deno.serve(async (req) => {
                     text: event.text ?? '',
                     ts: event.ts,
                   });
-                  await slackApi('chat.postMessage', {
-                    channel: event.channel,
-                    text: '✅ Recebi sua mensagem. (estado atualizado — fluxo conversacional em construção)',
-                  });
+
+                  // ── LLM turn (Sprint 11.2) ──────────────────────────
+                  // Build messages from updated state. We re-read state_data after
+                  // appending to include the user's latest turn.
+                  const llmTask = (async () => {
+                    try {
+                      const turns = Array.isArray((conv.state_data as any)?.turns)
+                        ? ((conv.state_data as any).turns as Array<{ role: string; text: string }>)
+                        : [];
+                      // Append the just-added user turn locally (RPC already persisted it)
+                      const allTurns = [...turns, { role: 'user', text: event.text ?? '' }];
+                      const recent = allTurns.slice(-20);
+                      const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+                        { role: 'system', content: buildSystemPromptForIntent(conv.intent) },
+                        ...recent
+                          .filter((t) => t.role === 'user' || t.role === 'assistant')
+                          .map((t) => ({ role: t.role as 'user' | 'assistant', content: t.text || '' })),
+                      ];
+
+                      const assistantText = await callLovableAI(messages);
+
+                      await appendConversationTurn(conv.id, {
+                        role: 'assistant',
+                        text: assistantText,
+                        ts: String(Date.now() / 1000),
+                      });
+
+                      await slackApi('chat.postMessage', {
+                        channel: event.channel,
+                        text: assistantText,
+                        mrkdwn: true,
+                      });
+                    } catch (err) {
+                      console.error('[CONV] LLM turn failed:', err);
+                      await slackApi('chat.postMessage', {
+                        channel: event.channel,
+                        text: '⚠️ Tive um problema agora. Pode repetir?',
+                      }).catch(() => {});
+                    }
+                  })();
+
+                  // Use EdgeRuntime.waitUntil when available so the runtime
+                  // does not terminate the LLM task after we return 200 to Slack.
+                  // @ts-ignore - EdgeRuntime is provided by Supabase/Deno Deploy
+                  if (typeof EdgeRuntime !== 'undefined' && (EdgeRuntime as any)?.waitUntil) {
+                    // @ts-ignore
+                    (EdgeRuntime as any).waitUntil(llmTask);
+                  } else {
+                    // Fallback: fire-and-forget (already inside an IIFE)
+                    llmTask.catch(() => {});
+                  }
+
                   return; // do NOT fall through to the welcome menu
                 }
               }
