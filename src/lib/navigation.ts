@@ -53,27 +53,6 @@ export const DIRECT_REPORT_NAV_ITEMS: NavItem[] = [
   { id: 'configuracoes', labelKey: 'nav.liderado.configuracoes', icon: Settings, to: '/liderado/configuracoes' },
 ];
 
-export interface QuickAction {
-  id: string;
-  labelKey: string;
-  icon: LucideIcon;
-  /** Either a route to navigate to, or a special action handled inline. */
-  to?: string;
-  action?: 'open-mentor' | 'open-search';
-}
-
-export const LEADER_QUICK_ACTIONS: QuickAction[] = [
-  { id: 'cal', labelKey: 'nav.quick.calendar', icon: Calendar, to: '/lider/1on1s' },
-  { id: 'people', labelKey: 'nav.quick.people', icon: Users, to: '/lider/pessoas' },
-  { id: 'chat', labelKey: 'nav.quick.chat', icon: MessageSquare, action: 'open-mentor' },
-  { id: 'search', labelKey: 'nav.quick.search', icon: Search, action: 'open-search' },
-];
-
-export const DIRECT_REPORT_QUICK_ACTIONS: QuickAction[] = [
-  { id: 'cal', labelKey: 'nav.quick.calendar', icon: Calendar, to: '/liderado/1on1s' },
-  { id: 'chat', labelKey: 'nav.quick.chat', icon: MessageSquare, to: '/liderado/meu-rhitmo' },
-];
-
 export type SidebarPersona = 'leader' | 'direct_report';
 
 export function resolvePersona(opts: {
