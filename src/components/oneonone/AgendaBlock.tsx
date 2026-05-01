@@ -97,11 +97,12 @@ export const AgendaBlock = forwardRef<AgendaBlockRef, AgendaBlockProps>(
         const { error } = await supabase.from('feedbacks').insert([{
           manager_id: user.id,
           member_id: memberId,
-          workspace_id: workspaceId,
           title: cfg.defaultTitle,
           content: content.trim(),
           tags: [cfg.tag],
           visibility: cfg.visibility,
+          type: 'manual',
+          source: 'manual',
           occurred_at: new Date().toISOString(),
         }]);
         if (error) throw error;
