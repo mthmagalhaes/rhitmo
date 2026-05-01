@@ -95,7 +95,7 @@ export const AgendaBlock = forwardRef<AgendaBlockRef, AgendaBlockProps>(
       setSaving(true);
       try {
         const { error } = await supabase.from('feedbacks').insert({
-          user_id: user.id,
+          manager_id: user.id,
           member_id: memberId,
           workspace_id: workspaceId,
           title: cfg.defaultTitle,
