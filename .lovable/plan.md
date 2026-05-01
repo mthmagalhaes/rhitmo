@@ -1,50 +1,52 @@
-## Contexto
+## Bug
 
-A página `/lider/diario` **já está em Master-Detail** (Sprint 12.1) com `MemberMasterList` à esquerda e detalhe à direita. O que ainda não bate com o pedido:
+Clicar numa thread em **MentorHistoryCard** (Home) ou em **ThreadsList** (sidebar) navega para `/chat/:id`. Essa rota **não existe** em `App.tsx`, então cai no 404.
 
-1. **Falta banner de privacidade fixo** no topo da coluna direita (cadeado + "Diário Privado. Estas anotações são 100% confidenciais…").
-2. **Captura rápida ainda usa modal** (`NewNoteDialog` aberto via botão "Nova nota"). Precisa virar Textarea inline sempre visível com botão "Salvar nota".
-3. **Empty state "sem notas"** ainda chama o modal — precisa apontar para o Quick Input.
-4. **Troca de liderado pisca a tela** porque `useQuery` zera o cache visualmente — falta `placeholderData: (prev) => prev`.
+Além disso, ao revisar `MemberDetails`, descobri que o `?openMentor=true` que `handleOpenMentor` passa **também já está quebrado** — `MemberDetails` nunca lê `searchParams`. Hoje só funciona pelo dropdown "Conversar com o Mentor" dentro do próprio MemberDetails.
+
+## Estratégia
+
+`MentorChat` é um Sheet montado dentro de `MemberDetails` e cada thread tem `member_id`. Para abrir uma conversa específica:
+
+1. Buscar o `member_id` da thread
+2. Navegar para `/member/{member_id}?tab=chat&thread={threadId}`
+3. `MemberDetails` lê o query, abre o Sheet e seta a thread ativa
 
 ## Mudanças
 
-### 1. Novo `src/components/diario/QuickPrivateNoteInput.tsx`
-Captura rápida inline, sem modal:
-- `Textarea` `min-h-[100px]` sempre visível com placeholder `Anotação privada sobre {primeiroNome}…`
-- Botão **"Salvar nota"** (disabled quando vazio); atalho **⌘/Ctrl + Enter** envia
-- INSERT em `feedbacks` reusando exatamente os campos do `NewNoteDialog`:
-  - `manager_id`, `member_id`, `content`, `type: 'neutral'`, `occurred_at: now`, `tags: ['diario-bordo']`, `title: 'Anotação do diário'`, `visibility: 'private_leader'`, `source: 'manual'`
-- Após save: limpa o textarea + `queryClient.invalidateQueries(['feedbacks', memberId])`
-- Visual: card `rounded-2xl bg-card`, header com `PenSquare` + "Captura rápida"
+### 1. `src/pages/MemberDetails.tsx` — wiring do query param
+- Importar `useSearchParams` do `react-router-dom`
+- Após `member` carregar, se `openMentor=true` ou `thread=<id>` presente → `setChatOpen(true)`
+- Passar nova prop `initialThreadId={searchParams.get('thread')}` para `<MentorChat>`
+- Após abrir, limpar o query (`setSearchParams({}, { replace: true })`) para não reabrir em re-renders
 
-### 2. Refatorar `src/pages/lider/Diario.tsx`
-Coluna direita reordenada (mantendo o eyebrow + header do liderado):
-1. Eyebrow "DIÁRIO DE BORDO"
-2. Header (avatar + nome + cargo) — **remover botão "Nova nota"** (não abre mais modal)
-3. **Banner de privacidade** fixo: `rounded-xl bg-muted/60 border border-border/60 px-3.5 py-2.5`, ícone `Lock` + texto "**Diário privado.** Estas anotações são 100% confidenciais e visíveis apenas para você."
-4. **`QuickPrivateNoteInput`** sempre visível
-5. `FeedbackFilters` (só quando `feedbacks.length > 0`)
-6. Feed cronológico (`FeedbackTimeline`) ou empty state textual ("Você ainda não tem anotações privadas para {nome}. Que tal registrar a primeira observação acima?")
+### 2. `src/components/MentorChat.tsx` — aceitar thread inicial
+- Adicionar `initialThreadId?: string | null` à `MentorChatProps`
+- Novo `useEffect` que, quando `open` vira `true` e `initialThreadId` existe, chama `setSelectedThreadId(initialThreadId)` e `setIsCreatingNewThread(false)` (sobrepondo o auto-select da thread mais recente nas linhas 168-171)
 
-Outras melhorias:
-- Remover `import NewNoteDialog` e o estado `dialogOpen` (não é mais usado)
-- Adicionar `placeholderData: (prev) => prev` no `useQuery` para evitar piscar ao trocar liderado
-- Empty state sem liderado: trocar para "Selecione alguém na lista ao lado para acessar suas anotações privadas" (texto pedido)
+### 3. `src/components/dashboard/MentorHistoryCard.tsx` — navegação correta
+- Trocar `select` para incluir `member_id`
+- Trocar `navigate(`/chat/${thread.id}`)` por `navigate(`/member/${thread.member_id}?tab=chat&thread=${thread.id}`)`
+- Se a thread não tiver `member_id` (caso `general_chat`/Slack), fallback para `onOpenMentor()` (que já leva ao primeiro membro)
 
-### 3. Atualizar memória
-Em `.lovable/memory/design/dashboard/master-detail-pages.md`, adicionar bloco específico de `/lider/diario` (Sprint 12.3): banner de privacidade, captura rápida sem modal, `placeholderData` para evitar flicker. E atualizar o índice (`mem://index.md`) com a referência atualizada.
+### 4. `src/components/sidebar/ThreadsList.tsx` — mesma correção
+- Incluir `member_id` no select
+- Trocar destino para `/member/{member_id}?tab=chat&thread={id}` quando `member_id` existir
+- Para `meu_rhitmo` (persona liderado), navegar para `/meu-rhitmo?thread={id}` (e wirar o mesmo padrão lá)
+
+### 5. `src/pages/liderado/MeuRhitmo.tsx` — paridade para o liderado
+Aplicar o mesmo wiring de `searchParams.get('thread')` → `initialThreadId` (rápida verificação se ele já tem um MentorChat embutido; se não tiver, fica fora de escopo desta task e `ThreadsList` ignora `meu_rhitmo` por enquanto).
 
 ## Fora de escopo
 
-- Não altero schema (continua `feedbacks` + `visibility='private_leader'`)
-- Não mexo em `NewNoteDialog` (ainda é usado em `MemberDetails` e outras telas)
-- Não mexo em `MemberMasterList`, `EmptyMemberDetail`, `FeedbackTimeline`, `FeedbackFilters`
-- Não mexo em `/lider/1on1s`, `/lider/objetivos`
+- Criar uma rota `/chat/:id` standalone (cara: precisa montar contexto de membro do zero). Reusar `/member/:id?tab=chat&thread=` é mais barato e respeita a arquitetura atual.
+- Refatorar `MentorChat` para virar página própria.
+- Schema de banco.
 
 ## Arquivos
 
-- novo: `src/components/diario/QuickPrivateNoteInput.tsx`
-- editar: `src/pages/lider/Diario.tsx`
-- editar: `.lovable/memory/design/dashboard/master-detail-pages.md`
-- editar: `mem://index.md` (uma linha)
+- editar: `src/pages/MemberDetails.tsx`
+- editar: `src/components/MentorChat.tsx`
+- editar: `src/components/dashboard/MentorHistoryCard.tsx`
+- editar: `src/components/sidebar/ThreadsList.tsx`
+- editar (se aplicável): `src/pages/liderado/MeuRhitmo.tsx`
