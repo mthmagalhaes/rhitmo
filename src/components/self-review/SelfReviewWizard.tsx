@@ -175,7 +175,10 @@ export function SelfReviewWizard({
           <Progress value={progress} className="h-1.5 mt-3" />
         </DialogHeader>
 
-        <ScrollArea className="h-[420px] px-6 py-5" ref={scrollRef as never}>
+        <div
+          ref={scrollRef}
+          className="h-[420px] overflow-y-auto px-6 py-5"
+        >
           <div className="space-y-3">
             {messages.map((m, idx) => (
               <div
@@ -210,7 +213,7 @@ export function SelfReviewWizard({
               </Card>
             )}
           </div>
-        </ScrollArea>
+        </div>
 
         <div className="px-6 py-4 border-t border-border/60 bg-muted/20">
           {reviewMode ? (
