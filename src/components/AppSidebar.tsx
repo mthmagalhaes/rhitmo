@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ShieldCheck, Palette, ArrowLeft, ArrowRightLeft, LifeBuoy, Copy, Check, Settings } from 'lucide-react';
+import { ShieldCheck, Palette, ArrowLeft, ArrowRightLeft, Search } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useAccount } from '@/contexts/AccountContext';
@@ -13,8 +13,6 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   LEADER_NAV_ITEMS,
   DIRECT_REPORT_NAV_ITEMS,
-  LEADER_QUICK_ACTIONS,
-  DIRECT_REPORT_QUICK_ACTIONS,
   LEADER_HOME,
   DIRECT_REPORT_HOME,
   resolvePersona,
@@ -32,16 +30,8 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { ProfileSettingsDialog } from '@/components/ProfileSettingsDialog';
 import { WorkspaceSwitcher } from '@/components/sidebar/WorkspaceSwitcher';
-import { QuickActionsRow } from '@/components/sidebar/QuickActionsRow';
 import { ThreadsList } from '@/components/sidebar/ThreadsList';
 import { SidebarFooterCTA } from '@/components/sidebar/SidebarFooterCTA';
 import { SidebarProfileBlock } from '@/components/sidebar/SidebarProfileBlock';
@@ -66,8 +56,6 @@ export function AppSidebar() {
   const [mentorOpen, setMentorOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [supportOpen, setSupportOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   // Workspace names for the bulk-onboard dialog (loaded only on demand).
   const { data: workspaceNames = [] } = useQuery({
@@ -87,7 +75,6 @@ export function AppSidebar() {
 
   const persona = resolvePersona({ isLinkedMember, isLeader, isHRAdmin });
   const navItems = persona === 'leader' ? LEADER_NAV_ITEMS : DIRECT_REPORT_NAV_ITEMS;
-  const quickActions = persona === 'leader' ? LEADER_QUICK_ACTIONS : DIRECT_REPORT_QUICK_ACTIONS;
   const homeRoute = persona === 'leader' ? LEADER_HOME : DIRECT_REPORT_HOME;
 
   const userName =
@@ -96,17 +83,6 @@ export function AppSidebar() {
     user?.user_metadata?.name ||
     user?.email?.split('@')[0] ||
     t('common.user');
-
-  const handleCopyEmail = async () => {
-    try {
-      await navigator.clipboard.writeText('support@rhitmo.co');
-      setCopied(true);
-      toast({ title: t('sidebar.emailCopied') });
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast({ title: t('sidebar.copyManually') });
-    }
-  };
 
   // Super admin (god's eye) keeps a minimal dedicated sidebar.
   if (isSuperAdmin) {
