@@ -6,7 +6,9 @@ import { ProfileSettingsDialog } from '@/components/ProfileSettingsDialog';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { User, Building2, CreditCard, Plug, LifeBuoy, Slack, Calendar, Chrome, Pencil } from 'lucide-react';
+import { User, Building2, CreditCard, Plug, LifeBuoy, Slack, Calendar, Chrome, Pencil, Download } from 'lucide-react';
+import { toast } from 'sonner';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useSlackConnection } from '@/hooks/useSlackConnection';
 import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
 
@@ -51,10 +53,64 @@ function WorkspaceTab() {
   );
 }
 
+function ChromeInstallButton() {
+  const handleDownload = () => {
+    fetch('/rhitmo-recorder-extension.zip')
+      .then((res) => {
+        if (!res.ok) throw new Error(`Download falhou: ${res.status}`);
+        return res.blob();
+      })
+      .then((blob) => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'rhitmo-recorder-extension.zip';
+        a.click();
+        URL.revokeObjectURL(a.href);
+        toast.success('Download iniciado', {
+          description: 'Veja as instruções de instalação ao lado.',
+        });
+      })
+      .catch((err) => toast.error(err.message ?? 'Erro ao baixar a extensão.'));
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Button onClick={handleDownload} size="sm" variant="outline" className="rounded-xl gap-2">
+        <Download className="w-3.5 h-3.5" /> Instalar extensão
+      </Button>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button size="sm" variant="ghost" className="rounded-xl text-xs">
+            Como instalar?
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-80 rounded-2xl text-xs space-y-2">
+          <p className="font-medium text-sm">Instalação manual (Chrome / Edge / Brave):</p>
+          <ol className="list-decimal pl-4 space-y-1 text-muted-foreground">
+            <li>Descompacte o arquivo baixado.</li>
+            <li>Abra <code className="bg-muted px-1 rounded">chrome://extensions</code>.</li>
+            <li>Ative o <strong>Modo desenvolvedor</strong> (canto superior direito).</li>
+            <li>Clique em <strong>Carregar sem compactação</strong> e selecione a pasta.</li>
+          </ol>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
+type IntegrationItem = {
+  icon: typeof Slack;
+  title: string;
+  desc: string;
+  status: string;
+  ok: boolean;
+  action?: React.ReactNode;
+};
+
 function IntegrationsTab() {
   const slack = useSlackConnection();
   const cal = useCalendarIntegration();
-  const items = [
+  const items: IntegrationItem[] = [
     {
       icon: Slack,
       title: 'Slack',
@@ -75,6 +131,7 @@ function IntegrationsTab() {
       desc: 'Grave reuniões do Google Meet sem clicar em nada.',
       status: 'Disponível',
       ok: true,
+      action: <ChromeInstallButton />,
     },
   ];
   return (
@@ -88,11 +145,12 @@ function IntegrationsTab() {
               <CardDescription className="text-xs mt-1">{it.desc}</CardDescription>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${it.ok ? 'text-primary' : 'text-muted-foreground'}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${it.ok ? 'bg-primary' : 'bg-muted-foreground/40'}`} />
               {it.status}
             </span>
+            {it.action}
           </CardContent>
         </Card>
       ))}
