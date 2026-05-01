@@ -2069,6 +2069,45 @@ export type Database = {
         }
         Relationships: []
       }
+      slack_conversations: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          intent: string
+          last_message_at: string
+          slack_user_id: string
+          state_data: Json
+          status: Database["public"]["Enums"]["slack_conversation_status"]
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          intent: string
+          last_message_at?: string
+          slack_user_id: string
+          state_data?: Json
+          status?: Database["public"]["Enums"]["slack_conversation_status"]
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          intent?: string
+          last_message_at?: string
+          slack_user_id?: string
+          state_data?: Json
+          status?: Database["public"]["Enums"]["slack_conversation_status"]
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       slack_integrations: {
         Row: {
           created_at: string | null
@@ -2565,6 +2604,31 @@ export type Database = {
       }
       admin_funnel_metrics: { Args: never; Returns: Json }
       admin_revenue_metrics: { Args: never; Returns: Json }
+      append_slack_conversation_turn: {
+        Args: {
+          p_conversation_id: string
+          p_ttl_minutes?: number
+          p_turn: Json
+        }
+        Returns: {
+          created_at: string
+          expires_at: string
+          id: string
+          intent: string
+          last_message_at: string
+          slack_user_id: string
+          state_data: Json
+          status: Database["public"]["Enums"]["slack_conversation_status"]
+          updated_at: string
+          workspace_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "slack_conversations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       backfill_context_evidence: {
         Args: { _workspace_id?: string }
         Returns: Json
@@ -2595,9 +2659,31 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      expire_stale_slack_conversations: { Args: never; Returns: number }
       get_account_context: {
         Args: { p_user_email?: string; p_user_id: string }
         Returns: Json
+      }
+      get_active_slack_conversation: {
+        Args: { p_slack_user_id: string }
+        Returns: {
+          created_at: string
+          expires_at: string
+          id: string
+          intent: string
+          last_message_at: string
+          slack_user_id: string
+          state_data: Json
+          status: Database["public"]["Enums"]["slack_conversation_status"]
+          updated_at: string
+          workspace_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "slack_conversations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       get_all_users_with_metadata: {
         Args: never
@@ -2924,6 +3010,7 @@ export type Database = {
       app_role: "super_admin"
       digest_cadence: "weekly" | "biweekly" | "monthly"
       digest_channel: "slack" | "in_app" | "both"
+      slack_conversation_status: "active" | "completed" | "expired"
       slack_evidence_category:
         | "entrega"
         | "bloqueio"
@@ -3065,6 +3152,7 @@ export const Constants = {
       app_role: ["super_admin"],
       digest_cadence: ["weekly", "biweekly", "monthly"],
       digest_channel: ["slack", "in_app", "both"],
+      slack_conversation_status: ["active", "completed", "expired"],
       slack_evidence_category: [
         "entrega",
         "bloqueio",

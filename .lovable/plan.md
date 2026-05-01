@@ -1,84 +1,110 @@
+## Sprint 11.1 — Slack Bot Conversational State Machine (Foundation)
 
-# Sanity Check — Pulse & 360º (Sprint 10.5 — UX Polish)
+Goal: give the Slack bot **memory** so it can run multi-turn flows (Pulse, 1:1 prep, Self-Review). This sprint only lays the foundation: a state table + a routing hook intercepting DMs **before** the existing welcome menu. No LLM, no flow logic yet.
 
-Atuei como UX engineer e fiz um diff completo da "fiação" do frontend dos módulos Pulse, Self-Review, Peer Review e Upwards Review. Encontrei 8 pontos a corrigir, todos do lado do **frontend** (DB intocado).
+### What stays untouched (stability guarantees)
+- All `/slash commands` (`/rhitmo`, `/nota`, `/kudos`, `/brief`, `/mentor`, `/review`, `/pdi`, etc.) — completely untouched.
+- All `interactive` payloads (buttons, modals, message_action shortcuts) — untouched.
+- `app_home_opened` welcome flow — untouched.
+- `getUserPersona`, `slack_integrations`, throttling logic — untouched.
+- Signature verification path — untouched.
 
-## O que está ÓTIMO (sem mexer)
-- `SelfReviewWizard`, `UpwardsReviewWizard`, `RequestPeerReviewModal`, `AnswerPeerReviewModal`: `disabled={submitting}` correto nos botões de submit.
-- `/lider/contexto`: empty state com ícone + copy ("Sem evidências..."), loading com 5 skeletons, error state dedicado. ✓
-- `PendingPulseAlert` / `PendingPeerReviewsAlert`: retornam `null` quando vazio (não quebram layout). ✓
-- Toasts de sucesso/erro presentes em todos os submits.
-- Invalidações de `pending-pulse-surveys`, `pending-peer-reviews`, `my-self-reviews`, `my-upwards-reviews` corretas.
-
----
-
-## Furos encontrados e correções
-
-### 1. `/lider/pulse` e `/liderado/pulse` são páginas "fantasma" duplicadas
-- `/lider/pulse` → `EmptyState` "Em breve" enquanto o Pulse JÁ funciona via `/lider/contexto`.
-- `/liderado/pulse` → wrapper que renderiza `<Index/>` (= dashboard inteiro). Confuso.
-- **Fix**: transformar `/lider/pulse` num hub funcional listando Pulses enviados (status pending/completed) para o líder ver respostas e re-enviar. Para `/liderado/pulse`, manter wrapper mas com `activeTab='visao-geral'` (onde o `PendingPulseAlert` aparece) e adicionar banner explicativo se não houver pulses.
-
-> **Decisão pragmática**: como reescrever `/lider/pulse` é fora de escopo desta auditoria, vou **redirecionar** ambas as rotas para os locais reais (`/lider/contexto` e `/liderado` respectivamente) com `<Navigate replace />`. Remove a confusão sem reescrever feature.
-
-### 2. `AnswerPulseModal` permite fechar enquanto envia
-- `onOpenChange={(o) => !o && onClose()}` ignora `submitting`.
-- **Fix**: adicionar guarda `!submitting` (igual aos modais de peer/self/upwards).
-
-### 3. `SendPulseModal` não reseta estado ao fechar e fecha durante submit
-- Sem guarda `!submitting` no overlay close.
-- Estado (`memberId`, `pulseType`) só é resetado no submit bem-sucedido — se usuário cancelar, na próxima abertura aparece com seleções antigas.
-- **Fix**: bloquear `onOpenChange` durante `submitting`; resetar form no `useEffect` quando `open` vira true.
-
-### 4. `AnswerPeerReviewModal` não invalida `team-timeline`
-- Sprint 10.1 criou trigger `ctx_evidence` para peer review respondida → cai no feed de `/lider/contexto`. Sem invalidação, líder precisa F5.
-- **Fix**: adicionar `invalidateQueries({ queryKey: ['team-timeline'] })` após sucesso.
-
-### 5. Auto-scroll quebrado nos Wizards (Self + Upwards)
-- Código atual: `scrollRef = useRef<HTMLDivElement>(null)` passado como `ref={scrollRef as never}` para `<ScrollArea>` (shadcn/Radix). Esse ref vira o **root** do componente Radix, não o viewport interno. `scrollTop = scrollHeight` não rola nada — usuário tem que rolar manualmente quando aparece nova mensagem.
-- **Fix**: trocar `<ScrollArea>` por um `<div>` simples com `overflow-y-auto`, mantendo `ref` no próprio div. Mais leve e o auto-scroll passa a funcionar.
-
-### 6. Wizards Self/Upwards: sem botão "Cancelar" mid-flow
-- Durante perguntas (antes do `reviewMode`), só dá pra sair clicando no X do Dialog. Em mobile o X é pequeno.
-- **Fix**: adicionar botão fantasma "Sair" ao lado do textarea (mid-flow), com `confirm` leve via `toast` se já houver respostas.
-
-### 7. `RequestPeerReviewModal`: empty states escondidos
-- Quando `targets` retorna vazio, mensagem só aparece DENTRO do `<SelectContent>` aberto. Usuário pode pensar que está carregando.
-- **Fix**: mostrar bloco de empty state inline (acima do Select) quando `targets.length === 0 && !loadingTargets`, escondendo o select.
-
-### 8. `useLeaderInfo`: lookup de nome do líder sem escopo de workspace
-- `team_members` filtrado só por `linked_user_id` + `.limit(1)` — em multi-workspace pode trazer nome de outro tenant.
-- **Fix**: aceitar `workspaceId` opcional (vindo de `useAccount`) e adicionar `.eq('workspace_id', workspaceId)` quando disponível. Fail-soft mantido.
+The new conversational handler runs **only inside the `event.type === 'message' && event.channel_type === 'im'` branch**, and **before** the current welcome-menu block. If no active conversation exists, behavior falls through to the existing menu (zero regression).
 
 ---
 
-## Ações também aplicadas (pequenas)
+### 1. Database — new table `slack_conversations`
 
-- **`/liderado/avaliacoes`** (aba "Para revisar"): hoje renderiza `<Index/>` inteiro. Vou trocar por instrução clara apontando o usuário ao Dashboard ("Visão geral") para evitar duplicação visual da dashboard inteira dentro de uma tab.
-- **DirectReportDashboard — header da seção "Avaliações Formais"**: reordenar para que reviews do líder apareçam ANTES dos cards de iniciar self/upwards (consumir antes de produzir é mais natural).
+Migration creates:
+
+```text
+slack_conversations
+├── id              uuid PK default gen_random_uuid()
+├── workspace_id    uuid NOT NULL
+├── slack_user_id   text NOT NULL
+├── status          slack_conversation_status NOT NULL default 'active'
+├── intent          text NOT NULL  -- 'pulse_survey' | '1v1_prep' | 'self_review' | 'general_chat' | ...
+├── state_data      jsonb NOT NULL default '{}'::jsonb
+├── last_message_at timestamptz NOT NULL default now()
+├── expires_at      timestamptz NOT NULL default (now() + interval '30 minutes')
+├── created_at      timestamptz NOT NULL default now()
+└── updated_at      timestamptz NOT NULL default now()
+```
+
+- Enum: `CREATE TYPE slack_conversation_status AS ENUM ('active','completed','expired');`
+- Indexes:
+  - `(slack_user_id, status)` — fast lookup of active conversation per user
+  - `(workspace_id, status)` partial `WHERE status = 'active'` — housekeeping
+  - `(expires_at)` for the expiration sweep
+- Trigger: `set_updated_at` (BEFORE UPDATE) keeps `updated_at` fresh.
+- Uniqueness rule: a partial unique index `(slack_user_id) WHERE status = 'active'` to guarantee **one active conversation per Slack user at a time**.
+- RLS: enabled. Only `service_role` can read/write (Edge Function runs with service role). No client-side access — this table is server-only.
+- Helper SQL function `get_active_slack_conversation(p_slack_user_id text)` returning the active row (or NULL), `SECURITY DEFINER`, used by the edge function for clean access.
+- Helper SQL function `expire_stale_slack_conversations()` that flips `status='expired'` for rows where `expires_at < now()`. Will be wired to a cron later — not in this sprint.
+
+### 2. Edge function — `slack-bot/index.ts`
+
+Add two small helpers near the top of the file:
+
+- `getActiveConversation(slackUserId)` — calls the RPC above via `safeRpc` (per project standard).
+- `appendConversationTurn(conversationId, turn)` — updates `state_data.turns` (appended array) and bumps `last_message_at` + `expires_at = now() + 30min`.
+
+Inside the existing DM handler (lines ~1638–1684), **before** the throttle/welcome menu block:
+
+```text
+if (event.type === 'message' && event.channel_type === 'im') {
+  (async () => {
+    const slackUserId = event.user;
+    const persona = await getUserPersona(slackUserId);
+
+    // NEW: conversational state machine hook
+    if (persona.persona !== 'unauthenticated' && persona.workspaceId) {
+      const conv = await getActiveConversation(slackUserId);
+      if (conv) {
+        await appendConversationTurn(conv.id, {
+          role: 'user',
+          text: event.text ?? '',
+          ts: event.ts,
+        });
+        await slackApi('chat.postMessage', {
+          channel: event.channel,
+          text: '✅ Recebi sua mensagem. (estado atualizado — fluxo conversacional em construção)',
+        });
+        return; // short-circuit — do NOT fall into the welcome menu
+      }
+    }
+
+    // EXISTING throttle + welcome menu logic (unchanged)
+    ...
+  })();
+}
+```
+
+Result:
+- If no active `slack_conversations` row exists → existing welcome menu path runs as today.
+- If one exists → bot acknowledges and persists the turn into `state_data.turns`. No LLM call yet.
+
+Conversations will be **created** later (Sprint 11.2+) by slash commands / buttons (e.g., starting a Pulse via `/rhitmo` opens a conversation row with `intent='pulse_survey'`).
+
+### 3. No client changes
+Frontend is not touched. No types regen needed beyond what the migration auto-produces in `src/integrations/supabase/types.ts`.
+
+### 4. Memory update
+Add `mem://features/slack/conversational-state-machine` describing:
+- Table shape and one-active-per-user invariant.
+- Hook position (DM event, before welcome menu, post-throttle).
+- Convention for `state_data.turns: [{role, text, ts}]` and `intent` values.
+Update `mem://index.md` with the reference line.
 
 ---
 
-## Arquivos editados
+### Files touched
+- New migration: `slack_conversations` table + enum + indexes + RLS + RPC helpers.
+- Edited: `supabase/functions/slack-bot/index.ts` (add 2 helpers + conversational hook inside DM branch).
+- New: `mem://features/slack/conversational-state-machine`, updated `mem://index.md`.
 
-| Arquivo | Mudança |
-|---|---|
-| `src/pages/lider/Pulse.tsx` | Redirect para `/lider/contexto` |
-| `src/pages/liderado/Pulse.tsx` | Redirect para `/liderado` (dashboard) |
-| `src/pages/liderado/Avaliacoes.tsx` | Tab "Para revisar" vira EmptyStateHero apontando para o dashboard |
-| `src/components/pulse/AnswerPulseModal.tsx` | Guarda `!submitting` no close |
-| `src/components/pulse/SendPulseModal.tsx` | Guarda `!submitting` + reset de estado on open |
-| `src/components/peer-review/AnswerPeerReviewModal.tsx` | Invalida `team-timeline` |
-| `src/components/peer-review/RequestPeerReviewModal.tsx` | Empty state inline para "sem liderados" |
-| `src/components/self-review/SelfReviewWizard.tsx` | Substitui ScrollArea + adiciona botão Sair mid-flow |
-| `src/components/upwards-review/UpwardsReviewWizard.tsx` | Idem acima |
-| `src/hooks/useLeaderInfo.ts` | Filtra por `workspace_id` quando disponível |
-| `src/components/dashboard/DirectReportDashboard.tsx` | Reordena seção "Avaliações Formais" |
-
-## O que NÃO vou tocar
-- Banco de dados / RLS / triggers (intactos por diretriz).
-- Tipos do Supabase (auto-gerados).
-- Lógica de `useEffectiveUser`, `AccountContext`, `useAuth`.
-- Sidebar / navegação principal (já remove `/lider/pulse` da relevância via redirect).
-
-Após aprovar, aplico tudo e gero o resumo final das melhorias.
+### Out of scope (next sprints)
+- LLM wiring (OpenAI/Lovable AI), prompt design, intent classifier.
+- Conversation **creation** triggers from slash commands / buttons.
+- Cron sweep for `expire_stale_slack_conversations()`.
+- UI to inspect ongoing conversations.
