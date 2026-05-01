@@ -146,18 +146,7 @@ export function AppSidebar() {
         )}
       </SidebarHeader>
 
-      <SidebarContent className="gap-0">
-        {/* Zone B — Quick actions row */}
-        {open && (
-          <div className="pt-1 pb-3">
-            <QuickActionsRow
-              homeRoute={homeRoute}
-              actions={quickActions}
-              onOpenMentor={() => setMentorOpen(true)}
-              onOpenSearch={() => setSearchOpen(true)}
-            />
-          </div>
-        )}
+      <SidebarContent className="gap-0 pt-2">
 
         {/* Zone C — Primary nav */}
         <SidebarMenu className="px-2 gap-0.5">
@@ -247,35 +236,31 @@ export function AppSidebar() {
         {/* Persistent AI CTA */}
         {open && <SidebarFooterCTA persona={persona} />}
 
-        {/* Settings + Support quick links */}
+        {/* Discreet global search shortcut (cmd+K also works) */}
         {open && (
-          <div className="mx-2 flex items-center gap-1">
+          <div className="mx-2">
             <button
               type="button"
-              onClick={() => setSettingsOpen(true)}
-              className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 transition-colors"
+              onClick={() => setSearchOpen(true)}
+              className="w-full flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 transition-colors"
+              aria-label={t('nav.quick.search', 'Buscar')}
             >
-              <Settings className="h-3.5 w-3.5" />
-              <span>{t('common.settings')}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setSupportOpen(true)}
-              className="h-7 w-7 inline-flex items-center justify-center rounded-lg text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 transition-colors"
-              title={t('sidebar.support')}
-              aria-label={t('sidebar.support')}
-            >
-              <LifeBuoy className="h-3.5 w-3.5" />
+              <Search className="h-3.5 w-3.5" />
+              <span className="flex-1 text-left">{t('nav.quick.search', 'Buscar')}</span>
+              <kbd className="hidden sm:inline text-[10px] font-mono text-muted-foreground/70 border border-border/40 rounded px-1 py-0.5">
+                ⌘K
+              </kbd>
             </button>
           </div>
         )}
 
-        {/* Profile block with theme toggle */}
+        {/* Profile block — avatar opens personal profile dialog */}
         {open && effectiveUserId && (
           <SidebarProfileBlock
             memberId={effectiveUserId}
             name={userName}
             avatarUrl={(user?.user_metadata?.avatar as string | undefined) ?? null}
+            onOpenProfileSettings={() => setSettingsOpen(true)}
           />
         )}
       </SidebarFooter>
@@ -304,25 +289,6 @@ export function AppSidebar() {
         />
       )}
 
-      <Dialog open={supportOpen} onOpenChange={setSupportOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <LifeBuoy className="h-5 w-5 text-primary" />
-              {t('sidebar.talkToUs')}
-            </DialogTitle>
-            <DialogDescription>{t('sidebar.supportDescription')}</DialogDescription>
-          </DialogHeader>
-          <div className="flex items-center gap-2 mt-4">
-            <code className="flex-1 bg-muted px-4 py-2 rounded-md font-mono text-sm text-foreground">
-              support@rhitmo.co
-            </code>
-            <Button variant="outline" size="icon" onClick={handleCopyEmail}>
-              {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </Sidebar>
   );
 }
