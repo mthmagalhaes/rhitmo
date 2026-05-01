@@ -1418,6 +1418,53 @@ async function processInteraction(body: string, timestamp: string, signature: st
         if (responseUrl) await sendDelayedResponse(responseUrl, pdiMsg);
         break;
       }
+      case 'start_rhitmo_chat': {
+        console.log('[INTERACT] Start Rhitmo chat clicked by:', slackUserId);
+        try {
+          const chatPersona = await getUserPersona(slackUserId);
+          if (chatPersona.persona === 'unauthenticated' || !chatPersona.workspaceId) {
+            await slackApi('chat.postMessage', {
+              channel: slackUserId,
+              text: '🔗 Conecte sua conta Rhitmo primeiro. Use `/rhitmo` para começar.',
+            });
+            break;
+          }
+
+          // Idempotency: if already in an active conversation, just nudge.
+          const existing = await getActiveConversation(slackUserId);
+          if (existing) {
+            await slackApi('chat.postMessage', {
+              channel: slackUserId,
+              text: 'Já estamos numa conversa ativa 🌀 — é só me responder por aqui.',
+            });
+            break;
+          }
+
+          const { error: insertErr } = await supabase.from('slack_conversations').insert({
+            workspace_id: chatPersona.workspaceId,
+            slack_user_id: slackUserId,
+            intent: 'general_chat',
+            status: 'active',
+            state_data: { turns: [] },
+          });
+          if (insertErr) {
+            console.error('[INTERACT] Failed to insert slack_conversation:', insertErr.message);
+            await slackApi('chat.postMessage', {
+              channel: slackUserId,
+              text: '⚠️ Não consegui abrir nossa conversa agora. Tente em instantes.',
+            });
+            break;
+          }
+
+          await slackApi('chat.postMessage', {
+            channel: slackUserId,
+            text: 'Olá! Eu sou o Mentor da Rhitmo 🌀, conectado ao seu Context Graph. Sobre o que você quer falar ou refletir hoje?',
+          });
+        } catch (err) {
+          console.error('[INTERACT] start_rhitmo_chat error:', err);
+        }
+        break;
+      }
       default:
         console.log('[INTERACT] Unhandled action:', action.action_id);
     }
