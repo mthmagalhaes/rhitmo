@@ -63,6 +63,7 @@ interface MentorChatProps {
   latestReview?: string | null;
   userId?: string;
   initialPrompt?: string;
+  initialThreadId?: string | null;
 }
 
 const leaderSuggestions = [
