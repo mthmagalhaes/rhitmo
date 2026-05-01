@@ -94,7 +94,7 @@ export const AgendaBlock = forwardRef<AgendaBlockRef, AgendaBlockProps>(
       }
       setSaving(true);
       try {
-        const { error } = await supabase.from('feedbacks').insert({
+        const { error } = await supabase.from('feedbacks').insert([{
           manager_id: user.id,
           member_id: memberId,
           workspace_id: workspaceId,
@@ -103,7 +103,7 @@ export const AgendaBlock = forwardRef<AgendaBlockRef, AgendaBlockProps>(
           tags: [cfg.tag],
           visibility: cfg.visibility,
           occurred_at: new Date().toISOString(),
-        });
+        }]);
         if (error) throw error;
         toast({
           title: variant === 'shared' ? 'Pauta salva' : 'Anotação salva',
