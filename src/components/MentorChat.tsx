@@ -166,6 +166,14 @@ export const MentorChat = ({
     staleTime: 1000 * 60 * 5,
   });
 
+  // Apply initialThreadId when sheet opens (overrides auto-select of most recent)
+  useEffect(() => {
+    if (open && initialThreadId) {
+      setSelectedThreadId(initialThreadId);
+      setIsCreatingNewThread(false);
+    }
+  }, [open, initialThreadId]);
+
   useEffect(() => {
     if (!isLoadingThreads && threads.length > 0 && !selectedThreadId && !isCreatingNewThread) {
       setSelectedThreadId(threads[0].id);
