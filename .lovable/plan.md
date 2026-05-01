@@ -1,83 +1,108 @@
-## Objetivo
+## Diagnóstico
 
-Reorganizar o WorkspaceSwitcher (canto superior esquerdo da sidebar) para que ele se torne o ponto central de ações de "conta/organização", trazendo para dentro do dropdown:
+Comparando nossas telas atuais com a referência Windmill:
 
-1. **Settings / Configurações** (hoje aparece duplicado: como item no rodapé e como aba na sidebar de navegação principal — ambos continuam, mas ganham um atalho aqui).
-2. **Help Center** (hoje é aba dentro de `/lider/configuracoes?tab=ajuda` — vira item de primeira classe acessível pelo seletor).
-3. **Convidar membros / liderados** (hoje há um botão `setInviteOpen` espalhado em `Pessoas.tsx` e no rodapé da sidebar — centraliza no seletor, mantendo a action existente no rodapé como atalho mas removendo a duplicação visual).
+**Problemas identificados (1:1s, Diário, Objetivos):**
 
-Inspiração: print do Windmill — o seletor da org abre um menu com Settings, Help Center e Invite Members logo abaixo do nome do workspace.
+1. **Header da página flutua "soltinho"** acima da master list, criando uma faixa horizontal que atravessa AS DUAS colunas. Resultado: o "1:1s · 6 pessoas" fica do lado esquerdo, mas a linha visual continua até o lado direito, sem fechamento. Isso é o que o usuário marcou de vermelho na primeira screenshot.
+2. **TeamTabs (Todos / Business Ops / CreativeOps...) está renderizado no topo da master list (320px)** mas com largura excedente — vaza para dentro do painel direito porque usa `flex-wrap` sem clipping. Resultado: as abas atravessam o divisor vertical.
+3. **Empty state do painel direito** (`EmptyMemberDetail`) tem um quadrado de fundo lavanda atrás do ícone que parece um "card invasor" sobre a área da timeline (segunda screenshot do usuário marcada em vermelho).
+4. **Falta o divisor vertical claro** entre master list e detalhe — no Windmill o divisor é um único `border-r` limpo, do topo ao rodapé, sem cards/headers cruzando ele.
+5. **Footer "Novo liderado"** está flutuando como botão com ícone à esquerda; no Windmill é um item discreto de texto, alinhado.
+6. **Padding inconsistente** entre as 3 páginas — Diário usa banner de privacidade dentro do conteúdo, mas o cabeçalho `Diário de Bordo · ` flutua igualzinho o do 1:1s, criando o mesmo "L invertido" visual.
 
-## O que muda
+**Referência Windmill (screenshot do usuário):**
+- Layout 100% limpo de duas colunas com border-r único entre elas.
+- Header da página vive DENTRO da coluna direita (não atravessa a master list).
+- Master list ocupa 100% da altura, com seu próprio título no topo.
+- Empty state é minimalista: ícone outline pequeno + título + descrição centralizados, SEM card com fundo colorido atrás do ícone.
+- Sem TeamTabs vazando — quando precisa filtrar, é dentro da master list, contido.
 
-### `src/components/sidebar/WorkspaceSwitcher.tsx` (refatoração principal)
+## Solução
 
-- Hoje só lista workspaces para troca. Passa a renderizar o dropdown **sempre** (mesmo com 1 workspace), porque agora ele tem ações úteis além da troca.
-- Estrutura do dropdown:
-  - **Workspaces** (label + lista, só se `workspaces.length > 1`)
-  - Separador
-  - **Configurações** → navega para `/lider/configuracoes` (ou `/liderado/configuracoes` conforme persona)
-  - **Central de Ajuda** → navega para `/lider/configuracoes?tab=ajuda` (rota já existe via `HelpRedirect`)
-  - **Convidar membros** → abre o `BulkOnboardDialog` (apenas para persona = `leader`)
-- Para abrir o dialog de convite a partir do switcher, vamos elevar o estado: o `WorkspaceSwitcher` aceitará props `onOpenInvite?` e `onOpenSettings?`, e o `AppSidebar` passa os handlers já existentes (`setInviteOpen`, `setSettingsOpen`). Isso mantém um único ponto de verdade para o dialog (instanciado em `AppSidebar`).
-- Persona é resolvida lendo `useAccount` (já presente) + `resolvePersona` de `@/lib/navigation`.
+Refatorar 3 arquivos de página + 2 componentes compartilhados para implementar um layout de duas colunas 100% disciplinado, ao estilo Windmill.
 
-### `src/components/AppSidebar.tsx`
+### Mudanças por arquivo
 
-- Passa as novas props para `<WorkspaceSwitcher onOpenInvite={() => setInviteOpen(true)} onOpenSettings={() => setSettingsOpen(true)} />`.
-- **Remove duplicação do rodapé**:
-  - Remove o botão "Convidar membros" do rodapé (linhas com `setInviteOpen` no footer) — ação fica só no switcher.
-  - Mantém o botão "Configurações" do rodapé (é um padrão comum ter atalho rápido ali) **OU** remove para evitar duplicidade. Recomendação: **manter** o do rodapé porque está perto do bloco de perfil; remover apenas o "Convidar". Se preferir UI mais enxuta, removemos ambos — confirmar na implementação.
-  - Mantém o botão de Suporte (LifeBuoy) do rodapé.
+**`src/components/leader/MemberMasterList.tsx`**
+- Remover `mb-4` do trigger mobile (não causa problema mas vamos limpar).
+- Manter aside com `border-r` único, mas garantir que o filho `<InnerList>` use `overflow-hidden` no container do `TeamTabs` para evitar overflow horizontal.
+- TeamTabs hoje usa `flex-wrap` — vamos trocar por `overflow-x-auto` com scroll horizontal sutil + `flex-nowrap`, ou (preferível) usar um Select compacto quando há >3 times. Decisão: scroll-x horizontal contido, nenhum wrap. Vai garantir que NUNCA vaze para fora da master list.
+- Remover o título da master list duplicado (hoje tem "1:1s · 6 pessoas") — o título da página fica APENAS na coluna direita. A master list ganha um header neutro: apenas "Liderados · N" pequeno e cinza, sempre. Isso elimina a redundância visual de "1:1s" aparecer duas vezes (no breadcrumb e dentro da lista).
+- Footer "Novo liderado" → estilo `ghost` mas com ícone menor e padding maior pra parecer um item de menu, não um botão CTA.
 
-### `src/pages/lider/Pessoas.tsx`
+**`src/components/leader/EmptyMemberDetail.tsx`**
+- REMOVER o quadrado lavanda (`bg-primary/10 rounded-2xl`) atrás do ícone — esse é o quadrado invasor que aparece na screenshot do usuário.
+- Substituir por: ícone outline simples (cor `text-muted-foreground/40`, tamanho `h-12 w-12`), centralizado, SEM background.
+- Ajustar tipografia para parecer mais Windmill: título serif menor (`text-lg`), descrição menor (`text-xs text-muted-foreground/80`), max-w-xs.
 
-- Remove o botão "Convidar liderados" duplicado do header da página (linhas ~83 e ~138). A aba "Convites" continua existindo, mas o CTA principal de convite passa a viver no switcher (consistência: 1 lugar pra convidar). Mantemos o `BulkOnboardDialog` instanciado na página para a aba "Convites" funcionar, **ou** redirecionamos a aba para abrir o dialog global. Decisão: manter o dialog local da página `Pessoas` (a aba precisa dele) e apenas remover os botões soltos do header (`onInvite` no empty state e `Convidar` no header da página).
-- Resultado: dentro de `/lider/pessoas` → aba Convites continua com seu fluxo; nas outras páginas (`Diário`, `Objetivos`, `Avaliações`) o usuário convida pelo switcher.
+**`src/pages/lider/OneOnOnes.tsx`, `Diario.tsx`, `Objetivos.tsx`**
 
-### i18n (`src/i18n/locales/{pt-BR,en,es}.json`)
+O fix arquitetural principal: hoje cada página coloca `<MemberMasterList>` ao lado de `<main>`. Mas o título "1:1s · 6 pessoas" está dentro do `<MemberMasterList>` — o que faz com que a faixa horizontal do título fique apenas na coluna esquerda (320px), enquanto o detalhe do liderado fica do outro lado. Isso PARECE certo no código mas visualmente cria a "linha quebrada" que o usuário viu.
 
-- Adicionar chaves:
-  - `sidebar.workspace.settings`
-  - `sidebar.workspace.helpCenter`
-  - `sidebar.workspace.inviteMembers`
+Solução:
+- A master list vai ter APENAS um header sutil ("Liderados · N pessoas"), nunca o nome da página.
+- O título da página ("1:1s", "Diário de Bordo", "Objetivos") vai SEMPRE viver dentro do `<main>`, ACIMA do conteúdo do liderado selecionado, mesmo no estado vazio.
+- Quando não há liderado selecionado, o `<main>` mostra: título da página (h1 grande) + descrição + EmptyMemberDetail centralizado.
+- Quando há liderado, o `<main>` mostra: título da página menor (subtítulo) + cabeçalho do liderado + conteúdo.
 
-### Memória
+Isso elimina a "faixa flutuante" e dá a sensação de "duas colunas independentes" que a Windmill tem.
 
-- Atualizar `mem://design/dashboard/onboarding-demo-visibility` ou criar nova memória curta `mem://design/sidebar/workspace-switcher-actions` documentando: "WorkspaceSwitcher concentra Settings, Help Center e Convidar Membros (padrão Windmill/Linear). Convite NÃO deve ser duplicado em páginas individuais (Diário, Objetivos, Avaliações); apenas a página /lider/pessoas mantém fluxo próprio na aba Convites."
+**Padronizar containers do `<main>`:**
+- Largura: trocar `max-w-3xl` por `max-w-2xl` (mais próximo do Windmill que tem ~640px de conteúdo útil).
+- Padding: `px-8 py-10` (mais ar, menos apertado).
+- `space-y-8` (não 6).
 
-## Layout do dropdown (referência)
+**Diário de Bordo especificamente:**
+- O banner "Notas 100% privadas" hoje é um Card com bg-muted/40. Vamos transformá-lo num **alert inline mais sutil**: apenas um pequeno bloco com `border-l-2 border-primary/30 pl-3 py-1` + texto pequeno. Sem card, sem ícone destacado. Privacidade vira um **status indicator**, não um banner intrusivo (alinhado com o que a Windmill faz com as Private Notes).
+
+### Layout final (referência ASCII)
 
 ```text
-┌─ Workspace [name] ▾ ──────────┐
-│ Workspaces                    │  (label, só se >1)
-│  ✓ Faster                     │
-│    Acme                       │
-│ ─────────────────────────     │
-│ ⚙  Configurações              │
-│ ⓘ  Central de Ajuda           │
-│ ➕  Convidar membros           │  (apenas leader)
-└───────────────────────────────┘
+┌─────────────────┬──────────────────────────────────────────┐
+│ Liderados · 6   │                                          │
+│ ─────────────── │                                          │
+│ [tabs scroll]   │   1:1s                                   │
+│                 │   ─────────────                          │
+│ ● Gabriela      │                                          │
+│ ● Giovanna      │   [avatar] Gabriela Lucas                │
+│ ● Guilherme     │           Analista de Business Ops       │
+│ ● Laís          │                                          │
+│ ● Matheus       │   ✨ Sugestões da Rhitmo ...             │
+│ ● Yasmin        │                                          │
+│                 │   Próximas reuniões                      │
+│                 │   [card]                                 │
+│                 │                                          │
+│ ─────────────── │   Pauta · Anotação privada               │
+│ + Novo liderado │   [textarea] [textarea]                  │
+└─────────────────┴──────────────────────────────────────────┘
 ```
 
-## Detalhes técnicos
-
-- `WorkspaceSwitcher` deixa de ter o early-return `if (!hasMultiple) return trigger` — sempre renderiza o `DropdownMenu`.
-- O ícone `ChevronsUpDown` deixa de ficar com `opacity-30` quando há 1 workspace (agora há outras ações).
-- Para navegação, usa `useNavigate` de `react-router-dom`.
-- Para a action de convite, dispara o callback prop em vez de instanciar outro `BulkOnboardDialog` (evita duplicar dialogs no DOM).
-- Persona-aware: o item "Convidar membros" só aparece para `persona === 'leader'`.
+Estado vazio:
+```text
+┌─────────────────┬──────────────────────────────────────────┐
+│ Liderados · 6   │                                          │
+│ [tabs]          │   1:1s                                   │
+│                 │   ─────────────                          │
+│ ● Gabriela      │                                          │
+│ ● Giovanna      │              📅 (ícone outline)          │
+│ ● ...           │       Selecione um liderado              │
+│                 │   Escolha alguém na lista à esquerda     │
+└─────────────────┴──────────────────────────────────────────┘
+```
 
 ## Arquivos editados
 
-- `src/components/sidebar/WorkspaceSwitcher.tsx` (refator)
-- `src/components/AppSidebar.tsx` (passa props, remove botão "Convidar" do rodapé)
-- `src/pages/lider/Pessoas.tsx` (remove botões de convite duplicados do header da página)
-- `src/i18n/locales/pt-BR.json`, `en.json`, `es.json` (3 chaves novas)
-- `.lovable/memory/design/sidebar/workspace-switcher-actions.md` (nova) + atualização do `index.md`
+1. `src/components/leader/MemberMasterList.tsx` — header sempre genérico ("Liderados · N"), TeamTabs com overflow contido
+2. `src/components/leader/EmptyMemberDetail.tsx` — remove quadrado lavanda, ícone outline simples
+3. `src/pages/lider/OneOnOnes.tsx` — título da página dentro do `<main>`, max-w-2xl, espaçamento maior
+4. `src/pages/lider/Diario.tsx` — mesmo + banner privacidade vira inline sutil
+5. `src/pages/lider/Objetivos.tsx` — mesmo padrão
+6. `.lovable/memory/design/dashboard/master-detail-pages.md` — atualizar com regras "header da página vive na coluna direita" e "master list nunca duplica nome da página"
 
 ## Fora de escopo
 
-- Não mexemos no fluxo interno do `BulkOnboardDialog`.
-- Não removemos a aba "Ajuda" das Configurações (continua acessível por URL e pela navegação atual).
-- Não alteramos a aba "Convites" dentro de `/lider/pessoas`.
+- Não mexemos na lógica de salvamento (AgendaBlock, GoalsManager, FeedbackTimeline continuam idênticos).
+- Não mexemos em `useLeaderMembers`.
+- Não alteramos o comportamento mobile (sheet continua igual).
+- Não tocamos em outras páginas (`/lider/inicio`, `/lider/contexto`, `/lider/pulse`, `/lider/avaliacoes`).

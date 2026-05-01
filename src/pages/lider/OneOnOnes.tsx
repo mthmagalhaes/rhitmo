@@ -1,4 +1,4 @@
-// Sprint 12 — Master-Detail layout for /lider/1on1s
+// Sprint 12.1 — 1:1s estilo Windmill: título da página vive na coluna direita.
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Calendar as CalendarIcon } from 'lucide-react';
@@ -21,18 +21,24 @@ export default function LiderOneOnOnes() {
   return (
     <div className="flex min-h-[calc(100vh-4rem)]">
       <MemberMasterList
-        title="1:1s"
         selectedMemberId={selected?.id ?? null}
         onSelect={(m) => setSelected(m)}
       />
 
       <main className="flex-1 min-w-0">
-        <div className="lg:hidden px-4 sm:px-6 pt-6">
-          {/* trigger lives inside MemberMasterList */}
-        </div>
+        {/* Mobile: trigger da master list já é renderizado pelo componente */}
+        <div className="lg:hidden px-4 sm:px-6 pt-4" />
 
         {!selected ? (
-          <div className="px-4 sm:px-6 py-8">
+          <div className="max-w-2xl mx-auto px-6 lg:px-10 py-10">
+            <header className="mb-2">
+              <h1 className="font-serif text-2xl font-bold tracking-tight">
+                1:1s
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Prepare a próxima conversa com cada liderado.
+              </p>
+            </header>
             <EmptyMemberDetail
               icon={CalendarIcon}
               title="Selecione um liderado"
@@ -40,9 +46,14 @@ export default function LiderOneOnOnes() {
             />
           </div>
         ) : (
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-            {/* Cabeçalho */}
-            <header className="flex items-center justify-between gap-3">
+          <div className="max-w-2xl mx-auto px-6 lg:px-10 py-10 space-y-8">
+            {/* Subtítulo da seção (não compete com o nome do liderado) */}
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              1:1s
+            </p>
+
+            {/* Cabeçalho do liderado */}
+            <header className="flex items-center justify-between gap-3 -mt-4">
               <div className="flex items-center gap-3">
                 <MemberAvatar
                   memberId={selected.id}
@@ -51,14 +62,13 @@ export default function LiderOneOnOnes() {
                   size="lg"
                 />
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                    1:1
-                  </p>
                   <h1 className="font-serif text-2xl font-bold tracking-tight">
                     {selected.name}
                   </h1>
                   {selected.role && (
-                    <p className="text-sm text-muted-foreground">{selected.role}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {selected.role}
+                    </p>
                   )}
                 </div>
               </div>
@@ -80,9 +90,9 @@ export default function LiderOneOnOnes() {
               onAdd={(text) => sharedRef.current?.appendLine(text)}
             />
 
-            {/* Próximas reuniões (filtro futuro por membro) */}
-            <section className="space-y-2">
-              <h2 className="font-serif text-sm font-bold tracking-tight text-muted-foreground uppercase tracking-[0.15em]">
+            {/* Próximas reuniões */}
+            <section className="space-y-3">
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
                 Próximas reuniões
               </h2>
               <UpcomingMeetingsCard />

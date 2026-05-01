@@ -1,4 +1,5 @@
-// Sprint 12 — Diário de Bordo (Master-Detail, privacy-first).
+// Sprint 12.1 — Diário de Bordo estilo Windmill.
+// Título da página dentro da coluna direita; banner de privacidade vira inline.
 import { useMemo, useState } from 'react';
 import { isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
@@ -6,7 +7,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Lock, PenSquare, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { MemberAvatar } from '@/components/MemberAvatar';
 import { MemberMasterList } from '@/components/leader/MemberMasterList';
 import { EmptyMemberDetail } from '@/components/leader/EmptyMemberDetail';
@@ -55,17 +55,24 @@ export default function LiderDiario() {
       });
     }
     if (selectedTags.length > 0) {
-      result = result.filter((fb) => fb.tags?.some((t) => selectedTags.includes(t)));
+      result = result.filter((fb) =>
+        fb.tags?.some((t) => selectedTags.includes(t)),
+      );
     }
     if (dateRange?.from) {
       const from = startOfDay(dateRange.from);
       if (dateRange.to) {
         const to = endOfDay(dateRange.to);
         result = result.filter((fb) =>
-          isWithinInterval(new Date(fb.occurred_at || fb.created_at), { start: from, end: to }),
+          isWithinInterval(new Date(fb.occurred_at || fb.created_at), {
+            start: from,
+            end: to,
+          }),
         );
       } else {
-        result = result.filter((fb) => new Date(fb.occurred_at || fb.created_at) >= from);
+        result = result.filter(
+          (fb) => new Date(fb.occurred_at || fb.created_at) >= from,
+        );
       }
     }
     result.sort((a, b) => {
@@ -79,7 +86,11 @@ export default function LiderDiario() {
   async function handleDelete(id: string) {
     const { error } = await supabase.from('feedbacks').delete().eq('id', id);
     if (error) {
-      toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' });
+      toast({
+        title: 'Erro ao excluir',
+        description: error.message,
+        variant: 'destructive',
+      });
       return;
     }
     queryClient.invalidateQueries({ queryKey: ['feedbacks', selected?.id] });
@@ -88,14 +99,24 @@ export default function LiderDiario() {
   return (
     <div className="flex min-h-[calc(100vh-4rem)]">
       <MemberMasterList
-        title="Diário de Bordo"
         selectedMemberId={selected?.id ?? null}
         onSelect={(m) => setSelected(m)}
       />
 
       <main className="flex-1 min-w-0">
+        <div className="lg:hidden px-4 sm:px-6 pt-4" />
+
         {!selected ? (
-          <div className="px-4 sm:px-6 py-8">
+          <div className="max-w-2xl mx-auto px-6 lg:px-10 py-10">
+            <header className="mb-2">
+              <h1 className="font-serif text-2xl font-bold tracking-tight">
+                Diário de Bordo
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1 inline-flex items-center gap-1.5">
+                <Lock className="h-3 w-3" />
+                Notas privadas, visíveis apenas para você.
+              </p>
+            </header>
             <EmptyMemberDetail
               icon={Lock}
               title="Selecione um liderado"
@@ -103,17 +124,14 @@ export default function LiderDiario() {
             />
           </div>
         ) : (
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-            {/* Banner privacidade fixo */}
-            <Card className="rounded-2xl bg-muted/40 border-border/60 px-4 py-3 flex items-center gap-3">
-              <Lock className="h-4 w-4 text-foreground/70 shrink-0" />
-              <p className="text-xs text-foreground/80">
-                <strong>Notas 100% privadas.</strong> Visíveis apenas para você. O liderado não vê este conteúdo.
-              </p>
-            </Card>
+          <div className="max-w-2xl mx-auto px-6 lg:px-10 py-10 space-y-8">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground inline-flex items-center gap-1.5">
+              <Lock className="h-3 w-3" />
+              Diário privado
+            </p>
 
-            {/* Cabeçalho */}
-            <header className="flex items-center justify-between gap-3">
+            {/* Cabeçalho do liderado */}
+            <header className="flex items-center justify-between gap-3 -mt-4">
               <div className="flex items-center gap-3">
                 <MemberAvatar
                   memberId={selected.id}
@@ -122,12 +140,14 @@ export default function LiderDiario() {
                   size="lg"
                 />
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                    Diário privado
-                  </p>
                   <h1 className="font-serif text-2xl font-bold tracking-tight">
                     {selected.name}
                   </h1>
+                  {selected.role && (
+                    <p className="text-sm text-muted-foreground">
+                      {selected.role}
+                    </p>
+                  )}
                 </div>
               </div>
               <Button onClick={() => setDialogOpen(true)} className="rounded-xl gap-2">
@@ -155,7 +175,10 @@ export default function LiderDiario() {
                 <p className="text-sm text-muted-foreground mb-4">
                   Nenhuma nota privada para este liderado ainda.
                 </p>
-                <Button onClick={() => setDialogOpen(true)} className="rounded-xl">
+                <Button
+                  onClick={() => setDialogOpen(true)}
+                  className="rounded-xl"
+                >
                   Adicionar primeira nota
                 </Button>
               </Card>
@@ -167,18 +190,10 @@ export default function LiderDiario() {
                 </p>
               </Card>
             ) : (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="gap-1.5 rounded-full border-border/60 bg-muted/30 text-xs">
-                    <Lock className="h-3 w-3" />
-                    Todas as notas são privadas
-                  </Badge>
-                </div>
-                <FeedbackTimeline
-                  feedbacks={filtered as any}
-                  onDelete={handleDelete}
-                />
-              </div>
+              <FeedbackTimeline
+                feedbacks={filtered as any}
+                onDelete={handleDelete}
+              />
             )}
           </div>
         )}
