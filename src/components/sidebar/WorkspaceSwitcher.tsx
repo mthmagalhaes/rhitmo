@@ -1,8 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { ChevronsUpDown, Building2, Check } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { ChevronsUpDown, Building2, Check, Settings, LifeBuoy, UserPlus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { useAccount } from '@/contexts/AccountContext';
+import { resolvePersona } from '@/lib/navigation';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,9 +22,20 @@ interface WorkspaceRow {
   is_active: boolean | null;
 }
 
-export function WorkspaceSwitcher() {
+interface WorkspaceSwitcherProps {
+  onOpenInvite?: () => void;
+}
+
+export function WorkspaceSwitcher({ onOpenInvite }: WorkspaceSwitcherProps) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
   const { id: userId } = useEffectiveUser();
-  const { workspaceId, isHRAdmin } = useAccount();
+  const { workspaceId, isHRAdmin, isLeader, isLinkedMember } = useAccount();
+
+  const persona = resolvePersona({ isLinkedMember, isLeader, isHRAdmin });
+  const settingsRoute = persona === 'leader' ? '/lider/configuracoes' : '/liderado/configuracoes';
+  const helpRoute = `${settingsRoute}?tab=ajuda`;
+  const canInvite = persona === 'leader' && !!onOpenInvite;
 
   const { data: workspaces = [] } = useQuery({
     queryKey: ['sidebar-workspaces', userId],
@@ -45,12 +59,10 @@ export function WorkspaceSwitcher() {
   const trigger = (
     <button
       type="button"
-      disabled={!hasMultiple}
       className={cn(
         'group w-full flex items-center gap-2 px-3 py-2 rounded-xl',
         'bg-sidebar-accent/30 hover:bg-sidebar-accent/60 transition-colors',
         'text-left text-sm',
-        !hasMultiple && 'cursor-default opacity-90',
       )}
       aria-label={current ? `Workspace ${current.name}` : 'Workspace'}
     >
@@ -67,39 +79,64 @@ export function WorkspaceSwitcher() {
           )}
         </p>
       </div>
-      <ChevronsUpDown
-        className={cn(
-          'h-3.5 w-3.5 shrink-0 text-muted-foreground/60',
-          !hasMultiple && 'opacity-30',
-        )}
-      />
+      <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
     </button>
   );
-
-  if (!hasMultiple) return trigger;
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-60">
-        <DropdownMenuLabel className="text-xs">Workspaces</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {workspaces.map((w) => (
-          <DropdownMenuItem
-            key={w.id}
-            onSelect={() => {
-              // Workspace switching needs a full reload to refresh AccountContext.
-              if (w.id !== workspaceId) {
-                window.location.href = '/';
-              }
-            }}
-            className="flex items-center gap-2"
-          >
-            <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="flex-1 truncate">{w.name}</span>
-            {w.id === workspaceId && <Check className="h-3.5 w-3.5 text-primary" />}
-          </DropdownMenuItem>
-        ))}
+      <DropdownMenuContent align="start" className="w-64">
+        {hasMultiple && (
+          <>
+            <DropdownMenuLabel className="text-xs">Workspaces</DropdownMenuLabel>
+            {workspaces.map((w) => (
+              <DropdownMenuItem
+                key={w.id}
+                onSelect={() => {
+                  if (w.id !== workspaceId) {
+                    window.location.href = '/';
+                  }
+                }}
+                className="flex items-center gap-2"
+              >
+                <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="flex-1 truncate">{w.name}</span>
+                {w.id === workspaceId && <Check className="h-3.5 w-3.5 text-primary" />}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+          </>
+        )}
+
+        <DropdownMenuItem
+          onSelect={() => navigate(settingsRoute)}
+          className="flex items-center gap-2"
+        >
+          <Settings className="h-3.5 w-3.5 text-muted-foreground" />
+          <span>{t('sidebar.workspace.settings', 'Configurações')}</span>
+        </DropdownMenuItem>
+
+        <DropdownMenuItem
+          onSelect={() => navigate(helpRoute)}
+          className="flex items-center gap-2"
+        >
+          <LifeBuoy className="h-3.5 w-3.5 text-muted-foreground" />
+          <span>{t('sidebar.workspace.helpCenter', 'Central de Ajuda')}</span>
+        </DropdownMenuItem>
+
+        {canInvite && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onSelect={() => onOpenInvite?.()}
+              className="flex items-center gap-2"
+            >
+              <UserPlus className="h-3.5 w-3.5 text-muted-foreground" />
+              <span>{t('sidebar.workspace.inviteMembers', 'Convidar membros')}</span>
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
