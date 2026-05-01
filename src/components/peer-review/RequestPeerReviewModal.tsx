@@ -246,35 +246,42 @@ export function RequestPeerReviewModal({ open, onOpenChange }: RequestPeerReview
         </DialogHeader>
 
         <div className="space-y-5 py-2">
-          <div className="space-y-2">
-            <Label>Liderado a ser avaliado</Label>
-            <Select
-              value={targetMemberId}
-              onValueChange={(v) => {
-                setTargetMemberId(v);
-                setSelectedPeers(new Set());
-              }}
-            >
-              <SelectTrigger className="rounded-xl">
-                <SelectValue
-                  placeholder={loadingTargets ? 'Carregando...' : 'Escolha um liderado'}
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {(targets ?? []).length === 0 && !loadingTargets ? (
-                  <div className="px-3 py-2 text-xs text-muted-foreground">
-                    Você ainda não tem liderados diretos.
-                  </div>
-                ) : (
-                  (targets ?? []).map((m) => (
+          {/* Sprint 10.5 — empty state inline para "sem liderados" (mais visível que dropdown). */}
+          {!loadingTargets && (targets ?? []).length === 0 ? (
+            <div className="rounded-xl bg-muted/40 p-5 text-center">
+              <Users className="h-6 w-6 mx-auto mb-2 text-muted-foreground/60" />
+              <p className="text-sm font-medium text-foreground">
+                Você ainda não tem liderados diretos
+              </p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+                Adicione um liderado ao seu time para começar a coletar feedback de pares.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label>Liderado a ser avaliado</Label>
+              <Select
+                value={targetMemberId}
+                onValueChange={(v) => {
+                  setTargetMemberId(v);
+                  setSelectedPeers(new Set());
+                }}
+              >
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue
+                    placeholder={loadingTargets ? 'Carregando...' : 'Escolha um liderado'}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {(targets ?? []).map((m) => (
                     <SelectItem key={m.id} value={m.id}>
                       {m.name}
                     </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {targetMemberId && (
             <div className="space-y-2">
