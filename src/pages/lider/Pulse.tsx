@@ -1,16 +1,8 @@
-import { Activity } from 'lucide-react';
-import { EmptyState } from '@/components/EmptyState';
-import { useTranslation } from 'react-i18next';
+// Sprint 10.5 — UX cleanup: a feature de Pulse vive em /lider/contexto (botão de envio
+// na barra sticky + feed unificado das respostas). Esta rota legada redireciona para lá
+// para evitar página "fantasma" de "Em breve".
+import { Navigate } from 'react-router-dom';
 
 export default function LiderPulse() {
-  const { t } = useTranslation();
-  return (
-    <div className="max-w-5xl mx-auto p-6">
-      <EmptyState
-        icon={Activity}
-        title={t('nav.placeholder.pulse_title')}
-        description={t('nav.placeholder.pulse_desc')}
-      />
-    </div>
-  );
+  return <Navigate to="/lider/contexto" replace />;
 }
