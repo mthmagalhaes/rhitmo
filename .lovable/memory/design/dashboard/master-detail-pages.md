@@ -1,21 +1,24 @@
 ---
 name: Master-Detail Pages
-description: /lider/1on1s, /lider/diario, /lider/objetivos usam MemberMasterList sticky 280px; /lider/1on1s tem ordem editorial Sugestões→Próximas→Pauta→Action items→Privada; /lider/diario tem banner de privacidade fixo + QuickPrivateNoteInput inline (sem modal)
+description: /lider/1on1s, /lider/diario, /lider/objetivos usam MemberMasterList sticky 260px bg-muted/30 com avatar sm; root das páginas tem h-[calc(100svh-3rem)] overflow-hidden + main com overflow-y-auto (scroll independente, app-feel); conteúdo interno max-w-3xl px-6 lg:px-8 py-6 sem mx-auto
 type: design
 ---
 
-# Master-Detail (Sprint 12.1 + 12.2)
+# Master-Detail (Sprint 12.1 + 12.2 + 12.4)
 
-## Regras gerais de layout (estilo Windmill/Linear)
+## Regras gerais de layout (estilo Windmill/Linear/Notion — full-bleed app)
 
-1. **Aside esquerdo** (`MemberMasterList`): largura fixa `w-[280px]` (era 320), sticky `top-0`, `border-r border-border/40`, `bg-card/30`. `overflow-hidden` no container interno para garantir que nada vaze.
-2. **Header da master list é SEMPRE genérico**: "Liderados · N pessoas". Nunca o nome da página (1:1s, Diário, Objetivos). A prop `title` foi mantida apenas por compat e é ignorada.
-3. **Filtro de times**: `Select` compacto (h-8) dentro da master list. NÃO usar `TeamTabs` aqui — ele tem `Plus Novo Time` e wrap que vazam para fora dos 280px.
-4. **Footer "Novo liderado"**: estilo item de menu (`text-xs`, `text-muted-foreground hover:text-foreground`), sem ser CTA destacado.
-5. **Coluna direita** (`<main>`): sempre tem `max-w-2xl mx-auto px-6 lg:px-10 py-10 space-y-8`. O **título da página vive aqui**, mesmo no estado vazio (h1 grande + subtítulo).
-6. **Quando há liderado selecionado**: o nome da página vira um eyebrow pequeno (`text-[11px] uppercase tracking-[0.18em]`) e o `<h1>` passa a ser o nome do liderado.
-7. **EmptyMemberDetail**: ícone outline (`strokeWidth=1.5`, `text-muted-foreground/40`), sem card colorido atrás. Tipografia compacta (`text-lg` título, `text-xs` descrição).
-8. **Diário**: privacidade é status inline (`Lock` h-3 + texto pequeno), nunca um banner Card que ocupa espaço.
+1. **Container raiz da página**: `flex h-[calc(100svh-3.5rem)] lg:h-[calc(100svh-3rem)] overflow-hidden`. Trava a altura à viewport e impede scroll do body — sensação de SaaS app, não de website.
+2. **Aside esquerdo** (`MemberMasterList`): largura fixa `w-[260px]` (era 280), sticky `top-0 self-start h-[calc(100svh-3rem)]`, `border-r border-border/40`, **`bg-muted/30`** (contraste claro vs. main `bg-background`). `overflow-hidden` no container interno; ScrollArea interno cuida do scroll da lista.
+3. **Densidade da lista**: avatar `size="sm"` (h-8 w-8), linhas `px-2.5 py-1.5 gap-2.5`, nome `text-[13px] leading-tight`, cargo `text-[11px] leading-tight mt-0.5`. Header da lista `px-3 pt-4 pb-2` com eyebrow `text-[10px]`. Filtro de times trigger `h-7 text-[11px]`. Ganho: cabe ~50% mais gente no fold sem rolar.
+4. **Coluna direita** (`<main>`): `flex-1 min-w-0 overflow-y-auto bg-background`. Scroll vertical é dela — a sidebar fica ancorada.
+5. **Header da master list é SEMPRE genérico**: "Liderados · N pessoas". Nunca o nome da página (1:1s, Diário, Objetivos). A prop `title` foi mantida apenas por compat e é ignorada.
+6. **Filtro de times**: `Select` compacto dentro da master list. NÃO usar `TeamTabs` aqui — ele tem `Plus Novo Time` e wrap que vazam.
+7. **Footer "Novo liderado"**: estilo item de menu (`text-xs`, `text-muted-foreground hover:text-foreground`), sem ser CTA destacado.
+8. **Conteúdo do main**: `max-w-3xl px-6 lg:px-8 py-6 space-y-6` (sem `mx-auto`, alinhado à esquerda — o gutter direito vira respiro natural). O **título da página vive aqui**, mesmo no estado vazio (h1 grande + subtítulo).
+9. **Quando há liderado selecionado**: o nome da página vira eyebrow pequeno (`text-[11px] uppercase tracking-[0.18em]`) e o `<h1>` passa a ser o nome do liderado.
+10. **EmptyMemberDetail**: ícone outline (`strokeWidth=1.5`, `text-muted-foreground/40`), sem card colorido atrás. Tipografia compacta (`text-lg` título, `text-xs` descrição).
+11. **Diário**: privacidade é status inline (`Lock` h-3 + texto pequeno) + banner discreto, nunca um Card que ocupa espaço.
 
 ## /lider/1on1s especificamente (Sprint 12.2)
 

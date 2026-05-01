@@ -83,22 +83,22 @@ function InnerList({
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="px-4 pt-5 pb-3">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+      <div className="px-3 pt-4 pb-2">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           Liderados
         </p>
-        <p className="text-xs text-muted-foreground/70 mt-1">
+        <p className="text-[11px] text-muted-foreground/70 mt-0.5">
           {filtered.length} {filtered.length === 1 ? 'pessoa' : 'pessoas'}
         </p>
       </div>
 
       {showTeamFilter && teams.length > 1 && (
-        <div className="px-3 pb-3">
+        <div className="px-2 pb-2">
           <Select
             value={activeTeamId ?? 'all'}
             onValueChange={(v) => onTeamChange(v === 'all' ? null : v)}
           >
-            <SelectTrigger className="h-8 rounded-lg text-xs bg-muted/40 border-border/40">
+            <SelectTrigger className="h-7 rounded-lg text-[11px] bg-background/60 border-border/40">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -131,7 +131,7 @@ function InnerList({
             </p>
           </div>
         ) : (
-          <ul className="py-1">
+          <ul className="py-0.5">
             {filtered.map((m) => {
               const isActive = m.id === selectedMemberId;
               const health = getHealth(m.last_feedback_date);
@@ -141,7 +141,7 @@ function InnerList({
                     type="button"
                     onClick={() => onSelect(m)}
                     className={cn(
-                      'w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors border-l-2 border-transparent',
+                      'w-full flex items-center gap-2.5 px-2.5 py-1.5 text-left transition-colors border-l-2 border-transparent',
                       'hover:bg-muted/60',
                       isActive && 'bg-primary/10 border-l-primary',
                     )}
@@ -151,22 +151,22 @@ function InnerList({
                         memberId={m.id}
                         memberName={m.name}
                         avatarUrl={m.avatar}
-                        size="md"
+                        size="sm"
                       />
                       <span
                         className={cn(
-                          'absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-background',
+                          'absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full ring-2 ring-background',
                           HEALTH_CLASSES[health],
                         )}
                         aria-label={`Saúde: ${health}`}
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate text-foreground">
+                      <p className="text-[13px] font-medium truncate text-foreground leading-tight">
                         {m.name}
                       </p>
                       {m.role && (
-                        <p className="text-xs text-muted-foreground truncate">
+                        <p className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5">
                           {m.role}
                         </p>
                       )}
@@ -226,8 +226,8 @@ export function MemberMasterList(props: MemberMasterListProps) {
 
   return (
     <>
-      {/* Desktop: sticky sidebar */}
-      <aside className="hidden lg:flex shrink-0 w-[280px] sticky top-0 self-start h-[calc(100vh-4rem)] border-r border-border/40 bg-card/30">
+      {/* Desktop: sticky sidebar — full app height, denser, soft contrast vs main */}
+      <aside className="hidden lg:flex shrink-0 w-[260px] sticky top-0 self-start h-[calc(100svh-3rem)] border-r border-border/40 bg-muted/30">
         <InnerList {...innerProps} />
       </aside>
 

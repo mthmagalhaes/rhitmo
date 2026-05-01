@@ -101,17 +101,17 @@ export default function LiderDiario() {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)]">
+    <div className="flex h-[calc(100svh-3.5rem)] lg:h-[calc(100svh-3rem)] overflow-hidden">
       <MemberMasterList
         selectedMemberId={selected?.id ?? null}
         onSelect={(m) => setSelected(m)}
       />
 
-      <main className="flex-1 min-w-0">
+      <main className="flex-1 min-w-0 overflow-y-auto bg-background">
         <div className="lg:hidden px-4 sm:px-6 pt-4" />
 
         {!selected ? (
-          <div className="max-w-2xl mx-auto px-6 lg:px-10 py-10">
+          <div className="max-w-3xl px-6 lg:px-8 py-6">
             <header className="mb-2">
               <h1 className="font-serif text-2xl font-bold tracking-tight">
                 Diário de Bordo
@@ -128,7 +128,7 @@ export default function LiderDiario() {
             />
           </div>
         ) : (
-          <div className="max-w-2xl mx-auto px-6 lg:px-10 py-10 space-y-6">
+          <div className="max-w-3xl px-6 lg:px-8 py-6 space-y-6">
             {/* Eyebrow */}
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Diário de Bordo
