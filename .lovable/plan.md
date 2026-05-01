@@ -1,108 +1,91 @@
-## Diagnóstico
+## Diagnóstico das duplicações no sidebar
 
-Comparando nossas telas atuais com a referência Windmill:
+Mapeei **4 conjuntos de botões duplicados**, alguns com comportamentos divergentes (pior tipo de UX):
 
-**Problemas identificados (1:1s, Diário, Objetivos):**
+| # | Item | Local 1 | Local 2 (e 3) | Problema |
+|---|------|---------|---------------|----------|
+| 1 | **Início** | `QuickActionsRow` (ícone Home) | `LEADER_NAV_ITEMS[0]` (Início) | Mesmo destino `/lider/inicio`, mesmo ícone, empilhados |
+| 2 | **Calendário / 1:1s** | `QuickActionsRow` (Calendar) | `LEADER_NAV_ITEMS[1]` (1:1s) | Mesmo destino `/lider/1on1s` |
+| 3 | **Configurações** 🚨 | `LEADER_NAV_ITEMS` → rota | `SidebarFooter` botão → **abre modal** + `WorkspaceSwitcher` dropdown → rota | 3 entradas, 2 destinos diferentes (rota vs modal de profile) |
+| 4 | **Suporte/Ajuda** | `SidebarFooter` botão LifeBuoy → dialog email | `WorkspaceSwitcher` dropdown → `/lider/configuracoes?tab=ajuda` | 2 entradas, 2 destinos diferentes |
 
-1. **Header da página flutua "soltinho"** acima da master list, criando uma faixa horizontal que atravessa AS DUAS colunas. Resultado: o "1:1s · 6 pessoas" fica do lado esquerdo, mas a linha visual continua até o lado direito, sem fechamento. Isso é o que o usuário marcou de vermelho na primeira screenshot.
-2. **TeamTabs (Todos / Business Ops / CreativeOps...) está renderizado no topo da master list (320px)** mas com largura excedente — vaza para dentro do painel direito porque usa `flex-wrap` sem clipping. Resultado: as abas atravessam o divisor vertical.
-3. **Empty state do painel direito** (`EmptyMemberDetail`) tem um quadrado de fundo lavanda atrás do ícone que parece um "card invasor" sobre a área da timeline (segunda screenshot do usuário marcada em vermelho).
-4. **Falta o divisor vertical claro** entre master list e detalhe — no Windmill o divisor é um único `border-r` limpo, do topo ao rodapé, sem cards/headers cruzando ele.
-5. **Footer "Novo liderado"** está flutuando como botão com ícone à esquerda; no Windmill é um item discreto de texto, alinhado.
-6. **Padding inconsistente** entre as 3 páginas — Diário usa banner de privacidade dentro do conteúdo, mas o cabeçalho `Diário de Bordo · ` flutua igualzinho o do 1:1s, criando o mesmo "L invertido" visual.
+A `QuickActionsRow` toda ficou redundante: 3 dos 4 botões duplicam o nav que vem 2cm abaixo. Ela existia como atalho "estilo Linear" mas hoje só polui.
 
-**Referência Windmill (screenshot do usuário):**
-- Layout 100% limpo de duas colunas com border-r único entre elas.
-- Header da página vive DENTRO da coluna direita (não atravessa a master list).
-- Master list ocupa 100% da altura, com seu próprio título no topo.
-- Empty state é minimalista: ícone outline pequeno + título + descrição centralizados, SEM card com fundo colorido atrás do ícone.
-- Sem TeamTabs vazando — quando precisa filtrar, é dentro da master list, contido.
+## Decisões como cofundador técnico
 
-## Solução
+**Princípio**: cada ação do app deve ter UM ponto de entrada óbvio. Duplicar só faz sentido se o atalho economiza muito clique (ex: cmd+K, mentor sempre visível). Tudo que duplica nav primário = corte.
 
-Refatorar 3 arquivos de página + 2 componentes compartilhados para implementar um layout de duas colunas 100% disciplinado, ao estilo Windmill.
+### O que sai
 
-### Mudanças por arquivo
+1. **`QuickActionsRow` é removida inteira** do sidebar.
+   - Home, Calendar, People já estão no nav primário (Início, 1:1s, Pessoas via /lider/pessoas — esse último não está no nav, mas é acessível pela página Início que lista pessoas).
+   - **Search** (`cmd+K`) e **Mentor (Pergunte ao Mentor)** continuam disponíveis: o Mentor já vive como **`SidebarFooterCTA`** persistente (botão roxo no canto inferior). O Search vira atalho global via teclado (`cmd+K` já funciona pelo `GlobalSearchDialog`) + um pequeno botão ícone discreto na linha do perfil.
 
-**`src/components/leader/MemberMasterList.tsx`**
-- Remover `mb-4` do trigger mobile (não causa problema mas vamos limpar).
-- Manter aside com `border-r` único, mas garantir que o filho `<InnerList>` use `overflow-hidden` no container do `TeamTabs` para evitar overflow horizontal.
-- TeamTabs hoje usa `flex-wrap` — vamos trocar por `overflow-x-auto` com scroll horizontal sutil + `flex-nowrap`, ou (preferível) usar um Select compacto quando há >3 times. Decisão: scroll-x horizontal contido, nenhum wrap. Vai garantir que NUNCA vaze para fora da master list.
-- Remover o título da master list duplicado (hoje tem "1:1s · 6 pessoas") — o título da página fica APENAS na coluna direita. A master list ganha um header neutro: apenas "Liderados · N" pequeno e cinza, sempre. Isso elimina a redundância visual de "1:1s" aparecer duas vezes (no breadcrumb e dentro da lista).
-- Footer "Novo liderado" → estilo `ghost` mas com ícone menor e padding maior pra parecer um item de menu, não um botão CTA.
+2. **Botão "Configurações" do `SidebarFooter` (que abre modal) é removido.**
+   - Único ponto de entrada de Configurações: o item **Configurações** no nav primário (rota `/lider/configuracoes`) e o atalho secundário no dropdown do `WorkspaceSwitcher` (que é razoável como atalho organizacional).
+   - O **modal `ProfileSettingsDialog`** (que mexe no perfil pessoal: nome, avatar, senha) passa a ser invocado **clicando no avatar do `SidebarProfileBlock`**. Isso é o padrão Linear/Slack: avatar = perfil pessoal; item de menu Settings = configurações da organização. Resolve ambiguidade.
 
-**`src/components/leader/EmptyMemberDetail.tsx`**
-- REMOVER o quadrado lavanda (`bg-primary/10 rounded-2xl`) atrás do ícone — esse é o quadrado invasor que aparece na screenshot do usuário.
-- Substituir por: ícone outline simples (cor `text-muted-foreground/40`, tamanho `h-12 w-12`), centralizado, SEM background.
-- Ajustar tipografia para parecer mais Windmill: título serif menor (`text-lg`), descrição menor (`text-xs text-muted-foreground/80`), max-w-xs.
+3. **Botão "LifeBuoy/Suporte" do `SidebarFooter` é removido.**
+   - "Central de Ajuda" já existe no dropdown do WorkspaceSwitcher. O modal "Talk to us" (que só mostra `support@rhitmo.co`) é informação que pode viver dentro da própria aba Ajuda em Configurações — ou ser substituído por um link "Falar com a gente" lá dentro.
 
-**`src/pages/lider/OneOnOnes.tsx`, `Diario.tsx`, `Objetivos.tsx`**
+### O que fica (e por quê)
 
-O fix arquitetural principal: hoje cada página coloca `<MemberMasterList>` ao lado de `<main>`. Mas o título "1:1s · 6 pessoas" está dentro do `<MemberMasterList>` — o que faz com que a faixa horizontal do título fique apenas na coluna esquerda (320px), enquanto o detalhe do liderado fica do outro lado. Isso PARECE certo no código mas visualmente cria a "linha quebrada" que o usuário viu.
+- **Nav primário** (`LEADER_NAV_ITEMS`): único lugar pra navegar entre módulos. Sem mexer.
+- **`WorkspaceSwitcher` dropdown**: Configurações + Central de Ajuda + Convidar membros. Mantém — é o "menu da organização", padrão Windmill.
+- **`SidebarFooterCTA`** (Pergunte ao Mentor): mantém como CTA persistente, é o produto core.
+- **`SidebarProfileBlock`**: avatar agora é clicável → abre `ProfileSettingsDialog` (perfil pessoal). Mantém tema toggle e logout.
+- **HR context switcher**: mantém (não é duplicado).
 
-Solução:
-- A master list vai ter APENAS um header sutil ("Liderados · N pessoas"), nunca o nome da página.
-- O título da página ("1:1s", "Diário de Bordo", "Objetivos") vai SEMPRE viver dentro do `<main>`, ACIMA do conteúdo do liderado selecionado, mesmo no estado vazio.
-- Quando não há liderado selecionado, o `<main>` mostra: título da página (h1 grande) + descrição + EmptyMemberDetail centralizado.
-- Quando há liderado, o `<main>` mostra: título da página menor (subtítulo) + cabeçalho do liderado + conteúdo.
-
-Isso elimina a "faixa flutuante" e dá a sensação de "duas colunas independentes" que a Windmill tem.
-
-**Padronizar containers do `<main>`:**
-- Largura: trocar `max-w-3xl` por `max-w-2xl` (mais próximo do Windmill que tem ~640px de conteúdo útil).
-- Padding: `px-8 py-10` (mais ar, menos apertado).
-- `space-y-8` (não 6).
-
-**Diário de Bordo especificamente:**
-- O banner "Notas 100% privadas" hoje é um Card com bg-muted/40. Vamos transformá-lo num **alert inline mais sutil**: apenas um pequeno bloco com `border-l-2 border-primary/30 pl-3 py-1` + texto pequeno. Sem card, sem ícone destacado. Privacidade vira um **status indicator**, não um banner intrusivo (alinhado com o que a Windmill faz com as Private Notes).
-
-### Layout final (referência ASCII)
+### Resultado visual (antes → depois)
 
 ```text
-┌─────────────────┬──────────────────────────────────────────┐
-│ Liderados · 6   │                                          │
-│ ─────────────── │                                          │
-│ [tabs scroll]   │   1:1s                                   │
-│                 │   ─────────────                          │
-│ ● Gabriela      │                                          │
-│ ● Giovanna      │   [avatar] Gabriela Lucas                │
-│ ● Guilherme     │           Analista de Business Ops       │
-│ ● Laís          │                                          │
-│ ● Matheus       │   ✨ Sugestões da Rhitmo ...             │
-│ ● Yasmin        │                                          │
-│                 │   Próximas reuniões                      │
-│                 │   [card]                                 │
-│                 │                                          │
-│ ─────────────── │   Pauta · Anotação privada               │
-│ + Novo liderado │   [textarea] [textarea]                  │
-└─────────────────┴──────────────────────────────────────────┘
+ANTES                          DEPOIS
+─────────                      ─────────
+[Faster Ops ▼]                 [Faster Ops ▼]
+🏠 📅 👥 💬 🔍   ← QuickRow    
+🏠 Início                      🏠 Início
+📅 1:1s                        📅 1:1s
+📖 Diário de Bordo             📖 Diário de Bordo
+... etc                        ... etc
+⚙️ Configurações               ⚙️ Configurações
+                               
+[Pergunte ao Mentor]           [Pergunte ao Mentor]
+👥 Convidar membros (já saiu)
+⚙️ Configurações  🛟           🔍 (search atalho discreto)
+[avatar] Matheus 🌙 ⏻          [avatar clicável] Matheus 🌙 ⏻
 ```
 
-Estado vazio:
-```text
-┌─────────────────┬──────────────────────────────────────────┐
-│ Liderados · 6   │                                          │
-│ [tabs]          │   1:1s                                   │
-│                 │   ─────────────                          │
-│ ● Gabriela      │                                          │
-│ ● Giovanna      │              📅 (ícone outline)          │
-│ ● ...           │       Selecione um liderado              │
-│                 │   Escolha alguém na lista à esquerda     │
-└─────────────────┴──────────────────────────────────────────┘
-```
+Sai: 1 linha de quick actions + 2 botões redundantes no footer. Entra: avatar do perfil vira clicável (ganho funcional sem novo elemento visual).
 
-## Arquivos editados
+## Arquivos a editar
 
-1. `src/components/leader/MemberMasterList.tsx` — header sempre genérico ("Liderados · N"), TeamTabs com overflow contido
-2. `src/components/leader/EmptyMemberDetail.tsx` — remove quadrado lavanda, ícone outline simples
-3. `src/pages/lider/OneOnOnes.tsx` — título da página dentro do `<main>`, max-w-2xl, espaçamento maior
-4. `src/pages/lider/Diario.tsx` — mesmo + banner privacidade vira inline sutil
-5. `src/pages/lider/Objetivos.tsx` — mesmo padrão
-6. `.lovable/memory/design/dashboard/master-detail-pages.md` — atualizar com regras "header da página vive na coluna direita" e "master list nunca duplica nome da página"
+1. **`src/components/AppSidebar.tsx`**
+   - Remove import e renderização de `QuickActionsRow`
+   - Remove botão "Configurações" e botão "LifeBuoy" do `SidebarFooter` (e o `Dialog` de suporte)
+   - Remove estado `supportOpen`, `copied`, função `handleCopyEmail`
+   - Adiciona pequeno botão Search (ícone lupa) na linha do `SidebarProfileBlock` ou logo acima — atalho `cmd+K` continua funcionando
+   - Passa `onOpenProfileSettings={() => setSettingsOpen(true)}` para o `SidebarProfileBlock`
+
+2. **`src/components/sidebar/SidebarProfileBlock.tsx`**
+   - Aceita prop opcional `onOpenProfileSettings`
+   - Avatar vira `<button>` que dispara essa callback (cursor-pointer, hover sutil)
+   - Adiciona `title="Editar perfil"` para affordance
+
+3. **`src/components/sidebar/QuickActionsRow.tsx`** — DELETE (componente não usado mais)
+
+4. **`src/lib/navigation.ts`**
+   - Remove exports `LEADER_QUICK_ACTIONS`, `DIRECT_REPORT_QUICK_ACTIONS`, interface `QuickAction` (não é mais usado)
+
+5. **`.lovable/memory/design/sidebar/workspace-switcher-actions.md`** — atualiza para registrar a nova regra: "perfil pessoal abre via avatar; configurações da org abrem via item Configurações ou WorkspaceSwitcher; sem QuickActionsRow"
 
 ## Fora de escopo
 
-- Não mexemos na lógica de salvamento (AgendaBlock, GoalsManager, FeedbackTimeline continuam idênticos).
-- Não mexemos em `useLeaderMembers`.
-- Não alteramos o comportamento mobile (sheet continua igual).
-- Não tocamos em outras páginas (`/lider/inicio`, `/lider/contexto`, `/lider/pulse`, `/lider/avaliacoes`).
+- Não mexer no `SidebarFooterCTA` (Pergunte ao Mentor).
+- Não mexer no nav primário (LEADER_NAV_ITEMS / DIRECT_REPORT_NAV_ITEMS).
+- Não mexer no comportamento mobile do sidebar (Sheet).
+- Não mexer no super-admin sidebar (já é minimalista).
+- Não mexer nas páginas Master-Detail (são corte separado).
+
+## Risco
+
+Zero risco funcional: nenhuma rota some, nenhum modal some. Só consolidamos pontos de entrada. A única curva de aprendizado é "perfil agora abre clicando no avatar" — afford­ance natural e padrão de mercado.
