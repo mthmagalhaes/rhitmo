@@ -1,6 +1,6 @@
 ---
 name: Master-Detail Pages
-description: /lider/1on1s, /lider/diario, /lider/objetivos usam MemberMasterList sticky 280px + título da página dentro da coluna direita; /lider/1on1s tem ordem editorial Sugestões→Próximas→Pauta→Action items→Privada
+description: /lider/1on1s, /lider/diario, /lider/objetivos usam MemberMasterList sticky 280px; /lider/1on1s tem ordem editorial Sugestões→Próximas→Pauta→Action items→Privada; /lider/diario tem banner de privacidade fixo + QuickPrivateNoteInput inline (sem modal)
 type: design
 ---
 
@@ -36,6 +36,24 @@ A primeira iteração tinha Shared verde e Private igual ao card (`bg-card`). In
 ### Onde o `UpcomingMeetingsCard` (pesado) ainda vive
 
 Apenas em `/lider/inicio` (Home V3 Windmill) — lá faz sentido ter toggle de auto-transcribe e badge de plano porque é a visão consolidada do dia. Não reusar em master-detail.
+
+## /lider/diario especificamente (Sprint 12.3)
+
+Ordem fixa na coluna direita quando há liderado selecionado:
+
+1. Eyebrow `DIÁRIO DE BORDO` + header (avatar + nome + cargo). **Sem botão "Nova nota"** — captura é inline.
+2. **Banner de privacidade fixo**: `rounded-xl bg-muted/60 border border-border/60 px-3.5 py-2.5`, ícone `Lock` h-3.5 + "**Diário privado.** Estas anotações são 100% confidenciais e visíveis apenas para você." Sempre presente, sem dismissable.
+3. **`QuickPrivateNoteInput`** — Captura rápida sempre visível: Card `rounded-2xl bg-card`, header `PenSquare + "Captura rápida"`, Textarea `min-h-[100px]` com placeholder `Anotação privada sobre {primeiroNome}…`, botão "Salvar nota" + atalho ⌘/Ctrl+Enter. INSERT em `feedbacks` com `visibility: 'private_leader'`, `tags: ['diario-bordo']`, `title: 'Anotação do diário'`. Sem modal `NewNoteDialog`.
+4. **`FeedbackFilters`** (só se `feedbacks.length > 0`)
+5. **`FeedbackTimeline`** (cronológico desc) ou empty state textual: "Você ainda não tem anotações privadas para {nome}. Que tal registrar a primeira observação acima?"
+
+### Anti-flicker ao trocar de liderado
+
+`useQuery` usa `placeholderData: (prev) => prev` para manter as notas anteriores visíveis enquanto a próxima query carrega. A troca entre liderados na master list fica instantânea, sem piscar a tela inteira (padrão Notion/Linear).
+
+### Por que NÃO reusar `NewNoteDialog`
+
+`NewNoteDialog` continua existindo para `MemberDetails` (onde o líder cria nota com tags customizadas, ocorrência no passado, etc). No Diário, o atrito de abrir modal mata a captura rápida — leader precisa "sair digitando". O componente novo é deliberadamente minimalista (sem tags custom, sem time machine) para forçar fluidez.
 
 ## Por quê (geral)
 
