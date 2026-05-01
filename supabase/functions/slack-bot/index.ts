@@ -1774,10 +1774,58 @@ Deno.serve(async (req) => {
                     text: event.text ?? '',
                     ts: event.ts,
                   });
-                  await slackApi('chat.postMessage', {
-                    channel: event.channel,
-                    text: '✅ Recebi sua mensagem. (estado atualizado — fluxo conversacional em construção)',
-                  });
+
+                  // ── LLM turn (Sprint 11.2) ──────────────────────────
+                  // Build messages from updated state. We re-read state_data after
+                  // appending to include the user's latest turn.
+                  const llmTask = (async () => {
+                    try {
+                      const turns = Array.isArray((conv.state_data as any)?.turns)
+                        ? ((conv.state_data as any).turns as Array<{ role: string; text: string }>)
+                        : [];
+                      // Append the just-added user turn locally (RPC already persisted it)
+                      const allTurns = [...turns, { role: 'user', text: event.text ?? '' }];
+                      const recent = allTurns.slice(-20);
+                      const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+                        { role: 'system', content: buildSystemPromptForIntent(conv.intent) },
+                        ...recent
+                          .filter((t) => t.role === 'user' || t.role === 'assistant')
+                          .map((t) => ({ role: t.role as 'user' | 'assistant', content: t.text || '' })),
+                      ];
+
+                      const assistantText = await callLovableAI(messages);
+
+                      await appendConversationTurn(conv.id, {
+                        role: 'assistant',
+                        text: assistantText,
+                        ts: String(Date.now() / 1000),
+                      });
+
+                      await slackApi('chat.postMessage', {
+                        channel: event.channel,
+                        text: assistantText,
+                        mrkdwn: true,
+                      });
+                    } catch (err) {
+                      console.error('[CONV] LLM turn failed:', err);
+                      await slackApi('chat.postMessage', {
+                        channel: event.channel,
+                        text: '⚠️ Tive um problema agora. Pode repetir?',
+                      }).catch(() => {});
+                    }
+                  })();
+
+                  // Use EdgeRuntime.waitUntil when available so the runtime
+                  // does not terminate the LLM task after we return 200 to Slack.
+                  // @ts-ignore - EdgeRuntime is provided by Supabase/Deno Deploy
+                  if (typeof EdgeRuntime !== 'undefined' && (EdgeRuntime as any)?.waitUntil) {
+                    // @ts-ignore
+                    (EdgeRuntime as any).waitUntil(llmTask);
+                  } else {
+                    // Fallback: fire-and-forget (already inside an IIFE)
+                    llmTask.catch(() => {});
+                  }
+
                   return; // do NOT fall through to the welcome menu
                 }
               }
