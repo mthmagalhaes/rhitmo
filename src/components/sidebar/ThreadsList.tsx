@@ -11,6 +11,8 @@ interface Thread {
   id: string;
   title: string;
   updated_at: string;
+  member_id: string | null;
+  type: string;
 }
 
 interface Props {
@@ -30,7 +32,7 @@ export function ThreadsList({ persona }: Props) {
       if (!userId) return [];
       const { data, error } = await supabase
         .from('chat_threads')
-        .select('id, title, updated_at')
+        .select('id, title, updated_at, member_id, type')
         .eq('user_id', userId)
         .in('type', types)
         .order('updated_at', { ascending: false })
@@ -57,7 +59,13 @@ export function ThreadsList({ persona }: Props) {
           <li key={t.id}>
             <button
               type="button"
-              onClick={() => navigate(`/chat/${t.id}`)}
+              onClick={() => {
+                if (persona === 'leader' && t.member_id) {
+                  navigate(`/member/${t.member_id}?thread=${t.id}`);
+                } else if (persona !== 'leader') {
+                  navigate(`/meu-rhitmo?thread=${t.id}`);
+                }
+              }}
               className={cn(
                 'group w-full flex items-center gap-2 px-2 py-1.5 rounded-lg',
                 'text-xs text-sidebar-foreground/80 hover:text-sidebar-foreground',
