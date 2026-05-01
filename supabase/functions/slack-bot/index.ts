@@ -14,6 +14,60 @@ const supabase = createClient(
 const SENSITIVE_COMMANDS = ['/nota', '/brief', '/meu-pdi', '/mentor', '/meu-rhitmo'];
 const DM_ONLY_COMMANDS: string[] = [];
 
+// ── Conversational State Machine (Sprint 11.1) ───────────
+// Looks up the active slack_conversations row for a given Slack user (or null).
+// Returns null on any error to guarantee zero regression on the existing DM flow.
+type SlackConversationRow = {
+  id: string;
+  workspace_id: string;
+  slack_user_id: string;
+  status: 'active' | 'completed' | 'expired';
+  intent: string;
+  state_data: Record<string, unknown>;
+  last_message_at: string;
+  expires_at: string;
+  created_at: string;
+  updated_at: string;
+};
+
+async function getActiveConversation(slackUserId: string): Promise<SlackConversationRow | null> {
+  try {
+    const { data, error } = await supabase.rpc('get_active_slack_conversation', {
+      p_slack_user_id: slackUserId,
+    });
+    if (error) {
+      console.warn('[CONV] get_active_slack_conversation error:', error.message);
+      return null;
+    }
+    // RPC returns a row composite or null. Some Postgrest versions return {} for empty composites.
+    if (!data || (typeof data === 'object' && !(data as Record<string, unknown>).id)) {
+      return null;
+    }
+    return data as SlackConversationRow;
+  } catch (err) {
+    console.warn('[CONV] getActiveConversation threw:', err);
+    return null;
+  }
+}
+
+async function appendConversationTurn(
+  conversationId: string,
+  turn: { role: 'user' | 'assistant' | 'system'; text: string; ts?: string },
+): Promise<void> {
+  try {
+    const { error } = await supabase.rpc('append_slack_conversation_turn', {
+      p_conversation_id: conversationId,
+      p_turn: turn,
+      p_ttl_minutes: 30,
+    });
+    if (error) {
+      console.warn('[CONV] append_slack_conversation_turn error:', error.message);
+    }
+  } catch (err) {
+    console.warn('[CONV] appendConversationTurn threw:', err);
+  }
+}
+
 // ── Channel Type Cache (5min TTL) ────────────────────────
 const channelCache = new Map<string, { isPublic: boolean; ts: number }>();
 const CACHE_TTL = 5 * 60 * 1000;
