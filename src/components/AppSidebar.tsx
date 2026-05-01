@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ShieldCheck, Palette, ArrowLeft, ArrowRightLeft, UserPlus, LifeBuoy, Copy, Check, Settings } from 'lucide-react';
+import { ShieldCheck, Palette, ArrowLeft, ArrowRightLeft, LifeBuoy, Copy, Check, Settings } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useAccount } from '@/contexts/AccountContext';
