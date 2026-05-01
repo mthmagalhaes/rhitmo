@@ -1,22 +1,37 @@
 ## Diagnóstico
 
-O dropdown do `WorkspaceSwitcher` hoje dispara `BulkOnboardDialog` (ferramenta de onboarding em massa do RH Admin — CSV, múltiplos workspaces, validações pesadas). Para o **Líder** no fluxo do dia-a-dia, isso é overkill: ele só quer **adicionar 1 liderado**.
+Sim, há **duplicação real**. Hoje "Configurações" aparece em dois lugares na sidebar, ambos apontando para a mesma rota (`/lider/configuracoes` ou `/liderado/configuracoes`):
 
-Já existe o componente certo: `NewMemberDialog` (`src/components/NewMemberDialog.tsx`) — formulário simples com nome, cargo, e-mail, time, opção de enviar convite DISC. É o mesmo que abre pelo botão "Novo Membro" no Dashboard (`Index.tsx`) e pelo "Novo liderado" do `MemberMasterList`.
+1. **Dropdown do WorkspaceSwitcher** (topo) — junto com Central de Ajuda e Convidar membros.
+2. **Item da nav principal** (meio) — definido em `LEADER_NAV_ITEMS` e `DIRECT_REPORT_NAV_ITEMS`.
+
+Isso confunde porque a sidebar passa duas mensagens contraditórias: "Configurações é uma área do produto como Pulse/Objetivos" *e* "Configurações é uma ação do workspace junto com Ajuda".
+
+## Decisão (como cofundador técnico)
+
+Manter **apenas no dropdown do WorkspaceSwitcher** e **remover da nav principal**.
+
+Justificativa:
+- A nav principal representa **fluxos de trabalho de liderança** (1:1s, Diário, Pulse, Objetivos, Avaliações, Contexto). Configurações não é um fluxo, é uma área utilitária.
+- O dropdown do workspace já é o lugar canônico para ações organizacionais (Ajuda, Convidar membros) — Configurações pertence a esse mesmo grupo semântico.
+- Reduz a nav de 8 para 7 itens no líder e de 6 para 5 no liderado, melhorando hierarquia visual e respiração — alinhado com o refinamento UX recente (Linear/Windmill).
+- Padrão consistente com Linear, Notion, Linear, Slack: settings sempre vivem no menu do workspace/conta, nunca na nav principal.
 
 ## Mudanças
 
-**`src/components/AppSidebar.tsx`**:
-1. Trocar import: `BulkOnboardDialog` → `NewMemberDialog`
-2. Pegar `workspaceId` do `useAccount()` (já disponível no contexto)
-3. Remover a query `sidebar-workspace-names` (não é mais necessária — `NewMemberDialog` não pede `workspaceNames`)
-4. Renderizar `<NewMemberDialog open={inviteOpen} onOpenChange={setInviteOpen} workspaceId={workspaceId} />` no lugar do `<BulkOnboardDialog>`
-5. Guard: só renderiza se `workspaceId` estiver carregado
+### `src/lib/navigation.ts`
+- Remover o item `configuracoes` de `LEADER_NAV_ITEMS` (linha 37).
+- Remover o item `configuracoes` de `DIRECT_REPORT_NAV_ITEMS` (linha 50).
+- Atualizar comentário ("Maximum 5 items. Settings is the 6th, always last.") para refletir que settings vive no WorkspaceSwitcher.
 
-**`.lovable/memory/design/sidebar/workspace-switcher-actions.md`**: atualizar a descrição da ação "Convidar membros" para deixar claro que abre o fluxo de **adição individual** (`NewMemberDialog`), não o bulk. O bulk continua existindo para o RH Admin via `/admin` (`AdminStructure`) e dentro da aba "Convites" em `/lider/pessoas`.
+### `src/components/sidebar/WorkspaceSwitcher.tsx`
+- Sem mudanças. Já é o lugar correto.
 
-## Impacto
+### Documentação de memória
+- Atualizar `mem://design/sidebar/workspace-switcher-actions` reforçando: **"Configurações nunca aparece na nav principal — vive exclusivamente no dropdown do WorkspaceSwitcher, junto com Central de Ajuda e Convidar membros."**
 
-- Líder no dia-a-dia: clica "Convidar membros" no dropdown da org → abre form simples de 1 liderado (consistente com "Novo Membro" do dashboard e "Novo liderado" da lista master).
-- RH Admin: continua com bulk via painel `/admin` e via aba Convites em Pessoas. Não perde nada.
-- Sem novos arquivos, sem mudança de schema. Só troca de componente no sidebar.
+## Resultado esperado
+
+- Sidebar do líder: `Início, 1:1s, Diário, Pulse, Objetivos, Avaliações, Contexto` (7 itens, todos fluxos de trabalho).
+- Sidebar do liderado: `Compass, 1:1s, Pulse, PDI, Avaliações` (5 itens).
+- Configurações acessível em **um único lugar**: dropdown do nome do workspace no topo.

@@ -24,7 +24,9 @@ export interface NavItem {
 
 /**
  * Primary navigation for Leaders / Owners / HR Admins (when in leader context).
- * Maximum 5 items. Settings is the 6th, always last.
+ * Settings does NOT belong here — it lives in the WorkspaceSwitcher dropdown
+ * along with Help Center and Invite Members. The primary nav is reserved for
+ * leadership workflows only.
  */
 export const LEADER_NAV_ITEMS: NavItem[] = [
   { id: 'inicio', labelKey: 'nav.lider.inicio', icon: Home, to: '/lider/inicio' },
@@ -34,12 +36,11 @@ export const LEADER_NAV_ITEMS: NavItem[] = [
   { id: 'objetivos', labelKey: 'nav.lider.objetivos', icon: Target, to: '/lider/objetivos' },
   { id: 'avaliacoes', labelKey: 'nav.lider.avaliacoes', icon: ClipboardList, to: '/lider/avaliacoes' },
   { id: 'contexto', labelKey: 'nav.lider.contexto', icon: Layers, to: '/lider/contexto' },
-  { id: 'configuracoes', labelKey: 'nav.lider.configuracoes', icon: Settings, to: '/lider/configuracoes' },
 ];
 
 /**
  * Primary navigation for Direct Reports (linked members without leader role).
- * Maximum 6 items including Settings.
+ * Settings lives in the WorkspaceSwitcher dropdown, not here.
  */
 export const DIRECT_REPORT_NAV_ITEMS: NavItem[] = [
   { id: 'compass', labelKey: 'nav.liderado.compass', icon: Compass, to: '/liderado/compass' },
@@ -47,7 +48,6 @@ export const DIRECT_REPORT_NAV_ITEMS: NavItem[] = [
   { id: 'pulse', labelKey: 'nav.liderado.pulse', icon: Heart, to: '/liderado/pulse' },
   { id: 'pdi', labelKey: 'nav.liderado.pdi', icon: Target, to: '/liderado/pdi' },
   { id: 'avaliacoes', labelKey: 'nav.liderado.avaliacoes', icon: FileText, to: '/liderado/avaliacoes' },
-  { id: 'configuracoes', labelKey: 'nav.liderado.configuracoes', icon: Settings, to: '/liderado/configuracoes' },
 ];
 
 export type SidebarPersona = 'leader' | 'direct_report';
