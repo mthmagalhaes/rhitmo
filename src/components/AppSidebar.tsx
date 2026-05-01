@@ -8,7 +8,7 @@ import { useAdmin } from '@/hooks/useAdmin';
 import { useAccount } from '@/contexts/AccountContext';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { useImpersonation } from '@/hooks/useImpersonation';
-import { useToast } from '@/hooks/use-toast';
+
 import { supabase } from '@/integrations/supabase/client';
 import {
   LEADER_NAV_ITEMS,
@@ -45,7 +45,7 @@ export function AppSidebar() {
   const { open } = useSidebar();
   const navigate = useNavigate();
   const location = useLocation();
-  const { toast } = useToast();
+  
   const { user } = useAuth();
   const { isAdmin } = useAdmin();
   const { id: effectiveUserId, isImpersonating } = useEffectiveUser();
@@ -75,7 +75,7 @@ export function AppSidebar() {
 
   const persona = resolvePersona({ isLinkedMember, isLeader, isHRAdmin });
   const navItems = persona === 'leader' ? LEADER_NAV_ITEMS : DIRECT_REPORT_NAV_ITEMS;
-  const homeRoute = persona === 'leader' ? LEADER_HOME : DIRECT_REPORT_HOME;
+  
 
   const userName =
     (persona === 'direct_report' && linkedMember?.name) ||
