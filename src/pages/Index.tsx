@@ -17,6 +17,8 @@ import { ActivityPreview } from '@/components/ActivityPreview';
 import { UpcomingMeetingsCard } from '@/components/dashboard/UpcomingMeetingsCard';
 import { PendingTranscriptsCard } from '@/components/dashboard/PendingTranscriptsCard';
 import { MirrorInsightCard } from '@/components/dashboard/MirrorInsightCard';
+import { AccountSetupBento } from '@/components/dashboard/AccountSetupBento';
+import { MentorHistoryCard } from '@/components/dashboard/MentorHistoryCard';
 import { ActivitySheet } from '@/components/ActivitySheet';
 import { useAuth } from '@/hooks/useAuth';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
