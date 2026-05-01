@@ -22,7 +22,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
@@ -182,7 +181,10 @@ export function UpwardsReviewWizard({
           <Progress value={progress} className="h-1.5 mt-3" />
         </DialogHeader>
 
-        <ScrollArea className="h-[420px] px-6 py-5" ref={scrollRef as never}>
+        <div
+          ref={scrollRef}
+          className="h-[420px] overflow-y-auto px-6 py-5"
+        >
           <div className="space-y-3">
             {messages.map((m, idx) => (
               <div
@@ -217,7 +219,7 @@ export function UpwardsReviewWizard({
               </Card>
             )}
           </div>
-        </ScrollArea>
+        </div>
 
         <div className="px-6 py-4 border-t border-border/60 bg-muted/20">
           {reviewMode ? (
@@ -248,25 +250,48 @@ export function UpwardsReviewWizard({
               </Button>
             </div>
           ) : (
-            <div className="flex items-end gap-2">
-              <Textarea
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={handleKey}
-                placeholder={UPWARDS_REVIEW_QUESTIONS[currentStep]?.placeholder ?? 'Sua resposta...'}
-                rows={2}
-                className="rounded-xl resize-none flex-1"
-                disabled={submitting}
-                autoFocus
-              />
-              <Button
-                onClick={handleSend}
-                disabled={!inputValue.trim() || submitting}
-                size="icon"
-                className="rounded-xl h-10 w-10 shrink-0"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
+            <div className="space-y-2">
+              <div className="flex items-end gap-2">
+                <Textarea
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={handleKey}
+                  placeholder={UPWARDS_REVIEW_QUESTIONS[currentStep]?.placeholder ?? 'Sua resposta...'}
+                  rows={2}
+                  className="rounded-xl resize-none flex-1"
+                  disabled={submitting}
+                  autoFocus
+                />
+                <Button
+                  onClick={handleSend}
+                  disabled={!inputValue.trim() || submitting}
+                  size="icon"
+                  className="rounded-xl h-10 w-10 shrink-0"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+              {/* Sprint 10.5 — saída suave mid-flow */}
+              <div className="flex justify-end">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    if (Object.keys(responses).length > 0) {
+                      toast('Sair sem enviar?', {
+                        description: 'Suas respostas serão descartadas.',
+                        action: { label: 'Sair', onClick: onClose },
+                      });
+                    } else {
+                      onClose();
+                    }
+                  }}
+                  disabled={submitting}
+                  className="text-xs text-muted-foreground"
+                >
+                  Sair
+                </Button>
+              </div>
             </div>
           )}
         </div>

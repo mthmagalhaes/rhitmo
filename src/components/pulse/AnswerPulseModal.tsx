@@ -81,7 +81,7 @@ export function AnswerPulseModal({ survey, onClose }: AnswerPulseModalProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={open} onOpenChange={(o) => !o && !submitting && onClose()}>
       <DialogContent className="rounded-2xl max-w-xl">
         <DialogHeader>
           <DialogTitle className="font-serif">

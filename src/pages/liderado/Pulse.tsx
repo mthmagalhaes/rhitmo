@@ -1,5 +1,7 @@
-import Index from '@/pages/Index';
-// Liderado Pulse: reusa DirectReportDashboard que já tem Pulse Card.
+// Sprint 10.5 — UX cleanup: o liderado vê pulses pendentes diretamente no painel
+// (PendingPulseAlert no topo da Visão Geral). Esta rota redireciona para lá.
+import { Navigate } from 'react-router-dom';
+
 export default function LideradoPulse() {
-  return <Index />;
+  return <Navigate to="/liderado" replace />;
 }

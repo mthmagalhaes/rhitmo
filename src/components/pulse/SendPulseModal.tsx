@@ -1,6 +1,9 @@
 // Sprint 9.2 — Modal do líder para disparar um Pulse Survey.
 // RLS de INSERT em pulse_surveys garante que apenas líderes do membro consigam criar.
-import { useState, useMemo } from 'react';
+// Sprint 9.2 — Modal do líder para disparar um Pulse Survey.
+// RLS de INSERT em pulse_surveys garante que apenas líderes do membro consigam criar.
+// Sprint 10.5 — guard !submitting + reset on open para UX limpa.
+import { useEffect, useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
@@ -48,6 +51,15 @@ export function SendPulseModal({ open, onOpenChange }: SendPulseModalProps) {
   const [memberId, setMemberId] = useState<string>('');
   const [pulseType, setPulseType] = useState<PulseType>('blockers');
   const [submitting, setSubmitting] = useState(false);
+
+  // Sprint 10.5 — reset state every time the modal opens (evita seleção residual).
+  useEffect(() => {
+    if (open) {
+      setMemberId('');
+      setPulseType('blockers');
+      setSubmitting(false);
+    }
+  }, [open]);
 
   const { data: members, isLoading: loadingMembers } = useQuery({
     queryKey: ['send-pulse-members', workspaceId, userId],
@@ -124,7 +136,7 @@ export function SendPulseModal({ open, onOpenChange }: SendPulseModalProps) {
   const canSubmit = !!memberId && !!pulseType && !submitting;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(o) => !submitting && onOpenChange(o)}>
       <DialogContent className="rounded-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-serif">

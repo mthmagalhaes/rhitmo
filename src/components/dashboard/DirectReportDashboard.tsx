@@ -801,25 +801,8 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                   {t('directReport.formalReviews')}
                 </h2>
 
-                {/* Sprint 10.2 — Card de auto-avaliação (sempre visível) */}
-                {user?.id && (
-                  <StartSelfReviewCard
-                    memberId={linkedMember.id}
-                    memberName={linkedMember.name}
-                    authorUserId={user.id}
-                    selfReviewCount={mySelfReviews.length}
-                  />
-                )}
-
-                {/* Sprint 10.4 — Card de avaliação ascendente (só aparece se houver líder vinculado) */}
-                {user?.id && (
-                  <StartUpwardsReviewCard
-                    memberId={linkedMember.id}
-                    memberName={linkedMember.name}
-                    authorUserId={user.id}
-                    upwardsReviewCount={myUpwardsReviews.length}
-                  />
-                )}
+                {/* Sprint 10.5 — Reordenado: primeiro o que CHEGA pra você (do líder),
+                    depois cards para PRODUZIR sua própria voz (self / upwards). */}
 
                 {/* Reviews compartilhadas pelo líder */}
                 <div>
@@ -872,6 +855,26 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                     </div>
                   )}
                 </div>
+
+                {/* Sprint 10.2 — Card de auto-avaliação (sempre visível) */}
+                {user?.id && (
+                  <StartSelfReviewCard
+                    memberId={linkedMember.id}
+                    memberName={linkedMember.name}
+                    authorUserId={user.id}
+                    selfReviewCount={mySelfReviews.length}
+                  />
+                )}
+
+                {/* Sprint 10.4 — Card de avaliação ascendente (só aparece se houver líder vinculado) */}
+                {user?.id && (
+                  <StartUpwardsReviewCard
+                    memberId={linkedMember.id}
+                    memberName={linkedMember.name}
+                    authorUserId={user.id}
+                    upwardsReviewCount={myUpwardsReviews.length}
+                  />
+                )}
 
                 {/* Sprint 10.2 — Suas auto-avaliações enviadas */}
                 {mySelfReviews.length > 0 && (
