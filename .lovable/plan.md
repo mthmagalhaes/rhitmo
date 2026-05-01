@@ -1,110 +1,111 @@
-## Sprint 11.1 — Slack Bot Conversational State Machine (Foundation)
+## Sprint 11.2 — Plug LLM (Lovable AI Gateway) into the Slack Conversational Machine
 
-Goal: give the Slack bot **memory** so it can run multi-turn flows (Pulse, 1:1 prep, Self-Review). This sprint only lays the foundation: a state table + a routing hook intercepting DMs **before** the existing welcome menu. No LLM, no flow logic yet.
+### Stability guarantees (what stays untouched)
+- All slash commands (`/rhitmo`, `/nota`, `/kudos`, `/brief`, `/mentor`, `/meu-pdi`, `/meu-rhitmo`, `/review`, `/pdi`).
+- All existing `block_actions` (`open_add_note`, `open_send_kudos`, `privacy_continue`, `action_meu_pdi`, URL buttons, etc.).
+- `app_home_opened` welcome flow + throttle.
+- Signature verification, persona resolution, modal handling, `processInteraction` / `processCommand` async pattern.
 
-### What stays untouched (stability guarantees)
-- All `/slash commands` (`/rhitmo`, `/nota`, `/kudos`, `/brief`, `/mentor`, `/review`, `/pdi`, etc.) — completely untouched.
-- All `interactive` payloads (buttons, modals, message_action shortcuts) — untouched.
-- `app_home_opened` welcome flow — untouched.
-- `getUserPersona`, `slack_integrations`, throttling logic — untouched.
-- Signature verification path — untouched.
+The new LLM path lives **only** inside the existing conversational hook (lines ~1707–1722 of `slack-bot/index.ts`), and the new "Conversar com a Rhitmo" button only adds a new `case` to the existing `block_actions` switch.
 
-The new conversational handler runs **only inside the `event.type === 'message' && event.channel_type === 'im'` branch**, and **before** the current welcome-menu block. If no active conversation exists, behavior falls through to the existing menu (zero regression).
+We use **Lovable AI Gateway** (`LOVABLE_API_KEY`, model `google/gemini-2.5-flash`), matching `chat-mentor` and project standards — no new secret needed.
 
 ---
 
-### 1. Database — new table `slack_conversations`
+### 1. Replace the placeholder ack with a real LLM turn
 
-Migration creates:
+Inside the DM hook (right after `appendConversationTurn` of the user turn), instead of sending the "Recebi sua mensagem…" placeholder:
+
+1. Return the Slack 200 OK **immediately** (already the pattern — the IIFE runs detached and the outer handler already returns 200 at line 1759). Wrap the LLM work in `EdgeRuntime.waitUntil(...)` when available so the runtime doesn't terminate the task; fall back to the existing fire-and-forget IIFE if not.
+2. Build messages:
+   - **System prompt** chosen by `conv.intent`. New helper `buildSystemPromptForIntent(intent)` with cases:
+     - `general_chat` (and default): "Você é a inteligência artificial da Rhitmo, atuando como um mentor de liderança. Seja extremamente conciso, amigável e direto ao ponto. Responda usando formatação nativa do Slack (`*negrito*`, `_itálico_`, listas com `•`). Responda sempre em português do Brasil. Não invente dados sobre o time se não estiverem no histórico desta conversa."
+     - `pulse_survey`, `1v1_prep`, `self_review` → minimal placeholder strings now (real prompts come in 11.3+). Keep the switch so adding intents is trivial.
+   - Map `conv.state_data.turns` → `[{ role: 'user'|'assistant', content: turn.text }]`. Cap at the last 20 turns to bound context size.
+3. New helper `callLovableAI(messages)` (top of file, near `slackApi`):
+   - POST `https://ai.gateway.lovable.dev/v1/chat/completions`
+   - `model: 'google/gemini-2.5-flash'`, `temperature: 0.6`, no streaming.
+   - Reads `Deno.env.get('LOVABLE_API_KEY')`.
+   - Handles 429 → returns "⏳ Rhitmo está sobrecarregado, tente em instantes." and 402 → "⚠️ Créditos de IA da workspace esgotados." Other errors → generic friendly message. Always returns a string so downstream code never throws.
+4. After getting `assistantText`:
+   - `appendConversationTurn(conv.id, { role: 'assistant', text: assistantText, ts: String(Date.now()/1000) })` (the existing helper already updates `last_message_at` and refreshes TTL).
+   - `slackApi('chat.postMessage', { channel: event.channel, text: assistantText, mrkdwn: true })`.
+5. `return` — keep short-circuit behavior so the welcome menu never fires when a conversation is active. Behavior on failure: log + post a friendly fallback message; never throw out of the hook.
+
+This is the **only** change inside the DM branch. Welcome menu / throttle / persona / app_home logic remain bit-identical.
+
+### 2. "Conversar com a Rhitmo" trigger button
+
+`buildRhitmoMenu(persona)` (lines ~434–495) already branches per persona and emits an `actions` block. Add a new button to **leader** and **direct_report** branches (skip `hr_admin` for now — they have a different operational menu):
 
 ```text
-slack_conversations
-├── id              uuid PK default gen_random_uuid()
-├── workspace_id    uuid NOT NULL
-├── slack_user_id   text NOT NULL
-├── status          slack_conversation_status NOT NULL default 'active'
-├── intent          text NOT NULL  -- 'pulse_survey' | '1v1_prep' | 'self_review' | 'general_chat' | ...
-├── state_data      jsonb NOT NULL default '{}'::jsonb
-├── last_message_at timestamptz NOT NULL default now()
-├── expires_at      timestamptz NOT NULL default (now() + interval '30 minutes')
-├── created_at      timestamptz NOT NULL default now()
-└── updated_at      timestamptz NOT NULL default now()
+{ type: 'button',
+  text: { type: 'plain_text', text: '🌀 Conversar com a Rhitmo' },
+  action_id: 'start_rhitmo_chat' }
 ```
 
-- Enum: `CREATE TYPE slack_conversation_status AS ENUM ('active','completed','expired');`
-- Indexes:
-  - `(slack_user_id, status)` — fast lookup of active conversation per user
-  - `(workspace_id, status)` partial `WHERE status = 'active'` — housekeeping
-  - `(expires_at)` for the expiration sweep
-- Trigger: `set_updated_at` (BEFORE UPDATE) keeps `updated_at` fresh.
-- Uniqueness rule: a partial unique index `(slack_user_id) WHERE status = 'active'` to guarantee **one active conversation per Slack user at a time**.
-- RLS: enabled. Only `service_role` can read/write (Edge Function runs with service role). No client-side access — this table is server-only.
-- Helper SQL function `get_active_slack_conversation(p_slack_user_id text)` returning the active row (or NULL), `SECURITY DEFINER`, used by the edge function for clean access.
-- Helper SQL function `expire_stale_slack_conversations()` that flips `status='expired'` for rows where `expires_at < now()`. Will be wired to a cron later — not in this sprint.
+Place it as a secondary button next to the existing primary actions to avoid visual disruption.
 
-### 2. Edge function — `slack-bot/index.ts`
+### 3. Handle the new action_id
 
-Add two small helpers near the top of the file:
-
-- `getActiveConversation(slackUserId)` — calls the RPC above via `safeRpc` (per project standard).
-- `appendConversationTurn(conversationId, turn)` — updates `state_data.turns` (appended array) and bumps `last_message_at` + `expires_at = now() + 30min`.
-
-Inside the existing DM handler (lines ~1638–1684), **before** the throttle/welcome menu block:
+In the `block_actions` switch (`processInteraction`, lines ~1256–1360), add:
 
 ```text
-if (event.type === 'message' && event.channel_type === 'im') {
-  (async () => {
-    const slackUserId = event.user;
-    const persona = await getUserPersona(slackUserId);
+case 'start_rhitmo_chat': {
+  const persona = await getUserPersona(slackUserId);
+  if (persona.persona === 'unauthenticated' || !persona.workspaceId) {
+    // Politely tell them to connect first. No conversation row created.
+    await slackApi('chat.postMessage', {
+      channel: slackUserId, // DM
+      text: 'Conecte sua conta Rhitmo para conversar comigo. Use /rhitmo para começar.',
+    });
+    break;
+  }
 
-    // NEW: conversational state machine hook
-    if (persona.persona !== 'unauthenticated' && persona.workspaceId) {
-      const conv = await getActiveConversation(slackUserId);
-      if (conv) {
-        await appendConversationTurn(conv.id, {
-          role: 'user',
-          text: event.text ?? '',
-          ts: event.ts,
-        });
-        await slackApi('chat.postMessage', {
-          channel: event.channel,
-          text: '✅ Recebi sua mensagem. (estado atualizado — fluxo conversacional em construção)',
-        });
-        return; // short-circuit — do NOT fall into the welcome menu
-      }
-    }
+  // Idempotency: if an active conversation already exists, just nudge.
+  const existing = await getActiveConversation(slackUserId);
+  if (existing) {
+    await slackApi('chat.postMessage', {
+      channel: slackUserId,
+      text: 'Já estamos numa conversa ativa 🌀 — é só me responder por aqui.',
+    });
+    break;
+  }
 
-    // EXISTING throttle + welcome menu logic (unchanged)
-    ...
-  })();
+  // Direct INSERT via service role client (already used elsewhere in the file).
+  await supabaseAdmin.from('slack_conversations').insert({
+    workspace_id: persona.workspaceId,
+    slack_user_id: slackUserId,
+    intent: 'general_chat',
+    status: 'active',
+    state_data: { turns: [] },
+  });
+
+  await slackApi('chat.postMessage', {
+    channel: slackUserId,
+    text: 'Olá! Eu sou o Mentor da Rhitmo 🌀, conectado ao seu Context Graph. Sobre o que você quer falar ou refletir hoje?',
+  });
+  break;
 }
 ```
 
-Result:
-- If no active `slack_conversations` row exists → existing welcome menu path runs as today.
-- If one exists → bot acknowledges and persists the turn into `state_data.turns`. No LLM call yet.
+The partial unique index on `(slack_user_id) WHERE status='active'` (Sprint 11.1) protects against double-creation if the user spams the button.
 
-Conversations will be **created** later (Sprint 11.2+) by slash commands / buttons (e.g., starting a Pulse via `/rhitmo` opens a conversation row with `intent='pulse_survey'`).
+### 4. Tiny housekeeping
+- `default` log in the action switch already exists — no regression for unrelated buttons.
+- Update `mem://features/slack/conversational-state-machine`: mark Sprint 11.2 as done, add the LLM call + `start_rhitmo_chat` trigger to the doc, keep "no LLM" line removed.
 
-### 3. No client changes
-Frontend is not touched. No types regen needed beyond what the migration auto-produces in `src/integrations/supabase/types.ts`.
-
-### 4. Memory update
-Add `mem://features/slack/conversational-state-machine` describing:
-- Table shape and one-active-per-user invariant.
-- Hook position (DM event, before welcome menu, post-throttle).
-- Convention for `state_data.turns: [{role, text, ts}]` and `intent` values.
-Update `mem://index.md` with the reference line.
-
----
-
-### Files touched
-- New migration: `slack_conversations` table + enum + indexes + RLS + RPC helpers.
-- Edited: `supabase/functions/slack-bot/index.ts` (add 2 helpers + conversational hook inside DM branch).
-- New: `mem://features/slack/conversational-state-machine`, updated `mem://index.md`.
+### 5. Files touched
+- **Edited**: `supabase/functions/slack-bot/index.ts`
+  - +`callLovableAI()` and `buildSystemPromptForIntent()` helpers near the top.
+  - LLM call replaces the placeholder inside the conversational hook.
+  - New button in `buildRhitmoMenu` (leader + direct_report).
+  - New `start_rhitmo_chat` case in `block_actions` switch.
+- **Edited**: `.lovable/memory/features/slack/conversational-state-machine.md` (status update).
+- **No DB migration**, **no frontend changes**, **no new secrets**.
 
 ### Out of scope (next sprints)
-- LLM wiring (OpenAI/Lovable AI), prompt design, intent classifier.
-- Conversation **creation** triggers from slash commands / buttons.
+- Per-intent prompt templates and structured flows (Pulse, 1:1 prep, Self-Review).
 - Cron sweep for `expire_stale_slack_conversations()`.
-- UI to inspect ongoing conversations.
+- "Encerrar conversa" button to flip `status='completed'` (currently happens only via TTL expiration / manual cleanup).
+- Streaming responses to Slack (Slack does not support SSE; would require chunked `chat.update` — explicitly out of scope).
