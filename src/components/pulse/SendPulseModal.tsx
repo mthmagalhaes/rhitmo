@@ -136,7 +136,7 @@ export function SendPulseModal({ open, onOpenChange }: SendPulseModalProps) {
   const canSubmit = !!memberId && !!pulseType && !submitting;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(o) => !submitting && onOpenChange(o)}>
       <DialogContent className="rounded-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-serif">
