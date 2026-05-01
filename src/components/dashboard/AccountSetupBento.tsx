@@ -110,8 +110,7 @@ export function AccountSetupBento({ workspaceId, memberCount, onOpenInvite }: Pr
     ]
   );
 
-  const allDone = cards.every((c) => c.done);
-  if (allDone || dismissed) return null;
+  if (dismissed) return null;
 
   const handleDismiss = () => {
     if (dismissKey) localStorage.setItem(dismissKey, '1');

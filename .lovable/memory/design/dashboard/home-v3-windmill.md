@@ -12,7 +12,7 @@ A Home é cockpit de início de dia, não diretório de pessoas nem painel anal�
 
 Hero strip permanece (saudação, badge de plano, stats chips, botões "Novo Membro" e "Nova Nota"). Dentro do `<main className="max-w-5xl ...">`, exatamente 3 seções nesta ordem:
 
-1. **`<AccountSetupBento>`** — bento grid 4 cards: Conectar Slack, Convidar liderados, Adicionar canais Slack, Conectar Google Calendar. Botão "Dispensar" persiste em `localStorage` por workspace (`rhitmo:home:account-setup-dismissed:{workspaceId}`). Auto-some quando os 4 estão concluídos.
+1. **`<AccountSetupBento>`** — bento grid 4 cards: Conectar Slack, Convidar liderados, Adicionar canais Slack, Conectar Google Calendar. Cards concluídos mostram badge "Conectado" mas a seção **continua visível**. A seção só desaparece quando o líder clica em "Dispensar" (persistido em `localStorage` por workspace: `rhitmo:home:account-setup-dismissed:{workspaceId}`). Nunca auto-esconder ao completar — decisão é do líder.
 2. **Próximas 1:1s** — `CalendarCardBoundary` (UpcomingMeetingsCard com error boundary).
 3. **`<MentorHistoryCard>`** — últimas 8 threads de `chat_threads` com `type in ('mentor','brief')` do líder; click → `/chat/{id}`; empty state com CTA para abrir Mentor.
 
