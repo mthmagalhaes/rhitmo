@@ -31,6 +31,7 @@ const VARIANT_CONFIG: Record<NoteVariant, {
   label: string;
   helper: string;
   icon: typeof Eye;
+  iconClass: string;
   badgeClass: string;
   cardClass: string;
   visibility: 'shared' | 'private_leader';
@@ -38,23 +39,27 @@ const VARIANT_CONFIG: Record<NoteVariant, {
   defaultTitle: string;
   ctaLabel: string;
 }> = {
+  // Shared = neutra/clara (é a "default"). O peso visual fica na Private.
   shared: {
     label: 'Pauta compartilhada',
     helper: 'Visível para o liderado',
     icon: Eye,
+    iconClass: 'text-muted-foreground',
     badgeClass: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20',
-    cardClass: 'border-emerald-500/20 bg-emerald-50/40 dark:bg-emerald-950/10',
+    cardClass: 'border-border bg-card',
     visibility: 'shared',
     tag: 'pauta-1on1',
     defaultTitle: 'Pauta 1:1',
     ctaLabel: 'Salvar na pauta',
   },
+  // Private = bg-muted + dashed + cadeado proeminente para reforçar privacidade.
   private: {
     label: 'Anotação privada',
     helper: 'Só você vê',
     icon: Lock,
-    badgeClass: 'bg-muted text-muted-foreground border-border',
-    cardClass: 'border-border bg-card',
+    iconClass: 'text-foreground',
+    badgeClass: 'bg-background text-muted-foreground border-border',
+    cardClass: 'border-dashed border-border/60 bg-muted/50',
     visibility: 'private_leader',
     tag: 'anotacao-privada-1on1',
     defaultTitle: 'Anotação privada 1:1',
