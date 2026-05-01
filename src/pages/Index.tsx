@@ -213,7 +213,8 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('calendar') === 'connected') {
       toast({ title: t('dashboard.calendarConnected') });
-      window.history.replaceState({}, '', '/dashboard');
+      // Preserve current path (works for /lider/inicio, /liderado/inicio, /dashboard, etc.)
+      window.history.replaceState({}, '', window.location.pathname);
       queryClient.invalidateQueries({ queryKey: ['calendar-connected'] });
       queryClient.invalidateQueries({ queryKey: ['calendar-upcoming-meetings'] });
     }
