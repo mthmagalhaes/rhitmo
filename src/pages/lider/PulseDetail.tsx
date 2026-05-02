@@ -346,7 +346,7 @@ function ParticipantsTab({
               <tr key={c.id}>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <MemberAvatar name={m?.name ?? '—'} size="sm" />
+                    <MemberAvatar memberId={c.member_id} memberName={m?.name ?? '—'} size="sm" />
                     <div>
                       <p className="font-medium">{m?.name ?? '—'}</p>
                       {m?.role && <p className="text-xs text-muted-foreground">{m.role}</p>}
