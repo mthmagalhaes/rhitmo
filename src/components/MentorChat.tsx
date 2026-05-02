@@ -66,10 +66,63 @@ interface MentorChatProps {
   initialThreadId?: string | null;
 }
 
+// Prompt Gallery — combate "blank page anxiety". Templates curtos para o
+// chip-row no input (text) e cards ricos para o estado vazio (title+desc+icon).
 const leaderSuggestions = [
-  { emoji: '📋', text: 'Resumir histórico recente' },
-  { emoji: '⚡', text: 'Quais ações estão pendentes?' },
-  { emoji: '💬', text: 'Como dar feedback agora?' },
+  { emoji: '📋', text: 'Resumir o último mês' },
+  { emoji: '🗓️', text: 'Sugerir pauta para próxima 1:1' },
+  { emoji: '🔍', text: 'Quais padrões aparecem nos últimos 30 dias?' },
+  { emoji: '⚠️', text: 'Quem está em risco esta semana?' },
+  { emoji: '🪞', text: 'Identificar contradições no meu Mirror' },
+  { emoji: '⚡', text: 'Listar ações pendentes não resolvidas' },
+];
+
+interface PromptGalleryItem {
+  emoji: string;
+  title: string;
+  description: string;
+}
+
+const leaderPromptGallery: PromptGalleryItem[] = [
+  {
+    emoji: '📋',
+    title: 'Resumir o último mês',
+    description: 'Destaques, riscos e padrões de feedback dos últimos 30 dias.',
+  },
+  {
+    emoji: '🗓️',
+    title: 'Pauta para próxima 1:1',
+    description: 'Tópicos sugeridos com base no que ficou em aberto.',
+  },
+  {
+    emoji: '🔍',
+    title: 'Padrões de feedback',
+    description: 'Temas que se repetem nos últimos 30 dias.',
+  },
+  {
+    emoji: '⚠️',
+    title: 'Quem está em risco',
+    description: 'Sinais de churn, sobrecarga ou desengajamento.',
+  },
+  {
+    emoji: '🪞',
+    title: 'Contradições no Mirror',
+    description: 'O que você disse vs. o que mostrou nas 1:1s.',
+  },
+  {
+    emoji: '⚡',
+    title: 'Ações pendentes',
+    description: 'Compromissos seus e do liderado ainda em aberto.',
+  },
+];
+
+const directReportPromptGallery: PromptGalleryItem[] = [
+  { emoji: '🚀', title: 'Preparar pedido de promoção', description: 'Como estruturar a conversa com base no seu histórico.' },
+  { emoji: '💬', title: 'Processar feedback difícil', description: 'Te ajudo a ler o subtexto e planejar o próximo passo.' },
+  { emoji: '🔍', title: 'Meus pontos cegos', description: 'O que recorrentemente aparece e você pode estar ignorando.' },
+  { emoji: '⚡', title: 'Acelerar desenvolvimento', description: 'Próximas 2-3 alavancas com maior retorno.' },
+  { emoji: '📋', title: 'Preparar próxima 1:1', description: 'Pauta sugerida com base no que ficou pendente.' },
+  { emoji: '🎯', title: 'Próximos 90 dias', description: 'Objetivos realistas alinhados ao seu PDI.' },
 ];
 
 const directReportSuggestions = [
