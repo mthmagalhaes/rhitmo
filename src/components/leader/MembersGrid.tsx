@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, UserPlus, Users } from 'lucide-react';
+import { UserPlus, Users } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useTranslation } from 'react-i18next';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { supabase } from '@/integrations/supabase/client';
@@ -195,8 +196,10 @@ export function MembersGrid({
       )}
 
       {isLoading ? (
-        <div className="flex justify-center py-16">
-          <Loader2 className="h-7 w-7 animate-spin text-primary" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-44 w-full rounded-2xl" />
+          ))}
         </div>
       ) : filtered.length === 0 ? (
         <div className="rounded-2xl bg-card border border-dashed border-border p-10 text-center">
