@@ -229,13 +229,16 @@ async function maybeSendWelcomeDM(
   const audience = await detectAudience(serviceClient, userId);
   console.log('[WELCOME_DM] Audience for user', userId, '=', audience);
 
-  // Fetch first name from profile
-  const { data: profile } = await serviceClient
-    .from('profiles')
-    .select('full_name')
-    .eq('user_id', userId)
-    .maybeSingle();
-  const firstName = (profile?.full_name?.split(' ')[0] ?? '').trim();
+  // Fetch first name from auth user metadata
+  let firstName = '';
+  try {
+    const { data: u } = await serviceClient.auth.admin.getUserById(userId);
+    const meta = (u?.user?.user_metadata ?? {}) as Record<string, unknown>;
+    const fullName = (meta.full_name as string) || (meta.name as string) || '';
+    firstName = (fullName.split(' ')[0] ?? '').trim();
+  } catch (err) {
+    console.warn('[WELCOME_DM] Could not load user name:', err);
+  }
   const greeting = firstName ? `Olá, ${firstName} 👋` : 'Olá 👋';
 
   const cmds = commandsForAudience(audience);
