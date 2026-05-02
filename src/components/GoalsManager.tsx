@@ -25,9 +25,13 @@ interface Goal {
 
 interface GoalsManagerProps {
   memberId: string;
+  /** Quando true, esconde o botão "Nova Meta" do cabeçalho interno
+   *  (usar em páginas que já oferecem o CTA de criação no header da própria página,
+   *  evitando duplicação). Default: false. */
+  hideHeaderAction?: boolean;
 }
 
-export const GoalsManager = ({ memberId }: GoalsManagerProps) => {
+export const GoalsManager = ({ memberId, hideHeaderAction = false }: GoalsManagerProps) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [reactivating, setReactivating] = useState(false);
@@ -124,10 +128,12 @@ export const GoalsManager = ({ memberId }: GoalsManagerProps) => {
             </span>
           )}
         </div>
-        <Button onClick={handleNewGoal} size="sm" className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nova Meta
-        </Button>
+        {!hideHeaderAction && (
+          <Button onClick={handleNewGoal} size="sm" className="gap-2">
+            <Plus className="h-4 w-4" />
+            Nova Meta
+          </Button>
+        )}
       </div>
 
       <Tabs defaultValue="active" className="w-full">

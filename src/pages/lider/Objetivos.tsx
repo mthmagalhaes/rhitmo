@@ -69,11 +69,11 @@ export default function LiderObjetivos() {
                 className="rounded-xl gap-2"
               >
                 <Plus className="h-4 w-4" />
-                Novo objetivo
+                Nova meta
               </Button>
             </header>
 
-            <GoalsManager memberId={selected.id} />
+            <GoalsManager memberId={selected.id} hideHeaderAction />
           </div>
         )}
       </main>
