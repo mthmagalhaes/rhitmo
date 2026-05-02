@@ -1,12 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, FileText, Loader2, Eye } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Calendar, FileText, Eye, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ReviewViewDialog } from "./ReviewViewDialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { cn } from "@/lib/utils";
 
 interface PerformanceReview {
   id: string;
@@ -18,12 +21,27 @@ interface PerformanceReview {
   period_end?: string | null;
   created_at: string;
   shared_with_member?: boolean;
+  acknowledged_at?: string | null;
 }
 
 interface PerformanceReviewListProps {
   memberId: string;
   memberName: string;
   onCreateReview?: () => void;
+}
+
+type ReviewStatus = 'draft' | 'shared' | 'acknowledged';
+
+const STATUS_META: Record<ReviewStatus, { label: string; defaultOpen: boolean; tone: string }> = {
+  draft:        { label: 'Em rascunho',  defaultOpen: true,  tone: 'text-amber-600' },
+  shared:       { label: 'Compartilhada', defaultOpen: true,  tone: 'text-emerald-600' },
+  acknowledged: { label: 'Confirmada',   defaultOpen: false, tone: 'text-muted-foreground' },
+};
+
+function statusOf(r: PerformanceReview): ReviewStatus {
+  if (r.acknowledged_at) return 'acknowledged';
+  if (r.shared_with_member) return 'shared';
+  return 'draft';
 }
 
 export const PerformanceReviewList = ({ memberId, memberName, onCreateReview }: PerformanceReviewListProps) => {
@@ -36,7 +54,7 @@ export const PerformanceReviewList = ({ memberId, memberName, onCreateReview }: 
     queryFn: async () => {
       const { data, error } = await supabase
         .from('performance_reviews')
-        .select('id, title, content, coaching_tip, period_type, period_start, period_end, created_at, shared_with_member')
+        .select('id, title, content, coaching_tip, period_type, period_start, period_end, created_at, shared_with_member, acknowledged_at')
         .eq('member_id', memberId)
         .order('created_at', { ascending: false });
 
@@ -51,7 +69,7 @@ export const PerformanceReviewList = ({ memberId, memberName, onCreateReview }: 
       }
       return data || [];
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 
   // Sincronizar selectedReview quando reviews atualizar
@@ -63,6 +81,12 @@ export const PerformanceReviewList = ({ memberId, memberName, onCreateReview }: 
       }
     }
   }, [reviews, selectedReview]);
+
+  const grouped = useMemo(() => {
+    const acc: Record<ReviewStatus, PerformanceReview[]> = { draft: [], shared: [], acknowledged: [] };
+    for (const r of reviews) acc[statusOf(r)].push(r);
+    return acc;
+  }, [reviews]);
 
   const getPeriodLabel = (periodType: string) => {
     const labels: Record<string, string> = {
@@ -77,8 +101,19 @@ export const PerformanceReviewList = ({ memberId, memberName, onCreateReview }: 
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <Skeleton className="h-10 w-44 rounded-xl" />
+        </div>
+        <div className="grid gap-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-2xl" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -114,36 +149,58 @@ export const PerformanceReviewList = ({ memberId, memberName, onCreateReview }: 
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4">
-          {reviews.map((review) => (
-            <Card 
-              key={review.id} 
-              className="cursor-pointer hover:border-primary/50 transition-colors"
-              onClick={() => setSelectedReview(review)}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-base">{review.title}</CardTitle>
-                    <CardDescription className="flex items-center gap-2 mt-1">
-                      <Calendar className="h-3 w-3" />
-                      {new Date(review.created_at).toLocaleDateString('pt-BR')}
-                      <span className="mx-1">•</span>
-                      <span className="text-xs bg-muted px-2 py-0.5 rounded">
-                        {getPeriodLabel(review.period_type)}
-                      </span>
-                    </CardDescription>
+        <div className="space-y-4">
+          {(Object.keys(STATUS_META) as ReviewStatus[]).map((status) => {
+            const items = grouped[status];
+            if (items.length === 0) return null;
+            const meta = STATUS_META[status];
+            return (
+              <Collapsible key={status} defaultOpen={meta.defaultOpen}>
+                <CollapsibleTrigger className="group flex items-center gap-2 w-full text-left py-1.5 mb-2">
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
+                  <span className={cn("text-[12px] font-semibold uppercase tracking-[0.14em]", meta.tone)}>
+                    {meta.label}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground/70 font-medium">
+                    · {items.length}
+                  </span>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="grid gap-2.5">
+                    {items.map((review) => (
+                      <Card
+                        key={review.id}
+                        className="cursor-pointer hover:border-primary/50 hover:shadow-[0_2px_20px_rgba(0,0,0,0.04)] transition-all rounded-2xl"
+                        onClick={() => setSelectedReview(review)}
+                      >
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <CardTitle className="text-base">{review.title}</CardTitle>
+                              <CardDescription className="flex items-center gap-2 mt-1">
+                                <Calendar className="h-3 w-3" />
+                                {new Date(review.created_at).toLocaleDateString('pt-BR')}
+                                <span className="mx-1">•</span>
+                                <span className="text-xs bg-muted px-2 py-0.5 rounded">
+                                  {getPeriodLabel(review.period_type)}
+                                </span>
+                              </CardDescription>
+                            </div>
+                            {review.shared_with_member && !review.acknowledged_at && (
+                              <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 text-xs border border-emerald-100 gap-1 shrink-0">
+                                <Eye className="h-3 w-3" />
+                                Visível para o liderado
+                              </Badge>
+                            )}
+                          </div>
+                        </CardHeader>
+                      </Card>
+                    ))}
                   </div>
-                  {review.shared_with_member && (
-                    <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 text-xs border border-emerald-100 gap-1 shrink-0">
-                      <Eye className="h-3 w-3" />
-                      Visível para o liderado
-                    </Badge>
-                  )}
-                </div>
-              </CardHeader>
-            </Card>
-          ))}
+                </CollapsibleContent>
+              </Collapsible>
+            );
+          })}
         </div>
       )}
 

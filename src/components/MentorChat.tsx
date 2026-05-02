@@ -66,10 +66,63 @@ interface MentorChatProps {
   initialThreadId?: string | null;
 }
 
+// Prompt Gallery — combate "blank page anxiety". Templates curtos para o
+// chip-row no input (text) e cards ricos para o estado vazio (title+desc+icon).
 const leaderSuggestions = [
-  { emoji: '📋', text: 'Resumir histórico recente' },
-  { emoji: '⚡', text: 'Quais ações estão pendentes?' },
-  { emoji: '💬', text: 'Como dar feedback agora?' },
+  { emoji: '📋', text: 'Resumir o último mês' },
+  { emoji: '🗓️', text: 'Sugerir pauta para próxima 1:1' },
+  { emoji: '🔍', text: 'Quais padrões aparecem nos últimos 30 dias?' },
+  { emoji: '⚠️', text: 'Quem está em risco esta semana?' },
+  { emoji: '🪞', text: 'Identificar contradições no meu Mirror' },
+  { emoji: '⚡', text: 'Listar ações pendentes não resolvidas' },
+];
+
+interface PromptGalleryItem {
+  emoji: string;
+  title: string;
+  description: string;
+}
+
+const leaderPromptGallery: PromptGalleryItem[] = [
+  {
+    emoji: '📋',
+    title: 'Resumir o último mês',
+    description: 'Destaques, riscos e padrões de feedback dos últimos 30 dias.',
+  },
+  {
+    emoji: '🗓️',
+    title: 'Pauta para próxima 1:1',
+    description: 'Tópicos sugeridos com base no que ficou em aberto.',
+  },
+  {
+    emoji: '🔍',
+    title: 'Padrões de feedback',
+    description: 'Temas que se repetem nos últimos 30 dias.',
+  },
+  {
+    emoji: '⚠️',
+    title: 'Quem está em risco',
+    description: 'Sinais de churn, sobrecarga ou desengajamento.',
+  },
+  {
+    emoji: '🪞',
+    title: 'Contradições no Mirror',
+    description: 'O que você disse vs. o que mostrou nas 1:1s.',
+  },
+  {
+    emoji: '⚡',
+    title: 'Ações pendentes',
+    description: 'Compromissos seus e do liderado ainda em aberto.',
+  },
+];
+
+const directReportPromptGallery: PromptGalleryItem[] = [
+  { emoji: '🚀', title: 'Preparar pedido de promoção', description: 'Como estruturar a conversa com base no seu histórico.' },
+  { emoji: '💬', title: 'Processar feedback difícil', description: 'Te ajudo a ler o subtexto e planejar o próximo passo.' },
+  { emoji: '🔍', title: 'Meus pontos cegos', description: 'O que recorrentemente aparece e você pode estar ignorando.' },
+  { emoji: '⚡', title: 'Acelerar desenvolvimento', description: 'Próximas 2-3 alavancas com maior retorno.' },
+  { emoji: '📋', title: 'Preparar próxima 1:1', description: 'Pauta sugerida com base no que ficou pendente.' },
+  { emoji: '🎯', title: 'Próximos 90 dias', description: 'Objetivos realistas alinhados ao seu PDI.' },
 ];
 
 const directReportSuggestions = [
@@ -854,27 +907,39 @@ export const MentorChat = ({
 
                 {/* Empty / New thread state */}
                 {(showEmptyState || showNewThreadState) && !isLoadingMessages && (
-                  <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <div className="flex flex-col items-center justify-center py-12 px-2 text-center">
                     <div className="flex items-center justify-center h-12 w-12 rounded-full bg-primary/10 text-2xl mb-4">
                       {isLeader ? '🎯' : <Sparkles className="h-6 w-6 text-primary" />}
                     </div>
                     <h2 className="font-semibold text-xl text-foreground tracking-tight">
                       {isLeader ? `Mentor de ${memberName}` : `Olá, ${memberName.split(' ')[0]}! 👋`}
                     </h2>
-                    <p className="text-muted-foreground text-sm max-w-xs mt-2">
+                    <p className="text-muted-foreground text-sm max-w-md mt-2">
                       {isLeader
-                        ? `Pergunte qualquer coisa sobre o histórico, comportamento e desenvolvimento de ${memberName}.`
-                        : 'Sou seu parceiro de desenvolvimento. Converse comigo sobre carreira, preparação para reuniões ou qualquer situação do trabalho.'}
+                        ? `Pergunte qualquer coisa sobre ${memberName}, ou comece com um destes templates:`
+                        : 'Sou seu parceiro de desenvolvimento. Comece com um destes templates ou pergunte o que quiser:'}
                     </p>
-                    <div className="flex flex-wrap gap-2 mt-6 justify-center">
-                      {quickSuggestions.map((s, idx) => (
+
+                    {/* Prompt Gallery — Bento grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-6 w-full max-w-2xl text-left">
+                      {(isLeader ? leaderPromptGallery : directReportPromptGallery).map((p, idx) => (
                         <button
                           key={idx}
-                          onClick={() => handleSuggestionClick(s.text)}
+                          onClick={() => handleSuggestionClick(p.title)}
                           disabled={isLoading}
-                          className="px-4 py-2 text-sm rounded-full border border-border bg-background hover:bg-muted transition-colors text-foreground disabled:opacity-50"
+                          className="group rounded-2xl border border-border/60 bg-card p-3.5 hover:border-primary/40 hover:shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {s.emoji} {s.text}
+                          <div className="flex items-start gap-2.5">
+                            <span className="text-lg leading-none mt-0.5">{p.emoji}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[13px] font-semibold text-foreground tracking-tight">
+                                {p.title}
+                              </p>
+                              <p className="text-[12px] text-muted-foreground mt-0.5 leading-snug">
+                                {p.description}
+                              </p>
+                            </div>
+                          </div>
                         </button>
                       ))}
                     </div>
