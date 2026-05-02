@@ -2,7 +2,7 @@
 // Backed by the SECURITY DEFINER RPC `get_team_timeline`, which already enforces
 // workspace + leader scoping. We just paginate by `occurred_at` cursor.
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { safeRpc } from '@/lib/supabaseSafe';
+import { safeRpc, SupabaseSafeError } from '@/lib/supabaseSafe';
 
 export interface TimelineRow {
   id: string;
@@ -45,14 +45,24 @@ export function useTeamTimeline({
     enabled,
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
-      const rows = await safeRpc<TimelineRow[]>('get_team_timeline', {
-        _workspace_id: workspaceId ?? null,
-        _member_ids: memberIds && memberIds.length ? memberIds : null,
-        _source_tables: sourceTables && sourceTables.length ? sourceTables : null,
-        _before: pageParam,
-        _limit: pageSize,
-      });
-      return rows ?? [];
+      try {
+        const rows = await safeRpc<TimelineRow[]>('get_team_timeline', {
+          _workspace_id: workspaceId ?? null,
+          _member_ids: memberIds && memberIds.length ? memberIds : null,
+          _source_tables: sourceTables && sourceTables.length ? sourceTables : null,
+          _before: pageParam,
+          _limit: pageSize,
+        });
+        return rows ?? [];
+      } catch (err) {
+        // Defensive logging — useInfiniteQuery swallows the original message
+        // into `isError` only, which made the Contexto bug invisible.
+        if (import.meta.env.DEV) {
+          const detail = err instanceof SupabaseSafeError ? err.message : String(err);
+          console.error('[useTeamTimeline] get_team_timeline failed:', detail, err);
+        }
+        throw err;
+      }
     },
     getNextPageParam: (lastPage) => {
       if (!lastPage || lastPage.length < pageSize) return undefined;
