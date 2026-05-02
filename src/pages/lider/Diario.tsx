@@ -1,20 +1,21 @@
-// Sprint 12.3 — Diário de Bordo Master-Detail estilo Notion/Windmill.
+// Diário de Bordo — Master-Detail estilo Notion/Windmill.
 // - Banner de privacidade fixo no topo da coluna direita
-// - Captura rápida sempre visível (sem modal)
-// - Feed cronológico abaixo
+// - Botão "Nova anotação" abre o NewNoteDialog completo (Magic Paste, templates, smart date, AI title)
+// - Feed cronológico abaixo (todas as notas do liderado: privadas + compartilhadas)
 // - placeholderData evita "piscar" ao trocar de liderado
 import { useMemo, useState } from 'react';
 import { isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Lock, Search } from 'lucide-react';
+import { Lock, PenSquare, Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { MemberAvatar } from '@/components/MemberAvatar';
 import { MemberMasterList } from '@/components/leader/MemberMasterList';
 import { EmptyMemberDetail } from '@/components/leader/EmptyMemberDetail';
 import { FeedbackTimeline } from '@/components/FeedbackTimeline';
 import { FeedbackFilters } from '@/components/FeedbackFilters';
-import { QuickPrivateNoteInput } from '@/components/diario/QuickPrivateNoteInput';
+import { NewNoteDialog } from '@/components/NewNoteDialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useLeaderMembers, type LeaderMemberRow } from '@/hooks/useLeaderMembers';
