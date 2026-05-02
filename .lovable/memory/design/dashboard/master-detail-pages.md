@@ -1,10 +1,10 @@
 ---
 name: Master-Detail Pages
-description: /lider/1on1s, /lider/diario, /lider/objetivos usam MemberMasterList sticky 260px bg-muted/30 com avatar sm; root das páginas tem h-[calc(100svh-3rem)] overflow-hidden + main com overflow-y-auto (scroll independente, app-feel); conteúdo interno max-w-3xl px-6 lg:px-8 py-6 sem mx-auto
+description: /lider/1on1s, /lider/diario, /lider/objetivos e /lider/avaliacoes usam MemberMasterList sticky 260px bg-muted/30 com avatar sm; root das páginas tem h-[calc(100svh-3rem)] overflow-hidden + main com overflow-y-auto (scroll independente, app-feel); conteúdo interno max-w-3xl px-6 lg:px-8 py-6 sem mx-auto
 type: design
 ---
 
-# Master-Detail (Sprint 12.1 + 12.2 + 12.4)
+# Master-Detail (Sprint 12.1 + 12.2 + 12.4 + 12.5)
 
 ## Regras gerais de layout (estilo Windmill/Linear/Notion — full-bleed app)
 
@@ -61,3 +61,14 @@ Ordem fixa na coluna direita quando há liderado selecionado:
 ## Por quê (geral)
 
 A primeira iteração colocava o título da página dentro da master list, criando uma "faixa horizontal flutuante" que atravessava as duas colunas e quebrava o paralelo visual. O TeamTabs também vazava para fora dos 320px. O empty state tinha um quadrado lavanda atrás do ícone que parecia "invadir" a timeline. Tudo isso longe da limpeza Windmill/Linear que o produto persegue.
+
+## /lider/avaliacoes especificamente (Sprint 12.5)
+
+Mesmo esqueleto de Diário/Objetivos. Ordem fixa na coluna direita quando há liderado selecionado:
+
+1. Eyebrow `AVALIAÇÕES` + header (avatar + nome + cargo).
+2. Sub-header "Escolha o tipo de avaliação" + microcopy "O Rhitmo gera o rascunho com base em notas, 1:1s e feedbacks compartilhados."
+3. **Card Rhitmo** (`Music` + sub-botões `Mensal` / `Trimestral`) → `/member/{id}?tab=rhitmo&sub=monthly|quarterly`.
+4. **Card Avaliação Formal** (`Sparkles`, clicável inteiro) → `/member/{id}?tab=reviews&action=new`.
+
+Removido o `Dialog` que abria ao clicar no liderado no `MembersGrid` antigo — os dois cartões agora vivem inline na coluna direita, igual ao resto das páginas master-detail. `MembersGrid` segue existindo para outros usos (não foi removido).
