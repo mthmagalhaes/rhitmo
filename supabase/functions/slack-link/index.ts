@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { commandsForAudience } from '../_shared/slackCommands.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -174,6 +175,15 @@ Deno.serve(async (req) => {
     } else {
       console.log('[LINK] Pending invite marked as accepted for:', slack_user_id);
     }
+
+    // Fire-and-forget: send welcome DM if not yet sent for this integration.
+    // We don't block the response — frontend can show the success screen immediately.
+    // @ts-ignore EdgeRuntime is provided by Supabase Edge runtime
+    EdgeRuntime.waitUntil(
+      maybeSendWelcomeDM(serviceClient, user.id, slack_user_id, slack_team_id).catch(err => {
+        console.error('[WELCOME_DM] Unhandled error:', err);
+      })
+    );
 
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
