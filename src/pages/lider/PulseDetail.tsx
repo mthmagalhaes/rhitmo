@@ -101,8 +101,8 @@ export default function LiderPulseDetail() {
         };
         const { data } = await client
           .from('team_members')
-          .select('id, teams!inner(leader_user_id)')
-          .eq('workspace_id', workspaceId)
+          .select('id, teams!inner(workspace_id, leader_user_id)')
+          .eq('teams.workspace_id', workspaceId)
           .eq('teams.leader_user_id', userId);
         targets = (data ?? []).map((m) => m.id);
       }
