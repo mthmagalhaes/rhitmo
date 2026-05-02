@@ -57,6 +57,7 @@ const LiderInicio = lazy(() => import("./pages/lider/Inicio"));
 const LiderOneOnOnes = lazy(() => import("./pages/lider/OneOnOnes"));
 const LiderDiario = lazy(() => import("./pages/lider/Diario"));
 const LiderPulse = lazy(() => import("./pages/lider/Pulse"));
+const LiderPulseDetail = lazy(() => import("./pages/lider/PulseDetail"));
 const LiderAvaliacoes = lazy(() => import("./pages/lider/Avaliacoes"));
 const LiderObjetivos = lazy(() => import("./pages/lider/Objetivos"));
 const LiderPessoas = lazy(() => import("./pages/lider/Pessoas"));
