@@ -14,8 +14,9 @@ import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
 
 function ProfileTab() {
   const [open, setOpen] = useState(false);
+  const { workspaceId } = useAccount();
   return (
-    <div className="space-y-4">
+    <div className="grid gap-4 md:grid-cols-2">
       <Card className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
         <CardHeader>
           <CardTitle className="font-serif tracking-tight">Seu perfil</CardTitle>
@@ -27,29 +28,23 @@ function ProfileTab() {
           </Button>
         </CardContent>
       </Card>
+      <Card className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
+        <CardHeader>
+          <CardTitle className="font-serif tracking-tight">Workspace</CardTitle>
+          <CardDescription>Informações da sua organização.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <div className="flex items-center justify-between border-b border-border/40 pb-3">
+            <span className="text-muted-foreground">ID</span>
+            <span className="font-mono text-xs text-muted-foreground truncate ml-2">{workspaceId ?? '—'}</span>
+          </div>
+          <p className="text-xs text-muted-foreground pt-1">
+            Para alterar nome ou owner, acesse o painel administrativo.
+          </p>
+        </CardContent>
+      </Card>
       <ProfileSettingsDialog open={open} onOpenChange={setOpen} />
     </div>
-  );
-}
-
-function WorkspaceTab() {
-  const { workspaceId } = useAccount();
-  return (
-    <Card className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
-      <CardHeader>
-        <CardTitle className="font-serif tracking-tight">Workspace</CardTitle>
-        <CardDescription>Informações da sua organização.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3 text-sm">
-        <div className="flex items-center justify-between border-b border-border/40 pb-3">
-          <span className="text-muted-foreground">ID</span>
-          <span className="font-mono text-xs text-muted-foreground">{workspaceId ?? '—'}</span>
-        </div>
-        <p className="text-xs text-muted-foreground pt-2">
-          Para alterar nome ou owner do workspace, acesse o painel administrativo.
-        </p>
-      </CardContent>
-    </Card>
   );
 }
 
