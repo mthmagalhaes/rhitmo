@@ -20,6 +20,7 @@ import { WaveDivider } from '@/components/WaveDivider';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
 import { useSlackConnection } from '@/hooks/useSlackConnection';
+import { SLACK_COMMANDS } from '@/lib/slackCommands';
 
 interface FeatureCard {
   id: string;
@@ -292,7 +293,7 @@ const hrCards: FeatureCard[] = [
     title: 'Conectores',
     subtitle: 'Slack, Chrome e automações',
     steps: [
-      'Configure o Conector Slack — comandos /rhitmo, /nota, /kudos, /brief, /mentor e /meu-rhitmo.',
+      `Configure o Conector Slack — comandos ${SLACK_COMMANDS.map(c => c.cmd).join(', ')}.`,
       'Gerencie templates de email e convites do Rhitmo Sync.',
       'Acompanhe o status de adoção da plataforma por time.',
     ],
@@ -312,7 +313,7 @@ const integrations: Integration[] = [
     id: 'slack',
     icon: Slack,
     name: 'Conector Slack',
-    description: 'Comandos disponíveis: /rhitmo (menu), /nota (feedback), /kudos (reconhecimento), /brief (resumo pré-1:1), /mentor (chat IA) e /meu-rhitmo (resumo do liderado).',
+    description: `Comandos disponíveis: ${SLACK_COMMANDS.map(c => `${c.cmd} (${c.desc.toLowerCase()})`).join(', ')}.`,
     status: 'available',
   },
   {
