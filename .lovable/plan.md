@@ -1,49 +1,67 @@
-## Diagnóstico
+## Objetivo
 
-Em `/lider/objetivos`, ao selecionar um liderado, aparecem **dois botões idênticos** logo um abaixo do outro:
+Padronizar **/lider/avaliacoes** com a mesma estrutura Master-Detail full-bleed das páginas **/lider/1on1s**, **/lider/diario** e **/lider/objetivos**: lista de liderados fixa à esquerda (260px), conteúdo à direita. Hoje a página usa um grid de cartões grandes + modal, o que destoa visualmente do resto da navegação.
 
-- `+ Novo objetivo` — no header da página (`src/pages/lider/Objetivos.tsx`, linha 67-73)
-- `+ Nova Meta` — no header interno do `GoalsManager` (`src/components/GoalsManager.tsx`, linha 127-130)
+## Comportamento atual
 
-Ambos abrem o **mesmo `NewGoalDialog`** com o mesmo `memberId`. Pura redundância visual, herança da fusão entre o layout antigo (botão dentro do `GoalsManager`) e o master-detail novo (Sprint 12.1) que adicionou o botão no header da página.
+- Página renderiza `MembersGrid` (cartões grandes com avatar, time, "Slack ✓", botão "Ver").
+- Clicar num liderado abre um **Dialog** com 2 cartões: "Rhitmo" (Mensal/Trimestral) e "Avaliações Formais".
+- Cada ação navega para `/member/:id?tab=...`.
 
-Há também uma inconsistência de vocabulário: "Objetivo" (header da página/menu) vs "Meta" (botão interno, contadores e cards). A tabela no banco se chama `goals`, e o resto do `GoalsManager` (cards, "X metas ativas", "Nenhuma meta ativa") usa **meta** consistentemente. "Objetivos" fica reservado como nome da seção/menu — "metas" são as unidades dentro dela.
+## Comportamento desejado
+
+Mesma estrutura de Diário/Objetivos:
+
+```text
+┌──────────────┬──────────────────────────────────────────┐
+│ MasterList   │  AVALIAÇÕES (eyebrow)                    │
+│ (liderados)  │  ┌─ Avatar + Nome + Cargo ─────────────┐ │
+│              │                                         │
+│ • Gabriela ◄ │  Escolha o tipo de avaliação:           │
+│ • Giovanna   │                                         │
+│ • Guilherme  │  ┌────────────────────────────────────┐ │
+│ • Laís       │  │ 🎵 Rhitmo                          │ │
+│ • Matheus    │  │ Resumos automáticos…               │ │
+│ • Yasmin     │  │ [ Mensal → ]  [ Trimestral → ]     │ │
+│              │  └────────────────────────────────────┘ │
+│              │  ┌────────────────────────────────────┐ │
+│              │  │ ✨ Avaliação Formal                │ │
+│              │  │ Performance Review com evidências  │ │
+│              │  └────────────────────────────────────┘ │
+└──────────────┴──────────────────────────────────────────┘
+```
+
+Sem modal. Os 2 cartões (que já existem no Dialog) viram conteúdo inline da coluna direita quando há liderado selecionado. Sem liderado selecionado, mostra empty state estilo Diário.
 
 ## Mudanças
 
-**1. `src/components/GoalsManager.tsx` — tornar o botão interno opcional**
+### `src/pages/lider/Avaliacoes.tsx` — reescrita completa
 
-Adicionar prop `hideHeaderAction?: boolean` (default `false`). Quando `true`, o `<div>` com contador + botão "Nova Meta" continua renderizando o contador, mas omite o botão. Mantém retrocompatibilidade — `MemberDetails.tsx` continua funcionando exatamente como hoje, já que não passa a prop.
+Espelhar o esqueleto de `Objetivos.tsx`:
 
-**2. `src/pages/lider/Objetivos.tsx` — eliminar duplicação**
+- Container raiz: `flex h-[calc(100svh-3.5rem)] lg:h-[calc(100svh-3rem)] overflow-hidden`.
+- `MemberMasterList` à esquerda com `selectedMemberId` + `onSelect` (`LeaderMemberRow`).
+- `<main>` à direita: `flex-1 min-w-0 overflow-y-auto bg-background`, container interno `max-w-3xl px-6 lg:px-8 py-6`.
+- Estado vazio: header "Avaliações" + `EmptyMemberDetail` com ícone `ClipboardCheck`, copy "Selecione um liderado" / "Escolha alguém à esquerda para gerar um Rhitmo (mensal/trimestral) ou uma Avaliação Formal."
+- Estado com liderado:
+  - Eyebrow `AVALIAÇÕES`
+  - Header com `MemberAvatar size="lg"` + nome + cargo (mesmo bloco usado em Diário/Objetivos)
+  - Subtítulo curto: "Escolha o tipo de avaliação."
+  - Os 2 `Card`s já existentes (Rhitmo com sub-botões Mensal/Trimestral + Avaliação Formal), reutilizando o JSX atual sem alterar estilos, ações ou rotas (`/member/:id?tab=rhitmo&sub=monthly|quarterly` e `/member/:id?tab=reviews&action=new`).
+- Remover: `Dialog`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogDescription`, `MembersGrid`.
+- Adicionar imports: `MemberMasterList`, `EmptyMemberDetail`, `MemberAvatar`, `LeaderMemberRow`.
 
-- Renomear o botão do header de `Novo objetivo` para `Nova meta` (alinhamento de vocabulário).
-- Passar `hideHeaderAction` para o `<GoalsManager>` para suprimir o botão duplicado.
+### Memória
 
-**3. Sem mudanças em `MemberDetails.tsx`**
+Atualizar `mem://design/dashboard/master-detail-pages` para incluir `/lider/avaliacoes` na lista de páginas que seguem este padrão.
 
-Ali o `GoalsManager` é o único caminho para criar meta dentro da aba "Objetivos" do perfil completo — o botão interno continua visível como antes.
+## Não muda
 
-## Resultado visual
-
-Antes (em `/lider/objetivos` com liderado selecionado):
-
-```text
-[Avatar] Gabriela Lucas              [ + Novo objetivo ]
-         Analista de Business Ops
-
-🎯 0 metas ativas                    [ + Nova Meta ]
-```
-
-Depois:
-
-```text
-[Avatar] Gabriela Lucas                [ + Nova meta ]
-         Analista de Business Ops
-
-🎯 0 metas ativas
-```
+- Lógica de navegação para `/member/:id?tab=...` (rotas, params, comportamento).
+- Componentes filhos (`MemberMasterList`, `EmptyMemberDetail`, `MemberAvatar`).
+- Os 2 cartões de ação (Rhitmo / Avaliação Formal) mantêm copy, ícones e estilos atuais.
+- Outras páginas do líder.
 
 ## Riscos
 
-Nenhum. Mudança puramente cosmética + uma prop opcional com default seguro. Não toca em queries, mutations, RLS ou no `NewGoalDialog`.
+Baixíssimos. Página é puramente de seleção + roteamento; não toca em RPC, dados ou RLS. O grid antigo (`MembersGrid` no modo `select`) continua usado em outros lugares (não removido).
