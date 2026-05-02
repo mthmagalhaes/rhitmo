@@ -298,18 +298,9 @@ export function PulseWizard({ open, onOpenChange, onCreated, editPulseId }: Puls
   return (
     <Dialog open={open} onOpenChange={(o) => !submitting && onOpenChange(o)}>
       <DialogContent className="max-w-none w-screen h-screen p-0 rounded-none border-0 flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b">
+        {/* Header — close (X) is provided by DialogContent itself */}
+        <div className="flex items-center px-6 py-4 border-b">
           <h2 className="text-base font-semibold tracking-tight">Pulse Setup</h2>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onOpenChange(false)}
-            disabled={submitting}
-            className="rounded-full"
-          >
-            <X className="h-4 w-4" />
-          </Button>
         </div>
 
         {/* Content */}
