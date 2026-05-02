@@ -158,20 +158,35 @@ export default function LiderDiario() {
               </div>
             </header>
 
-            {/* Banner de privacidade — fixo, discreto, inconfundível */}
+            {/* Banner de privacidade — fixo, discreto */}
             <div className="flex items-start gap-2.5 rounded-xl bg-muted/60 border border-border/60 px-3.5 py-2.5">
               <Lock className="h-3.5 w-3.5 text-foreground/70 mt-0.5 shrink-0" />
               <p className="text-xs text-muted-foreground leading-relaxed">
-                <span className="font-medium text-foreground">Diário privado.</span>{' '}
-                Estas anotações são 100% confidenciais e visíveis apenas para você.
+                <span className="font-medium text-foreground">Notas privadas por padrão.</span>{' '}
+                Você decide o que compartilhar com {selected.name.split(' ')[0]} a cada anotação.
               </p>
             </div>
 
-            {/* Captura rápida — sempre visível, sem modal */}
-            <QuickPrivateNoteInput
-              memberId={selected.id}
-              memberName={selected.name}
-            />
+            {/* Ação primária — abre o NewNoteDialog completo (Magic Paste, templates, smart date, AI title) */}
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="font-serif text-lg font-bold tracking-tight">
+                  Anotações
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {feedbacks.length === 0
+                    ? 'Nenhuma anotação ainda.'
+                    : `${feedbacks.length} ${feedbacks.length === 1 ? 'registro' : 'registros'} no histórico.`}
+                </p>
+              </div>
+              <Button
+                onClick={() => setNoteDialogOpen(true)}
+                className="rounded-xl gap-2 shrink-0"
+              >
+                <PenSquare className="h-4 w-4" />
+                Nova anotação
+              </Button>
+            </div>
 
             {/* Filtros (só quando há notas) */}
             {feedbacks.length > 0 && (
@@ -190,13 +205,23 @@ export default function LiderDiario() {
             {/* Feed cronológico */}
             {feedbacks.length === 0 ? (
               <Card className="p-8 text-center rounded-2xl border-dashed bg-transparent">
-                <p className="text-sm text-muted-foreground">
-                  Você ainda não tem anotações privadas para{' '}
+                <PenSquare className="h-7 w-7 text-muted-foreground/50 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground mb-4">
+                  Você ainda não tem anotações para{' '}
                   <span className="font-medium text-foreground">
                     {selected.name.split(' ')[0]}
                   </span>
-                  . Que tal registrar a primeira observação acima?
+                  . Registre uma observação rápida, cole uma transcrição ou use um template.
                 </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setNoteDialogOpen(true)}
+                  className="rounded-xl gap-2"
+                >
+                  <PenSquare className="h-3.5 w-3.5" />
+                  Criar primeira anotação
+                </Button>
               </Card>
             ) : filtered.length === 0 ? (
               <Card className="p-8 text-center rounded-2xl border-dashed">
@@ -214,6 +239,17 @@ export default function LiderDiario() {
           </div>
         )}
       </main>
+
+      <NewNoteDialog
+        open={noteDialogOpen}
+        onOpenChange={setNoteDialogOpen}
+        selectedMemberId={selected?.id}
+        memberName={selected?.name}
+        workspaceId={workspace?.id}
+        onSuccess={() =>
+          queryClient.invalidateQueries({ queryKey: ['feedbacks', selected?.id] })
+        }
+      />
     </div>
   );
 }
