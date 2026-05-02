@@ -82,8 +82,8 @@ export function SendPulseModal({ open, onOpenChange }: SendPulseModalProps) {
       };
       const { data, error } = await client
         .from('team_members')
-        .select('id, name, teams!inner(leader_user_id)')
-        .eq('workspace_id', workspaceId!)
+        .select('id, name, teams!inner(workspace_id, leader_user_id)')
+        .eq('teams.workspace_id', workspaceId!)
         .eq('teams.leader_user_id', userId!)
         .order('name', { ascending: true });
 
