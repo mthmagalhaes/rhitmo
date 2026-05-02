@@ -368,29 +368,26 @@ export function PulseWizard({ open, onOpenChange, onCreated, editPulseId }: Puls
                   </p>
                 </div>
                 <div className="space-y-2">
-                  {topics.map((t) => (
-                    <div
-                      key={t.id}
-                      className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2"
+                  <DndContext
+                    sensors={dndSensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={topics.map((t) => t.id)}
+                      strategy={verticalListSortingStrategy}
                     >
-                      <GripVertical className="h-4 w-4 text-muted-foreground/40 shrink-0" />
-                      <Input
-                        value={t.text}
-                        onChange={(e) => updateTopic(t.id, e.target.value)}
-                        placeholder="Digite uma pergunta ou tópico..."
-                        className="border-0 shadow-none focus-visible:ring-0 px-0"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeTopic(t.id)}
-                        className="rounded-full h-7 w-7 shrink-0"
-                        disabled={topics.length === 1}
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  ))}
+                      {topics.map((t) => (
+                        <SortableTopic
+                          key={t.id}
+                          topic={t}
+                          disabledRemove={topics.length === 1}
+                          onChange={(text) => updateTopic(t.id, text)}
+                          onRemove={() => removeTopic(t.id)}
+                        />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
                   <Button
                     type="button"
                     variant="outline"
