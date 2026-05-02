@@ -1569,13 +1569,18 @@ export type Database = {
       }
       pulse_surveys: {
         Row: {
+          anonymity: string
           completed_at: string | null
           context_metadata: Json
           created_at: string
           dm_sent_at: string | null
           expires_at: string | null
           id: string
+          launched_at: string | null
           member_id: string
+          motivation: string | null
+          name: string | null
+          parent_pulse_id: string | null
           questions: Json
           requested_by: string
           responses: Json
@@ -1587,13 +1592,18 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          anonymity?: string
           completed_at?: string | null
           context_metadata?: Json
           created_at?: string
           dm_sent_at?: string | null
           expires_at?: string | null
           id?: string
+          launched_at?: string | null
           member_id: string
+          motivation?: string | null
+          name?: string | null
+          parent_pulse_id?: string | null
           questions?: Json
           requested_by: string
           responses?: Json
@@ -1605,13 +1615,18 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          anonymity?: string
           completed_at?: string | null
           context_metadata?: Json
           created_at?: string
           dm_sent_at?: string | null
           expires_at?: string | null
           id?: string
+          launched_at?: string | null
           member_id?: string
+          motivation?: string | null
+          name?: string | null
+          parent_pulse_id?: string | null
           questions?: Json
           requested_by?: string
           responses?: Json
@@ -1628,6 +1643,13 @@ export type Database = {
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pulse_surveys_parent_pulse_id_fkey"
+            columns: ["parent_pulse_id"]
+            isOneToOne: false
+            referencedRelation: "pulse_surveys"
             referencedColumns: ["id"]
           },
         ]

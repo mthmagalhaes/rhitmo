@@ -143,6 +143,7 @@ const App = () => (
               <Route path="/lider/1on1s/:meetingId" element={Leader(<BriefPage />)} />
               <Route path="/lider/diario" element={Leader(<LiderDiario />)} />
               <Route path="/lider/pulse" element={Leader(<LiderPulse />)} />
+              <Route path="/lider/pulse/:id" element={Leader(<LiderPulseDetail />)} />
               <Route path="/lider/avaliacoes" element={Leader(<LiderAvaliacoes />)} />
               <Route path="/lider/objetivos" element={Leader(<LiderObjetivos />)} />
               <Route path="/lider/pessoas" element={Leader(<LiderPessoas />)} />
