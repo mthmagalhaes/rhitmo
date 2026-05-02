@@ -4,7 +4,7 @@ description: Lista canônica dos 7 slash commands do Rhitmo bot e onde mantê-lo
 type: feature
 ---
 
-**Single source of truth:** `src/lib/slackCommands.ts` exporta `SLACK_COMMANDS` (7 itens). Toda UI que lista comandos (`SlackConnectorDialog`, `SlackPrivacyOnboarding`, `HelpCenter` integrations + featureCards) consome dali. As strings i18n `slackDescription` em `pt-BR/en/es.json` listam os 7 comandos completos.
+**Single source of truth:** `src/lib/slackCommands.ts` exporta `SLACK_COMMANDS` (7 itens). Toda UI que lista comandos (`SlackConnectorDialog`, `SlackPrivacyOnboarding`, `HelpCenter` integrations + featureCards) consome dali. As strings i18n `slackDescription` em `pt-BR/en/es.json` listam os 7 comandos completos. **Espelho edge:** `supabase/functions/_shared/slackCommands.ts` (mesma lista + helper `commandsForAudience`) — usado pela welcome DM em `slack-link`. Manter os dois arquivos em sync sempre que adicionar/remover comando.
 
 **Comandos implementados (em `supabase/functions/slack-bot/index.ts`):**
 - `/rhitmo` — menu (linha ~1225)

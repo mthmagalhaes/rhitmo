@@ -1,109 +1,69 @@
-## Auditoria Slack: o que vendemos vs. o que está configurado
+# DM de Boas-vindas após conectar Slack
 
-Conferi a API do Slack diretamente (workspace **Faster**, bot `@rhitmo`, app ID `B0APL6ST719`) e cruzei com o código do `slack-bot` e com o que prometemos nas várias telas. Resumo abaixo do que **funciona, do que está quebrado e do que falta configurar no manifesto do app**.
+Hoje, quando o líder (ou liderado) completa o OAuth do Slack, a conta é vinculada em silêncio — nenhuma mensagem é enviada. O usuário precisa lembrar de digitar `/rhitmo` por conta própria. Vamos resolver isso com uma DM proativa do bot Rhitmo logo após o vínculo.
 
----
+## O que o usuário verá
 
-### 1. Slash commands — promessas vs. implementação
+Logo após o redirect de sucesso em `/slack/connect`, recebe uma DM do bot Rhitmo no Slack com:
 
-| Comando | Prometido em… | Implementado no `slack-bot`? | Status |
-|---|---|---|---|
-| `/rhitmo` (menu) | i18n, HelpCenter, SlackConnect, Dialog | ✅ linha 1225 | **OK** |
-| `/nota` | i18n, HelpCenter, Dialog, Privacy | ✅ linha 1234 | **OK** |
-| `/kudos` | i18n, HelpCenter, Dialog, Privacy | ✅ linha 1241 | **OK** |
-| `/brief` | HelpCenter, Dialog, Privacy | ✅ linha 1266 | **OK** |
-| `/meu-pdi` | HelpCenter, Dialog | ✅ linha 1273 | **OK** |
-| `/mentor` | HelpCenter | ✅ linha 1278 | **OK** |
-| `/meu-rhitmo` | HelpCenter | ✅ linha 1285 | **OK** |
-| `/review` | **Privacy Onboarding** (lista como comando privado) | ❌ não existe | **PROMESSA QUEBRADA** |
-| `/pulse` | (não prometido) | ❌ não existe | OK não prometer, mas é gap estratégico — o Pulse hoje só roda via DM proativa do orchestrator |
+1. **Saudação personalizada** ("Olá, Matheus 👋 Sua conta Rhitmo está conectada.")
+2. **Mini tour dos comandos** — filtrado pela audiência do usuário:
+   - **Líder** vê: `/rhitmo`, `/nota`, `/kudos`, `/brief`, `/mentor`
+   - **Liderado** vê: `/rhitmo`, `/meu-pdi`, `/meu-rhitmo`
+   - (audiência detectada via lookup em `team_members.linked_user_id` vs `workspaces.owner_id`)
+3. **Botão "🌀 Conversar com a Rhitmo"** (action_id `start_rhitmo_chat`, já existente no `slack-bot`) — abre uma `general_chat` session
+4. **Dica de privacidade** ("Suas conversas comigo aqui são privadas. Em canais públicos, eu só processo mensagens onde sou mencionado.")
 
-**Ação proposta:**
-- **A)** Remover `/review` do `SlackPrivacyOnboarding.tsx` (linha 56). É o caminho mais rápido — Performance Reviews hoje são fluxo web/sheet, não Slack.
-- **B)** (Opcional, futuro Sprint) implementar `/pulse` para o líder lançar/testar Pulse sem sair do Slack — alinha com a promessa "Pulse via Slack" da memória `pulse-surveys/ui-trigger-and-response`.
+## Idempotência
 
----
+Se o usuário desconectar e reconectar (ou se o callback rodar duas vezes), **não enviamos a DM novamente**. Controle via coluna `welcome_dm_sent_at` em `slack_integrations`.
 
-### 2. Scopes OAuth do bot — auditoria via `auth.test`
+## Mudanças técnicas
 
-Scopes atuais (lidos do header `x-oauth-scopes`):
-```
-commands, chat:write, chat:write.public, users:read, users:read.email,
-im:history, im:write, im:read, channels:join, app_mentions:read,
-channels:read, channels:history, groups:read, groups:history
+### 1. Migration — adicionar coluna de controle
+```sql
+ALTER TABLE public.slack_integrations
+  ADD COLUMN IF NOT EXISTS welcome_dm_sent_at TIMESTAMPTZ;
 ```
 
-| Capacidade prometida | Scope necessário | Presente? |
-|---|---|---|
-| Slash commands | `commands` | ✅ |
-| Postar como bot em canal | `chat:write`, `chat:write.public` | ✅ |
-| DMs proativas (orchestrator, conversational state machine) | `im:write`, `im:history`, `im:read` | ✅ |
-| App Home aberto → DM de boas-vindas | `app_home_opened` event + `im:write` | ✅ (handler em linha 1921) |
-| Resolver liderado por @mention/email | `users:read`, `users:read.email` | ✅ |
-| Auto-join de canais públicos (ambient classifier) | `channels:join`, `channels:history` | ✅ |
-| Detectar @menção ao bot em canais | `app_mentions:read` | ✅ |
-| Postar `/kudos` em canal privado | `groups:read`, `groups:history` | ✅ (read), mas falta `groups:write` |
-| **Reagir** com emoji a mensagens (não usado hoje) | `reactions:write` | ❌ não tem |
-| **Files**: capturar áudio/anexo via DM | `files:read` | ❌ não tem |
+### 2. `supabase/functions/slack-link/index.ts`
+Após o `upsert` bem-sucedido em `slack_integrations`:
+- Reler a linha para checar `welcome_dm_sent_at`
+- Se `null`: chamar `sendWelcomeDM(user.id, slack_user_id, slack_team_id)` via `EdgeRuntime.waitUntil` (não bloqueia a resposta para o frontend)
+- Após sucesso do `chat.postMessage`, dar `UPDATE slack_integrations SET welcome_dm_sent_at = now()` (service role)
 
-**Avaliação:** scopes cobrem 100% do que está implementado e prometido. Não recomendo adicionar `reactions:write` / `files:read` ainda — não há código que precise.
+### 3. Nova função utilitária `sendWelcomeDM` (inline em `slack-link/index.ts`)
+- Buscar `bot_token` do workspace (mesma fonte que `slack-bot` usa — provavelmente `slack_workspaces.bot_token` ou env `SLACK_BOT_TOKEN`)
+- Detectar audiência:
+  - Se `user_id` é `owner_id` de algum workspace ativo OU tem `team_members` onde é `leader_user_id` → `'leader'`
+  - Caso contrário (linked_user_id em algum team_member) → `'member'`
+- Importar `SLACK_COMMANDS` (não dá — edge function não importa de `src/`). **Solução:** criar `supabase/functions/_shared/slackCommands.ts` espelhando `src/lib/slackCommands.ts` (anotado na memória como par a sincronizar)
+- Filtrar comandos por audiência (`audience === 'leader' | 'all'` ou `member | all`)
+- Montar Block Kit: `section` com saudação + `section` com lista de comandos (formato `code` + descrição) + `actions` com botão `start_rhitmo_chat` + `context` com dica de privacidade
+- POST `https://slack.com/api/chat.postMessage` com `channel: slack_user_id` (Slack abre o IM automaticamente)
 
-⚠️ **Único gap real de scope:** se o líder usar `/kudos` em **canal privado**, o `chat.postMessage` pode falhar porque falta `chat:write` em groups + bot não foi convidado. Hoje a UI só sugere usar `/kudos` em canal público (Privacy Onboarding linha 76), então comporta-se como esperado, mas vale documentar.
+### 4. Atualizar memória
+- Atualizar `mem://features/slack/command-ecosystem` adicionando que `_shared/slackCommands.ts` precisa ficar sincronizado com `src/lib/slackCommands.ts` e `slack-bot/index.ts`
+- Criar `mem://features/slack/welcome-dm` documentando trigger, idempotência (`welcome_dm_sent_at`) e filtro por audiência
 
----
+## Não-objetivos
 
-### 3. Configuração do manifesto Slack App (precisa ser conferida no painel)
+- **Não** vamos enviar DM em invites de novos liderados (já coberto pelo fluxo de `pending_slack_invites`)
+- **Não** vamos criar uma nova action no Slack — reaproveitamos `start_rhitmo_chat` que já existe
+- **Não** vamos tocar no `slack-oauth-callback` (a DM dispara em `slack-link`, que é onde o vínculo de fato acontece)
 
-Não consigo exportar o manifesto via bot token (Slack só permite via app config token). Mas pelo código sei o que **deve estar configurado** no painel do app `B0APL6ST719`:
+## Arquivos afetados
 
-- **Slash Commands cadastrados (precisam estar todos no manifesto, apontando para `/functions/v1/slack-bot`):**
-  - `/rhitmo`, `/nota`, `/kudos`, `/brief`, `/meu-pdi`, `/mentor`, `/meu-rhitmo` — 7 comandos.
-  - Verificar a flag **"Escape channels, users, and links"** ligada em todos (memória `slack/configuration-constraints`).
+- **Migration nova** — adicionar `welcome_dm_sent_at`
+- `supabase/functions/slack-link/index.ts` — disparar DM pós-upsert
+- `supabase/functions/_shared/slackCommands.ts` — **novo**, espelho de `src/lib/slackCommands.ts`
+- `.lovable/memory/features/slack/command-ecosystem.md` — atualizar regra de sync
+- `.lovable/memory/features/slack/welcome-dm.md` — **novo**
 
-- **Event Subscriptions** apontando para `/functions/v1/slack-bot`:
-  - `message.im` (DMs ao bot — handler linha 1802)
-  - `app_home_opened` (Sprint 11.2 boas-vindas — handler linha 1921)
-  - `app_mention` (scope existe mas não há handler no código — pode estar inscrito mas inerte; checar)
+## Riscos e mitigações
 
-- **App Home** habilitada com a aba **Messages** ativa (necessária para o app_home_opened do tab='messages').
+- **Bot token ausente** → log de warning e seguir, sem quebrar o vínculo
+- **DM falha** (`chat.postMessage` retorna `ok:false`) → logar erro, não setar `welcome_dm_sent_at`, vínculo continua válido
+- **Detecção de audiência ambígua** (usuário é líder e liderado ao mesmo tempo) → precedência líder (mostra comandos completos)
 
-- **Interactivity** apontando para `/functions/v1/slack-bot` (botões do menu `/rhitmo` — handler linhas 1354–1380).
-
-- **Redirect URL OAuth**: `https://lybkgujyezzzvbzypxed.supabase.co/functions/v1/slack-oauth-callback`.
-
-**Ação proposta:** documentar isso num arquivo `docs/slack-app-manifest.md` no repo (manifesto JSON pronto para colar) para que qualquer reinstalação do app reproduza a config exata. Isso evita o cenário "alguém recriou o app e esqueceu `/meu-rhitmo`".
-
----
-
-### 4. UI do produto — pequena inconsistência de "comandos disponíveis"
-
-Cada superfície lista um subset diferente, gerando inconsistência:
-
-| Superfície | Lista exibida |
-|---|---|
-| `i18n.slackDescription` | `/rhitmo`, `/nota`, `/kudos` (incompleto) |
-| `SlackConnectorDialog` | 5 comandos (faltam `/mentor`, `/meu-rhitmo`) |
-| `HelpCenter` | 6 comandos (todos exceto `/meu-pdi` no copy curto) |
-| `SlackPrivacyOnboarding` | `/nota`, `/brief`, **/review** (não existe), `/kudos` |
-
-**Ação proposta:** centralizar a lista canônica num módulo `src/lib/slackCommands.ts` exportando `SLACK_COMMANDS` com `{ cmd, desc, privacy: 'private'|'public', icon? }`, e consumir em todas as 4 superfícies. Garante uma única fonte de verdade.
-
----
-
-## Plano de execução
-
-Quando aprovado, vou aplicar nesta ordem (mudanças pequenas, sem migration):
-
-1. **Corrigir promessa quebrada:** remover `/review` do `SlackPrivacyOnboarding.tsx`.
-2. **Centralizar lista canônica:** criar `src/lib/slackCommands.ts` com os 7 comandos reais + flag `privacy`. Refatorar `SlackConnectorDialog`, `SlackPrivacyOnboarding`, `HelpCenter` e a string `slackDescription` em `pt-BR.json` / `en.json` / `es.json` para consumirem dali.
-3. **Documentar manifesto:** criar `docs/slack-app-manifest.md` com JSON pronto (slash commands, scopes, event subscriptions, redirect URL).
-4. **Memória:** atualizar `mem://features/slack/command-ecosystem` reforçando que a fonte de verdade é `src/lib/slackCommands.ts` e que `/review` foi removido.
-
-### Itens deixados de fora (para discussão futura, NÃO incluído na execução)
-
-- `/pulse` slash command (Sprint próximo, complementaria o Pulse Wizard recém-feito).
-- Scope `reactions:write` (sem caso de uso atual).
-- Scope `files:read` (sem caso de uso atual).
-- Handler de `app_mention` no bot (scope já está, falta apenas o branch no event_callback).
-
-Confirmar e eu sigo com a execução.
+Aprova para eu implementar?

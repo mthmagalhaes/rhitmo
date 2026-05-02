@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { commandsForAudience } from '../_shared/slackCommands.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -175,6 +176,15 @@ Deno.serve(async (req) => {
       console.log('[LINK] Pending invite marked as accepted for:', slack_user_id);
     }
 
+    // Fire-and-forget: send welcome DM if not yet sent for this integration.
+    // We don't block the response — frontend can show the success screen immediately.
+    // @ts-ignore EdgeRuntime is provided by Supabase Edge runtime
+    EdgeRuntime.waitUntil(
+      maybeSendWelcomeDM(serviceClient, user.id, slack_user_id, slack_team_id).catch(err => {
+        console.error('[WELCOME_DM] Unhandled error:', err);
+      })
+    );
+
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -185,3 +195,148 @@ Deno.serve(async (req) => {
     });
   }
 });
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Welcome DM
+// ──────────────────────────────────────────────────────────────────────────────
+
+async function maybeSendWelcomeDM(
+  serviceClient: ReturnType<typeof createClient>,
+  userId: string,
+  slackUserId: string,
+  slackTeamId: string,
+): Promise<void> {
+  // Idempotency check
+  const { data: integration } = await serviceClient
+    .from('slack_integrations')
+    .select('welcome_dm_sent_at')
+    .eq('user_id', userId)
+    .eq('slack_team_id', slackTeamId)
+    .maybeSingle();
+
+  if (integration?.welcome_dm_sent_at) {
+    console.log('[WELCOME_DM] Already sent for user:', userId, '— skipping');
+    return;
+  }
+
+  const botToken = Deno.env.get('SLACK_BOT_TOKEN');
+  if (!botToken) {
+    console.warn('[WELCOME_DM] SLACK_BOT_TOKEN not configured — skipping');
+    return;
+  }
+
+  // Detect audience: leader > member
+  const audience = await detectAudience(serviceClient, userId);
+  console.log('[WELCOME_DM] Audience for user', userId, '=', audience);
+
+  // Fetch first name from auth user metadata
+  let firstName = '';
+  try {
+    const { data: u } = await serviceClient.auth.admin.getUserById(userId);
+    const meta = (u?.user?.user_metadata ?? {}) as Record<string, unknown>;
+    const fullName = (meta.full_name as string) || (meta.name as string) || '';
+    firstName = (fullName.split(' ')[0] ?? '').trim();
+  } catch (err) {
+    console.warn('[WELCOME_DM] Could not load user name:', err);
+  }
+  const greeting = firstName ? `Olá, ${firstName} 👋` : 'Olá 👋';
+
+  const cmds = commandsForAudience(audience);
+  const cmdLines = cmds.map(c => `• \`${c.cmd}\` — ${c.desc}`).join('\n');
+
+  const blocks = [
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: `*${greeting}*\nSua conta Rhitmo está conectada ao Slack. Tudo pronto pra começar.`,
+      },
+    },
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: `*Comandos disponíveis pra você:*\n${cmdLines}`,
+      },
+    },
+    {
+      type: 'actions',
+      elements: [
+        {
+          type: 'button',
+          text: { type: 'plain_text', text: '🌀 Conversar com a Rhitmo' },
+          action_id: 'start_rhitmo_chat',
+          style: 'primary',
+        },
+      ],
+    },
+    {
+      type: 'context',
+      elements: [
+        {
+          type: 'mrkdwn',
+          text: '🔒 Suas conversas comigo aqui são privadas. Em canais públicos, eu só processo mensagens onde sou mencionado.',
+        },
+      ],
+    },
+  ];
+
+  const res = await fetch('https://slack.com/api/chat.postMessage', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${botToken}`,
+      'Content-Type': 'application/json; charset=utf-8',
+    },
+    body: JSON.stringify({
+      channel: slackUserId,
+      text: `${greeting} Sua conta Rhitmo está conectada ao Slack.`,
+      blocks,
+    }),
+  });
+
+  const data = await res.json();
+  if (!data.ok) {
+    console.error('[WELCOME_DM] chat.postMessage failed:', data.error, data);
+    return; // Don't mark as sent — let it retry on next reconnect
+  }
+
+  console.log('[WELCOME_DM] Sent successfully to', slackUserId);
+
+  // Mark as sent (idempotency)
+  const { error: updErr } = await serviceClient
+    .from('slack_integrations')
+    .update({ welcome_dm_sent_at: new Date().toISOString() })
+    .eq('user_id', userId)
+    .eq('slack_team_id', slackTeamId);
+
+  if (updErr) {
+    console.error('[WELCOME_DM] Failed to mark as sent:', updErr);
+  }
+}
+
+async function detectAudience(
+  serviceClient: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<'leader' | 'member'> {
+  // Leader if: owns an active workspace OR is leader_user_id of any team
+  const { data: ownedWs } = await serviceClient
+    .from('workspaces')
+    .select('id')
+    .eq('owner_id', userId)
+    .eq('is_active', true)
+    .limit(1)
+    .maybeSingle();
+
+  if (ownedWs) return 'leader';
+
+  const { data: ledTeam } = await serviceClient
+    .from('teams')
+    .select('id')
+    .eq('leader_user_id', userId)
+    .limit(1)
+    .maybeSingle();
+
+  if (ledTeam) return 'leader';
+
+  return 'member';
+}
