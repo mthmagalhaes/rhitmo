@@ -14,6 +14,21 @@ import {
   EyeOff,
   X,
 } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { toast } from 'sonner';
 import { useAccount } from '@/contexts/AccountContext';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
@@ -129,7 +144,10 @@ export function PulseWizard({ open, onOpenChange, onCreated, editPulseId }: Puls
                 order: (
                   c: string,
                   o: { ascending: boolean },
-                ) => Promise<{ data: Array<{ id: string; name: string }> | null; error: unknown }>;
+                ) => Promise<{
+                  data: Array<{ id: string; name: string }> | null;
+                  error: unknown;
+                }>;
               };
             };
           };
@@ -137,8 +155,8 @@ export function PulseWizard({ open, onOpenChange, onCreated, editPulseId }: Puls
       };
       const { data, error } = await client
         .from('team_members')
-        .select('id, name, teams!inner(leader_user_id)')
-        .eq('workspace_id', workspaceId!)
+        .select('id, name, teams!inner(workspace_id, leader_user_id)')
+        .eq('teams.workspace_id', workspaceId!)
         .eq('teams.leader_user_id', userId!)
         .order('name', { ascending: true });
       if (error) {
@@ -173,6 +191,21 @@ export function PulseWizard({ open, onOpenChange, onCreated, editPulseId }: Puls
     setTopics((t) => (t.length === 1 ? t : t.filter((x) => x.id !== id)));
   const updateTopic = (id: string, text: string) =>
     setTopics((t) => t.map((x) => (x.id === id ? { ...x, text } : x)));
+
+  // DnD for topics (Step 2)
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+  );
+  const handleDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    setTopics((items) => {
+      const oldIdx = items.findIndex((t) => t.id === active.id);
+      const newIdx = items.findIndex((t) => t.id === over.id);
+      if (oldIdx === -1 || newIdx === -1) return items;
+      return arrayMove(items, oldIdx, newIdx);
+    });
+  };
 
   // Validation
   const canNext = useMemo(() => {
@@ -280,18 +313,9 @@ export function PulseWizard({ open, onOpenChange, onCreated, editPulseId }: Puls
   return (
     <Dialog open={open} onOpenChange={(o) => !submitting && onOpenChange(o)}>
       <DialogContent className="max-w-none w-screen h-screen p-0 rounded-none border-0 flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b">
+        {/* Header — close (X) is provided by DialogContent itself */}
+        <div className="flex items-center px-6 py-4 border-b">
           <h2 className="text-base font-semibold tracking-tight">Pulse Setup</h2>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onOpenChange(false)}
-            disabled={submitting}
-            className="rounded-full"
-          >
-            <X className="h-4 w-4" />
-          </Button>
         </div>
 
         {/* Content */}
@@ -344,29 +368,26 @@ export function PulseWizard({ open, onOpenChange, onCreated, editPulseId }: Puls
                   </p>
                 </div>
                 <div className="space-y-2">
-                  {topics.map((t) => (
-                    <div
-                      key={t.id}
-                      className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2"
+                  <DndContext
+                    sensors={dndSensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={topics.map((t) => t.id)}
+                      strategy={verticalListSortingStrategy}
                     >
-                      <GripVertical className="h-4 w-4 text-muted-foreground/40 shrink-0" />
-                      <Input
-                        value={t.text}
-                        onChange={(e) => updateTopic(t.id, e.target.value)}
-                        placeholder="Digite uma pergunta ou tópico..."
-                        className="border-0 shadow-none focus-visible:ring-0 px-0"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeTopic(t.id)}
-                        className="rounded-full h-7 w-7 shrink-0"
-                        disabled={topics.length === 1}
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  ))}
+                      {topics.map((t) => (
+                        <SortableTopic
+                          key={t.id}
+                          topic={t}
+                          disabledRemove={topics.length === 1}
+                          onChange={(text) => updateTopic(t.id, text)}
+                          onRemove={() => removeTopic(t.id)}
+                        />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
                   <Button
                     type="button"
                     variant="outline"
@@ -595,5 +616,57 @@ export function PulseWizard({ open, onOpenChange, onCreated, editPulseId }: Puls
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function SortableTopic({
+  topic,
+  disabledRemove,
+  onChange,
+  onRemove,
+}: {
+  topic: Topic;
+  disabledRemove: boolean;
+  onChange: (text: string) => void;
+  onRemove: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: topic.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2"
+    >
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing touch-none p-1 -ml-1 text-muted-foreground/40 hover:text-muted-foreground shrink-0"
+        aria-label="Arrastar para reordenar"
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <Input
+        value={topic.text}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Digite uma pergunta ou tópico..."
+        className="border-0 shadow-none focus-visible:ring-0 px-0"
+      />
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onRemove}
+        className="rounded-full h-7 w-7 shrink-0"
+        disabled={disabledRemove}
+      >
+        <X className="h-3.5 w-3.5" />
+      </Button>
+    </div>
   );
 }
