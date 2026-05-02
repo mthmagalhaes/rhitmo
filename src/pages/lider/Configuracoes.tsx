@@ -156,7 +156,6 @@ function IntegrationsTab() {
 export default function LiderConfiguracoes() {
   const tabs: PageTab[] = [
     { value: 'perfil', label: 'Perfil', icon: User, content: <ProfileTab /> },
-    { value: 'workspace', label: 'Workspace', icon: Building2, content: <WorkspaceTab /> },
     { value: 'faturamento', label: 'Faturamento', icon: CreditCard, content: <BillingContent /> },
     { value: 'integracoes', label: 'Integrações', icon: Plug, content: <IntegrationsTab /> },
     { value: 'ajuda', label: 'Ajuda', icon: LifeBuoy, content: <HelpCenterContent /> },
