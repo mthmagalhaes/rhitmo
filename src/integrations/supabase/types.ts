@@ -2140,6 +2140,7 @@ export type Database = {
           slack_team_id: string
           slack_user_id: string
           user_id: string
+          welcome_dm_sent_at: string | null
           workspace_id: string
         }
         Insert: {
@@ -2148,6 +2149,7 @@ export type Database = {
           slack_team_id: string
           slack_user_id: string
           user_id: string
+          welcome_dm_sent_at?: string | null
           workspace_id: string
         }
         Update: {
@@ -2156,6 +2158,7 @@ export type Database = {
           slack_team_id?: string
           slack_user_id?: string
           user_id?: string
+          welcome_dm_sent_at?: string | null
           workspace_id?: string
         }
         Relationships: [
