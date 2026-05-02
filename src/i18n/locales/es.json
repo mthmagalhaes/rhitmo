@@ -722,7 +722,7 @@
     "disconnect": "Desconectar",
     "slackDisconnect": "Desconectar",
     "slackDisconnected": "Slack desconectado",
-    "slackDescription": "Vincula tu cuenta de Slack para usar comandos como /rhitmo, /nota y /kudos.",
+    "slackDescription": "Vincula tu cuenta de Slack para usar comandos como /rhitmo, /nota, /kudos, /brief, /mentor, /meu-pdi y /meu-rhitmo.",
     "slackAlreadyInstalled": "¿Ya tienes el bot instalado? Ejecuta",
     "slackConnectAccount": "y haz clic en \"Conectar Cuenta\".",
     "slackBotHint": "¿Ya tienes el bot instalado? Ejecuta /rhitmo en Slack y haz clic en \"Conectar Cuenta\".",

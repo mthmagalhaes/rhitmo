@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { SLACK_PRIVATE_COMMANDS, SLACK_PUBLIC_COMMANDS } from '@/lib/slackCommands';
 
 interface SlackPrivacyOnboardingProps {
   open: boolean;
@@ -53,7 +54,7 @@ export function SlackPrivacyOnboarding({ open, onOpenChange }: SlackPrivacyOnboa
               <div>
                 <p className="font-semibold text-sm tracking-tight">Comandos Privados</p>
                 <div className="flex flex-wrap gap-1.5 mt-1.5 mb-1.5">
-                  {['/nota', '/brief', '/review'].map(cmd => (
+                  {SLACK_PRIVATE_COMMANDS.map(cmd => (
                     <code key={cmd} className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">{cmd}</code>
                   ))}
                 </div>
@@ -73,7 +74,9 @@ export function SlackPrivacyOnboarding({ open, onOpenChange }: SlackPrivacyOnboa
               <div>
                 <p className="font-semibold text-sm tracking-tight">Comandos Públicos</p>
                 <div className="flex flex-wrap gap-1.5 mt-1.5 mb-1.5">
-                  <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">/kudos</code>
+                  {SLACK_PUBLIC_COMMANDS.map(cmd => (
+                    <code key={cmd} className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">{cmd}</code>
+                  ))}
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   Use em canais públicos para reconhecimento do time.

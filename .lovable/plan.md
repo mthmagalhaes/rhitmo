@@ -1,64 +1,109 @@
-## Ajustes no Pulse Wizard
+## Auditoria Slack: o que vendemos vs. o que está configurado
 
-Três correções pontuais sem mexer na arquitetura — o fluxo dos 5 passos fica intacto.
+Conferi a API do Slack diretamente (workspace **Faster**, bot `@rhitmo`, app ID `B0APL6ST719`) e cruzei com o código do `slack-bot` e com o que prometemos nas várias telas. Resumo abaixo do que **funciona, do que está quebrado e do que falta configurar no manifesto do app**.
 
-### 1. Dois "X" de fechar janela
+---
 
-**Causa:** o `DialogContent` do shadcn (`src/components/ui/dialog.tsx`) já injeta automaticamente um botão `<DialogPrimitive.Close>` no canto superior direito. O `PulseWizard` desenha um segundo X manual no header. Por isso aparecem dois.
+### 1. Slash commands — promessas vs. implementação
 
-**Correção:** remover o botão X manual do header do wizard e deixar só o nativo do `DialogContent`. Para manter o estilo do header limpo (com o título "Pulse Setup"), o close nativo já fica posicionado no canto correto. Aplicar a mesma checagem rápida em outros wizards/sheets fullscreen para garantir que o padrão "DialogContent já tem X" seja respeitado.
+| Comando | Prometido em… | Implementado no `slack-bot`? | Status |
+|---|---|---|---|
+| `/rhitmo` (menu) | i18n, HelpCenter, SlackConnect, Dialog | ✅ linha 1225 | **OK** |
+| `/nota` | i18n, HelpCenter, Dialog, Privacy | ✅ linha 1234 | **OK** |
+| `/kudos` | i18n, HelpCenter, Dialog, Privacy | ✅ linha 1241 | **OK** |
+| `/brief` | HelpCenter, Dialog, Privacy | ✅ linha 1266 | **OK** |
+| `/meu-pdi` | HelpCenter, Dialog | ✅ linha 1273 | **OK** |
+| `/mentor` | HelpCenter | ✅ linha 1278 | **OK** |
+| `/meu-rhitmo` | HelpCenter | ✅ linha 1285 | **OK** |
+| `/review` | **Privacy Onboarding** (lista como comando privado) | ❌ não existe | **PROMESSA QUEBRADA** |
+| `/pulse` | (não prometido) | ❌ não existe | OK não prometer, mas é gap estratégico — o Pulse hoje só roda via DM proativa do orchestrator |
 
-### 2. Tópicos no Passo 2 não se movem (drag handle decorativo)
+**Ação proposta:**
+- **A)** Remover `/review` do `SlackPrivacyOnboarding.tsx` (linha 56). É o caminho mais rápido — Performance Reviews hoje são fluxo web/sheet, não Slack.
+- **B)** (Opcional, futuro Sprint) implementar `/pulse` para o líder lançar/testar Pulse sem sair do Slack — alinha com a promessa "Pulse via Slack" da memória `pulse-surveys/ui-trigger-and-response`.
 
-**Causa:** o ícone `GripVertical` é puramente visual — não há listener de drag nem biblioteca de DnD plugada.
+---
 
-**Correção:** plugar drag-and-drop real usando `@dnd-kit/core` + `@dnd-kit/sortable` (já é o padrão do projeto em outras listas reordenáveis). Estados:
-- Envolver a lista em `DndContext` + `SortableContext` (estratégia vertical).
-- Cada `Topic` vira um `SortableItem` com handle no `GripVertical` (cursor-grab/grabbing).
-- `onDragEnd` reordena o array `topics` via `arrayMove`.
-- Manter botão "Adicionar tópico" e botão X (remover) intactos.
+### 2. Scopes OAuth do bot — auditoria via `auth.test`
 
-### 3. "0 liderados" para matheus.magalhaes@fstr.co (bug crítico)
-
-**Diagnóstico no banco:** o usuário tem 4 teams como `leader_user_id` e 6 liderados ativos no workspace `27ee8977...`. A query do wizard deveria retornar 6, mas retorna 0.
-
-**Causa raiz:** a query usa `.eq('workspace_id', workspaceId)` na tabela `team_members`, mas **`team_members` não tem coluna `workspace_id`** — só `teams` tem. PostgREST falha silenciosamente ou retorna vazio nesse caso. O mesmo erro existe em `PulseDetail.tsx` (linha 104, no `handleLaunch` quando `audience === 'everyone'`).
-
-**Correção:** trocar o filtro para a coluna correta na tabela joinada:
-
-```ts
-// Antes
-.from('team_members')
-.select('id, name, teams!inner(leader_user_id)')
-.eq('workspace_id', workspaceId!)         // ❌ coluna inexistente em team_members
-.eq('teams.leader_user_id', userId!)
-
-// Depois
-.from('team_members')
-.select('id, name, teams!inner(workspace_id, leader_user_id)')
-.eq('teams.workspace_id', workspaceId!)   // ✅ filtra via join
-.eq('teams.leader_user_id', userId!)
+Scopes atuais (lidos do header `x-oauth-scopes`):
+```
+commands, chat:write, chat:write.public, users:read, users:read.email,
+im:history, im:write, im:read, channels:join, app_mentions:read,
+channels:read, channels:history, groups:read, groups:history
 ```
 
-Aplicar nos dois lugares:
-- `src/components/pulse/PulseWizard.tsx` (query `wizard-members`)
-- `src/pages/lider/PulseDetail.tsx` (resolução de targets no `handleLaunch`)
+| Capacidade prometida | Scope necessário | Presente? |
+|---|---|---|
+| Slash commands | `commands` | ✅ |
+| Postar como bot em canal | `chat:write`, `chat:write.public` | ✅ |
+| DMs proativas (orchestrator, conversational state machine) | `im:write`, `im:history`, `im:read` | ✅ |
+| App Home aberto → DM de boas-vindas | `app_home_opened` event + `im:write` | ✅ (handler em linha 1921) |
+| Resolver liderado por @mention/email | `users:read`, `users:read.email` | ✅ |
+| Auto-join de canais públicos (ambient classifier) | `channels:join`, `channels:history` | ✅ |
+| Detectar @menção ao bot em canais | `app_mentions:read` | ✅ |
+| Postar `/kudos` em canal privado | `groups:read`, `groups:history` | ✅ (read), mas falta `groups:write` |
+| **Reagir** com emoji a mensagens (não usado hoje) | `reactions:write` | ❌ não tem |
+| **Files**: capturar áudio/anexo via DM | `files:read` | ❌ não tem |
 
-Bônus: também checar `src/components/pulse/SendPulseModal.tsx` (linhas 85–87) por segurança — se tiver o mesmo padrão, corrigir.
+**Avaliação:** scopes cobrem 100% do que está implementado e prometido. Não recomendo adicionar `reactions:write` / `files:read` ainda — não há código que precise.
 
-## Detalhes técnicos
+⚠️ **Único gap real de scope:** se o líder usar `/kudos` em **canal privado**, o `chat.postMessage` pode falhar porque falta `chat:write` em groups + bot não foi convidado. Hoje a UI só sugere usar `/kudos` em canal público (Privacy Onboarding linha 76), então comporta-se como esperado, mas vale documentar.
 
-- **Arquivos alterados:**
-  - `src/components/ui/dialog.tsx` — não muda (referência apenas)
-  - `src/components/pulse/PulseWizard.tsx` — remove X duplo do header, troca filtro `workspace_id`, adiciona DnD nos tópicos
-  - `src/pages/lider/PulseDetail.tsx` — troca filtro `workspace_id` no `handleLaunch`
-  - `src/components/pulse/SendPulseModal.tsx` — auditoria/correção se necessário
+---
 
-- **Dependências:** `@dnd-kit/core` e `@dnd-kit/sortable` (verificar se já estão instaladas; se não, adicionar).
+### 3. Configuração do manifesto Slack App (precisa ser conferida no painel)
 
-- **Memória a atualizar:** registrar uma nova memória `design/wizards/pulse-wizard-pattern` capturando o padrão validado (5 passos, max-w-3xl, header simples, barra de progresso fina, navegação Voltar/Próximo) para reaproveitamento em wizards futuros, conforme pediu o usuário.
+Não consigo exportar o manifesto via bot token (Slack só permite via app config token). Mas pelo código sei o que **deve estar configurado** no painel do app `B0APL6ST719`:
 
-- **QA manual após implementação:**
-  1. Abrir wizard → confirmar 1 único X.
-  2. Passo 2 → arrastar tópicos pra cima/baixo, confirmar reordenação.
-  3. Passo 3 logado como matheus.magalhaes@fstr.co → contador "Todos os meus liderados (6)" e lista em "Pessoas específicas" com 6 nomes.
+- **Slash Commands cadastrados (precisam estar todos no manifesto, apontando para `/functions/v1/slack-bot`):**
+  - `/rhitmo`, `/nota`, `/kudos`, `/brief`, `/meu-pdi`, `/mentor`, `/meu-rhitmo` — 7 comandos.
+  - Verificar a flag **"Escape channels, users, and links"** ligada em todos (memória `slack/configuration-constraints`).
+
+- **Event Subscriptions** apontando para `/functions/v1/slack-bot`:
+  - `message.im` (DMs ao bot — handler linha 1802)
+  - `app_home_opened` (Sprint 11.2 boas-vindas — handler linha 1921)
+  - `app_mention` (scope existe mas não há handler no código — pode estar inscrito mas inerte; checar)
+
+- **App Home** habilitada com a aba **Messages** ativa (necessária para o app_home_opened do tab='messages').
+
+- **Interactivity** apontando para `/functions/v1/slack-bot` (botões do menu `/rhitmo` — handler linhas 1354–1380).
+
+- **Redirect URL OAuth**: `https://lybkgujyezzzvbzypxed.supabase.co/functions/v1/slack-oauth-callback`.
+
+**Ação proposta:** documentar isso num arquivo `docs/slack-app-manifest.md` no repo (manifesto JSON pronto para colar) para que qualquer reinstalação do app reproduza a config exata. Isso evita o cenário "alguém recriou o app e esqueceu `/meu-rhitmo`".
+
+---
+
+### 4. UI do produto — pequena inconsistência de "comandos disponíveis"
+
+Cada superfície lista um subset diferente, gerando inconsistência:
+
+| Superfície | Lista exibida |
+|---|---|
+| `i18n.slackDescription` | `/rhitmo`, `/nota`, `/kudos` (incompleto) |
+| `SlackConnectorDialog` | 5 comandos (faltam `/mentor`, `/meu-rhitmo`) |
+| `HelpCenter` | 6 comandos (todos exceto `/meu-pdi` no copy curto) |
+| `SlackPrivacyOnboarding` | `/nota`, `/brief`, **/review** (não existe), `/kudos` |
+
+**Ação proposta:** centralizar a lista canônica num módulo `src/lib/slackCommands.ts` exportando `SLACK_COMMANDS` com `{ cmd, desc, privacy: 'private'|'public', icon? }`, e consumir em todas as 4 superfícies. Garante uma única fonte de verdade.
+
+---
+
+## Plano de execução
+
+Quando aprovado, vou aplicar nesta ordem (mudanças pequenas, sem migration):
+
+1. **Corrigir promessa quebrada:** remover `/review` do `SlackPrivacyOnboarding.tsx`.
+2. **Centralizar lista canônica:** criar `src/lib/slackCommands.ts` com os 7 comandos reais + flag `privacy`. Refatorar `SlackConnectorDialog`, `SlackPrivacyOnboarding`, `HelpCenter` e a string `slackDescription` em `pt-BR.json` / `en.json` / `es.json` para consumirem dali.
+3. **Documentar manifesto:** criar `docs/slack-app-manifest.md` com JSON pronto (slash commands, scopes, event subscriptions, redirect URL).
+4. **Memória:** atualizar `mem://features/slack/command-ecosystem` reforçando que a fonte de verdade é `src/lib/slackCommands.ts` e que `/review` foi removido.
+
+### Itens deixados de fora (para discussão futura, NÃO incluído na execução)
+
+- `/pulse` slash command (Sprint próximo, complementaria o Pulse Wizard recém-feito).
+- Scope `reactions:write` (sem caso de uso atual).
+- Scope `files:read` (sem caso de uso atual).
+- Handler de `app_mention` no bot (scope já está, falta apenas o branch no event_callback).
+
+Confirmar e eu sigo com a execução.

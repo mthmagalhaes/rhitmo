@@ -11,6 +11,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { useSlackConnection } from '@/hooks/useSlackConnection';
+import { SLACK_COMMANDS } from '@/lib/slackCommands';
 
 interface SlackConnectorDialogProps {
   open: boolean;
@@ -104,13 +105,7 @@ export function SlackConnectorDialog({ open, onOpenChange }: SlackConnectorDialo
           <div className="space-y-3">
             <p className="text-sm font-semibold text-foreground">Comandos disponíveis (opcional):</p>
             <div className="grid gap-2">
-              {[
-                { cmd: '/rhitmo', desc: 'Menu principal com todas as ações' },
-                { cmd: '/nota', desc: 'Registrar observação sobre um liderado' },
-                { cmd: '/kudos', desc: 'Reconhecimento público no canal' },
-                { cmd: '/brief', desc: 'Resumo consolidado de um membro' },
-                { cmd: '/meu-pdi', desc: 'Ver seu plano de desenvolvimento (liderados)' },
-              ].map(({ cmd, desc }) => (
+              {SLACK_COMMANDS.map(({ cmd, desc }) => (
                 <div key={cmd} className="flex items-start gap-2 text-sm">
                   <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono shrink-0">{cmd}</code>
                   <span className="text-muted-foreground">{desc}</span>
