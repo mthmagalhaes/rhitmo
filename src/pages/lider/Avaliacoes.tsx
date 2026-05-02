@@ -1,29 +1,66 @@
-// Sprint 12.5 — Avaliações com layout Master-Detail estilo Windmill.
-// Espelha /lider/diario e /lider/objetivos: lista fixa à esquerda, conteúdo à direita.
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ClipboardCheck, Music, Sparkles, ArrowRight } from 'lucide-react';
+// Sprint 12.6 — Avaliações vira página terminal: ao selecionar liderado,
+// líder vê timeline + barra para gerar Mensal / Trimestral / Avaliação Formal
+// inline. Sem redirect para /member/:id, sem modal de "escolha o tipo".
+import { useState, useMemo } from 'react';
+import { startOfMonth, subMonths } from 'date-fns';
+import { ClipboardCheck, Music, BarChart3, Sparkles } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MemberAvatar } from '@/components/MemberAvatar';
 import { MemberMasterList } from '@/components/leader/MemberMasterList';
 import { EmptyMemberDetail } from '@/components/leader/EmptyMemberDetail';
+import { RhitmoTimelineCard } from '@/components/recaps/RhitmoTimelineCard';
+import { MonthlyRecapSection } from '@/components/recaps/MonthlyRecapSection';
+import { QuarterlyRecapSection } from '@/components/recaps/QuarterlyRecapSection';
+import { PerformanceReviewList } from '@/components/PerformanceReviewList';
+import { CreateFormalReviewDialog } from '@/components/review/CreateFormalReviewDialog';
+import { useLeaderMembers } from '@/hooks/useLeaderMembers';
+import { supabase } from '@/integrations/supabase/client';
 import type { LeaderMemberRow } from '@/hooks/useLeaderMembers';
 
-export default function LiderAvaliacoes() {
-  const navigate = useNavigate();
-  const [selected, setSelected] = useState<LeaderMemberRow | null>(null);
+type SubTab = 'monthly' | 'quarterly' | 'formal';
 
-  const goTo = (path: string) => {
-    if (!selected) return;
-    navigate(path);
+export default function LiderAvaliacoes() {
+  const { workspace } = useLeaderMembers();
+  const [selected, setSelected] = useState<LeaderMemberRow | null>(null);
+  const [activeSub, setActiveSub] = useState<SubTab>('monthly');
+  const [formalDialogOpen, setFormalDialogOpen] = useState(false);
+
+  const { lastMonthStart, thisMonthStart } = useMemo(() => {
+    const tStart = startOfMonth(new Date());
+    return {
+      lastMonthStart: subMonths(tStart, 1).toISOString(),
+      thisMonthStart: tStart.toISOString(),
+    };
+  }, []);
+
+  // Conta evidências do mês passado para alimentar o RhitmoTimelineCard
+  const { data: feedbacksLastMonthCount = 0 } = useQuery({
+    queryKey: ['feedback-count-last-month', selected?.id, lastMonthStart],
+    enabled: !!selected?.id,
+    queryFn: async () => {
+      if (!selected?.id) return 0;
+      const { count } = await supabase
+        .from('feedbacks')
+        .select('id', { count: 'exact', head: true })
+        .eq('member_id', selected.id)
+        .gte('occurred_at', lastMonthStart)
+        .lt('occurred_at', thisMonthStart);
+      return count ?? 0;
+    },
+  });
+
+  const handleSelectMember = (m: LeaderMemberRow) => {
+    setSelected(m);
+    setActiveSub('monthly');
   };
 
   return (
     <div className="flex h-[calc(100svh-3.5rem)] lg:h-[calc(100svh-3rem)] overflow-hidden">
       <MemberMasterList
         selectedMemberId={selected?.id ?? null}
-        onSelect={(m) => setSelected(m)}
+        onSelect={handleSelectMember}
       />
 
       <main className="flex-1 min-w-0 overflow-y-auto bg-background">
@@ -36,13 +73,13 @@ export default function LiderAvaliacoes() {
                 Avaliações
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Gere um Rhitmo (mensal/trimestral) ou uma Avaliação Formal a partir das evidências do liderado.
+                Selecione um liderado para ver o Rhitmo dele e gerar avaliações Mensal, Trimestral ou Formal.
               </p>
             </header>
             <EmptyMemberDetail
               icon={ClipboardCheck}
               title="Selecione um liderado"
-              description="Escolha alguém à esquerda para gerar um Rhitmo (mensal/trimestral) ou uma Avaliação Formal."
+              description="Escolha alguém à esquerda para ver a linha do tempo do Rhitmo e gerar avaliações com base nas evidências."
             />
           </div>
         ) : (
@@ -70,82 +107,134 @@ export default function LiderAvaliacoes() {
               </div>
             </header>
 
+            {/* Action Bar — gerar avaliação em 1 clique */}
             <div>
-              <h2 className="font-serif text-lg font-bold tracking-tight">
-                Escolha o tipo de avaliação
+              <h2 className="font-serif text-sm font-bold tracking-tight mb-2">
+                Gerar avaliação
               </h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                O Rhitmo gera o rascunho com base em notas, 1:1s e feedbacks compartilhados.
-              </p>
+              <div className="grid sm:grid-cols-3 gap-3">
+                <ActionCard
+                  icon={Music}
+                  title="Rhitmo Mensal"
+                  description="Resumo do mês em ~3 min"
+                  onClick={() => setActiveSub('monthly')}
+                  active={activeSub === 'monthly'}
+                />
+                <ActionCard
+                  icon={BarChart3}
+                  title="Rhitmo Trimestral"
+                  description="Consolida 3 meses confirmados"
+                  onClick={() => setActiveSub('quarterly')}
+                  active={activeSub === 'quarterly'}
+                />
+                <ActionCard
+                  icon={Sparkles}
+                  title="Avaliação Formal"
+                  description="Performance Review com evidências"
+                  onClick={() => setFormalDialogOpen(true)}
+                />
+              </div>
             </div>
 
-            <div className="grid gap-3">
-              {/* Card 1: Rhitmo (com sub-opções Mensal / Trimestral) */}
-              <Card className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all">
-                <CardContent className="py-5 space-y-4">
-                  <div className="flex items-start gap-4">
-                    <div className="rounded-xl bg-primary/10 p-2.5 shrink-0">
-                      <Music className="w-5 h-5 text-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-serif font-bold tracking-tight">Rhitmo</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Resumos automáticos do mês e do trimestre, com destaques, riscos e ações sugeridas pelo Mentor.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2 pl-[3.25rem]">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="rounded-xl gap-1.5"
-                      onClick={() =>
-                        goTo(`/member/${selected.id}?tab=rhitmo&sub=monthly`)
-                      }
-                    >
-                      Mensal
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="rounded-xl gap-1.5"
-                      onClick={() =>
-                        goTo(`/member/${selected.id}?tab=rhitmo&sub=quarterly`)
-                      }
-                    >
-                      Trimestral
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+            {/* Linha do tempo Rhitmo (estado A/B/C, já existe) */}
+            <RhitmoTimelineCard
+              memberId={selected.id}
+              feedbacksLastMonthCount={feedbacksLastMonthCount}
+              onJumpToRhitmo={() => setActiveSub('monthly')}
+            />
 
-              {/* Card 2: Avaliação Formal */}
-              <Card
-                className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 transition-all cursor-pointer"
-                onClick={() =>
-                  goTo(`/member/${selected.id}?tab=reviews&action=new`)
-                }
-              >
-                <CardContent className="flex items-start gap-4 py-5">
-                  <div className="rounded-xl bg-primary/10 p-2.5 shrink-0">
-                    <Sparkles className="w-5 h-5 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-serif font-bold tracking-tight">
-                      Avaliações Formais
-                    </p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Performance Review fundamentada em evidências reais. Você revisa, ajusta e compartilha.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            {/* Sub-tabs com conteúdo histórico de cada tipo */}
+            <Tabs
+              value={activeSub}
+              onValueChange={(v) => setActiveSub(v as SubTab)}
+              className="w-full"
+            >
+              <TabsList className="grid w-full max-w-md grid-cols-3 rounded-xl">
+                <TabsTrigger value="monthly" className="rounded-lg gap-1.5 text-xs">
+                  <Music className="h-3.5 w-3.5" />
+                  Mensal
+                </TabsTrigger>
+                <TabsTrigger value="quarterly" className="rounded-lg gap-1.5 text-xs">
+                  <BarChart3 className="h-3.5 w-3.5" />
+                  Trimestral
+                </TabsTrigger>
+                <TabsTrigger value="formal" className="rounded-lg gap-1.5 text-xs">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Formais
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="monthly" className="mt-6">
+                <MonthlyRecapSection memberId={selected.id} />
+              </TabsContent>
+
+              <TabsContent value="quarterly" className="mt-6">
+                <QuarterlyRecapSection memberId={selected.id} />
+              </TabsContent>
+
+              <TabsContent value="formal" className="mt-6">
+                <PerformanceReviewList
+                  memberId={selected.id}
+                  memberName={selected.name}
+                  onCreateReview={() => setFormalDialogOpen(true)}
+                />
+              </TabsContent>
+            </Tabs>
           </div>
         )}
       </main>
+
+      {selected && workspace?.id && (
+        <CreateFormalReviewDialog
+          open={formalDialogOpen}
+          onOpenChange={setFormalDialogOpen}
+          member={{
+            id: selected.id,
+            name: selected.name,
+            role: selected.role ?? '',
+          }}
+          workspaceId={workspace.id}
+          onReviewCreated={() => {
+            setFormalDialogOpen(false);
+            setActiveSub('formal');
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+interface ActionCardProps {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+  onClick: () => void;
+  active?: boolean;
+}
+
+function ActionCard({ icon: Icon, title, description, onClick, active }: ActionCardProps) {
+  return (
+    <Card
+      onClick={onClick}
+      className={
+        'rounded-2xl cursor-pointer transition-all hover:-translate-y-0.5 ' +
+        'shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] ' +
+        (active ? 'ring-2 ring-primary/40 bg-primary/5' : '')
+      }
+    >
+      <CardContent className="py-4 px-4 flex items-start gap-3">
+        <div className="rounded-xl bg-primary/10 p-2 shrink-0">
+          <Icon className="w-4 h-4 text-primary" />
+        </div>
+        <div className="min-w-0">
+          <p className="font-serif font-bold text-sm tracking-tight leading-tight">
+            {title}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+            {description}
+          </p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
