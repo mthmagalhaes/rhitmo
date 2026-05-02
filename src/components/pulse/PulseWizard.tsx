@@ -618,3 +618,55 @@ export function PulseWizard({ open, onOpenChange, onCreated, editPulseId }: Puls
     </Dialog>
   );
 }
+
+function SortableTopic({
+  topic,
+  disabledRemove,
+  onChange,
+  onRemove,
+}: {
+  topic: Topic;
+  disabledRemove: boolean;
+  onChange: (text: string) => void;
+  onRemove: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: topic.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2"
+    >
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing touch-none p-1 -ml-1 text-muted-foreground/40 hover:text-muted-foreground shrink-0"
+        aria-label="Arrastar para reordenar"
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <Input
+        value={topic.text}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Digite uma pergunta ou tópico..."
+        className="border-0 shadow-none focus-visible:ring-0 px-0"
+      />
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onRemove}
+        className="rounded-full h-7 w-7 shrink-0"
+        disabled={disabledRemove}
+      >
+        <X className="h-3.5 w-3.5" />
+      </Button>
+    </div>
+  );
+}
