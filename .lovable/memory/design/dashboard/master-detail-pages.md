@@ -62,13 +62,23 @@ Ordem fixa na coluna direita quando há liderado selecionado:
 
 A primeira iteração colocava o título da página dentro da master list, criando uma "faixa horizontal flutuante" que atravessava as duas colunas e quebrava o paralelo visual. O TeamTabs também vazava para fora dos 320px. O empty state tinha um quadrado lavanda atrás do ícone que parecia "invadir" a timeline. Tudo isso longe da limpeza Windmill/Linear que o produto persegue.
 
-## /lider/avaliacoes especificamente (Sprint 12.5)
+## /lider/avaliacoes especificamente (Sprint 12.6 — página terminal)
 
-Mesmo esqueleto de Diário/Objetivos. Ordem fixa na coluna direita quando há liderado selecionado:
+Página agora **resolve a tarefa inline**, sem redirect para `/member/:id`. Reutiliza os mesmos componentes do `MemberDetails` (`RhitmoTimelineCard`, `MonthlyRecapSection`, `QuarterlyRecapSection`, `PerformanceReviewList`, `CreateFormalReviewDialog`).
+
+Ordem fixa na coluna direita quando há liderado selecionado:
 
 1. Eyebrow `AVALIAÇÕES` + header (avatar + nome + cargo).
-2. Sub-header "Escolha o tipo de avaliação" + microcopy "O Rhitmo gera o rascunho com base em notas, 1:1s e feedbacks compartilhados."
-3. **Card Rhitmo** (`Music` + sub-botões `Mensal` / `Trimestral`) → `/member/{id}?tab=rhitmo&sub=monthly|quarterly`.
-4. **Card Avaliação Formal** (`Sparkles`, clicável inteiro) → `/member/{id}?tab=reviews&action=new`.
+2. **Action Bar — "Gerar avaliação"**: grid `sm:grid-cols-3` com 3 `ActionCard` (`rounded-2xl`, hover-lift, ring quando ativo): Rhitmo Mensal (`Music`), Rhitmo Trimestral (`BarChart3`), Avaliação Formal (`Sparkles`). Mensal/Trimestral apenas trocam o sub-tab abaixo; Formal abre `CreateFormalReviewDialog` inline (não navega).
+3. **`RhitmoTimelineCard`** com seus 3 estados (tem recaps / tem evidência pra primeiro / não tem nada). `feedbacksLastMonthCount` vem de `useQuery` com `count: 'exact', head: true` filtrado por `member_id` + `occurred_at` no mês passado.
+4. **Sub-tabs `[Mensal] [Trimestral] [Formais]`**: render condicional de `MonthlyRecapSection`, `QuarterlyRecapSection`, `PerformanceReviewList`. Default = `monthly` (alimenta o trimestral). Trocar de liderado reseta para `monthly`.
 
-Removido o `Dialog` que abria ao clicar no liderado no `MembersGrid` antigo — os dois cartões agora vivem inline na coluna direita, igual ao resto das páginas master-detail. `MembersGrid` segue existindo para outros usos (não foi removido).
+`workspaceId` necessário para `CreateFormalReviewDialog` vem de `useLeaderMembers().workspace.id`. `member.role` vem de `LeaderMemberRow.role`.
+
+### Por que NÃO redirecionar para /member/:id?action=new
+
+A página antiga jogava o líder fora da master list (perdia a navegação rápida entre liderados) só para mostrar 2 cards explicativos. Padrão "service-as-software": a tarefa "gerar avaliação" tem que terminar onde começou. `MemberDetails` continua existindo intocado para quem chega por outras rotas (clique em nome em outras telas).
+
+### Por que sub-tabs e não 3 seções empilhadas
+
+`MonthlyRecapSection` sozinho já é uma timeline longa de cards (Maio, Abril, Março...). Empilhar Mensal + Trimestral + Formais quebraria a leitura num scroll infinito. Sub-tabs preservam foco; a Action Bar no topo é o atalho pra gerar sem trocar de aba.
