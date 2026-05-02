@@ -192,6 +192,21 @@ export function PulseWizard({ open, onOpenChange, onCreated, editPulseId }: Puls
   const updateTopic = (id: string, text: string) =>
     setTopics((t) => t.map((x) => (x.id === id ? { ...x, text } : x)));
 
+  // DnD for topics (Step 2)
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+  );
+  const handleDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    setTopics((items) => {
+      const oldIdx = items.findIndex((t) => t.id === active.id);
+      const newIdx = items.findIndex((t) => t.id === over.id);
+      if (oldIdx === -1 || newIdx === -1) return items;
+      return arrayMove(items, oldIdx, newIdx);
+    });
+  };
+
   // Validation
   const canNext = useMemo(() => {
     if (step === 0) return motivation.trim().length > 0;
