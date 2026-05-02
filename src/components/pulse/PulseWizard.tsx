@@ -14,6 +14,21 @@ import {
   EyeOff,
   X,
 } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { toast } from 'sonner';
 import { useAccount } from '@/contexts/AccountContext';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
@@ -129,7 +144,10 @@ export function PulseWizard({ open, onOpenChange, onCreated, editPulseId }: Puls
                 order: (
                   c: string,
                   o: { ascending: boolean },
-                ) => Promise<{ data: Array<{ id: string; name: string }> | null; error: unknown }>;
+                ) => Promise<{
+                  data: Array<{ id: string; name: string }> | null;
+                  error: unknown;
+                }>;
               };
             };
           };
@@ -137,8 +155,8 @@ export function PulseWizard({ open, onOpenChange, onCreated, editPulseId }: Puls
       };
       const { data, error } = await client
         .from('team_members')
-        .select('id, name, teams!inner(leader_user_id)')
-        .eq('workspace_id', workspaceId!)
+        .select('id, name, teams!inner(workspace_id, leader_user_id)')
+        .eq('teams.workspace_id', workspaceId!)
         .eq('teams.leader_user_id', userId!)
         .order('name', { ascending: true });
       if (error) {
