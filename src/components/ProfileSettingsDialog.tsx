@@ -260,7 +260,7 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
                   <code className="text-[10px]">/kudos</code><span>{t('settings.public')}</span><span>{t('settings.everyoneSees')}</span>
                 </div>
                 <div className="grid grid-cols-3 gap-1">
-                  <code className="text-[10px]">/review</code><span>{t('settings.dmOnly')}</span><span>{t('settings.onlyYou')}</span>
+                  <code className="text-[10px]">/brief</code><span>{t('settings.dmOnly')}</span><span>{t('settings.onlyYou')}</span>
                 </div>
               </div>
             </div>
