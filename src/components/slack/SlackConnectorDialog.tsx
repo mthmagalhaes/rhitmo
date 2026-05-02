@@ -11,6 +11,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { useSlackConnection } from '@/hooks/useSlackConnection';
+import { SLACK_COMMANDS } from '@/lib/slackCommands';
 
 interface SlackConnectorDialogProps {
   open: boolean;
