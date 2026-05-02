@@ -70,17 +70,68 @@ export const FeedbackFilters = ({
   const hasDateFilter = !!dateRange?.from;
 
   return (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-6 p-3 bg-muted/30 rounded-lg border">
-      <div className="relative flex-1 min-w-0 w-full sm:w-auto">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder={t('filters.searchPlaceholder')}
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="pl-9 h-9"
-        />
+    <div className="flex flex-col gap-3 mb-6 p-3 bg-muted/30 rounded-xl border">
+      {/* Linha 1 — busca + data + ordenação (sempre alinhados, sem aperto) */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+        <div className="relative flex-1 min-w-0">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder={t('filters.searchPlaceholder')}
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="pl-9 h-9"
+          />
+        </div>
+
+        {onDateRangeChange && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "h-9 gap-1.5 shrink-0 text-xs",
+                  hasDateFilter && "border-primary text-primary"
+                )}
+              >
+                <CalendarIcon className="h-3.5 w-3.5" />
+                {hasDateFilter ? formatDateRange() : t('filters.filterDate')}
+                {hasDateFilter && (
+                  <X
+                    className="h-3.5 w-3.5 ml-1 hover:text-destructive"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDateRangeChange(undefined);
+                    }}
+                  />
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="range"
+                selected={dateRange}
+                onSelect={onDateRangeChange}
+                numberOfMonths={2}
+                locale={dateLocale}
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+        )}
+
+        <Select value={sortOrder} onValueChange={(value) => onSortChange(value as 'newest' | 'oldest')}>
+          <SelectTrigger className="w-[140px] h-9 shrink-0">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="newest">{t('filters.newest')}</SelectItem>
+            <SelectItem value="oldest">{t('filters.oldest')}</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
+      {/* Linha 2 — chips de tag (wrap natural, sem sobreposição) */}
       <div className="flex items-center gap-1.5 flex-wrap">
         {FILTER_TAGS.map(tag => (
           <Button
@@ -94,53 +145,6 @@ export const FeedbackFilters = ({
           </Button>
         ))}
       </div>
-
-      {onDateRangeChange && (
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className={cn(
-                "h-9 gap-1.5 shrink-0 text-xs",
-                hasDateFilter && "border-primary text-primary"
-              )}
-            >
-              <CalendarIcon className="h-3.5 w-3.5" />
-              {hasDateFilter ? formatDateRange() : t('filters.filterDate')}
-              {hasDateFilter && (
-                <X
-                  className="h-3.5 w-3.5 ml-1 hover:text-destructive"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDateRangeChange(undefined);
-                  }}
-                />
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="end">
-            <Calendar
-              mode="range"
-              selected={dateRange}
-              onSelect={onDateRangeChange}
-              numberOfMonths={2}
-              locale={dateLocale}
-              className={cn("p-3 pointer-events-auto")}
-            />
-          </PopoverContent>
-        </Popover>
-      )}
-
-      <Select value={sortOrder} onValueChange={(value) => onSortChange(value as 'newest' | 'oldest')}>
-        <SelectTrigger className="w-[140px] h-9 shrink-0">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="newest">{t('filters.newest')}</SelectItem>
-          <SelectItem value="oldest">{t('filters.oldest')}</SelectItem>
-        </SelectContent>
-      </Select>
     </div>
   );
 };
