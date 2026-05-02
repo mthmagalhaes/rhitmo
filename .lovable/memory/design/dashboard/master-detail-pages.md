@@ -1,10 +1,10 @@
 ---
 name: Master-Detail Pages
-description: /lider/1on1s, /lider/diario, /lider/objetivos usam MemberMasterList sticky 260px bg-muted/30 com avatar sm; root das páginas tem h-[calc(100svh-3rem)] overflow-hidden + main com overflow-y-auto (scroll independente, app-feel); conteúdo interno max-w-3xl px-6 lg:px-8 py-6 sem mx-auto
+description: /lider/1on1s, /lider/diario, /lider/objetivos e /lider/avaliacoes usam MemberMasterList sticky 260px bg-muted/30 com avatar sm; root das páginas tem h-[calc(100svh-3rem)] overflow-hidden + main com overflow-y-auto (scroll independente, app-feel); conteúdo interno max-w-3xl px-6 lg:px-8 py-6 sem mx-auto
 type: design
 ---
 
-# Master-Detail (Sprint 12.1 + 12.2 + 12.4)
+# Master-Detail (Sprint 12.1 + 12.2 + 12.4 + 12.5)
 
 ## Regras gerais de layout (estilo Windmill/Linear/Notion — full-bleed app)
 
