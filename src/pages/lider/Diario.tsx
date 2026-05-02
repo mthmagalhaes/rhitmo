@@ -21,12 +21,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useLeaderMembers, type LeaderMemberRow } from '@/hooks/useLeaderMembers';
 
 export default function LiderDiario() {
-  useLeaderMembers(); // pré-aquece cache de workspace/liderados
+  const { workspace } = useLeaderMembers(); // pré-aquece cache + obtém workspace para o NewNoteDialog
   const [selected, setSelected] = useState<LeaderMemberRow | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -37,11 +38,13 @@ export default function LiderDiario() {
     // troca de pessoa fica instantânea, sem flicker de tela inteira.
     placeholderData: (prev) => prev,
     queryFn: async () => {
+      // Diário mostra TODAS as notas do liderado (privadas + compartilhadas).
+      // O líder vê tudo de qualquer forma; a distinção visual fica por conta
+      // do FeedbackTimeline (cadeado vs. olho).
       const { data, error } = await supabase
         .from('feedbacks')
         .select('*')
         .eq('member_id', selected!.id)
-        .eq('visibility', 'private_leader')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
