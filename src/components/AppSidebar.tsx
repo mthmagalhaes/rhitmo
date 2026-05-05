@@ -226,8 +226,8 @@ export function AppSidebar() {
           </div>
         )}
 
-        {/* Persistent AI CTA */}
-        {open && <SidebarFooterCTA persona={persona} />}
+        {/* Persistent AI CTA — only direct_report (leader CTA is at top) */}
+        {open && persona === 'direct_report' && <SidebarFooterCTA persona={persona} />}
 
         {/* Discreet global search shortcut (cmd+K also works) */}
         {open && (
