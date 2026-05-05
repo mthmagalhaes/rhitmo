@@ -122,6 +122,7 @@ export default function SlackConnect() {
   }
 
   if (status === 'error') {
+    const isExpired = errorCode === 'state_expired';
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-6 max-w-md px-6">
@@ -129,11 +130,23 @@ export default function SlackConnect() {
             <XCircle className="h-8 w-8 text-destructive" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Erro na vinculação</h1>
+            <h1 className="text-2xl font-bold tracking-tight">
+              {isExpired ? 'Link expirado' : 'Erro na vinculação'}
+            </h1>
             <p className="text-muted-foreground mt-2">{errorMsg}</p>
+            {isExpired && (
+              <p className="text-xs text-muted-foreground mt-3">
+                Por segurança, o link de vinculação dura 10 minutos.
+              </p>
+            )}
           </div>
           <div className="flex flex-col gap-2">
-            <Button onClick={() => navigate(home)}>Voltar ao início</Button>
+            {isExpired && (
+              <Button asChild>
+                <a href="slack://open">Abrir Slack</a>
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => navigate(home)}>Voltar ao início</Button>
           </div>
         </div>
       </div>
