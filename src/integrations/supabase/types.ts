@@ -147,6 +147,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_pinned: boolean
           member_id: string | null
           title: string
           type: string
@@ -156,6 +157,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          is_pinned?: boolean
           member_id?: string | null
           title?: string
           type?: string
@@ -165,6 +167,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          is_pinned?: boolean
           member_id?: string | null
           title?: string
           type?: string
@@ -1305,7 +1308,7 @@ export type Database = {
           content: string
           created_at: string
           id: string
-          member_id: string
+          member_id: string | null
           role: string
           thread_id: string
           user_id: string
@@ -1314,7 +1317,7 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
-          member_id: string
+          member_id?: string | null
           role: string
           thread_id: string
           user_id: string
@@ -1323,7 +1326,7 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
-          member_id?: string
+          member_id?: string | null
           role?: string
           thread_id?: string
           user_id?: string
