@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Send, Loader2, Paperclip, Plus, MessageSquare, Pencil, Trash2, FileText, X, Sparkles, ArrowUp, Square, ChevronLeft, Menu, Copy } from 'lucide-react';
+import { Loader2, Paperclip, Plus, MessageSquare, Pencil, Trash2, FileText, X, Sparkles, ArrowUp, Square, ChevronLeft, Menu, Copy, Pin } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -44,6 +44,7 @@ interface ChatThread {
   title: string;
   created_at: string;
   updated_at: string;
+  is_pinned?: boolean;
 }
 
 interface MentorChatProps {
@@ -173,6 +174,7 @@ export const MentorChat = ({
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
+  const [loadingSeconds, setLoadingSeconds] = useState(0);
   const [lastSummaryApplied, setLastSummaryApplied] = useState(false);
   const [isExtractingFile, setIsExtractingFile] = useState(false);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
@@ -187,7 +189,9 @@ export const MentorChat = ({
   const placeholder = attachment
     ? 'Descreva o que você quer saber sobre a imagem...'
     : isLeader
-      ? `Pergunte sobre ${memberName} (Ctrl+V para colar imagem)…`
+      ? memberId
+        ? `Pergunte sobre ${memberName} (Ctrl+V para colar imagem)…`
+        : 'Pergunte como em uma LLM: liderança, decisões, comunicação, prioridades…'
       : 'Pergunte sobre sua carreira ou cole uma imagem (Ctrl+V)...';
   const [selectedContexts, setSelectedContexts] = useState<string[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -214,6 +218,7 @@ export const MentorChat = ({
         .select('*')
         .eq('user_id', effectiveUserId)
         .eq('type', threadType)
+        .order('is_pinned' as any, { ascending: false })
         .order('updated_at', { ascending: false });
       
       if (isLeader) {
