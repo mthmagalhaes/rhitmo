@@ -374,12 +374,13 @@ serve(async (req) => {
     console.log('Router decision - needs context:', needsContext, hasImage ? '(image bypass)' : '', `[mode=${mode}]`);
 
     // ============================================
-    // CAMADA 2: COMPRESSÃO (apenas se necessário)
+    // CAMADA 2: COMPRESSÃO + RAG (apenas modo member, se necessário)
     // ============================================
     let contextLines = '';
+    let evidenceBreakdown = { from_recent: 0, from_semantic_feedbacks: 0, from_semantic_evidence: 0 };
     if (needsContext) {
-      // Try semantic search via embeddings first
       let semanticFeedbacks: any[] = [];
+      let semanticEvidence: any[] = [];
       try {
         const embResponse = await fetch('https://api.openai.com/v1/embeddings', {
           method: 'POST',
@@ -397,23 +398,39 @@ serve(async (req) => {
           const embData = await embResponse.json();
           const queryEmbedding = embData.data?.[0]?.embedding;
           if (queryEmbedding) {
-            // Extract memberId from feedbacks (all belong to same member)
             const memberId = feedbacks?.[0]?.member_id;
-            const { data: semanticResults, error: rpcError } = await (await import('https://esm.sh/@supabase/supabase-js@2')).createClient(
+            const supa = createClient(
               Deno.env.get('SUPABASE_URL')!,
               Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-            ).rpc('match_feedbacks', {
-              query_embedding: JSON.stringify(queryEmbedding),
-              match_threshold: 0.5,
-              match_count: 10,
-              filter_member_id: memberId || null,
-            });
+            );
 
-            if (!rpcError && semanticResults?.length) {
-              semanticFeedbacks = semanticResults;
-              console.log('Semantic search found', semanticResults.length, 'results');
-            } else if (rpcError) {
-              console.error('Semantic search RPC error:', rpcError.message);
+            // Mais agressivo: threshold 0.35, top 25 (era 0.5/10)
+            const [fbRes, evRes] = await Promise.all([
+              supa.rpc('match_feedbacks', {
+                query_embedding: JSON.stringify(queryEmbedding),
+                match_threshold: 0.35,
+                match_count: 25,
+                filter_member_id: memberId || null,
+              }),
+              supa.rpc('match_context_evidence', {
+                query_embedding: JSON.stringify(queryEmbedding),
+                match_threshold: 0.35,
+                match_count: 25,
+                filter_member_id: memberId || null,
+              }),
+            ]);
+
+            if (!fbRes.error && fbRes.data?.length) {
+              semanticFeedbacks = fbRes.data;
+              console.log('Semantic feedbacks:', fbRes.data.length);
+            } else if (fbRes.error) {
+              console.error('match_feedbacks error:', fbRes.error.message);
+            }
+            if (!evRes.error && evRes.data?.length) {
+              semanticEvidence = evRes.data;
+              console.log('Semantic context_evidence:', evRes.data.length);
+            } else if (evRes.error) {
+              console.error('match_context_evidence error:', evRes.error.message);
             }
           }
         }
@@ -421,27 +438,41 @@ serve(async (req) => {
         console.error('Semantic search failed (falling back to recent):', semErr.message);
       }
 
-      // Merge semantic results with recent feedbacks (dedup by id)
-      if (semanticFeedbacks.length > 0) {
-        const existingIds = new Set(feedbacks.map((f: any) => f.id));
-        const merged = [...feedbacks];
-        for (const sf of semanticFeedbacks) {
-          if (!existingIds.has(sf.id)) {
-            merged.push(sf);
-            existingIds.add(sf.id);
-          }
+      // Mesclar: recentes + RAG feedbacks (dedup por id)
+      const existingIds = new Set(feedbacks.map((f: any) => f.id));
+      const merged = [...feedbacks];
+      evidenceBreakdown.from_recent = feedbacks.length;
+      for (const sf of semanticFeedbacks) {
+        if (!existingIds.has(sf.id)) {
+          merged.push(sf);
+          existingIds.add(sf.id);
+          evidenceBreakdown.from_semantic_feedbacks++;
         }
-        contextLines = compressContext(merged);
-        console.log('Context merged (recent + semantic):', { totalNotes: merged.length });
+      }
+
+      // Adicionar context_evidence como "notas sintéticas" no formato esperado por compressContext
+      for (const ev of semanticEvidence) {
+        merged.push({
+          id: ev.id,
+          content: ev.summary || ev.title || '',
+          summary: ev.summary,
+          type: `ctx:${ev.evidence_type}`,
+          occurred_at: ev.occurred_at,
+          created_at: ev.occurred_at,
+        });
+        evidenceBreakdown.from_semantic_evidence++;
+      }
+
+      // Janela adaptativa: se RAG trouxe muito sinal, expande
+      const totalSemantic = semanticFeedbacks.length + semanticEvidence.length;
+      if (totalSemantic >= 15) {
+        contextLines = compressContextLarge(merged);
       } else {
-        contextLines = compressContext(feedbacks);
+        contextLines = compressContext(merged);
       }
 
       const notesCount = (contextLines.match(/\[Data:/g) || []).length;
-      console.log('Context compressed:', { 
-        chars: contextLines.length, 
-        notesIncluded: notesCount
-      });
+      console.log('Context compressed:', { chars: contextLines.length, notesIncluded: notesCount, ...evidenceBreakdown });
     } else {
       contextLines = '(Contexto histórico não foi necessário para esta pergunta - respondendo diretamente)';
       console.log('Context skipped by router');
