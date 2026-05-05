@@ -501,10 +501,6 @@ const MemberDetails = () => {
                     Nova Nota
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem onClick={() => setRecorderOpen(true)} className="gap-2">
-                  <Monitor className="h-4 w-4" />
-                  Gravar Reunião
-                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setChatOpen(true)} className="gap-2">
                   <Sparkles className="h-4 w-4" />
                   Mentor Chat
