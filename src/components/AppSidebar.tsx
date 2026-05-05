@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/sidebar';
 import { ProfileSettingsDialog } from '@/components/ProfileSettingsDialog';
 import { WorkspaceSwitcher } from '@/components/sidebar/WorkspaceSwitcher';
-import { ThreadsList } from '@/components/sidebar/ThreadsList';
+
 import { SidebarFooterCTA } from '@/components/sidebar/SidebarFooterCTA';
 import { SidebarProfileBlock } from '@/components/sidebar/SidebarProfileBlock';
 import { GlobalSearchDialog } from '@/components/sidebar/GlobalSearchDialog';
