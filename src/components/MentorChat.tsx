@@ -64,6 +64,12 @@ interface MentorChatProps {
   userId?: string;
   initialPrompt?: string;
   initialThreadId?: string | null;
+  /** When true, renders fullscreen (no Dialog wrapper) for the dedicated /lider/mentor/:threadId page. */
+  embedded?: boolean;
+  /** Auto-send the initialPrompt as the first user message instead of just populating the input. */
+  autoSendInitialPrompt?: boolean;
+  /** Optional back action (rendered as left arrow in embedded header). */
+  onBack?: () => void;
 }
 
 // Prompt Gallery — combate "blank page anxiety". Templates curtos para o
