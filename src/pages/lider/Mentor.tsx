@@ -436,7 +436,7 @@ export default function LiderMentor() {
                           setSelectedMember(null);
                           setScope('geral');
                         }
-                        startChat(undefined, t.id);
+                        goToThread(t.id);
                       }}
                       className="w-full px-4 py-3 flex items-center gap-3 hover:bg-muted/40 transition-colors text-left"
                     >
