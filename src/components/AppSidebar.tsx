@@ -136,6 +136,13 @@ export function AppSidebar() {
 
       <SidebarContent className="gap-0 pt-2">
 
+        {/* Top CTA — Pergunte ao Mentor (acima da navegação principal) */}
+        {persona === 'leader' && (
+          <div className="px-2 pb-2">
+            <SidebarFooterCTA persona={persona} />
+          </div>
+        )}
+
         {/* Zone C — Primary nav */}
         <SidebarMenu className="px-2 gap-0.5">
           {navItems.map((item) => {
@@ -165,8 +172,6 @@ export function AppSidebar() {
             );
           })}
         </SidebarMenu>
-
-        {/* Threads list moved to dedicated /lider/mentor page */}
 
 
         {/* HR context switcher (kept for HR Admins) */}
