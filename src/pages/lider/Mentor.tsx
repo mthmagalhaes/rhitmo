@@ -21,7 +21,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MemberAvatar } from '@/components/MemberAvatar';
-import { MentorChat } from '@/components/MentorChat';
+// MentorChat modal removed — full-page chat now lives at /lider/mentor/:threadId
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
