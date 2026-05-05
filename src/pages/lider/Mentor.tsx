@@ -14,14 +14,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { useLeaderMembers, type LeaderMemberRow } from '@/hooks/useLeaderMembers';
-import { Button } from '@/components/ui/button';
+// (Button removed — composer uses native button now)
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MemberAvatar } from '@/components/MemberAvatar';
-import { MentorChat } from '@/components/MentorChat';
+// MentorChat modal removed — full-page chat now lives at /lider/mentor/:threadId
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
@@ -53,9 +53,7 @@ export default function LiderMentor() {
   const [selectedMember, setSelectedMember] = useState<LeaderMemberRow | null>(null);
   const [scope, setScope] = useState<ContextScope>('geral');
   const [input, setInput] = useState('');
-  const [chatOpen, setChatOpen] = useState(false);
-  const [initialPrompt, setInitialPrompt] = useState<string | undefined>(undefined);
-  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  // (modal state removed — chat now lives at /lider/mentor/:threadId)
   const [memberPickerOpen, setMemberPickerOpen] = useState(false);
   const [memberQuery, setMemberQuery] = useState('');
   const [showAllHistory, setShowAllHistory] = useState(false);
@@ -115,17 +113,40 @@ export default function LiderMentor() {
     'Você';
 
   // ── Actions ──────────────────────────────────────────────────────
-  const startChat = (prompt?: string, threadId?: string | null) => {
-    setInitialPrompt(prompt);
-    setActiveThreadId(threadId ?? null);
-    setChatOpen(true);
+  const goToThread = (threadId: string, prompt?: string) => {
+    navigate(`/lider/mentor/${threadId}`, {
+      state: prompt ? { initialPrompt: prompt } : undefined,
+    });
+  };
+
+  const startNewChat = async (prompt: string) => {
+    if (!effectiveUserId || !prompt.trim()) return;
+    const titleText = prompt.slice(0, 40) + (prompt.length > 40 ? '…' : '');
+    // For "geral" scope (no member context) we still create a member-less thread.
+    const memberId = selectedMember && scope !== 'geral' ? selectedMember.id : null;
+    const insertData: any = {
+      user_id: effectiveUserId,
+      title: titleText,
+      type: 'mentor',
+      member_id: memberId,
+    };
+    const { data, error } = await supabase
+      .from('chat_threads')
+      .insert(insertData)
+      .select('id')
+      .single();
+    if (error || !data) {
+      console.error('Erro ao criar thread', error);
+      return;
+    }
+    goToThread(data.id, prompt);
   };
 
   const handleSubmit = () => {
     const text = input.trim();
     if (!text) return;
-    startChat(text, null);
     setInput('');
+    startNewChat(text);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -136,8 +157,9 @@ export default function LiderMentor() {
   };
 
   const handleSuggestion = (text: string) => {
-    startChat(text, null);
+    startNewChat(text);
   };
+
 
   const handleClearMember = () => {
     setSelectedMember(null);
@@ -150,10 +172,8 @@ export default function LiderMentor() {
     notas: 'Apenas notas/diário',
   };
 
-  // ── Resolve memberId/feedbacks for the modal based on scope ──────
-  const chatMemberId = selectedMember?.id;
-  const chatFeedbacks =
-    selectedMember && scope !== 'geral' ? memberFeedbacks : [];
+  // (chatMemberId/chatFeedbacks moved to /lider/mentor/:threadId)
+  void memberFeedbacks;
 
   return (
     <div className="min-h-[calc(100svh-3rem)] bg-background overflow-y-auto">
@@ -412,7 +432,7 @@ export default function LiderMentor() {
                           setSelectedMember(null);
                           setScope('geral');
                         }
-                        startChat(undefined, t.id);
+                        goToThread(t.id);
                       }}
                       className="w-full px-4 py-3 flex items-center gap-3 hover:bg-muted/40 transition-colors text-left"
                     >
@@ -448,25 +468,6 @@ export default function LiderMentor() {
         </section>
       </div>
 
-      {/* ── MentorChat modal ──────────────────────────────────────── */}
-      <MentorChat
-        open={chatOpen}
-        onOpenChange={(o) => {
-          setChatOpen(o);
-          if (!o) {
-            setInitialPrompt(undefined);
-            setActiveThreadId(null);
-          }
-        }}
-        userType="leader"
-        memberName={selectedMember?.name || userName}
-        memberId={chatMemberId}
-        memberRole={selectedMember?.role}
-        feedbacks={chatFeedbacks}
-        userId={effectiveUserId ?? undefined}
-        initialPrompt={initialPrompt}
-        initialThreadId={activeThreadId}
-      />
     </div>
   );
 }

@@ -64,6 +64,12 @@ interface MentorChatProps {
   userId?: string;
   initialPrompt?: string;
   initialThreadId?: string | null;
+  /** When true, renders fullscreen (no Dialog wrapper) for the dedicated /lider/mentor/:threadId page. */
+  embedded?: boolean;
+  /** Auto-send the initialPrompt as the first user message instead of just populating the input. */
+  autoSendInitialPrompt?: boolean;
+  /** Optional back action (rendered as left arrow in embedded header). */
+  onBack?: () => void;
 }
 
 // Prompt Gallery — combate "blank page anxiety". Templates curtos para o
@@ -150,6 +156,9 @@ export const MentorChat = ({
   userId,
   initialPrompt,
   initialThreadId,
+  embedded = false,
+  autoSendInitialPrompt = false,
+  onBack,
 }: MentorChatProps) => {
   const isLeader = userType === 'leader';
   
@@ -216,23 +225,23 @@ export const MentorChat = ({
       if (error) throw error;
       return (data || []) as ChatThread[];
     },
-    enabled: open && !!effectiveUserId,
+    enabled: (open || embedded) && !!effectiveUserId,
     staleTime: 1000 * 60 * 5,
   });
 
-  // Apply initialThreadId when sheet opens (overrides auto-select of most recent)
+  // Apply initialThreadId when opens (overrides auto-select of most recent)
   useEffect(() => {
-    if (open && initialThreadId) {
+    if ((open || embedded) && initialThreadId) {
       setSelectedThreadId(initialThreadId);
       setIsCreatingNewThread(false);
     }
-  }, [open, initialThreadId]);
+  }, [open, embedded, initialThreadId]);
 
   useEffect(() => {
-    if (!isLoadingThreads && threads.length > 0 && !selectedThreadId && !isCreatingNewThread) {
+    if (!isLoadingThreads && threads.length > 0 && !selectedThreadId && !isCreatingNewThread && !initialThreadId) {
       setSelectedThreadId(threads[0].id);
     }
-  }, [threads, isLoadingThreads, selectedThreadId, isCreatingNewThread]);
+  }, [threads, isLoadingThreads, selectedThreadId, isCreatingNewThread, initialThreadId]);
 
   const { data: messages = [], isLoading: isLoadingMessages } = useQuery({
     queryKey: [messagesQueryKey, selectedThreadId],
@@ -260,14 +269,23 @@ export const MentorChat = ({
     }
   }, [messages, isLoading]);
 
-  // Populate input with initialPrompt when dialog opens
+  // Populate input with initialPrompt when opens
+  const autoSentRef = useRef(false);
   useEffect(() => {
-    if (open && initialPrompt) {
-      setInput(initialPrompt);
-      setIsCreatingNewThread(true);
-      setSelectedThreadId(null);
+    if ((open || embedded) && initialPrompt && !autoSentRef.current) {
+      if (autoSendInitialPrompt) {
+        // Mark sent and dispatch once messages query resolves to avoid duplicate.
+        autoSentRef.current = true;
+        // Defer to next tick so threadId / state propagate first.
+        setTimeout(() => { handleSend(initialPrompt); }, 50);
+      } else {
+        setInput(initialPrompt);
+        setIsCreatingNewThread(true);
+        setSelectedThreadId(null);
+      }
     }
-  }, [open, initialPrompt]);
+  }, [open, embedded, initialPrompt, autoSendInitialPrompt]);
+
 
   // ── Thread helpers ───────────────────────────────────
   const groupThreadsByDate = (threads: ChatThread[]) => {
@@ -764,47 +782,58 @@ export const MentorChat = ({
   // ══════════════════════════════════════════════════════
   // RENDER
   // ══════════════════════════════════════════════════════
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 gap-0 shadow-[0_2px_40px_rgba(0,0,0,0.08)] [&>button]:hidden overflow-hidden">
-        {/* ── Header ─────────────────────────────────── */}
-        <DialogHeader className="px-5 py-3.5 border-b border-border flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {!sidebarOpen && (
-                <button
-                  onClick={() => setSidebarOpen(true)}
-                  className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                >
-                  <Menu className="h-5 w-5" />
-                </button>
-              )}
-              <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-sm">
-                {isLeader ? '🎯' : <Sparkles className="h-4 w-4 text-primary" />}
-              </div>
-              <DialogTitle className="text-foreground text-base font-semibold tracking-tight">
-                {title}
-                {isLeader && (
-                  <span className="text-muted-foreground font-normal text-sm ml-2">
-                    — {memberName} {memberRole && `(${memberRole})`}
-                  </span>
-                )}
-              </DialogTitle>
-            </div>
-            {isLeader ? (
-              <ContextPicker 
-                feedbacks={feedbacks}
-                selectedIds={selectedContexts}
-                onSelectionChange={setSelectedContexts}
-              />
-            ) : (
-              <Badge className="bg-primary/10 text-primary text-xs border-0">Confidencial</Badge>
-            )}
+  const headerNode = (
+    <div className={embedded ? "px-5 py-3.5 border-b border-border flex-shrink-0" : "px-5 py-3.5 border-b border-border flex-shrink-0"}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          {embedded && onBack && (
+            <button
+              onClick={onBack}
+              className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+              aria-label="Voltar"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+          )}
+          {!sidebarOpen && (
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          )}
+          <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-sm">
+            {isLeader ? '🎯' : <Sparkles className="h-4 w-4 text-primary" />}
           </div>
-        </DialogHeader>
+          <h2 className="text-foreground text-base font-semibold tracking-tight">
+            {title}
+            {isLeader && memberId && (
+              <span className="text-muted-foreground font-normal text-sm ml-2">
+                — {memberName} {memberRole && `(${memberRole})`}
+              </span>
+            )}
+          </h2>
+        </div>
+        {isLeader ? (
+          <ContextPicker 
+            feedbacks={feedbacks}
+            selectedIds={selectedContexts}
+            onSelectionChange={setSelectedContexts}
+          />
+        ) : (
+          <Badge className="bg-primary/10 text-primary text-xs border-0">Confidencial</Badge>
+        )}
+      </div>
+    </div>
+  );
 
-        {/* ── Body: Sidebar + Chat ───────────────────── */}
-        <div className="flex flex-1 min-h-0">
+  const bodyNode = (
+    <>
+      {headerNode}
+      {/* ── Body: Sidebar + Chat ───────────────────── */}
+      <div className="flex flex-1 min-h-0">
+
           {/* ── Sidebar ────────────────────────────── */}
           <div className={`flex-shrink-0 border-r border-border flex flex-col bg-muted/20 transition-all duration-200 overflow-hidden ${sidebarOpen ? 'w-[240px]' : 'w-0 border-r-0'}`}>
             <div className="p-3 flex items-center gap-2">
@@ -1172,29 +1201,45 @@ export const MentorChat = ({
               </div>
             </div>
           </div>
-        </div>
+      </div>
 
-        {/* ── Delete thread dialog ───────────────────── */}
-        <AlertDialog open={!!deletingThread} onOpenChange={() => setDeletingThread(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertTitle>Excluir conversa?</AlertTitle>
-              <AlertDialogDescription>
-                Esta ação é irreversível. A conversa "{deletingThread?.title}" e todas as mensagens serão excluídas permanentemente.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => deletingThread && handleDeleteThread(deletingThread)}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Excluir
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+      {/* ── Delete thread dialog ───────────────────── */}
+      <AlertDialog open={!!deletingThread} onOpenChange={() => setDeletingThread(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertTitle>Excluir conversa?</AlertTitle>
+            <AlertDialogDescription>
+              Esta ação é irreversível. A conversa "{deletingThread?.title}" e todas as mensagens serão excluídas permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingThread && handleDeleteThread(deletingThread)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <div className="flex flex-col h-[calc(100svh-3rem)] bg-background overflow-hidden">
+        {bodyNode}
+      </div>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 gap-0 shadow-[0_2px_40px_rgba(0,0,0,0.08)] [&>button]:hidden overflow-hidden">
+        {bodyNode}
       </DialogContent>
     </Dialog>
   );
 };
+
