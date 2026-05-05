@@ -309,17 +309,20 @@ export const MentorChat = ({
   // ── Thread helpers ───────────────────────────────────
   const groupThreadsByDate = (threads: ChatThread[]) => {
     const groups: { label: string; threads: ChatThread[] }[] = [];
+    const pinned: ChatThread[] = [];
     const today: ChatThread[] = [];
     const yesterday: ChatThread[] = [];
     const lastWeek: ChatThread[] = [];
     const older: ChatThread[] = [];
     threads.forEach(thread => {
+      if (thread.is_pinned) { pinned.push(thread); return; }
       const date = new Date(thread.updated_at);
       if (isToday(date)) today.push(thread);
       else if (isYesterday(date)) yesterday.push(thread);
       else if (differenceInDays(new Date(), date) <= 7) lastWeek.push(thread);
       else older.push(thread);
     });
+    if (pinned.length) groups.push({ label: 'Fixadas', threads: pinned });
     if (today.length) groups.push({ label: 'Hoje', threads: today });
     if (yesterday.length) groups.push({ label: 'Ontem', threads: yesterday });
     if (lastWeek.length) groups.push({ label: 'Última semana', threads: lastWeek });
@@ -438,11 +441,17 @@ export const MentorChat = ({
     let loadingInterval: ReturnType<typeof setInterval> | null = null;
 
     const defaultSteps = isLeader
-      ? [
-          `Lendo o histórico de ${memberName}…`,
-          'Analisando padrões e contradições…',
-          'Estruturando a resposta…',
-        ]
+      ? memberId
+        ? [
+            `Lendo o histórico de ${memberName}…`,
+            'Analisando padrões e contradições…',
+            'Estruturando a resposta…',
+          ]
+        : [
+            'Pensando no seu contexto de liderança…',
+            'Conectando princípios e padrões do time…',
+            'Escrevendo uma resposta prática…',
+          ]
       : [
           'Revendo seu contexto…',
           'Conectando insights…',
@@ -475,7 +484,8 @@ export const MentorChat = ({
         }
 
         const savedContent = imageContent ? (imageContent.textMessage || '[Imagem enviada para análise]') : finalMessage;
-        await supabase.from('mentor_messages').insert({ user_id: effectiveUserId, member_id: memberId ?? null, thread_id: currentThreadId, role: 'user', content: savedContent });
+        const { error: userInsertError } = await supabase.from('mentor_messages').insert({ user_id: effectiveUserId, member_id: memberId ?? null, thread_id: currentThreadId, role: 'user', content: savedContent } as any);
+        if (userInsertError) throw userInsertError;
         queryClient.invalidateQueries({ queryKey: [messagesQueryKey, currentThreadId] });
 
         const controller = new AbortController();
@@ -543,7 +553,8 @@ export const MentorChat = ({
         if (!data?.response) throw new Error('Resposta inválida do servidor.');
         setLastSummaryApplied(!!data.metadata?.summary_applied);
 
-        await supabase.from('mentor_messages').insert({ user_id: effectiveUserId, member_id: memberId ?? null, thread_id: currentThreadId, role: 'assistant', content: data.response });
+        const { error: assistantInsertError } = await supabase.from('mentor_messages').insert({ user_id: effectiveUserId, member_id: memberId ?? null, thread_id: currentThreadId, role: 'assistant', content: data.response } as any);
+        if (assistantInsertError) throw assistantInsertError;
         await supabase.from('chat_threads').update({ updated_at: new Date().toISOString() }).eq('id', currentThreadId);
         queryClient.invalidateQueries({ queryKey: [messagesQueryKey, currentThreadId] });
         queryClient.invalidateQueries({ queryKey: [threadsQueryKey, threadQueryId] });
