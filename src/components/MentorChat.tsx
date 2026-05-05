@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Send, Loader2, Paperclip, Plus, MessageSquare, Pencil, Trash2, FileText, X, Sparkles, ArrowUp, Square, ChevronLeft, Menu, Copy } from 'lucide-react';
+import { Loader2, Paperclip, Plus, MessageSquare, Pencil, Trash2, FileText, X, Sparkles, ArrowUp, Square, ChevronLeft, Menu, Copy, Pin } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -44,6 +44,7 @@ interface ChatThread {
   title: string;
   created_at: string;
   updated_at: string;
+  is_pinned?: boolean;
 }
 
 interface MentorChatProps {
@@ -173,6 +174,7 @@ export const MentorChat = ({
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
+  const [loadingSeconds, setLoadingSeconds] = useState(0);
   const [lastSummaryApplied, setLastSummaryApplied] = useState(false);
   const [isExtractingFile, setIsExtractingFile] = useState(false);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
@@ -187,7 +189,9 @@ export const MentorChat = ({
   const placeholder = attachment
     ? 'Descreva o que você quer saber sobre a imagem...'
     : isLeader
-      ? `Pergunte sobre ${memberName} (Ctrl+V para colar imagem)…`
+      ? memberId
+        ? `Pergunte sobre ${memberName} (Ctrl+V para colar imagem)…`
+        : 'Pergunte como em uma LLM: liderança, decisões, comunicação, prioridades…'
       : 'Pergunte sobre sua carreira ou cole uma imagem (Ctrl+V)...';
   const [selectedContexts, setSelectedContexts] = useState<string[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -214,6 +218,7 @@ export const MentorChat = ({
         .select('*')
         .eq('user_id', effectiveUserId)
         .eq('type', threadType)
+        .order('is_pinned' as any, { ascending: false })
         .order('updated_at', { ascending: false });
       
       if (isLeader) {
@@ -263,11 +268,25 @@ export const MentorChat = ({
     if (scrollRef.current && (messages.length > 0 || isLoading)) {
       setTimeout(() => {
         if (scrollRef.current) {
-          scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+          const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement | null;
+          const target = viewport ?? scrollRef.current;
+          target.scrollTo({ top: target.scrollHeight, behavior: 'smooth' });
         }
       }, 100);
     }
   }, [messages, isLoading]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setLoadingSeconds(0);
+      return;
+    }
+    const startedAt = Date.now();
+    const interval = setInterval(() => {
+      setLoadingSeconds(Math.max(1, Math.floor((Date.now() - startedAt) / 1000)));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isLoading]);
 
   // Populate input with initialPrompt when opens
   const autoSentRef = useRef(false);
@@ -290,17 +309,20 @@ export const MentorChat = ({
   // ── Thread helpers ───────────────────────────────────
   const groupThreadsByDate = (threads: ChatThread[]) => {
     const groups: { label: string; threads: ChatThread[] }[] = [];
+    const pinned: ChatThread[] = [];
     const today: ChatThread[] = [];
     const yesterday: ChatThread[] = [];
     const lastWeek: ChatThread[] = [];
     const older: ChatThread[] = [];
     threads.forEach(thread => {
+      if (thread.is_pinned) { pinned.push(thread); return; }
       const date = new Date(thread.updated_at);
       if (isToday(date)) today.push(thread);
       else if (isYesterday(date)) yesterday.push(thread);
       else if (differenceInDays(new Date(), date) <= 7) lastWeek.push(thread);
       else older.push(thread);
     });
+    if (pinned.length) groups.push({ label: 'Fixadas', threads: pinned });
     if (today.length) groups.push({ label: 'Hoje', threads: today });
     if (yesterday.length) groups.push({ label: 'Ontem', threads: yesterday });
     if (lastWeek.length) groups.push({ label: 'Última semana', threads: lastWeek });
@@ -357,6 +379,25 @@ export const MentorChat = ({
     } finally { setDeletingThread(null); }
   };
 
+  const handleTogglePinThread = async (thread: ChatThread) => {
+    try {
+      const nextPinned = !thread.is_pinned;
+      const { error } = await supabase
+        .from('chat_threads')
+        .update({ is_pinned: nextPinned } as any)
+        .eq('id', thread.id);
+      if (error) throw error;
+      queryClient.setQueryData([threadsQueryKey, threadQueryId], (old: ChatThread[] | undefined) => {
+        const updated = old?.map(t => t.id === thread.id ? { ...t, is_pinned: nextPinned } : t) || [];
+        return updated.sort((a, b) => Number(!!b.is_pinned) - Number(!!a.is_pinned) || new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+      });
+      toast({ title: nextPinned ? 'Conversa fixada' : 'Conversa desafixada' });
+    } catch (error) {
+      console.error('Erro ao fixar conversa:', error);
+      toast({ title: 'Erro ao atualizar conversa', description: 'Tente novamente.', variant: 'destructive' });
+    }
+  };
+
   // ── Textarea auto-height ─────────────────────────────
   const adjustTextareaHeight = () => {
     const textarea = textareaRef.current;
@@ -400,11 +441,17 @@ export const MentorChat = ({
     let loadingInterval: ReturnType<typeof setInterval> | null = null;
 
     const defaultSteps = isLeader
-      ? [
-          `Lendo o histórico de ${memberName}…`,
-          'Analisando padrões e contradições…',
-          'Estruturando a resposta…',
-        ]
+      ? memberId
+        ? [
+            `Lendo o histórico de ${memberName}…`,
+            'Analisando padrões e contradições…',
+            'Estruturando a resposta…',
+          ]
+        : [
+            'Pensando no seu contexto de liderança…',
+            'Conectando princípios e padrões do time…',
+            'Escrevendo uma resposta prática…',
+          ]
       : [
           'Revendo seu contexto…',
           'Conectando insights…',
@@ -437,7 +484,8 @@ export const MentorChat = ({
         }
 
         const savedContent = imageContent ? (imageContent.textMessage || '[Imagem enviada para análise]') : finalMessage;
-        await supabase.from('mentor_messages').insert({ user_id: effectiveUserId, member_id: memberId ?? null, thread_id: currentThreadId, role: 'user', content: savedContent });
+        const { error: userInsertError } = await supabase.from('mentor_messages').insert({ user_id: effectiveUserId, member_id: memberId ?? null, thread_id: currentThreadId, role: 'user', content: savedContent } as any);
+        if (userInsertError) throw userInsertError;
         queryClient.invalidateQueries({ queryKey: [messagesQueryKey, currentThreadId] });
 
         const controller = new AbortController();
@@ -505,7 +553,8 @@ export const MentorChat = ({
         if (!data?.response) throw new Error('Resposta inválida do servidor.');
         setLastSummaryApplied(!!data.metadata?.summary_applied);
 
-        await supabase.from('mentor_messages').insert({ user_id: effectiveUserId, member_id: memberId ?? null, thread_id: currentThreadId, role: 'assistant', content: data.response });
+        const { error: assistantInsertError } = await supabase.from('mentor_messages').insert({ user_id: effectiveUserId, member_id: memberId ?? null, thread_id: currentThreadId, role: 'assistant', content: data.response } as any);
+        if (assistantInsertError) throw assistantInsertError;
         await supabase.from('chat_threads').update({ updated_at: new Date().toISOString() }).eq('id', currentThreadId);
         queryClient.invalidateQueries({ queryKey: [messagesQueryKey, currentThreadId] });
         queryClient.invalidateQueries({ queryKey: [threadsQueryKey, threadQueryId] });
@@ -817,14 +866,23 @@ export const MentorChat = ({
                 — {memberName} {memberRole && `(${memberRole})`}
               </span>
             )}
+            {isLeader && !memberId && (
+              <span className="text-muted-foreground font-normal text-sm ml-2">
+                — Chat geral de liderança
+              </span>
+            )}
           </h2>
         </div>
-        {isLeader ? (
+        {isLeader && memberId ? (
           <ContextPicker 
             feedbacks={feedbacks}
             selectedIds={selectedContexts}
             onSelectionChange={setSelectedContexts}
           />
+        ) : isLeader ? (
+          <Badge variant="secondary" className="bg-primary/10 text-primary text-xs border-0 rounded-full">
+            Coaching pessoal
+          </Badge>
         ) : (
           <Badge className="bg-primary/10 text-primary text-xs border-0">Confidencial</Badge>
         )}
@@ -839,7 +897,7 @@ export const MentorChat = ({
       <div className="flex flex-1 min-h-0">
 
           {/* ── Sidebar ────────────────────────────── */}
-          <div className={`flex-shrink-0 border-r border-border flex flex-col bg-muted/20 transition-all duration-200 overflow-hidden ${sidebarOpen ? 'w-[240px]' : 'w-0 border-r-0'}`}>
+          <div className={`flex-shrink-0 border-r border-border flex flex-col bg-muted/20 transition-all duration-200 overflow-hidden ${sidebarOpen ? 'w-[280px]' : 'w-0 border-r-0'}`}>
             <div className="p-3 flex items-center gap-2">
               <Button onClick={handleNewThread} variant="outline" size="sm" className="flex-1 gap-2 rounded-xl text-sm">
                 <Plus className="h-4 w-4" />
@@ -898,15 +956,26 @@ export const MentorChat = ({
                               }`}
                             >
                               <div className="flex-1 min-w-0">
-                                <p className="truncate text-[13px]">{thread.title}</p>
+                                <div className="flex items-start gap-1.5">
+                                  {thread.is_pinned && <Pin className="h-3 w-3 text-primary fill-primary mt-0.5 flex-shrink-0" />}
+                                  <p className="line-clamp-2 text-[13px] leading-snug">{thread.title}</p>
+                                </div>
                                 <p className="text-[11px] text-muted-foreground">
                                   {format(new Date(thread.updated_at), 'dd MMM', { locale: ptBR })}
                                 </p>
                               </div>
                               <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 flex-shrink-0 transition-opacity">
                                 <button
+                                  onClick={(e) => { e.stopPropagation(); handleTogglePinThread(thread); }}
+                                  className="p-1 rounded hover:bg-accent transition-colors"
+                                  title={thread.is_pinned ? 'Desafixar' : 'Fixar'}
+                                >
+                                  <Pin className={`h-3.5 w-3.5 ${thread.is_pinned ? 'text-primary fill-primary' : 'text-muted-foreground'}`} />
+                                </button>
+                                <button
                                   onClick={(e) => { e.stopPropagation(); setEditingThreadId(thread.id); setEditingTitle(thread.title); }}
                                   className="p-1 rounded hover:bg-accent transition-colors"
+                                  title="Renomear"
                                 >
                                   <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                                 </button>
@@ -946,11 +1015,13 @@ export const MentorChat = ({
                       {isLeader ? '🎯' : <Sparkles className="h-6 w-6 text-primary" />}
                     </div>
                     <h2 className="font-semibold text-xl text-foreground tracking-tight">
-                      {isLeader ? `Mentor de ${memberName}` : `Olá, ${memberName.split(' ')[0]}! 👋`}
+                       {isLeader ? (memberId ? `Mentor de ${memberName}` : 'Converse com a Rhitmo') : `Olá, ${memberName.split(' ')[0]}! 👋`}
                     </h2>
                     <p className="text-muted-foreground text-sm max-w-md mt-2">
                       {isLeader
-                        ? `Pergunte qualquer coisa sobre ${memberName}, ou comece com um destes templates:`
+                        ? memberId
+                          ? `Pergunte qualquer coisa sobre ${memberName}, ou comece com um destes templates:`
+                          : 'Faça uma pergunta aberta sobre liderança, comunicação, prioridades ou decisões do seu dia a dia.'
                         : 'Sou seu parceiro de desenvolvimento. Comece com um destes templates ou pergunte o que quiser:'}
                     </p>
 
@@ -1075,10 +1146,23 @@ export const MentorChat = ({
                   <div className="flex items-start gap-3 animate-in fade-in slide-in-from-bottom-1 duration-300">
                     <AssistantIcon />
                     <div className="flex flex-col gap-2 max-w-[75%]">
-                      <div className="rounded-2xl bg-muted/50 px-4 py-3 space-y-2">
-                        <Skeleton className="h-3 w-48 rounded-full" />
-                        <Skeleton className="h-3 w-64 rounded-full" />
-                        <Skeleton className="h-3 w-40 rounded-full" />
+                      <div className="rounded-2xl bg-muted/50 px-4 py-3 border border-border/40 shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
+                        <div className="flex items-center gap-2 text-sm text-foreground">
+                          <span className="grid grid-cols-3 gap-0.5">
+                            {Array.from({ length: 9 }).map((_, index) => (
+                              <span
+                                key={index}
+                                className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-pulse"
+                                style={{ animationDelay: `${index * 90}ms` }}
+                              />
+                            ))}
+                          </span>
+                          <span className="font-medium">Pensando</span>
+                          <span className="text-muted-foreground">· {Math.max(1, loadingSeconds)}s</span>
+                        </div>
+                        <div className="mt-3 h-1 overflow-hidden rounded-full bg-background/70">
+                          <div className="h-full w-1/2 rounded-full bg-primary/60 animate-[shimmer_1.4s_ease-in-out_infinite]" />
+                        </div>
                       </div>
                       <div className="flex items-center gap-2 px-1">
                         <span className="flex gap-1">

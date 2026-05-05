@@ -4,11 +4,11 @@
 // (ou ficar em "chat geral") e o escopo de contexto antes de iniciar.
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
-  Sparkles, ArrowUp, MessageSquare, ChevronDown, Users, Layers, History, X,
+  Sparkles, ArrowUp, MessageSquare, ChevronDown, Users, Layers, History, X, Pin, Pencil, Trash2,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -24,6 +24,16 @@ import { MemberAvatar } from '@/components/MemberAvatar';
 // MentorChat modal removed — full-page chat now lives at /lider/mentor/:threadId
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 type ContextScope = 'geral' | 'tudo' | 'notas';
 
@@ -33,6 +43,7 @@ interface ThreadRow {
   type: string;
   updated_at: string;
   member_id: string | null;
+  is_pinned?: boolean;
 }
 
 const SUGGESTIONS = [
@@ -49,6 +60,7 @@ export default function LiderMentor() {
   const { id: effectiveUserId } = useEffectiveUser();
   const { members } = useLeaderMembers();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const [selectedMember, setSelectedMember] = useState<LeaderMemberRow | null>(null);
   const [scope, setScope] = useState<ContextScope>('geral');
@@ -57,6 +69,9 @@ export default function LiderMentor() {
   const [memberPickerOpen, setMemberPickerOpen] = useState(false);
   const [memberQuery, setMemberQuery] = useState('');
   const [showAllHistory, setShowAllHistory] = useState(false);
+  const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
+  const [deletingThread, setDeletingThread] = useState<ThreadRow | null>(null);
 
   // ── Recent threads ───────────────────────────────────────────────
   const { data: threads = [], isLoading: threadsLoading } = useQuery({
@@ -65,9 +80,10 @@ export default function LiderMentor() {
       if (!effectiveUserId) return [];
       const { data, error } = await supabase
         .from('chat_threads')
-        .select('id, title, type, updated_at, member_id')
+        .select('id, title, type, updated_at, member_id, is_pinned')
         .eq('user_id', effectiveUserId)
         .in('type', ['mentor', 'general_chat', 'brief'])
+        .order('is_pinned' as any, { ascending: false })
         .order('updated_at', { ascending: false })
         .limit(showAllHistory ? 50 : 10);
       if (error) return [];
@@ -164,6 +180,32 @@ export default function LiderMentor() {
   const handleClearMember = () => {
     setSelectedMember(null);
     setScope('geral');
+  };
+
+  const refreshThreads = () => queryClient.invalidateQueries({ queryKey: ['mentor-page-threads', effectiveUserId] });
+
+  const handleRenameThread = async (threadId: string, title: string) => {
+    const trimmed = title.trim();
+    if (!trimmed) { setEditingThreadId(null); setEditingTitle(''); return; }
+    const { error } = await supabase.from('chat_threads').update({ title: trimmed }).eq('id', threadId);
+    if (!error) await refreshThreads();
+    setEditingThreadId(null);
+    setEditingTitle('');
+  };
+
+  const handleTogglePinThread = async (thread: ThreadRow) => {
+    const { error } = await supabase
+      .from('chat_threads')
+      .update({ is_pinned: !thread.is_pinned } as any)
+      .eq('id', thread.id);
+    if (!error) await refreshThreads();
+  };
+
+  const handleDeleteThread = async (thread: ThreadRow) => {
+    await supabase.from('mentor_messages').delete().eq('thread_id', thread.id);
+    const { error } = await supabase.from('chat_threads').delete().eq('id', thread.id);
+    if (!error) await refreshThreads();
+    setDeletingThread(null);
   };
 
   const scopeLabels: Record<ContextScope, string> = {
@@ -421,26 +463,34 @@ export default function LiderMentor() {
               {threads.map((t) => {
                 const m = t.member_id ? memberLookup.get(t.member_id) ?? null : null;
                 return (
-                  <li key={t.id}>
+                  <li key={t.id} className="group flex items-center gap-2 px-4 py-3 hover:bg-muted/40 transition-colors">
                     <button
                       type="button"
                       onClick={() => {
-                        if (m) {
-                          setSelectedMember(m);
-                          setScope('tudo');
-                        } else {
-                          setSelectedMember(null);
-                          setScope('geral');
-                        }
+                        if (m) { setSelectedMember(m); setScope('tudo'); }
+                        else { setSelectedMember(null); setScope('geral'); }
                         goToThread(t.id);
                       }}
-                      className="w-full px-4 py-3 flex items-center gap-3 hover:bg-muted/40 transition-colors text-left"
+                      className="flex-1 min-w-0 flex items-center gap-3 text-left"
                     >
-                      <MessageSquare className="h-4 w-4 text-muted-foreground/70 shrink-0" />
+                      {t.is_pinned ? <Pin className="h-4 w-4 text-primary fill-primary shrink-0" /> : <MessageSquare className="h-4 w-4 text-muted-foreground/70 shrink-0" />}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
-                          {t.title}
-                        </p>
+                        {editingThreadId === t.id ? (
+                          <Input
+                            value={editingTitle}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => setEditingTitle(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleRenameThread(t.id, editingTitle);
+                              if (e.key === 'Escape') { setEditingThreadId(null); setEditingTitle(''); }
+                            }}
+                            onBlur={() => handleRenameThread(t.id, editingTitle)}
+                            autoFocus
+                            className="h-8 text-sm rounded-xl"
+                          />
+                        ) : (
+                          <p className="text-sm font-medium text-foreground truncate">{t.title}</p>
+                        )}
                         <div className="flex items-center gap-2 mt-0.5">
                           {m ? (
                             <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 rounded-full">
@@ -460,6 +510,11 @@ export default function LiderMentor() {
                         </div>
                       </div>
                     </button>
+                    <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
+                      <button type="button" onClick={() => handleTogglePinThread(t)} className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-muted" aria-label={t.is_pinned ? 'Desafixar conversa' : 'Fixar conversa'}><Pin className="h-3.5 w-3.5" /></button>
+                      <button type="button" onClick={() => { setEditingThreadId(t.id); setEditingTitle(t.title); }} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted" aria-label="Renomear conversa"><Pencil className="h-3.5 w-3.5" /></button>
+                      <button type="button" onClick={() => setDeletingThread(t)} className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10" aria-label="Excluir conversa"><Trash2 className="h-3.5 w-3.5" /></button>
+                    </div>
                   </li>
                 );
               })}
@@ -467,6 +522,23 @@ export default function LiderMentor() {
           )}
         </section>
       </div>
+
+      <AlertDialog open={!!deletingThread} onOpenChange={() => setDeletingThread(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir conversa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação remove a conversa "{deletingThread?.title}" e todo o histórico dela.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deletingThread && handleDeleteThread(deletingThread)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   );
