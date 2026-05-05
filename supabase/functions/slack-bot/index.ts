@@ -1105,6 +1105,7 @@ async function handleMentorCommand(payload: Record<string, string>, persona: Per
 
     const data = await res.json();
     const reply = data.response || data.reply || data.message || 'Sem resposta do mentor.';
+    const slackReply = smartTruncate(markdownToSlackMrkdwn(reply), 2900);
 
     const blocks: unknown[] = [
       { type: 'section', text: { type: 'mrkdwn', text: `> _${question}_` } },
@@ -1117,7 +1118,7 @@ async function handleMentorCommand(payload: Record<string, string>, persona: Per
 
     blocks.push(
       { type: 'divider' },
-      { type: 'section', text: { type: 'mrkdwn', text: reply.substring(0, 3000) } },
+      { type: 'section', text: { type: 'mrkdwn', text: slackReply } },
       { type: 'divider' },
       { type: 'context', elements: [{ type: 'mrkdwn', text: '💡 Continue a conversa no Rhitmo para manter o histórico completo.' }] },
     );
