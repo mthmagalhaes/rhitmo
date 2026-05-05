@@ -1201,29 +1201,45 @@ export const MentorChat = ({
               </div>
             </div>
           </div>
-        </div>
+      </div>
 
-        {/* ── Delete thread dialog ───────────────────── */}
-        <AlertDialog open={!!deletingThread} onOpenChange={() => setDeletingThread(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertTitle>Excluir conversa?</AlertTitle>
-              <AlertDialogDescription>
-                Esta ação é irreversível. A conversa "{deletingThread?.title}" e todas as mensagens serão excluídas permanentemente.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => deletingThread && handleDeleteThread(deletingThread)}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Excluir
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+      {/* ── Delete thread dialog ───────────────────── */}
+      <AlertDialog open={!!deletingThread} onOpenChange={() => setDeletingThread(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertTitle>Excluir conversa?</AlertTitle>
+            <AlertDialogDescription>
+              Esta ação é irreversível. A conversa "{deletingThread?.title}" e todas as mensagens serão excluídas permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingThread && handleDeleteThread(deletingThread)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <div className="flex flex-col h-[calc(100svh-3rem)] bg-background overflow-hidden">
+        {bodyNode}
+      </div>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 gap-0 shadow-[0_2px_40px_rgba(0,0,0,0.08)] [&>button]:hidden overflow-hidden">
+        {bodyNode}
       </DialogContent>
     </Dialog>
   );
 };
+
