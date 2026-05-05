@@ -360,6 +360,21 @@ serve(async (req) => {
     log.info('start', { mode, memberName, memberRole, feedbacksCount: feedbacks?.length, hasImage: !!imageContent?.isImage, contextMode: contextMode || 'auto' });
 
     // ============================================
+    // SHORT-CIRCUIT: Capabilities mode (Windy-style)
+    // Responde sem chamar LLM quando a pergunta é "o que você faz?" e é a 1ª msg da thread
+    // ============================================
+    const isFirstMessage = !Array.isArray(conversationHistory) || conversationHistory.length === 0;
+    if (isFirstMessage && question && isCapabilitiesQuestion(question) && !imageContent?.isImage) {
+      const memberFirstName = memberName ? memberName.split(' ')[0] : undefined;
+      const reply = buildCapabilitiesReply(mode as 'leader_self' | 'member', memberFirstName);
+      log.info('capabilities_short_circuit', { mode });
+      return new Response(
+        JSON.stringify({ response: reply, capabilities_mode: true }),
+        { status: 200, headers: respHeaders }
+      );
+    }
+
+    // ============================================
     // MODO COACHING PESSOAL DO LÍDER (sem liderado)
     // ============================================
     let systemPromptOverride: string | null = null;
