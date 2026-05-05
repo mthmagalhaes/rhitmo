@@ -432,7 +432,7 @@ export default function LiderMentor() {
         </section>
 
         {/* ── Recent chats ───────────────────────────────────────── */}
-        <section className="mt-10">
+        <section className="mt-8">
           <div className="flex items-center justify-between mb-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Conversas recentes
