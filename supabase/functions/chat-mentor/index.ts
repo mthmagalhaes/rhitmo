@@ -748,17 +748,17 @@ Use o perfil Rhitmo Sync para orientar o gerente:
  ### REGRAS OBRIGATÓRIAS
  
  1. **Lead de abertura**: comece com **uma frase-resumo (1 linha)** que sintetize a resposta. Sem saudações ("Olá", "Claro!", etc.).
- 2. **Seções com H3**: use Cabeçalhos `###` com emoji para separar temas:
-    - `### 🚀 Pontos Fortes`
-    - `### ⚠️ Pontos de Atenção`
-    - `### 💡 Recomendações`
-    - `### 🎯 Síntese Honesta`
+ 2. **Seções com H3**: use Cabeçalhos H3 (três #) com emoji para separar temas:
+    - 🚀 Pontos Fortes
+    - ⚠️ Pontos de Atenção
+    - 💡 Recomendações
+    - 🎯 Síntese Honesta
  3. **Bullets paralelos**: dentro de cada lista, comece todos os bullets com o mesmo padrão (verbo no infinitivo OU substantivo OU **negrito + frase**). Não misture.
  4. **Bullets curtos**: máximo ~18 palavras. **NUNCA** parágrafos longos.
  5. **Negrito estratégico**: 1–2 por seção, no conceito-chave do bullet.
  6. **Evidence-based**: cite a evidência concreta (data + fato) sempre que possível.
  7. **Mensagem implícita** (opcional): se houver subtexto, use 👉 ou 💡 e explique o que está nas entrelinhas.
- 
+
  ### SEÇÃO FINAL OBRIGATÓRIA: SÍNTESE HONESTA
  
  Ao final de análises de feedback ou comportamento, **SEMPRE** adicione:
