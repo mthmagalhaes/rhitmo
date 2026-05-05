@@ -23,6 +23,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { MemberAvatar } from '@/components/MemberAvatar';
 // MentorChat modal removed — full-page chat now lives at /lider/mentor/:threadId
 import { Badge } from '@/components/ui/badge';
+import { MentorContextPanel } from '@/components/mentor/MentorContextPanel';
 import { cn } from '@/lib/utils';
 import {
   AlertDialog,
@@ -218,8 +219,9 @@ export default function LiderMentor() {
   void memberFeedbacks;
 
   return (
-    <div className="h-[calc(100svh-3rem)] overflow-y-auto bg-background">
-      <div className="max-w-5xl px-6 lg:px-8 py-8">
+    <div className="flex h-[calc(100svh-3rem)] overflow-hidden bg-background">
+      <main className="flex-1 min-w-0 overflow-y-auto">
+        <div className="max-w-2xl px-6 lg:px-8 py-8">
         {/* ── Header ─────────────────────────────────────────────── */}
         <header className="mb-6">
           <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground mb-2">
@@ -521,7 +523,18 @@ export default function LiderMentor() {
             </ul>
           )}
         </section>
-      </div>
+        </div>
+      </main>
+
+      <aside className="hidden lg:block w-[340px] shrink-0 border-l border-border/40 bg-muted/30 overflow-y-auto">
+        <div className="px-5 py-8">
+          <MentorContextPanel
+            selectedMember={selectedMember}
+            scope={scope}
+            onPickMember={() => setMemberPickerOpen(true)}
+          />
+        </div>
+      </aside>
 
       <AlertDialog open={!!deletingThread} onOpenChange={() => setDeletingThread(null)}>
         <AlertDialogContent>
