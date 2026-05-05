@@ -115,17 +115,40 @@ export default function LiderMentor() {
     'Você';
 
   // ── Actions ──────────────────────────────────────────────────────
-  const startChat = (prompt?: string, threadId?: string | null) => {
-    setInitialPrompt(prompt);
-    setActiveThreadId(threadId ?? null);
-    setChatOpen(true);
+  const goToThread = (threadId: string, prompt?: string) => {
+    navigate(`/lider/mentor/${threadId}`, {
+      state: prompt ? { initialPrompt: prompt } : undefined,
+    });
+  };
+
+  const startNewChat = async (prompt: string) => {
+    if (!effectiveUserId || !prompt.trim()) return;
+    const titleText = prompt.slice(0, 40) + (prompt.length > 40 ? '…' : '');
+    // For "geral" scope (no member context) we still create a member-less thread.
+    const memberId = selectedMember && scope !== 'geral' ? selectedMember.id : null;
+    const insertData: any = {
+      user_id: effectiveUserId,
+      title: titleText,
+      type: 'mentor',
+      member_id: memberId,
+    };
+    const { data, error } = await supabase
+      .from('chat_threads')
+      .insert(insertData)
+      .select('id')
+      .single();
+    if (error || !data) {
+      console.error('Erro ao criar thread', error);
+      return;
+    }
+    goToThread(data.id, prompt);
   };
 
   const handleSubmit = () => {
     const text = input.trim();
     if (!text) return;
-    startChat(text, null);
     setInput('');
+    startNewChat(text);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -136,8 +159,9 @@ export default function LiderMentor() {
   };
 
   const handleSuggestion = (text: string) => {
-    startChat(text, null);
+    startNewChat(text);
   };
+
 
   const handleClearMember = () => {
     setSelectedMember(null);
