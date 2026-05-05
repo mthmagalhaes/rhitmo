@@ -471,7 +471,11 @@ export const MentorChat = ({
     }, 2500);
 
     try {
-      let currentThreadId = selectedThreadId;
+      // Fix: quando o launchpad (/lider/mentor) já criou a thread e navegou
+      // para cá com initialThreadId, o setSelectedThreadId pode ainda não ter
+      // propagado quando o autoSendInitialPrompt dispara — usar initialThreadId
+      // como fallback evita criar uma thread duplicada.
+      let currentThreadId = selectedThreadId ?? initialThreadId ?? null;
 
       if (isLeader) {
         // Leader mode: create thread client-side

@@ -1,90 +1,42 @@
-## Mentor Chat 2.2 — Polimento de resposta (estilo Windy onde faz sentido)
+## Problema
 
-Quatro mudanças cirúrgicas, sem descaracterizar o tom de coach do Mentor.
+Quando o líder começa um chat via **Pergunte ao Mentor → escolhe liderado → faz a pergunta**, aparecem **duas conversas idênticas** no histórico (ver screenshot: "Giovanna está indo be,?" duplicada em "Hoje").
 
-### 1. Capabilities mode (pergunta tipo "o que você faz?")
+## Causa raiz
 
-**Onde:** `supabase/functions/chat-mentor/index.ts`
+O fluxo cria a thread **duas vezes**:
 
-Adicionar detector simples (regex em PT-BR) **antes** da chamada à LLM:
-- Padrões: `o que (você|vc) (faz|pode fazer|consegue|me ajuda)`, `como (você|vc) (me )?ajuda`, `quais (são )?(suas|tuas) (capacidades|funções|funcionalidades)`, `me apresenta`, `o que é (esse|este) (mentor|chat)`.
-- Quando casar **e** `mode === 'leader_self'` **e** sem `conversationHistory` (primeira msg da thread), responder com payload **estático** estilo Windy — sem chamar LLM:
+1. **`src/pages/lider/Mentor.tsx`** (launchpad) — `startNewChat` faz `INSERT` em `chat_threads` (linha 149-153) e navega para `/lider/mentor/:threadId` passando `initialPrompt` no state.
+2. **`src/pages/lider/MentorThread.tsx`** monta `<MentorChat>` com `initialThreadId={threadId}` + `autoSendInitialPrompt={true}` + `initialPrompt`.
+3. Em `MentorChat.tsx`:
+   - Effect (linha 238) faz `setSelectedThreadId(initialThreadId)` — mas é assíncrono (próximo render).
+   - Effect (linha 293) com `autoSendInitialPrompt` dispara `setTimeout(() => handleSend(initialPrompt), 50)` capturando o `handleSend` do render atual, onde `selectedThreadId` **ainda é `null`**.
+   - Em `handleSend` (linha 474): `currentThreadId = selectedThreadId` (= `null`) → condição `!currentThreadId || isCreatingNewThread` → chama `createThread` (linha 479) → **cria uma segunda thread** com o mesmo título.
 
-```
-Aqui está como posso te ajudar como **Mentor Rhitmo**:
+Resultado: 2 rows em `chat_threads` com mesmo título; a URL aponta pra primeira (que fica vazia), e as mensagens vão pra segunda — daí a duplicação visual e a sensação de "história fantasma".
 
----
+## Correção
 
-### 🧠 Reflexão sobre sua liderança
-- Discutir desafios atuais e pontos cegos
-- Conectar sua intenção (perfil) com sua prática (notas do time)
-- Provocar sobre legado, energia e desenvolvimento
+Mudança mínima e cirúrgica em **`src/components/MentorChat.tsx`**:
 
-### 👥 Análise de liderados específicos
-- Resumir histórico, padrões e sentimento por pessoa
-- Preparar conversas difíceis (1:1s, feedbacks, PDI)
-- _Selecione a pessoa em "Trocar contexto" no topo_
-
-### 📊 Padrões do time
-- Identificar tags recorrentes nas suas notas
-- Detectar contradições ("Watermelon": tudo verde por fora…)
-
-### 🎯 Síntese acionável
-- Toda análise termina com 3 bullets: insight, padrão, ação imediata
+```ts
+// linha 474
+let currentThreadId = selectedThreadId ?? initialThreadId ?? null;
 ```
 
-Para `mode === 'member'`, variante curta mencionando o nome do liderado.
+Assim, mesmo se o `setSelectedThreadId(initialThreadId)` ainda não propagou no momento do `handleSend` auto-disparado, usamos a thread já criada pelo launchpad — e o ramo `if (!currentThreadId || isCreatingNewThread)` não cria duplicata.
 
-**Por quê estático:** zero latência, zero custo, formatação garantida (resolve a queixa de "não tive resposta nenhuma" + dá o tom Windy).
+Como `isCreatingNewThread` permanece `false` (effect da linha 238 já executou seu `setIsCreatingNewThread(false)` antes do segundo render que dispara o setTimeout, e o estado inicial já é `false`), a condição não dispara `createThread`.
 
-### 2. Bullets paralelos como default
+### Limpeza opcional (mesma PR)
 
-**Onde:** `_shared/rhitmo-leader-coach.ts` linhas 92-98 + bloco equivalente no system prompt do modo `member` em `chat-mentor/index.ts` (~linha 631-684).
+- **Threads órfãs já criadas em produção** (sem mensagens, mesmo título duplicado): adicionar uma migration que faz `DELETE FROM chat_threads WHERE NOT EXISTS (SELECT 1 FROM mentor_messages WHERE thread_id = chat_threads.id) AND created_at > now() - interval '60 days' AND type = 'mentor';` para limpar o lixo histórico do bug.
 
-Trocar a regra atual de formatação por:
+## Arquivos afetados
 
-```
-## DIRETRIZES DE FORMATAÇÃO
+- `src/components/MentorChat.tsx` — 1 linha alterada (linha 474).
+- `supabase/migrations/<timestamp>_cleanup_orphan_mentor_threads.sql` — opcional, limpa duplicatas históricas.
 
-1. Comece com **uma frase-resumo (1 linha)** que sintetize a resposta. Sem saudação.
-2. Use H3 (`###`) com emoji para separar seções.
-3. Bullets **sempre paralelos**: comece com verbo no infinitivo ou substantivo, mantenha o mesmo padrão dentro de cada lista.
-4. Bullets curtos (≤ 18 palavras). Sem parágrafos densos.
-5. **Negrito** apenas em conceitos-chave (1–2 por seção).
-6. Encerre análises com `### 🎯 Síntese Honesta` (3 bullets: insight, padrão, ação imediata).
-```
+## Fora de escopo
 
-### 3. Slack: degradar markdown corretamente
-
-**Onde:** `supabase/functions/slack-bot/index.ts` linha ~1086 (handler `/mentor`).
-
-Hoje o `reply.substring(0, 3000)` é jogado como `mrkdwn`, mas o Mentor devolve `### Título` e `**negrito**` (markdown padrão), que o Slack não renderiza.
-
-Criar helper local `markdownToSlackMrkdwn(text)`:
-- `### Título` → `*Título*\n` (Slack só tem 1 nível de bold)
-- `## Título` → `*Título*\n`
-- `**texto**` → `*texto*`
-- `__texto__` → `_texto_`
-- `- ` no início de linha → `• `
-- Manter emojis e quebras de linha
-- Truncar inteligentemente em 2900 chars (preservar última quebra de parágrafo)
-
-Aplicar ao `reply` antes de inserir no bloco.
-
-### 4. Lead de abertura (1 linha)
-
-Já fica coberto pela regra (1) da mudança #2 do prompt. Sem código adicional.
-
----
-
-## Arquivos modificados
-
-- `supabase/functions/chat-mentor/index.ts` — detector capabilities-mode + curto-circuito antes da LLM; ajuste no system prompt do modo member.
-- `supabase/functions/_shared/rhitmo-leader-coach.ts` — bloco "Diretrizes de formatação" reescrito.
-- `supabase/functions/slack-bot/index.ts` — helper `markdownToSlackMrkdwn` + aplicação no handler `/mentor`.
-
-## Fora de escopo (intencional)
-
-- Não mexer em CitationChip / `[doc:UUID]` (já funciona).
-- Não tocar em `MentorChat.tsx` na web (o markdown já renderiza via `react-markdown`).
-- Não mudar o tom de coach do modo análise — só padronizar a forma.
+- Nenhuma mudança em `Mentor.tsx`, `MentorThread.tsx`, edge functions ou prompt — só o bug de duplicação.
