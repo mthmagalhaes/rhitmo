@@ -331,6 +331,62 @@ export type Database = {
         }
         Relationships: []
       }
+      context_briefs: {
+        Row: {
+          conversations: Json
+          evidence_count: number
+          generated_at: string
+          id: string
+          in_motion: Json
+          leader_user_id: string
+          member_id: string
+          model: string | null
+          risks: Json
+          window_days: number
+          window_end: string
+          window_start: string
+          wins: Json
+        }
+        Insert: {
+          conversations?: Json
+          evidence_count?: number
+          generated_at?: string
+          id?: string
+          in_motion?: Json
+          leader_user_id: string
+          member_id: string
+          model?: string | null
+          risks?: Json
+          window_days?: number
+          window_end: string
+          window_start: string
+          wins?: Json
+        }
+        Update: {
+          conversations?: Json
+          evidence_count?: number
+          generated_at?: string
+          id?: string
+          in_motion?: Json
+          leader_user_id?: string
+          member_id?: string
+          model?: string | null
+          risks?: Json
+          window_days?: number
+          window_end?: string
+          window_start?: string
+          wins?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "context_briefs_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       context_evidence: {
         Row: {
           actor_user_id: string | null
