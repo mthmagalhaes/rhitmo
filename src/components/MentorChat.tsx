@@ -207,8 +207,9 @@ export const MentorChat = ({
         .eq('type', threadType)
         .order('updated_at', { ascending: false });
       
-      if (isLeader && memberId) {
-        query = query.eq('member_id', memberId);
+      if (isLeader) {
+        if (memberId) query = query.eq('member_id', memberId);
+        else query = query.is('member_id', null);
       }
       
       const { data, error } = await query;
