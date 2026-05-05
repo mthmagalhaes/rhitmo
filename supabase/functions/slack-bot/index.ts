@@ -1,5 +1,39 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
+// ── Markdown → Slack mrkdwn converter ──────────────────────
+// Slack's mrkdwn is NOT standard markdown:
+// - No headings → degrade to bold
+// - Single `*bold*` (not `**bold**`)
+// - Single `_italic_` (not `__italic__`)
+// - Bullets render better as `•` than `-`
+function markdownToSlackMrkdwn(text: string): string {
+  if (!text) return '';
+  let out = text;
+  // H1-H6 → bold + line break
+  out = out.replace(/^#{1,6}\s+(.+)$/gm, '*$1*');
+  // Bold: **text** or __text__ → *text*
+  out = out.replace(/\*\*(.+?)\*\*/g, '*$1*');
+  out = out.replace(/__(.+?)__/g, '*$1*');
+  // Italic: keep single _text_ as-is. Convert *text* (single asterisk italic in CommonMark) — skip; risky.
+  // Bullets: leading "- " or "* " → "• "
+  out = out.replace(/^(\s*)[-*]\s+/gm, '$1• ');
+  // Horizontal rules → blank line
+  out = out.replace(/^---+$/gm, '');
+  // Strip [doc:UUID] citations (don't render in Slack)
+  out = out.replace(/\[doc:[a-f0-9-]+\]/gi, '');
+  // Collapse 3+ blank lines
+  out = out.replace(/\n{3,}/g, '\n\n');
+  return out.trim();
+}
+
+function smartTruncate(text: string, max = 2900): string {
+  if (text.length <= max) return text;
+  const slice = text.substring(0, max);
+  const lastBreak = Math.max(slice.lastIndexOf('\n\n'), slice.lastIndexOf('\n'));
+  return (lastBreak > max * 0.6 ? slice.substring(0, lastBreak) : slice) + '\n\n_…resposta truncada. Continue no Rhitmo._';
+}
+
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
