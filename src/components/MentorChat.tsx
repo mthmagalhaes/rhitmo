@@ -866,14 +866,23 @@ export const MentorChat = ({
                 — {memberName} {memberRole && `(${memberRole})`}
               </span>
             )}
+            {isLeader && !memberId && (
+              <span className="text-muted-foreground font-normal text-sm ml-2">
+                — Chat geral de liderança
+              </span>
+            )}
           </h2>
         </div>
-        {isLeader ? (
+        {isLeader && memberId ? (
           <ContextPicker 
             feedbacks={feedbacks}
             selectedIds={selectedContexts}
             onSelectionChange={setSelectedContexts}
           />
+        ) : isLeader ? (
+          <Badge variant="secondary" className="bg-primary/10 text-primary text-xs border-0 rounded-full">
+            Coaching pessoal
+          </Badge>
         ) : (
           <Badge className="bg-primary/10 text-primary text-xs border-0">Confidencial</Badge>
         )}
@@ -954,8 +963,16 @@ export const MentorChat = ({
                               </div>
                               <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 flex-shrink-0 transition-opacity">
                                 <button
+                                  onClick={(e) => { e.stopPropagation(); handleTogglePinThread(thread); }}
+                                  className="p-1 rounded hover:bg-accent transition-colors"
+                                  title={thread.is_pinned ? 'Desafixar' : 'Fixar'}
+                                >
+                                  <Pin className={`h-3.5 w-3.5 ${thread.is_pinned ? 'text-primary fill-primary' : 'text-muted-foreground'}`} />
+                                </button>
+                                <button
                                   onClick={(e) => { e.stopPropagation(); setEditingThreadId(thread.id); setEditingTitle(thread.title); }}
                                   className="p-1 rounded hover:bg-accent transition-colors"
+                                  title="Renomear"
                                 >
                                   <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                                 </button>
