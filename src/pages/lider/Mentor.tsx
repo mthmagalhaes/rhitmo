@@ -218,10 +218,10 @@ export default function LiderMentor() {
   void memberFeedbacks;
 
   return (
-    <div className="min-h-[calc(100svh-3rem)] bg-background overflow-y-auto">
-      <div className="max-w-3xl mx-auto px-6 lg:px-8 py-10">
+    <div className="h-[calc(100svh-3rem)] overflow-y-auto bg-background">
+      <div className="max-w-5xl px-6 lg:px-8 py-8">
         {/* ── Header ─────────────────────────────────────────────── */}
-        <header className="mb-8">
+        <header className="mb-6">
           <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground mb-2">
             <Sparkles className="h-3.5 w-3.5" />
             Pergunte à Rhitmo
