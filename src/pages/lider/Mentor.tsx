@@ -412,7 +412,7 @@ export default function LiderMentor() {
         </div>
 
         {/* ── Suggestions ────────────────────────────────────────── */}
-        <section className="mt-8">
+        <section className="mt-6">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-3">
             Sugestões
           </p>
