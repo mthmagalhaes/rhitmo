@@ -474,6 +474,10 @@ export const MentorChat = ({
               question: finalMessage,
               feedbacks: contextFeedbacks,
               memberName, memberRole, managerName, workStyleData, keyObjectives, contextMode, leaderSyncData,
+              // Modo "Coaching Pessoal" do líder: thread sem member selecionado.
+              mode: isLeader && !memberId ? 'leader_self' : 'member',
+              leaderUserId: isLeader ? effectiveUserId : undefined,
+              leaderName: isLeader ? (managerName || memberName) : undefined,
               conversationHistory: messages.slice(-10).map(msg => ({ role: msg.role, content: msg.content })),
               imageContent
             }),

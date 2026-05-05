@@ -1,7 +1,9 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { RHITMO_IDENTITY, GUARDRAILS_PROMPT, ANALYSIS_RULES } from "../_shared/rhitmo-constitution.ts";
+import { buildLeaderCoachSystemPrompt } from "../_shared/rhitmo-leader-coach.ts";
 import { createLogger, getOrCreateRequestId } from "../_shared/logger.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -111,6 +113,36 @@ const compressContext = (feedbacks: any[]): string => {
   return contextLines || 'Nenhum histórico disponível ainda.';
 };
 
+// Variante "ampliada" — usada quando RAG semântico retorna muito sinal (>=15 hits).
+// Aumenta janela de notas (80) e budget de chars (40k) para liderados com histórico denso.
+const compressContextLarge = (feedbacks: any[]): string => {
+  if (!feedbacks?.length) return 'Nenhum histórico disponível ainda.';
+  const sorted = [...feedbacks].sort((a, b) => {
+    const dateA = new Date(a.occurred_at || a.created_at);
+    const dateB = new Date(b.occurred_at || b.created_at);
+    return dateB.getTime() - dateA.getTime();
+  });
+  const limited = sorted.slice(0, 80);
+  let contextLines = '';
+  let totalChars = 0;
+  const maxChars = 40000;
+  for (const fb of limited) {
+    const date = new Date(fb.occurred_at || fb.created_at).toLocaleDateString('pt-BR');
+    const typeLabel = fb.type || 'Nota';
+    const docId = fb.id ?? null;
+    let text = fb.summary;
+    if (!text || text.length < 20) {
+      text = (fb.content || '').substring(0, 1500);
+      if ((fb.content || '').length > 1500) text += '...';
+    }
+    const docHeader = docId ? ` [doc_id: ${docId}]` : '';
+    const noteText = `[Data: ${date}] [Tipo: ${typeLabel}]${docHeader}\n${text}\n---\n\n`;
+    if (totalChars + noteText.length > maxChars) break;
+    contextLines += noteText;
+    totalChars += noteText.length;
+  }
+  return contextLines || 'Nenhum histórico disponível ainda.';
+};
 // ============================================
 // DETECÇÃO DE TRANSCRIÇÃO LONGA
 // ============================================
@@ -253,18 +285,98 @@ serve(async (req) => {
   const respHeaders = { ...corsHeaders, 'Content-Type': 'application/json', 'x-request-id': requestId };
 
   try {
-    const { question, feedbacks, memberName, memberRole, managerName, workStyleData, keyObjectives, contextMode, leaderSyncData, conversationHistory, imageContent } = await req.json();
+    const body = await req.json();
+    const { question, feedbacks, memberName, memberRole, managerName, workStyleData, keyObjectives, contextMode, leaderSyncData, conversationHistory, imageContent } = body;
+    const mode: string = body.mode === 'leader_self' ? 'leader_self' : 'member';
+    const leaderUserId: string | undefined = body.leaderUserId;
+    const leaderName: string = body.leaderName || managerName || 'líder';
 
-    log.info('start', { memberName, memberRole, feedbacksCount: feedbacks?.length, hasImage: !!imageContent?.isImage, contextMode: contextMode || 'auto' });
-    
-    // Extrair primeiro nome para flexibilidade de apelidos
+    log.info('start', { mode, memberName, memberRole, feedbacksCount: feedbacks?.length, hasImage: !!imageContent?.isImage, contextMode: contextMode || 'auto' });
+
+    // ============================================
+    // MODO COACHING PESSOAL DO LÍDER (sem liderado)
+    // ============================================
+    let systemPromptOverride: string | null = null;
+    if (mode === 'leader_self') {
+      if (!question) {
+        return new Response(
+          JSON.stringify({ error: 'Pergunta é obrigatória.' }),
+          { status: 400, headers: respHeaders }
+        );
+      }
+      const leaderFirstName = (leaderName || 'líder').split(' ')[0];
+      const supa = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
+      // Time + padrões agregados (últimas 30 evidências do líder, agrupadas por sentimento/tag)
+      let directReportsList = '';
+      let teamPatternsSummary = '';
+      let recentReflections = '';
+      try {
+        if (leaderUserId) {
+          const { data: teamRows } = await supa
+            .from('teams').select('id').eq('leader_user_id', leaderUserId).limit(50);
+          const teamIds = (teamRows || []).map((t: any) => t.id);
+          if (teamIds.length) {
+            const { data: members } = await supa
+              .from('team_members').select('id, name, role').in('team_id', teamIds).limit(50);
+            directReportsList = (members || []).map((m: any) => `- ${m.name}${m.role ? ` (${m.role})` : ''}`).join('\n');
+
+            const memberIds = (members || []).map((m: any) => m.id);
+            if (memberIds.length) {
+              const { data: evs } = await supa
+                .from('context_evidence')
+                .select('evidence_type, sentiment, tags, summary, occurred_at, member_id')
+                .in('member_id', memberIds)
+                .order('occurred_at', { ascending: false })
+                .limit(40);
+              const byType: Record<string, number> = {};
+              const bySentiment: Record<string, number> = {};
+              const tagCount: Record<string, number> = {};
+              (evs || []).forEach((e: any) => {
+                byType[e.evidence_type] = (byType[e.evidence_type] || 0) + 1;
+                if (e.sentiment) bySentiment[e.sentiment] = (bySentiment[e.sentiment] || 0) + 1;
+                (e.tags || []).forEach((t: string) => { tagCount[t] = (tagCount[t] || 0) + 1; });
+              });
+              const topTags = Object.entries(tagCount).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([t, n]) => `${t} (${n})`).join(', ');
+              teamPatternsSummary = `Últimas 40 evidências registradas no time:
+- Por tipo: ${Object.entries(byType).map(([k, v]) => `${k}: ${v}`).join(', ') || '—'}
+- Por sentimento: ${Object.entries(bySentiment).map(([k, v]) => `${k}: ${v}`).join(', ') || '—'}
+- Tags recorrentes: ${topTags || '—'}`;
+            }
+          }
+
+          const { data: reflections } = await supa
+            .from('weekly_reflection' as any)
+            .select('week_start, content')
+            .eq('user_id', leaderUserId)
+            .order('week_start', { ascending: false })
+            .limit(3);
+          if (reflections?.length) {
+            recentReflections = reflections.map((r: any) =>
+              `- Semana de ${new Date(r.week_start).toLocaleDateString('pt-BR')}: ${(r.content || '').substring(0, 400)}`
+            ).join('\n');
+          }
+        }
+      } catch (e: any) {
+        console.warn('leader_self context fetch failed:', e?.message);
+      }
+
+      systemPromptOverride = buildLeaderCoachSystemPrompt({
+        leaderName,
+        leaderFirstName,
+        leaderSyncData,
+        teamPatternsSummary,
+        recentReflections,
+        directReportsList,
+      });
+    }
+
+    // Extrair primeiro nome para flexibilidade de apelidos (modo member)
     const firstName = memberName ? memberName.split(' ')[0] : '';
-    
-    // Extrair dados do gestor para o Protocolo de Identidade Blindada
     const targetManagerName = managerName || 'o gestor';
     const managerFirstName = targetManagerName.split(' ')[0];
 
-    if (!question || !feedbacks || !memberName) {
+    if (mode === 'member' && (!question || !feedbacks || !memberName)) {
       log.warn('invalid_params', { hasQuestion: !!question, hasFeedbacks: !!feedbacks, hasMemberName: !!memberName });
       return new Response(
         JSON.stringify({ error: 'Parâmetros inválidos: question, feedbacks e memberName são obrigatórios' }),
@@ -283,20 +395,22 @@ serve(async (req) => {
     }
 
     // ============================================
-    // CAMADA 1: ROTEAMENTO
+    // CAMADA 1: ROTEAMENTO (apenas modo member)
     // ============================================
-    // Bypass router when image is present — always fetch context for images
     const hasImage = !!imageContent?.isImage;
-    const needsContext = hasImage ? true : await shouldFetchContext(question, openAIApiKey);
-    console.log('Router decision - needs context:', needsContext, hasImage ? '(image bypass)' : '');
+    const needsContext = mode === 'leader_self'
+      ? false
+      : (hasImage ? true : await shouldFetchContext(question, openAIApiKey));
+    console.log('Router decision - needs context:', needsContext, hasImage ? '(image bypass)' : '', `[mode=${mode}]`);
 
     // ============================================
-    // CAMADA 2: COMPRESSÃO (apenas se necessário)
+    // CAMADA 2: COMPRESSÃO + RAG (apenas modo member, se necessário)
     // ============================================
     let contextLines = '';
+    let evidenceBreakdown = { from_recent: 0, from_semantic_feedbacks: 0, from_semantic_evidence: 0 };
     if (needsContext) {
-      // Try semantic search via embeddings first
       let semanticFeedbacks: any[] = [];
+      let semanticEvidence: any[] = [];
       try {
         const embResponse = await fetch('https://api.openai.com/v1/embeddings', {
           method: 'POST',
@@ -314,23 +428,39 @@ serve(async (req) => {
           const embData = await embResponse.json();
           const queryEmbedding = embData.data?.[0]?.embedding;
           if (queryEmbedding) {
-            // Extract memberId from feedbacks (all belong to same member)
             const memberId = feedbacks?.[0]?.member_id;
-            const { data: semanticResults, error: rpcError } = await (await import('https://esm.sh/@supabase/supabase-js@2')).createClient(
+            const supa = createClient(
               Deno.env.get('SUPABASE_URL')!,
               Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-            ).rpc('match_feedbacks', {
-              query_embedding: JSON.stringify(queryEmbedding),
-              match_threshold: 0.5,
-              match_count: 10,
-              filter_member_id: memberId || null,
-            });
+            );
 
-            if (!rpcError && semanticResults?.length) {
-              semanticFeedbacks = semanticResults;
-              console.log('Semantic search found', semanticResults.length, 'results');
-            } else if (rpcError) {
-              console.error('Semantic search RPC error:', rpcError.message);
+            // Mais agressivo: threshold 0.35, top 25 (era 0.5/10)
+            const [fbRes, evRes] = await Promise.all([
+              supa.rpc('match_feedbacks', {
+                query_embedding: JSON.stringify(queryEmbedding),
+                match_threshold: 0.35,
+                match_count: 25,
+                filter_member_id: memberId || null,
+              }),
+              supa.rpc('match_context_evidence', {
+                query_embedding: JSON.stringify(queryEmbedding),
+                match_threshold: 0.35,
+                match_count: 25,
+                filter_member_id: memberId || null,
+              }),
+            ]);
+
+            if (!fbRes.error && fbRes.data?.length) {
+              semanticFeedbacks = fbRes.data;
+              console.log('Semantic feedbacks:', fbRes.data.length);
+            } else if (fbRes.error) {
+              console.error('match_feedbacks error:', fbRes.error.message);
+            }
+            if (!evRes.error && evRes.data?.length) {
+              semanticEvidence = evRes.data;
+              console.log('Semantic context_evidence:', evRes.data.length);
+            } else if (evRes.error) {
+              console.error('match_context_evidence error:', evRes.error.message);
             }
           }
         }
@@ -338,27 +468,41 @@ serve(async (req) => {
         console.error('Semantic search failed (falling back to recent):', semErr.message);
       }
 
-      // Merge semantic results with recent feedbacks (dedup by id)
-      if (semanticFeedbacks.length > 0) {
-        const existingIds = new Set(feedbacks.map((f: any) => f.id));
-        const merged = [...feedbacks];
-        for (const sf of semanticFeedbacks) {
-          if (!existingIds.has(sf.id)) {
-            merged.push(sf);
-            existingIds.add(sf.id);
-          }
+      // Mesclar: recentes + RAG feedbacks (dedup por id)
+      const existingIds = new Set(feedbacks.map((f: any) => f.id));
+      const merged = [...feedbacks];
+      evidenceBreakdown.from_recent = feedbacks.length;
+      for (const sf of semanticFeedbacks) {
+        if (!existingIds.has(sf.id)) {
+          merged.push(sf);
+          existingIds.add(sf.id);
+          evidenceBreakdown.from_semantic_feedbacks++;
         }
-        contextLines = compressContext(merged);
-        console.log('Context merged (recent + semantic):', { totalNotes: merged.length });
+      }
+
+      // Adicionar context_evidence como "notas sintéticas" no formato esperado por compressContext
+      for (const ev of semanticEvidence) {
+        merged.push({
+          id: ev.id,
+          content: ev.summary || ev.title || '',
+          summary: ev.summary,
+          type: `ctx:${ev.evidence_type}`,
+          occurred_at: ev.occurred_at,
+          created_at: ev.occurred_at,
+        });
+        evidenceBreakdown.from_semantic_evidence++;
+      }
+
+      // Janela adaptativa: se RAG trouxe muito sinal, expande
+      const totalSemantic = semanticFeedbacks.length + semanticEvidence.length;
+      if (totalSemantic >= 15) {
+        contextLines = compressContextLarge(merged);
       } else {
-        contextLines = compressContext(feedbacks);
+        contextLines = compressContext(merged);
       }
 
       const notesCount = (contextLines.match(/\[Data:/g) || []).length;
-      console.log('Context compressed:', { 
-        chars: contextLines.length, 
-        notesIncluded: notesCount
-      });
+      console.log('Context compressed:', { chars: contextLines.length, notesIncluded: notesCount, ...evidenceBreakdown });
     } else {
       contextLines = '(Contexto histórico não foi necessário para esta pergunta - respondendo diretamente)';
       console.log('Context skipped by router');
@@ -419,7 +563,7 @@ O usuário NÃO selecionou notas específicas. Você está analisando o HISTÓRI
 `;
     }
     
-    const systemPrompt = `# RHITMO MENTOR 2.0 - CONSTITUIÇÃO
+    const memberSystemPrompt = `# RHITMO MENTOR 2.0 - CONSTITUIÇÃO
 
 ${contextModeInstruction}
 
@@ -636,6 +780,8 @@ ${contextLines}
 
 Lembre-se: Você é um coach experiente. Baseie-se APENAS nos dados acima. Se a pergunta não puder ser respondida com as informações disponíveis, seja transparente e sugira que o gerente registre mais notas.`;
 
+    const systemPrompt = systemPromptOverride || memberSystemPrompt;
+
     // ============================================
     // DETECÇÃO E SUMMARIZAÇÃO DE TRANSCRIÇÃO LONGA
     // ============================================
@@ -793,6 +939,8 @@ Com base neste resumo, dê sugestões práticas de liderança, identifique ponto
       context_used: needsContext,
       response_length: mentorResponse.length,
       summary_applied: summaryApplied,
+      mode,
+      evidence_breakdown: evidenceBreakdown,
     });
 
     const processingTimeMs = Date.now() - startTime;

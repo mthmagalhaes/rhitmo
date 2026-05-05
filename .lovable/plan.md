@@ -1,81 +1,71 @@
 
-## Objetivo
+## Diagnóstico
 
-Substituir o modal `MentorChat` por uma experiência de **página dedicada** estilo Claude/ChatGPT/Windmill: ao enviar a primeira pergunta no launchpad (`/lider/mentor`), o app navega para `/lider/mentor/:threadId` — uma tela cheia focada na conversa, com sidebar de threads à esquerda. Sem dialog, sem wizard.
+### Problema 1 — "Como eu posso melhorar como líder?" sem retorno
+A `chat-mentor` foi construída assumindo que **sempre existe um liderado-alvo**. O system prompt inteiro fala "você analisa o liderado X", o protagonista é `${memberName}`, todo o RAG filtra por `filter_member_id`. Quando o launchpad inicia uma thread sem `memberId`, o `MentorThread.tsx` faz fallback `memberName = userName` (o próprio líder) e manda `feedbacks=[]`. Resultado: a IA recebe instruções para analisar "Matheus" sem nenhum dado, dispara a regra anti-genericidade ("não há dados, sugira registrar notas") e devolve resposta vazia/inútil — exatamente o que você viu no screenshot 2.
 
-## Arquitetura de rotas
+### Problema 2 — Gabriela tem MUITO histórico, IA não captura
+Hoje a recuperação é:
+- Top 50 notas mais recentes por `occurred_at desc`, comprimidas até **20k chars** (`compressContext`).
+- + RAG semântico (`match_feedbacks`, threshold **0.5**, **top 10**) na pergunta.
+- Para cada nota: usa `summary` se existir, senão **trunca `content` em 800 chars**.
 
-```
-/lider/mentor              → Launchpad (atual: composer + sugestões + recentes)
-/lider/mentor/:threadId    → Thread view (conversa fullscreen + sidebar de histórico)
-```
+Limitações concretas para alguém com 100+ notas/transcrições:
+- 50 mais recentes podem **enterrar** evidências antigas relevantes que o RAG não pegou (threshold 0.5 é alto, top 10 é pouco).
+- Truncar transcrições em 800 chars perde o miolo da reunião.
+- Não há recuperação por **tema/tag/tipo** (ex.: só transcrições, só pulses, só do último trimestre).
+- Não passamos resumos pré-computados de `ctx_evidence` (que já existem!) — o RAG ignora todo o Context Graph que construímos nos sprints 8.x.
 
-Ambas as rotas vivem dentro do `AppLayout` existente (sidebar global do app continua visível). A "sidebar de threads" do mentor fica **dentro** da página, no estilo master-detail (padrão já estabelecido em `master-detail-pages` memory: `MemberMasterList 260px bg-muted/30`).
+---
 
-## Layout da página de thread (`/lider/mentor/:threadId`)
+## Plano
 
-```text
-┌─ AppSidebar ─┬─ ThreadList 260px ────┬─ Conversation (flex-1) ──────────────┐
-│ (global)     │ + Nova conversa       │ Header: título editável + chips      │
-│              │ ─ Hoje                │ (liderado · escopo · "Contexto")     │
-│              │   • Updates on Gabi   │ ──────────────────────────────────── │
-│              │ ─ Última semana       │ Mensagens (markdown + citações)      │
-│              │   • Padrões da Yas    │ ScrollArea fluida                    │
-│              │ ─ Anteriores          │ ──────────────────────────────────── │
-│              │   ...                 │ Composer fixo no fundo (mesmo do     │
-│              │                       │ launchpad: textarea + member/scope)  │
-└──────────────┴───────────────────────┴──────────────────────────────────────┘
-```
+### A. Modo "Líder" (autocoaching, sem liderado)
 
-- Title da thread inline-editável no header (clique → input, igual hoje no MentorChat).
-- Botão "Contexto" no header abre um Sheet/Drawer lateral com o `ContextPicker` atual (não modal central).
-- Sem cabeçalho de Dialog; ocupa `h-[calc(100svh-3rem)]`.
+Quando a thread é criada sem `memberId`:
 
-## Mudanças concretas
+1. **Frontend (`MentorThread.tsx` + `Mentor.tsx`)**: parar de usar fallback `userName` como `memberName`. Passar explicitamente `mode: 'leader_self'` e **não** mandar `memberName`/`feedbacks`.
+2. **`chat-mentor/index.ts`**: aceitar `mode` no payload. Se `mode === 'leader_self'`:
+   - Pular a validação obrigatória de `memberName`/`feedbacks`.
+   - Usar um **system prompt alternativo** (novo arquivo `_shared/rhitmo-leader-coach.ts`) focado em coaching do próprio líder: usa `leaderSyncData` (perfil de liderança que já enviamos), `keyObjectives` agregados do time, e dados agregados do líder (ver passo 3).
+   - Guardrails: redirecionar perguntas que claramente são sobre um liderado específico ("Como cobro a Gabi?") com resposta curta sugerindo selecionar o liderado no header (botão "Trocar contexto").
+3. **Contexto agregado do líder**: novo helper que busca:
+   - Top 5 padrões recorrentes nas notas do time (via `ctx_evidence` recente, agrupadas por tag/sentimento).
+   - Histórico de 1:1s do próprio líder (do `mirror_insights` / `useMirrorInsight`).
+   - Recaps/diário recentes do líder (`weekly_reflection`).
+   - Perfil completo `leader_sync_data`.
+4. **UI no launchpad**: quando o líder digita sem selecionar liderado, mostrar **chip discreto** "Modo: Coaching pessoal" no header da thread (em vez de "— Gabriela Lucas (...)") para deixar claro qual modo está ativo. Templates do empty state ganham uma seção "Sobre você como líder" (ex.: "O que estou evitando essa semana?", "Onde estou perdendo tempo?", "Que viés apareceu nas minhas últimas notas?").
 
-### 1. Extrair `MentorChatView` (componente puro de conversa)
-Criar `src/components/mentor/MentorChatView.tsx` contendo toda a lógica atual de `MentorChat.tsx` **menos** o wrapper `<Dialog>`. Recebe as mesmas props, mas sem `open/onOpenChange`. Inclui:
-- Sidebar de threads (com toggle colapsar)
-- Lista de mensagens + markdown + citações + edit/copy
-- Composer (textarea + attachments + voice + ContextPicker via Sheet)
-- Toda a lógica de `handleSend`, streaming, threads CRUD permanece igual
+### B. RAG mais robusto para liderado com muito histórico
 
-### 2. Criar `src/pages/lider/MentorThread.tsx`
-- Lê `:threadId` da URL via `useParams`
-- Resolve `memberId` via consulta a `chat_threads` (a thread já guarda `member_id`)
-- Renderiza `<MentorChatView initialThreadId={threadId} memberId={...} feedbacks={...} />`
-- Botão "Voltar" no canto superior esquerdo → `/lider/mentor` (launchpad)
+Mudanças em `chat-mentor/index.ts` (e RPC):
 
-### 3. Atualizar `src/pages/lider/Mentor.tsx` (launchpad)
-- Remover o `<MentorChat>` modal e os states `chatOpen`/`activeThreadId`
-- `startChat(prompt, threadId?)`:
-  - Se `threadId` existe → `navigate('/lider/mentor/' + threadId)`
-  - Se é nova: criar thread agora via `chat_threads.insert` (com `member_id` e título derivado dos primeiros 40 chars do prompt) → navegar para `/lider/mentor/:newId` passando `initialPrompt` via state da rota
-- `MentorThread` lê `location.state?.initialPrompt` e dispara o `handleSend` automaticamente no mount
+1. **Aumentar recall do semântico**: `match_threshold: 0.35` (de 0.5), `match_count: 25` (de 10). Custa pouco e resgata evidências menos óbvias.
+2. **Incluir `ctx_evidence` no RAG**: criar/usar RPC `match_context_evidence` (mesma técnica do `match_feedbacks`, sobre embeddings de `ctx_evidence`). O Context Graph tem resumos curados de meetings/pulses/reviews/slack — é muito mais denso que feedbacks crus. Mesclar resultados (dedup por `source_id`).
+3. **Janela de contexto adaptativa**: se RAG semântico retorna ≥15 hits relevantes (score > 0.55), aumentar `maxChars` de 20k → **40k**, e elevar `slice(0, 50)` para **80** notas no `compressContext`. Gemini 2.5 Flash aguenta 1M tokens; estamos sub-utilizando.
+4. **Truncamento mais inteligente**: se `summary` ausente e `content` é transcrição (detector já existe via `isLongTranscript`), gerar **summary on-demand** para aquela nota (cache em memória dentro do request) em vez de truncar em 800 chars cegamente. Limite: até 3 sumarizações on-demand por request (custo controlado).
+5. **Filtro por intenção**: roteador atual só decide "precisa contexto SIM/NAO". Estender para classificar **tipo de contexto**: `behavioral` (foca em pulses + slack), `delivery` (foca em meetings + goal_events), `relational` (foca em 1:1s + reviews). Passar como filtro na nova RPC. Reduz ruído sem perder profundidade.
+6. **Logging visível**: já temos `log.info('end', { context_used, ... })`. Adicionar `evidence_breakdown: { from_recent: N, from_semantic_feedbacks: N, from_semantic_evidence: N, summarized_on_demand: N }` para debugar futuros casos como o da Gabriela direto nos logs.
 
-### 4. Adicionar rota em `src/App.tsx`
-```tsx
-<Route path="/lider/mentor/:threadId" element={Leader(<LiderMentorThread />)} />
-```
+### C. Validação rápida
 
-### 5. Refatorar `MentorChat.tsx` (compatibilidade)
-- Vira um wrapper fino: `<Dialog><MentorChatView ... /></Dialog>` — mantém os call-sites antigos (ex.: páginas que ainda abrem o mentor como modal contextual em `MemberDetails`, briefs, etc.) funcionando sem regressão. Só o launchpad passa a usar a página dedicada.
+- Reproduzir a tela 2 (sem liderado): garantir que retorna resposta útil em modo `leader_self`.
+- Reproduzir a tela 1 (Gabriela): rodar 3 perguntas que hoje retornam "não encontrei registros" e confirmar que agora citam evidências antigas via RAG ampliado + ctx_evidence.
 
-### 6. Histórico no launchpad
-- Continuar mostrando "Conversas recentes" no `/lider/mentor`
-- Clique numa thread → `navigate('/lider/mentor/' + thread.id)` (sem abrir modal)
+---
 
-## Detalhes técnicos
+## Arquivos afetados
 
-- **Sidebar collapse**: estado local `sidebarOpen` na ThreadList, com botão `<` (já existe no MentorChat atual).
-- **ContextPicker**: hoje é exibido inline no MentorChat. Mover para um `<Sheet side="right">` acionado pelo botão "Contexto" no header (igual ao print do Windmill).
-- **Streaming preservado**: a lógica de `chat-mentor` edge function não muda; só o invólucro visual.
-- **Mobile**: ThreadList vira drawer (`Sheet side="left"`) em `< md`.
-- **Navegação ao criar thread**: `replace: true` para não poluir o histórico do browser entre launchpad → thread.
+- `supabase/functions/chat-mentor/index.ts` — aceita `mode`, RAG ampliado, ctx_evidence, sumarização on-demand.
+- `supabase/functions/_shared/rhitmo-leader-coach.ts` — **novo**: system prompt para modo autocoaching.
+- Migration: nova RPC `match_context_evidence(query_embedding, threshold, count, filter_user_id)`.
+- `src/pages/lider/MentorThread.tsx` — não forçar `memberName=userName`; passar `mode`.
+- `src/pages/lider/Mentor.tsx` — templates "Sobre você como líder" no empty state quando nenhum liderado selecionado.
+- `src/components/MentorChat.tsx` — header mostra "Coaching pessoal" quando `mode='leader_self'`; aceita `onSwitchContext` para trocar para um liderado mid-thread.
+- `mem://features/mentor-chat/leader-self-mode.md` — documentar o novo modo.
 
-## Memória a atualizar
+## Fora de escopo (anotado para depois)
 
-Adicionar `mem://design/dashboard/mentor-page-experience.md` documentando:
-- `/lider/mentor` = launchpad (composer + recentes)
-- `/lider/mentor/:threadId` = thread view fullscreen com master-detail
-- Modal `MentorChat` continua disponível para contextos pontuais (member page, briefs)
+- Indexar transcrições inteiras como chunks separados (precisaria pipeline próprio de embedding por chunk; hoje embedamos a nota inteira).
+- Memória de longo prazo cross-thread (lembrar que "líder já recebeu sugestão X mês passado").
+- Streaming token-a-token (hoje é resposta completa).

@@ -94,6 +94,11 @@ export default function LiderMentorThread() {
     user?.email?.split('@')[0] ||
     'Você';
 
+  // Sem liderado selecionado → modo "Coaching Pessoal" do líder.
+  // Passamos memberName=userName apenas para satisfazer a prop required do componente,
+  // mas o backend recebe mode='leader_self' e ignora esse campo.
+  const isCoachMode = !member?.id;
+
   return (
     <MentorChat
       open={true}
@@ -105,7 +110,7 @@ export default function LiderMentorThread() {
       userType="leader"
       memberName={member?.name || userName}
       memberId={member?.id}
-      memberRole={member?.role || undefined}
+      memberRole={isCoachMode ? 'Coaching pessoal' : (member?.role || undefined)}
       feedbacks={memberFeedbacks}
       userId={effectiveUserId ?? undefined}
       onBack={() => navigate('/lider/mentor')}
