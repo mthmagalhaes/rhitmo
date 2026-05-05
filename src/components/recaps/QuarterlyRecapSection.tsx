@@ -101,7 +101,7 @@ function CurrentQuarterCard({ periodQuarter }: { periodQuarter: string }) {
   );
 }
 
-function QuarterCard({ memberId, recap, periodQuarter }: { memberId: string; recap: QuarterlyRecap | undefined; periodQuarter: string }) {
+function QuarterCard({ memberId, recap, periodQuarter, defaultOpen = false }: { memberId: string; recap: QuarterlyRecap | undefined; periodQuarter: string; defaultOpen?: boolean }) {
   const { t } = useTranslation('rhitmo');
   const generate = useGenerateQuarterlyRecap(memberId);
   const confirm = useConfirmQuarterlyRecap(memberId);
