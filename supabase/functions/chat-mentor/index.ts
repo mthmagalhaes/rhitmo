@@ -12,6 +12,72 @@ const corsHeaders = {
 };
 
 // ============================================
+// CAPABILITIES MODE — resposta estática quando o usuário pergunta "o que você faz?"
+// ============================================
+const CAPABILITIES_PATTERNS: RegExp[] = [
+  /\bo que (vc|voc[êe]) (faz|pode fazer|consegue fazer|me ajuda|sabe fazer)\b/i,
+  /\bcomo (vc|voc[êe]) (me )?ajuda\b/i,
+  /\bquais (s[ãa]o )?(suas|tuas) (capacidades|fun[çc][õo]es|funcionalidades|habilidades)\b/i,
+  /\bquem (vc|voc[êe]) [ée]\b/i,
+  /\bme apresenta\b/i,
+  /\bo que [ée] (esse|este|o) (mentor|chat|rhitmo)\b/i,
+  /\bpara que (serve|voc[êe] serve)\b/i,
+];
+
+function isCapabilitiesQuestion(q: string): boolean {
+  if (!q) return false;
+  const trimmed = q.trim();
+  if (trimmed.length > 140) return false; // perguntas longas raramente são "o que vc faz"
+  return CAPABILITIES_PATTERNS.some((re) => re.test(trimmed));
+}
+
+function buildCapabilitiesReply(mode: 'leader_self' | 'member', memberFirstName?: string): string {
+  if (mode === 'member' && memberFirstName) {
+    return `Aqui está o que posso fazer com o histórico de **${memberFirstName}**:
+
+---
+
+### 🔍 Análise individual
+- Resumir padrões em notas, 1:1s e feedbacks
+- Identificar sinais de risco, motivação e bloqueios
+- Cruzar evidências com o perfil de trabalho
+
+### 💬 Preparação de conversas
+- Estruturar feedbacks difíceis com exemplos concretos
+- Sugerir pautas para a próxima 1:1
+- Recomendar reconhecimentos baseados em fatos
+
+### 🎯 Síntese acionável
+- Toda análise termina com 3 bullets: insight, padrão, ação imediata
+
+Mande sua pergunta sobre **${memberFirstName}** que eu mergulho no histórico.`;
+  }
+
+  return `Aqui está como posso te ajudar como **Mentor Rhitmo**:
+
+---
+
+### 🧠 Reflexão sobre sua liderança
+- Discutir desafios atuais e pontos cegos
+- Conectar sua intenção (perfil) com sua prática (notas do time)
+- Provocar sobre legado, energia e desenvolvimento
+
+### 👥 Análise de liderados específicos
+- Resumir histórico, padrões e sentimento por pessoa
+- Preparar conversas difíceis (1:1s, feedbacks, PDI)
+- _Selecione a pessoa em "Trocar contexto" no topo_
+
+### 📊 Padrões do time
+- Identificar tags recorrentes nas suas notas
+- Detectar contradições ("Watermelon": tudo verde por fora…)
+
+### 🎯 Síntese acionável
+- Toda análise termina com 3 bullets: insight, padrão, ação imediata
+
+Me conta no que você quer pensar primeiro.`;
+}
+
+// ============================================
 // CAMADA 1: ROTEADOR SEMÂNTICO ("O Porteiro")
 // ============================================
 const shouldFetchContext = async (
@@ -292,6 +358,21 @@ serve(async (req) => {
     const leaderName: string = body.leaderName || managerName || 'líder';
 
     log.info('start', { mode, memberName, memberRole, feedbacksCount: feedbacks?.length, hasImage: !!imageContent?.isImage, contextMode: contextMode || 'auto' });
+
+    // ============================================
+    // SHORT-CIRCUIT: Capabilities mode (Windy-style)
+    // Responde sem chamar LLM quando a pergunta é "o que você faz?" e é a 1ª msg da thread
+    // ============================================
+    const isFirstMessage = !Array.isArray(conversationHistory) || conversationHistory.length === 0;
+    if (isFirstMessage && question && isCapabilitiesQuestion(question) && !imageContent?.isImage) {
+      const memberFirstName = memberName ? memberName.split(' ')[0] : undefined;
+      const reply = buildCapabilitiesReply(mode as 'leader_self' | 'member', memberFirstName);
+      log.info('capabilities_short_circuit', { mode });
+      return new Response(
+        JSON.stringify({ response: reply, capabilities_mode: true }),
+        { status: 200, headers: respHeaders }
+      );
+    }
 
     // ============================================
     // MODO COACHING PESSOAL DO LÍDER (sem liderado)
@@ -660,29 +741,24 @@ Use o perfil Rhitmo Sync para orientar o gerente:
  - **Educativo**: Explique o "porquê" das sugestões
  - Se o gerente parecer frustrado: Valide o sentimento, depois redirecione para soluções
  
- ## DIRETRIZES DE ESTILO E FORMATAÇÃO (EXECUTIVE SUMMARY)
+ ## DIRETRIZES DE FORMATAÇÃO (EXECUTIVE SUMMARY)
  
  Suas respostas devem ser **VISUALMENTE IMPECÁVEIS** e **CIRÚRGICAS**. Não use blocos de texto denso.
  
- ### ESTRUTURA OBRIGATÓRIA
+ ### REGRAS OBRIGATÓRIAS
  
- 1. **Introdução Direta**: Uma frase de contexto. (Ex: "Baseado na reunião de 31/12...")
- 
- 2. **Seções Claras**: Use Cabeçalhos H3 (###) para separar temas:
-    - ### 🚀 Pontos Fortes
-    - ### ⚠️ Pontos de Melhoria
-    - ### 💡 Recomendações
-    - ### 🎯 Síntese Honesta
- 
- 3. **Listas e Bullet Points**: **NUNCA** escreva parágrafos longos. Use bullets (-) para listar fatos.
- 
- 4. **Negrito Estratégico**: Destaque a ideia central ou a frase de impacto em **negrito** dentro do bullet.
- 
- 5. **Evidence-Based**: Sempre que possível, cite a evidência concreta. 
-    - Exemplo: "- **Visão Crítica**: Você elogiou a leitura de ambiente dele na reunião de 15/01..."
- 
- 6. **Mensagem Implícita**: Se houver um subtexto importante, use um emoji (👉 ou 💡) e explique a mensagem por trás das palavras.
- 
+ 1. **Lead de abertura**: comece com **uma frase-resumo (1 linha)** que sintetize a resposta. Sem saudações ("Olá", "Claro!", etc.).
+ 2. **Seções com H3**: use Cabeçalhos H3 (três #) com emoji para separar temas:
+    - 🚀 Pontos Fortes
+    - ⚠️ Pontos de Atenção
+    - 💡 Recomendações
+    - 🎯 Síntese Honesta
+ 3. **Bullets paralelos**: dentro de cada lista, comece todos os bullets com o mesmo padrão (verbo no infinitivo OU substantivo OU **negrito + frase**). Não misture.
+ 4. **Bullets curtos**: máximo ~18 palavras. **NUNCA** parágrafos longos.
+ 5. **Negrito estratégico**: 1–2 por seção, no conceito-chave do bullet.
+ 6. **Evidence-based**: cite a evidência concreta (data + fato) sempre que possível.
+ 7. **Mensagem implícita** (opcional): se houver subtexto, use 👉 ou 💡 e explique o que está nas entrelinhas.
+
  ### SEÇÃO FINAL OBRIGATÓRIA: SÍNTESE HONESTA
  
  Ao final de análises de feedback ou comportamento, **SEMPRE** adicione:
@@ -704,15 +780,16 @@ Use o perfil Rhitmo Sync para orientar o gerente:
  ### O QUE EVITAR
  
  - ❌ Parágrafos longos sem formatação
-  - ❌ Respostas genéricas sem evidências do histórico — SEMPRE cite dados específicos das notas
-  - ❌ Excesso de cautela que dilui a mensagem
-  - ❌ Jargão corporativo vazio ("sinergia", "alinhar expectativas")
-  - ❌ Repetir conselhos idênticos entre mensagens — varie abordagens e traga novos ângulos
+ - ❌ Saudações ou floreios no início ("Claro!", "Com certeza!", "Vamos lá!")
+ - ❌ Respostas genéricas sem evidências do histórico — SEMPRE cite dados específicos
+ - ❌ Bullets mistos (uns começando com verbo, outros com substantivo)
+ - ❌ Jargão corporativo vazio ("sinergia", "alinhar expectativas")
+ - ❌ Repetir conselhos idênticos entre mensagens — varie abordagens
  
  ### REGRA ANTI-GENERICIDADE
  - **Toda recomendação DEVE referenciar pelo menos 1 nota específica** (data + conteúdo)
- - Se não houver dados suficientes para ser específico, diga explicitamente o que falta e sugira ao gestor registrar
- - Prefira profundidade em 2-3 insights do que superficialidade em 6-7 pontos genéricos
+ - Se não houver dados suficientes, diga explicitamente o que falta e sugira ao gestor registrar
+ - Prefira profundidade em 2-3 insights do que superficialidade em 6-7 pontos
 
 ${objectivesSection}
 
