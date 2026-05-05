@@ -14,7 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { useLeaderMembers, type LeaderMemberRow } from '@/hooks/useLeaderMembers';
-import { Button } from '@/components/ui/button';
+// (Button removed — composer uses native button now)
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from '@/components/ui/popover';
