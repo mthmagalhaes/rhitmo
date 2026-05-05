@@ -37,10 +37,12 @@ function RecapCard({
   memberId,
   periodMonth,
   recap,
+  defaultOpen = false,
 }: {
   memberId: string;
   periodMonth: string;
   recap: MonthlyRecap | undefined;
+  defaultOpen?: boolean;
 }) {
   const { t, i18n } = useTranslation('rhitmo');
   const generate = useGenerateMonthlyRecap(memberId);
@@ -55,8 +57,6 @@ function RecapCard({
   const isDraft = recap?.status === 'draft';
   const isEmpty = !recap;
 
-  // UTC-locked formatting — see src/lib/dateLocale.ts. Using date-fns `format`
-  // here would shift `2026-03-01T00:00Z` to "fevereiro 2026" in BRT.
   const monthStr = useMemo(
     () => formatPeriodMonth(periodMonth, i18n.language),
     [periodMonth, i18n.language]
@@ -71,184 +71,198 @@ function RecapCard({
   }, [recap?.id, recap?.ai_generated_at]);
 
   return (
-    <Card className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] border-border/60">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <CardTitle className="text-base font-semibold tracking-tight flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span>{t('recap.monthly.cardTitle', { month: monthStr })}</span>
-          </CardTitle>
-          {isConfirmed && (
-            <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
-              <CheckCircle2 className="h-3 w-3 mr-1" />
-              {t('recap.monthly.confirmedBadge', { date: recap.confirmed_at ? format(new Date(recap.confirmed_at), 'dd/MM') : '' })}
-            </Badge>
-          )}
-          {isDraft && (
-            <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">
-              {t('recap.monthly.draftBadge')}
-            </Badge>
-          )}
-        </div>
-        {recap && (
-          <p className="text-xs text-muted-foreground mt-1">
-            {t('recap.monthly.basedOn', { feedbacks: recap.feedbacks_count, meetings: recap.meetings_count })}
-          </p>
-        )}
-        {recap?.low_evidence && !isConfirmed && (
-          <div className="mt-2 flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
-            <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-            <span>
-              {t('recap.monthly.lowEvidenceWarning', { count: (recap.feedbacks_count ?? 0) + (recap.meetings_count ?? 0) })}
-            </span>
-          </div>
-        )}
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {isEmpty && (
-          <div className="text-center py-6 space-y-3">
-            <p className="text-sm text-muted-foreground">{t('recap.monthly.noRecapForMonth', { month: monthStr })}</p>
-            <Button
-              onClick={() => generate.mutate({ periodMonth })}
-              disabled={generate.isPending}
-              size="sm"
-              className="rounded-xl"
-            >
-              {generate.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {t('recap.monthly.generating')}
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  {t('recap.monthly.generateButton')}
-                </>
-              )}
-            </Button>
-          </div>
-        )}
-
-        {recap && (
-          <>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                {t('recap.monthly.labels.highlight')}
-              </label>
-              {isConfirmed ? (
-                <p className="text-sm text-foreground/90 leading-relaxed">
-                  {highlight || <span className="italic text-muted-foreground">{t('recap.monthly.emptyHighlight')}</span>}
-                </p>
-              ) : (
-                <Textarea
-                  value={highlight}
-                  onChange={(e) => setHighlight(e.target.value)}
-                  placeholder={t('recap.monthly.placeholders.highlight')}
-                  className="rounded-xl min-h-[68px] text-sm"
-                />
-              )}
-              <EvidenceChips evidence={recap.highlight_evidence as any} />
+    <Collapsible defaultOpen={defaultOpen}>
+      <Card className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] border-border/60 overflow-hidden">
+        <CollapsibleTrigger className="group w-full text-left">
+          <CardHeader className="pb-3 hover:bg-muted/30 transition-colors">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <CardTitle className="text-base font-semibold tracking-tight flex items-center gap-2">
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span>{t('recap.monthly.cardTitle', { month: monthStr })}</span>
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                {isConfirmed && (
+                  <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    {t('recap.monthly.confirmedBadge', { date: recap.confirmed_at ? format(new Date(recap.confirmed_at), 'dd/MM') : '' })}
+                  </Badge>
+                )}
+                {isDraft && (
+                  <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">
+                    {t('recap.monthly.draftBadge')}
+                  </Badge>
+                )}
+                {isEmpty && (
+                  <Badge variant="outline" className="border-border text-muted-foreground">
+                    Sem rascunho
+                  </Badge>
+                )}
+              </div>
             </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                {t('recap.monthly.labels.concern')}
-              </label>
-              {isConfirmed ? (
-                <p className="text-sm text-foreground/90 leading-relaxed">
-                  {concern || <span className="italic text-muted-foreground">{t('recap.monthly.emptyConcern')}</span>}
-                </p>
-              ) : (
-                <Textarea
-                  value={concern}
-                  onChange={(e) => setConcern(e.target.value)}
-                  placeholder={t('recap.monthly.placeholders.concern')}
-                  className="rounded-xl min-h-[68px] text-sm"
-                />
-              )}
-              <EvidenceChips evidence={recap.concern_evidence as any} />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                {t('recap.monthly.labels.pattern')}
-              </label>
-              {isConfirmed ? (
-                <p className="text-sm font-medium text-foreground/90 leading-relaxed">
-                  {pattern || <span className="italic text-muted-foreground">{t('recap.monthly.emptyPattern')}</span>}
-                </p>
-              ) : (
-                <Textarea
-                  value={pattern}
-                  onChange={(e) => setPattern(e.target.value)}
-                  placeholder={t('recap.monthly.placeholders.pattern')}
-                  className="rounded-xl min-h-[52px] text-sm"
-                />
-              )}
-            </div>
-
-            {!isConfirmed && (
-              <div className="flex flex-wrap gap-2 pt-1">
+            {recap && (
+              <p className="text-xs text-muted-foreground mt-1 ml-6">
+                {t('recap.monthly.basedOn', { feedbacks: recap.feedbacks_count, meetings: recap.meetings_count })}
+              </p>
+            )}
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="space-y-4">
+            {recap?.low_evidence && !isConfirmed && (
+              <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+                <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                <span>
+                  {t('recap.monthly.lowEvidenceWarning', { count: (recap.feedbacks_count ?? 0) + (recap.meetings_count ?? 0) })}
+                </span>
+              </div>
+            )}
+            {isEmpty && (
+              <div className="text-center py-6 space-y-3">
+                <p className="text-sm text-muted-foreground">{t('recap.monthly.noRecapForMonth', { month: monthStr })}</p>
                 <Button
-                  size="sm"
-                  className="rounded-xl"
-                  onClick={() =>
-                    confirm.mutate({
-                      id: recap.id,
-                      patch: {
-                        highlight_text: highlight,
-                        concern_text: concern,
-                        dominant_pattern: pattern,
-                      },
-                    })
-                  }
-                  disabled={confirm.isPending}
-                >
-                  {confirm.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                  )}
-                  {t('recap.monthly.confirm')}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="rounded-xl"
-                  onClick={() =>
-                    update.mutate({
-                      id: recap.id,
-                      patch: {
-                        highlight_text: highlight,
-                        concern_text: concern,
-                        dominant_pattern: pattern,
-                      },
-                    })
-                  }
-                  disabled={update.isPending}
-                >
-                  {t('recap.monthly.saveDraft')}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="rounded-xl"
-                  onClick={() => generate.mutate({ periodMonth, regenerate: true })}
+                  onClick={() => generate.mutate({ periodMonth })}
                   disabled={generate.isPending}
+                  size="sm"
+                  className="rounded-xl"
                 >
                   {generate.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      {t('recap.monthly.generating')}
+                    </>
                   ) : (
-                    <RefreshCw className="h-4 w-4 mr-2" />
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      {t('recap.monthly.generateButton')}
+                    </>
                   )}
-                  {t('recap.monthly.regenerate')}
                 </Button>
               </div>
             )}
-          </>
-        )}
-      </CardContent>
-    </Card>
+
+            {recap && (
+              <>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    {t('recap.monthly.labels.highlight')}
+                  </label>
+                  {isConfirmed ? (
+                    <p className="text-sm text-foreground/90 leading-relaxed">
+                      {highlight || <span className="italic text-muted-foreground">{t('recap.monthly.emptyHighlight')}</span>}
+                    </p>
+                  ) : (
+                    <Textarea
+                      value={highlight}
+                      onChange={(e) => setHighlight(e.target.value)}
+                      placeholder={t('recap.monthly.placeholders.highlight')}
+                      className="rounded-xl min-h-[68px] text-sm"
+                    />
+                  )}
+                  <EvidenceChips evidence={recap.highlight_evidence as any} />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    {t('recap.monthly.labels.concern')}
+                  </label>
+                  {isConfirmed ? (
+                    <p className="text-sm text-foreground/90 leading-relaxed">
+                      {concern || <span className="italic text-muted-foreground">{t('recap.monthly.emptyConcern')}</span>}
+                    </p>
+                  ) : (
+                    <Textarea
+                      value={concern}
+                      onChange={(e) => setConcern(e.target.value)}
+                      placeholder={t('recap.monthly.placeholders.concern')}
+                      className="rounded-xl min-h-[68px] text-sm"
+                    />
+                  )}
+                  <EvidenceChips evidence={recap.concern_evidence as any} />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    {t('recap.monthly.labels.pattern')}
+                  </label>
+                  {isConfirmed ? (
+                    <p className="text-sm font-medium text-foreground/90 leading-relaxed">
+                      {pattern || <span className="italic text-muted-foreground">{t('recap.monthly.emptyPattern')}</span>}
+                    </p>
+                  ) : (
+                    <Textarea
+                      value={pattern}
+                      onChange={(e) => setPattern(e.target.value)}
+                      placeholder={t('recap.monthly.placeholders.pattern')}
+                      className="rounded-xl min-h-[52px] text-sm"
+                    />
+                  )}
+                </div>
+
+                {!isConfirmed && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      className="rounded-xl"
+                      onClick={() =>
+                        confirm.mutate({
+                          id: recap.id,
+                          patch: {
+                            highlight_text: highlight,
+                            concern_text: concern,
+                            dominant_pattern: pattern,
+                          },
+                        })
+                      }
+                      disabled={confirm.isPending}
+                    >
+                      {confirm.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                      )}
+                      {t('recap.monthly.confirm')}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="rounded-xl"
+                      onClick={() =>
+                        update.mutate({
+                          id: recap.id,
+                          patch: {
+                            highlight_text: highlight,
+                            concern_text: concern,
+                            dominant_pattern: pattern,
+                          },
+                        })
+                      }
+                      disabled={update.isPending}
+                    >
+                      {t('recap.monthly.saveDraft')}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="rounded-xl"
+                      onClick={() => generate.mutate({ periodMonth, regenerate: true })}
+                      disabled={generate.isPending}
+                    >
+                      {generate.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                      )}
+                      {t('recap.monthly.regenerate')}
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }
 
