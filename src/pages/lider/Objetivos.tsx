@@ -24,7 +24,7 @@ export default function LiderObjetivos() {
         <div className="lg:hidden px-4 sm:px-6 pt-4" />
 
         {!selected ? (
-          <div className="max-w-3xl px-6 lg:px-8 py-6">
+          <div className="max-w-5xl px-6 lg:px-8 py-6">
             <header className="mb-2">
               <h1 className="font-serif text-2xl font-bold tracking-tight">
                 Objetivos
@@ -40,7 +40,7 @@ export default function LiderObjetivos() {
             />
           </div>
         ) : (
-          <div className="max-w-3xl px-6 lg:px-8 py-6 space-y-6">
+          <div className="max-w-5xl px-6 lg:px-8 py-6 space-y-6">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Objetivos
             </p>
