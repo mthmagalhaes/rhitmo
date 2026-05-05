@@ -16,7 +16,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Loader2, Sparkles, CheckCircle2, RefreshCw, BarChart3, AlertTriangle, Clock, Zap } from 'lucide-react';
+import { Loader2, Sparkles, CheckCircle2, RefreshCw, BarChart3, AlertTriangle, Clock, Zap, ChevronDown } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import {
   useQuarterlyRecaps,
