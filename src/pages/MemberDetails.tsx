@@ -28,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { GoalsManager } from '@/components/GoalsManager';
+
 
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
