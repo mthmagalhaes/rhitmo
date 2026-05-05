@@ -563,7 +563,7 @@ O usuário NÃO selecionou notas específicas. Você está analisando o HISTÓRI
 `;
     }
     
-    const systemPrompt = `# RHITMO MENTOR 2.0 - CONSTITUIÇÃO
+    const memberSystemPrompt = `# RHITMO MENTOR 2.0 - CONSTITUIÇÃO
 
 ${contextModeInstruction}
 
