@@ -84,7 +84,7 @@ const MemberDetails = () => {
   }, []);
   const [resendingInvite, setResendingInvite] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
-  const [recorderOpen, setRecorderOpen] = useState(false);
+  
   const [formalReviewOpen, setFormalReviewOpen] = useState(false);
   const [reviewSheetOpen, setReviewSheetOpen] = useState(false);
   const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
