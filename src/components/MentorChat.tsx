@@ -418,7 +418,7 @@ export const MentorChat = ({
         }
 
         const savedContent = imageContent ? (imageContent.textMessage || '[Imagem enviada para análise]') : finalMessage;
-        await supabase.from('mentor_messages').insert({ user_id: effectiveUserId, member_id: memberId!, thread_id: currentThreadId, role: 'user', content: savedContent });
+        await supabase.from('mentor_messages').insert({ user_id: effectiveUserId, member_id: memberId ?? null, thread_id: currentThreadId, role: 'user', content: savedContent });
         queryClient.invalidateQueries({ queryKey: [messagesQueryKey, currentThreadId] });
 
         const controller = new AbortController();
