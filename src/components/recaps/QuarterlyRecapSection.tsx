@@ -437,7 +437,9 @@ function QuarterCard({ memberId, recap, periodQuarter, defaultOpen = false }: { 
           </>
         )}
       </CardContent>
-    </Card>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }
 
