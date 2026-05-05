@@ -1,25 +1,33 @@
-## Ajuste em `/lider/avaliacoes` — remover duplicidade e usar melhor o espaço
+## Objetivo
+Em `/lider/avaliacoes`, abas Mensal e Trimestral, transformar cada card de recap em um item colapsável (collapsed por padrão para os meses/quarters antigos), no mesmo padrão visual já usado em "Avaliações Formais" (Collapsible com chevron + label). Assim a tela não fica empilhada com 6 meses abertos de uma vez.
 
-### Problema
-A página tem dois seletores que fazem a mesma coisa:
-1. **"Gerar avaliação"** — 3 cards grandes (Mensal / Trimestral / Avaliação Formal) no topo
-2. **Tabs** logo abaixo (Mensal / Trimestral / Formais)
+## Padrão visual (referência: `PerformanceReviewList`)
+- `Collapsible` do shadcn por item.
+- Header clicável: chevron + título do mês/quarter + status pill (Confirmado / Rascunho / Vazio) + meta curta (ex.: "Baseado em 10 notas, 4 1:1s").
+- Corpo do card (textareas + EvidenceChips + botões) só renderiza quando expandido.
 
-Você prefere manter apenas as **tabs** (mais sutis) e aproveitar melhor a largura — hoje o conteúdo está espremido em `max-w-3xl`.
+## Regras de "default open"
+- **Mensal:** abre automaticamente apenas o mês mais recente que esteja em `draft` ou `vazio` (precisa ação do líder). Mês em curso (`CurrentMonthCard`) e meses já `confirmed` ficam fechados.
+- **Trimestral:** abre automaticamente apenas o último quarter fechado se estiver `draft` ou `vazio`. `CurrentQuarterCard` e quarters confirmados ficam fechados.
+- Header sempre mostra o status pill + contagem de evidências mesmo quando fechado, para o líder escanear rápido.
 
-### Mudanças em `src/pages/lider/Avaliacoes.tsx`
+## Mudanças
 
-1. **Remover** o bloco inteiro `Action Bar — gerar avaliação em 1 clique` (h2 + grid de 3 `ActionCard`s) e o componente `ActionCard` no fim do arquivo.
-2. **Remover** imports não usados após a limpeza (`Card`, `CardContent`, `Music`, `BarChart3`, `Sparkles` se sobrarem só nas tabs — manter só os necessários para as TabsTrigger).
-3. **Preservar a ação "criar avaliação formal"**: já existe `onCreateReview={() => setFormalDialogOpen(true)}` dentro de `PerformanceReviewList` na aba Formais, então o `CreateFormalReviewDialog` continua acessível sem o card.
-4. **Largura**: trocar `max-w-3xl` por `max-w-5xl` no container do conteúdo (mantém alinhamento com o resto do app — regra `max-w-5xl` do design system) tanto no estado vazio quanto no estado com liderado selecionado.
-5. **RhitmoTimelineCard** continua acima das tabs como contexto/visão geral; o botão "Ver linha do tempo Rhitmo / Jump to Mensal" já leva para a aba Mensal via `onJumpToRhitmo`.
+### `src/components/recaps/MonthlyRecapSection.tsx`
+1. Importar `Collapsible`, `CollapsibleTrigger`, `CollapsibleContent` e `ChevronDown`.
+2. Refatorar `RecapCard`:
+   - Wrap inteiro num `Collapsible` com `defaultOpen` calculado (draft/empty do mês mais recente only).
+   - `CardHeader` vira `CollapsibleTrigger` (botão full-width, hover sutil) com chevron + título + badge + meta inline.
+   - `CardContent` (textareas/botões) dentro de `CollapsibleContent`.
+3. `CurrentMonthCard` e o item de "fora da janela" ficam colapsáveis também (defaultOpen=false).
+4. Passar prop `defaultOpen` do parent baseado em: primeiro item da lista cujo `recap?.status !== 'confirmed'` (ou ausente).
 
-### Resultado
-- Hierarquia: Header (avatar + nome) → `RhitmoTimelineCard` → Tabs (Mensal / Trimestral / Formais) → conteúdo da aba.
-- Largura confortável (`max-w-5xl`) elimina a sensação de "achatado".
-- Geração de Mensal/Trimestral continua dentro das próprias seções (`MonthlyRecapSection` / `QuarterlyRecapSection`); Formal continua via botão "Nova" dentro de `PerformanceReviewList`.
+### `src/components/recaps/QuarterlyRecapSection.tsx`
+Mesmo tratamento em `QuarterCard` e `CurrentQuarterCard`. `defaultOpen` no quarter mais recente não-confirmado.
 
-### Fora de escopo
-- Não mexer em `MonthlyRecapSection`, `QuarterlyRecapSection`, `PerformanceReviewList` ou `RhitmoTimelineCard`.
-- Próxima rodada continua sendo Sprint 12.5 (Bot Rhitmo → LLM no Slack).
+### Sem mudanças
+- `Avaliacoes.tsx`, `RhitmoTimelineCard`, hooks, edge functions.
+- Tab "Formais" já usa Collapsibles — mantém como está.
+
+## Resultado
+Tela limpa: ao abrir a aba Mensal, o líder vê uma lista de linhas (mês + status), com um único item já aberto se houver ação pendente. Click expande qualquer outro mês para revisar/editar. Mesma UX em Trimestral.
