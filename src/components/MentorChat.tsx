@@ -156,6 +156,9 @@ export const MentorChat = ({
   userId,
   initialPrompt,
   initialThreadId,
+  embedded = false,
+  autoSendInitialPrompt = false,
+  onBack,
 }: MentorChatProps) => {
   const isLeader = userType === 'leader';
   
