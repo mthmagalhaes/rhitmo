@@ -229,19 +229,19 @@ export const MentorChat = ({
     staleTime: 1000 * 60 * 5,
   });
 
-  // Apply initialThreadId when sheet opens (overrides auto-select of most recent)
+  // Apply initialThreadId when opens (overrides auto-select of most recent)
   useEffect(() => {
-    if (open && initialThreadId) {
+    if ((open || embedded) && initialThreadId) {
       setSelectedThreadId(initialThreadId);
       setIsCreatingNewThread(false);
     }
-  }, [open, initialThreadId]);
+  }, [open, embedded, initialThreadId]);
 
   useEffect(() => {
-    if (!isLoadingThreads && threads.length > 0 && !selectedThreadId && !isCreatingNewThread) {
+    if (!isLoadingThreads && threads.length > 0 && !selectedThreadId && !isCreatingNewThread && !initialThreadId) {
       setSelectedThreadId(threads[0].id);
     }
-  }, [threads, isLoadingThreads, selectedThreadId, isCreatingNewThread]);
+  }, [threads, isLoadingThreads, selectedThreadId, isCreatingNewThread, initialThreadId]);
 
   const { data: messages = [], isLoading: isLoadingMessages } = useQuery({
     queryKey: [messagesQueryKey, selectedThreadId],
@@ -269,14 +269,23 @@ export const MentorChat = ({
     }
   }, [messages, isLoading]);
 
-  // Populate input with initialPrompt when dialog opens
+  // Populate input with initialPrompt when opens
+  const autoSentRef = useRef(false);
   useEffect(() => {
-    if (open && initialPrompt) {
-      setInput(initialPrompt);
-      setIsCreatingNewThread(true);
-      setSelectedThreadId(null);
+    if ((open || embedded) && initialPrompt && !autoSentRef.current) {
+      if (autoSendInitialPrompt) {
+        // Mark sent and dispatch once messages query resolves to avoid duplicate.
+        autoSentRef.current = true;
+        // Defer to next tick so threadId / state propagate first.
+        setTimeout(() => { handleSend(initialPrompt); }, 50);
+      } else {
+        setInput(initialPrompt);
+        setIsCreatingNewThread(true);
+        setSelectedThreadId(null);
+      }
     }
-  }, [open, initialPrompt]);
+  }, [open, embedded, initialPrompt, autoSendInitialPrompt]);
+
 
   // ── Thread helpers ───────────────────────────────────
   const groupThreadsByDate = (threads: ChatThread[]) => {
