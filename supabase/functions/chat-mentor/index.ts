@@ -939,6 +939,8 @@ Com base neste resumo, dê sugestões práticas de liderança, identifique ponto
       context_used: needsContext,
       response_length: mentorResponse.length,
       summary_applied: summaryApplied,
+      mode,
+      evidence_breakdown: evidenceBreakdown,
     });
 
     const processingTimeMs = Date.now() - startTime;
