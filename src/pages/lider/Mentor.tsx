@@ -472,25 +472,6 @@ export default function LiderMentor() {
         </section>
       </div>
 
-      {/* ── MentorChat modal ──────────────────────────────────────── */}
-      <MentorChat
-        open={chatOpen}
-        onOpenChange={(o) => {
-          setChatOpen(o);
-          if (!o) {
-            setInitialPrompt(undefined);
-            setActiveThreadId(null);
-          }
-        }}
-        userType="leader"
-        memberName={selectedMember?.name || userName}
-        memberId={chatMemberId}
-        memberRole={selectedMember?.role}
-        feedbacks={chatFeedbacks}
-        userId={effectiveUserId ?? undefined}
-        initialPrompt={initialPrompt}
-        initialThreadId={activeThreadId}
-      />
     </div>
   );
 }
