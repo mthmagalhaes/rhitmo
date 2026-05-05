@@ -66,7 +66,7 @@ export default function LiderAvaliacoes() {
         <div className="lg:hidden px-4 sm:px-6 pt-4" />
 
         {!selected ? (
-          <div className="max-w-3xl px-6 lg:px-8 py-6">
+          <div className="max-w-5xl px-6 lg:px-8 py-6">
             <header className="mb-2">
               <h1 className="font-serif text-2xl font-bold tracking-tight">
                 Avaliações
@@ -82,7 +82,7 @@ export default function LiderAvaliacoes() {
             />
           </div>
         ) : (
-          <div className="max-w-3xl px-6 lg:px-8 py-6 space-y-6">
+          <div className="max-w-5xl px-6 lg:px-8 py-6 space-y-6">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Avaliações
             </p>
@@ -105,35 +105,6 @@ export default function LiderAvaliacoes() {
                 )}
               </div>
             </header>
-
-            {/* Action Bar — gerar avaliação em 1 clique */}
-            <div>
-              <h2 className="font-serif text-sm font-bold tracking-tight mb-2">
-                Gerar avaliação
-              </h2>
-              <div className="grid sm:grid-cols-3 gap-3">
-                <ActionCard
-                  icon={Music}
-                  title="Rhitmo Mensal"
-                  description="Resumo do mês em ~3 min"
-                  onClick={() => setActiveSub('monthly')}
-                  active={activeSub === 'monthly'}
-                />
-                <ActionCard
-                  icon={BarChart3}
-                  title="Rhitmo Trimestral"
-                  description="Consolida 3 meses confirmados"
-                  onClick={() => setActiveSub('quarterly')}
-                  active={activeSub === 'quarterly'}
-                />
-                <ActionCard
-                  icon={Sparkles}
-                  title="Avaliação Formal"
-                  description="Performance Review com evidências"
-                  onClick={() => setFormalDialogOpen(true)}
-                />
-              </div>
-            </div>
 
             {/* Linha do tempo Rhitmo (estado A/B/C, já existe) */}
             <RhitmoTimelineCard
@@ -200,40 +171,5 @@ export default function LiderAvaliacoes() {
         />
       )}
     </div>
-  );
-}
-
-interface ActionCardProps {
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  description: string;
-  onClick: () => void;
-  active?: boolean;
-}
-
-function ActionCard({ icon: Icon, title, description, onClick, active }: ActionCardProps) {
-  return (
-    <Card
-      onClick={onClick}
-      className={
-        'rounded-2xl cursor-pointer transition-all hover:-translate-y-0.5 ' +
-        'shadow-[0_2px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] ' +
-        (active ? 'ring-2 ring-primary/40 bg-primary/5' : '')
-      }
-    >
-      <CardContent className="py-4 px-4 flex items-start gap-3">
-        <div className="rounded-xl bg-primary/10 p-2 shrink-0">
-          <Icon className="w-4 h-4 text-primary" />
-        </div>
-        <div className="min-w-0">
-          <p className="font-serif font-bold text-sm tracking-tight leading-tight">
-            {title}
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-            {description}
-          </p>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
