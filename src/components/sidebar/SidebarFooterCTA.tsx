@@ -20,13 +20,7 @@ export function SidebarFooterCTA({ persona }: Props) {
 
   const handleClick = () => {
     if (persona === 'leader') {
-      navigate('/lider/inicio');
-      // Fire-and-forget event the leader dashboard can subscribe to in the future.
-      try {
-        window.dispatchEvent(new CustomEvent('open-mentor-chat'));
-      } catch {
-        /* noop */
-      }
+      navigate('/lider/mentor');
     } else {
       navigate('/liderado/meu-rhitmo');
     }
