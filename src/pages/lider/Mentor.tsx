@@ -48,7 +48,6 @@ export default function LiderMentor() {
   const { user } = useAuth();
   const { id: effectiveUserId } = useEffectiveUser();
   const { members } = useLeaderMembers();
-  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
   const [selectedMember, setSelectedMember] = useState<LeaderMemberRow | null>(null);
