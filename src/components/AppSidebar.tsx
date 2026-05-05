@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/sidebar';
 import { ProfileSettingsDialog } from '@/components/ProfileSettingsDialog';
 import { WorkspaceSwitcher } from '@/components/sidebar/WorkspaceSwitcher';
-import { ThreadsList } from '@/components/sidebar/ThreadsList';
+
 import { SidebarFooterCTA } from '@/components/sidebar/SidebarFooterCTA';
 import { SidebarProfileBlock } from '@/components/sidebar/SidebarProfileBlock';
 import { GlobalSearchDialog } from '@/components/sidebar/GlobalSearchDialog';
@@ -136,6 +136,13 @@ export function AppSidebar() {
 
       <SidebarContent className="gap-0 pt-2">
 
+        {/* Top CTA — Pergunte ao Mentor (acima da navegação principal) */}
+        {persona === 'leader' && (
+          <div className="px-2 pb-2">
+            <SidebarFooterCTA persona={persona} />
+          </div>
+        )}
+
         {/* Zone C — Primary nav */}
         <SidebarMenu className="px-2 gap-0.5">
           {navItems.map((item) => {
@@ -166,8 +173,6 @@ export function AppSidebar() {
           })}
         </SidebarMenu>
 
-        {/* Zone D — Threads list (silent empty) */}
-        {open && <ThreadsList persona={persona} />}
 
         {/* HR context switcher (kept for HR Admins) */}
         {open && !isInHRContext && isHRAdmin && (
@@ -221,8 +226,8 @@ export function AppSidebar() {
           </div>
         )}
 
-        {/* Persistent AI CTA */}
-        {open && <SidebarFooterCTA persona={persona} />}
+        {/* Persistent AI CTA — only direct_report (leader CTA is at top) */}
+        {open && persona === 'direct_report' && <SidebarFooterCTA persona={persona} />}
 
         {/* Discreet global search shortcut (cmd+K also works) */}
         {open && (

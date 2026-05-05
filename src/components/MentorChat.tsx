@@ -207,15 +207,16 @@ export const MentorChat = ({
         .eq('type', threadType)
         .order('updated_at', { ascending: false });
       
-      if (isLeader && memberId) {
-        query = query.eq('member_id', memberId);
+      if (isLeader) {
+        if (memberId) query = query.eq('member_id', memberId);
+        else query = query.is('member_id', null);
       }
       
       const { data, error } = await query;
       if (error) throw error;
       return (data || []) as ChatThread[];
     },
-    enabled: open && !!threadQueryId && !!effectiveUserId,
+    enabled: open && !!effectiveUserId,
     staleTime: 1000 * 60 * 5,
   });
 
@@ -418,7 +419,7 @@ export const MentorChat = ({
         }
 
         const savedContent = imageContent ? (imageContent.textMessage || '[Imagem enviada para análise]') : finalMessage;
-        await supabase.from('mentor_messages').insert({ user_id: effectiveUserId, member_id: memberId!, thread_id: currentThreadId, role: 'user', content: savedContent });
+        await supabase.from('mentor_messages').insert({ user_id: effectiveUserId, member_id: memberId ?? null, thread_id: currentThreadId, role: 'user', content: savedContent });
         queryClient.invalidateQueries({ queryKey: [messagesQueryKey, currentThreadId] });
 
         const controller = new AbortController();
@@ -482,7 +483,7 @@ export const MentorChat = ({
         if (!data?.response) throw new Error('Resposta inválida do servidor.');
         setLastSummaryApplied(!!data.metadata?.summary_applied);
 
-        await supabase.from('mentor_messages').insert({ user_id: effectiveUserId, member_id: memberId!, thread_id: currentThreadId, role: 'assistant', content: data.response });
+        await supabase.from('mentor_messages').insert({ user_id: effectiveUserId, member_id: memberId ?? null, thread_id: currentThreadId, role: 'assistant', content: data.response });
         await supabase.from('chat_threads').update({ updated_at: new Date().toISOString() }).eq('id', currentThreadId);
         queryClient.invalidateQueries({ queryKey: [messagesQueryKey, currentThreadId] });
         queryClient.invalidateQueries({ queryKey: [threadsQueryKey, threadQueryId] });

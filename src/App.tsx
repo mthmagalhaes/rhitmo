@@ -63,6 +63,7 @@ const LiderObjetivos = lazy(() => import("./pages/lider/Objetivos"));
 const LiderPessoas = lazy(() => import("./pages/lider/Pessoas"));
 const LiderConfiguracoes = lazy(() => import("./pages/lider/Configuracoes"));
 const LiderContexto = lazy(() => import("./pages/lider/Contexto"));
+const LiderMentor = lazy(() => import("./pages/lider/Mentor"));
 const LideradoInicio = lazy(() => import("./pages/liderado/Inicio"));
 const LideradoCompass = lazy(() => import("./pages/liderado/Compass"));
 const LideradoOneOnOnes = lazy(() => import("./pages/liderado/OneOnOnes"));
@@ -150,6 +151,7 @@ const App = () => (
               <Route path="/lider/pessoas" element={Leader(<LiderPessoas />)} />
               <Route path="/lider/configuracoes" element={Leader(<LiderConfiguracoes />)} />
               <Route path="/lider/contexto" element={Leader(<LiderContexto />)} />
+              <Route path="/lider/mentor" element={Leader(<LiderMentor />)} />
 
               {/* ── Direct report routes (/liderado/*) ── */}
               <Route path="/liderado/inicio" element={DirectReport(<LideradoInicio />)} />
