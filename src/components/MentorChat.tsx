@@ -782,47 +782,58 @@ export const MentorChat = ({
   // ══════════════════════════════════════════════════════
   // RENDER
   // ══════════════════════════════════════════════════════
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 gap-0 shadow-[0_2px_40px_rgba(0,0,0,0.08)] [&>button]:hidden overflow-hidden">
-        {/* ── Header ─────────────────────────────────── */}
-        <DialogHeader className="px-5 py-3.5 border-b border-border flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {!sidebarOpen && (
-                <button
-                  onClick={() => setSidebarOpen(true)}
-                  className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                >
-                  <Menu className="h-5 w-5" />
-                </button>
-              )}
-              <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-sm">
-                {isLeader ? '🎯' : <Sparkles className="h-4 w-4 text-primary" />}
-              </div>
-              <DialogTitle className="text-foreground text-base font-semibold tracking-tight">
-                {title}
-                {isLeader && (
-                  <span className="text-muted-foreground font-normal text-sm ml-2">
-                    — {memberName} {memberRole && `(${memberRole})`}
-                  </span>
-                )}
-              </DialogTitle>
-            </div>
-            {isLeader ? (
-              <ContextPicker 
-                feedbacks={feedbacks}
-                selectedIds={selectedContexts}
-                onSelectionChange={setSelectedContexts}
-              />
-            ) : (
-              <Badge className="bg-primary/10 text-primary text-xs border-0">Confidencial</Badge>
-            )}
+  const headerNode = (
+    <div className={embedded ? "px-5 py-3.5 border-b border-border flex-shrink-0" : "px-5 py-3.5 border-b border-border flex-shrink-0"}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          {embedded && onBack && (
+            <button
+              onClick={onBack}
+              className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+              aria-label="Voltar"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+          )}
+          {!sidebarOpen && (
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          )}
+          <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-sm">
+            {isLeader ? '🎯' : <Sparkles className="h-4 w-4 text-primary" />}
           </div>
-        </DialogHeader>
+          <h2 className="text-foreground text-base font-semibold tracking-tight">
+            {title}
+            {isLeader && memberId && (
+              <span className="text-muted-foreground font-normal text-sm ml-2">
+                — {memberName} {memberRole && `(${memberRole})`}
+              </span>
+            )}
+          </h2>
+        </div>
+        {isLeader ? (
+          <ContextPicker 
+            feedbacks={feedbacks}
+            selectedIds={selectedContexts}
+            onSelectionChange={setSelectedContexts}
+          />
+        ) : (
+          <Badge className="bg-primary/10 text-primary text-xs border-0">Confidencial</Badge>
+        )}
+      </div>
+    </div>
+  );
 
-        {/* ── Body: Sidebar + Chat ───────────────────── */}
-        <div className="flex flex-1 min-h-0">
+  const bodyNode = (
+    <>
+      {headerNode}
+      {/* ── Body: Sidebar + Chat ───────────────────── */}
+      <div className="flex flex-1 min-h-0">
+
           {/* ── Sidebar ────────────────────────────── */}
           <div className={`flex-shrink-0 border-r border-border flex flex-col bg-muted/20 transition-all duration-200 overflow-hidden ${sidebarOpen ? 'w-[240px]' : 'w-0 border-r-0'}`}>
             <div className="p-3 flex items-center gap-2">
