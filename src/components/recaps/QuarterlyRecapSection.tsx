@@ -16,7 +16,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Loader2, Sparkles, CheckCircle2, RefreshCw, BarChart3, AlertTriangle, Clock, Zap } from 'lucide-react';
+import { Loader2, Sparkles, CheckCircle2, RefreshCw, BarChart3, AlertTriangle, Clock, Zap, ChevronDown } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import {
   useQuarterlyRecaps,
@@ -100,7 +101,7 @@ function CurrentQuarterCard({ periodQuarter }: { periodQuarter: string }) {
   );
 }
 
-function QuarterCard({ memberId, recap, periodQuarter }: { memberId: string; recap: QuarterlyRecap | undefined; periodQuarter: string }) {
+function QuarterCard({ memberId, recap, periodQuarter, defaultOpen = false }: { memberId: string; recap: QuarterlyRecap | undefined; periodQuarter: string; defaultOpen?: boolean }) {
   const { t } = useTranslation('rhitmo');
   const generate = useGenerateQuarterlyRecap(memberId);
   const confirm = useConfirmQuarterlyRecap(memberId);
@@ -126,41 +127,53 @@ function QuarterCard({ memberId, recap, periodQuarter }: { memberId: string; rec
   const canConfirm = !!classification && !!risk && !!actionKey;
 
   return (
-    <Card className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] border-border/60">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <CardTitle className="text-base font-semibold tracking-tight flex items-center gap-2">
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-            {t('recap.quarterly.cardTitle', { quarter: quarterLabel(periodQuarter) })}
-          </CardTitle>
-          {isConfirmed && (
-            <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
-              <CheckCircle2 className="h-3 w-3 mr-1" />
-              {t('recap.quarterly.confirmedBadge')}
-            </Badge>
-          )}
-          {recap?.status === 'draft' && (
-            <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">
-              {t('recap.quarterly.draftBadge')}
-            </Badge>
-          )}
-          {recap?.generation_mode === 'from_raw' && (
-            <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/5">
-              <Zap className="h-3 w-3 mr-1" />
-              Modo rápido
-            </Badge>
-          )}
-        </div>
-        {recap && (
-          <p className="text-xs text-muted-foreground mt-1">
-            {t('recap.quarterly.basedOn', {
-              count: recap.source_monthly_recap_ids.length,
-              feedbacks: recap.source_feedbacks_count,
-              meetings: recap.source_meetings_count,
-            })}
-          </p>
-        )}
-      </CardHeader>
+    <Collapsible defaultOpen={defaultOpen}>
+      <Card className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] border-border/60 overflow-hidden">
+        <CollapsibleTrigger className="group w-full text-left">
+          <CardHeader className="pb-3 hover:bg-muted/30 transition-colors">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <CardTitle className="text-base font-semibold tracking-tight flex items-center gap-2">
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
+                <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                {t('recap.quarterly.cardTitle', { quarter: quarterLabel(periodQuarter) })}
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                {isConfirmed && (
+                  <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    {t('recap.quarterly.confirmedBadge')}
+                  </Badge>
+                )}
+                {recap?.status === 'draft' && (
+                  <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">
+                    {t('recap.quarterly.draftBadge')}
+                  </Badge>
+                )}
+                {!recap && (
+                  <Badge variant="outline" className="border-border text-muted-foreground">
+                    Sem rascunho
+                  </Badge>
+                )}
+                {recap?.generation_mode === 'from_raw' && (
+                  <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/5">
+                    <Zap className="h-3 w-3 mr-1" />
+                    Modo rápido
+                  </Badge>
+                )}
+              </div>
+            </div>
+            {recap && (
+              <p className="text-xs text-muted-foreground mt-1 ml-6">
+                {t('recap.quarterly.basedOn', {
+                  count: recap.source_monthly_recap_ids.length,
+                  feedbacks: recap.source_feedbacks_count,
+                  meetings: recap.source_meetings_count,
+                })}
+              </p>
+            )}
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
       <CardContent className="space-y-5">
         {!recap && (
           <div className="text-center py-6 space-y-3">
@@ -424,7 +437,9 @@ function QuarterCard({ memberId, recap, periodQuarter }: { memberId: string; rec
           </>
         )}
       </CardContent>
-    </Card>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }
 
@@ -458,7 +473,12 @@ export function QuarterlyRecapSection({ memberId }: Props) {
         <p className="text-sm text-muted-foreground">{t('recap.quarterly.subtitle')}</p>
       </div>
       <CurrentQuarterCard periodQuarter={currentQuarter} />
-      <QuarterCard memberId={memberId} periodQuarter={lastClosedQuarter} recap={recapForLastClosed} />
+      <QuarterCard
+        memberId={memberId}
+        periodQuarter={lastClosedQuarter}
+        recap={recapForLastClosed}
+        defaultOpen={!recapForLastClosed || recapForLastClosed.status !== 'confirmed'}
+      />
       {previous.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground pt-2">
