@@ -20,7 +20,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { useHomeRoute } from '@/hooks/useHomeRoute';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Music, BookOpen, FileText, Clock, Lock, ArrowRight, Briefcase, Heart, Megaphone, Compass, DollarSign, Shield, GraduationCap, Crown, HelpCircle, Sunrise, Moon, Search, CheckCircle, Monitor, MessageSquare, CheckCircle2, Sprout, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Music, BookOpen, FileText, Clock, Lock, ArrowRight, Briefcase, Heart, Megaphone, Compass, DollarSign, Shield, GraduationCap, Crown, HelpCircle, Sunrise, Moon, Search, CheckCircle, MessageSquare, CheckCircle2, Sprout, MoreHorizontal } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,12 +28,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { GoalsManager } from '@/components/GoalsManager';
+
 
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { InviteMemberDialog } from '@/components/InviteMemberDialog';
-import { MeetingRecorder } from '@/components/MeetingRecorder';
+
 import { CreateFormalReviewDialog } from '@/components/review/CreateFormalReviewDialog';
 import { FormalReviewSheet } from '@/components/review/FormalReviewSheet';
 import { MonthlyRecapSection } from '@/components/recaps/MonthlyRecapSection';
@@ -84,7 +84,7 @@ const MemberDetails = () => {
   }, []);
   const [resendingInvite, setResendingInvite] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
-  const [recorderOpen, setRecorderOpen] = useState(false);
+  
   const [formalReviewOpen, setFormalReviewOpen] = useState(false);
   const [reviewSheetOpen, setReviewSheetOpen] = useState(false);
   const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
@@ -501,10 +501,6 @@ const MemberDetails = () => {
                     Nova Nota
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem onClick={() => setRecorderOpen(true)} className="gap-2">
-                  <Monitor className="h-4 w-4" />
-                  Gravar Reunião
-                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setChatOpen(true)} className="gap-2">
                   <Sparkles className="h-4 w-4" />
                   Mentor Chat
@@ -736,18 +732,6 @@ const MemberDetails = () => {
               </AccordionContent>
             </AccordionItem>
 
-            {/* Item 2: Objetivos/Metas - Sistema Estruturado */}
-            <AccordionItem value="objectives" className="border rounded-lg">
-              <AccordionTrigger className="px-4 hover:no-underline">
-                <div className="flex items-center gap-2">
-                  <Target className="h-4 w-4 text-primary" />
-                  <span className="font-semibold">Objetivos / Metas</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-4 pb-4">
-                <GoalsManager memberId={member.id} />
-              </AccordionContent>
-            </AccordionItem>
           </Accordion>
         </div>
 
@@ -940,13 +924,6 @@ const MemberDetails = () => {
           invite_token: member.invite_token
         }}
         onSuccess={() => queryClient.invalidateQueries({ queryKey: ['member', id] })}
-      />
-
-      <MeetingRecorder
-        open={recorderOpen}
-        onOpenChange={setRecorderOpen}
-        memberId={member.id}
-        memberName={member.name}
       />
 
       <CreateFormalReviewDialog
