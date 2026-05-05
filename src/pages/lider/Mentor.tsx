@@ -53,9 +53,7 @@ export default function LiderMentor() {
   const [selectedMember, setSelectedMember] = useState<LeaderMemberRow | null>(null);
   const [scope, setScope] = useState<ContextScope>('geral');
   const [input, setInput] = useState('');
-  const [chatOpen, setChatOpen] = useState(false);
-  const [initialPrompt, setInitialPrompt] = useState<string | undefined>(undefined);
-  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  // (modal state removed — chat now lives at /lider/mentor/:threadId)
   const [memberPickerOpen, setMemberPickerOpen] = useState(false);
   const [memberQuery, setMemberQuery] = useState('');
   const [showAllHistory, setShowAllHistory] = useState(false);
