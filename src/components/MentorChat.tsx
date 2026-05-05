@@ -1012,11 +1012,13 @@ export const MentorChat = ({
                       {isLeader ? '🎯' : <Sparkles className="h-6 w-6 text-primary" />}
                     </div>
                     <h2 className="font-semibold text-xl text-foreground tracking-tight">
-                      {isLeader ? `Mentor de ${memberName}` : `Olá, ${memberName.split(' ')[0]}! 👋`}
+                       {isLeader ? (memberId ? `Mentor de ${memberName}` : 'Converse com a Rhitmo') : `Olá, ${memberName.split(' ')[0]}! 👋`}
                     </h2>
                     <p className="text-muted-foreground text-sm max-w-md mt-2">
                       {isLeader
-                        ? `Pergunte qualquer coisa sobre ${memberName}, ou comece com um destes templates:`
+                        ? memberId
+                          ? `Pergunte qualquer coisa sobre ${memberName}, ou comece com um destes templates:`
+                          : 'Faça uma pergunta aberta sobre liderança, comunicação, prioridades ou decisões do seu dia a dia.'
                         : 'Sou seu parceiro de desenvolvimento. Comece com um destes templates ou pergunte o que quiser:'}
                     </p>
 
@@ -1141,10 +1143,23 @@ export const MentorChat = ({
                   <div className="flex items-start gap-3 animate-in fade-in slide-in-from-bottom-1 duration-300">
                     <AssistantIcon />
                     <div className="flex flex-col gap-2 max-w-[75%]">
-                      <div className="rounded-2xl bg-muted/50 px-4 py-3 space-y-2">
-                        <Skeleton className="h-3 w-48 rounded-full" />
-                        <Skeleton className="h-3 w-64 rounded-full" />
-                        <Skeleton className="h-3 w-40 rounded-full" />
+                      <div className="rounded-2xl bg-muted/50 px-4 py-3 border border-border/40 shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
+                        <div className="flex items-center gap-2 text-sm text-foreground">
+                          <span className="grid grid-cols-3 gap-0.5">
+                            {Array.from({ length: 9 }).map((_, index) => (
+                              <span
+                                key={index}
+                                className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-pulse"
+                                style={{ animationDelay: `${index * 90}ms` }}
+                              />
+                            ))}
+                          </span>
+                          <span className="font-medium">Pensando</span>
+                          <span className="text-muted-foreground">· {Math.max(1, loadingSeconds)}s</span>
+                        </div>
+                        <div className="mt-3 h-1 overflow-hidden rounded-full bg-background/70">
+                          <div className="h-full w-1/2 rounded-full bg-primary/60 animate-[shimmer_1.4s_ease-in-out_infinite]" />
+                        </div>
                       </div>
                       <div className="flex items-center gap-2 px-1">
                         <span className="flex gap-1">
