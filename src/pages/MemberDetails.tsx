@@ -926,13 +926,6 @@ const MemberDetails = () => {
         onSuccess={() => queryClient.invalidateQueries({ queryKey: ['member', id] })}
       />
 
-      <MeetingRecorder
-        open={recorderOpen}
-        onOpenChange={setRecorderOpen}
-        memberId={member.id}
-        memberName={member.name}
-      />
-
       <CreateFormalReviewDialog
         open={formalReviewOpen}
         onOpenChange={setFormalReviewOpen}
