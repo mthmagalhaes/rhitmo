@@ -473,7 +473,12 @@ export function QuarterlyRecapSection({ memberId }: Props) {
         <p className="text-sm text-muted-foreground">{t('recap.quarterly.subtitle')}</p>
       </div>
       <CurrentQuarterCard periodQuarter={currentQuarter} />
-      <QuarterCard memberId={memberId} periodQuarter={lastClosedQuarter} recap={recapForLastClosed} />
+      <QuarterCard
+        memberId={memberId}
+        periodQuarter={lastClosedQuarter}
+        recap={recapForLastClosed}
+        defaultOpen={!recapForLastClosed || recapForLastClosed.status !== 'confirmed'}
+      />
       {previous.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground pt-2">
