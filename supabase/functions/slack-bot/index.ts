@@ -762,6 +762,17 @@ async function handleBriefCommand(payload: Record<string, string>, persona: Pers
   const result = await resolveMember(text, persona.workspaceId!);
   if ('error' in result) return { text: `❌ ${result.error}` };
 
+  return await buildBriefForMember(result.id, result.name, persona);
+}
+
+// Reusable brief builder — used by /brief and prep_1on1_brief button
+async function buildBriefForMember(
+  memberId: string,
+  memberName: string,
+  persona: PersonaResult,
+): Promise<Record<string, unknown>> {
+  const result = { id: memberId, name: memberName };
+
   // Fetch recent feedbacks
   const { data: recentFeedbacks } = await supabase
     .from('feedbacks')
@@ -1416,6 +1427,37 @@ async function processInteraction(body: string, timestamp: string, signature: st
         const pdiPersona = await getUserPersona(slackUserId);
         const pdiMsg = await handleMeuPdiCommand(pdiPersona);
         if (responseUrl) await sendDelayedResponse(responseUrl, pdiMsg);
+        break;
+      }
+      case 'prep_1on1_brief': {
+        console.log('[INTERACT] prep_1on1_brief clicked, value:', action.value);
+        const briefPersona = await getUserPersona(slackUserId);
+        if (briefPersona.persona !== 'leader' || !briefPersona.userId) {
+          if (responseUrl) await sendDelayedResponse(responseUrl, { text: '❌ Apenas líderes podem gerar pautas.' });
+          break;
+        }
+        const [meetingId] = (action.value || '').split(':');
+        if (!meetingId) {
+          if (responseUrl) await sendDelayedResponse(responseUrl, { text: '❌ Reunião inválida.' });
+          break;
+        }
+        const { data: meeting } = await supabase
+          .from('upcoming_meetings')
+          .select('member_id, title')
+          .eq('id', meetingId)
+          .eq('user_id', briefPersona.userId)
+          .maybeSingle();
+        if (!meeting?.member_id) {
+          if (responseUrl) await sendDelayedResponse(responseUrl, { text: '❌ Reunião não encontrada ou sem liderado vinculado.' });
+          break;
+        }
+        const { data: m } = await supabase
+          .from('team_members')
+          .select('name')
+          .eq('id', meeting.member_id)
+          .maybeSingle();
+        const briefMsg = await buildBriefForMember(meeting.member_id, m?.name ?? 'Liderado', briefPersona);
+        if (responseUrl) await sendDelayedResponse(responseUrl, briefMsg);
         break;
       }
       case 'start_rhitmo_chat': {
