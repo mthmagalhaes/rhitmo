@@ -268,11 +268,25 @@ export const MentorChat = ({
     if (scrollRef.current && (messages.length > 0 || isLoading)) {
       setTimeout(() => {
         if (scrollRef.current) {
-          scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+          const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement | null;
+          const target = viewport ?? scrollRef.current;
+          target.scrollTo({ top: target.scrollHeight, behavior: 'smooth' });
         }
       }, 100);
     }
   }, [messages, isLoading]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setLoadingSeconds(0);
+      return;
+    }
+    const startedAt = Date.now();
+    const interval = setInterval(() => {
+      setLoadingSeconds(Math.max(1, Math.floor((Date.now() - startedAt) / 1000)));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isLoading]);
 
   // Populate input with initialPrompt when opens
   const autoSentRef = useRef(false);
@@ -360,6 +374,25 @@ export const MentorChat = ({
       console.error('Erro ao excluir:', error);
       toast({ title: 'Erro ao excluir', description: 'Tente novamente.', variant: 'destructive' });
     } finally { setDeletingThread(null); }
+  };
+
+  const handleTogglePinThread = async (thread: ChatThread) => {
+    try {
+      const nextPinned = !thread.is_pinned;
+      const { error } = await supabase
+        .from('chat_threads')
+        .update({ is_pinned: nextPinned } as any)
+        .eq('id', thread.id);
+      if (error) throw error;
+      queryClient.setQueryData([threadsQueryKey, threadQueryId], (old: ChatThread[] | undefined) => {
+        const updated = old?.map(t => t.id === thread.id ? { ...t, is_pinned: nextPinned } : t) || [];
+        return updated.sort((a, b) => Number(!!b.is_pinned) - Number(!!a.is_pinned) || new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+      });
+      toast({ title: nextPinned ? 'Conversa fixada' : 'Conversa desafixada' });
+    } catch (error) {
+      console.error('Erro ao fixar conversa:', error);
+      toast({ title: 'Erro ao atualizar conversa', description: 'Tente novamente.', variant: 'destructive' });
+    }
   };
 
   // ── Textarea auto-height ─────────────────────────────
