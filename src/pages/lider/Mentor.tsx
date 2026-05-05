@@ -182,6 +182,32 @@ export default function LiderMentor() {
     setScope('geral');
   };
 
+  const refreshThreads = () => queryClient.invalidateQueries({ queryKey: ['mentor-page-threads', effectiveUserId] });
+
+  const handleRenameThread = async (threadId: string, title: string) => {
+    const trimmed = title.trim();
+    if (!trimmed) { setEditingThreadId(null); setEditingTitle(''); return; }
+    const { error } = await supabase.from('chat_threads').update({ title: trimmed }).eq('id', threadId);
+    if (!error) await refreshThreads();
+    setEditingThreadId(null);
+    setEditingTitle('');
+  };
+
+  const handleTogglePinThread = async (thread: ThreadRow) => {
+    const { error } = await supabase
+      .from('chat_threads')
+      .update({ is_pinned: !thread.is_pinned } as any)
+      .eq('id', thread.id);
+    if (!error) await refreshThreads();
+  };
+
+  const handleDeleteThread = async (thread: ThreadRow) => {
+    await supabase.from('mentor_messages').delete().eq('thread_id', thread.id);
+    const { error } = await supabase.from('chat_threads').delete().eq('id', thread.id);
+    if (!error) await refreshThreads();
+    setDeletingThread(null);
+  };
+
   const scopeLabels: Record<ContextScope, string> = {
     geral: 'Chat geral',
     tudo: 'Tudo do liderado',
