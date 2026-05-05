@@ -332,11 +332,28 @@ export function MonthlyRecapSection({ memberId }: Props) {
         <h2 className="text-lg font-bold tracking-tight">{t('recap.monthly.title')}</h2>
         <p className="text-sm text-muted-foreground">{t('recap.monthly.subtitle')}</p>
       </div>
-      <div className="grid gap-4">
+      <div className="grid gap-2.5">
         <CurrentMonthCard />
-        {months.map((m) => (
-          <RecapCard key={m} memberId={memberId} periodMonth={m} recap={recapByMonth.get(m)} />
-        ))}
+        {months.map((m, idx) => {
+          const r = recapByMonth.get(m);
+          // Open the most recent month that needs action (draft or empty).
+          const needsAction = !r || r.status !== 'confirmed';
+          const isFirstNeedsAction =
+            needsAction &&
+            months.slice(0, idx).every((prev) => {
+              const pr = recapByMonth.get(prev);
+              return pr && pr.status === 'confirmed';
+            });
+          return (
+            <RecapCard
+              key={m}
+              memberId={memberId}
+              periodMonth={m}
+              recap={r}
+              defaultOpen={isFirstNeedsAction}
+            />
+          );
+        })}
         {outOfWindowRecaps.length > 0 && (
           <>
             <div className="pt-2">
