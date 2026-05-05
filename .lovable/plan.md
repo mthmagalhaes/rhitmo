@@ -1,71 +1,90 @@
+## Mentor Chat 2.2 — Polimento de resposta (estilo Windy onde faz sentido)
 
-## Diagnóstico
+Quatro mudanças cirúrgicas, sem descaracterizar o tom de coach do Mentor.
 
-### Problema 1 — "Como eu posso melhorar como líder?" sem retorno
-A `chat-mentor` foi construída assumindo que **sempre existe um liderado-alvo**. O system prompt inteiro fala "você analisa o liderado X", o protagonista é `${memberName}`, todo o RAG filtra por `filter_member_id`. Quando o launchpad inicia uma thread sem `memberId`, o `MentorThread.tsx` faz fallback `memberName = userName` (o próprio líder) e manda `feedbacks=[]`. Resultado: a IA recebe instruções para analisar "Matheus" sem nenhum dado, dispara a regra anti-genericidade ("não há dados, sugira registrar notas") e devolve resposta vazia/inútil — exatamente o que você viu no screenshot 2.
+### 1. Capabilities mode (pergunta tipo "o que você faz?")
 
-### Problema 2 — Gabriela tem MUITO histórico, IA não captura
-Hoje a recuperação é:
-- Top 50 notas mais recentes por `occurred_at desc`, comprimidas até **20k chars** (`compressContext`).
-- + RAG semântico (`match_feedbacks`, threshold **0.5**, **top 10**) na pergunta.
-- Para cada nota: usa `summary` se existir, senão **trunca `content` em 800 chars**.
+**Onde:** `supabase/functions/chat-mentor/index.ts`
 
-Limitações concretas para alguém com 100+ notas/transcrições:
-- 50 mais recentes podem **enterrar** evidências antigas relevantes que o RAG não pegou (threshold 0.5 é alto, top 10 é pouco).
-- Truncar transcrições em 800 chars perde o miolo da reunião.
-- Não há recuperação por **tema/tag/tipo** (ex.: só transcrições, só pulses, só do último trimestre).
-- Não passamos resumos pré-computados de `ctx_evidence` (que já existem!) — o RAG ignora todo o Context Graph que construímos nos sprints 8.x.
+Adicionar detector simples (regex em PT-BR) **antes** da chamada à LLM:
+- Padrões: `o que (você|vc) (faz|pode fazer|consegue|me ajuda)`, `como (você|vc) (me )?ajuda`, `quais (são )?(suas|tuas) (capacidades|funções|funcionalidades)`, `me apresenta`, `o que é (esse|este) (mentor|chat)`.
+- Quando casar **e** `mode === 'leader_self'` **e** sem `conversationHistory` (primeira msg da thread), responder com payload **estático** estilo Windy — sem chamar LLM:
+
+```
+Aqui está como posso te ajudar como **Mentor Rhitmo**:
 
 ---
 
-## Plano
+### 🧠 Reflexão sobre sua liderança
+- Discutir desafios atuais e pontos cegos
+- Conectar sua intenção (perfil) com sua prática (notas do time)
+- Provocar sobre legado, energia e desenvolvimento
 
-### A. Modo "Líder" (autocoaching, sem liderado)
+### 👥 Análise de liderados específicos
+- Resumir histórico, padrões e sentimento por pessoa
+- Preparar conversas difíceis (1:1s, feedbacks, PDI)
+- _Selecione a pessoa em "Trocar contexto" no topo_
 
-Quando a thread é criada sem `memberId`:
+### 📊 Padrões do time
+- Identificar tags recorrentes nas suas notas
+- Detectar contradições ("Watermelon": tudo verde por fora…)
 
-1. **Frontend (`MentorThread.tsx` + `Mentor.tsx`)**: parar de usar fallback `userName` como `memberName`. Passar explicitamente `mode: 'leader_self'` e **não** mandar `memberName`/`feedbacks`.
-2. **`chat-mentor/index.ts`**: aceitar `mode` no payload. Se `mode === 'leader_self'`:
-   - Pular a validação obrigatória de `memberName`/`feedbacks`.
-   - Usar um **system prompt alternativo** (novo arquivo `_shared/rhitmo-leader-coach.ts`) focado em coaching do próprio líder: usa `leaderSyncData` (perfil de liderança que já enviamos), `keyObjectives` agregados do time, e dados agregados do líder (ver passo 3).
-   - Guardrails: redirecionar perguntas que claramente são sobre um liderado específico ("Como cobro a Gabi?") com resposta curta sugerindo selecionar o liderado no header (botão "Trocar contexto").
-3. **Contexto agregado do líder**: novo helper que busca:
-   - Top 5 padrões recorrentes nas notas do time (via `ctx_evidence` recente, agrupadas por tag/sentimento).
-   - Histórico de 1:1s do próprio líder (do `mirror_insights` / `useMirrorInsight`).
-   - Recaps/diário recentes do líder (`weekly_reflection`).
-   - Perfil completo `leader_sync_data`.
-4. **UI no launchpad**: quando o líder digita sem selecionar liderado, mostrar **chip discreto** "Modo: Coaching pessoal" no header da thread (em vez de "— Gabriela Lucas (...)") para deixar claro qual modo está ativo. Templates do empty state ganham uma seção "Sobre você como líder" (ex.: "O que estou evitando essa semana?", "Onde estou perdendo tempo?", "Que viés apareceu nas minhas últimas notas?").
+### 🎯 Síntese acionável
+- Toda análise termina com 3 bullets: insight, padrão, ação imediata
+```
 
-### B. RAG mais robusto para liderado com muito histórico
+Para `mode === 'member'`, variante curta mencionando o nome do liderado.
 
-Mudanças em `chat-mentor/index.ts` (e RPC):
+**Por quê estático:** zero latência, zero custo, formatação garantida (resolve a queixa de "não tive resposta nenhuma" + dá o tom Windy).
 
-1. **Aumentar recall do semântico**: `match_threshold: 0.35` (de 0.5), `match_count: 25` (de 10). Custa pouco e resgata evidências menos óbvias.
-2. **Incluir `ctx_evidence` no RAG**: criar/usar RPC `match_context_evidence` (mesma técnica do `match_feedbacks`, sobre embeddings de `ctx_evidence`). O Context Graph tem resumos curados de meetings/pulses/reviews/slack — é muito mais denso que feedbacks crus. Mesclar resultados (dedup por `source_id`).
-3. **Janela de contexto adaptativa**: se RAG semântico retorna ≥15 hits relevantes (score > 0.55), aumentar `maxChars` de 20k → **40k**, e elevar `slice(0, 50)` para **80** notas no `compressContext`. Gemini 2.5 Flash aguenta 1M tokens; estamos sub-utilizando.
-4. **Truncamento mais inteligente**: se `summary` ausente e `content` é transcrição (detector já existe via `isLongTranscript`), gerar **summary on-demand** para aquela nota (cache em memória dentro do request) em vez de truncar em 800 chars cegamente. Limite: até 3 sumarizações on-demand por request (custo controlado).
-5. **Filtro por intenção**: roteador atual só decide "precisa contexto SIM/NAO". Estender para classificar **tipo de contexto**: `behavioral` (foca em pulses + slack), `delivery` (foca em meetings + goal_events), `relational` (foca em 1:1s + reviews). Passar como filtro na nova RPC. Reduz ruído sem perder profundidade.
-6. **Logging visível**: já temos `log.info('end', { context_used, ... })`. Adicionar `evidence_breakdown: { from_recent: N, from_semantic_feedbacks: N, from_semantic_evidence: N, summarized_on_demand: N }` para debugar futuros casos como o da Gabriela direto nos logs.
+### 2. Bullets paralelos como default
 
-### C. Validação rápida
+**Onde:** `_shared/rhitmo-leader-coach.ts` linhas 92-98 + bloco equivalente no system prompt do modo `member` em `chat-mentor/index.ts` (~linha 631-684).
 
-- Reproduzir a tela 2 (sem liderado): garantir que retorna resposta útil em modo `leader_self`.
-- Reproduzir a tela 1 (Gabriela): rodar 3 perguntas que hoje retornam "não encontrei registros" e confirmar que agora citam evidências antigas via RAG ampliado + ctx_evidence.
+Trocar a regra atual de formatação por:
+
+```
+## DIRETRIZES DE FORMATAÇÃO
+
+1. Comece com **uma frase-resumo (1 linha)** que sintetize a resposta. Sem saudação.
+2. Use H3 (`###`) com emoji para separar seções.
+3. Bullets **sempre paralelos**: comece com verbo no infinitivo ou substantivo, mantenha o mesmo padrão dentro de cada lista.
+4. Bullets curtos (≤ 18 palavras). Sem parágrafos densos.
+5. **Negrito** apenas em conceitos-chave (1–2 por seção).
+6. Encerre análises com `### 🎯 Síntese Honesta` (3 bullets: insight, padrão, ação imediata).
+```
+
+### 3. Slack: degradar markdown corretamente
+
+**Onde:** `supabase/functions/slack-bot/index.ts` linha ~1086 (handler `/mentor`).
+
+Hoje o `reply.substring(0, 3000)` é jogado como `mrkdwn`, mas o Mentor devolve `### Título` e `**negrito**` (markdown padrão), que o Slack não renderiza.
+
+Criar helper local `markdownToSlackMrkdwn(text)`:
+- `### Título` → `*Título*\n` (Slack só tem 1 nível de bold)
+- `## Título` → `*Título*\n`
+- `**texto**` → `*texto*`
+- `__texto__` → `_texto_`
+- `- ` no início de linha → `• `
+- Manter emojis e quebras de linha
+- Truncar inteligentemente em 2900 chars (preservar última quebra de parágrafo)
+
+Aplicar ao `reply` antes de inserir no bloco.
+
+### 4. Lead de abertura (1 linha)
+
+Já fica coberto pela regra (1) da mudança #2 do prompt. Sem código adicional.
 
 ---
 
-## Arquivos afetados
+## Arquivos modificados
 
-- `supabase/functions/chat-mentor/index.ts` — aceita `mode`, RAG ampliado, ctx_evidence, sumarização on-demand.
-- `supabase/functions/_shared/rhitmo-leader-coach.ts` — **novo**: system prompt para modo autocoaching.
-- Migration: nova RPC `match_context_evidence(query_embedding, threshold, count, filter_user_id)`.
-- `src/pages/lider/MentorThread.tsx` — não forçar `memberName=userName`; passar `mode`.
-- `src/pages/lider/Mentor.tsx` — templates "Sobre você como líder" no empty state quando nenhum liderado selecionado.
-- `src/components/MentorChat.tsx` — header mostra "Coaching pessoal" quando `mode='leader_self'`; aceita `onSwitchContext` para trocar para um liderado mid-thread.
-- `mem://features/mentor-chat/leader-self-mode.md` — documentar o novo modo.
+- `supabase/functions/chat-mentor/index.ts` — detector capabilities-mode + curto-circuito antes da LLM; ajuste no system prompt do modo member.
+- `supabase/functions/_shared/rhitmo-leader-coach.ts` — bloco "Diretrizes de formatação" reescrito.
+- `supabase/functions/slack-bot/index.ts` — helper `markdownToSlackMrkdwn` + aplicação no handler `/mentor`.
 
-## Fora de escopo (anotado para depois)
+## Fora de escopo (intencional)
 
-- Indexar transcrições inteiras como chunks separados (precisaria pipeline próprio de embedding por chunk; hoje embedamos a nota inteira).
-- Memória de longo prazo cross-thread (lembrar que "líder já recebeu sugestão X mês passado").
-- Streaming token-a-token (hoje é resposta completa).
+- Não mexer em CitationChip / `[doc:UUID]` (já funciona).
+- Não tocar em `MentorChat.tsx` na web (o markdown já renderiza via `react-markdown`).
+- Não mudar o tom de coach do modo análise — só padronizar a forma.
