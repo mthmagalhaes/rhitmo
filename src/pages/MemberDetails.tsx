@@ -33,7 +33,7 @@ import { GoalsManager } from '@/components/GoalsManager';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { InviteMemberDialog } from '@/components/InviteMemberDialog';
-import { MeetingRecorder } from '@/components/MeetingRecorder';
+
 import { CreateFormalReviewDialog } from '@/components/review/CreateFormalReviewDialog';
 import { FormalReviewSheet } from '@/components/review/FormalReviewSheet';
 import { MonthlyRecapSection } from '@/components/recaps/MonthlyRecapSection';
