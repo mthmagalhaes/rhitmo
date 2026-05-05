@@ -732,19 +732,8 @@ const MemberDetails = () => {
               </AccordionContent>
             </AccordionItem>
 
-            {/* Item 2: Objetivos/Metas - Sistema Estruturado */}
-            <AccordionItem value="objectives" className="border rounded-lg">
-              <AccordionTrigger className="px-4 hover:no-underline">
-                <div className="flex items-center gap-2">
-                  <Target className="h-4 w-4 text-primary" />
-                  <span className="font-semibold">Objetivos / Metas</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-4 pb-4">
-                <GoalsManager memberId={member.id} />
-              </AccordionContent>
-            </AccordionItem>
           </Accordion>
+        </div>
         </div>
 
         {/* PDI Card — read-only para o líder */}
