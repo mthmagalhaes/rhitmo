@@ -734,7 +734,6 @@ const MemberDetails = () => {
 
           </Accordion>
         </div>
-        </div>
 
         {/* PDI Card — read-only para o líder */}
         {memberDevPlan && memberDevPlan.status === 'active' && (
