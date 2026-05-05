@@ -85,8 +85,11 @@ Deno.serve(async (req) => {
     // Support both modes: direct IDs or HMAC state token
     if (body.state) {
       const verified = await verifyStateToken(body.state);
-      if (!verified) {
-        return new Response(JSON.stringify({ error: 'Invalid or expired state token' }), {
+      if (!verified.ok) {
+        const message = verified.reason === 'state_expired'
+          ? 'O link expirou. Volte ao Slack e digite /rhitmo para gerar um novo.'
+          : 'Token de vinculação inválido. Tente gerar um novo link no Slack.';
+        return new Response(JSON.stringify({ error: message, error_code: verified.reason }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
