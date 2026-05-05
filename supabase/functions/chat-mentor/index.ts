@@ -780,6 +780,8 @@ ${contextLines}
 
 Lembre-se: Você é um coach experiente. Baseie-se APENAS nos dados acima. Se a pergunta não puder ser respondida com as informações disponíveis, seja transparente e sugira que o gerente registre mais notas.`;
 
+    const systemPrompt = systemPromptOverride || memberSystemPrompt;
+
     // ============================================
     // DETECÇÃO E SUMMARIZAÇÃO DE TRANSCRIÇÃO LONGA
     // ============================================
