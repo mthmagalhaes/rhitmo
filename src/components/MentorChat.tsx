@@ -897,7 +897,7 @@ export const MentorChat = ({
       <div className="flex flex-1 min-h-0">
 
           {/* ── Sidebar ────────────────────────────── */}
-          <div className={`flex-shrink-0 border-r border-border flex flex-col bg-muted/20 transition-all duration-200 overflow-hidden ${sidebarOpen ? 'w-[240px]' : 'w-0 border-r-0'}`}>
+          <div className={`flex-shrink-0 border-r border-border flex flex-col bg-muted/20 transition-all duration-200 overflow-hidden ${sidebarOpen ? 'w-[280px]' : 'w-0 border-r-0'}`}>
             <div className="p-3 flex items-center gap-2">
               <Button onClick={handleNewThread} variant="outline" size="sm" className="flex-1 gap-2 rounded-xl text-sm">
                 <Plus className="h-4 w-4" />
@@ -956,7 +956,10 @@ export const MentorChat = ({
                               }`}
                             >
                               <div className="flex-1 min-w-0">
-                                <p className="truncate text-[13px]">{thread.title}</p>
+                                <div className="flex items-start gap-1.5">
+                                  {thread.is_pinned && <Pin className="h-3 w-3 text-primary fill-primary mt-0.5 flex-shrink-0" />}
+                                  <p className="line-clamp-2 text-[13px] leading-snug">{thread.title}</p>
+                                </div>
                                 <p className="text-[11px] text-muted-foreground">
                                   {format(new Date(thread.updated_at), 'dd MMM', { locale: ptBR })}
                                 </p>
