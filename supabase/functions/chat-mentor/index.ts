@@ -113,6 +113,36 @@ const compressContext = (feedbacks: any[]): string => {
   return contextLines || 'Nenhum histórico disponível ainda.';
 };
 
+// Variante "ampliada" — usada quando RAG semântico retorna muito sinal (>=15 hits).
+// Aumenta janela de notas (80) e budget de chars (40k) para liderados com histórico denso.
+const compressContextLarge = (feedbacks: any[]): string => {
+  if (!feedbacks?.length) return 'Nenhum histórico disponível ainda.';
+  const sorted = [...feedbacks].sort((a, b) => {
+    const dateA = new Date(a.occurred_at || a.created_at);
+    const dateB = new Date(b.occurred_at || b.created_at);
+    return dateB.getTime() - dateA.getTime();
+  });
+  const limited = sorted.slice(0, 80);
+  let contextLines = '';
+  let totalChars = 0;
+  const maxChars = 40000;
+  for (const fb of limited) {
+    const date = new Date(fb.occurred_at || fb.created_at).toLocaleDateString('pt-BR');
+    const typeLabel = fb.type || 'Nota';
+    const docId = fb.id ?? null;
+    let text = fb.summary;
+    if (!text || text.length < 20) {
+      text = (fb.content || '').substring(0, 1500);
+      if ((fb.content || '').length > 1500) text += '...';
+    }
+    const docHeader = docId ? ` [doc_id: ${docId}]` : '';
+    const noteText = `[Data: ${date}] [Tipo: ${typeLabel}]${docHeader}\n${text}\n---\n\n`;
+    if (totalChars + noteText.length > maxChars) break;
+    contextLines += noteText;
+    totalChars += noteText.length;
+  }
+  return contextLines || 'Nenhum histórico disponível ainda.';
+};
 // ============================================
 // DETECÇÃO DE TRANSCRIÇÃO LONGA
 // ============================================
