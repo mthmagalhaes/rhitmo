@@ -166,6 +166,12 @@ export function AppSidebar() {
           })}
         </SidebarMenu>
 
+        {/* CTA — Pergunte ao Mentor (abaixo da navegação) */}
+        {persona === 'leader' && (
+          <div className="px-2 pt-3">
+            <SidebarFooterCTA persona={persona} />
+          </div>
+        )}
 
         {/* HR context switcher (kept for HR Admins) */}
         {open && !isInHRContext && isHRAdmin && (
