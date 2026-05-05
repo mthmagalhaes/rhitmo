@@ -16,6 +16,7 @@ export default function SlackConnect() {
   const home = useHomeRoute();
   const [status, setStatus] = useState<Status>('loading');
   const [errorMsg, setErrorMsg] = useState('');
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const state = searchParams.get('state');
   const memberId = searchParams.get('member_id');
@@ -30,7 +31,6 @@ export default function SlackConnect() {
 
     if (!user) {
       const returnTo = `/slack/connect?state=${encodeURIComponent(state)}${memberId ? `&member_id=${memberId}` : ''}`;
-      // If member_id is present, hint signup for new accounts
       const signupHint = memberId ? '&signup=true' : '';
       navigate(`/auth?returnTo=${encodeURIComponent(returnTo)}${signupHint}`, { replace: true });
       return;
@@ -42,10 +42,27 @@ export default function SlackConnect() {
           body: { state },
         });
 
-        if (error) throw error;
-        if (data?.error) throw new Error(data.error);
+        // Even on non-2xx, parse the body for error_code/message
+        if (error) {
+          let parsed: any = null;
+          try {
+            const ctx = (error as any).context;
+            if (ctx && typeof ctx.json === 'function') parsed = await ctx.json();
+          } catch { /* ignore */ }
+          const code = parsed?.error_code ?? null;
+          const msg = parsed?.error ?? error.message ?? 'Erro ao vincular conta';
+          setErrorCode(code);
+          setErrorMsg(msg);
+          setStatus('error');
+          return;
+        }
+        if (data?.error) {
+          setErrorCode(data.error_code ?? null);
+          setErrorMsg(data.error);
+          setStatus('error');
+          return;
+        }
 
-        // Check if privacy tips should be shown
         const { data: prefs } = await supabase
           .from('user_preferences')
           .select('hide_slack_privacy_tips')
