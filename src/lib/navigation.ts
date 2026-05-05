@@ -10,6 +10,7 @@ import {
   Target,
   FileText,
   Layers,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react';
 
