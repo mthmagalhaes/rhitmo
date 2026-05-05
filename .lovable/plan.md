@@ -1,69 +1,55 @@
-# DM de Boas-vindas após conectar Slack
+## Bug 1 — Botão "Gerar Pauta" sem handler (CRÍTICO)
 
-Hoje, quando o líder (ou liderado) completa o OAuth do Slack, a conta é vinculada em silêncio — nenhuma mensagem é enviada. O usuário precisa lembrar de digitar `/rhitmo` por conta própria. Vamos resolver isso com uma DM proativa do bot Rhitmo logo após o vínculo.
+**Causa:** orchestrator manda botão `action_id: 'prep_1on1_brief'` mas `slack-bot/index.ts` não tem case correspondente → log mostra `[INTERACT] Unhandled action: prep_1on1_brief`.
 
-## O que o usuário verá
-
-Logo após o redirect de sucesso em `/slack/connect`, recebe uma DM do bot Rhitmo no Slack com:
-
-1. **Saudação personalizada** ("Olá, Matheus 👋 Sua conta Rhitmo está conectada.")
-2. **Mini tour dos comandos** — filtrado pela audiência do usuário:
-   - **Líder** vê: `/rhitmo`, `/nota`, `/kudos`, `/brief`, `/mentor`
-   - **Liderado** vê: `/rhitmo`, `/meu-pdi`, `/meu-rhitmo`
-   - (audiência detectada via lookup em `team_members.linked_user_id` vs `workspaces.owner_id`)
-3. **Botão "🌀 Conversar com a Rhitmo"** (action_id `start_rhitmo_chat`, já existente no `slack-bot`) — abre uma `general_chat` session
-4. **Dica de privacidade** ("Suas conversas comigo aqui são privadas. Em canais públicos, eu só processo mensagens onde sou mencionado.")
-
-## Idempotência
-
-Se o usuário desconectar e reconectar (ou se o callback rodar duas vezes), **não enviamos a DM novamente**. Controle via coluna `welcome_dm_sent_at` em `slack_integrations`.
-
-## Mudanças técnicas
-
-### 1. Migration — adicionar coluna de controle
-```sql
-ALTER TABLE public.slack_integrations
-  ADD COLUMN IF NOT EXISTS welcome_dm_sent_at TIMESTAMPTZ;
+**Correção em `supabase/functions/slack-bot/index.ts`:**
+1. Extrair lógica de `handleBriefCommand` num helper `buildBriefForMember(memberId, memberName, persona)` (reutilizável).
+2. No switch de `block_actions` (~linha 1467), adicionar:
+```ts
+case 'prep_1on1_brief': {
+  const [meetingId, memberId] = (action.value || '').split(':');
+  const persona = await getUserPersona(slackUserId);
+  if (persona.persona !== 'leader') {
+    if (responseUrl) await sendDelayedResponse(responseUrl, { text: '❌ Apenas líderes geram pautas.' });
+    break;
+  }
+  // Buscar nome do membro + validar ownership do meeting
+  const { data: meeting } = await supabase
+    .from('upcoming_meetings').select('member_id, title')
+    .eq('id', meetingId).eq('user_id', persona.userId!).maybeSingle();
+  if (!meeting?.member_id) { /* ephemeral erro */ break; }
+  const { data: m } = await supabase.from('team_members').select('name').eq('id', meeting.member_id).single();
+  const briefMsg = await buildBriefForMember(meeting.member_id, m?.name ?? 'Liderado', persona);
+  if (responseUrl) await sendDelayedResponse(responseUrl, briefMsg, 'in_channel');
+  break;
+}
 ```
 
-### 2. `supabase/functions/slack-link/index.ts`
-Após o `upsert` bem-sucedido em `slack_integrations`:
-- Reler a linha para checar `welcome_dm_sent_at`
-- Se `null`: chamar `sendWelcomeDM(user.id, slack_user_id, slack_team_id)` via `EdgeRuntime.waitUntil` (não bloqueia a resposta para o frontend)
-- Após sucesso do `chat.postMessage`, dar `UPDATE slack_integrations SET welcome_dm_sent_at = now()` (service role)
+## Bug 2 — Erro genérico "non-2xx" no /slack/connect
 
-### 3. Nova função utilitária `sendWelcomeDM` (inline em `slack-link/index.ts`)
-- Buscar `bot_token` do workspace (mesma fonte que `slack-bot` usa — provavelmente `slack_workspaces.bot_token` ou env `SLACK_BOT_TOKEN`)
-- Detectar audiência:
-  - Se `user_id` é `owner_id` de algum workspace ativo OU tem `team_members` onde é `leader_user_id` → `'leader'`
-  - Caso contrário (linked_user_id em algum team_member) → `'member'`
-- Importar `SLACK_COMMANDS` (não dá — edge function não importa de `src/`). **Solução:** criar `supabase/functions/_shared/slackCommands.ts` espelhando `src/lib/slackCommands.ts` (anotado na memória como par a sincronizar)
-- Filtrar comandos por audiência (`audience === 'leader' | 'all'` ou `member | all`)
-- Montar Block Kit: `section` com saudação + `section` com lista de comandos (formato `code` + descrição) + `actions` com botão `start_rhitmo_chat` + `context` com dica de privacidade
-- POST `https://slack.com/api/chat.postMessage` com `channel: slack_user_id` (Slack abre o IM automaticamente)
+**Causa:** Token HMAC expirado (>10 min) retorna 400 com `{error: 'Invalid or expired state token'}`, mas frontend mostra a mensagem do Supabase SDK ("Edge Function returned a non-2xx status code"), não o body.
 
-### 4. Atualizar memória
-- Atualizar `mem://features/slack/command-ecosystem` adicionando que `_shared/slackCommands.ts` precisa ficar sincronizado com `src/lib/slackCommands.ts` e `slack-bot/index.ts`
-- Criar `mem://features/slack/welcome-dm` documentando trigger, idempotência (`welcome_dm_sent_at`) e filtro por audiência
+**Correções:**
+- `supabase/functions/slack-link/index.ts`: separar erros em `error_code: 'state_expired' | 'state_invalid'` no JSON, status 400.
+- `src/pages/SlackConnect.tsx`: ao falhar, ler `data.error_code` (passar `data` mesmo no error path do invoke). Se `state_expired`, mostrar mensagem amigável: "Este link expirou (válido por 10 minutos). Volte ao Slack e digite `/rhitmo` para gerar um novo link." + botão "Abrir Slack" (deeplink `slack://open`).
 
-## Não-objetivos
+## Bug 3 — App ID desatualizado nos docs
 
-- **Não** vamos enviar DM em invites de novos liderados (já coberto pelo fluxo de `pending_slack_invites`)
-- **Não** vamos criar uma nova action no Slack — reaproveitamos `start_rhitmo_chat` que já existe
-- **Não** vamos tocar no `slack-oauth-callback` (a DM dispara em `slack-link`, que é onde o vínculo de fato acontece)
+**Causa:** `mem://` e `docs/slack-app-manifest.md` referenciam `B0APL6ST719`, mas o app real visível em `api.slack.com/apps/A0AQ5F2HBPT/slash-commands` é outro.
 
-## Arquivos afetados
+**Correções:**
+- `docs/slack-app-manifest.md`: atualizar Production app ID para `A0AQ5F2HBPT`.
+- `mem://features/slack/command-ecosystem.md`: trocar app ID, anotar que `/meu-pdi` precisa ser adicionado manualmente no painel pelo Matheus.
+- Atualizar `mem://index.md` se necessário.
 
-- **Migration nova** — adicionar `welcome_dm_sent_at`
-- `supabase/functions/slack-link/index.ts` — disparar DM pós-upsert
-- `supabase/functions/_shared/slackCommands.ts` — **novo**, espelho de `src/lib/slackCommands.ts`
-- `.lovable/memory/features/slack/command-ecosystem.md` — atualizar regra de sync
-- `.lovable/memory/features/slack/welcome-dm.md` — **novo**
+## Não incluído (sprint separado)
 
-## Riscos e mitigações
+Sprint 12.5 "Slack Conversational First" (chat LLM puro substituindo menu de botões) — fica para depois da decisão de pricing/Windmill, conforme combinado.
 
-- **Bot token ausente** → log de warning e seguir, sem quebrar o vínculo
-- **DM falha** (`chat.postMessage` retorna `ok:false`) → logar erro, não setar `welcome_dm_sent_at`, vínculo continua válido
-- **Detecção de audiência ambígua** (usuário é líder e liderado ao mesmo tempo) → precedência líder (mostra comandos completos)
+## Ação manual sua (após o deploy)
 
-Aprova para eu implementar?
+Em `api.slack.com/apps/A0AQ5F2HBPT/slash-commands` → **Create New Command**:
+- Command: `/meu-pdi`
+- Request URL: `https://lybkgujyezzzvbzypxed.supabase.co/functions/v1/slack-bot`
+- Description: `Ver seu plano de desenvolvimento (liderados)`
+- Marcar **Escape channels, users, and links** ✓

@@ -762,6 +762,17 @@ async function handleBriefCommand(payload: Record<string, string>, persona: Pers
   const result = await resolveMember(text, persona.workspaceId!);
   if ('error' in result) return { text: `❌ ${result.error}` };
 
+  return await buildBriefForMember(result.id, result.name, persona);
+}
+
+// Reusable brief builder — used by /brief and prep_1on1_brief button
+async function buildBriefForMember(
+  memberId: string,
+  memberName: string,
+  persona: PersonaResult,
+): Promise<Record<string, unknown>> {
+  const result = { id: memberId, name: memberName };
+
   // Fetch recent feedbacks
   const { data: recentFeedbacks } = await supabase
     .from('feedbacks')
