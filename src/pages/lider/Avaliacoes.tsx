@@ -5,7 +5,6 @@ import { useState, useMemo } from 'react';
 import { startOfMonth, subMonths } from 'date-fns';
 import { ClipboardCheck, Music, BarChart3, Sparkles } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MemberAvatar } from '@/components/MemberAvatar';
 import { MemberMasterList } from '@/components/leader/MemberMasterList';
