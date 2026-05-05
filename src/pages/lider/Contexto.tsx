@@ -13,7 +13,6 @@ import {
 } from '@/components/context/SourceFilterChips';
 import { MemberFilterSelect } from '@/components/context/MemberFilterSelect';
 import { SendPulseButton } from '@/components/pulse/SendPulseButton';
-import { RequestPeerReviewButton } from '@/components/peer-review/RequestPeerReviewButton';
 
 const PULSE_BANNER_KEY = 'rhitmo:contexto-pulse-banner-dismissed';
 
@@ -128,7 +127,6 @@ export default function LiderContexto() {
             onClear={() => setSources([])}
           />
           <div className="sm:ml-auto flex items-center gap-2 flex-wrap">
-            <RequestPeerReviewButton />
             <SendPulseButton />
           </div>
         </div>
