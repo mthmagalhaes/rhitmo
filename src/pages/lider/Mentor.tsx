@@ -4,11 +4,11 @@
 // (ou ficar em "chat geral") e o escopo de contexto antes de iniciar.
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
-  Sparkles, ArrowUp, MessageSquare, ChevronDown, Users, Layers, History, X,
+  Sparkles, ArrowUp, MessageSquare, ChevronDown, Users, Layers, History, X, Pin, Pencil, Trash2,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -24,6 +24,16 @@ import { MemberAvatar } from '@/components/MemberAvatar';
 // MentorChat modal removed — full-page chat now lives at /lider/mentor/:threadId
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 type ContextScope = 'geral' | 'tudo' | 'notas';
 
@@ -33,6 +43,7 @@ interface ThreadRow {
   type: string;
   updated_at: string;
   member_id: string | null;
+  is_pinned?: boolean;
 }
 
 const SUGGESTIONS = [
@@ -49,6 +60,7 @@ export default function LiderMentor() {
   const { id: effectiveUserId } = useEffectiveUser();
   const { members } = useLeaderMembers();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const [selectedMember, setSelectedMember] = useState<LeaderMemberRow | null>(null);
   const [scope, setScope] = useState<ContextScope>('geral');
@@ -57,6 +69,9 @@ export default function LiderMentor() {
   const [memberPickerOpen, setMemberPickerOpen] = useState(false);
   const [memberQuery, setMemberQuery] = useState('');
   const [showAllHistory, setShowAllHistory] = useState(false);
+  const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
+  const [deletingThread, setDeletingThread] = useState<ThreadRow | null>(null);
 
   // ── Recent threads ───────────────────────────────────────────────
   const { data: threads = [], isLoading: threadsLoading } = useQuery({
@@ -65,9 +80,10 @@ export default function LiderMentor() {
       if (!effectiveUserId) return [];
       const { data, error } = await supabase
         .from('chat_threads')
-        .select('id, title, type, updated_at, member_id')
+        .select('id, title, type, updated_at, member_id, is_pinned')
         .eq('user_id', effectiveUserId)
         .in('type', ['mentor', 'general_chat', 'brief'])
+        .order('is_pinned' as any, { ascending: false })
         .order('updated_at', { ascending: false })
         .limit(showAllHistory ? 50 : 10);
       if (error) return [];
