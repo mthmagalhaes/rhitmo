@@ -20,7 +20,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { useHomeRoute } from '@/hooks/useHomeRoute';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Target, Music, BookOpen, FileText, Clock, Lock, ArrowRight, Briefcase, Heart, Megaphone, Compass, DollarSign, Shield, GraduationCap, Crown, HelpCircle, Sunrise, Moon, Search, CheckCircle, Monitor, MessageSquare, CheckCircle2, Sprout, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Music, BookOpen, FileText, Clock, Lock, ArrowRight, Briefcase, Heart, Megaphone, Compass, DollarSign, Shield, GraduationCap, Crown, HelpCircle, Sunrise, Moon, Search, CheckCircle, MessageSquare, CheckCircle2, Sprout, MoreHorizontal } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
