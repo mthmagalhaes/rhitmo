@@ -3,7 +3,7 @@
 // e histórico de conversas recentes. Permite ao líder escolher o liderado
 // (ou ficar em "chat geral") e o escopo de contexto antes de iniciar.
 import { useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
