@@ -6,17 +6,20 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+type StateResult =
+  | { ok: true; slackUserId: string; slackTeamId: string }
+  | { ok: false; reason: 'state_invalid' | 'state_expired' };
+
 // ── Verify HMAC State Token ───────────────────────────────
-async function verifyStateToken(state: string): Promise<{ slackUserId: string; slackTeamId: string } | null> {
+async function verifyStateToken(state: string): Promise<StateResult> {
   const secret = Deno.env.get('SLACK_SIGNING_SECRET');
-  if (!secret) { console.error('[STATE] No signing secret'); return null; }
+  if (!secret) { console.error('[STATE] No signing secret'); return { ok: false, reason: 'state_invalid' }; }
 
   const parts = state.split('.');
-  if (parts.length !== 2) { console.error('[STATE] Invalid format'); return null; }
+  if (parts.length !== 2) { console.error('[STATE] Invalid format'); return { ok: false, reason: 'state_invalid' }; }
 
-  // base64url decode
   const b64Decode = (s: string) => atob(s.replace(/-/g, '+').replace(/_/g, '/'));
-  
+
   let payload: string;
   let providedHex: string;
   try {
@@ -24,33 +27,31 @@ async function verifyStateToken(state: string): Promise<{ slackUserId: string; s
     providedHex = b64Decode(parts[1]);
   } catch {
     console.error('[STATE] Base64 decode failed');
-    return null;
+    return { ok: false, reason: 'state_invalid' };
   }
 
-  // Verify HMAC
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
   const expectedHex = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
 
   if (expectedHex !== providedHex) {
     console.error('[STATE] HMAC mismatch');
-    return null;
+    return { ok: false, reason: 'state_invalid' };
   }
 
-  // Parse payload: slack_user_id:slack_team_id:timestamp
   const segments = payload.split(':');
-  if (segments.length !== 3) { console.error('[STATE] Invalid payload segments'); return null; }
+  if (segments.length !== 3) { console.error('[STATE] Invalid payload segments'); return { ok: false, reason: 'state_invalid' }; }
 
   const [slackUserId, slackTeamId, timestampStr] = segments;
   const timestamp = parseInt(timestampStr);
   const now = Math.floor(Date.now() / 1000);
-  
-  if (now - timestamp > 600) { // 10 minutes
+
+  if (now - timestamp > 600) {
     console.error('[STATE] Token expired:', now - timestamp, 'seconds old');
-    return null;
+    return { ok: false, reason: 'state_expired' };
   }
 
-  return { slackUserId, slackTeamId };
+  return { ok: true, slackUserId, slackTeamId };
 }
 
 Deno.serve(async (req) => {
