@@ -523,7 +523,18 @@ export default function LiderMentor() {
             </ul>
           )}
         </section>
-      </div>
+        </div>
+      </main>
+
+      <aside className="hidden lg:block w-[340px] shrink-0 border-l border-border/40 bg-muted/30 overflow-y-auto">
+        <div className="px-5 py-8">
+          <MentorContextPanel
+            selectedMember={selectedMember}
+            scope={scope}
+            onPickMember={() => setMemberPickerOpen(true)}
+          />
+        </div>
+      </aside>
 
       <AlertDialog open={!!deletingThread} onOpenChange={() => setDeletingThread(null)}>
         <AlertDialogContent>
