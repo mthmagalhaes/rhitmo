@@ -151,6 +151,7 @@ const App = () => (
               <Route path="/lider/pessoas" element={Leader(<LiderPessoas />)} />
               <Route path="/lider/configuracoes" element={Leader(<LiderConfiguracoes />)} />
               <Route path="/lider/contexto" element={Leader(<LiderContexto />)} />
+              <Route path="/lider/mentor" element={Leader(<LiderMentor />)} />
 
               {/* ── Direct report routes (/liderado/*) ── */}
               <Route path="/liderado/inicio" element={DirectReport(<LideradoInicio />)} />
