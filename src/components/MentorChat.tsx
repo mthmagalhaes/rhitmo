@@ -482,7 +482,7 @@ export const MentorChat = ({
         if (!data?.response) throw new Error('Resposta inválida do servidor.');
         setLastSummaryApplied(!!data.metadata?.summary_applied);
 
-        await supabase.from('mentor_messages').insert({ user_id: effectiveUserId, member_id: memberId!, thread_id: currentThreadId, role: 'assistant', content: data.response });
+        await supabase.from('mentor_messages').insert({ user_id: effectiveUserId, member_id: memberId ?? null, thread_id: currentThreadId, role: 'assistant', content: data.response });
         await supabase.from('chat_threads').update({ updated_at: new Date().toISOString() }).eq('id', currentThreadId);
         queryClient.invalidateQueries({ queryKey: [messagesQueryKey, currentThreadId] });
         queryClient.invalidateQueries({ queryKey: [threadsQueryKey, threadQueryId] });
