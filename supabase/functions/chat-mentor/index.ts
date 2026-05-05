@@ -12,6 +12,72 @@ const corsHeaders = {
 };
 
 // ============================================
+// CAPABILITIES MODE — resposta estática quando o usuário pergunta "o que você faz?"
+// ============================================
+const CAPABILITIES_PATTERNS: RegExp[] = [
+  /\bo que (vc|voc[êe]) (faz|pode fazer|consegue fazer|me ajuda|sabe fazer)\b/i,
+  /\bcomo (vc|voc[êe]) (me )?ajuda\b/i,
+  /\bquais (s[ãa]o )?(suas|tuas) (capacidades|fun[çc][õo]es|funcionalidades|habilidades)\b/i,
+  /\bquem (vc|voc[êe]) [ée]\b/i,
+  /\bme apresenta\b/i,
+  /\bo que [ée] (esse|este|o) (mentor|chat|rhitmo)\b/i,
+  /\bpara que (serve|voc[êe] serve)\b/i,
+];
+
+function isCapabilitiesQuestion(q: string): boolean {
+  if (!q) return false;
+  const trimmed = q.trim();
+  if (trimmed.length > 140) return false; // perguntas longas raramente são "o que vc faz"
+  return CAPABILITIES_PATTERNS.some((re) => re.test(trimmed));
+}
+
+function buildCapabilitiesReply(mode: 'leader_self' | 'member', memberFirstName?: string): string {
+  if (mode === 'member' && memberFirstName) {
+    return `Aqui está o que posso fazer com o histórico de **${memberFirstName}**:
+
+---
+
+### 🔍 Análise individual
+- Resumir padrões em notas, 1:1s e feedbacks
+- Identificar sinais de risco, motivação e bloqueios
+- Cruzar evidências com o perfil de trabalho
+
+### 💬 Preparação de conversas
+- Estruturar feedbacks difíceis com exemplos concretos
+- Sugerir pautas para a próxima 1:1
+- Recomendar reconhecimentos baseados em fatos
+
+### 🎯 Síntese acionável
+- Toda análise termina com 3 bullets: insight, padrão, ação imediata
+
+Mande sua pergunta sobre **${memberFirstName}** que eu mergulho no histórico.`;
+  }
+
+  return `Aqui está como posso te ajudar como **Mentor Rhitmo**:
+
+---
+
+### 🧠 Reflexão sobre sua liderança
+- Discutir desafios atuais e pontos cegos
+- Conectar sua intenção (perfil) com sua prática (notas do time)
+- Provocar sobre legado, energia e desenvolvimento
+
+### 👥 Análise de liderados específicos
+- Resumir histórico, padrões e sentimento por pessoa
+- Preparar conversas difíceis (1:1s, feedbacks, PDI)
+- _Selecione a pessoa em "Trocar contexto" no topo_
+
+### 📊 Padrões do time
+- Identificar tags recorrentes nas suas notas
+- Detectar contradições ("Watermelon": tudo verde por fora…)
+
+### 🎯 Síntese acionável
+- Toda análise termina com 3 bullets: insight, padrão, ação imediata
+
+Me conta no que você quer pensar primeiro.`;
+}
+
+// ============================================
 // CAMADA 1: ROTEADOR SEMÂNTICO ("O Porteiro")
 // ============================================
 const shouldFetchContext = async (
