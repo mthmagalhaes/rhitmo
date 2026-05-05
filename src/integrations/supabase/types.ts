@@ -3000,6 +3000,29 @@ export type Database = {
         Args: { _action: string; _user_id: string; _workspace_id: string }
         Returns: undefined
       }
+      match_context_evidence: {
+        Args: {
+          filter_evidence_types?: string[]
+          filter_member_id?: string
+          filter_workspace_id?: string
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
+        }
+        Returns: {
+          evidence_type: string
+          id: string
+          member_id: string
+          occurred_at: string
+          sentiment: string
+          similarity: number
+          source_id: string
+          source_table: string
+          summary: string
+          tags: string[]
+          title: string
+        }[]
+      }
       match_feedbacks: {
         Args: {
           filter_member_id?: string
