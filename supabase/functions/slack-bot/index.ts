@@ -1441,23 +1441,48 @@ async function processInteraction(body: string, timestamp: string, signature: st
           if (responseUrl) await sendDelayedResponse(responseUrl, { text: '❌ Reunião inválida.' });
           break;
         }
-        const { data: meeting } = await supabase
-          .from('upcoming_meetings')
-          .select('member_id, title')
-          .eq('id', meetingId)
-          .eq('user_id', briefPersona.userId)
-          .maybeSingle();
-        if (!meeting?.member_id) {
-          if (responseUrl) await sendDelayedResponse(responseUrl, { text: '❌ Reunião não encontrada ou sem liderado vinculado.' });
-          break;
+        try {
+          const { generateBriefForMeeting, briefToSlackBlocks } = await import('../_shared/briefGenerator.ts');
+          const result = await generateBriefForMeeting(
+            meetingId,
+            briefPersona.userId,
+            supabase,
+            Deno.env.get('LOVABLE_API_KEY'),
+          );
+          const blocks = briefToSlackBlocks(result.brief, {
+            memberName: result.member_name,
+            meetingId,
+            meetingTitle: result.meeting_title,
+            meetLink: result.meet_link,
+          });
+          console.log(`[INTERACT] prep_1on1_brief: brief ${result.cached ? 'cached' : 'generated'} for member=${result.member_id}`);
+          if (responseUrl) await sendDelayedResponse(responseUrl, { blocks, response_type: 'ephemeral' });
+        } catch (err) {
+          console.error('[INTERACT] prep_1on1_brief failed, falling back:', err);
+          // Fallback: legacy summary so user gets something
+          const { data: meeting } = await supabase
+            .from('upcoming_meetings')
+            .select('member_id')
+            .eq('id', meetingId)
+            .eq('user_id', briefPersona.userId)
+            .maybeSingle();
+          if (!meeting?.member_id) {
+            if (responseUrl) await sendDelayedResponse(responseUrl, { text: '❌ Reunião não encontrada.' });
+            break;
+          }
+          const { data: m } = await supabase
+            .from('team_members')
+            .select('name')
+            .eq('id', meeting.member_id)
+            .maybeSingle();
+          const fallback = await buildBriefForMember(meeting.member_id, m?.name ?? 'Liderado', briefPersona);
+          if (responseUrl) {
+            await sendDelayedResponse(responseUrl, {
+              text: '⚠ Não consegui gerar a pauta com IA agora. Veja um resumo:',
+              ...fallback,
+            });
+          }
         }
-        const { data: m } = await supabase
-          .from('team_members')
-          .select('name')
-          .eq('id', meeting.member_id)
-          .maybeSingle();
-        const briefMsg = await buildBriefForMember(meeting.member_id, m?.name ?? 'Liderado', briefPersona);
-        if (responseUrl) await sendDelayedResponse(responseUrl, briefMsg);
         break;
       }
       case 'start_rhitmo_chat': {
