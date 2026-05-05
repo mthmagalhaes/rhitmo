@@ -127,7 +127,6 @@ export default function LiderContexto() {
             onClear={() => setSources([])}
           />
           <div className="sm:ml-auto flex items-center gap-2 flex-wrap">
-            <RequestPeerReviewButton />
             <SendPulseButton />
           </div>
         </div>
