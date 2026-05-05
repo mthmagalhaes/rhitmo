@@ -255,18 +255,98 @@ serve(async (req) => {
   const respHeaders = { ...corsHeaders, 'Content-Type': 'application/json', 'x-request-id': requestId };
 
   try {
-    const { question, feedbacks, memberName, memberRole, managerName, workStyleData, keyObjectives, contextMode, leaderSyncData, conversationHistory, imageContent } = await req.json();
+    const body = await req.json();
+    const { question, feedbacks, memberName, memberRole, managerName, workStyleData, keyObjectives, contextMode, leaderSyncData, conversationHistory, imageContent } = body;
+    const mode: string = body.mode === 'leader_self' ? 'leader_self' : 'member';
+    const leaderUserId: string | undefined = body.leaderUserId;
+    const leaderName: string = body.leaderName || managerName || 'líder';
 
-    log.info('start', { memberName, memberRole, feedbacksCount: feedbacks?.length, hasImage: !!imageContent?.isImage, contextMode: contextMode || 'auto' });
-    
-    // Extrair primeiro nome para flexibilidade de apelidos
+    log.info('start', { mode, memberName, memberRole, feedbacksCount: feedbacks?.length, hasImage: !!imageContent?.isImage, contextMode: contextMode || 'auto' });
+
+    // ============================================
+    // MODO COACHING PESSOAL DO LÍDER (sem liderado)
+    // ============================================
+    let systemPromptOverride: string | null = null;
+    if (mode === 'leader_self') {
+      if (!question) {
+        return new Response(
+          JSON.stringify({ error: 'Pergunta é obrigatória.' }),
+          { status: 400, headers: respHeaders }
+        );
+      }
+      const leaderFirstName = (leaderName || 'líder').split(' ')[0];
+      const supa = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
+      // Time + padrões agregados (últimas 30 evidências do líder, agrupadas por sentimento/tag)
+      let directReportsList = '';
+      let teamPatternsSummary = '';
+      let recentReflections = '';
+      try {
+        if (leaderUserId) {
+          const { data: teamRows } = await supa
+            .from('teams').select('id').eq('leader_user_id', leaderUserId).limit(50);
+          const teamIds = (teamRows || []).map((t: any) => t.id);
+          if (teamIds.length) {
+            const { data: members } = await supa
+              .from('team_members').select('id, name, role').in('team_id', teamIds).limit(50);
+            directReportsList = (members || []).map((m: any) => `- ${m.name}${m.role ? ` (${m.role})` : ''}`).join('\n');
+
+            const memberIds = (members || []).map((m: any) => m.id);
+            if (memberIds.length) {
+              const { data: evs } = await supa
+                .from('context_evidence')
+                .select('evidence_type, sentiment, tags, summary, occurred_at, member_id')
+                .in('member_id', memberIds)
+                .order('occurred_at', { ascending: false })
+                .limit(40);
+              const byType: Record<string, number> = {};
+              const bySentiment: Record<string, number> = {};
+              const tagCount: Record<string, number> = {};
+              (evs || []).forEach((e: any) => {
+                byType[e.evidence_type] = (byType[e.evidence_type] || 0) + 1;
+                if (e.sentiment) bySentiment[e.sentiment] = (bySentiment[e.sentiment] || 0) + 1;
+                (e.tags || []).forEach((t: string) => { tagCount[t] = (tagCount[t] || 0) + 1; });
+              });
+              const topTags = Object.entries(tagCount).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([t, n]) => `${t} (${n})`).join(', ');
+              teamPatternsSummary = `Últimas 40 evidências registradas no time:
+- Por tipo: ${Object.entries(byType).map(([k, v]) => `${k}: ${v}`).join(', ') || '—'}
+- Por sentimento: ${Object.entries(bySentiment).map(([k, v]) => `${k}: ${v}`).join(', ') || '—'}
+- Tags recorrentes: ${topTags || '—'}`;
+            }
+          }
+
+          const { data: reflections } = await supa
+            .from('weekly_reflection' as any)
+            .select('week_start, content')
+            .eq('user_id', leaderUserId)
+            .order('week_start', { ascending: false })
+            .limit(3);
+          if (reflections?.length) {
+            recentReflections = reflections.map((r: any) =>
+              `- Semana de ${new Date(r.week_start).toLocaleDateString('pt-BR')}: ${(r.content || '').substring(0, 400)}`
+            ).join('\n');
+          }
+        }
+      } catch (e: any) {
+        console.warn('leader_self context fetch failed:', e?.message);
+      }
+
+      systemPromptOverride = buildLeaderCoachSystemPrompt({
+        leaderName,
+        leaderFirstName,
+        leaderSyncData,
+        teamPatternsSummary,
+        recentReflections,
+        directReportsList,
+      });
+    }
+
+    // Extrair primeiro nome para flexibilidade de apelidos (modo member)
     const firstName = memberName ? memberName.split(' ')[0] : '';
-    
-    // Extrair dados do gestor para o Protocolo de Identidade Blindada
     const targetManagerName = managerName || 'o gestor';
     const managerFirstName = targetManagerName.split(' ')[0];
 
-    if (!question || !feedbacks || !memberName) {
+    if (mode === 'member' && (!question || !feedbacks || !memberName)) {
       log.warn('invalid_params', { hasQuestion: !!question, hasFeedbacks: !!feedbacks, hasMemberName: !!memberName });
       return new Response(
         JSON.stringify({ error: 'Parâmetros inválidos: question, feedbacks e memberName são obrigatórios' }),
@@ -285,12 +365,13 @@ serve(async (req) => {
     }
 
     // ============================================
-    // CAMADA 1: ROTEAMENTO
+    // CAMADA 1: ROTEAMENTO (apenas modo member)
     // ============================================
-    // Bypass router when image is present — always fetch context for images
     const hasImage = !!imageContent?.isImage;
-    const needsContext = hasImage ? true : await shouldFetchContext(question, openAIApiKey);
-    console.log('Router decision - needs context:', needsContext, hasImage ? '(image bypass)' : '');
+    const needsContext = mode === 'leader_self'
+      ? false
+      : (hasImage ? true : await shouldFetchContext(question, openAIApiKey));
+    console.log('Router decision - needs context:', needsContext, hasImage ? '(image bypass)' : '', `[mode=${mode}]`);
 
     // ============================================
     // CAMADA 2: COMPRESSÃO (apenas se necessário)
