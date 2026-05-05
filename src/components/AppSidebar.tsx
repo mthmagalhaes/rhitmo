@@ -166,8 +166,8 @@ export function AppSidebar() {
           })}
         </SidebarMenu>
 
-        {/* Zone D — Threads list (silent empty) */}
-        {open && <ThreadsList persona={persona} />}
+        {/* Threads list moved to dedicated /lider/mentor page */}
+
 
         {/* HR context switcher (kept for HR Admins) */}
         {open && !isInHRContext && isHRAdmin && (
