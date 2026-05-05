@@ -225,7 +225,7 @@ export const MentorChat = ({
       if (error) throw error;
       return (data || []) as ChatThread[];
     },
-    enabled: open && !!effectiveUserId,
+    enabled: (open || embedded) && !!effectiveUserId,
     staleTime: 1000 * 60 * 5,
   });
 
