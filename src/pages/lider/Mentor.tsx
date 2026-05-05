@@ -172,10 +172,8 @@ export default function LiderMentor() {
     notas: 'Apenas notas/diário',
   };
 
-  // ── Resolve memberId/feedbacks for the modal based on scope ──────
-  const chatMemberId = selectedMember?.id;
-  const chatFeedbacks =
-    selectedMember && scope !== 'geral' ? memberFeedbacks : [];
+  // (chatMemberId/chatFeedbacks moved to /lider/mentor/:threadId)
+  void memberFeedbacks;
 
   return (
     <div className="min-h-[calc(100svh-3rem)] bg-background overflow-y-auto">
