@@ -468,6 +468,59 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Sprint 16 — enrich Rhitmo Trimestral with peer voices + network context
+    const startIso = new Date(startMonth + 'T00:00:00Z').toISOString();
+    const endIso = new Date(endMonth + 'T00:00:00Z').toISOString();
+    let peerVoices: Array<{ request_id: string; peer_name: string; peer_user_id: string; text: string; responded_at: string; edge_strength: number | null }> = [];
+    let networkContext: { signals: Array<{ id: string; signal_type: string; severity: string; detected_at: string; payload: any }>; total_active: number } = { signals: [], total_active: 0 };
+    try {
+      const [{ data: pfr }, { data: signals }] = await Promise.all([
+        admin
+          .from('peer_feedback_requests')
+          .select('id, peer_user_id, response_text, responded_at, edge_strength_at_request')
+          .eq('subject_member_id', member.id)
+          .eq('status', 'answered')
+          .gte('responded_at', startIso)
+          .lt('responded_at', endIso)
+          .order('responded_at', { ascending: false })
+          .limit(3),
+        admin
+          .from('network_signals')
+          .select('id, signal_type, severity, detected_at, payload')
+          .eq('member_id', member.id)
+          .gte('detected_at', startIso)
+          .lt('detected_at', endIso)
+          .order('detected_at', { ascending: false })
+          .limit(3),
+      ]);
+      const peerIds = Array.from(new Set((pfr ?? []).map((r) => r.peer_user_id).filter(Boolean)));
+      const nameMap: Record<string, string> = {};
+      if (peerIds.length > 0) {
+        const { data: profs } = await admin.from('profiles').select('user_id, full_name').in('user_id', peerIds);
+        for (const p of profs ?? []) nameMap[(p as any).user_id] = (p as any).full_name || 'Par';
+      }
+      peerVoices = (pfr ?? []).map((r: any) => ({
+        request_id: r.id,
+        peer_user_id: r.peer_user_id,
+        peer_name: nameMap[r.peer_user_id] || 'Par',
+        text: r.response_text || '',
+        responded_at: r.responded_at,
+        edge_strength: r.edge_strength_at_request ?? null,
+      }));
+      networkContext = {
+        signals: (signals ?? []).map((s: any) => ({
+          id: s.id,
+          signal_type: s.signal_type,
+          severity: s.severity,
+          detected_at: s.detected_at,
+          payload: s.payload ?? {},
+        })),
+        total_active: (signals ?? []).length,
+      };
+    } catch (enrichErr) {
+      console.error('[generate-quarterly-recap] enrichment soft-fail', enrichErr);
+    }
+
     const payload = {
       member_id: member.id,
       manager_id: user.id,
