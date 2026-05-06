@@ -2,8 +2,8 @@
 
 Source of truth for the Rhitmo custom Slack App configuration.
 
-- **App name:** Rhitmo
-- **Bot user:** `@rhitmo`
+- **App name:** Rhy (anteriormente "Rhitmo")
+- **Bot user:** `@rhy`
 - **Production app ID:** `B0APL6ST719`
 - **Workspace (dev):** Faster (`THC407Z8A`)
 
@@ -72,8 +72,9 @@ Redirect URLs:
 
 ## App Home
 
-- **Home tab:** disabled (we use Messages tab instead).
+- **Home tab:** **MUST be disabled.** Não publicamos `views.publish` em `app_home_opened` — se a Home tab estiver ON, a aba "Início" exibe loading infinito no Slack.
 - **Messages tab:** **enabled** + **"Allow users to send Slash commands and messages from the messages tab"** must be ON.
+- Resultado esperado: bot mostra apenas 2 abas no Slack — **Mensagens** e **Sobre** (a aba "Sobre" é gerada automaticamente pelo Slack a partir de `display_information` e não pode ser ocultada).
 
 ---
 
@@ -82,7 +83,7 @@ Redirect URLs:
 ```json
 {
   "display_information": {
-    "name": "Rhitmo",
+    "name": "Rhy",
     "description": "AI-Native Leadership Partner",
     "background_color": "#1a1a1a"
   },
@@ -93,7 +94,7 @@ Redirect URLs:
       "messages_tab_read_only_enabled": false
     },
     "bot_user": {
-      "display_name": "Rhitmo",
+      "display_name": "Rhy",
       "always_online": true
     },
     "slash_commands": [
