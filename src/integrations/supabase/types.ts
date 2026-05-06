@@ -1025,6 +1025,48 @@ export type Database = {
         }
         Relationships: []
       }
+      graph_events_raw: {
+        Row: {
+          actor_member_id: string | null
+          created_at: string
+          event_type: string
+          external_ref: string
+          id: string
+          metadata: Json
+          occurred_at: string
+          source: string
+          target_member_id: string | null
+          weight: number
+          workspace_id: string
+        }
+        Insert: {
+          actor_member_id?: string | null
+          created_at?: string
+          event_type: string
+          external_ref: string
+          id?: string
+          metadata?: Json
+          occurred_at: string
+          source: string
+          target_member_id?: string | null
+          weight?: number
+          workspace_id: string
+        }
+        Update: {
+          actor_member_id?: string | null
+          created_at?: string
+          event_type?: string
+          external_ref?: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          source?: string
+          target_member_id?: string | null
+          weight?: number
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       job_roles: {
         Row: {
           created_at: string
@@ -2399,6 +2441,45 @@ export type Database = {
           },
         ]
       }
+      team_network_edges: {
+        Row: {
+          computed_at: string
+          event_count: number
+          id: string
+          last_event_at: string | null
+          member_a_id: string
+          member_b_id: string
+          sources: string[]
+          weight_total: number
+          window_days: number
+          workspace_id: string
+        }
+        Insert: {
+          computed_at?: string
+          event_count?: number
+          id?: string
+          last_event_at?: string | null
+          member_a_id: string
+          member_b_id: string
+          sources?: string[]
+          weight_total?: number
+          window_days: number
+          workspace_id: string
+        }
+        Update: {
+          computed_at?: string
+          event_count?: number
+          id?: string
+          last_event_at?: string | null
+          member_a_id?: string
+          member_b_id?: string
+          sources?: string[]
+          weight_total?: number
+          window_days?: number
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       teams: {
         Row: {
           created_at: string
@@ -2724,6 +2805,15 @@ export type Database = {
         Returns: Json
       }
       can_update_own_sync: { Args: { member_id: string }; Returns: boolean }
+      can_view_network_pair: {
+        Args: {
+          _member_a: string
+          _member_b: string
+          _strict?: boolean
+          _workspace_id: string
+        }
+        Returns: boolean
+      }
       check_is_admin: { Args: never; Returns: boolean }
       cleanup_expired_impersonations: { Args: never; Returns: undefined }
       cleanup_expired_oauth_states: { Args: never; Returns: undefined }
@@ -3058,6 +3148,24 @@ export type Database = {
         }
         Returns: number
       }
+      network_debug_stats: {
+        Args: { _window_days?: number; _workspace_id: string }
+        Returns: Json
+      }
+      network_debug_top_edges: {
+        Args: { _limit?: number; _window_days?: number; _workspace_id: string }
+        Returns: {
+          event_count: number
+          last_event_at: string
+          member_a_id: string
+          member_a_name: string
+          member_b_id: string
+          member_b_name: string
+          sources: string[]
+          weight_total: number
+        }[]
+      }
+      prune_graph_events_raw: { Args: never; Returns: number }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {
