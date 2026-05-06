@@ -163,7 +163,136 @@ async function callLovableAI(
   }
 }
 
-// ── Channel Type Cache (5min TTL) ────────────────────────
+// ── Sprint 17: Quarterly generation triggered from Slack (button or NL) ─
+import { buildQuarterlyResultBlocks } from '../_shared/quarterlyNudgeHelpers.ts';
+
+async function runQuarterlyGenerationFromSlack(args: {
+  slackUserId: string;
+  channelId: string;
+  responseUrl?: string;
+  memberId: string;
+  periodStart: string;
+  periodEnd: string;
+  periodLabel?: string;
+}): Promise<void> {
+  const { slackUserId, channelId, responseUrl, memberId, periodStart, periodEnd, periodLabel } = args;
+  try {
+    // Resolve leader user_id from slack_integrations
+    const { data: integ } = await supabase
+      .from('slack_integrations')
+      .select('user_id')
+      .eq('slack_user_id', slackUserId)
+      .limit(1)
+      .maybeSingle();
+    if (!integ?.user_id) {
+      await fetch(responseUrl ?? '', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ replace_original: true, text: '🔗 Conecte sua conta Rhitmo primeiro com `/rhitmo`.' }),
+      }).catch(() => {});
+      return;
+    }
+
+    if (responseUrl) {
+      await fetch(responseUrl, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ replace_original: true, text: '✨ Gerando seu Rhitmo Trimestral… isso leva ~30 segundos.' }),
+      }).catch(() => {});
+    } else {
+      await slackApi('chat.postMessage', { channel: channelId, text: '✨ Gerando seu Rhitmo Trimestral…' });
+    }
+
+    const cronSecret = Deno.env.get('CRON_SECRET') ?? '';
+    const url = `${Deno.env.get('SUPABASE_URL')}/functions/v1/generate-quarterly-recap`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-cron-secret': cronSecret,
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+      },
+      body: JSON.stringify({
+        member_id: memberId,
+        period_start: periodStart,
+        period_end: periodEnd,
+        period_label: periodLabel,
+        mode: 'auto',
+        regenerate: false,
+        acting_user_id: integ.user_id,
+      }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !json?.recap_id) {
+      // Try fallback to from_raw if monthly missing (422)
+      if (res.status === 422) {
+        const res2 = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-cron-secret': cronSecret,
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+          },
+          body: JSON.stringify({
+            member_id: memberId, period_start: periodStart, period_end: periodEnd,
+            period_label: periodLabel, mode: 'from_raw', regenerate: false, acting_user_id: integ.user_id,
+          }),
+        });
+        const json2 = await res2.json().catch(() => ({}));
+        if (!res2.ok || !json2?.recap_id) {
+          await slackApi('chat.postMessage', {
+            channel: channelId,
+            text: `⚠️ Não consegui gerar agora: ${json2?.error || json?.error || 'erro inesperado'}.`,
+          });
+          return;
+        }
+        await postQuarterlyResultDm(channelId, memberId, json2.recap_id);
+      } else {
+        await slackApi('chat.postMessage', {
+          channel: channelId,
+          text: `⚠️ Não consegui gerar agora: ${json?.error || 'erro inesperado'}.`,
+        });
+        return;
+      }
+    } else {
+      await postQuarterlyResultDm(channelId, memberId, json.recap_id);
+    }
+
+    // Mark conversation as completed
+    await supabase.from('slack_conversations')
+      .update({ status: 'completed' })
+      .eq('slack_user_id', slackUserId)
+      .eq('intent', 'awaiting_quarterly_confirmation')
+      .eq('status', 'active');
+  } catch (err) {
+    console.error('[QUARTERLY-SLACK] failed:', err);
+    await slackApi('chat.postMessage', {
+      channel: channelId,
+      text: '⚠️ Tive um problema para gerar agora. Tente pelo app: https://rhitmo.co/lider/avaliacoes',
+    });
+  }
+}
+
+async function postQuarterlyResultDm(channelId: string, memberId: string, recapId: string) {
+  const { data: recap } = await supabase
+    .from('quarterly_recaps')
+    .select('highlights, classification, ai_suggested_classification, turnover_risk, team_members:member_id(name)')
+    .eq('id', recapId)
+    .maybeSingle();
+  const memberName = (recap as any)?.team_members?.name ?? 'liderado(a)';
+  const blocks = buildQuarterlyResultBlocks(
+    memberName,
+    recapId,
+    Array.isArray(recap?.highlights) ? (recap!.highlights as any[]) : [],
+    (recap?.classification ?? recap?.ai_suggested_classification) as string | null,
+    recap?.turnover_risk as string | null,
+  );
+  await slackApi('chat.postMessage', {
+    channel: channelId,
+    text: `Rhitmo Trimestral de ${memberName} pronto.`,
+    blocks,
+  });
+}
+
+
 const channelCache = new Map<string, { isPublic: boolean; ts: number }>();
 const CACHE_TTL = 5 * 60 * 1000;
 
@@ -1664,6 +1793,43 @@ async function processInteraction(body: string, timestamp: string, signature: st
         }
         break;
       }
+      case 'open_quarterly_in_app':
+        console.log('[INTERACT] URL button clicked:', action.action_id);
+        break;
+      case 'generate_quarterly_dismiss': {
+        const memberId = action.value;
+        // Push cooldown 30 days into the past-future (so next nudge is ~30d away)
+        const future = new Date(Date.now() - (14 - 30) * 24 * 60 * 60 * 1000).toISOString();
+        await supabase.from('team_members').update({ last_anniversary_nudge_at: future }).eq('id', memberId);
+        // Close conversation if any
+        await supabase.from('slack_conversations')
+          .update({ status: 'completed' })
+          .eq('slack_user_id', slackUserId)
+          .eq('intent', 'awaiting_quarterly_confirmation')
+          .eq('status', 'active');
+        if (responseUrl) {
+          await fetch(responseUrl, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ replace_original: true, text: 'Tranquilo 🙏 Eu te lembro de novo em algumas semanas.' }),
+          });
+        }
+        break;
+      }
+      case 'generate_quarterly_confirm': {
+        let parsed: { member_id: string; period_start: string; period_end: string; period_label?: string };
+        try { parsed = JSON.parse(action.value || '{}'); }
+        catch { console.error('[INTERACT] Invalid quarterly value'); break; }
+        await runQuarterlyGenerationFromSlack({
+          slackUserId,
+          channelId: payload.channel?.id || slackUserId,
+          responseUrl,
+          memberId: parsed.member_id,
+          periodStart: parsed.period_start,
+          periodEnd: parsed.period_end,
+          periodLabel: parsed.period_label,
+        });
+        break;
+      }
       default:
         console.log('[INTERACT] Unhandled action:', action.action_id);
     }
@@ -2074,6 +2240,54 @@ Deno.serve(async (req) => {
                     text: event.text ?? '',
                     ts: event.ts,
                   });
+
+                  // ── Sprint 17: NL handler for quarterly confirmation ───
+                  if (conv.intent === 'awaiting_quarterly_confirmation') {
+                    const userText = (event.text ?? '').trim();
+                    const sd = (conv.state_data as any) ?? {};
+                    const classifyTask = (async () => {
+                      try {
+                        const cls = await callLovableAI([
+                          { role: 'system', content: 'Você classifica respostas curtas em pt-BR como "yes", "no" ou "ambiguous". Responda APENAS com uma dessas três palavras, em minúsculas, sem pontuação.' },
+                          { role: 'user', content: `Pergunta: "Quer que eu gere o Rhitmo Trimestral agora?"\nResposta do usuário: "${userText}"\nClassifique:` },
+                        ]);
+                        const verdict = (cls || '').toLowerCase().trim().split(/\s|\./)[0];
+                        if (verdict === 'yes' && sd.member_id && sd.period_start && sd.period_end) {
+                          await runQuarterlyGenerationFromSlack({
+                            slackUserId,
+                            channelId: event.channel,
+                            memberId: sd.member_id,
+                            periodStart: sd.period_start,
+                            periodEnd: sd.period_end,
+                            periodLabel: sd.period_label,
+                          });
+                        } else if (verdict === 'no') {
+                          await supabase.from('slack_conversations')
+                            .update({ status: 'completed' })
+                            .eq('id', conv.id);
+                          await slackApi('chat.postMessage', {
+                            channel: event.channel,
+                            text: 'Tranquilo 🙏 Eu te lembro de novo em algumas semanas.',
+                          });
+                        } else {
+                          await slackApi('chat.postMessage', {
+                            channel: event.channel,
+                            text: `Só pra confirmar — quer que eu gere o *Rhitmo Trimestral de ${sd.member_name ?? 'esse liderado'}* cobrindo *${sd.period_label ?? 'os últimos 90 dias'}*? Responda *sim* ou *não*.`,
+                          });
+                        }
+                      } catch (err) {
+                        console.error('[CONV] quarterly NL classify failed:', err);
+                      }
+                    })();
+                    // @ts-ignore EdgeRuntime
+                    if (typeof EdgeRuntime !== 'undefined' && (EdgeRuntime as any)?.waitUntil) {
+                      // @ts-ignore
+                      (EdgeRuntime as any).waitUntil(classifyTask);
+                    } else {
+                      classifyTask.catch(() => {});
+                    }
+                    return;
+                  }
 
                   // ── LLM turn (Sprint 11.2) ──────────────────────────
                   // Build messages from updated state. We re-read state_data after

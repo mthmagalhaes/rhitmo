@@ -280,33 +280,47 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const userClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } },
-    );
     const admin = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    const { data: { user } } = await userClient.auth.getUser();
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    // Sprint 17: allow internal invocation (Slack bot, cron) via x-cron-secret + body.acting_user_id
+    const cronSecret = req.headers.get('x-cron-secret');
+    const internalSecret = Deno.env.get('CRON_SECRET');
+    const isInternal = !!cronSecret && !!internalSecret && cronSecret === internalSecret;
+
+    let actingUserId: string | null = null;
+    if (isInternal) {
+      const peek = await req.clone().json().catch(() => ({} as any));
+      actingUserId = peek?.acting_user_id ?? null;
+      if (!actingUserId) {
+        return new Response(JSON.stringify({ error: 'acting_user_id required for internal calls' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    } else {
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader?.startsWith('Bearer ')) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const userClient = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } },
+      );
+      const { data: { user } } = await userClient.auth.getUser();
+      if (!user) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      actingUserId = user.id;
     }
 
-    const body = (await req.json()) as Body;
+    const body = (await req.json()) as Body & { acting_user_id?: string };
     if (!body?.member_id) {
       return new Response(JSON.stringify({ error: 'member_id required' }), {
         status: 400,
@@ -350,7 +364,7 @@ Deno.serve(async (req) => {
       });
     }
     const team = (member as any).teams;
-    if (team?.leader_user_id !== user.id) {
+    if (team?.leader_user_id !== actingUserId) {
       return new Response(JSON.stringify({ error: 'Forbidden — only the team leader can generate recaps' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -420,7 +434,7 @@ Deno.serve(async (req) => {
         .from('monthly_recaps')
         .select('id, period_month, highlight_text, concern_text, dominant_pattern, feedbacks_count, meetings_count')
         .eq('member_id', member.id)
-        .eq('manager_id', user.id)
+        .eq("manager_id", actingUserId)
         .eq('status', 'confirmed')
         .gte('period_month', startMonth)
         .lt('period_month', endMonth)
@@ -451,7 +465,7 @@ Deno.serve(async (req) => {
           .from('feedbacks')
           .select('id, content, type, sentiment, tags, occurred_at, summary')
           .eq('member_id', member.id)
-          .eq('manager_id', user.id)
+          .eq("manager_id", actingUserId)
           .gte('occurred_at', startIso)
           .lt('occurred_at', endIso)
           .order('occurred_at', { ascending: true })
@@ -460,7 +474,7 @@ Deno.serve(async (req) => {
           .from('meeting_transcripts')
           .select('id, leader_notes, extracted_themes, created_at')
           .eq('member_id', member.id)
-          .eq('manager_id', user.id)
+          .eq("manager_id", actingUserId)
           .gte('created_at', startIso)
           .lt('created_at', endIso)
           .eq('processing_status', 'completed')
@@ -541,7 +555,7 @@ Deno.serve(async (req) => {
 
     const payload = {
       member_id: member.id,
-      manager_id: user.id,
+      manager_id: actingUserId,
       workspace_id: workspaceId,
       // Sprint 17: keep period_quarter for legacy reads (only when generated from a quarter-aligned input)
       period_quarter: legacyPeriodQuarter,
