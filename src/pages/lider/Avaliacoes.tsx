@@ -130,7 +130,7 @@ export default function LiderAvaliacoes() {
                 </TabsTrigger>
                 <TabsTrigger value="formal" className="rounded-lg gap-1.5 text-xs">
                   <Sparkles className="h-3.5 w-3.5" />
-                  Formais
+                  Formal
                 </TabsTrigger>
               </TabsList>
 

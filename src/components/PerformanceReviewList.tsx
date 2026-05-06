@@ -120,16 +120,17 @@ export const PerformanceReviewList = ({ memberId, memberName, onCreateReview }: 
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h3 className="text-lg font-semibold">Avaliações Formais</h3>
-          <p className="text-sm text-muted-foreground">
-            Histórico de avaliações de desempenho de {memberName}
+          <h3 className="text-lg font-semibold">Rhitmo Formal</h3>
+          <p className="text-sm text-muted-foreground max-w-2xl">
+            Avaliação de ciclo (semestral ou anual) gerada a partir dos trimestrais
+            confirmados. Você revisa, calibra e compartilha com o liderado.
           </p>
         </div>
         <Button onClick={() => onCreateReview?.()} className="gap-2">
           <FileText className="h-4 w-4" />
-          Avaliação de Desempenho
+          Novo Rhitmo Formal
         </Button>
       </div>
 
@@ -137,14 +138,14 @@ export const PerformanceReviewList = ({ memberId, memberName, onCreateReview }: 
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Nenhuma avaliação ainda</h3>
+            <h3 className="text-lg font-semibold mb-2">Nenhum Rhitmo Formal ainda</h3>
             <p className="text-sm text-muted-foreground mb-4 max-w-md">
-              Crie a primeira avaliação de desempenho para {memberName}. 
-              A IA irá analisar o histórico de feedbacks e gerar um rascunho estruturado.
+              Crie o primeiro Rhitmo Formal para {memberName}. A IA monta o rascunho a partir
+              dos trimestrais confirmados e você calibra antes de compartilhar.
             </p>
             <Button onClick={() => onCreateReview?.()} className="gap-2">
               <FileText className="h-4 w-4" />
-              Criar Primeira Avaliação
+              Criar primeiro Rhitmo Formal
             </Button>
           </CardContent>
         </Card>
