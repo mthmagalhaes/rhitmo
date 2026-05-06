@@ -314,9 +314,28 @@ Deno.serve(async (req) => {
       });
     }
 
-    const periodQuarter = body.period_quarter
-      ? firstDayOfQuarter(new Date(body.period_quarter + 'T00:00:00Z'))
-      : lastQuarterStart();
+    // ── Sprint 17: resolve period (period_start/end take priority; fallback to legacy period_quarter; fallback to lastClosedQuarter)
+    let periodStart: string;
+    let periodEnd: string;
+    let periodLabel: string;
+    let legacyPeriodQuarter: string | null = null;
+
+    if (body.period_start && body.period_end) {
+      // normalize to date-only strings
+      periodStart = body.period_start.slice(0, 10);
+      periodEnd = body.period_end.slice(0, 10);
+      periodLabel = body.period_label ?? `${periodStart} – ${periodEnd}`;
+    } else {
+      const pq = body.period_quarter
+        ? firstDayOfQuarter(new Date(body.period_quarter + 'T00:00:00Z'))
+        : lastQuarterStart();
+      legacyPeriodQuarter = pq;
+      const r = quarterRange(pq);
+      periodStart = r.startMonth;
+      periodEnd = r.endMonth;
+      const [py, pm] = pq.split('-').map((x) => parseInt(x, 10));
+      periodLabel = body.period_label ?? `Q${Math.floor((pm - 1) / 3) + 1} ${py}`;
+    }
 
     // Resolve member
     const { data: member, error: mErr } = await admin
@@ -340,12 +359,13 @@ Deno.serve(async (req) => {
 
     const workspaceId = team.workspace_id as string;
 
-    // Existing?
+    // Existing? Now keyed by (member_id, period_start, period_end)
     const { data: existing } = await admin
       .from('quarterly_recaps')
       .select('id, status')
       .eq('member_id', member.id)
-      .eq('period_quarter', periodQuarter)
+      .eq('period_start', periodStart)
+      .eq('period_end', periodEnd)
       .maybeSingle();
 
     if (existing && existing.status === 'confirmed') {
@@ -361,17 +381,19 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { startMonth, endMonth } = quarterRange(periodQuarter);
+    const startMonth = periodStart;
+    const endMonth = periodEnd;
     const mode = body.mode === 'from_raw' ? 'from_raw' : 'auto';
 
-    // Previous quarter (for evolution) — confirmed only
-    const prevQuarter = previousQuarterStart(periodQuarter);
+    // Previous period (for evolution): most recent confirmed recap ending on/before periodStart
     const { data: prev } = await admin
       .from('quarterly_recaps')
       .select('classification, turnover_risk, recurring_patterns')
       .eq('member_id', member.id)
-      .eq('period_quarter', prevQuarter)
       .eq('status', 'confirmed')
+      .lte('period_end', periodStart)
+      .order('period_end', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     const previous = prev
@@ -394,7 +416,6 @@ Deno.serve(async (req) => {
     let generationMode: 'from_monthly' | 'from_raw' = 'from_monthly';
 
     if (mode === 'auto') {
-      // Fetch confirmed monthly recaps within the quarter
       const { data: monthlies, error: monthErr } = await admin
         .from('monthly_recaps')
         .select('id, period_month, highlight_text, concern_text, dominant_pattern, feedbacks_count, meetings_count')
@@ -408,11 +429,9 @@ Deno.serve(async (req) => {
       if (monthErr) throw monthErr;
 
       if (!monthlies || monthlies.length === 0) {
-        const [qy, qm] = periodQuarter.split('-').map((x) => parseInt(x, 10));
-        const qLabel = `Q${Math.floor((qm - 1) / 3) + 1} ${qy}`;
         return new Response(
           JSON.stringify({
-            error: `Confirme ao menos um Rhitmo Mensal do trimestre ${qLabel} antes de gerar o trimestral. Sem mensais confirmados, o trimestral perde a base.`,
+            error: `Sem Rhitmo Mensal confirmado no período (${periodLabel}). Confirme ao menos um mensal ou use o modo rápido.`,
           }),
           { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
