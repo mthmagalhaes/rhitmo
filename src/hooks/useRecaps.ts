@@ -192,21 +192,21 @@ export interface QuarterlyRecap {
   created_at: string;
 }
 
-export function useQuarterlyRecaps(memberId: string | undefined, quartersBack = 4) {
+export function useQuarterlyRecaps(memberId: string | undefined, monthsBack = 12) {
   return useQuery({
-    queryKey: ['quarterly-recaps', memberId, quartersBack],
+    queryKey: ['quarterly-recaps', memberId, monthsBack],
     queryFn: async () => {
       if (!memberId) return [] as QuarterlyRecap[];
       const cutoff = new Date();
-      cutoff.setUTCMonth(cutoff.getUTCMonth() - quartersBack * 3);
+      cutoff.setUTCMonth(cutoff.getUTCMonth() - monthsBack);
       cutoff.setUTCDate(1);
       const cutoffIso = cutoff.toISOString().slice(0, 10);
       const { data, error } = await supabase
         .from('quarterly_recaps')
         .select('*')
         .eq('member_id', memberId)
-        .gte('period_quarter', cutoffIso)
-        .order('period_quarter', { ascending: false });
+        .or(`period_start.gte.${cutoffIso},period_quarter.gte.${cutoffIso}`)
+        .order('created_at', { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as QuarterlyRecap[];
     },
