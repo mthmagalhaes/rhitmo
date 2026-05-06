@@ -282,6 +282,58 @@ function QuarterCard({ memberId, recap, periodQuarter, defaultOpen = false }: { 
               </div>
             )}
 
+            {/* Sprint 16 — Vozes de pares (peer feedback do trimestre) */}
+            {recap.peer_voices && recap.peer_voices.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <Sparkles className="h-3.5 w-3.5 text-primary" />
+                  Vozes de pares no trimestre
+                </h3>
+                <ul className="space-y-2">
+                  {recap.peer_voices.map((v) => (
+                    <li key={v.request_id} className="text-sm bg-teal-500/5 border border-teal-500/15 rounded-xl p-3">
+                      <div className="text-xs font-medium text-teal-700 dark:text-teal-300 mb-1">
+                        {v.peer_name}
+                        <span className="text-muted-foreground font-normal ml-1">
+                          · {new Date(v.responded_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                        </span>
+                      </div>
+                      <p className="text-foreground/90 italic">"{v.text}"</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Sprint 16 — Contexto de rede (sinais ONA do trimestre) */}
+            {recap.network_context && recap.network_context.signals && recap.network_context.signals.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <BarChart3 className="h-3.5 w-3.5 text-primary" />
+                  Contexto de rede
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {recap.network_context.signals.map((s) => (
+                    <Badge
+                      key={s.id}
+                      variant="outline"
+                      className={cn(
+                        'text-xs font-normal',
+                        s.severity === 'high' && 'border-red-500/40 bg-red-500/5 text-red-700 dark:text-red-300',
+                        s.severity === 'medium' && 'border-amber-500/40 bg-amber-500/5 text-amber-700 dark:text-amber-300',
+                        s.severity === 'low' && 'border-muted-foreground/30 bg-muted/30',
+                      )}
+                    >
+                      {s.signal_type.replace(/_/g, ' ')}
+                      <span className="ml-1 text-muted-foreground">
+                        · {new Date(s.detected_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                      </span>
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Classification */}
             <div className="space-y-2">
               <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
