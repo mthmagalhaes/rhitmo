@@ -279,7 +279,7 @@ async function maybeSendWelcomeDM(
       elements: [
         {
           type: 'mrkdwn',
-          text: '🔒 Suas conversas comigo aqui são privadas. Em canais públicos, eu só processo mensagens onde sou mencionado.',
+          text: '🔒 Suas notas no Slack são suas. Eu só processo o que você marcar com `/nota`, `/kudos` ou DM direta — nunca leio canais ou threads sozinha.',
         },
       ],
     },

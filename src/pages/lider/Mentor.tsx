@@ -63,6 +63,7 @@ export default function LiderMentor() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  const [mode, setMode] = useState<'coach' | 'member'>('coach');
   const [selectedMember, setSelectedMember] = useState<LeaderMemberRow | null>(null);
   const [scope, setScope] = useState<ContextScope>('geral');
   const [input, setInput] = useState('');
@@ -162,6 +163,7 @@ export default function LiderMentor() {
   const handleSubmit = () => {
     const text = input.trim();
     if (!text) return;
+    if (mode === 'member' && !selectedMember) return;
     setInput('');
     startNewChat(text);
   };
@@ -232,8 +234,42 @@ export default function LiderMentor() {
             Olá, {userName.split(' ')[0]} — o que você quer entender hoje?
           </h1>
           <p className="mt-2 text-[15px] text-muted-foreground max-w-2xl leading-relaxed">
-            Sua copiloto de liderança. Pergunte algo geral ou escolha um liderado para conversar com contexto.
+            Sua copiloto de liderança. Reflita sobre você ou analise um liderado com contexto completo.
           </p>
+
+          {/* Mode toggle: Coach vs Member */}
+          <div className="mt-5 inline-flex items-center gap-1 rounded-2xl bg-muted/50 p-1 border border-border/40">
+            <button
+              type="button"
+              onClick={() => {
+                setMode('coach');
+                setSelectedMember(null);
+                setScope('geral');
+              }}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[12.5px] font-medium transition-all',
+                mode === 'coach'
+                  ? 'bg-background text-foreground shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              Conversar comigo (coach)
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('member')}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[12.5px] font-medium transition-all',
+                mode === 'member'
+                  ? 'bg-background text-foreground shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Users className="h-3.5 w-3.5" />
+              Analisar um liderado
+            </button>
+          </div>
         </header>
 
         {/* ── Composer ───────────────────────────────────────────── */}
@@ -243,12 +279,15 @@ export default function LiderMentor() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={
-              selectedMember
+              mode === 'coach'
+                ? 'Reflita sobre sua liderança…'
+                : selectedMember
                 ? `Pergunte sobre ${selectedMember.name.split(' ')[0]}…`
-                : 'Pergunte qualquer coisa sobre liderança, seu time ou o que você precisa…'
+                : 'Selecione um liderado para começar a análise…'
             }
             rows={2}
-            className="w-full bg-transparent border-0 outline-none text-[15px] text-foreground placeholder:text-muted-foreground resize-none min-h-[64px] max-h-[200px] px-5 pt-4 pb-2 focus:ring-0"
+            disabled={mode === 'member' && !selectedMember}
+            className="w-full bg-transparent border-0 outline-none text-[15px] text-foreground placeholder:text-muted-foreground resize-none min-h-[64px] max-h-[200px] px-5 pt-4 pb-2 focus:ring-0 disabled:opacity-50"
           />
 
           <div className="flex items-center justify-between gap-2 px-3 py-2 border-t border-border/40 flex-wrap">
