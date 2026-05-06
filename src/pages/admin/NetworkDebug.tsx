@@ -76,19 +76,23 @@ export default function NetworkDebug() {
     if (!workspaceId) return;
     setLoading(true);
     try {
-      const [edgesRes, statsRes] = await Promise.all([
-        safeRpc<EdgeRow[]>('network_debug_top_edges', {
-          _workspace_id: workspaceId,
-          _window_days: windowDays,
-          _limit: 50,
-        }),
-        safeRpc<Stats>('network_debug_stats', {
-          _workspace_id: workspaceId,
-          _window_days: windowDays,
-        }),
-      ]);
-      setEdges(edgesRes.data ?? []);
-      setStats(statsRes.data ?? null);
+      try {
+        const [edgesRes, statsRes] = await Promise.all([
+          safeRpc<EdgeRow[]>('network_debug_top_edges', {
+            _workspace_id: workspaceId,
+            _window_days: windowDays,
+            _limit: 50,
+          }),
+          safeRpc<Stats>('network_debug_stats', {
+            _workspace_id: workspaceId,
+            _window_days: windowDays,
+          }),
+        ]);
+        setEdges(edgesRes ?? []);
+        setStats(statsRes ?? null);
+      } catch (err) {
+        console.error('[NetworkDebug] fetch failed', err);
+      }
     } finally {
       setLoading(false);
     }
