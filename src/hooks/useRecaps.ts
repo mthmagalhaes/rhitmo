@@ -164,7 +164,10 @@ export interface QuarterlyRecap {
   member_id: string;
   manager_id: string;
   workspace_id: string;
-  period_quarter: string;
+  period_quarter: string | null;
+  period_start: string | null;
+  period_end: string | null;
+  period_label: string | null;
   status: 'draft' | 'confirmed';
   confirmed_at: string | null;
   highlights: Array<{ title: string; detail: string; source_month: string }>;
