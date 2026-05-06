@@ -541,6 +541,8 @@ Deno.serve(async (req) => {
       ai_generated_at: new Date().toISOString(),
       ai_model: 'google/gemini-2.5-flash',
       generation_mode: generationMode,
+      peer_voices: peerVoices,
+      network_context: networkContext,
     };
 
     let recapId: string;
