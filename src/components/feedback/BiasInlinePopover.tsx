@@ -48,7 +48,7 @@ export function BiasInlinePopover({ editor, onChange }: BiasInlinePopoverProps) 
       if (!target) return;
       e.preventDefault();
       e.stopPropagation();
-      const matches: BiasMatch[] = editor.storage.biasUnderline?.matches ?? [];
+      const matches: BiasMatch[] = (editor.storage as any).biasUnderline?.matches ?? [];
       const idx = parseInt(target.getAttribute('data-bias-index') ?? '-1', 10);
       const m = matches[idx] ?? null;
       if (!m) return;
@@ -70,7 +70,7 @@ export function BiasInlinePopover({ editor, onChange }: BiasInlinePopoverProps) 
   const applySuggestion = () => {
     if (!editor || !match) return;
     applyBiasSuggestion(editor, match);
-    const remaining = (editor.storage.biasUnderline?.matches ?? []).filter(
+    const remaining = ((editor.storage as any).biasUnderline?.matches ?? []).filter(
       (m: BiasMatch) => !(m.from === match.from && m.to === match.to)
     );
     editor.view.dispatch(editor.state.tr.setMeta(biasPluginKey, remaining));
@@ -80,7 +80,7 @@ export function BiasInlinePopover({ editor, onChange }: BiasInlinePopoverProps) 
 
   const ignore = () => {
     if (!editor || !match) return;
-    const remaining = (editor.storage.biasUnderline?.matches ?? []).filter(
+    const remaining = ((editor.storage as any).biasUnderline?.matches ?? []).filter(
       (m: BiasMatch) => !(m.from === match.from && m.to === match.to)
     );
     editor.view.dispatch(editor.state.tr.setMeta(biasPluginKey, remaining));
