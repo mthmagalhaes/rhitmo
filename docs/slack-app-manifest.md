@@ -72,8 +72,9 @@ Redirect URLs:
 
 ## App Home
 
-- **Home tab:** disabled (we use Messages tab instead).
+- **Home tab:** **MUST be disabled.** Não publicamos `views.publish` em `app_home_opened` — se a Home tab estiver ON, a aba "Início" exibe loading infinito no Slack.
 - **Messages tab:** **enabled** + **"Allow users to send Slash commands and messages from the messages tab"** must be ON.
+- Resultado esperado: bot mostra apenas 2 abas no Slack — **Mensagens** e **Sobre** (a aba "Sobre" é gerada automaticamente pelo Slack a partir de `display_information` e não pode ser ocultada).
 
 ---
 
