@@ -253,14 +253,14 @@ async function maybeSendWelcomeDM(
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: `*${greeting}*\nSua conta Rhitmo está conectada ao Slack. Tudo pronto pra começar.`,
+        text: `*${greeting}*\nSua conta Rhitmo está conectada ao Slack. A partir de agora, *é só me mandar uma mensagem aqui no DM* — eu respondo direto, sem botão, sem comando.`,
       },
     },
     {
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: `*Comandos disponíveis pra você:*\n${cmdLines}`,
+        text: `*Atalhos rápidos (opcionais):*\n${cmdLines}`,
       },
     },
     {
@@ -268,7 +268,7 @@ async function maybeSendWelcomeDM(
       elements: [
         {
           type: 'button',
-          text: { type: 'plain_text', text: '🌀 Conversar com a Rhitmo' },
+          text: { type: 'plain_text', text: '🌀 Começar a conversar' },
           action_id: 'start_rhitmo_chat',
           style: 'primary',
         },
