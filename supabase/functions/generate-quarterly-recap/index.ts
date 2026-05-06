@@ -471,13 +471,13 @@ Deno.serve(async (req) => {
     // Sprint 16 — enrich Rhitmo Trimestral with peer voices + network context
     const startIso = new Date(startMonth + 'T00:00:00Z').toISOString();
     const endIso = new Date(endMonth + 'T00:00:00Z').toISOString();
-    let peerVoices: Array<{ request_id: string; peer_name: string; peer_user_id: string; text: string; responded_at: string; edge_strength: number | null }> = [];
+    let peerVoices: Array<{ request_id: string; peer_member_id: string | null; peer_name: string; text: string; responded_at: string; edge_strength: number | null }> = [];
     let networkContext: { signals: Array<{ id: string; signal_type: string; severity: string; detected_at: string; payload: any }>; total_active: number } = { signals: [], total_active: 0 };
     try {
       const [{ data: pfr }, { data: signals }] = await Promise.all([
         admin
           .from('peer_feedback_requests')
-          .select('id, peer_user_id, response_text, responded_at, edge_strength_at_request')
+          .select('id, peer_member_id, response_text, responded_at, edge_strength_at_request, team_members:peer_member_id(name)')
           .eq('subject_member_id', member.id)
           .eq('status', 'answered')
           .gte('responded_at', startIso)
@@ -493,16 +493,10 @@ Deno.serve(async (req) => {
           .order('detected_at', { ascending: false })
           .limit(3),
       ]);
-      const peerIds = Array.from(new Set((pfr ?? []).map((r) => r.peer_user_id).filter(Boolean)));
-      const nameMap: Record<string, string> = {};
-      if (peerIds.length > 0) {
-        const { data: profs } = await admin.from('profiles').select('user_id, full_name').in('user_id', peerIds);
-        for (const p of profs ?? []) nameMap[(p as any).user_id] = (p as any).full_name || 'Par';
-      }
       peerVoices = (pfr ?? []).map((r: any) => ({
         request_id: r.id,
-        peer_user_id: r.peer_user_id,
-        peer_name: nameMap[r.peer_user_id] || 'Par',
+        peer_member_id: r.peer_member_id ?? null,
+        peer_name: r.team_members?.name ?? 'Par',
         text: r.response_text || '',
         responded_at: r.responded_at,
         edge_strength: r.edge_strength_at_request ?? null,
