@@ -279,12 +279,15 @@ export default function LiderMentor() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={
-              selectedMember
+              mode === 'coach'
+                ? 'Reflita sobre sua liderança…'
+                : selectedMember
                 ? `Pergunte sobre ${selectedMember.name.split(' ')[0]}…`
-                : 'Pergunte qualquer coisa sobre liderança, seu time ou o que você precisa…'
+                : 'Selecione um liderado para começar a análise…'
             }
             rows={2}
-            className="w-full bg-transparent border-0 outline-none text-[15px] text-foreground placeholder:text-muted-foreground resize-none min-h-[64px] max-h-[200px] px-5 pt-4 pb-2 focus:ring-0"
+            disabled={mode === 'member' && !selectedMember}
+            className="w-full bg-transparent border-0 outline-none text-[15px] text-foreground placeholder:text-muted-foreground resize-none min-h-[64px] max-h-[200px] px-5 pt-4 pb-2 focus:ring-0 disabled:opacity-50"
           />
 
           <div className="flex items-center justify-between gap-2 px-3 py-2 border-t border-border/40 flex-wrap">
