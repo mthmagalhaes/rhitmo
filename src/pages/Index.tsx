@@ -19,6 +19,7 @@ import { PendingTranscriptsCard } from '@/components/dashboard/PendingTranscript
 import { MirrorInsightCard } from '@/components/dashboard/MirrorInsightCard';
 import { AccountSetupBento } from '@/components/dashboard/AccountSetupBento';
 import { MentorHistoryCard } from '@/components/dashboard/MentorHistoryCard';
+import { TeamPulseBento } from '@/components/dashboard/TeamPulseBento';
 import { ActivitySheet } from '@/components/ActivitySheet';
 import { useAuth } from '@/hooks/useAuth';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
@@ -633,7 +634,10 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
           <CalendarCardBoundary />
         </section>
 
-        {/* ═══ 3. HISTÓRICO DO MENTOR ═══ */}
+        {/* ═══ 3. PULSO DO TIME (ONA) ═══ */}
+        <TeamPulseBento />
+
+        {/* ═══ 4. HISTÓRICO DO MENTOR ═══ */}
         <MentorHistoryCard onOpenMentor={handleOpenMentor} />
       </main>
 

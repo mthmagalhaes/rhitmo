@@ -189,6 +189,50 @@ export async function generateBriefForMeeting(
       ? pendingItems.map((p) => `- ${p.description} (de: ${p.from_note}, ${p.date})`).join('\n')
       : 'Nenhuma pendência identificada.';
 
+  // 5b. Network context (Sprint 14 — ONA-enriched brief, graceful fallback)
+  let networkContext = '';
+  try {
+    const { data: edges } = await adminClient
+      .from('team_network_edges')
+      .select('member_a_id, member_b_id, weight_total, sources')
+      .eq('window_days', 30)
+      .or(`member_a_id.eq.${meeting.member_id},member_b_id.eq.${meeting.member_id}`)
+      .order('weight_total', { ascending: false })
+      .limit(5);
+
+    const peerIds = (edges ?? [])
+      .map((e: any) => (e.member_a_id === meeting.member_id ? e.member_b_id : e.member_a_id))
+      .filter(Boolean);
+
+    if (peerIds.length > 0) {
+      const { data: peers } = await adminClient
+        .from('team_members')
+        .select('id, name')
+        .in('id', peerIds);
+      const names = (peers ?? []).map((p: any) => p.name).filter(Boolean).slice(0, 3);
+      if (names.length > 0) {
+        networkContext = `Top colaboradores reais nos últimos 30 dias: ${names.join(', ')}.`;
+      }
+    }
+
+    const { data: signals } = await adminClient
+      .from('network_signals')
+      .select('signal_type, severity, payload')
+      .eq('member_id', meeting.member_id)
+      .is('acknowledged_at', null)
+      .order('detected_at', { ascending: false })
+      .limit(3);
+
+    if (signals && signals.length > 0) {
+      const sigText = signals
+        .map((s: any) => `${s.signal_type} (${s.severity})`)
+        .join(', ');
+      networkContext = (networkContext ? networkContext + ' ' : '') + `Sinais ativos: ${sigText}.`;
+    }
+  } catch (err) {
+    console.warn('[briefGenerator] network context skipped:', err);
+  }
+
   const startFormatted = new Date(meeting.start_time).toLocaleString('pt-BR', {
     dateStyle: 'full',
     timeStyle: 'short',
@@ -208,6 +252,7 @@ ${notesContext || 'Nenhuma nota registrada ainda.'}
 
 Action items pendentes:
 ${pendingContext}
+${networkContext ? `\nContexto de rede (colaboração real):\n${networkContext}\nUse isso para enriquecer o context_summary se for relevante. Tom humano, sem jargão.` : ''}
 
 Gere um brief estruturado usando a função generate_brief.
 Máximo 3 itens de agenda. Máximo 5 pendências.

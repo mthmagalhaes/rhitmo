@@ -1512,6 +1512,51 @@ export type Database = {
         }
         Relationships: []
       }
+      network_signals: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          detected_at: string
+          detected_on: string | null
+          id: string
+          leader_user_id: string
+          member_id: string
+          payload: Json
+          severity: string
+          signal_type: string
+          window_days: number
+          workspace_id: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          detected_at?: string
+          detected_on?: string | null
+          id?: string
+          leader_user_id: string
+          member_id: string
+          payload?: Json
+          severity?: string
+          signal_type: string
+          window_days: number
+          workspace_id: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          detected_at?: string
+          detected_on?: string | null
+          id?: string
+          leader_user_id?: string
+          member_id?: string
+          payload?: Json
+          severity?: string
+          signal_type?: string
+          window_days?: number
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       oauth_states: {
         Row: {
           created_at: string
@@ -2768,6 +2813,10 @@ export type Database = {
     }
     Functions: {
       _ctx_resolve_workspace: { Args: { _member_id: string }; Returns: string }
+      acknowledge_network_signal: {
+        Args: { _signal_id: string }
+        Returns: boolean
+      }
       admin_activation_cohorts: { Args: never; Returns: Json }
       admin_cohort_workspaces: {
         Args: { p_cohort_month: string }
@@ -3028,6 +3077,18 @@ export type Database = {
           leader_name: string
           member_name: string
           team_name: string
+        }[]
+      }
+      get_team_pulse: {
+        Args: { _window_days?: number }
+        Returns: {
+          detected_at: string
+          id: string
+          member_id: string
+          member_name: string
+          payload: Json
+          severity: string
+          signal_type: string
         }[]
       }
       get_team_timeline: {
