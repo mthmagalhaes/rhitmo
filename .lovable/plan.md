@@ -1,67 +1,93 @@
-## Sprint 16 — Rhitmo Trimestral: peer voices, network context e entrega no Slack
+## Sprint 17 — Rhitmo Trimestral on-demand + Rhy lembra (e gera por Slack)
 
-Confirmado: Semestral fora de escopo. Trabalhamos só com `quarterly_recaps` (Rhitmo Trimestral) que já existe.
+Sim, dá pra fazer as duas coisas. E você tem razão na intuição: o Rhy fica **menos broadcaster** (cron civil fixo) e mais **agente que avisa quando faz sentido + executa por linguagem natural**. Mantemos a entrega Sprint 16, só trocamos o gatilho.
 
-### Objetivo
-Levar o Rhitmo Trimestral ao padrão "Feedback Report" da referência Windmill: enriquecer com vozes de pares (Sprint 15) e sinais de rede (Sprint 14), e entregar proativamente ao líder via Slack DM no início de cada trimestre, com link para o app.
+### Decisões
 
-### Escopo (4 entregas)
+1. **UI on-demand** (igual Formal): líder escolhe **Último mês / Último trimestre / Personalizado** ao gerar Trimestral.
+2. **Cron civil (1 jan/abr/jul/out) sai.** Vira **cron diário de aniversário** que **só lembra**, não gera.
+3. **Lembrete por aniversário**: a cada 90 dias desde `team_members.created_at` (90/180/270/...). Gera nudge no app + DM no Slack.
+4. **Slack conversacional**: líder responde "pode gerar" / "manda" / "sim" → Rhy gera o trimestral on-demand e responde no thread com resumo + botão "Abrir no Rhitmo". Mesma engine da `slack_conversations` (Sprint 11.2).
 
-**1. Migration — `quarterly_recaps`**
-- `ADD COLUMN peer_voices jsonb NOT NULL DEFAULT '[]'::jsonb`
-- `ADD COLUMN network_context jsonb NOT NULL DEFAULT '{}'::jsonb`
-- `ADD COLUMN slack_delivered_at timestamptz`
-- Sem mudança em RLS (já existente é suficiente).
+---
 
-**2. `generate-quarterly-recap` — enriquecimento**
-- Buscar do trimestre `[startMonth, endMonth)`:
-  - `peer_feedback_requests` com `status='answered'` para o `subject_member_id = member.id` → top 3 respostas mais recentes (texto + nome do par via `peer_user_id` → profile).
-  - `network_signals` para o `member_id` no mesmo período → top 3 ativos por `severity`.
-- Passar para o prompt como blocos auxiliares ("Vozes de pares", "Sinais de rede").
-- Persistir nos novos campos `peer_voices` e `network_context`. Funciona nos modos `from_monthly` e `from_raw`.
-- Sem mudança no contrato JSON principal (`highlights`, `recurring_patterns`, etc).
+### Escopo técnico
 
-**3. UI — `QuarterlyRecapSection.tsx`**
-- Render condicional de 2 blocos novos abaixo dos `highlights`:
-  - "Vozes de pares" → cards com `CitationChip` apontando para `peer_feedback_requests`.
-  - "Contexto de rede" → chips por `signal_type` com link para `EvidenceDrawer`.
-- Header com `wrapAsRhy()`. Recap antigo (campos vazios) → seções escondidas.
+**1. Migration**
 
-**4. Edge function nova `slack-deliver-quarterly-recap` + cron**
-- Cron `0 13 1 1,4,7,10 *` (1º de jan/abr/jul/out, 10h BRT).
-- Para cada `quarterly_recaps` com `ai_generated_at >= now()-7d` e `slack_delivered_at IS NULL`, agrupando por `manager_id`:
-  - Verifica `slack_integrations` ativo do líder.
-  - Monta DM: header + 1 bloco resumo por liderado (3-5 linhas: highlight #1 + risk + 1 peer voice se houver) + botão "Ver no Rhitmo" → `https://rhitmo.co/lider/avaliacoes?recap={id}`.
-  - Limite 8 liderados por mensagem; resto vira mensagens em thread.
-  - Marca `slack_delivered_at = now()` (idempotência).
-- Cron via `cron.schedule` + `net.http_post` (insert tool, não migration — segue padrão do projeto).
+- `quarterly_recaps`: tornar `period_quarter` nullable e adicionar `period_start date`, `period_end date`, `period_label text` (para "Último mês", "Personalizado 12/02–05/05" etc). Backfill: copiar `period_quarter` → `period_start` e `period_quarter + 3 meses` → `period_end`.
+- Índice único composto: `(member_id, period_start, period_end)` substituindo o atual `(member_id, period_quarter)`.
+- Nova tabela leve **NÃO** é necessária — reaproveitamos `leader_nudges` (já tem `nudge_type`) com tipo novo `quarterly_recap_anniversary` e `slack_conversations` para o turno conversacional.
 
-### Detalhes técnicos
+**2. `generate-quarterly-recap` (edge)**
+
+- Aceitar body `{ member_id, period_start, period_end, period_label? }` além do `period_quarter` legado (compat).
+- `quarterRange()` vira função única que recebe `[start, end)` direto.
+- Buscar `monthly_recaps`, `peer_feedback_requests`, `network_signals` no range arbitrário (já está parametrizado por datas — só remover a derivação a partir de `period_quarter`).
+- Persistir `period_start`, `period_end`, `period_label`. Mantém `peer_voices` / `network_context` (Sprint 16).
+
+**3. UI — `QuarterlyRecapSection.tsx` ganha um `GenerateQuarterlyDialog**`
+
+- Mesma estrutura do `CreateFormalReviewDialog` (3 botões + Calendar). Reaproveita o componente `Calendar` com `pointer-events-auto`.
+- Defaults: `last_quarter` (3 meses até hoje).
+- Mostra preview: "X mensais confirmados, Y peer feedback, Z sinais de rede" (chamada já existe em RPC `get_review_evidence`; senão fazemos contagem leve client-side).
+- Botão "Gerar Rhitmo Trimestral" → invoca edge com período. Render do recap usa as colunas novas (`period_label` no header).
+
+**4. Novo edge `quarterly-anniversary-cron**`
+
+- Cron diário `0 12 * * *` (09 BRT) via `pg_cron` + `net.http_post` (insert tool, não migration).
+- Para cada `team_members` ativo: calcula `dias = floor((now - created_at) / 1 day)`. Se `dias > 0 AND dias % 90 == 0`:
+  - Cria `leader_nudges` (`nudge_type = 'quarterly_recap_anniversary'`, severity info, message "Fulano completa N dias com você. Quer que eu gere o Rhitmo Trimestral dos últimos 90 dias?", `action_url = /lider/avaliacoes?member={id}&suggest=quarterly`).
+  - Se líder tem `slack_integrations` ativo: envia DM com texto + 2 botões `block_actions`:
+    - `generate_quarterly` (payload `{ member_id, period_start, period_end }`)
+    - `dismiss`
+  - Marca via campo novo em `team_members` (`last_anniversary_nudge_at timestamptz`) para evitar duplicação no mesmo dia.
+
+**5. Slack — geração via DM (botão e linguagem natural)**
+
+- **Botão**: handler em `slack-bot` (`block_actions` com `action_id = generate_quarterly`) → chama `generate-quarterly-recap` → responde com `chat.postMessage` no mesmo canal/thread: header + 2-3 highlights + risco + botão "Abrir no Rhitmo".
+- **Linguagem natural**: ao mandar a DM proativa, o cron cria uma `slack_conversations` com `intent = 'awaiting_quarterly_confirmation'` e contexto `{ member_id, period_start, period_end, member_name }`, expira em 24h. No `slack-bot` (rota DM), se houver conversa ativa desse intent, classificamos a resposta via Lovable AI Gateway (gemini-2.5-flash) com prompt curto: "responda apenas YES, NO ou OTHER". `YES` → mesma chamada da geração + fecha conversa; `NO` → fecha; `OTHER` → cai no fluxo `general_chat` (não bloqueia).
+- Resposta no Slack reusa `wrapAsRhy()` e blocos compactos (Sprint 11.2 / 14).
+
+**6. Memórias**
+
+- Atualizar `mem://features/recaps/quarterly-feedback-report-delivery.md` (substituir cron civil por aniversário on-demand).
+- Criar `mem://features/recaps/quarterly-anniversary-reminder.md`.
+- Atualizar `mem://index.md`.
+
+---
+
+### Fluxo
 
 ```text
-trigger trimestral (1º jan/abr/jul/out)
+team_members.created_at + 90/180/270... dias
    │
    ▼
-generate-quarterly-recap (enriquecido) ──► quarterly_recaps + peer_voices + network_context
-   │
-   ▼
-slack-deliver-quarterly-recap (cron 13:00 UTC mesmo dia)
-   │
-   ▼
-Slack DM ao líder + slack_delivered_at = now()
-   │
-   ▼
-botão → /lider/avaliacoes?recap={id}  (já abre o componente certo)
+quarterly-anniversary-cron (diário 09 BRT)
+   ├─► leader_nudges (in-app)
+   └─► Slack DM (botão "Gerar" + linguagem natural)
+              │
+              ├─ "pode gerar" / botão  → generate-quarterly-recap (period = últimos 90d)
+              │      └─► quarterly_recaps + DM resumo + botão Abrir
+              └─ "agora não" / 24h     → fecha slack_conversations
+
+UI on-demand (qualquer hora)
+   QuarterlyRecapSection → Dialog (Último mês / trimestre / Personalizado)
+              └─► generate-quarterly-recap (period flexível)
 ```
 
-- **Sem nova tabela.** Tudo em `quarterly_recaps`.
-- **Sem alteração** em `monthly_recaps`, Pulse, peer review, brief, mentor.
-- **Privacidade:** peer_voices nominal (mesmo padrão do brief Sprint 14/15). Apenas líder/HR Admin via RLS já vigente.
-- **Risco de quebra:** baixo. Colunas com default não nulo. Edge nova isolada. UI degradada para registros legados.
+---
 
-### Ordem de execução
-1. Migration (3 colunas).
-2. Enriquecer `generate-quarterly-recap` + redeploy.
-3. Render dos blocos novos em `QuarterlyRecapSection`.
-4. Edge `slack-deliver-quarterly-recap` + cron schedule.
-5. Atualizar memórias: criar `mem://features/recaps/quarterly-feedback-report-delivery`, atualizar `mem://features/slack/proactive-dms-orchestrator` e `mem://index.md`.
+### Fora de escopo
+
+- Mexer em Mensal/Formal.
+- Trocar a entrega Sprint 16 (`slack-deliver-quarterly-recap`) — fica como entrega *após geração*; cron civil dela vira cron diário com mesmo lookback de 7d (não gera nada, só entrega o que foi gerado e ainda não foi enviado por DM resumo). Alternativa: aposentar essa função e fundir tudo no fluxo conversacional. **Recomendo aposentar** porque o resumo agora é entregue na hora da geração via DM. Confirma? Confirmo!
+
+### Risco
+
+- Baixo. Schema com defaults/backfill. Edge e UI retrocompatíveis com `period_quarter`. Cron novo é idempotente via `last_anniversary_nudge_at`.
+
+### Pergunta antes de executar
+
+1. **Aposentar `slack-deliver-quarterly-recap**` (cron civil) e usar só a DM imediata pós-geração? **sim**
+2. Janela do lembrete: só múltiplos exatos de 90 dias, ou também "≥ 90 dias desde o último trimestral confirmado" (ex.: liderado antigo sem trimestral nenhum)? **(recomendo a 2ª, mais útil)**
