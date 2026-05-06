@@ -1882,10 +1882,13 @@ export type Database = {
           id: string
           manager_id: string
           member_id: string
+          network_context: Json
           next_action_key: string | null
           next_action_note: string | null
+          peer_voices: Json
           period_quarter: string
           recurring_patterns: Json
+          slack_delivered_at: string | null
           source_feedbacks_count: number
           source_meetings_count: number
           source_monthly_recap_ids: string[]
@@ -1910,10 +1913,13 @@ export type Database = {
           id?: string
           manager_id: string
           member_id: string
+          network_context?: Json
           next_action_key?: string | null
           next_action_note?: string | null
+          peer_voices?: Json
           period_quarter: string
           recurring_patterns?: Json
+          slack_delivered_at?: string | null
           source_feedbacks_count?: number
           source_meetings_count?: number
           source_monthly_recap_ids?: string[]
@@ -1938,10 +1944,13 @@ export type Database = {
           id?: string
           manager_id?: string
           member_id?: string
+          network_context?: Json
           next_action_key?: string | null
           next_action_note?: string | null
+          peer_voices?: Json
           period_quarter?: string
           recurring_patterns?: Json
+          slack_delivered_at?: string | null
           source_feedbacks_count?: number
           source_meetings_count?: number
           source_monthly_recap_ids?: string[]
