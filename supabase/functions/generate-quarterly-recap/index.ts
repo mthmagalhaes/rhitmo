@@ -12,9 +12,14 @@ const corsHeaders = {
 
 interface Body {
   member_id: string;
-  period_quarter?: string; // ISO yyyy-mm-dd, normalized to first day of quarter
+  // Legacy: full quarter (Sprint <17). Still supported.
+  period_quarter?: string;
+  // Sprint 17+: arbitrary period [period_start, period_end]
+  period_start?: string; // YYYY-MM-DD
+  period_end?: string;   // YYYY-MM-DD (inclusive UI; treated as exclusive upper bound for queries)
+  period_label?: string; // optional human label ("Último mês", "Personalizado 12/02–05/05"...)
   regenerate?: boolean;
-  mode?: 'auto' | 'from_raw'; // 'auto' = uses confirmed monthlies (default); 'from_raw' = fast mode from raw feedbacks
+  mode?: 'auto' | 'from_raw';
 }
 
 type Classification = 'precisa_subir' | 'dentro_esperado' | 'subindo_barra' | 'acima_esperado';
