@@ -229,6 +229,28 @@ export async function generateBriefForMeeting(
         .join(', ');
       networkContext = (networkContext ? networkContext + ' ' : '') + `Sinais ativos: ${sigText}.`;
     }
+
+    // Sprint 15 — Peer feedback voices (last 30d, max 2 most recent)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: peerFb } = await adminClient
+      .from('peer_feedback_requests')
+      .select('response_text, responded_at, peer_member_id, team_members:peer_member_id(name)')
+      .eq('subject_member_id', meeting.member_id)
+      .eq('status', 'answered')
+      .gte('responded_at', thirtyDaysAgo)
+      .order('responded_at', { ascending: false })
+      .limit(2);
+
+    if (peerFb && peerFb.length > 0) {
+      const voices = peerFb
+        .map((p: any) => {
+          const peerName = p.team_members?.name ?? 'um par';
+          const text = (p.response_text || '').replace(/\s+/g, ' ').slice(0, 220);
+          return `- ${peerName}: "${text}"`;
+        })
+        .join('\n');
+      networkContext = (networkContext ? networkContext + '\n' : '') + `Vozes de pares recentes:\n${voices}`;
+    }
   } catch (err) {
     console.warn('[briefGenerator] network context skipped:', err);
   }
