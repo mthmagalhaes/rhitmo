@@ -1619,8 +1619,9 @@ async function processInteraction(body: string, timestamp: string, signature: st
         break;
       }
       case 'prep_1on1_brief': {
-        console.log('[INTERACT] prep_1on1_brief clicked, value:', action.value);
+        console.log('[INTERACT] prep_1on1_brief clicked | slackUser:', slackUserId, '| value:', action.value, '| team:', payload.team?.id);
         const briefPersona = await getUserPersona(slackUserId);
+        console.log('[INTERACT] prep_1on1_brief persona:', briefPersona.persona, '| userId:', briefPersona.userId);
         if (briefPersona.persona !== 'leader' || !briefPersona.userId) {
           if (responseUrl) await sendDelayedResponse(responseUrl, { text: '❌ Apenas líderes podem gerar pautas.' });
           break;
