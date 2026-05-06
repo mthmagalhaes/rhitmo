@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { useEffect, useRef, useCallback } from 'react';
 import { cleanTranscriptText } from '@/lib/textSanitizer';
 import { BiasUnderlineExtension, biasPluginKey } from '@/components/feedback/BiasUnderlineExtension';
+import { BiasInlinePopover } from '@/components/feedback/BiasInlinePopover';
 import type { BiasMatch } from '@/lib/biasDetection';
 
 interface RichTextEditorProps {
@@ -230,6 +231,7 @@ export const RichTextEditor = ({
         )}
         style={{ minHeight }}
       />
+      <BiasInlinePopover editor={editor} />
     </div>
   );
 };
