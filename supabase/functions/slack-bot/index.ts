@@ -1664,6 +1664,43 @@ async function processInteraction(body: string, timestamp: string, signature: st
         }
         break;
       }
+      case 'open_quarterly_in_app':
+        console.log('[INTERACT] URL button clicked:', action.action_id);
+        break;
+      case 'generate_quarterly_dismiss': {
+        const memberId = action.value;
+        // Push cooldown 30 days into the past-future (so next nudge is ~30d away)
+        const future = new Date(Date.now() - (14 - 30) * 24 * 60 * 60 * 1000).toISOString();
+        await supabase.from('team_members').update({ last_anniversary_nudge_at: future }).eq('id', memberId);
+        // Close conversation if any
+        await supabase.from('slack_conversations')
+          .update({ status: 'completed' })
+          .eq('slack_user_id', slackUserId)
+          .eq('intent', 'awaiting_quarterly_confirmation')
+          .eq('status', 'active');
+        if (responseUrl) {
+          await fetch(responseUrl, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ replace_original: true, text: 'Tranquilo 🙏 Eu te lembro de novo em algumas semanas.' }),
+          });
+        }
+        break;
+      }
+      case 'generate_quarterly_confirm': {
+        let parsed: { member_id: string; period_start: string; period_end: string; period_label?: string };
+        try { parsed = JSON.parse(action.value || '{}'); }
+        catch { console.error('[INTERACT] Invalid quarterly value'); break; }
+        await runQuarterlyGenerationFromSlack({
+          slackUserId,
+          channelId: payload.channel?.id || slackUserId,
+          responseUrl,
+          memberId: parsed.member_id,
+          periodStart: parsed.period_start,
+          periodEnd: parsed.period_end,
+          periodLabel: parsed.period_label,
+        });
+        break;
+      }
       default:
         console.log('[INTERACT] Unhandled action:', action.action_id);
     }
