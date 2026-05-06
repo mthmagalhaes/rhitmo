@@ -1687,13 +1687,38 @@ async function processInteraction(body: string, timestamp: string, signature: st
       const slackUserInfo = await slackApi('users.info', { user: slackUserId });
       const senderName = slackUserInfo.ok ? (slackUserInfo.user?.real_name || slackUserInfo.user?.name || 'alguém') : 'alguém';
 
-      // Post public message (to the user's DM channel for now, or a default channel)
-      const publicBlocks = [
-        { type: 'section', text: { type: 'mrkdwn', text: `👏 *Kudos para ${result.name}!*\n\n${kudosText}\n\n_Enviado por ${senderName}_` } },
-        { type: 'context', elements: [{ type: 'mrkdwn', text: '💜 Powered by Rhitmo' }] },
-      ];
+      // Kudos PRIVADO: DM ao liderado (se conectado) + registro no Diário de Bordo
+      const { data: linkedTM } = await supabase
+        .from('team_members')
+        .select('linked_user_id')
+        .eq('id', result.id)
+        .maybeSingle();
+      if (linkedTM?.linked_user_id) {
+        const { data: integ } = await supabase
+          .from('slack_integrations')
+          .select('slack_user_id')
+          .eq('user_id', linkedTM.linked_user_id)
+          .maybeSingle();
+        if (integ?.slack_user_id) {
+          await slackApi('chat.postMessage', {
+            channel: integ.slack_user_id,
+            blocks: [
+              { type: 'section', text: { type: 'mrkdwn', text: `👏 *${senderName} reconheceu seu trabalho:*\n\n${kudosText}` } },
+              { type: 'context', elements: [{ type: 'mrkdwn', text: 'Esta mensagem é privada. Também ficou registrada no seu Diário de Bordo.' }] },
+            ],
+          });
+        }
+      }
 
-      // Save to kudos table
+      await supabase.from('feedbacks').insert({
+        manager_id: persona.userId,
+        member_id: result.id,
+        content: kudosText,
+        type: 'positive',
+        source: 'slack_kudos',
+        visibility: 'shared',
+        tags: ['kudo'],
+      });
       await supabase.from('kudos').insert({
         workspace_id: persona.workspaceId,
         from_user_id: persona.userId,
@@ -1701,13 +1726,10 @@ async function processInteraction(body: string, timestamp: string, signature: st
         message: kudosText,
       });
 
-      // Confirm via DM
+      // Confirma para quem enviou
       await slackApi('chat.postMessage', {
         channel: slackUserId,
-        blocks: [
-          { type: 'section', text: { type: 'mrkdwn', text: `✅ Kudos enviado para *${result.name}*!` } },
-          ...publicBlocks,
-        ],
+        text: `✅ Kudos privado enviado para *${result.name}* e registrado no Diário de Bordo.`,
       });
     }
   }
