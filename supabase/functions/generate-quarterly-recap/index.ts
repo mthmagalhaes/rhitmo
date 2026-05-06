@@ -364,7 +364,7 @@ Deno.serve(async (req) => {
       });
     }
     const team = (member as any).teams;
-    if (team?.leader_user_id !== user.id) {
+    if (team?.leader_user_id !== actingUserId) {
       return new Response(JSON.stringify({ error: 'Forbidden — only the team leader can generate recaps' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -434,7 +434,7 @@ Deno.serve(async (req) => {
         .from('monthly_recaps')
         .select('id, period_month, highlight_text, concern_text, dominant_pattern, feedbacks_count, meetings_count')
         .eq('member_id', member.id)
-        .eq('manager_id', user.id)
+        .eq("manager_id", actingUserId)
         .eq('status', 'confirmed')
         .gte('period_month', startMonth)
         .lt('period_month', endMonth)
@@ -465,7 +465,7 @@ Deno.serve(async (req) => {
           .from('feedbacks')
           .select('id, content, type, sentiment, tags, occurred_at, summary')
           .eq('member_id', member.id)
-          .eq('manager_id', user.id)
+          .eq("manager_id", actingUserId)
           .gte('occurred_at', startIso)
           .lt('occurred_at', endIso)
           .order('occurred_at', { ascending: true })
@@ -474,7 +474,7 @@ Deno.serve(async (req) => {
           .from('meeting_transcripts')
           .select('id, leader_notes, extracted_themes, created_at')
           .eq('member_id', member.id)
-          .eq('manager_id', user.id)
+          .eq("manager_id", actingUserId)
           .gte('created_at', startIso)
           .lt('created_at', endIso)
           .eq('processing_status', 'completed')
@@ -555,7 +555,7 @@ Deno.serve(async (req) => {
 
     const payload = {
       member_id: member.id,
-      manager_id: user.id,
+      manager_id: actingUserId,
       workspace_id: workspaceId,
       // Sprint 17: keep period_quarter for legacy reads (only when generated from a quarter-aligned input)
       period_quarter: legacyPeriodQuarter,
