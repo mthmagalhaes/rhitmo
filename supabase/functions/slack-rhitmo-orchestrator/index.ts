@@ -1,7 +1,7 @@
 // ============================================================================
 // Sprint 11.3 — Rhitmo Orchestrator
 // Cron-driven proactive Slack DMs:
-//   1) Leader 1:1 prep (12h–36h before meeting)
+//   1) Leader 1:1 prep (~18h before meeting; fallback: any 1:1 in next 20h not yet notified)
 //   2) Direct report Pulse alerts (status='pending', not yet DM'd)
 //
 // Reuses SLACK_BOT_TOKEN and the same Slack API pattern as slack-bot/index.ts.
