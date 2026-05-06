@@ -1,159 +1,122 @@
-# Sprint 13 — ONA Foundation: Team Network Graph + Rhy Voice
+## Sprint 14 — ONA aplicado: Brief com rede, Pulso do time e Contexto reativado
 
-Objetivo: criar a fundação de dados e tom de voz para o grafo de colaboração (ONA), sem ainda expor ao líder. Entrega validável internamente via tela de debug do God's Eye.
+Sprint 13 entregou a fundação (graph_events_raw, team_network_edges, RLS, build-team-graph, rhy-voice). A Sprint 14 transforma esse grafo em valor visível para o líder, sem quebrar nada do que já existe.
 
----
+### Objetivo
 
-## 1. Migração de banco — Network Graph
+1. Brief enriquecido com bloco "🕸️ Rede" (proativo via Slack ~18h antes da 1:1, e visível no card de prep no app).
+2. Widget "Pulso do time" no `/lider/inicio` (Bento) — sempre visível, silencioso, sem alarmismo.
+3. `/lider/contexto` ganha conteúdo real: feed cronológico de detecções de rede (isolates, super-connectors, mudanças de padrão), reaproveitando o item de menu hoje subutilizado.
 
-### Tabela `graph_events_raw` (eventos brutos, TTL 90d)
-Captura cada sinal individual de colaboração antes da agregação.
-
-Colunas-chave:
-- `workspace_id`, `source` (`slack` | `gcal` | futuro: `linear`, `github`, `hubspot`)
-- `actor_member_id`, `target_member_id` (FK `team_members.id`, ambos podem ser null se não resolvido)
-- `event_type` (`mention`, `thread_reply`, `reaction`, `meeting_attendee`, `dm`)
-- `weight` (numeric, default 1.0 — DM vale mais que reaction)
-- `occurred_at` (timestamptz, real factual)
-- `external_ref` (text, ex: `slack_message_ts` ou `gcal_event_id`) — idempotência
-- `metadata` jsonb
-- Particionamento por mês em `occurred_at`
-- Index: `(workspace_id, occurred_at DESC)`, `(actor_member_id, target_member_id, occurred_at)`
-- Unique: `(source, external_ref, event_type, actor_member_id, target_member_id)` evita duplicatas
-- TTL: cron mensal apaga partições > 90d
-
-### Tabela `team_network_edges` (agregado, atualizado diariamente)
-Uma linha por par de membros + janela.
-
-Colunas-chave:
-- `workspace_id`, `member_a_id`, `member_b_id` (sempre `a.id < b.id` — edge não-direcionado canônico)
-- `window_days` (`30` | `60` | `90`)
-- `weight_total` numeric (soma ponderada de eventos na janela)
-- `event_count` integer
-- `sources` text[] (quais fontes contribuíram)
-- `last_event_at` timestamptz
-- `computed_at` timestamptz
-- Unique: `(workspace_id, member_a_id, member_b_id, window_days)`
-- Index: `(workspace_id, member_a_id, window_days)`, `(workspace_id, member_b_id, window_days)`
-
-### RLS — diferenciada por papel
-Ambas tabelas com RLS strict. Policies via `SECURITY DEFINER` functions para evitar recursão:
-
-- `can_view_network_edge(member_a uuid, member_b uuid, workspace uuid)` retorna true se:
-  - `is_admin()` (super admin) OU
-  - `is_workspace_owner(workspace, effective_user_id())` OU
-  - `is_hr_admin_of_workspace(workspace)` OU
-  - **Leader**: `is_team_leader(effective_user_id(), member_a)` OR `is_team_leader(..., member_b)` (vê edge se pelo menos uma ponta é liderado dele) OU
-  - **Liderado**: `member_a` OR `member_b` está linkado a `auth.uid()` (vê só edges egocêntricos)
-
-- `graph_events_raw`: mesma lógica, mas mais restrita — leaders só veem eventos onde **ambos os endpoints são acessíveis** (evita vazar canal cruzado quando só uma ponta é liderado).
-
-INSERTs em ambas tabelas: somente `service_role` (edge functions).
+Tudo escrito com a voz do Rhy (`_shared/rhy-voice.ts`).
 
 ---
 
-## 2. Edge function `build-team-graph` (cron diário 03:00 UTC)
+### Entregáveis
 
-Responsabilidade: ler novos eventos de Slack + Calendar e atualizar `graph_events_raw` + recomputar `team_network_edges`.
+**1. Migration: `network_signals` (detecções derivadas)**
 
-### Fluxo
-1. Para cada workspace ativo com Slack OU Google Calendar conectado:
-   - **Slack**: para cada `slack_integration` do workspace, busca mensagens novas dos canais autorizados desde `last_run_at`. Extrai mentions, thread parents, reactions. Resolve `slack_user_id → team_members.id` via `slack_user_member_map` (já existente).
-   - **Calendar**: para cada `google_calendar_token` do workspace, lista eventos com 2+ attendees nos últimos 7d. Para cada par de attendees, gera evento `meeting_attendee` com weight = `duration_minutes / 30`.
-2. INSERT em `graph_events_raw` com ON CONFLICT DO NOTHING (dedup via `external_ref`).
-3. Para cada workspace, recomputa `team_network_edges` para janelas 30/60/90:
-   - DELETE FROM `team_network_edges` WHERE `workspace_id = X AND window_days IN (30,60,90)`
-   - INSERT SELECT agregando `graph_events_raw` no período `now() - interval 'N days'`
-4. Registra run em `automation_runs` (`job_name='build-team-graph'`).
-
-### Pesos iniciais (calibráveis)
-- Slack DM: 3.0
-- Slack thread_reply (mesma thread): 2.0
-- Slack mention em canal: 1.5
-- Slack reaction: 0.3
-- Calendar meeting attendee: `min(duration_min/30, 4.0)` (cap em 2h = peso 4)
-
-### Cron
-Via `pg_cron` + `pg_net` (insert tool, não migration) — `0 3 * * *`.
-
-### Observability
-Usar `_shared/logger.ts`. Log resumo: `{workspace_id, events_ingested, edges_computed, duration_ms}`.
-
----
-
-## 3. `_shared/rhy-voice.ts` — Constituição de voz humana
-
-Novo arquivo no padrão `rhitmo-constitution.ts`. Define:
-
-- **Princípios** (string export `RHY_PRINCIPLES`):
-  - Nunca diagnostica, sempre observa ("Notei que…")
-  - Conversa, não relatório (frases curtas, sem bullets robóticos em DM)
-  - Pergunta antes de sugerir (abre conversa, não empurra ação)
-  - Linguagem de colega sênior, não de RH
-  - Reconhece incerteza ("pode ser nada, mas…")
-  - Nunca usa jargão de ONA/grafo/métrica para o líder
-
-- **Helper `buildRhySystemPrompt(context: { audience: 'leader' | 'member', surface: 'slack_dm' | 'web_card', situation?: string })`**: monta system prompt combinando RHITMO_CONSTITUTION + RHY_PRINCIPLES + ajustes de surface (Slack: sem markdown pesado, máx 4 linhas; Web: pode usar parágrafos).
-
-- **Exemplos few-shot** dentro do prompt para calibrar tom (antes/depois).
-
-Não refatora funções existentes neste sprint — só cria a base. Sprint 14 vai usar isso ao reescrever brief + alertas.
-
----
-
-## 4. Tela de debug `/admin/network-debug` (God's Eye)
-
-Página restrita a `super_admin` para validar o grafo antes de expor a leaders.
-
-UI:
-- Workspace selector (dropdown de todos workspaces ativos)
-- Janela selector (30/60/90)
-- Visualização em tabela: top 50 edges por `weight_total`, com colunas `member_a`, `member_b`, `weight_total`, `event_count`, `sources`, `last_event_at`
-- Card de stats: total edges, isolates count (membros sem edges na janela), super-connectors (top 5 por weight somado)
-- Botão "Trigger build-team-graph now" (chama edge function manualmente)
-
-Visualização de grafo (D3/Sigma) **fica fora do scope deste sprint** — só tabela.
-
-Rota adicionada em `App.tsx` com guard `isSuperAdmin`. Item no AppSidebar do super-admin.
-
----
-
-## 5. Não inclui (próximos sprints)
-
-- Sprint 14: Brief enriquecido com bloco "🕸️ Rede" + reescrita de prompts com `buildRhySystemPrompt` + widget "Pulso do time" no `/lider/inicio` + reativação do `/lider/contexto` com feed de rede
-- Sprint 15: Detector de isolates/super-connectors/mudança de padrão + DMs proativas via `slack-rhitmo-orchestrator`
-- Sprint 16: Sugestão de peer reviewers no Rhitmo Trimestral/Formal wizard
-- Conectores adicionais (HubSpot, Linear, GitHub)
-
----
-
-## Checklist técnico
+Tabela leve que materializa "achados" do grafo para consumo rápido pelo Brief e Pulso. Não refaz o cálculo a cada render.
 
 ```text
-1. Migração SQL
-   ├── CREATE TABLE graph_events_raw (particionada por mês)
-   ├── CREATE TABLE team_network_edges
-   ├── CREATE FUNCTION can_view_network_edge() SECURITY DEFINER
-   ├── RLS policies (SELECT por papel + INSERT service_role)
-   └── Indexes + uniques
-
-2. Edge function build-team-graph
-   ├── Lê Slack messages (paginated, since last_run)
-   ├── Lê Calendar events (últimos 7d)
-   ├── INSERT graph_events_raw (ON CONFLICT DO NOTHING)
-   ├── Recompute team_network_edges (3 janelas)
-   └── Log em automation_runs
-
-3. pg_cron daily 03:00 (via insert tool, não migration)
-
-4. _shared/rhy-voice.ts (princípios + buildRhySystemPrompt)
-
-5. /admin/network-debug
-   ├── Page component (React + tabela)
-   ├── Hook useNetworkDebug (workspace+window selector)
-   ├── Botão "Trigger now" → invoke build-team-graph
-   └── Rota + sidebar item (super admin only)
-
-6. Memory updates
-   └── mem://features/ona/network-graph-foundation.md
+network_signals
+├── id uuid pk
+├── workspace_id uuid (fk teams via leader)
+├── leader_user_id uuid             ← dono do sinal
+├── member_id uuid (fk team_members)
+├── signal_type text                ← 'isolate' | 'super_connector' | 'pattern_drop' | 'pattern_spike'
+├── window_days int                 ← 30/60/90
+├── severity text                   ← 'info' | 'watch' | 'attention'
+├── payload jsonb                   ← {prev_weight, curr_weight, delta_pct, top_peers, ...}
+├── detected_at timestamptz default now()
+├── acknowledged_at timestamptz null
+└── unique (leader_user_id, member_id, signal_type, window_days, date_trunc('day', detected_at))
 ```
+
+RLS: leader vê os próprios sinais; HR Admin/Super Admin veem do workspace; member vê só os próprios (severity 'info' apenas, para não vazar diagnóstico).
+
+RPC `get_team_pulse(_window_days)` — retorna sinais ativos (não acknowledged) do líder logado, ordenados por severidade. SECURITY DEFINER + plpgsql (regra do projeto).
+
+**2. Edge Function: `detect-network-signals` (cron diário, após build-team-graph)**
+
+- Lê `team_network_edges` por workspace.
+- Detecta:
+  - isolate: membro com `sum(weight_total) < threshold` na janela 30d.
+  - super_connector: top-N por peso agregado (info, não atenção).
+  - pattern_drop: queda > 50% comparando janela 30d vs 60d-30d.
+  - pattern_spike: aumento > 100% (info).
+- Insere em `network_signals` com unique-on-day para evitar spam.
+- Cron via `pg_cron` (insert tool, não migration) às 03:30 UTC, depois do build.
+
+**3. Brief enriquecido — bloco "🕸️ Rede"**
+
+Atualizar `_shared/briefGenerator.ts` para:
+- Buscar edges do par (líder ↔ liderado) e top-3 colaboradores do liderado nos últimos 30d.
+- Buscar `network_signals` ativos para esse member_id.
+- Injetar no prompt um bloco estruturado: "Top colaboradores reais: X, Y, Z. Sinais ativos: [se houver]."
+- Output do brief ganha seção opcional "🕸️ Rede" (markdown), gerada com tom Rhy via `wrapAsRhy()`.
+
+Sem quebrar fallback: se grafo vazio (workspace sem Slack/Calendar), seção é omitida silenciosamente.
+
+**4. `slack-rhitmo-orchestrator` — janela 18h**
+
+Hoje envia DM no range 12h–36h. Ajustar para preferir disparo em ~18h (±2h) antes da 1:1, mantendo idempotência via `brief_dm_sent_at`. Se falhar a janela ideal (cron rodou tarde), cai no comportamento atual como fallback.
+
+**5. Widget "Pulso do time" — `/lider/inicio`**
+
+Novo componente `<TeamPulseBento>` na Home (junto aos 3 blocos atuais: AccountSetupBento, Próximas 1:1s, MentorHistoryCard — sem remover nenhum, conforme regra Home V3).
+
+Layout (rounded-2xl, soft shadow, max-w-5xl):
+- Header: "Pulso do time" + janela (30d default, toggle 30/60/90).
+- 3 chips compactos: `N quietos` · `M super-conectados` · `K mudanças`.
+- Lista até 3 sinais prioritários com texto Rhy ("Reparei que a Maria andou meio quieta…").
+- CTA "Ver tudo no Contexto" → `/lider/contexto?tab=rede`.
+- Estado vazio: "Tudo fluindo. Sem sinais nas últimas semanas." (sem alarmismo).
+
+Hook `useTeamPulse(windowDays)` chamando `get_team_pulse`.
+
+**6. `/lider/contexto` — aba Rede**
+
+Contexto hoje só tem o feed de evidências. Adicionar Tabs no topo:
+- "Evidências" (atual, default).
+- "Rede" (novo) — feed cronológico de `network_signals` com filtro por liderado e por tipo. Cada card mostra:
+  - Avatar + nome do liderado.
+  - Texto Rhy descrevendo o sinal.
+  - Métrica seca (peso 30d vs 60d, top peers).
+  - Ações: "Marcar como lido" (acknowledged_at) · "Agendar 1:1" (link p/ /lider/1on1s).
+
+Sem mexer na aba Evidências existente.
+
+**7. Memórias**
+
+- `mem://features/ona/network-signals-and-pulse` — modelo de detecção, severidades, RLS.
+- `mem://features/ona/brief-network-block` — formato do bloco e regras de fallback.
+- Atualizar `mem://design/dashboard/home-v3-windmill` — incluir TeamPulseBento como 4ª seção.
+
+---
+
+### Detalhes técnicos
+
+- **Sem quebrar nada:** todas as queries de Pulso/Rede são aditivas; se `network_signals` vazia, widget mostra empty state e Contexto/Tab Rede fica vazia. Brief faz fallback graceful.
+- **Performance:** detect-network-signals roda 1×/dia, materializa até ~N×3 linhas por workspace. Home usa 1 RPC indexada.
+- **Voz Rhy:** todo texto user-facing passa por `wrapAsRhy()` ou usa templates do `rhy-voice.ts`. Sem jargão ONA na UI ("isolate" vira "andou mais quieto", "super_connector" vira "muito procurado pelo time").
+- **Privacidade:** member nunca vê sinais sobre OUTROS members; só os próprios em severity 'info'. Líder vê só do próprio time. HR vê do workspace.
+- **safeRpc/safeFunctionInvoke** em todo frontend novo (regra do projeto).
+- **Edge functions** seguem padrão: `supabase.auth.getUser()`, CORS, validação de input.
+
+### Ordem de execução (segura)
+
+```text
+1. Migration: network_signals + RLS + get_team_pulse RPC
+2. Edge function: detect-network-signals (com teste manual via /admin/network-debug)
+3. pg_cron 03:30 UTC (insert tool)
+4. briefGenerator.ts: bloco Rede + fallback
+5. slack-rhitmo-orchestrator: ajuste janela 18h
+6. Frontend: useTeamPulse + TeamPulseBento (Home)
+7. Frontend: ContextoTabs + NetworkFeedTab
+8. Memórias atualizadas
+```
+
+Cada passo é testável isoladamente. Posso pausar entre 4 e 5 para validar o brief antes de mexer no orchestrator.
+
+Quer que eu siga nessa ordem?
