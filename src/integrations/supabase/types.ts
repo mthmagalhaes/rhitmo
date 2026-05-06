@@ -1581,6 +1581,72 @@ export type Database = {
         }
         Relationships: []
       }
+      peer_feedback_requests: {
+        Row: {
+          created_at: string
+          edge_strength_at_request: number
+          expires_at: string
+          id: string
+          leader_user_id: string
+          peer_member_id: string | null
+          peer_user_id: string
+          responded_at: string | null
+          response_text: string | null
+          sent_at: string | null
+          status: string
+          subject_member_id: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          edge_strength_at_request?: number
+          expires_at?: string
+          id?: string
+          leader_user_id: string
+          peer_member_id?: string | null
+          peer_user_id: string
+          responded_at?: string | null
+          response_text?: string | null
+          sent_at?: string | null
+          status?: string
+          subject_member_id: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          edge_strength_at_request?: number
+          expires_at?: string
+          id?: string
+          leader_user_id?: string
+          peer_member_id?: string | null
+          peer_user_id?: string
+          responded_at?: string | null
+          response_text?: string | null
+          sent_at?: string | null
+          status?: string
+          subject_member_id?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "peer_feedback_requests_peer_member_id_fkey"
+            columns: ["peer_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "peer_feedback_requests_subject_member_id_fkey"
+            columns: ["subject_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pending_slack_invites: {
         Row: {
           accepted_at: string | null
