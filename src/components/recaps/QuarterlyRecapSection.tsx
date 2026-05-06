@@ -33,6 +33,7 @@ import {
   type RecapTurnoverRisk,
 } from '@/lib/recapActions';
 import { GenerateQuarterlyDialog } from './GenerateQuarterlyDialog';
+import { useQuarterlyDueNudge, useDismissQuarterlyDueNudge } from '@/hooks/useQuarterlyDueNudge';
 
 interface Props {
   memberId: string;
@@ -511,6 +512,12 @@ export function QuarterlyRecapSection({ memberId }: Props) {
   const suggestStart = params.get('start') ?? undefined;
   const suggestEnd = params.get('end') ?? undefined;
   const [dialogOpen, setDialogOpen] = useState(suggestQuarterly);
+  const [prefilledStart, setPrefilledStart] = useState<string | undefined>(suggestStart);
+  const [prefilledEnd, setPrefilledEnd] = useState<string | undefined>(suggestEnd);
+
+  // Sprint 17.3 — Anniversary nudge banner
+  const { data: nudge } = useQuarterlyDueNudge(memberId);
+  const dismissNudge = useDismissQuarterlyDueNudge(memberId);
 
   if (isLoading) {
     return (
@@ -546,6 +553,42 @@ export function QuarterlyRecapSection({ memberId }: Props) {
           Gerar Trimestral
         </Button>
       </div>
+      {nudge && (
+        <Card className="rounded-2xl border-primary/30 bg-primary/5 shadow-none">
+          <CardContent className="py-4 flex items-start gap-3 flex-wrap">
+            <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="h-4 w-4 text-primary" />
+            </div>
+            <div className="flex-1 min-w-[180px]">
+              <p className="text-sm font-semibold tracking-tight">A Rhy sugere gerar o Trimestral</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{nudge.message}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                className="rounded-xl"
+                onClick={() => {
+                  setPrefilledStart(nudge.period_start);
+                  setPrefilledEnd(nudge.period_end);
+                  setDialogOpen(true);
+                }}
+              >
+                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                Gerar agora
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="rounded-xl text-muted-foreground"
+                disabled={dismissNudge.isPending}
+                onClick={() => dismissNudge.mutate(nudge.id)}
+              >
+                Mais tarde
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       <CurrentQuarterCard periodQuarter={currentQuarter} />
       <QuarterCard
         memberId={memberId}
@@ -573,8 +616,8 @@ export function QuarterlyRecapSection({ memberId }: Props) {
         memberId={memberId}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        defaultStart={suggestStart}
-        defaultEnd={suggestEnd}
+        defaultStart={prefilledStart}
+        defaultEnd={prefilledEnd}
       />
     </div>
   );
