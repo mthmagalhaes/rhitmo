@@ -9,6 +9,7 @@ import {
   Target,
   ClipboardCheck,
   BellRing,
+  Users,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -70,6 +71,11 @@ const MAP: Record<string, SourceMeta> = {
     label: 'Nudge',
     icon: BellRing,
     badgeClass: 'bg-yellow-50 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200',
+  },
+  peer_feedback_requests: {
+    label: 'Feedback de par',
+    icon: Users,
+    badgeClass: 'bg-teal-50 text-teal-800 dark:bg-teal-950/40 dark:text-teal-200',
   },
 };
 
