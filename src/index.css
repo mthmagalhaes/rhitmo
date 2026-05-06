@@ -458,24 +458,32 @@ All colors MUST be HSL.
   color: hsl(var(--muted-foreground));
 }
 
-/* Bias detection underlines */
+/* Bias detection underlines — Grammarly-style wavy with per-type colors */
 .bias-underline {
-  border-bottom: 2px wavy hsl(var(--destructive) / 0.6);
-  cursor: help;
-  transition: background-color 0.2s ease;
-  padding-bottom: 1px;
+  text-decoration: underline wavy hsl(var(--destructive) / 0.7);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  border-radius: 2px;
+  padding: 0 1px;
 }
-
 .bias-underline:hover {
   background-color: hsl(var(--destructive) / 0.08);
 }
-
 .bias-underline[data-bias-type="masculine"] {
-  border-bottom-color: hsl(var(--warning) / 0.8);
+  text-decoration-color: hsl(38 92% 50% / 0.8);
 }
-
 .bias-underline[data-bias-type="masculine"]:hover {
-  background-color: hsl(var(--warning) / 0.08);
+  background-color: hsl(38 92% 50% / 0.10);
+}
+.bias-underline[data-bias-type="ambiguity"],
+.bias-underline[data-bias-type="generic"] {
+  text-decoration-color: hsl(217 91% 60% / 0.8);
+}
+.bias-underline[data-bias-type="ambiguity"]:hover,
+.bias-underline[data-bias-type="generic"]:hover {
+  background-color: hsl(217 91% 60% / 0.10);
 }
 
 /* Review content — consistent paragraph spacing across editor & read-only views */

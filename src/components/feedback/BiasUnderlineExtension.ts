@@ -49,10 +49,11 @@ export const BiasUnderlineExtension = Extension.create({
           apply(tr, oldSet) {
             const meta = tr.getMeta(biasPluginKey);
             if (meta !== undefined) {
-              if (!meta || meta.length === 0) return DecorationSet.empty;
+              ext.storage.matches = (meta as BiasMatch[]) ?? [];
+              if (!meta || (meta as BiasMatch[]).length === 0) return DecorationSet.empty;
 
               const decorations = (meta as BiasMatch[])
-                .map((match) => {
+                .map((match, idx) => {
                   const from = plainOffsetToDocPos(tr.doc, match.from);
                   const to = plainOffsetToDocPos(tr.doc, match.to);
                   if (from >= to) return null;
@@ -60,7 +61,9 @@ export const BiasUnderlineExtension = Extension.create({
                   return Decoration.inline(from, to, {
                     class: 'bias-underline',
                     'data-bias-type': match.type,
-                    title: `💡 ${match.suggestion}`,
+                    'data-bias-index': String(idx),
+                    'data-bias-word': match.word,
+                    'data-bias-suggestion': match.suggestion,
                   });
                 })
                 .filter(Boolean) as Decoration[];
@@ -68,7 +71,6 @@ export const BiasUnderlineExtension = Extension.create({
               return DecorationSet.create(tr.doc, decorations);
             }
 
-            // Map through document changes
             return oldSet.map(tr.mapping, tr.doc);
           },
         },
