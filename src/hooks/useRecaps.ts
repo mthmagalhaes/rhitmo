@@ -219,12 +219,22 @@ export function useGenerateQuarterlyRecap(memberId: string | undefined) {
   const qc = useQueryClient();
   const { toast } = useToast();
   return useMutation({
-    mutationFn: async (args: { periodQuarter?: string; regenerate?: boolean; mode?: 'auto' | 'from_raw' }) => {
+    mutationFn: async (args: {
+      periodQuarter?: string;
+      periodStart?: string;
+      periodEnd?: string;
+      periodLabel?: string;
+      regenerate?: boolean;
+      mode?: 'auto' | 'from_raw';
+    }) => {
       if (!memberId) throw new Error('memberId required');
       const { data, error } = await supabase.functions.invoke('generate-quarterly-recap', {
         body: {
           member_id: memberId,
           period_quarter: args.periodQuarter,
+          period_start: args.periodStart,
+          period_end: args.periodEnd,
+          period_label: args.periodLabel,
           regenerate: args.regenerate ?? false,
           mode: args.mode ?? 'auto',
         },
