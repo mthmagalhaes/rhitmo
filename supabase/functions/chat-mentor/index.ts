@@ -1016,7 +1016,17 @@ Com base neste resumo, dê sugestões práticas de liderança, identifique ponto
       );
     }
 
-    const mentorResponse = data.choices[0].message.content;
+    let mentorResponse = data.choices[0].message.content as string;
+
+    // Post-validation: in member mode, if context exists but the response has no [doc:UUID]
+    // citations, prepend a warning header so the leader knows to verify.
+    if (mode === 'member' && contextLines && !contextLines.startsWith('(Contexto histórico')) {
+      const hasCitation = /\[doc:[0-9a-fA-F-]{8,}\]/.test(mentorResponse);
+      if (!hasCitation) {
+        mentorResponse = `> ⚠️ _Resposta sem citações — verifique antes de agir._\n\n${mentorResponse}`;
+        log.warn('response_without_citations', { mode });
+      }
+    }
 
     log.info('end', {
       duration_ms: Date.now() - requestStart,
