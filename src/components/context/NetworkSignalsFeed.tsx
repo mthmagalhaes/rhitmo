@@ -27,7 +27,8 @@ export function NetworkSignalsFeed() {
 
   const fetchRows = async () => {
     setLoading(true);
-    let query = supabase
+    // network_signals types may not be regenerated yet — cast to any.
+    let query: any = (supabase as any)
       .from('network_signals')
       .select('id, member_id, signal_type, severity, payload, detected_at, acknowledged_at, team_members!inner(name)')
       .order('detected_at', { ascending: false })
