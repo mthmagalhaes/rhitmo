@@ -543,7 +543,11 @@ Deno.serve(async (req) => {
       member_id: member.id,
       manager_id: user.id,
       workspace_id: workspaceId,
-      period_quarter: periodQuarter,
+      // Sprint 17: keep period_quarter for legacy reads (only when generated from a quarter-aligned input)
+      period_quarter: legacyPeriodQuarter,
+      period_start: periodStart,
+      period_end: periodEnd,
+      period_label: periodLabel,
       status: 'draft' as const,
       highlights: ai.highlights ?? [],
       recurring_patterns: ai.recurring_patterns ?? [],
@@ -587,7 +591,9 @@ Deno.serve(async (req) => {
       JSON.stringify({
         ok: true,
         recap_id: recapId,
-        period_quarter: periodQuarter,
+        period_start: periodStart,
+        period_end: periodEnd,
+        period_label: periodLabel,
         generation_mode: generationMode,
         sources: { monthlies: sourceMonthlyIds.length, feedbacks: totalFeedbacks, meetings: totalMeetings },
       }),
