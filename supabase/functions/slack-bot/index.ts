@@ -1779,8 +1779,38 @@ async function processInteraction(body: string, timestamp: string, signature: st
               { type: 'context', elements: [{ type: 'mrkdwn', text: 'Esta mensagem é privada. Também ficou registrada no seu Diário de Bordo.' }] },
             ],
           });
-        }
+    }
+
+    else if (callbackId === 'peer_feedback_submission') {
+      const reqId = payload.view?.private_metadata;
+      const fbText = values.fb_block?.fb_text?.value;
+      if (!reqId || !fbText) {
+        console.error('[INTERACT] peer_feedback_submission missing fields');
+        return;
       }
+      const { error: updErr } = await supabase
+        .from('peer_feedback_requests')
+        .update({
+          status: 'answered',
+          response_text: fbText,
+          responded_at: new Date().toISOString(),
+        })
+        .eq('id', reqId)
+        .eq('peer_user_id', persona.userId!);
+      if (updErr) {
+        console.error('[INTERACT] peer_feedback update failed:', updErr.message);
+        await slackApi('chat.postMessage', {
+          channel: slackUserId,
+          text: '⚠️ Não consegui salvar agora. Tente em instantes.',
+        });
+        return;
+      }
+      await slackApi('chat.postMessage', {
+        channel: slackUserId,
+        text: '✅ Obrigada! Seu feedback foi registrado para a liderança 🌀',
+      });
+    }
+  }
 
       await supabase.from('feedbacks').insert({
         manager_id: persona.userId,
