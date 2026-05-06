@@ -82,7 +82,7 @@ Redirect URLs:
 ```json
 {
   "display_information": {
-    "name": "Rhitmo",
+    "name": "Rhy",
     "description": "AI-Native Leadership Partner",
     "background_color": "#1a1a1a"
   },
@@ -93,7 +93,7 @@ Redirect URLs:
       "messages_tab_read_only_enabled": false
     },
     "bot_user": {
-      "display_name": "Rhitmo",
+      "display_name": "Rhy",
       "always_online": true
     },
     "slash_commands": [
