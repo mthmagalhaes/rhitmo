@@ -2241,6 +2241,54 @@ Deno.serve(async (req) => {
                     ts: event.ts,
                   });
 
+                  // ── Sprint 17: NL handler for quarterly confirmation ───
+                  if (conv.intent === 'awaiting_quarterly_confirmation') {
+                    const userText = (event.text ?? '').trim();
+                    const sd = (conv.state_data as any) ?? {};
+                    const classifyTask = (async () => {
+                      try {
+                        const cls = await callLovableAI([
+                          { role: 'system', content: 'Você classifica respostas curtas em pt-BR como "yes", "no" ou "ambiguous". Responda APENAS com uma dessas três palavras, em minúsculas, sem pontuação.' },
+                          { role: 'user', content: `Pergunta: "Quer que eu gere o Rhitmo Trimestral agora?"\nResposta do usuário: "${userText}"\nClassifique:` },
+                        ]);
+                        const verdict = (cls || '').toLowerCase().trim().split(/\s|\./)[0];
+                        if (verdict === 'yes' && sd.member_id && sd.period_start && sd.period_end) {
+                          await runQuarterlyGenerationFromSlack({
+                            slackUserId,
+                            channelId: event.channel,
+                            memberId: sd.member_id,
+                            periodStart: sd.period_start,
+                            periodEnd: sd.period_end,
+                            periodLabel: sd.period_label,
+                          });
+                        } else if (verdict === 'no') {
+                          await supabase.from('slack_conversations')
+                            .update({ status: 'completed' })
+                            .eq('id', conv.id);
+                          await slackApi('chat.postMessage', {
+                            channel: event.channel,
+                            text: 'Tranquilo 🙏 Eu te lembro de novo em algumas semanas.',
+                          });
+                        } else {
+                          await slackApi('chat.postMessage', {
+                            channel: event.channel,
+                            text: `Só pra confirmar — quer que eu gere o *Rhitmo Trimestral de ${sd.member_name ?? 'esse liderado'}* cobrindo *${sd.period_label ?? 'os últimos 90 dias'}*? Responda *sim* ou *não*.`,
+                          });
+                        }
+                      } catch (err) {
+                        console.error('[CONV] quarterly NL classify failed:', err);
+                      }
+                    })();
+                    // @ts-ignore EdgeRuntime
+                    if (typeof EdgeRuntime !== 'undefined' && (EdgeRuntime as any)?.waitUntil) {
+                      // @ts-ignore
+                      (EdgeRuntime as any).waitUntil(classifyTask);
+                    } else {
+                      classifyTask.catch(() => {});
+                    }
+                    return;
+                  }
+
                   // ── LLM turn (Sprint 11.2) ──────────────────────────
                   // Build messages from updated state. We re-read state_data after
                   // appending to include the user's latest turn.
