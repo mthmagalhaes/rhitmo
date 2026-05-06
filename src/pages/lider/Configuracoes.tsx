@@ -46,51 +46,6 @@ function ProfileTab() {
   );
 }
 
-function ChromeInstallButton() {
-  const handleDownload = () => {
-    fetch('/rhitmo-recorder-extension.zip')
-      .then((res) => {
-        if (!res.ok) throw new Error(`Download falhou: ${res.status}`);
-        return res.blob();
-      })
-      .then((blob) => {
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'rhitmo-recorder-extension.zip';
-        a.click();
-        URL.revokeObjectURL(a.href);
-        toast.success('Download iniciado', {
-          description: 'Veja as instruções de instalação ao lado.',
-        });
-      })
-      .catch((err) => toast.error(err.message ?? 'Erro ao baixar a extensão.'));
-  };
-
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Button onClick={handleDownload} size="sm" variant="outline" className="rounded-xl gap-2">
-        <Download className="w-3.5 h-3.5" /> Instalar extensão
-      </Button>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button size="sm" variant="ghost" className="rounded-xl text-xs">
-            Como instalar?
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-80 rounded-2xl text-xs space-y-2">
-          <p className="font-medium text-sm">Instalação manual (Chrome / Edge / Brave):</p>
-          <ol className="list-decimal pl-4 space-y-1 text-muted-foreground">
-            <li>Descompacte o arquivo baixado.</li>
-            <li>Abra <code className="bg-muted px-1 rounded">chrome://extensions</code>.</li>
-            <li>Ative o <strong>Modo desenvolvedor</strong> (canto superior direito).</li>
-            <li>Clique em <strong>Carregar sem compactação</strong> e selecione a pasta.</li>
-          </ol>
-        </PopoverContent>
-      </Popover>
-    </div>
-  );
-}
-
 type IntegrationItem = {
   icon: typeof Slack;
   title: string;
@@ -117,14 +72,6 @@ function IntegrationsTab() {
       desc: 'Sincronize 1:1s e acione transcrição automática.',
       status: cal.isConnected ? 'Conectado' : 'Desconectado',
       ok: cal.isConnected,
-    },
-    {
-      icon: Chrome,
-      title: 'Conector Chrome',
-      desc: 'Grave reuniões do Google Meet sem clicar em nada.',
-      status: 'Disponível',
-      ok: true,
-      action: <ChromeInstallButton />,
     },
   ];
   return (
