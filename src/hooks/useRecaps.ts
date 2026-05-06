@@ -164,7 +164,10 @@ export interface QuarterlyRecap {
   member_id: string;
   manager_id: string;
   workspace_id: string;
-  period_quarter: string;
+  period_quarter: string | null;
+  period_start: string | null;
+  period_end: string | null;
+  period_label: string | null;
   status: 'draft' | 'confirmed';
   confirmed_at: string | null;
   highlights: Array<{ title: string; detail: string; source_month: string }>;
@@ -189,21 +192,21 @@ export interface QuarterlyRecap {
   created_at: string;
 }
 
-export function useQuarterlyRecaps(memberId: string | undefined, quartersBack = 4) {
+export function useQuarterlyRecaps(memberId: string | undefined, monthsBack = 12) {
   return useQuery({
-    queryKey: ['quarterly-recaps', memberId, quartersBack],
+    queryKey: ['quarterly-recaps', memberId, monthsBack],
     queryFn: async () => {
       if (!memberId) return [] as QuarterlyRecap[];
       const cutoff = new Date();
-      cutoff.setUTCMonth(cutoff.getUTCMonth() - quartersBack * 3);
+      cutoff.setUTCMonth(cutoff.getUTCMonth() - monthsBack);
       cutoff.setUTCDate(1);
       const cutoffIso = cutoff.toISOString().slice(0, 10);
       const { data, error } = await supabase
         .from('quarterly_recaps')
         .select('*')
         .eq('member_id', memberId)
-        .gte('period_quarter', cutoffIso)
-        .order('period_quarter', { ascending: false });
+        .or(`period_start.gte.${cutoffIso},period_quarter.gte.${cutoffIso}`)
+        .order('created_at', { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as QuarterlyRecap[];
     },
@@ -216,12 +219,22 @@ export function useGenerateQuarterlyRecap(memberId: string | undefined) {
   const qc = useQueryClient();
   const { toast } = useToast();
   return useMutation({
-    mutationFn: async (args: { periodQuarter?: string; regenerate?: boolean; mode?: 'auto' | 'from_raw' }) => {
+    mutationFn: async (args: {
+      periodQuarter?: string;
+      periodStart?: string;
+      periodEnd?: string;
+      periodLabel?: string;
+      regenerate?: boolean;
+      mode?: 'auto' | 'from_raw';
+    }) => {
       if (!memberId) throw new Error('memberId required');
       const { data, error } = await supabase.functions.invoke('generate-quarterly-recap', {
         body: {
           member_id: memberId,
           period_quarter: args.periodQuarter,
+          period_start: args.periodStart,
+          period_end: args.periodEnd,
+          period_label: args.periodLabel,
           regenerate: args.regenerate ?? false,
           mode: args.mode ?? 'auto',
         },

@@ -1886,7 +1886,10 @@ export type Database = {
           next_action_key: string | null
           next_action_note: string | null
           peer_voices: Json
-          period_quarter: string
+          period_end: string | null
+          period_label: string | null
+          period_quarter: string | null
+          period_start: string | null
           recurring_patterns: Json
           slack_delivered_at: string | null
           source_feedbacks_count: number
@@ -1917,7 +1920,10 @@ export type Database = {
           next_action_key?: string | null
           next_action_note?: string | null
           peer_voices?: Json
-          period_quarter: string
+          period_end?: string | null
+          period_label?: string | null
+          period_quarter?: string | null
+          period_start?: string | null
           recurring_patterns?: Json
           slack_delivered_at?: string | null
           source_feedbacks_count?: number
@@ -1948,7 +1954,10 @@ export type Database = {
           next_action_key?: string | null
           next_action_note?: string | null
           peer_voices?: Json
-          period_quarter?: string
+          period_end?: string | null
+          period_label?: string | null
+          period_quarter?: string | null
+          period_start?: string | null
           recurring_patterns?: Json
           slack_delivered_at?: string | null
           source_feedbacks_count?: number
@@ -2485,6 +2494,7 @@ export type Database = {
           invite_status: string | null
           invite_token: string | null
           key_objectives: string | null
+          last_anniversary_nudge_at: string | null
           linked_user_id: string | null
           motivators: Json | null
           name: string
@@ -2511,6 +2521,7 @@ export type Database = {
           invite_status?: string | null
           invite_token?: string | null
           key_objectives?: string | null
+          last_anniversary_nudge_at?: string | null
           linked_user_id?: string | null
           motivators?: Json | null
           name: string
@@ -2537,6 +2548,7 @@ export type Database = {
           invite_status?: string | null
           invite_token?: string | null
           key_objectives?: string | null
+          last_anniversary_nudge_at?: string | null
           linked_user_id?: string | null
           motivators?: Json | null
           name?: string
