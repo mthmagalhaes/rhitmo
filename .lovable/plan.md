@@ -1,72 +1,45 @@
-## Sprint 17 (parte 2) — Anniversary Nudge + Slack Conversational + Cleanup
+## Sprint 17.3 — Fechar gaps do plano original
 
-Continuação do Sprint 17. A parte 1 (schema flexível + dialog on-demand) já está em produção. Agora vamos fechar o loop proativo do Rhy e aposentar o cron civil.
+Dois ajustes pequenos para deixar o Sprint 17 100% alinhado ao plano.
 
-### 1. Daily Anniversary Cron (`quarterly-anniversary-cron`)
+### 1. Banner "Rhy sugere gerar Trimestral" em `QuarterlyRecapSection`
 
-Nova edge function executada **diariamente às 09:00 BRT (12:00 UTC)** via `pg_cron`:
+Quando existir `leader_nudges` ativo (`nudge_type='quarterly_due'`, `dismissed_at IS NULL`, `member_id` = membro atual) para o líder logado:
 
-- Para cada `team_members` ativo (não arquivado, com `linked_user_id` ou não):
-  - Calcula `days_since_created = (today - created_at)`.
-  - Calcula `days_since_last_quarterly = (today - max(period_end))` em `quarterly_recaps` confirmados (`status='confirmed'`).
-  - Dispara nudge se:
-    - `days_since_created >= 90` E (`days_since_last_quarterly IS NULL` OU `days_since_last_quarterly >= 90`)
-    - E `last_anniversary_nudge_at IS NULL` OU `> 14 dias atrás` (cooldown anti-spam).
-- Ações ao disparar:
-  1. INSERT em `leader_nudges` (tipo `quarterly_due`, payload com `member_id`, `period_start`, `period_end` sugeridos = últimos 90 dias).
-  2. Envia DM Slack ao líder (se `slack_integrations` ativo) via `slack-send-dm` com:
-     - Texto wrapped por `wrapAsRhy()`: "Já passou ~X dias desde o último Rhitmo Trimestral de **Fulano**. Quer que eu gere agora cobrindo {período}?"
-     - 2 botões: `[Gerar agora]` (action_id `generate_quarterly_confirm`) e `[Mais tarde]` (action_id `generate_quarterly_dismiss`).
-     - Link de fallback para `/lider/avaliacoes?member=...&suggest=quarterly&start=...&end=...`.
-  3. UPDATE `team_members.last_anniversary_nudge_at = now()`.
+- Renderizar card sutil acima da lista de recaps: ícone Sparkles, copy curta no tom Rhy ("Já passou {N} dias desde o último Rhitmo Trimestral. Quer gerar agora cobrindo {período}?"), CTA primário "Gerar agora" e secundário "Mais tarde".
+- "Gerar agora" abre o `GenerateQuarterlyDialog` pré-preenchido com `period_start`/`period_end` que vêm do `action_url` do nudge (já gravado pelo cron).
+- "Mais tarde" faz UPDATE em `leader_nudges.dismissed_at = now()` (snooze leve; o cron volta a sugerir após 14d).
+- Novo hook leve `useQuarterlyDueNudge(memberId)` usando `safeQuery` (segue padrão do projeto). Render condicional: se nada → não mostra nada.
 
-### 2. Slack Conversational Loop
+Garante paridade com o líder que **não usa Slack**: ele agora vê o sinal dentro da feature, não só num centro de notificações genérico.
 
-Estender o state machine existente (`slack_conversations`) com novo intent `awaiting_quarterly_confirmation`:
+### 2. Eco no Slack ao confirmar recap pelo app
 
-- **Button handler** (em `slack-interactive` ou equivalente):
-  - `generate_quarterly_confirm`: chama `generate-quarterly-recap` com `{member_id, period_start, period_end, mode:'auto'}`, posta "Gerando…" no thread, e quando pronto edita a mensagem com resumo wrapped por `wrapAsRhy()` + link para o app.
-  - `generate_quarterly_dismiss`: agradece e marca `last_anniversary_nudge_at` para próximo ciclo (30 dias).
-- **Natural language fallback** (em `slack-dm-handler`):
-  - Quando o líder responde DM com `slack_conversations.intent = awaiting_quarterly_confirmation`, passa para Lovable AI Gateway (gemini-2.5-flash) com prompt de classificação:
-    - Resposta afirmativa ("sim", "pode gerar", "vai", "manda ver") → executa mesma lógica do botão confirm.
-    - Resposta negativa ("não", "depois", "agora não") → mesma lógica do dismiss.
-    - Ambíguo → Rhy pede confirmação explícita uma vez.
-  - Limpa `slack_conversations.intent` após resposta.
-- Resultado da geração no Slack: card resumido (3-5 bullets do JSON do recap) + link "Ver no Rhitmo".
+Hoje a DM resumida só sai quando o líder confirma via botão Slack. O plano (§3) previa eco também quando a confirmação acontece pela UI.
 
-### 3. Cleanup do Cron Civil (Sprint 16)
+- Em `generate-quarterly-recap` (ou no caminho que faz `UPDATE quarterly_recaps SET status='confirmed'` — verificar; se hoje a confirmação acontece só client-side via update direto, criar wrapper edge `confirm-quarterly-recap` que faz o update + dispara DM, e trocar o call site na UI para usar essa edge).
+- Lógica do eco: buscar `slack_integrations` do líder; se existir, postar DM curta usando `buildQuarterlyResultBlocks()` (já existe em `_shared/quarterlyNudgeHelpers.ts`) com link "Abrir no Rhitmo".
+- Idempotência: usar coluna existente `slack_delivered_at` em `quarterly_recaps` (criada no Sprint 16) — só envia se NULL; marca após sucesso.
+- Soft-fail: erro de Slack não bloqueia confirmação.
 
-- **Aposentar** `slack-deliver-quarterly-recap` (cron de 1º jan/abr/jul/out):
-  - Remover schedule do `pg_cron` (via insert tool, pois é dado de runtime).
-  - Manter código da função por 1 sprint comentado/dormente (rollback fácil), ou deletar — recomendo deletar via `delete_edge_functions` para manter clareza.
-- **Entrega imediata pós-geração**: ao confirmar um recap (status muda p/ `confirmed`) via UI ou Slack, já dispara DM resumida ao líder no momento — sem depender de cron civil. Reaproveita o helper de DM que será criado no item 1.
+### Detalhes técnicos
 
-### Arquivos afetados
+**Arquivos novos:**
+- `src/hooks/useQuarterlyDueNudge.ts`
+- (opcional, dependendo do call site atual de confirmação) `supabase/functions/confirm-quarterly-recap/index.ts`
 
-**Novos:**
-- `supabase/functions/quarterly-anniversary-cron/index.ts`
-- `supabase/functions/_shared/quarterlyNudgeHelpers.ts` (cálculo de período, formatação de DM)
+**Arquivos editados:**
+- `src/components/recaps/QuarterlyRecapSection.tsx` — renderizar banner; integrar com dialog existente.
+- `supabase/functions/generate-quarterly-recap/index.ts` ou nova edge — adicionar bloco de eco DM no caminho de confirmação.
+- `src/hooks/useRecaps.ts` — se a confirmação migrar para edge, ajustar `confirmRecap` para `safeFunctionInvoke`.
 
-**Editados:**
-- `supabase/functions/slack-interactions/index.ts` (ou nome equivalente do handler de buttons) — adicionar `generate_quarterly_confirm/dismiss`.
-- `supabase/functions/slack-dm-handler/index.ts` — handler do intent `awaiting_quarterly_confirmation`.
-- `supabase/functions/generate-quarterly-recap/index.ts` — disparar DM Slack ao confirmar (se invocado de fluxo confirm).
-- `src/components/recaps/QuarterlyRecapSection.tsx` — banner sutil "Rhy sugere gerar trimestral" quando `leader_nudges` tipo `quarterly_due` ativo.
-
-**Deletados:**
-- `supabase/functions/slack-deliver-quarterly-recap/` (após confirmar deploy do novo fluxo).
-
-**SQL (via insert tool, não migração):**
-- `cron.unschedule('slack-deliver-quarterly-recap-civil')` (ou nome usado).
-- `cron.schedule('quarterly-anniversary-cron', '0 12 * * *', ...)`.
+**Sem migração SQL.** `slack_delivered_at` e `dismissed_at` já existem.
 
 **Memória:**
-- Criar `mem://features/recaps/quarterly-anniversary-nudge.md` documentando o novo fluxo e atualizar índice.
+- Atualizar `mem://features/recaps/quarterly-anniversary-nudge.md` com a nova superfície UI e o eco pós-confirmação.
 
 ### Considerações
 
-- **Idempotência**: cooldown de 14 dias em `last_anniversary_nudge_at` evita DM duplicada se cron rodar 2x ou líder demorar a responder.
-- **Liderado sem Slack do líder**: nudge ainda cria `leader_nudges` (banner no app), só pula DM.
-- **Threading**: respostas em DM mantêm contexto via `thread_ts` em `slack_conversations`.
-- **Observabilidade**: log estruturado em cada etapa (calculou X membros, disparou Y nudges, Z falharam).
+- Banner respeita o RLS de `leader_nudges` (líder só vê os seus).
+- Eco no Slack reusa helpers existentes — zero duplicação.
+- Sem mudanças no cron, no state machine ou nos handlers de botão (já corretos).

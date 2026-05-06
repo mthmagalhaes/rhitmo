@@ -296,9 +296,14 @@ export function useConfirmQuarterlyRecap(memberId: string | undefined) {
         })
         .eq('id', args.id);
       if (error) throw error;
+      // Sprint 17.3 — Slack echo (fire-and-forget, soft-fail)
+      supabase.functions
+        .invoke('slack-echo-quarterly-confirmed', { body: { recap_id: args.id } })
+        .catch((e) => console.warn('[slack-echo] best-effort failed:', e));
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['quarterly-recaps', memberId] });
+      qc.invalidateQueries({ queryKey: ['quarterly-due-nudge', memberId] });
       toast({ title: 'Trimestral confirmado', description: 'Vai virar a espinha da próxima Review.' });
     },
     onError: (e: Error) => {
