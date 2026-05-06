@@ -6,9 +6,7 @@ import { ProfileSettingsDialog } from '@/components/ProfileSettingsDialog';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { User, CreditCard, Plug, LifeBuoy, Slack, Calendar, Chrome, Pencil, Download } from 'lucide-react';
-import { toast } from 'sonner';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { User, CreditCard, Plug, LifeBuoy, Slack, Calendar, Pencil } from 'lucide-react';
 import { useSlackConnection } from '@/hooks/useSlackConnection';
 import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
 
