@@ -150,8 +150,11 @@ async function runBriefRoutine(): Promise<{ sent: number; errors: number }> {
   let errors = 0;
 
   // upcoming_meetings.user_id is the LEADER (per fetch-calendar-events insert).
-  const nowPlus12 = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString();
-  const nowPlus36 = new Date(Date.now() + 36 * 60 * 60 * 1000).toISOString();
+  // Window strategy: ideal send is ~18h before the 1:1 (16h–20h band). For meetings
+  // closer than 16h that were never notified, we fall back to "send now" so last-minute
+  // events still receive a brief. Idempotency is preserved by brief_dm_sent_at IS NULL.
+  const nowIso = new Date().toISOString();
+  const nowPlus20 = new Date(Date.now() + 20 * 60 * 60 * 1000).toISOString();
 
   const { data: meetings, error } = await supabase
     .from('upcoming_meetings')
@@ -164,8 +167,8 @@ async function runBriefRoutine(): Promise<{ sent: number; errors: number }> {
       brief_dm_sent_at,
       team_members:member_id ( id, name )
     `)
-    .gte('start_time', nowPlus12)
-    .lte('start_time', nowPlus36)
+    .gte('start_time', nowIso)
+    .lte('start_time', nowPlus20)
     .is('brief_dm_sent_at', null)
     .not('member_id', 'is', null)
     .order('start_time', { ascending: true })
