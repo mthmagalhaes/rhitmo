@@ -206,12 +206,11 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    // Allow either cron secret or service-role JWT
-    const cronOk = validateCronSecret(req);
-    if (!cronOk) {
+    const cronCheck = validateCronSecret(req);
+    if (!cronCheck.valid) {
       const auth = req.headers.get('Authorization') || '';
       if (!auth.startsWith('Bearer ')) {
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        return cronCheck.error ?? new Response(JSON.stringify({ error: 'Unauthorized' }), {
           status: 401,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
