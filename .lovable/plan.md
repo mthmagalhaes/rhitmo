@@ -1,69 +1,66 @@
+# Plano: Alinhar app Slack ao padrão conversacional (estilo Windy)
 
 ## Diagnóstico
 
-Confirmado nos logs (`slack-bot` 2026-05-06 18:10):
+| Item | Rhitmo (hoje) | Windy | Causa |
+|---|---|---|---|
+| Aba "Início" | Aparece + loading infinito | Não aparece | `home_tab_enabled: true` no painel Slack, sem `views.publish` no backend |
+| Aba "Mensagens" | OK | OK | Ambos têm `messages_tab_enabled: true` |
+| Aba "Sobre" | Auto-gerada pelo Slack | Auto-gerada pelo Slack | Não dá pra remover, é nativa do Slack |
+| Resposta a "Oi" | Silêncio (até Sprint 18) | Resposta no thread | Modelo de conversa diferente |
 
-```
-[DM] Message from: U04N7M58KR6 | text: Oi tudo bem?
-[DM] Persona: leader
-[THROTTLE] Skipping dm welcome (last sent 2026-05-06T01:20:51)
-[DM] Throttled — not re-sending menu
-```
+A aba **"Sobre"** é gerada pelo Slack a partir dos campos `display_information` (nome, descrição, ícone) e **não pode ser ocultada**. Windy tem 2 abas (Mensagens + Sobre) porque desligou a Home tab. É exatamente esse o padrão que queremos.
 
-Ou seja: a conta **está vinculada** (persona = leader), mas o handler de DM em `slack-bot/index.ts` (linhas ~2219–2380) tem a seguinte lógica:
+## Decisão
 
-1. Se houver `slack_conversations` ativa → roda LLM via `callLovableAI` (já funciona, é o que a Windy faz).
-2. Se **não** houver conversa ativa → cai no caminho do "menu de boas-vindas" com throttle.
-3. Como o menu já foi enviado nas últimas 24h → **silêncio total**.
+**Opção A (recomendada — mínimo esforço):** Desligar a Home tab no painel do app, ficando idêntico ao Windy (Mensagens + Sobre). Zero código.
 
-Resultado: o usuário escreve "Oi, tudo bem?" e o bot não responde nada. O Rhitmo só vira conversacional **se** o usuário clicar antes em "🌀 Conversar com a Rhitmo" (que cria a conversa `general_chat`). Esse degrau de fricção é o que faz parecer "não-conversacional" comparado à Windy.
+**Opção B (futuro):** Manter Home tab ligada e publicar uma view útil via `views.publish` no `app_home_opened` (ex.: próximas 1:1s, pulse pendente, atalho "Conversar com a Rhy"). Mais trabalho, mas vira uma "home page" do bot dentro do Slack.
 
-Sobre o botão "🧠 Gerar Pauta" e o card "Conectar Conta" persistente:
+Nesta sprint executamos a **Opção A** (rápida, resolve o loading e iguala ao Windy) e deixamos a Opção B documentada como sprint futura.
 
-- O DM com "Conectar Conta" foi enviado **antes** da vinculação (timestamp 21h atrás na imagem). Hoje, ao clicar, o botão de fato manda para `/slack-link` de novo — mas a conta já está OK. O problema é que **a mensagem antiga não é "atualizada"** quando a conta é vinculada, então parece que o botão "não fez nada".
-- O handler `prep_1on1_brief` existe (linha 1621) e está correto. A causa provável de "não acontecer nada" é que o usuário clicou no botão de **Conectar Conta** dentro do mesmo card de menu (não no "Gerar Pauta" do brief). Vou tratar ambos os casos, mas a evidência principal (logs sem `prep_1on1_brief`) indica que o clique em "Gerar Pauta" pode estar OK — preciso confirmar com um log adicional.
+## Mudanças
 
-## O que vamos mudar (Sprint 18 — Slack Conversational Default)
+### 1. Slack App config (manual, no painel `api.slack.com/apps`)
 
-### 1. DM sem conversa ativa → cria `general_chat` automaticamente
+No app `B0APL6ST719` → **App Home**:
+- **Home Tab:** OFF (atualmente está ON — causa do loading)
+- **Messages Tab:** ON (manter)
+- **Allow users to send Slash commands and messages from the messages tab:** ON (manter)
 
-Em `supabase/functions/slack-bot/index.ts`, no bloco `event.type === 'message' && event.channel_type === 'im'`:
+Não precisa reinstalar o app — mudança de tabs não exige reauth.
 
-- **Antes** do throttle/welcome menu, se `persona !== 'unauthenticated'` e não houver conversa ativa, **criar** uma conversa `general_chat` (mesmo INSERT que o handler `start_rhitmo_chat` faz, linhas ~1762+) com `state_data.turns = [{ role: 'user', text, ts }]`.
-- Em seguida, rodar a mesma rotina de LLM (`callLovableAI` + `appendConversationTurn` + `chat.postMessage`) que já existe para conversas ativas, dentro de `EdgeRuntime.waitUntil`.
-- Isso elimina o "degrau" do botão. O usuário fala, o Rhy responde — exatamente como a Windy.
-- O menu de boas-vindas vira **fallback exclusivo** para `unauthenticated` ou para `app_home_opened`. Para usuário autenticado em DM, **nunca mais** mandamos o card de menu como resposta — só conversa.
+### 2. Renomear bot de "Rhitmo" para "Rhy" (também no painel)
 
-### 2. Throttle deixa de bloquear DMs autenticadas
+Em **Basic Information → Display Information**:
+- App name: `Rhy`
+- Em **App Home → Your App's Presence in Slack**:
+  - Bot display name: `Rhy`
+  - Default username: `rhy`
 
-Hoje `shouldSendWelcome` é chamado também para DMs autenticadas. Isso só faz sentido para o menu inicial. Vamos:
+Isso muda o que aparece no header da DM. Não precisa redeployar nada.
 
-- Manter o throttle apenas para o **primeiro** menu de boas-vindas (já existe via `app_home_opened` e DM de `unauthenticated`).
-- Em DM autenticada, nunca pular silenciosamente — sempre responder via LLM (item 1).
+### 3. Atualizar `docs/slack-app-manifest.md`
 
-### 3. Comando proativo de Conectar Conta deixa de ficar "preso"
+Trocar `"name": "Rhitmo"` → `"name": "Rhy"` e ajustar `display_name`/`always_online` no bot_user. Já temos `home_tab_enabled: false` no manifest documentado, então o painel é que está fora de sincronia — depois da mudança manual ele bate com o manifest.
 
-Quando `slack-link` finaliza com sucesso (já existe), vamos enviar uma DM curta de confirmação ("✅ Conta vinculada — agora você pode falar comigo direto por aqui, é só me chamar."). Isso resolve a sensação visual de "o botão não faz nada" (a mensagem antiga continua lá, mas vem uma nova confirmando).
+### 4. Atualizar memória
 
-- Verificar se `slack-link` já manda a welcome DM (`welcome_dm_sent_at` em `slack_integrations`). Se manda, ajustar o copy para deixar claro que **basta digitar para conversar**, em vez de listar só comandos.
+`mem://features/slack/configuration-constraints` — adicionar nota:
+> Home tab DEVE ficar OFF. Não publicamos `views.publish` em `app_home_opened`. Se ligada, a aba "Início" exibe loading infinito.
 
-### 4. Logging extra no botão "Gerar Pauta"
+## O que NÃO muda
 
-Adicionar `console.log` no início do case `prep_1on1_brief` (antes do `getUserPersona`) para registrar `slackUserId` + `payload.team_id`. Se o usuário reportar de novo "não fez nada", os logs nos dirão se o clique sequer chegou ou se falhou em `getUserPersona`/`generateBriefForMeeting`.
+- Nenhum código de edge function (`slack-bot`, `slack-link`) precisa ser alterado
+- Scopes, slash commands, event subscriptions: tudo idêntico
+- Sprint 18 (DM conversacional por padrão) já está deployada e continua valendo
+- Nome interno "Rhitmo" no app web e em todos os outros lugares fica como está — o rename é só do bot Slack
 
-### 5. Memory update
+## Sprint futura (Opção B, opcional)
 
-Atualizar `mem://features/slack/conversational-state-machine.md` para registrar:
-- "DM autenticada cria conversa `general_chat` automaticamente; menu só aparece em `app_home_opened` ou para não autenticados."
+Se quisermos uma Home tab rica:
+1. Adicionar handler em `app_home_opened` (já existe — só trocar `chat.postMessage` por `views.publish`)
+2. Montar AppHome view com Block Kit: próximas 1:1s + pulse pendente + botão "Conversar com a Rhy"
+3. Re-publicar a view sempre que o estado mudar (cron + push em events relevantes)
 
-## Arquivos
-
-- **Editado:** `supabase/functions/slack-bot/index.ts` (DM handler ~linhas 2219–2380; case `prep_1on1_brief` ~linha 1621 — log extra).
-- **Editado:** `supabase/functions/slack-link/index.ts` (welcome DM com copy "é só digitar para conversar").
-- **Editado:** `.lovable/memory/features/slack/conversational-state-machine.md`.
-
-## Fora de escopo
-
-- Streaming de tokens no Slack (Slack não suporta SSE).
-- Cron de expiração de conversas (já tem RPC `expire_stale_slack_conversations`, mas wiring fica para depois).
-- Mudar o card de menu (continua igual quando solicitado via `/rhitmo` ou `app_home_opened`).
+Isso ficaria como Sprint 19+ depois de validarmos o fluxo conversacional puro.
