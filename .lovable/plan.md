@@ -1,67 +1,67 @@
-## Sprint 15 — Proactive Peer Feedback (Windy-style, leve)
+## Sprint 16 — Rhitmo Trimestral: peer voices, network context e entrega no Slack
 
-Sprint 14 fechou ONA + sinais + Pulse na Home. O próximo passo natural, alinhado à referência Windmill (`mem://product/continuous-feedback-windmill-reference`), é fechar o loop de **continuous feedback**: usar o grafo de colaboração (`team_network_edges`) para a Rhitmo perguntar **proativamente** a pares — via Slack DM — sobre pessoas com quem eles realmente trabalham, e materializar as respostas como evidência nominal no `/lider/contexto` e nos briefs de 1:1.
-
-Hoje só temos Pulse Surveys (líder → liderado) e peer reviews formais (ciclo). Falta a coleta **leve, contínua, baseada em colaboração detectada**.
+Confirmado: Semestral fora de escopo. Trabalhamos só com `quarterly_recaps` (Rhitmo Trimestral) que já existe.
 
 ### Objetivo
-Quando a ONA detecta que A colabora forte com B nos últimos 14d, a Rhitmo pode pedir a A — uma vez por quinzena, no máximo — uma nota curta sobre B ("o que B fez bem? algo a melhorar?"). Resposta vira `ctx_evidence` (source `peer_feedback`), entra no Contexto do líder de B e enriquece o brief da próxima 1:1.
+Levar o Rhitmo Trimestral ao padrão "Feedback Report" da referência Windmill: enriquecer com vozes de pares (Sprint 15) e sinais de rede (Sprint 14), e entregar proativamente ao líder via Slack DM no início de cada trimestre, com link para o app.
 
-### Escopo (5 entregas)
+### Escopo (4 entregas)
 
-1. **Schema — `peer_feedback_requests`**
-   - Migration nova: `id, requester_workspace, leader_user_id, subject_member_id, peer_user_id, peer_member_id (nullable), edge_strength_at_request, sent_at, responded_at, status ('pending'|'answered'|'declined'|'expired'), response_text, expires_at`.
-   - Unique parcial: `(subject_member_id, peer_user_id)` onde `sent_at >= now() - 14d` (evita spam).
-   - RLS: líder de `subject_member_id` lê tudo; `peer_user_id` lê/atualiza apenas a própria linha; service_role escreve.
-   - Trigger: ao virar `answered`, insere `ctx_evidence` (source=`peer_feedback`, payload com nome do par + texto + edge_strength).
+**1. Migration — `quarterly_recaps`**
+- `ADD COLUMN peer_voices jsonb NOT NULL DEFAULT '[]'::jsonb`
+- `ADD COLUMN network_context jsonb NOT NULL DEFAULT '{}'::jsonb`
+- `ADD COLUMN slack_delivered_at timestamptz`
+- Sem mudança em RLS (já existente é suficiente).
 
-2. **Edge function `request-peer-feedback` (cron diário, 04:00 UTC após detect-network-signals)**
-   - Para cada `team_network_edges` com `edge_strength >= threshold` nos últimos 14d:
-     - Se par tem `slack_integrations` e não há request aberto/recente para o mesmo `(subject, peer)` → cria linha + envia Slack DM com 1 botão "✍️ Dar feedback rápido" (action_id `peer_fb_open`).
-   - Limites: máx 3 requests por par por dia, máx 1 request por subject-peer por 14d.
-   - Idempotência: `sent_at IS NULL` guard antes do `chat.postMessage`.
+**2. `generate-quarterly-recap` — enriquecimento**
+- Buscar do trimestre `[startMonth, endMonth)`:
+  - `peer_feedback_requests` com `status='answered'` para o `subject_member_id = member.id` → top 3 respostas mais recentes (texto + nome do par via `peer_user_id` → profile).
+  - `network_signals` para o `member_id` no mesmo período → top 3 ativos por `severity`.
+- Passar para o prompt como blocos auxiliares ("Vozes de pares", "Sinais de rede").
+- Persistir nos novos campos `peer_voices` e `network_context`. Funciona nos modos `from_monthly` e `from_raw`.
+- Sem mudança no contrato JSON principal (`highlights`, `recurring_patterns`, etc).
 
-3. **Slack handler — `slack-bot/index.ts`**
-   - Adicionar dois action_ids: `peer_fb_open` (abre modal Slack com `views.open`, 1 textarea + 2 botões "Enviar"/"Pular") e `peer_fb_submit` (atualiza linha para `answered`, fecha modal, posta ack).
-   - Reusa padrão de `answer_pulse` já existente.
+**3. UI — `QuarterlyRecapSection.tsx`**
+- Render condicional de 2 blocos novos abaixo dos `highlights`:
+  - "Vozes de pares" → cards com `CitationChip` apontando para `peer_feedback_requests`.
+  - "Contexto de rede" → chips por `signal_type` com link para `EvidenceDrawer`.
+- Header com `wrapAsRhy()`. Recap antigo (campos vazios) → seções escondidas.
 
-4. **Frontend — Contexto e Brief**
-   - `NetworkSignalsFeed` ou nova aba "Feedback de pares" em `/lider/contexto`: listar evidências `peer_feedback` agrupadas por subject_member, com chip "anônimo opcional" (v1: nominal, v2: anonimizar).
-   - `briefGenerator.ts` (no shared): adicionar bloco "Vozes de pares" — até 2 peer_feedback recentes do subject, falando via `wrapAsRhy()`.
-   - `useTeamPulse` continua igual; nada removido.
-
-5. **Cron + Memórias**
-   - `select cron.schedule('request-peer-feedback-daily', '0 4 * * *', ...)` via insert SQL.
-   - Nova memória `mem://features/ona/peer-feedback-loop` documentando schema, RLS, fluxo Slack, integração com brief.
-   - Atualizar `mem://features/slack/command-ecosystem` e `_shared/slackCommands.ts` com os novos action_ids.
-   - Atualizar `mem://features/ona/network-signals-and-pulse` referenciando a nova feature.
+**4. Edge function nova `slack-deliver-quarterly-recap` + cron**
+- Cron `0 13 1 1,4,7,10 *` (1º de jan/abr/jul/out, 10h BRT).
+- Para cada `quarterly_recaps` com `ai_generated_at >= now()-7d` e `slack_delivered_at IS NULL`, agrupando por `manager_id`:
+  - Verifica `slack_integrations` ativo do líder.
+  - Monta DM: header + 1 bloco resumo por liderado (3-5 linhas: highlight #1 + risk + 1 peer voice se houver) + botão "Ver no Rhitmo" → `https://rhitmo.co/lider/avaliacoes?recap={id}`.
+  - Limite 8 liderados por mensagem; resto vira mensagens em thread.
+  - Marca `slack_delivered_at = now()` (idempotência).
+- Cron via `cron.schedule` + `net.http_post` (insert tool, não migration — segue padrão do projeto).
 
 ### Detalhes técnicos
 
 ```text
-detect-network-signals (03:30) ─┐
-                                 ├─► team_network_edges (frescas)
-build-team-graph (03:00) ───────┘
-                                          │
-                  request-peer-feedback (04:00) ──► Slack DM (botão)
-                                          │              │
-                                          ▼              ▼
-                                peer_feedback_requests   modal Slack
-                                          │              │
-                                          ▼              ▼
-                                       answered  ──► trigger insert ctx_evidence
-                                                              │
-                                                              ▼
-                                               /lider/contexto + brief 1:1
+trigger trimestral (1º jan/abr/jul/out)
+   │
+   ▼
+generate-quarterly-recap (enriquecido) ──► quarterly_recaps + peer_voices + network_context
+   │
+   ▼
+slack-deliver-quarterly-recap (cron 13:00 UTC mesmo dia)
+   │
+   ▼
+Slack DM ao líder + slack_delivered_at = now()
+   │
+   ▼
+botão → /lider/avaliacoes?recap={id}  (já abre o componente certo)
 ```
 
-- **Threshold inicial:** `edge_strength >= 0.3` (ajustável). Métrica: número de DMs enviadas/dia ≤ 5 por workspace na primeira semana — guardrail anti-spam.
-- **Privacidade:** v1 mostra nome do par (mesmo padrão do Slack ambient classifier). Toggle "anônimo" entra em sprint futuro.
-- **Sem mudança em Pulse Surveys, peer reviews formais, ou Mentor.** Risco de quebra: baixo (nova tabela, nova função, novos action_ids isolados).
+- **Sem nova tabela.** Tudo em `quarterly_recaps`.
+- **Sem alteração** em `monthly_recaps`, Pulse, peer review, brief, mentor.
+- **Privacidade:** peer_voices nominal (mesmo padrão do brief Sprint 14/15). Apenas líder/HR Admin via RLS já vigente.
+- **Risco de quebra:** baixo. Colunas com default não nulo. Edge nova isolada. UI degradada para registros legados.
 
 ### Ordem de execução
-1. Migration `peer_feedback_requests` + trigger.
-2. Edge function `request-peer-feedback` + cron.
-3. Handlers Slack (`peer_fb_open` / `peer_fb_submit`) em `slack-bot/index.ts`.
-4. Bloco "Vozes de pares" no `briefGenerator.ts` + aba/seção em `/lider/contexto`.
-5. Memórias + index.
+1. Migration (3 colunas).
+2. Enriquecer `generate-quarterly-recap` + redeploy.
+3. Render dos blocos novos em `QuarterlyRecapSection`.
+4. Edge `slack-deliver-quarterly-recap` + cron schedule.
+5. Atualizar memórias: criar `mem://features/recaps/quarterly-feedback-report-delivery`, atualizar `mem://features/slack/proactive-dms-orchestrator` e `mem://index.md`.

@@ -183,6 +183,9 @@ export interface QuarterlyRecap {
   ai_generated_at: string | null;
   ai_model: string | null;
   generation_mode: 'from_monthly' | 'from_raw' | null;
+  peer_voices?: Array<{ request_id: string; peer_member_id: string | null; peer_name: string; text: string; responded_at: string; edge_strength: number | null }>;
+  network_context?: { signals: Array<{ id: string; signal_type: string; severity: string; detected_at: string; payload: any }>; total_active: number };
+  slack_delivered_at?: string | null;
   created_at: string;
 }
 
