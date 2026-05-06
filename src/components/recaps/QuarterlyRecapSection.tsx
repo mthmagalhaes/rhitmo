@@ -32,6 +32,7 @@ import {
   type RecapClassification,
   type RecapTurnoverRisk,
 } from '@/lib/recapActions';
+import { GenerateQuarterlyDialog } from './GenerateQuarterlyDialog';
 
 interface Props {
   memberId: string;
