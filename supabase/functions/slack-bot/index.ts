@@ -1309,23 +1309,27 @@ async function processCommand(body: string, timestamp: string, signature: string
       const payload: Record<string, string> = {};
       for (const [k, v] of params.entries()) payload[k] = v;
       const result = await handleKudosCommand(payload, persona);
-      if (result.publicMsg) {
-        const apiResult = await slackApi('chat.postMessage', { channel: result.publicMsg.channel, blocks: result.publicMsg.blocks });
-        const text = params.get('text') || '';
-        const mentionMatch2 = text.match(/^(<@U[A-Z0-9]+(?:\|[^>]*)?>)\s+(.+)/s);
-        const plainMatch2 = text.match(/^[@]?(\S+)\s+(.+)/s);
-        const memberInput = mentionMatch2 ? mentionMatch2[1] : (plainMatch2 ? plainMatch2[1] : '');
-        const resolvedMember = await resolveMember(memberInput, persona.workspaceId!);
-        if (!('error' in resolvedMember)) {
-          await supabase.from('kudos').insert({
-            workspace_id: persona.workspaceId,
-            from_user_id: persona.userId,
-            to_member_id: resolvedMember.id,
-            message: mentionMatch2 ? mentionMatch2[2] : (plainMatch2 ? plainMatch2[2] : text),
-            slack_channel_id: result.publicMsg.channel,
-            slack_message_ts: apiResult.ts,
-          });
-        }
+      // DM privada ao liderado (se conectado ao Slack)
+      if (result.dmTo) {
+        await slackApi('chat.postMessage', { channel: result.dmTo.slackUserId, blocks: result.dmTo.blocks });
+      }
+      // Registra como nota de reconhecimento no Diário de Bordo do liderado
+      if (result.saveAs) {
+        await supabase.from('feedbacks').insert({
+          manager_id: result.saveAs.managerId,
+          member_id: result.saveAs.memberId,
+          content: result.saveAs.message,
+          type: 'positive',
+          source: 'slack_kudos',
+          visibility: 'shared',
+          tags: ['kudo'],
+        });
+        await supabase.from('kudos').insert({
+          workspace_id: persona.workspaceId,
+          from_user_id: persona.userId,
+          to_member_id: result.saveAs.memberId,
+          message: result.saveAs.message,
+        });
       }
       await sendDelayedResponse(responseUrl, result.ephemeral);
       break;
