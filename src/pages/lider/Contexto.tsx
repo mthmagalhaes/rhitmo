@@ -70,56 +70,83 @@ export default function LiderContexto() {
           </p>
         </header>
 
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <MemberFilterSelect value={memberId} onChange={handleMemberChange} />
-          </div>
-          <SourceFilterChips
-            selected={sources}
-            onToggle={(k) =>
-              setSources((prev) => (prev.includes(k) ? prev.filter((s) => s !== k) : [...prev, k]))
-            }
-            onClear={() => setSources([])}
-          />
-        </div>
+        <Tabs
+          value={tabParam}
+          onValueChange={(v) => {
+            const next = new URLSearchParams(searchParams);
+            if (v === 'rede') next.set('tab', 'rede');
+            else next.delete('tab');
+            setSearchParams(next, { replace: true });
+          }}
+        >
+          <TabsList className="rounded-xl">
+            <TabsTrigger value="evidencias" className="rounded-lg gap-1.5">
+              <Layers className="h-3.5 w-3.5" />
+              Evidências
+            </TabsTrigger>
+            <TabsTrigger value="rede" className="rounded-lg gap-1.5">
+              <Network className="h-3.5 w-3.5" />
+              Rede
+            </TabsTrigger>
+          </TabsList>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-16 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin" />
-          </div>
-        ) : rows.length === 0 ? (
-          <div className="rounded-2xl border border-dashed bg-muted/20 p-8 text-center">
-            <p className="text-sm text-muted-foreground">
-              Nenhuma evidência encontrada para os filtros atuais.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {rows.map((row) => (
-              <EvidenceCard key={row.id} row={row} />
-            ))}
-            {hasNextPage && (
-              <div className="flex justify-center pt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-xl"
-                  disabled={isFetchingNextPage}
-                  onClick={() => fetchNextPage()}
-                >
-                  {isFetchingNextPage ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
-                      Carregando…
-                    </>
-                  ) : (
-                    'Carregar mais'
-                  )}
-                </Button>
+          <TabsContent value="evidencias" className="mt-5 space-y-4">
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <MemberFilterSelect value={memberId} onChange={handleMemberChange} />
+              </div>
+              <SourceFilterChips
+                selected={sources}
+                onToggle={(k) =>
+                  setSources((prev) => (prev.includes(k) ? prev.filter((s) => s !== k) : [...prev, k]))
+                }
+                onClear={() => setSources([])}
+              />
+            </div>
+
+            {isLoading ? (
+              <div className="flex items-center justify-center py-16 text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin" />
+              </div>
+            ) : rows.length === 0 ? (
+              <div className="rounded-2xl border border-dashed bg-muted/20 p-8 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Nenhuma evidência encontrada para os filtros atuais.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {rows.map((row) => (
+                  <EvidenceCard key={row.id} row={row} />
+                ))}
+                {hasNextPage && (
+                  <div className="flex justify-center pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl"
+                      disabled={isFetchingNextPage}
+                      onClick={() => fetchNextPage()}
+                    >
+                      {isFetchingNextPage ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+                          Carregando…
+                        </>
+                      ) : (
+                        'Carregar mais'
+                      )}
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )}
+          </TabsContent>
+
+          <TabsContent value="rede" className="mt-5">
+            <NetworkSignalsFeed />
+          </TabsContent>
+        </Tabs>
       </div>
     </main>
   );
