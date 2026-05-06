@@ -1,14 +1,17 @@
 // PR6 — /lider/contexto volta ao feed cronológico bruto. O Brief executivo
 // agora vive em /lider/1on1s. Aqui o líder investiga e audita evidências.
+// Sprint 14: aba "Rede" lista sinais derivados do grafo (ONA).
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Layers, Loader2 } from 'lucide-react';
+import { Layers, Loader2, Network } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useAccount } from '@/contexts/AccountContext';
 import { useTeamTimeline } from '@/hooks/useTeamTimeline';
 import { EvidenceCard } from '@/components/context/EvidenceCard';
 import { MemberFilterSelect } from '@/components/context/MemberFilterSelect';
 import { SourceFilterChips, SOURCE_KEYS, type SourceKey } from '@/components/context/SourceFilterChips';
+import { NetworkSignalsFeed } from '@/components/context/NetworkSignalsFeed';
 
 export default function LiderContexto() {
   const { workspaceId } = useAccount();
