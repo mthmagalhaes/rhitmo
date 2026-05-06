@@ -654,7 +654,9 @@ async function handleNotaCommand(payload: Record<string, string>, persona: Perso
   };
 }
 
-async function handleKudosCommand(payload: Record<string, string>, persona: PersonaResult): Promise<{ ephemeral: Record<string, unknown>; publicMsg?: { channel: string; blocks: unknown[] } }> {
+// /kudos é PRIVADO: DM ao liderado + registro como nota de reconhecimento no Diário.
+// Não posta nada no canal — Brasil tem cultura de baixo conforto com elogio público.
+async function handleKudosCommand(payload: Record<string, string>, persona: PersonaResult): Promise<{ ephemeral: Record<string, unknown>; dmTo?: { slackUserId: string; blocks: unknown[] }; saveAs?: { managerId: string; memberId: string; message: string } }> {
   if (persona.persona === 'unauthenticated') {
     return { ephemeral: { text: '❌ Conecte sua conta Rhitmo primeiro.' } };
   }
@@ -676,20 +678,39 @@ async function handleKudosCommand(payload: Record<string, string>, persona: Pers
     return { ephemeral: { text: '❌ Formato: `/kudos @membro mensagem`\nExemplo: `/kudos @Maria Excelente apresentação! 🎯`' } };
   }
 
-  const userName = payload.user_name || 'alguém';
-  const channelId = payload.channel_id;
+  const senderName = payload.user_name || 'seu líder';
 
   const result = await resolveMember(memberInput, persona.workspaceId!);
   if ('error' in result) return { ephemeral: { text: `❌ ${result.error}` } };
 
-  const publicBlocks = [
-    { type: 'section', text: { type: 'mrkdwn', text: `👏 *Kudos para ${result.name}!*\n\n${message}\n\n_Enviado por @${userName}_` } },
-    { type: 'context', elements: [{ type: 'mrkdwn', text: '💜 Powered by Rhitmo' }] },
-  ];
+  // Buscar slack_user_id do liderado para DM (se já conectou Slack)
+  let dmTo: { slackUserId: string; blocks: unknown[] } | undefined;
+  const { data: linkedIntegration } = await supabase
+    .from('team_members')
+    .select('linked_user_id')
+    .eq('id', result.id)
+    .maybeSingle();
+  if (linkedIntegration?.linked_user_id) {
+    const { data: integ } = await supabase
+      .from('slack_integrations')
+      .select('slack_user_id')
+      .eq('user_id', linkedIntegration.linked_user_id)
+      .maybeSingle();
+    if (integ?.slack_user_id) {
+      dmTo = {
+        slackUserId: integ.slack_user_id,
+        blocks: [
+          { type: 'section', text: { type: 'mrkdwn', text: `👏 *${senderName} reconheceu seu trabalho:*\n\n${message}` } },
+          { type: 'context', elements: [{ type: 'mrkdwn', text: 'Esta mensagem é privada. Também ficou registrada no seu Diário de Bordo.' }] },
+        ],
+      };
+    }
+  }
 
   return {
-    ephemeral: { text: `✅ Kudos enviado para *${result.name}*!` },
-    publicMsg: { channel: channelId, blocks: publicBlocks },
+    ephemeral: { text: `✅ Kudos privado enviado para *${result.name}*${dmTo ? ' por DM' : ''} e registrado no Diário de Bordo.` },
+    dmTo,
+    saveAs: { managerId: persona.userId!, memberId: result.id, message },
   };
 }
 
