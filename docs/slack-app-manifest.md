@@ -2,8 +2,8 @@
 
 Source of truth for the Rhitmo custom Slack App configuration.
 
-- **App name:** Rhitmo
-- **Bot user:** `@rhitmo`
+- **App name:** Rhy (anteriormente "Rhitmo")
+- **Bot user:** `@rhy`
 - **Production app ID:** `B0APL6ST719`
 - **Workspace (dev):** Faster (`THC407Z8A`)
 
