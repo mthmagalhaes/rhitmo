@@ -26,9 +26,8 @@ import { AvatarLibrary } from '@/components/avatar/AvatarLibrary';
 import { MemberAvatar } from '@/components/MemberAvatar';
 import { SelfReflectionCard } from '@/components/dashboard/SelfReflectionCard';
 import { PendingPulseAlert } from '@/components/pulse/PendingPulseAlert';
-import { StartSelfReviewCard } from '@/components/self-review/StartSelfReviewCard';
-import { StartUpwardsReviewCard } from '@/components/upwards-review/StartUpwardsReviewCard';
-import { PendingPeerReviewsAlert } from '@/components/peer-review/PendingPeerReviewsAlert';
+// Self/Peer/Upwards Review removidos do escopo do líder/liderado spontâneo —
+// virão via Ciclos de Avaliação acionados pelo RH Admin (futuro).
 import { getDateLocale } from '@/lib/dateLocale';
 import { format } from 'date-fns';
 
@@ -272,39 +271,10 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
     },
   });
 
-  // Sprint 10.4 — feedbacks ascendentes (upwards) que o próprio liderado enviou.
-  const { data: myUpwardsReviews = [] } = useQuery({
-    queryKey: ['my-upwards-reviews', linkedMember.id],
-    enabled: !!user?.id,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('performance_reviews')
-        .select('id, title, content, created_at, review_type')
-        .eq('member_id', linkedMember.id)
-        .eq('review_type', 'upwards')
-        .eq('author_user_id', user!.id)
-        .order('created_at', { ascending: false });
-      if (error) { console.error('Error fetching upwards reviews:', error); return []; }
-      return data || [];
-    },
-  });
-
-  // Sprint 10.2 — auto-avaliações do próprio liderado.
-  const { data: mySelfReviews = [] } = useQuery({
-    queryKey: ['my-self-reviews', linkedMember.id],
-    enabled: !!user?.id,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('performance_reviews')
-        .select('id, title, content, created_at, review_type')
-        .eq('member_id', linkedMember.id)
-        .eq('review_type', 'self')
-        .eq('author_user_id', user!.id)
-        .order('created_at', { ascending: false });
-      if (error) { console.error('Error fetching self reviews:', error); return []; }
-      return data || [];
-    },
-  });
+  // Self / Upwards Reviews spontâneos foram removidos do escopo de líder/liderado.
+  // Mantemos placeholders vazios para preservar referências antigas sem quebrar o layout.
+  const myUpwardsReviews: any[] = [];
+  const mySelfReviews: any[] = [];
 
   const unreadReviews = sharedReviews.filter((r: any) => !r.member_viewed_at);
 
@@ -525,7 +495,6 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
           <TabsContent value="visao-geral">
             {/* Sprint 9.2 — Pulse Surveys pendentes (aparece só se houver) */}
             <PendingPulseAlert memberId={linkedMember.id} />
-            <PendingPeerReviewsAlert />
 
             {/* S3.4 — Self-reflection card semanal */}
             <div className="mb-6">
@@ -856,61 +825,7 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                   )}
                 </div>
 
-                {/* Sprint 10.2 — Card de auto-avaliação (sempre visível) */}
-                {user?.id && (
-                  <StartSelfReviewCard
-                    memberId={linkedMember.id}
-                    memberName={linkedMember.name}
-                    authorUserId={user.id}
-                    selfReviewCount={mySelfReviews.length}
-                  />
-                )}
-
-                {/* Sprint 10.4 — Card de avaliação ascendente (só aparece se houver líder vinculado) */}
-                {user?.id && (
-                  <StartUpwardsReviewCard
-                    memberId={linkedMember.id}
-                    memberName={linkedMember.name}
-                    authorUserId={user.id}
-                    upwardsReviewCount={myUpwardsReviews.length}
-                  />
-                )}
-
-                {/* Sprint 10.2 — Suas auto-avaliações enviadas */}
-                {mySelfReviews.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
-                      Suas auto-avaliações
-                    </h3>
-                    <div className="space-y-3">
-                      {mySelfReviews.map((review: any) => (
-                        <Card
-                          key={review.id}
-                          className="p-5 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] cursor-pointer hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200"
-                          onClick={() => setSelectedReview(review)}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-semibold text-sm text-foreground">{review.title}</p>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {formatLocalDate(review.created_at, 'dd MMMM yyyy')}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge className="bg-primary/10 text-primary border-0 text-[10px]">
-                                <Sparkles className="h-3 w-3 mr-1" />
-                                Auto-avaliação
-                              </Badge>
-                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                            </div>
-                          </div>
-                        </Card>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Sprint 10.4 — Seus feedbacks ascendentes enviados */}
+                {/* Self/Upwards Reviews espontâneos removidos — virão via Ciclos do RH Admin. */}
                 {myUpwardsReviews.length > 0 && (
                   <div>
                     <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">

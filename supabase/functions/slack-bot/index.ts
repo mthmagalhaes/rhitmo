@@ -556,7 +556,7 @@ function buildRhitmoMenu(persona: PersonaResult, stateToken?: string): Record<st
         { type: 'button', text: { type: 'plain_text', text: '👏 Enviar kudos' }, action_id: 'open_send_kudos' },
         { type: 'button', text: { type: 'plain_text', text: '🌀 Conversar com a Rhitmo' }, action_id: 'start_rhitmo_chat' },
       ]},
-      { type: 'section', text: { type: 'mrkdwn', text: '\n*💬 Comandos rápidos:*\n• `/nota @membro texto` — Feedback privado\n• `/kudos @membro texto` — Reconhecimento público\n• `/brief @membro` — Resumo do membro\n• `/mentor <pergunta>` — Consultar mentor de IA\n• `/rhitmo` — Este menu' }},
+      { type: 'section', text: { type: 'mrkdwn', text: '\n*💬 Comandos rápidos:*\n• `/nota @membro texto` — Feedback privado\n• `/kudos @membro texto` — Reconhecimento privado (DM + Diário)\n• `/brief @membro` — Resumo do membro\n• `/mentor <pergunta>` — Consultar mentor de IA\n• `/rhitmo` — Este menu' }},
       { type: 'section', text: { type: 'mrkdwn', text: '\n*📊 No Rhitmo Web:*\n• *Rhitmo Mensal & Trimestral* — recaps automáticos do time\n• *Avaliação Formal* — gerar com IA em 2 passos (briefing → revisão)\n→ <https://rhitmo.co|Abrir Rhitmo>' }},
     );
   } else if (persona.persona === 'direct_report') {
@@ -654,7 +654,9 @@ async function handleNotaCommand(payload: Record<string, string>, persona: Perso
   };
 }
 
-async function handleKudosCommand(payload: Record<string, string>, persona: PersonaResult): Promise<{ ephemeral: Record<string, unknown>; publicMsg?: { channel: string; blocks: unknown[] } }> {
+// /kudos é PRIVADO: DM ao liderado + registro como nota de reconhecimento no Diário.
+// Não posta nada no canal — Brasil tem cultura de baixo conforto com elogio público.
+async function handleKudosCommand(payload: Record<string, string>, persona: PersonaResult): Promise<{ ephemeral: Record<string, unknown>; dmTo?: { slackUserId: string; blocks: unknown[] }; saveAs?: { managerId: string; memberId: string; message: string } }> {
   if (persona.persona === 'unauthenticated') {
     return { ephemeral: { text: '❌ Conecte sua conta Rhitmo primeiro.' } };
   }
@@ -676,20 +678,39 @@ async function handleKudosCommand(payload: Record<string, string>, persona: Pers
     return { ephemeral: { text: '❌ Formato: `/kudos @membro mensagem`\nExemplo: `/kudos @Maria Excelente apresentação! 🎯`' } };
   }
 
-  const userName = payload.user_name || 'alguém';
-  const channelId = payload.channel_id;
+  const senderName = payload.user_name || 'seu líder';
 
   const result = await resolveMember(memberInput, persona.workspaceId!);
   if ('error' in result) return { ephemeral: { text: `❌ ${result.error}` } };
 
-  const publicBlocks = [
-    { type: 'section', text: { type: 'mrkdwn', text: `👏 *Kudos para ${result.name}!*\n\n${message}\n\n_Enviado por @${userName}_` } },
-    { type: 'context', elements: [{ type: 'mrkdwn', text: '💜 Powered by Rhitmo' }] },
-  ];
+  // Buscar slack_user_id do liderado para DM (se já conectou Slack)
+  let dmTo: { slackUserId: string; blocks: unknown[] } | undefined;
+  const { data: linkedIntegration } = await supabase
+    .from('team_members')
+    .select('linked_user_id')
+    .eq('id', result.id)
+    .maybeSingle();
+  if (linkedIntegration?.linked_user_id) {
+    const { data: integ } = await supabase
+      .from('slack_integrations')
+      .select('slack_user_id')
+      .eq('user_id', linkedIntegration.linked_user_id)
+      .maybeSingle();
+    if (integ?.slack_user_id) {
+      dmTo = {
+        slackUserId: integ.slack_user_id,
+        blocks: [
+          { type: 'section', text: { type: 'mrkdwn', text: `👏 *${senderName} reconheceu seu trabalho:*\n\n${message}` } },
+          { type: 'context', elements: [{ type: 'mrkdwn', text: 'Esta mensagem é privada. Também ficou registrada no seu Diário de Bordo.' }] },
+        ],
+      };
+    }
+  }
 
   return {
-    ephemeral: { text: `✅ Kudos enviado para *${result.name}*!` },
-    publicMsg: { channel: channelId, blocks: publicBlocks },
+    ephemeral: { text: `✅ Kudos privado enviado para *${result.name}*${dmTo ? ' por DM' : ''} e registrado no Diário de Bordo.` },
+    dmTo,
+    saveAs: { managerId: persona.userId!, memberId: result.id, message },
   };
 }
 
@@ -1288,23 +1309,27 @@ async function processCommand(body: string, timestamp: string, signature: string
       const payload: Record<string, string> = {};
       for (const [k, v] of params.entries()) payload[k] = v;
       const result = await handleKudosCommand(payload, persona);
-      if (result.publicMsg) {
-        const apiResult = await slackApi('chat.postMessage', { channel: result.publicMsg.channel, blocks: result.publicMsg.blocks });
-        const text = params.get('text') || '';
-        const mentionMatch2 = text.match(/^(<@U[A-Z0-9]+(?:\|[^>]*)?>)\s+(.+)/s);
-        const plainMatch2 = text.match(/^[@]?(\S+)\s+(.+)/s);
-        const memberInput = mentionMatch2 ? mentionMatch2[1] : (plainMatch2 ? plainMatch2[1] : '');
-        const resolvedMember = await resolveMember(memberInput, persona.workspaceId!);
-        if (!('error' in resolvedMember)) {
-          await supabase.from('kudos').insert({
-            workspace_id: persona.workspaceId,
-            from_user_id: persona.userId,
-            to_member_id: resolvedMember.id,
-            message: mentionMatch2 ? mentionMatch2[2] : (plainMatch2 ? plainMatch2[2] : text),
-            slack_channel_id: result.publicMsg.channel,
-            slack_message_ts: apiResult.ts,
-          });
-        }
+      // DM privada ao liderado (se conectado ao Slack)
+      if (result.dmTo) {
+        await slackApi('chat.postMessage', { channel: result.dmTo.slackUserId, blocks: result.dmTo.blocks });
+      }
+      // Registra como nota de reconhecimento no Diário de Bordo do liderado
+      if (result.saveAs) {
+        await supabase.from('feedbacks').insert({
+          manager_id: result.saveAs.managerId,
+          member_id: result.saveAs.memberId,
+          content: result.saveAs.message,
+          type: 'positive',
+          source: 'slack_kudos',
+          visibility: 'shared',
+          tags: ['kudo'],
+        });
+        await supabase.from('kudos').insert({
+          workspace_id: persona.workspaceId,
+          from_user_id: persona.userId,
+          to_member_id: result.saveAs.memberId,
+          message: result.saveAs.message,
+        });
       }
       await sendDelayedResponse(responseUrl, result.ephemeral);
       break;
@@ -1662,13 +1687,38 @@ async function processInteraction(body: string, timestamp: string, signature: st
       const slackUserInfo = await slackApi('users.info', { user: slackUserId });
       const senderName = slackUserInfo.ok ? (slackUserInfo.user?.real_name || slackUserInfo.user?.name || 'alguém') : 'alguém';
 
-      // Post public message (to the user's DM channel for now, or a default channel)
-      const publicBlocks = [
-        { type: 'section', text: { type: 'mrkdwn', text: `👏 *Kudos para ${result.name}!*\n\n${kudosText}\n\n_Enviado por ${senderName}_` } },
-        { type: 'context', elements: [{ type: 'mrkdwn', text: '💜 Powered by Rhitmo' }] },
-      ];
+      // Kudos PRIVADO: DM ao liderado (se conectado) + registro no Diário de Bordo
+      const { data: linkedTM } = await supabase
+        .from('team_members')
+        .select('linked_user_id')
+        .eq('id', result.id)
+        .maybeSingle();
+      if (linkedTM?.linked_user_id) {
+        const { data: integ } = await supabase
+          .from('slack_integrations')
+          .select('slack_user_id')
+          .eq('user_id', linkedTM.linked_user_id)
+          .maybeSingle();
+        if (integ?.slack_user_id) {
+          await slackApi('chat.postMessage', {
+            channel: integ.slack_user_id,
+            blocks: [
+              { type: 'section', text: { type: 'mrkdwn', text: `👏 *${senderName} reconheceu seu trabalho:*\n\n${kudosText}` } },
+              { type: 'context', elements: [{ type: 'mrkdwn', text: 'Esta mensagem é privada. Também ficou registrada no seu Diário de Bordo.' }] },
+            ],
+          });
+        }
+      }
 
-      // Save to kudos table
+      await supabase.from('feedbacks').insert({
+        manager_id: persona.userId,
+        member_id: result.id,
+        content: kudosText,
+        type: 'positive',
+        source: 'slack_kudos',
+        visibility: 'shared',
+        tags: ['kudo'],
+      });
       await supabase.from('kudos').insert({
         workspace_id: persona.workspaceId,
         from_user_id: persona.userId,
@@ -1676,13 +1726,10 @@ async function processInteraction(body: string, timestamp: string, signature: st
         message: kudosText,
       });
 
-      // Confirm via DM
+      // Confirma para quem enviou
       await slackApi('chat.postMessage', {
         channel: slackUserId,
-        blocks: [
-          { type: 'section', text: { type: 'mrkdwn', text: `✅ Kudos enviado para *${result.name}*!` } },
-          ...publicBlocks,
-        ],
+        text: `✅ Kudos privado enviado para *${result.name}* e registrado no Diário de Bordo.`,
       });
     }
   }

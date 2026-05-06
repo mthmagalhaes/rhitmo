@@ -140,21 +140,7 @@ const leaderCards: FeatureCard[] = [
       'Atenção: não feche a janela do popup durante a gravação.',
     ],
   },
-  {
-    id: 'l-extension',
-    icon: Download,
-    title: 'Conector Chrome',
-    subtitle: 'Grave reuniões automaticamente no Google Meet',
-    steps: [
-      'Baixe o conector pelo menu lateral ("Conectores" → "Conector Chrome") ou pelo botão abaixo.',
-      'Descompacte o arquivo ZIP em uma pasta no seu computador.',
-      'No Chrome, acesse chrome://extensions, ative o "Modo Desenvolvedor" e clique em "Carregar sem compactação".',
-      'Selecione a pasta descompactada — o conector aparecerá na barra do Chrome.',
-      'Cole o Token de Conexão (disponível em Configurações) no popup do conector.',
-      'Pronto! Ao entrar em uma reunião no Google Meet, a gravação inicia automaticamente.',
-      'Ao sair da reunião, o áudio é enviado e transcrito pela IA sem nenhum clique.',
-    ],
-  },
+  // Conector Chrome removido — Magic Paste e Bot Recall.ai cobrem o caso de uso.
   {
     id: 'l-auto-transcription',
     icon: FileAudio,

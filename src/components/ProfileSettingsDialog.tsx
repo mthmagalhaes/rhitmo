@@ -5,9 +5,8 @@ import { SlackPrivacyOnboarding } from '@/components/slack/SlackPrivacyOnboardin
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader2, RefreshCw, Compass, MessageSquare, Unlink, ExternalLink, Download, Globe } from 'lucide-react';
+import { Loader2, RefreshCw, Compass, MessageSquare, Unlink, ExternalLink, Globe } from 'lucide-react';
 import { ThemeSelector } from '@/components/ThemeSelector';
-import { ChromeExtensionSetupDialog } from '@/components/extension/ChromeExtensionSetupDialog';
 import { useLocale } from '@/hooks/useLocale';
 import { SUPPORTED_LANGUAGES, type SupportedLanguage } from '@/i18n';
 import { MemberAvatar } from '@/components/MemberAvatar';
@@ -42,7 +41,6 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
   const [batchSyncOpen, setBatchSyncOpen] = useState(false);
   const [leaderSyncOpen, setLeaderSyncOpen] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
-  const [extensionSetupOpen, setExtensionSetupOpen] = useState(false);
   const [avatarLibraryOpen, setAvatarLibraryOpen] = useState(false);
 
   const { data: workspace } = useQuery({
@@ -266,25 +264,7 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
             </div>
           </div>
 
-          {/* Chrome Extension */}
-          <div className="border-t pt-4">
-            <Label className="text-muted-foreground text-xs uppercase tracking-wide mb-2 block">
-              <Download className="h-3 w-3 inline mr-1" />
-              {t('settings.chromeExtension')}
-            </Label>
-            <p className="text-sm text-muted-foreground mb-3">
-              {t('settings.chromeExtensionDesc')}
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={() => setExtensionSetupOpen(true)}
-            >
-              <Download className="h-4 w-4 mr-1" />
-              {t('settings.setupExtension')}
-            </Button>
-          </div>
+          {/* Chrome Extension removida — Magic Paste e Bot Recall.ai cobrem o caso de uso. */}
 
           {/* Maintenance */}
           <div className="border-t pt-4">
@@ -341,7 +321,6 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
         />
       )}
       <SlackPrivacyOnboarding open={privacyOpen} onOpenChange={setPrivacyOpen} />
-      <ChromeExtensionSetupDialog open={extensionSetupOpen} onOpenChange={setExtensionSetupOpen} />
       <LeaderAvatarLibrary
         open={avatarLibraryOpen}
         onOpenChange={setAvatarLibraryOpen}
