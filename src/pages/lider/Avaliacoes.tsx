@@ -69,7 +69,7 @@ export default function LiderAvaliacoes() {
           <div className="max-w-5xl px-6 lg:px-8 py-6">
             <header className="mb-2">
               <h1 className="font-serif text-2xl font-bold tracking-tight">
-                Avaliações
+                Rhitmo
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
                 Selecione um liderado para ver o Rhitmo dele e gerar avaliações Mensal, Trimestral ou Formal.
@@ -84,7 +84,7 @@ export default function LiderAvaliacoes() {
         ) : (
           <div className="max-w-5xl px-6 lg:px-8 py-6 space-y-6">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Avaliações
+              Rhitmo
             </p>
 
             <header className="flex items-center gap-3 -mt-3">
