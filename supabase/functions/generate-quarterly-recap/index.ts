@@ -280,33 +280,47 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const userClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } },
-    );
     const admin = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    const { data: { user } } = await userClient.auth.getUser();
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    // Sprint 17: allow internal invocation (Slack bot, cron) via x-cron-secret + body.acting_user_id
+    const cronSecret = req.headers.get('x-cron-secret');
+    const internalSecret = Deno.env.get('CRON_SECRET');
+    const isInternal = !!cronSecret && !!internalSecret && cronSecret === internalSecret;
+
+    let actingUserId: string | null = null;
+    if (isInternal) {
+      const peek = await req.clone().json().catch(() => ({} as any));
+      actingUserId = peek?.acting_user_id ?? null;
+      if (!actingUserId) {
+        return new Response(JSON.stringify({ error: 'acting_user_id required for internal calls' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    } else {
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader?.startsWith('Bearer ')) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const userClient = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } },
+      );
+      const { data: { user } } = await userClient.auth.getUser();
+      if (!user) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      actingUserId = user.id;
     }
 
-    const body = (await req.json()) as Body;
+    const body = (await req.json()) as Body & { acting_user_id?: string };
     if (!body?.member_id) {
       return new Response(JSON.stringify({ error: 'member_id required' }), {
         status: 400,
