@@ -1,70 +1,67 @@
-## Sprint 14 — Itens pendentes
+## Sprint 15 — Proactive Peer Feedback (Windy-style, leve)
 
-Três ajustes finais para fechar a Sprint 14 sem quebrar nada existente.
+Sprint 14 fechou ONA + sinais + Pulse na Home. O próximo passo natural, alinhado à referência Windmill (`mem://product/continuous-feedback-windmill-reference`), é fechar o loop de **continuous feedback**: usar o grafo de colaboração (`team_network_edges`) para a Rhitmo perguntar **proativamente** a pares — via Slack DM — sobre pessoas com quem eles realmente trabalham, e materializar as respostas como evidência nominal no `/lider/contexto` e nos briefs de 1:1.
 
-### 1. pg_cron: build diário do grafo + detecção de sinais
+Hoje só temos Pulse Surveys (líder → liderado) e peer reviews formais (ciclo). Falta a coleta **leve, contínua, baseada em colaboração detectada**.
 
-Agendar dois jobs no pg_cron (extensão já habilitada no projeto). Como envolvem URL/anon key específicos do projeto, vão via insert SQL (não migration), conforme padrão Lovable:
+### Objetivo
+Quando a ONA detecta que A colabora forte com B nos últimos 14d, a Rhitmo pode pedir a A — uma vez por quinzena, no máximo — uma nota curta sobre B ("o que B fez bem? algo a melhorar?"). Resposta vira `ctx_evidence` (source `peer_feedback`), entra no Contexto do líder de B e enriquece o brief da próxima 1:1.
 
-- `build-team-graph-daily` — todo dia às 03:00 UTC, dispara `build-team-graph` para recomputar `team_network_edges` a partir de `ctx_evidence` dos últimos 30d.
-- `detect-network-signals-daily` — todo dia às 03:30 UTC (após o build), dispara `detect-network-signals` para materializar `network_signals` (isolates, super-connectors, pattern_drop, pattern_spike).
+### Escopo (5 entregas)
 
-Ambos usam `net.http_post` com header `apikey` = anon key. Idempotência já garantida pelo unique-on-day em `network_signals` e pelo upsert em `team_network_edges`.
+1. **Schema — `peer_feedback_requests`**
+   - Migration nova: `id, requester_workspace, leader_user_id, subject_member_id, peer_user_id, peer_member_id (nullable), edge_strength_at_request, sent_at, responded_at, status ('pending'|'answered'|'declined'|'expired'), response_text, expires_at`.
+   - Unique parcial: `(subject_member_id, peer_user_id)` onde `sent_at >= now() - 14d` (evita spam).
+   - RLS: líder de `subject_member_id` lê tudo; `peer_user_id` lê/atualiza apenas a própria linha; service_role escreve.
+   - Trigger: ao virar `answered`, insere `ctx_evidence` (source=`peer_feedback`, payload com nome do par + texto + edge_strength).
 
-### 2. slack-rhitmo-orchestrator: janela ~18h antes da 1:1
+2. **Edge function `request-peer-feedback` (cron diário, 04:00 UTC após detect-network-signals)**
+   - Para cada `team_network_edges` com `edge_strength >= threshold` nos últimos 14d:
+     - Se par tem `slack_integrations` e não há request aberto/recente para o mesmo `(subject, peer)` → cria linha + envia Slack DM com 1 botão "✍️ Dar feedback rápido" (action_id `peer_fb_open`).
+   - Limites: máx 3 requests por par por dia, máx 1 request por subject-peer por 14d.
+   - Idempotência: `sent_at IS NULL` guard antes do `chat.postMessage`.
 
-Hoje a função envia DM de prep entre 12h e 36h antes do evento. Ajuste:
+3. **Slack handler — `slack-bot/index.ts`**
+   - Adicionar dois action_ids: `peer_fb_open` (abre modal Slack com `views.open`, 1 textarea + 2 botões "Enviar"/"Pular") e `peer_fb_submit` (atualiza linha para `answered`, fecha modal, posta ack).
+   - Reusa padrão de `answer_pulse` já existente.
 
-- **Janela ideal:** 16h–20h antes (centro em 18h). Se a 1:1 cair nessa janela na próxima execução do cron (`*/30`), enfileira o DM.
-- **Fallback:** se a 1:1 está a <16h e ainda não foi enviado nada (`brief_dm_sent_at IS NULL`), envia imediatamente — preserva o comportamento atual para meetings de última hora.
-- **Idempotência:** mantém `brief_dm_sent_at` como guard. Sem mudança de schema.
+4. **Frontend — Contexto e Brief**
+   - `NetworkSignalsFeed` ou nova aba "Feedback de pares" em `/lider/contexto`: listar evidências `peer_feedback` agrupadas por subject_member, com chip "anônimo opcional" (v1: nominal, v2: anonimizar).
+   - `briefGenerator.ts` (no shared): adicionar bloco "Vozes de pares" — até 2 peer_feedback recentes do subject, falando via `wrapAsRhy()`.
+   - `useTeamPulse` continua igual; nada removido.
 
-Edição localizada em `supabase/functions/slack-rhitmo-orchestrator/index.ts` (apenas a query de seleção de eventos e o predicado de "está na janela").
-
-### 3. Memórias
-
-Três entradas novas / atualizadas no `mem://index.md`:
-
-- `mem://features/ona/network-signals-and-pulse` — tabela `network_signals`, RPCs `get_team_pulse` / `acknowledge_network_signal`, edge `detect-network-signals`, regra de severidade e RLS por papel.
-- `mem://features/ona/brief-network-block` — bloco "Contexto de rede" no `briefGenerator.ts`: top colaboradores + sinais ativos, falando sempre via `wrapAsRhy()` (tom humano, observacional, nunca prescritivo).
-- Atualizar `mem://design/dashboard/home-v3-windmill` — adicionar `TeamPulseBento` como 4ª seção fixa da Home (após `MentorHistoryCard`), respeitando regra de "não remover seções existentes".
-
-E atualizar `mem://features/slack/proactive-dms-orchestrator` com a nova janela 16h–20h + fallback.
+5. **Cron + Memórias**
+   - `select cron.schedule('request-peer-feedback-daily', '0 4 * * *', ...)` via insert SQL.
+   - Nova memória `mem://features/ona/peer-feedback-loop` documentando schema, RLS, fluxo Slack, integração com brief.
+   - Atualizar `mem://features/slack/command-ecosystem` e `_shared/slackCommands.ts` com os novos action_ids.
+   - Atualizar `mem://features/ona/network-signals-and-pulse` referenciando a nova feature.
 
 ### Detalhes técnicos
 
-**Cron SQL (template, com URL/anon key reais do projeto inseridos via supabase insert):**
-```sql
-select cron.schedule(
-  'build-team-graph-daily', '0 3 * * *',
-  $$ select net.http_post(
-    url:='https://lybkgujyezzzvbzypxed.supabase.co/functions/v1/build-team-graph',
-    headers:='{"Content-Type":"application/json","apikey":"<anon>"}'::jsonb,
-    body:='{}'::jsonb
-  ); $$
-);
-select cron.schedule(
-  'detect-network-signals-daily', '30 3 * * *',
-  $$ select net.http_post(
-    url:='https://lybkgujyezzzvbzypxed.supabase.co/functions/v1/detect-network-signals',
-    headers:='{"Content-Type":"application/json","apikey":"<anon>"}'::jsonb,
-    body:='{}'::jsonb
-  ); $$
-);
+```text
+detect-network-signals (03:30) ─┐
+                                 ├─► team_network_edges (frescas)
+build-team-graph (03:00) ───────┘
+                                          │
+                  request-peer-feedback (04:00) ──► Slack DM (botão)
+                                          │              │
+                                          ▼              ▼
+                                peer_feedback_requests   modal Slack
+                                          │              │
+                                          ▼              ▼
+                                       answered  ──► trigger insert ctx_evidence
+                                                              │
+                                                              ▼
+                                               /lider/contexto + brief 1:1
 ```
 
-**Orquestrador — pseudocódigo da janela:**
-```ts
-const hoursUntil = (event.start_at - now) / 3600_000;
-const inIdealWindow = hoursUntil >= 16 && hoursUntil <= 20;
-const lateFallback   = hoursUntil > 0 && hoursUntil < 16 && !brief_dm_sent_at;
-if (inIdealWindow || lateFallback) { /* enqueue DM */ }
-```
+- **Threshold inicial:** `edge_strength >= 0.3` (ajustável). Métrica: número de DMs enviadas/dia ≤ 5 por workspace na primeira semana — guardrail anti-spam.
+- **Privacidade:** v1 mostra nome do par (mesmo padrão do Slack ambient classifier). Toggle "anônimo" entra em sprint futuro.
+- **Sem mudança em Pulse Surveys, peer reviews formais, ou Mentor.** Risco de quebra: baixo (nova tabela, nova função, novos action_ids isolados).
 
 ### Ordem de execução
-
-1. Insert SQL dos 2 cron jobs (via supabase insert tool).
-2. Edit `slack-rhitmo-orchestrator/index.ts` + redeploy.
-3. Criar 2 memórias novas + atualizar 2 existentes + index.
-
-Sem mudanças de schema, sem novos componentes de UI — risco de quebra mínimo.
+1. Migration `peer_feedback_requests` + trigger.
+2. Edge function `request-peer-feedback` + cron.
+3. Handlers Slack (`peer_fb_open` / `peer_fb_submit`) em `slack-bot/index.ts`.
+4. Bloco "Vozes de pares" no `briefGenerator.ts` + aba/seção em `/lider/contexto`.
+5. Memórias + index.
