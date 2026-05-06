@@ -106,23 +106,25 @@ export default function NetworkDebug() {
   const triggerBuild = async () => {
     if (!workspaceId) return;
     setTriggering(true);
-    const res = await safeFunctionInvoke('build-team-graph', {
-      body: { workspace_id: workspaceId },
-    });
-    setTriggering(false);
-    if (res.error) {
+    try {
+      const res = await safeFunctionInvoke<{ events_ingested?: number; edges_recomputed?: number }>(
+        'build-team-graph',
+        { workspace_id: workspaceId },
+      );
+      toast({
+        title: 'Build concluído',
+        description: `Eventos: ${res?.events_ingested ?? '?'} • Edges: ${res?.edges_recomputed ?? '?'}`,
+      });
+      fetchData();
+    } catch (err) {
       toast({
         title: 'Falha ao rodar build',
-        description: res.error.message ?? 'Erro desconhecido',
+        description: err instanceof Error ? err.message : 'Erro desconhecido',
         variant: 'destructive',
       });
-      return;
+    } finally {
+      setTriggering(false);
     }
-    toast({
-      title: 'Build concluído',
-      description: `Eventos: ${res.data?.events_ingested ?? '?'} • Edges: ${res.data?.edges_recomputed ?? '?'}`,
-    });
-    fetchData();
   };
 
   const selectedWs = useMemo(
