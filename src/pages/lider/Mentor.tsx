@@ -163,6 +163,7 @@ export default function LiderMentor() {
   const handleSubmit = () => {
     const text = input.trim();
     if (!text) return;
+    if (mode === 'member' && !selectedMember) return;
     setInput('');
     startNewChat(text);
   };
