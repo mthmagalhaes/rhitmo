@@ -1545,6 +1545,78 @@ async function processInteraction(body: string, timestamp: string, signature: st
         }
         break;
       }
+      case 'peer_fb_open': {
+        const reqId = action.value;
+        if (!reqId) break;
+        const { data: pfr } = await supabase
+          .from('peer_feedback_requests')
+          .select('id, subject_member_id, peer_user_id, status, team_members:subject_member_id(name)')
+          .eq('id', reqId)
+          .maybeSingle();
+        if (!pfr) {
+          await slackApi('chat.postMessage', { channel: slackUserId, text: '⚠️ Solicitação não encontrada.' });
+          break;
+        }
+        if (pfr.status !== 'pending') {
+          await slackApi('chat.postMessage', { channel: slackUserId, text: 'Esta solicitação já foi respondida 🙌' });
+          break;
+        }
+        const subjName = (pfr as any).team_members?.name ?? 'esse colega';
+        const modalRes = await slackApi('views.open', {
+          trigger_id: triggerId,
+          view: {
+            type: 'modal',
+            callback_id: 'peer_feedback_submission',
+            private_metadata: reqId,
+            title: { type: 'plain_text', text: '✍️ Feedback de par' },
+            submit: { type: 'plain_text', text: 'Enviar' },
+            close: { type: 'plain_text', text: 'Cancelar' },
+            blocks: [
+              {
+                type: 'section',
+                text: { type: 'mrkdwn', text: `Sua nota sobre *${subjName}* será compartilhada apenas com a liderança dele(a). Seja específico e gentil 🌀` },
+              },
+              {
+                type: 'input',
+                block_id: 'fb_block',
+                element: {
+                  type: 'plain_text_input',
+                  action_id: 'fb_text',
+                  multiline: true,
+                  min_length: 10,
+                  max_length: 1000,
+                  placeholder: { type: 'plain_text', text: 'Algo que ele(a) fez bem? Algo a melhorar?' },
+                },
+                label: { type: 'plain_text', text: 'Feedback' },
+              },
+            ],
+          },
+        });
+        if (!modalRes.ok) console.error('[INTERACT] peer_fb_open views.open failed:', modalRes.error);
+        break;
+      }
+      case 'peer_fb_skip': {
+        const reqId = action.value;
+        if (reqId) {
+          await supabase
+            .from('peer_feedback_requests')
+            .update({ status: 'declined', responded_at: new Date().toISOString() })
+            .eq('id', reqId)
+            .eq('peer_user_id', (await supabase
+              .from('slack_integrations')
+              .select('user_id')
+              .eq('slack_user_id', slackUserId)
+              .maybeSingle()).data?.user_id ?? '00000000-0000-0000-0000-000000000000');
+        }
+        if (responseUrl) {
+          await fetch(responseUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ replace_original: true, text: 'Sem problema 🙏 Vou perguntar de novo daqui um tempo.' }),
+          });
+        }
+        break;
+      }
       case 'start_rhitmo_chat': {
         console.log('[INTERACT] Start Rhitmo chat clicked by:', slackUserId);
         try {
