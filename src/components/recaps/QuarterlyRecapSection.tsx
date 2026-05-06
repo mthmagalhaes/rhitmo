@@ -497,10 +497,19 @@ function QuarterCard({ memberId, recap, periodQuarter, defaultOpen = false }: { 
 
 export function QuarterlyRecapSection({ memberId }: Props) {
   const { t } = useTranslation('rhitmo');
-  const { data: recaps = [], isLoading } = useQuarterlyRecaps(memberId, 4);
+  const { data: recaps = [], isLoading } = useQuarterlyRecaps(memberId, 12);
   const currentQuarter = getCurrentQuarterStart();
   const lastClosedQuarter = getLastClosedQuarterStart();
-  const recapForLastClosed = recaps.find((r) => r.period_quarter.slice(0, 10) === lastClosedQuarter);
+  const recapForLastClosed = recaps.find(
+    (r) => r.period_quarter && r.period_quarter.slice(0, 10) === lastClosedQuarter,
+  );
+
+  // Sprint 17: dialog on-demand
+  const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  const suggestQuarterly = params.get('suggest') === 'quarterly';
+  const suggestStart = params.get('start') ?? undefined;
+  const suggestEnd = params.get('end') ?? undefined;
+  const [dialogOpen, setDialogOpen] = useState(suggestQuarterly);
 
   if (isLoading) {
     return (
@@ -511,18 +520,30 @@ export function QuarterlyRecapSection({ memberId }: Props) {
     );
   }
 
-  // Anything in the DB that's neither the current (in-progress) nor the last
-  // closed quarter shows up under "Trimestres anteriores".
+  // Anything that's neither the current nor the last closed civil quarter shows
+  // up under "Trimestres anteriores" — including on-demand recaps (period_quarter null).
   const previous = recaps.filter((r) => {
+    if (!r.period_quarter) return true;
     const q = r.period_quarter.slice(0, 10);
     return q !== currentQuarter && q !== lastClosedQuarter;
   });
 
   return (
     <div className="space-y-4" id="rhitmo-quarterly">
-      <div>
-        <h2 className="text-lg font-bold tracking-tight">{t('recap.quarterly.title')}</h2>
-        <p className="text-sm text-muted-foreground">{t('recap.quarterly.subtitle')}</p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-lg font-bold tracking-tight">{t('recap.quarterly.title')}</h2>
+          <p className="text-sm text-muted-foreground">{t('recap.quarterly.subtitle')}</p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="rounded-xl"
+          onClick={() => setDialogOpen(true)}
+        >
+          <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+          Gerar Trimestral
+        </Button>
       </div>
       <CurrentQuarterCard periodQuarter={currentQuarter} />
       <QuarterCard
@@ -537,10 +558,23 @@ export function QuarterlyRecapSection({ memberId }: Props) {
             {t('recap.quarterly.previousQuarters')}
           </h3>
           {previous.map((r) => (
-            <QuarterCard key={r.id} memberId={memberId} periodQuarter={r.period_quarter.slice(0, 10)} recap={r} />
+            <QuarterCard
+              key={r.id}
+              memberId={memberId}
+              periodQuarter={(r.period_quarter ?? r.period_start ?? r.created_at).slice(0, 10)}
+              recap={r}
+            />
           ))}
         </div>
       )}
+
+      <GenerateQuarterlyDialog
+        memberId={memberId}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        defaultStart={suggestStart}
+        defaultEnd={suggestEnd}
+      />
     </div>
   );
 }
