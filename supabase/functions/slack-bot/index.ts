@@ -2232,7 +2232,31 @@ Deno.serve(async (req) => {
               // Conversations are CREATED elsewhere (slash commands / buttons)
               // in later sprints — this hook is read/append only.
               if (persona.persona !== 'unauthenticated' && persona.workspaceId) {
-                const conv = await getActiveConversation(slackUserId);
+                let conv = await getActiveConversation(slackUserId);
+
+                // Sprint 18: Conversational by default. If authenticated user
+                // has no active conversation, auto-create a general_chat one
+                // so any DM ("Oi tudo bem?") gets an LLM reply, not a menu.
+                if (!conv) {
+                  console.log('[CONV] No active conv — auto-creating general_chat for', slackUserId);
+                  const { data: created, error: createErr } = await supabase
+                    .from('slack_conversations')
+                    .insert({
+                      workspace_id: persona.workspaceId,
+                      slack_user_id: slackUserId,
+                      intent: 'general_chat',
+                      status: 'active',
+                      state_data: { turns: [] },
+                    })
+                    .select('*')
+                    .single();
+                  if (createErr) {
+                    console.warn('[CONV] auto-create failed:', createErr.message);
+                  } else if (created) {
+                    conv = created as SlackConversationRow;
+                  }
+                }
+
                 if (conv) {
                   console.log('[CONV] Active conversation found:', conv.id, '| intent:', conv.intent);
                   await appendConversationTurn(conv.id, {
