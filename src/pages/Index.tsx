@@ -223,6 +223,16 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
       queryClient.invalidateQueries({ queryKey: ['calendar-connected'] });
       queryClient.invalidateQueries({ queryKey: ['calendar-upcoming-meetings'] });
     }
+    if (params.get('startTour') === '1') {
+      window.history.replaceState({}, '', window.location.pathname);
+      setTourRunning(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handler = () => setTourRunning(true);
+    window.addEventListener('rhitmo:start-tour', handler);
+    return () => window.removeEventListener('rhitmo:start-tour', handler);
   }, []);
 
   const { data: workspace } = useQuery({
