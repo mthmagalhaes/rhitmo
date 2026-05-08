@@ -232,7 +232,7 @@ Deno.serve(async (req) => {
 
         const { error: wsError } = await supabaseAdmin
           .from("workspaces")
-          .update({ plan_tier: "pulse" })
+          .update({ plan_tier: "pulse", paid_seats: 0, seat_cycle: "monthly" })
           .eq("id", workspaceId);
 
         if (wsError) console.error("Update workspace error:", wsError);
