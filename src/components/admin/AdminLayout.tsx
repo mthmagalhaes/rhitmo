@@ -11,7 +11,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { CustomAvatar } from '@/components/CustomAvatar';
+
 import { cn } from '@/lib/utils';
 import type { AdminTab } from '@/pages/Admin';
 
