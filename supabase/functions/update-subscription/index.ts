@@ -34,19 +34,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const isServiceRole = token === SERVICE_ROLE_KEY;
 
     const body = await req.json().catch(() => ({}));
     const action: "sync_seats" | "change_cycle" =
@@ -55,14 +45,40 @@ Deno.serve(async (req) => {
 
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      SERVICE_ROLE_KEY,
     );
 
-    const { data: workspace, error: wsError } = await supabaseAdmin
+    // Resolver workspace: via owner_id (user JWT) ou via workspace_id (service role)
+    let workspaceQuery = supabaseAdmin
       .from("workspaces")
-      .select("id, grandfather_until, paid_seats, seat_cycle")
-      .eq("owner_id", user.id)
-      .maybeSingle();
+      .select("id, grandfather_until, paid_seats, seat_cycle");
+
+    if (isServiceRole) {
+      const wsId = body.workspace_id as string | undefined;
+      if (!wsId) {
+        return new Response(JSON.stringify({ error: "workspace_id required for service role" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      workspaceQuery = workspaceQuery.eq("id", wsId);
+    } else {
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        { global: { headers: { Authorization: authHeader } } },
+      );
+      const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+      if (userError || !user) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      workspaceQuery = workspaceQuery.eq("owner_id", user.id);
+    }
+
+    const { data: workspace, error: wsError } = await workspaceQuery.maybeSingle();
 
     if (wsError || !workspace) {
       return new Response(JSON.stringify({ error: "Workspace not found" }), {

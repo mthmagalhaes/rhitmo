@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Loader2, UserPlus } from 'lucide-react';
 import { z } from 'zod';
 import { Team } from '@/types/team';
+import { syncStripeSeats } from '@/lib/syncStripeSeats';
 
 interface NewMemberDialogProps {
   open: boolean;
@@ -181,6 +182,9 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
         .single();
 
       if (insertError) throw insertError;
+
+      // Recontar seats no Stripe (fire-and-forget; no-op se grandfather/sem subscription)
+      syncStripeSeats();
 
       // Enviar member-welcome (apresentação do Rhitmo + CTA do Sync) se checkbox marcado
       if (sendDiscInvite) {

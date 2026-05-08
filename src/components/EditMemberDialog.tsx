@@ -20,6 +20,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Settings, Trash2 } from 'lucide-react';
 import { Team } from '@/types/team';
 import { useQueryClient } from '@tanstack/react-query';
+import { syncStripeSeats } from '@/lib/syncStripeSeats';
 
 interface EditMemberDialogProps {
   open: boolean;
@@ -188,6 +189,9 @@ export const EditMemberDialog = ({
         .eq('id', member?.id);
 
       if (error) throw error;
+
+      // Recontar seats no Stripe (fire-and-forget; downgrade proporcional)
+      syncStripeSeats();
 
       toast({
         title: "Membro excluído",
