@@ -737,6 +737,66 @@ export const AdminUsers = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5" /> Convidar líder
+            </DialogTitle>
+            <DialogDescription>
+              Cria a conta, envia magic link por email e configura um workspace novo no nome do líder.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="invite-name">Nome completo</Label>
+              <Input
+                id="invite-name"
+                placeholder="Ex: Ana Campos"
+                value={inviteForm.name}
+                onChange={e => setInviteForm(p => ({ ...p, name: e.target.value }))}
+                disabled={inviteLoading}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="invite-email">Email</Label>
+              <Input
+                id="invite-email"
+                type="email"
+                placeholder="ana@empresa.com.br"
+                value={inviteForm.email}
+                onChange={e => setInviteForm(p => ({ ...p, email: e.target.value }))}
+                disabled={inviteLoading}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Plano inicial</Label>
+              <Select
+                value={inviteForm.plan}
+                onValueChange={v => setInviteForm(p => ({ ...p, plan: v as PlanTier }))}
+                disabled={inviteLoading}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pulse">🎵 Pulse (Gratuito)</SelectItem>
+                  <SelectItem value="pro">💼 Pro</SelectItem>
+                  <SelectItem value="business">🏢 Business</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInviteOpen(false)} disabled={inviteLoading}>
+              Cancelar
+            </Button>
+            <Button onClick={handleInviteLeader} disabled={inviteLoading}>
+              {inviteLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Mail className="h-4 w-4 mr-2" />}
+              Enviar convite
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
