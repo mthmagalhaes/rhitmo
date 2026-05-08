@@ -19,12 +19,13 @@ import {
 import {
   Users, Power, PowerOff, Trash2, Loader2, Eye, Search, Building, Shield,
   Crown, User, Settings, KeyRound, Edit, ArrowUpDown, ArrowUp, ArrowDown,
-  Copy, Download, Hash,
+  Copy, Download, Hash, UserPlus, Mail,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { CustomAvatar } from '@/components/avatar/CustomAvatar';
 import { AVATAR_VARIANTS } from '@/components/avatar/avatarData';
+import type { PlanTier } from '@/types/team';
 
 interface CapEntry { id?: string; name?: string; team_id?: string; team_name?: string; workspace_name?: string; workspace_id?: string; member_id?: string; member_name?: string; }
 
