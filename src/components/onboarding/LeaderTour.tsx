@@ -24,6 +24,7 @@ export function LeaderTour({ autoStart = true, onClose }: LeaderTourProps) {
   const { markComplete } = useOnboardingTour();
   const driverRef = useRef<Driver | null>(null);
   const startedRef = useRef(false);
+  const userClosedRef = useRef(false);
 
   useEffect(() => {
     if (!autoStart || startedRef.current) return;
