@@ -189,6 +189,9 @@ export const EditMemberDialog = ({
 
       if (error) throw error;
 
+      // Recontar seats no Stripe (fire-and-forget; downgrade proporcional)
+      syncStripeSeats();
+
       toast({
         title: "Membro excluído",
         description: `${name} foi removido da equipe`,
