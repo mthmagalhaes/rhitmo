@@ -612,31 +612,6 @@ const PricingSection = ({
       ? 'Cobrado mensalmente. Cancele quando quiser.'
       : 'Billed monthly. Cancel anytime.';
 
-  const includedFeatures: string[] =
-    lang === 'pt'
-      ? [
-          'Líder + 3 liderados grátis para sempre',
-          'Recall.ai com 6h/mês de transcrição no plano gratuito',
-          'Recall.ai ilimitado a partir do 1º seat pago',
-          'Mentor AI ilimitado',
-          '1:1s, Pulse, PDI, Diário e Avaliações 360° completos',
-          'Slack bidirecional + DMs proativas da Rhy',
-          'Pre-meeting briefs com contexto histórico',
-          'Detecção de viés em tempo real',
-          'Network signals e leitura da rede do time',
-        ]
-      : [
-          'Leader + 3 direct reports free forever',
-          'Recall.ai with 6h/mo of transcription on free tier',
-          'Unlimited Recall.ai from the first paid seat',
-          'Unlimited Mentor AI',
-          'Full 1:1s, Pulse, IDP, Journal and 360° reviews',
-          'Bidirectional Slack + proactive Rhy DMs',
-          'Pre-meeting briefs with historical context',
-          'Real-time bias detection',
-          'Network signals and team graph readouts',
-        ];
-
   const features =
     lang === 'pt'
       ? [
