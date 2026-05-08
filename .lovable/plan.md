@@ -1,57 +1,157 @@
+markdown ## Pricing Section Redesign — Windmill-inspired  ### Contexto  Alterar apenas a seção `#pricing` em `src/pages/Landing.tsx`, dentro do `PricingSection`, e os textos relacionados no dicionário `translations` em PT e EN.  Não alterar backend, Stripe, RLS, lógica de cobrança, `paid_seats` ou `update-subscription`.  O objetivo é redesenhar visualmente o pricing da Rhitmo para ficar mais próximo da página da Windmill: simples, centralizado, premium, calmo e fácil de entender.  ---  ## Mudanças  ### 1. Visualmente: seguir a Windmill de forma mais fiel  A seção deve parecer:  - simples - calma - premium - acolhedora - muito clara - com bastante espaço em branco  Evitar:  - pricing grid complexo - dois cards lado a lado - visual enterprise agressivo - glassmorphism - gradientes fortes - excesso de elementos  A referência é um card único, centralizado, com aparência suave e amigável.  ---  ### 2. Estrutura da seção  Usar esta ordem:  1. Eyebrow pequeno 2. Headline centralizada 3. Subheadline curta 4. Toggle mensal/anual 5. Um único card principal centralizado 6. Enterprise rail secundário abaixo  O pricing deve parecer “um produto simples de comprar”, não uma tabela comparativa de planos.  ---  ### 3. Header da seção  Manter o eyebrow `PLANO`, mas deixar a seção mais escaneável.  Headline:  text
 
-## Problemas identificados
+Comece grátis. Pague só pelo time que cresce.
 
-1. **Sair muito longe da nav** — `AdminLayout` usa `min-h-screen` + um `<div className="flex-1" />` que empurra o bloco do usuário para o final da viewport. Com apenas 4 itens de nav, sobra um buraco enorme entre "Sistema" e o avatar/Sair, o que parece amador (visível no print 100%).
-2. **Visão Geral** — header genérico, container `max-w-5xl mx-auto` desperdiça largura num painel admin, `StatsGrid` + `FunnelCard/ActivationCohorts` + alertas + waitlist competem sem hierarquia clara.
-3. **Pessoas** — barra de filtros longa que quebra em múltiplas linhas no zoom 100%, contadores de segmento duplicam o filtro de segmento, coluna ID ocupa espaço sem valor, 5 ícones de ação espremidos, badges coloridos demais (visual ruidoso).
-4. **Workspaces e Sistema** — só wrappers; ficam fora do escopo deste ajuste (mencionar mas não mexer agora).
+ Subheadline:  ### PT text
 
-## Mudanças propostas
+Um plano só. Líder + 3 liderados grátis para sempre. A partir do 4º liderado, R$ 49,90/mês cada.
 
-### 1. `src/components/admin/AdminLayout.tsx` — sidebar compacta e ancorada
+ ### EN text
 
-- Trocar o padrão "spacer flex-1" por **bloco do usuário logo abaixo da nav**, separado por um divisor sutil (mesmo padrão do `AppSidebar` da app principal: nav primária + CTA imediatamente embaixo, footer só com utilitários).
-- Adicionar um pequeno header de seção "Admin" acima dos itens (já existe), mas reduzir paddings (`pt-3`, `gap-0.5`) para a lista respirar menos verticalmente.
-- Mudar a estrutura para:
-  ```text
-  ┌─ Logo + chip ADMIN
-  ├─ Nav (4 itens, rounded-xl, gap-0.5)
-  ├─ ── divisor sutil ──
-  ├─ Bloco usuário (avatar + nome + email)
-  ├─ Botão Sair
-  └─ flex-1 (vazio, só para empurrar nada — opcional remover)
-  ```
-- Resultado: no zoom 100% (≥768px de altura) tudo fica visível na metade superior; em telas curtas o bloco ainda permanece logo abaixo da nav, sem "voar" para o rodapé.
+One plan only. Leader + 3 direct reports free forever. Starting from the 4th report, R$49.90/month each.
 
-### 2. `src/components/admin/AdminOverview.tsx` — densidade e hierarquia
+ ---  ### 4. Toggle mensal/anual  Manter o toggle existente, mas deixá-lo visualmente mais próximo da Windmill:  - menor destaque visual - mais clean - spacing mais confortável - container suave/off-white - pill selection elegante  Manter badge: text
 
-- Remover `max-w-5xl mx-auto` (admin pode usar largura total, como `AdminUsers` já faz com `p-8`); padronizar em `p-6 lg:p-8 space-y-6` sem container central.
-- Header com chip "Painel admin" + título serif menor (`text-2xl`) e subtítulo mais curto.
-- Reordenar para: **StatsGrid → InactiveWorkspacesAlert (se houver) → grid 2 col (FunnelCard | ActivationCohorts) → WaitlistTable**. Alerta sobe para chamar atenção; waitlist desce porque é tabela longa.
-- Garantir que `StatsGrid` use 4 colunas no desktop (revisar se necessário) para ocupar bem a largura.
+-16%
 
-### 3. `src/components/admin/AdminUsers.tsx` — limpeza visual
+ Estados:  ### Mensal text
 
-- **Header**: padronizar com a Visão Geral (mesma tipografia serif, mesmo padding).
-- **Contadores de segmento**: manter como filtros clicáveis e **remover** o `<Select>` de segmento da barra de filtros (é redundante).
-- **Barra de filtros**: agrupar em uma linha só com `flex items-center gap-2`, larguras menores (`w-[130px]`), busca à esquerda com `flex-1 max-w-md`, "Convidar líder" e "Exportar CSV" empurrados para a direita com `ml-auto` num pequeno cluster. Em telas estreitas, deixar quebrar naturalmente.
-- **Tabela**:
-  - Remover coluna **ID** dedicada; mover para tooltip/copy no nome do usuário (ícone copy aparece em hover sobre o nome).
-  - Coluna **Cliente** + **Segmento**: fundir em uma linha só (segmento já é badge).
-  - Coluna **Hierarquia**: limitar a 3 badges visíveis + "+N" para evitar quebra excessiva.
-  - **Ações**: agrupar 5 ícones num `DropdownMenu` "kebab" (⋯) com Impersonar destacado fora (ação mais usada). Reduz a coluna de ~180px para ~80px.
-- Reduzir saturação dos badges de segmento (usar `bg-*-50` em vez de `bg-*-500/10` nas variantes mais agressivas) — opcional, posso aplicar se preferir.
+Mensal
 
-### 4. Workspaces e Sistema
+ ### Anual text
 
-- Não tocados nesta rodada. Se quiser, abro tarefa separada depois (preciso saber se você quer mesmo padrão de header e densidade).
+Anual
 
-## Fora do escopo
+-16%
 
-- Lógica de negócio, queries, RLS, permissões — só camada visual/UX.
-- Mudanças no super-admin sidebar do `AppSidebar` principal (já está OK, é só o `AdminLayout` do `/admin` que tem o problema do Sair afastado).
+ ---  ### 5. Card principal único  Não usar dois cards lado a lado.  Usar um único card centralizado, com:  - `max-w-5xl` - `rounded-[40px]` - `border border-border/40` - `shadow-sm` - fundo branco/off-white - padding generoso - muito espaço vertical  Estrutura visual inspirada diretamente na Windmill.  Exemplo de direção: tsx
 
-## Perguntas rápidas antes de implementar
+bg-white
 
-1. **Sobre as ações da tabela de Pessoas**: posso colapsar em menu kebab (⋯) com Impersonar destacado? Ou prefere manter os 5 ícones inline?
-2. **Workspaces e Sistema**: aplico o mesmo header/densidade agora ou deixo para depois?
+border border-border/40
+
+shadow-sm
+
+rounded-[40px]
+
+ ---  ### 6. Preço com hierarquia forte  O preço deve ser o elemento dominante do card, igual ao estilo Windmill.  ---  ## Estado mensal  Preço: text
+
+R$ 49,90
+
+/liderado / mês
+
+ Subtexto: text
+
+Cobrado mensalmente. Cancele quando quiser. A partir do 4º liderado.
+
+ ---  ## Estado anual  Preço: text
+
+R$ 39,90
+
+/liderado / mês
+
+ Subtexto: text
+
+Cobrado anualmente (R$ 478,80/liderado/ano). 16% off. A partir do 4º liderado.
+
+ ---  ## Regras visuais  - número muito grande `text-6xl` ou maior) - peso forte - line-height apertado - label `/liderado / mês` menor - label em `text-muted-foreground` - muito contraste no valor principal  A estética precisa ficar muito próxima da Windmill.  ---  ### 7. CTA e trust line  CTA:  - full-width - preto ou foreground forte - texto branco - `rounded-full` - simples e sólido - sem efeitos exagerados  Exemplo: tsx
+
+rounded-full
+
+bg-black
+
+text-white
+
+ CTA sugerido: text
+
+Começar grátis
+
+ ---  ### Trust line  A frase abaixo do botão deve ficar imediatamente abaixo do CTA:  ### PT text
+
+Sem cartão. Sem demo call. 5 min para o primeiro insight.
+
+ ### EN text
+
+No credit card. No demo call. First insight in 5 minutes.
+
+ Usar: tsx
+
+text-sm
+
+font-medium
+
+text-foreground
+
+ Remover repetição dessa frase em `pricingTrustLine`, se existir.  ---  ### 8. Features em lista vertical  Não usar grid 2 colunas.  Usar lista vertical como na Windmill:  - check pequeno verde - título em `font-medium` - descrição curta abaixo - spacing confortável - uma coluna no desktop e no mobile  Estrutura: tsx
+
+<dl className="space-y-5">
+
+  <div className="flex gap-3">
+
+    <Check className="mt-1 h-4 w-4 text-green-600" />
+
+    
+
+    <div>
+
+      <dt className="font-medium text-foreground">
+
+        Mentor AI ilimitado
+
+      </dt>
+
+      <dd className="mt-1 text-sm text-muted-foreground">
+
+        Seu Chief of Staff conversacional, 24/7, com memória do time.
+
+      </dd>
+
+    </div>
+
+  </div>
+
+</dl>
+
+ ---  ## Features finais  1. **Mentor AI ilimitado**   Seu Chief of Staff conversacional, 24/7, com memória do time.  2. **1:1s, Pulse, PDI e 360°**   O ciclo completo de gestão de pessoas em um lugar.  3. **Transcrição de reunião ilimitada**   Bot entra nas reuniões, transcreve e vira evidência automaticamente.  4. **Slack bidirecional**   Rhitmo puxa contexto e devolve briefs por DM, sem trocar de aba.  5. **Detecção de viés em tempo real**   Avaliações 38× menos enviesadas, direto no editor.  6. **Network signals**   Leitura da rede do time para detectar risco antes da saída.  ---  ### 9. Enterprise rail  Trocar o link solitário “Falar com vendas” por um mini-card secundário abaixo do card principal.  Visual:  - mesmo radius do card principal - `bg-muted/30` - borda sutil - sombra mínima ou nenhuma - largura alinhada ao card principal - hierarquia claramente secundária  Copy PT: text
+
+ENTERPRISE
+
+Para times +50 ou requisitos de compliance.
+
+• SSO (SAML, Google Workspace)
+
+• DPA + processamento na UE/Brasil
+
+• Admin dashboard com auditoria
+
+• Onboarding assistido
+
+Falar com vendas →
+
+ Copy EN: text
+
+ENTERPRISE
+
+For teams of 50+ or advanced compliance needs.
+
+• SSO (SAML, Google Workspace)
+
+• DPA + EU/Brazil data processing
+
+• Admin dashboard with audit logs
+
+• Assisted onboarding
+
+Talk to sales →
+
+ O link continua apontando para: text
+
+/enterprise
+
+ ---  ## Fora do escopo  Não alterar:  - Tabela comparativa vs concorrentes - Seção de métricas antes do pricing - Lógica de billing - Stripe - `paid_seats` - `update-subscription` - Backend - RLS - Página `/enterprise` - Qualquer lógica de cobrança ou permissões  ---  ## Arquivos afetados  - `src/pages/Landing.tsx`  Alterações esperadas:  - Reescrita visual do `PricingSection` - Ajuste de `translations.pt` - Ajuste de `translations.en` - Ajuste/remover uso de `pricingTrustLine`, se estiver repetindo a trust line  Sem novos arquivos.  Sem novos imports, salvo se já houver ícone/check disponível no projeto.  ---  ## Perguntas rápidas  1. Confirmar CTA principal:    - `Começar grátis`    - ou `Criar workspace`  2. Confirmar se o botão deve continuar apontando para o fluxo atual de signup.  3. Confirmar se o badge `-16%` permanece exatamente como está hoje.  4. Confirmar se devemos manter a frase:   text
+
+   Cancele quando quiser.
+
+      no plano mensal.
+
+:::
