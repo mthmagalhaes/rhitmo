@@ -7,16 +7,38 @@ import { useToast } from '@/hooks/use-toast';
 import { useOnboardingTour } from '@/hooks/useOnboardingTour';
 
 interface LeaderTourProps {
-  /** When true, starts the tour immediately on mount. */
   autoStart?: boolean;
-  /** Called when the tour is closed (finished or dismissed). */
   onClose?: () => void;
 }
 
 /**
+ * Wait for a CSS selector to appear in the DOM.
+ * Resolves with the element, or null after `timeout` ms.
+ */
+function waitForSelector(selector: string, timeout = 2500): Promise<Element | null> {
+  return new Promise((resolve) => {
+    const existing = document.querySelector(selector);
+    if (existing) return resolve(existing);
+
+    const start = Date.now();
+    const interval = window.setInterval(() => {
+      const el = document.querySelector(selector);
+      if (el) {
+        window.clearInterval(interval);
+        resolve(el);
+      } else if (Date.now() - start > timeout) {
+        window.clearInterval(interval);
+        resolve(null);
+      }
+    }, 80);
+  });
+}
+
+/**
  * Contextual 60-second welcome tour for new leaders.
- * Uses driver.js with the Creme/Bento theme. Navigates between routes
- * automatically via react-router. Marks completion in user_preferences.
+ * Uses driver.js with the Creme/Bento theme. Manual control via onNextClick
+ * lets us navigate routes and wait for the target element to mount before
+ * advancing — fixes the "popover disappears after step 1" race condition.
  */
 export function LeaderTour({ autoStart = true, onClose }: LeaderTourProps) {
   const navigate = useNavigate();
@@ -30,12 +52,16 @@ export function LeaderTour({ autoStart = true, onClose }: LeaderTourProps) {
     if (!autoStart || startedRef.current) return;
     startedRef.current = true;
 
-    const goTo = (path: string) =>
-      new Promise<void>((resolve) => {
-        navigate(path);
-        // Allow lazy route + element to mount before driver re-positions
-        window.setTimeout(resolve, 450);
-      });
+    // Hop to a route, wait for its anchor to mount, then advance the tour.
+    const hopAndAdvance = async (path: string, anchor: string) => {
+      navigate(path);
+      // Give react-router + lazy chunks a tick before we start polling
+      await new Promise((r) => window.setTimeout(r, 60));
+      await waitForSelector(anchor);
+      // Small settle delay so layout is stable when driver re-positions
+      await new Promise((r) => window.setTimeout(r, 120));
+      driverRef.current?.moveNext();
+    };
 
     const d = driver({
       showProgress: true,
@@ -45,9 +71,11 @@ export function LeaderTour({ autoStart = true, onClose }: LeaderTourProps) {
       doneBtnText: 'Pronto',
       popoverClass: 'rhitmo-theme',
       allowClose: true,
-      overlayOpacity: 0.45,
+      overlayOpacity: 0.5,
       smoothScroll: true,
+      disableActiveInteraction: true,
       steps: [
+        // 1 — Sidebar (no route change)
         {
           element: '[data-sidebar="sidebar"]',
           popover: {
@@ -56,63 +84,80 @@ export function LeaderTour({ autoStart = true, onClose }: LeaderTourProps) {
               'Aqui ficam suas áreas: 1:1s, Diário, Pessoas e Avaliações. Tudo organizado em volta dos seus liderados.',
             side: 'right',
             align: 'start',
+            onNextClick: () => {
+              void hopAndAdvance('/lider/diario', '[data-tour="member-list"]');
+            },
           },
         },
+        // 2 — Diário
         {
-          element: 'main',
+          element: '[data-tour="member-list"]',
           popover: {
             title: 'Diário de bordo',
             description:
-              'Cole transcrições do Meet, Tactiq ou Fireflies aqui. A Rhitmo extrai feedback, ações e padrões automaticamente. Esse é o seu superpoder.',
-            side: 'top',
-            align: 'center',
-          },
-          onHighlightStarted: async () => {
-            await goTo('/lider/diario');
+              'Cada liderado tem um diário privado seu. Cole transcrições do Meet, Tactiq ou Fireflies e a Rhitmo extrai feedback, ações e padrões automaticamente.',
+            side: 'right',
+            align: 'start',
+            onNextClick: () => {
+              void hopAndAdvance('/lider/contexto', '[data-tour="context-feed"]');
+            },
+            onPrevClick: () => {
+              navigate('/lider/inicio');
+              window.setTimeout(() => driverRef.current?.movePrevious(), 200);
+            },
           },
         },
+        // 3 — Contexto
         {
-          element: 'main',
+          element: '[data-tour="context-feed"]',
           popover: {
             title: 'Contexto unificado',
             description:
-              'Linha do tempo de tudo que acontece com seu time: notas, 1:1s, pulses, sinais do Slack. Sua memória organizacional.',
+              'Linha do tempo de tudo que aconteceu com seu time: notas, 1:1s, pulses, sinais do Slack. Sua memória organizacional viva.',
             side: 'top',
             align: 'center',
-          },
-          onHighlightStarted: async () => {
-            await goTo('/lider/contexto');
+            onNextClick: () => {
+              void hopAndAdvance('/lider/avaliacoes', '[data-tour="reviews-list"]');
+            },
+            onPrevClick: () => {
+              void hopAndAdvance('/lider/diario', '[data-tour="member-list"]').then(() => {
+                // hopAndAdvance moves next; we want previous instead
+                driverRef.current?.movePrevious();
+                driverRef.current?.movePrevious();
+              });
+            },
           },
         },
+        // 4 — Avaliações
         {
-          element: 'main',
+          element: '[data-tour="reviews-list"]',
           popover: {
             title: 'Performance Reviews',
             description:
               'Avaliações montadas a partir das evidências reais que você capturou ao longo do trimestre. Sem começar do zero.',
-            side: 'top',
-            align: 'center',
-          },
-          onHighlightStarted: async () => {
-            await goTo('/lider/avaliacoes');
+            side: 'right',
+            align: 'start',
+            onNextClick: () => {
+              void hopAndAdvance(
+                '/lider/configuracoes?tab=integracoes',
+                '[data-tour="integrations"]',
+              );
+            },
           },
         },
+        // 5 — Integrações
         {
-          element: 'main',
+          element: '[data-tour="integrations"]',
           popover: {
             title: 'Conecte suas ferramentas',
             description:
-              'Slack e Google Calendar fazem a Rhitmo trabalhar em background — briefs antes das 1:1s, sinais ambientes, lembretes nos canais certos.',
+              'Slack e Google Calendar fazem a Rhitmo trabalhar em background: briefs antes das 1:1s, sinais ambientes, lembretes nos canais certos.',
             side: 'top',
             align: 'center',
-          },
-          onHighlightStarted: async () => {
-            await goTo('/lider/configuracoes?tab=integracoes');
           },
         },
       ],
       onDestroyStarted: () => {
-        // Fired when user clicks Close (X) or Done — treat as user-initiated
         userClosedRef.current = true;
         driverRef.current?.destroy();
       },
@@ -128,7 +173,6 @@ export function LeaderTour({ autoStart = true, onClose }: LeaderTourProps) {
     });
 
     driverRef.current = d;
-    // Start on a slight delay so the page is settled
     window.setTimeout(() => d.drive(), 100);
 
     return () => {
