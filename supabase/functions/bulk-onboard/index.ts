@@ -81,6 +81,7 @@ serve(async (req) => {
     );
 
     const results: ResultRow[] = [];
+    const touchedWorkspaceIds = new Set<string>();
 
     for (const row of users) {
       try {
@@ -281,6 +282,21 @@ serve(async (req) => {
     };
 
     console.log('📊 Bulk onboard summary:', summary);
+
+    // Recontar seats no Stripe para cada workspace tocado (fire-and-forget).
+    // update-subscription aceita workspace_id quando chamado com service role.
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+    const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    for (const wsId of touchedWorkspaceIds) {
+      fetch(`${SUPABASE_URL}/functions/v1/update-subscription`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${SERVICE_ROLE}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'sync_seats', workspace_id: wsId }),
+      }).catch((e) => console.warn('[bulk-onboard] sync_seats failed for', wsId, e));
+    }
 
     return new Response(JSON.stringify({ results, summary }), {
       status: 200,
