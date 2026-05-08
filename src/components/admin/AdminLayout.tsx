@@ -1,86 +1,112 @@
-import { useState, useEffect } from 'react';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LayoutDashboard, Users, LogOut, ShieldCheck, Network, Brain, Activity } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Users,
+  Building2,
+  Activity,
+  LogOut,
+  ShieldCheck,
+} from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 
+import { cn } from '@/lib/utils';
+import type { AdminTab } from '@/pages/Admin';
+
 interface AdminLayoutProps {
   children: React.ReactNode;
+  activeTab?: AdminTab;
+  onTabChange?: (tab: AdminTab) => void;
 }
 
-export const AdminLayout = ({ children }: AdminLayoutProps) => {
-  const { signOut } = useAuth();
+const TABS: Array<{ value: AdminTab; icon: React.ElementType; label: string; description: string }> = [
+  { value: 'overview', icon: LayoutDashboard, label: 'Visão geral', description: 'KPIs e alertas' },
+  { value: 'users', icon: Users, label: 'Pessoas', description: 'Usuários e papéis' },
+  { value: 'workspaces', icon: Building2, label: 'Workspaces', description: 'Times, membros e HR' },
+  { value: 'system', icon: Activity, label: 'Sistema', description: 'Saúde, logs e exportação' },
+];
+
+export const AdminLayout = ({ children, activeTab, onTabChange }: AdminLayoutProps) => {
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState('overview');
-
-  useEffect(() => {
-    const handleExternalTabChange = (e: CustomEvent) => {
-      setActiveTab(e.detail);
-    };
-    window.addEventListener('admin-tab-change', handleExternalTabChange as EventListener);
-    return () => window.removeEventListener('admin-tab-change', handleExternalTabChange as EventListener);
-  }, []);
-
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
-    window.dispatchEvent(new CustomEvent('admin-tab-change', { detail: value }));
-  };
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
-    toast({ title: "Logout realizado", description: "Até logo!" });
+    toast({ title: 'Logout realizado', description: 'Até logo!' });
   };
 
-  const tabs = [
-    { value: 'overview', icon: LayoutDashboard, label: 'Command Center' },
-    { value: 'users', icon: Users, label: 'Usuários' },
-    { value: 'structure', icon: Network, label: 'Estrutura' },
-    { value: 'access', icon: ShieldCheck, label: 'Acessos & Export' },
-    { value: 'intelligence', icon: Brain, label: 'Inteligência' },
-    { value: 'observability', icon: Activity, label: 'Observabilidade' },
-  ];
+  const userName =
+    (user?.user_metadata?.full_name as string | undefined) ||
+    (user?.user_metadata?.name as string | undefined) ||
+    user?.email?.split('@')[0] ||
+    'Admin';
 
   return (
     <div className="flex min-h-screen w-full bg-background">
-      <aside className="w-64 bg-slate-900 text-slate-100 border-r border-slate-800 flex flex-col">
-        <div className="p-6 border-b border-slate-800">
-          <div className="flex items-center gap-3">
-            <RhitmoLogo size="sm" className="text-violet-400" />
-            <Badge variant="destructive" className="text-xs">ADMIN</Badge>
+      <aside className="w-60 bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex flex-col">
+        {/* Header */}
+        <div className="px-4 pt-5 pb-4 flex items-center gap-2">
+          <RhitmoLogo size="sm" className="text-primary" />
+          <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            <ShieldCheck className="h-3 w-3" />
+            Admin
           </div>
         </div>
 
-        <nav className="flex-1 p-4">
-          <Tabs value={activeTab} onValueChange={handleTabChange} orientation="vertical" className="w-full">
-            <TabsList className="flex flex-col h-auto bg-transparent gap-2 w-full">
-              {tabs.map(tab => (
-                <TabsTrigger
-                  key={tab.value}
-                  value={tab.value}
-                  className="w-full justify-start gap-3 text-slate-300 hover:text-white hover:bg-slate-800 data-[state=active]:bg-slate-800 data-[state=active]:text-violet-400"
-                >
-                  <tab.icon className="h-4 w-4" />
-                  {tab.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+        {/* Nav */}
+        <nav className="px-2 flex flex-col gap-0.5">
+          {TABS.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.value;
+            return (
+              <button
+                key={tab.value}
+                type="button"
+                onClick={() => onTabChange?.(tab.value)}
+                className={cn(
+                  'group flex items-center gap-3 px-3 py-2 rounded-xl text-left text-sm transition-colors',
+                  isActive
+                    ? 'bg-background text-sidebar-foreground font-semibold border border-border/50 shadow-[0_1px_2px_rgba(0,0,0,0.03)] dark:bg-primary/10 dark:text-primary dark:border-primary/20'
+                    : 'text-sidebar-foreground/75 hover:text-sidebar-foreground hover:bg-sidebar-accent/40',
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                <span className="flex-1 truncate">{tab.label}</span>
+              </button>
+            );
+          })}
         </nav>
 
-        <div className="p-4 border-t border-slate-800">
-          <Button variant="ghost" className="w-full justify-start gap-3 text-slate-300 hover:text-slate-100 hover:bg-slate-800" onClick={handleSignOut}>
-            <LogOut className="h-4 w-4" /> Sair
+        {/* Spacer to push user block down without orphaning Sair */}
+        <div className="flex-1" />
+
+        {/* Footer: user block + sair (juntos) */}
+        <div className="m-2 p-2 rounded-2xl border border-sidebar-border/60 bg-background/40 dark:bg-background/20 space-y-1.5">
+          <div className="flex items-center gap-2 px-1.5 py-1">
+            <div className="h-7 w-7 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[11px] font-semibold shrink-0">
+              {userName.charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0 leading-tight">
+              <p className="text-xs font-semibold truncate">{userName}</p>
+              <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleSignOut}
+            className="w-full justify-start gap-2 rounded-xl text-xs text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/40"
+          >
+            <LogOut className="h-3.5 w-3.5" /> Sair
           </Button>
         </div>
       </aside>
 
-      <main className="flex-1">{children}</main>
+      <main className="flex-1 overflow-x-hidden">{children}</main>
     </div>
   );
 };

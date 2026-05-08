@@ -200,10 +200,10 @@ const App = () => (
               <Route path="/auth/google/callback" element={<GoogleCalendarCallback />} />
               
 
-              {/* Admin */}
+              {/* Admin (self-wraps with AdminLayout) */}
               <Route path="/admin" element={
                 <AdminGuard>
-                  <AdminLayout><Admin /></AdminLayout>
+                  <Admin />
                 </AdminGuard>
               } />
 
