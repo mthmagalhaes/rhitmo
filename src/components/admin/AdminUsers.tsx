@@ -475,13 +475,13 @@ export const AdminUsers = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[240px] max-w-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[220px] max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Buscar nome, email, ID, cliente, workspace..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+          <Input placeholder="Buscar nome, email, ID, cliente, workspace..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
         </div>
         <Select value={capFilter} onValueChange={v => setCapFilter(v as CapFilter)}>
-          <SelectTrigger className="w-[150px]"><SelectValue placeholder="Papel" /></SelectTrigger>
+          <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder="Papel" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os papéis</SelectItem>
             <SelectItem value="super_admin">Super Admin</SelectItem>
@@ -492,7 +492,7 @@ export const AdminUsers = () => {
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={v => setStatusFilter(v as StatusFilter)}>
-          <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectTrigger className="w-[130px] h-9"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os status</SelectItem>
             <SelectItem value="active">Ativo</SelectItem>
@@ -501,7 +501,7 @@ export const AdminUsers = () => {
           </SelectContent>
         </Select>
         <Select value={workspaceFilter} onValueChange={setWorkspaceFilter}>
-          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Workspace" /></SelectTrigger>
+          <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="Workspace" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos workspaces</SelectItem>
             {allWorkspaces.map(ws => (
@@ -509,21 +509,14 @@ export const AdminUsers = () => {
             ))}
           </SelectContent>
         </Select>
-        <Select value={segmentFilter} onValueChange={v => setSegmentFilter(v as SegmentFilter)}>
-          <SelectTrigger className="w-[140px]"><SelectValue placeholder="Segmento" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos segmentos</SelectItem>
-            {(['beta', 'paid', 'trial', 'internal', 'test'] as const).map(seg => (
-              <SelectItem key={seg} value={seg}>{SEGMENT_LABELS[seg]}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button size="sm" onClick={() => setInviteOpen(true)} className="gap-2 ml-auto">
-          <UserPlus className="h-4 w-4" /> Convidar líder
-        </Button>
-        <Button variant="outline" size="sm" onClick={exportCSV} className="gap-2">
-          <Download className="h-4 w-4" /> Exportar CSV
-        </Button>
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={exportCSV} className="gap-2 h-9">
+            <Download className="h-4 w-4" /> Exportar CSV
+          </Button>
+          <Button size="sm" onClick={() => setInviteOpen(true)} className="gap-2 h-9">
+            <UserPlus className="h-4 w-4" /> Convidar líder
+          </Button>
+        </div>
       </div>
 
       <Card>
