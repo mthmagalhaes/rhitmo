@@ -34,19 +34,25 @@ export const InviteEmail = ({
         <Section style={logoSection}>
           <Text style={logoText}>🎵 <strong>Rhitmo</strong></Text>
         </Section>
-        <Heading style={h1}>Você foi convidado! 🎉</Heading>
+        <Heading style={h1}>Bem-vindo ao Rhitmo 🎉</Heading>
         <Text style={text}>
-          Você foi convidado para participar do{' '}
+          Você foi convidado para o{' '}
           <Link href={siteUrl} style={link}>
             <strong>Rhitmo</strong>
           </Link>
-          . Clique no botão abaixo para aceitar o convite e criar sua conta.
+          . Clique no botão abaixo para criar sua senha e configurar sua conta de líder.
         </Text>
         <Section style={buttonSection}>
           <Button style={button} href={confirmationUrl}>
-            Aceitar Convite
+            Criar minha conta
           </Button>
         </Section>
+        <Text style={helperText}>
+          <strong>Já criou sua senha antes?</strong> Vá direto para{' '}
+          <Link href={`${siteUrl}/auth`} style={link}>{siteUrl.replace(/^https?:\/\//, '')}/auth</Link>{' '}
+          e clique em <strong>Entrar</strong> com seu email. Se esqueceu a senha, use{' '}
+          <em>"Esqueci minha senha"</em> na tela de login.
+        </Text>
         <Text style={footer}>
           Se você não esperava este convite, pode ignorar este email com segurança.
         </Text>
@@ -86,6 +92,15 @@ const button = {
   padding: '14px 28px',
   textDecoration: 'none',
   display: 'inline-block',
+}
+const helperText = {
+  fontSize: '14px',
+  color: '#6B6784',
+  lineHeight: '1.6',
+  margin: '24px 0 0',
+  padding: '14px 16px',
+  backgroundColor: '#F7F5FF',
+  borderRadius: '12px',
 }
 const footer = { fontSize: '13px', color: '#999999', margin: '30px 0 0' }
 const brand = { fontSize: '12px', color: '#c4c0d0', textAlign: 'center' as const, margin: '20px 0 0' }

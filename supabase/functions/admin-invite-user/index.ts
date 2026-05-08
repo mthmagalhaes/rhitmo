@@ -55,9 +55,11 @@ serve(async (req) => {
     console.log('✅ Admin verified, sending invite...');
 
     const isHrAdmin = role === 'hr_admin' && workspace_id;
-    const redirectUrl = isHrAdmin 
-      ? 'https://rhitmo.co/hr' 
-      : 'https://rhitmo.co/dashboard';
+    // Líder = qualquer convite que não seja HR Admin (default do fluxo de convite individual)
+    const isLeader = !isHrAdmin;
+    const redirectUrl = isHrAdmin
+      ? 'https://rhitmo.co/hr'
+      : 'https://rhitmo.co/lider/inicio';
 
     // Convidar usuário via Admin API com plano atribuído
     const { data: invitation, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
@@ -86,6 +88,47 @@ serve(async (req) => {
         console.warn('⚠️ Could not add HR admin to workspace:', hrError);
       } else {
         console.log('✅ HR Admin added to workspace:', workspace_id);
+      }
+    }
+
+    // Se Líder: provisionar workspace + team automaticamente para que ele
+    // já caia logado num app funcional (sem essa etapa, /lider/inicio fica vazio
+    // e o usuário não tem como começar — foi o caso da Ana Campos / Fapeduca).
+    if (isLeader && invitation?.user?.id) {
+      try {
+        const workspaceName = (name && name.trim().length > 0)
+          ? `Workspace de ${name.trim().split(' ')[0]}`
+          : (email.split('@')[1]?.split('.')[0] || 'Meu Workspace');
+
+        const { data: ws, error: wsError } = await supabaseAdmin
+          .from('workspaces')
+          .insert({
+            name: workspaceName,
+            owner_id: invitation.user.id,
+            plan_tier: plan,
+            is_active: true,
+          })
+          .select('id')
+          .single();
+
+        if (wsError) {
+          console.warn('⚠️ Could not auto-create leader workspace:', wsError);
+        } else if (ws) {
+          const { error: teamError } = await supabaseAdmin
+            .from('teams')
+            .insert({
+              name: 'Meu time',
+              leader_user_id: invitation.user.id,
+              workspace_id: ws.id,
+            });
+          if (teamError) {
+            console.warn('⚠️ Could not auto-create leader team:', teamError);
+          } else {
+            console.log('✅ Leader workspace + team provisioned:', ws.id);
+          }
+        }
+      } catch (bootstrapErr) {
+        console.warn('⚠️ Leader bootstrap exception:', bootstrapErr);
       }
     }
 
