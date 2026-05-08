@@ -1,57 +1,75 @@
-## Diagnóstico
+# Diagnóstico — Ana Campos ([carolyna@fapeduca.com.br](mailto:carolyna@fapeduca.com.br))
 
-A área `/admin` foi crescendo em camadas e hoje tem três problemas claros:
+## O que aconteceu (timeline real, do banco)
 
-1. **Sidebar quebrada** — em `AdminLayout.tsx`, o `<nav>` usa `flex-1`, então o botão "Sair" é jogado para o rodapé do viewport, longe dos itens de navegação. Em telas grandes fica a "quilômetros" do último item.
-2. **Excesso de abas com sobreposição funcional**:
-   - **Command Center** (Overview): empilha 6 cards verticais (Funnel, Cohorts, StatsGrid, InactiveWorkspaces, RecentActivity, Waitlist). É um "wall of cards" sem hierarquia.
-   - **Usuários**: gestão completa de pessoas + filtros + export CSV.
-   - **Estrutura** (883 linhas): CRUD de workspaces / times / membros com dispatch de convites — duplica metade do que "Usuários" já faz.
-   - **Acessos & Export**: convidar HR Admin + listar HR Admins + Data Export (5 botões CSV). Tudo isso já cabe em "Usuários" / "Estrutura".
-   - **Inteligência**: health score por workspace + Revenue. Só 2 blocos.
-   - **Observabilidade**: logs de Edge Functions (mantém, é único).
-3. **UX de detalhe**: header "Rhitmo + ADMIN" ocupa muito espaço; tabs custom com event bus (`window.dispatchEvent('admin-tab-change')`) é desnecessariamente complexo; `Sair` separado dos demais itens; sem indicador de qual usuário está logado.
 
-## O que fazer
+| Quando (UTC 08/05)  | Evento                                                                                                           |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| 12:56:35            | Convite criado por admin (`admin-invite-user`, plano `pro` = líder)                                              |
+| 12:56:37 → 12:56:39 | Email "invite" enfileirado e **enviado com sucesso** (status `sent`, message_id confirmado)                      |
+| 12:59:49            | Ana clicou no link, **confirmou o email e definiu senha** (`email_confirmed_at` + `last_sign_in_at` preenchidos) |
+| 13:07:52            | Tentou **signup** novamente em `rhitmo.co/dashboard` → 422 "User already registered"                             |
 
-### 1. `AdminLayout.tsx` — sidebar enxuta e coesa
-- **Colar `Sair` ao final dos itens de nav** (não pinned no rodapé do viewport). Trocar `flex-1` no `<nav>` por altura natural; mover o `Sair` para dentro do mesmo `TabsList` visual (como item separado por uma linha sutil), eliminando o bloco `border-t` solto.
-- **Reduzir o header** do logo: remover o `Badge ADMIN` redondo grande; manter `RhitmoLogo size="sm"` + texto fino "Admin" abaixo. Padding `p-4` em vez de `p-6`.
-- **Adicionar mini-bloco do usuário logado** no rodapé (avatar + email + "Sair" inline), padrão da sidebar principal do produto. Resolve o "Sair a quilômetros".
-- **Trocar event bus por contexto/prop** — Hoje `Admin.tsx` escuta `admin-tab-change` via `MutationObserver` + `CustomEvent`. Substituir por um `useState` simples no `Admin.tsx` passado por prop, ou um pequeno `AdminTabsContext`. Remove ~30 linhas de gambiarra.
 
-### 2. Consolidar abas (de 6 → 4)
+**Conclusão:** o email chegou, ela criou a conta, mas depois ficou confusa e tentou se cadastrar de novo em vez de fazer login. Além disso, **não existe workspace nem team** vinculados ao usuário dela — então mesmo logando ela cai num app sem lugar pra ir (não há trigger que crie workspace automaticamente para líder convidado via `admin-invite-user`).
 
-```text
-Antes:  Command Center | Usuários | Estrutura | Acessos & Export | Inteligência | Observabilidade
-Depois: Visão Geral    | Pessoas  | Workspaces                   | Sistema
-```
+## O que o email diz (template `invite.tsx`)
 
-- **Visão Geral** (era Command Center): reorganizar em layout 2-col bento — KPIs no topo (StatsGrid compacto), depois Funnel + Cohorts lado a lado, e na base "Atenção" (InactiveWorkspaces + Waitlist colapsados/compactos). Remover `RecentActivityCard` da overview (vai para "Sistema" como log secundário, ou some — é redundante com Observabilidade).
-- **Pessoas** (era Usuários): mantém intacto. Absorve "Convidar HR Admin" da aba Acessos como ação dentro do dialog de edição de usuário (já existe edição via `admin-update-user`).
-- **Workspaces** (era Estrutura + parte de Acessos): mantém o CRUD de workspaces/times/membros + lista de "HR Admins ativos" como sub-tab/coluna. Mantém o Bulk Dispatch de convites.
-- **Sistema** (era Inteligência + Observabilidade + Data Export): combina health-score por workspace, RevenueOverview, logs de Edge Functions e os 5 botões de CSV export como bloco final "Exportar dados". Tudo que é "operação interna" mora aqui.
+- Assunto: **"Você foi convidado para o Rhitmo!"**
+- Corpo: "Você foi convidado para participar do Rhitmo. Clique no botão abaixo para aceitar o convite e criar sua conta."
+- Botão: **"Aceitar Convite"** → `https://rhitmo.co/dashboard`
 
-### 3. Penduricalhos a remover
+Ou seja, o email manda direto pra `/dashboard`, não para um fluxo explícito de "sou líder, vamos configurar seu workspace". Esse é o gap.
 
-- `AdminSupport.tsx` (541 linhas) — não está rota nem importado em `Admin.tsx`. **Deletar arquivo**.
-- `AdminExport.tsx` (244 linhas) — também órfão (Export vive dentro de `AdminAccess`). **Deletar**.
-- `ImpersonationBanner.tsx` vs `ImpersonationIndicator.tsx` — verificar duplicidade; manter apenas um.
-- `RecentActivityCard` na Overview — redundante com Observabilidade. Remover do Overview.
+## Por que ela "não consegue logar"
 
-### 4. Detalhes de UX
-- Trocar `bg-slate-900` da sidebar pelo token `bg-sidebar` do design system (consistência com sidebar do produto). Hoje quebra o tema escuro/claro.
-- Headers de página com tipografia Lora (igual ao resto do produto), não `font-bold` genérico.
-- Densidade: padding `p-6` (era `p-8`) e `space-y-6` no container das abas — caber mais conteúdo sem scroll.
+1. **Ela já tem conta** — precisa usar **Entrar** (login com email + senha que ela definiu), não **Cadastrar**.
+2. Se esqueceu a senha, precisa de "Esqueci minha senha" → recovery email.
+3. Mesmo logando, ela não tem workspace/team de líder, então cai numa tela vazia/quebrada — precisamos provisionar isso.
+
+---
+
+## Plano de ação (2 partes)
+
+### Parte A — Destravar a Ana **agora** (one-shot, manual)
+
+1. **Disparar reset de senha** para `carolyna@fapeduca.com.br` (caso ela tenha esquecido a senha que definiu) usando a função `admin-reset-password` já existente. Resultado: ela recebe email "Redefinir senha" e entra com nova senha.
+2. **Provisionar workspace + team de líder** para o `user_id` `88d0a572-3693-4d3f-9321-1d9f0db5ae14` via migration:
+  - `INSERT INTO workspaces (name, owner_id, plan_tier)` → ex.: nome "Fapeduca", `plan_tier='pro'`
+  - `INSERT INTO teams (name, leader_user_id, workspace_id)` → ex.: "Time da Ana"
+  - Confirmar que `AccountContext` resolve papel **Leader** e a leva para `/lider/inicio`
+3. (Opcional) mandar uma DM/email manual avisando "use **Entrar** com seu email; segue novo link de senha".
+
+### Parte B — Causa raiz: convite de líder hoje não cria workspace
+
+Hoje `admin-invite-user` com `role` ≠ `hr_admin` apenas convida no Auth e redireciona para `/dashboard`. Para qualquer próximo líder convidado, vamos:
+
+1. No `admin-invite-user`, quando `role` for `'leader'` (ou ausente + `assigned_plan='pro'`), passar `data: { ..., persona: 'leader' }` no metadata e mudar `redirectTo` para `https://rhitmo.co/onboarding?persona=leader`.
+2. Garantir que `Onboarding.tsx` (já existente) detecta `persona=leader` sem workspace e dispara o **Leader Bootstrap Wizard**:
+  - Pergunta nome do workspace/empresa
+  - Cria `workspaces` (owner_id = user, plan_tier herdado do convite) + `teams` (leader_user_id = user) via RPC `bootstrap_leader_workspace` (a criar, `SECURITY DEFINER`, idempotente)
+  - Redireciona para `/lider/inicio`
+3. Atualizar o template `invite.tsx`:
+  - Mudar copy do botão para "Aceitar convite e configurar minha conta"
+  - Acrescentar 1 linha: "Se você já criou sua senha antes, vá direto para [rhitmo.co](https://rhitmo.co/auth) e clique em **Entrar**."
+
+## Arquivos afetados (Parte B)
+
+- `supabase/functions/admin-invite-user/index.ts` — branch `redirectTo` por persona + metadata.
+- `supabase/migrations/...` — nova RPC `bootstrap_leader_workspace(_name text)`.
+- `src/pages/Onboarding.tsx` — detectar `persona=leader` sem workspace + UI mínima do wizard (1 input + CTA).
+- `supabase/functions/_shared/email-templates/invite.tsx` — copy + nota de "já tenho conta".
 
 ## Fora de escopo
 
-- Mexer em lógica de RPC, RLS ou edge functions.
-- Refatorar internamente `AdminUsers` ou `AdminStructure` (apenas movimentação e remoção de blocos).
-- Tocar na rota `/admin` ou no `AdminGuard`.
+- Mudar fluxo de HR Admin (já funciona, cria workspace).
+- Refatorar AuthPage além da mudança de copy do email.
+- Migrar Ana para outro plano — fica `pro` como já foi convidada.
 
-## Resultado esperado
+## Antes de eu executar, confirme:
 
-- Sidebar com 4 itens + bloco do usuário/Sair ao pé → "Sair" a 1 clique de qualquer item.
-- 4 abas com responsabilidades claras, sem features órfãs.
-- ~785 linhas removidas (AdminSupport + AdminExport + event bus).
+1. **Parte A** — posso já criar o workspace/team da Ana agora (preciso só do **nome do workspace** — sugiro "Fapeduca") e disparar o reset de senha?
+2. **Parte B** — toco a causa raiz neste mesmo turno depois da Parte A, ou prefere deixar para outro momento?  
+  
+No final, me diga exatamente o que eu preciso falar para a Ana. ela abriu um "ticket" de suporte para mim, é como se fosse isso e eu preciso devolver.
+3. &nbsp;
