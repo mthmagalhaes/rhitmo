@@ -14,13 +14,15 @@ import {
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
   Users, Power, PowerOff, Trash2, Loader2, Eye, Search, Building, Shield,
   Crown, User, Settings, KeyRound, Edit, ArrowUpDown, ArrowUp, ArrowDown,
-  Copy, Download, Hash, UserPlus, Mail,
+  Copy, Download, UserPlus, Mail, MoreHorizontal, ShieldCheck,
 } from 'lucide-react';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { CustomAvatar } from '@/components/avatar/CustomAvatar';
@@ -76,6 +78,8 @@ export const AdminUsers = () => {
   const queryClient = useQueryClient();
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [pendingDeleteUser, setPendingDeleteUser] = useState<UserCap | null>(null);
   const [search, setSearch] = useState('');
   const [capFilter, setCapFilter] = useState<CapFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -445,11 +449,15 @@ export const AdminUsers = () => {
   const allWorkspaces = workspaces || [];
 
   return (
-    <div className="p-8 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Usuários</h1>
-        <p className="text-muted-foreground">Gestão completa de usuários, workspaces e clientes</p>
-      </div>
+    <div className="p-6 lg:p-8 space-y-6">
+      <header className="space-y-2">
+        <div className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          <ShieldCheck className="h-3 w-3" />
+          Painel admin
+        </div>
+        <h1 className="font-serif text-2xl font-bold tracking-tight">Pessoas</h1>
+        <p className="text-sm text-muted-foreground">Gestão completa de usuários, workspaces e clientes.</p>
+      </header>
 
       {/* Segment counters */}
       <div className="flex flex-wrap items-center gap-2">
@@ -468,13 +476,13 @@ export const AdminUsers = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[240px] max-w-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[220px] max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Buscar nome, email, ID, cliente, workspace..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+          <Input placeholder="Buscar nome, email, ID, cliente, workspace..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
         </div>
         <Select value={capFilter} onValueChange={v => setCapFilter(v as CapFilter)}>
-          <SelectTrigger className="w-[150px]"><SelectValue placeholder="Papel" /></SelectTrigger>
+          <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder="Papel" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os papéis</SelectItem>
             <SelectItem value="super_admin">Super Admin</SelectItem>
@@ -485,7 +493,7 @@ export const AdminUsers = () => {
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={v => setStatusFilter(v as StatusFilter)}>
-          <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectTrigger className="w-[130px] h-9"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os status</SelectItem>
             <SelectItem value="active">Ativo</SelectItem>
@@ -494,7 +502,7 @@ export const AdminUsers = () => {
           </SelectContent>
         </Select>
         <Select value={workspaceFilter} onValueChange={setWorkspaceFilter}>
-          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Workspace" /></SelectTrigger>
+          <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="Workspace" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos workspaces</SelectItem>
             {allWorkspaces.map(ws => (
@@ -502,21 +510,14 @@ export const AdminUsers = () => {
             ))}
           </SelectContent>
         </Select>
-        <Select value={segmentFilter} onValueChange={v => setSegmentFilter(v as SegmentFilter)}>
-          <SelectTrigger className="w-[140px]"><SelectValue placeholder="Segmento" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos segmentos</SelectItem>
-            {(['beta', 'paid', 'trial', 'internal', 'test'] as const).map(seg => (
-              <SelectItem key={seg} value={seg}>{SEGMENT_LABELS[seg]}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button size="sm" onClick={() => setInviteOpen(true)} className="gap-2 ml-auto">
-          <UserPlus className="h-4 w-4" /> Convidar líder
-        </Button>
-        <Button variant="outline" size="sm" onClick={exportCSV} className="gap-2">
-          <Download className="h-4 w-4" /> Exportar CSV
-        </Button>
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={exportCSV} className="gap-2 h-9">
+            <Download className="h-4 w-4" /> Exportar CSV
+          </Button>
+          <Button size="sm" onClick={() => setInviteOpen(true)} className="gap-2 h-9">
+            <UserPlus className="h-4 w-4" /> Convidar líder
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -534,14 +535,13 @@ export const AdminUsers = () => {
                   <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('name')}>
                     Usuário <SortIcon field="name" />
                   </TableHead>
-                  <TableHead><Hash className="h-3 w-3 inline mr-1" /> ID</TableHead>
                   <TableHead>Workspace(s)</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Hierarquia</TableHead>
                   <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('status')}>
                     Status <SortIcon field="status" />
                   </TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+                  <TableHead className="text-right w-[120px]">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -551,26 +551,29 @@ export const AdminUsers = () => {
                   const userWss = getUserWorkspaces(user);
                   const primaryWs = getPrimaryWorkspace(user);
                   const segment = primaryWs?.customer_segment || null;
+                  const capBadges = renderCapBadges(user);
+                  const capBadgesArr = Array.isArray(capBadges) ? capBadges : [capBadges];
+                  const visibleBadges = capBadgesArr.slice(0, 3);
+                  const extraBadges = capBadgesArr.length - 3;
                   return (
                     <TableRow key={user.user_id}>
                       <TableCell>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 group/name">
                           <CustomAvatar variant={avatarVariant} size={32} className="shrink-0" />
-                          <div>
-                            <p className="font-medium">{user.full_name || <span className="text-muted-foreground italic">Sem nome</span>}</p>
-                            <p className="text-sm text-muted-foreground">{user.email}</p>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-medium truncate">{user.full_name || <span className="text-muted-foreground italic">Sem nome</span>}</p>
+                              <button
+                                onClick={() => copyToClipboard(user.user_id, 'ID')}
+                                className="opacity-0 group-hover/name:opacity-100 transition text-muted-foreground hover:text-foreground"
+                                title={`Copiar ID: ${user.user_id}`}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </button>
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                           </div>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <button
-                          onClick={() => copyToClipboard(user.user_id, 'ID')}
-                          className="text-xs font-mono text-muted-foreground hover:text-foreground inline-flex items-center gap-1 group"
-                          title={user.user_id}
-                        >
-                          {user.user_id.slice(0, 8)}…
-                          <Copy className="h-3 w-3 opacity-0 group-hover:opacity-100 transition" />
-                        </button>
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col gap-0.5 max-w-[200px]">
@@ -588,17 +591,22 @@ export const AdminUsers = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs">{primaryWs?.client_account || <span className="text-muted-foreground italic">—</span>}</span>
                           {segment && (
-                            <Badge variant="outline" className={`text-[10px] w-fit ${SEGMENT_STYLES[segment] || ''}`}>
+                            <Badge variant="outline" className={`text-[10px] ${SEGMENT_STYLES[segment] || ''}`}>
                               {SEGMENT_LABELS[segment] || segment}
                             </Badge>
                           )}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-wrap gap-1 max-w-xs">{renderCapBadges(user)}</div>
+                        <div className="flex flex-wrap gap-1 max-w-[220px]">
+                          {visibleBadges}
+                          {extraBadges > 0 && (
+                            <Badge variant="outline" className="text-[10px]">+{extraBadges}</Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         {wsInfo ? (
@@ -608,40 +616,53 @@ export const AdminUsers = () => {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => startImpersonation(user.user_id, user.email)} title="Impersonar">
+                        <div className="flex items-center justify-end gap-0.5">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startImpersonation(user.user_id, user.email)} title="Impersonar">
                             <Eye className="h-4 w-4 text-primary" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => openEdit(user)} title="Editar">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handlePasswordReset(user.email)} disabled={resettingEmail === user.email} title="Reset senha">
-                            {resettingEmail === user.email ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
-                          </Button>
-                          {wsInfo && (
-                            <Button variant="ghost" size="icon" onClick={() => toggleWorkspaceStatus(wsInfo.workspace_id, wsInfo.is_active)} disabled={togglingId === wsInfo.workspace_id} title={wsInfo.is_active ? "Suspender" : "Ativar"}>
-                              {togglingId === wsInfo.workspace_id ? <Loader2 className="h-4 w-4 animate-spin" /> : wsInfo.is_active ? <PowerOff className="h-4 w-4 text-destructive" /> : <Power className="h-4 w-4 text-primary" />}
-                            </Button>
-                          )}
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" disabled={deletingId === user.user_id} title="Excluir">
-                                {deletingId === user.user_id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 text-destructive" />}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" title="Mais ações">
+                                <MoreHorizontal className="h-4 w-4" />
                               </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Excluir usuário permanentemente?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Esta ação remove a conta, workspaces, times, feedbacks e avaliações de <strong>{user.full_name || user.email}</strong>.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteUser(user.user_id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Confirmar</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem onClick={() => openEdit(user)}>
+                                <Edit className="h-4 w-4 mr-2" /> Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handlePasswordReset(user.email)} disabled={resettingEmail === user.email}>
+                                {resettingEmail === user.email ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <KeyRound className="h-4 w-4 mr-2" />}
+                                Reset de senha
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => copyToClipboard(user.user_id, 'ID')}>
+                                <Copy className="h-4 w-4 mr-2" /> Copiar ID
+                              </DropdownMenuItem>
+                              {wsInfo && (
+                                <DropdownMenuItem
+                                  onClick={() => toggleWorkspaceStatus(wsInfo.workspace_id, wsInfo.is_active)}
+                                  disabled={togglingId === wsInfo.workspace_id}
+                                >
+                                  {togglingId === wsInfo.workspace_id ? (
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  ) : wsInfo.is_active ? (
+                                    <PowerOff className="h-4 w-4 mr-2 text-destructive" />
+                                  ) : (
+                                    <Power className="h-4 w-4 mr-2 text-primary" />
+                                  )}
+                                  {wsInfo.is_active ? 'Suspender workspace' : 'Ativar workspace'}
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => { setPendingDeleteId(user.user_id); setPendingDeleteUser(user); }}
+                                disabled={deletingId === user.user_id}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                {deletingId === user.user_id ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                                Excluir usuário
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -797,6 +818,37 @@ export const AdminUsers = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete confirmation (controlled, triggered from row dropdown) */}
+      <AlertDialog
+        open={!!pendingDeleteId}
+        onOpenChange={(open) => {
+          if (!open) { setPendingDeleteId(null); setPendingDeleteUser(null); }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir usuário permanentemente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação remove a conta, workspaces, times, feedbacks e avaliações de{' '}
+              <strong>{pendingDeleteUser?.full_name || pendingDeleteUser?.email}</strong>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingDeleteId) handleDeleteUser(pendingDeleteId);
+                setPendingDeleteId(null);
+                setPendingDeleteUser(null);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
