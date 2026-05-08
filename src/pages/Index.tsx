@@ -31,7 +31,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import DirectReportDashboard from '@/components/dashboard/DirectReportDashboard';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { PenSquare, Users, Loader2, UserPlus, Pencil, Settings, Trash2, Calendar, FileText, Bell, Video, ChevronRight, MessageSquare, CheckCircle2 } from 'lucide-react';
+import { PenSquare, Users, Loader2, UserPlus, Pencil, Settings, Trash2, Calendar, FileText, Bell, Video, ChevronRight, MessageSquare, CheckCircle2, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
