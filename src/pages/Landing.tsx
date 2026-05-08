@@ -706,12 +706,6 @@ const PricingSection = ({
           >
             {lang === 'pt' ? 'Começar grátis' : 'Start free'}
           </Button>
-          <p className="text-sm font-medium text-foreground text-center mt-4">
-            {lang === 'pt'
-              ? 'Sem cartão. Sem demo call. 5 min para o primeiro insight.'
-              : 'No credit card. No demo call. First insight in 5 minutes.'}
-          </p>
-
           {/* Features list */}
           <div className="border-t border-border/50 mt-10 pt-8">
             <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-6">
