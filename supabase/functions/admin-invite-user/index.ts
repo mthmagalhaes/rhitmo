@@ -55,9 +55,11 @@ serve(async (req) => {
     console.log('✅ Admin verified, sending invite...');
 
     const isHrAdmin = role === 'hr_admin' && workspace_id;
-    const redirectUrl = isHrAdmin 
-      ? 'https://rhitmo.co/hr' 
-      : 'https://rhitmo.co/dashboard';
+    // Líder = qualquer convite que não seja HR Admin (default do fluxo de convite individual)
+    const isLeader = !isHrAdmin;
+    const redirectUrl = isHrAdmin
+      ? 'https://rhitmo.co/hr'
+      : 'https://rhitmo.co/lider/inicio';
 
     // Convidar usuário via Admin API com plano atribuído
     const { data: invitation, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
