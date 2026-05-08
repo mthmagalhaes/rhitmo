@@ -75,7 +75,7 @@ function IntegrationsTab() {
     },
   ];
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div data-tour="integrations" className="grid gap-4 md:grid-cols-2">
       {items.map((it) => (
         <Card key={it.title} className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
           <CardHeader className="flex flex-row items-start gap-3 space-y-0">
@@ -111,7 +111,7 @@ export default function LiderConfiguracoes() {
         <h1 className="font-serif text-3xl font-bold tracking-tight">Configurações</h1>
         <p className="text-muted-foreground text-sm mt-1">Gerencie seu perfil, workspace, plano e integrações.</p>
       </header>
-      <PageTabs tabs={tabs} defaultValue="perfil" />
+      <PageTabs tabs={tabs} defaultValue="perfil" syncParam="tab" />
     </div>
   );
 }

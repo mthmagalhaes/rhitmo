@@ -56,7 +56,7 @@ export default function LiderAvaliacoes() {
   };
 
   return (
-    <div className="flex h-[calc(100svh-3.5rem)] lg:h-[calc(100svh-3rem)] overflow-hidden">
+    <div data-tour="reviews-list" className="flex h-[calc(100svh-3.5rem)] lg:h-[calc(100svh-3rem)] overflow-hidden">
       <MemberMasterList
         selectedMemberId={selected?.id ?? null}
         onSelect={handleSelectMember}

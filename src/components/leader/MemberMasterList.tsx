@@ -227,7 +227,7 @@ export function MemberMasterList(props: MemberMasterListProps) {
   return (
     <>
       {/* Desktop: sticky sidebar — full app height, denser, soft contrast vs main */}
-      <aside className="hidden lg:flex shrink-0 w-[260px] sticky top-0 self-start h-[calc(100svh-3rem)] border-r border-border/40 bg-muted/30">
+      <aside data-tour="member-list" className="hidden lg:flex shrink-0 w-[260px] sticky top-0 self-start h-[calc(100svh-3rem)] border-r border-border/40 bg-muted/30">
         <InnerList {...innerProps} />
       </aside>
 
