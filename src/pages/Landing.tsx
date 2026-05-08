@@ -685,7 +685,7 @@ const PricingSection = ({
 
         {/* Single card */}
         <div className="bg-card rounded-[40px] border border-border/40 shadow-sm p-8 md:p-12">
-          <div className="inline-flex items-center rounded-full bg-primary/10 px-4 py-1.5 text-sm font-semibold text-primary mb-6">
+          <div className="inline-flex items-center rounded-full bg-primary/10 px-6 py-2.5 text-xl md:text-2xl font-semibold text-primary mb-6">
             {lang === 'pt' ? 'Primeiros 3 usuários grátis' : 'First 3 users free'}
           </div>
           <div className="flex items-baseline gap-2 flex-wrap">
