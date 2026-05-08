@@ -2852,6 +2852,7 @@ export type Database = {
           created_at: string
           customer_segment: string | null
           default_locale: string | null
+          grandfather_until: string | null
           hr_admin_ids: string[] | null
           id: string
           is_active: boolean
@@ -2860,7 +2861,9 @@ export type Database = {
           leader_sync_data: Json | null
           name: string
           owner_id: string
+          paid_seats: number
           plan_tier: string
+          seat_cycle: string
           updated_at: string
         }
         Insert: {
@@ -2868,6 +2871,7 @@ export type Database = {
           created_at?: string
           customer_segment?: string | null
           default_locale?: string | null
+          grandfather_until?: string | null
           hr_admin_ids?: string[] | null
           id?: string
           is_active?: boolean
@@ -2876,7 +2880,9 @@ export type Database = {
           leader_sync_data?: Json | null
           name: string
           owner_id: string
+          paid_seats?: number
           plan_tier?: string
+          seat_cycle?: string
           updated_at?: string
         }
         Update: {
@@ -2884,6 +2890,7 @@ export type Database = {
           created_at?: string
           customer_segment?: string | null
           default_locale?: string | null
+          grandfather_until?: string | null
           hr_admin_ids?: string[] | null
           id?: string
           is_active?: boolean
@@ -2892,7 +2899,9 @@ export type Database = {
           leader_sync_data?: Json | null
           name?: string
           owner_id?: string
+          paid_seats?: number
           plan_tier?: string
+          seat_cycle?: string
           updated_at?: string
         }
         Relationships: []
@@ -3158,6 +3167,19 @@ export type Database = {
           meetings: Json
           meetings_count: number
           total_evidence_count: number
+        }[]
+      }
+      get_seat_allowance: {
+        Args: { _workspace_id: string }
+        Returns: {
+          free_seats: number
+          grandfather_until: string
+          is_grandfathered: boolean
+          paid_seats: number
+          recall_cap_hours: number
+          recall_unlimited: boolean
+          seat_cycle: string
+          total_seats: number
         }[]
       }
       get_sync_notification_data: {
