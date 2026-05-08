@@ -136,6 +136,16 @@ export function WorkspaceSwitcher({ onOpenInvite }: WorkspaceSwitcherProps) {
           <span>{t('sidebar.workspace.helpCenter', 'Central de Ajuda')}</span>
         </DropdownMenuItem>
 
+        {tourCanRun && (
+          <DropdownMenuItem
+            onSelect={handleReplayTour}
+            className="flex items-center gap-2"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
+            <span>Refazer tour de boas-vindas</span>
+          </DropdownMenuItem>
+        )}
+
         {canInvite && (
           <>
             <DropdownMenuSeparator />
