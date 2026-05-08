@@ -1,41 +1,38 @@
-## Diagnóstico
+## Auditoria dos 5 passos do tour
 
-O tour usa o seletor `[data-tour="member-list"]` no passo 2 (Diário). Esse atributo só existe em **um** lugar — o `<aside>` desktop em `MemberMasterList.tsx`:
+| Passo | Seletor | Vive em | Risco em viewports atuais |
+|---|---|---|---|
+| 1 | `[data-sidebar="sidebar"]` | `Sidebar` (ui/sidebar.tsx) | **Quebra em mobile (<md=768px)**: sidebar desktop é `hidden`, sidebar mobile fica dentro de Sheet fechada |
+| 2 | `[data-tour="member-list"]` | `MemberMasterList` | **Já corrigido** (aside desktop + trigger mobile) |
+| 3 | `[data-tour="context-feed"]` | `Contexto.tsx` | OK — sempre visível |
+| 4 | `[data-tour="reviews-list"]` | `Avaliacoes.tsx` | OK — wrapper externo sempre visível |
+| 5 | `[data-tour="integrations"]` | `Configuracoes.tsx` (aba Integrações) | OK — `?tab=integracoes` ativa a aba; polling 2.5 s cobre o mount |
 
-```tsx
-<aside data-tour="member-list" className="hidden lg:flex ...">
-```
+## Correções restantes
 
-A classe `hidden lg:flex` faz o elemento ficar `display:none` abaixo de `lg` (1024px). Como o usuário está em **869px** (e qualquer pessoa em laptop pequeno / janela reduzida cai no mesmo caso), acontece o seguinte:
+### Passo 1 — sidebar invisível em mobile
+Em `<lg` (1024 px) o sidebar desktop está `hidden md:block` (visível só em ≥md=768). Em telas <768px (e em alguns laptops 13" zoomed), o tour quebraria.
 
-1. `waitForSelector` encontra o elemento no DOM (querySelector ignora visibilidade) → resolve imediatamente.
-2. `driver.js` tenta destacar/posicionar o popover sobre um elemento de área zero (`display:none`) → o overlay/highlight falha silenciosamente e o popover "desaparece".
+**Fix:** marcar também o `SidebarTrigger` (botão hamburguer no header mobile) com `data-tour="sidebar"` e trocar o seletor do step 1 para uma lista que aceita qualquer um dos dois — o `waitForSelector` já endurecido escolhe o primeiro visível.
 
-Mesmo padrão de risco existe na navegação Mobile (Sheet com botão "Liderados"), que não tem âncora alguma.
+- `src/components/ui/sidebar.tsx` (linhas 157 e 206): adicionar `data-tour="sidebar"` nos dois `<div data-sidebar="sidebar">` (desktop + mobile-inside-sheet) — barato e compatível.
+- `src/components/AppLayout.tsx` (linha 117): adicionar `data-tour="sidebar"` no `<SidebarTrigger />` para o caso em que o sheet está fechado.
+- `src/components/onboarding/LeaderTour.tsx`: trocar o seletor do step 1 de `[data-sidebar="sidebar"]` para `[data-tour="sidebar"]`.
+- Como o step 1 é montado direto no `drive()` (sem `hopAndAdvance`), envolver o start em `waitForSelector('[data-tour="sidebar"]')` antes de chamar `d.drive()`. Se nada aparecer, mostrar toast e abortar.
 
-## Correção
-
-### 1. `src/components/leader/MemberMasterList.tsx`
-Adicionar `data-tour="member-list"` também ao **botão trigger mobile** (`<Button>` dentro do `SheetTrigger`), para que abaixo de `lg` o tour tenha um alvo visível para destacar.
-
-### 2. `src/components/onboarding/LeaderTour.tsx`
-- Endurecer `waitForSelector` para considerar **apenas elementos visíveis** (verificar `offsetParent !== null` e `getBoundingClientRect().width > 0`). Se o desktop aside estiver `hidden`, o polling pula para o trigger mobile (ambos compartilham o mesmo `data-tour`).
-- Adicionar fallback: se nenhum elemento visível aparecer em 2.5 s, mostrar um toast amigável ("Não consegui encontrar este passo no seu layout atual") e destruir o tour em vez de travar com popover invisível.
-- Garantir que `hopAndAdvance` só chame `moveNext()` se a âncora foi encontrada.
-
-### 3. (Defensivo) Revisar âncoras dos demais passos
-- `[data-tour="context-feed"]` em `Contexto.tsx` → ok, sempre visível.
-- `[data-tour="reviews-list"]` em `Avaliacoes.tsx` → ok.
-- `[data-tour="integrations"]` em `Configuracoes.tsx` → confirmar que a aba `?tab=integracoes` realmente monta a grid antes de polling terminar (já há 60ms de delay + 2.5s polling, deve cobrir).
-
-## Fora do escopo
-- Não alterar conteúdo/copy dos steps.
-- Não mexer no `useOnboardingTour` (estado de "completou").
-- Não redesenhar o `MemberMasterList`.
+### Passo 5 — defensivo
+Como a aba é montada por `PageTabs syncParam="tab"`, o conteúdo pode demorar 1 frame após o sync do query string. O `hopAndAdvance` atual já dá 60 ms + polling 2.5 s, então deve cobrir. Sem alteração, mas o fallback de toast já implementado protege caso falhe.
 
 ## Arquivos afetados
-- `src/components/leader/MemberMasterList.tsx` (1 atributo)
-- `src/components/onboarding/LeaderTour.tsx` (helper + fallback)
+- `src/components/ui/sidebar.tsx` (2 atributos)
+- `src/components/AppLayout.tsx` (1 atributo)
+- `src/components/onboarding/LeaderTour.tsx` (trocar seletor + envolver start em waitForSelector)
+
+## Fora do escopo
+- Não alterar copy dos passos.
+- Não alterar `useOnboardingTour` nem PageTabs.
 
 ## Validação
-Após o fix, abrir `/lider/inicio` em viewport 869px com tour ativo → clicar Próximo no passo 1 → deve navegar para `/lider/diario` e destacar o botão "Liderados" do header mobile sem desaparecer.
+1. Viewport 1280×720: tour completo dos 5 passos sem desaparecer popover.
+2. Viewport 869×829 (atual do usuário): step 2 destaca o botão "Liderados" mobile, demais passos seguem.
+3. Viewport 375×812 (mobile): step 1 destaca o `SidebarTrigger`; passo 2 destaca o trigger "Liderados" no header.
