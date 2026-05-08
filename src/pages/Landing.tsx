@@ -656,8 +656,8 @@ const PricingSection = ({
           </p>
           <h2 className="font-serif text-3xl lg:text-5xl font-bold tracking-tight text-foreground">
             {lang === 'pt'
-              ? 'Comece grátis. Pague só pelo time que cresce.'
-              : 'Start free. Pay only for the team you grow.'}
+              ? 'Preços justos e sem surpresas'
+              : 'Fair pricing, no surprises'}
           </h2>
           <p className="text-base text-muted-foreground max-w-xl mx-auto">
             {lang === 'pt'
