@@ -79,6 +79,8 @@ export const AdminUsers = () => {
   const queryClient = useQueryClient();
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [pendingDeleteUser, setPendingDeleteUser] = useState<UserCap | null>(null);
   const [search, setSearch] = useState('');
   const [capFilter, setCapFilter] = useState<CapFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
