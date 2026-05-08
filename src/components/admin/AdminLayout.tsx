@@ -87,11 +87,9 @@ export const AdminLayout = ({ children, activeTab, onTabChange }: AdminLayoutPro
         {/* Footer: user block + sair (juntos) */}
         <div className="m-2 p-2 rounded-2xl border border-sidebar-border/60 bg-background/40 dark:bg-background/20 space-y-1.5">
           <div className="flex items-center gap-2 px-1.5 py-1">
-            <CustomAvatar
-              name={userName}
-              avatarUrl={(user?.user_metadata?.avatar as string | undefined) ?? null}
-              size="sm"
-            />
+            <div className="h-7 w-7 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[11px] font-semibold shrink-0">
+              {userName.charAt(0).toUpperCase()}
+            </div>
             <div className="flex-1 min-w-0 leading-tight">
               <p className="text-xs font-semibold truncate">{userName}</p>
               <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
