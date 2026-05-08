@@ -6,20 +6,32 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // 3 preços Pro (quarterly/semiannual/annual). Manter o tier "business" no DB
 // preserva acesso a HR Dashboard + assisted onboarding desses clientes
 // fundadores, sem cobrança extra e sem ação requerida deles.
+// Per-seat (Windmill v3) — preços novos
+const SEAT_PRICE_MONTHLY = "price_1TUqnLIF4fHxJpjH3WthrrBs";
+const SEAT_PRICE_ANNUAL = "price_1TUqnmIF4fHxJpjHG44CIrIL";
+
 const PRICE_TO_PLAN: Record<string, string> = {
-  // === Pro (novo modelo — 18/04/2026) ===
-  "price_1TNNnEIF4fHxJpjHA4cMp1tm": "pro", // Pro Trimestral R$267
-  "price_1TNNnXIF4fHxJpjH6uHkOIIJ": "pro", // Pro Semestral R$504
-  "price_1TNNnlIF4fHxJpjHfVwPUqAb": "pro", // Pro Anual R$948
-  // === Pro legado (mensal — descontinuado, mantido para webhooks tardios) ===
+  // === Per-seat (Windmill v3) ===
+  [SEAT_PRICE_MONTHLY]: "pro",
+  [SEAT_PRICE_ANNUAL]: "pro",
+  // === Legacy Pro (mantido só para webhooks tardios) ===
+  "price_1TNNnEIF4fHxJpjHA4cMp1tm": "pro",
+  "price_1TNNnXIF4fHxJpjH6uHkOIIJ": "pro",
+  "price_1TNNnlIF4fHxJpjHfVwPUqAb": "pro",
   "price_1TCQeZIF4fHxJpjH7w0wOhaf": "pro",
   "price_1TC52fIF4fHxJpjHPaJXH14r": "pro",
   "price_1TB0QgIF4fHxJpjHoIlCeHP6": "pro",
-  // === Business legado (grandfathering — NÃO oferecido em novos checkouts) ===
+  // === Business legado (grandfathering) ===
   "price_1TCQf0IF4fHxJpjH4Bx2aIbg": "business",
   "price_1TCPcjIF4fHxJpjHWtZucdwy": "business",
   "price_1TB0QgIF4fHxJpjH032DMzZH": "business",
 };
+
+function priceToCycle(priceId: string | undefined): "monthly" | "annual" | null {
+  if (priceId === SEAT_PRICE_MONTHLY) return "monthly";
+  if (priceId === SEAT_PRICE_ANNUAL) return "annual";
+  return null;
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -142,10 +154,16 @@ Deno.serve(async (req) => {
 
         if (subError) console.error("Upsert subscription error:", subError);
 
-        // Update workspace plan_tier
+        // Update workspace plan_tier + per-seat fields
+        const seatCycle = priceToCycle(priceId);
+        const wsUpdate: Record<string, unknown> = { plan_tier: planTier };
+        if (seatCycle) {
+          wsUpdate.paid_seats = quantity;
+          wsUpdate.seat_cycle = seatCycle;
+        }
         const { error: wsError } = await supabaseAdmin
           .from("workspaces")
-          .update({ plan_tier: planTier })
+          .update(wsUpdate)
           .eq("id", workspaceId);
 
         if (wsError) console.error("Update workspace error:", wsError);
@@ -184,9 +202,15 @@ Deno.serve(async (req) => {
 
         if (subError) console.error("Update subscription error:", subError);
 
+        const seatCycleU = priceToCycle(priceId);
+        const wsUpdateU: Record<string, unknown> = { plan_tier: planTier };
+        if (seatCycleU) {
+          wsUpdateU.paid_seats = quantity;
+          wsUpdateU.seat_cycle = seatCycleU;
+        }
         const { error: wsError } = await supabaseAdmin
           .from("workspaces")
-          .update({ plan_tier: planTier })
+          .update(wsUpdateU)
           .eq("id", workspaceId);
 
         if (wsError) console.error("Update workspace error:", wsError);
@@ -208,7 +232,7 @@ Deno.serve(async (req) => {
 
         const { error: wsError } = await supabaseAdmin
           .from("workspaces")
-          .update({ plan_tier: "pulse" })
+          .update({ plan_tier: "pulse", paid_seats: 0, seat_cycle: "monthly" })
           .eq("id", workspaceId);
 
         if (wsError) console.error("Update workspace error:", wsError);

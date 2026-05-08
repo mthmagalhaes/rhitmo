@@ -20,7 +20,7 @@ import { useEffectiveUser } from './useEffectiveUser';
 export const FREE_SEATS = 3;
 export const FREE_RECALL_CAP_HOURS = 6;
 export const SEAT_PRICE_MONTHLY_BRL = 49.9;
-export const SEAT_PRICE_ANNUAL_BRL = 502.8; // 16% off vs 12 × R$49,90
+export const SEAT_PRICE_ANNUAL_BRL = 478.8; // R$ 39,90/mês × 12 — 20% off vs anual full; equivalente 16% off vs 12 × R$49,90
 export const ANNUAL_DISCOUNT_PERCENT = 16;
 
 export type SeatCycle = 'monthly' | 'annual';
