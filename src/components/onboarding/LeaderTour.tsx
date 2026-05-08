@@ -111,6 +111,11 @@ export function LeaderTour({ autoStart = true, onClose }: LeaderTourProps) {
           },
         },
       ],
+      onDestroyStarted: () => {
+        // Fired when user clicks Close (X) or Done — treat as user-initiated
+        userClosedRef.current = true;
+        driverRef.current?.destroy();
+      },
       onDestroyed: () => {
         if (!userClosedRef.current) return;
         markComplete();
@@ -119,13 +124,6 @@ export function LeaderTour({ autoStart = true, onClose }: LeaderTourProps) {
           description: 'Você pode refazer este tour pelo menu da workspace, no rodapé da sidebar.',
         });
         onClose?.();
-      },
-      onCloseClick: () => {
-        userClosedRef.current = true;
-        driverRef.current?.destroy();
-      },
-      onPopoverRender: () => {
-        // any custom hook if needed
       },
     });
 
