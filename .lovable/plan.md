@@ -1,131 +1,125 @@
 ## Objetivo
 
-Finalizar a migração para o modelo Windmill (per-seat) começando do ponto onde paramos: já temos migration + `usePlanLimits` + `Billing.tsx` v3. Falta Stripe, webhook, Landing, validação dos workspaces grandfathered e comunicação.
+Garantir que toda criação ou remoção de liderado dispare automaticamente `update-subscription` (action `sync_seats`), de forma fire-and-forget e silenciosa, para que `paid_seats` no DB e `quantity` no Stripe acompanhem a realidade do workspace. Workspaces grandfathered e sem assinatura ativa continuam no-op (a edge function já trata).
 
----
+## Helper único
 
-## 1. Stripe — produto per-seat
+Criar `src/lib/syncStripeSeats.ts`:
 
-Criar via `stripe--create_stripe_product_and_price`:
-- Produto: **Rhitmo Seat**
-- Preço Mensal: R$ 49,90 / mês (BRL, recurring=month)
-- Preço Anual: R$ 478,80 / ano (BRL, recurring=year) — equivalente a R$ 39,90/mês com 16% off
+```ts
+import { safeFunctionInvoke } from './supabaseSafe';
 
-Hardcodar os 2 `price_id` retornados em constantes compartilhadas (`SEAT_PRICE_ID_MONTHLY`, `SEAT_PRICE_ID_ANNUAL`) em uma const dentro das edge functions (não em src/, para respeitar a regra de não importar do front).
+/**
+ * Fire-and-forget: dispara recontagem de seats no Stripe após mudança em team_members.
+ * Nunca lança — a edge function já trata grandfather/sem-subscription como no-op.
+ */
+export function syncStripeSeats(): void {
+  void safeFunctionInvoke('update-subscription', { action: 'sync_seats' })
+    .catch((err) => console.warn('[syncStripeSeats] best-effort failed:', err));
+}
+```
 
-> Observação: a memória `usePlanLimits.ts` hoje diz `SEAT_PRICE_ANNUAL_BRL = 502.8`. Vou alinhar para **R$ 478,80** (R$ 39,90 × 12), conforme você definiu agora. Ajusto a constante e os textos.
+Padrão de uso (sempre após `await` da operação principal, fora do try/catch que mostra toast):
 
----
+```ts
+const { error } = await supabase.from('team_members').insert({...});
+if (error) throw error;
+syncStripeSeats(); // fire-and-forget
+```
 
-## 2. `create-checkout-session` — quantity dinâmico + bloqueio grandfather
+## Sites a instrumentar
 
-Reescrever a função:
-1. Auth via `supabase.auth.getUser()`.
-2. Buscar workspace do usuário: `id, paid_seats, seat_cycle, grandfather_until`.
-3. Se `grandfather_until >= hoje` → retornar `{ blocked: true, reason: 'grandfathered', grandfather_until }` (sem abrir checkout).
-4. Contar `team_members` do workspace.
-5. Calcular `seats_to_pay = max(1, total_members - FREE_SEATS)`.
-6. Aceitar body `{ cycle: 'monthly' | 'annual' }` (padrão monthly).
-7. Criar/buscar Stripe customer por email (já faz isso hoje).
-8. Criar checkout `mode: subscription`, `line_items=[{ price: SEAT_PRICE_ID_<CYCLE>, quantity: seats_to_pay }]`.
-9. Metadata: `workspace_id`, `seat_cycle`, `paid_seats: seats_to_pay`.
-10. `success_url` / `cancel_url` em `https://rhitmo.co/billing`.
+INSERT em `team_members`:
+1. `src/components/NewMemberDialog.tsx` (~linha 170) — adição manual de liderado pelo líder.
+2. `src/pages/Onboarding.tsx` (linhas 170 e 264) — onboarding inicial cria liderados.
+3. `src/components/admin/AdminStructure.tsx` (linha 229) — super admin cria membro.
+4. `supabase/functions/bulk-onboard/index.ts` (linha 237) — após cada INSERT bem-sucedido OU uma única vez ao final do batch, chamar `update-subscription` via `supabase.functions.invoke` server-to-server (usar fetch direto para a URL da função, com Authorization service role) — preferimos uma chamada por workspace ao final.
 
-Remover toda a lógica antiga de `PRO_PRICE_IDS` (quarterly/semiannual/annual).
+DELETE em `team_members`:
+5. `src/components/admin/AdminStructure.tsx` (linha 266) — quando `table === 'team_members'`.
+6. `src/components/leader/MembersGrid.tsx` (linha 123) — verificar se é delete; se for, instrumentar.
+7. `src/components/team/PendingInvitesSection.tsx` (linha 53) — idem.
+8. `src/components/EditMemberDialog.tsx` (linha 186) — delete de team_member.
+9. `src/pages/lider/Pessoas.tsx` (linha 64) — verificar; instrumentar se for delete.
 
----
+(Para 6/7/9 confirmar a operação durante a edição — só chamar `syncStripeSeats()` se for de fato INSERT/DELETE de `team_members`.)
 
-## 3. `update-subscription` — sincronizar seats em tempo real
+`InviteMemberDialog` apenas atualiza `invite_token`/`invite_status` — **não** cria nem remove seats, então não precisa do hook.
 
-Nova rota/função `update-subscription` (ou refatorar a existente) com:
-- Body: `{ action: 'sync_seats' }` (default) ou `{ action: 'change_cycle', cycle }`.
-- Buscar `subscriptions.stripe_subscription_id` do workspace.
-- Recontar `team_members`, calcular `seats_to_pay`.
-- `stripe.subscriptions.update(subId, { items: [{ id: itemId, quantity: seats_to_pay }], proration_behavior: 'create_prorations' })`.
-- Atualizar `workspaces.paid_seats` no DB.
+## Bulk onboard (edge function)
 
-Chamada automática a partir de:
-- Trigger no DB `team_members` (AFTER INSERT/DELETE) → `pg_net` invoca `update-subscription` com workspace_id (ou flag e cron). Para evitar acoplamento DB↔HTTP, alternativa mais simples: chamar `supabase.functions.invoke('update-subscription')` no fluxo do front quando um liderado é adicionado/removido (hooks de `NewMemberDialog` e remoção). **Vou usar essa segunda opção** (mais simples e auditável).
-- Sempre no-op se workspace está grandfathered.
+Em `bulk-onboard/index.ts`, após o loop, fazer **uma única** chamada interna:
 
----
+```ts
+await fetch(`${SUPABASE_URL}/functions/v1/update-subscription`, {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${userJwt}`, // reaproveitar jwt do request original
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ action: 'sync_seats' }),
+}).catch((e) => console.warn('[bulk-onboard] sync_seats failed:', e));
+```
 
-## 4. `stripe-webhook` — gravar paid_seats / seat_cycle
+Assim evitamos N chamadas para Stripe num batch de 100 usuários.
 
-Atualizar handler para:
-- `checkout.session.completed`: ler `quantity` e `price.id` da subscription, mapear cycle (`monthly`/`annual`), `UPDATE workspaces SET paid_seats = quantity, seat_cycle = cycle, plan_tier = 'pro'`.
-- `customer.subscription.updated`: idem (refletir mudanças de quantity feitas via portal/manual).
-- `customer.subscription.deleted`: `paid_seats = 0`, `seat_cycle = 'monthly'`, `plan_tier = 'pulse'`.
-- Manter mapa `PRICE_TO_PLAN` legado para grandfathering dos antigos Business/Pro mensais.
+## Fluxo completo esperado
 
----
+```text
+[UI] Líder clica "Adicionar liderado" no NewMemberDialog
+  │
+  ▼
+supabase.from('team_members').insert({...})  ──▶ Postgres grava nova linha
+  │ (ok)
+  ▼
+syncStripeSeats()  (fire-and-forget, não bloqueia UI)
+  │
+  ▼
+POST /functions/v1/update-subscription  { action: 'sync_seats' }
+  │
+  ├─ getUser(jwt) → resolve workspace via owner_id
+  ├─ se grandfather_until >= hoje  →  noop (early return)
+  ├─ se sem subscription ativa     →  noop
+  │
+  ▼
+Stripe: GET /subscriptions/{id}  → pega itemId + price atual
+  │
+  ▼
+COUNT(team_members WHERE workspace_id = X)  →  N
+seatsToPay = max(1, N - 3)
+  │
+  ▼
+Stripe: POST /subscriptions/{id}
+   items[0][id]=...&items[0][price]=...&items[0][quantity]=seatsToPay
+   proration_behavior=create_prorations
+  │
+  ▼
+Stripe responde 200 → workspaces.update({ paid_seats: seatsToPay, seat_cycle })
+  │
+  ▼
+Webhook stripe-webhook (assíncrono) confirma o invoice.updated /
+   customer.subscription.updated e re-grava paid_seats (idempotente).
+```
 
-## 5. `Billing.tsx` — corrigir preço anual + fluxo de checkout
+Para DELETE o fluxo é idêntico, com seatsToPay menor → Stripe gera proration negativa (crédito) na próxima fatura.
 
-- Trocar `SEAT_PRICE_ANNUAL_BRL` para **478.80** no hook + textos ("R$ 39,90/liderado/mês cobrado anualmente").
-- Botão "Assinar" chama `supabase.functions.invoke('create-checkout-session', { body: { cycle } })`.
-- Se response `{ blocked: true }` → mostrar toast "Você está no período Early Adopter até DD/MM/AAAA. Nada a pagar."
-- Banner Early Adopter já existe — apenas confirmar texto.
-- Adicionar contador "X liderados ativos · Y pagos · Z gratuitos".
+## Validação manual após implementar
 
----
+1. Criar workspace de teste **não grandfathered** com assinatura ativa em test mode.
+2. Adicionar 4º liderado → verificar nos logs da edge `update-subscription` que `seatsToPay = 1`, e em `workspaces.paid_seats = 1`.
+3. Adicionar 5º → `paid_seats = 2`.
+4. Remover um → `paid_seats = 1`.
+5. Repetir num workspace grandfathered → confirmar log `noop: grandfathered` e nenhuma chamada ao Stripe.
 
-## 6. `Landing.tsx` — pricing single-card
+## Detalhes técnicos
 
-Substituir a seção atual (Pulse/Pro/Enterprise) por **um único card Windmill-style**:
-- Headline: "Comece grátis. Pague só pelo time que cresce."
-- 3 free seats + Recall 6h/mês incluídos.
-- A partir do 4º liderado: R$ 49,90/mês ou R$ 39,90/mês no anual (16% off).
-- Tudo incluso (Mentor, 1:1s, Reviews 360°, Pulse, PDI, Recall ilimitado a partir do 1 seat pago).
-- CTA único: "Começar grátis".
+- Helper usa `safeFunctionInvoke` do `@/lib/supabaseSafe` (regra de projeto: nunca `.catch()` direto em builders).
+- Sem loading state, sem toast — silencioso por design.
+- Não criar nova tabela nem migração.
+- Não tocar em `stripe-webhook` (já idempotente).
+- Para edge function `bulk-onboard`, adicionar a chamada uma única vez no fim do request, reutilizando o JWT do usuário.
 
-Remover comparativos antigos, badges Founder/Lifetime e copy de planos múltiplos.
+## Out of scope
 
----
-
-## 7. Validação dos 6 workspaces grandfathered
-
-Após deploy:
-1. `read_query`: confirmar que os 6 workspaces têm `grandfather_until = 2026-11-08` e `paid_seats = 0`.
-2. Rodar `usePlanLimits` mentalmente: `isGrandfathered = true` → `maxMembers = Infinity`, `recallUnlimited = true`, `needsSeatPurchase = false`.
-3. Confirmar no front (ex: workspace de teste) que **nenhum prompt de upgrade** aparece e o banner Early Adopter está visível em `/billing`.
-4. Garantir que `create-checkout-session` retorna `blocked: true` para esses workspaces (sem cobrar nada no Stripe).
-5. Documentar plano automático pós-08/11/2026: cron diário `expire-grandfather` que, quando `grandfather_until < hoje` e `paid_seats = 0` e `team_members > 3`, marca workspace como "pending_plan" + envia email/Slack ao Owner. Sem cobrança automática surpresa.
-
----
-
-## 8. Comunicação (não bloqueante)
-
-Stub de email + Slack DM na próxima sprint:
-- Template email "Você é Early Adopter Rhitmo" (data fim, o que muda, link `/billing`).
-- DM Slack via `slack-rhitmo-orchestrator` ao Owner de cada um dos 6 workspaces (idempotente).
-
-> Posso entregar agora apenas o template + função `notify-grandfather` pronta para disparo manual; o envio em massa fica como botão no `/admin`.
-
----
-
-## Ordem de execução
-
-1. Criar produto + 2 prices no Stripe (tool call).
-2. Atualizar `usePlanLimits` (preço anual 478,80) + `Billing.tsx` (textos + chamada checkout).
-3. Reescrever `create-checkout-session` (quantity dinâmico + bloqueio grandfather).
-4. Reescrever `stripe-webhook` (gravar paid_seats/seat_cycle).
-5. Criar `update-subscription` (sync_seats) + chamadas no front em add/remove member.
-6. Reescrever pricing em `Landing.tsx`.
-7. Rodar `read_query` validando os 6 workspaces + checagem visual.
-8. Entregar template email + função `notify-grandfather` (manual).
-
----
-
-## Arquivos afetados
-
-- `src/hooks/usePlanLimits.ts` (constante anual)
-- `src/pages/Billing.tsx` (texto + invoke)
-- `src/pages/Landing.tsx` (pricing section)
-- `src/components/team/NewMemberDialog.tsx` + remoção de membro (chamar `update-subscription`)
-- `supabase/functions/create-checkout-session/index.ts`
-- `supabase/functions/stripe-webhook/index.ts`
-- `supabase/functions/update-subscription/index.ts`
-- `supabase/functions/notify-grandfather/index.ts` (novo)
-
-Sem novas migrations — colunas já existem.
+- Notificações de cobrança ao usuário (já tratadas pelo Stripe).
+- Cron `expire-grandfather` (próximo passo, não bloqueante para go-live).
