@@ -1,51 +1,67 @@
-# Adicionar "Convidar Líder" em /admin → Usuários
+# Fix: Tour de 60s quebra a partir do passo 2
 
-## Problema
-- Ana Campos (carolyna@fapeduca.com.br) precisa de acesso como líder.
-- O painel `/admin → Usuários` não expõe botão de convite. Hoje a única forma rápida é cadastrar manualmente na Lista de Espera ou usar Bulk Onboarding (overkill pra 1 pessoa).
-- Gap recorrente: toda vez que um lead pede acesso direto (WhatsApp, email), você precisa fazer workaround.
+## Causa raiz
+O `LeaderTour.tsx` usa `onHighlightStarted: async () => { navigate(...) }` para mudar de rota entre passos. **Driver.js não espera (`await`) callbacks `onHighlightStarted`**: o popover é posicionado no elemento alvo do passo atual *antes* de a navegação acontecer.
+
+Sequência do bug no passo 2 (clica "Próximo"):
+1. Driver imediatamente tenta destacar `main` da página `/lider/inicio` (que ainda está montada).
+2. `navigate('/lider/diario')` dispara em paralelo.
+3. O `<main>` da Index desmonta, lazy-load do Diário entra, novo `<main>` é outro elemento.
+4. Driver fica com referência órfã → overlay/popover desaparecem ou ficam fora de tela. É exatamente o que o screenshot mostra: rota mudou, mas o tour sumiu.
+
+Bônus: usar `'main'` como seletor é frágil. Em `/lider/diario`, `<main>` é a área scrollável inteira (`flex-1 overflow-y-auto`) — destacar isso é genérico e não educa nada.
 
 ## Solução
-Adicionar um único botão **"Convidar líder"** no header de `AdminUsers.tsx`, ao lado do "Exportar CSV", que abre dialog com 3 campos (Nome, Email, Plano) e chama a edge function `admin-invite-user` já existente.
+Trocar o paradigma para `onNextClick` (controle manual) + adicionar âncoras `data-tour` reais nos elementos certos.
 
-A mesma function é usada em `WaitlistTable` e `AdminAccess` — reuso 100%, zero código novo de backend.
+### 1. `src/components/onboarding/LeaderTour.tsx` — refatorar
+- Substituir `onHighlightStarted` por `onNextClick` em cada passo que troca rota. Quando `onNextClick` está definido, driver.js **pausa** até chamarmos `d.moveNext()` manualmente.
+- Helper `waitForSelector(selector, timeout=2500)`: faz polling a cada 80ms; quando o elemento aparece (ou timeout), chama `d.moveNext()`.
+- Padrão por passo:
+  ```ts
+  onNextClick: async () => {
+    navigate('/lider/diario');
+    await waitForSelector('[data-tour="member-list"]');
+    d.moveNext();
+  }
+  ```
+- Adicionar `disableActiveInteraction: true` pra não permitir clicks acidentais durante o tour.
+- `allowKeyboardControl: true` (ESC fecha, setas navegam).
+- Trocar todos os seletores `'main'` por âncoras específicas (abaixo).
 
-## Mudanças
+### 2. Adicionar âncoras `data-tour` nos elementos certos
 
-### 1. `src/components/admin/AdminUsers.tsx`
-- Importar `Button`, `Dialog`, `Input`, `Label`, `Select` (já no design system)
-- Adicionar estado `inviteDialog` (open, name, email, plan)
-- Botão `<Button variant="default">` com ícone `UserPlus` no header, à esquerda do "Exportar CSV"
-- Dialog com:
-  - Input **Nome completo** (obrigatório)
-  - Input **Email** (obrigatório, type="email")
-  - Select **Plano inicial**: Pulse (default), Pro, Business
-  - Footer: Cancelar / Enviar Convite
-- `confirmInvite()` chama `supabase.functions.invoke('admin-invite-user', { body: { email, name, assigned_plan } })`
-- Toast de sucesso + `refetch()` da lista de usuários
-- Mesmo tratamento de erro do `WaitlistTable`
+| Passo | Página | Âncora | Onde adicionar |
+|---|---|---|---|
+| 1 | qualquer | `[data-tour="sidebar-nav"]` | `src/components/sidebar/AppSidebar.tsx` (ou root da sidebar do líder) |
+| 2 | /lider/diario | `[data-tour="member-list"]` | `src/components/leader/MemberMasterList.tsx` (root) |
+| 3 | /lider/contexto | `[data-tour="context-feed"]` | `src/pages/lider/Contexto.tsx` (container da timeline) |
+| 4 | /lider/avaliacoes | `[data-tour="reviews-list"]` | `src/pages/lider/Avaliacoes.tsx` (lista/tabela principal) |
+| 5 | /lider/configuracoes?tab=integracoes | `[data-tour="integrations"]` | `src/pages/lider/Configuracoes.tsx` (card Slack/Calendar) |
 
-### 2. Nada no backend
-A edge function `admin-invite-user` já:
-- Valida super_admin via `user_roles`
-- Cria conta via `supabase.auth.admin.inviteUserByEmail()`
-- Atribui plano e dispara email de boas-vindas
-- Marca lead como `invited` se já existir na waitlist
+Cada âncora vai num **container significativo e visível** — não no `<main>` inteiro. Isso transforma o tour em algo educativo (destaca *a coisa certa*) e elimina o problema de elementos genéricos.
 
-## Resolver Ana agora (paralelo, sem código)
-Enquanto a feature não está deployed, faça isso pelo caminho atual:
-- Vá em **/admin → Acessos & Export** (aba `AdminAccess`)
-- Use o invite dali com `carolyna@fapeduca.com.br` + nome "Ana Campos" + plano **Pulse**
-- Ela recebe email com link mágico em ~30s
+### 3. Copy revisado pra cada passo (mais útil)
 
-Se preferir, posso pular o plano e ir direto pra implementação do botão. É edit de ~80 linhas em 1 arquivo.
+1. **Sidebar** — "Aqui ficam suas áreas: 1:1s, Diário, Pessoas e Avaliações. Tudo organizado em volta dos seus liderados." (mantém)
+2. **Diário** — "Cada liderado tem um diário privado seu. Cole transcrições do Meet/Tactiq/Fireflies e a Rhitmo extrai feedback e ações automaticamente."
+3. **Contexto** — "Linha do tempo unificada do time: notas, 1:1s, pulses, sinais do Slack. Sua memória organizacional viva."
+4. **Avaliações** — "Performance reviews montadas a partir das evidências reais que você capturou ao longo do trimestre. Sem começar do zero."
+5. **Integrações** — "Conecte Slack e Google Calendar pra Rhitmo trabalhar em background: briefs antes das 1:1s, sinais ambientes, lembretes nos canais certos."
 
-## Design (Creme/Bento)
-- Botão: `variant="default"` (preenchido roxo Rhitmo), ícone `UserPlus` à esquerda
-- Dialog: padrão shadcn já temado, `rounded-2xl`, sem mudanças visuais
-- Header alinhado: `flex justify-between` mantendo "Exportar CSV" à direita
+### 4. Resiliência
+- `waitForSelector` faz fallback gracioso: se 2.5s passarem sem o elemento, `moveNext()` mesmo assim. Driver.js renderiza popover centralizado quando o seletor falha — UX degradada mas não quebra.
+- Cleanup em `useEffect` continua chamando `destroy()`.
 
 ## Out of scope
-- Não tocar em `WaitlistTable` (continua sendo o fluxo "lead aprovado")
-- Não criar campo de "workspace destino" — a function já cria workspace novo no nome do convidado (que é o caso da Ana, ela vai liderar a própria conta na Fapeduca)
-- Não adicionar bulk aqui — bulk continua em `AdminStructure` e `/lider/pessoas`
+- Não refazer o design do popover (já está OK no Creme/Bento via `driver-theme.css`).
+- Não tocar no `useOnboardingTour` nem na migration — funcionam.
+- Não adicionar tour pro liderado (memory `onboarding-demo-visibility` indica tour é só pro líder).
+
+## Validação após implementar
+- Iniciar tour pelo botão "✨ Tour de 60s" no `/lider/inicio`.
+- Clicar "Próximo" 4x e verificar:
+  - Rota muda em cada passo
+  - Popover aparece destacando o **elemento certo** (não a página inteira)
+  - ESC e X fecham e marcam complete
+  - Refazer pelo dropdown da workspace funciona
