@@ -583,17 +583,12 @@ const SimpleChatMockup = ({ t }: { t: Translations }) => <div className="bg-card
     </div>
   </div>;
 
-// ============== PRICING SECTION ==============
-// Estratégia 18/04/2026: removemos plano mensal. Pro agora é vendido em ciclos
-// Trimestral / Semestral / Anual para alinhar faturamento ao ciclo de valor.
+// ============== PRICING SECTION (Windmill v3 — single card per-seat) ==============
+// Pricing v3 — 08/05/2026: 1 plano único.
+// Líder + 3 liderados grátis. R$ 49,90/liderado a partir do 4º.
+// Anual: R$ 39,90/liderado/mês (cobrado anualmente, 16% off).
 
-type BillingCycle = 'quarterly' | 'semiannual' | 'annual';
-
-const CYCLE_PRICING: Record<BillingCycle, { total: number; perMonth: number }> = {
-  quarterly: { total: 267, perMonth: 89 },
-  semiannual: { total: 504, perMonth: 84 },
-  annual: { total: 948, perMonth: 79 },
-};
+type SeatCycle = 'monthly' | 'annual';
 
 const PricingSection = ({
   t,
@@ -604,189 +599,112 @@ const PricingSection = ({
   lang: 'pt' | 'en';
   navigate: (to: string) => void;
 }) => {
-  const [cycle, setCycle] = useState<BillingCycle>('annual');
-  const pricing = CYCLE_PRICING[cycle];
-  const periodLabel =
-    cycle === 'quarterly'
-      ? t.perCyclePeriodQuarterly
-      : cycle === 'semiannual'
-      ? t.perCyclePeriodSemiannual
-      : t.perCyclePeriodAnnual;
+  const [cycle, setCycle] = useState<SeatCycle>('annual');
+
+  const headlinePrice = cycle === 'annual' ? 'R$ 39,90' : 'R$ 49,90';
+  const headlineSuffix = lang === 'pt' ? '/liderado / mês' : '/seat / month';
+  const headlineSub =
+    cycle === 'annual'
+      ? lang === 'pt'
+        ? 'Cobrado anualmente (R$ 478,80/liderado/ano). 16% off.'
+        : 'Billed annually (R$ 478.80/seat/year). 16% off.'
+      : lang === 'pt'
+      ? 'Cobrado mensalmente. Cancele quando quiser.'
+      : 'Billed monthly. Cancel anytime.';
+
+  const includedFeatures: string[] =
+    lang === 'pt'
+      ? [
+          'Líder + 3 liderados grátis para sempre',
+          'Recall.ai com 6h/mês de transcrição no plano gratuito',
+          'Recall.ai ilimitado a partir do 1º seat pago',
+          'Mentor AI ilimitado',
+          '1:1s, Pulse, PDI, Diário e Avaliações 360° completos',
+          'Slack bidirecional + DMs proativas da Rhy',
+          'Pre-meeting briefs com contexto histórico',
+          'Detecção de viés em tempo real',
+          'Network signals e leitura da rede do time',
+        ]
+      : [
+          'Leader + 3 direct reports free forever',
+          'Recall.ai with 6h/mo of transcription on free tier',
+          'Unlimited Recall.ai from the first paid seat',
+          'Unlimited Mentor AI',
+          'Full 1:1s, Pulse, IDP, Journal and 360° reviews',
+          'Bidirectional Slack + proactive Rhy DMs',
+          'Pre-meeting briefs with historical context',
+          'Real-time bias detection',
+          'Network signals and team graph readouts',
+        ];
 
   return (
     <section id="pricing" className="py-28 bg-background">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center space-y-3 mb-10">
           <p className="uppercase text-xs font-semibold tracking-widest text-primary">
-            {lang === 'pt' ? 'Planos' : 'Plans'}
+            {lang === 'pt' ? 'Plano' : 'Plan'}
           </p>
           <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
-            {t.pricingTitle}
+            {lang === 'pt'
+              ? 'Comece grátis. Pague só pelo time que cresce.'
+              : 'Start free. Pay only for the team you grow.'}
           </h2>
-          <p className="font-serif text-xl text-foreground/80 max-w-2xl mx-auto pt-1">
-            {t.pricingAnchor}
+          <p className="text-lg text-muted-foreground max-w-xl mx-auto">
+            {lang === 'pt'
+              ? 'Um plano só. Líder + 3 liderados grátis para sempre. A partir do 4º liderado, R$ 49,90/mês cada.'
+              : 'One plan. Leader + 3 reports free forever. From the 4th report on, R$ 49.90/mo each.'}
           </p>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            {t.pricingSubtitle}
-          </p>
-          <TooltipProvider delayDuration={150}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mt-1"
-                >
-                  <Info className="h-3.5 w-3.5" />
-                  {lang === 'pt' ? 'Por que sem plano mensal?' : 'Why no monthly plan?'}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-sm text-sm leading-relaxed">
-                {t.pricingTooltip}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
         </div>
 
         {/* Cycle selector */}
-        <div className="flex justify-center mb-6">
-          <Tabs value={cycle} onValueChange={(v) => setCycle(v as BillingCycle)}>
+        <div className="flex justify-center mb-8">
+          <Tabs value={cycle} onValueChange={(v) => setCycle(v as SeatCycle)}>
             <TabsList className="h-11 rounded-full p-1 bg-muted">
-              <TabsTrigger value="quarterly" className="rounded-full px-5 h-9 data-[state=active]:bg-background">
-                {t.cycleQuarterly}
-              </TabsTrigger>
-              <TabsTrigger value="semiannual" className="rounded-full px-5 h-9 data-[state=active]:bg-background">
-                {t.cycleSemiannual}
+              <TabsTrigger value="monthly" className="rounded-full px-5 h-9 data-[state=active]:bg-background">
+                {lang === 'pt' ? 'Mensal' : 'Monthly'}
               </TabsTrigger>
               <TabsTrigger value="annual" className="rounded-full px-5 h-9 data-[state=active]:bg-background gap-2">
-                {t.cycleAnnual}
+                {lang === 'pt' ? 'Anual' : 'Annual'}
                 <span className="bg-primary/15 text-primary text-[10px] font-semibold rounded-full px-2 py-0.5">
-                  {t.cycleAnnualBadge}
+                  −16%
                 </span>
               </TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
 
-        {/* Trust line */}
-        <p className="text-center text-xs text-muted-foreground mb-10 max-w-2xl mx-auto px-4">
-          {t.pricingTrustLine}
-        </p>
-
-        {/* Cards Grid — 3 plans */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* ── Pulse ── */}
-          <div className="bg-card rounded-2xl shadow-md p-8 border flex flex-col hover:shadow-lg transition-shadow duration-300">
-            <div className="min-h-[28px] mb-4" />
-            <div className="min-h-[72px] mb-4">
-              <h3 className="text-2xl font-bold tracking-tight text-foreground">Pulse</h3>
-              <p className="text-sm text-muted-foreground mt-2">{t.pulseSubtitle}</p>
-            </div>
-            <div className="min-h-[100px] mb-6">
-              <span className="text-4xl font-bold text-foreground">{t.pulseFree}</span>
-              <span className="text-sm text-muted-foreground ml-1">{t.pulseForever}</span>
-            </div>
-            <Button className="w-full min-h-[44px] mb-6" onClick={() => navigate('/auth/start')}>
-              {t.pulseCTA}
-            </Button>
-            <ul className="space-y-3 flex-1">
-              {t.pulseFeatures.map((f: string) => (
-                <li key={f} className="flex items-start gap-2 text-sm text-foreground">
-                  <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                  <span>{f}</span>
-                </li>
-              ))}
-            </ul>
+        {/* Single card */}
+        <div className="bg-card rounded-3xl shadow-[0_2px_30px_rgba(0,0,0,0.05)] p-8 md:p-10 border">
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <span className="text-5xl md:text-6xl font-bold tracking-tight text-foreground">{headlinePrice}</span>
+            <span className="text-base text-muted-foreground">{headlineSuffix}</span>
           </div>
+          <p className="text-sm text-muted-foreground mt-2">
+            {headlineSub}{' '}
+            <span className="font-medium text-foreground">
+              {lang === 'pt' ? 'A partir do 4º liderado.' : 'From the 4th report on.'}
+            </span>
+          </p>
 
-          {/* ── Pro (highlighted) ── */}
-          <div className="relative">
-            <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-              <span className="bg-primary text-primary-foreground text-xs font-semibold px-4 py-1 rounded-full">
-                {t.proBadge}
-              </span>
-            </div>
-            <div className="bg-card rounded-2xl shadow-lg p-8 border-2 border-primary flex flex-col h-full">
-              <div className="min-h-[28px] mb-4" />
-              <div className="min-h-[72px] mb-4">
-                <h3 className="text-2xl font-bold tracking-tight text-foreground">Pro</h3>
-                <p className="text-sm text-muted-foreground mt-2">{t.proSubtitle}</p>
-              </div>
-              <div className="min-h-[100px] mb-6">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold text-foreground">R$ {pricing.total}</span>
-                  <span className="text-sm text-muted-foreground">{periodLabel}</span>
-                </div>
-                <p className="text-sm font-medium text-muted-foreground mt-1.5">
-                  {t.equivPerMonthLabel} <span className="font-semibold text-foreground">R$ {pricing.perMonth}</span>{t.perMonthShort}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">{t.proNote}</p>
-              </div>
-              <Button
-                className="w-full min-h-[44px] mb-2"
-                onClick={() => navigate(`/auth?mode=signup&plan=pro&cycle=${cycle}`)}
-              >
-                {t.proCTA}
-              </Button>
-              <p className="text-xs text-muted-foreground text-center mb-6">
-                {t.proSocialProof}
-              </p>
-              <div className="flex-1">
-                {t.proFeatures.map((group: { groupLabel: string; items: { label: string; isNew?: boolean }[] }, groupIdx: number) => (
-                  <div
-                    key={group.groupLabel}
-                    className={groupIdx > 0 ? "border-t border-border/40 pt-4 mt-4" : ""}
-                  >
-                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-3">
-                      {group.groupLabel}
-                    </p>
-                    <ul className="space-y-3">
-                      {group.items.map((f) => (
-                        <li key={f.label} className="flex items-start gap-2 text-sm text-foreground">
-                          <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                          <span>
-                            {f.label}
-                            {f.isNew && (
-                              <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-primary/15 text-primary uppercase tracking-wide align-middle">
-                                {t.newBadge}
-                              </span>
-                            )}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          <Button
+            className="w-full min-h-[48px] mt-7 rounded-xl text-base"
+            onClick={() => navigate('/auth/start')}
+          >
+            {lang === 'pt' ? 'Começar grátis' : 'Start free'}
+          </Button>
+          <p className="text-xs text-muted-foreground text-center mt-3">
+            {lang === 'pt'
+              ? 'Sem cartão. Sem demo call. 5 min para o primeiro insight.'
+              : 'No card. No demo call. 5 min to first insight.'}
+          </p>
 
-          {/* ── Enterprise ── */}
-          <div className="bg-card rounded-2xl shadow-md p-8 border flex flex-col hover:shadow-lg transition-shadow duration-300">
-            <div className="min-h-[28px] mb-4">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                <Building className="h-3 w-3" />
-                Enterprise
-              </div>
-            </div>
-            <div className="min-h-[72px] mb-4">
-              <h3 className="text-2xl font-bold tracking-tight text-foreground">Enterprise</h3>
-              <p className="text-sm text-muted-foreground mt-2">{t.enterpriseSubtitle}</p>
-              <p className="text-sm italic text-muted-foreground mt-3">{t.enterpriseImpact}</p>
-            </div>
-            <div className="min-h-[100px] mb-6">
-              <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-bold text-foreground">{t.enterprisePrice}</span>
-                <span className="text-sm text-muted-foreground">{t.enterprisePer}</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1.5">{t.enterpriseNote}</p>
-              <p className="text-xs text-foreground/70 font-medium mt-1">{t.enterpriseFloor}</p>
-            </div>
-            <Button variant="outline" className="w-full min-h-[44px] mb-6" asChild>
-              <Link to="/enterprise">{t.enterpriseCTA}</Link>
-            </Button>
-            <ul className="space-y-3 flex-1">
-              {t.enterpriseFeatures.map((f: string) => (
+          <div className="border-t border-border/50 mt-8 pt-7">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-4">
+              {lang === 'pt' ? 'Tudo incluído' : 'Everything included'}
+            </p>
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+              {includedFeatures.map((f) => (
                 <li key={f} className="flex items-start gap-2 text-sm text-foreground">
                   <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                   <span>{f}</span>
@@ -796,6 +714,15 @@ const PricingSection = ({
           </div>
         </div>
 
+        {/* Enterprise rail */}
+        <div className="mt-8 text-center">
+          <p className="text-sm text-muted-foreground">
+            {lang === 'pt' ? 'Time grande ou requisitos de SSO/DPA?' : 'Big team or SSO/DPA requirements?'}{' '}
+            <Link to="/enterprise" className="text-primary font-medium hover:underline">
+              {lang === 'pt' ? 'Falar com vendas' : 'Talk to sales'}
+            </Link>
+          </p>
+        </div>
       </div>
     </section>
   );
