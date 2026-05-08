@@ -620,7 +620,7 @@ const PricingSection = ({
           { title: 'Transcrição de reunião ilimitada', desc: 'Bot entra nas reuniões, transcreve e vira evidência automaticamente.' },
           { title: 'Slack bidirecional', desc: 'Rhitmo puxa contexto e devolve briefs por DM, sem trocar de aba.' },
           { title: 'Detecção de viés em tempo real', desc: 'Avaliações 38× menos enviesadas, direto no editor.' },
-          { title: 'Network signals', desc: 'Leitura da rede do time para detectar risco antes da saída.' },
+          
         ]
       : [
           { title: 'Unlimited Mentor AI', desc: 'Your conversational Chief of Staff, 24/7, with team memory.' },
