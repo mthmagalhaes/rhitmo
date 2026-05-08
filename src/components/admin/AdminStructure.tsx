@@ -21,6 +21,7 @@ import {
   Crown, User, FileSpreadsheet, Mail, Send,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { syncStripeSeats } from '@/lib/syncStripeSeats';
 
 interface WorkspaceRow {
   id: string;
@@ -233,6 +234,7 @@ export const AdminStructure = () => {
           team_id: memberDialog.teamId!,
         });
         if (error) throw error;
+        syncStripeSeats(); // recontagem após adicionar membro
         toast({ title: 'Membro adicionado' });
       } else {
         const updates: any = {
@@ -265,6 +267,7 @@ export const AdminStructure = () => {
       const table = deleteDialog.type === 'workspace' ? 'workspaces' : deleteDialog.type === 'team' ? 'teams' : 'team_members';
       const { error } = await supabase.from(table).delete().eq('id', deleteDialog.id);
       if (error) throw error;
+      if (table === 'team_members') syncStripeSeats(); // recontagem após remover membro
       toast({ title: `${deleteDialog.type === 'workspace' ? 'Workspace' : deleteDialog.type === 'team' ? 'Time' : 'Membro'} excluído` });
       setDeleteDialog(null);
       invalidateAll();
