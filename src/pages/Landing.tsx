@@ -694,11 +694,10 @@ const PricingSection = ({
             </span>
             <span className="text-base text-muted-foreground">{headlineSuffix}</span>
           </div>
-          <p className="text-sm text-muted-foreground mt-4">
-            {headlineSub}{' '}
-            <span className="font-medium text-foreground">
-              {lang === 'pt' ? 'A partir do 4º liderado.' : 'Starting from the 4th report.'}
-            </span>
+          <p className="text-sm font-medium text-foreground mt-4">
+            {lang === 'pt'
+              ? 'Para cada usuário adicional após o 3º.'
+              : 'For each additional user after the 3rd.'}
           </p>
 
           <Button
