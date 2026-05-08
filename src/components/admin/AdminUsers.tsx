@@ -19,12 +19,13 @@ import {
 import {
   Users, Power, PowerOff, Trash2, Loader2, Eye, Search, Building, Shield,
   Crown, User, Settings, KeyRound, Edit, ArrowUpDown, ArrowUp, ArrowDown,
-  Copy, Download, Hash,
+  Copy, Download, Hash, UserPlus, Mail,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { CustomAvatar } from '@/components/avatar/CustomAvatar';
 import { AVATAR_VARIANTS } from '@/components/avatar/avatarData';
+import type { PlanTier } from '@/types/team';
 
 interface CapEntry { id?: string; name?: string; team_id?: string; team_name?: string; workspace_name?: string; workspace_id?: string; member_id?: string; member_name?: string; }
 
@@ -92,6 +93,39 @@ export const AdminUsers = () => {
     workspace_id: string | null; client_account: string; customer_segment: string;
   }>({ user_id: '', full_name: '', email: '', workspace_id: null, client_account: '', customer_segment: 'beta' });
   const [editLoading, setEditLoading] = useState(false);
+
+  // Invite leader dialog
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteForm, setInviteForm] = useState<{ name: string; email: string; plan: PlanTier }>({
+    name: '', email: '', plan: 'pulse',
+  });
+  const [inviteLoading, setInviteLoading] = useState(false);
+
+  const handleInviteLeader = async () => {
+    if (!inviteForm.email.trim() || !inviteForm.name.trim()) {
+      toast({ title: 'Preencha nome e email', variant: 'destructive' });
+      return;
+    }
+    setInviteLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-invite-user', {
+        body: { email: inviteForm.email.trim(), name: inviteForm.name.trim(), assigned_plan: inviteForm.plan },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const planNames: Record<PlanTier, string> = { pulse: 'Pulse', pro: 'Pro', business: 'Business' };
+      toast({ title: 'Convite enviado!', description: `${inviteForm.email} receberá o link com plano ${planNames[inviteForm.plan]}.` });
+      setInviteOpen(false);
+      setInviteForm({ name: '', email: '', plan: 'pulse' });
+      queryClient.invalidateQueries({ queryKey: ['admin-user-caps'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-waitlist-leads'] });
+    } catch (error: any) {
+      toast({ title: 'Erro ao convidar', description: error.message, variant: 'destructive' });
+    } finally {
+      setInviteLoading(false);
+    }
+  };
 
   const { data: userCaps, isLoading: capsLoading } = useQuery({
     queryKey: ['admin-user-caps'],
@@ -477,7 +511,10 @@ export const AdminUsers = () => {
             ))}
           </SelectContent>
         </Select>
-        <Button variant="outline" size="sm" onClick={exportCSV} className="gap-2 ml-auto">
+        <Button size="sm" onClick={() => setInviteOpen(true)} className="gap-2 ml-auto">
+          <UserPlus className="h-4 w-4" /> Convidar líder
+        </Button>
+        <Button variant="outline" size="sm" onClick={exportCSV} className="gap-2">
           <Download className="h-4 w-4" /> Exportar CSV
         </Button>
       </div>
@@ -696,6 +733,66 @@ export const AdminUsers = () => {
             <Button variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
             <Button onClick={handleSaveEdit} disabled={editLoading}>
               {editLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5" /> Convidar líder
+            </DialogTitle>
+            <DialogDescription>
+              Cria a conta, envia magic link por email e configura um workspace novo no nome do líder.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="invite-name">Nome completo</Label>
+              <Input
+                id="invite-name"
+                placeholder="Ex: Ana Campos"
+                value={inviteForm.name}
+                onChange={e => setInviteForm(p => ({ ...p, name: e.target.value }))}
+                disabled={inviteLoading}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="invite-email">Email</Label>
+              <Input
+                id="invite-email"
+                type="email"
+                placeholder="ana@empresa.com.br"
+                value={inviteForm.email}
+                onChange={e => setInviteForm(p => ({ ...p, email: e.target.value }))}
+                disabled={inviteLoading}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Plano inicial</Label>
+              <Select
+                value={inviteForm.plan}
+                onValueChange={v => setInviteForm(p => ({ ...p, plan: v as PlanTier }))}
+                disabled={inviteLoading}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pulse">🎵 Pulse (Gratuito)</SelectItem>
+                  <SelectItem value="pro">💼 Pro</SelectItem>
+                  <SelectItem value="business">🏢 Business</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInviteOpen(false)} disabled={inviteLoading}>
+              Cancelar
+            </Button>
+            <Button onClick={handleInviteLeader} disabled={inviteLoading}>
+              {inviteLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Mail className="h-4 w-4 mr-2" />}
+              Enviar convite
             </Button>
           </DialogFooter>
         </DialogContent>
