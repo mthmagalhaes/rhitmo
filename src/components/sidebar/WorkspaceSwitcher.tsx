@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ChevronsUpDown, Building2, Check, Settings, LifeBuoy, UserPlus, Sparkles } from 'lucide-react';
 import { useOnboardingTour } from '@/hooks/useOnboardingTour';
-import { useNavigate as _unused } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { useAccount } from '@/contexts/AccountContext';
