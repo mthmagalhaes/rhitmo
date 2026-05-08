@@ -74,7 +74,16 @@ export function LeaderTour({ autoStart = true, onClose }: LeaderTourProps) {
       navigate(path);
       // Give react-router + lazy chunks a tick before we start polling
       await new Promise((r) => window.setTimeout(r, 60));
-      await waitForSelector(anchor);
+      const found = await waitForSelector(anchor);
+      if (!found) {
+        toast({
+          title: 'Não consegui abrir este passo',
+          description: 'Encerrei o tour. Você pode refazê-lo pelo menu da workspace.',
+        });
+        userClosedRef.current = true;
+        driverRef.current?.destroy();
+        return;
+      }
       // Small settle delay so layout is stable when driver re-positions
       await new Promise((r) => window.setTimeout(r, 120));
       driverRef.current?.moveNext();
