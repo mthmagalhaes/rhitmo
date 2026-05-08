@@ -1,91 +1,68 @@
-# Onboarding Rhitmo — Diagnóstico + Proposta de Fluxo
+## Tour de Boas-vindas — Líder (60s)
 
-## Objetivo
+Tour contextual minimalista usando **Driver.js**, sem poluir o app. Único ponto de entrada na Home, dispensável, refazível pelo avatar.
 
-Gerar um **documento (.docx)  e  apresentação de onboardin (.pptx) entregável em** `/mnt/documents/` com:
+### O que será construído
 
-1. Diagnóstico da experiência atual do líder novo (rotas exploradas no preview).
-2. Oportunidades e dores mapeadas, por tela.
-3. Proposta de fluxo de onboarding (ativação dia-1 → semana-1 → semana-2).
-4. Wireframes em ASCII + recomendações de copy/CTA (estilo "Service-as-Software" + Bento Creme).  
+**1. Migração de banco**
+- Adicionar coluna `onboarding_tour_completed_at timestamptz` em `profiles` (nullable).
+- Sem RLS nova (já coberta pelas policies existentes da tabela).
 
+**2. Dependência**
+- `bun add driver.js` (5kb, zero deps).
 
-Sem mudanças de código nesta etapa — é um **artifact estratégico** para servir de base ao próximo sprint de Activation/Onboarding.
+**3. Componentes novos**
+- `src/components/onboarding/LeaderTour.tsx` — orquestra o tour, marca conclusão no perfil, navega entre rotas quando o passo exige.
+- `src/hooks/useOnboardingTour.ts` — lê `profile.onboarding_tour_completed_at`, expõe `shouldShowTour`, `startTour()`, `markComplete()`.
+- `src/styles/driver-theme.css` — overrides Creme/Bento (Lora nos títulos do popover, Inter no corpo, accent Rhitmo purple, `rounded-2xl`, shadow soft, sem neon).
 
-## O que foi observado na navegação (líder Matheus, workspace Faster Ops)
+**4. Pontos de integração**
+- `src/pages/lider/Inicio.tsx` (via `Index.tsx` ou direto): botão sutil "✨ Tour de 60s" no canto superior direito da Home — só renderiza se `shouldShowTour === true`. Não é modal, não é banner.
+- `src/components/AppSidebar.tsx` (dropdown do avatar / workspace switcher): item "Refazer tour de boas-vindas" sempre disponível.
 
-
-| Tela                                        | Estado atual                                                                                             | Dor / oportunidade                                                                                                                                               |
-| ------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/lider/inicio`                             | Bento com `AccountSetup` (Slack, Liderados, Canais Slack, Calendar) + Próximas 1:1s + Mentor + TeamPulse | Setup já está tudo "Conectado" para esta conta — **não há tour para quem chega zero**. Sem checklist de "primeira nota / primeiro brief / primeira pauta".       |
-| `/lider/1on1s`                              | Master-detail vazio, exige selecionar liderado para ver Sugestões da Rhitmo                              | Empty state genérico ("Selecione um liderado"). Não explica o que vai aparecer, nem porquê o mentor depende de evidências.                                       |
-| `/lider/diario`                             | Master-detail vazio com cadeado                                                                          | Mensagem boa ("Notas privadas"), mas sem CTA para criar a primeira nota nem exemplo de uso (Magic Paste).                                                        |
-| `/lider/objetivos`                          | Master-detail vazio                                                                                      | Sem template de objetivo, sem onboarding sobre o modelo (meta + indicador + data).                                                                               |
-| `/lider/avaliacoes` (item "Rhitmo" no menu) | Master-detail vazio explicando Mensal/Trimestral/Formal                                                  | **Naming conflict**: item do menu é "Rhitmo" mas a página fala "Avaliações". `/lider/rhitmo` retorna 404. Confusão imediata.                                     |
-| `/lider/pulse`                              | Empty state com CTA "Criar primeiro Pulse"                                                               | Bom CTA. Falta exemplo / template inicial visível antes do clique.                                                                                               |
-| `Ask the Mentor`                            | Página rica (Coaching pessoal + atalhos + sugestões + recentes)                                          | Excelente — mas o líder novo cai aqui sem evidências; sugestões como "Quem está em risco esta semana?" vão dar respostas pobres.                                 |
-| Workspace switcher → Settings → Integrações | Slack + Calendar com badge "Conectado"                                                                   | Nenhum onboarding inline para conectar pela primeira vez (já estavam conectados). Falta CTA contextual no Bento de Home explicando o que destrava cada conector. |
-| Convite de liderados                        | Pelo dropdown da org (NewMemberDialog individual) e em /lider/pessoas (BulkOnboardDialog)                | Está "escondido" dentro do dropdown do workspace para o caminho 1-a-1. Líder novo não descobre.                                                                  |
-
-
-## Dores transversais
-
-1. **Sem "primeiro uso" guiado** — o `AccountSetupBento` só vira checklist depois que algo está pendente; não há narrativa de jornada (Conectar Calendar → Importar 1ª 1:1 → Receber 1º Brief).
-2. **Empty states inconsistentes** — três das cinco telas internas mostram só "Selecione um liderado". Cliente novo não entende o valor antes de gerar dados.
-3. **Naming "Rhitmo" vs "Avaliações"** — quebra a régua ("Rhitmo" no menu, "Rhitmo" no header da página, mas é o módulo de Avaliações). E `/lider/rhitmo` 404.
-4. **Conectores fora de contexto** — Slack/Calendar moram em Settings. Falta explicar **o que** muda quando conecta (brief automático, captura por DM, transcrição Recall).
-5. **Mentor sem evidências** — chat é o WOW, mas funciona mal sem dados; precisa de um "modo demo" ou de redirect para ações que geram contexto.
-6. **Convite de liderados pouco visível** — primeiro CTA do líder novo deveria ser convidar/mapear o time, hoje está num dropdown.
-
-## Estrutura proposta do documento (.docx)
-
-Capa + 6 seções, formato editorial, fonte Lora (títulos) / Inter (corpo) — alinhado ao Design System V2.
-
+**5. Fluxo do tour (5 passos)**
+```text
+1. Sidebar (data-tour="sidebar")
+   "Aqui estão suas áreas: 1:1s, Diário, Pessoas, Avaliações."
+2. Magic Paste em /lider/diario (data-tour="magic-paste")
+   "Cole transcrições do Meet/Tactiq aqui — a Rhitmo extrai feedback, ações e padrões."
+3. /lider/contexto (data-tour="contexto-feed")
+   "Linha do tempo unificada de tudo que acontece com seu time."
+4. /lider/avaliacoes (data-tour="avaliacoes")
+   "Performance Reviews montadas automaticamente a partir das evidências."
+5. /lider/configuracoes?tab=integracoes (data-tour="integracoes")
+   "Conecte Slack e Google Calendar para a Rhitmo trabalhar em background."
 ```
-1. Capa — "Onboarding Rhitmo: do convite ao primeiro Brief"
-2. Sumário executivo (1 página)
-   - Métricas-alvo: TTV (time-to-first-brief) ≤ 7 dias; D7 retention; setup completion ≥ 80%
-3. Mapa do estado atual
-   - Tabela tela × dor × oportunidade (a de cima)
-   - Screenshot ASCII do AccountSetupBento atual
-4. Princípios do novo onboarding
-   - "Conectar antes de cadastrar"
-   - "Mostrar valor antes de pedir trabalho" (Magic Paste demo)
-   - "1 ação por dia nos primeiros 7 dias"
-5. Fluxo proposto (jornada Dia 0 → Dia 14)
-   Dia 0 (signup) → Wizard 3 passos:
-     a. Quem é você (cargo, tamanho do time)
-     b. Conectar Calendar (obrigatório) + Slack (recomendado)
-     c. Importar/cadastrar 3 primeiros liderados
-   Dia 1 → DM Slack da Rhy: "Importe sua primeira 1:1 com Magic Paste"
-   Dia 2 → Primeira nota no Diário (template guiado)
-   Dia 3 → Primeiro Pulse (template Energia/Clareza)
-   Dia 7 → Primeiro Brief automático antes da 1:1
-   Dia 14 → Primeiro Rhitmo Mensal sugerido
-6. Recomendações por tela (com mocks ASCII)
-   - Home: trocar AccountSetup por "Onboarding Tracker" com 5 milestones
-   - 1:1s/Diário/Objetivos: empty states com Magic Paste + exemplo real
-   - Avaliações: renomear menu para "Rhitmo (Avaliações)" e redirect 404
-   - Mentor: gating + sugestões adaptativas ao volume de evidência
-   - Convite de liderados: CTA fixo no AccountSetup + atalho global ⌘K
-7. Anexo: copy do wizard + DMs Slack (PT-BR Early Adopter)
-```
+Ao final: `markComplete()` grava timestamp e mostra um toast discreto "Tudo pronto. Bom rhitmo. 🌀".
 
-## Como vou produzir
+**6. Atributos `data-tour`**
+Adicionar atributos data nos elementos-âncora existentes (sidebar, botão Magic Paste, header de cada página). Zero impacto visual.
 
-1. Usar a **skill DOCX** (`docx-js`):
-  - Página A4, fonte Lora 14pt títulos, Inter 11pt corpo, paleta crème (`#F5F3EE` fundo, `#0d0d0d` texto, accent roxo Rhitmo).
-  - Tabelas com `WidthType.DXA`, dual width.
-  - Wireframes ASCII em blocos `Consolas` 9pt dentro de parágrafos com shading `#F0EBE3`.
-2. Validar com `validate_document.py`.
-3. Converter para PDF com LibreOffice + `pdftoppm` para QA visual de cada página.
-4. Salvar em `/mnt/documents/onboarding-rhitmo-diagnostico-v1.docx`.
-5. Emitir `<lov-artifact>` para download.
+### Princípios de design
 
-## Fora do escopo (próximo passo, não agora)
+- **Um único ponto de entrada visual** (botão sutil na Home), nada de badges/confete/checklist permanente.
+- **Dispensável**: clicar fora ou ESC fecha e marca como completo.
+- **Refazível**: opção no dropdown do avatar resolve "esqueci como funciona" sem help center.
+- **Não bloqueia o app**: spotlight + popover, usuário pode interagir normalmente após fechar.
+- **Tema Creme/Bento**: popover `rounded-2xl`, sombra `0_2px_20px_rgba(0,0,0,0.04)`, accent Rhitmo purple, Lora no título, Inter no corpo.
 
-- Implementar o wizard, refatorar empty states ou renomear o menu.
-- Mexer em edge functions / DMs de onboarding via Slack.
-- Editar memórias.
+### Detalhes técnicos
 
-Aprove para eu sair do plan mode e gerar o documento.
+- Driver.js navega entre rotas via callback `onNextClick` chamando `navigate()` do react-router antes do próximo step.
+- `shouldShowTour` = `profile.onboarding_tour_completed_at IS NULL && isLeader`. Liderados não veem.
+- `markComplete()` faz `UPDATE profiles SET onboarding_tour_completed_at = now() WHERE id = auth.uid()`.
+- Tour não dispara automaticamente — sempre clique no botão. Evita susto no primeiro login enquanto o WorkspaceOnboarding ainda está rodando.
+- CSS scopeado com prefixo `.driver-popover.rhitmo-theme` para não vazar.
+
+### Arquivos tocados
+
+- `supabase/migrations/<novo>.sql` (add coluna)
+- `package.json` (driver.js)
+- `src/components/onboarding/LeaderTour.tsx` (novo)
+- `src/hooks/useOnboardingTour.ts` (novo)
+- `src/styles/driver-theme.css` (novo)
+- `src/pages/Index.tsx` ou `src/pages/lider/Inicio.tsx` (botão de entrada)
+- `src/components/AppSidebar.tsx` (item "Refazer tour")
+- ~5 arquivos existentes recebem `data-tour="..."` nos elementos-âncora
+
+Sem novas rotas, sem novos providers globais, sem mudanças de layout.
