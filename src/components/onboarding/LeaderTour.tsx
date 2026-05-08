@@ -103,7 +103,7 @@ export function LeaderTour({ autoStart = true, onClose }: LeaderTourProps) {
       steps: [
         // 1 — Sidebar (no route change)
         {
-          element: '[data-sidebar="sidebar"]',
+          element: '[data-tour="sidebar"]',
           popover: {
             title: 'Bem-vindo ao Rhitmo',
             description:
