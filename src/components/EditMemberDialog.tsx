@@ -20,6 +20,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Settings, Trash2 } from 'lucide-react';
 import { Team } from '@/types/team';
 import { useQueryClient } from '@tanstack/react-query';
+import { syncStripeSeats } from '@/lib/syncStripeSeats';
 
 interface EditMemberDialogProps {
   open: boolean;
