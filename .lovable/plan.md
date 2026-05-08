@@ -1,67 +1,57 @@
-# Fix: Tour de 60s quebra a partir do passo 2
+## Diagnóstico
 
-## Causa raiz
-O `LeaderTour.tsx` usa `onHighlightStarted: async () => { navigate(...) }` para mudar de rota entre passos. **Driver.js não espera (`await`) callbacks `onHighlightStarted`**: o popover é posicionado no elemento alvo do passo atual *antes* de a navegação acontecer.
+A área `/admin` foi crescendo em camadas e hoje tem três problemas claros:
 
-Sequência do bug no passo 2 (clica "Próximo"):
-1. Driver imediatamente tenta destacar `main` da página `/lider/inicio` (que ainda está montada).
-2. `navigate('/lider/diario')` dispara em paralelo.
-3. O `<main>` da Index desmonta, lazy-load do Diário entra, novo `<main>` é outro elemento.
-4. Driver fica com referência órfã → overlay/popover desaparecem ou ficam fora de tela. É exatamente o que o screenshot mostra: rota mudou, mas o tour sumiu.
+1. **Sidebar quebrada** — em `AdminLayout.tsx`, o `<nav>` usa `flex-1`, então o botão "Sair" é jogado para o rodapé do viewport, longe dos itens de navegação. Em telas grandes fica a "quilômetros" do último item.
+2. **Excesso de abas com sobreposição funcional**:
+   - **Command Center** (Overview): empilha 6 cards verticais (Funnel, Cohorts, StatsGrid, InactiveWorkspaces, RecentActivity, Waitlist). É um "wall of cards" sem hierarquia.
+   - **Usuários**: gestão completa de pessoas + filtros + export CSV.
+   - **Estrutura** (883 linhas): CRUD de workspaces / times / membros com dispatch de convites — duplica metade do que "Usuários" já faz.
+   - **Acessos & Export**: convidar HR Admin + listar HR Admins + Data Export (5 botões CSV). Tudo isso já cabe em "Usuários" / "Estrutura".
+   - **Inteligência**: health score por workspace + Revenue. Só 2 blocos.
+   - **Observabilidade**: logs de Edge Functions (mantém, é único).
+3. **UX de detalhe**: header "Rhitmo + ADMIN" ocupa muito espaço; tabs custom com event bus (`window.dispatchEvent('admin-tab-change')`) é desnecessariamente complexo; `Sair` separado dos demais itens; sem indicador de qual usuário está logado.
 
-Bônus: usar `'main'` como seletor é frágil. Em `/lider/diario`, `<main>` é a área scrollável inteira (`flex-1 overflow-y-auto`) — destacar isso é genérico e não educa nada.
+## O que fazer
 
-## Solução
-Trocar o paradigma para `onNextClick` (controle manual) + adicionar âncoras `data-tour` reais nos elementos certos.
+### 1. `AdminLayout.tsx` — sidebar enxuta e coesa
+- **Colar `Sair` ao final dos itens de nav** (não pinned no rodapé do viewport). Trocar `flex-1` no `<nav>` por altura natural; mover o `Sair` para dentro do mesmo `TabsList` visual (como item separado por uma linha sutil), eliminando o bloco `border-t` solto.
+- **Reduzir o header** do logo: remover o `Badge ADMIN` redondo grande; manter `RhitmoLogo size="sm"` + texto fino "Admin" abaixo. Padding `p-4` em vez de `p-6`.
+- **Adicionar mini-bloco do usuário logado** no rodapé (avatar + email + "Sair" inline), padrão da sidebar principal do produto. Resolve o "Sair a quilômetros".
+- **Trocar event bus por contexto/prop** — Hoje `Admin.tsx` escuta `admin-tab-change` via `MutationObserver` + `CustomEvent`. Substituir por um `useState` simples no `Admin.tsx` passado por prop, ou um pequeno `AdminTabsContext`. Remove ~30 linhas de gambiarra.
 
-### 1. `src/components/onboarding/LeaderTour.tsx` — refatorar
-- Substituir `onHighlightStarted` por `onNextClick` em cada passo que troca rota. Quando `onNextClick` está definido, driver.js **pausa** até chamarmos `d.moveNext()` manualmente.
-- Helper `waitForSelector(selector, timeout=2500)`: faz polling a cada 80ms; quando o elemento aparece (ou timeout), chama `d.moveNext()`.
-- Padrão por passo:
-  ```ts
-  onNextClick: async () => {
-    navigate('/lider/diario');
-    await waitForSelector('[data-tour="member-list"]');
-    d.moveNext();
-  }
-  ```
-- Adicionar `disableActiveInteraction: true` pra não permitir clicks acidentais durante o tour.
-- `allowKeyboardControl: true` (ESC fecha, setas navegam).
-- Trocar todos os seletores `'main'` por âncoras específicas (abaixo).
+### 2. Consolidar abas (de 6 → 4)
 
-### 2. Adicionar âncoras `data-tour` nos elementos certos
+```text
+Antes:  Command Center | Usuários | Estrutura | Acessos & Export | Inteligência | Observabilidade
+Depois: Visão Geral    | Pessoas  | Workspaces                   | Sistema
+```
 
-| Passo | Página | Âncora | Onde adicionar |
-|---|---|---|---|
-| 1 | qualquer | `[data-tour="sidebar-nav"]` | `src/components/sidebar/AppSidebar.tsx` (ou root da sidebar do líder) |
-| 2 | /lider/diario | `[data-tour="member-list"]` | `src/components/leader/MemberMasterList.tsx` (root) |
-| 3 | /lider/contexto | `[data-tour="context-feed"]` | `src/pages/lider/Contexto.tsx` (container da timeline) |
-| 4 | /lider/avaliacoes | `[data-tour="reviews-list"]` | `src/pages/lider/Avaliacoes.tsx` (lista/tabela principal) |
-| 5 | /lider/configuracoes?tab=integracoes | `[data-tour="integrations"]` | `src/pages/lider/Configuracoes.tsx` (card Slack/Calendar) |
+- **Visão Geral** (era Command Center): reorganizar em layout 2-col bento — KPIs no topo (StatsGrid compacto), depois Funnel + Cohorts lado a lado, e na base "Atenção" (InactiveWorkspaces + Waitlist colapsados/compactos). Remover `RecentActivityCard` da overview (vai para "Sistema" como log secundário, ou some — é redundante com Observabilidade).
+- **Pessoas** (era Usuários): mantém intacto. Absorve "Convidar HR Admin" da aba Acessos como ação dentro do dialog de edição de usuário (já existe edição via `admin-update-user`).
+- **Workspaces** (era Estrutura + parte de Acessos): mantém o CRUD de workspaces/times/membros + lista de "HR Admins ativos" como sub-tab/coluna. Mantém o Bulk Dispatch de convites.
+- **Sistema** (era Inteligência + Observabilidade + Data Export): combina health-score por workspace, RevenueOverview, logs de Edge Functions e os 5 botões de CSV export como bloco final "Exportar dados". Tudo que é "operação interna" mora aqui.
 
-Cada âncora vai num **container significativo e visível** — não no `<main>` inteiro. Isso transforma o tour em algo educativo (destaca *a coisa certa*) e elimina o problema de elementos genéricos.
+### 3. Penduricalhos a remover
 
-### 3. Copy revisado pra cada passo (mais útil)
+- `AdminSupport.tsx` (541 linhas) — não está rota nem importado em `Admin.tsx`. **Deletar arquivo**.
+- `AdminExport.tsx` (244 linhas) — também órfão (Export vive dentro de `AdminAccess`). **Deletar**.
+- `ImpersonationBanner.tsx` vs `ImpersonationIndicator.tsx` — verificar duplicidade; manter apenas um.
+- `RecentActivityCard` na Overview — redundante com Observabilidade. Remover do Overview.
 
-1. **Sidebar** — "Aqui ficam suas áreas: 1:1s, Diário, Pessoas e Avaliações. Tudo organizado em volta dos seus liderados." (mantém)
-2. **Diário** — "Cada liderado tem um diário privado seu. Cole transcrições do Meet/Tactiq/Fireflies e a Rhitmo extrai feedback e ações automaticamente."
-3. **Contexto** — "Linha do tempo unificada do time: notas, 1:1s, pulses, sinais do Slack. Sua memória organizacional viva."
-4. **Avaliações** — "Performance reviews montadas a partir das evidências reais que você capturou ao longo do trimestre. Sem começar do zero."
-5. **Integrações** — "Conecte Slack e Google Calendar pra Rhitmo trabalhar em background: briefs antes das 1:1s, sinais ambientes, lembretes nos canais certos."
+### 4. Detalhes de UX
+- Trocar `bg-slate-900` da sidebar pelo token `bg-sidebar` do design system (consistência com sidebar do produto). Hoje quebra o tema escuro/claro.
+- Headers de página com tipografia Lora (igual ao resto do produto), não `font-bold` genérico.
+- Densidade: padding `p-6` (era `p-8`) e `space-y-6` no container das abas — caber mais conteúdo sem scroll.
 
-### 4. Resiliência
-- `waitForSelector` faz fallback gracioso: se 2.5s passarem sem o elemento, `moveNext()` mesmo assim. Driver.js renderiza popover centralizado quando o seletor falha — UX degradada mas não quebra.
-- Cleanup em `useEffect` continua chamando `destroy()`.
+## Fora de escopo
 
-## Out of scope
-- Não refazer o design do popover (já está OK no Creme/Bento via `driver-theme.css`).
-- Não tocar no `useOnboardingTour` nem na migration — funcionam.
-- Não adicionar tour pro liderado (memory `onboarding-demo-visibility` indica tour é só pro líder).
+- Mexer em lógica de RPC, RLS ou edge functions.
+- Refatorar internamente `AdminUsers` ou `AdminStructure` (apenas movimentação e remoção de blocos).
+- Tocar na rota `/admin` ou no `AdminGuard`.
 
-## Validação após implementar
-- Iniciar tour pelo botão "✨ Tour de 60s" no `/lider/inicio`.
-- Clicar "Próximo" 4x e verificar:
-  - Rota muda em cada passo
-  - Popover aparece destacando o **elemento certo** (não a página inteira)
-  - ESC e X fecham e marcam complete
-  - Refazer pelo dropdown da workspace funciona
+## Resultado esperado
+
+- Sidebar com 4 itens + bloco do usuário/Sair ao pé → "Sair" a 1 clique de qualquer item.
+- 4 abas com responsabilidades claras, sem features órfãs.
+- ~785 linhas removidas (AdminSupport + AdminExport + event bus).
