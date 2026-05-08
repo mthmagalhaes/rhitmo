@@ -819,6 +819,37 @@ export const AdminUsers = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete confirmation (controlled, triggered from row dropdown) */}
+      <AlertDialog
+        open={!!pendingDeleteId}
+        onOpenChange={(open) => {
+          if (!open) { setPendingDeleteId(null); setPendingDeleteUser(null); }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir usuário permanentemente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação remove a conta, workspaces, times, feedbacks e avaliações de{' '}
+              <strong>{pendingDeleteUser?.full_name || pendingDeleteUser?.email}</strong>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingDeleteId) handleDeleteUser(pendingDeleteId);
+                setPendingDeleteId(null);
+                setPendingDeleteUser(null);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
