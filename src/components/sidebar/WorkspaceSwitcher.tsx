@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ChevronsUpDown, Building2, Check, Settings, LifeBuoy, UserPlus } from 'lucide-react';
+import { ChevronsUpDown, Building2, Check, Settings, LifeBuoy, UserPlus, Sparkles } from 'lucide-react';
+import { useOnboardingTour } from '@/hooks/useOnboardingTour';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { useAccount } from '@/contexts/AccountContext';
@@ -31,11 +32,21 @@ export function WorkspaceSwitcher({ onOpenInvite }: WorkspaceSwitcherProps) {
   const navigate = useNavigate();
   const { id: userId } = useEffectiveUser();
   const { workspaceId, isHRAdmin, isLeader, isLinkedMember } = useAccount();
+  const { reset: resetTour, isLeader: tourCanRun } = useOnboardingTour();
 
   const persona = resolvePersona({ isLinkedMember, isLeader, isHRAdmin });
   const settingsRoute = persona === 'leader' ? '/lider/configuracoes' : '/liderado/configuracoes';
   const helpRoute = `${settingsRoute}?tab=ajuda`;
   const canInvite = persona === 'leader' && !!onOpenInvite;
+
+  const handleReplayTour = async () => {
+    await resetTour();
+    if (window.location.pathname !== '/lider/inicio') {
+      navigate('/lider/inicio?startTour=1');
+    } else {
+      window.dispatchEvent(new CustomEvent('rhitmo:start-tour'));
+    }
+  };
 
   const { data: workspaces = [] } = useQuery({
     queryKey: ['sidebar-workspaces', userId],
@@ -124,6 +135,16 @@ export function WorkspaceSwitcher({ onOpenInvite }: WorkspaceSwitcherProps) {
           <LifeBuoy className="h-3.5 w-3.5 text-muted-foreground" />
           <span>{t('sidebar.workspace.helpCenter', 'Central de Ajuda')}</span>
         </DropdownMenuItem>
+
+        {tourCanRun && (
+          <DropdownMenuItem
+            onSelect={handleReplayTour}
+            className="flex items-center gap-2"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
+            <span>Refazer tour de boas-vindas</span>
+          </DropdownMenuItem>
+        )}
 
         {canInvite && (
           <>

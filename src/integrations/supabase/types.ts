@@ -2735,6 +2735,7 @@ export type Database = {
           created_at: string | null
           hide_slack_privacy_tips: boolean | null
           id: string
+          onboarding_tour_completed_at: string | null
           theme_preference: string
           updated_at: string | null
           user_id: string
@@ -2743,6 +2744,7 @@ export type Database = {
           created_at?: string | null
           hide_slack_privacy_tips?: boolean | null
           id?: string
+          onboarding_tour_completed_at?: string | null
           theme_preference?: string
           updated_at?: string | null
           user_id: string
@@ -2751,6 +2753,7 @@ export type Database = {
           created_at?: string | null
           hide_slack_privacy_tips?: boolean | null
           id?: string
+          onboarding_tour_completed_at?: string | null
           theme_preference?: string
           updated_at?: string | null
           user_id?: string
