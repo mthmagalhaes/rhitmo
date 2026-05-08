@@ -702,7 +702,7 @@ const PricingSection = ({
           </p>
 
           <Button
-            className="w-full min-h-[52px] mt-8 rounded-full text-base bg-foreground text-background hover:bg-foreground/90"
+            className="w-full min-h-[52px] mt-8 rounded-full text-base bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => navigate('/auth/start')}
           >
             {lang === 'pt' ? 'Começar grátis' : 'Start free'}
