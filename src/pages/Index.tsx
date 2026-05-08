@@ -23,8 +23,6 @@ import { TeamPulseBento } from '@/components/dashboard/TeamPulseBento';
 import { ActivitySheet } from '@/components/ActivitySheet';
 import { LeaderTour } from '@/components/onboarding/LeaderTour';
 import { useOnboardingTour } from '@/hooks/useOnboardingTour';
-import { LeaderTour } from '@/components/onboarding/LeaderTour';
-import { useOnboardingTour } from '@/hooks/useOnboardingTour';
 import { useAuth } from '@/hooks/useAuth';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
