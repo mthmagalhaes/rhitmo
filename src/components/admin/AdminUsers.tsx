@@ -511,7 +511,10 @@ export const AdminUsers = () => {
             ))}
           </SelectContent>
         </Select>
-        <Button variant="outline" size="sm" onClick={exportCSV} className="gap-2 ml-auto">
+        <Button size="sm" onClick={() => setInviteOpen(true)} className="gap-2 ml-auto">
+          <UserPlus className="h-4 w-4" /> Convidar líder
+        </Button>
+        <Button variant="outline" size="sm" onClick={exportCSV} className="gap-2">
           <Download className="h-4 w-4" /> Exportar CSV
         </Button>
       </div>
