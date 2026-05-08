@@ -589,6 +589,14 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
               </div>
             </div>
             <div className="flex gap-3">
+              <Button
+                onClick={() => window.dispatchEvent(new CustomEvent('rhitmo:start-tour'))}
+                variant="ghost"
+                className="rounded-full h-11 px-4 gap-2 text-muted-foreground hover:text-foreground"
+              >
+                <Sparkles className="h-4 w-4" />
+                <span className="hidden sm:inline">Tour 60s</span>
+              </Button>
               {teamMembers.length > 0 && (
                 <TooltipProvider>
                   <Tooltip>
