@@ -695,6 +695,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
         />
       )}
       <ActivitySheet open={activitySheetOpen} onOpenChange={setActivitySheetOpen} />
+      {tourRunning && <LeaderTour autoStart onClose={() => setTourRunning(false)} />}
     </div>
   );
 };
