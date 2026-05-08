@@ -21,8 +21,6 @@ import { AccountSetupBento } from '@/components/dashboard/AccountSetupBento';
 import { MentorHistoryCard } from '@/components/dashboard/MentorHistoryCard';
 import { TeamPulseBento } from '@/components/dashboard/TeamPulseBento';
 import { ActivitySheet } from '@/components/ActivitySheet';
-import { LeaderTour } from '@/components/onboarding/LeaderTour';
-import { useOnboardingTour } from '@/hooks/useOnboardingTour';
 import { useAuth } from '@/hooks/useAuth';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
@@ -198,8 +196,6 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [inviteMember, setInviteMember] = useState<Pick<TeamMember, 'id' | 'name' | 'invite_status' | 'invite_token'> & { email?: string | null } | null>(null);
   const { toast } = useToast();
-  const { shouldShowTour } = useOnboardingTour();
-  const [tourRunning, setTourRunning] = useState(false);
 
   const getGreeting = () => {
     const h = new Date().getHours();
@@ -223,16 +219,6 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
       queryClient.invalidateQueries({ queryKey: ['calendar-connected'] });
       queryClient.invalidateQueries({ queryKey: ['calendar-upcoming-meetings'] });
     }
-    if (params.get('startTour') === '1') {
-      window.history.replaceState({}, '', window.location.pathname);
-      setTourRunning(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    const handler = () => setTourRunning(true);
-    window.addEventListener('rhitmo:start-tour', handler);
-    return () => window.removeEventListener('rhitmo:start-tour', handler);
   }, []);
 
   const { data: workspace } = useQuery({
@@ -623,16 +609,6 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
                   </Tooltip>
                 </TooltipProvider>
               )}
-              {shouldShowTour && !tourRunning && (
-                <Button
-                  onClick={() => setTourRunning(true)}
-                  variant="ghost"
-                  className="rounded-full h-11 px-5 gap-2 text-primary hover:bg-primary/5"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  <span className="hidden sm:inline">Tour de 60s</span>
-                </Button>
-              )}
               <Button onClick={() => setDialogOpen(true)} className="rounded-full h-11 px-6 gap-2 shadow-md">
                 <PenSquare className="h-4 w-4" />
                 <span className="hidden sm:inline">{t('dashboard.newNote')}</span>
@@ -705,7 +681,6 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
         />
       )}
       <ActivitySheet open={activitySheetOpen} onOpenChange={setActivitySheetOpen} />
-      {tourRunning && <LeaderTour autoStart onClose={() => setTourRunning(false)} />}
     </div>
   );
 };

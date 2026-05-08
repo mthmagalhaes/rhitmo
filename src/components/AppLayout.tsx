@@ -5,6 +5,7 @@ import { WorkspaceOnboarding } from '@/components/WorkspaceOnboarding';
 import { HRAdminWorkspaceOnboarding } from '@/components/HRAdminWorkspaceOnboarding';
 import { ActivityBadge } from '@/components/ActivityBadge';
 import { ActivitySheet } from '@/components/ActivitySheet';
+import { LeaderTour } from '@/components/onboarding/LeaderTour';
 import { useAuth } from '@/hooks/useAuth';
 import { useAccount } from '@/contexts/AccountContext';
 
@@ -24,6 +25,21 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   } = useAccount();
   const queryClient = useQueryClient();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [tourRunning, setTourRunning] = useState(false);
+
+  // Listen to URL ?startTour=1 and `rhitmo:start-tour` event from anywhere in the app.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('startTour') === '1') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('startTour');
+      window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
+      setTourRunning(true);
+    }
+    const handler = () => setTourRunning(true);
+    window.addEventListener('rhitmo:start-tour', handler);
+    return () => window.removeEventListener('rhitmo:start-tour', handler);
+  }, []);
 
   // Read persona intent from localStorage (set during signup persona selector or OAuth round-trip).
   const [signupPersona, setSignupPersona] = useState<'leader' | 'hr_admin' | null>(() => {
@@ -139,6 +155,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           onOpenChange={setNotificationsOpen}
         />
       )}
+
+      {tourRunning && <LeaderTour autoStart onClose={() => setTourRunning(false)} />}
     </SidebarProvider>
   );
 }
