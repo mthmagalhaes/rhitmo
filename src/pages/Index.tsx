@@ -198,6 +198,8 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [inviteMember, setInviteMember] = useState<Pick<TeamMember, 'id' | 'name' | 'invite_status' | 'invite_token'> & { email?: string | null } | null>(null);
   const { toast } = useToast();
+  const { shouldShowTour } = useOnboardingTour();
+  const [tourRunning, setTourRunning] = useState(false);
 
   const getGreeting = () => {
     const h = new Date().getHours();
