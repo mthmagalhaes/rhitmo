@@ -613,6 +613,16 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
                   </Tooltip>
                 </TooltipProvider>
               )}
+              {shouldShowTour && !tourRunning && (
+                <Button
+                  onClick={() => setTourRunning(true)}
+                  variant="ghost"
+                  className="rounded-full h-11 px-5 gap-2 text-primary hover:bg-primary/5"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  <span className="hidden sm:inline">Tour de 60s</span>
+                </Button>
+              )}
               <Button onClick={() => setDialogOpen(true)} className="rounded-full h-11 px-6 gap-2 shadow-md">
                 <PenSquare className="h-4 w-4" />
                 <span className="hidden sm:inline">{t('dashboard.newNote')}</span>
