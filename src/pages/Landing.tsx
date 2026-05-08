@@ -713,9 +713,7 @@ const PricingSection = ({
           </Button>
           {/* Features list */}
           <div className="border-t border-border/50 mt-10 pt-8">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-6">
-              {lang === 'pt' ? 'Tudo incluído' : 'Everything included'}
-            </p>
+
             <dl className="space-y-5">
               {features.map((f) => (
                 <div key={f.title} className="flex gap-3">
