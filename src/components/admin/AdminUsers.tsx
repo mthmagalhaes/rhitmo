@@ -94,6 +94,39 @@ export const AdminUsers = () => {
   }>({ user_id: '', full_name: '', email: '', workspace_id: null, client_account: '', customer_segment: 'beta' });
   const [editLoading, setEditLoading] = useState(false);
 
+  // Invite leader dialog
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteForm, setInviteForm] = useState<{ name: string; email: string; plan: PlanTier }>({
+    name: '', email: '', plan: 'pulse',
+  });
+  const [inviteLoading, setInviteLoading] = useState(false);
+
+  const handleInviteLeader = async () => {
+    if (!inviteForm.email.trim() || !inviteForm.name.trim()) {
+      toast({ title: 'Preencha nome e email', variant: 'destructive' });
+      return;
+    }
+    setInviteLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-invite-user', {
+        body: { email: inviteForm.email.trim(), name: inviteForm.name.trim(), assigned_plan: inviteForm.plan },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const planNames: Record<PlanTier, string> = { pulse: 'Pulse', pro: 'Pro', business: 'Business' };
+      toast({ title: 'Convite enviado!', description: `${inviteForm.email} receberá o link com plano ${planNames[inviteForm.plan]}.` });
+      setInviteOpen(false);
+      setInviteForm({ name: '', email: '', plan: 'pulse' });
+      queryClient.invalidateQueries({ queryKey: ['admin-user-caps'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-waitlist-leads'] });
+    } catch (error: any) {
+      toast({ title: 'Erro ao convidar', description: error.message, variant: 'destructive' });
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
   const { data: userCaps, isLoading: capsLoading } = useQuery({
     queryKey: ['admin-user-caps'],
     queryFn: async () => {
