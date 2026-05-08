@@ -3,74 +3,66 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffectiveUser } from './useEffectiveUser';
 
+/**
+ * Pricing v3 — Modelo Windmill (single plan, per-seat)
+ *
+ * - Líder + 3 liderados grátis para sempre.
+ * - Recall com cap de 6h/mês/workspace no tier gratuito.
+ * - A partir do 4º liderado: R$ 49,90/mês (ou R$ 502,80/ano com 16% off),
+ *   destrava Recall ilimitado para o workspace inteiro.
+ * - Workspaces criados antes do roll-out ganham `grandfather_until` =
+ *   2026-11-08 e nesse período recebem seats ilimitados + Recall ilimitado.
+ *
+ * `plan_tier` permanece na tabela só para compat com workspaces legados;
+ * todo o gating real vem de `paid_seats + grandfather_until`.
+ */
+
+export const FREE_SEATS = 3;
+export const FREE_RECALL_CAP_HOURS = 6;
+export const SEAT_PRICE_MONTHLY_BRL = 49.9;
+export const SEAT_PRICE_ANNUAL_BRL = 502.8; // 16% off vs 12 × R$49,90
+export const ANNUAL_DISCOUNT_PERCENT = 16;
+
+export type SeatCycle = 'monthly' | 'annual';
+
 interface PlanLimits {
+  // Seats / capacity
+  freeSeats: number;
+  paidSeats: number;
   maxMembers: number;
-  maxReviews: number;
   maxTeams: number;
+  maxReviews: number;
   maxMentorMessages: number;
   maxRecordingHours: number;
   maxBotMeetings: number;
+
+  // Capabilities (todas incluídas no plano único)
   analytics: boolean;
   rhitmoSync: boolean;
   formalReviews: boolean;
   hrDashboard: boolean;
   prioritySupport: boolean;
   assistedOnboarding: boolean;
+
+  // Identidade do plano
   planName: string;
   planTier: 'pulse' | 'pro' | 'business';
   isBetaUser: boolean;
+
+  // Modelo Windmill
+  isGrandfathered: boolean;
+  grandfatherUntil: string | null;
+  recallUnlimited: boolean;
+  seatCycle: SeatCycle;
 }
 
-const PLAN_LIMITS: Record<string, Omit<PlanLimits, 'planTier' | 'isBetaUser'>> = {
-  pulse: {
-    maxMembers: 2,
-    maxReviews: 1,
-    maxTeams: 1,
-    maxMentorMessages: 20,
-    maxRecordingHours: 0,
-    maxBotMeetings: 0,
-    analytics: false,
-    rhitmoSync: false,
-    formalReviews: true,
-    hrDashboard: false,
-    prioritySupport: false,
-    assistedOnboarding: false,
-    planName: 'Pulse',
-  },
-  pro: {
-    // Pricing 2026: Pro oferece liderados, times e bot ilimitados, com cap de
-    // 30h/mês de transcrição (manual + bot Recall). Plano Business removido.
-    maxMembers: Infinity,
-    maxReviews: Infinity,
-    maxTeams: Infinity,
-    maxMentorMessages: Infinity,
-    maxRecordingHours: 30,
-    maxBotMeetings: Infinity,
-    analytics: true,
-    rhitmoSync: true,
-    formalReviews: true,
-    hrDashboard: false,
-    prioritySupport: true,
-    assistedOnboarding: false,
-    planName: 'Pro',
-  },
-  // 'business' é mantido por compatibilidade com workspaces legados,
-  // mas é apresentado como Pro (mesmas capacidades).
-  business: {
-    maxMembers: Infinity,
-    maxReviews: Infinity,
-    maxTeams: Infinity,
-    maxMentorMessages: Infinity,
-    maxRecordingHours: 30,
-    maxBotMeetings: Infinity,
-    analytics: true,
-    rhitmoSync: true,
-    formalReviews: true,
-    hrDashboard: true,
-    prioritySupport: true,
-    assistedOnboarding: true,
-    planName: 'Pro (Legacy Business)',
-  },
+const ALL_CAPABILITIES = {
+  analytics: true,
+  rhitmoSync: true,
+  formalReviews: true,
+  hrDashboard: true,
+  prioritySupport: true,
+  assistedOnboarding: true,
 };
 
 export const usePlanLimits = () => {
@@ -82,7 +74,7 @@ export const usePlanLimits = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('workspaces')
-        .select('id, plan_tier, is_beta_user')
+        .select('id, plan_tier, is_beta_user, paid_seats, grandfather_until, seat_cycle')
         .maybeSingle();
       if (error) throw error;
       return data;
@@ -93,8 +85,6 @@ export const usePlanLimits = () => {
     refetchOnReconnect: true,
   });
 
-  // Detecta se o usuário atual é HR Admin de algum workspace.
-  // Só HR Admins (ou beta) enxergam o preview da experiência Enterprise no app.
   const { data: isHrAdmin = false } = useQuery({
     queryKey: ['is-hr-admin', user?.id],
     queryFn: async () => {
@@ -146,7 +136,6 @@ export const usePlanLimits = () => {
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
-      
       const { count, error } = await supabase
         .from('performance_reviews')
         .select('*', { count: 'exact', head: true })
@@ -156,17 +145,14 @@ export const usePlanLimits = () => {
     },
     enabled: !!user,
     staleTime: 30 * 1000,
-    refetchOnWindowFocus: true,
   });
 
-  // Count mentor messages sent this month (role = 'user' only)
   const { data: mentorMessageCount = 0, isLoading: mentorLoading } = useQuery({
     queryKey: ['mentor-message-count-month', user?.id],
     queryFn: async () => {
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
-
       const { count, error } = await supabase
         .from('mentor_messages')
         .select('*', { count: 'exact', head: true })
@@ -177,38 +163,31 @@ export const usePlanLimits = () => {
     },
     enabled: !!user,
     staleTime: 30 * 1000,
-    refetchOnWindowFocus: true,
   });
 
-  // Sum recording hours used this month
   const { data: recordingSecondsUsed = 0, isLoading: recordingLoading } = useQuery({
     queryKey: ['recording-seconds-month', user?.id],
     queryFn: async () => {
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
-
       const { data, error } = await supabase
         .from('meeting_transcripts')
         .select('duration_seconds')
         .gte('created_at', startOfMonth.toISOString());
       if (error) throw error;
-      const total = (data || []).reduce((sum, row) => sum + (row.duration_seconds || 0), 0);
-      return total;
+      return (data || []).reduce((sum, row) => sum + (row.duration_seconds || 0), 0);
     },
     enabled: !!user,
     staleTime: 30 * 1000,
-    refetchOnWindowFocus: true,
   });
 
-  // Count bot meetings scheduled this month (status != 'error')
   const { data: botMeetingCount = 0, isLoading: botLoading } = useQuery({
     queryKey: ['bot-meeting-count-month', user?.id],
     queryFn: async () => {
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
-
       const { count, error } = await (supabase as any)
         .from('recall_bots')
         .select('*', { count: 'exact', head: true })
@@ -219,7 +198,6 @@ export const usePlanLimits = () => {
     },
     enabled: !!user,
     staleTime: 30 * 1000,
-    refetchOnWindowFocus: true,
   });
 
   const isBeta = !!workspace?.is_beta_user;
@@ -227,36 +205,41 @@ export const usePlanLimits = () => {
 
   const limits = useMemo<PlanLimits>(() => {
     const tier = (workspace?.plan_tier as 'pulse' | 'pro' | 'business') || 'pulse';
-    const baseLimits = PLAN_LIMITS[tier];
+    const grandfatherUntilStr = (workspace as any)?.grandfather_until ?? null;
+    const isGrandfathered = !!grandfatherUntilStr && new Date(grandfatherUntilStr) >= new Date(new Date().toDateString());
+    const paidSeats: number = (workspace as any)?.paid_seats ?? 0;
+    const seatCycle: SeatCycle = ((workspace as any)?.seat_cycle as SeatCycle) || 'monthly';
 
-    if (isBeta) {
-      return {
-        maxMembers: Infinity,
-        maxReviews: Infinity,
-        maxTeams: Infinity,
-        maxMentorMessages: Infinity,
-        maxRecordingHours: Infinity,
-        maxBotMeetings: Infinity,
-        analytics: true,
-        rhitmoSync: true,
-        formalReviews: true,
-        hrDashboard: true,
-        prioritySupport: true,
-        assistedOnboarding: true,
-        planName: baseLimits.planName,
-        planTier: tier,
-        isBetaUser: true,
-      };
-    }
+    const unlocked = isBeta || isGrandfathered;
+    const totalSeats = unlocked ? Infinity : FREE_SEATS + paidSeats;
+    const recallUnlimited = unlocked || paidSeats > 0;
 
     return {
-      ...baseLimits,
+      freeSeats: FREE_SEATS,
+      paidSeats,
+      maxMembers: totalSeats,
+      maxTeams: Infinity,
+      maxReviews: Infinity,
+      maxMentorMessages: Infinity,
+      maxRecordingHours: recallUnlimited ? Infinity : FREE_RECALL_CAP_HOURS,
+      maxBotMeetings: Infinity,
+      ...ALL_CAPABILITIES,
+      planName: 'Rhitmo',
       planTier: tier,
-      isBetaUser: false,
+      isBetaUser: isBeta,
+      isGrandfathered,
+      grandfatherUntil: grandfatherUntilStr,
+      recallUnlimited,
+      seatCycle,
     };
-  }, [workspace?.plan_tier, isBeta]);
+  }, [workspace, isBeta]);
 
-  const isLoading = workspaceLoading || memberLoading || reviewLoading || teamLoading || mentorLoading || recordingLoading || botLoading;
+  const isLoading =
+    workspaceLoading || memberLoading || reviewLoading || teamLoading || mentorLoading || recordingLoading || botLoading;
+
+  const seatsUsed = memberCount;
+  const seatsAvailable = limits.maxMembers === Infinity ? Infinity : Math.max(0, limits.maxMembers - seatsUsed);
+  const needsSeatPurchase = !limits.isBetaUser && !limits.isGrandfathered && seatsUsed >= FREE_SEATS + limits.paidSeats;
 
   return {
     limits,
@@ -267,23 +250,28 @@ export const usePlanLimits = () => {
     recordingHoursUsed,
     botMeetingCount,
     isLoading,
-    canAddMember: isBeta ? true : memberCount < limits.maxMembers,
-    canAddTeam: isBeta ? true : teamCount < limits.maxTeams,
-    canGenerateReview: isBeta ? true : reviewCount < limits.maxReviews,
-    canSendMentorMessage: isBeta ? true : limits.maxMentorMessages === Infinity || mentorMessageCount < limits.maxMentorMessages,
-    canRecord: isBeta ? true : limits.maxRecordingHours > 0 && recordingHoursUsed < limits.maxRecordingHours,
-    canScheduleBot: isBeta ? true : limits.maxBotMeetings > 0 && botMeetingCount < limits.maxBotMeetings,
-    hasAnalytics: isBeta ? true : limits.analytics,
-    hasSync: isBeta ? true : limits.rhitmoSync,
+    // seat-aware helpers
+    seatsUsed,
+    seatsAvailable,
+    needsSeatPurchase,
+    canAddMember: limits.maxMembers === Infinity || memberCount < limits.maxMembers,
+    canAddTeam: true,
+    canGenerateReview: true,
+    canSendMentorMessage: true,
+    canRecord: limits.maxRecordingHours === Infinity || recordingHoursUsed < limits.maxRecordingHours,
+    canScheduleBot: true,
+    hasAnalytics: limits.analytics,
+    hasSync: limits.rhitmoSync,
     hasMentorChat: true,
-    hasHrDashboard: isBeta ? true : limits.hrDashboard,
-    hasHrPreview: isBeta || isHrAdmin,
-    hasFormalReviews: isBeta ? true : limits.formalReviews,
-    membersRemaining: isBeta ? Infinity : limits.maxMembers - memberCount,
-    teamsRemaining: isBeta ? Infinity : limits.maxTeams - teamCount,
-    reviewsRemaining: isBeta ? Infinity : limits.maxReviews - reviewCount,
-    mentorMessagesRemaining: isBeta ? Infinity : limits.maxMentorMessages === Infinity ? Infinity : limits.maxMentorMessages - mentorMessageCount,
-    recordingHoursRemaining: isBeta ? Infinity : limits.maxRecordingHours === Infinity ? Infinity : limits.maxRecordingHours - recordingHoursUsed,
-    botMeetingsRemaining: isBeta ? Infinity : limits.maxBotMeetings === 0 ? 0 : limits.maxBotMeetings - botMeetingCount,
+    hasHrDashboard: limits.hrDashboard,
+    hasHrPreview: limits.isBetaUser || isHrAdmin,
+    hasFormalReviews: limits.formalReviews,
+    membersRemaining: seatsAvailable,
+    teamsRemaining: Infinity,
+    reviewsRemaining: Infinity,
+    mentorMessagesRemaining: Infinity,
+    recordingHoursRemaining:
+      limits.maxRecordingHours === Infinity ? Infinity : Math.max(0, limits.maxRecordingHours - recordingHoursUsed),
+    botMeetingsRemaining: Infinity,
   };
 };
