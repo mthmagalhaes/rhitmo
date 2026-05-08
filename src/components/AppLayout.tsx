@@ -114,7 +114,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <AppSidebar />
         <SidebarInset className="flex-1">
           <header className="flex h-14 items-center gap-4 border-b px-4 lg:hidden bg-card">
-            <SidebarTrigger />
+            <SidebarTrigger data-tour="sidebar" />
             <span className="font-semibold text-foreground flex-1">Rhitmo</span>
             {showActivity && (
               <ActivityBadge onClick={() => setNotificationsOpen(true)} />
