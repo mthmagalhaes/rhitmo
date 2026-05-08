@@ -93,5 +93,14 @@ const button = {
   textDecoration: 'none',
   display: 'inline-block',
 }
+const helperText = {
+  fontSize: '14px',
+  color: '#6B6784',
+  lineHeight: '1.6',
+  margin: '24px 0 0',
+  padding: '14px 16px',
+  backgroundColor: '#F7F5FF',
+  borderRadius: '12px',
+}
 const footer = { fontSize: '13px', color: '#999999', margin: '30px 0 0' }
 const brand = { fontSize: '12px', color: '#c4c0d0', textAlign: 'center' as const, margin: '20px 0 0' }
