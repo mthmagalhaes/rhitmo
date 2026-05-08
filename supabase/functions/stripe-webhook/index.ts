@@ -154,10 +154,16 @@ Deno.serve(async (req) => {
 
         if (subError) console.error("Upsert subscription error:", subError);
 
-        // Update workspace plan_tier
+        // Update workspace plan_tier + per-seat fields
+        const seatCycle = priceToCycle(priceId);
+        const wsUpdate: Record<string, unknown> = { plan_tier: planTier };
+        if (seatCycle) {
+          wsUpdate.paid_seats = quantity;
+          wsUpdate.seat_cycle = seatCycle;
+        }
         const { error: wsError } = await supabaseAdmin
           .from("workspaces")
-          .update({ plan_tier: planTier })
+          .update(wsUpdate)
           .eq("id", workspaceId);
 
         if (wsError) console.error("Update workspace error:", wsError);
@@ -196,9 +202,15 @@ Deno.serve(async (req) => {
 
         if (subError) console.error("Update subscription error:", subError);
 
+        const seatCycleU = priceToCycle(priceId);
+        const wsUpdateU: Record<string, unknown> = { plan_tier: planTier };
+        if (seatCycleU) {
+          wsUpdateU.paid_seats = quantity;
+          wsUpdateU.seat_cycle = seatCycleU;
+        }
         const { error: wsError } = await supabaseAdmin
           .from("workspaces")
-          .update({ plan_tier: planTier })
+          .update(wsUpdateU)
           .eq("id", workspaceId);
 
         if (wsError) console.error("Update workspace error:", wsError);
