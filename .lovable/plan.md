@@ -1,75 +1,84 @@
-# Diagnóstico — Ana Campos ([carolyna@fapeduca.com.br](mailto:carolyna@fapeduca.com.br))
 
-## O que aconteceu (timeline real, do banco)
+# Pricing v3 — Modelo Windmill (single plan + per-seat)
 
+## 1. Modelo final
 
-| Quando (UTC 08/05)  | Evento                                                                                                           |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| 12:56:35            | Convite criado por admin (`admin-invite-user`, plano `pro` = líder)                                              |
-| 12:56:37 → 12:56:39 | Email "invite" enfileirado e **enviado com sucesso** (status `sent`, message_id confirmado)                      |
-| 12:59:49            | Ana clicou no link, **confirmou o email e definiu senha** (`email_confirmed_at` + `last_sign_in_at` preenchidos) |
-| 13:07:52            | Tentou **signup** novamente em `rhitmo.co/dashboard` → 422 "User already registered"                             |
+**Um plano só. Tudo incluído. Cobrança por liderado.**
 
+- **Líder + 3 liderados grátis** para sempre — sem cartão.
+- **Recall com cap de 6h/mês/workspace** no tier gratuito.
+- **A partir do 4º liderado:** R$ 49,90/liderado/mês, com Recall ilimitado para o workspace inteiro.
+- **Anual com 16% off:** R$ 502,80/liderado/ano (≈ R$ 41,90/mês equivalente).
+- **Líder não conta como seat cobrável.** Só liderados.
 
-**Conclusão:** o email chegou, ela criou a conta, mas depois ficou confusa e tentou se cadastrar de novo em vez de fazer login. Além disso, **não existe workspace nem team** vinculados ao usuário dela — então mesmo logando ela cai num app sem lugar pra ir (não há trigger que crie workspace automaticamente para líder convidado via `admin-invite-user`).
+Conta unitária (workspace de 1 líder + 5 liderados):
+- 3 grátis + 2 pagos × R$49,90 = **R$ 99,80/mês** (ou R$ 1.005,60/ano com desconto).
+- Custo Recall ilimitado: ~R$26/mês (10h × R$2,61). Margem ~74%.
 
-## O que o email diz (template `invite.tsx`)
+## 2. Migração de workspaces atuais (Grandfather 6 meses)
 
-- Assunto: **"Você foi convidado para o Rhitmo!"**
-- Corpo: "Você foi convidado para participar do Rhitmo. Clique no botão abaixo para aceitar o convite e criar sua conta."
-- Botão: **"Aceitar Convite"** → `https://rhitmo.co/dashboard`
+Hoje temos 6 workspaces (`pulse`/`pro`/`business`). Plano:
 
-Ou seja, o email manda direto pra `/dashboard`, não para um fluxo explícito de "sou líder, vamos configurar seu workspace". Esse é o gap.
+- Adicionar `grandfather_until DATE` em `workspaces` = **2026-11-08** para todos os 6 ativos hoje.
+- Durante esse período: tratam-se como se tivessem **seats ilimitados grátis** + Recall ilimitado, independente do `plan_tier`.
+- Aviso por email/Slack em **D-60** e **D-30** explicando o novo modelo e oferecendo conversão antecipada com bônus (ex.: 2 meses grátis no anual).
+- Após 08/11/2026: aplicam-se os limites do novo modelo. Quem não pagar pelos seats excedentes vê os liderados além de 3 ficarem em estado **"read-only / pendente de plano"** (continuam visíveis, mas bloqueia novos feedbacks/1:1s/reviews neles). Sem cobrança retroativa, sem perda de dados.
 
-## Por que ela "não consegue logar"
+Faster Ops (workspace `business` legado) continua tratado como fundador — mantém o badge atual e o grandfather.
 
-1. **Ela já tem conta** — precisa usar **Entrar** (login com email + senha que ela definiu), não **Cadastrar**.
-2. Se esqueceu a senha, precisa de "Esqueci minha senha" → recovery email.
-3. Mesmo logando, ela não tem workspace/team de líder, então cai numa tela vazia/quebrada — precisamos provisionar isso.
+## 3. Mudanças técnicas
 
----
+### 3.1. Banco
+Migration única:
+- `ALTER TABLE workspaces ADD COLUMN grandfather_until DATE`, `paid_seats INT DEFAULT 0`, `seat_cycle TEXT DEFAULT 'monthly'` (`monthly`/`annual`).
+- UPDATE nos 6 workspaces existentes setando `grandfather_until = '2026-11-08'`.
+- Function `effective_seat_allowance(workspace_id)` retornando `{free_seats, paid_seats, recall_unlimited, is_grandfathered}` — usada por `usePlanLimits` e Edge Functions de billing/Recall.
 
-## Plano de ação (2 partes)
+### 3.2. Frontend
+- **`usePlanLimits`** reescrito para o novo modelo único:
+  - `freeSeats = 3`, `paidSeats` vindo do workspace, `totalSeats = free + paid + (grandfather ? Infinity : 0)`.
+  - `canAddMember = memberCount < totalSeats`.
+  - `recallCapHours = grandfathered || paidSeats > 0 ? Infinity : 6`.
+- **`Billing.tsx`** redesenhado no estilo Windmill: card único, headline "Líder + 3 liderados grátis", preço grande "R$ 49,90 /liderado/mês" com toggle mensal/anual, bullets das features (todas incluídas), CTA único.
+- **`Landing.tsx` — seção pricing:** mesmo card único, sem comparativo Pulse/Pro/Enterprise. Remove menções a "Pulse"/"Pro" no copy.
+- **Banner de grandfather** no topo de `/billing` para os 6 workspaces atuais explicando até quando é grátis e o que acontece depois.
 
-### Parte A — Destravar a Ana **agora** (one-shot, manual)
+### 3.3. Stripe / Edge Functions
+- Novo product **"Rhitmo Seat"** com 2 prices: R$ 49,90 mensal recorrente, R$ 502,80 anual recorrente, ambos com `quantity` ajustável.
+- `create-checkout-session`: passa `quantity = numero_de_seats_pagos` (membros atuais − 3, mínimo 1) e cycle escolhido.
+- `stripe-webhook`: ao receber `subscription.updated`, grava `paid_seats` e `seat_cycle` em `workspaces`.
+- `update-subscription`: nova rota `setSeats(qty, cycle)` para upgrade/downgrade quando o líder adiciona/remove liderado pagante.
+- `usePlanLimits` chama `setSeats` automaticamente quando `memberCount` cruza o limite (com confirmação modal).
 
-1. **Disparar reset de senha** para `carolyna@fapeduca.com.br` (caso ela tenha esquecido a senha que definiu) usando a função `admin-reset-password` já existente. Resultado: ela recebe email "Redefinir senha" e entra com nova senha.
-2. **Provisionar workspace + team de líder** para o `user_id` `88d0a572-3693-4d3f-9321-1d9f0db5ae14` via migration:
-  - `INSERT INTO workspaces (name, owner_id, plan_tier)` → ex.: nome "Fapeduca", `plan_tier='pro'`
-  - `INSERT INTO teams (name, leader_user_id, workspace_id)` → ex.: "Time da Ana"
-  - Confirmar que `AccountContext` resolve papel **Leader** e a leva para `/lider/inicio`
-3. (Opcional) mandar uma DM/email manual avisando "use **Entrar** com seu email; segue novo link de senha".
+### 3.4. Limpeza
+- Remover do código: `CYCLE_PRICING` (3 ciclos), tier `pulse`/`business` no enum visual, comparativos de planos, badges "Founder lifetime" do tier business (mantidos no banco como flag, só esconder UI).
+- `plan_tier` mantido na tabela por compatibilidade, mas não influencia mais em limits — todo o gating vem de `paid_seats + grandfather_until`.
 
-### Parte B — Causa raiz: convite de líder hoje não cria workspace
+## 4. Comunicação (D+0)
 
-Hoje `admin-invite-user` com `role` ≠ `hr_admin` apenas convida no Auth e redireciona para `/dashboard`. Para qualquer próximo líder convidado, vamos:
+Email + DM Slack para os 6 workspaces:
 
-1. No `admin-invite-user`, quando `role` for `'leader'` (ou ausente + `assigned_plan='pro'`), passar `data: { ..., persona: 'leader' }` no metadata e mudar `redirectTo` para `https://rhitmo.co/onboarding?persona=leader`.
-2. Garantir que `Onboarding.tsx` (já existente) detecta `persona=leader` sem workspace e dispara o **Leader Bootstrap Wizard**:
-  - Pergunta nome do workspace/empresa
-  - Cria `workspaces` (owner_id = user, plan_tier herdado do convite) + `teams` (leader_user_id = user) via RPC `bootstrap_leader_workspace` (a criar, `SECURITY DEFINER`, idempotente)
-  - Redireciona para `/lider/inicio`
-3. Atualizar o template `invite.tsx`:
-  - Mudar copy do botão para "Aceitar convite e configurar minha conta"
-  - Acrescentar 1 linha: "Se você já criou sua senha antes, vá direto para [rhitmo.co](https://rhitmo.co/auth) e clique em **Entrar**."
+> "Mudamos o pricing do Rhitmo para algo mais simples: **líder + 3 liderados sempre grátis**, e R$ 49,90/liderado adicional. **Você é Early Adopter** — seu workspace fica 100% liberado até **08/11/2026**, sem mexer em nada. Depois disso, se quiser continuar com mais de 3 liderados, é só ativar o plano. Tudo o que você criou continua seu, sem perda de dados."
 
-## Arquivos afetados (Parte B)
+## 5. O que NÃO muda neste sprint
 
-- `supabase/functions/admin-invite-user/index.ts` — branch `redirectTo` por persona + metadata.
-- `supabase/migrations/...` — nova RPC `bootstrap_leader_workspace(_name text)`.
-- `src/pages/Onboarding.tsx` — detectar `persona=leader` sem workspace + UI mínima do wizard (1 input + CTA).
-- `supabase/functions/_shared/email-templates/invite.tsx` — copy + nota de "já tenho conta".
+- Cobrança real via Stripe dos 6 workspaces atuais (zero por 6 meses).
+- Gating de Recall existente (continua valendo o cap atual até a migration ir pra produção).
+- Lógica de HR Admin/Owner/Leader e RLS — intocada.
 
-## Fora de escopo
+## 6. Ordem de execução
 
-- Mudar fluxo de HR Admin (já funciona, cria workspace).
-- Refatorar AuthPage além da mudança de copy do email.
-- Migrar Ana para outro plano — fica `pro` como já foi convidada.
+1. Migration (`grandfather_until`, `paid_seats`, `seat_cycle`, function helper) + UPDATE dos 6 workspaces.
+2. `usePlanLimits` + componentes que dependem (`useEnforcedLimits`, banners).
+3. `Billing.tsx` redesenhado no estilo Windmill.
+4. `Landing.tsx` seção pricing single-card.
+5. Stripe: criar product/prices + ajustar `create-checkout-session`, `stripe-webhook`, `update-subscription`.
+6. Banner de grandfather + email de comunicação (template novo em `_shared/email-templates/`).
 
-## Antes de eu executar, confirme:
-
-1. **Parte A** — posso já criar o workspace/team da Ana agora (preciso só do **nome do workspace** — sugiro "Fapeduca") e disparar o reset de senha?
-2. **Parte B** — toco a causa raiz neste mesmo turno depois da Parte A, ou prefere deixar para outro momento?  
-  
-No final, me diga exatamente o que eu preciso falar para a Ana. ela abriu um "ticket" de suporte para mim, é como se fosse isso e eu preciso devolver.
-3. &nbsp;
+```text
+Workspace
+├── 1 líder (grátis sempre)
+├── 3 liderados grátis (free tier)
+├── liderados extras → R$ 49,90/mês cada (ou R$ 502,80/ano)
+└── grandfather_until = 2026-11-08 (para os 6 atuais)
+```
