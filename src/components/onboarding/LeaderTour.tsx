@@ -15,14 +15,31 @@ interface LeaderTourProps {
  * Wait for a CSS selector to appear in the DOM.
  * Resolves with the element, or null after `timeout` ms.
  */
-function waitForSelector(selector: string, timeout = 2500): Promise<Element | null> {
+function isVisible(el: Element | null): el is HTMLElement {
+  if (!el || !(el instanceof HTMLElement)) return false;
+  if (el.offsetParent === null && getComputedStyle(el).position !== 'fixed') return false;
+  const rect = el.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0;
+}
+
+/**
+ * Wait for a CSS selector to appear in the DOM AND be visible.
+ * Among multiple matches, returns the first visible one.
+ * Resolves with the element, or null after `timeout` ms.
+ */
+function waitForSelector(selector: string, timeout = 2500): Promise<HTMLElement | null> {
   return new Promise((resolve) => {
-    const existing = document.querySelector(selector);
+    const findVisible = () => {
+      const matches = Array.from(document.querySelectorAll(selector));
+      return matches.find(isVisible) as HTMLElement | undefined;
+    };
+
+    const existing = findVisible();
     if (existing) return resolve(existing);
 
     const start = Date.now();
     const interval = window.setInterval(() => {
-      const el = document.querySelector(selector);
+      const el = findVisible();
       if (el) {
         window.clearInterval(interval);
         resolve(el);
