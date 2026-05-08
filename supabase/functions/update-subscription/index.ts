@@ -6,14 +6,19 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Pro plan billing cycles (ver create-checkout-session/index.ts).
-const PRO_PRICE_IDS: Record<string, string> = {
-  quarterly: "price_1TNNnEIF4fHxJpjHA4cMp1tm",
-  semiannual: "price_1TNNnXIF4fHxJpjH6uHkOIIJ",
-  annual: "price_1TNNnlIF4fHxJpjHfVwPUqAb",
+// ============================================================================
+// update-subscription — sincroniza quantity/cycle da subscription per-seat.
+// Body opcional:
+//   { action: 'sync_seats' }            → recalcula quantity por team_members
+//   { action: 'change_cycle', seatCycle: 'monthly'|'annual' } → muda o ciclo
+// Workspaces grandfathered são no-op.
+// ============================================================================
+const FREE_SEATS = 3;
+const SEAT_PRICE_IDS: Record<"monthly" | "annual", string> = {
+  monthly: "price_1TUqnLIF4fHxJpjH3WthrrBs",
+  annual: "price_1TUqnmIF4fHxJpjHG44CIrIL",
 };
-
-type BillingCycle = keyof typeof PRO_PRICE_IDS;
+type SeatCycle = keyof typeof SEAT_PRICE_IDS;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -34,7 +39,6 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_ANON_KEY")!,
       { global: { headers: { Authorization: authHeader } } }
     );
-
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     if (userError || !user) {
@@ -45,27 +49,18 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const newPlan: string = body.newPlan ?? "pro";
-    const billingCycle: BillingCycle = (body.billingCycle ?? body.cycle ?? "annual") as BillingCycle;
+    const action: "sync_seats" | "change_cycle" =
+      body.action ?? (body.seatCycle ? "change_cycle" : "sync_seats");
+    const newCycleRaw = (body.seatCycle ?? body.cycle) as SeatCycle | undefined;
 
-    if (newPlan !== "pro") {
-      return new Response(JSON.stringify({ error: "Apenas o plano Pro pode ser alterado por aqui." }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
 
-    if (!PRO_PRICE_IDS[billingCycle]) {
-      return new Response(JSON.stringify({ error: "Ciclo de faturamento inválido." }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Get workspace
-    const { data: workspace, error: wsError } = await supabase
+    const { data: workspace, error: wsError } = await supabaseAdmin
       .from("workspaces")
-      .select("id")
+      .select("id, grandfather_until, paid_seats, seat_cycle")
       .eq("owner_id", user.id)
       .maybeSingle();
 
@@ -76,36 +71,37 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const grandfatherUntil = (workspace as any).grandfather_until as string | null;
+    const isGrandfathered = !!grandfatherUntil && new Date(grandfatherUntil) >= new Date(new Date().toDateString());
+    if (isGrandfathered) {
+      return new Response(
+        JSON.stringify({ noop: true, reason: "grandfathered", grandfather_until: grandfatherUntil }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    const { data: subscription, error: subError } = await supabaseAdmin
+    const { data: subscription } = await supabaseAdmin
       .from("subscriptions")
       .select("stripe_subscription_id")
       .eq("workspace_id", workspace.id)
       .in("status", ["trialing", "active", "past_due"])
       .maybeSingle();
 
-    if (subError || !subscription?.stripe_subscription_id) {
+    if (!subscription?.stripe_subscription_id) {
       return new Response(
-        JSON.stringify({ error: "No active subscription found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ noop: true, reason: "no_active_subscription" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
     const stripeSubId = subscription.stripe_subscription_id;
 
-    const subRes = await fetch(
-      `https://api.stripe.com/v1/subscriptions/${stripeSubId}`,
-      { headers: { Authorization: `Bearer ${STRIPE_SECRET_KEY}` } }
-    );
+    const subRes = await fetch(`https://api.stripe.com/v1/subscriptions/${stripeSubId}`, {
+      headers: { Authorization: `Bearer ${STRIPE_SECRET_KEY}` },
+    });
     const stripeSub = await subRes.json();
-
     if (stripeSub.error) {
-      console.error("Stripe fetch error:", stripeSub.error);
       return new Response(JSON.stringify({ error: "Failed to fetch subscription" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -120,28 +116,45 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Determinar quantity (sempre recontamos)
+    const { count: memberCount } = await supabaseAdmin
+      .from("team_members")
+      .select("*", { count: "exact", head: true })
+      .eq("workspace_id", workspace.id);
+    const seatsToPay = Math.max(1, (memberCount ?? 0) - FREE_SEATS);
+
+    // Determinar price (mantém o atual em sync_seats; troca em change_cycle)
+    let targetPriceId = stripeSub.items?.data?.[0]?.price?.id as string;
+    let targetCycle: SeatCycle =
+      ((workspace as any).seat_cycle as SeatCycle) || "monthly";
+
+    if (action === "change_cycle") {
+      if (!newCycleRaw || !SEAT_PRICE_IDS[newCycleRaw]) {
+        return new Response(JSON.stringify({ error: "seatCycle inválido (monthly|annual)" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      targetPriceId = SEAT_PRICE_IDS[newCycleRaw];
+      targetCycle = newCycleRaw;
+    }
+
     const updateParams = new URLSearchParams({
       [`items[0][id]`]: itemId,
-      [`items[0][price]`]: PRO_PRICE_IDS[billingCycle],
-      [`items[0][quantity]`]: "1",
+      [`items[0][price]`]: targetPriceId,
+      [`items[0][quantity]`]: String(seatsToPay),
       proration_behavior: "create_prorations",
     });
 
-    console.log("Updating subscription:", { stripeSubId, newPlan, billingCycle, itemId });
-
-    const updateRes = await fetch(
-      `https://api.stripe.com/v1/subscriptions/${stripeSubId}`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${STRIPE_SECRET_KEY}`,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: updateParams,
-      }
-    );
+    const updateRes = await fetch(`https://api.stripe.com/v1/subscriptions/${stripeSubId}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${STRIPE_SECRET_KEY}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: updateParams,
+    });
     const updatedSub = await updateRes.json();
-
     if (updatedSub.error) {
       console.error("Stripe update error:", updatedSub.error);
       return new Response(JSON.stringify({ error: updatedSub.error.message }), {
@@ -150,10 +163,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log("Subscription updated successfully:", updatedSub.id);
+    // Refletir no DB (webhook também faz, mas evitamos lag)
+    await supabaseAdmin
+      .from("workspaces")
+      .update({ paid_seats: seatsToPay, seat_cycle: targetCycle })
+      .eq("id", workspace.id);
+
+    console.log("Subscription synced:", { stripeSubId, seatsToPay, targetCycle });
 
     return new Response(
-      JSON.stringify({ success: true, plan: newPlan, billingCycle }),
+      JSON.stringify({ success: true, paid_seats: seatsToPay, seat_cycle: targetCycle }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {

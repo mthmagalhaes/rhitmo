@@ -6,16 +6,19 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Pro is the only paid plan now. Three billing cycles, no monthly.
-// Behavior change shipped 18/04/2026: Mensal removed in favor of cycles >= 90 dias
-// to align billing with the time required for real leadership behavior change.
-const PRO_PRICE_IDS: Record<string, string> = {
-  quarterly: "price_1TNNnEIF4fHxJpjHA4cMp1tm",   // R$ 267 / 3 meses
-  semiannual: "price_1TNNnXIF4fHxJpjH6uHkOIIJ",  // R$ 504 / 6 meses
-  annual: "price_1TNNnlIF4fHxJpjHfVwPUqAb",      // R$ 948 / ano
+// ============================================================================
+// Pricing v3 — Modelo Windmill (single plan, per-seat)
+// Líder + 3 liderados grátis. R$ 49,90/mês ou R$ 478,80/ano por seat adicional.
+// Workspaces grandfathered (grandfather_until >= hoje) NÃO podem abrir checkout.
+// ============================================================================
+const FREE_SEATS = 3;
+
+const SEAT_PRICE_IDS: Record<"monthly" | "annual", string> = {
+  monthly: "price_1TUqnLIF4fHxJpjH3WthrrBs",
+  annual: "price_1TUqnmIF4fHxJpjHG44CIrIL",
 };
 
-type BillingCycle = keyof typeof PRO_PRICE_IDS;
+type SeatCycle = keyof typeof SEAT_PRICE_IDS;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -46,34 +49,27 @@ Deno.serve(async (req) => {
       });
     }
 
-    const userId = user.id;
     const userEmail = user.email!;
 
-    // Accept { plan: 'pro', billingCycle: 'quarterly'|'semiannual'|'annual' }.
-    // For backwards compatibility, default to 'annual' if not specified.
     const body = await req.json().catch(() => ({}));
-    const plan: string = body.plan ?? "pro";
-    const billingCycle: BillingCycle = (body.billingCycle ?? body.cycle ?? "annual") as BillingCycle;
-
-    if (plan !== "pro") {
-      return new Response(
-        JSON.stringify({ error: "Apenas o plano Pro está disponível para auto-checkout. Para Enterprise, fale com vendas." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    if (!PRO_PRICE_IDS[billingCycle]) {
-      return new Response(JSON.stringify({ error: "Ciclo de faturamento inválido. Use quarterly, semiannual ou annual." }), {
+    const seatCycle: SeatCycle = (body.seatCycle ?? body.cycle ?? "monthly") as SeatCycle;
+    if (!SEAT_PRICE_IDS[seatCycle]) {
+      return new Response(JSON.stringify({ error: "Ciclo inválido. Use monthly ou annual." }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Get workspace
-    const { data: workspace, error: wsError } = await supabase
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    // Workspace do usuário (Owner)
+    const { data: workspace, error: wsError } = await supabaseAdmin
       .from("workspaces")
-      .select("id")
-      .eq("owner_id", userId)
+      .select("id, grandfather_until, paid_seats")
+      .eq("owner_id", user.id)
       .maybeSingle();
 
     if (wsError || !workspace) {
@@ -83,18 +79,44 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Bloquear checkout se workspace está em período grandfathered
+    const grandfatherUntil = (workspace as any).grandfather_until as string | null;
+    const isGrandfathered = !!grandfatherUntil && new Date(grandfatherUntil) >= new Date(new Date().toDateString());
+    if (isGrandfathered) {
+      return new Response(
+        JSON.stringify({
+          blocked: true,
+          reason: "grandfathered",
+          grandfather_until: grandfatherUntil,
+          message: `Você é Early Adopter até ${grandfatherUntil}. Nada a pagar.`,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Calcular seats pagos = total de liderados − 3 free (mínimo 1 para checkout)
+    const { count: memberCount, error: countErr } = await supabaseAdmin
+      .from("team_members")
+      .select("*", { count: "exact", head: true })
+      .eq("workspace_id", workspace.id);
+
+    if (countErr) {
+      console.error("Count members error:", countErr);
+    }
+
+    const total = memberCount ?? 0;
+    const requestedSeats: number | undefined = body.seats;
+    const seatsToPay = Math.max(1, requestedSeats ?? (total - FREE_SEATS));
+
     const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 
-    // Search for existing Stripe customer
+    // Customer Stripe (busca por email, cria se não existir)
     const searchRes = await fetch(
       `https://api.stripe.com/v1/customers/search?query=email:'${userEmail}'`,
-      {
-        headers: { Authorization: `Bearer ${STRIPE_SECRET_KEY}` },
-      }
+      { headers: { Authorization: `Bearer ${STRIPE_SECRET_KEY}` } }
     );
     const searchData = await searchRes.json();
     let customerId: string;
-
     if (searchData.data?.length > 0) {
       customerId = searchData.data[0].id;
     } else {
@@ -107,45 +129,43 @@ Deno.serve(async (req) => {
         body: new URLSearchParams({
           email: userEmail,
           "metadata[workspace_id]": workspace.id,
-          "metadata[user_id]": userId,
+          "metadata[user_id]": user.id,
         }),
       });
       const createData = await createRes.json();
       customerId = createData.id;
     }
 
-    console.log("Creating checkout session:", { plan, billingCycle, customerId, workspaceId: workspace.id });
+    console.log("Creating per-seat checkout:", {
+      customerId,
+      workspaceId: workspace.id,
+      seatCycle,
+      seatsToPay,
+    });
 
     const params = new URLSearchParams({
       mode: "subscription",
       customer: customerId,
-      "line_items[0][price]": PRO_PRICE_IDS[billingCycle],
-      "line_items[0][quantity]": "1",
+      "line_items[0][price]": SEAT_PRICE_IDS[seatCycle],
+      "line_items[0][quantity]": String(seatsToPay),
       allow_promotion_codes: "true",
       success_url: "https://rhitmo.co/billing?success=true",
       cancel_url: "https://rhitmo.co/billing",
       "metadata[workspace_id]": workspace.id,
-      "metadata[billing_cycle]": billingCycle,
+      "metadata[seat_cycle]": seatCycle,
+      "metadata[paid_seats]": String(seatsToPay),
       "subscription_data[metadata][workspace_id]": workspace.id,
-      "subscription_data[metadata][billing_cycle]": billingCycle,
+      "subscription_data[metadata][seat_cycle]": seatCycle,
     });
 
-    // 14-day trial only for the entry tier (quarterly).
-    if (billingCycle === "quarterly") {
-      params.set("subscription_data[trial_period_days]", "14");
-    }
-
-    const sessionRes = await fetch(
-      "https://api.stripe.com/v1/checkout/sessions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${STRIPE_SECRET_KEY}`,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: params,
-      }
-    );
+    const sessionRes = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${STRIPE_SECRET_KEY}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params,
+    });
     const session = await sessionRes.json();
 
     if (session.error) {
@@ -156,9 +176,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ url: session.url }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ url: session.url, seats: seatsToPay, seat_cycle: seatCycle }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   } catch (err) {
     console.error("Error:", err);
     return new Response(JSON.stringify({ error: "Internal server error" }), {
