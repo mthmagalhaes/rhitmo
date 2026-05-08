@@ -245,6 +245,7 @@ serve(async (req) => {
                   const existingResult = results.find(r => r.email === email);
                   if (existingResult) existingResult.message += ` (erro membro: ${memberErr.message})`;
                 } else {
+                  touchedWorkspaceIds.add(ws.id);
                   const existingResult = results.find(r => r.email === email);
                   if (existingResult) {
                     existingResult.message += ` + Liderado no time "${teamName}"`;
