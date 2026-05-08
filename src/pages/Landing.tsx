@@ -612,59 +612,68 @@ const PricingSection = ({
       ? 'Cobrado mensalmente. Cancele quando quiser.'
       : 'Billed monthly. Cancel anytime.';
 
-  const includedFeatures: string[] =
+  const features =
     lang === 'pt'
       ? [
-          'Líder + 3 liderados grátis para sempre',
-          'Recall.ai com 6h/mês de transcrição no plano gratuito',
-          'Recall.ai ilimitado a partir do 1º seat pago',
-          'Mentor AI ilimitado',
-          '1:1s, Pulse, PDI, Diário e Avaliações 360° completos',
-          'Slack bidirecional + DMs proativas da Rhy',
-          'Pre-meeting briefs com contexto histórico',
-          'Detecção de viés em tempo real',
-          'Network signals e leitura da rede do time',
+          { title: 'Mentor AI ilimitado', desc: 'Seu Chief of Staff conversacional, 24/7, com memória do time.' },
+          { title: '1:1s, Pulse, PDI e 360°', desc: 'O ciclo completo de gestão de pessoas em um lugar.' },
+          { title: 'Transcrição de reunião ilimitada', desc: 'Bot entra nas reuniões, transcreve e vira evidência automaticamente.' },
+          { title: 'Slack bidirecional', desc: 'Rhitmo puxa contexto e devolve briefs por DM, sem trocar de aba.' },
+          { title: 'Detecção de viés em tempo real', desc: 'Avaliações 38× menos enviesadas, direto no editor.' },
+          { title: 'Network signals', desc: 'Leitura da rede do time para detectar risco antes da saída.' },
         ]
       : [
-          'Leader + 3 direct reports free forever',
-          'Recall.ai with 6h/mo of transcription on free tier',
-          'Unlimited Recall.ai from the first paid seat',
-          'Unlimited Mentor AI',
-          'Full 1:1s, Pulse, IDP, Journal and 360° reviews',
-          'Bidirectional Slack + proactive Rhy DMs',
-          'Pre-meeting briefs with historical context',
-          'Real-time bias detection',
-          'Network signals and team graph readouts',
+          { title: 'Unlimited Mentor AI', desc: 'Your conversational Chief of Staff, 24/7, with team memory.' },
+          { title: '1:1s, Pulse, IDP and 360°', desc: 'The full people management cycle in one place.' },
+          { title: 'Unlimited meeting transcription', desc: 'Bot joins meetings, transcribes and turns it into evidence automatically.' },
+          { title: 'Bidirectional Slack', desc: 'Rhitmo pulls context and delivers briefs by DM, no tab switching.' },
+          { title: 'Real-time bias detection', desc: 'Reviews 38× less biased, right inside the editor.' },
+          { title: 'Network signals', desc: 'Read the team graph to detect risk before someone leaves.' },
+        ];
+
+  const enterpriseBullets =
+    lang === 'pt'
+      ? [
+          'SSO (SAML, Google Workspace)',
+          'DPA + processamento na UE/Brasil',
+          'Admin dashboard com auditoria',
+          'Onboarding assistido',
+        ]
+      : [
+          'SSO (SAML, Google Workspace)',
+          'DPA + EU/Brazil data processing',
+          'Admin dashboard with audit logs',
+          'Assisted onboarding',
         ];
 
   return (
     <section id="pricing" className="py-28 bg-background">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center space-y-3 mb-10">
+        <div className="text-center space-y-4 mb-10">
           <p className="uppercase text-xs font-semibold tracking-widest text-primary">
             {lang === 'pt' ? 'Plano' : 'Plan'}
           </p>
-          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
+          <h2 className="font-serif text-3xl lg:text-5xl font-bold tracking-tight text-foreground">
             {lang === 'pt'
               ? 'Comece grátis. Pague só pelo time que cresce.'
               : 'Start free. Pay only for the team you grow.'}
           </h2>
-          <p className="text-lg text-muted-foreground max-w-xl mx-auto">
+          <p className="text-base text-muted-foreground max-w-xl mx-auto">
             {lang === 'pt'
               ? 'Um plano só. Líder + 3 liderados grátis para sempre. A partir do 4º liderado, R$ 49,90/mês cada.'
-              : 'One plan. Leader + 3 reports free forever. From the 4th report on, R$ 49.90/mo each.'}
+              : 'One plan only. Leader + 3 direct reports free forever. Starting from the 4th report, R$49.90/month each.'}
           </p>
         </div>
 
         {/* Cycle selector */}
-        <div className="flex justify-center mb-8">
+        <div className="flex justify-center mb-10">
           <Tabs value={cycle} onValueChange={(v) => setCycle(v as SeatCycle)}>
-            <TabsList className="h-11 rounded-full p-1 bg-muted">
-              <TabsTrigger value="monthly" className="rounded-full px-5 h-9 data-[state=active]:bg-background">
+            <TabsList className="h-11 rounded-full p-1 bg-muted/60">
+              <TabsTrigger value="monthly" className="rounded-full px-5 h-9 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                 {lang === 'pt' ? 'Mensal' : 'Monthly'}
               </TabsTrigger>
-              <TabsTrigger value="annual" className="rounded-full px-5 h-9 data-[state=active]:bg-background gap-2">
+              <TabsTrigger value="annual" className="rounded-full px-5 h-9 data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2">
                 {lang === 'pt' ? 'Anual' : 'Annual'}
                 <span className="bg-primary/15 text-primary text-[10px] font-semibold rounded-full px-2 py-0.5">
                   −16%
@@ -675,53 +684,94 @@ const PricingSection = ({
         </div>
 
         {/* Single card */}
-        <div className="bg-card rounded-3xl shadow-[0_2px_30px_rgba(0,0,0,0.05)] p-8 md:p-10 border">
+        <div className="bg-card rounded-[40px] border border-border/40 shadow-sm p-8 md:p-12">
           <div className="flex items-baseline gap-2 flex-wrap">
-            <span className="text-5xl md:text-6xl font-bold tracking-tight text-foreground">{headlinePrice}</span>
+            <span className="text-6xl md:text-7xl font-bold tracking-tight text-foreground leading-none">
+              {headlinePrice}
+            </span>
             <span className="text-base text-muted-foreground">{headlineSuffix}</span>
           </div>
-          <p className="text-sm text-muted-foreground mt-2">
+          <p className="text-sm text-muted-foreground mt-4">
             {headlineSub}{' '}
             <span className="font-medium text-foreground">
-              {lang === 'pt' ? 'A partir do 4º liderado.' : 'From the 4th report on.'}
+              {lang === 'pt' ? 'A partir do 4º liderado.' : 'Starting from the 4th report.'}
             </span>
           </p>
 
           <Button
-            className="w-full min-h-[48px] mt-7 rounded-xl text-base"
+            className="w-full min-h-[52px] mt-8 rounded-full text-base bg-foreground text-background hover:bg-foreground/90"
             onClick={() => navigate('/auth/start')}
           >
             {lang === 'pt' ? 'Começar grátis' : 'Start free'}
           </Button>
-          <p className="text-xs text-muted-foreground text-center mt-3">
+          <p className="text-sm font-medium text-foreground text-center mt-4">
             {lang === 'pt'
               ? 'Sem cartão. Sem demo call. 5 min para o primeiro insight.'
-              : 'No card. No demo call. 5 min to first insight.'}
+              : 'No credit card. No demo call. First insight in 5 minutes.'}
           </p>
 
-          <div className="border-t border-border/50 mt-8 pt-7">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-4">
+          {/* Impact metrics anchor */}
+          <div className="border-t border-border/50 mt-10 pt-8 grid grid-cols-3 gap-4 text-center">
+            <div>
+              <div className="text-2xl font-bold tabular-nums text-foreground">4h → 2min</div>
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground mt-1">
+                {lang === 'pt' ? 'Preparação 1:1' : '1:1 prep'}
+              </div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold tabular-nums text-foreground">38×</div>
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground mt-1">
+                {lang === 'pt' ? 'Menos viés' : 'Less bias'}
+              </div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold tabular-nums text-foreground">60%</div>
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground mt-1">
+                {lang === 'pt' ? 'Menos churn' : 'Less churn'}
+              </div>
+            </div>
+          </div>
+
+          {/* Features list */}
+          <div className="border-t border-border/50 mt-10 pt-8">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-6">
               {lang === 'pt' ? 'Tudo incluído' : 'Everything included'}
             </p>
-            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
-              {includedFeatures.map((f) => (
-                <li key={f} className="flex items-start gap-2 text-sm text-foreground">
-                  <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                  <span>{f}</span>
-                </li>
+            <dl className="space-y-5">
+              {features.map((f) => (
+                <div key={f.title} className="flex gap-3">
+                  <Check className="mt-1 h-4 w-4 text-primary shrink-0" />
+                  <div>
+                    <dt className="font-medium text-foreground">{f.title}</dt>
+                    <dd className="mt-1 text-sm text-muted-foreground">{f.desc}</dd>
+                  </div>
+                </div>
               ))}
-            </ul>
+            </dl>
           </div>
         </div>
 
         {/* Enterprise rail */}
-        <div className="mt-8 text-center">
-          <p className="text-sm text-muted-foreground">
-            {lang === 'pt' ? 'Time grande ou requisitos de SSO/DPA?' : 'Big team or SSO/DPA requirements?'}{' '}
-            <Link to="/enterprise" className="text-primary font-medium hover:underline">
-              {lang === 'pt' ? 'Falar com vendas' : 'Talk to sales'}
-            </Link>
+        <div className="mt-6 bg-muted/30 rounded-[32px] border border-border/40 p-8">
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-2">
+            Enterprise
           </p>
+          <p className="text-base text-foreground mb-5">
+            {lang === 'pt'
+              ? 'Para times +50 ou requisitos de compliance.'
+              : 'For teams of 50+ or advanced compliance needs.'}
+          </p>
+          <ul className="space-y-2 mb-6">
+            {enterpriseBullets.map((b) => (
+              <li key={b} className="flex items-start gap-2 text-sm text-foreground">
+                <span className="text-muted-foreground">•</span>
+                <span>{b}</span>
+              </li>
+            ))}
+          </ul>
+          <Link to="/enterprise" className="text-sm text-primary font-medium hover:underline">
+            {lang === 'pt' ? 'Falar com vendas →' : 'Talk to sales →'}
+          </Link>
         </div>
       </div>
     </section>
