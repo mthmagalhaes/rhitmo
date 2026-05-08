@@ -32,11 +32,21 @@ export function WorkspaceSwitcher({ onOpenInvite }: WorkspaceSwitcherProps) {
   const navigate = useNavigate();
   const { id: userId } = useEffectiveUser();
   const { workspaceId, isHRAdmin, isLeader, isLinkedMember } = useAccount();
+  const { reset: resetTour, isLeader: tourCanRun } = useOnboardingTour();
 
   const persona = resolvePersona({ isLinkedMember, isLeader, isHRAdmin });
   const settingsRoute = persona === 'leader' ? '/lider/configuracoes' : '/liderado/configuracoes';
   const helpRoute = `${settingsRoute}?tab=ajuda`;
   const canInvite = persona === 'leader' && !!onOpenInvite;
+
+  const handleReplayTour = async () => {
+    await resetTour();
+    if (window.location.pathname !== '/lider/inicio') {
+      navigate('/lider/inicio?startTour=1');
+    } else {
+      window.dispatchEvent(new CustomEvent('rhitmo:start-tour'));
+    }
+  };
 
   const { data: workspaces = [] } = useQuery({
     queryKey: ['sidebar-workspaces', userId],
