@@ -713,28 +713,6 @@ const PricingSection = ({
               : 'No credit card. No demo call. First insight in 5 minutes.'}
           </p>
 
-          {/* Impact metrics anchor */}
-          <div className="border-t border-border/50 mt-10 pt-8 grid grid-cols-3 gap-4 text-center">
-            <div>
-              <div className="text-2xl font-bold tabular-nums text-foreground">4h → 2min</div>
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground mt-1">
-                {lang === 'pt' ? 'Preparação 1:1' : '1:1 prep'}
-              </div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold tabular-nums text-foreground">38×</div>
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground mt-1">
-                {lang === 'pt' ? 'Menos viés' : 'Less bias'}
-              </div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold tabular-nums text-foreground">60%</div>
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground mt-1">
-                {lang === 'pt' ? 'Menos churn' : 'Less churn'}
-              </div>
-            </div>
-          </div>
-
           {/* Features list */}
           <div className="border-t border-border/50 mt-10 pt-8">
             <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-6">
