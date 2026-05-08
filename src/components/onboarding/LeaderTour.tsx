@@ -103,7 +103,7 @@ export function LeaderTour({ autoStart = true, onClose }: LeaderTourProps) {
       steps: [
         // 1 — Sidebar (no route change)
         {
-          element: '[data-sidebar="sidebar"]',
+          element: '[data-tour="sidebar"]',
           popover: {
             title: 'Bem-vindo ao Rhitmo',
             description:
@@ -199,7 +199,21 @@ export function LeaderTour({ autoStart = true, onClose }: LeaderTourProps) {
     });
 
     driverRef.current = d;
-    window.setTimeout(() => d.drive(), 100);
+    // Wait for the first anchor to actually be visible before starting,
+    // so we don't fire driver.js against a hidden sidebar in mobile viewports.
+    window.setTimeout(async () => {
+      const found = await waitForSelector('[data-tour="sidebar"]');
+      if (!found) {
+        toast({
+          title: 'Não consegui iniciar o tour',
+          description: 'Tente novamente pelo menu da workspace, no rodapé da sidebar.',
+        });
+        userClosedRef.current = true;
+        driverRef.current?.destroy();
+        return;
+      }
+      d.drive();
+    }, 100);
 
     return () => {
       try {

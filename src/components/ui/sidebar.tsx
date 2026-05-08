@@ -155,6 +155,7 @@ const Sidebar = React.forwardRef<
       <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
         <SheetContent
           data-sidebar="sidebar"
+          data-tour="sidebar"
           data-mobile="true"
           className="w-[--sidebar-width] p-0 text-sidebar-foreground [&>button]:hidden sidebar-glass"
           style={{
@@ -204,6 +205,7 @@ const Sidebar = React.forwardRef<
       >
         <div
           data-sidebar="sidebar"
+          data-tour="sidebar"
           className="flex h-full w-full flex-col sidebar-glass group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow"
         >
           {children}
