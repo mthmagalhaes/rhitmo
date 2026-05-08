@@ -189,7 +189,13 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
       <div className="w-full lg:w-1/2 flex items-center justify-center bg-background p-8">
         <div className="w-full max-w-md space-y-8 animate-fade-in">
           <div className="flex justify-center lg:hidden">
-            <RhitmoLogo size="md" className="text-primary" />
+            <a
+              href="https://rhitmo.co"
+              aria-label="Ir para a página inicial da Rhitmo"
+              className="inline-block transition-opacity hover:opacity-80"
+            >
+              <RhitmoLogo size="md" className="text-primary" />
+            </a>
           </div>
           
           <div className="space-y-2">
