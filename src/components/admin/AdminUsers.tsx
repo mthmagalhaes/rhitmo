@@ -19,8 +19,11 @@ import {
 import {
   Users, Power, PowerOff, Trash2, Loader2, Eye, Search, Building, Shield,
   Crown, User, Settings, KeyRound, Edit, ArrowUpDown, ArrowUp, ArrowDown,
-  Copy, Download, Hash, UserPlus, Mail,
+  Copy, Download, UserPlus, Mail, MoreHorizontal, ShieldCheck,
 } from 'lucide-react';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { CustomAvatar } from '@/components/avatar/CustomAvatar';
