@@ -49,7 +49,7 @@ export const AdminLayout = ({ children, activeTab, onTabChange }: AdminLayoutPro
     <div className="flex min-h-screen w-full bg-background">
       <aside className="w-60 bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex flex-col">
         {/* Header */}
-        <div className="px-4 pt-5 pb-4 flex items-center gap-2">
+        <div className="px-4 pt-5 pb-3 flex items-center gap-2">
           <RhitmoLogo size="sm" className="text-primary" />
           <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
             <ShieldCheck className="h-3 w-3" />
@@ -81,12 +81,9 @@ export const AdminLayout = ({ children, activeTab, onTabChange }: AdminLayoutPro
           })}
         </nav>
 
-        {/* Spacer to push user block down without orphaning Sair */}
-        <div className="flex-1" />
-
-        {/* Footer: user block + sair (juntos) */}
-        <div className="m-2 p-2 rounded-2xl border border-sidebar-border/60 bg-background/40 dark:bg-background/20 space-y-1.5">
-          <div className="flex items-center gap-2 px-1.5 py-1">
+        {/* User block ancorado logo abaixo da nav (não no rodapé da viewport) */}
+        <div className="mt-3 mx-2 pt-3 border-t border-sidebar-border/60 space-y-1">
+          <div className="flex items-center gap-2 px-2 py-1.5 rounded-xl">
             <div className="h-7 w-7 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[11px] font-semibold shrink-0">
               {userName.charAt(0).toUpperCase()}
             </div>
@@ -104,6 +101,9 @@ export const AdminLayout = ({ children, activeTab, onTabChange }: AdminLayoutPro
             <LogOut className="h-3.5 w-3.5" /> Sair
           </Button>
         </div>
+
+        {/* Spacer ocupa o resto da viewport sem afastar visualmente o Sair da nav */}
+        <div className="flex-1" />
       </aside>
 
       <main className="flex-1 overflow-x-hidden">{children}</main>
