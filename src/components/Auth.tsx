@@ -172,7 +172,13 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
           <RhythmWave variant="auth" height={200} className="opacity-40" />
         </div>
         <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
-          <RhitmoLogo size="lg" className="text-primary mb-6" />
+          <a
+            href="https://rhitmo.co"
+            aria-label="Ir para a página inicial da Rhitmo"
+            className="inline-block transition-opacity hover:opacity-80"
+          >
+            <RhitmoLogo size="lg" className="text-primary mb-6" />
+          </a>
           <p className="text-sm font-medium tracking-[0.2em] uppercase text-primary/60">
             AI-Native Leadership Partner
           </p>
