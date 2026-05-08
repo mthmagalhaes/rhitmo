@@ -532,18 +532,19 @@ export const AdminUsers = () => {
           ) : (
             <Table>
               <TableHeader>
+            <Table>
+              <TableHeader>
                 <TableRow>
                   <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('name')}>
                     Usuário <SortIcon field="name" />
                   </TableHead>
-                  <TableHead><Hash className="h-3 w-3 inline mr-1" /> ID</TableHead>
                   <TableHead>Workspace(s)</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Hierarquia</TableHead>
                   <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('status')}>
                     Status <SortIcon field="status" />
                   </TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+                  <TableHead className="text-right w-[120px]">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -553,26 +554,29 @@ export const AdminUsers = () => {
                   const userWss = getUserWorkspaces(user);
                   const primaryWs = getPrimaryWorkspace(user);
                   const segment = primaryWs?.customer_segment || null;
+                  const capBadges = renderCapBadges(user);
+                  const capBadgesArr = Array.isArray(capBadges) ? capBadges : [capBadges];
+                  const visibleBadges = capBadgesArr.slice(0, 3);
+                  const extraBadges = capBadgesArr.length - 3;
                   return (
                     <TableRow key={user.user_id}>
                       <TableCell>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 group/name">
                           <CustomAvatar variant={avatarVariant} size={32} className="shrink-0" />
-                          <div>
-                            <p className="font-medium">{user.full_name || <span className="text-muted-foreground italic">Sem nome</span>}</p>
-                            <p className="text-sm text-muted-foreground">{user.email}</p>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-medium truncate">{user.full_name || <span className="text-muted-foreground italic">Sem nome</span>}</p>
+                              <button
+                                onClick={() => copyToClipboard(user.user_id, 'ID')}
+                                className="opacity-0 group-hover/name:opacity-100 transition text-muted-foreground hover:text-foreground"
+                                title={`Copiar ID: ${user.user_id}`}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </button>
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                           </div>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <button
-                          onClick={() => copyToClipboard(user.user_id, 'ID')}
-                          className="text-xs font-mono text-muted-foreground hover:text-foreground inline-flex items-center gap-1 group"
-                          title={user.user_id}
-                        >
-                          {user.user_id.slice(0, 8)}…
-                          <Copy className="h-3 w-3 opacity-0 group-hover:opacity-100 transition" />
-                        </button>
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col gap-0.5 max-w-[200px]">
@@ -590,17 +594,22 @@ export const AdminUsers = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs">{primaryWs?.client_account || <span className="text-muted-foreground italic">—</span>}</span>
                           {segment && (
-                            <Badge variant="outline" className={`text-[10px] w-fit ${SEGMENT_STYLES[segment] || ''}`}>
+                            <Badge variant="outline" className={`text-[10px] ${SEGMENT_STYLES[segment] || ''}`}>
                               {SEGMENT_LABELS[segment] || segment}
                             </Badge>
                           )}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-wrap gap-1 max-w-xs">{renderCapBadges(user)}</div>
+                        <div className="flex flex-wrap gap-1 max-w-[220px]">
+                          {visibleBadges}
+                          {extraBadges > 0 && (
+                            <Badge variant="outline" className="text-[10px]">+{extraBadges}</Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         {wsInfo ? (
@@ -610,40 +619,53 @@ export const AdminUsers = () => {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => startImpersonation(user.user_id, user.email)} title="Impersonar">
+                        <div className="flex items-center justify-end gap-0.5">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startImpersonation(user.user_id, user.email)} title="Impersonar">
                             <Eye className="h-4 w-4 text-primary" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => openEdit(user)} title="Editar">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handlePasswordReset(user.email)} disabled={resettingEmail === user.email} title="Reset senha">
-                            {resettingEmail === user.email ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
-                          </Button>
-                          {wsInfo && (
-                            <Button variant="ghost" size="icon" onClick={() => toggleWorkspaceStatus(wsInfo.workspace_id, wsInfo.is_active)} disabled={togglingId === wsInfo.workspace_id} title={wsInfo.is_active ? "Suspender" : "Ativar"}>
-                              {togglingId === wsInfo.workspace_id ? <Loader2 className="h-4 w-4 animate-spin" /> : wsInfo.is_active ? <PowerOff className="h-4 w-4 text-destructive" /> : <Power className="h-4 w-4 text-primary" />}
-                            </Button>
-                          )}
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" disabled={deletingId === user.user_id} title="Excluir">
-                                {deletingId === user.user_id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 text-destructive" />}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" title="Mais ações">
+                                <MoreHorizontal className="h-4 w-4" />
                               </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Excluir usuário permanentemente?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Esta ação remove a conta, workspaces, times, feedbacks e avaliações de <strong>{user.full_name || user.email}</strong>.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteUser(user.user_id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Confirmar</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem onClick={() => openEdit(user)}>
+                                <Edit className="h-4 w-4 mr-2" /> Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handlePasswordReset(user.email)} disabled={resettingEmail === user.email}>
+                                {resettingEmail === user.email ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <KeyRound className="h-4 w-4 mr-2" />}
+                                Reset de senha
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => copyToClipboard(user.user_id, 'ID')}>
+                                <Copy className="h-4 w-4 mr-2" /> Copiar ID
+                              </DropdownMenuItem>
+                              {wsInfo && (
+                                <DropdownMenuItem
+                                  onClick={() => toggleWorkspaceStatus(wsInfo.workspace_id, wsInfo.is_active)}
+                                  disabled={togglingId === wsInfo.workspace_id}
+                                >
+                                  {togglingId === wsInfo.workspace_id ? (
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  ) : wsInfo.is_active ? (
+                                    <PowerOff className="h-4 w-4 mr-2 text-destructive" />
+                                  ) : (
+                                    <Power className="h-4 w-4 mr-2 text-primary" />
+                                  )}
+                                  {wsInfo.is_active ? 'Suspender workspace' : 'Ativar workspace'}
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => { setPendingDeleteId(user.user_id); setPendingDeleteUser(user); }}
+                                disabled={deletingId === user.user_id}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                {deletingId === user.user_id ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                                Excluir usuário
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </TableCell>
                     </TableRow>
