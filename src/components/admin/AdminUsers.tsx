@@ -532,8 +532,6 @@ export const AdminUsers = () => {
           ) : (
             <Table>
               <TableHeader>
-            <Table>
-              <TableHeader>
                 <TableRow>
                   <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('name')}>
                     Usuário <SortIcon field="name" />
