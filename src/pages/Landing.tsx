@@ -661,8 +661,8 @@ const PricingSection = ({
           </h2>
           <p className="text-base text-muted-foreground max-w-xl mx-auto">
             {lang === 'pt'
-              ? 'Um plano só. Líder + 3 liderados grátis para sempre. A partir do 4º liderado, R$ 49,90/mês cada.'
-              : 'One plan only. Leader + 3 direct reports free forever. Starting from the 4th report, R$49.90/month each.'}
+              ? 'Tudo o que você precisa para colocar seu time no ritmo certo.'
+              : 'Everything you need to get your team in the right rhythm.'}
           </p>
         </div>
 
