@@ -685,8 +685,13 @@ const PricingSection = ({
 
         {/* Single card */}
         <div className="bg-card rounded-[40px] border border-border/40 shadow-sm p-8 md:p-12">
-          <div className="inline-flex items-center rounded-full bg-primary/10 px-6 py-2.5 text-xl md:text-2xl font-semibold text-primary mb-6">
-            {lang === 'pt' ? 'Primeiros 3 usuários grátis' : 'First 3 users free'}
+          <div className="flex flex-col items-start gap-2 mb-8">
+            <div className="inline-flex items-center rounded-full bg-primary/10 px-6 py-2.5 text-xl md:text-2xl font-semibold text-primary">
+              {lang === 'pt' ? 'Primeiros 3 usuários grátis' : 'First 3 users free'}
+            </div>
+            <div className="inline-flex items-center rounded-full bg-muted px-3.5 py-1 text-xs font-medium text-muted-foreground">
+              {lang === 'pt' ? 'Teste a Rhitmo sem compromisso' : 'Try Rhitmo with no commitment'}
+            </div>
           </div>
           <div className="flex items-baseline gap-2 flex-wrap">
             <span className="text-6xl md:text-7xl font-bold tracking-tight text-foreground leading-none">
@@ -694,7 +699,7 @@ const PricingSection = ({
             </span>
             <span className="text-base text-muted-foreground">{headlineSuffix}</span>
           </div>
-          <p className="text-sm font-medium text-foreground mt-4">
+          <p className="text-sm font-medium text-foreground mt-3">
             {lang === 'pt'
               ? 'Para cada usuário adicional após o 3º.'
               : 'For each additional user after the 3rd.'}
