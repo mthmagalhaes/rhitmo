@@ -15,14 +15,31 @@ interface LeaderTourProps {
  * Wait for a CSS selector to appear in the DOM.
  * Resolves with the element, or null after `timeout` ms.
  */
-function waitForSelector(selector: string, timeout = 2500): Promise<Element | null> {
+function isVisible(el: Element | null): el is HTMLElement {
+  if (!el || !(el instanceof HTMLElement)) return false;
+  if (el.offsetParent === null && getComputedStyle(el).position !== 'fixed') return false;
+  const rect = el.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0;
+}
+
+/**
+ * Wait for a CSS selector to appear in the DOM AND be visible.
+ * Among multiple matches, returns the first visible one.
+ * Resolves with the element, or null after `timeout` ms.
+ */
+function waitForSelector(selector: string, timeout = 2500): Promise<HTMLElement | null> {
   return new Promise((resolve) => {
-    const existing = document.querySelector(selector);
+    const findVisible = () => {
+      const matches = Array.from(document.querySelectorAll(selector));
+      return matches.find(isVisible) as HTMLElement | undefined;
+    };
+
+    const existing = findVisible();
     if (existing) return resolve(existing);
 
     const start = Date.now();
     const interval = window.setInterval(() => {
-      const el = document.querySelector(selector);
+      const el = findVisible();
       if (el) {
         window.clearInterval(interval);
         resolve(el);
@@ -57,7 +74,16 @@ export function LeaderTour({ autoStart = true, onClose }: LeaderTourProps) {
       navigate(path);
       // Give react-router + lazy chunks a tick before we start polling
       await new Promise((r) => window.setTimeout(r, 60));
-      await waitForSelector(anchor);
+      const found = await waitForSelector(anchor);
+      if (!found) {
+        toast({
+          title: 'Não consegui abrir este passo',
+          description: 'Encerrei o tour. Você pode refazê-lo pelo menu da workspace.',
+        });
+        userClosedRef.current = true;
+        driverRef.current?.destroy();
+        return;
+      }
       // Small settle delay so layout is stable when driver re-positions
       await new Promise((r) => window.setTimeout(r, 120));
       driverRef.current?.moveNext();

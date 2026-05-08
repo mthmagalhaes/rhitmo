@@ -235,7 +235,7 @@ export function MemberMasterList(props: MemberMasterListProps) {
       <div className="lg:hidden flex items-center gap-2">
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger asChild>
-            <Button variant="outline" size="sm" className="rounded-xl gap-2">
+            <Button data-tour="member-list" variant="outline" size="sm" className="rounded-xl gap-2">
               <Menu className="h-4 w-4" />
               Liderados
             </Button>
