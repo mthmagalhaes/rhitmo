@@ -112,12 +112,20 @@ export function LeaderTour({ autoStart = true, onClose }: LeaderTourProps) {
         },
       ],
       onDestroyed: () => {
+        if (!userClosedRef.current) return;
         markComplete();
         toast({
           title: 'Tudo pronto. Bom rhitmo. 🌀',
           description: 'Você pode refazer este tour pelo menu da workspace, no rodapé da sidebar.',
         });
         onClose?.();
+      },
+      onCloseClick: () => {
+        userClosedRef.current = true;
+        driverRef.current?.destroy();
+      },
+      onPopoverRender: () => {
+        // any custom hook if needed
       },
     });
 
