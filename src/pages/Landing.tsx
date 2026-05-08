@@ -628,7 +628,7 @@ const PricingSection = ({
           { title: 'Unlimited meeting transcription', desc: 'Bot joins meetings, transcribes and turns it into evidence automatically.' },
           { title: 'Bidirectional Slack', desc: 'Rhitmo pulls context and delivers briefs by DM, no tab switching.' },
           { title: 'Real-time bias detection', desc: 'Reviews 38× less biased, right inside the editor.' },
-          { title: 'Network signals', desc: 'Read the team graph to detect risk before someone leaves.' },
+          
         ];
 
   const enterpriseBullets =
