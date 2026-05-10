@@ -728,27 +728,66 @@ const PricingSection = ({
           </div>
         </div>
 
-        {/* Enterprise rail */}
-        <div className="mt-6 bg-muted/30 rounded-[32px] border border-border/40 p-8">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-2">
-            Enterprise
-          </p>
-          <p className="text-base text-foreground mb-5">
-            {lang === 'pt'
-              ? 'Para times +50 ou requisitos de compliance.'
-              : 'For teams of 50+ or advanced compliance needs.'}
-          </p>
-          <ul className="space-y-2 mb-6">
+        {/* Enterprise rail — high-contrast dark block */}
+        <div className="mt-6 bg-foreground text-background rounded-[32px] p-8 md:p-10 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.25)]">
+          {/* Eyebrow */}
+          <div className="inline-flex items-center gap-2 rounded-full bg-background/10 px-3 py-1.5 mb-6">
+            <Building className="h-3.5 w-3.5 text-background/80" />
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-background/80">
+              {lang === 'pt' ? 'Para organizações · +50 pessoas' : 'For organizations · 50+ people'}
+            </span>
+          </div>
+
+          {/* Headline + CTA row */}
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
+            <div className="md:max-w-md">
+              <h3 className="font-serif text-3xl md:text-4xl font-bold tracking-tight text-background leading-tight mb-3">
+                Rhitmo Enterprise
+              </h3>
+              <p className="text-sm md:text-base text-background/70 leading-relaxed">
+                {lang === 'pt'
+                  ? 'Ciclo completo de performance para toda a organização: calibração entre gestores, blindagem jurídica e visibilidade do RH em tempo real.'
+                  : 'Complete performance cycle for the entire organization: cross-manager calibration, legal protection, and real-time HR visibility.'}
+              </p>
+            </div>
+
+            <div className="flex flex-col items-start md:items-end gap-2 shrink-0">
+              <Button
+                asChild
+                className="min-h-[52px] rounded-full px-7 text-base bg-background text-foreground hover:bg-background/90 shadow-sm"
+              >
+                <Link to="/enterprise" className="inline-flex items-center gap-2">
+                  {lang === 'pt' ? 'Falar com Vendas' : 'Talk to Sales'}
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+              <a
+                href="mailto:matheus@rhitmo.co"
+                className="text-xs text-background/60 hover:text-background/90 transition-colors"
+              >
+                {lang === 'pt' ? 'ou escreva para matheus@rhitmo.co' : 'or email matheus@rhitmo.co'}
+              </a>
+            </div>
+          </div>
+
+          {/* Bullets grid 2×2 */}
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 mb-8">
             {enterpriseBullets.map((b) => (
-              <li key={b} className="flex items-start gap-2 text-sm text-foreground">
-                <span className="text-muted-foreground">•</span>
+              <li key={b} className="flex items-start gap-2.5 text-sm text-background/90">
+                <Check className="mt-0.5 h-4 w-4 text-background shrink-0" />
                 <span>{b}</span>
               </li>
             ))}
           </ul>
-          <Link to="/enterprise" className="text-sm text-primary font-medium hover:underline">
-            {lang === 'pt' ? 'Falar com vendas →' : 'Talk to sales →'}
-          </Link>
+
+          {/* Trust line */}
+          <div className="border-t border-background/10 pt-5">
+            <p className="text-xs text-background/55">
+              {lang === 'pt'
+                ? 'A partir de R$ 750/mês · faturamento anual · resposta em até 24h'
+                : 'Starting at R$ 750/month · annual billing · response within 24h'}
+            </p>
+          </div>
         </div>
       </div>
     </section>
