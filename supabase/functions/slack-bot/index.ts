@@ -2354,35 +2354,40 @@ Deno.serve(async (req) => {
                 }
               }
 
-              // Throttle: only respond with full menu once per window per user.
-              // Subsequent messages in the same window are silently ignored to avoid flooding the DM.
+              // Conversational-first: para usuário não autenticado em DM,
+              // enviamos APENAS uma mensagem curta de conexão (1x por janela),
+              // sem menu grande nem listas de comandos.
               const isAuthenticated = persona.persona !== 'unauthenticated';
-              const allow = await shouldSendWelcome(
-                slackUserId,
-                json.team_id || '',
-                isAuthenticated,
-                'dm',
-              );
-              if (!allow) {
-                console.log('[DM] Throttled — not re-sending menu');
+              if (isAuthenticated) {
+                // Autenticado sem conv ativa não deveria cair aqui (auto-create
+                // já roda acima). Se cair, ficamos em silêncio para não floodar.
+                console.log('[DM] Authenticated user fell through conv hook — staying silent');
                 return;
               }
 
-              let stateToken: string | undefined;
-              if (!isAuthenticated) {
-                stateToken = await generateStateToken(slackUserId, json.team_id || '');
+              const allow = await shouldSendWelcome(
+                slackUserId,
+                json.team_id || '',
+                false,
+                'dm',
+              );
+              if (!allow) {
+                console.log('[DM] Throttled — not re-sending connect prompt');
+                return;
               }
 
-              const menu = buildRhitmoMenu(persona, stateToken);
-
-              const introText = !isAuthenticated
-                ? undefined
-                : '👋 Olá! Aqui estão suas ações disponíveis. Use os comandos `/rhitmo`, `/nota`, `/kudos`, `/brief` ou `/mentor` a qualquer momento.';
-
+              const stateToken = await generateStateToken(slackUserId, json.team_id || '');
+              const APP_URL = 'https://rhitmo.co';
+              const connectUrl = `${APP_URL}/slack/connect?state=${encodeURIComponent(stateToken)}`;
               await slackApi('chat.postMessage', {
                 channel: event.channel,
-                ...(introText ? { text: introText } : {}),
-                ...menu,
+                text: '🔗 Conecte sua conta Rhitmo para conversarmos por aqui.',
+                blocks: [
+                  { type: 'section', text: { type: 'mrkdwn', text: '🔗 *Conecte sua conta Rhitmo* para conversarmos por aqui em linguagem natural.' } },
+                  { type: 'actions', elements: [
+                    { type: 'button', text: { type: 'plain_text', text: '🔗 Conectar Conta' }, url: connectUrl, action_id: 'connect_account', style: 'primary' },
+                  ]},
+                ],
               });
             } catch (err) {
               console.error('[DM] Error processing message:', err);
@@ -2392,46 +2397,12 @@ Deno.serve(async (req) => {
           return new Response('', { status: 200, headers: corsHeaders });
         }
 
-        // Handle app_home_opened (messages tab) — send welcome (throttled)
+        // app_home_opened: conversational-first. NÃO postamos mais menu/welcome
+        // automaticamente — o líder verá o histórico de DMs ou pode mandar
+        // qualquer mensagem para conversar com a Rhitmo. Isso evita flood
+        // toda vez que a aba Mensagens é aberta/reaberta.
         if (event?.type === 'app_home_opened' && event?.tab === 'messages') {
-          (async () => {
-            try {
-              const slackUserId = event.user;
-              console.log('[HOME] Messages tab opened by:', slackUserId);
-
-              const persona = await getUserPersona(slackUserId);
-              const isAuthenticated = persona.persona !== 'unauthenticated';
-
-              // Throttle: prevent flooding when user toggles tabs.
-              // Authenticated: 1x / 24h. Unauthenticated: 1x / 7 days.
-              const allow = await shouldSendWelcome(
-                slackUserId,
-                json.team_id || '',
-                isAuthenticated,
-                'app_home',
-              );
-              if (!allow) {
-                console.log('[HOME] Throttled — not re-sending welcome');
-                return;
-              }
-
-              let stateToken: string | undefined;
-              if (!isAuthenticated) {
-                stateToken = await generateStateToken(slackUserId, json.team_id || '');
-              }
-
-              const menu = buildRhitmoMenu(persona, stateToken);
-
-              await slackApi('chat.postMessage', {
-                channel: event.channel,
-                text: '👋 Bem-vindo ao Rhitmo! Envie qualquer mensagem para ver suas opções.',
-                ...menu,
-              });
-            } catch (err) {
-              console.error('[HOME] Error sending welcome:', err);
-            }
-          })();
-
+          console.log('[HOME] Messages tab opened by:', event.user, '— no auto-message (conversational-first)');
           return new Response('', { status: 200, headers: corsHeaders });
         }
       }
