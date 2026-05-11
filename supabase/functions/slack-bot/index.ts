@@ -2449,6 +2449,12 @@ Deno.serve(async (req) => {
                           .map((t) => ({ role: t.role as 'user' | 'assistant', content: t.text || '' })),
                       ];
 
+                      // Sprint A: show "Rhitmo está pensando…" in the
+                      // Assistant container while the LLM works. No-op for
+                      // regular DMs (no thread_ts).
+                      const assistThreadTs = event.thread_ts;
+                      await setAssistantStatus(event.channel, assistThreadTs, 'Rhitmo está pensando…');
+
                       const assistantText = await callLovableAI(messages);
 
                       await appendConversationTurn(conv.id, {
@@ -2459,13 +2465,25 @@ Deno.serve(async (req) => {
 
                       await slackApi('chat.postMessage', {
                         channel: event.channel,
+                        thread_ts: assistThreadTs,
                         text: assistantText,
                         mrkdwn: true,
                       });
+
+                      // Clear status + offer follow-up prompts (Sprint A)
+                      await setAssistantStatus(event.channel, assistThreadTs, '');
+                      await setAssistantSuggestedPrompts(
+                        event.channel,
+                        assistThreadTs,
+                        'Quer continuar?',
+                        suggestedPromptsForPersona(persona.persona),
+                      );
                     } catch (err) {
                       console.error('[CONV] LLM turn failed:', err);
+                      await setAssistantStatus(event.channel, event.thread_ts, '');
                       await slackApi('chat.postMessage', {
                         channel: event.channel,
+                        thread_ts: event.thread_ts,
                         text: '⚠️ Tive um problema agora. Pode repetir?',
                       }).catch(() => {});
                     }
