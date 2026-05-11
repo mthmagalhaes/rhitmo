@@ -464,6 +464,82 @@ async function slackApi(method: string, body: Record<string, unknown>) {
   return json;
 }
 
+// ── Slack AI Assistant helpers (Sprint A — assistant container) ──
+// Best-effort: any failure (e.g. user not on AI App container, missing scope)
+// is swallowed silently so non-assistant DMs continue to work normally.
+async function setAssistantStatus(channelId: string, threadTs: string | undefined, status: string) {
+  if (!threadTs) return;
+  try {
+    await slackApi('assistant.threads.setStatus', {
+      channel_id: channelId,
+      thread_ts: threadTs,
+      status, // empty string clears the indicator
+    });
+  } catch (err) {
+    console.warn('[ASSISTANT] setStatus failed:', (err as Error)?.message);
+  }
+}
+
+async function setAssistantSuggestedPrompts(
+  channelId: string,
+  threadTs: string | undefined,
+  title: string,
+  prompts: Array<{ title: string; message: string }>,
+) {
+  if (!threadTs || prompts.length === 0) return;
+  try {
+    await slackApi('assistant.threads.setSuggestedPrompts', {
+      channel_id: channelId,
+      thread_ts: threadTs,
+      title,
+      prompts: prompts.slice(0, 4),
+    });
+  } catch (err) {
+    console.warn('[ASSISTANT] setSuggestedPrompts failed:', (err as Error)?.message);
+  }
+}
+
+async function setAssistantTitle(channelId: string, threadTs: string | undefined, title: string) {
+  if (!threadTs) return;
+  try {
+    await slackApi('assistant.threads.setTitle', {
+      channel_id: channelId,
+      thread_ts: threadTs,
+      title,
+    });
+  } catch (err) {
+    console.warn('[ASSISTANT] setTitle failed:', (err as Error)?.message);
+  }
+}
+
+function suggestedPromptsForPersona(persona: string): Array<{ title: string; message: string }> {
+  if (persona === 'leader') {
+    return [
+      { title: 'Pauta da próxima 1:1', message: 'Gere a pauta sugerida para minha próxima 1:1.' },
+      { title: 'O que mudou no time?', message: 'Resuma o que mudou no meu time nos últimos 7 dias.' },
+      { title: 'Riscos abertos', message: 'Quais riscos ou sinais negativos estão abertos no time agora?' },
+    ];
+  }
+  if (persona === 'member' || persona === 'liderado') {
+    return [
+      { title: 'Como vai meu PDI?', message: 'Como está meu PDI? O que falta avançar?' },
+      { title: 'Resumo da última 1:1', message: 'Me lembra os pontos da minha última 1:1.' },
+      { title: 'Pedir feedback', message: 'Quero registrar um feedback ou dúvida pra minha liderança.' },
+    ];
+  }
+  if (persona === 'hr_admin') {
+    return [
+      { title: 'Saúde do time', message: 'Como está a saúde geral dos times agora?' },
+      { title: 'Reviews atrasados', message: 'Quais reviews ou PDIs estão atrasados?' },
+      { title: 'Sinais de risco', message: 'Mostre os sinais de risco mais recentes na empresa.' },
+    ];
+  }
+  return [
+    { title: 'O que você faz?', message: 'Me explica como você pode me ajudar como Chief of Staff.' },
+    { title: 'Conectar minha conta', message: 'Como conecto minha conta Rhitmo aqui no Slack?' },
+  ];
+}
+
 // ── Send Delayed Response via response_url ────────────────
 async function sendDelayedResponse(responseUrl: string, message: Record<string, unknown>, responseType = 'ephemeral') {
   const res = await fetch(responseUrl, {
