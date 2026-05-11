@@ -2277,6 +2277,62 @@ Deno.serve(async (req) => {
           return new Response('', { status: 200, headers: corsHeaders });
         }
 
+        // ── Slack AI Assistant container events (Sprint A) ──
+        // Fired when the user opens the Rhitmo "AI assistant" panel or
+        // changes the channel/thread context they're looking at.
+        if (event?.type === 'assistant_thread_started') {
+          const thread = event.assistant_thread || {};
+          const channelId = thread.channel_id;
+          const threadTs = thread.thread_ts;
+          const slackUserId = thread.user_id;
+          console.log('[ASSISTANT] thread_started | user:', slackUserId, '| thread_ts:', threadTs);
+          (async () => {
+            try {
+              const persona = slackUserId ? await getUserPersona(slackUserId) : { persona: 'unauthenticated' as string };
+              await setAssistantTitle(channelId, threadTs, 'Conversa com a Rhitmo');
+              await setAssistantSuggestedPrompts(
+                channelId,
+                threadTs,
+                'Posso te ajudar com:',
+                suggestedPromptsForPersona(persona.persona),
+              );
+            } catch (err) {
+              console.error('[ASSISTANT] thread_started handler failed:', err);
+            }
+          })();
+          return new Response('', { status: 200, headers: corsHeaders });
+        }
+
+        if (event?.type === 'assistant_thread_context_changed') {
+          const thread = event.assistant_thread || {};
+          const slackUserId = thread.user_id;
+          const ctxChannel = thread.context?.channel_id;
+          console.log('[ASSISTANT] context_changed | user:', slackUserId, '| ctx_channel:', ctxChannel);
+          // Persist current channel context on the active conversation so the
+          // next LLM turn can mention "I see you're in #squad-x".
+          (async () => {
+            try {
+              if (!slackUserId) return;
+              const conv = await getActiveConversation(slackUserId);
+              if (!conv) return;
+              const sd = (conv.state_data as any) ?? {};
+              await supabase
+                .from('slack_conversations')
+                .update({
+                  state_data: {
+                    ...sd,
+                    current_channel_id: ctxChannel ?? null,
+                    current_thread_ts: thread.context?.thread_ts ?? null,
+                  },
+                })
+                .eq('id', conv.id);
+            } catch (err) {
+              console.warn('[ASSISTANT] context_changed persist failed:', err);
+            }
+          })();
+          return new Response('', { status: 200, headers: corsHeaders });
+        }
+
         // Handle DM messages
         if (event?.type === 'message' && event?.channel_type === 'im') {
           // Fire-and-forget async processing
