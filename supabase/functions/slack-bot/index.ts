@@ -655,6 +655,8 @@ async function checkPrivacy(command: string, channelType: string, channelId: str
 
 // ── Command Handlers ──────────────────────────────────────
 
+// Conversational-first: o menu é exceção, não padrão. Só é exibido quando o
+// líder pede explicitamente via /rhitmo (ou quando precisamos pedir conexão).
 function buildRhitmoMenu(persona: PersonaResult, stateToken?: string): Record<string, unknown> {
   if (persona.persona === 'unauthenticated') {
     const APP_URL = 'https://rhitmo.co';
@@ -662,62 +664,45 @@ function buildRhitmoMenu(persona: PersonaResult, stateToken?: string): Record<st
       ? `${APP_URL}/slack/connect?state=${encodeURIComponent(stateToken)}`
       : APP_URL;
     return {
+      text: '🔗 Conecte sua conta Rhitmo para conversarmos por aqui.',
       blocks: [
-        { type: 'section', text: { type: 'mrkdwn', text: '🔗 *Conecte sua conta Rhitmo* para usar os comandos do Slack.' } },
+        { type: 'section', text: { type: 'mrkdwn', text: '🔗 *Conecte sua conta Rhitmo* para conversarmos por aqui.' } },
         { type: 'actions', elements: [
           { type: 'button', text: { type: 'plain_text', text: '🔗 Conectar Conta' }, url: connectUrl, action_id: 'connect_account', style: 'primary' },
         ]},
-        { type: 'context', elements: [{ type: 'mrkdwn', text: 'Você será redirecionado para o Rhitmo para vincular sua conta.' }] },
       ],
     };
   }
 
-  const blocks: unknown[] = [
-    { type: 'header', text: { type: 'plain_text', text: '🎯 Rhitmo — O que você quer fazer?' } },
-    { type: 'divider' },
-  ];
+  // Resposta curta e conversacional. Sem listas longas de comandos — o líder
+  // pode pedir tudo em linguagem natural na própria DM.
+  let intro = 'Sou a *Rhitmo*, sua Chief of Staff de liderança. É só me pedir em linguagem natural — por exemplo: _"prepare minha 1:1 com Yasmin"_, _"registre uma nota sobre Guilherme"_, _"como anda o time?"_';
+  const actions: unknown[] = [];
 
   if (persona.persona === 'leader') {
-    blocks.push(
-      { type: 'section', text: { type: 'mrkdwn', text: '*📋 Gestão de Time*' } },
-      { type: 'actions', elements: [
-        { type: 'button', text: { type: 'plain_text', text: '✍️ Adicionar nota' }, action_id: 'open_add_note', style: 'primary' },
-        { type: 'button', text: { type: 'plain_text', text: '👏 Enviar kudos' }, action_id: 'open_send_kudos' },
-        { type: 'button', text: { type: 'plain_text', text: '🌀 Conversar com a Rhitmo' }, action_id: 'start_rhitmo_chat' },
-      ]},
-      { type: 'section', text: { type: 'mrkdwn', text: '\n*💬 Comandos rápidos:*\n• `/nota @membro texto` — Feedback privado\n• `/kudos @membro texto` — Reconhecimento privado (DM + Diário)\n• `/brief @membro` — Resumo do membro\n• `/mentor <pergunta>` — Consultar mentor de IA\n• `/rhitmo` — Este menu' }},
-      { type: 'section', text: { type: 'mrkdwn', text: '\n*📊 No Rhitmo Web:*\n• *Rhitmo Mensal & Trimestral* — recaps automáticos do time\n• *Avaliação Formal* — gerar com IA em 2 passos (briefing → revisão)\n→ <https://rhitmo.co|Abrir Rhitmo>' }},
+    actions.push(
+      { type: 'button', text: { type: 'plain_text', text: '✍️ Nota' }, action_id: 'open_add_note' },
+      { type: 'button', text: { type: 'plain_text', text: '👏 Kudos' }, action_id: 'open_send_kudos' },
     );
   } else if (persona.persona === 'direct_report') {
-    blocks.push(
-      { type: 'section', text: { type: 'mrkdwn', text: '*👤 Seu Desenvolvimento*' } },
-      { type: 'section', text: { type: 'mrkdwn', text: 'Acesse seu PDI e suas avaliações compartilhadas diretamente pelo Slack ou no Rhitmo.' }},
-      { type: 'actions', elements: [
-        { type: 'button', text: { type: 'plain_text', text: '📋 Meu PDI' }, action_id: 'action_meu_pdi', style: 'primary' },
-        { type: 'button', text: { type: 'plain_text', text: '📄 Minhas Avaliações' }, url: 'https://rhitmo.co/avaliacoes', action_id: 'open_my_reviews' },
-        { type: 'button', text: { type: 'plain_text', text: '🌀 Conversar com a Rhitmo' }, action_id: 'start_rhitmo_chat' },
-        { type: 'button', text: { type: 'plain_text', text: '🚀 Abrir Rhitmo' }, url: 'https://rhitmo.co', action_id: 'open_app' },
-      ]},
-      { type: 'section', text: { type: 'mrkdwn', text: '\n*💬 Comandos rápidos:*\n• `/meu-pdi` — Ver seu Plano de Desenvolvimento\n• `/meu-rhitmo` — Ver seu perfil e feedbacks\n• `/rhitmo` — Este menu' }},
+    intro = 'Sou a *Rhitmo*. Pode me perguntar em linguagem natural sobre o seu PDI, suas avaliações ou o que estiver no seu radar.';
+    actions.push(
+      { type: 'button', text: { type: 'plain_text', text: '📋 Meu PDI' }, action_id: 'action_meu_pdi' },
     );
   } else if (persona.persona === 'hr_admin') {
-    blocks.push(
-      { type: 'section', text: { type: 'mrkdwn', text: '*📈 Analytics Organizacional*' } },
-      { type: 'section', text: { type: 'mrkdwn', text: '• Health Score do workspace (0–100)\n• Alertas de risco (turnover, viés, silêncio de líder)\n• Visão consolidada de PDIs e avaliações' }},
-      { type: 'actions', elements: [
-        { type: 'button', text: { type: 'plain_text', text: '📊 Dashboard HR' }, url: 'https://rhitmo.co/hr', action_id: 'open_hr', style: 'primary' },
-        { type: 'button', text: { type: 'plain_text', text: '🚨 Alertas de Risco' }, url: 'https://rhitmo.co/hr', action_id: 'open_hr_alerts' },
-        { type: 'button', text: { type: 'plain_text', text: '📈 Analytics Avançado' }, url: 'https://rhitmo.co/hr/analytics', action_id: 'open_hr_analytics' },
-      ]},
+    intro = 'Sou a *Rhitmo*. Pergunte sobre o pulso do workspace, riscos ou cobertura de PDIs em linguagem natural.';
+    actions.push(
+      { type: 'button', text: { type: 'plain_text', text: '📊 Dashboard HR' }, url: 'https://rhitmo.co/hr', action_id: 'open_hr' },
     );
   }
 
-  blocks.push(
-    { type: 'divider' },
-    { type: 'context', elements: [{ type: 'mrkdwn', text: '💡 *Dica:* Você também receberá notificações automáticas antes de 1:1s.' }] }
-  );
-
-  return { blocks };
+  const blocks: unknown[] = [
+    { type: 'section', text: { type: 'mrkdwn', text: intro } },
+  ];
+  if (actions.length > 0) {
+    blocks.push({ type: 'actions', elements: actions });
+  }
+  return { text: 'Rhitmo', blocks };
 }
 
 async function handleNotaCommand(payload: Record<string, string>, persona: PersonaResult): Promise<Record<string, unknown>> {
