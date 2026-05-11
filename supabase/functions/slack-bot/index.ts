@@ -464,6 +464,82 @@ async function slackApi(method: string, body: Record<string, unknown>) {
   return json;
 }
 
+// ── Slack AI Assistant helpers (Sprint A — assistant container) ──
+// Best-effort: any failure (e.g. user not on AI App container, missing scope)
+// is swallowed silently so non-assistant DMs continue to work normally.
+async function setAssistantStatus(channelId: string, threadTs: string | undefined, status: string) {
+  if (!threadTs) return;
+  try {
+    await slackApi('assistant.threads.setStatus', {
+      channel_id: channelId,
+      thread_ts: threadTs,
+      status, // empty string clears the indicator
+    });
+  } catch (err) {
+    console.warn('[ASSISTANT] setStatus failed:', (err as Error)?.message);
+  }
+}
+
+async function setAssistantSuggestedPrompts(
+  channelId: string,
+  threadTs: string | undefined,
+  title: string,
+  prompts: Array<{ title: string; message: string }>,
+) {
+  if (!threadTs || prompts.length === 0) return;
+  try {
+    await slackApi('assistant.threads.setSuggestedPrompts', {
+      channel_id: channelId,
+      thread_ts: threadTs,
+      title,
+      prompts: prompts.slice(0, 4),
+    });
+  } catch (err) {
+    console.warn('[ASSISTANT] setSuggestedPrompts failed:', (err as Error)?.message);
+  }
+}
+
+async function setAssistantTitle(channelId: string, threadTs: string | undefined, title: string) {
+  if (!threadTs) return;
+  try {
+    await slackApi('assistant.threads.setTitle', {
+      channel_id: channelId,
+      thread_ts: threadTs,
+      title,
+    });
+  } catch (err) {
+    console.warn('[ASSISTANT] setTitle failed:', (err as Error)?.message);
+  }
+}
+
+function suggestedPromptsForPersona(persona: string): Array<{ title: string; message: string }> {
+  if (persona === 'leader') {
+    return [
+      { title: 'Pauta da próxima 1:1', message: 'Gere a pauta sugerida para minha próxima 1:1.' },
+      { title: 'O que mudou no time?', message: 'Resuma o que mudou no meu time nos últimos 7 dias.' },
+      { title: 'Riscos abertos', message: 'Quais riscos ou sinais negativos estão abertos no time agora?' },
+    ];
+  }
+  if (persona === 'member' || persona === 'liderado') {
+    return [
+      { title: 'Como vai meu PDI?', message: 'Como está meu PDI? O que falta avançar?' },
+      { title: 'Resumo da última 1:1', message: 'Me lembra os pontos da minha última 1:1.' },
+      { title: 'Pedir feedback', message: 'Quero registrar um feedback ou dúvida pra minha liderança.' },
+    ];
+  }
+  if (persona === 'hr_admin') {
+    return [
+      { title: 'Saúde do time', message: 'Como está a saúde geral dos times agora?' },
+      { title: 'Reviews atrasados', message: 'Quais reviews ou PDIs estão atrasados?' },
+      { title: 'Sinais de risco', message: 'Mostre os sinais de risco mais recentes na empresa.' },
+    ];
+  }
+  return [
+    { title: 'O que você faz?', message: 'Me explica como você pode me ajudar como Chief of Staff.' },
+    { title: 'Conectar minha conta', message: 'Como conecto minha conta Rhitmo aqui no Slack?' },
+  ];
+}
+
 // ── Send Delayed Response via response_url ────────────────
 async function sendDelayedResponse(responseUrl: string, message: Record<string, unknown>, responseType = 'ephemeral') {
   const res = await fetch(responseUrl, {
@@ -2201,6 +2277,62 @@ Deno.serve(async (req) => {
           return new Response('', { status: 200, headers: corsHeaders });
         }
 
+        // ── Slack AI Assistant container events (Sprint A) ──
+        // Fired when the user opens the Rhitmo "AI assistant" panel or
+        // changes the channel/thread context they're looking at.
+        if (event?.type === 'assistant_thread_started') {
+          const thread = event.assistant_thread || {};
+          const channelId = thread.channel_id;
+          const threadTs = thread.thread_ts;
+          const slackUserId = thread.user_id;
+          console.log('[ASSISTANT] thread_started | user:', slackUserId, '| thread_ts:', threadTs);
+          (async () => {
+            try {
+              const persona = slackUserId ? await getUserPersona(slackUserId) : { persona: 'unauthenticated' as string };
+              await setAssistantTitle(channelId, threadTs, 'Conversa com a Rhitmo');
+              await setAssistantSuggestedPrompts(
+                channelId,
+                threadTs,
+                'Posso te ajudar com:',
+                suggestedPromptsForPersona(persona.persona),
+              );
+            } catch (err) {
+              console.error('[ASSISTANT] thread_started handler failed:', err);
+            }
+          })();
+          return new Response('', { status: 200, headers: corsHeaders });
+        }
+
+        if (event?.type === 'assistant_thread_context_changed') {
+          const thread = event.assistant_thread || {};
+          const slackUserId = thread.user_id;
+          const ctxChannel = thread.context?.channel_id;
+          console.log('[ASSISTANT] context_changed | user:', slackUserId, '| ctx_channel:', ctxChannel);
+          // Persist current channel context on the active conversation so the
+          // next LLM turn can mention "I see you're in #squad-x".
+          (async () => {
+            try {
+              if (!slackUserId) return;
+              const conv = await getActiveConversation(slackUserId);
+              if (!conv) return;
+              const sd = (conv.state_data as any) ?? {};
+              await supabase
+                .from('slack_conversations')
+                .update({
+                  state_data: {
+                    ...sd,
+                    current_channel_id: ctxChannel ?? null,
+                    current_thread_ts: thread.context?.thread_ts ?? null,
+                  },
+                })
+                .eq('id', conv.id);
+            } catch (err) {
+              console.warn('[ASSISTANT] context_changed persist failed:', err);
+            }
+          })();
+          return new Response('', { status: 200, headers: corsHeaders });
+        }
+
         // Handle DM messages
         if (event?.type === 'message' && event?.channel_type === 'im') {
           // Fire-and-forget async processing
@@ -2317,6 +2449,12 @@ Deno.serve(async (req) => {
                           .map((t) => ({ role: t.role as 'user' | 'assistant', content: t.text || '' })),
                       ];
 
+                      // Sprint A: show "Rhitmo está pensando…" in the
+                      // Assistant container while the LLM works. No-op for
+                      // regular DMs (no thread_ts).
+                      const assistThreadTs = event.thread_ts;
+                      await setAssistantStatus(event.channel, assistThreadTs, 'Rhitmo está pensando…');
+
                       const assistantText = await callLovableAI(messages);
 
                       await appendConversationTurn(conv.id, {
@@ -2327,13 +2465,25 @@ Deno.serve(async (req) => {
 
                       await slackApi('chat.postMessage', {
                         channel: event.channel,
+                        thread_ts: assistThreadTs,
                         text: assistantText,
                         mrkdwn: true,
                       });
+
+                      // Clear status + offer follow-up prompts (Sprint A)
+                      await setAssistantStatus(event.channel, assistThreadTs, '');
+                      await setAssistantSuggestedPrompts(
+                        event.channel,
+                        assistThreadTs,
+                        'Quer continuar?',
+                        suggestedPromptsForPersona(persona.persona),
+                      );
                     } catch (err) {
                       console.error('[CONV] LLM turn failed:', err);
+                      await setAssistantStatus(event.channel, event.thread_ts, '');
                       await slackApi('chat.postMessage', {
                         channel: event.channel,
+                        thread_ts: event.thread_ts,
                         text: '⚠️ Tive um problema agora. Pode repetir?',
                       }).catch(() => {});
                     }
