@@ -183,10 +183,6 @@ Deno.serve(async (req) => {
             message: "👋 Olá! Sou o assistente Rhitmo. Esta reunião está sendo transcrita para fins de anotações e desenvolvimento profissional. Se tiver dúvidas, fale com seu líder.",
             pin: true,
           },
-          on_participant_join: {
-            exclude_host: true,
-            message: "👋 Olá! Esta reunião está sendo transcrita pelo Rhitmo para fins de anotações e desenvolvimento profissional.",
-          },
         },
         recording_config: {
           transcript: {
