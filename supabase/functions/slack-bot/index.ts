@@ -2335,6 +2335,19 @@ Deno.serve(async (req) => {
 
         // Handle DM messages
         if (event?.type === 'message' && event?.channel_type === 'im') {
+          // Ignore non-user message subtypes (edits, deletions, bot echoes, etc.)
+          // Slack re-sends user messages as message_changed/message_deleted/etc.;
+          // none of those should trigger a new bot reply, and event.user is often
+          // undefined for them — which previously poisoned the persona lookup.
+          if (event.subtype) {
+            console.log('[DM] Ignoring subtype:', event.subtype);
+            return new Response('', { status: 200, headers: corsHeaders });
+          }
+          // Defensive: never run lookups with a falsy slack_user_id
+          if (!event.user || typeof event.user !== 'string') {
+            console.warn('[DM] Missing event.user — skipping');
+            return new Response('', { status: 200, headers: corsHeaders });
+          }
           // Fire-and-forget async processing
           (async () => {
             try {

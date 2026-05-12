@@ -1,0 +1,1 @@
+DELETE FROM public.slack_integrations WHERE slack_user_id IN ('undefined', 'null', '');

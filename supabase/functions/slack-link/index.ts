@@ -101,7 +101,12 @@ Deno.serve(async (req) => {
       slack_team_id = body.slack_team_id;
     }
 
-    if (!slack_user_id || !slack_team_id) {
+    // Reject obviously bad values, including the literal strings "undefined"/"null"
+    // that legacy frontend code paths used to send when their state was empty.
+    const isBadId = (v: unknown) =>
+      !v || typeof v !== 'string' || v === 'undefined' || v === 'null' || v.trim() === '';
+    if (isBadId(slack_user_id) || isBadId(slack_team_id)) {
+      console.warn('[LINK] Rejected bad ids — slack_user_id:', slack_user_id, 'slack_team_id:', slack_team_id);
       return new Response(JSON.stringify({ error: 'slack_user_id and slack_team_id are required' }), {
         status: 400, headers: corsHeaders,
       });
