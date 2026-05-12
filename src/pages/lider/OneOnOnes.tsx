@@ -106,6 +106,9 @@ export default function LiderOneOnOnes() {
               />
             </section>
 
+            {/* Sinais ambient do Slack — últimos 7 dias */}
+            <SlackActivityCard memberId={selected.id} />
+
             {/* Pauta compartilhada (full-width, neutra) */}
             <AgendaBlock
               ref={sharedRef}
