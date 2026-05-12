@@ -2631,6 +2631,21 @@ Deno.serve(async (req) => {
                         ts: String(Date.now() / 1000),
                       });
 
+                      // Sprint 20: espelha turno (user + assistant) na thread
+                      // do Mentor Chat web para histórico unificado read-only.
+                      if (
+                        persona.persona === 'leader' &&
+                        conv.intent === 'general_chat' &&
+                        persona.userId
+                      ) {
+                        await mirrorSlackTurnToWebThread(
+                          conv,
+                          persona.userId,
+                          userText,
+                          assistantText,
+                        );
+                      }
+
                       await slackApi('chat.postMessage', {
                         channel: event.channel,
                         thread_ts: assistThreadTs,
