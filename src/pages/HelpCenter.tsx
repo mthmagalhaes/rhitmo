@@ -286,37 +286,6 @@ const hrCards: FeatureCard[] = [
   },
 ];
 
-interface Integration {
-  id: string;
-  icon: React.ElementType;
-  name: string;
-  description: string;
-  status: 'available' | 'beta';
-}
-
-const integrations: Integration[] = [
-  {
-    id: 'slack',
-    icon: Slack,
-    name: 'Conector Slack',
-    description: `Comandos disponíveis: ${SLACK_COMMANDS.map(c => `${c.cmd} (${c.desc.toLowerCase()})`).join(', ')}.`,
-    status: 'available',
-  },
-  {
-    id: 'calendar',
-    icon: Calendar,
-    name: 'Google Calendar',
-    description: 'Detecte reuniões 1:1 automaticamente e gere briefings IA antes de cada encontro.',
-    status: 'available',
-  },
-  {
-    id: 'transcription',
-    icon: FileAudio,
-    name: 'Import de Transcrições',
-    description: 'Cole transcrições do Tactiq, Fireflies ou Google Meet com o Magic Paste.',
-    status: 'available',
-  },
-];
 
 const faqItems = [
   {
