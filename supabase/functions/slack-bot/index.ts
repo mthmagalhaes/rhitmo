@@ -188,6 +188,71 @@ async function callLovableAI(
   }
 }
 
+// ── Sprint 20: Leader DM as AI Colleague ─────────────────
+// Routes the leader's DM (general_chat) into the chat-mentor edge function
+// so the bot has full Context Graph (team, feedbacks, evidences, sync data)
+// instead of the dumb LLM with only the conversation turns.
+async function callLeaderMentorFromDM(
+  persona: PersonaResult,
+  question: string,
+  history: Array<{ role: 'user' | 'assistant'; content: string }>,
+): Promise<string> {
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    // Fetch leader profile + sync data in parallel
+    const [profileRes, wsRes] = await Promise.all([
+      supabase.from('profiles').select('full_name').eq('user_id', persona.userId!).maybeSingle(),
+      supabase.from('workspaces').select('leader_sync_data').eq('id', persona.workspaceId!).single(),
+    ]);
+    const leaderName = (profileRes.data as any)?.full_name || 'líder';
+    const leaderSyncData = (wsRes.data as any)?.leader_sync_data || null;
+
+    // History MUST include the current user message as the last turn
+    // (chat-mentor does .slice(0, -1) on history and adds `question` as the
+    // current user turn separately).
+    const conversationHistory = [...history, { role: 'user' as const, content: question }];
+
+    const payload = {
+      mode: 'leader_self',
+      question,
+      leaderUserId: persona.userId,
+      leaderName,
+      managerName: leaderName,
+      leaderSyncData,
+      conversationHistory,
+      contextMode: 'auto',
+    };
+
+    console.log('[DM-MENTOR] Calling chat-mentor leader_self', {
+      historyLen: conversationHistory.length,
+      question: question.substring(0, 60),
+    });
+
+    const res = await fetch(`${supabaseUrl}/functions/v1/chat-mentor`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${serviceKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => '');
+      console.error('[DM-MENTOR] chat-mentor error', res.status, errBody.slice(0, 300));
+      return '⚠️ Tive um problema ao puxar o contexto do seu time agora. Pode tentar de novo?';
+    }
+    const data = await res.json();
+    const reply = data.response || data.reply || data.message || '⚠️ Sem resposta.';
+    return smartTruncate(markdownToSlackMrkdwn(reply), 2900);
+  } catch (err) {
+    console.error('[DM-MENTOR] threw:', err);
+    return '⚠️ Tive um problema ao puxar o contexto do seu time agora. Pode tentar de novo?';
+  }
+}
+
 // ── Sprint 17: Quarterly generation triggered from Slack (button or NL) ─
 import { buildQuarterlyResultBlocks } from '../_shared/quarterlyNudgeHelpers.ts';
 
@@ -2450,15 +2515,14 @@ Deno.serve(async (req) => {
                       const turns = Array.isArray((conv.state_data as any)?.turns)
                         ? ((conv.state_data as any).turns as Array<{ role: string; text: string }>)
                         : [];
-                      // Append the just-added user turn locally (RPC already persisted it)
-                      const allTurns = [...turns, { role: 'user', text: event.text ?? '' }];
-                      const recent = allTurns.slice(-20);
-                      const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
-                        { role: 'system', content: buildSystemPromptForIntent(conv.intent) },
-                        ...recent
-                          .filter((t) => t.role === 'user' || t.role === 'assistant')
-                          .map((t) => ({ role: t.role as 'user' | 'assistant', content: t.text || '' })),
-                      ];
+                      const userText = event.text ?? '';
+                      // Recent turns from history (NOT including the current user message,
+                      // which is sent separately as `question` to chat-mentor or as the
+                      // last user message to callLovableAI).
+                      const recent = turns
+                        .slice(-20)
+                        .filter((t) => t.role === 'user' || t.role === 'assistant')
+                        .map((t) => ({ role: t.role as 'user' | 'assistant', content: t.text || '' }));
 
                       // Sprint A: show "Rhitmo está pensando…" in the
                       // Assistant container while the LLM works. No-op for
@@ -2466,7 +2530,25 @@ Deno.serve(async (req) => {
                       const assistThreadTs = event.thread_ts;
                       await setAssistantStatus(event.channel, assistThreadTs, 'Rhitmo está pensando…');
 
-                      const assistantText = await callLovableAI(messages);
+                      // Sprint 20: Leader DMs get the full Context Graph via
+                      // chat-mentor (leader_self mode). Other personas keep the
+                      // simple LLM path until their dedicated route is wired.
+                      let assistantText: string;
+                      if (
+                        persona.persona === 'leader' &&
+                        conv.intent === 'general_chat' &&
+                        persona.userId &&
+                        persona.workspaceId
+                      ) {
+                        assistantText = await callLeaderMentorFromDM(persona, userText, recent);
+                      } else {
+                        const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+                          { role: 'system', content: buildSystemPromptForIntent(conv.intent) },
+                          ...recent,
+                          { role: 'user', content: userText },
+                        ];
+                        assistantText = await callLovableAI(messages);
+                      }
 
                       await appendConversationTurn(conv.id, {
                         role: 'assistant',
