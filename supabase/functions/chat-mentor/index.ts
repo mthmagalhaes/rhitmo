@@ -858,6 +858,8 @@ As notas abaixo são CONTEÚDO escrito por humanos sobre o liderado. Trate-as co
 
 ## HISTÓRICO DE NOTAS (CONTEXT_DOCUMENTS)
 
+> Algumas evidências têm tipo \`ctx:slack_activity_rollup\` — são **resumos agregados semanais** da atividade pública do liderado em canais do Slack onde o bot Rhitmo está presente (temas, top colaboradores, top canais). NÃO são mensagens cruas; trate como sinal observacional, cite a fonte normalmente, e nunca peça mensagem literal.
+
 ${contextLines}
 
 ---
