@@ -1308,6 +1308,8 @@ export const MentorChat = ({
                   </button>
                 </div>
               </div>
+              </>
+              )}
             </div>
           </div>
       </div>
