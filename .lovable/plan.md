@@ -1,84 +1,19 @@
-# Mentor Chat ↔ Slack: histórico unificado
+## Mudança
 
-## Garantia para todos os líderes (Parte 1 — verificação)
+Renomear o item "Convidar membros" do dropdown do WorkspaceSwitcher (sidebar, abaixo de "Refazer tour de boas-vindas") para **"Adicionar liderado(a)"**.
 
-A correção da DM como AI Colleague (`callLeaderMentorFromDM`) já é genérica: depende apenas de `persona.userId` + `persona.workspaceId`, resolvidos pelo `resolvePersona` que existe pra qualquer Slack user com `slack_integrations` linkado. Nenhum hardcode de e-mail. Para confirmar antes do rollout:
+## Arquivos afetados
 
-- Smoke test em 2 workspaces de líderes diferentes (1 com time grande, 1 com time pequeno)
-- Checar logs da `slack-bot` e da `chat-mentor` por erros de ownership/RLS
-- Confirmar fallback: se `persona !== leader` ou faltar `userId/workspaceId`, cai pro `callLovableAI` antigo (já está)
+- `src/i18n/locales/pt-BR.json`
+  - `sidebar.workspace.inviteMembers` → `"Adicionar liderado(a)"`
+- `src/components/sidebar/WorkspaceSwitcher.tsx`
+  - Atualizar o fallback inline do `t(...)` para `"Adicionar liderado(a)"` (mantém i18n consistente)
+- `src/i18n/locales/en.json` e `es.json` (se a chave existir): traduzir equivalentes ("Add direct report" / "Añadir liderado(a)") para não quebrar consistência multi-idioma
 
-## Modelo de sync escolhido
+Sem mudanças de comportamento — o dialog acionado continua sendo o `NewMemberDialog` individual estilo líder (memo `workspace-switcher-actions`).  
+  
+Garantir que a mudança esteja nos outros idomas
 
-**Histórico unificado read-only cross** + **1 thread por sessão Slack** (TTL 30min).
+## Fora de escopo
 
-```text
-Slack DM (TTL ativo)                     Web /lider/mentor
-──────────────────────                   ──────────────────
-nova msg líder ──┐                       
-                 ▼                       
-   slack_conversations (ativa)           
-                 │                       
-                 ▼                       
-   chat-mentor (RAG leader_self)         
-                 │                       
-   ┌─────────────┼─────────────┐         
-   ▼             ▼             ▼         
-appendTurn   espelha em    resposta DM   
-              chat_threads                
-              + mentor_messages           
-                 │                       
-                 ▼                       
-              ◄─── aparece na lista de threads
-                   título: 1ª pergunta
-                   ícone: 🌀 Slack
-                   read-only (não dá pra responder na web)
-```
-
-Quando a sessão Slack expira (30min ou nova conversa criada), a thread continua lá, fechada. Próxima DM cria nova thread.
-
-## Mudanças
-
-### 1. Schema (`chat_threads`)
-- Adicionar coluna `source text not null default 'web'` com check `('web', 'slack')`
-- Adicionar coluna `slack_conversation_id uuid` (FK lógica, sem constraint pra evitar cascade) — permite reabrir/continuar caso queira no futuro
-- Index `(user_id, source, updated_at desc)`
-- Sem mudança de RLS (continua `effective_user_id() = user_id`)
-
-### 2. Edge function `slack-bot` (`callLeaderMentorFromDM`)
-Quando processa DM autenticada de líder:
-1. **Antes** de chamar `chat-mentor`: garantir thread espelho
-   - Se `slack_conversations.state_data.mirror_thread_id` existe → usar
-   - Senão: criar `chat_threads` (`type='mentor'`, `source='slack'`, `user_id=persona.userId`, `member_id=null`, `title=` primeiras ~60 chars da pergunta), salvar id em `state_data.mirror_thread_id` via `appendConversationTurn`
-2. **Depois** de receber resposta: inserir 2 linhas em `mentor_messages` (user msg + assistant reply) referenciando a thread espelho
-3. Falha no espelhamento **não** quebra a resposta no Slack (try/catch + log)
-
-### 3. Frontend (`ThreadsList`, `MentorHistoryCard`)
-- Mostrar badge/ícone "🌀 Slack" nas threads com `source='slack'`
-- Ao abrir uma thread Slack em `/lider/mentor/:threadId`: bloquear o input com banner "Esta conversa aconteceu no Slack. Continue por lá ou inicie uma nova thread."
-- Botão "Nova conversa na web" no topo
-
-### 4. Componente `MentorChat` (modo read-only)
-- Nova prop `readOnly?: boolean` derivada de `thread.source === 'slack'`
-- Esconde `PromptInput`, mostra banner com link `slack://...` (deep link opcional, fallback texto)
-
-## Fora de escopo (próximos sprints)
-
-- **Sync bidirecional**: responder na web e empurrar pro Slack (requer push API + lidar com TTL)
-- **Espelhar `meu_rhitmo` do liderado** (mesma arquitetura, ativar quando DM do liderado virar AI Colleague)
-- Botão "Continuar no Slack" deep link (precisa workspace_id + user_id)
-- Merge de threads Slack consecutivas curtas
-
-## Critério de aceite
-
-- Líder conversa 3 msgs na DM Slack → abre `/lider/mentor` → vê thread "🌀 [primeira pergunta]" no topo, com as 6 mensagens (3 user + 3 assistant)
-- Abrir thread Slack na web mostra histórico read-only com banner explicativo
-- Threads criadas na web continuam funcionando idênticas, com input ativo
-- Conversa no Slack ainda em TTL ativo: nova msg vai pra **mesma** thread espelho
-- TTL expira no Slack → próxima DM cria **nova** thread espelho
-- Falha de espelhamento (RLS, etc.) **não** quebra resposta no Slack — só loga
-- `/mentor` slash command e `/lider/mentor` web continuam idênticos (zero regressão)
-
-## Estimativa
-
-1 sprint. Migração simples + 1 helper em `slack-bot` + 2 ajustes leves no frontend (`ThreadsList`, `MentorChat`). Sem mudança em `chat-mentor`.
+- Não mexer em `nav.lider.cta.convidar_membros` (chave 1327) sem confirmar onde é usada — provavelmente outro contexto (ex: Pessoas/bulk).

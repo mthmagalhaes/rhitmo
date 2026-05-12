@@ -154,7 +154,7 @@ export function WorkspaceSwitcher({ onOpenInvite }: WorkspaceSwitcherProps) {
               className="flex items-center gap-2"
             >
               <UserPlus className="h-3.5 w-3.5 text-muted-foreground" />
-              <span>{t('sidebar.workspace.inviteMembers', 'Convidar membros')}</span>
+              <span>{t('sidebar.workspace.inviteMembers', 'Adicionar liderado(a)')}</span>
             </DropdownMenuItem>
           </>
         )}
