@@ -162,6 +162,7 @@ export const MentorChat = ({
   embedded = false,
   autoSendInitialPrompt = false,
   onBack,
+  readOnly = false,
 }: MentorChatProps) => {
   const isLeader = userType === 'leader';
   
