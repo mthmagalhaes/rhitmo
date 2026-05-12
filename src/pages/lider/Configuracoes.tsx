@@ -6,7 +6,8 @@ import { ProfileSettingsDialog } from '@/components/ProfileSettingsDialog';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { User, CreditCard, Plug, LifeBuoy, Slack, Calendar, Pencil } from 'lucide-react';
+import { User, CreditCard, Plug, LifeBuoy, Slack, Calendar, Pencil, Loader2, Link as LinkIcon, Unlink, Check } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { useSlackConnection } from '@/hooks/useSlackConnection';
 import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
 
