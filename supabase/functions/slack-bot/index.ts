@@ -2520,9 +2520,14 @@ Deno.serve(async (req) => {
               // sem menu grande nem listas de comandos.
               const isAuthenticated = persona.persona !== 'unauthenticated';
               if (isAuthenticated) {
-                // Autenticado sem conv ativa não deveria cair aqui (auto-create
-                // já roda acima). Se cair, ficamos em silêncio para não floodar.
-                console.log('[DM] Authenticated user fell through conv hook — staying silent');
+                // Conversa não abriu mesmo com a RPC atômica — não ficar em
+                // silêncio. Responder algo útil para o usuário não achar que
+                // quebrou.
+                console.error('[DM] Authenticated user fell through conv hook — replying with degraded message');
+                await slackApi('chat.postMessage', {
+                  channel: event.channel,
+                  text: '⚠️ Tive um problema momentâneo para abrir nossa conversa. Pode tentar de novo em alguns segundos? Se continuar, me avise por aqui que eu investigo.',
+                });
                 return;
               }
 
