@@ -5,7 +5,7 @@ import {
   NotebookPen, MessageSquare, BarChart3, CalendarCheck, Award,
   UserCircle, Target, Settings, LayoutDashboard, Building2,
   Puzzle, ShieldCheck, Lightbulb, Mic, ClipboardPaste, Download,
-  Slack, Calendar, FileAudio, Compass, Eye, Palette, Loader2, Unlink, Link
+  Compass, Eye, Palette,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -18,9 +18,6 @@ import { Button } from '@/components/ui/button';
 import { RhythmWave } from '@/components/RhythmWave';
 import { WaveDivider } from '@/components/WaveDivider';
 import { useUserRole } from '@/hooks/useUserRole';
-import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
-import { useSlackConnection } from '@/hooks/useSlackConnection';
-import { SLACK_COMMANDS } from '@/lib/slackCommands';
 
 interface FeatureCard {
   id: string;
