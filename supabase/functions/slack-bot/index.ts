@@ -253,6 +253,81 @@ async function callLeaderMentorFromDM(
   }
 }
 
+// ── Sprint 20: Mirror Slack DM turns into web Mentor Chat history ────────
+// Cria/mantém uma thread espelho em `chat_threads` (source='slack') por sessão
+// Slack ativa, e insere as mensagens em `mentor_messages`. Falhas são silenciosas
+// (apenas logam) — nunca bloqueiam a resposta no Slack.
+async function mirrorSlackTurnToWebThread(
+  conv: SlackConversationRow,
+  userId: string,
+  userText: string,
+  assistantText: string,
+): Promise<void> {
+  try {
+    const sd = ((conv as any).state_data ?? {}) as Record<string, unknown>;
+    let threadId: string | null = (sd.mirror_thread_id as string) ?? null;
+
+    if (!threadId) {
+      const rawTitle = (userText || '').trim().replace(/\s+/g, ' ');
+      const title = (rawTitle.slice(0, 60) || 'Conversa no Slack') +
+        (rawTitle.length > 60 ? '…' : '');
+      const { data: newThread, error: thErr } = await supabase
+        .from('chat_threads')
+        .insert({
+          user_id: userId,
+          type: 'mentor',
+          source: 'slack',
+          slack_conversation_id: conv.id,
+          title,
+        })
+        .select('id')
+        .single();
+      if (thErr || !newThread) {
+        console.warn('[MIRROR] chat_threads insert failed:', thErr?.message);
+        return;
+      }
+      threadId = (newThread as { id: string }).id;
+
+      const newState = { ...sd, mirror_thread_id: threadId };
+      const { error: updErr } = await supabase
+        .from('slack_conversations')
+        .update({ state_data: newState })
+        .eq('id', conv.id);
+      if (updErr) console.warn('[MIRROR] slack_conversations update failed:', updErr.message);
+      (conv as any).state_data = newState;
+    }
+
+    const nowMs = Date.now();
+    const { error: msgErr } = await supabase.from('mentor_messages').insert([
+      {
+        thread_id: threadId,
+        user_id: userId,
+        role: 'user',
+        content: userText,
+        created_at: new Date(nowMs).toISOString(),
+      },
+      {
+        thread_id: threadId,
+        user_id: userId,
+        role: 'assistant',
+        content: assistantText,
+        created_at: new Date(nowMs + 1).toISOString(),
+      },
+    ]);
+    if (msgErr) {
+      console.warn('[MIRROR] mentor_messages insert failed:', msgErr.message);
+      return;
+    }
+
+    await supabase
+      .from('chat_threads')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', threadId);
+  } catch (err) {
+    console.warn('[MIRROR] mirrorSlackTurnToWebThread threw:', err);
+  }
+}
+
 // ── Sprint 17: Quarterly generation triggered from Slack (button or NL) ─
 import { buildQuarterlyResultBlocks } from '../_shared/quarterlyNudgeHelpers.ts';
 
