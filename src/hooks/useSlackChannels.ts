@@ -88,34 +88,35 @@ export function useSlackChannelMutations() {
       toast({ title: 'Erro ao atualizar canal', description: e.message, variant: 'destructive' }),
   });
 
-  const updateAutojoin = useMutation({
-    mutationFn: async (enabled: boolean) => {
-      const { data: ws } = await supabase
-        .from('workspaces')
-        .select('id')
-        .or(`owner_id.eq.${effectiveUserId},hr_admin_ids.cs.{${effectiveUserId}}`)
-        .limit(1)
-        .maybeSingle();
-      if (!ws) throw new Error('Workspace não encontrado');
+  const updateSetting = (field: 'autojoin_public_channels' | 'ambient_mode_enabled') =>
+    useMutation({
+      mutationFn: async (enabled: boolean) => {
+        const { data: ws } = await supabase
+          .from('workspaces')
+          .select('id')
+          .or(`owner_id.eq.${effectiveUserId},hr_admin_ids.cs.{${effectiveUserId}}`)
+          .limit(1)
+          .maybeSingle();
+        if (!ws) throw new Error('Workspace não encontrado');
 
-      const { error } = await supabase
-        .from('workspace_slack_settings')
-        .upsert(
-          {
-            workspace_id: ws.id,
-            autojoin_public_channels: enabled,
-          },
-          { onConflict: 'workspace_id' },
-        );
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      invalidate();
-      toast({ title: 'Modo atualizado' });
-    },
-    onError: (e: Error) =>
-      toast({ title: 'Erro ao atualizar modo', description: e.message, variant: 'destructive' }),
-  });
+        const { error } = await supabase
+          .from('workspace_slack_settings')
+          .upsert(
+            { workspace_id: ws.id, [field]: enabled },
+            { onConflict: 'workspace_id' },
+          );
+        if (error) throw error;
+      },
+      onSuccess: () => {
+        invalidate();
+        toast({ title: 'Configuração atualizada' });
+      },
+      onError: (e: Error) =>
+        toast({ title: 'Erro ao atualizar', description: e.message, variant: 'destructive' }),
+    });
+
+  const updateAutojoin = updateSetting('autojoin_public_channels');
+  const updateAmbientEnabled = updateSetting('ambient_mode_enabled');
 
   // Convidar bot a um canal público
   const joinChannel = useMutation({
