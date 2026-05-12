@@ -84,6 +84,31 @@ async function getActiveConversation(slackUserId: string): Promise<SlackConversa
   }
 }
 
+// Atomic open-or-resume — never blocks on stale "active" rows.
+async function openOrResumeConversation(
+  workspaceId: string,
+  slackUserId: string,
+  intent: string = 'general_chat',
+): Promise<SlackConversationRow | null> {
+  try {
+    const { data, error } = await supabase.rpc('open_or_resume_slack_conversation', {
+      p_workspace_id: workspaceId,
+      p_slack_user_id: slackUserId,
+      p_intent: intent,
+      p_ttl_minutes: 30,
+    });
+    if (error) {
+      console.error('[CONV] open_or_resume failed:', error.message);
+      return null;
+    }
+    if (!data || (typeof data === 'object' && !(data as Record<string, unknown>).id)) return null;
+    return data as SlackConversationRow;
+  } catch (err) {
+    console.error('[CONV] openOrResumeConversation threw:', err);
+    return null;
+  }
+}
+
 async function appendConversationTurn(
   conversationId: string,
   turn: { role: 'user' | 'assistant' | 'system'; text: string; ts?: string },
