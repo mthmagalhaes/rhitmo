@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { RhythmWave } from '@/components/RhythmWave';
 import { WaveDivider } from '@/components/WaveDivider';
 import { useUserRole } from '@/hooks/useUserRole';
+import { SLACK_COMMANDS } from '@/lib/slackCommands';
 
 interface FeatureCard {
   id: string;
