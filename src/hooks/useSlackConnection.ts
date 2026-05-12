@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 
-const SLACK_CLIENT_ID = '590136271282.10821512589809';
+const SLACK_CLIENT_ID = import.meta.env.VITE_SLACK_CLIENT_ID ?? '590136271282.10821512589809';
 
 export const useSlackConnection = () => {
   const { id: effectiveUserId } = useEffectiveUser();
