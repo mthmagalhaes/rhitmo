@@ -71,6 +71,8 @@ interface MentorChatProps {
   autoSendInitialPrompt?: boolean;
   /** Optional back action (rendered as left arrow in embedded header). */
   onBack?: () => void;
+  /** When true, hides the composer and shows a "conversation happened on Slack" banner. */
+  readOnly?: boolean;
 }
 
 // Prompt Gallery — combate "blank page anxiety". Templates curtos para o
