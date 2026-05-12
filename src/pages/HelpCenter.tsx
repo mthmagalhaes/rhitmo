@@ -450,8 +450,6 @@ export const HelpCenterContent = () => {
           </TabsContent>
         </Tabs>
 
-        {/* Integrations */}
-        <IntegrationsSection filteredIntegrations={filteredIntegrations} />
 
         {/* FAQ */}
         {filteredFaq.length > 0 && (
