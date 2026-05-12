@@ -87,60 +87,64 @@ function IntegrationsTab() {
     },
   ];
   return (
-    <div data-tour="integrations" className="grid gap-4 md:grid-cols-2">
-      {items.map((it) => (
-        <Card key={it.title} className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
-          <CardHeader className="flex flex-row items-start gap-3 space-y-0">
-            <div className="rounded-xl bg-primary/10 p-2"><it.icon className="w-5 h-5 text-primary" /></div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <CardTitle className="text-base font-serif tracking-tight">{it.title}</CardTitle>
-                {it.loading ? (
-                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                ) : it.connected ? (
-                  <Badge className="text-[10px] px-1.5 py-0 bg-green-500/10 text-green-600 border-green-500/20 hover:bg-green-500/10">
-                    <Check className="h-3 w-3 mr-0.5" /> Conectado
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Disponível</Badge>
+    <div className="space-y-6">
+      <div data-tour="integrations" className="grid gap-4 md:grid-cols-2">
+        {items.map((it) => (
+          <Card key={it.title} className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
+            <CardHeader className="flex flex-row items-start gap-3 space-y-0">
+              <div className="rounded-xl bg-primary/10 p-2"><it.icon className="w-5 h-5 text-primary" /></div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <CardTitle className="text-base font-serif tracking-tight">{it.title}</CardTitle>
+                  {it.loading ? (
+                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                  ) : it.connected ? (
+                    <Badge className="text-[10px] px-1.5 py-0 bg-green-500/10 text-green-600 border-green-500/20 hover:bg-green-500/10">
+                      <Check className="h-3 w-3 mr-0.5" /> Conectado
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Disponível</Badge>
+                  )}
+                </div>
+                <CardDescription className="text-xs mt-1">{it.desc}</CardDescription>
+                {it.connected && it.meta && (
+                  <p className="text-[10px] text-muted-foreground truncate mt-1">{it.meta}</p>
                 )}
               </div>
-              <CardDescription className="text-xs mt-1">{it.desc}</CardDescription>
-              {it.connected && it.meta && (
-                <p className="text-[10px] text-muted-foreground truncate mt-1">{it.meta}</p>
+            </CardHeader>
+            <CardContent>
+              {it.connected ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full rounded-xl text-xs"
+                  onClick={() => it.onDisconnect?.()}
+                  disabled={it.disconnecting || !it.onDisconnect}
+                >
+                  {it.disconnecting ? (
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  ) : (
+                    <Unlink className="h-3 w-3 mr-1" />
+                  )}
+                  Desconectar
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  className="w-full rounded-xl text-xs"
+                  onClick={it.onConnect}
+                  disabled={it.loading}
+                >
+                  {it.loading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <LinkIcon className="h-3 w-3 mr-1" />}
+                  Conectar
+                </Button>
               )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            {it.connected ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full rounded-xl text-xs"
-                onClick={() => it.onDisconnect?.()}
-                disabled={it.disconnecting || !it.onDisconnect}
-              >
-                {it.disconnecting ? (
-                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                ) : (
-                  <Unlink className="h-3 w-3 mr-1" />
-                )}
-                Desconectar
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                className="w-full rounded-xl text-xs"
-                onClick={it.onConnect}
-                disabled={it.loading}
-              >
-                {it.loading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <LinkIcon className="h-3 w-3 mr-1" />}
-                Conectar
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      ))}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {slack.isConnected && <AmbientSlackSettings />}
     </div>
   );
 }
