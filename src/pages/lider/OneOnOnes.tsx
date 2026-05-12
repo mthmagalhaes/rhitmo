@@ -76,15 +76,6 @@ export default function LiderOneOnOnes() {
               </div>
               <div className="flex items-center gap-2">
                 <Button
-                  variant="ghost"
-                  size="sm"
-                  className="rounded-xl gap-1 text-xs text-muted-foreground hover:text-foreground"
-                  onClick={() => navigate(`/lider/contexto?member=${selected.id}`)}
-                >
-                  Ver feed bruto
-                  <ArrowRight className="h-3 w-3" />
-                </Button>
-                <Button
                   variant="outline"
                   size="sm"
                   className="rounded-xl gap-2"
