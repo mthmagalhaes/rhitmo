@@ -115,6 +115,7 @@ export default function LiderMentorThread() {
       feedbacks={memberFeedbacks}
       userId={effectiveUserId ?? undefined}
       onBack={() => navigate('/lider/mentor')}
+      readOnly={thread?.source === 'slack'}
     />
   );
 }
