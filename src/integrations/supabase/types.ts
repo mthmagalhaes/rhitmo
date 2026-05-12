@@ -3338,6 +3338,32 @@ export type Database = {
           weight_total: number
         }[]
       }
+      open_or_resume_slack_conversation: {
+        Args: {
+          p_intent?: string
+          p_slack_user_id: string
+          p_ttl_minutes?: number
+          p_workspace_id: string
+        }
+        Returns: {
+          created_at: string
+          expires_at: string
+          id: string
+          intent: string
+          last_message_at: string
+          slack_user_id: string
+          state_data: Json
+          status: Database["public"]["Enums"]["slack_conversation_status"]
+          updated_at: string
+          workspace_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "slack_conversations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       prune_graph_events_raw: { Args: never; Returns: number }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
