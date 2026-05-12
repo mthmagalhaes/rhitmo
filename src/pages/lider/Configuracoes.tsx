@@ -6,7 +6,8 @@ import { ProfileSettingsDialog } from '@/components/ProfileSettingsDialog';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { User, CreditCard, Plug, LifeBuoy, Slack, Calendar, Pencil } from 'lucide-react';
+import { User, CreditCard, Plug, LifeBuoy, Slack, Calendar, Pencil, Loader2, Link as LinkIcon, Unlink, Check } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { useSlackConnection } from '@/hooks/useSlackConnection';
 import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
 
@@ -50,9 +51,12 @@ type IntegrationItem = {
   icon: typeof Slack;
   title: string;
   desc: string;
-  status: string;
-  ok: boolean;
-  action?: React.ReactNode;
+  connected: boolean;
+  loading: boolean;
+  meta?: string | null;
+  onConnect: () => void;
+  onDisconnect?: () => void;
+  disconnecting?: boolean;
 };
 
 function IntegrationsTab() {
@@ -63,15 +67,22 @@ function IntegrationsTab() {
       icon: Slack,
       title: 'Slack',
       desc: 'Receba briefs e capture feedbacks direto do Slack.',
-      status: slack.isConnected ? 'Conectado' : 'Desconectado',
-      ok: slack.isConnected,
+      connected: slack.isConnected,
+      loading: slack.isLoading,
+      meta: slack.slackUserId ? `ID: ${slack.slackUserId}` : null,
+      onConnect: slack.connectSlack,
+      onDisconnect: slack.disconnectSlack,
+      disconnecting: slack.isDisconnecting,
     },
     {
       icon: Calendar,
       title: 'Google Calendar',
       desc: 'Sincronize 1:1s e acione transcrição automática.',
-      status: cal.isConnected ? 'Conectado' : 'Desconectado',
-      ok: cal.isConnected,
+      connected: cal.isConnected,
+      loading: cal.checkingConnection,
+      meta: cal.connectionData?.calendar_email ?? null,
+      onConnect: cal.connectCalendar,
+      onDisconnect: cal.disconnectCalendar,
     },
   ];
   return (
@@ -80,17 +91,52 @@ function IntegrationsTab() {
         <Card key={it.title} className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
           <CardHeader className="flex flex-row items-start gap-3 space-y-0">
             <div className="rounded-xl bg-primary/10 p-2"><it.icon className="w-5 h-5 text-primary" /></div>
-            <div className="flex-1">
-              <CardTitle className="text-base font-serif tracking-tight">{it.title}</CardTitle>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <CardTitle className="text-base font-serif tracking-tight">{it.title}</CardTitle>
+                {it.loading ? (
+                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                ) : it.connected ? (
+                  <Badge className="text-[10px] px-1.5 py-0 bg-green-500/10 text-green-600 border-green-500/20 hover:bg-green-500/10">
+                    <Check className="h-3 w-3 mr-0.5" /> Conectado
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Disponível</Badge>
+                )}
+              </div>
               <CardDescription className="text-xs mt-1">{it.desc}</CardDescription>
+              {it.connected && it.meta && (
+                <p className="text-[10px] text-muted-foreground truncate mt-1">{it.meta}</p>
+              )}
             </div>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${it.ok ? 'text-primary' : 'text-muted-foreground'}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${it.ok ? 'bg-primary' : 'bg-muted-foreground/40'}`} />
-              {it.status}
-            </span>
-            {it.action}
+          <CardContent>
+            {it.connected ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full rounded-xl text-xs"
+                onClick={() => it.onDisconnect?.()}
+                disabled={it.disconnecting || !it.onDisconnect}
+              >
+                {it.disconnecting ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <Unlink className="h-3 w-3 mr-1" />
+                )}
+                Desconectar
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                className="w-full rounded-xl text-xs"
+                onClick={it.onConnect}
+                disabled={it.loading}
+              >
+                {it.loading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <LinkIcon className="h-3 w-3 mr-1" />}
+                Conectar
+              </Button>
+            )}
           </CardContent>
         </Card>
       ))}

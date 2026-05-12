@@ -5,7 +5,7 @@ import {
   NotebookPen, MessageSquare, BarChart3, CalendarCheck, Award,
   UserCircle, Target, Settings, LayoutDashboard, Building2,
   Puzzle, ShieldCheck, Lightbulb, Mic, ClipboardPaste, Download,
-  Slack, Calendar, FileAudio, Compass, Eye, Palette, Loader2, Unlink, Link
+  FileAudio, Compass, Eye, Palette,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -18,8 +18,6 @@ import { Button } from '@/components/ui/button';
 import { RhythmWave } from '@/components/RhythmWave';
 import { WaveDivider } from '@/components/WaveDivider';
 import { useUserRole } from '@/hooks/useUserRole';
-import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
-import { useSlackConnection } from '@/hooks/useSlackConnection';
 import { SLACK_COMMANDS } from '@/lib/slackCommands';
 
 interface FeatureCard {
@@ -286,37 +284,6 @@ const hrCards: FeatureCard[] = [
   },
 ];
 
-interface Integration {
-  id: string;
-  icon: React.ElementType;
-  name: string;
-  description: string;
-  status: 'available' | 'beta';
-}
-
-const integrations: Integration[] = [
-  {
-    id: 'slack',
-    icon: Slack,
-    name: 'Conector Slack',
-    description: `Comandos disponíveis: ${SLACK_COMMANDS.map(c => `${c.cmd} (${c.desc.toLowerCase()})`).join(', ')}.`,
-    status: 'available',
-  },
-  {
-    id: 'calendar',
-    icon: Calendar,
-    name: 'Google Calendar',
-    description: 'Detecte reuniões 1:1 automaticamente e gere briefings IA antes de cada encontro.',
-    status: 'available',
-  },
-  {
-    id: 'transcription',
-    icon: FileAudio,
-    name: 'Import de Transcrições',
-    description: 'Cole transcrições do Tactiq, Fireflies ou Google Meet com o Magic Paste.',
-    status: 'available',
-  },
-];
 
 const faqItems = [
   {
@@ -378,14 +345,6 @@ export const HelpCenterContent = () => {
   const filteredLeader = useMemo(() => filterCards(leaderCards), [search]);
   const filteredMember = useMemo(() => filterCards(memberCards), [search]);
   const filteredHR = useMemo(() => filterCards(hrCards), [search]);
-
-  const filteredIntegrations = useMemo(() => {
-    if (!search.trim()) return integrations;
-    const q = search.toLowerCase();
-    return integrations.filter(
-      (i) => i.name.toLowerCase().includes(q) || i.description.toLowerCase().includes(q)
-    );
-  }, [search]);
 
   const filteredFaq = useMemo(() => {
     if (!search.trim()) return faqItems;
@@ -450,8 +409,6 @@ export const HelpCenterContent = () => {
           </TabsContent>
         </Tabs>
 
-        {/* Integrations */}
-        <IntegrationsSection filteredIntegrations={filteredIntegrations} />
 
         {/* FAQ */}
         {filteredFaq.length > 0 && (
@@ -584,117 +541,6 @@ function FeatureGrid({ cards, openCardId }: { cards: FeatureCard[]; openCardId?:
         );
       })}
     </div>
-  );
-}
-
-function IntegrationsSection({ filteredIntegrations }: { filteredIntegrations: Integration[] }) {
-  const { isConnected: calendarConnected, checkingConnection: checkingCalendar, connectCalendar, disconnectCalendar, connectionData } = useCalendarIntegration();
-  const { isConnected: slackConnected, isLoading: checkingSlack, slackUserId, connectSlack } = useSlackConnection();
-
-  if (filteredIntegrations.length === 0) return null;
-
-  const getStatus = (id: string) => {
-    if (id === 'slack') return { connected: slackConnected, loading: checkingSlack };
-    if (id === 'calendar') return { connected: calendarConnected, loading: checkingCalendar };
-    return { connected: false, loading: false };
-  };
-
-  const handleAction = (id: string) => {
-    if (id === 'slack') connectSlack();
-    if (id === 'calendar') connectCalendar();
-  };
-
-  const handleDisconnect = (id: string) => {
-    if (id === 'calendar') disconnectCalendar();
-  };
-
-  return (
-    <section className="space-y-4">
-      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-medium">
-        Integrações
-      </p>
-      <div className="grid gap-4 sm:grid-cols-3">
-        {filteredIntegrations.map((integ) => {
-          const { connected, loading } = getStatus(integ.id);
-          const isActionable = integ.id === 'slack' || integ.id === 'calendar';
-
-          return (
-            <Card key={integ.id} className="rounded-2xl">
-              <CardContent className="p-5 space-y-3">
-                <div className="flex items-start gap-4">
-                  <div className="p-2.5 rounded-xl bg-primary/10 shrink-0">
-                    <integ.icon className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="min-w-0 space-y-1 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm">{integ.name}</span>
-                      {loading ? (
-                        <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                      ) : connected ? (
-                        <Badge className="text-[10px] px-1.5 py-0 bg-green-500/10 text-green-600 border-green-500/20">
-                          <Check className="h-3 w-3 mr-0.5" /> Conectado
-                        </Badge>
-                      ) : isActionable ? (
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                          Disponível
-                        </Badge>
-                      ) : (
-                        <Badge variant="default" className="text-[10px] px-1.5 py-0">
-                          Disponível
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      {integ.description}
-                    </p>
-                    {connected && integ.id === 'calendar' && connectionData?.calendar_email && (
-                      <p className="text-[10px] text-muted-foreground truncate">
-                        {connectionData.calendar_email}
-                      </p>
-                    )}
-                    {connected && integ.id === 'slack' && slackUserId && (
-                      <p className="text-[10px] text-muted-foreground truncate">
-                        ID: {slackUserId}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                {isActionable && (
-                  <div className="flex gap-2">
-                    {connected ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full text-xs"
-                        onClick={() => handleDisconnect(integ.id)}
-                        disabled={integ.id === 'slack'}
-                      >
-                        <Unlink className="h-3 w-3 mr-1" />
-                        Desconectar
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        className="w-full text-xs"
-                        onClick={() => handleAction(integ.id)}
-                        disabled={loading}
-                      >
-                        {loading ? (
-                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                        ) : (
-                          <Link className="h-3 w-3 mr-1" />
-                        )}
-                        Conectar
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-    </section>
   );
 }
 
