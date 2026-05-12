@@ -14,6 +14,7 @@ interface Thread {
   type: string;
   updated_at: string;
   member_id: string | null;
+  source: string;
 }
 
 interface Props {
