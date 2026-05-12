@@ -125,7 +125,7 @@ export function LeaderTour({ autoStart = true, onClose }: LeaderTourProps) {
             side: 'right',
             align: 'start',
             onNextClick: () => {
-              void hopAndAdvance('/lider/contexto', '[data-tour="context-feed"]');
+              void hopAndAdvance('/lider/avaliacoes', '[data-tour="reviews-list"]');
             },
             onPrevClick: () => {
               navigate('/lider/inicio');
@@ -133,28 +133,7 @@ export function LeaderTour({ autoStart = true, onClose }: LeaderTourProps) {
             },
           },
         },
-        // 3 — Contexto
-        {
-          element: '[data-tour="context-feed"]',
-          popover: {
-            title: 'Contexto unificado',
-            description:
-              'Linha do tempo de tudo que aconteceu com seu time: notas, 1:1s, pulses, sinais do Slack. Sua memória organizacional viva.',
-            side: 'top',
-            align: 'center',
-            onNextClick: () => {
-              void hopAndAdvance('/lider/avaliacoes', '[data-tour="reviews-list"]');
-            },
-            onPrevClick: () => {
-              void hopAndAdvance('/lider/diario', '[data-tour="member-list"]').then(() => {
-                // hopAndAdvance moves next; we want previous instead
-                driverRef.current?.movePrevious();
-                driverRef.current?.movePrevious();
-              });
-            },
-          },
-        },
-        // 4 — Avaliações
+        // 3 — Avaliações
         {
           element: '[data-tour="reviews-list"]',
           popover: {

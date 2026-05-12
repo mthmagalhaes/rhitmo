@@ -35,7 +35,9 @@ export const LEADER_NAV_ITEMS: NavItem[] = [
   { id: 'diario', labelKey: 'nav.lider.diario', icon: BookOpen, to: '/lider/diario' },
   { id: 'objetivos', labelKey: 'nav.lider.objetivos', icon: Target, to: '/lider/objetivos' },
   { id: 'avaliacoes', labelKey: 'nav.lider.avaliacoes', icon: ClipboardList, to: '/lider/avaliacoes' },
-  { id: 'pulse', labelKey: 'nav.lider.pulse', icon: Activity, to: '/lider/pulse' },
+  // TODO: reabilitar Pulse quando a feature for reaberta para o líder.
+  // Rota /lider/pulse continua viva; só escondemos o ponto de entrada do sidebar.
+  // { id: 'pulse', labelKey: 'nav.lider.pulse', icon: Activity, to: '/lider/pulse' },
   // TODO: reabilitar quando ONA + conectores externos + agente Rhitmo estiverem prontos.
   // Rota /lider/contexto continua viva para deep-links de auditoria (Brief 1:1, EvidenceDrawer).
   // { id: 'contexto', labelKey: 'nav.lider.contexto', icon: Layers, to: '/lider/contexto' },
