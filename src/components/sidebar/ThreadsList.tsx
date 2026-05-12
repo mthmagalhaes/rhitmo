@@ -13,6 +13,7 @@ interface Thread {
   updated_at: string;
   member_id: string | null;
   type: string;
+  source: string;
 }
 
 interface Props {
@@ -32,7 +33,7 @@ export function ThreadsList({ persona }: Props) {
       if (!userId) return [];
       const { data, error } = await supabase
         .from('chat_threads')
-        .select('id, title, updated_at, member_id, type')
+        .select('id, title, updated_at, member_id, type, source')
         .eq('user_id', userId)
         .in('type', types)
         .order('updated_at', { ascending: false })
@@ -55,28 +56,40 @@ export function ThreadsList({ persona }: Props) {
         {heading}
       </p>
       <ul className="space-y-0.5">
-        {threads.map((t) => (
-          <li key={t.id}>
-            <button
-              type="button"
-              onClick={() => {
-                if (persona === 'leader' && t.member_id) {
-                  navigate(`/member/${t.member_id}?thread=${t.id}`);
-                } else if (persona !== 'leader') {
-                  navigate(`/meu-rhitmo?thread=${t.id}`);
-                }
-              }}
-              className={cn(
-                'group w-full flex items-center gap-2 px-2 py-1.5 rounded-lg',
-                'text-xs text-sidebar-foreground/80 hover:text-sidebar-foreground',
-                'hover:bg-sidebar-accent/40 transition-colors text-left',
-              )}
-            >
-              <MessageSquare className="h-3 w-3 shrink-0 text-muted-foreground/60 group-hover:text-primary" />
-              <span className="truncate flex-1">{t.title}</span>
-            </button>
-          </li>
-        ))}
+        {threads.map((t) => {
+          const isSlack = t.source === 'slack';
+          return (
+            <li key={t.id}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (persona === 'leader') {
+                    if (isSlack || !t.member_id) {
+                      navigate(`/lider/mentor/${t.id}`);
+                    } else {
+                      navigate(`/member/${t.member_id}?thread=${t.id}`);
+                    }
+                  } else {
+                    navigate(`/meu-rhitmo?thread=${t.id}`);
+                  }
+                }}
+                className={cn(
+                  'group w-full flex items-center gap-2 px-2 py-1.5 rounded-lg',
+                  'text-xs text-sidebar-foreground/80 hover:text-sidebar-foreground',
+                  'hover:bg-sidebar-accent/40 transition-colors text-left',
+                )}
+              >
+                <MessageSquare className="h-3 w-3 shrink-0 text-muted-foreground/60 group-hover:text-primary" />
+                <span className="truncate flex-1">{t.title}</span>
+                {isSlack && (
+                  <span className="text-[9px] uppercase tracking-wider text-primary/70 font-semibold shrink-0">
+                    Slack
+                  </span>
+                )}
+              </button>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

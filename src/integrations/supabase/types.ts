@@ -149,6 +149,8 @@ export type Database = {
           id: string
           is_pinned: boolean
           member_id: string | null
+          slack_conversation_id: string | null
+          source: string
           title: string
           type: string
           updated_at: string
@@ -159,6 +161,8 @@ export type Database = {
           id?: string
           is_pinned?: boolean
           member_id?: string | null
+          slack_conversation_id?: string | null
+          source?: string
           title?: string
           type?: string
           updated_at?: string
@@ -169,6 +173,8 @@ export type Database = {
           id?: string
           is_pinned?: boolean
           member_id?: string | null
+          slack_conversation_id?: string | null
+          source?: string
           title?: string
           type?: string
           updated_at?: string

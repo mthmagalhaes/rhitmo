@@ -16,6 +16,7 @@ interface ThreadRow {
   member_id: string | null;
   user_id: string;
   type: string;
+  source: string;
 }
 
 export default function LiderMentorThread() {
@@ -35,7 +36,7 @@ export default function LiderMentorThread() {
       if (!threadId) return null;
       const { data } = await supabase
         .from('chat_threads')
-        .select('id, member_id, user_id, type')
+        .select('id, member_id, user_id, type, source')
         .eq('id', threadId)
         .maybeSingle();
       return data as ThreadRow | null;
@@ -114,6 +115,7 @@ export default function LiderMentorThread() {
       feedbacks={memberFeedbacks}
       userId={effectiveUserId ?? undefined}
       onBack={() => navigate('/lider/mentor')}
+      readOnly={thread?.source === 'slack'}
     />
   );
 }

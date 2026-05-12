@@ -14,6 +14,7 @@ interface Thread {
   type: string;
   updated_at: string;
   member_id: string | null;
+  source: string;
 }
 
 interface Props {
@@ -30,7 +31,7 @@ export function MentorHistoryCard({ onOpenMentor }: Props) {
       if (!userId) return [];
       const { data, error } = await supabase
         .from('chat_threads')
-        .select('id, title, type, updated_at, member_id')
+        .select('id, title, type, updated_at, member_id, source')
         .eq('user_id', userId)
         .in('type', ['mentor', 'brief'])
         .order('updated_at', { ascending: false })
@@ -86,10 +87,10 @@ export function MentorHistoryCard({ onOpenMentor }: Props) {
                 <button
                   type="button"
                   onClick={() => {
-                    if (thread.member_id) {
-                      navigate(`/member/${thread.member_id}?thread=${thread.id}`);
+                    if (thread.source === 'slack' || !thread.member_id) {
+                      navigate(`/lider/mentor/${thread.id}`);
                     } else {
-                      onOpenMentor();
+                      navigate(`/member/${thread.member_id}?thread=${thread.id}`);
                     }
                   }}
                   className={cn(
@@ -112,6 +113,11 @@ export function MentorHistoryCard({ onOpenMentor }: Props) {
                       {thread.type === 'brief' && (
                         <span className="ml-2 text-[10px] uppercase tracking-wider text-primary/70 font-semibold">
                           Brief
+                        </span>
+                      )}
+                      {thread.source === 'slack' && (
+                        <span className="ml-2 text-[10px] uppercase tracking-wider text-primary/70 font-semibold">
+                          🌀 Slack
                         </span>
                       )}
                     </p>
