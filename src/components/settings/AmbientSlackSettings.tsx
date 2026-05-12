@@ -12,8 +12,8 @@ import { useSlackChannels, useSlackChannelMutations } from '@/hooks/useSlackChan
 import { useAccount } from '@/contexts/AccountContext';
 
 export function AmbientSlackSettings() {
-  const { isHrAdmin, isOwner } = useAccount() as any;
-  const canEdit = Boolean(isHrAdmin || isOwner);
+  const { isHRAdmin } = useAccount();
+  const canEdit = Boolean(isHRAdmin);
   const { data, isLoading } = useSlackChannels();
   const { updateAutojoin, updateAmbientEnabled } = useSlackChannelMutations();
 
