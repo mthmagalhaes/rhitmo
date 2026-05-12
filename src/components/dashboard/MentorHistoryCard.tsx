@@ -31,7 +31,7 @@ export function MentorHistoryCard({ onOpenMentor }: Props) {
       if (!userId) return [];
       const { data, error } = await supabase
         .from('chat_threads')
-        .select('id, title, type, updated_at, member_id')
+        .select('id, title, type, updated_at, member_id, source')
         .eq('user_id', userId)
         .in('type', ['mentor', 'brief'])
         .order('updated_at', { ascending: false })
