@@ -1855,18 +1855,17 @@ async function processInteraction(body: string, timestamp: string, signature: st
             break;
           }
 
-          const { error: insertErr } = await supabase.from('slack_conversations').insert({
-            workspace_id: chatPersona.workspaceId,
-            slack_user_id: slackUserId,
-            intent: 'general_chat',
-            status: 'active',
-            state_data: { turns: [] },
-          });
-          if (insertErr) {
-            console.error('[INTERACT] Failed to insert slack_conversation:', insertErr.message);
+          // Idempotent open-or-resume — never blocked by stale rows.
+          const conv = await openOrResumeConversation(
+            chatPersona.workspaceId,
+            slackUserId,
+            'general_chat',
+          );
+          if (!conv) {
+            console.error('[INTERACT] openOrResumeConversation returned null');
             await slackApi('chat.postMessage', {
               channel: slackUserId,
-              text: '⚠️ Não consegui abrir nossa conversa agora. Tente em instantes.',
+              text: '⚠️ Tive um problema para abrir nossa conversa. Tente me mandar uma mensagem direta — eu respondo por aqui mesmo.',
             });
             break;
           }
