@@ -84,6 +84,31 @@ async function getActiveConversation(slackUserId: string): Promise<SlackConversa
   }
 }
 
+// Atomic open-or-resume — never blocks on stale "active" rows.
+async function openOrResumeConversation(
+  workspaceId: string,
+  slackUserId: string,
+  intent: string = 'general_chat',
+): Promise<SlackConversationRow | null> {
+  try {
+    const { data, error } = await supabase.rpc('open_or_resume_slack_conversation', {
+      p_workspace_id: workspaceId,
+      p_slack_user_id: slackUserId,
+      p_intent: intent,
+      p_ttl_minutes: 30,
+    });
+    if (error) {
+      console.error('[CONV] open_or_resume failed:', error.message);
+      return null;
+    }
+    if (!data || (typeof data === 'object' && !(data as Record<string, unknown>).id)) return null;
+    return data as SlackConversationRow;
+  } catch (err) {
+    console.error('[CONV] openOrResumeConversation threw:', err);
+    return null;
+  }
+}
+
 async function appendConversationTurn(
   conversationId: string,
   turn: { role: 'user' | 'assistant' | 'system'; text: string; ts?: string },
@@ -1819,29 +1844,18 @@ async function processInteraction(body: string, timestamp: string, signature: st
             });
             break;
           }
-
-          // Idempotency: if already in an active conversation, just nudge.
-          const existing = await getActiveConversation(slackUserId);
-          if (existing) {
+          // Idempotent open-or-resume handled below — no separate existing check needed.
+          // Idempotent open-or-resume — never blocked by stale rows.
+          const conv = await openOrResumeConversation(
+            chatPersona.workspaceId,
+            slackUserId,
+            'general_chat',
+          );
+          if (!conv) {
+            console.error('[INTERACT] openOrResumeConversation returned null');
             await slackApi('chat.postMessage', {
               channel: slackUserId,
-              text: 'Já estamos numa conversa ativa 🌀 — é só me responder por aqui.',
-            });
-            break;
-          }
-
-          const { error: insertErr } = await supabase.from('slack_conversations').insert({
-            workspace_id: chatPersona.workspaceId,
-            slack_user_id: slackUserId,
-            intent: 'general_chat',
-            status: 'active',
-            state_data: { turns: [] },
-          });
-          if (insertErr) {
-            console.error('[INTERACT] Failed to insert slack_conversation:', insertErr.message);
-            await slackApi('chat.postMessage', {
-              channel: slackUserId,
-              text: '⚠️ Não consegui abrir nossa conversa agora. Tente em instantes.',
+              text: '⚠️ Tive um problema para abrir nossa conversa. Tente me mandar uma mensagem direta — eu respondo por aqui mesmo.',
             });
             break;
           }
@@ -2363,30 +2377,14 @@ Deno.serve(async (req) => {
               // Conversations are CREATED elsewhere (slash commands / buttons)
               // in later sprints — this hook is read/append only.
               if (persona.persona !== 'unauthenticated' && persona.workspaceId) {
-                let conv = await getActiveConversation(slackUserId);
-
-                // Sprint 18: Conversational by default. If authenticated user
-                // has no active conversation, auto-create a general_chat one
-                // so any DM ("Oi tudo bem?") gets an LLM reply, not a menu.
-                if (!conv) {
-                  console.log('[CONV] No active conv — auto-creating general_chat for', slackUserId);
-                  const { data: created, error: createErr } = await supabase
-                    .from('slack_conversations')
-                    .insert({
-                      workspace_id: persona.workspaceId,
-                      slack_user_id: slackUserId,
-                      intent: 'general_chat',
-                      status: 'active',
-                      state_data: { turns: [] },
-                    })
-                    .select('*')
-                    .single();
-                  if (createErr) {
-                    console.warn('[CONV] auto-create failed:', createErr.message);
-                  } else if (created) {
-                    conv = created as SlackConversationRow;
-                  }
-                }
+                // Sprint 18 / Sprint 19 fix: use the atomic open-or-resume RPC.
+                // It expires stale rows server-side so the unique-active-per-user
+                // constraint never leaves the user without a reply.
+                const conv = await openOrResumeConversation(
+                  persona.workspaceId,
+                  slackUserId,
+                  'general_chat',
+                );
 
                 if (conv) {
                   console.log('[CONV] Active conversation found:', conv.id, '| intent:', conv.intent);
@@ -2522,9 +2520,14 @@ Deno.serve(async (req) => {
               // sem menu grande nem listas de comandos.
               const isAuthenticated = persona.persona !== 'unauthenticated';
               if (isAuthenticated) {
-                // Autenticado sem conv ativa não deveria cair aqui (auto-create
-                // já roda acima). Se cair, ficamos em silêncio para não floodar.
-                console.log('[DM] Authenticated user fell through conv hook — staying silent');
+                // Conversa não abriu mesmo com a RPC atômica — não ficar em
+                // silêncio. Responder algo útil para o usuário não achar que
+                // quebrou.
+                console.error('[DM] Authenticated user fell through conv hook — replying with degraded message');
+                await slackApi('chat.postMessage', {
+                  channel: event.channel,
+                  text: '⚠️ Tive um problema momentâneo para abrir nossa conversa. Pode tentar de novo em alguns segundos? Se continuar, me avise por aqui que eu investigo.',
+                });
                 return;
               }
 
