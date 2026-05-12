@@ -87,10 +87,10 @@ export function MentorHistoryCard({ onOpenMentor }: Props) {
                 <button
                   type="button"
                   onClick={() => {
-                    if (thread.member_id) {
-                      navigate(`/member/${thread.member_id}?thread=${thread.id}`);
+                    if (thread.source === 'slack' || !thread.member_id) {
+                      navigate(`/lider/mentor/${thread.id}`);
                     } else {
-                      onOpenMentor();
+                      navigate(`/member/${thread.member_id}?thread=${thread.id}`);
                     }
                   }}
                   className={cn(
@@ -113,6 +113,11 @@ export function MentorHistoryCard({ onOpenMentor }: Props) {
                       {thread.type === 'brief' && (
                         <span className="ml-2 text-[10px] uppercase tracking-wider text-primary/70 font-semibold">
                           Brief
+                        </span>
+                      )}
+                      {thread.source === 'slack' && (
+                        <span className="ml-2 text-[10px] uppercase tracking-wider text-primary/70 font-semibold">
+                          🌀 Slack
                         </span>
                       )}
                     </p>
