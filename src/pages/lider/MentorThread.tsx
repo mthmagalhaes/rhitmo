@@ -36,7 +36,7 @@ export default function LiderMentorThread() {
       if (!threadId) return null;
       const { data } = await supabase
         .from('chat_threads')
-        .select('id, member_id, user_id, type')
+        .select('id, member_id, user_id, type, source')
         .eq('id', threadId)
         .maybeSingle();
       return data as ThreadRow | null;
