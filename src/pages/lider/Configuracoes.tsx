@@ -10,6 +10,7 @@ import { User, CreditCard, Plug, LifeBuoy, Slack, Calendar, Pencil, Loader2, Lin
 import { Badge } from '@/components/ui/badge';
 import { useSlackConnection } from '@/hooks/useSlackConnection';
 import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
+import { AmbientSlackSettings } from '@/components/settings/AmbientSlackSettings';
 
 function ProfileTab() {
   const [open, setOpen] = useState(false);
