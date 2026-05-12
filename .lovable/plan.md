@@ -1,73 +1,20 @@
-## Diagnóstico
+## Remover "Pulso do time" da Home do líder
 
-Encontrei a causa exata. Não tem nada a ver com o manifest novo nem com a aba "Chat" — o problema é mais antigo e estava escondido.
+A seção Contexto foi removida do produto, mas o widget `TeamPulseBento` continua aparecendo em `/lider/inicio` e aponta para `/lider/contexto?tab=rede` (rota morta).
 
-### O que os logs mostram quando você manda "Resuma o que mudou…"
+### Mudanças
 
-```text
-[DM] Message from: U04N7M58KR6 | text: Resuma o que mudou no meu time...
-[DM] Persona: unauthenticated
-[DM] Throttled — not re-sending connect prompt
-```
+1. `**src/pages/Index.tsx**` — remover o `<TeamPulseBento />` da Home e o respectivo import. A Home volta a ter exatamente 3 seções: Account Setup, Próximas 1:1s, Histórico do Mentor (alinhado à memória `home-v3-windmill`, que já não lista Pulso do time).
+2. `**src/components/dashboard/TeamPulseBento.tsx**` — deletar o arquivo (não é usado em nenhum outro lugar).
+3. **Memória `mem://design/dashboard/home-v3-windmill**` — já está correta (lista só 3 seções). Sem mudança.
 
-Ou seja: o bot recebe a mensagem, **te trata como não-conectado**, vê que já mandou o "Conectar Conta" hoje, e fica em silêncio. Por isso você não recebe nada.
+### Fora de escopo (não mexer agora)
 
-### Por que ele acha que você não está conectado
+- Hook `useTeamPulse`, tabela `network_signals`, edge `detect-network-signals`, cron, RPCs `get_team_pulse`/`acknowledge`, e bloco de rede no brief continuam existindo no backend. Se a decisão for desligar a feature por completo (cron + tabelas), faço num passo separado — me avisa.
+- Página `/lider/contexto` em si: confirmar se também já foi removida da navegação ou se sobra algum link/rota a limpar.
 
-Consultei a tabela `slack_integrations` e ela tem **um único registro**, e ele está corrompido:
+### Pergunta rápida
 
-| slack_user_id | user_id | created_at |
-|---|---|---|
-| `"undefined"` (string literal) | matheus | 2026-03-31 |
+Quer que eu também remova o cron `detect-network-signals` e o bloco "Contexto de rede" do `briefGenerator` agora, ou só limpa a Home por ora? Só limpa da Home agora
 
-Ou seja: lá em março algum fluxo antigo de link gravou a string `"undefined"` no campo `slack_user_id` em vez do ID real do Slack (`U04N7M58KR6`). Como o lookup do `getUserPersona` filtra por `slack_user_id = 'U04N7M58KR6'`, **nunca casa** → persona = `unauthenticated` → silêncio.
-
-### O bug secundário que aparece logo depois
-
-```text
-[EVENT] type: message | subtype: message_changed
-[DM] Message from: undefined
-[DM] Persona: leader
-[CONV] No active conv — auto-creating general_chat for undefined
-[CONV] auto-create failed: null value in column "slack_user_id"
-```
-
-Quando o Slack reenvia a mesma mensagem como `message_changed` (edição/unfurl), `event.user` vem `undefined`. O código não filtra esse subtype, então:
-1. Faz lookup com `slack_user_id = undefined` → casa com a linha podre acima → persona vira `leader` falsamente.
-2. Tenta auto-criar uma `slack_conversations` com `slack_user_id = null` → estoura NOT NULL.
-
-Os dois bugs têm a mesma raiz (a linha podre) mas o segundo só foi possível porque o handler de DM aceita subtypes que não tem `event.user`.
-
-## Plano de correção
-
-### 1) Limpar a linha podre da tabela
-Migration que apaga o registro com `slack_user_id = 'undefined'` em `slack_integrations`. Isso desbloqueia todo o resto.
-
-### 2) Reconectar sua conta Slack
-Depois da limpeza, você abre o Rhitmo na web → Configurações → Conectar Slack. O fluxo OAuth atual (`slack-oauth-callback` → HMAC state → `slack-link`) já grava o `slack_user_id` correto vindo de `tokenData.authed_user.id`. Vai gerar uma linha nova válida (`U04N7M58KR6`).
-
-### 3) Blindar o handler de DM (`supabase/functions/slack-bot/index.ts`)
-Pequenas mudanças defensivas pra impedir que isso se repita:
-
-- **Ignorar subtypes que não são mensagem real do usuário**: dentro do bloco `if (event?.type === 'message' && event?.channel_type === 'im')`, sair cedo se `event.subtype` for `message_changed`, `message_deleted`, `bot_message`, `message_replied` etc. Slack manda esses eventos várias vezes por mensagem e nenhum deles deve disparar resposta nova.
-- **Sair cedo se `event.user` for falsy** antes de qualquer lookup, pra nunca mais fazer `eq('slack_user_id', undefined)`.
-
-### 4) Blindar a gravação em `slack-link` (`supabase/functions/slack-link/index.ts` linha ~100)
-Adicionar guard `if (!slack_user_id || slack_user_id === 'undefined' || slack_user_id === 'null') return 400` antes do upsert, pra impedir que essa string ruim entre de novo se algum fluxo legacy for chamado.
-
-### 5) Validar
-- Mandar uma DM nova pro bot e confirmar nos logs:
-  - `[DM] Persona: leader` (não `unauthenticated`)
-  - `[CONV] No active conv — auto-creating general_chat for U04N7M58KR6` (com o ID real, não `undefined`)
-  - Resposta do LLM aparecendo no Slack.
-- Garantir que `message_changed` aparece nos logs como ignorado, sem efeito colateral.
-
-## Sobre as 4 abas (Início / Chat / Histórico / Sobre)
-
-Isso é normal e não tem relação com o bug. Veio porque você ativou o **Agent or Assistant** no painel de Agents & AI Apps — o Slack passa a renderizar o container do AI Assistant (abas Início + Chat + Histórico) além da aba Sobre padrão. Quando o bot voltar a responder, a aba **Chat** vai funcionar igual a uma DM normal e a aba **Histórico** vai listar conversas anteriores. Nenhuma alteração de código necessária aqui.
-
-## O que NÃO está no escopo
-
-- Mexer no manifest de novo (está correto).
-- Mexer no `chat-mentor` ou no roteador de intents.
-- Tocar no fluxo de OAuth — ele já está correto, só precisa ser re-executado.
+&nbsp;
