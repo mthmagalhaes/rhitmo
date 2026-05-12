@@ -379,14 +379,6 @@ export const HelpCenterContent = () => {
   const filteredMember = useMemo(() => filterCards(memberCards), [search]);
   const filteredHR = useMemo(() => filterCards(hrCards), [search]);
 
-  const filteredIntegrations = useMemo(() => {
-    if (!search.trim()) return integrations;
-    const q = search.toLowerCase();
-    return integrations.filter(
-      (i) => i.name.toLowerCase().includes(q) || i.description.toLowerCase().includes(q)
-    );
-  }, [search]);
-
   const filteredFaq = useMemo(() => {
     if (!search.trim()) return faqItems;
     const q = search.toLowerCase();
