@@ -2515,15 +2515,14 @@ Deno.serve(async (req) => {
                       const turns = Array.isArray((conv.state_data as any)?.turns)
                         ? ((conv.state_data as any).turns as Array<{ role: string; text: string }>)
                         : [];
-                      // Append the just-added user turn locally (RPC already persisted it)
-                      const allTurns = [...turns, { role: 'user', text: event.text ?? '' }];
-                      const recent = allTurns.slice(-20);
-                      const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
-                        { role: 'system', content: buildSystemPromptForIntent(conv.intent) },
-                        ...recent
-                          .filter((t) => t.role === 'user' || t.role === 'assistant')
-                          .map((t) => ({ role: t.role as 'user' | 'assistant', content: t.text || '' })),
-                      ];
+                      const userText = event.text ?? '';
+                      // Recent turns from history (NOT including the current user message,
+                      // which is sent separately as `question` to chat-mentor or as the
+                      // last user message to callLovableAI).
+                      const recent = turns
+                        .slice(-20)
+                        .filter((t) => t.role === 'user' || t.role === 'assistant')
+                        .map((t) => ({ role: t.role as 'user' | 'assistant', content: t.text || '' }));
 
                       // Sprint A: show "Rhitmo está pensando…" in the
                       // Assistant container while the LLM works. No-op for
@@ -2531,7 +2530,25 @@ Deno.serve(async (req) => {
                       const assistThreadTs = event.thread_ts;
                       await setAssistantStatus(event.channel, assistThreadTs, 'Rhitmo está pensando…');
 
-                      const assistantText = await callLovableAI(messages);
+                      // Sprint 20: Leader DMs get the full Context Graph via
+                      // chat-mentor (leader_self mode). Other personas keep the
+                      // simple LLM path until their dedicated route is wired.
+                      let assistantText: string;
+                      if (
+                        persona.persona === 'leader' &&
+                        conv.intent === 'general_chat' &&
+                        persona.userId &&
+                        persona.workspaceId
+                      ) {
+                        assistantText = await callLeaderMentorFromDM(persona, userText, recent);
+                      } else {
+                        const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+                          { role: 'system', content: buildSystemPromptForIntent(conv.intent) },
+                          ...recent,
+                          { role: 'user', content: userText },
+                        ];
+                        assistantText = await callLovableAI(messages);
+                      }
 
                       await appendConversationTurn(conv.id, {
                         role: 'assistant',
