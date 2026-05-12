@@ -642,10 +642,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
           <CalendarCardBoundary />
         </section>
 
-        {/* ═══ 3. PULSO DO TIME (ONA) ═══ */}
-        <TeamPulseBento />
-
-        {/* ═══ 4. HISTÓRICO DO MENTOR ═══ */}
+        {/* ═══ 3. HISTÓRICO DO MENTOR ═══ */}
         <MentorHistoryCard onOpenMentor={handleOpenMentor} />
       </main>
 
