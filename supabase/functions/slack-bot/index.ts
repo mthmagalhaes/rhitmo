@@ -1844,17 +1844,7 @@ async function processInteraction(body: string, timestamp: string, signature: st
             });
             break;
           }
-
-          // Idempotency: if already in an active conversation, just nudge.
-          const existing = await getActiveConversation(slackUserId);
-          if (existing) {
-            await slackApi('chat.postMessage', {
-              channel: slackUserId,
-              text: 'Já estamos numa conversa ativa 🌀 — é só me responder por aqui.',
-            });
-            break;
-          }
-
+          // Idempotent open-or-resume handled below — no separate existing check needed.
           // Idempotent open-or-resume — never blocked by stale rows.
           const conv = await openOrResumeConversation(
             chatPersona.workspaceId,
