@@ -1189,6 +1189,20 @@ export const MentorChat = ({
 
             {/* ── Input area ─────────────────────────── */}
             <div className="px-4 md:px-6 pb-4 pt-3 flex-shrink-0">
+              {readOnly ? (
+                <div className="rounded-2xl border border-border/60 bg-muted/30 px-4 py-3.5 flex items-start gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <MessageSquare className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 text-sm">
+                    <p className="font-medium text-foreground">Esta conversa aconteceu no Slack 🌀</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      O histórico está sincronizado aqui em modo leitura. Para continuar, envie uma nova mensagem ao app Rhitmo no Slack ou inicie uma nova conversa na web.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+              <>
               {/* Quick suggestions (only when messages exist) */}
               {messages.length > 0 && (
                 <div className="flex gap-2 mb-3 overflow-x-auto pb-1 scrollbar-hide">
