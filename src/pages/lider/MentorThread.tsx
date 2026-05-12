@@ -16,6 +16,7 @@ interface ThreadRow {
   member_id: string | null;
   user_id: string;
   type: string;
+  source: string;
 }
 
 export default function LiderMentorThread() {
