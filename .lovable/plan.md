@@ -1,109 +1,98 @@
+## Contexto
 
-# Slack Ambient → Mentor: "no que X tá trabalhando esses dias?"
+O MVP Ambient já está rodando (classifier 2x/dia → `slack_ambient_evidence` → rollup semanal → `ctx:slack_activity_rollup`). Falta a camada de superfície: **configuração**, **visibilidade no dashboard do liderado** e **integração no brief de 1:1**. Abaixo, a recomendação de onde colocar cada peça e por quê.
 
-Reaproveita a infra existente (`slack_ambient_classifier`, `slack_ambient_evidence`) e adiciona uma camada de **rollup semanal por liderado** que vira `context_evidence` consumível pelo Mentor (web e Slack) e pelo Brief de 1:1.
+---
 
-## Comportamento esperado
+## 1. UI de configuração Ambient
 
-Líder pergunta no Mentor: *"No que o Guilherme tá trabalhando esses últimos dias e com quem?"*
+**Lugar:** `src/pages/lider/Configuracoes.tsx`, dentro do card **Slack** da aba **Integrações** — expandindo-o quando conectado.
 
-Mentor responde com base em:
-- Temas recorrentes nas mensagens dele em canais públicos (últimos 7d)
-- Top colaboradores (com quem mais trocou mensagem / foi mencionado)
-- Canais mais ativos
-- Sinais de entrega/bloqueio/reconhecimento já capturados pelo classifier
+**Por quê:**
+- Toda config de integração já vive lá (Slack, Calendar). Criar uma aba nova ("Privacidade", "Ambient") fragmenta.
+- Ambient é uma capacidade *do Slack conectado*; faz sentido ser sub-config do próprio card.
+- HR Admin / Owner também acessam essa página — são quem precisa controlar.
 
-## Arquitetura
+**O que entra (collapsible "Ambient Mode" abaixo do botão Disconnect):**
+- Toggle `ambient_mode_enabled` (já existe na tabela `workspace_slack_settings`)
+- Toggle `autojoin_public_channels`
+- Multi-select de canais para **excluir** (`excluded_channel_ids`) — busca via `conversations.list`
+- Texto curto: "Observamos só canais públicos onde o bot Rhitmo está. Nunca DMs nem privados. Liderados podem ver o que é capturado em /meu-rhitmo."
+- Link "Ver últimos rollups" → abre drawer com últimas linhas de `ctx_evidence` filtradas por `evidence_type='slack_activity_rollup'`
+
+**Permissão:** apenas HR Admin / Owner editam (líder comum vê read-only). Reusar `useAccount().isHrAdmin`.
+
+---
+
+## 2. Card no DirectReportDashboard
+
+**Lugar:** `src/components/dashboard/DirectReportDashboard.tsx`, **novo card "Atividade no Slack"** dentro da grid existente, logo após o `SkillsMapCard` (linha ~666) e antes do bloco de feedbacks (linha ~676). Ocupa 1 coluna em desktop, full em mobile.
+
+**Por quê:**
+- O dashboard já é Bento Grid; inserir mais um card ali respeita o padrão visual.
+- Posição **abaixo** do SkillsMap mantém hierarquia: identidade → habilidades → sinais ambient → feedback formal.
+- Não competir com o Pulse Card (topo) que é ação imediata; Ambient é observação contextual.
+
+**O que entra (componente novo `SlackActivityCard.tsx`):**
+- Header: ícone Slack + "Atividade recente no Slack" + badge "Últimos 7 dias"
+- Lê o último `ctx_evidence` do liderado com `evidence_type='slack_activity_rollup'`
+- Renderiza:
+  - **Top temas** (3 chips) — vem de `payload.themes`
+  - **Mais conversa com** (3 avatares + nome) — `payload.top_collaborators`
+  - **Canais ativos** (lista compacta) — `payload.top_channels`
+  - **Narrativa** (2-3 linhas em itálico discreto) — `payload.narrative`
+- Empty state: "Sem sinais relevantes nos últimos 7 dias." + link "Como funciona" → tooltip de privacidade
+- Loading state: skeleton
+
+**Visibilidade:** somente líder do liderado (RLS `ctx_evidence.visibility='private_leader'` já garante). Não aparece no `/liderado/Inicio`.
+
+---
+
+## 3. Bloco no brief de 1:1
+
+**Lugar:** `supabase/functions/_shared/briefGenerator.ts` — adicionar **novo BlockSpec** chamado `slack_activity` na composição do brief, e renderizar via `ExecutiveBrief.tsx` (que já itera sobre `blocks`).
+
+**Por quê:**
+- Já existe a abstração `BriefBlock` com Icon + label + items + evidence chips. Adicionar mais um bloco é o caminho de menor atrito.
+- O brief de 1:1 (`generate-brief`) é exatamente o momento em que o líder quer saber "no que ele andou trabalhando" antes da conversa.
+- Já existe precedente: bloco "Contexto de rede" (memória `brief-network-block`) injeta dados análogos.
+
+**O que entra:**
+- `BlockSpec`:
+  - `id: 'slack_activity'`
+  - `label: 'Atividade no Slack (últimos 7 dias)'`
+  - `icon: Slack` (lucide)
+- Items gerados a partir do último rollup do liderado:
+  - 1 linha: "Foco principal: {top 2 temas}"
+  - 1 linha: "Colaboração intensa com: {top 2-3 colaboradores}"
+  - 1 linha condicional: "{narrativa curta}" se houver
+- `evidence_ids`: id do `ctx_evidence` do rollup, para que a Citation Chip abra o EvidenceDrawer
+- Posição: **depois** do bloco "Contexto de rede" e **antes** de "Próximos passos / temas sugeridos" — assim o líder lê primeiro identidade/rede, depois sinais Slack, depois ação.
+
+**Fallback:** se não houver rollup nos últimos 7 dias → bloco simplesmente não aparece (não renderizar "sem sinais" para não poluir o brief).
+
+---
+
+## Resumo das alterações de código
 
 ```text
-Slack (canais públicos onde bot está)
-    │  cron 2x/dia
-    ▼
-slack-ambient-classifier  (já existe, precisa "ligar")
-    │  insere em
-    ▼
-slack_ambient_evidence  (já existe — granular, 1 row por mensagem relevante)
-    │  cron diário 04 UTC
-    ▼
-slack-weekly-rollup  (NOVO)
-    │  agrega últimos 7d por liderado, gera resumo via Gemini Flash
-    │  insere/upserta em
-    ▼
-context_evidence (evidence_type='slack_activity_rollup', source_table='slack_ambient_evidence')
-    │  RAG via match_context_evidence
-    ▼
-chat-mentor (web + Slack DM) responde com contexto fresco
+src/pages/lider/Configuracoes.tsx       → expand card Slack com Ambient settings (HR Admin)
+src/components/settings/AmbientSlackSettings.tsx  → novo (toggles + canais excluídos)
+src/components/dashboard/SlackActivityCard.tsx    → novo card Bento
+src/components/dashboard/DirectReportDashboard.tsx → inserir card após SkillsMap
+supabase/functions/_shared/briefGenerator.ts      → novo BlockSpec slack_activity
+src/components/context/ExecutiveBrief.tsx         → registrar icon mapping (sem mudança estrutural)
+.lovable/memory/...                                → atualizar memory ambient-weekly-rollup com surfaces
 ```
 
-## Mudanças
+Sem migrações novas — toda a infra de dados já existe.
 
-### 1. Ligar ambient mode por default em públicos
+## Out of scope (próximos sprints)
 
-`workspace_slack_settings` hoje está vazio. Default ON para todo workspace que tem `slack_integrations` ativo.
+- DM proativa "Detectamos sobrecarga em X" (precisa watermelon detection)
+- Visibilidade do rollup em `/meu-rhitmo` (transparência para o liderado)
+- Filtro temporal (hoje fixo em 7 dias)
 
-- Migration: nova trigger `auto_enable_ambient_on_slack_connect` que insere row em `workspace_slack_settings` com `ambient_mode_enabled=true, autojoin_public_channels=true` quando workspace conecta Slack.
-- Backfill: insert para todos workspaces com slack já conectado.
-- Cron já existe? Verificar `pg_cron` — se não, schedular `slack-ambient-classifier` 2x/dia (09 + 21 UTC) via insert em `cron.schedule`.
+---
 
-### 2. Edge function `slack-weekly-rollup` (nova)
-
-`supabase/functions/slack-weekly-rollup/index.ts`
-
-Para cada `(workspace_id, member_id)` com ≥3 evidências em `slack_ambient_evidence` nos últimos 7 dias:
-
-1. Carrega evidências + metadata (canal, autor, menções, ts).
-2. Faz uma 2ª query em `conversations.history` apenas para extrair menções (`<@U…>`) e replies do liderado dentro de threads → resolve top 3 colaboradores via `users.info` cacheado.
-3. Chama Gemini Flash 1x: input = lista de summaries + canais + colabs → output JSON:
-   ```json
-   {
-     "themes": ["migração do checkout", "onboarding de 2 contractors"],
-     "top_collaborators": [{"name":"Ana","interactions":12},{"name":"Bruno","interactions":7}],
-     "top_channels": ["#growth-eng","#design-crit"],
-     "narrative": "Guilherme passou a semana focado em…"
-   }
-   ```
-4. Upsert em `context_evidence`:
-   - `evidence_type = 'slack_activity_rollup'`
-   - `source_table = 'slack_ambient_evidence'`, `source_id = uuid_v5(member_id + week_start)` (determinístico, evita duplicatas)
-   - `summary = narrative`, `metadata = { themes, top_collaborators, top_channels, evidence_count }`
-   - `occurred_at = week_end`
-   - `visibility = 'private_leader'`
-5. Cron diário 04:30 UTC (depois do classifier).
-
-### 3. Mentor usa rollups automaticamente
-
-`match_context_evidence` já é chamado no `chat-mentor` (linha 526) — sem mudança. Apenas garantir no system prompt do mentor que mencione "Atividade no Slack" como fonte válida quando aparecer evidência com `evidence_type='slack_activity_rollup'`.
-
-Pequeno ajuste em `_shared/rhitmo-leader-coach.ts` ou no prompt member do `chat-mentor`: adicionar 1 linha citando que dados de Slack vêm em **rollups semanais agregados** (não mensagens cruas), pra a IA contextualizar a fonte.
-
-### 4. Citation chip
-
-`CitationChip` já lida com qualquer `[doc:UUID]`. Adicionar ícone Slack quando `evidence_type='slack_activity_rollup'` em `src/components/context/sourceMeta.ts`.
-
-## Privacidade & guardrails
-
-- **Mensagens cruas nunca saem do Slack** para o frontend. `slack_ambient_evidence.message_text` permanece restrito à RLS do líder.
-- Rollup expõe apenas **temas + colaboradores + narrativa agregada** — nunca cita mensagem literal nem trecho > 80 chars.
-- Bots, DMs e canais privados continuam **excluídos** (já filtrado).
-- Líder pode excluir canais via `workspace_slack_settings.excluded_channel_ids` (campo já existe; UI fica para depois).
-- Aviso no Onboarding do líder: "A Rhitmo observa atividade pública dos seus liderados em canais onde o bot já está" (1 linha + link policy).
-
-## Custo estimado
-
-Gemini Flash Lite no classifier (já existe) + 1 chamada Flash por liderado/semana no rollup ≈ **$0.002/liderado/semana**. Workspace de 10 liderados = $0.08/mês.
-
-## Out of scope (próximas sprints)
-
-- UI em `/lider/configuracoes` para ligar/desligar Ambient + lista de canais excluídos
-- Card "Atividade no Slack" no `DirectReportDashboard` mostrando rollup
-- Bloco dedicado nos briefs de 1:1 (`briefGenerator.ts`)
-- DM aos liderados informando que estão sendo observados (compliance opcional)
-- Detecção de "watermelon" cruzando rollup Slack vs sentimento em pulses
-
-## Entregáveis
-
-1. Migration: trigger + backfill `workspace_slack_settings`, cron schedules.
-2. Edge function `slack-weekly-rollup/index.ts`.
-3. Update `_shared/rhitmo-leader-coach.ts` (ou prompt member) — 2 linhas.
-4. Update `src/components/context/sourceMeta.ts` — ícone Slack para rollup.
-5. Memory: `mem://features/slack/ambient-weekly-rollup.md`.
+**Quer que eu siga com essa alocação ou prefere mover algum desses elementos de lugar (ex.: card no `/lider/inicio` em vez do DRD; config numa aba "Privacidade" separada)?**
