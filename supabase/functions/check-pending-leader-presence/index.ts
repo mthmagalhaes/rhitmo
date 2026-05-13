@@ -10,6 +10,10 @@
 // the explicit leader action and are validated only at bot.done.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  fetchAllRecallParticipantsDetailed,
+  isLeaderPresent,
+} from "../_shared/recallParticipants.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -42,7 +46,7 @@ Deno.serve(async (req) => {
     // Find auto_calendar bots whose grace window expired and leader still not detected
     const { data: pendingBots, error } = await supabaseAdmin
       .from("recall_bots")
-      .select("id, recall_bot_id, leader_email, status, leader_detected, trigger_source, leader_check_due_at")
+      .select("id, recall_bot_id, leader_email, status, leader_detected, trigger_source, leader_check_due_at, leader_check_attempts, user_id")
       .eq("status", "recording")
       .eq("leader_detected", false)
       .eq("trigger_source", "auto_calendar")
@@ -116,13 +120,14 @@ async function processBot(
     leader_email: string | null;
     status: string;
     leader_detected: boolean;
+    leader_check_attempts?: number;
+    user_id?: string;
   },
   recallApiKey: string,
-): Promise<"detected" | "removed" | "skipped"> {
+): Promise<"detected" | "removed" | "skipped" | "deferred"> {
   const botId = bot.recall_bot_id;
 
   if (!bot.leader_email) {
-    // No leader email to verify — clear the due_at so we stop retrying
     await supabaseAdmin
       .from("recall_bots")
       .update({ leader_check_due_at: null })
@@ -133,27 +138,26 @@ async function processBot(
   const leaderEmail = bot.leader_email.toLowerCase();
   const leaderPrefix = leaderEmail.split("@")[0];
 
-  // Fetch current participants
-  const botResponse = await fetch(
-    `https://us-west-2.recall.ai/api/v1/bot/${botId}/`,
-    { headers: { Authorization: `Token ${recallApiKey}` } },
-  );
-
-  if (!botResponse.ok) {
-    console.error(`Failed to fetch bot ${botId}: ${botResponse.status}`);
-    return "skipped";
+  // Resolve leader display-name candidates (Google Meet hides emails for non-Calendar attendees)
+  const nameCandidates: string[] = [leaderPrefix];
+  try {
+    if (bot.user_id) {
+      const { data: leaderUser } = await supabaseAdmin.auth.admin.getUserById(bot.user_id);
+      const meta = leaderUser?.user?.user_metadata ?? {};
+      if (meta.full_name) nameCandidates.push(meta.full_name as string);
+      if (meta.name) nameCandidates.push(meta.name as string);
+    }
+  } catch (e) {
+    console.warn(`Bot ${botId}: could not load leader user_metadata:`, e);
   }
 
-  const botData = await botResponse.json();
-  const participants = botData.meeting_participants || [];
+  // Use the detailed resolver (legacy + participant_events + inconclusive flag)
+  const result = await fetchAllRecallParticipantsDetailed(botId, recallApiKey);
 
-  const leaderFound = participants.some(
-    (p: { email?: string; name?: string }) => {
-      if (p.email && p.email.toLowerCase() === leaderEmail) return true;
-      if (p.name && p.name.toLowerCase().includes(leaderPrefix)) return true;
-      return false;
-    },
-  );
+  const leaderFound = isLeaderPresent(result.participants, {
+    email: leaderEmail,
+    names: nameCandidates,
+  });
 
   if (leaderFound) {
     console.log(`Bot ${botId}: leader detected in deferred check ✓`);
@@ -164,8 +168,31 @@ async function processBot(
     return "detected";
   }
 
-  // Leader still absent after grace window — remove bot
-  console.log(`Bot ${botId}: leader absent after 5min grace — removing`);
+  // Resolver couldn't see anything reliable yet → defer, do NOT kill the bot.
+  if (result.status === "inconclusive") {
+    const attempts = (bot.leader_check_attempts ?? 0) + 1;
+    const MAX_ATTEMPTS = 3;
+    if (attempts < MAX_ATTEMPTS) {
+      const nextDue = new Date(Date.now() + 3 * 60 * 1000).toISOString();
+      console.log(
+        `Bot ${botId}: resolver inconclusive (attempt ${attempts}/${MAX_ATTEMPTS}) — deferring to ${nextDue}`,
+      );
+      await supabaseAdmin
+        .from("recall_bots")
+        .update({
+          leader_check_due_at: nextDue,
+          leader_check_attempts: attempts,
+        })
+        .eq("id", bot.id);
+      return "deferred";
+    }
+    console.warn(
+      `Bot ${botId}: resolver still inconclusive after ${attempts} attempts — falling through to remove`,
+    );
+  }
+
+  // Leader truly absent (or out of retries) — remove bot
+  console.log(`Bot ${botId}: leader absent after grace window — removing`);
 
   const leaveResponse = await fetch(
     `https://us-west-2.recall.ai/api/v1/bot/${botId}/leave/`,
