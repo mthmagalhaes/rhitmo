@@ -116,8 +116,8 @@ const MemberDetails = () => {
       setCameFromReviews(true);
     }
     const sub = params.get('sub');
-    if (sub === 'quarterly' || sub === 'monthly') {
-      setActiveRhitmoSub(sub);
+    if (sub === 'monthly') {
+      setActiveRhitmoSub('monthly');
     }
     const action = params.get('action');
     if (tab === 'reviews' && action === 'new') {
