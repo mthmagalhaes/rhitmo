@@ -675,8 +675,8 @@
     "continueToPayment": "Continuar al pago",
     "planFeatures": {
       "upToMembers": "Hasta {{count}} colaboradores",
-      "mentorChats": "{{count}} mensajes de Mentor Chat por mes",
-      "unlimitedMentor": "Mentor Chat ilimitado",
+      "mentorChats": "{{count}} mensajes de Rhitmo por mes",
+      "unlimitedMentor": "Rhitmo ilimitado",
       "unlimitedNotes": "Notas ilimitadas",
       "formalReviews": "{{count}} evaluación formal por mes",
       "unlimitedReviews": "Evaluaciones formales ilimitadas",
