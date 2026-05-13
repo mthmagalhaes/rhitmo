@@ -195,8 +195,13 @@ export const useCalendarIntegration = () => {
     },
   });
 
-  const getBotStatus = (meetingId: string): RecallBot | undefined => {
-    return recallBots.find(b => b.meeting_id === meetingId);
+  const getBotStatus = (meetingId: string, meetingUrl?: string | null): RecallBot | undefined => {
+    const byId = recallBots.find(b => b.meeting_id === meetingId);
+    if (byId) return byId;
+    if (meetingUrl) {
+      return recallBots.find(b => b.meeting_url === meetingUrl);
+    }
+    return undefined;
   };
 
   return {
