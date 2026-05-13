@@ -166,22 +166,52 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
         throw new Error('Time inválido. Selecione um time válido da lista.');
       }
 
-      // Inserir novo membro na tabela team_members
-      const { data: newMember, error: insertError } = await supabase
+      // Anti-duplicata: se já existe um team_member com o mesmo email no mesmo time
+      // sem conta vinculada, reaproveita em vez de criar um novo registro órfão
+      // (evita o caso "dois Ruan no mesmo time, ambos sem linked_user_id").
+      const { data: existingMember } = await supabase
         .from('team_members')
-        .insert({
-          user_id: session.user.id,
-          name: name.trim(),
-          role: role.trim(),
-          email: email.trim(),
-          team_id: teamId,
-          
-          performance_score: 50
-        })
-        .select()
-        .single();
+        .select('id, linked_user_id')
+        .eq('team_id', teamId)
+        .ilike('email', email.trim())
+        .is('linked_user_id', null)
+        .limit(1)
+        .maybeSingle();
 
-      if (insertError) throw insertError;
+      let newMember: { id: string } | null = null;
+
+      if (existingMember) {
+        const { data: updated, error: updateError } = await supabase
+          .from('team_members')
+          .update({
+            name: name.trim(),
+            role: role.trim(),
+            email: email.trim(),
+          })
+          .eq('id', existingMember.id)
+          .select()
+          .single();
+        if (updateError) throw updateError;
+        newMember = updated;
+      } else {
+        // Inserir novo membro na tabela team_members
+        const { data: inserted, error: insertError } = await supabase
+          .from('team_members')
+          .insert({
+            user_id: session.user.id,
+            name: name.trim(),
+            role: role.trim(),
+            email: email.trim(),
+            team_id: teamId,
+
+            performance_score: 50
+          })
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+        newMember = inserted;
+      }
 
       // Recontar seats no Stripe (fire-and-forget; no-op se grandfather/sem subscription)
       syncStripeSeats();
