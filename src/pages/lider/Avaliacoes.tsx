@@ -118,27 +118,19 @@ export default function LiderAvaliacoes() {
               onValueChange={(v) => setActiveSub(v as SubTab)}
               className="w-full"
             >
-              <TabsList className="grid w-full max-w-md grid-cols-3 rounded-xl">
+              <TabsList className="grid w-full max-w-sm grid-cols-2 rounded-xl">
                 <TabsTrigger value="monthly" className="rounded-lg gap-1.5 text-xs">
                   <Music className="h-3.5 w-3.5" />
-                  Mensal
-                </TabsTrigger>
-                <TabsTrigger value="quarterly" className="rounded-lg gap-1.5 text-xs">
-                  <BarChart3 className="h-3.5 w-3.5" />
-                  Trimestral
+                  Acompanhamento Mensal
                 </TabsTrigger>
                 <TabsTrigger value="formal" className="rounded-lg gap-1.5 text-xs">
                   <Sparkles className="h-3.5 w-3.5" />
-                  Formal
+                  Histórico Formal
                 </TabsTrigger>
               </TabsList>
 
               <TabsContent value="monthly" className="mt-6">
                 <MonthlyRecapSection memberId={selected.id} />
-              </TabsContent>
-
-              <TabsContent value="quarterly" className="mt-6">
-                <QuarterlyRecapSection memberId={selected.id} />
               </TabsContent>
 
               <TabsContent value="formal" className="mt-6">
