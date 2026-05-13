@@ -292,7 +292,7 @@ const faqItems = [
   },
   {
     q: 'Quanto mais notas, melhor a IA',
-    a: 'O Mentor Chat e as Avaliações automáticas são tão bons quanto os dados que você registra. Tente anotar pelo menos 1 observação por membro por semana.',
+    a: 'A Rhitmo e as Avaliações automáticas são tão boas quanto os dados que você registra. Tente anotar pelo menos 1 observação por membro por semana.',
   },
   {
     q: 'Use Magic Paste para reuniões externas',
