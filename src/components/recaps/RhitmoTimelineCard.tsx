@@ -54,7 +54,7 @@ export function RhitmoTimelineCard({ memberId, feedbacksLastMonthCount, onJumpTo
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
-                {t('recap.timeline.historyLine', { monthly: monthly.length, quarterly: quarterly.length })}
+                {t('recap.timeline.historyLine', { monthly: monthly.length, quarterly: 0 })}
               </p>
             </div>
           </div>
