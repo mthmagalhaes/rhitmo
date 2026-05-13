@@ -17,6 +17,7 @@ interface UpcomingMeeting {
 interface RecallBot {
   id: string;
   meeting_id: string | null;
+  meeting_url: string | null;
   status: string;
   scheduled_at: string | null;
 }
@@ -152,7 +153,7 @@ export const useCalendarIntegration = () => {
       const supabaseAny = supabase as any;
       const { data, error } = await supabaseAny
         .from('recall_bots')
-        .select('id, meeting_id, status, scheduled_at')
+        .select('id, meeting_id, meeting_url, status, scheduled_at')
         .eq('user_id', user!.id)
         .neq('status', 'error');
       if (error) return [];
@@ -194,8 +195,13 @@ export const useCalendarIntegration = () => {
     },
   });
 
-  const getBotStatus = (meetingId: string): RecallBot | undefined => {
-    return recallBots.find(b => b.meeting_id === meetingId);
+  const getBotStatus = (meetingId: string, meetingUrl?: string | null): RecallBot | undefined => {
+    const byId = recallBots.find(b => b.meeting_id === meetingId);
+    if (byId) return byId;
+    if (meetingUrl) {
+      return recallBots.find(b => b.meeting_url === meetingUrl);
+    }
+    return undefined;
   };
 
   return {
