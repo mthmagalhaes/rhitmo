@@ -17,6 +17,7 @@ interface UpcomingMeeting {
 interface RecallBot {
   id: string;
   meeting_id: string | null;
+  meeting_url: string | null;
   status: string;
   scheduled_at: string | null;
 }
