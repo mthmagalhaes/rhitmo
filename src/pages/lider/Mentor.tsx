@@ -457,13 +457,13 @@ export default function LiderMentor() {
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-3">
             Sugestões
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {SUGGESTIONS.map((s, idx) => (
               <button
                 key={idx}
                 type="button"
                 onClick={() => handleSuggestion(s.text)}
-                className="px-3 py-2 text-sm rounded-full border border-border bg-card hover:border-primary/40 hover:bg-primary/5 transition-colors text-foreground"
+                className="w-full text-left px-3 py-2.5 text-sm rounded-2xl border border-border bg-card hover:border-primary/40 hover:bg-primary/5 transition-colors text-foreground"
               >
                 <span className="mr-1.5">{s.emoji}</span>
                 {s.text}
