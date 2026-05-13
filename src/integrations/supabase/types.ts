@@ -3148,6 +3148,7 @@ export type Database = {
         Args: { p_member_id: string }
         Returns: {
           id: string
+          linked_user_id: string
           name: string
           role: string
           work_style_data: Json
