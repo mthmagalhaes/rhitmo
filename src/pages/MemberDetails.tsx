@@ -128,11 +128,10 @@ const MemberDetails = () => {
     }
   }, []);
 
-  // Robust deep-link: switch to Rhitmo tab + monthly sub-tab and scroll, even from another tab.
-  const jumpToRhitmoTimeline = (sub: 'quarterly' | 'monthly' = 'monthly') => {
+  // Robust deep-link: switch to Rhitmo tab and scroll, even from another tab.
+  const jumpToRhitmoTimeline = () => {
     setActiveTab('rhitmo');
-    setActiveRhitmoSub(sub);
-    // Wait for the tab content to mount before scrolling.
+    setActiveRhitmoSub('monthly');
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const el = document.getElementById('rhitmo-tab-trigger');
