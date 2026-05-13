@@ -794,7 +794,7 @@ const MemberDetails = () => {
             <RhitmoTimelineCard
               memberId={member.id}
               feedbacksLastMonthCount={fbLastMonth}
-              onJumpToRhitmo={() => jumpToRhitmoTimeline('monthly')}
+              onJumpToRhitmo={() => jumpToRhitmoTimeline()}
             />
           );
         })()}
