@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   fetchAllRecallParticipants,
+  fetchAllRecallParticipantsDetailed,
   isLeaderPresent,
   matchMembersToParticipants,
   type RecallParticipant,
@@ -189,10 +190,12 @@ async function checkLeaderPresence(
     for (const m of selfMember ?? []) if (m.name) nameCandidates.push(m.name);
   } catch { /* non-fatal */ }
 
-  // Fetch participants from BOTH legacy field and participant_events.
-  const participants: RecallParticipant[] = await fetchAllRecallParticipants(botId, recallApiKey);
+  // Fetch participants from BOTH legacy field and participant_events,
+  // with the detailed resolver so we can also tell apart "truly empty" from "still loading".
+  const detailed = await fetchAllRecallParticipantsDetailed(botId, recallApiKey);
+  const participants = detailed.participants;
   console.log(
-    `Bot ${botId}: ${participants.length} participant(s) resolved | leader email=${leaderEmail} | name candidates=${JSON.stringify(nameCandidates)}`,
+    `Bot ${botId}: ${participants.length} participant(s) resolved (status=${detailed.status}) | leader email=${leaderEmail} | name candidates=${JSON.stringify(nameCandidates)}`,
   );
 
   const leaderFound = isLeaderPresent(participants, {
@@ -217,7 +220,32 @@ async function checkLeaderPresence(
     return;
   }
 
-  // Auto-calendar bot: leader never showed up, remove bot to limit cost.
+  // ── Defense for auto-calendar bots ───────────────────────────────────────
+  // If the bot actually recorded ≥60s of media, NEVER discard the transcript.
+  // The resolver may be blind (legacy empty + participant_events not flushed)
+  // but the recording itself is real and useful to the leader.
+  try {
+    const botResp = await fetch(`https://us-west-2.recall.ai/api/v1/bot/${botId}/`, {
+      headers: { Authorization: `Token ${recallApiKey}` },
+    });
+    if (botResp.ok) {
+      const data = await botResp.json();
+      const rec = (data.recordings ?? [])[0];
+      const startedAt = rec?.started_at ? new Date(rec.started_at).getTime() : null;
+      const endedAt = rec?.ended_at ? new Date(rec.ended_at).getTime() : null;
+      const recordedMs = startedAt && endedAt ? endedAt - startedAt : 0;
+      if (recordedMs >= 60_000) {
+        console.warn(
+          `Bot ${botId}: leader NOT detected but recording lasted ${Math.round(recordedMs / 1000)}s — keeping transcript (would be wasteful to discard).`,
+        );
+        return;
+      }
+    }
+  } catch (e) {
+    console.warn(`Bot ${botId}: recording-duration safety check failed:`, e);
+  }
+
+  // Auto-calendar bot, no real recording: leader never showed up. Remove + mark.
   console.log(`Bot ${botId}: leader NOT detected after grace period — removing bot`);
 
   const leaveResponse = await fetch(`https://us-west-2.recall.ai/api/v1/bot/${botId}/leave/`, {
