@@ -255,10 +255,10 @@
     "createTestNote": "Crea una nota rápida de prueba",
     "createNoteAction": "Crear nota →",
     "generateAISummary": "Genera un resumen con IA",
-    "askMentor": "Pide orientación al Mentor de Liderazgo",
+    "askMentor": "Pide orientación a Rhitmo",
     "chatAction": "Conversar →",
-    "openMentorChat": "Hazle tu primera pregunta al Mentor Chat",
-    "mentorChatAction": "Abrir Mentor →",
+    "openMentorChat": "Hazle tu primera pregunta a Rhitmo",
+    "mentorChatAction": "Abrir Rhitmo →",
     "inviteFirstMember": "Invita a tu primer colaborador por email",
     "inviteAction": "Invitar →",
     "stepsCompleted": "{{completed}} de {{total}} pasos completados"
