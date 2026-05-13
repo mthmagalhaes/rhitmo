@@ -30,7 +30,7 @@ const TermsOfService = () => {
         <ul className="list-disc ml-6 space-y-2">
           <li>Gestão de feedbacks e anotações</li>
           <li>Transcrição e análise de reuniões 1:1</li>
-          <li>Assistente de IA (Mentor Chat) para apoio a líderes</li>
+          <li>Assistente de IA (Rhitmo) para apoio a líderes</li>
           <li>Planos de desenvolvimento individual (PDI)</li>
           <li>Avaliações formais de desempenho</li>
           <li>Analytics e métricas de gestão</li>
@@ -44,7 +44,7 @@ const TermsOfService = () => {
         <ul className="list-disc ml-6 space-y-2">
           <li>Acesso ao Meu Rhitmo (portal do liderado)</li>
           <li>1 avaliação com IA por mês</li>
-          <li>Mentor Chat limitado (20 mensagens/mês)</li>
+          <li>Rhitmo limitada (20 mensagens/mês)</li>
           <li>Notas e anotações ilimitadas</li>
         </ul>
 
@@ -58,7 +58,7 @@ const TermsOfService = () => {
           <li>Avaliações com IA ilimitadas</li>
           <li>Pre-meeting Briefs com contexto histórico</li>
           <li>Detecção de viés em tempo real</li>
-          <li>Mentor Chat ilimitado</li>
+          <li>Rhitmo ilimitada</li>
           <li>Acesso ao Meu Rhitmo para todo o time</li>
           <li>Analytics completo</li>
           <li>Times ilimitados</li>

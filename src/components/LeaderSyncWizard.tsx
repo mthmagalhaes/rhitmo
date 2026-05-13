@@ -281,7 +281,7 @@ export function LeaderSyncWizard({ open, onOpenChange, workspaceId, existingData
             <div className="space-y-2">
               <h1 className="text-2xl font-bold">Perfil de Liderança Configurado!</h1>
               <p className="text-muted-foreground">
-                O Mentor de Liderança agora conhece seu estilo e vai dar orientações muito mais relevantes.
+                A Rhitmo agora conhece seu estilo e vai dar orientações muito mais relevantes.
               </p>
             </div>
             <Button onClick={handleClose} className="rounded-full px-8">Fechar</Button>

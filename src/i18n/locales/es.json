@@ -255,10 +255,10 @@
     "createTestNote": "Crea una nota rápida de prueba",
     "createNoteAction": "Crear nota →",
     "generateAISummary": "Genera un resumen con IA",
-    "askMentor": "Pide orientación al Mentor de Liderazgo",
+    "askMentor": "Pide orientación a Rhitmo",
     "chatAction": "Conversar →",
-    "openMentorChat": "Hazle tu primera pregunta al Mentor Chat",
-    "mentorChatAction": "Abrir Mentor →",
+    "openMentorChat": "Hazle tu primera pregunta a Rhitmo",
+    "mentorChatAction": "Abrir Rhitmo →",
     "inviteFirstMember": "Invita a tu primer colaborador por email",
     "inviteAction": "Invitar →",
     "stepsCompleted": "{{completed}} de {{total}} pasos completados"
@@ -675,8 +675,8 @@
     "continueToPayment": "Continuar al pago",
     "planFeatures": {
       "upToMembers": "Hasta {{count}} colaboradores",
-      "mentorChats": "{{count}} mensajes de Mentor Chat por mes",
-      "unlimitedMentor": "Mentor Chat ilimitado",
+      "mentorChats": "{{count}} mensajes de Rhitmo por mes",
+      "unlimitedMentor": "Rhitmo ilimitado",
       "unlimitedNotes": "Notas ilimitadas",
       "formalReviews": "{{count}} evaluación formal por mes",
       "unlimitedReviews": "Evaluaciones formales ilimitadas",
@@ -836,7 +836,7 @@
     "termsOfService": "Términos de Servicio"
   },
   "mentor": {
-    "title": "Mentor de Liderazgo",
+    "title": "Rhitmo",
     "placeholder": "Escribe tu pregunta...",
     "thinking": "Pensando...",
     "newThread": "Nueva Conversación",
@@ -1023,7 +1023,7 @@
     "newNote": "Nueva Nota",
     "moreActions": "Más acciones",
     "recordMeeting": "Grabar Reunión",
-    "mentorChat": "Mentor Chat",
+    "mentorChat": "Rhitmo",
     "activeUser": "Usuario Activo",
     "viewInvite": "Ver Invitación",
     "invite": "Invitar",
@@ -1283,7 +1283,7 @@
       "um_pra_um": "1:1s",
       "diario": "Diario",
       "pulse": "Pulse",
-      "avaliacoes": "Rhitmo",
+      "avaliacoes": "Evaluaciones",
       "contexto": "Contexto",
       "configuracoes": "Ajustes",
       "objetivos": "Objetivos"
@@ -1297,7 +1297,7 @@
       "configuracoes": "Ajustes"
     },
     "cta": {
-      "pergunte_mentor": "Pregunta al Mentor",
+      "pergunte_mentor": "Pregunta a Rhitmo",
       "meu_rhitmo": "Mi Rhitmo",
       "privado": "privado"
     },

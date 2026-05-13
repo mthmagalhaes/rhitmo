@@ -166,7 +166,7 @@ export function AppSidebar() {
           })}
         </SidebarMenu>
 
-        {/* CTA — Pergunte ao Mentor (alinhado com a navegação) */}
+        {/* CTA — Pergunte à Rhitmo (alinhado com a navegação) */}
         {persona === 'leader' && (
           <div className="px-2 pt-2 mt-2 border-t border-border/40">
             <SidebarFooterCTA persona={persona} />

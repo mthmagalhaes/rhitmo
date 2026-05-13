@@ -255,10 +255,10 @@
     "createTestNote": "Create a quick test note",
     "createNoteAction": "Create note →",
     "generateAISummary": "Generate an AI summary",
-    "askMentor": "Ask the Leadership Mentor for guidance",
+    "askMentor": "Ask Rhitmo for guidance",
     "chatAction": "Chat →",
-    "openMentorChat": "Ask your first question to Mentor Chat",
-    "mentorChatAction": "Open Mentor →",
+    "openMentorChat": "Ask Rhitmo your first question",
+    "mentorChatAction": "Open Rhitmo →",
     "inviteFirstMember": "Invite your first direct report by email",
     "inviteAction": "Invite →",
     "stepsCompleted": "{{completed}} of {{total}} steps completed"
@@ -675,8 +675,8 @@
     "continueToPayment": "Continue to payment",
     "planFeatures": {
       "upToMembers": "Up to {{count}} direct reports",
-      "mentorChats": "{{count}} Mentor Chat messages per month",
-      "unlimitedMentor": "Unlimited Mentor Chat",
+      "mentorChats": "{{count}} Rhitmo messages per month",
+      "unlimitedMentor": "Unlimited Rhitmo",
       "unlimitedNotes": "Unlimited notes",
       "formalReviews": "{{count}} formal review per month",
       "unlimitedReviews": "Unlimited formal reviews",
@@ -836,7 +836,7 @@
     "termsOfService": "Terms of Service"
   },
   "mentor": {
-    "title": "Leadership Mentor",
+    "title": "Rhitmo",
     "placeholder": "Type your question...",
     "thinking": "Thinking...",
     "newThread": "New Conversation",
@@ -1023,7 +1023,7 @@
     "newNote": "New Note",
     "moreActions": "More actions",
     "recordMeeting": "Record Meeting",
-    "mentorChat": "Mentor Chat",
+    "mentorChat": "Rhitmo",
     "activeUser": "Active User",
     "viewInvite": "View Invite",
     "invite": "Invite",
@@ -1283,7 +1283,7 @@
       "um_pra_um": "1:1s",
       "diario": "Journal",
       "pulse": "Pulse",
-      "avaliacoes": "Rhitmo",
+      "avaliacoes": "Reviews",
       "contexto": "Context",
       "configuracoes": "Settings",
       "objetivos": "Goals"
@@ -1297,7 +1297,7 @@
       "configuracoes": "Settings"
     },
     "cta": {
-      "pergunte_mentor": "Ask the Mentor",
+      "pergunte_mentor": "Ask Rhitmo",
       "meu_rhitmo": "My Rhitmo",
       "privado": "private"
     },

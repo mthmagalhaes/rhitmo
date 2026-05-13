@@ -503,7 +503,7 @@ const MemberDetails = () => {
                 )}
                 <DropdownMenuItem onClick={() => setChatOpen(true)} className="gap-2">
                   <Sparkles className="h-4 w-4" />
-                  Mentor Chat
+                  Rhitmo
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

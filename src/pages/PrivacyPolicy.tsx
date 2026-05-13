@@ -36,7 +36,7 @@ const PrivacyPolicy = () => {
         <ul className="list-disc ml-6 space-y-2">
           <li>Feedbacks e anotações sobre liderados</li>
           <li>Notas de reuniões e transcrições de áudio</li>
-          <li>Conversas com o Mentor Chat (assistente de IA)</li>
+          <li>Conversas com a Rhitmo (assistente de IA)</li>
           <li>Planos de desenvolvimento individual (PDI)</li>
           <li>Avaliações formais de desempenho</li>
           <li>Metas e objetivos</li>
@@ -101,7 +101,7 @@ const PrivacyPolicy = () => {
         <ul className="list-disc ml-6 space-y-2">
           <li>Finalidade: Transcrição de reuniões (Whisper API) e assistente de IA (GPT)</li>
           <li>Localização: Estados Unidos</li>
-          <li>Dados compartilhados: Áudio de reuniões, mensagens do Mentor Chat</li>
+          <li>Dados compartilhados: Áudio de reuniões, mensagens da Rhitmo</li>
           <li>Garantias: Cláusulas de proteção de dados e política de não-treinamento em dados de clientes</li>
         </ul>
 
