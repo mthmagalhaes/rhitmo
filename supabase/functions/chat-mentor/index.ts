@@ -31,6 +31,60 @@ function isCapabilitiesQuestion(q: string): boolean {
   return CAPABILITIES_PATTERNS.some((re) => re.test(trimmed));
 }
 
+// ============================================
+// DETECTOR DE JANELA TEMPORAL
+// Detecta expressões em PT/EN como "esta semana", "mês passado",
+// "últimos 30 dias", "trimestre", "mensal", etc. Retorna uma janela
+// {dateFrom, dateTo, label} ou null quando não há sinal temporal.
+// ============================================
+type TimeWindow = { dateFrom: Date; dateTo: Date; label: string } | null;
+
+function detectTimeWindow(question: string, now: Date = new Date()): TimeWindow {
+  if (!question) return null;
+  const q = question.toLowerCase();
+  const end = new Date(now);
+  const make = (days: number, label: string): TimeWindow => {
+    const start = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    return { dateFrom: start, dateTo: end, label };
+  };
+
+  // "últimos N dias/semanas/meses"
+  const mNum = q.match(/[úu]ltimos?\s+(\d{1,3})\s*(dias?|semanas?|meses?|m[êe]s)/);
+  if (mNum) {
+    const n = parseInt(mNum[1], 10);
+    const unit = mNum[2];
+    const days = /dia/.test(unit) ? n : /semana/.test(unit) ? n * 7 : n * 30;
+    return make(days, `últimos ${n} ${unit}`);
+  }
+  const mEnNum = q.match(/last\s+(\d{1,3})\s*(days?|weeks?|months?)/);
+  if (mEnNum) {
+    const n = parseInt(mEnNum[1], 10);
+    const unit = mEnNum[2];
+    const days = /day/.test(unit) ? n : /week/.test(unit) ? n * 7 : n * 30;
+    return make(days, `last ${n} ${unit}`);
+  }
+
+  // Janelas nomeadas
+  if (/\b(hoje|today)\b/.test(q)) return make(1, 'hoje');
+  if (/\b(esta semana|nesta semana|this week)\b/.test(q)) return make(7, 'esta semana');
+  if (/\b(semana passada|last week)\b/.test(q)) return make(14, 'última semana');
+  if (/\b(este m[êe]s|neste m[êe]s|do m[êe]s|this month|mensal|resumo mensal|do mes)\b/.test(q)) return make(30, 'último mês');
+  if (/\b(m[êe]s passado|last month)\b/.test(q)) return make(60, 'mês passado');
+  if (/\b(trimestre|quarter|trimestral|últimos? 3 meses|last quarter)\b/.test(q)) return make(90, 'último trimestre');
+  if (/\b(semestre|últimos? 6 meses)\b/.test(q)) return make(180, 'último semestre');
+  if (/\b(este ano|últimos? 12 meses|ano|last year|past year)\b/.test(q)) return make(365, 'último ano');
+
+  return null;
+}
+
+function inWindow(dateStr: string | null | undefined, win: TimeWindow): boolean {
+  if (!win) return true;
+  if (!dateStr) return false;
+  const t = new Date(dateStr).getTime();
+  if (Number.isNaN(t)) return false;
+  return t >= win.dateFrom.getTime() && t <= win.dateTo.getTime();
+}
+
 function buildCapabilitiesReply(mode: 'leader_self' | 'member', memberFirstName?: string): string {
   if (mode === 'member' && memberFirstName) {
     return `Aqui está o que posso fazer com o histórico de **${memberFirstName}**:
