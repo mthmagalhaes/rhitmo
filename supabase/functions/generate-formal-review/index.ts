@@ -440,15 +440,20 @@ _O gestor confirma estas escolhas na aba Calibração antes de compartilhar com 
 5. **Tamanho total**: 350-600 palavras.
 6. **Foco em ${memberName}**: Analise APENAS ações de ${firstName}. Ignore ações de outras pessoas mencionadas.
 7. **APENAS Markdown**. Sem HTML. Sem tabelas em pipe. Sem code fences no output.
-8. **PRIORIDADE DOS RECAPS RHITMO**: Se houver "CALIBRAÇÕES TRIMESTRAIS CONFIRMADAS PELO LÍDER" ou "RESUMOS MENSAIS CONFIRMADOS PELO LÍDER" no contexto, eles são a **espinha** dos blocos 3, 5 e 6. O líder já calibrou — não refaça. Use os feedbacks brutos como SUPORTE/CITAÇÃO nos blocos 1, 2 e 4.
-9. **Bloco 6 — sugestões da IA**: Sempre proponha um valor concreto para Desempenho, Promoção e Mérito. Se não houver evidência suficiente, sugira o conservador ("Dentro do esperado", "Não neste ciclo", "Somente inflação") e justifique.
-10. **Emojis nos títulos**: Mantenha EXATAMENTE os emojis indicados em cada bloco (📋 🏆 📈 🎯 📊 ⚖️ ➡️). Não substitua nem omita.`;
+8. **HIERARQUIA DE EVIDÊNCIAS (RAG completo)**: A **base** da review são as evidências cruas (anotações, 1:1s, sinais de contexto, pulses, peer feedback e 360°). Os recaps confirmados pelo líder ("CALIBRAÇÕES JÁ CONFIRMADAS PELO LÍDER") são uma **camada de ancoragem/triangulação** — use-os para validar padrões dos blocos 3, 5 e 6, mas NUNCA como única fonte. Sempre que possível, ancore a afirmação em uma evidência crua específica via \`[doc:UUID]\`. Se o recap diz uma coisa e a evidência crua mostra outra, prevalece a evidência crua e mencione a divergência no Bloco 4.
+9. **Citação de 360°**: Quando uma afirmação se apoiar em autoavaliação, par ou upwards, identifique a fonte no parêntese: *(autoavaliação de DD/MM)*, *(par anônimo, DD/MM)* ou *(upwards de DD/MM)* — além do \`[doc:UUID]\`.
+10. **Bloco 6 — sugestões da IA**: Sempre proponha um valor concreto para Desempenho, Promoção e Mérito. Se não houver evidência suficiente, sugira o conservador ("Dentro do esperado", "Não neste ciclo", "Somente inflação") e justifique.
+11. **Emojis nos títulos**: Mantenha EXATAMENTE os emojis indicados em cada bloco (📋 🏆 📈 🎯 📊 ⚖️ ➡️). Não substitua nem omita.
+12. **Alerta de evidência baixa**: Se o contexto trouxer "⚠️ ALERTA DE EVIDÊNCIA BAIXA", adicione UM parágrafo final em itálico recomendando que o líder confirme cuidadosamente antes de compartilhar.`;
 
-    const userPrompt = `EVIDÊNCIAS DO PERÍODO (${quarterlyCount} trimestral${quarterlyCount === 1 ? "" : "is"} confirmado${quarterlyCount === 1 ? "" : "s"}, ${monthlyCount} mensal${monthlyCount === 1 ? "" : "is"} confirmado${monthlyCount === 1 ? "" : "s"}, ${totalEvidence} registros brutos):
+    const userPrompt = `EVIDÊNCIAS DO PERÍODO:
+- Cruas: ${feedbackCount} anotações, ${meetingCount} 1:1s, ${ctxCount} sinais de contexto, ${pulseCount} pulses, ${peerCount} peer feedbacks, ${reviews360Count} reviews 360°
+- Calibração: ${quarterlyCount} trimestral(is) confirmado(s), ${monthlyCount} mensal(is) confirmado(s)
 
 ${evidenceText}
 
-Gere a avaliação formal de desempenho de ${memberName} em HTML puro, com OS 7 BLOCOS na ordem exata da estrutura.${hasConfirmedRecaps ? " Lembre-se: os recaps confirmados pelo líder são a espinha dos blocos 3, 5 e 6 — não recomece do zero." : ""}`;
+Gere a avaliação formal de desempenho de ${memberName} seguindo OS 7 BLOCOS na ordem exata da estrutura. A base são as evidências cruas; os recaps confirmados são camada de ancoragem.${lowRawEvidence && hasConfirmedRecaps ? " ⚠️ Atenção: evidência crua baixa — inclua o aviso final recomendado." : ""}`;
+
 
     // Call Lovable AI Gateway
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
