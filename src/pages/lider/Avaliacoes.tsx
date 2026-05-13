@@ -17,7 +17,7 @@ import { useLeaderMembers } from '@/hooks/useLeaderMembers';
 import { supabase } from '@/integrations/supabase/client';
 import type { LeaderMemberRow } from '@/hooks/useLeaderMembers';
 
-type SubTab = 'monthly' | 'quarterly' | 'formal';
+type SubTab = 'monthly' | 'formal';
 
 export default function LiderAvaliacoes() {
   const { workspace } = useLeaderMembers();
