@@ -56,13 +56,13 @@ const leaderCards: FeatureCard[] = [
   {
     id: 'l-mentor',
     icon: Sparkles,
-    title: 'Mentor Chat IA',
+    title: 'Rhitmo (IA)',
     subtitle: 'Seu Chief of Staff de liderança',
     steps: [
-      'Abra o Chat no menu lateral ou no perfil de um membro.',
+      'Abra a Rhitmo no menu lateral ou no perfil de um membro.',
       'A IA conhece seu time e o histórico de notas.',
       'Pergunte: "Como dou feedback para a Ana sobre pontualidade?"',
-      'Quanto mais notas você registrar, mais preciso e contextual o mentor será.',
+      'Quanto mais notas você registrar, mais precisa e contextual a Rhitmo será.',
     ],
   },
   {
