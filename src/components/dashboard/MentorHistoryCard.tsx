@@ -77,7 +77,7 @@ export function MentorHistoryCard({ onOpenMentor }: Props) {
             </p>
             <Button onClick={onOpenMentor} className="rounded-xl gap-2">
               <Sparkles className="h-3.5 w-3.5" />
-              Pergunte ao Mentor
+              Pergunte à Rhitmo
             </Button>
           </div>
         ) : (
