@@ -1,98 +1,46 @@
-## Contexto
+## Objetivo
 
-O MVP Ambient já está rodando (classifier 2x/dia → `slack_ambient_evidence` → rollup semanal → `ctx:slack_activity_rollup`). Falta a camada de superfície: **configuração**, **visibilidade no dashboard do liderado** e **integração no brief de 1:1**. Abaixo, a recomendação de onde colocar cada peça e por quê.
+Fazer o botão nativo do Slack **"Adicionar o app a um canal"** (visto no benchmark do Windy) aparecer e funcionar para o Rhitmo em canais públicos **e privados**, sem precisar de `/invite @Rhitmo` manual.
 
----
+## Causa-raiz
 
-## 1. UI de configuração Ambient
+O menu "..." → "Adicionar o app a um canal" é UI nativa do Slack. Ele só lista canais onde o bot tem scope de escrita. O manifest atual tem apenas leitura de privados (`groups:read` + `groups:history`), sem `groups:write` — por isso o fluxo via UI parece "sumido" para canais privados e fica capenga em alguns workspaces.
 
-**Lugar:** `src/pages/lider/Configuracoes.tsx`, dentro do card **Slack** da aba **Integrações** — expandindo-o quando conectado.
+## Mudanças
 
-**Por quê:**
-- Toda config de integração já vive lá (Slack, Calendar). Criar uma aba nova ("Privacidade", "Ambient") fragmenta.
-- Ambient é uma capacidade *do Slack conectado*; faz sentido ser sub-config do próprio card.
-- HR Admin / Owner também acessam essa página — são quem precisa controlar.
+### 1. Atualizar `docs/slack-app-manifest.md`
 
-**O que entra (collapsible "Ambient Mode" abaixo do botão Disconnect):**
-- Toggle `ambient_mode_enabled` (já existe na tabela `workspace_slack_settings`)
-- Toggle `autojoin_public_channels`
-- Multi-select de canais para **excluir** (`excluded_channel_ids`) — busca via `conversations.list`
-- Texto curto: "Observamos só canais públicos onde o bot Rhitmo está. Nunca DMs nem privados. Liderados podem ver o que é capturado em /meu-rhitmo."
-- Link "Ver últimos rollups" → abre drawer com últimas linhas de `ctx_evidence` filtradas por `evidence_type='slack_activity_rollup'`
+Adicionar 2 scopes ao bloco `oauth_config.scopes.bot` e à lista "Required scopes":
 
-**Permissão:** apenas HR Admin / Owner editam (líder comum vê read-only). Reusar `useAccount().isHrAdmin`.
+- `groups:write` — permite o bot ser adicionado/sair de canais privados pela UI nativa
+- `mpim:write` (opcional, baixo custo) — group DMs, completa a paridade com Windy
 
----
+Nada muda nas slash commands, eventos, ou App Home.
 
-## 2. Card no DirectReportDashboard
+### 2. Reinstalar o app no workspace Faster
 
-**Lugar:** `src/components/dashboard/DirectReportDashboard.tsx`, **novo card "Atividade no Slack"** dentro da grid existente, logo após o `SkillsMapCard` (linha ~666) e antes do bloco de feedbacks (linha ~676). Ocupa 1 coluna em desktop, full em mobile.
+Como mudança de scope, o Slack obriga reautorização:
 
-**Por quê:**
-- O dashboard já é Bento Grid; inserir mais um card ali respeita o padrão visual.
-- Posição **abaixo** do SkillsMap mantém hierarquia: identidade → habilidades → sinais ambient → feedback formal.
-- Não competir com o Pulse Card (topo) que é ação imediata; Ambient é observação contextual.
+1. Você abre o manifest atualizado em https://api.slack.com/apps → app Rhitmo → **App Manifest** → cola o JSON novo → **Save Changes**.
+2. Slack mostra "Reinstall to Workspace" → você clica e aprova.
+3. O `SLACK_BOT_TOKEN` continua o mesmo (mesmo app), mas com scopes ampliados.
 
-**O que entra (componente novo `SlackActivityCard.tsx`):**
-- Header: ícone Slack + "Atividade recente no Slack" + badge "Últimos 7 dias"
-- Lê o último `ctx_evidence` do liderado com `evidence_type='slack_activity_rollup'`
-- Renderiza:
-  - **Top temas** (3 chips) — vem de `payload.themes`
-  - **Mais conversa com** (3 avatares + nome) — `payload.top_collaborators`
-  - **Canais ativos** (lista compacta) — `payload.top_channels`
-  - **Narrativa** (2-3 linhas em itálico discreto) — `payload.narrative`
-- Empty state: "Sem sinais relevantes nos últimos 7 dias." + link "Como funciona" → tooltip de privacidade
-- Loading state: skeleton
+### 3. Verificação (sem código novo)
 
-**Visibilidade:** somente líder do liderado (RLS `ctx_evidence.visibility='private_leader'` já garante). Não aparece no `/liderado/Inicio`.
+Depois do reinstall, no Slack:
+- Abrir DM com `@Rhitmo` → "..." → **Mais ações** → **Abrir detalhes do app** → confirmar que aparece **"Adicionar o app a um canal"** como primeira opção.
+- Selecionar um canal **privado** novo no dropdown → **Adicionar** → confirmar que entra sem erro.
+- Em `/slack/channels` na web, o canal aparece como `is_member: true` na próxima query (cache de 60s).
 
----
+## Fora de escopo
 
-## 3. Bloco no brief de 1:1
+- Nenhuma mudança em código (frontend ou edge functions).
+- Nenhuma mudança em `slack-list-channels`, `slack-bot`, ou nos hooks.
+- Nenhuma migration de DB.
 
-**Lugar:** `supabase/functions/_shared/briefGenerator.ts` — adicionar **novo BlockSpec** chamado `slack_activity` na composição do brief, e renderizar via `ExecutiveBrief.tsx` (que já itera sobre `blocks`).
+## Detalhes técnicos
 
-**Por quê:**
-- Já existe a abstração `BriefBlock` com Icon + label + items + evidence chips. Adicionar mais um bloco é o caminho de menor atrito.
-- O brief de 1:1 (`generate-brief`) é exatamente o momento em que o líder quer saber "no que ele andou trabalhando" antes da conversa.
-- Já existe precedente: bloco "Contexto de rede" (memória `brief-network-block`) injeta dados análogos.
-
-**O que entra:**
-- `BlockSpec`:
-  - `id: 'slack_activity'`
-  - `label: 'Atividade no Slack (últimos 7 dias)'`
-  - `icon: Slack` (lucide)
-- Items gerados a partir do último rollup do liderado:
-  - 1 linha: "Foco principal: {top 2 temas}"
-  - 1 linha: "Colaboração intensa com: {top 2-3 colaboradores}"
-  - 1 linha condicional: "{narrativa curta}" se houver
-- `evidence_ids`: id do `ctx_evidence` do rollup, para que a Citation Chip abra o EvidenceDrawer
-- Posição: **depois** do bloco "Contexto de rede" e **antes** de "Próximos passos / temas sugeridos" — assim o líder lê primeiro identidade/rede, depois sinais Slack, depois ação.
-
-**Fallback:** se não houver rollup nos últimos 7 dias → bloco simplesmente não aparece (não renderizar "sem sinais" para não poluir o brief).
-
----
-
-## Resumo das alterações de código
-
-```text
-src/pages/lider/Configuracoes.tsx       → expand card Slack com Ambient settings (HR Admin)
-src/components/settings/AmbientSlackSettings.tsx  → novo (toggles + canais excluídos)
-src/components/dashboard/SlackActivityCard.tsx    → novo card Bento
-src/components/dashboard/DirectReportDashboard.tsx → inserir card após SkillsMap
-supabase/functions/_shared/briefGenerator.ts      → novo BlockSpec slack_activity
-src/components/context/ExecutiveBrief.tsx         → registrar icon mapping (sem mudança estrutural)
-.lovable/memory/...                                → atualizar memory ambient-weekly-rollup com surfaces
-```
-
-Sem migrações novas — toda a infra de dados já existe.
-
-## Out of scope (próximos sprints)
-
-- DM proativa "Detectamos sobrecarga em X" (precisa watermelon detection)
-- Visibilidade do rollup em `/meu-rhitmo` (transparência para o liderado)
-- Filtro temporal (hoje fixo em 7 dias)
-
----
-
-**Quer que eu siga com essa alocação ou prefere mover algum desses elementos de lugar (ex.: card no `/lider/inicio` em vez do DRD; config numa aba "Privacidade" separada)?**
+- Manifest é a única source-of-truth do Slack — mudar lá basta.
+- `groups:write` é scope estável, não-deprecated, sem impacto em DMs ou em canais públicos.
+- O bot continua **sem acesso** a canais privados onde não foi adicionado (Slack não expõe nem via `groups:write`).
+- A privacidade do "nunca ler DMs alheios / nunca canais sem ser membro" segue intacta.

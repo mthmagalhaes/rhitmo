@@ -30,9 +30,13 @@ channels:join
 channels:read
 channels:history
 groups:read
+groups:write
 groups:history
+mpim:write
 app_mentions:read
 ```
+
+> `groups:write` + `mpim:write` habilitam o botão nativo do Slack **"Adicionar o app a um canal"** (menu "..." → Mais ações → Abrir detalhes do app) para canais privados e group DMs, sem precisar de `/invite @Rhitmo` manual.
 
 ## Slash commands (7)
 
