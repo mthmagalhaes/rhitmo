@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import type { Json } from '@/integrations/supabase/types';
 import { Button } from '@/components/ui/button';
@@ -199,12 +199,15 @@ function StepIndicator({
 
 export default function RhitmoSync() {
   const { memberId } = useParams<{ memberId: string }>();
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<SyncFormData>(initialFormData);
   const [memberName, setMemberName] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const [notLinked, setNotLinked] = useState(false);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     loadMemberData();
@@ -212,29 +215,40 @@ export default function RhitmoSync() {
 
   const loadMemberData = async () => {
     if (!memberId) {
-      toast.error('Link inválido');
+      setNotFound(true);
       setLoading(false);
       return;
     }
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+
       const { data, error } = await supabase
         .rpc('get_member_for_sync', { p_member_id: memberId });
 
       if (error) throw error;
-      if (!data || data.length === 0) throw new Error('Membro não encontrado');
+      if (!data || (Array.isArray(data) && data.length === 0)) {
+        setNotFound(true);
+        return;
+      }
 
       const member = Array.isArray(data) ? data[0] : data;
 
+      setMemberName(member.name);
+
       if (member.work_style_data) {
-        toast.error('Este questionário já foi preenchido');
         setCompleted(true);
+        return;
       }
 
-      setMemberName(member.name);
+      // Gating: liderado precisa estar logado E vinculado a este team_member
+      if (!user || !member.linked_user_id || member.linked_user_id !== user.id) {
+        setNotLinked(true);
+        return;
+      }
     } catch (error) {
       console.error('Error loading member:', error);
-      toast.error('Membro não encontrado');
+      setNotFound(true);
     } finally {
       setLoading(false);
     }
@@ -338,8 +352,13 @@ export default function RhitmoSync() {
       toast.success('Perfil sintonizado com sucesso!');
     } catch (error: unknown) {
       console.error('Error submitting:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erro ao salvar suas respostas. Tente novamente.';
+      const rawMessage = error instanceof Error ? error.message : '';
+      const isUnauthorized = /unauthorized/i.test(rawMessage);
+      const errorMessage = isUnauthorized
+        ? 'Sua conta ainda não está vinculada como liderado. Aceite o convite enviado pelo seu líder antes de responder.'
+        : (rawMessage || 'Erro ao salvar suas respostas. Tente novamente.');
       toast.error(errorMessage);
+      if (isUnauthorized) setNotLinked(true);
     } finally {
       setSubmitting(false);
     }
@@ -353,6 +372,55 @@ export default function RhitmoSync() {
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
           <p className="mt-4 text-muted-foreground">Carregando...</p>
         </div>
+      </div>
+    );
+  }
+
+  // Membro não encontrado
+  if (notFound) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
+        <Card className="max-w-md w-full p-8 text-center space-y-4 rounded-2xl">
+          <div className="text-5xl">🔍</div>
+          <h1 className="text-xl font-bold tracking-tight">Link inválido</h1>
+          <p className="text-sm text-muted-foreground">
+            Não encontramos esse questionário. Peça ao seu líder para reenviar o convite.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
+  // Liderado não vinculado: precisa aceitar o convite primeiro
+  if (notLinked) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
+        <Card className="max-w-md w-full p-8 text-center space-y-5 rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
+          <div className="text-5xl">🔐</div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold tracking-tight">
+              Falta ativar sua conta{memberName ? `, ${memberName.split(' ')[0]}` : ''}
+            </h1>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Seu líder te adicionou como liderado, mas o questionário só pode ser
+              respondido depois que você criar sua conta no Rhitmo com o e-mail
+              que recebeu o convite.
+            </p>
+          </div>
+          <div className="space-y-2 pt-2">
+            <Button
+              className="w-full rounded-xl"
+              onClick={() => navigate('/auth')}
+            >
+              Entrar ou criar minha conta
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Já tem login? Entre com a mesma conta e abra este link novamente.
+              <br />
+              Não recebeu o convite? Peça ao seu líder para reenviar.
+            </p>
+          </div>
+        </Card>
       </div>
     );
   }

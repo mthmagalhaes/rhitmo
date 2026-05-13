@@ -1,106 +1,73 @@
-## Sprint: Recall.ai bot reliability + chat hygiene
+## Causa raiz
 
-Resolve dois bugs encontrados na reunião `[Interno] Fator Seguradora` (13/05):
-
-1. **Loop de bots fantasma** — bot bom morto a meio da gravação por falha do resolver de participantes; calendar sync reagenda repetidamente.
-2. **Mensagem duplicada no chat do Meet** — `fetch-calendar-events` configura `on_participant_join` além de `on_bot_join`, gerando 1 mensagem por participante novo.
-
----
-
-### Parte 1 — Parar o spam de chat (rápido, isolado)
-
-**Arquivo: `supabase/functions/fetch-calendar-events/index.ts` (~linhas 337–347)**
-
-- Remover bloco `on_participant_join` inteiro.
-- Manter apenas `on_bot_join` com a mensagem padrão (mesma que `schedule-recall-bot` usa, para uniformidade).
-- Resultado: bot envia **1 mensagem só**, no momento em que entra. Independente de quantas pessoas chegam depois.
-
-Validação: agendar uma 1:1 de teste, observar chat do Meet — 1 mensagem.
-
----
-
-### Parte 2 — Corrigir o resolver de participantes (causa raiz do bot morto)
-
-**Arquivo: `supabase/functions/_shared/recallParticipants.ts`**
-
-Refactor de `fetchAllRecallParticipants`:
-
-- Hoje: lê `bot.meeting_participants` (legacy, frequentemente vazio) + tenta `participant_events` como complemento.
-- Novo: chama **sempre** as duas fontes em paralelo, mescla, e adiciona um terceiro estado de retorno: `inconclusive`.
-- Critério de `inconclusive`: ambas fontes vazias **e** o bot está `recording`/`in_call_recording` há < 90 s. Significa "ainda não consigo ler", não "ninguém está aqui".
-- Adicionar log JSON estruturado: `{ bot_id, legacy_count, events_count, merged_count, decision, ms_since_recording_start }`.
-
-Tipo de retorno passa de `RecallParticipant[]` para `{ status: 'ok' | 'inconclusive', participants: RecallParticipant[] }`.
-
----
-
-### Parte 3 — Não matar o bot quando o resolver está cego
-
-**Arquivo: `supabase/functions/check-pending-leader-presence/index.ts`**
-
-- Quando resolver retornar `inconclusive`:
-  - Não chamar `bot/leave/`.
-  - Não marcar `skipped_no_leader`.
-  - Empurrar `leader_check_due_at = now() + 3 min`.
-  - Incrementar coluna nova `leader_check_attempts`.
-  - Teto: 3 tentativas (≈ 14 min total a partir do `bot.in_call_recording`). Depois disso, sim, marcar `skipped_no_leader`.
-- Quando resolver retornar `ok` com participantes vazios → comportamento atual mantido (líder ausente).
-
----
-
-### Parte 4 — Bloquear o ciclo de reagendamento
-
-**Arquivos: `supabase/functions/fetch-calendar-events/index.ts` + `supabase/functions/schedule-recall-bot/index.ts`**
-
-- Trocar dedup `not("status", "in", '("error","done","skipped_no_leader")')` por `not("status", "in", '("done")')`.
-- Dentro de janela de 30 min ao redor de `start_time`, **`skipped_no_leader` e `error` passam a bloquear** novo agendamento.
-- Coluna nova `attempt_count` em `recall_bots`. Cap de 2 tentativas por evento por dia.
-- Resultado: quando o bot 1 morrer, calendar sync **não cria** bot 2 minutos depois para o mesmo Meet link.
-
----
-
-### Parte 5 — Migração
+O Ruan (`ruan.costa@aluno.fapeduca.com.br`, time da Carolyna em FapEduca) não consegue concluir o **Rhitmo Sync** porque a RPC `submit_rhitmo_sync_v2` rejeita o submit silenciosamente:
 
 ```sql
-ALTER TABLE recall_bots
-  ADD COLUMN IF NOT EXISTS attempt_count int NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS leader_check_attempts int NOT NULL DEFAULT 0;
+IF NOT EXISTS (
+  SELECT 1 FROM team_members
+  WHERE id = p_member_id AND linked_user_id = auth.uid()
+) THEN
+  RAISE EXCEPTION 'Unauthorized: you can only submit your own Rhitmo Sync data';
+END IF;
 ```
 
-Sem mudança de RLS. Sem novas tabelas.
+No banco existem **dois `team_members` duplicados** para o e-mail dele, ambos com `linked_user_id = NULL`:
+
+| id | name | email | linked_user_id | has_sync |
+|---|---|---|---|---|
+| `511e0dff…5b7b6f` (o que ele acessou) | Ruan | ruan.costa@aluno.fapeduca.com.br | **null** | false |
+| `d11bd4d8…8779f0` | Ruan | ruan.costa@aluno.fapeduca.com.br | **null** | false |
+
+Ou seja, ele recebeu/abriu o link `/rhitmo-sync/:memberId` sem nunca ter aceito o convite e criado conta vinculada. Quando clica "Finalizar", a RPC dispara `Unauthorized`, o front captura como erro genérico e mostra **"Erro ao salvar suas respostas. Tente novamente"** — sem nenhuma pista de que o problema é a falta de conta linkada. Pior: o catch usa `error.message`, mas a mensagem `Unauthorized…` chega como `Error` do supabase-js e o usuário fica preso no toast de retry.
+
+A página `RhitmoSync.tsx` tampouco detecta o estado `linked_user_id IS NULL` no `loadMemberData` (que usa `get_member_for_sync`, security definer e portanto carrega normalmente), então o wizard inteiro renderiza, ele preenche tudo, e só falha no fim.
 
 ---
 
-### Parte 6 — Defesa final em `bot.done`
+## Plano
 
-**Arquivo: `supabase/functions/recall-webhook/index.ts` (~linhas 108–147)**
+### 1. Resolver agora (dados — caso Ruan)
 
-- Antes de descartar transcript como `skipped_no_leader`, ler `recordings[*].started_at` / `ended_at` do payload.
-- Se gravação efetiva ≥ 60 s, **nunca** descartar — manter transcript e processar normalmente. Se o bot ficou na call gravando algo útil, o líder vai querer ver.
-- Sub-código `bot_kicked_from_waiting_room` → marcar como `error` (não `skipped_no_leader`), para não envenenar dedup.
+- Remover o `team_member` duplicado (`d11bd4d8…8779f0`).
+- Reenviar convite ao Ruan a partir de `/lider/pessoas` da conta da Ana/Carolyna **OU** linkar manualmente o `linked_user_id` se ele já tiver criado conta com esse e-mail.
+- Confirmar com a Ana qual dos dois cenários é o caso e executar via migration.
 
----
+### 2. UX: bloquear o wizard antes de o liderado preencher tudo (frontend)
 
-## Validação ao final
+Em `src/pages/RhitmoSync.tsx`:
 
-1. `fetch-calendar-events` deploy → confirmar que body do POST para Recall não contém `on_participant_join`.
-2. Forçar 1:1 de teste com 3 pessoas entrando em momentos diferentes → garantir 1 mensagem só no chat do Meet.
-3. Olhar `_shared/recallParticipants.ts` log JSON na próxima reunião real → confirmar `legacy_count=0, events_count>0, decision=ok`.
-4. Inspecionar `recall_bots` após 24 h: nenhuma reunião deve ter > 1 bot por evento.
+- Em `loadMemberData`, comparar `member.linked_user_id` com `auth.getUser()`. Se `linked_user_id` for `null` **ou** diferente do usuário logado:
+  - Renderizar um estado dedicado "Você precisa aceitar o convite primeiro" com:
+    - Explicação curta ("seu líder te adicionou, mas falta criar/ativar sua conta")
+    - CTA "Acessar convite" → fallback para `/auth` se não houver token
+    - CTA secundário "Falar com meu líder"
+  - Não montar o wizard.
+- No `handleSubmit`, tratar erros do tipo `Unauthorized…` com mensagem clara em PT-BR ("Sua conta ainda não está vinculada como liderado. Aceite o convite enviado pelo seu líder antes de responder.") em vez do toast genérico.
 
----
+### 3. Backend: expor `linked_user_id` no carregamento
 
-## Arquivos tocados
+- Atualizar a RPC `get_member_for_sync` (security definer) para retornar também `linked_user_id` (`uuid`), permitindo o frontend fazer o gating do passo 2 sem precisar de outra query.
+- Sem mudar `submit_rhitmo_sync_v2` — a checagem dela continua correta.
 
-- `supabase/functions/fetch-calendar-events/index.ts`
-- `supabase/functions/_shared/recallParticipants.ts`
-- `supabase/functions/check-pending-leader-presence/index.ts`
-- `supabase/functions/recall-webhook/index.ts`
-- `supabase/functions/schedule-recall-bot/index.ts`
-- 1 migração SQL (2 colunas em `recall_bots`)
+### 4. Prevenção: dedup no convite (rápido)
 
-## Não tocar
+- No fluxo de convite individual (`NewMemberDialog` / `admin-invite-user` / `bulk-onboard`), bloquear criação de novo `team_members` quando já existir registro com mesmo `email` no mesmo `team_id` e `linked_user_id IS NULL` — reaproveitar o registro existente. Isso evita que duplicatas como as do Ruan voltem a aparecer.
+- Escopo mínimo: só o caminho de convite individual usado pela Ana hoje. Bulk pode ficar para uma sprint dedicada se for muito invasivo.
 
-- `automatic_leave.waiting_room_timeout = 120` fica como está. Subir esconde sintoma sem resolver causa.
-- `schedule-recall-bot` já tem só `on_bot_join` — sem mudança no fluxo manual.
-- Lógica de `bot.in_call_recording` agendar `leader_check_due_at = +5 min` continua igual.
+### Arquivos a tocar
+
+- `src/pages/RhitmoSync.tsx` (gating + mensagem de erro)
+- `supabase/migrations/<novo>.sql` — atualizar `get_member_for_sync` retornando `linked_user_id` + dedup do Ruan
+- `src/components/.../NewMemberDialog.tsx` (ou equivalente do convite individual) — checagem anti-duplicata
+
+### Não tocar
+
+- `submit_rhitmo_sync_v2` (regra de segurança correta)
+- Demais tabelas/RLS
+- Fluxo de bulk onboarding (fica para depois)
+
+### Validação
+
+- Reproduzir com um team_member de teste sem `linked_user_id` → deve ver tela de "aceite o convite", não o wizard.
+- Logar com usuário linkado e completar Sync → fluxo normal segue funcionando.
+- Tentar criar segundo convite com mesmo e-mail/team → deve reaproveitar o registro existente.
