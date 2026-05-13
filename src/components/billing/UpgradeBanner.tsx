@@ -40,7 +40,7 @@ export const UpgradeBanner = () => {
   const mentorStatus = checkLimit(mentorMessageCount, limits.maxMentorMessages);
   if (mentorStatus !== 'allowed') {
     nearLimits.push({
-      name: 'Mensagens Mentor Chat',
+      name: 'Mensagens Rhitmo',
       current: String(mentorMessageCount),
       max: String(limits.maxMentorMessages),
     });
