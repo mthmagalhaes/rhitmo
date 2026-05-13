@@ -2,8 +2,8 @@
 
 Source of truth for the Rhitmo custom Slack App configuration.
 
-- **App name:** Rhy (anteriormente "Rhitmo")
-- **Bot user:** `@rhy`
+- **App name:** Rhitmo
+- **Bot user:** `@rhitmo`
 - **Production app ID:** `B0APL6ST719`
 - **Workspace (dev):** Faster (`THC407Z8A`)
 
@@ -87,7 +87,7 @@ Redirect URLs:
 ```json
 {
   "display_information": {
-    "name": "Rhy",
+    "name": "Rhitmo",
     "description": "AI-Native Leadership Partner",
     "background_color": "#1a1a1a"
   },
@@ -98,7 +98,7 @@ Redirect URLs:
       "messages_tab_read_only_enabled": false
     },
     "bot_user": {
-      "display_name": "Rhy",
+      "display_name": "Rhitmo",
       "always_online": true
     },
     "slash_commands": [
