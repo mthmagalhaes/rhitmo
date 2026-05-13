@@ -786,3 +786,164 @@ Apenas usuários com `app_role = 'super_admin'` em `user_roles` conseguem invoca
 | 17/04/2026 | **Help Center deep-links**: `HelpCenter.tsx` passa a reagir a `location.hash`, fazendo scroll suave e abrindo o accordion "Como funciona" do card alvo via prop `openCardId` em `FeatureGrid`. |
 | 17/04/2026 | **i18n**: novas chaves `sidebar.integrations` e `sidebar.autoTranscription` adicionadas em PT-BR, EN e ES. |
 
+
+---
+
+## 19. Sprint Log — Maio 2026 (Sprints 8 → 17)
+
+> **Atualizado em 13/05/2026.** Esta seção documenta entregas posteriores ao corpo principal (que foi escrito durante a Sprint 7). Cada sprint lista as decisões técnicas, tabelas e funções afetadas, e o link para a memória correspondente.
+
+### Sprint 8 — Auditabilidade e Feed Universal
+
+**8.2 Citations Auditable Trail.** Toda saída da IA passou a emitir citações no formato `[doc:UUID]`. Componente `CitationChip` renderiza um chip clicável; `EvidenceDrawer` global (montado em `App.tsx`) faz fetch da evidência original via `useEvidenceById` e mostra fonte (transcrição, nota, pulse, peer review). Garante "click-to-source" para 100% das saídas da IA.
+- Memória: `mem://features/context/citations-auditable-trail`
+
+**8.3 Context Feed Universal.** Nova página `/lider/contexto` substitui visões fragmentadas por timeline cross-membro. Backed por RPC `get_team_timeline(p_leader_user_id, p_member_id, p_source, p_limit)` com filtros opcionais por liderado e por fonte (`feedback`, `meeting`, `pulse_response`, `review`, `peer_feedback`).
+- Memória: `mem://features/context/feed-universal-page`
+
+### Sprint 9 — Pulse Surveys
+
+**9.2 UI Trigger e Resposta.** Botão `SendPulseButton` na sticky bar de `/lider/contexto` abre wizard de criação. `PendingPulseAlert` no `DirectReportDashboard` mostra surveys pendentes do liderado. Trigger SQL no `UPDATE pulse_responses` (quando `submitted_at` deixa de ser nulo) gera linha em `context_evidence` com `source_table = 'pulse_responses'`. Página dedicada `/lider/pulse` foi descontinuada — redireciona para `/lider/contexto` com banner explicativo dismissível (localStorage).
+- Memórias: `mem://features/pulse-surveys/ui-trigger-and-response`, `mem://features/pulse-surveys/fusion-with-context`
+
+### Sprint 10 — Reviews 360°
+
+**10.1 Data Foundation.** `performance_reviews` ganhou `review_type` (`formal | self | peer | upwards`) e `author_user_id`. Nova tabela `review_peers` modela convites de peer review (status: pending, completed, declined). Trigger de `context_evidence` discrimina por `review_type`.
+
+**10.2 Self-Review Wizard.** Liderado responde autoavaliação via wizard conversacional (chat-style, perguntas de `selfReviewQuestions.ts`). INSERT em `performance_reviews` com `review_type = 'self'` e `author_user_id = auth.uid()` dispara trigger de evidência.
+
+**10.3 Peer Review UI.** Líder cria review-pai (formal) e dispara N convites para pares via `review_peers`. Pares respondem 3 perguntas (de `peerReviewQuestions.ts`) no próprio dashboard via UPDATE em `review_peers`. RLS garante que par só vê o próprio convite.
+
+**10.4 Upwards Review Wizard.** Liderado avalia o líder. `member_id = linkedMember.id` (auto-resolvido do contexto), `review_type = 'upwards'`. Trigger propaga ao `/lider/contexto`.
+
+- Memórias: `mem://features/performance/360-reviews-data-foundation`, `mem://features/performance/self-review-wizard`, `mem://features/performance/peer-review-ui`, `mem://features/performance/upwards-review-wizard`
+
+### Sprint 11 — Slack Conversacional
+
+**11.2 Conversational State Machine.** Nova tabela `slack_conversations` mantém estado por DM (`general_chat`, `pulse_response`, `quarterly_confirm`, etc). DM autenticada cai direto no Lovable AI Gateway (`google/gemini-2.5-flash`) com `EdgeRuntime.waitUntil` para resposta assíncrona. Botão "🌀 Conversar com a Rhitmo" cria sessão `general_chat`.
+
+**11.3 Proactive DMs Orchestrator.** Edge function `slack-rhitmo-orchestrator` (cron `*/30`) varre 1:1s próximas (12-36h) e envia DM de prep para o líder (idempotência via `meetings.brief_dm_sent_at`). Mesmo cron processa Pulse pendentes (`dm_sent_at` em `pulse_responses`).
+
+**Slack Conversational-First.** `app_home_opened` não posta nada; `/rhitmo` é curto; sem floods de menu/connect ao clicar em "Gerar Pauta". DM autenticada vai direto pra LLM.
+
+**Slack AI Assistant Container.** Handlers `assistant_thread_started` e `assistant_thread_context_changed` + `setStatus("pensando…")` + `setSuggestedPrompts` dinâmicos por persona. Manifest precisa de scope `assistant:write`.
+
+- Memórias: `mem://features/slack/conversational-state-machine`, `mem://features/slack/proactive-dms-orchestrator`, `mem://features/slack/conversational-first`, `mem://features/slack/ai-assistant-container`
+
+### Sprint 12 — Master-Detail Pages
+
+`/lider/1on1s`, `/lider/diario` e `/lider/objetivos` adotaram layout master-detail full-bleed:
+- Root: `h-[calc(100svh-3rem)] overflow-hidden` + main `overflow-y-auto`.
+- `MemberMasterList` 260px com `bg-muted/30`, avatar `size sm`, densidade Linear/Notion.
+- Conteúdo `max-w-3xl px-6 lg:px-8 py-6` (sem `mx-auto`, ancorado à esquerda).
+
+- Memória: `mem://design/dashboard/master-detail-pages`
+
+### Sprint 14 — Home V3 + Network Signals
+
+**Home Líder V3 Windmill.** `/lider/inicio` reorganizado em 4 seções fixas: `AccountSetupBento`, Próximas 1:1s, `MentorHistoryCard`, `TeamPulseBento`.
+
+**Network Signals & Pulse.** Tabela `network_signals` + RPCs `get_team_pulse` / `acknowledge_signal` + edge `detect-network-signals` (cron 03:30 UTC). Consumida por `TeamPulseBento` e aba "Rede" em `/lider/contexto`.
+
+**Brief — bloco "Contexto de rede".** `briefGenerator.ts` injeta top colaboradores + sinais ativos via `wrapAsRhy()` nas DMs de prep ~18h antes da 1:1.
+
+- Memórias: `mem://design/dashboard/home-v3-windmill`, `mem://features/ona/network-signals-and-pulse`, `mem://features/ona/brief-network-block`
+
+### Sprint 15 — Peer Feedback Loop
+
+Edge `request-peer-feedback` (cron 04 UTC) DM pares com modal Slack de 3 perguntas. Resposta vira `context_evidence` (`source_table = 'peer_feedback_requests'`) e bloco "Vozes de pares" no brief de 1:1.
+
+- Memória: `mem://features/ona/peer-feedback-loop`
+
+### Sprint 17 — Quarterly Anniversary + Formal Review RAG completo
+
+**Quarterly Anniversary Nudge.** Cron diário 12 UTC (`quarterly-anniversary-cron`) detecta liderados completando trimestre desde último recap. DM Slack com botões + NL ("sim / pode gerar"). `generate-quarterly-recap` aceita `x-cron-secret` + `acting_user_id`.
+
+**Formal Review RAG completo.** `generate-formal-review` consome **todas** as camadas de evidência: feedbacks + 1:1s + `context_evidence` + pulses + peer + self + upwards + 360°. Recaps trimestrais confirmados viram **camada de ancoragem narrativa** (não única fonte). Sumarização preserva citações `[doc:UUID]` ponta a ponta.
+
+- Memórias: `mem://features/recaps/quarterly-anniversary-nudge`, `mem://features/performance/formal-review-rag-completo`
+
+---
+
+## 20. Arquitetura — Refreshes Pós-Sprint 7
+
+### 20.1 Safe Supabase Wrappers (obrigatório)
+
+`PostgrestBuilder` **não é Promise nativa**: `.catch()` direto silenciosamente cancela queries. Substituído por:
+- **Frontend:** `safeRpc`, `tryRpc`, `safeFunctionInvoke`, `safeQuery` em `@/lib/supabaseSafe`.
+- **Edge:** mesmas helpers em `_shared/safeSupabase.ts`.
+
+Regra de ouro registrada no Core do `mem://index.md`. Code review bloqueia `.catch()` em builders.
+
+### 20.2 Edge Function Ownership Pattern
+
+Antes de qualquer operação `service_role`, edge functions executam **ownership chain check**: `auth.getUser()` → resolver `effective_user_id` → confirmar relação de propriedade (workspace owner, leader, ou linked member) com o recurso alvo. OAuth flows guardam state nonce em `oauth_states` (TTL 10min) para prevenir CSRF.
+
+- Memória: `mem://security/edge-function-ownership-pattern`
+
+### 20.3 Slack DM RAG — Janelas Temporais
+
+`chat-mentor` detecta janela temporal na pergunta ("este mês", "última semana", "últimos N dias") e filtra `feedbacks` + busca semântica por `occurred_at` (não `created_at`). Sem interceptor de `monthly_recaps`. Slack-bot intacto.
+
+- Memória: `mem://features/slack/leader-dm-rag-temporal-windows`
+
+### 20.4 Ambient Mode Settings
+
+Toggles de ambient classification embutidos no card Slack em `/lider/configuracoes`. Editável por **HR Admin OU Owner** (`isWorkspaceOwner` no `AccountContext` via `get_account_context.is_workspace_owner`).
+
+- Memória: `mem://features/slack/ambient-mode-settings`
+
+---
+
+## 21. Matriz de Papéis (Atualizada)
+
+5 papéis canônicos. Hierarquia de resolução: **Super Admin > Owner > HR Admin > Leader > Liderado**.
+
+| Papel | Onde mora no schema | Permissões principais | Notas |
+|---|---|---|---|
+| **Super Admin** | `user_roles` com `role = 'super_admin'` | Painel `/admin`, impersonation, leitura cross-workspace | Hardcoded para `matheus@rhitmo.co` |
+| **Owner** | `workspaces.owner_id` | Vê tudo do workspace (incluindo dados de outros líderes), gerencia plano | "Owner-vê-tudo" implementado via RLS Owner-bypass |
+| **HR Admin** | `user_roles` com `role = 'hr_admin'` + `workspace_id` | Analytics avançado, governance, edição de Ambient Mode | Restrito explicitamente; ex: `matheus_hr@rhitmo.co` |
+| **Leader** | `teams.leader_user_id` | CRUD em liderados, notas, reviews, 1:1s do próprio time | Modelo Workspace = Company: isolamento por `leader_user_id` |
+| **Liderado** | `team_members.linked_user_id` | Self-review, upwards review, PDI próprio, view de feedbacks compartilhados | Trigger SQL exige que liderado tenha leader vinculado |
+
+Todas as RLS usam `LANGUAGE plpgsql` + `SECURITY DEFINER` para evitar recursão. Helpers: `has_role(user_id, role)`, `effective_user_id()` (com `LIMIT 1` para prevenir leak).
+
+- Memórias: `mem://architecture/papeis-e-permissoes`, `mem://architecture/role-resolution-priority`, `mem://architecture/rls-recursion-prevention`
+
+---
+
+## 22. Modelo Econômico — Atualização Maio 2026
+
+### Camadas de IA
+
+| Camada | Modelo | Uso | Custo aproximado |
+|---|---|---|---|
+| **L1** (alta precisão) | `google/gemini-2.5-pro` ou `openai/gpt-5` | Formal Reviews, geração de PDI | $$$ |
+| **L2** (balance) | `google/gemini-2.5-flash` | Mentor Chat, Briefs, Self/Peer/Upwards reviews | $$ |
+| **L3** (alto volume) | `google/gemini-2.5-flash` (downgrade desde abril) | Slack DMs, classificação ambient, sumarização de transcrição | $ |
+
+**Decisão chave:** L3 migrado de `gpt-5-nano` para `gemini-2.5-flash` em abril/2026. Margem por seat melhorou ~38% sem perda perceptível de qualidade nas tarefas de roteamento.
+
+### Margens por plano (estimativas atuais)
+
+| Plano | ARPU mensal (BRL) | Custo IA + infra estimado | Margem bruta |
+|---|---|---|---|
+| Pulse | R$0 | R$0 (cap rígido em 2 liderados, sem Recall) | — |
+| Pro | R$49 / seat | ~R$8-12 / seat | ~75-80% |
+| Business | R$69 / seat | ~R$15-22 / seat (Recall ilimitado*) | ~65-75% |
+
+\* "Ilimitado" tem soft cap interno por workspace (alerta admin acima de 200 reuniões/mês).
+
+- Memórias: `mem://monetization/modelo-economico-e-margens-abril-2026`, `mem://monetization/estrategia-de-assinaturas-e-escala-financeira`
+
+---
+
+## Changelog (continuação)
+
+| Data | Alteração |
+|---|---|
+| 13/05/2026 | **Seção 19 (Sprint Log Maio 2026)** adicionada cobrindo Sprints 8-17. |
+| 13/05/2026 | **Seção 20 (Arquitetura Refreshes)** registra Safe Wrappers, Ownership Pattern, RAG temporal, Ambient Settings. |
+| 13/05/2026 | **Seção 21 (Matriz de Papéis)** consolidada com 5 papéis e hierarquia de resolução. |
+| 13/05/2026 | **Seção 22 (Modelo Econômico)** atualizado com migração L3 → Gemini 2.5 Flash e margens revisadas. |
