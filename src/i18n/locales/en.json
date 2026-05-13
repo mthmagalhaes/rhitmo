@@ -255,10 +255,10 @@
     "createTestNote": "Create a quick test note",
     "createNoteAction": "Create note →",
     "generateAISummary": "Generate an AI summary",
-    "askMentor": "Ask the Leadership Mentor for guidance",
+    "askMentor": "Ask Rhitmo for guidance",
     "chatAction": "Chat →",
-    "openMentorChat": "Ask your first question to Mentor Chat",
-    "mentorChatAction": "Open Mentor →",
+    "openMentorChat": "Ask Rhitmo your first question",
+    "mentorChatAction": "Open Rhitmo →",
     "inviteFirstMember": "Invite your first direct report by email",
     "inviteAction": "Invite →",
     "stepsCompleted": "{{completed}} of {{total}} steps completed"
