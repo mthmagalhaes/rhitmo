@@ -12,6 +12,7 @@ interface AccountContextValue {
   hasError: boolean;
   role: AccountRole;
   isHRAdmin: boolean;
+  isWorkspaceOwner: boolean;
   isLeader: boolean;
   isUser: boolean;
   linkedMember: LinkedMemberData | null;
@@ -53,6 +54,7 @@ interface LinkedMemberData {
 interface AccountContextRPCResult {
   workspace_id: string | null;
   role: AccountRole;
+  is_workspace_owner?: boolean;
   linked_member: LinkedMemberData | null;
   has_pending_invite: boolean;
 }
@@ -108,6 +110,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       hasError: !!contextError,
       role,
       isHRAdmin: !loading && role === 'hr_admin',
+      isWorkspaceOwner: !loading && !!data?.is_workspace_owner,
       isLeader: loading || role === 'leader' || role === 'hr_admin',
       isUser: !loading && role === 'user',
       linkedMember,
