@@ -1,89 +1,77 @@
-## Correção
+## O que encontrei
 
-Você está certo — a memória [Slack App Naming](mem://features/slack/app-naming) diz para manter "Rhitmo". O manifest em `docs/slack-app-manifest.md` está com `"name": "Rhy"` e `"display_name": "Rhy"`, contrariando essa regra.
+**Cobrança de 30/04 em matheus.magalhaes@fstr.co**
+- Cliente Stripe: `cus_U9JsFzXCJwkPXH`
+- Subscription **ativa**: `sub_1TBhYwIF4fHxJpjHACfKhfQq`
+  - Produto: "Rhitmo Business (Licensed)" × 3
+  - Preço: `price_1TCQf0IF4fHxJpjH4Bx2aIbg` (R$ 69/seat/mês, BRL)
+  - Próxima fatura: 30/mai (R$ 0,00 — provável crédito ou cupom aplicado, mas a sub continua existindo e voltará a cobrar quando o crédito acabar)
+- Cobranças passadas: R$ 69,00 em 30/mar e R$ 133,56 em 30/abr (proration).
 
-## Mudanças em `docs/slack-app-manifest.md`
+**Workspace dele no banco** (`Faster Ops`, owner_id=`79a6f679...`)
+- `grandfather_until = 2026-11-08` → marcado como Early Adopter até nov/2026
+- `paid_seats = 0`, `plan_tier = business` (legado)
+- Teams: 5 times com 6 liderados no total
 
-1. `display_information.name`: `"Rhy"` → `"Rhitmo"`
-2. `features.bot_user.display_name`: `"Rhy"` → `"Rhitmo"`
-3. Cabeçalho do doc: remover "App name: Rhy (anteriormente Rhitmo)" e "Bot user: @rhy" → voltar para "Rhitmo" / "@rhitmo"
+**Por que a cobrança ainda está rolando**
+A subscription foi criada **antes** do grandfather ser aplicado. O grandfather hoje só:
+- bloqueia novos checkouts (`create-checkout-session` retorna no-op),
+- bloqueia `update-subscription` (sync_seats vira no-op).
 
-Scopes (`groups:write`, `mpim:write`) permanecem — esse era o objetivo original da mudança.
+Mas a subscription antiga **não é cancelada automaticamente**, então o Stripe continua faturando até o cartão quebrar ou alguém cancelar manualmente.
 
-## Manifest final (paste-ready)
+---
 
-```json
-{
-  "display_information": {
-    "name": "Rhitmo",
-    "description": "AI-Native Leadership Partner",
-    "background_color": "#1a1a1a"
-  },
-  "features": {
-    "app_home": {
-      "home_tab_enabled": false,
-      "messages_tab_enabled": true,
-      "messages_tab_read_only_enabled": false
-    },
-    "bot_user": {
-      "display_name": "Rhitmo",
-      "always_online": true
-    },
-    "slash_commands": [
-      { "command": "/rhitmo",     "url": "https://lybkgujyezzzvbzypxed.supabase.co/functions/v1/slack-bot", "description": "Menu principal Rhitmo", "should_escape": true },
-      { "command": "/nota",       "url": "https://lybkgujyezzzvbzypxed.supabase.co/functions/v1/slack-bot", "description": "Registrar observação privada sobre liderado", "usage_hint": "@liderado o que aconteceu", "should_escape": true },
-      { "command": "/kudos",      "url": "https://lybkgujyezzzvbzypxed.supabase.co/functions/v1/slack-bot", "description": "Reconhecimento público", "usage_hint": "@liderado mensagem", "should_escape": true },
-      { "command": "/brief",      "url": "https://lybkgujyezzzvbzypxed.supabase.co/functions/v1/slack-bot", "description": "Resumo pré-1:1", "usage_hint": "@liderado", "should_escape": true },
-      { "command": "/mentor",     "url": "https://lybkgujyezzzvbzypxed.supabase.co/functions/v1/slack-bot", "description": "Chat IA com a Rhitmo", "usage_hint": "sua pergunta", "should_escape": true },
-      { "command": "/meu-pdi",    "url": "https://lybkgujyezzzvbzypxed.supabase.co/functions/v1/slack-bot", "description": "Ver meu PDI (liderados)", "should_escape": true },
-      { "command": "/meu-rhitmo", "url": "https://lybkgujyezzzvbzypxed.supabase.co/functions/v1/slack-bot", "description": "Resumo executivo do liderado", "should_escape": true }
-    ]
-  },
-  "oauth_config": {
-    "redirect_urls": [
-      "https://lybkgujyezzzvbzypxed.supabase.co/functions/v1/slack-oauth-callback"
-    ],
-    "scopes": {
-      "bot": [
-        "commands",
-        "chat:write",
-        "chat:write.public",
-        "users:read",
-        "users:read.email",
-        "im:history",
-        "im:write",
-        "im:read",
-        "channels:join",
-        "channels:read",
-        "channels:history",
-        "groups:read",
-        "groups:write",
-        "groups:history",
-        "mpim:write",
-        "app_mentions:read"
-      ]
-    }
-  },
-  "settings": {
-    "event_subscriptions": {
-      "request_url": "https://lybkgujyezzzvbzypxed.supabase.co/functions/v1/slack-bot",
-      "bot_events": [
-        "app_home_opened",
-        "app_mention",
-        "message.im"
-      ]
-    },
-    "interactivity": {
-      "is_enabled": true,
-      "request_url": "https://lybkgujyezzzvbzypxed.supabase.co/functions/v1/slack-bot"
-    },
-    "org_deploy_enabled": false,
-    "socket_mode_enabled": false,
-    "token_rotation_enabled": false
-  }
-}
+## Fluxo de cobrança atual (resposta à 2ª pergunta)
+
+Hoje o modelo é **per-seat com 3 seats grátis**, definido em:
+- `src/hooks/usePlanLimits.ts` → `FREE_SEATS = 3`
+- `supabase/functions/create-checkout-session/index.ts` → `seatsToPay = max(1, total − 3)`
+- `supabase/functions/update-subscription/index.ts` → recalcula quantity sempre que `team_members` muda
+- `src/lib/syncStripeSeats.ts` → disparado em INSERT/DELETE de `team_members` (`NewMemberDialog`, etc.)
+
+Comportamento por situação:
+
+| Situação | O que acontece |
+|---|---|
+| Workspace novo com até 3 liderados | Sem checkout, sem cartão, sem cobrança |
+| Adiciona o 4º liderado | `usePlanLimits.needsSeatPurchase=true` → UI abre `SeatPurchaseModal` → `create-checkout-session` → Stripe Checkout pede cartão → webhook grava `paid_seats` e cria `subscription` |
+| Remove liderado depois de pagar | `syncStripeSeats()` chama `update-subscription` → diminui quantity com proration |
+| Workspace com `grandfather_until` no futuro | Checkout bloqueado, sync no-op → uso liberado **sem** cobrança |
+
+Então o fluxo desejado ("só cobra se ultrapassar o free e exigir cartão") **já está implementado**. O problema é específico da subscription legada do `matheus.magalhaes@fstr.co`, que precisa ser encerrada manualmente.
+
+---
+
+## Plano de ação
+
+### 1. Cancelar a subscription residual no Stripe
+Cancelar `sub_1TBhYwIF4fHxJpjHACfKhfQq` via `stripe--cancel_subscription` (cancelamento imediato — como a próxima fatura é R$ 0,00 e a intenção é não cobrar mais nada, não precisa esperar o fim do ciclo).
+
+### 2. Refletir no banco
+Migration para marcar a row em `public.subscriptions` desse workspace como `status='canceled'` e zerar `paid_seats` (já está 0, mas garantir consistência):
+```sql
+update public.subscriptions
+   set status = 'canceled',
+       canceled_at = now()
+ where stripe_subscription_id = 'sub_1TBhYwIF4fHxJpjHACfKhfQq';
+
+update public.workspaces
+   set paid_seats = 0
+ where id = '27ee8977-d538-482f-a9a7-7a4363b89e5e';
 ```
 
-## Observação importante
+### 3. Verificar
+- `stripe--list_subscriptions` em `cus_U9JsFzXCJwkPXH` → deve voltar vazio/`canceled`.
+- O `grandfather_until = 2026-11-08` permanece, então mesmo que ele adicione mais liderados não vai abrir checkout até lá.
 
-No painel do Slack (https://api.slack.com/apps), o app já está cadastrado como **"Rhy"**. Renomear para "Rhitmo" via manifest vai mudar o display name do bot no workspace Faster (vira `@rhitmo` de novo). Se preferir, posso só corrigir o doc e manter o app como "Rhy" no Slack — me confirma antes de aplicar.
+### 4. Não-objetivos
+- **Não** alterar o fluxo geral de seats (já funciona como o usuário quer).
+- **Não** mexer em outros workspaces.
+- **Não** emitir refund das cobranças passadas (R$ 69 + R$ 133,56) — isso é decisão de negócio; se quiser, faço em passo separado depois de confirmar.
+
+---
+
+## Risco
+
+Se em algum momento o `grandfather_until` for removido, ele voltará a cair na regra `FREE_SEATS=3` e precisaria pagar a partir do 4º liderado (hoje tem 6). Vale lembrar disso quando a data se aproximar.
