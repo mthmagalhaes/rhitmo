@@ -112,7 +112,46 @@ Deno.serve(async (req) => {
       .eq("processing_status", "completed")
       .order("created_at", { ascending: true });
 
-    // Fetch confirmed Rhitmo recaps in period — these are the calibrated spine of the review
+    // Fetch context_evidence (Slack rollups, network signals, processed pulses, etc.)
+    const { data: ctxEvidence } = await supabase
+      .from("context_evidence")
+      .select("id, evidence_type, source_table, occurred_at, title, summary, sentiment, tags")
+      .eq("member_id", member.id)
+      .gte("occurred_at", periodStart)
+      .lte("occurred_at", periodEnd)
+      .order("occurred_at", { ascending: true });
+
+    // Fetch pulse_surveys answered in period
+    const { data: pulses } = await supabase
+      .from("pulse_surveys")
+      .select("id, type, name, motivation, anonymity, summary, responses, completed_at")
+      .eq("member_id", member.id)
+      .eq("status", "completed")
+      .gte("completed_at", periodStart)
+      .lte("completed_at", periodEnd)
+      .order("completed_at", { ascending: true });
+
+    // Fetch peer feedback responses in period
+    const { data: peerResponses } = await supabase
+      .from("peer_feedback_requests")
+      .select("id, response_text, edge_strength_at_request, responded_at")
+      .eq("subject_member_id", member.id)
+      .eq("status", "answered")
+      .gte("responded_at", periodStart)
+      .lte("responded_at", periodEnd)
+      .order("responded_at", { ascending: true });
+
+    // Fetch 360° reviews (self/peer/upwards) about this member in period
+    const { data: reviews360 } = await supabase
+      .from("performance_reviews")
+      .select("id, review_type, content, classification, created_at")
+      .eq("member_id", member.id)
+      .in("review_type", ["self", "peer", "upwards"])
+      .gte("created_at", periodStart)
+      .lte("created_at", periodEnd)
+      .order("created_at", { ascending: true });
+
+    // Fetch confirmed Rhitmo recaps in period — used as a CALIBRATION LAYER (not the spine)
     const { data: quarterlies } = await supabase
       .from("quarterly_recaps")
       .select("period_quarter, highlights, recurring_patterns, evolution_vs_previous, classification, turnover_risk, turnover_risk_reason, next_action_key, next_action_note, source_monthly_recap_ids")
@@ -133,18 +172,23 @@ Deno.serve(async (req) => {
 
     const feedbackCount = feedbacks?.length || 0;
     const meetingCount = meetings?.length || 0;
+    const ctxCount = ctxEvidence?.length || 0;
+    const pulseCount = pulses?.length || 0;
+    const peerCount = peerResponses?.length || 0;
+    const reviews360Count = reviews360?.length || 0;
     const quarterlyCount = quarterlies?.length || 0;
     const monthlyCount = monthlies?.length || 0;
-    const totalEvidence = feedbackCount + meetingCount;
+    const totalRawEvidence = feedbackCount + meetingCount + ctxCount + pulseCount + peerCount + reviews360Count;
+    const totalEvidence = totalRawEvidence; // for evidence_count in DB
 
-    console.log(`Evidence: ${feedbackCount} feedbacks, ${meetingCount} meetings, ${quarterlyCount} quarterlies, ${monthlyCount} monthlies`);
+    console.log(`Evidence: ${feedbackCount} feedbacks, ${meetingCount} meetings, ${ctxCount} ctx, ${pulseCount} pulses, ${peerCount} peers, ${reviews360Count} 360°, ${quarterlyCount} quarterlies, ${monthlyCount} monthlies`);
 
-    if (totalEvidence === 0 && quarterlyCount === 0 && monthlyCount === 0) {
+    if (totalRawEvidence === 0 && quarterlyCount === 0 && monthlyCount === 0) {
       // Update with empty message
       await supabase
         .from("performance_reviews")
         .update({
-          content: "<p>Nenhuma evidência encontrada no período selecionado. Adicione anotações, registre 1:1s ou confirme um Resumo Mensal/Trimestral antes de gerar a review.</p>",
+          content: "<p>Nenhuma evidência encontrada no período selecionado. Adicione anotações, registre 1:1s, lance pulses ou confirme um Resumo Mensal/Trimestral antes de gerar a review.</p>",
           evidence_count: 0,
           updated_at: new Date().toISOString(),
         })
@@ -156,16 +200,102 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Build evidence context — recaps confirmados pelo líder vêm PRIMEIRO (são a espinha)
+    // Build evidence context — RAW evidence first (the base), recaps last (calibration layer)
     let evidenceText = "";
     const hasConfirmedRecaps = quarterlyCount > 0 || monthlyCount > 0;
+    const lowRawEvidence = totalRawEvidence < 3;
+
+    // ============ RAW EVIDENCE (base of the review) ============
+    if (feedbacks && feedbacks.length > 0) {
+      evidenceText += "\n## 📝 ANOTAÇÕES E FEEDBACKS DO LÍDER:\n\n";
+      feedbacks.forEach((f, idx) => {
+        const date = new Date(f.occurred_at).toLocaleDateString("pt-BR");
+        evidenceText += `[Anotação ${idx + 1} - ${date}] [doc_id: ${f.id}] Tipo: ${f.type}\n`;
+        evidenceText += `${f.content}\n`;
+        if (f.tags && f.tags.length > 0) evidenceText += `Tags: ${f.tags.join(", ")}\n`;
+        if (f.summary) evidenceText += `Resumo: ${f.summary}\n`;
+        evidenceText += "\n";
+      });
+    }
+
+    if (meetings && meetings.length > 0) {
+      evidenceText += "\n## 🎙️ REUNIÕES 1:1:\n\n";
+      meetings.forEach((m, idx) => {
+        const date = new Date(m.created_at).toLocaleDateString("pt-BR");
+        evidenceText += `[1:1 ${idx + 1} - ${date}] [doc_id: ${m.id}]\n`;
+        if (m.leader_notes) evidenceText += `Notas do líder: ${m.leader_notes}\n`;
+        if (m.transcript) evidenceText += `Transcrição: ${m.transcript.substring(0, 500)}\n`;
+        if (m.extracted_themes && m.extracted_themes.length > 0) {
+          evidenceText += `Temas: ${m.extracted_themes.join(", ")}\n`;
+        }
+        evidenceText += "\n";
+      });
+    }
+
+    if (ctxEvidence && ctxEvidence.length > 0) {
+      evidenceText += "\n## 🌐 SINAIS DE CONTEXTO (Slack, rede, pulses processados):\n\n";
+      ctxEvidence.forEach((e: any, idx: number) => {
+        const date = new Date(e.occurred_at).toLocaleDateString("pt-BR");
+        evidenceText += `[Sinal ${idx + 1} - ${date}] [doc_id: ${e.id}] Tipo: ${e.evidence_type}\n`;
+        if (e.title) evidenceText += `Título: ${e.title}\n`;
+        if (e.summary) evidenceText += `Resumo: ${e.summary}\n`;
+        if (e.sentiment) evidenceText += `Sentimento: ${e.sentiment}\n`;
+        if (e.tags && e.tags.length > 0) evidenceText += `Tags: ${e.tags.join(", ")}\n`;
+        evidenceText += "\n";
+      });
+    }
+
+    if (pulses && pulses.length > 0) {
+      evidenceText += "\n## 💓 PULSES RESPONDIDOS PELO LIDERADO:\n\n";
+      pulses.forEach((p: any, idx: number) => {
+        const date = p.completed_at ? new Date(p.completed_at).toLocaleDateString("pt-BR") : "—";
+        evidenceText += `[Pulse ${idx + 1} - ${date}] [doc_id: ${p.id}] Tipo: ${p.type}${p.name ? ` (${p.name})` : ""}\n`;
+        if (p.motivation) evidenceText += `Motivação do líder: ${p.motivation}\n`;
+        if (p.summary) evidenceText += `Resumo IA: ${typeof p.summary === "string" ? p.summary : JSON.stringify(p.summary)}\n`;
+        if (Array.isArray(p.responses) && p.responses.length > 0) {
+          const preview = JSON.stringify(p.responses).substring(0, 400);
+          evidenceText += `Respostas: ${preview}\n`;
+        }
+        evidenceText += `Anonimato: ${p.anonymity}\n\n`;
+      });
+    }
+
+    if (peerResponses && peerResponses.length > 0) {
+      evidenceText += "\n## 👥 RESPOSTAS DE PARES (peer feedback):\n\n";
+      peerResponses.forEach((p: any, idx: number) => {
+        const date = p.responded_at ? new Date(p.responded_at).toLocaleDateString("pt-BR") : "—";
+        evidenceText += `[Par ${idx + 1} - ${date}] [doc_id: ${p.id}] Força do laço: ${p.edge_strength_at_request}\n`;
+        if (p.response_text) evidenceText += `Resposta (par anônimo): ${p.response_text}\n`;
+        evidenceText += "\n";
+      });
+    }
+
+    if (reviews360 && reviews360.length > 0) {
+      evidenceText += "\n## 🔄 AVALIAÇÕES 360° (autoavaliação / pares / upwards):\n\n";
+      reviews360.forEach((r: any, idx: number) => {
+        const date = new Date(r.created_at).toLocaleDateString("pt-BR");
+        const typeLabel = r.review_type === "self" ? "Autoavaliação" : r.review_type === "peer" ? "Avaliação de par" : "Upwards (liderado avalia líder)";
+        evidenceText += `[${typeLabel} ${idx + 1} - ${date}] [doc_id: ${r.id}]\n`;
+        // Strip HTML tags from content for the prompt (Tiptap stores HTML)
+        const plain = (r.content || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().substring(0, 800);
+        if (plain) evidenceText += `${plain}\n`;
+        if (r.classification) evidenceText += `Classificação sugerida: ${r.classification}\n`;
+        evidenceText += "\n";
+      });
+    }
+
+    // ============ CALIBRATION LAYER (recaps confirmed by leader) ============
+    if (hasConfirmedRecaps) {
+      evidenceText += "\n## 🧭 CALIBRAÇÕES JÁ CONFIRMADAS PELO LÍDER (camada de contexto, NÃO única fonte):\n\n";
+      evidenceText += "_Use estes recaps para ancorar/triangular conclusões sobre os blocos 3, 5 e 6 — mas a base da review são as evidências cruas acima._\n\n";
+    }
 
     if (quarterlies && quarterlies.length > 0) {
-      evidenceText += "\n## CALIBRAÇÕES TRIMESTRAIS CONFIRMADAS PELO LÍDER (espinha da review):\n\n";
+      evidenceText += "### Trimestrais confirmados\n\n";
       quarterlies.forEach((q: any) => {
         const qDate = new Date(q.period_quarter);
         const qLabel = `Q${Math.floor(qDate.getUTCMonth() / 3) + 1} ${qDate.getUTCFullYear()}`;
-        evidenceText += `### Trimestre ${qLabel}\n`;
+        evidenceText += `**Trimestre ${qLabel}**\n`;
         if (Array.isArray(q.highlights) && q.highlights.length > 0) {
           evidenceText += `Destaques validados:\n`;
           q.highlights.forEach((h: any) => {
@@ -187,10 +317,10 @@ Deno.serve(async (req) => {
     }
 
     if (monthlies && monthlies.length > 0) {
-      evidenceText += "\n## RESUMOS MENSAIS CONFIRMADOS PELO LÍDER:\n\n";
+      evidenceText += "### Mensais confirmados\n\n";
       monthlies.forEach((m: any) => {
         const monthLabel = new Date(m.period_month).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-        evidenceText += `### ${monthLabel}${m.low_evidence ? " (poucas evidências)" : ""}\n`;
+        evidenceText += `**${monthLabel}**${m.low_evidence ? " (poucas evidências)" : ""}\n`;
         if (m.highlight_text) evidenceText += `Mandou bem: ${m.highlight_text}\n`;
         if (m.concern_text) evidenceText += `Atenção: ${m.concern_text}\n`;
         if (m.dominant_pattern) evidenceText += `Padrão do mês: ${m.dominant_pattern}\n`;
@@ -198,38 +328,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (feedbacks && feedbacks.length > 0) {
-      evidenceText += `\n## ANOTAÇÕES E FEEDBACKS DO LÍDER ${hasConfirmedRecaps ? "(suporte/citação para os recaps acima)" : ""}:\n\n`;
-      feedbacks.forEach((f, idx) => {
-        const date = new Date(f.occurred_at).toLocaleDateString("pt-BR");
-        evidenceText += `[Anotação ${idx + 1} - ${date}] [doc_id: ${f.id}] Tipo: ${f.type}\n`;
-        evidenceText += `${f.content}\n`;
-        if (f.tags && f.tags.length > 0) {
-          evidenceText += `Tags: ${f.tags.join(", ")}\n`;
-        }
-        if (f.summary) {
-          evidenceText += `Resumo: ${f.summary}\n`;
-        }
-        evidenceText += "\n";
-      });
-    }
-
-    if (meetings && meetings.length > 0) {
-      evidenceText += "\n## REUNIÕES 1:1:\n\n";
-      meetings.forEach((m, idx) => {
-        const date = new Date(m.created_at).toLocaleDateString("pt-BR");
-        evidenceText += `[1:1 ${idx + 1} - ${date}] [doc_id: ${m.id}]\n`;
-        if (m.leader_notes) {
-          evidenceText += `Notas do líder: ${m.leader_notes}\n`;
-        }
-        if (m.transcript) {
-          evidenceText += `Transcrição: ${m.transcript.substring(0, 500)}\n`;
-        }
-        if (m.extracted_themes && m.extracted_themes.length > 0) {
-          evidenceText += `Temas: ${m.extracted_themes.join(", ")}\n`;
-        }
-        evidenceText += "\n";
-      });
+    if (lowRawEvidence && hasConfirmedRecaps) {
+      evidenceText += "\n## ⚠️ ALERTA DE EVIDÊNCIA BAIXA\nEsta review está sendo gerada com pouca evidência crua (menos de 3 itens entre anotações, 1:1s, pulses, peer e 360°). Os recaps confirmados pelo líder estão presentes, mas é recomendado que o líder confirme cuidadosamente antes de compartilhar. Reflita esse alerta no rodapé da review.\n";
     }
 
     const memberName = member.name;
@@ -340,15 +440,20 @@ _O gestor confirma estas escolhas na aba Calibração antes de compartilhar com 
 5. **Tamanho total**: 350-600 palavras.
 6. **Foco em ${memberName}**: Analise APENAS ações de ${firstName}. Ignore ações de outras pessoas mencionadas.
 7. **APENAS Markdown**. Sem HTML. Sem tabelas em pipe. Sem code fences no output.
-8. **PRIORIDADE DOS RECAPS RHITMO**: Se houver "CALIBRAÇÕES TRIMESTRAIS CONFIRMADAS PELO LÍDER" ou "RESUMOS MENSAIS CONFIRMADOS PELO LÍDER" no contexto, eles são a **espinha** dos blocos 3, 5 e 6. O líder já calibrou — não refaça. Use os feedbacks brutos como SUPORTE/CITAÇÃO nos blocos 1, 2 e 4.
-9. **Bloco 6 — sugestões da IA**: Sempre proponha um valor concreto para Desempenho, Promoção e Mérito. Se não houver evidência suficiente, sugira o conservador ("Dentro do esperado", "Não neste ciclo", "Somente inflação") e justifique.
-10. **Emojis nos títulos**: Mantenha EXATAMENTE os emojis indicados em cada bloco (📋 🏆 📈 🎯 📊 ⚖️ ➡️). Não substitua nem omita.`;
+8. **HIERARQUIA DE EVIDÊNCIAS (RAG completo)**: A **base** da review são as evidências cruas (anotações, 1:1s, sinais de contexto, pulses, peer feedback e 360°). Os recaps confirmados pelo líder ("CALIBRAÇÕES JÁ CONFIRMADAS PELO LÍDER") são uma **camada de ancoragem/triangulação** — use-os para validar padrões dos blocos 3, 5 e 6, mas NUNCA como única fonte. Sempre que possível, ancore a afirmação em uma evidência crua específica via \`[doc:UUID]\`. Se o recap diz uma coisa e a evidência crua mostra outra, prevalece a evidência crua e mencione a divergência no Bloco 4.
+9. **Citação de 360°**: Quando uma afirmação se apoiar em autoavaliação, par ou upwards, identifique a fonte no parêntese: *(autoavaliação de DD/MM)*, *(par anônimo, DD/MM)* ou *(upwards de DD/MM)* — além do \`[doc:UUID]\`.
+10. **Bloco 6 — sugestões da IA**: Sempre proponha um valor concreto para Desempenho, Promoção e Mérito. Se não houver evidência suficiente, sugira o conservador ("Dentro do esperado", "Não neste ciclo", "Somente inflação") e justifique.
+11. **Emojis nos títulos**: Mantenha EXATAMENTE os emojis indicados em cada bloco (📋 🏆 📈 🎯 📊 ⚖️ ➡️). Não substitua nem omita.
+12. **Alerta de evidência baixa**: Se o contexto trouxer "⚠️ ALERTA DE EVIDÊNCIA BAIXA", adicione UM parágrafo final em itálico recomendando que o líder confirme cuidadosamente antes de compartilhar.`;
 
-    const userPrompt = `EVIDÊNCIAS DO PERÍODO (${quarterlyCount} trimestral${quarterlyCount === 1 ? "" : "is"} confirmado${quarterlyCount === 1 ? "" : "s"}, ${monthlyCount} mensal${monthlyCount === 1 ? "" : "is"} confirmado${monthlyCount === 1 ? "" : "s"}, ${totalEvidence} registros brutos):
+    const userPrompt = `EVIDÊNCIAS DO PERÍODO:
+- Cruas: ${feedbackCount} anotações, ${meetingCount} 1:1s, ${ctxCount} sinais de contexto, ${pulseCount} pulses, ${peerCount} peer feedbacks, ${reviews360Count} reviews 360°
+- Calibração: ${quarterlyCount} trimestral(is) confirmado(s), ${monthlyCount} mensal(is) confirmado(s)
 
 ${evidenceText}
 
-Gere a avaliação formal de desempenho de ${memberName} em HTML puro, com OS 7 BLOCOS na ordem exata da estrutura.${hasConfirmedRecaps ? " Lembre-se: os recaps confirmados pelo líder são a espinha dos blocos 3, 5 e 6 — não recomece do zero." : ""}`;
+Gere a avaliação formal de desempenho de ${memberName} seguindo OS 7 BLOCOS na ordem exata da estrutura. A base são as evidências cruas; os recaps confirmados são camada de ancoragem.${lowRawEvidence && hasConfirmedRecaps ? " ⚠️ Atenção: evidência crua baixa — inclua o aviso final recomendado." : ""}`;
+
 
     // Call Lovable AI Gateway
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
