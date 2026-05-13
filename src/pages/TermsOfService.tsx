@@ -2,11 +2,20 @@
 // Crawlers (ex.: validador OAuth do Google) recebem o HTML estático em
 // `public/terms-of-service/index.html`. Ao alterar o conteúdo aqui, atualize
 // também o arquivo estático para manter consistência.
+import { Helmet } from "react-helmet-async";
 import { LegalPageLayout } from "@/components/LegalPageLayout";
 
 const TermsOfService = () => {
   return (
     <LegalPageLayout>
+      <Helmet>
+        <title>Termos de Serviço — Rhitmo</title>
+        <meta name="description" content="Termos de Serviço da Rhitmo: planos, pagamentos, uso aceitável, propriedade intelectual e responsabilidades." />
+        <link rel="canonical" href="https://rhitmo.co/terms-of-service" />
+        <meta property="og:title" content="Termos de Serviço — Rhitmo" />
+        <meta property="og:description" content="Termos de Serviço da Rhitmo: planos, pagamentos, uso aceitável e responsabilidades." />
+        <meta property="og:url" content="https://rhitmo.co/terms-of-service" />
+      </Helmet>
       <h1 className="text-4xl font-bold tracking-tight mb-2">Termos de Serviço</h1>
       <p className="text-sm text-muted-foreground mb-8">Última atualização: 18 de março de 2026</p>
 

@@ -2,11 +2,20 @@
 // Crawlers (ex.: validador OAuth do Google) recebem o HTML estático em
 // `public/privacy-policy/index.html`. Ao alterar o conteúdo aqui, atualize
 // também o arquivo estático para manter consistência.
+import { Helmet } from "react-helmet-async";
 import { LegalPageLayout } from "@/components/LegalPageLayout";
 
 const PrivacyPolicy = () => {
   return (
     <LegalPageLayout>
+      <Helmet>
+        <title>Política de Privacidade — Rhitmo</title>
+        <meta name="description" content="Como a Rhitmo coleta, usa e protege seus dados pessoais em conformidade com a LGPD." />
+        <link rel="canonical" href="https://rhitmo.co/privacy-policy" />
+        <meta property="og:title" content="Política de Privacidade — Rhitmo" />
+        <meta property="og:description" content="Como a Rhitmo coleta, usa e protege seus dados em conformidade com a LGPD." />
+        <meta property="og:url" content="https://rhitmo.co/privacy-policy" />
+      </Helmet>
       <h1 className="text-4xl font-bold tracking-tight mb-2">Política de Privacidade</h1>
       <p className="text-sm text-muted-foreground mb-8">Última atualização: 18 de março de 2026</p>
 
