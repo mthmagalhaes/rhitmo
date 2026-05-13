@@ -66,19 +66,30 @@ Deno.serve(async (req) => {
       const isFatal = event === "bot.fatal";
       const subCode = body.data?.data?.sub_code;
       const statusCode = body.data?.data?.code as string | undefined;
+
+      // Treat "kicked from waiting room" as an error (not skipped_no_leader),
+      // so dedup logic can still tell the difference between "leader missed it"
+      // and "host actively rejected the bot".
+      const isKickedFromWaitingRoom =
+        subCode === "bot_kicked_from_waiting_room" ||
+        statusCode === "bot_kicked_from_waiting_room";
+
+      const finalStatus = isFatal || isKickedFromWaitingRoom ? "error" : newStatus;
       const errorMessage = isFatal
         ? `Fatal error: ${subCode || statusCode || "unknown"}`
+        : isKickedFromWaitingRoom
+        ? "Bot expulso da sala de espera"
         : null;
 
       await supabaseAdmin
         .from("recall_bots")
         .update({
-          status: isFatal ? "error" : newStatus,
+          status: finalStatus,
           error_message: errorMessage,
         })
         .eq("id", botRecord.id);
 
-      console.log(`Bot ${botId} status: ${event} → ${isFatal ? "error" : newStatus}`);
+      console.log(`Bot ${botId} status: ${event} → ${finalStatus}`);
     }
 
     // ── Leader presence detection ─────────────────────────────────────────
