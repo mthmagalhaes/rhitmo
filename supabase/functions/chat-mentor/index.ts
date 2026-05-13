@@ -538,11 +538,17 @@ serve(async (req) => {
       : (hasImage ? true : await shouldFetchContext(question, openAIApiKey));
     console.log('Router decision - needs context:', needsContext, hasImage ? '(image bypass)' : '', `[mode=${mode}]`);
 
+    // Detecta janela temporal pedida na pergunta ("último mês", "esta semana", etc.)
+    const timeWindow = mode === 'member' ? detectTimeWindow(question) : null;
+    if (timeWindow) {
+      console.log('[time-window] detected:', timeWindow.label, timeWindow.dateFrom.toISOString(), '→', timeWindow.dateTo.toISOString());
+    }
+
     // ============================================
     // CAMADA 2: COMPRESSÃO + RAG (apenas modo member, se necessário)
     // ============================================
     let contextLines = '';
-    let evidenceBreakdown = { from_recent: 0, from_semantic_feedbacks: 0, from_semantic_evidence: 0 };
+    let evidenceBreakdown = { from_recent: 0, from_semantic_feedbacks: 0, from_semantic_evidence: 0, time_window: timeWindow?.label || null as string | null };
     if (needsContext) {
       let semanticFeedbacks: any[] = [];
       let semanticEvidence: any[] = [];
@@ -603,11 +609,32 @@ serve(async (req) => {
         console.error('Semantic search failed (falling back to recent):', semErr.message);
       }
 
+      // Aplica janela temporal pós-RPC (RPCs não aceitam filtro de data)
+      // - feedbacks: filtra por occurred_at (preferido) ou created_at
+      // - context_evidence: filtra por occurred_at
+      const recentFeedbacksWindowed = timeWindow
+        ? feedbacks.filter((f: any) => inWindow(f.occurred_at || f.created_at, timeWindow))
+        : feedbacks;
+      const semanticFeedbacksWindowed = timeWindow
+        ? semanticFeedbacks.filter((f: any) => inWindow(f.created_at, timeWindow))
+        : semanticFeedbacks;
+      const semanticEvidenceWindowed = timeWindow
+        ? semanticEvidence.filter((e: any) => inWindow(e.occurred_at, timeWindow))
+        : semanticEvidence;
+
+      if (timeWindow) {
+        console.log('[time-window] kept after filter:', {
+          recent: `${recentFeedbacksWindowed.length}/${feedbacks.length}`,
+          sem_fb: `${semanticFeedbacksWindowed.length}/${semanticFeedbacks.length}`,
+          sem_ev: `${semanticEvidenceWindowed.length}/${semanticEvidence.length}`,
+        });
+      }
+
       // Mesclar: recentes + RAG feedbacks (dedup por id)
-      const existingIds = new Set(feedbacks.map((f: any) => f.id));
-      const merged = [...feedbacks];
-      evidenceBreakdown.from_recent = feedbacks.length;
-      for (const sf of semanticFeedbacks) {
+      const existingIds = new Set(recentFeedbacksWindowed.map((f: any) => f.id));
+      const merged = [...recentFeedbacksWindowed];
+      evidenceBreakdown.from_recent = recentFeedbacksWindowed.length;
+      for (const sf of semanticFeedbacksWindowed) {
         if (!existingIds.has(sf.id)) {
           merged.push(sf);
           existingIds.add(sf.id);
@@ -616,7 +643,7 @@ serve(async (req) => {
       }
 
       // Adicionar context_evidence como "notas sintéticas" no formato esperado por compressContext
-      for (const ev of semanticEvidence) {
+      for (const ev of semanticEvidenceWindowed) {
         merged.push({
           id: ev.id,
           content: ev.summary || ev.title || '',
@@ -629,7 +656,7 @@ serve(async (req) => {
       }
 
       // Janela adaptativa: se RAG trouxe muito sinal, expande
-      const totalSemantic = semanticFeedbacks.length + semanticEvidence.length;
+      const totalSemantic = semanticFeedbacksWindowed.length + semanticEvidenceWindowed.length;
       if (totalSemantic >= 15) {
         contextLines = compressContextLarge(merged);
       } else {
@@ -638,6 +665,10 @@ serve(async (req) => {
 
       const notesCount = (contextLines.match(/\[Data:/g) || []).length;
       console.log('Context compressed:', { chars: contextLines.length, notesIncluded: notesCount, ...evidenceBreakdown });
+
+      if (timeWindow && merged.length === 0) {
+        contextLines = `(Nenhuma evidência encontrada na janela "${timeWindow.label}". Seja transparente sobre a ausência de dados nesse período.)`;
+      }
     } else {
       contextLines = '(Contexto histórico não foi necessário para esta pergunta - respondendo diretamente)';
       console.log('Context skipped by router');
