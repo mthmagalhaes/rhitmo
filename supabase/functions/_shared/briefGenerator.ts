@@ -255,6 +255,37 @@ export async function generateBriefForMeeting(
     console.warn('[briefGenerator] network context skipped:', err);
   }
 
+  // 5c. Slack ambient rollup (last 7d, single most recent) — observação passiva
+  let slackContext = '';
+  try {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: rollup } = await adminClient
+      .from('context_evidence')
+      .select('summary, metadata, occurred_at')
+      .eq('member_id', meeting.member_id)
+      .eq('evidence_type', 'slack_activity_rollup')
+      .gte('occurred_at', sevenDaysAgo)
+      .order('occurred_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (rollup) {
+      const meta = (rollup.metadata ?? {}) as any;
+      const themes = Array.isArray(meta.themes) ? meta.themes.slice(0, 3).join(', ') : '';
+      const collabs = Array.isArray(meta.top_collaborators)
+        ? meta.top_collaborators.slice(0, 3).map((c: any) => c?.name).filter(Boolean).join(', ')
+        : '';
+      const channels = Array.isArray(meta.top_channels) ? meta.top_channels.slice(0, 3).join(', ') : '';
+      const parts: string[] = [];
+      if (themes) parts.push(`Temas em alta: ${themes}.`);
+      if (collabs) parts.push(`Mais conversa com: ${collabs}.`);
+      if (channels) parts.push(`Canais ativos: ${channels}.`);
+      if (rollup.summary) parts.push(rollup.summary);
+      slackContext = parts.join(' ');
+    }
+  } catch (err) {
+    console.warn('[briefGenerator] slack context skipped:', err);
+  }
+
   const startFormatted = new Date(meeting.start_time).toLocaleString('pt-BR', {
     dateStyle: 'full',
     timeStyle: 'short',
@@ -275,6 +306,7 @@ ${notesContext || 'Nenhuma nota registrada ainda.'}
 Action items pendentes:
 ${pendingContext}
 ${networkContext ? `\nContexto de rede (colaboração real):\n${networkContext}\nUse isso para enriquecer o context_summary se for relevante. Tom humano, sem jargão.` : ''}
+${slackContext ? `\nAtividade no Slack (últimos 7 dias, canais públicos — sinais agregados, NUNCA cite mensagens literais):\n${slackContext}\nUse para sinalizar foco/sobrecarga/colaboração no context_summary se ajudar a conduzir a 1:1.` : ''}
 
 Gere um brief estruturado usando a função generate_brief.
 Máximo 3 itens de agenda. Máximo 5 pendências.
