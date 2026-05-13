@@ -58,7 +58,7 @@ const TermsOfService = () => {
           <li>Avaliações com IA ilimitadas</li>
           <li>Pre-meeting Briefs com contexto histórico</li>
           <li>Detecção de viés em tempo real</li>
-          <li>Mentor Chat ilimitado</li>
+          <li>Rhitmo ilimitada</li>
           <li>Acesso ao Meu Rhitmo para todo o time</li>
           <li>Analytics completo</li>
           <li>Times ilimitados</li>
