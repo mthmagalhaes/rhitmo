@@ -675,8 +675,8 @@
     "continueToPayment": "Continuar para pagamento",
     "planFeatures": {
       "upToMembers": "Até {{count}} liderados",
-      "mentorChats": "{{count}} mensagens de Mentor Chat por mês",
-      "unlimitedMentor": "Mentor Chat ilimitado",
+      "mentorChats": "{{count}} mensagens da Rhitmo por mês",
+      "unlimitedMentor": "Rhitmo ilimitada",
       "unlimitedNotes": "Notas e anotações ilimitadas",
       "formalReviews": "{{count}} avaliação formal por mês",
       "unlimitedReviews": "Avaliações formais ilimitadas",
