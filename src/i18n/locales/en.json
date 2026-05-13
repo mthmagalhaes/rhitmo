@@ -675,8 +675,8 @@
     "continueToPayment": "Continue to payment",
     "planFeatures": {
       "upToMembers": "Up to {{count}} direct reports",
-      "mentorChats": "{{count}} Mentor Chat messages per month",
-      "unlimitedMentor": "Unlimited Mentor Chat",
+      "mentorChats": "{{count}} Rhitmo messages per month",
+      "unlimitedMentor": "Unlimited Rhitmo",
       "unlimitedNotes": "Unlimited notes",
       "formalReviews": "{{count}} formal review per month",
       "unlimitedReviews": "Unlimited formal reviews",
