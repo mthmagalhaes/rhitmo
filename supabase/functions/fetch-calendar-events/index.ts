@@ -306,17 +306,36 @@ Deno.serve(async (req) => {
 
         if (existingByMeetingId) continue;
 
-        // Fallback: check by meeting_url to prevent duplicate bots for same link
+        // Fallback: check by meeting_url to prevent duplicate bots for same link.
+        // IMPORTANT: skipped_no_leader and error MUST block re-scheduling within the
+        // meeting window — otherwise we spawn a fresh bot every minute the cron runs,
+        // which is what caused the "ghost bots" incident on 13/05.
         const { data: existingByUrl } = await supabaseAdmin
           .from("recall_bots")
-          .select("id")
+          .select("id, attempt_count")
           .eq("user_id", userId)
           .eq("meeting_url", meeting.meet_link)
-          .not("status", "in", '("error","done","skipped_no_leader")')
+          .not("status", "eq", "done")
+          .gte("scheduled_at", new Date(new Date(meeting.start_time).getTime() - 30 * 60 * 1000).toISOString())
+          .lte("scheduled_at", new Date(new Date(meeting.start_time).getTime() + 30 * 60 * 1000).toISOString())
           .maybeSingle();
 
         if (existingByUrl) {
-          console.log(`[sync] Bot already exists for URL ${meeting.meet_link}, skipping`);
+          console.log(`[sync] Bot already exists in window for URL ${meeting.meet_link}, skipping`);
+          continue;
+        }
+
+        // Hard cap: max 2 attempts for the same meeting_id within 24h
+        const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const { count: recentAttempts } = await supabaseAdmin
+          .from("recall_bots")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", userId)
+          .eq("meeting_id", meeting.id)
+          .gte("created_at", dayAgo);
+
+        if ((recentAttempts ?? 0) >= 2) {
+          console.log(`[sync] Meeting ${meeting.id} already had ${recentAttempts} attempts in 24h, skipping`);
           continue;
         }
 
@@ -335,14 +354,12 @@ Deno.serve(async (req) => {
               join_at: joinAt,
               bot_name: "Rhitmo",
               chat: {
+                // Apenas 1 mensagem ao entrar. NÃO usar on_participant_join — ele
+                // dispara para cada novo participante e gera spam no chat do Meet.
                 on_bot_join: {
                   send_to: "everyone",
                   message: "👋 Olá! Sou o assistente Rhitmo. Esta reunião está sendo transcrita para fins de anotações e desenvolvimento profissional. Se tiver dúvidas, fale com seu líder.",
                   pin: true,
-                },
-                on_participant_join: {
-                  exclude_host: true,
-                  message: "👋 Olá! Esta reunião está sendo transcrita pelo Rhitmo para fins de anotações e desenvolvimento profissional.",
                 },
               },
               recording_config: {

@@ -148,13 +148,15 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Fallback dedup by meeting_url (prevents duplicate bots for recurring meetings with same link)
+    // Fallback dedup by meeting_url (prevents duplicate bots for recurring meetings with same link).
+    // Manual flow allows retry after error/skipped_no_leader (the leader explicitly clicked again),
+    // but blocks duplicates within the meeting window if a live bot already exists.
     const { data: existingByUrl } = await supabaseAdmin
       .from("recall_bots")
       .select("id, status")
       .eq("user_id", userId)
       .eq("meeting_url", meeting_url)
-      .not("status", "in", '("error","done","skipped_no_leader")')
+      .in("status", ["scheduled", "joining", "in_waiting_room", "in_call_recording", "recording", "in_call_not_recording"])
       .maybeSingle();
 
     if (existingByUrl) {
