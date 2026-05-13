@@ -44,7 +44,7 @@ const TermsOfService = () => {
         <ul className="list-disc ml-6 space-y-2">
           <li>Acesso ao Meu Rhitmo (portal do liderado)</li>
           <li>1 avaliação com IA por mês</li>
-          <li>Mentor Chat limitado (20 mensagens/mês)</li>
+          <li>Rhitmo limitada (20 mensagens/mês)</li>
           <li>Notas e anotações ilimitadas</li>
         </ul>
 
