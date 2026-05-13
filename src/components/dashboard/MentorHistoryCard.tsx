@@ -70,7 +70,7 @@ export function MentorHistoryCard({ onOpenMentor }: Props) {
               <Sparkles className="h-5 w-5" />
             </div>
             <h3 className="text-sm font-semibold tracking-tight text-foreground mb-1.5">
-              Sem conversas com o Mentor ainda
+              Sem conversas com a Rhitmo ainda
             </h3>
             <p className="text-xs text-muted-foreground max-w-sm mx-auto mb-5">
               Pergunte sobre um liderado, prepare uma 1:1 ou peça uma análise de padrões do seu time.
