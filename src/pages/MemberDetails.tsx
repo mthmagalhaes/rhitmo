@@ -93,7 +93,7 @@ const MemberDetails = () => {
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [activeTab, setActiveTab] = useState<'diary' | 'rhitmo' | 'reviews'>('diary');
-  const [activeRhitmoSub, setActiveRhitmoSub] = useState<'quarterly' | 'monthly'>('quarterly');
+  const [activeRhitmoSub, setActiveRhitmoSub] = useState<'monthly'>('monthly');
   const { t: tRhitmo } = useTranslation('rhitmo');
   const { toast } = useToast();
   const {
