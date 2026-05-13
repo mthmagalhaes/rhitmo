@@ -3,7 +3,7 @@
 // inline. Sem redirect para /member/:id, sem modal de "escolha o tipo".
 import { useState, useMemo } from 'react';
 import { startOfMonth, subMonths } from 'date-fns';
-import { ClipboardCheck, Music, BarChart3, Sparkles } from 'lucide-react';
+import { ClipboardCheck, Music, Sparkles } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MemberAvatar } from '@/components/MemberAvatar';
@@ -11,14 +11,13 @@ import { MemberMasterList } from '@/components/leader/MemberMasterList';
 import { EmptyMemberDetail } from '@/components/leader/EmptyMemberDetail';
 import { RhitmoTimelineCard } from '@/components/recaps/RhitmoTimelineCard';
 import { MonthlyRecapSection } from '@/components/recaps/MonthlyRecapSection';
-import { QuarterlyRecapSection } from '@/components/recaps/QuarterlyRecapSection';
 import { PerformanceReviewList } from '@/components/PerformanceReviewList';
 import { CreateFormalReviewDialog } from '@/components/review/CreateFormalReviewDialog';
 import { useLeaderMembers } from '@/hooks/useLeaderMembers';
 import { supabase } from '@/integrations/supabase/client';
 import type { LeaderMemberRow } from '@/hooks/useLeaderMembers';
 
-type SubTab = 'monthly' | 'quarterly' | 'formal';
+type SubTab = 'monthly' | 'formal';
 
 export default function LiderAvaliacoes() {
   const { workspace } = useLeaderMembers();
@@ -72,7 +71,7 @@ export default function LiderAvaliacoes() {
                 Rhitmo
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Selecione um liderado para ver o Rhitmo dele e gerar avaliações Mensal, Trimestral ou Formal.
+                Selecione um liderado para ver o Rhitmo dele e gerar Acompanhamento Mensal e Avaliações Formais.
               </p>
             </header>
             <EmptyMemberDetail
@@ -119,27 +118,19 @@ export default function LiderAvaliacoes() {
               onValueChange={(v) => setActiveSub(v as SubTab)}
               className="w-full"
             >
-              <TabsList className="grid w-full max-w-md grid-cols-3 rounded-xl">
+              <TabsList className="grid w-full max-w-sm grid-cols-2 rounded-xl">
                 <TabsTrigger value="monthly" className="rounded-lg gap-1.5 text-xs">
                   <Music className="h-3.5 w-3.5" />
-                  Mensal
-                </TabsTrigger>
-                <TabsTrigger value="quarterly" className="rounded-lg gap-1.5 text-xs">
-                  <BarChart3 className="h-3.5 w-3.5" />
-                  Trimestral
+                  Acompanhamento Mensal
                 </TabsTrigger>
                 <TabsTrigger value="formal" className="rounded-lg gap-1.5 text-xs">
                   <Sparkles className="h-3.5 w-3.5" />
-                  Formal
+                  Histórico Formal
                 </TabsTrigger>
               </TabsList>
 
               <TabsContent value="monthly" className="mt-6">
                 <MonthlyRecapSection memberId={selected.id} />
-              </TabsContent>
-
-              <TabsContent value="quarterly" className="mt-6">
-                <QuarterlyRecapSection memberId={selected.id} />
               </TabsContent>
 
               <TabsContent value="formal" className="mt-6">

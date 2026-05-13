@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Sparkles, ArrowDown, Music, CheckCircle2 } from 'lucide-react';
 import { format, subMonths, startOfMonth } from 'date-fns';
 import { getDateLocale } from '@/lib/dateLocale';
-import { useMonthlyRecaps, useQuarterlyRecaps, useGenerateMonthlyRecap } from '@/hooks/useRecaps';
+import { useMonthlyRecaps, useGenerateMonthlyRecap } from '@/hooks/useRecaps';
 
 interface Props {
   memberId: string;
@@ -17,7 +17,6 @@ interface Props {
 export function RhitmoTimelineCard({ memberId, feedbacksLastMonthCount, onJumpToRhitmo }: Props) {
   const { t, i18n } = useTranslation('rhitmo');
   const { data: monthly = [], isLoading: mLoading } = useMonthlyRecaps(memberId, 6);
-  const { data: quarterly = [], isLoading: qLoading } = useQuarterlyRecaps(memberId, 4);
   const generate = useGenerateMonthlyRecap(memberId);
 
   const lastMonth = useMemo(() => {
@@ -29,12 +28,10 @@ export function RhitmoTimelineCard({ memberId, feedbacksLastMonthCount, onJumpTo
     return format(d, 'MMMM yyyy', { locale: getDateLocale(i18n.language) });
   }, [i18n.language]);
 
-  if (mLoading || qLoading) return null;
+  if (mLoading) return null;
 
-  const totalRecaps = monthly.length + quarterly.length;
-  const confirmedCount =
-    monthly.filter((m) => m.status === 'confirmed').length +
-    quarterly.filter((q) => q.status === 'confirmed').length;
+  const totalRecaps = monthly.length;
+  const confirmedCount = monthly.filter((m) => m.status === 'confirmed').length;
   const hasLastMonthRecap = monthly.some((m) => m.period_month.slice(0, 10) === lastMonth);
 
   // State A — has recaps already
@@ -57,7 +54,7 @@ export function RhitmoTimelineCard({ memberId, feedbacksLastMonthCount, onJumpTo
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
-                {t('recap.timeline.historyLine', { monthly: monthly.length, quarterly: quarterly.length })}
+                {monthly.length} {monthly.length === 1 ? 'mensal' : 'mensais'} no histórico
               </p>
             </div>
           </div>
