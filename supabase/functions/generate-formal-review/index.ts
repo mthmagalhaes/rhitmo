@@ -112,7 +112,46 @@ Deno.serve(async (req) => {
       .eq("processing_status", "completed")
       .order("created_at", { ascending: true });
 
-    // Fetch confirmed Rhitmo recaps in period — these are the calibrated spine of the review
+    // Fetch context_evidence (Slack rollups, network signals, processed pulses, etc.)
+    const { data: ctxEvidence } = await supabase
+      .from("context_evidence")
+      .select("id, evidence_type, source_table, occurred_at, title, summary, sentiment, tags")
+      .eq("member_id", member.id)
+      .gte("occurred_at", periodStart)
+      .lte("occurred_at", periodEnd)
+      .order("occurred_at", { ascending: true });
+
+    // Fetch pulse_surveys answered in period
+    const { data: pulses } = await supabase
+      .from("pulse_surveys")
+      .select("id, type, name, motivation, anonymity, summary, responses, completed_at")
+      .eq("member_id", member.id)
+      .eq("status", "completed")
+      .gte("completed_at", periodStart)
+      .lte("completed_at", periodEnd)
+      .order("completed_at", { ascending: true });
+
+    // Fetch peer feedback responses in period
+    const { data: peerResponses } = await supabase
+      .from("peer_feedback_requests")
+      .select("id, response_text, edge_strength_at_request, responded_at")
+      .eq("subject_member_id", member.id)
+      .eq("status", "answered")
+      .gte("responded_at", periodStart)
+      .lte("responded_at", periodEnd)
+      .order("responded_at", { ascending: true });
+
+    // Fetch 360° reviews (self/peer/upwards) about this member in period
+    const { data: reviews360 } = await supabase
+      .from("performance_reviews")
+      .select("id, review_type, content, classification, created_at")
+      .eq("member_id", member.id)
+      .in("review_type", ["self", "peer", "upwards"])
+      .gte("created_at", periodStart)
+      .lte("created_at", periodEnd)
+      .order("created_at", { ascending: true });
+
+    // Fetch confirmed Rhitmo recaps in period — used as a CALIBRATION LAYER (not the spine)
     const { data: quarterlies } = await supabase
       .from("quarterly_recaps")
       .select("period_quarter, highlights, recurring_patterns, evolution_vs_previous, classification, turnover_risk, turnover_risk_reason, next_action_key, next_action_note, source_monthly_recap_ids")
@@ -133,11 +172,16 @@ Deno.serve(async (req) => {
 
     const feedbackCount = feedbacks?.length || 0;
     const meetingCount = meetings?.length || 0;
+    const ctxCount = ctxEvidence?.length || 0;
+    const pulseCount = pulses?.length || 0;
+    const peerCount = peerResponses?.length || 0;
+    const reviews360Count = reviews360?.length || 0;
     const quarterlyCount = quarterlies?.length || 0;
     const monthlyCount = monthlies?.length || 0;
-    const totalEvidence = feedbackCount + meetingCount;
+    const totalRawEvidence = feedbackCount + meetingCount + ctxCount + pulseCount + peerCount + reviews360Count;
+    const totalEvidence = totalRawEvidence; // for evidence_count in DB
 
-    console.log(`Evidence: ${feedbackCount} feedbacks, ${meetingCount} meetings, ${quarterlyCount} quarterlies, ${monthlyCount} monthlies`);
+    console.log(`Evidence: ${feedbackCount} feedbacks, ${meetingCount} meetings, ${ctxCount} ctx, ${pulseCount} pulses, ${peerCount} peers, ${reviews360Count} 360°, ${quarterlyCount} quarterlies, ${monthlyCount} monthlies`);
 
     if (totalEvidence === 0 && quarterlyCount === 0 && monthlyCount === 0) {
       // Update with empty message
