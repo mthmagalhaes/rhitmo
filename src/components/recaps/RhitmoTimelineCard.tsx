@@ -17,7 +17,6 @@ interface Props {
 export function RhitmoTimelineCard({ memberId, feedbacksLastMonthCount, onJumpToRhitmo }: Props) {
   const { t, i18n } = useTranslation('rhitmo');
   const { data: monthly = [], isLoading: mLoading } = useMonthlyRecaps(memberId, 6);
-  const { data: quarterly = [], isLoading: qLoading } = useQuarterlyRecaps(memberId, 4);
   const generate = useGenerateMonthlyRecap(memberId);
 
   const lastMonth = useMemo(() => {
@@ -29,12 +28,10 @@ export function RhitmoTimelineCard({ memberId, feedbacksLastMonthCount, onJumpTo
     return format(d, 'MMMM yyyy', { locale: getDateLocale(i18n.language) });
   }, [i18n.language]);
 
-  if (mLoading || qLoading) return null;
+  if (mLoading) return null;
 
-  const totalRecaps = monthly.length + quarterly.length;
-  const confirmedCount =
-    monthly.filter((m) => m.status === 'confirmed').length +
-    quarterly.filter((q) => q.status === 'confirmed').length;
+  const totalRecaps = monthly.length;
+  const confirmedCount = monthly.filter((m) => m.status === 'confirmed').length;
   const hasLastMonthRecap = monthly.some((m) => m.period_month.slice(0, 10) === lastMonth);
 
   // State A — has recaps already
