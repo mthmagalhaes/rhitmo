@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Sparkles, ArrowDown, Music, CheckCircle2 } from 'lucide-react';
 import { format, subMonths, startOfMonth } from 'date-fns';
 import { getDateLocale } from '@/lib/dateLocale';
-import { useMonthlyRecaps, useQuarterlyRecaps, useGenerateMonthlyRecap } from '@/hooks/useRecaps';
+import { useMonthlyRecaps, useGenerateMonthlyRecap } from '@/hooks/useRecaps';
 
 interface Props {
   memberId: string;
