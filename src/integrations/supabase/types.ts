@@ -1979,9 +1979,11 @@ export type Database = {
       }
       recall_bots: {
         Row: {
+          attempt_count: number
           created_at: string | null
           error_message: string | null
           id: string
+          leader_check_attempts: number
           leader_check_due_at: string | null
           leader_detected: boolean
           leader_email: string | null
@@ -1999,9 +2001,11 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          attempt_count?: number
           created_at?: string | null
           error_message?: string | null
           id?: string
+          leader_check_attempts?: number
           leader_check_due_at?: string | null
           leader_detected?: boolean
           leader_email?: string | null
@@ -2019,9 +2023,11 @@ export type Database = {
           user_id: string
         }
         Update: {
+          attempt_count?: number
           created_at?: string | null
           error_message?: string | null
           id?: string
+          leader_check_attempts?: number
           leader_check_due_at?: string | null
           leader_detected?: boolean
           leader_email?: string | null
