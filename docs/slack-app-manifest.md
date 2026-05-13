@@ -129,7 +129,9 @@ Redirect URLs:
         "channels:read",
         "channels:history",
         "groups:read",
+        "groups:write",
         "groups:history",
+        "mpim:write",
         "app_mentions:read"
       ]
     }
