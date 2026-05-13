@@ -71,7 +71,7 @@ export default function LiderAvaliacoes() {
                 Rhitmo
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Selecione um liderado para ver o Rhitmo dele e gerar avaliações Mensal, Trimestral ou Formal.
+                Selecione um liderado para ver o Rhitmo dele e gerar Acompanhamento Mensal e Avaliações Formais.
               </p>
             </header>
             <EmptyMemberDetail
