@@ -376,6 +376,55 @@ export default function RhitmoSync() {
     );
   }
 
+  // Membro não encontrado
+  if (notFound) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
+        <Card className="max-w-md w-full p-8 text-center space-y-4 rounded-2xl">
+          <div className="text-5xl">🔍</div>
+          <h1 className="text-xl font-bold tracking-tight">Link inválido</h1>
+          <p className="text-sm text-muted-foreground">
+            Não encontramos esse questionário. Peça ao seu líder para reenviar o convite.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
+  // Liderado não vinculado: precisa aceitar o convite primeiro
+  if (notLinked) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
+        <Card className="max-w-md w-full p-8 text-center space-y-5 rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
+          <div className="text-5xl">🔐</div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold tracking-tight">
+              Falta ativar sua conta{memberName ? `, ${memberName.split(' ')[0]}` : ''}
+            </h1>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Seu líder te adicionou como liderado, mas o questionário só pode ser
+              respondido depois que você criar sua conta no Rhitmo com o e-mail
+              que recebeu o convite.
+            </p>
+          </div>
+          <div className="space-y-2 pt-2">
+            <Button
+              className="w-full rounded-xl"
+              onClick={() => navigate('/auth')}
+            >
+              Entrar ou criar minha conta
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Já tem login? Entre com a mesma conta e abra este link novamente.
+              <br />
+              Não recebeu o convite? Peça ao seu líder para reenviar.
+            </p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   // Completed state
   if (completed) {
     return (
