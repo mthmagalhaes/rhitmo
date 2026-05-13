@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { RhitmoLogo } from "@/components/RhitmoLogo";
@@ -851,6 +852,9 @@ const Landing = () => {
   if (user) return null;
 
   return <div className="transition-colors duration-300">
+      <Helmet>
+        <link rel="canonical" href="https://rhitmo.co/" />
+      </Helmet>
     <div className="min-h-screen bg-background">
       {/* Navbar */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
