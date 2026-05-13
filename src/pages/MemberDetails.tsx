@@ -863,33 +863,10 @@ const MemberDetails = () => {
             <div className="space-y-6">
               <RhitmoTabSummary
                 memberId={member.id}
-                onSwitchSection={(section) => setActiveRhitmoSub(section)}
+                onSwitchSection={() => setActiveRhitmoSub('monthly')}
               />
 
-              <Tabs
-                value={activeRhitmoSub}
-                onValueChange={(v) => setActiveRhitmoSub(v as typeof activeRhitmoSub)}
-                className="w-full"
-              >
-                <TabsList className="grid w-full max-w-sm grid-cols-2 rounded-xl">
-                  <TabsTrigger value="quarterly" className="rounded-lg flex items-center gap-2">
-                    <FileText className="h-3.5 w-3.5" />
-                    {tRhitmo('summary.subtabs.quarterly')}
-                  </TabsTrigger>
-                  <TabsTrigger value="monthly" className="rounded-lg flex items-center gap-2">
-                    <Music className="h-3.5 w-3.5" />
-                    {tRhitmo('summary.subtabs.monthly')}
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="quarterly" className="mt-6">
-                  <QuarterlyRecapSection memberId={member.id} />
-                </TabsContent>
-
-                <TabsContent value="monthly" className="mt-6">
-                  <MonthlyRecapSection memberId={member.id} />
-                </TabsContent>
-              </Tabs>
+              <MonthlyRecapSection memberId={member.id} />
             </div>
           </TabsContent>
 
