@@ -132,8 +132,8 @@ export const PerformanceReviewList = ({ memberId, memberName, onCreateReview }: 
         <div>
           <h3 className="text-lg font-semibold">Rhitmo Formal</h3>
           <p className="text-sm text-muted-foreground max-w-2xl">
-            Avaliação de ciclo (semestral ou anual) gerada a partir dos trimestrais
-            confirmados. Você revisa, calibra e compartilha com o liderado.
+            Avaliação de ciclo gerada a partir das evidências e do Acompanhamento Mensal.
+            Você escolhe o período, revisa, calibra e compartilha com o liderado.
           </p>
         </div>
         <Button onClick={() => onCreateReview?.()} className="gap-2">
@@ -149,7 +149,7 @@ export const PerformanceReviewList = ({ memberId, memberName, onCreateReview }: 
             <h3 className="text-lg font-semibold mb-2">Nenhum Rhitmo Formal ainda</h3>
             <p className="text-sm text-muted-foreground mb-4 max-w-md">
               Crie o primeiro Rhitmo Formal para {memberName}. A IA monta o rascunho a partir
-              dos trimestrais confirmados e você calibra antes de compartilhar.
+              das evidências do período escolhido e você calibra antes de compartilhar.
             </p>
             <Button onClick={() => onCreateReview?.()} className="gap-2">
               <FileText className="h-4 w-4" />
@@ -158,14 +158,14 @@ export const PerformanceReviewList = ({ memberId, memberName, onCreateReview }: 
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-5">
           {(Object.keys(STATUS_META) as ReviewStatus[]).map((status) => {
             const items = grouped[status];
             if (items.length === 0) return null;
             const meta = STATUS_META[status];
             return (
               <Collapsible key={status} defaultOpen={meta.defaultOpen}>
-                <CollapsibleTrigger className="group flex items-center gap-2 w-full text-left py-1.5 mb-2">
+                <CollapsibleTrigger className="group flex items-center gap-2 w-full text-left py-1.5 mb-1">
                   <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
                   <span className={cn("text-[12px] font-semibold uppercase tracking-[0.14em]", meta.tone)}>
                     {meta.label}
@@ -175,35 +175,32 @@ export const PerformanceReviewList = ({ memberId, memberName, onCreateReview }: 
                   </span>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="grid gap-2.5">
+                  <div className="divide-y divide-border/60 border-t border-border/60">
                     {items.map((review) => (
-                      <Card
+                      <button
                         key={review.id}
-                        className="cursor-pointer hover:border-primary/50 hover:shadow-[0_2px_20px_rgba(0,0,0,0.04)] transition-all rounded-2xl"
+                        type="button"
                         onClick={() => setSelectedReview(review)}
+                        className="w-full flex items-center gap-3 py-2.5 px-1 text-left hover:bg-muted/40 transition-colors group/row"
                       >
-                        <CardHeader className="pb-3">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <CardTitle className="text-base">{review.title}</CardTitle>
-                              <CardDescription className="flex items-center gap-2 mt-1">
-                                <Calendar className="h-3 w-3" />
-                                {new Date(review.created_at).toLocaleDateString('pt-BR')}
-                                <span className="mx-1">•</span>
-                                <span className="text-xs bg-muted px-2 py-0.5 rounded">
-                                  {getPeriodLabel(review.period_type)}
-                                </span>
-                              </CardDescription>
-                            </div>
-                            {review.shared_with_member && !review.acknowledged_at && (
-                              <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 text-xs border border-emerald-100 gap-1 shrink-0">
-                                <Eye className="h-3 w-3" />
-                                Visível para o liderado
-                              </Badge>
-                            )}
-                          </div>
-                        </CardHeader>
-                      </Card>
+                        <FileText className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                        <span className="text-sm font-medium text-foreground truncate flex-1 min-w-0 group-hover/row:text-primary">
+                          {review.title}
+                        </span>
+                        <span className="text-xs text-muted-foreground hidden sm:inline">
+                          {getPeriodLabel(review)}
+                        </span>
+                        <span className="text-xs text-muted-foreground/70 hidden md:flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {new Date(review.created_at).toLocaleDateString('pt-BR')}
+                        </span>
+                        {review.shared_with_member && !review.acknowledged_at && (
+                          <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 text-[10px] border border-emerald-100 gap-1 shrink-0">
+                            <Eye className="h-3 w-3" />
+                            Visível
+                          </Badge>
+                        )}
+                      </button>
                     ))}
                   </div>
                 </CollapsibleContent>
