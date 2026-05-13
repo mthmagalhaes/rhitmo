@@ -32,12 +32,22 @@ export function normalizeName(s: string | null | undefined): string {
     .trim();
 }
 
+export type ParticipantsResult =
+  | { status: "ok"; participants: RecallParticipant[] }
+  | { status: "inconclusive"; participants: RecallParticipant[] };
+
 /** Fetches participants from BOTH legacy field AND participant_events.
- *  Returns a deduplicated list. Never throws — returns [] on any error. */
-export async function fetchAllRecallParticipants(
+ *  Returns a deduplicated list with a status flag.
+ *
+ *  - status: "ok" → trust the result (even if empty: leader truly absent).
+ *  - status: "inconclusive" → both sources empty AND bot has been recording
+ *    for less than 90s. Caller should retry later, NOT mark as no-leader.
+ *
+ *  Never throws — returns inconclusive with [] on any network error. */
+export async function fetchAllRecallParticipantsDetailed(
   botId: string,
   recallApiKey: string,
-): Promise<RecallParticipant[]> {
+): Promise<ParticipantsResult> {
   const headers = { Authorization: `Token ${recallApiKey}` };
   const out = new Map<string, RecallParticipant>();
 
@@ -47,9 +57,9 @@ export async function fetchAllRecallParticipants(
     if (resp.ok) botData = await resp.json();
   } catch (e) {
     console.error(`[recallParticipants] bot/${botId} fetch failed:`, e);
-    return [];
+    return { status: "inconclusive", participants: [] };
   }
-  if (!botData) return [];
+  if (!botData) return { status: "inconclusive", participants: [] };
 
   // Legacy source
   const legacy: RecallParticipant[] = botData.meeting_participants ?? [];
@@ -59,6 +69,7 @@ export async function fetchAllRecallParticipants(
   }
 
   // Authoritative source: participant_events download URL
+  let eventsCount = 0;
   try {
     const recordings = botData.recordings ?? [];
     for (const rec of recordings) {
@@ -68,6 +79,7 @@ export async function fetchAllRecallParticipants(
       if (!peResp.ok) continue;
       const list = await peResp.json();
       if (!Array.isArray(list)) continue;
+      eventsCount += list.length;
       for (const p of list as RecallParticipant[]) {
         const key = normalizeName(p.name) || `email:${(p.email ?? "").toLowerCase()}` || `id:${p.id}`;
         if (key && !out.has(key)) out.set(key, p);
@@ -78,12 +90,54 @@ export async function fetchAllRecallParticipants(
   }
 
   const merged = Array.from(out.values());
+
+  // Compute time since recording started (for inconclusive heuristic)
+  let msSinceRecordingStart: number | null = null;
+  try {
+    const recordings = botData.recordings ?? [];
+    const startedAt = recordings[0]?.started_at;
+    if (startedAt) msSinceRecordingStart = Date.now() - new Date(startedAt).getTime();
+  } catch { /* noop */ }
+
+  const botStatusCode: string = botData?.status_changes?.slice(-1)?.[0]?.code ?? botData?.status?.code ?? "";
+  const isStillRecording = ["recording", "in_call_recording", "in_call_not_recording"].includes(botStatusCode);
+
+  // Inconclusive only when: both sources empty AND bot is mid-call AND recording is fresh (<90s).
+  // This prevents the "phantom kill" bug where the resolver returns 0 too early and the cron
+  // wrongly marks the bot as skipped_no_leader.
+  const inconclusive =
+    merged.length === 0 &&
+    isStillRecording &&
+    msSinceRecordingStart !== null &&
+    msSinceRecordingStart < 90_000;
+
+  console.log(JSON.stringify({
+    tag: "[recallParticipants]",
+    bot_id: botId,
+    legacy_count: legacy.length,
+    events_count: eventsCount,
+    merged_count: merged.length,
+    bot_status: botStatusCode,
+    ms_since_recording_start: msSinceRecordingStart,
+    decision: inconclusive ? "inconclusive" : "ok",
+  }));
+
   if (legacy.length === 0 && merged.length > 0) {
     console.warn(
-      `[recallParticipants] bot ${botId}: legacy meeting_participants was EMPTY but participant_events returned ${merged.length} participant(s). This is the reason previous bots were incorrectly marked skipped_no_leader.`,
+      `[recallParticipants] bot ${botId}: legacy meeting_participants was EMPTY but participant_events returned ${merged.length} participant(s).`,
     );
   }
-  return merged;
+
+  return { status: inconclusive ? "inconclusive" : "ok", participants: merged };
+}
+
+/** Backward-compatible wrapper. Prefer fetchAllRecallParticipantsDetailed for new code. */
+export async function fetchAllRecallParticipants(
+  botId: string,
+  recallApiKey: string,
+): Promise<RecallParticipant[]> {
+  const r = await fetchAllRecallParticipantsDetailed(botId, recallApiKey);
+  return r.participants;
 }
 
 /** Decide whether the leader is among the participants.
