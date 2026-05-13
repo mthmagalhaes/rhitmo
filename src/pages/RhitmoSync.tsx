@@ -199,12 +199,15 @@ function StepIndicator({
 
 export default function RhitmoSync() {
   const { memberId } = useParams<{ memberId: string }>();
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<SyncFormData>(initialFormData);
   const [memberName, setMemberName] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const [notLinked, setNotLinked] = useState(false);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     loadMemberData();
@@ -212,29 +215,40 @@ export default function RhitmoSync() {
 
   const loadMemberData = async () => {
     if (!memberId) {
-      toast.error('Link inválido');
+      setNotFound(true);
       setLoading(false);
       return;
     }
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+
       const { data, error } = await supabase
         .rpc('get_member_for_sync', { p_member_id: memberId });
 
       if (error) throw error;
-      if (!data || data.length === 0) throw new Error('Membro não encontrado');
+      if (!data || (Array.isArray(data) && data.length === 0)) {
+        setNotFound(true);
+        return;
+      }
 
       const member = Array.isArray(data) ? data[0] : data;
 
+      setMemberName(member.name);
+
       if (member.work_style_data) {
-        toast.error('Este questionário já foi preenchido');
         setCompleted(true);
+        return;
       }
 
-      setMemberName(member.name);
+      // Gating: liderado precisa estar logado E vinculado a este team_member
+      if (!user || !member.linked_user_id || member.linked_user_id !== user.id) {
+        setNotLinked(true);
+        return;
+      }
     } catch (error) {
       console.error('Error loading member:', error);
-      toast.error('Membro não encontrado');
+      setNotFound(true);
     } finally {
       setLoading(false);
     }
