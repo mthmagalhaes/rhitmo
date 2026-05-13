@@ -1,35 +1,45 @@
-## Diagnóstico
+# Rhitmo — Plano de Execução
 
-Hoje `/lider/mentor` tem dois problemas de respiração:
+> **Atualizado:** 13 de Maio de 2026
+> **Sprint atual concluída:** Sprint 17 (Quarterly Anniversary Nudge + Formal Review RAG completo)
+> **Próxima:** Sprint 18
 
-1. **Coluna principal travada em `max-w-2xl` (≈672px) sem `mx-auto`** — fica colada à esquerda. Como o `main` é `flex-1`, sobra uma faixa vazia entre o conteúdo e o aside de 340px.
-2. **Sugestões em flex-wrap** ficam em 1–2 chips por linha numa largura "magra", desperdiçando espaço horizontal.
-3. O aside já está bom (Contexto + Como obter o melhor + Atalhos), só não tem nada que "puxe a vista" pra baixo.
+Este arquivo é leve por design. Implementações fechadas vivem em `rhitmo-technical-report-april-2026.md` e nas memórias `mem://`.
 
-## Mudanças (frontend, `src/pages/lider/Mentor.tsx`)
+---
 
-### 1. Coluna central com mais respiro e centralizada
-- Alterar o wrapper interno do `<main>` (linha 226) de `max-w-2xl px-6 lg:px-8 py-8` para **`max-w-3xl mx-auto px-6 lg:px-8 py-8`**.
-- O parágrafo de subtítulo (linha 236) já usa `max-w-2xl` — manter para não esticar texto longo.
+## Status atual
 
-### 2. Sugestões em grid 2 colunas (com fallback mobile)
-- Trocar o `flex flex-wrap gap-2` por **`grid grid-cols-1 sm:grid-cols-2 gap-2`**.
-- Tornar cada chip `w-full text-left` para preencher a célula uniformemente (continua com o estilo arredondado, ícone à esquerda).
-- Resultado: 3 linhas × 2 colunas, alinhadas, ocupando toda a largura disponível.
+- **Produto:** estável em produção (`https://rhitmo.co`).
+- **Cobertura funcional:** Context Graph, Mentor (RAG 3 camadas), 1:1s, Reviews 360° completas (Self / Peer / Upwards / Formal com RAG), Pulse, Slack-native (DMs, slash, Assistant container, ambient), Recall.ai, Quarterly Recaps (auto + on-demand).
+- **Arquitetura recente:** Safe Supabase Wrappers (frontend + edge), Edge Function Ownership Pattern, Slack Conversational State Machine, Slack DM RAG Temporal Windows, Network Signals & Pulse.
 
-### 3. Composer e Conversas recentes
-- Composer e a lista de conversas já são `w-full` — passam a se beneficiar automaticamente da nova `max-w-3xl`.
-- Nenhuma mudança em altura/padding.
+---
 
-### 4. Aside (mantém estrutura, só melhora densidade)
-- Sem novos cards. Apenas pequeno ajuste: o `<div className="px-5 py-8">` (linha 569) ganha `space-y-5` se `MentorContextPanel` ainda não impõe espaçamento próprio (verificar no momento da edição; se já houver, manter).
+## Backlog priorizado (próximos 4-6 sprints)
 
-## Fora de escopo
-- Não muda a lógica do chat, do RAG, dos atalhos nem do `MentorContextPanel`.
-- Não mexe em `MentorThread.tsx` (página da thread).
-- Não cria novos componentes/cards no aside.
+| # | Iniciativa | Por quê |
+|---|---|---|
+| 1 | **Onboarding Self-Service v2** — fluxo guiado pós-signup com checklist persistente e nudges Slack | Reduzir time-to-first-value e ativação D1/D7 |
+| 2 | **Pitch Seed materials** — pitch deck, demo flow, datasets para fundraising | Suporte ao roadmap de captação |
+| 3 | **Continuous Feedback (Windmill-inspired)** — repensar menu Contexto com Windy-like chatbot + ONA-driven prompts | Aumentar densidade de evidências sem fricção |
+| 4 | **Multi-language UX** — finalizar i18n PT/EN/ES nas Edge Functions (prompts, emails) | Pré-requisito para LatAm + US fundraising |
+| 5 | **Enterprise hardening** — SSO/SAML completo, audit logs por workspace, data export | Habilitar pipeline Business → Enterprise |
 
-## Validação
-- No viewport atual do usuário (869×829), conteúdo central deve ficar visualmente equilibrado entre sidebar esquerda e aside direita, sem a faixa vazia atual.
-- Em ≥1280px, as sugestões mostram 2 colunas; em <640px, voltam a 1 coluna.
-- Nenhum overflow horizontal.
+---
+
+## Tech debt visível
+
+- **Schema discrepancy:** `member_id` é nullable no DB mas non-null nos types TS gerados. Manter awareness até refactor de tipos.
+- **Migração `.catch()` → safe wrappers:** ~60% das chamadas migradas; resta varredura final em hooks legados.
+- **Bias detection:** atualmente client-side ProseMirror. Avaliar mover para edge para uniformidade entre Slack/Tiptap.
+- **Recall.ai cost:** monitorar quando uso ultrapassar 200 reuniões/dia; considerar cap por workspace.
+- **Quarterly Recap cron:** depende de `x-cron-secret`; rotação trimestral ainda manual.
+
+---
+
+## Não-fazer agora (decisões registradas)
+
+- Não implementar Continuous Feedback Windmill-style ainda (referência conceitual em `mem://product/continuous-feedback-windmill-reference`).
+- Não renomear app Slack de "Rhitmo" para "Rhy".
+- Não migrar billing para Lovable Native; manter Stripe Edge Functions custom.
