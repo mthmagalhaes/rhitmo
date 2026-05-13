@@ -352,8 +352,13 @@ export default function RhitmoSync() {
       toast.success('Perfil sintonizado com sucesso!');
     } catch (error: unknown) {
       console.error('Error submitting:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erro ao salvar suas respostas. Tente novamente.';
+      const rawMessage = error instanceof Error ? error.message : '';
+      const isUnauthorized = /unauthorized/i.test(rawMessage);
+      const errorMessage = isUnauthorized
+        ? 'Sua conta ainda não está vinculada como liderado. Aceite o convite enviado pelo seu líder antes de responder.'
+        : (rawMessage || 'Erro ao salvar suas respostas. Tente novamente.');
       toast.error(errorMessage);
+      if (isUnauthorized) setNotLinked(true);
     } finally {
       setSubmitting(false);
     }
