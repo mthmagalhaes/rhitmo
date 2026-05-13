@@ -12,6 +12,7 @@ import { OneOnOnePrepCard } from '@/components/oneonone/OneOnOnePrepCard';
 import { AgendaBlock, type AgendaBlockRef } from '@/components/oneonone/AgendaBlock';
 import { ActionItemsBlock } from '@/components/oneonone/ActionItemsBlock';
 import { MemberUpcomingMeetings } from '@/components/oneonone/MemberUpcomingMeetings';
+import { SlackActivityCard } from '@/components/dashboard/SlackActivityCard';
 import { useLeaderMembers, type LeaderMemberRow } from '@/hooks/useLeaderMembers';
 
 export default function LiderOneOnOnes() {
@@ -104,6 +105,9 @@ export default function LiderOneOnOnes() {
                 memberName={selected.name}
               />
             </section>
+
+            {/* Sinais ambient do Slack — últimos 7 dias */}
+            <SlackActivityCard memberId={selected.id} />
 
             {/* Pauta compartilhada (full-width, neutra) */}
             <AgendaBlock
