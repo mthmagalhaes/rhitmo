@@ -236,7 +236,7 @@ export const UpcomingMeetingsCard = () => {
       <div className="space-y-1">
         {visibleMeetings.map((meeting, index) => {
           const badge = getTimeBadge(meeting.start_time);
-          const bot = meeting.id ? getBotStatus(meeting.id) : undefined;
+          const bot = meeting.id ? getBotStatus(meeting.id, meeting.meet_link) : undefined;
           const isAutoScheduled = autoTranscribe && bot?.status === 'scheduled';
 
           return (
