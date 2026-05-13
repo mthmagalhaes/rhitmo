@@ -171,7 +171,7 @@ export const MentorChat = ({
   const threadsQueryKey = isLeader ? 'chat-threads' : 'meu-rhitmo-threads';
   const messagesQueryKey = isLeader ? 'mentor-messages' : 'meu-rhitmo-messages';
   const edgeFunctionName = isLeader ? 'chat-mentor' : 'meu-rhitmo';
-  const title = isLeader ? 'Mentor Chat' : 'Meu Rhitmo';
+  const title = isLeader ? 'Rhitmo' : 'Meu Rhitmo';
   const quickSuggestions = isLeader ? leaderSuggestions : directReportSuggestions;
 
   const [input, setInput] = useState('');
