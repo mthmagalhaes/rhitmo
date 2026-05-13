@@ -47,7 +47,7 @@ export function MentorHistoryCard({ onOpenMentor }: Props) {
     <section className="mb-12">
       <div className="flex items-center justify-between mb-4">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-          Histórico do Mentor Chat
+          Histórico da Rhitmo
         </p>
         {threads.length > 0 && (
           <button
