@@ -88,15 +88,23 @@ export const PerformanceReviewList = ({ memberId, memberName, onCreateReview }: 
     return acc;
   }, [reviews]);
 
-  const getPeriodLabel = (periodType: string) => {
+  const getPeriodLabel = (review: PerformanceReview) => {
+    if (review.period_start && review.period_end) {
+      const fmt = (iso: string) => {
+        const d = new Date(iso);
+        return d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).replace('.', '');
+      };
+      return `${fmt(review.period_start)} – ${fmt(review.period_end)}`;
+    }
     const labels: Record<string, string> = {
       '1_month': 'Mensal',
       '3_months': 'Trimestral',
       '6_months': 'Semestral',
       '12_months': 'Anual',
       'manual': 'Manual',
+      'formal': 'Formal',
     };
-    return labels[periodType] || periodType;
+    return labels[review.period_type] || review.period_type;
   };
 
   if (loading) {
