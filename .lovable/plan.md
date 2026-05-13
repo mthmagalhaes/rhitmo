@@ -1,77 +1,56 @@
-## O que encontrei
+## Contexto
 
-**Cobrança de 30/04 em matheus.magalhaes@fstr.co**
-- Cliente Stripe: `cus_U9JsFzXCJwkPXH`
-- Subscription **ativa**: `sub_1TBhYwIF4fHxJpjHACfKhfQq`
-  - Produto: "Rhitmo Business (Licensed)" × 3
-  - Preço: `price_1TCQf0IF4fHxJpjH4Bx2aIbg` (R$ 69/seat/mês, BRL)
-  - Próxima fatura: 30/mai (R$ 0,00 — provável crédito ou cupom aplicado, mas a sub continua existindo e voltará a cobrar quando o crédito acabar)
-- Cobranças passadas: R$ 69,00 em 30/mar e R$ 133,56 em 30/abr (proration).
+Hoje o Ambient Mode aparece como um card solto, separado do Slack, e os toggles só ficam editáveis para `isHRAdmin`. Isso quebra o caso real do líder solo: ele cria o workspace, conecta o próprio Slack, lidera 2–5 pessoas, mas não tem permissão de ligar/desligar a captura — fica preso em "Somente leitura" sem ter pra quem pedir.
 
-**Workspace dele no banco** (`Faster Ops`, owner_id=`79a6f679...`)
-- `grandfather_until = 2026-11-08` → marcado como Early Adopter até nov/2026
-- `paid_seats = 0`, `plan_tier = business` (legado)
-- Teams: 5 times com 6 liderados no total
+## O que vamos mudar
 
-**Por que a cobrança ainda está rolando**
-A subscription foi criada **antes** do grandfather ser aplicado. O grandfather hoje só:
-- bloqueia novos checkouts (`create-checkout-session` retorna no-op),
-- bloqueia `update-subscription` (sync_seats vira no-op).
+### 1. Embutir Ambient Mode dentro do card Slack
 
-Mas a subscription antiga **não é cancelada automaticamente**, então o Stripe continua faturando até o cartão quebrar ou alguém cancelar manualmente.
+- `src/components/settings/AmbientSlackSettings.tsx`: adicionar variante `embedded`. Quando embutido, renderiza um bloco interno (sem `<Card>` próprio), separado do card pai por `border-t border-border/40` e `pt-4 mt-4`. Header vira um título menor (`text-sm font-medium` + ícone Eye + badge "Slack" + badge "Somente leitura" quando aplicável). Mantém os dois toggles e o botão "Gerenciar canais".
+- `src/pages/lider/Configuracoes.tsx > IntegrationsTab`:
+  - Remover o render solto de `<AmbientSlackSettings />` no fim.
+  - Refatorar o `.map(items)` para que o card do Slack, quando `slack.isConnected === true`, renderize `<AmbientSlackSettings variant="embedded" />` dentro do `<CardContent>` (logo abaixo do botão "Desconectar"). Card do Google Calendar continua igual.
+  - Como os dois cards podem ter alturas diferentes agora, manter o `grid md:grid-cols-2` mas adicionar `items-start` para que o card do Slack cresça sem esticar o do Calendar.
 
----
+### 2. Corrigir autoridade do toggle (líder solo)
 
-## Fluxo de cobrança atual (resposta à 2ª pergunta)
+Regra nova: **pode editar quem é Owner do workspace OU HR Admin**. O líder solo é o Owner do próprio workspace (`workspaces.owner_id = auth.uid()`), então passa.
 
-Hoje o modelo é **per-seat com 3 seats grátis**, definido em:
-- `src/hooks/usePlanLimits.ts` → `FREE_SEATS = 3`
-- `supabase/functions/create-checkout-session/index.ts` → `seatsToPay = max(1, total − 3)`
-- `supabase/functions/update-subscription/index.ts` → recalcula quantity sempre que `team_members` muda
-- `src/lib/syncStripeSeats.ts` → disparado em INSERT/DELETE de `team_members` (`NewMemberDialog`, etc.)
+- `src/contexts/AccountContext.tsx`:
+  - Adicionar `isWorkspaceOwner: boolean` ao `AccountContextValue`.
+  - Estender o RPC `get_account_context` (migration) para retornar também `is_workspace_owner` (compara `workspaces.owner_id` com `p_user_id`). Setar a flag no `useMemo`.
+- `src/components/settings/AmbientSlackSettings.tsx`:
+  - `const canEdit = isHRAdmin || isWorkspaceOwner;`
+  - Atualizar copy do badge/tooltip "Somente leitura" para: "Apenas o owner do workspace ou um HR Admin pode alterar."
 
-Comportamento por situação:
+### 3. RLS / backend
 
-| Situação | O que acontece |
-|---|---|
-| Workspace novo com até 3 liderados | Sem checkout, sem cartão, sem cobrança |
-| Adiciona o 4º liderado | `usePlanLimits.needsSeatPurchase=true` → UI abre `SeatPurchaseModal` → `create-checkout-session` → Stripe Checkout pede cartão → webhook grava `paid_seats` e cria `subscription` |
-| Remove liderado depois de pagar | `syncStripeSeats()` chama `update-subscription` → diminui quantity com proration |
-| Workspace com `grandfather_until` no futuro | Checkout bloqueado, sync no-op → uso liberado **sem** cobrança |
+A tabela que guarda `ambient_mode_enabled` / `autojoin_public_channels` (provavelmente `slack_workspace_settings` ou similar usada por `useSlackChannelMutations`) precisa permitir UPDATE para Owner além de HR Admin.
 
-Então o fluxo desejado ("só cobra se ultrapassar o free e exigir cartão") **já está implementado**. O problema é específico da subscription legada do `matheus.magalhaes@fstr.co`, que precisa ser encerrada manualmente.
+- Migration: revisar a policy de UPDATE da tabela alvo (vou inspecionar o nome real ao implementar via `useSlackChannels.ts`) e ajustar o predicado para `public.has_role(auth.uid(),'hr_admin') OR EXISTS (select 1 from workspaces w where w.id = workspace_id and w.owner_id = auth.uid())`.
+- Manter `SECURITY DEFINER` + `LANGUAGE plpgsql` se houver função auxiliar (regra do projeto para evitar recursão em RLS).
 
----
+## Fora do escopo
 
-## Plano de ação
+- Não mexer em `useSlackChannels` além do necessário para refletir o novo `canEdit`.
+- Não tocar nas outras abas de Configurações.
+- Não alterar a regra para liderado/usuário comum (continuam sem acesso).
 
-### 1. Cancelar a subscription residual no Stripe
-Cancelar `sub_1TBhYwIF4fHxJpjHACfKhfQq` via `stripe--cancel_subscription` (cancelamento imediato — como a próxima fatura é R$ 0,00 e a intenção é não cobrar mais nada, não precisa esperar o fim do ciclo).
+## Detalhes técnicos
 
-### 2. Refletir no banco
-Migration para marcar a row em `public.subscriptions` desse workspace como `status='canceled'` e zerar `paid_seats` (já está 0, mas garantir consistência):
-```sql
-update public.subscriptions
-   set status = 'canceled',
-       canceled_at = now()
- where stripe_subscription_id = 'sub_1TBhYwIF4fHxJpjHACfKhfQq';
-
-update public.workspaces
-   set paid_seats = 0
- where id = '27ee8977-d538-482f-a9a7-7a4363b89e5e';
+```text
+IntegrationsTab grid (md:grid-cols-2, items-start)
+├── Card "Slack" (rounded-2xl)
+│   ├── CardHeader (ícone + título + badge + descrição)
+│   └── CardContent
+│       ├── Botão Conectar/Desconectar
+│       └── [se conectado] AmbientSlackSettings variant="embedded"
+│           ├── border-t + pt-4 mt-4
+│           ├── título "Ambient Mode" + badges
+│           ├── toggle "Capturar sinais de canais públicos"
+│           ├── toggle "Entrar automaticamente em novos canais"
+│           └── footer: privacidade + "Gerenciar canais"
+└── Card "Google Calendar" (inalterado)
 ```
 
-### 3. Verificar
-- `stripe--list_subscriptions` em `cus_U9JsFzXCJwkPXH` → deve voltar vazio/`canceled`.
-- O `grandfather_until = 2026-11-08` permanece, então mesmo que ele adicione mais liderados não vai abrir checkout até lá.
-
-### 4. Não-objetivos
-- **Não** alterar o fluxo geral de seats (já funciona como o usuário quer).
-- **Não** mexer em outros workspaces.
-- **Não** emitir refund das cobranças passadas (R$ 69 + R$ 133,56) — isso é decisão de negócio; se quiser, faço em passo separado depois de confirmar.
-
----
-
-## Risco
-
-Se em algum momento o `grandfather_until` for removido, ele voltará a cair na regra `FREE_SEATS=3` e precisaria pagar a partir do 4º liderado (hoje tem 6). Vale lembrar disso quando a data se aproximar.
+Memória relevante a atualizar após implementação: `mem://architecture/papeis-e-permissoes` (Owner agora também controla Ambient Mode no front) e adicionar nota em `mem://features/slack/...` sobre embed + permissão.
