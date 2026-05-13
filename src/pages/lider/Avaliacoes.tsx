@@ -3,7 +3,7 @@
 // inline. Sem redirect para /member/:id, sem modal de "escolha o tipo".
 import { useState, useMemo } from 'react';
 import { startOfMonth, subMonths } from 'date-fns';
-import { ClipboardCheck, Music, BarChart3, Sparkles } from 'lucide-react';
+import { ClipboardCheck, Music, Sparkles } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MemberAvatar } from '@/components/MemberAvatar';
@@ -11,7 +11,6 @@ import { MemberMasterList } from '@/components/leader/MemberMasterList';
 import { EmptyMemberDetail } from '@/components/leader/EmptyMemberDetail';
 import { RhitmoTimelineCard } from '@/components/recaps/RhitmoTimelineCard';
 import { MonthlyRecapSection } from '@/components/recaps/MonthlyRecapSection';
-import { QuarterlyRecapSection } from '@/components/recaps/QuarterlyRecapSection';
 import { PerformanceReviewList } from '@/components/PerformanceReviewList';
 import { CreateFormalReviewDialog } from '@/components/review/CreateFormalReviewDialog';
 import { useLeaderMembers } from '@/hooks/useLeaderMembers';
