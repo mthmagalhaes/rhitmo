@@ -183,12 +183,12 @@ Deno.serve(async (req) => {
 
     console.log(`Evidence: ${feedbackCount} feedbacks, ${meetingCount} meetings, ${ctxCount} ctx, ${pulseCount} pulses, ${peerCount} peers, ${reviews360Count} 360°, ${quarterlyCount} quarterlies, ${monthlyCount} monthlies`);
 
-    if (totalEvidence === 0 && quarterlyCount === 0 && monthlyCount === 0) {
+    if (totalRawEvidence === 0 && quarterlyCount === 0 && monthlyCount === 0) {
       // Update with empty message
       await supabase
         .from("performance_reviews")
         .update({
-          content: "<p>Nenhuma evidência encontrada no período selecionado. Adicione anotações, registre 1:1s ou confirme um Resumo Mensal/Trimestral antes de gerar a review.</p>",
+          content: "<p>Nenhuma evidência encontrada no período selecionado. Adicione anotações, registre 1:1s, lance pulses ou confirme um Resumo Mensal/Trimestral antes de gerar a review.</p>",
           evidence_count: 0,
           updated_at: new Date().toISOString(),
         })
@@ -200,16 +200,102 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Build evidence context — recaps confirmados pelo líder vêm PRIMEIRO (são a espinha)
+    // Build evidence context — RAW evidence first (the base), recaps last (calibration layer)
     let evidenceText = "";
     const hasConfirmedRecaps = quarterlyCount > 0 || monthlyCount > 0;
+    const lowRawEvidence = totalRawEvidence < 3;
+
+    // ============ RAW EVIDENCE (base of the review) ============
+    if (feedbacks && feedbacks.length > 0) {
+      evidenceText += "\n## 📝 ANOTAÇÕES E FEEDBACKS DO LÍDER:\n\n";
+      feedbacks.forEach((f, idx) => {
+        const date = new Date(f.occurred_at).toLocaleDateString("pt-BR");
+        evidenceText += `[Anotação ${idx + 1} - ${date}] [doc_id: ${f.id}] Tipo: ${f.type}\n`;
+        evidenceText += `${f.content}\n`;
+        if (f.tags && f.tags.length > 0) evidenceText += `Tags: ${f.tags.join(", ")}\n`;
+        if (f.summary) evidenceText += `Resumo: ${f.summary}\n`;
+        evidenceText += "\n";
+      });
+    }
+
+    if (meetings && meetings.length > 0) {
+      evidenceText += "\n## 🎙️ REUNIÕES 1:1:\n\n";
+      meetings.forEach((m, idx) => {
+        const date = new Date(m.created_at).toLocaleDateString("pt-BR");
+        evidenceText += `[1:1 ${idx + 1} - ${date}] [doc_id: ${m.id}]\n`;
+        if (m.leader_notes) evidenceText += `Notas do líder: ${m.leader_notes}\n`;
+        if (m.transcript) evidenceText += `Transcrição: ${m.transcript.substring(0, 500)}\n`;
+        if (m.extracted_themes && m.extracted_themes.length > 0) {
+          evidenceText += `Temas: ${m.extracted_themes.join(", ")}\n`;
+        }
+        evidenceText += "\n";
+      });
+    }
+
+    if (ctxEvidence && ctxEvidence.length > 0) {
+      evidenceText += "\n## 🌐 SINAIS DE CONTEXTO (Slack, rede, pulses processados):\n\n";
+      ctxEvidence.forEach((e: any, idx: number) => {
+        const date = new Date(e.occurred_at).toLocaleDateString("pt-BR");
+        evidenceText += `[Sinal ${idx + 1} - ${date}] [doc_id: ${e.id}] Tipo: ${e.evidence_type}\n`;
+        if (e.title) evidenceText += `Título: ${e.title}\n`;
+        if (e.summary) evidenceText += `Resumo: ${e.summary}\n`;
+        if (e.sentiment) evidenceText += `Sentimento: ${e.sentiment}\n`;
+        if (e.tags && e.tags.length > 0) evidenceText += `Tags: ${e.tags.join(", ")}\n`;
+        evidenceText += "\n";
+      });
+    }
+
+    if (pulses && pulses.length > 0) {
+      evidenceText += "\n## 💓 PULSES RESPONDIDOS PELO LIDERADO:\n\n";
+      pulses.forEach((p: any, idx: number) => {
+        const date = p.completed_at ? new Date(p.completed_at).toLocaleDateString("pt-BR") : "—";
+        evidenceText += `[Pulse ${idx + 1} - ${date}] [doc_id: ${p.id}] Tipo: ${p.type}${p.name ? ` (${p.name})` : ""}\n`;
+        if (p.motivation) evidenceText += `Motivação do líder: ${p.motivation}\n`;
+        if (p.summary) evidenceText += `Resumo IA: ${typeof p.summary === "string" ? p.summary : JSON.stringify(p.summary)}\n`;
+        if (Array.isArray(p.responses) && p.responses.length > 0) {
+          const preview = JSON.stringify(p.responses).substring(0, 400);
+          evidenceText += `Respostas: ${preview}\n`;
+        }
+        evidenceText += `Anonimato: ${p.anonymity}\n\n`;
+      });
+    }
+
+    if (peerResponses && peerResponses.length > 0) {
+      evidenceText += "\n## 👥 RESPOSTAS DE PARES (peer feedback):\n\n";
+      peerResponses.forEach((p: any, idx: number) => {
+        const date = p.responded_at ? new Date(p.responded_at).toLocaleDateString("pt-BR") : "—";
+        evidenceText += `[Par ${idx + 1} - ${date}] [doc_id: ${p.id}] Força do laço: ${p.edge_strength_at_request}\n`;
+        if (p.response_text) evidenceText += `Resposta (par anônimo): ${p.response_text}\n`;
+        evidenceText += "\n";
+      });
+    }
+
+    if (reviews360 && reviews360.length > 0) {
+      evidenceText += "\n## 🔄 AVALIAÇÕES 360° (autoavaliação / pares / upwards):\n\n";
+      reviews360.forEach((r: any, idx: number) => {
+        const date = new Date(r.created_at).toLocaleDateString("pt-BR");
+        const typeLabel = r.review_type === "self" ? "Autoavaliação" : r.review_type === "peer" ? "Avaliação de par" : "Upwards (liderado avalia líder)";
+        evidenceText += `[${typeLabel} ${idx + 1} - ${date}] [doc_id: ${r.id}]\n`;
+        // Strip HTML tags from content for the prompt (Tiptap stores HTML)
+        const plain = (r.content || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().substring(0, 800);
+        if (plain) evidenceText += `${plain}\n`;
+        if (r.classification) evidenceText += `Classificação sugerida: ${r.classification}\n`;
+        evidenceText += "\n";
+      });
+    }
+
+    // ============ CALIBRATION LAYER (recaps confirmed by leader) ============
+    if (hasConfirmedRecaps) {
+      evidenceText += "\n## 🧭 CALIBRAÇÕES JÁ CONFIRMADAS PELO LÍDER (camada de contexto, NÃO única fonte):\n\n";
+      evidenceText += "_Use estes recaps para ancorar/triangular conclusões sobre os blocos 3, 5 e 6 — mas a base da review são as evidências cruas acima._\n\n";
+    }
 
     if (quarterlies && quarterlies.length > 0) {
-      evidenceText += "\n## CALIBRAÇÕES TRIMESTRAIS CONFIRMADAS PELO LÍDER (espinha da review):\n\n";
+      evidenceText += "### Trimestrais confirmados\n\n";
       quarterlies.forEach((q: any) => {
         const qDate = new Date(q.period_quarter);
         const qLabel = `Q${Math.floor(qDate.getUTCMonth() / 3) + 1} ${qDate.getUTCFullYear()}`;
-        evidenceText += `### Trimestre ${qLabel}\n`;
+        evidenceText += `**Trimestre ${qLabel}**\n`;
         if (Array.isArray(q.highlights) && q.highlights.length > 0) {
           evidenceText += `Destaques validados:\n`;
           q.highlights.forEach((h: any) => {
@@ -231,10 +317,10 @@ Deno.serve(async (req) => {
     }
 
     if (monthlies && monthlies.length > 0) {
-      evidenceText += "\n## RESUMOS MENSAIS CONFIRMADOS PELO LÍDER:\n\n";
+      evidenceText += "### Mensais confirmados\n\n";
       monthlies.forEach((m: any) => {
         const monthLabel = new Date(m.period_month).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-        evidenceText += `### ${monthLabel}${m.low_evidence ? " (poucas evidências)" : ""}\n`;
+        evidenceText += `**${monthLabel}**${m.low_evidence ? " (poucas evidências)" : ""}\n`;
         if (m.highlight_text) evidenceText += `Mandou bem: ${m.highlight_text}\n`;
         if (m.concern_text) evidenceText += `Atenção: ${m.concern_text}\n`;
         if (m.dominant_pattern) evidenceText += `Padrão do mês: ${m.dominant_pattern}\n`;
@@ -242,38 +328,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (feedbacks && feedbacks.length > 0) {
-      evidenceText += `\n## ANOTAÇÕES E FEEDBACKS DO LÍDER ${hasConfirmedRecaps ? "(suporte/citação para os recaps acima)" : ""}:\n\n`;
-      feedbacks.forEach((f, idx) => {
-        const date = new Date(f.occurred_at).toLocaleDateString("pt-BR");
-        evidenceText += `[Anotação ${idx + 1} - ${date}] [doc_id: ${f.id}] Tipo: ${f.type}\n`;
-        evidenceText += `${f.content}\n`;
-        if (f.tags && f.tags.length > 0) {
-          evidenceText += `Tags: ${f.tags.join(", ")}\n`;
-        }
-        if (f.summary) {
-          evidenceText += `Resumo: ${f.summary}\n`;
-        }
-        evidenceText += "\n";
-      });
-    }
-
-    if (meetings && meetings.length > 0) {
-      evidenceText += "\n## REUNIÕES 1:1:\n\n";
-      meetings.forEach((m, idx) => {
-        const date = new Date(m.created_at).toLocaleDateString("pt-BR");
-        evidenceText += `[1:1 ${idx + 1} - ${date}] [doc_id: ${m.id}]\n`;
-        if (m.leader_notes) {
-          evidenceText += `Notas do líder: ${m.leader_notes}\n`;
-        }
-        if (m.transcript) {
-          evidenceText += `Transcrição: ${m.transcript.substring(0, 500)}\n`;
-        }
-        if (m.extracted_themes && m.extracted_themes.length > 0) {
-          evidenceText += `Temas: ${m.extracted_themes.join(", ")}\n`;
-        }
-        evidenceText += "\n";
-      });
+    if (lowRawEvidence && hasConfirmedRecaps) {
+      evidenceText += "\n## ⚠️ ALERTA DE EVIDÊNCIA BAIXA\nEsta review está sendo gerada com pouca evidência crua (menos de 3 itens entre anotações, 1:1s, pulses, peer e 360°). Os recaps confirmados pelo líder estão presentes, mas é recomendado que o líder confirme cuidadosamente antes de compartilhar. Reflita esse alerta no rodapé da review.\n";
     }
 
     const memberName = member.name;
