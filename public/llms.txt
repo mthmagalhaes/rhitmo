@@ -1,0 +1,17 @@
+# Rhitmo
+
+> Plataforma AI-native de liderança e gestão de performance: transforma 1:1s em avaliações prontas, detecta vieses e atua como Mentor IA 24/7 para líderes e liderados.
+
+A Rhitmo é um "Service-as-Software" para liderança: importa anotações de reuniões (Magic Paste, transcrição automática via Recall.ai, integração com Slack), constrói um Context Graph privado por liderado e gera briefs de 1:1, PDIs e avaliações formais com citações auditáveis.
+
+## Pages
+
+- [Home](/): Visão geral do produto, planos e provas sociais.
+- [Enterprise](/enterprise): Plano corporativo, SSO, HR Dashboard e integração com HRIS.
+- [Sign in](/auth): Login para líderes, liderados e administradores de RH.
+- [Get started](/auth/start): Cadastro com seleção de persona (líder ou HR Admin).
+
+## Optional
+
+- [Terms of Service](/terms-of-service): Termos de uso, planos e cobrança.
+- [Privacy Policy](/privacy-policy): Política de privacidade conforme LGPD.
