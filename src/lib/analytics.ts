@@ -58,9 +58,12 @@ export type FunnelEvent =
   | 'auth_email_resent'
   | 'account_load_failed'
   | 'account_load_slow'
+  | 'account_load_delayed'
   | 'tour_step_missing'
   | 'plan_limit_hit'
-  | 'wizard_draft_restored';
+  | 'wizard_draft_restored'
+  | 'leader_signup_failed'
+  | 'member_email_edited';
 
 interface FunnelEventPayload {
   workspaceId?: string | null;
