@@ -377,6 +377,7 @@ export default function RhitmoSync() {
       setCompleted(true);
       clearDraft();
       trackFunnel('member_sync_completed', { memberId });
+      toast.success('Perfil sintonizado com sucesso!');
     } catch (error: unknown) {
       console.error('Error submitting:', error);
       const rawMessage = error instanceof Error ? error.message : '';
