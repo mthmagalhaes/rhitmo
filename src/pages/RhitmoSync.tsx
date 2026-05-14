@@ -203,6 +203,7 @@ export default function RhitmoSync() {
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<SyncFormData>(initialFormData);
   const [memberName, setMemberName] = useState<string>('');
+  const [memberEmail, setMemberEmail] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [completed, setCompleted] = useState(false);
@@ -235,6 +236,9 @@ export default function RhitmoSync() {
       const member = Array.isArray(data) ? data[0] : data;
 
       setMemberName(member.name);
+      if ((member as { email?: string }).email) {
+        setMemberEmail((member as { email: string }).email);
+      }
 
       if (member.work_style_data) {
         setCompleted(true);
@@ -410,14 +414,28 @@ export default function RhitmoSync() {
           <div className="space-y-2 pt-2">
             <Button
               className="w-full rounded-xl"
-              onClick={() => navigate('/auth')}
+              onClick={() => {
+                const params = new URLSearchParams({ mode: 'signup' });
+                if (memberEmail) params.set('email', memberEmail);
+                navigate(`/auth?${params.toString()}`);
+              }}
             >
-              Entrar ou criar minha conta
+              {memberEmail ? `Criar conta com ${memberEmail}` : 'Criar minha conta'}
             </Button>
-            <p className="text-xs text-muted-foreground">
-              Já tem login? Entre com a mesma conta e abra este link novamente.
-              <br />
-              Não recebeu o convite? Peça ao seu líder para reenviar.
+            <Button
+              variant="outline"
+              className="w-full rounded-xl"
+              onClick={() => {
+                const params = new URLSearchParams({ mode: 'login' });
+                if (memberEmail) params.set('email', memberEmail);
+                navigate(`/auth?${params.toString()}`);
+              }}
+            >
+              Já tenho conta — entrar
+            </Button>
+            <p className="text-xs text-muted-foreground pt-1">
+              Use o mesmo e-mail que recebeu o convite. Depois de logar, abra
+              este link de novo — vai funcionar automaticamente.
             </p>
           </div>
         </Card>

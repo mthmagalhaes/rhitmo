@@ -57,6 +57,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setUser(session?.user ?? null);
 
+      // Auto-claim: quando o user acabou de logar/cadastrar, tenta vincular
+      // qualquer team_members órfão criado pelo líder com o mesmo e-mail.
+      // Resolve o caso "preencheu o Sync mas a conta não estava vinculada"
+      // sem exigir invite_token explícito.
+      if (
+        (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'USER_UPDATED') &&
+        session?.user?.id &&
+        session.user.email
+      ) {
+        // fire-and-forget; nunca bloqueia auth
+        setTimeout(() => {
+          (supabase.rpc as any)('claim_team_member_by_email', {
+            p_user_id: session.user.id,
+            p_email: session.user.email!,
+          }).then(({ data, error }: { data: unknown; error: unknown }) => {
+            if (error) {
+              const msg = (error as { message?: string })?.message ?? String(error);
+              console.warn('[AuthProvider] claim_team_member_by_email falhou:', msg);
+            } else if (typeof data === 'number' && data > 0) {
+              console.info(`[AuthProvider] Auto-vinculado a ${data} liderado(s) pré-cadastrado(s)`);
+            }
+          });
+        }, 0);
+      }
+
       // Wait for initializeAuth on the very first page load
       if (initializedRef.current || event !== 'INITIAL_SESSION') {
         setLoading(false);
