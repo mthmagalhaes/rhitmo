@@ -20,7 +20,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { useHomeRoute } from '@/hooks/useHomeRoute';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Music, BookOpen, FileText, Clock, Lock, ArrowRight, Briefcase, Heart, Megaphone, Compass, DollarSign, Shield, GraduationCap, Crown, HelpCircle, Sunrise, Moon, Search, CheckCircle, MessageSquare, CheckCircle2, Sprout, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, PenSquare, Loader2, Sparkles, Mail, Copy, Music, BookOpen, FileText, Clock, Lock, ArrowRight, Briefcase, Heart, Megaphone, Compass, DollarSign, Shield, GraduationCap, Crown, HelpCircle, Sunrise, Moon, Search, CheckCircle, MessageSquare, CheckCircle2, Sprout, MoreHorizontal, Calendar as CalendarIcon } from 'lucide-react';
+import { OneOnOnePrepCard } from '@/components/oneonone/OneOnOnePrepCard';
+import { MemberUpcomingMeetings } from '@/components/oneonone/MemberUpcomingMeetings';
+import { SlackActivityCard } from '@/components/dashboard/SlackActivityCard';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -92,7 +95,7 @@ const MemberDetails = () => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
-  const [activeTab, setActiveTab] = useState<'diary' | 'rhitmo' | 'reviews'>('diary');
+  const [activeTab, setActiveTab] = useState<'um_pra_um' | 'diary' | 'rhitmo' | 'reviews'>('um_pra_um');
   const [activeRhitmoSub, setActiveRhitmoSub] = useState<'monthly'>('monthly');
   const { t: tRhitmo } = useTranslation('rhitmo');
   const { toast } = useToast();
@@ -109,7 +112,7 @@ const MemberDetails = () => {
       setDialogOpen(true);
     }
     const tab = params.get('tab');
-    if (tab === 'rhitmo' || tab === 'reviews' || tab === 'diary') {
+    if (tab === 'rhitmo' || tab === 'reviews' || tab === 'diary' || tab === 'um_pra_um') {
       setActiveTab(tab);
     }
     if (tab === 'reviews') {
@@ -800,7 +803,11 @@ const MemberDetails = () => {
         })()}
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
+            <TabsTrigger value="um_pra_um" className="flex items-center gap-2">
+              <CalendarIcon className="h-4 w-4" />
+              1:1
+            </TabsTrigger>
             <TabsTrigger value="diary" className="flex items-center gap-2">
               <BookOpen className="h-4 w-4" />
               Diário de Bordo
@@ -814,6 +821,40 @@ const MemberDetails = () => {
               Avaliações Formais
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="um_pra_um">
+            <div className="space-y-6">
+              <OneOnOnePrepCard
+                workspaceId={workspace?.id ?? null}
+                memberId={member.id}
+              />
+              <section className="space-y-3">
+                <h2 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                  Próximas reuniões
+                </h2>
+                <MemberUpcomingMeetings
+                  memberId={member.id}
+                  memberName={member.name}
+                />
+              </section>
+              <SlackActivityCard memberId={member.id} />
+              <Card
+                className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-4 flex items-center justify-between cursor-pointer hover:-translate-y-0.5 transition-transform"
+                onClick={() => setActiveTab('diary')}
+              >
+                <div>
+                  <p className="font-serif text-sm font-bold tracking-tight">
+                    Histórico de 1:1s e notas
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Veja todas as 1:1s anteriores, briefs e transcrições deste liderado.
+                  </p>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </Card>
+            </div>
+          </TabsContent>
+
           
           <TabsContent value="diary">
             <div>
