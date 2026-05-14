@@ -19,6 +19,7 @@ import { NewNoteDialog } from '@/components/NewNoteDialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useLeaderMembers, type LeaderMemberRow } from '@/hooks/useLeaderMembers';
+import { VersionSwitchBanner } from '@/components/leader/diario-v2/VersionSwitchBanner';
 
 export default function LiderDiario() {
   const { workspace } = useLeaderMembers(); // pré-aquece cache + obtém workspace para o NewNoteDialog
@@ -115,7 +116,7 @@ export default function LiderDiario() {
         <div className="lg:hidden px-4 sm:px-6 pt-4" />
 
         {!selected ? (
-          <div className="max-w-5xl px-6 lg:px-8 py-6">
+          <div className="max-w-5xl px-6 lg:px-8 py-6 space-y-4">
             <header className="mb-2">
               <h1 className="font-serif text-2xl font-bold tracking-tight">
                 Diário de Bordo
@@ -125,6 +126,7 @@ export default function LiderDiario() {
                 Notas privadas, visíveis apenas para você.
               </p>
             </header>
+            <VersionSwitchBanner variant="v1-to-v2" />
             <EmptyMemberDetail
               icon={Lock}
               title="Selecione alguém na lista ao lado"
