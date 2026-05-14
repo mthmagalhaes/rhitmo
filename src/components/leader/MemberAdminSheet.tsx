@@ -31,7 +31,7 @@ import {
   Archive,
   ArchiveRestore,
   BookOpen,
-  MessageSquare,
+  Target,
   Sparkles,
   ClipboardList,
   ArrowRight,
@@ -141,7 +141,7 @@ export function MemberAdminSheet({
 
   const shortcuts: Array<{ icon: typeof BookOpen; label: string; path: string }> = [
     { icon: BookOpen, label: 'Diário de bordo', path: `/lider/diario?member=${member.id}` },
-    { icon: MessageSquare, label: '1:1s', path: `/lider/1on1s?member=${member.id}` },
+    { icon: Target, label: 'Objetivos', path: `/lider/objetivos?member=${member.id}` },
     { icon: ClipboardList, label: 'Avaliações', path: `/lider/avaliacoes?member=${member.id}` },
     { icon: Sparkles, label: 'Rhitmo (chat)', path: `/lider/mentor?member=${member.id}` },
   ];
