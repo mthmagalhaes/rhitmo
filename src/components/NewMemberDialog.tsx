@@ -9,10 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useEnforcedLimits } from '@/hooks/useEnforcedLimits';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, UserPlus } from 'lucide-react';
+import { Loader2, UserPlus, AlertTriangle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { z } from 'zod';
 import { Team } from '@/types/team';
 import { syncStripeSeats } from '@/lib/syncStripeSeats';
+import { trackFunnel } from '@/lib/analytics';
 
 interface NewMemberDialogProps {
   open: boolean;
@@ -121,7 +123,10 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
     }
 
     // Check plan limit
-    if (!enforceLimit(memberCount, limits.maxMembers, 'liderados')) return;
+    if (!enforceLimit(memberCount, limits.maxMembers, 'liderados')) {
+      trackFunnel('plan_limit_hit', { payload: { resource: 'members', current: memberCount, max: limits.maxMembers } });
+      return;
+    }
 
     setLoading(true);
 
