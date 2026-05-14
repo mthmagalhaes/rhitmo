@@ -80,7 +80,6 @@ const HEALTH_LABEL: Record<keyof typeof HEALTH_CLASSES, string> = {
 type HealthFilter = 'all' | 'fresh' | 'warm' | 'cold';
 
 function PeopleListTab({ onNewMember }: { onNewMember: () => void }) {
-  const navigate = useNavigate();
   const qc = useQueryClient();
   const [showArchived, setShowArchived] = useState(false);
   const { teams, members, isLoading, workspace } = useLeaderMembers({ includeArchived: showArchived });
