@@ -8,6 +8,7 @@ import { ActivitySheet } from '@/components/ActivitySheet';
 import { LeaderTour } from '@/components/onboarding/LeaderTour';
 import { useAuth } from '@/hooks/useAuth';
 import { useAccount } from '@/contexts/AccountContext';
+import { AccountLoadFailed, AccountLoadingSlow } from '@/components/AccountLoadFailed';
 
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -17,6 +18,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     workspaceId,
     loading: accountLoading,
     hasError,
+    isSlowLoad,
     isLinkedMember,
     isLeader,
     isHRAdmin,
