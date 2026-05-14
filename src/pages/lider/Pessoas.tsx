@@ -10,7 +10,8 @@ import { BulkOnboardDialog } from '@/components/admin/BulkOnboardDialog';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Users, Building2, BarChart3, MailPlus, UserPlus, Mail, Send, Loader2 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Users, Building2, BarChart3, MailPlus, UserPlus, Mail, Send, Loader2, AlertTriangle } from 'lucide-react';
 import { MembersGrid } from '@/components/leader/MembersGrid';
 
 function MembersTab() {
@@ -114,6 +115,21 @@ function InvitesTab({ onInvite }: { onInvite: () => void }) {
       return data || [];
     },
   });
+
+  // Sprint 2.5 — bounced emails (suppression list)
+  const { data: suppressed } = useQuery({
+    queryKey: ['suppressed-member-emails'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_suppressed_member_emails');
+      if (error) {
+        console.warn('[Pessoas] suppressed-emails RPC failed:', error.message);
+        return [] as string[];
+      }
+      return ((data ?? []) as Array<{ email: string }>).map((r) => r.email.toLowerCase());
+    },
+    staleTime: 60_000,
+  });
+  const suppressedSet = new Set(suppressed ?? []);
 
   return (
     <div className="space-y-4">
