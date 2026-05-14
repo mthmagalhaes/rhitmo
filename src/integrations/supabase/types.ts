@@ -2975,6 +2975,10 @@ export type Database = {
         Returns: boolean
       }
       check_is_admin: { Args: never; Returns: boolean }
+      claim_team_member_by_email: {
+        Args: { p_email: string; p_user_id: string }
+        Returns: number
+      }
       cleanup_expired_impersonations: { Args: never; Returns: undefined }
       cleanup_expired_oauth_states: { Args: never; Returns: undefined }
       create_default_competency_framework: {
