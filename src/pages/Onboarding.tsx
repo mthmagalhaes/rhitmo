@@ -335,6 +335,8 @@ export default function Onboarding() {
       }
 
       setCompleted(true);
+      clearDraft();
+      trackFunnel('member_onboarding_completed');
       toast({ 
         title: "Perfil configurado!", 
         description: "Bem-vindo ao Rhitmo!" 
