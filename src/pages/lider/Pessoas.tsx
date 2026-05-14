@@ -57,7 +57,51 @@ function TeamsTab() {
   );
 }
 
+function ResendInviteButton({ memberId, memberName, memberEmail }: { memberId: string; memberName: string; memberEmail: string | null }) {
+  const [sending, setSending] = useState(false);
+  const handleResend = async () => {
+    if (!memberEmail) {
+      toast.error('Esse liderado não tem e-mail cadastrado.');
+      return;
+    }
+    setSending(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const leaderName = (user?.user_metadata?.full_name as string | undefined) ?? user?.email?.split('@')[0] ?? '';
+      const syncUrl = `${window.location.origin}/sync/${memberId}`;
+      const { error } = await supabase.functions.invoke('send-transactional-email', {
+        body: {
+          templateName: 'member-welcome',
+          recipientEmail: memberEmail,
+          // sufixo com timestamp pra permitir reenvio (idempotência por envio único era um bug)
+          idempotencyKey: `member-welcome-${memberId}-resend-${Date.now()}`,
+          templateData: {
+            memberName,
+            leaderName,
+            teamName: '',
+            syncUrl,
+          },
+        },
+      });
+      if (error) throw error;
+      toast.success(`Convite reenviado para ${memberEmail}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Falha ao reenviar: ${msg}`);
+    } finally {
+      setSending(false);
+    }
+  };
+  return (
+    <Button size="sm" variant="outline" className="rounded-xl gap-2" onClick={handleResend} disabled={sending}>
+      {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+      Reenviar
+    </Button>
+  );
+}
+
 function InvitesTab({ onInvite }: { onInvite: () => void }) {
+  const queryClient = useQueryClient();
   const { data: pending } = useQuery({
     queryKey: ['pending-invites'],
     queryFn: async () => {
@@ -100,15 +144,18 @@ function InvitesTab({ onInvite }: { onInvite: () => void }) {
         <div className="space-y-2">
           {pending.map((p) => (
             <Card key={p.id} className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
-              <CardContent className="flex items-center justify-between py-3">
-                <div className="flex items-center gap-3">
-                  <div className="rounded-xl bg-primary/10 p-2"><Mail className="w-4 h-4 text-primary" /></div>
-                  <div>
-                    <p className="font-medium text-sm">{p.name}</p>
-                    <p className="text-xs text-muted-foreground">{p.email ?? 'sem e-mail'}</p>
+              <CardContent className="flex items-center justify-between py-3 gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="rounded-xl bg-primary/10 p-2 shrink-0"><Mail className="w-4 h-4 text-primary" /></div>
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm truncate">{p.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{p.email ?? 'sem e-mail'}</p>
                   </div>
                 </div>
-                <Badge variant="outline" className="text-xs">Pendente</Badge>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Badge variant="outline" className="text-xs hidden sm:inline-flex">Pendente</Badge>
+                  <ResendInviteButton memberId={p.id} memberName={p.name} memberEmail={p.email} />
+                </div>
               </CardContent>
             </Card>
           ))}
