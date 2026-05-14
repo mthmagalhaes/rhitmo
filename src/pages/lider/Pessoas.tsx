@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAccount } from '@/contexts/AccountContext';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { PageTabs, type PageTab } from '@/components/PageTabs';
 import { EmptyStateHero } from '@/components/EmptyStateHero';
 import { AnalyticsContent } from '@/pages/Analytics';
@@ -9,7 +10,7 @@ import { BulkOnboardDialog } from '@/components/admin/BulkOnboardDialog';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Users, Building2, BarChart3, MailPlus, Rocket, UserPlus, Mail } from 'lucide-react';
+import { Users, Building2, BarChart3, MailPlus, UserPlus, Mail, Send, Loader2 } from 'lucide-react';
 import { MembersGrid } from '@/components/leader/MembersGrid';
 
 function MembersTab() {
