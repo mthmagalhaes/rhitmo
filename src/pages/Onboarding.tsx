@@ -16,6 +16,8 @@ import { cn } from '@/lib/utils';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
 import type { Json } from '@/integrations/supabase/types';
 import { useHomeRoute } from '@/hooks/useHomeRoute';
+import { useWizardDraft } from '@/hooks/useWizardDraft';
+import { trackFunnel } from '@/lib/analytics';
 
 // AI Analysis response type
 interface AIAnalysis {
