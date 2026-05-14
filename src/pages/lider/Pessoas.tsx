@@ -6,7 +6,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { differenceInDays, formatDistanceToNow } from 'date-fns';
+import { differenceInDays, formatDistanceToNow, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAccount } from '@/contexts/AccountContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
@@ -34,11 +35,13 @@ import {
 import {
   Users, Building2, BarChart3, MailPlus, UserPlus, Mail, Send, Loader2,
   AlertTriangle, Pencil, ChevronRight, Search, Plus, MoreHorizontal,
-  Trash2, UserCog, ArrowUp, ArrowDown, X, Copy,
+  Trash2, UserCog, ArrowUp, ArrowDown, X, Copy, Archive, ArchiveRestore,
+  Download, FolderInput, CheckCircle2,
 } from 'lucide-react';
 import { MemberAvatar } from '@/components/MemberAvatar';
 import { useLeaderMembers, type LeaderMemberRow } from '@/hooks/useLeaderMembers';
 import { trackFunnel } from '@/lib/analytics';
+import { downloadCsv } from '@/lib/csvExport';
 import { cn } from '@/lib/utils';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
