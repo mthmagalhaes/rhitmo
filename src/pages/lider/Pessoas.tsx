@@ -4,7 +4,7 @@
 // no Workspace switcher). Substitui /lider/1on1s como home do gerenciamento
 // de time. Tabs: Liderados (default, tabela densa) · Convites · Times · Analytics.
 import { useMemo, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+// useNavigate removido na Sprint 19 — clique no liderado abre MemberAdminSheet, não navega.
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { differenceInDays, formatDistanceToNow, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
