@@ -181,6 +181,27 @@ export default function Onboarding() {
     enabled: !!user,
   });
 
+  // Wizard draft (Sprint 2.3) — persists across reload
+  const draftKey = user?.id ? `onboarding:${user.id}` : null;
+  const { restored, didRestore, save: saveDraft, clear: clearDraft } = useWizardDraft<OnboardingFormData>(
+    draftKey,
+    !completed,
+  );
+
+  // Restore once when available
+  useEffect(() => {
+    if (didRestore && restored) {
+      setFormData(restored.formData);
+      setCurrentStep(restored.currentStep);
+      trackFunnel('wizard_draft_restored', { payload: { wizard: 'onboarding' } });
+    }
+  }, [didRestore, restored]);
+
+  // Save on every change after restore
+  useEffect(() => {
+    if (didRestore && !completed) saveDraft(formData, currentStep);
+  }, [formData, currentStep, didRestore, completed, saveDraft]);
+
   // Redirecionar se não é um linked member
   useEffect(() => {
     if (!authLoading && !memberLoading && !memberData) {
@@ -188,12 +209,12 @@ export default function Onboarding() {
     }
   }, [authLoading, memberLoading, memberData, navigate]);
 
-  // Pré-preencher cargo quando dados carregarem
+  // Pré-preencher cargo quando dados carregarem (apenas se ainda não houver draft)
   useEffect(() => {
-    if (memberData?.role) {
+    if (memberData?.role && !restored) {
       setFormData(prev => ({ ...prev, role: memberData.role }));
     }
-  }, [memberData]);
+  }, [memberData, restored]);
 
   const updateFormData = <K extends keyof OnboardingFormData>(
     key: K, 
