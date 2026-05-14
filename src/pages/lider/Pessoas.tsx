@@ -277,23 +277,85 @@ function PeopleListTab({ onNewMember }: { onNewMember: () => void }) {
 // Times tab
 // ─────────────────────────────────────────────────────────────────────────────
 
-function TeamsTab({ onNewTeam }: { onNewTeam: () => void }) {
-  const { workspaceId } = useAccount();
-  const { data: teams, isLoading } = useQuery({
-    queryKey: ['workspace-teams', workspaceId],
+interface TeamRow {
+  id: string;
+  name: string;
+  leader_user_id: string | null;
+  created_at: string;
+  leader_name: string | null;
+  member_count: number;
+}
+
+function TeamsTab({ onNewTeam, workspaceId }: { onNewTeam: () => void; workspaceId: string | null }) {
+  const qc = useQueryClient();
+  const [editTeam, setEditTeam] = useState<TeamRow | null>(null);
+  const [deleteTeam, setDeleteTeam] = useState<TeamRow | null>(null);
+  const [leaderTeam, setLeaderTeam] = useState<TeamRow | null>(null);
+  const [query, setQuery] = useState('');
+
+  const { data: teams = [], isLoading } = useQuery<TeamRow[]>({
+    queryKey: ['workspace-teams-detail', workspaceId],
+    enabled: !!workspaceId,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: rows, error } = await supabase
         .from('teams')
         .select('id, name, leader_user_id, created_at')
-        .order('created_at', { ascending: false });
+        .eq('workspace_id', workspaceId!)
+        .order('name');
       if (error) throw error;
-      return data || [];
+
+      const list = (rows ?? []) as Array<{ id: string; name: string; leader_user_id: string | null; created_at: string }>;
+      const ids = list.map((t) => t.id);
+
+      // Member counts
+      const counts = new Map<string, number>();
+      if (ids.length) {
+        const { data: members } = await supabase
+          .from('team_members')
+          .select('team_id')
+          .in('team_id', ids);
+        members?.forEach((m: { team_id: string }) => {
+          counts.set(m.team_id, (counts.get(m.team_id) ?? 0) + 1);
+        });
+      }
+
+      // Resolve leader names via team_members.linked_user_id
+      const leaderIds = Array.from(new Set(list.map((t) => t.leader_user_id).filter(Boolean) as string[]));
+      const nameByUid = new Map<string, string>();
+      if (leaderIds.length) {
+        const { data: named } = await supabase
+          .from('team_members')
+          .select('linked_user_id, name')
+          .in('linked_user_id', leaderIds);
+        named?.forEach((r: { linked_user_id: string | null; name: string }) => {
+          if (r.linked_user_id && !nameByUid.has(r.linked_user_id)) {
+            nameByUid.set(r.linked_user_id, r.name);
+          }
+        });
+      }
+
+      return list.map((t) => ({
+        ...t,
+        leader_name: t.leader_user_id ? nameByUid.get(t.leader_user_id) ?? null : null,
+        member_count: counts.get(t.id) ?? 0,
+      }));
     },
-    enabled: !!workspaceId,
   });
 
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return q ? teams.filter((t) => t.name.toLowerCase().includes(q)) : teams;
+  }, [teams, query]);
+
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ['workspace-teams-detail', workspaceId] });
+    qc.invalidateQueries({ queryKey: ['teams'] });
+    qc.invalidateQueries({ queryKey: ['team-members'] });
+  };
+
   if (isLoading) return <div className="text-sm text-muted-foreground">Carregando times...</div>;
-  if (!teams?.length) {
+
+  if (!teams.length) {
     return (
       <EmptyStateHero
         icon={Building2}
@@ -305,23 +367,120 @@ function TeamsTab({ onNewTeam }: { onNewTeam: () => void }) {
       />
     );
   }
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-end">
-        <Button onClick={onNewTeam} className="rounded-xl gap-2">
-          <Plus className="w-4 h-4" /> Novo time
-        </Button>
+      {/* Toolbar */}
+      <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Procurar time"
+            className="pl-9 h-10 rounded-xl bg-card border-border/50"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            {filtered.length} de {teams.length}
+          </span>
+          <Button onClick={onNewTeam} size="sm" className="rounded-xl gap-2 h-10">
+            <Plus className="w-4 h-4" /> Novo time
+          </Button>
+        </div>
       </div>
-      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-        {teams.map((t) => (
-          <Card key={t.id} className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
-            <CardHeader>
-              <CardTitle className="text-base font-serif tracking-tight">{t.name}</CardTitle>
-              <CardDescription className="text-xs">Líder: {t.leader_user_id?.slice(0, 8) ?? '—'}</CardDescription>
-            </CardHeader>
-          </Card>
-        ))}
+
+      {/* Tabela densa */}
+      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
+        <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_120px_140px_32px] gap-4 px-5 py-2.5 bg-muted/30 border-b border-border/40 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          <div>Nome</div>
+          <div>Líder</div>
+          <div>Liderados</div>
+          <div>Criado</div>
+          <div />
+        </div>
+        {filtered.length === 0 ? (
+          <div className="px-5 py-12 text-center text-sm text-muted-foreground">
+            Nenhum time encontrado.
+          </div>
+        ) : (
+          <ul>
+            {filtered.map((t) => {
+              const isSemTime = t.name === 'Sem Time';
+              return (
+                <li key={t.id} className="border-b border-border/30 last:border-b-0">
+                  <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_120px_140px_32px] gap-4 px-5 py-3 items-center hover:bg-muted/30 transition-colors">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="rounded-lg bg-primary/10 p-1.5 shrink-0">
+                        <Building2 className="h-3.5 w-3.5 text-primary" />
+                      </div>
+                      <span className="text-[13px] font-medium text-foreground truncate">{t.name}</span>
+                    </div>
+                    <div className="text-[13px] text-muted-foreground truncate">
+                      {t.leader_name ?? (t.leader_user_id ? 'Líder externo' : <span className="italic">Sem líder</span>)}
+                    </div>
+                    <div className="text-[13px] text-muted-foreground">
+                      {t.member_count} {t.member_count === 1 ? 'pessoa' : 'pessoas'}
+                    </div>
+                    <div className="text-[12px] text-muted-foreground">
+                      {formatDistanceToNow(new Date(t.created_at), { addSuffix: true, locale: ptBR })}
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-44">
+                        <DropdownMenuItem onClick={() => setEditTeam(t)} disabled={isSemTime}>
+                          <Pencil className="h-3.5 w-3.5 mr-2" /> Renomear
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setLeaderTeam(t)}>
+                          <UserCog className="h-3.5 w-3.5 mr-2" /> Trocar líder
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => setDeleteTeam(t)}
+                          disabled={isSemTime}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
+
+      {workspaceId && (
+        <>
+          <EditTeamDialog
+            open={!!editTeam}
+            onOpenChange={(o) => !o && setEditTeam(null)}
+            team={editTeam}
+            onSuccess={refresh}
+          />
+          <DeleteTeamDialog
+            open={!!deleteTeam}
+            onOpenChange={(o) => !o && setDeleteTeam(null)}
+            team={deleteTeam}
+            workspaceId={workspaceId}
+            onSuccess={refresh}
+          />
+          <ChangeTeamLeaderDialog
+            open={!!leaderTeam}
+            onOpenChange={(o) => !o && setLeaderTeam(null)}
+            team={leaderTeam}
+            workspaceId={workspaceId}
+            onSuccess={refresh}
+          />
+        </>
+      )}
     </div>
   );
 }
