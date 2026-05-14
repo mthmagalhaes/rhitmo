@@ -827,6 +827,7 @@ const MemberDetails = () => {
               <OneOnOnePrepCard
                 workspaceId={workspace?.id ?? null}
                 memberId={member.id}
+                onAdd={() => { /* histórico — sem ação aqui */ }}
               />
               <section className="space-y-3">
                 <h2 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
