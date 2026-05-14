@@ -203,6 +203,7 @@ export default function RhitmoSync() {
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<SyncFormData>(initialFormData);
   const [memberName, setMemberName] = useState<string>('');
+  const [memberEmail, setMemberEmail] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [completed, setCompleted] = useState(false);
