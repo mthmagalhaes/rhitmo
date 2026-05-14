@@ -147,8 +147,13 @@ export default function PersonaSelector() {
             </button>
           </div>
 
-          <div className="text-center">
+          <div className="text-center space-y-3">
+            <p className="text-xs text-muted-foreground">{t.trust}</p>
             <p className="text-sm text-muted-foreground">
+              <Link to="/#pricing" className="text-foreground hover:text-primary underline-offset-4 hover:underline font-medium">
+                {t.seePricing}
+              </Link>
+              <span className="mx-2 text-muted-foreground/50">·</span>
               {t.footer}{' '}
               <Link to="/auth" className="text-primary hover:underline font-medium">
                 {t.footerCta}
