@@ -11,6 +11,7 @@ interface AccountContextValue {
   workspaceId: string | null;
   loading: boolean;
   hasError: boolean;
+  isLoadingDelayed: boolean;
   isSlowLoad: boolean;
   role: AccountRole;
   isHRAdmin: boolean;
@@ -103,19 +104,28 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
 
   const loading = authLoading || impersonationLoading || contextLoading;
 
-  // Slow-load detector: flips true after 5s still loading. Used by App
-  // shell to render <AccountLoadingSlow /> instead of an indefinite spinner.
+  // Two-level escalation: at 3s show inline banner, at 8s escalate to
+  // full-screen <AccountLoadingSlow />. Avoids "stuck spinner" perception.
+  const [isLoadingDelayed, setIsLoadingDelayed] = useState(false);
   const [isSlowLoad, setIsSlowLoad] = useState(false);
   useEffect(() => {
     if (!loading) {
+      setIsLoadingDelayed(false);
       setIsSlowLoad(false);
       return;
     }
-    const t = window.setTimeout(() => {
+    const t1 = window.setTimeout(() => {
+      setIsLoadingDelayed(true);
+      trackFunnel('account_load_delayed');
+    }, 3000);
+    const t2 = window.setTimeout(() => {
       setIsSlowLoad(true);
       trackFunnel('account_load_slow');
-    }, 5000);
-    return () => window.clearTimeout(t);
+    }, 8000);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
   }, [loading]);
 
   // Telemetry on hard error
