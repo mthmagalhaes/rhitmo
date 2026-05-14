@@ -21,9 +21,17 @@ export interface LeaderMemberRow {
   linked_user_id?: string | null;
   invite_status?: string | null;
   invite_token?: string | null;
+  archived_at?: string | null;
+  archived_by?: string | null;
 }
 
-export function useLeaderMembers() {
+export interface UseLeaderMembersOptions {
+  /** When true, includes soft-archived members in the result. Default: false. */
+  includeArchived?: boolean;
+}
+
+export function useLeaderMembers(opts: UseLeaderMembersOptions = {}) {
+  const { includeArchived = false } = opts;
   const { id: effectiveUserId } = useEffectiveUser();
 
   const { data: workspace, isLoading: workspaceLoading } = useQuery({
@@ -74,14 +82,17 @@ export function useLeaderMembers() {
   });
 
   const { data: members = [], isLoading: membersLoading } = useQuery({
-    queryKey: ['team-members', workspace?.id],
+    queryKey: ['team-members', workspace?.id, includeArchived],
     queryFn: async () => {
       if (!workspace) return [];
-      const { data: rows, error } = await supabase
+      let q = supabase
         .from('team_members')
         .select('*, teams!inner(workspace_id)')
-        .eq('teams.workspace_id', workspace.id)
-        .order('name');
+        .eq('teams.workspace_id', workspace.id);
+      if (!includeArchived) {
+        q = q.is('archived_at', null);
+      }
+      const { data: rows, error } = await q.order('name');
       if (error) throw error;
       const ids = (rows ?? []).map((m: { id: string }) => m.id);
       const { data: feedbacks } = await supabase
