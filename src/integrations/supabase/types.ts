@@ -3151,6 +3151,7 @@ export type Database = {
       get_member_for_sync: {
         Args: { p_member_id: string }
         Returns: {
+          email: string
           id: string
           linked_user_id: string
           name: string
