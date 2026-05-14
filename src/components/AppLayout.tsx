@@ -109,6 +109,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [allContextResolved, workspaceId, isLinkedMember, isHRAdmin, signupPersona]);
 
+  // Gate hard error / very slow load before rendering layout. Logged-in
+  // users only — public routes don't reach AppLayout.
+  if (user && hasError) {
+    return <AccountLoadFailed onRetry={() => refetchWorkspace()} />;
+  }
+  if (user && accountLoading && isSlowLoad) {
+    return <AccountLoadingSlow onRetry={() => window.location.reload()} />;
+  }
+
   return (
     <SidebarProvider>
       {needsHRAdminWorkspaceSetup && (
