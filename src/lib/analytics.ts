@@ -64,7 +64,13 @@ export type FunnelEvent =
   | 'wizard_draft_restored'
   | 'leader_signup_failed'
   | 'member_email_edited'
-  | 'invite_cancelled';
+  | 'invite_cancelled'
+  | 'members_bulk_archived'
+  | 'members_bulk_unarchived'
+  | 'members_bulk_moved'
+  | 'members_exported_csv'
+  | 'invites_bulk_resent'
+  | 'invites_bulk_cancelled';
 
 interface FunnelEventPayload {
   workspaceId?: string | null;
