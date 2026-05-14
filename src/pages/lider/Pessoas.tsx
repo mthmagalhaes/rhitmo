@@ -586,6 +586,15 @@ function PeopleListTab({ onNewMember }: { onNewMember: () => void }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <MemberAdminSheet
+        open={!!adminSheetMember}
+        onOpenChange={(o) => !o && setAdminSheetMember(null)}
+        member={adminSheetMember}
+        teams={teams}
+        workspaceId={workspace?.id ?? null}
+        onChanged={refresh}
+      />
     </div>
   );
 }
