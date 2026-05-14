@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,10 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, MailCheck, Sparkles } from 'lucide-react';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
 import { RhythmWave } from '@/components/RhythmWave';
-import { trackSignupConversion } from '@/lib/analytics';
+import { trackFunnel, trackSignupConversion } from '@/lib/analytics';
 
 interface AuthProps {
   defaultMode?: 'login' | 'signup';
