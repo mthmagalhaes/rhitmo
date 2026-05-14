@@ -68,18 +68,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ) {
         // fire-and-forget; nunca bloqueia auth
         setTimeout(() => {
-          supabase
-            .rpc('claim_team_member_by_email', {
-              p_user_id: session.user.id,
-              p_email: session.user.email!,
-            })
-            .then(({ data, error }) => {
-              if (error) {
-                console.warn('[AuthProvider] claim_team_member_by_email falhou:', error.message);
-              } else if (typeof data === 'number' && data > 0) {
-                console.info(`[AuthProvider] Auto-vinculado a ${data} liderado(s) pré-cadastrado(s)`);
-              }
-            });
+          (supabase.rpc as any)('claim_team_member_by_email', {
+            p_user_id: session.user.id,
+            p_email: session.user.email!,
+          }).then(({ data, error }: { data: unknown; error: unknown }) => {
+            if (error) {
+              const msg = (error as { message?: string })?.message ?? String(error);
+              console.warn('[AuthProvider] claim_team_member_by_email falhou:', msg);
+            } else if (typeof data === 'number' && data > 0) {
+              console.info(`[AuthProvider] Auto-vinculado a ${data} liderado(s) pré-cadastrado(s)`);
+            }
+          });
         }, 0);
       }
 
