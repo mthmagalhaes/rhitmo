@@ -1587,6 +1587,69 @@ export type Database = {
         }
         Relationships: []
       }
+      onboarding_funnel_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          member_id: string | null
+          payload: Json | null
+          user_id: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          member_id?: string | null
+          payload?: Json | null
+          user_id?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          member_id?: string | null
+          payload?: Json | null
+          user_id?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: []
+      }
+      onboarding_reconciliation_log: {
+        Row: {
+          duration_ms: number | null
+          errors: Json | null
+          id: string
+          invites_expired: number
+          members_linked: number
+          ran_at: string
+          summary: Json | null
+          workspaces_fixed: number
+        }
+        Insert: {
+          duration_ms?: number | null
+          errors?: Json | null
+          id?: string
+          invites_expired?: number
+          members_linked?: number
+          ran_at?: string
+          summary?: Json | null
+          workspaces_fixed?: number
+        }
+        Update: {
+          duration_ms?: number | null
+          errors?: Json | null
+          id?: string
+          invites_expired?: number
+          members_linked?: number
+          ran_at?: string
+          summary?: Json | null
+          workspaces_fixed?: number
+        }
+        Relationships: []
+      }
       peer_feedback_requests: {
         Row: {
           created_at: string
@@ -3198,6 +3261,14 @@ export type Database = {
           recall_unlimited: boolean
           seat_cycle: string
           total_seats: number
+        }[]
+      }
+      get_suppressed_member_emails: {
+        Args: never
+        Returns: {
+          email: string
+          reason: string
+          suppressed_at: string
         }[]
       }
       get_sync_notification_data: {

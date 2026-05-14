@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,10 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, MailCheck, Sparkles } from 'lucide-react';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
 import { RhythmWave } from '@/components/RhythmWave';
-import { trackSignupConversion } from '@/lib/analytics';
+import { trackFunnel, trackSignupConversion } from '@/lib/analytics';
 
 interface AuthProps {
   defaultMode?: 'login' | 'signup';
@@ -27,7 +27,41 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
   const [email, setEmail] = useState(defaultEmail);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  // Sprint 2.1: persistent banner + cooldown for unconfirmed-email resend
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resending, setResending] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = window.setInterval(() => setResendCooldown((s) => Math.max(0, s - 1)), 1000);
+    return () => window.clearInterval(t);
+  }, [resendCooldown]);
+
+  const handleResendVerification = async () => {
+    if (!unconfirmedEmail || resendCooldown > 0) return;
+    setResending(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: unconfirmedEmail,
+        options: { emailRedirectTo: `${window.location.origin}/dashboard` },
+      });
+      if (error) throw error;
+      toast({
+        title: 'Link reenviado',
+        description: `Se a conta existir, um novo link foi para ${unconfirmedEmail}.`,
+      });
+      trackFunnel('auth_email_resent', { payload: { email: unconfirmedEmail } });
+      setResendCooldown(60);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast({ title: 'Não foi possível reenviar', description: msg, variant: 'destructive' });
+    } finally {
+      setResending(false);
+    }
+  };
 
   // Persist persona for OAuth round-trip
   if (typeof window !== 'undefined' && persona) {
@@ -87,7 +121,8 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
       let description = raw;
       if (/email not confirmed|not.*confirm/i.test(raw)) {
         title = 'E-mail ainda não confirmado';
-        description = 'Confira sua caixa de entrada (e o spam) — enviamos um link de verificação.';
+        description = 'Confira sua caixa de entrada (e o spam). Use o botão abaixo para reenviar o link.';
+        setUnconfirmedEmail(email);
       } else if (/invalid login|invalid credentials/i.test(raw)) {
         title = 'E-mail ou senha incorretos';
         description = 'Confira os dados ou use "Esqueci minha senha".';
@@ -380,6 +415,28 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
             </form>
           ) : !isForgotPassword ? (
             <form onSubmit={handleLogin} className="space-y-6">
+              {unconfirmedEmail && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-2 text-sm">
+                  <div className="flex items-center gap-2 font-medium text-amber-900">
+                    <MailCheck className="h-4 w-4" />
+                    Confirme seu e-mail
+                  </div>
+                  <p className="text-amber-800 text-xs leading-relaxed">
+                    Enviamos um link de verificação para <strong>{unconfirmedEmail}</strong>. Não chegou? Olhe no spam ou reenvie abaixo.
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="rounded-xl bg-white"
+                    onClick={handleResendVerification}
+                    disabled={resending || resendCooldown > 0}
+                  >
+                    {resending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                    {resendCooldown > 0 ? `Reenviar em ${resendCooldown}s` : 'Reenviar verificação'}
+                  </Button>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="email">{t('common.email')}</Label>
                 <Input 
