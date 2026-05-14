@@ -699,6 +699,9 @@ function InvitesTab({ onInvite }: { onInvite: () => void }) {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[11px] text-muted-foreground hidden md:inline whitespace-nowrap">
+                    {formatDistanceToNow(new Date(p.created_at), { addSuffix: true, locale: ptBR })}
+                  </span>
                   {isBounced ? (
                     <Badge variant="outline" className="text-xs border-amber-500/40 text-amber-700 dark:text-amber-400">
                       Bounce
@@ -706,17 +709,16 @@ function InvitesTab({ onInvite }: { onInvite: () => void }) {
                   ) : (
                     <Badge variant="outline" className="text-xs hidden sm:inline-flex">Pendente</Badge>
                   )}
-                  {isBounced && (
-                    <EditEmailButton
-                      memberId={p.id}
-                      currentEmail={p.email}
-                      onUpdated={() => {
-                        qc.invalidateQueries({ queryKey: ['pending-invites'] });
-                        qc.invalidateQueries({ queryKey: ['suppressed-member-emails'] });
-                      }}
-                    />
-                  )}
                   <ResendInviteButton memberId={p.id} memberName={p.name} memberEmail={p.email} isBounced={isBounced} />
+                  <InviteRowMenu
+                    memberId={p.id}
+                    memberName={p.name}
+                    memberEmail={p.email}
+                    onChanged={() => {
+                      qc.invalidateQueries({ queryKey: ['pending-invites'] });
+                      qc.invalidateQueries({ queryKey: ['suppressed-member-emails'] });
+                    }}
+                  />
                 </div>
               </CardContent>
             </Card>
