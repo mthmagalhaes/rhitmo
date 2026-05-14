@@ -86,8 +86,8 @@ Deno.serve(async (req) => {
   // 3. Log run
   try {
     await admin.from('onboarding_reconciliation_log').insert({
-      claimed_count: summary.claimed,
-      expired_count: summary.expired,
+      members_linked: summary.claimed,
+      invites_expired: summary.expired,
       errors: summary.errors,
       ran_at: new Date().toISOString(),
     });
