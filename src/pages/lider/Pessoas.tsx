@@ -101,7 +101,6 @@ function ResendInviteButton({ memberId, memberName, memberEmail }: { memberId: s
 }
 
 function InvitesTab({ onInvite }: { onInvite: () => void }) {
-  const queryClient = useQueryClient();
   const { data: pending } = useQuery({
     queryKey: ['pending-invites'],
     queryFn: async () => {
