@@ -210,6 +210,21 @@ function InvitesTab({ onInvite }: { onInvite: () => void }) {
   });
   const suppressedSet = new Set(suppressed ?? []);
 
+  // Telemetria: dispara invite_bounced uma vez por liderado bounced detectado nesta sessão.
+  useEffect(() => {
+    if (!pending || !suppressed) return;
+    const w = window as unknown as { __rhitmoBouncedFired?: Set<string> };
+    const fired = w.__rhitmoBouncedFired ?? new Set<string>();
+    pending.forEach((p) => {
+      if (p.email && suppressedSet.has(p.email.toLowerCase()) && !fired.has(p.id)) {
+        trackFunnel('invite_bounced', { memberId: p.id, payload: { email: p.email } });
+        fired.add(p.id);
+      }
+    });
+    w.__rhitmoBouncedFired = fired;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pending, suppressed]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
