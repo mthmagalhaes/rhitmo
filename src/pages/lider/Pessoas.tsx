@@ -62,7 +62,7 @@ function TeamsTab() {
   );
 }
 
-function ResendInviteButton({ memberId, memberName, memberEmail }: { memberId: string; memberName: string; memberEmail: string | null }) {
+function ResendInviteButton({ memberId, memberName, memberEmail, isBounced }: { memberId: string; memberName: string; memberEmail: string | null; isBounced: boolean }) {
   const [sending, setSending] = useState(false);
   const handleResend = async () => {
     if (!memberEmail) {
@@ -89,6 +89,7 @@ function ResendInviteButton({ memberId, memberName, memberEmail }: { memberId: s
         },
       });
       if (error) throw error;
+      trackFunnel('invite_resent', { memberId, payload: { wasBounced: isBounced } });
       toast.success(`Convite reenviado para ${memberEmail}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -102,6 +103,77 @@ function ResendInviteButton({ memberId, memberName, memberEmail }: { memberId: s
       {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
       Reenviar
     </Button>
+  );
+}
+
+function EditEmailButton({ memberId, currentEmail, onUpdated }: { memberId: string; currentEmail: string | null; onUpdated: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState(currentEmail ?? '');
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    const next = value.trim().toLowerCase();
+    if (!next || !/.+@.+\..+/.test(next)) {
+      toast.error('Informe um e-mail válido.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('team_members')
+        .update({ email: next })
+        .eq('id', memberId);
+      if (error) throw error;
+      // Tenta remover da supressão (RPC pode não existir em todos ambientes)
+      await supabase.rpc('remove_email_suppression' as never, { p_email: currentEmail } as never).catch(() => undefined);
+      trackFunnel('member_email_edited', { memberId, payload: { from: currentEmail, to: next } });
+      toast.success('E-mail atualizado. Você já pode reenviar o convite.');
+      setOpen(false);
+      onUpdated();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Falha ao atualizar: ${msg}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <Button size="sm" variant="ghost" className="rounded-xl gap-2" onClick={() => setOpen(true)}>
+        <Pencil className="w-3.5 h-3.5" />
+        Editar e-mail
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-serif">Corrigir e-mail do liderado</DialogTitle>
+            <DialogDescription>
+              O endereço atual não foi entregue (bounce). Verifique com a pessoa
+              e atualize aqui — o próximo reenvio usará o novo e-mail.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="member-email-fix">Novo e-mail</Label>
+            <Input
+              id="member-email-fix"
+              type="email"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder="nome@empresa.com"
+              className="rounded-xl"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)} className="rounded-xl">Cancelar</Button>
+            <Button onClick={handleSave} disabled={saving} className="rounded-xl gap-2">
+              {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
