@@ -12,6 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { CheckCircle2, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useWizardDraft } from '@/hooks/useWizardDraft';
+import { trackFunnel } from '@/lib/analytics';
+import { SyncQrHandoff } from '@/components/onboarding/SyncQrHandoff';
 
 // Types
 type WizardStep = 'identity' | 'rhythm' | 'manual' | 'future';
@@ -210,6 +213,25 @@ export default function RhitmoSync() {
   const [notLinked, setNotLinked] = useState(false);
   const [notFound, setNotFound] = useState(false);
 
+  // Wizard draft (Sprint 2.3)
+  const draftKey = memberId ? `sync:${memberId}` : null;
+  const { restored, didRestore, save: saveDraft, clear: clearDraft } = useWizardDraft<SyncFormData>(
+    draftKey,
+    !completed,
+  );
+
+  useEffect(() => {
+    if (didRestore && restored) {
+      setFormData(restored.formData);
+      setCurrentStep(restored.currentStep);
+      trackFunnel('wizard_draft_restored', { payload: { wizard: 'sync' }, memberId });
+    }
+  }, [didRestore, restored, memberId]);
+
+  useEffect(() => {
+    if (didRestore && !completed) saveDraft(formData, currentStep);
+  }, [formData, currentStep, didRestore, completed, saveDraft]);
+
   useEffect(() => {
     loadMemberData();
   }, [memberId]);
@@ -353,7 +375,8 @@ export default function RhitmoSync() {
       }
 
       setCompleted(true);
-      toast.success('Perfil sintonizado com sucesso!');
+      clearDraft();
+      trackFunnel('member_sync_completed', { memberId });
     } catch (error: unknown) {
       console.error('Error submitting:', error);
       const rawMessage = error instanceof Error ? error.message : '';
