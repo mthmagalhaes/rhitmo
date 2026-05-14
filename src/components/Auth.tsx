@@ -82,11 +82,17 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
         description: t('auth.welcomeBack')
       });
     } catch (error: any) {
-      toast({
-        title: t('common.error'),
-        description: error.message,
-        variant: "destructive"
-      });
+      const raw = String(error?.message ?? '');
+      let title = t('common.error') as string;
+      let description = raw;
+      if (/email not confirmed|not.*confirm/i.test(raw)) {
+        title = 'E-mail ainda não confirmado';
+        description = 'Confira sua caixa de entrada (e o spam) — enviamos um link de verificação.';
+      } else if (/invalid login|invalid credentials/i.test(raw)) {
+        title = 'E-mail ou senha incorretos';
+        description = 'Confira os dados ou use "Esqueci minha senha".';
+      }
+      toast({ title, description, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
