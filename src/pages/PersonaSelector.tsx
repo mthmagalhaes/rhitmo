@@ -25,15 +25,17 @@ export default function PersonaSelector() {
       back: 'Voltar para a página inicial',
       title: 'Como você quer começar?',
       subtitle: 'Escolha o ponto de entrada para configurarmos seu workspace corretamente.',
-      leaderBadge: 'Plano Pulse grátis',
+      leaderBadge: 'Comece grátis',
       leaderTitle: 'Sou Líder de time',
       leaderDesc:
-        'Crie seu workspace Pulse: até 2 liderados, Mentor AI com 20 conversas/mês e 1 avaliação com IA. Tudo grátis pra sempre.',
+        'Crie seu workspace agora. Os 3 primeiros usuários são grátis, com Mentor AI ilimitado, 1:1s, Pulse, PDI, 360° e transcrição de reuniões. Pague só a partir do 4º liderado.',
       leaderCta: 'Começar como Líder',
       hrTitle: 'Sou RH / People Admin',
       hrDesc:
-        'Crie a visão inicial da empresa, adicione o primeiro líder e conheça uma amostra do painel Enterprise antes do upgrade.',
+        'Visão da empresa inteira: convide o primeiro líder, organize times e veja uma amostra do painel Enterprise antes do upgrade. Para times de 50+ pessoas.',
       hrCta: 'Começar como RH Admin',
+      trust: 'Sem cartão de crédito. Cancele quando quiser.',
+      seePricing: 'Ver planos completos',
       footer: 'Já tem conta?',
       footerCta: 'Entrar',
     },
@@ -41,15 +43,17 @@ export default function PersonaSelector() {
       back: 'Back to homepage',
       title: 'How do you want to start?',
       subtitle: 'Choose your entry point so we can configure your workspace correctly.',
-      leaderBadge: 'Free Pulse plan',
+      leaderBadge: 'Start free',
       leaderTitle: "I'm a Team Leader",
       leaderDesc:
-        'Create your Pulse workspace: up to 2 direct reports, Mentor AI with 20 conversations/month and 1 AI review. Free forever.',
+        'Spin up your workspace now. First 3 users are free, with unlimited Mentor AI, 1:1s, Pulse, IDP, 360° and meeting transcription. Pay only from the 4th seat onward.',
       leaderCta: 'Start as Leader',
       hrTitle: "I'm HR / People Admin",
       hrDesc:
-        'Create the company view, add the first leader, and preview a slice of the Enterprise panel before upgrading.',
+        'Whole-company view: invite the first leader, organize teams and preview the Enterprise panel before upgrading. Built for 50+ people orgs.',
       hrCta: 'Start as HR Admin',
+      trust: 'No credit card. Cancel anytime.',
+      seePricing: 'See full pricing',
       footer: 'Already have an account?',
       footerCta: 'Sign in',
     },
@@ -57,15 +61,17 @@ export default function PersonaSelector() {
       back: 'Volver al inicio',
       title: '¿Cómo quieres empezar?',
       subtitle: 'Elige el punto de entrada para configurar tu workspace correctamente.',
-      leaderBadge: 'Plan Pulse gratis',
+      leaderBadge: 'Empieza gratis',
       leaderTitle: 'Soy Líder de equipo',
       leaderDesc:
-        'Crea tu workspace Pulse: hasta 2 colaboradores, Mentor AI con 20 conversaciones/mes y 1 evaluación con IA. Gratis para siempre.',
+        'Crea tu workspace ahora. Los 3 primeros usuarios son gratis, con Mentor AI ilimitado, 1:1s, Pulse, PDI, 360° y transcripción de reuniones. Paga solo a partir del 4º colaborador.',
       leaderCta: 'Empezar como Líder',
       hrTitle: 'Soy RH / People Admin',
       hrDesc:
-        'Crea la vista inicial de la empresa, agrega el primer líder y prueba una muestra del panel Enterprise antes del upgrade.',
+        'Visión de toda la empresa: invita al primer líder, organiza equipos y prueba el panel Enterprise antes del upgrade. Para organizaciones de 50+ personas.',
       hrCta: 'Empezar como RH Admin',
+      trust: 'Sin tarjeta de crédito. Cancela cuando quieras.',
+      seePricing: 'Ver planes completos',
       footer: '¿Ya tienes cuenta?',
       footerCta: 'Iniciar sesión',
     },
@@ -141,8 +147,13 @@ export default function PersonaSelector() {
             </button>
           </div>
 
-          <div className="text-center">
+          <div className="text-center space-y-3">
+            <p className="text-xs text-muted-foreground">{t.trust}</p>
             <p className="text-sm text-muted-foreground">
+              <Link to="/#pricing" className="text-foreground hover:text-primary underline-offset-4 hover:underline font-medium">
+                {t.seePricing}
+              </Link>
+              <span className="mx-2 text-muted-foreground/50">·</span>
               {t.footer}{' '}
               <Link to="/auth" className="text-primary hover:underline font-medium">
                 {t.footerCta}
