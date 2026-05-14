@@ -599,6 +599,177 @@ function EditEmailButton({ memberId, currentEmail, onUpdated }: { memberId: stri
   );
 }
 
+// Kebab menu para cada convite pendente.
+function InviteRowMenu({
+  memberId, memberName, memberEmail, onChanged,
+}: {
+  memberId: string;
+  memberName: string;
+  memberEmail: string | null;
+  onChanged: () => void;
+}) {
+  const [editOpen, setEditOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [emailValue, setEmailValue] = useState(memberEmail ?? '');
+  const [savingEmail, setSavingEmail] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+
+  useEffect(() => { setEmailValue(memberEmail ?? ''); }, [memberEmail]);
+
+  const copyInviteLink = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('invite_token')
+        .eq('id', memberId)
+        .maybeSingle();
+      if (error) throw error;
+      const token = (data as { invite_token: string | null } | null)?.invite_token;
+      if (!token) {
+        toast.error('Esse convite não tem link disponível.');
+        return;
+      }
+      const url = `${window.location.origin}/invite?token=${token}`;
+      await navigator.clipboard.writeText(url);
+      toast.success('Link de convite copiado.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Falha ao copiar: ${msg}`);
+    }
+  };
+
+  const handleSaveEmail = async () => {
+    const next = emailValue.trim().toLowerCase();
+    if (!next || !/.+@.+\..+/.test(next)) {
+      toast.error('Informe um e-mail válido.');
+      return;
+    }
+    setSavingEmail(true);
+    try {
+      const { error } = await supabase
+        .from('team_members')
+        .update({ email: next })
+        .eq('id', memberId);
+      if (error) throw error;
+      try {
+        if (memberEmail) {
+          await supabase.rpc('remove_email_suppression' as never, { p_email: memberEmail } as never);
+        }
+      } catch { /* opcional */ }
+      trackFunnel('member_email_edited', { memberId, payload: { from: memberEmail, to: next } });
+      toast.success('E-mail atualizado.');
+      setEditOpen(false);
+      onChanged();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Falha ao atualizar: ${msg}`);
+    } finally {
+      setSavingEmail(false);
+    }
+  };
+
+  const handleCancelInvite = async () => {
+    setCancelling(true);
+    try {
+      const { error } = await supabase
+        .from('team_members')
+        .update({ invite_status: 'cancelled' })
+        .eq('id', memberId);
+      if (error) throw error;
+      trackFunnel('invite_cancelled', { memberId });
+      toast.success(`Convite de ${memberName} cancelado.`);
+      setCancelOpen(false);
+      onChanged();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Falha ao cancelar: ${msg}`);
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem onClick={() => setEditOpen(true)}>
+            <Pencil className="h-3.5 w-3.5 mr-2" /> Editar e-mail
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={copyInviteLink}>
+            <Copy className="h-3.5 w-3.5 mr-2" /> Copiar link de convite
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => setCancelOpen(true)}
+            className="text-destructive focus:text-destructive"
+          >
+            <X className="h-3.5 w-3.5 mr-2" /> Cancelar convite
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Editar e-mail */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-serif">Editar e-mail do convite</DialogTitle>
+            <DialogDescription>
+              Atualize o endereço para {memberName}. O próximo reenvio usará o novo e-mail.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor={`invite-email-${memberId}`}>Novo e-mail</Label>
+            <Input
+              id={`invite-email-${memberId}`}
+              type="email"
+              value={emailValue}
+              onChange={(e) => setEmailValue(e.target.value)}
+              placeholder="nome@empresa.com"
+              className="rounded-xl"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)} className="rounded-xl">Cancelar</Button>
+            <Button onClick={handleSaveEmail} disabled={savingEmail} className="rounded-xl gap-2">
+              {savingEmail && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancelar convite */}
+      <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-serif">Cancelar convite?</DialogTitle>
+            <DialogDescription>
+              {memberName} não poderá mais aceitar este convite. Você pode adicionar a pessoa novamente depois.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelOpen(false)} className="rounded-xl">Voltar</Button>
+            <Button
+              variant="destructive"
+              onClick={handleCancelInvite}
+              disabled={cancelling}
+              className="rounded-xl gap-2"
+            >
+              {cancelling && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              Sim, cancelar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 function InvitesTab({ onInvite }: { onInvite: () => void }) {
   const qc = useQueryClient();
   const { data: pending } = useQuery({
