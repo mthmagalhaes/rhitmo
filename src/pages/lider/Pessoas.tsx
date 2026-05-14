@@ -48,6 +48,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { EditTeamDialog } from '@/components/EditTeamDialog';
 import { DeleteTeamDialog } from '@/components/DeleteTeamDialog';
+import { MemberAdminSheet } from '@/components/leader/MemberAdminSheet';
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -92,6 +93,7 @@ function PeopleListTab({ onNewMember }: { onNewMember: () => void }) {
   const [moveOpen, setMoveOpen] = useState(false);
   const [moveTeamId, setMoveTeamId] = useState<string>('none');
   const [acting, setActing] = useState(false);
+  const [adminSheetMember, setAdminSheetMember] = useState<LeaderMemberRow | null>(null);
 
   const teamById = useMemo(
     () => Object.fromEntries(teams.map((t) => [t.id, t.name])),
@@ -480,7 +482,7 @@ function PeopleListTab({ onNewMember }: { onNewMember: () => void }) {
                       </div>
                       <button
                         type="button"
-                        onClick={() => navigate(`/member/${m.id}`)}
+                        onClick={() => setAdminSheetMember(m)}
                         className="contents text-left"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
