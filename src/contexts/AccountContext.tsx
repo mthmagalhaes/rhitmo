@@ -140,6 +140,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       workspaceId: data?.workspace_id ?? null,
       loading,
       hasError: !!contextError,
+      isLoadingDelayed,
       isSlowLoad,
       role,
       isHRAdmin: !loading && role === 'hr_admin',
@@ -152,7 +153,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       hasPendingInviteByEmail: !!data?.has_pending_invite,
       refetchWorkspace: () => refetch(),
     };
-  }, [loading, data, contextError, refetch, isSlowLoad]);
+  }, [loading, data, contextError, refetch, isLoadingDelayed, isSlowLoad]);
 
   return (
     <AccountContext.Provider value={value}>
