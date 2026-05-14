@@ -76,13 +76,22 @@ const HEALTH_LABEL: Record<keyof typeof HEALTH_CLASSES, string> = {
   cold: 'Frio · mais de 14 dias sem feedback',
 };
 
+type HealthFilter = 'all' | 'fresh' | 'warm' | 'cold';
+
 function PeopleListTab({ onNewMember }: { onNewMember: () => void }) {
   const navigate = useNavigate();
-  const { teams, members, isLoading } = useLeaderMembers();
+  const qc = useQueryClient();
+  const [showArchived, setShowArchived] = useState(false);
+  const { teams, members, isLoading, workspace } = useLeaderMembers({ includeArchived: showArchived });
   const [query, setQuery] = useState('');
   const [teamId, setTeamId] = useState<string>('all');
+  const [healthFilter, setHealthFilter] = useState<HealthFilter>('all');
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [moveOpen, setMoveOpen] = useState(false);
+  const [moveTeamId, setMoveTeamId] = useState<string>('none');
+  const [acting, setActing] = useState(false);
 
   const teamById = useMemo(
     () => Object.fromEntries(teams.map((t) => [t.id, t.name])),
@@ -94,16 +103,31 @@ function PeopleListTab({ onNewMember }: { onNewMember: () => void }) {
     else { setSortKey(key); setSortDir(key === 'last' ? 'desc' : 'asc'); }
   };
 
-  const filtered = useMemo(() => {
+  // Health counters (computed on the team-filtered + searched set, ignoring health chip itself)
+  const baseFiltered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const list = members
+    return members
       .filter((m) => (teamId === 'all' ? true : m.team_id === teamId))
       .filter((m) =>
         q
-          ? m.name.toLowerCase().includes(q) ||
-            (m.role ?? '').toLowerCase().includes(q)
+          ? m.name.toLowerCase().includes(q) || (m.role ?? '').toLowerCase().includes(q)
           : true,
       );
+  }, [members, query, teamId]);
+
+  const counters = useMemo(() => {
+    const c = { all: baseFiltered.length, fresh: 0, warm: 0, cold: 0 };
+    for (const m of baseFiltered) {
+      const h = getHealth(m.last_feedback_date);
+      c[h]++;
+    }
+    return c;
+  }, [baseFiltered]);
+
+  const filtered = useMemo(() => {
+    const list = healthFilter === 'all'
+      ? baseFiltered
+      : baseFiltered.filter((m) => getHealth(m.last_feedback_date) === healthFilter);
     const dir = sortDir === 'asc' ? 1 : -1;
     return list.sort((a, b) => {
       switch (sortKey) {
@@ -121,7 +145,139 @@ function PeopleListTab({ onNewMember }: { onNewMember: () => void }) {
         }
       }
     });
-  }, [members, query, teamId, sortKey, sortDir, teamById]);
+  }, [baseFiltered, healthFilter, sortKey, sortDir, teamById]);
+
+  // Clear orphan selections when filter changes
+  useEffect(() => {
+    setSelected((prev) => {
+      const visible = new Set(filtered.map((m) => m.id));
+      const next = new Set<string>();
+      prev.forEach((id) => visible.has(id) && next.add(id));
+      return next;
+    });
+  }, [filtered]);
+
+  const allVisibleSelected = filtered.length > 0 && filtered.every((m) => selected.has(m.id));
+  const someVisibleSelected = filtered.some((m) => selected.has(m.id));
+
+  const toggleAllVisible = (checked: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      filtered.forEach((m) => (checked ? next.add(m.id) : next.delete(m.id)));
+      return next;
+    });
+  };
+
+  const toggleOne = (id: string, checked: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      checked ? next.add(id) : next.delete(id);
+      return next;
+    });
+  };
+
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ['team-members', workspace?.id] });
+  };
+
+  const exportCsv = (rows: LeaderMemberRow[], scope: 'all' | 'selected') => {
+    if (rows.length === 0) {
+      toast.error('Nenhum liderado para exportar.');
+      return;
+    }
+    const data = rows.map((m) => ({
+      Nome: m.name,
+      Cargo: m.role ?? '',
+      Time: m.team_id ? teamById[m.team_id] ?? '' : '',
+      Email: m.email ?? '',
+      'Último sinal': format(new Date(m.last_feedback_date), 'yyyy-MM-dd'),
+      'Status saúde': ({ fresh: 'Fresco', warm: 'Morno', cold: 'Frio' })[getHealth(m.last_feedback_date)],
+      Arquivado: m.archived_at ? 'Sim' : 'Não',
+    }));
+    const ts = format(new Date(), 'yyyy-MM-dd');
+    downloadCsv(`rhitmo-liderados-${ts}.csv`, data);
+    trackFunnel('members_exported_csv', {
+      workspaceId: workspace?.id ?? null,
+      payload: { count: rows.length, scope },
+    });
+    toast.success(`${rows.length} liderado(s) exportado(s).`);
+  };
+
+  const handleBulkArchive = async () => {
+    if (selected.size === 0) return;
+    setActing(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const ids = Array.from(selected);
+      const { error } = await supabase
+        .from('team_members')
+        .update({ archived_at: new Date().toISOString(), archived_by: user?.id ?? null })
+        .in('id', ids);
+      if (error) throw error;
+      trackFunnel('members_bulk_archived', {
+        workspaceId: workspace?.id ?? null,
+        payload: { count: ids.length },
+      });
+      toast.success(`${ids.length} liderado(s) arquivado(s).`);
+      setSelected(new Set());
+      refresh();
+    } catch (err) {
+      toast.error(`Falha ao arquivar: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const handleBulkUnarchive = async () => {
+    if (selected.size === 0) return;
+    setActing(true);
+    try {
+      const ids = Array.from(selected);
+      const { error } = await supabase
+        .from('team_members')
+        .update({ archived_at: null, archived_by: null })
+        .in('id', ids);
+      if (error) throw error;
+      trackFunnel('members_bulk_unarchived', {
+        workspaceId: workspace?.id ?? null,
+        payload: { count: ids.length },
+      });
+      toast.success(`${ids.length} liderado(s) restaurado(s).`);
+      setSelected(new Set());
+      refresh();
+    } catch (err) {
+      toast.error(`Falha ao restaurar: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const handleBulkMove = async () => {
+    if (selected.size === 0) return;
+    setActing(true);
+    try {
+      const ids = Array.from(selected);
+      const newTeam = moveTeamId === 'none' ? null : moveTeamId;
+      const { error } = await supabase
+        .from('team_members')
+        .update({ team_id: newTeam })
+        .in('id', ids);
+      if (error) throw error;
+      trackFunnel('members_bulk_moved', {
+        workspaceId: workspace?.id ?? null,
+        payload: { count: ids.length, target_team_id: newTeam },
+      });
+      const teamLabel = newTeam ? (teamById[newTeam] ?? 'time') : 'Sem time';
+      toast.success(`${ids.length} liderado(s) movido(s) para ${teamLabel}.`);
+      setMoveOpen(false);
+      setSelected(new Set());
+      refresh();
+    } catch (err) {
+      toast.error(`Falha ao mover: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setActing(false);
+    }
+  };
 
   const SortHeader = ({ k, children }: { k: SortKey; children: React.ReactNode }) => (
     <button
@@ -138,20 +294,39 @@ function PeopleListTab({ onNewMember }: { onNewMember: () => void }) {
     </button>
   );
 
+  const HealthChip = ({ value, label, count, dot }: { value: HealthFilter; label: string; count: number; dot?: string }) => (
+    <button
+      type="button"
+      onClick={() => setHealthFilter(value)}
+      className={cn(
+        'h-7 px-2.5 rounded-lg text-[12px] font-medium border inline-flex items-center gap-1.5 transition-colors',
+        healthFilter === value
+          ? 'bg-foreground text-background border-foreground'
+          : 'bg-card text-muted-foreground border-border/50 hover:bg-muted/50 hover:text-foreground',
+      )}
+    >
+      {dot && <span className={cn('h-1.5 w-1.5 rounded-full', dot)} />}
+      {label}
+      <span className={cn('text-[11px] tabular-nums', healthFilter === value ? 'opacity-80' : 'opacity-60')}>{count}</span>
+    </button>
+  );
+
+  const selectedCount = selected.size;
+
   return (
     <div className="space-y-4">
       {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Procurar por nome ou cargo"
-            className="pl-9 h-10 rounded-xl bg-card border-border/50"
-          />
-        </div>
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Procurar por nome ou cargo"
+              className="pl-9 h-10 rounded-xl bg-card border-border/50"
+            />
+          </div>
           {teams.length > 1 && (
             <Select value={teamId} onValueChange={setTeamId}>
               <SelectTrigger className="h-10 w-[180px] rounded-xl bg-card border-border/50 text-[13px]">
@@ -170,16 +345,96 @@ function PeopleListTab({ onNewMember }: { onNewMember: () => void }) {
               </SelectContent>
             </Select>
           )}
-          <span className="text-xs text-muted-foreground whitespace-nowrap">
-            {filtered.length} de {members.length}
-          </span>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <label className="flex items-center gap-2 text-[12px] text-muted-foreground cursor-pointer select-none">
+            <Checkbox
+              checked={showArchived}
+              onCheckedChange={(v) => setShowArchived(!!v)}
+            />
+            Mostrar arquivados
+          </label>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-xl gap-2 h-10"
+            onClick={() => exportCsv(filtered, 'all')}
+            disabled={filtered.length === 0}
+          >
+            <Download className="h-3.5 w-3.5" /> Exportar CSV
+          </Button>
         </div>
       </div>
+
+      {/* Health chips */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <HealthChip value="all"   label="Todos"   count={counters.all} />
+        <HealthChip value="fresh" label="Frescos" count={counters.fresh} dot="bg-emerald-500" />
+        <HealthChip value="warm"  label="Mornos"  count={counters.warm}  dot="bg-amber-500" />
+        <HealthChip value="cold"  label="Frios"   count={counters.cold}  dot="bg-rose-500" />
+        <span className="ml-auto text-xs text-muted-foreground">
+          {filtered.length} de {members.length}
+        </span>
+      </div>
+
+      {/* Bulk action bar */}
+      {selectedCount > 0 && (
+        <div className="flex items-center gap-2 flex-wrap rounded-xl border border-primary/30 bg-primary/5 px-3 py-2">
+          <span className="text-[13px] font-medium">
+            {selectedCount} selecionado(s)
+          </span>
+          <div className="h-4 w-px bg-border mx-1" />
+          <Button
+            size="sm" variant="outline" className="rounded-lg gap-1.5 h-8"
+            onClick={() => { setMoveTeamId('none'); setMoveOpen(true); }}
+            disabled={acting}
+          >
+            <FolderInput className="h-3.5 w-3.5" /> Mover de time
+          </Button>
+          {showArchived ? (
+            <Button
+              size="sm" variant="outline" className="rounded-lg gap-1.5 h-8"
+              onClick={handleBulkUnarchive}
+              disabled={acting}
+            >
+              <ArchiveRestore className="h-3.5 w-3.5" /> Restaurar
+            </Button>
+          ) : (
+            <Button
+              size="sm" variant="outline" className="rounded-lg gap-1.5 h-8 text-destructive hover:text-destructive"
+              onClick={handleBulkArchive}
+              disabled={acting}
+            >
+              <Archive className="h-3.5 w-3.5" /> Arquivar
+            </Button>
+          )}
+          <Button
+            size="sm" variant="outline" className="rounded-lg gap-1.5 h-8"
+            onClick={() => exportCsv(filtered.filter((m) => selected.has(m.id)), 'selected')}
+            disabled={acting}
+          >
+            <Download className="h-3.5 w-3.5" /> Exportar selecionados
+          </Button>
+          <Button
+            size="sm" variant="ghost" className="rounded-lg gap-1.5 h-8 ml-auto"
+            onClick={() => setSelected(new Set())}
+          >
+            <X className="h-3.5 w-3.5" /> Cancelar
+          </Button>
+        </div>
+      )}
 
       {/* Tabela densa */}
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
         {/* Header row */}
-        <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1fr)_140px_24px] gap-4 px-5 py-2.5 bg-muted/30 border-b border-border/40 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        <div className="grid grid-cols-[28px_minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1fr)_140px_24px] gap-4 px-5 py-2.5 bg-muted/30 border-b border-border/40 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          <div className="flex items-center">
+            <Checkbox
+              checked={allVisibleSelected ? true : (someVisibleSelected ? 'indeterminate' : false)}
+              onCheckedChange={(v) => toggleAllVisible(v === true)}
+              aria-label="Selecionar todos visíveis"
+            />
+          </div>
           <div><SortHeader k="name">Nome</SortHeader></div>
           <div><SortHeader k="role">Cargo</SortHeader></div>
           <div><SortHeader k="team">Time</SortHeader></div>
@@ -206,55 +461,74 @@ function PeopleListTab({ onNewMember }: { onNewMember: () => void }) {
               {filtered.map((m: LeaderMemberRow) => {
                 const health = getHealth(m.last_feedback_date);
                 const teamName = m.team_id ? teamById[m.team_id] ?? '—' : '—';
+                const isArchived = !!m.archived_at;
+                const isSelected = selected.has(m.id);
                 return (
-                  <li key={m.id} className="border-b border-border/30 last:border-b-0">
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/member/${m.id}`)}
-                      className="group w-full grid grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1fr)_140px_24px] gap-4 px-5 py-2.5 items-center text-left hover:bg-muted/40 transition-colors"
+                  <li key={m.id} className={cn('border-b border-border/30 last:border-b-0', isArchived && 'opacity-60')}>
+                    <div
+                      className={cn(
+                        'group grid grid-cols-[28px_minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1fr)_140px_24px] gap-4 px-5 py-2.5 items-center transition-colors',
+                        isSelected ? 'bg-primary/5' : 'hover:bg-muted/40',
+                      )}
                     >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="relative shrink-0">
-                          <MemberAvatar
-                            memberId={m.id}
-                            memberName={m.name}
-                            avatarUrl={m.avatar}
-                            size="sm"
-                          />
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span
-                                className={cn(
-                                  'absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full ring-2 ring-card',
-                                  HEALTH_CLASSES[health],
-                                )}
-                                aria-label={HEALTH_LABEL[health]}
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            </TooltipTrigger>
-                            <TooltipContent side="right">
-                              <p className="text-xs max-w-xs">{HEALTH_LABEL[health]}</p>
-                            </TooltipContent>
-                          </Tooltip>
+                      <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={(v) => toggleOne(m.id, v === true)}
+                          aria-label={`Selecionar ${m.name}`}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/member/${m.id}`)}
+                        className="contents text-left"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="relative shrink-0">
+                            <MemberAvatar
+                              memberId={m.id}
+                              memberName={m.name}
+                              avatarUrl={m.avatar}
+                              size="sm"
+                            />
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span
+                                  className={cn(
+                                    'absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full ring-2 ring-card',
+                                    HEALTH_CLASSES[health],
+                                  )}
+                                  aria-label={HEALTH_LABEL[health]}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              </TooltipTrigger>
+                              <TooltipContent side="right">
+                                <p className="text-xs max-w-xs">{HEALTH_LABEL[health]}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                          <span className="text-[13px] font-medium text-foreground truncate">
+                            {m.name}
+                          </span>
+                          {isArchived && (
+                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 ml-1">Arquivado</Badge>
+                          )}
                         </div>
-                        <span className="text-[13px] font-medium text-foreground truncate">
-                          {m.name}
-                        </span>
-                      </div>
-                      <div className="text-[13px] text-muted-foreground truncate">
-                        {m.role || '—'}
-                      </div>
-                      <div className="text-[13px] text-muted-foreground truncate">
-                        {teamName}
-                      </div>
-                      <div className="text-[12px] text-muted-foreground truncate">
-                        {formatDistanceToNow(new Date(m.last_feedback_date), {
-                          addSuffix: true,
-                          locale: ptBR,
-                        })}
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
-                    </button>
+                        <div className="text-[13px] text-muted-foreground truncate">
+                          {m.role || '—'}
+                        </div>
+                        <div className="text-[13px] text-muted-foreground truncate">
+                          {teamName}
+                        </div>
+                        <div className="text-[12px] text-muted-foreground truncate">
+                          {formatDistanceToNow(new Date(m.last_feedback_date), {
+                            addSuffix: true,
+                            locale: ptBR,
+                          })}
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
+                      </button>
+                    </div>
                   </li>
                 );
               })}
@@ -272,6 +546,44 @@ function PeopleListTab({ onNewMember }: { onNewMember: () => void }) {
           Novo liderado
         </button>
       </div>
+
+      {/* Move dialog */}
+      <Dialog open={moveOpen} onOpenChange={setMoveOpen}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-serif">Mover {selectedCount} liderado(s)</DialogTitle>
+            <DialogDescription>
+              Escolha o novo time. Eles continuam visíveis para você.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Time de destino</Label>
+            <Select value={moveTeamId} onValueChange={setMoveTeamId}>
+              <SelectTrigger className="rounded-xl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sem time</SelectItem>
+                {teams
+                  .slice()
+                  .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+                  .map((t) => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="rounded-xl" onClick={() => setMoveOpen(false)}>
+              Cancelar
+            </Button>
+            <Button className="rounded-xl gap-2" onClick={handleBulkMove} disabled={acting}>
+              {acting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              Mover
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
