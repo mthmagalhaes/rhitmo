@@ -514,6 +514,18 @@ export default function RhitmoSync() {
         <Progress value={progress} className="h-2 max-w-lg mx-auto" />
       </div>
 
+      {/* Cross-device handoff: only useful on desktop, only on the first step */}
+      {currentStep === 0 && (
+        <details className="mx-auto w-full max-w-md px-4 hidden md:block">
+          <summary className="text-xs text-muted-foreground cursor-pointer py-2 hover:text-foreground transition-colors">
+            📱 Continuar no celular
+          </summary>
+          <div className="mt-2">
+            <SyncQrHandoff url={typeof window !== 'undefined' ? window.location.href : ''} />
+          </div>
+        </details>
+      )}
+
       {/* Content */}
       <div className="flex-1 flex items-start justify-center p-4 pt-6 overflow-y-auto">
         <div className="max-w-2xl w-full space-y-6">
