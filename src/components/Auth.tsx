@@ -415,6 +415,28 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
             </form>
           ) : !isForgotPassword ? (
             <form onSubmit={handleLogin} className="space-y-6">
+              {unconfirmedEmail && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-2 text-sm">
+                  <div className="flex items-center gap-2 font-medium text-amber-900">
+                    <MailCheck className="h-4 w-4" />
+                    Confirme seu e-mail
+                  </div>
+                  <p className="text-amber-800 text-xs leading-relaxed">
+                    Enviamos um link de verificação para <strong>{unconfirmedEmail}</strong>. Não chegou? Olhe no spam ou reenvie abaixo.
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="rounded-xl bg-white"
+                    onClick={handleResendVerification}
+                    disabled={resending || resendCooldown > 0}
+                  >
+                    {resending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                    {resendCooldown > 0 ? `Reenviar em ${resendCooldown}s` : 'Reenviar verificação'}
+                  </Button>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="email">{t('common.email')}</Label>
                 <Input 
