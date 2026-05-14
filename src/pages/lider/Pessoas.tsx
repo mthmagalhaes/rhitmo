@@ -759,12 +759,13 @@ export default function LiderPessoas() {
       label: 'Times',
       icon: Building2,
       hidden: !canManageTeams,
-      content: <TeamsTab onNewTeam={() => setNewTeamOpen(true)} />,
+      content: <TeamsTab onNewTeam={() => setNewTeamOpen(true)} workspaceId={workspaceId} />,
     },
     {
       value: 'analytics',
       label: 'Analytics',
       icon: BarChart3,
+      hidden: !canManageTeams,
       content: <AnalyticsContent />,
     },
   ];
