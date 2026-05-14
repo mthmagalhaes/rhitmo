@@ -2558,6 +2558,8 @@ export type Database = {
       }
       team_members: {
         Row: {
+          archived_at: string | null
+          archived_by: string | null
           avatar: string | null
           birth_year: number | null
           chronotype: string | null
@@ -2585,6 +2587,8 @@ export type Database = {
           work_style_data: Json | null
         }
         Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
           avatar?: string | null
           birth_year?: number | null
           chronotype?: string | null
@@ -2612,6 +2616,8 @@ export type Database = {
           work_style_data?: Json | null
         }
         Update: {
+          archived_at?: string | null
+          archived_by?: string | null
           avatar?: string | null
           birth_year?: number | null
           chronotype?: string | null
