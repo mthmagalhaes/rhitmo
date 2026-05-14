@@ -255,6 +255,11 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
             variant: "destructive"
           });
         } else {
+          // Telemetria: primeiro convite do líder (memberCount era 0 antes do insert)
+          if (memberCount === 0) {
+            trackFunnel('first_invite_sent', { memberId: newMember.id, payload: { teamName } });
+          }
+          trackFunnel('first_member_invited', { memberId: newMember.id });
           toast({
             title: "Sucesso!",
             description: `Membro cadastrado e boas-vindas enviadas para ${email.trim()}`,

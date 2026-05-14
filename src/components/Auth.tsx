@@ -155,6 +155,7 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
     }
 
     setLoading(true);
+    trackFunnel('leader_signup_started', { payload: { persona: persona ?? 'unknown' } });
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -181,6 +182,7 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
 
       // Fire Google Ads signup conversion (idempotent per email)
       trackSignupConversion(email);
+      trackFunnel('leader_signup_completed', { payload: { persona: persona ?? 'unknown' } });
 
       toast({
         title: t('auth.accountCreated'),
@@ -202,6 +204,7 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
         title = 'Senha vazada em incidentes públicos';
         description = 'Esta senha apareceu em vazamentos conhecidos. Escolha outra.';
       }
+      trackFunnel('leader_signup_failed', { payload: { persona: persona ?? 'unknown', error: raw } });
       toast({ title, description, variant: 'destructive' });
     } finally {
       setLoading(false);

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAccount } from '@/contexts/AccountContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -11,8 +11,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Users, Building2, BarChart3, MailPlus, UserPlus, Mail, Send, Loader2, AlertTriangle } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Users, Building2, BarChart3, MailPlus, UserPlus, Mail, Send, Loader2, AlertTriangle, Pencil } from 'lucide-react';
 import { MembersGrid } from '@/components/leader/MembersGrid';
+import { trackFunnel } from '@/lib/analytics';
 
 function MembersTab() {
   return <MembersGrid />;
@@ -58,7 +62,7 @@ function TeamsTab() {
   );
 }
 
-function ResendInviteButton({ memberId, memberName, memberEmail }: { memberId: string; memberName: string; memberEmail: string | null }) {
+function ResendInviteButton({ memberId, memberName, memberEmail, isBounced }: { memberId: string; memberName: string; memberEmail: string | null; isBounced: boolean }) {
   const [sending, setSending] = useState(false);
   const handleResend = async () => {
     if (!memberEmail) {
@@ -85,6 +89,7 @@ function ResendInviteButton({ memberId, memberName, memberEmail }: { memberId: s
         },
       });
       if (error) throw error;
+      trackFunnel('invite_resent', { memberId, payload: { wasBounced: isBounced } });
       toast.success(`Convite reenviado para ${memberEmail}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -101,7 +106,81 @@ function ResendInviteButton({ memberId, memberName, memberEmail }: { memberId: s
   );
 }
 
+function EditEmailButton({ memberId, currentEmail, onUpdated }: { memberId: string; currentEmail: string | null; onUpdated: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState(currentEmail ?? '');
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    const next = value.trim().toLowerCase();
+    if (!next || !/.+@.+\..+/.test(next)) {
+      toast.error('Informe um e-mail válido.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('team_members')
+        .update({ email: next })
+        .eq('id', memberId);
+      if (error) throw error;
+      // Tenta remover da supressão (RPC pode não existir em todos ambientes)
+      try {
+        await supabase.rpc('remove_email_suppression' as never, { p_email: currentEmail } as never);
+      } catch { /* RPC opcional */ }
+      trackFunnel('member_email_edited', { memberId, payload: { from: currentEmail, to: next } });
+      toast.success('E-mail atualizado. Você já pode reenviar o convite.');
+      setOpen(false);
+      onUpdated();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Falha ao atualizar: ${msg}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <Button size="sm" variant="ghost" className="rounded-xl gap-2" onClick={() => setOpen(true)}>
+        <Pencil className="w-3.5 h-3.5" />
+        Editar e-mail
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-serif">Corrigir e-mail do liderado</DialogTitle>
+            <DialogDescription>
+              O endereço atual não foi entregue (bounce). Verifique com a pessoa
+              e atualize aqui — o próximo reenvio usará o novo e-mail.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="member-email-fix">Novo e-mail</Label>
+            <Input
+              id="member-email-fix"
+              type="email"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder="nome@empresa.com"
+              className="rounded-xl"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)} className="rounded-xl">Cancelar</Button>
+            <Button onClick={handleSave} disabled={saving} className="rounded-xl gap-2">
+              {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 function InvitesTab({ onInvite }: { onInvite: () => void }) {
+  const qc = useQueryClient();
   const { data: pending } = useQuery({
     queryKey: ['pending-invites'],
     queryFn: async () => {
@@ -130,6 +209,21 @@ function InvitesTab({ onInvite }: { onInvite: () => void }) {
     staleTime: 60_000,
   });
   const suppressedSet = new Set(suppressed ?? []);
+
+  // Telemetria: dispara invite_bounced uma vez por liderado bounced detectado nesta sessão.
+  useEffect(() => {
+    if (!pending || !suppressed) return;
+    const w = window as unknown as { __rhitmoBouncedFired?: Set<string> };
+    const fired = w.__rhitmoBouncedFired ?? new Set<string>();
+    pending.forEach((p) => {
+      if (p.email && suppressedSet.has(p.email.toLowerCase()) && !fired.has(p.id)) {
+        trackFunnel('invite_bounced', { memberId: p.id, payload: { email: p.email } });
+        fired.add(p.id);
+      }
+    });
+    w.__rhitmoBouncedFired = fired;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pending, suppressed]);
 
   return (
     <div className="space-y-4">
@@ -194,7 +288,17 @@ function InvitesTab({ onInvite }: { onInvite: () => void }) {
                   ) : (
                     <Badge variant="outline" className="text-xs hidden sm:inline-flex">Pendente</Badge>
                   )}
-                  <ResendInviteButton memberId={p.id} memberName={p.name} memberEmail={p.email} />
+                  {isBounced && (
+                    <EditEmailButton
+                      memberId={p.id}
+                      currentEmail={p.email}
+                      onUpdated={() => {
+                        qc.invalidateQueries({ queryKey: ['pending-invites'] });
+                        qc.invalidateQueries({ queryKey: ['suppressed-member-emails'] });
+                      }}
+                    />
+                  )}
+                  <ResendInviteButton memberId={p.id} memberName={p.name} memberEmail={p.email} isBounced={isBounced} />
                 </div>
               </CardContent>
             </Card>

@@ -8,7 +8,7 @@ import { ActivitySheet } from '@/components/ActivitySheet';
 import { LeaderTour } from '@/components/onboarding/LeaderTour';
 import { useAuth } from '@/hooks/useAuth';
 import { useAccount } from '@/contexts/AccountContext';
-import { AccountLoadFailed, AccountLoadingSlow } from '@/components/AccountLoadFailed';
+import { AccountLoadFailed, AccountLoadingSlow, AccountLoadingDelayedBanner } from '@/components/AccountLoadFailed';
 
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -18,6 +18,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     workspaceId,
     loading: accountLoading,
     hasError,
+    isLoadingDelayed,
     isSlowLoad,
     isLinkedMember,
     isLeader,
@@ -168,6 +169,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       )}
 
       {tourRunning && <LeaderTour autoStart onClose={() => setTourRunning(false)} />}
+
+      {user && accountLoading && isLoadingDelayed && !isSlowLoad && (
+        <AccountLoadingDelayedBanner onRetry={() => refetchWorkspace()} />
+      )}
     </SidebarProvider>
   );
 }

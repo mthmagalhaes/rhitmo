@@ -58,9 +58,12 @@ export type FunnelEvent =
   | 'auth_email_resent'
   | 'account_load_failed'
   | 'account_load_slow'
+  | 'account_load_delayed'
   | 'tour_step_missing'
   | 'plan_limit_hit'
-  | 'wizard_draft_restored';
+  | 'wizard_draft_restored'
+  | 'leader_signup_failed'
+  | 'member_email_edited';
 
 interface FunnelEventPayload {
   workspaceId?: string | null;
@@ -93,5 +96,31 @@ export function trackFunnel(event: FunnelEvent, opts: FunnelEventPayload = {}) {
     });
   } catch (err) {
     console.warn('[analytics] trackFunnel error:', err);
+  }
+}
+
+/**
+ * Wrap an async operation with funnel telemetry: fires `${event}_started`
+ * before, then either `_completed` or `_failed` after. Returns the
+ * underlying result/throw — purely additive.
+ *
+ * Designed for short, descriptive event roots like 'leader_signup'.
+ */
+export async function withFunnel<T>(
+  event: string,
+  fn: () => Promise<T>,
+  opts: FunnelEventPayload = {},
+): Promise<T> {
+  trackFunnel(`${event}_started` as FunnelEvent, opts);
+  try {
+    const result = await fn();
+    trackFunnel(`${event}_completed` as FunnelEvent, opts);
+    return result;
+  } catch (err) {
+    trackFunnel(`${event}_failed` as FunnelEvent, {
+      ...opts,
+      payload: { ...(opts.payload ?? {}), error: err instanceof Error ? err.message : String(err) },
+    });
+    throw err;
   }
 }

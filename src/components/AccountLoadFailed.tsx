@@ -74,3 +74,29 @@ export function AccountLoadingSlow({ onRetry }: AccountLoadingSlowProps) {
     </div>
   );
 }
+
+interface AccountLoadingDelayedProps {
+  onRetry: () => void;
+}
+
+/**
+ * Sprint 3.3 — soft inline banner shown after ~3s of loading. Sits at the
+ * bottom of the viewport so the user keeps seeing the underlying content
+ * (skeletons, last-known data) instead of a hard takeover.
+ */
+export function AccountLoadingDelayedBanner({ onRetry }: AccountLoadingDelayedProps) {
+  return (
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 px-4">
+      <div className="flex items-center gap-3 rounded-2xl bg-card/95 backdrop-blur border px-4 py-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.08)]">
+        <div className="h-3.5 w-3.5 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+        <p className="text-xs text-muted-foreground">
+          Demorando mais que o normal…
+        </p>
+        <Button size="sm" variant="ghost" className="h-7 rounded-lg text-xs gap-1" onClick={onRetry}>
+          <RefreshCw className="h-3 w-3" />
+          Recarregar
+        </Button>
+      </div>
+    </div>
+  );
+}
