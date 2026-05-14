@@ -61,6 +61,7 @@ const LiderPulseDetail = lazy(() => import("./pages/lider/PulseDetail"));
 const LiderAvaliacoes = lazy(() => import("./pages/lider/Avaliacoes"));
 const LiderObjetivos = lazy(() => import("./pages/lider/Objetivos"));
 const LiderPessoas = lazy(() => import("./pages/lider/Pessoas"));
+const LiderPessoasV2 = lazy(() => import("./pages/lider/PessoasV2"));
 const LiderConfiguracoes = lazy(() => import("./pages/lider/Configuracoes"));
 const LiderContexto = lazy(() => import("./pages/lider/Contexto"));
 const LiderMentor = lazy(() => import("./pages/lider/Mentor"));
@@ -150,6 +151,7 @@ const App = () => (
               <Route path="/lider/avaliacoes" element={Leader(<LiderAvaliacoes />)} />
               <Route path="/lider/objetivos" element={Leader(<LiderObjetivos />)} />
               <Route path="/lider/pessoas" element={Leader(<LiderPessoas />)} />
+              <Route path="/lider/pessoas-v2" element={Leader(<LiderPessoasV2 />)} />
               <Route path="/lider/configuracoes" element={Leader(<LiderConfiguracoes />)} />
               <Route path="/lider/contexto" element={Leader(<LiderContexto />)} />
               <Route path="/lider/mentor" element={Leader(<LiderMentor />)} />
