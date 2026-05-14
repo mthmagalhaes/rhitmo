@@ -803,6 +803,16 @@ const Landing = () => {
     loading
   } = useAuth();
   const navigate = useNavigate();
+  const { hash } = useLocation();
+
+  useEffect(() => {
+    if (!hash) return;
+    const id = hash.replace('#', '');
+    const t = window.setTimeout(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+    return () => window.clearTimeout(t);
+  }, [hash]);
 
   const [landingTheme, setLandingTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('theme');
