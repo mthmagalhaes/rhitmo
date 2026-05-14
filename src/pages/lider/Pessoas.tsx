@@ -180,6 +180,7 @@ function EditEmailButton({ memberId, currentEmail, onUpdated }: { memberId: stri
 }
 
 function InvitesTab({ onInvite }: { onInvite: () => void }) {
+  const qc = useQueryClient();
   const { data: pending } = useQuery({
     queryKey: ['pending-invites'],
     queryFn: async () => {
