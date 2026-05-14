@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAccount } from '@/contexts/AccountContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -11,8 +11,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Users, Building2, BarChart3, MailPlus, UserPlus, Mail, Send, Loader2, AlertTriangle } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Users, Building2, BarChart3, MailPlus, UserPlus, Mail, Send, Loader2, AlertTriangle, Pencil } from 'lucide-react';
 import { MembersGrid } from '@/components/leader/MembersGrid';
+import { trackFunnel } from '@/lib/analytics';
 
 function MembersTab() {
   return <MembersGrid />;
