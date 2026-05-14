@@ -8,6 +8,7 @@ import { ActivitySheet } from '@/components/ActivitySheet';
 import { LeaderTour } from '@/components/onboarding/LeaderTour';
 import { useAuth } from '@/hooks/useAuth';
 import { useAccount } from '@/contexts/AccountContext';
+import { AccountLoadFailed, AccountLoadingSlow } from '@/components/AccountLoadFailed';
 
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -17,6 +18,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     workspaceId,
     loading: accountLoading,
     hasError,
+    isSlowLoad,
     isLinkedMember,
     isLeader,
     isHRAdmin,
@@ -106,6 +108,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       if (signupPersona !== null) setSignupPersona(null);
     }
   }, [allContextResolved, workspaceId, isLinkedMember, isHRAdmin, signupPersona]);
+
+  // Gate hard error / very slow load before rendering layout. Logged-in
+  // users only — public routes don't reach AppLayout.
+  if (user && hasError) {
+    return <AccountLoadFailed onRetry={() => refetchWorkspace()} />;
+  }
+  if (user && accountLoading && isSlowLoad) {
+    return <AccountLoadingSlow onRetry={() => window.location.reload()} />;
+  }
 
   return (
     <SidebarProvider>

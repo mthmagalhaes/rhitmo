@@ -12,6 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { CheckCircle2, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useWizardDraft } from '@/hooks/useWizardDraft';
+import { trackFunnel } from '@/lib/analytics';
+import { SyncQrHandoff } from '@/components/onboarding/SyncQrHandoff';
 
 // Types
 type WizardStep = 'identity' | 'rhythm' | 'manual' | 'future';
@@ -210,6 +213,25 @@ export default function RhitmoSync() {
   const [notLinked, setNotLinked] = useState(false);
   const [notFound, setNotFound] = useState(false);
 
+  // Wizard draft (Sprint 2.3)
+  const draftKey = memberId ? `sync:${memberId}` : null;
+  const { restored, didRestore, save: saveDraft, clear: clearDraft } = useWizardDraft<SyncFormData>(
+    draftKey,
+    !completed,
+  );
+
+  useEffect(() => {
+    if (didRestore && restored) {
+      setFormData(restored.formData);
+      setCurrentStep(restored.currentStep);
+      trackFunnel('wizard_draft_restored', { payload: { wizard: 'sync' }, memberId });
+    }
+  }, [didRestore, restored, memberId]);
+
+  useEffect(() => {
+    if (didRestore && !completed) saveDraft(formData, currentStep);
+  }, [formData, currentStep, didRestore, completed, saveDraft]);
+
   useEffect(() => {
     loadMemberData();
   }, [memberId]);
@@ -353,6 +375,8 @@ export default function RhitmoSync() {
       }
 
       setCompleted(true);
+      clearDraft();
+      trackFunnel('member_sync_completed', { memberId });
       toast.success('Perfil sintonizado com sucesso!');
     } catch (error: unknown) {
       console.error('Error submitting:', error);
@@ -489,6 +513,18 @@ export default function RhitmoSync() {
         <StepIndicator steps={steps} currentIndex={currentStep} />
         <Progress value={progress} className="h-2 max-w-lg mx-auto" />
       </div>
+
+      {/* Cross-device handoff: only useful on desktop, only on the first step */}
+      {currentStep === 0 && (
+        <details className="mx-auto w-full max-w-md px-4 hidden md:block">
+          <summary className="text-xs text-muted-foreground cursor-pointer py-2 hover:text-foreground transition-colors">
+            📱 Continuar no celular
+          </summary>
+          <div className="mt-2">
+            <SyncQrHandoff url={typeof window !== 'undefined' ? window.location.href : ''} />
+          </div>
+        </details>
+      )}
 
       {/* Content */}
       <div className="flex-1 flex items-start justify-center p-4 pt-6 overflow-y-auto">

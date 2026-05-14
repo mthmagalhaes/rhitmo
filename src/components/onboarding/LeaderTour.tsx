@@ -5,16 +5,13 @@ import 'driver.js/dist/driver.css';
 import '@/styles/driver-theme.css';
 import { useToast } from '@/hooks/use-toast';
 import { useOnboardingTour } from '@/hooks/useOnboardingTour';
+import { trackFunnel } from '@/lib/analytics';
 
 interface LeaderTourProps {
   autoStart?: boolean;
   onClose?: () => void;
 }
 
-/**
- * Wait for a CSS selector to appear in the DOM.
- * Resolves with the element, or null after `timeout` ms.
- */
 function isVisible(el: Element | null): el is HTMLElement {
   if (!el || !(el instanceof HTMLElement)) return false;
   if (el.offsetParent === null && getComputedStyle(el).position !== 'fixed') return false;
@@ -23,31 +20,42 @@ function isVisible(el: Element | null): el is HTMLElement {
 }
 
 /**
- * Wait for a CSS selector to appear in the DOM AND be visible.
- * Among multiple matches, returns the first visible one.
- * Resolves with the element, or null after `timeout` ms.
+ * Wait for a CSS selector to appear AND be visible. Uses MutationObserver
+ * (more efficient than polling) with a timeout safety net.
  */
 function waitForSelector(selector: string, timeout = 2500): Promise<HTMLElement | null> {
   return new Promise((resolve) => {
-    const findVisible = () => {
-      const matches = Array.from(document.querySelectorAll(selector));
-      return matches.find(isVisible) as HTMLElement | undefined;
-    };
+    const findVisible = () =>
+      Array.from(document.querySelectorAll(selector)).find(isVisible) as HTMLElement | undefined;
 
     const existing = findVisible();
-    if (existing) return resolve(existing);
+    if (existing) {
+      console.debug('[LeaderTour] selector found immediately', { selector });
+      return resolve(existing);
+    }
 
-    const start = Date.now();
-    const interval = window.setInterval(() => {
+    let resolved = false;
+    const observer = new MutationObserver(() => {
       const el = findVisible();
-      if (el) {
-        window.clearInterval(interval);
+      if (el && !resolved) {
+        resolved = true;
+        observer.disconnect();
+        window.clearTimeout(timer);
+        console.debug('[LeaderTour] selector found via observer', { selector });
         resolve(el);
-      } else if (Date.now() - start > timeout) {
-        window.clearInterval(interval);
-        resolve(null);
       }
-    }, 80);
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+
+    const timer = window.setTimeout(() => {
+      if (resolved) return;
+      resolved = true;
+      observer.disconnect();
+      console.debug('[LeaderTour] selector NOT found within timeout', { selector, timeout });
+      trackFunnel('tour_step_missing', { payload: { selector, timeout } });
+      resolve(null);
+    }, timeout);
   });
 }
 

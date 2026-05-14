@@ -10,7 +10,8 @@ import { BulkOnboardDialog } from '@/components/admin/BulkOnboardDialog';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Users, Building2, BarChart3, MailPlus, UserPlus, Mail, Send, Loader2 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Users, Building2, BarChart3, MailPlus, UserPlus, Mail, Send, Loader2, AlertTriangle } from 'lucide-react';
 import { MembersGrid } from '@/components/leader/MembersGrid';
 
 function MembersTab() {
@@ -115,6 +116,21 @@ function InvitesTab({ onInvite }: { onInvite: () => void }) {
     },
   });
 
+  // Sprint 2.5 — bounced emails (suppression list)
+  const { data: suppressed } = useQuery({
+    queryKey: ['suppressed-member-emails'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_suppressed_member_emails');
+      if (error) {
+        console.warn('[Pessoas] suppressed-emails RPC failed:', error.message);
+        return [] as string[];
+      }
+      return ((data ?? []) as Array<{ email: string }>).map((r) => r.email.toLowerCase());
+    },
+    staleTime: 60_000,
+  });
+  const suppressedSet = new Set(suppressed ?? []);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -141,23 +157,49 @@ function InvitesTab({ onInvite }: { onInvite: () => void }) {
         />
       ) : (
         <div className="space-y-2">
-          {pending.map((p) => (
+          {pending.map((p) => {
+            const isBounced = !!p.email && suppressedSet.has(p.email.toLowerCase());
+            return (
             <Card key={p.id} className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
               <CardContent className="flex items-center justify-between py-3 gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="rounded-xl bg-primary/10 p-2 shrink-0"><Mail className="w-4 h-4 text-primary" /></div>
                   <div className="min-w-0">
                     <p className="font-medium text-sm truncate">{p.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{p.email ?? 'sem e-mail'}</p>
+                    <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
+                      {p.email ?? 'sem e-mail'}
+                      {isBounced && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs max-w-xs">
+                                E-mail não foi entregue (bounce). Verifique se o endereço
+                                está correto ou peça outro contato.
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <Badge variant="outline" className="text-xs hidden sm:inline-flex">Pendente</Badge>
+                  {isBounced ? (
+                    <Badge variant="outline" className="text-xs border-amber-500/40 text-amber-700 dark:text-amber-400">
+                      Bounce
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-xs hidden sm:inline-flex">Pendente</Badge>
+                  )}
                   <ResendInviteButton memberId={p.id} memberName={p.name} memberEmail={p.email} />
                 </div>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

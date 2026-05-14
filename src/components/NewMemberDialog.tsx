@@ -9,10 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useEnforcedLimits } from '@/hooks/useEnforcedLimits';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, UserPlus } from 'lucide-react';
+import { Loader2, UserPlus, AlertTriangle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { z } from 'zod';
 import { Team } from '@/types/team';
 import { syncStripeSeats } from '@/lib/syncStripeSeats';
+import { trackFunnel } from '@/lib/analytics';
 
 interface NewMemberDialogProps {
   open: boolean;
@@ -121,7 +123,10 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
     }
 
     // Check plan limit
-    if (!enforceLimit(memberCount, limits.maxMembers, 'liderados')) return;
+    if (!enforceLimit(memberCount, limits.maxMembers, 'liderados')) {
+      trackFunnel('plan_limit_hit', { payload: { resource: 'members', current: memberCount, max: limits.maxMembers } });
+      return;
+    }
 
     setLoading(true);
 
@@ -327,6 +332,29 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
             Cadastre um novo liderado na sua equipe
           </DialogDescription>
         </DialogHeader>
+
+        {/* Plan-limit visibility (Sprint 2.4) */}
+        {limits.maxMembers !== Infinity && limits.maxMembers < 9999 && (
+          <div className="flex items-center justify-between gap-2 rounded-xl border bg-muted/40 px-3 py-2 text-xs">
+            <span className="text-muted-foreground">
+              {memberCount} de {limits.maxMembers} liderado(s) no seu plano
+            </span>
+            {memberCount >= limits.maxMembers ? (
+              <Badge variant="destructive" className="gap-1">
+                <AlertTriangle className="h-3 w-3" /> Limite atingido
+              </Badge>
+            ) : memberCount / limits.maxMembers >= 0.8 ? (
+              <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">
+                Quase no limite
+              </Badge>
+            ) : null}
+            {memberCount >= limits.maxMembers && (
+              <Link to="/billing" className="text-primary underline underline-offset-2">
+                Fazer upgrade
+              </Link>
+            )}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 py-4">

@@ -54,7 +54,13 @@ export type FunnelEvent =
   | 'member_onboarding_started'
   | 'member_onboarding_completed'
   | 'invite_resent'
-  | 'auth_email_resent';
+  | 'invite_bounced'
+  | 'auth_email_resent'
+  | 'account_load_failed'
+  | 'account_load_slow'
+  | 'tour_step_missing'
+  | 'plan_limit_hit'
+  | 'wizard_draft_restored';
 
 interface FunnelEventPayload {
   workspaceId?: string | null;

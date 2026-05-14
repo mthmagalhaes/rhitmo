@@ -1,8 +1,9 @@
-import { createContext, useContext, useMemo } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useImpersonation } from '@/hooks/useImpersonation';
+import { trackFunnel } from '@/lib/analytics';
 
 export type AccountRole = 'hr_admin' | 'leader' | 'user';
 
@@ -10,6 +11,7 @@ interface AccountContextValue {
   workspaceId: string | null;
   loading: boolean;
   hasError: boolean;
+  isSlowLoad: boolean;
   role: AccountRole;
   isHRAdmin: boolean;
   isWorkspaceOwner: boolean;
@@ -101,6 +103,26 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
 
   const loading = authLoading || impersonationLoading || contextLoading;
 
+  // Slow-load detector: flips true after 5s still loading. Used by App
+  // shell to render <AccountLoadingSlow /> instead of an indefinite spinner.
+  const [isSlowLoad, setIsSlowLoad] = useState(false);
+  useEffect(() => {
+    if (!loading) {
+      setIsSlowLoad(false);
+      return;
+    }
+    const t = window.setTimeout(() => {
+      setIsSlowLoad(true);
+      trackFunnel('account_load_slow');
+    }, 5000);
+    return () => window.clearTimeout(t);
+  }, [loading]);
+
+  // Telemetry on hard error
+  useEffect(() => {
+    if (contextError) trackFunnel('account_load_failed', { payload: { message: String(contextError) } });
+  }, [contextError]);
+
   const value = useMemo<AccountContextValue>(() => {
     const role: AccountRole = loading ? 'leader' : (data?.role ?? 'user');
     const linkedMember = data?.linked_member ?? null;
@@ -108,6 +130,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       workspaceId: data?.workspace_id ?? null,
       loading,
       hasError: !!contextError,
+      isSlowLoad,
       role,
       isHRAdmin: !loading && role === 'hr_admin',
       isWorkspaceOwner: !loading && !!data?.is_workspace_owner,
@@ -119,7 +142,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       hasPendingInviteByEmail: !!data?.has_pending_invite,
       refetchWorkspace: () => refetch(),
     };
-  }, [loading, data, contextError, refetch]);
+  }, [loading, data, contextError, refetch, isSlowLoad]);
 
   return (
     <AccountContext.Provider value={value}>
