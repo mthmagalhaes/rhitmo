@@ -44,11 +44,16 @@ export const NewTeamDialog = ({
     setLoading(true);
 
     try {
+      // Workspace = 1 owner. Novo time fica sempre embaixo do criador (owner/líder
+      // logado) — leader_user_id é necessário pra is_team_leader() reconhecer
+      // acesso de líder via RLS em feedbacks/goals/etc.
+      const { data: { user } } = await supabase.auth.getUser();
       const { error } = await supabase
         .from('teams')
         .insert({ 
           workspace_id: workspaceId, 
-          name: name.trim() 
+          name: name.trim(),
+          leader_user_id: user?.id ?? null,
         });
 
       if (error) throw error;

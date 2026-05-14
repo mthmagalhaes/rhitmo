@@ -35,7 +35,7 @@ import {
 import {
   Users, Building2, BarChart3, MailPlus, UserPlus, Mail, Send, Loader2,
   AlertTriangle, Pencil, ChevronRight, Search, Plus, MoreHorizontal,
-  Trash2, UserCog, ArrowUp, ArrowDown, X, Copy, Archive, ArchiveRestore,
+  Trash2, ArrowUp, ArrowDown, X, Copy, Archive, ArchiveRestore,
   Download, FolderInput, CheckCircle2,
 } from 'lucide-react';
 import { MemberAvatar } from '@/components/MemberAvatar';
@@ -48,7 +48,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { EditTeamDialog } from '@/components/EditTeamDialog';
 import { DeleteTeamDialog } from '@/components/DeleteTeamDialog';
-import { ChangeTeamLeaderDialog } from '@/components/ChangeTeamLeaderDialog';
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tabela densa de Liderados (estilo Tako)
@@ -595,9 +595,7 @@ function PeopleListTab({ onNewMember }: { onNewMember: () => void }) {
 interface TeamRow {
   id: string;
   name: string;
-  leader_user_id: string | null;
   created_at: string;
-  leader_name: string | null;
   member_count: number;
 }
 
@@ -605,7 +603,6 @@ function TeamsTab({ onNewTeam, workspaceId }: { onNewTeam: () => void; workspace
   const qc = useQueryClient();
   const [editTeam, setEditTeam] = useState<TeamRow | null>(null);
   const [deleteTeam, setDeleteTeam] = useState<TeamRow | null>(null);
-  const [leaderTeam, setLeaderTeam] = useState<TeamRow | null>(null);
   const [query, setQuery] = useState('');
 
   const { data: teams = [], isLoading } = useQuery<TeamRow[]>({
@@ -614,12 +611,12 @@ function TeamsTab({ onNewTeam, workspaceId }: { onNewTeam: () => void; workspace
     queryFn: async () => {
       const { data: rows, error } = await supabase
         .from('teams')
-        .select('id, name, leader_user_id, created_at')
+        .select('id, name, created_at')
         .eq('workspace_id', workspaceId!)
         .order('name');
       if (error) throw error;
 
-      const list = (rows ?? []) as Array<{ id: string; name: string; leader_user_id: string | null; created_at: string }>;
+      const list = (rows ?? []) as Array<{ id: string; name: string; created_at: string }>;
       const ids = list.map((t) => t.id);
 
       // Member counts
@@ -634,24 +631,8 @@ function TeamsTab({ onNewTeam, workspaceId }: { onNewTeam: () => void; workspace
         });
       }
 
-      // Resolve leader names via team_members.linked_user_id
-      const leaderIds = Array.from(new Set(list.map((t) => t.leader_user_id).filter(Boolean) as string[]));
-      const nameByUid = new Map<string, string>();
-      if (leaderIds.length) {
-        const { data: named } = await supabase
-          .from('team_members')
-          .select('linked_user_id, name')
-          .in('linked_user_id', leaderIds);
-        named?.forEach((r: { linked_user_id: string | null; name: string }) => {
-          if (r.linked_user_id && !nameByUid.has(r.linked_user_id)) {
-            nameByUid.set(r.linked_user_id, r.name);
-          }
-        });
-      }
-
       return list.map((t) => ({
         ...t,
-        leader_name: t.leader_user_id ? nameByUid.get(t.leader_user_id) ?? null : null,
         member_count: counts.get(t.id) ?? 0,
       }));
     },
@@ -706,11 +687,14 @@ function TeamsTab({ onNewTeam, workspaceId }: { onNewTeam: () => void; workspace
         </div>
       </div>
 
+      <p className="text-[13px] text-muted-foreground">
+        Times organizam seus liderados em grupos. Toda a operação fica embaixo de você (dono do workspace).
+      </p>
+
       {/* Tabela densa */}
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
-        <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_120px_140px_32px] gap-4 px-5 py-2.5 bg-muted/30 border-b border-border/40 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        <div className="grid grid-cols-[minmax(0,3fr)_140px_160px_32px] gap-4 px-5 py-2.5 bg-muted/30 border-b border-border/40 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           <div>Nome</div>
-          <div>Líder</div>
           <div>Liderados</div>
           <div>Criado</div>
           <div />
@@ -725,15 +709,12 @@ function TeamsTab({ onNewTeam, workspaceId }: { onNewTeam: () => void; workspace
               const isSemTime = t.name === 'Sem Time';
               return (
                 <li key={t.id} className="border-b border-border/30 last:border-b-0">
-                  <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_120px_140px_32px] gap-4 px-5 py-3 items-center hover:bg-muted/30 transition-colors">
+                  <div className="grid grid-cols-[minmax(0,3fr)_140px_160px_32px] gap-4 px-5 py-3 items-center hover:bg-muted/30 transition-colors">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="rounded-lg bg-primary/10 p-1.5 shrink-0">
                         <Building2 className="h-3.5 w-3.5 text-primary" />
                       </div>
                       <span className="text-[13px] font-medium text-foreground truncate">{t.name}</span>
-                    </div>
-                    <div className="text-[13px] text-muted-foreground truncate">
-                      {t.leader_name ?? (t.leader_user_id ? 'Líder externo' : <span className="italic">Sem líder</span>)}
                     </div>
                     <div className="text-[13px] text-muted-foreground">
                       {t.member_count} {t.member_count === 1 ? 'pessoa' : 'pessoas'}
@@ -750,9 +731,6 @@ function TeamsTab({ onNewTeam, workspaceId }: { onNewTeam: () => void; workspace
                       <DropdownMenuContent align="end" className="w-44">
                         <DropdownMenuItem onClick={() => setEditTeam(t)} disabled={isSemTime}>
                           <Pencil className="h-3.5 w-3.5 mr-2" /> Renomear
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setLeaderTeam(t)}>
-                          <UserCog className="h-3.5 w-3.5 mr-2" /> Trocar líder
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
@@ -784,13 +762,6 @@ function TeamsTab({ onNewTeam, workspaceId }: { onNewTeam: () => void; workspace
             open={!!deleteTeam}
             onOpenChange={(o) => !o && setDeleteTeam(null)}
             team={deleteTeam}
-            workspaceId={workspaceId}
-            onSuccess={refresh}
-          />
-          <ChangeTeamLeaderDialog
-            open={!!leaderTeam}
-            onOpenChange={(o) => !o && setLeaderTeam(null)}
-            team={leaderTeam}
             workspaceId={workspaceId}
             onSuccess={refresh}
           />
