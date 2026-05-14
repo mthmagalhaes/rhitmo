@@ -27,7 +27,41 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
   const [email, setEmail] = useState(defaultEmail);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  // Sprint 2.1: persistent banner + cooldown for unconfirmed-email resend
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resending, setResending] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = window.setInterval(() => setResendCooldown((s) => Math.max(0, s - 1)), 1000);
+    return () => window.clearInterval(t);
+  }, [resendCooldown]);
+
+  const handleResendVerification = async () => {
+    if (!unconfirmedEmail || resendCooldown > 0) return;
+    setResending(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: unconfirmedEmail,
+        options: { emailRedirectTo: `${window.location.origin}/dashboard` },
+      });
+      if (error) throw error;
+      toast({
+        title: 'Link reenviado',
+        description: `Se a conta existir, um novo link foi para ${unconfirmedEmail}.`,
+      });
+      trackFunnel('auth_email_resent', { payload: { email: unconfirmedEmail } });
+      setResendCooldown(60);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast({ title: 'Não foi possível reenviar', description: msg, variant: 'destructive' });
+    } finally {
+      setResending(false);
+    }
+  };
 
   // Persist persona for OAuth round-trip
   if (typeof window !== 'undefined' && persona) {
