@@ -115,7 +115,7 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -123,6 +123,20 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
         }
       });
       if (error) throw error;
+
+      // Detecta "email já registrado": Supabase responde 200 com user mas
+      // identities=[] quando o e-mail já tem conta confirmada.
+      const identities = (data?.user as { identities?: unknown[] } | null)?.identities;
+      if (data?.user && Array.isArray(identities) && identities.length === 0) {
+        toast({
+          title: 'Esse e-mail já tem conta',
+          description: 'Detectamos que você já é cadastrado. Trocamos para a tela de login.',
+        });
+        setIsSignUp(false);
+        setPassword('');
+        setConfirmPassword('');
+        return;
+      }
 
       // Fire Google Ads signup conversion (idempotent per email)
       trackSignupConversion(email);
@@ -132,11 +146,22 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
         description: t('auth.accountCreatedDesc')
       });
     } catch (error: any) {
-      toast({
-        title: t('common.error'),
-        description: error.message,
-        variant: "destructive"
-      });
+      // Mensagens mais claras pros erros mais comuns do Supabase
+      const raw = String(error?.message ?? '');
+      let title = t('common.error') as string;
+      let description = raw;
+      if (/already registered|already exists|user already/i.test(raw)) {
+        title = 'Esse e-mail já tem conta';
+        description = 'Use "Entrar" com sua senha. Esqueceu? Use "Esqueci minha senha".';
+        setIsSignUp(false);
+      } else if (/password.*(short|6 char|weak)/i.test(raw)) {
+        title = 'Senha muito fraca';
+        description = 'Use pelo menos 6 caracteres. Combine letras e números.';
+      } else if (/pwned|leaked/i.test(raw)) {
+        title = 'Senha vazada em incidentes públicos';
+        description = 'Esta senha apareceu em vazamentos conhecidos. Escolha outra.';
+      }
+      toast({ title, description, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
