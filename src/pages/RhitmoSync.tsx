@@ -236,6 +236,9 @@ export default function RhitmoSync() {
       const member = Array.isArray(data) ? data[0] : data;
 
       setMemberName(member.name);
+      if ((member as { email?: string }).email) {
+        setMemberEmail((member as { email: string }).email);
+      }
 
       if (member.work_style_data) {
         setCompleted(true);
