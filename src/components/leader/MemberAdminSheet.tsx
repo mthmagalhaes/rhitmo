@@ -21,7 +21,7 @@ import { EditMemberDialog } from '@/components/EditMemberDialog';
 import { InviteMemberDialog } from '@/components/InviteMemberDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { trackFunnel } from '@/lib/analytics';
+
 import {
   Mail,
   Briefcase,
@@ -250,13 +250,7 @@ export function MemberAdminSheet({
                   <Button
                     size="sm"
                     className="rounded-xl gap-2"
-                    onClick={() => {
-                      trackFunnel('member_admin_sheet_invite_clicked', {
-                        workspaceId,
-                        payload: { member_id: member.id },
-                      });
-                      setInviteOpen(true);
-                    }}
+                    onClick={() => setInviteOpen(true)}
                   >
                     <Send className="h-3.5 w-3.5" />
                     Convidar para o Rhitmo
