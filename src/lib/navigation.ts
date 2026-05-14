@@ -11,6 +11,7 @@ import {
   FileText,
   Layers,
   Sparkles,
+  Users,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -31,7 +32,7 @@ export interface NavItem {
  */
 export const LEADER_NAV_ITEMS: NavItem[] = [
   { id: 'inicio', labelKey: 'nav.lider.inicio', icon: Home, to: '/lider/inicio' },
-  { id: '1on1s', labelKey: 'nav.lider.um_pra_um', icon: Calendar, to: '/lider/1on1s' },
+  { id: 'pessoas', labelKey: 'nav.lider.pessoas', icon: Users, to: '/lider/pessoas' },
   { id: 'diario', labelKey: 'nav.lider.diario', icon: BookOpen, to: '/lider/diario' },
   { id: 'objetivos', labelKey: 'nav.lider.objetivos', icon: Target, to: '/lider/objetivos' },
   { id: 'avaliacoes', labelKey: 'nav.lider.avaliacoes', icon: ClipboardList, to: '/lider/avaliacoes' },

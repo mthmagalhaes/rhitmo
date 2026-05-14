@@ -125,10 +125,10 @@ export function NetworkSignalsFeed() {
                 )}
               </div>
               <div className="mt-3 ml-5 flex items-center gap-2">
-                <Link to={`/lider/1on1s?member=${s.member_id}`}>
+                <Link to={`/member/${s.member_id}`}>
                   <Button variant="outline" size="sm" className="h-7 rounded-lg gap-1.5 text-xs">
                     <Calendar className="h-3 w-3" />
-                    Agendar 1:1
+                    Abrir ficha
                   </Button>
                 </Link>
               </div>
