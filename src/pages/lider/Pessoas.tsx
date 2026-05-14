@@ -125,7 +125,9 @@ function EditEmailButton({ memberId, currentEmail, onUpdated }: { memberId: stri
         .eq('id', memberId);
       if (error) throw error;
       // Tenta remover da supressão (RPC pode não existir em todos ambientes)
-      await supabase.rpc('remove_email_suppression' as never, { p_email: currentEmail } as never).catch(() => undefined);
+      try {
+        await supabase.rpc('remove_email_suppression' as never, { p_email: currentEmail } as never);
+      } catch { /* RPC opcional */ }
       trackFunnel('member_email_edited', { memberId, payload: { from: currentEmail, to: next } });
       toast.success('E-mail atualizado. Você já pode reenviar o convite.');
       setOpen(false);
@@ -270,7 +272,17 @@ function InvitesTab({ onInvite }: { onInvite: () => void }) {
                   ) : (
                     <Badge variant="outline" className="text-xs hidden sm:inline-flex">Pendente</Badge>
                   )}
-                  <ResendInviteButton memberId={p.id} memberName={p.name} memberEmail={p.email} />
+                  {isBounced && (
+                    <EditEmailButton
+                      memberId={p.id}
+                      currentEmail={p.email}
+                      onUpdated={() => {
+                        qc.invalidateQueries({ queryKey: ['pending-invites'] });
+                        qc.invalidateQueries({ queryKey: ['suppressed-member-emails'] });
+                      }}
+                    />
+                  )}
+                  <ResendInviteButton memberId={p.id} memberName={p.name} memberEmail={p.email} isBounced={isBounced} />
                 </div>
               </CardContent>
             </Card>
