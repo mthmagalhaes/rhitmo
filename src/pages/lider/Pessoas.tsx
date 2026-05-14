@@ -33,12 +33,19 @@ import {
 } from '@/components/ui/select';
 import {
   Users, Building2, BarChart3, MailPlus, UserPlus, Mail, Send, Loader2,
-  AlertTriangle, Pencil, ChevronRight, Search, Plus,
+  AlertTriangle, Pencil, ChevronRight, Search, Plus, MoreHorizontal,
+  Trash2, UserCog, ArrowUp, ArrowDown, X, Copy,
 } from 'lucide-react';
 import { MemberAvatar } from '@/components/MemberAvatar';
 import { useLeaderMembers, type LeaderMemberRow } from '@/hooks/useLeaderMembers';
 import { trackFunnel } from '@/lib/analytics';
 import { cn } from '@/lib/utils';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { EditTeamDialog } from '@/components/EditTeamDialog';
+import { DeleteTeamDialog } from '@/components/DeleteTeamDialog';
+import { ChangeTeamLeaderDialog } from '@/components/ChangeTeamLeaderDialog';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tabela densa de Liderados (estilo Tako)
