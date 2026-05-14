@@ -64,29 +64,76 @@ function getHealth(lastIso: string): keyof typeof HEALTH_CLASSES {
   return 'cold';
 }
 
+type SortKey = 'name' | 'role' | 'team' | 'last';
+type SortDir = 'asc' | 'desc';
+
+const HEALTH_LABEL: Record<keyof typeof HEALTH_CLASSES, string> = {
+  fresh: 'Fresco · feedback nos últimos 7 dias',
+  warm: 'Morno · 8 a 14 dias sem feedback',
+  cold: 'Frio · mais de 14 dias sem feedback',
+};
+
 function PeopleListTab({ onNewMember }: { onNewMember: () => void }) {
   const navigate = useNavigate();
   const { teams, members, isLoading } = useLeaderMembers();
   const [query, setQuery] = useState('');
   const [teamId, setTeamId] = useState<string>('all');
+  const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
 
   const teamById = useMemo(
     () => Object.fromEntries(teams.map((t) => [t.id, t.name])),
     [teams],
   );
 
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(key); setSortDir(key === 'last' ? 'desc' : 'asc'); }
+  };
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return members
+    const list = members
       .filter((m) => (teamId === 'all' ? true : m.team_id === teamId))
       .filter((m) =>
         q
           ? m.name.toLowerCase().includes(q) ||
             (m.role ?? '').toLowerCase().includes(q)
           : true,
-      )
-      .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
-  }, [members, query, teamId]);
+      );
+    const dir = sortDir === 'asc' ? 1 : -1;
+    return list.sort((a, b) => {
+      switch (sortKey) {
+        case 'name': return a.name.localeCompare(b.name, 'pt-BR') * dir;
+        case 'role': return (a.role ?? '').localeCompare(b.role ?? '', 'pt-BR') * dir;
+        case 'team': {
+          const an = a.team_id ? teamById[a.team_id] ?? '' : '';
+          const bn = b.team_id ? teamById[b.team_id] ?? '' : '';
+          return an.localeCompare(bn, 'pt-BR') * dir;
+        }
+        case 'last': {
+          const av = new Date(a.last_feedback_date).getTime();
+          const bv = new Date(b.last_feedback_date).getTime();
+          return (av - bv) * dir;
+        }
+      }
+    });
+  }, [members, query, teamId, sortKey, sortDir, teamById]);
+
+  const SortHeader = ({ k, children }: { k: SortKey; children: React.ReactNode }) => (
+    <button
+      type="button"
+      onClick={() => toggleSort(k)}
+      className="flex items-center gap-1 hover:text-foreground transition-colors"
+    >
+      {children}
+      {sortKey === k && (
+        sortDir === 'asc'
+          ? <ArrowUp className="h-3 w-3" />
+          : <ArrowDown className="h-3 w-3" />
+      )}
+    </button>
+  );
 
   return (
     <div className="space-y-4">
@@ -130,10 +177,10 @@ function PeopleListTab({ onNewMember }: { onNewMember: () => void }) {
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
         {/* Header row */}
         <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1fr)_140px_24px] gap-4 px-5 py-2.5 bg-muted/30 border-b border-border/40 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-          <div>Nome</div>
-          <div>Cargo</div>
-          <div>Time</div>
-          <div>Último sinal</div>
+          <div><SortHeader k="name">Nome</SortHeader></div>
+          <div><SortHeader k="role">Cargo</SortHeader></div>
+          <div><SortHeader k="team">Time</SortHeader></div>
+          <div><SortHeader k="last">Último sinal</SortHeader></div>
           <div />
         </div>
 
@@ -152,53 +199,63 @@ function PeopleListTab({ onNewMember }: { onNewMember: () => void }) {
           </div>
         ) : (
           <ul>
-            {filtered.map((m: LeaderMemberRow) => {
-              const health = getHealth(m.last_feedback_date);
-              const teamName = m.team_id ? teamById[m.team_id] ?? '—' : '—';
-              return (
-                <li key={m.id} className="border-b border-border/30 last:border-b-0">
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/member/${m.id}`)}
-                    className="group w-full grid grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1fr)_140px_24px] gap-4 px-5 py-2.5 items-center text-left hover:bg-muted/40 transition-colors"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="relative shrink-0">
-                        <MemberAvatar
-                          memberId={m.id}
-                          memberName={m.name}
-                          avatarUrl={m.avatar}
-                          size="sm"
-                        />
-                        <span
-                          className={cn(
-                            'absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full ring-2 ring-card',
-                            HEALTH_CLASSES[health],
-                          )}
-                          aria-label={`Saúde: ${health}`}
-                        />
+            <TooltipProvider delayDuration={200}>
+              {filtered.map((m: LeaderMemberRow) => {
+                const health = getHealth(m.last_feedback_date);
+                const teamName = m.team_id ? teamById[m.team_id] ?? '—' : '—';
+                return (
+                  <li key={m.id} className="border-b border-border/30 last:border-b-0">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/member/${m.id}`)}
+                      className="group w-full grid grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1fr)_140px_24px] gap-4 px-5 py-2.5 items-center text-left hover:bg-muted/40 transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="relative shrink-0">
+                          <MemberAvatar
+                            memberId={m.id}
+                            memberName={m.name}
+                            avatarUrl={m.avatar}
+                            size="sm"
+                          />
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span
+                                className={cn(
+                                  'absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full ring-2 ring-card',
+                                  HEALTH_CLASSES[health],
+                                )}
+                                aria-label={HEALTH_LABEL[health]}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </TooltipTrigger>
+                            <TooltipContent side="right">
+                              <p className="text-xs max-w-xs">{HEALTH_LABEL[health]}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                        <span className="text-[13px] font-medium text-foreground truncate">
+                          {m.name}
+                        </span>
                       </div>
-                      <span className="text-[13px] font-medium text-foreground truncate">
-                        {m.name}
-                      </span>
-                    </div>
-                    <div className="text-[13px] text-muted-foreground truncate">
-                      {m.role || '—'}
-                    </div>
-                    <div className="text-[13px] text-muted-foreground truncate">
-                      {teamName}
-                    </div>
-                    <div className="text-[12px] text-muted-foreground truncate">
-                      {formatDistanceToNow(new Date(m.last_feedback_date), {
-                        addSuffix: true,
-                        locale: ptBR,
-                      })}
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
-                  </button>
-                </li>
-              );
-            })}
+                      <div className="text-[13px] text-muted-foreground truncate">
+                        {m.role || '—'}
+                      </div>
+                      <div className="text-[13px] text-muted-foreground truncate">
+                        {teamName}
+                      </div>
+                      <div className="text-[12px] text-muted-foreground truncate">
+                        {formatDistanceToNow(new Date(m.last_feedback_date), {
+                          addSuffix: true,
+                          locale: ptBR,
+                        })}
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
+                    </button>
+                  </li>
+                );
+              })}
+            </TooltipProvider>
           </ul>
         )}
 
