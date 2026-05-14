@@ -121,7 +121,8 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
       let description = raw;
       if (/email not confirmed|not.*confirm/i.test(raw)) {
         title = 'E-mail ainda não confirmado';
-        description = 'Confira sua caixa de entrada (e o spam) — enviamos um link de verificação.';
+        description = 'Confira sua caixa de entrada (e o spam). Use o botão abaixo para reenviar o link.';
+        setUnconfirmedEmail(email);
       } else if (/invalid login|invalid credentials/i.test(raw)) {
         title = 'E-mail ou senha incorretos';
         description = 'Confira os dados ou use "Esqueci minha senha".';
