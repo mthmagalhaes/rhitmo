@@ -705,7 +705,7 @@ Use APENAS estes números. Não invente percentuais nem tendências que não est
     console.log('Router decision - needs context:', needsContext, hasImage ? '(image bypass)' : '', `[mode=${mode}]`);
 
     // Detecta janela temporal pedida na pergunta ("último mês", "esta semana", etc.)
-    const timeWindow = mode === 'member' ? detectTimeWindow(question) : null;
+    const timeWindow = (mode === 'member' || mode === 'member_self') ? detectTimeWindow(question) : null;
     if (timeWindow) {
       console.log('[time-window] detected:', timeWindow.label, timeWindow.dateFrom.toISOString(), '→', timeWindow.dateTo.toISOString());
     }
