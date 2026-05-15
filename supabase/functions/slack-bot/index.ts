@@ -2687,15 +2687,21 @@ Deno.serve(async (req) => {
                       // Sprint 20: Leader DMs get the full Context Graph via
                       // chat-mentor (leader_self mode). Other personas keep the
                       // simple LLM path until their dedicated route is wired.
-                      let assistantText: string;
+                      let assistantText: string = '';
                       if (
-                        persona.persona === 'leader' &&
                         conv.intent === 'general_chat' &&
                         persona.userId &&
                         persona.workspaceId
                       ) {
-                        assistantText = await callLeaderMentorFromDM(persona, userText, recent);
-                      } else {
+                        if (persona.persona === 'leader' || persona.persona === 'hr_admin') {
+                          assistantText = await callLeaderMentorFromDM(persona, userText, recent);
+                        } else if (persona.persona === 'direct_report' && persona.memberId) {
+                          // Sprint atual: liderado em DM agora usa member_self com RAG do
+                          // próprio histórico, em vez do prompt de 1 linha.
+                          assistantText = await callMemberMentorFromDM(persona, userText, recent);
+                        }
+                      }
+                      if (!assistantText) {
                         const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
                           { role: 'system', content: buildSystemPromptForIntent(conv.intent) },
                           ...recent,
