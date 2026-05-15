@@ -483,6 +483,67 @@ serve(async (req) => {
       }
     }
 
+    // ============================================
+    // AUTH para member_self (Meu Rhitmo / Slack DM do liderado)
+    // Mesmo padrão de leader_self: x-cron-secret + memberUserId p/ chamadas
+    // server-to-server (slack-bot); JWT do próprio usuário p/ chamadas web.
+    // ============================================
+    if (mode === 'member_self') {
+      const cronSecret = req.headers.get('x-cron-secret');
+      const internalSecret = Deno.env.get('CRON_SECRET');
+      const isInternal = !!cronSecret && !!internalSecret && cronSecret === internalSecret;
+
+      if (isInternal) {
+        if (!memberUserId) {
+          return new Response(
+            JSON.stringify({ error: 'memberUserId required for internal calls' }),
+            { status: 400, headers: respHeaders }
+          );
+        }
+        const admin = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+        );
+        const { data: u, error: uErr } = await admin.auth.admin.getUserById(memberUserId);
+        if (uErr || !u?.user) {
+          log.warn('member_self_internal_unknown_user', { requested: memberUserId });
+          return new Response(
+            JSON.stringify({ error: 'Unknown memberUserId' }),
+            { status: 400, headers: respHeaders }
+          );
+        }
+        log.info('member_self_internal_call', { memberUserId });
+      } else {
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader?.startsWith('Bearer ')) {
+          return new Response(
+            JSON.stringify({ error: 'Unauthorized' }),
+            { status: 401, headers: respHeaders }
+          );
+        }
+        const authClient = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_ANON_KEY')!,
+          { global: { headers: { Authorization: authHeader } } },
+        );
+        const { data: { user }, error: authError } = await authClient.auth.getUser();
+        if (authError || !user) {
+          return new Response(
+            JSON.stringify({ error: 'Unauthorized' }),
+            { status: 401, headers: respHeaders }
+          );
+        }
+        if (memberUserId && memberUserId !== user.id) {
+          log.warn('member_self_idor_blocked', { caller: user.id, requested: memberUserId });
+          return new Response(
+            JSON.stringify({ error: 'Forbidden' }),
+            { status: 403, headers: respHeaders }
+          );
+        }
+        memberUserId = user.id;
+      }
+    }
+
     log.info('start', { mode, memberName, memberRole, feedbacksCount: feedbacks?.length, hasImage: !!imageContent?.isImage, contextMode: contextMode || 'auto' });
 
     // ============================================
