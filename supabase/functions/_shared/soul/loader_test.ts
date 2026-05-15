@@ -92,3 +92,65 @@ Deno.test("soul: leader-member includes drafting + identity-protocol + analysis-
   assert(blocks.includes("06-identity-protocol.md"));
   assert(blocks.includes("02-analysis-matrix.md"));
 });
+
+// --- Sprint atual: paridade ampliada (3 casos novos) ---
+
+Deno.test("soul: member-self on slack contains slack channel block, not web", async () => {
+  const slack = await composeSystemPrompt({ mode: "member-self", channel: "slack", vars: VARS });
+  assert(slack.includes("MEU RHITMO"), "member-self mode block missing");
+  assert(slack.includes("FORMATAÇÃO PARA SLACK"), "slack channel block missing");
+  assert(!slack.includes("FORMATAÇÃO PARA WEB"), "web channel leaked into slack");
+});
+
+Deno.test("soul: leader-member on slack inherits drafting + citations + identity-protocol with slack format", async () => {
+  const slack = await composeSystemPrompt({ mode: "leader-member", channel: "slack", vars: VARS });
+  // Conteúdo das almas base presente
+  assert(slack.includes("GERADOR DE RASCUNHOS") || slack.includes("RASCUNHO"), "drafting block missing");
+  assert(slack.includes("[doc:"), "citations protocol missing");
+  assert(slack.includes("PROTOCOLO") || slack.includes("PROTAGONISTA"), "identity-protocol missing");
+  // Formato Slack vence (sem H3 markdown como instrução de saída)
+  assert(slack.includes("FORMATAÇÃO PARA SLACK"), "slack channel block missing");
+});
+
+Deno.test("soul: missing vars keep {{placeholder}} for debugging", async () => {
+  const prompt = await composeSystemPrompt({
+    mode: "leader-self",
+    channel: "web",
+    vars: { leaderName: "Matheus", leaderFirstName: "Matheus" }, // omite directReportsList etc.
+  });
+  assert(prompt.includes("Matheus"), "leaderName not interpolated");
+  assert(prompt.includes("{{directReportsList}}"), "missing var should stay visible for debug");
+});
+
+// --- Snapshots: drift detection ---
+//
+// Snapshots vivem em ./__snapshots__/<mode>.<channel>.txt e são gerados via
+// `deno run --allow-read --allow-write supabase/functions/_shared/soul/regen-snapshots.ts`.
+// Mudança intencional em qualquer .md exige regenerar e revisar o diff.
+
+const SNAPSHOT_CASES: Array<{ mode: Mode; channel: "web" | "slack" }> = [
+  { mode: "leader-member", channel: "web" },
+  { mode: "leader-member", channel: "slack" },
+  { mode: "member-self", channel: "web" },
+  { mode: "member-self", channel: "slack" },
+];
+
+Deno.test("soul: compiled prompts match committed snapshots", async () => {
+  for (const { mode, channel } of SNAPSHOT_CASES) {
+    const compiled = await composeSystemPrompt({ mode, channel, vars: VARS });
+    const url = new URL(`./__snapshots__/${mode}.${channel}.txt`, import.meta.url);
+    let snapshot = "";
+    try {
+      snapshot = await Deno.readTextFile(url);
+    } catch (_e) {
+      throw new Error(
+        `Missing snapshot ${mode}.${channel}.txt — run regen-snapshots.ts to create it.`,
+      );
+    }
+    assertEquals(
+      compiled,
+      snapshot,
+      `Snapshot drift in ${mode}.${channel}. If intentional, run regen-snapshots.ts.`,
+    );
+  }
+});
