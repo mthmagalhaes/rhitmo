@@ -661,7 +661,7 @@ Use APENAS estes números. Não invente percentuais nem tendências que não est
         console.warn('leader_self context fetch failed:', e?.message);
       }
 
-      systemPromptOverride = buildLeaderCoachSystemPrompt({
+      systemPromptOverride = await buildLeaderCoachSystemPrompt({
         leaderName,
         leaderFirstName,
         leaderSyncData,
