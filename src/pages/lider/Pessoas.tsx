@@ -1053,9 +1053,11 @@ function InvitesTab({ onBulk, canBulk }: { onBulk: () => void; onAddSingle?: () 
             {pending?.length ?? 0} liderado(s) ainda não aceitaram o convite.
           </p>
         </div>
-        <Button onClick={onInvite} className="rounded-xl gap-2">
-          <UserPlus className="w-4 h-4" /> {inviteLabel}
-        </Button>
+        {canBulk && (
+          <Button onClick={onBulk} className="rounded-xl gap-2">
+            <MailPlus className="w-4 h-4" /> {inviteLabel}
+          </Button>
+        )}
       </div>
 
       {!pending?.length ? (
@@ -1063,9 +1065,9 @@ function InvitesTab({ onBulk, canBulk }: { onBulk: () => void; onAddSingle?: () 
           icon={MailPlus}
           title="Sem convites pendentes"
           description={emptyDescription}
-          ctaLabel={inviteLabel}
-          ctaIcon={UserPlus}
-          onCta={onInvite}
+          ctaLabel={canBulk ? inviteLabel : undefined}
+          ctaIcon={canBulk ? MailPlus : undefined}
+          onCta={canBulk ? onBulk : undefined}
           variant="compact"
         />
       ) : (
