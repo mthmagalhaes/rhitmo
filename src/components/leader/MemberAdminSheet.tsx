@@ -157,6 +157,43 @@ export function MemberAdminSheet({
     }
   };
 
+  const syncUrl = `${window.location.origin}/sync/${member.id}`;
+  const hasSync = !!(syncData?.work_style_data || syncData?.chronotype || syncData?.feedback_style || syncData?.recognition_style);
+  const syncCompletedAt = syncData?.sync_completed_at as string | null | undefined;
+
+  const handleCopySyncLink = async () => {
+    try {
+      await navigator.clipboard.writeText(syncUrl);
+      toast.success('Link copiado.');
+    } catch {
+      toast.error('Falha ao copiar link.');
+    }
+  };
+
+  const handleResendSync = async () => {
+    if (!member.email) {
+      toast.error('Esse liderado não tem e-mail cadastrado.');
+      return;
+    }
+    setResendingSync(true);
+    try {
+      const { error } = await supabase.functions.invoke('send-transactional-email', {
+        body: {
+          templateName: 'sync-invite',
+          recipientEmail: member.email,
+          idempotencyKey: `sync-invite-resend-${member.id}-${Date.now()}`,
+          templateData: { memberName: member.name, syncUrl },
+        },
+      });
+      if (error) throw error;
+      toast.success(`Pesquisa enviada para ${member.email}`);
+    } catch (err) {
+      toast.error(`Falha: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setResendingSync(false);
+    }
+  };
+
   const goTo = (path: string) => {
     onOpenChange(false);
     navigate(path);
