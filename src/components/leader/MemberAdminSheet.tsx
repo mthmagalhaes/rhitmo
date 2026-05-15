@@ -97,6 +97,15 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+function SyncRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-4 text-sm">
+      <span className="text-muted-foreground shrink-0 text-xs uppercase tracking-wider">{label}</span>
+      <span className="text-right text-foreground/90 capitalize">{value}</span>
+    </div>
+  );
+}
+
 export function MemberAdminSheet({
   open,
   onOpenChange,
