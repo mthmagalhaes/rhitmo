@@ -18,6 +18,7 @@ import { NewPDIDialog } from '@/components/NewPDIDialog';
 import { cn } from '@/lib/utils';
 import SkillsMapCard from './SkillsMapCard';
 import { toast } from 'sonner';
+import DOMPurify from 'dompurify';
 import ReactMarkdown from 'react-markdown';
 import { MentorChat } from '@/components/MentorChat';
 import DOMPurify from 'dompurify';
