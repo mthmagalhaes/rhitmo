@@ -1156,7 +1156,13 @@ export default function LiderPessoas() {
       value: 'convites',
       label: 'Convites',
       icon: MailPlus,
-      content: <InvitesTab onInvite={() => setInviteOpen(true)} />,
+      content: (
+        <InvitesTab
+          onBulk={() => setInviteOpen(true)}
+          onAddSingle={() => setNewMemberOpen(true)}
+          canBulk={canManageTeams}
+        />
+      ),
     },
     {
       value: 'times',
