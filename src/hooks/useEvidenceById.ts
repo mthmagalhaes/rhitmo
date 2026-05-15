@@ -48,7 +48,60 @@ async function loadEvidenceRow(docId: string): Promise<EvidenceData | null> {
     .limit(1)
     .maybeSingle();
 
-  return (fallback.data as EvidenceData) ?? null;
+  if (fallback.data) return fallback.data as EvidenceData;
+
+  // 3) Last-resort: the AI may cite IDs of source tables that DON'T have a
+  // context_evidence row yet (pulse_surveys, peer_feedback_requests, or 360°
+  // performance_reviews). Probe each table by id and synthesize a virtual
+  // evidence row. RLS on each base table is what governs access (leader yes,
+  // member no), so this is safe.
+  const probes: Array<{
+    table: 'pulse_surveys' | 'peer_feedback_requests' | 'performance_reviews';
+    select: string;
+    map: (row: any) => EvidenceData | null;
+  }> = [
+    {
+      table: 'pulse_surveys',
+      select: 'id, member_id, type, name, completed_at, created_at',
+      map: (r) => r ? {
+        id: r.id, member_id: r.member_id, source_table: 'pulse_surveys', source_id: r.id,
+        evidence_type: 'pulse', occurred_at: r.completed_at ?? r.created_at,
+        title: r.name ?? `Pulse ${r.type ?? ''}`.trim(), summary: null,
+        visibility: 'private_leader', metadata: {},
+      } : null,
+    },
+    {
+      table: 'peer_feedback_requests',
+      select: 'id, member_id, responded_at, created_at, edge_strength_at_request',
+      map: (r) => r ? {
+        id: r.id, member_id: r.member_id, source_table: 'peer_feedback_requests', source_id: r.id,
+        evidence_type: 'peer_feedback', occurred_at: r.responded_at ?? r.created_at,
+        title: 'Peer feedback (anônimo)', summary: null,
+        visibility: 'private_leader', metadata: {},
+      } : null,
+    },
+    {
+      table: 'performance_reviews',
+      select: 'id, member_id, review_type, created_at',
+      map: (r) => r ? {
+        id: r.id, member_id: r.member_id, source_table: 'performance_reviews', source_id: r.id,
+        evidence_type: r.review_type ?? 'review', occurred_at: r.created_at,
+        title: r.review_type === 'self' ? 'Autoavaliação'
+          : r.review_type === 'peer' ? 'Avaliação de par'
+          : r.review_type === 'upwards' ? 'Upwards review'
+          : 'Avaliação',
+        summary: null, visibility: 'private_leader', metadata: {},
+      } : null,
+    },
+  ];
+
+  for (const p of probes) {
+    const { data } = await supabase.from(p.table).select(p.select).eq('id', docId).maybeSingle();
+    const ev = p.map(data);
+    if (ev) return ev;
+  }
+
+  return null;
 }
 
 async function loadFullContent(ev: EvidenceData): Promise<string | null> {
