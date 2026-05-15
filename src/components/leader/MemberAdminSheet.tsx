@@ -118,7 +118,7 @@ export function MemberAdminSheet({
       if (!member?.id) return null;
       const { data, error } = await supabase
         .from('team_members')
-        .select('work_style_data, chronotype, feedback_style, recognition_style, motivators, user_manual, sync_completed_at')
+        .select('work_style_data, chronotype, feedback_style, recognition_style, motivators, user_manual')
         .eq('id', member.id)
         .maybeSingle();
       if (error) throw error;
