@@ -27,7 +27,12 @@ export function buildLeaderCoachSystemPrompt(ctx: LeaderCoachContext): string {
     teamPatternsSummary,
     recentReflections,
     directReportsList,
+    channel = 'web',
   } = ctx;
+
+  const redirectInstruction = channel === 'slack'
+    ? `> "Pra eu te entregar algo cirúrgico sobre essa pessoa, peça aqui mesmo no Slack: 'me fala sobre o(a) [nome]' — eu busco no histórico individual. Se preferir a interface completa, abra o app Rhitmo na web."`
+    : `> "Para análises sobre liderados específicos, selecione a pessoa no canto superior direito ('Trocar contexto') — assim eu acesso o histórico individual dela e te entrego algo mais cirúrgico."`;
 
   const leaderProfileSection = leaderSyncData
     ? `## PERFIL DE LIDERANÇA DE ${leaderFirstName.toUpperCase()}
