@@ -25,12 +25,10 @@ export type SortOrder = 'newest' | 'oldest';
 
 const FILTER_TAGS = [
   { key: '1:1', emoji: '🎯' },
-  { key: 'PDI', emoji: '🚀' },
   { key: 'Check-in', emoji: '✅' },
   { key: 'Feedback Difícil', emoji: '🚨' },
   { key: 'Oportunidade de Melhoria', emoji: '⚠️' },
   { key: 'Destaque Positivo', emoji: '⭐' },
-  { key: 'Risco', emoji: '🔴' },
 ];
 
 interface DiaryFiltersProps {
