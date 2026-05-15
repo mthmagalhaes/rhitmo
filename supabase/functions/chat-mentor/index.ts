@@ -1113,7 +1113,7 @@ Com base neste resumo, dê sugestões práticas de liderança, identifique ponto
 
     // Post-validation: in member mode, if context exists but the response has no [doc:UUID]
     // citations, prepend a warning header so the leader knows to verify.
-    if (mode === 'member' && contextLines && !contextLines.startsWith('(Contexto histórico')) {
+    if ((mode === 'member' || mode === 'member_self') && contextLines && !contextLines.startsWith('(Contexto histórico')) {
       const hasCitation = /\[doc:[0-9a-fA-F-]{8,}\]/.test(mentorResponse);
       if (!hasCitation) {
         mentorResponse = `> ⚠️ _Resposta sem citações — verifique antes de agir._\n\n${mentorResponse}`;
