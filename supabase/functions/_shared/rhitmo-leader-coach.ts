@@ -15,6 +15,8 @@ export interface LeaderCoachContext {
   recentReflections: string;
   /** Lista achatada dos liderados (nome + cargo) para a IA saber sobre quem o líder pode estar perguntando. */
   directReportsList: string;
+  /** Canal de origem da conversa — afeta instruções de UI no prompt. */
+  channel?: 'web' | 'slack';
 }
 
 export function buildLeaderCoachSystemPrompt(ctx: LeaderCoachContext): string {
