@@ -408,8 +408,44 @@ serve(async (req) => {
     const body = await req.json();
     const { question, feedbacks, memberName, memberRole, managerName, workStyleData, keyObjectives, contextMode, leaderSyncData, conversationHistory, imageContent } = body;
     const mode: string = body.mode === 'leader_self' ? 'leader_self' : 'member';
-    const leaderUserId: string | undefined = body.leaderUserId;
+    let leaderUserId: string | undefined = body.leaderUserId;
     const leaderName: string = body.leaderName || managerName || 'líder';
+
+    // SECURITY (chat_mentor_idor): in leader_self mode the function fetches
+    // private team data via service_role using `leaderUserId` from the body.
+    // We MUST validate that this id matches the authenticated caller —
+    // otherwise any authenticated user could enumerate other leaders' teams,
+    // context evidence, sentiment tags, and weekly reflections.
+    if (mode === 'leader_self') {
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader?.startsWith('Bearer ')) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized' }),
+          { status: 401, headers: respHeaders }
+        );
+      }
+      const authClient = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } },
+      );
+      const { data: { user }, error: authError } = await authClient.auth.getUser();
+      if (authError || !user) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized' }),
+          { status: 401, headers: respHeaders }
+        );
+      }
+      if (leaderUserId && leaderUserId !== user.id) {
+        log.warn('leader_self_idor_blocked', { caller: user.id, requested: leaderUserId });
+        return new Response(
+          JSON.stringify({ error: 'Forbidden' }),
+          { status: 403, headers: respHeaders }
+        );
+      }
+      // Always trust auth.uid() over body-supplied id.
+      leaderUserId = user.id;
+    }
 
     log.info('start', { mode, memberName, memberRole, feedbacksCount: feedbacks?.length, hasImage: !!imageContent?.isImage, contextMode: contextMode || 'auto' });
 

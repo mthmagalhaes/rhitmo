@@ -18,9 +18,9 @@ import { NewPDIDialog } from '@/components/NewPDIDialog';
 import { cn } from '@/lib/utils';
 import SkillsMapCard from './SkillsMapCard';
 import { toast } from 'sonner';
+import DOMPurify from 'dompurify';
 import ReactMarkdown from 'react-markdown';
 import { MentorChat } from '@/components/MentorChat';
-import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 import { AvatarLibrary } from '@/components/avatar/AvatarLibrary';
 import { MemberAvatar } from '@/components/MemberAvatar';
@@ -888,10 +888,16 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                         if (!selectedReview) return;
                         const printWindow = window.open('', '_blank');
                         if (!printWindow) return;
+                        // SECURITY (xss_print_review): escape title + sanitize HTML before document.write.
+                        const esc = (s: string) =>
+                          s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
                         const filtered = filterReviewForMember(selectedReview.content || '');
-                        const htmlContent = filtered.includes('</') ? filtered : marked(filtered);
-                        const dateStr = formatLocalDate(selectedReview.created_at, 'dd MMMM yyyy');
-                        printWindow.document.write(`<!DOCTYPE html><html><head><title>${selectedReview.title}</title><style>body{font-family:'Segoe UI',Arial,sans-serif;padding:2cm;line-height:1.6;color:#333}h1{color:#222;border-bottom:3px solid #7C3AED;padding-bottom:16px}h2{color:#444;margin-top:28px}ul,ol{padding-left:24px}li{margin:6px 0}</style></head><body><h1>${selectedReview.title}</h1><p style="color:#666">${dateStr}</p>${htmlContent}</body></html>`);
+                        const rawHtml = filtered.includes('</') ? filtered : (marked(filtered) as string);
+                        const htmlContent = DOMPurify.sanitize(rawHtml);
+                        const safeTitle = esc(selectedReview.title || '');
+                        const dateStr = esc(formatLocalDate(selectedReview.created_at, 'dd MMMM yyyy'));
+                        printWindow.document.write(`<!DOCTYPE html><html><head><title>${safeTitle}</title><style>body{font-family:'Segoe UI',Arial,sans-serif;padding:2cm;line-height:1.6;color:#333}h1{color:#222;border-bottom:3px solid #7C3AED;padding-bottom:16px}h2{color:#444;margin-top:28px}ul,ol{padding-left:24px}li{margin:6px 0}</style></head><body><h1>${safeTitle}</h1><p style="color:#666">${dateStr}</p>${htmlContent}</body></html>`);
                         printWindow.document.close();
                         setTimeout(() => printWindow.print(), 300);
                       }}

@@ -77,10 +77,25 @@ export const ReviewViewDialog = ({
       return;
     }
 
-    // Check if content is already HTML (from TipTap) or Markdown
-    const htmlContent = review.content.includes('</')
+    // SECURITY (xss_print_review): review.title comes from the database and
+    // can be set by another user (the manager). Never interpolate it raw into
+    // document.write — escape entities first. The body HTML must also pass
+    // through DOMPurify because review.content can be markdown-or-HTML user
+    // input.
+    const esc = (s: string) =>
+      s
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+    const rawHtml = review.content.includes('</')
       ? review.content
-      : marked(review.content);
+      : (marked(review.content) as string);
+    const htmlContent = DOMPurify.sanitize(rawHtml);
+    const safeTitle = esc(review.title || '');
+    const safeMemberName = memberName ? esc(memberName) : '';
 
     // Formatar período avaliado
     const periodStart = review.period_start 
@@ -98,7 +113,7 @@ export const ReviewViewDialog = ({
       <!DOCTYPE html>
       <html>
         <head>
-          <title>${review.title}</title>
+          <title>${safeTitle}</title>
           <style>
             @page {
               margin: 0;
@@ -203,16 +218,16 @@ export const ReviewViewDialog = ({
         <body>
           <div class="document">
             <div class="header">
-              <h1>${review.title}</h1>
+              <h1>${safeTitle}</h1>
               <div class="metadata">
-                ${memberName ? `<p><strong>Colaborador:</strong> ${memberName}</p>` : ''}
-                <p><strong>Data de Criação:</strong> ${new Date(review.created_at).toLocaleDateString('pt-BR', { 
-                  day: '2-digit', 
-                  month: 'long', 
-                  year: 'numeric' 
+                ${safeMemberName ? `<p><strong>Colaborador:</strong> ${safeMemberName}</p>` : ''}
+                <p><strong>Data de Criação:</strong> ${new Date(review.created_at).toLocaleDateString('pt-BR', {
+                  day: '2-digit',
+                  month: 'long',
+                  year: 'numeric'
                 })}</p>
                 <div class="period-highlight">
-                  <strong>📅 Período Avaliado:</strong> ${periodText}
+                  <strong>📅 Período Avaliado:</strong> ${esc(periodText)}
                 </div>
               </div>
             </div>
