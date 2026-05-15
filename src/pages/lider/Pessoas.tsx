@@ -1190,22 +1190,22 @@ export default function LiderPessoas() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {canManageTeams && (
-            <Button
-              variant="outline"
-              onClick={() => setNewTeamOpen(true)}
-              className="rounded-xl gap-2"
-            >
-              <Plus className="w-4 h-4" /> Adicionar time
-            </Button>
-          )}
-          <Button
-            onClick={() => setNewMemberOpen(true)}
-            className="rounded-xl gap-2"
-            disabled={!workspace}
-          >
-            <UserPlus className="w-4 h-4" /> Adicionar liderado
-          </Button>
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={() => setNewMemberOpen(true)}
+                  className="rounded-xl gap-2"
+                  disabled={!workspace}
+                >
+                  <UserPlus className="w-4 h-4" /> Adicionar liderado
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs text-xs">
+                Cadastra um liderado com ou sem e-mail. Com e-mail, vira convite automático.
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </header>
 
