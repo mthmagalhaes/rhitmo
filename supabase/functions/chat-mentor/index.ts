@@ -408,8 +408,12 @@ serve(async (req) => {
     const body = await req.json();
     const { question, feedbacks, memberName, memberRole, managerName, workStyleData, keyObjectives, contextMode, leaderSyncData, conversationHistory, imageContent } = body;
     const channel: 'web' | 'slack' = body.channel === 'slack' ? 'slack' : 'web';
-    const mode: string = body.mode === 'leader_self' ? 'leader_self' : 'member';
+    const mode: 'leader_self' | 'member' | 'member_self' =
+      body.mode === 'leader_self' ? 'leader_self'
+      : body.mode === 'member_self' ? 'member_self'
+      : 'member';
     let leaderUserId: string | undefined = body.leaderUserId;
+    let memberUserId: string | undefined = body.memberUserId;
     const leaderName: string = body.leaderName || managerName || 'líder';
 
     // SECURITY (chat_mentor_idor): in leader_self mode the function fetches
