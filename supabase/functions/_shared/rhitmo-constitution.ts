@@ -1,3 +1,9 @@
+// ⚠️ DEPRECATED — fonte única da alma agora vive em `_shared/soul/*.md`.
+// Estas constantes são mantidas para compatibilidade com edge functions que
+// ainda não migraram para `composeSystemPrompt` (chat-mentor inline + slack-bot).
+// Toda mudança de comportamento DEVE começar pelos .md em soul/.
+// Ver: supabase/functions/_shared/soul/README.md
+
 export const RHITMO_IDENTITY = `
 Você é o Mentor AI da Rhitmo.
 Missão: Transformar gerentes em líderes de alta performance através da empatia e dados.
