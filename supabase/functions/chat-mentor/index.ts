@@ -407,6 +407,7 @@ serve(async (req) => {
   try {
     const body = await req.json();
     const { question, feedbacks, memberName, memberRole, managerName, workStyleData, keyObjectives, contextMode, leaderSyncData, conversationHistory, imageContent } = body;
+    const channel: 'web' | 'slack' = body.channel === 'slack' ? 'slack' : 'web';
     const mode: string = body.mode === 'leader_self' ? 'leader_self' : 'member';
     let leaderUserId: string | undefined = body.leaderUserId;
     const leaderName: string = body.leaderName || managerName || 'líder';
@@ -531,6 +532,28 @@ serve(async (req) => {
                 .in('member_id', memberIds)
                 .order('occurred_at', { ascending: false })
                 .limit(40);
+              const EVIDENCE_TYPE_LABELS: Record<string, string> = {
+                note: 'notas livres',
+                autonomy_check: 'checagem de autonomia',
+                pulse_response: 'resposta de pulse',
+                pulse_survey: 'pulse survey',
+                one_on_one: '1:1',
+                feedback: 'feedback',
+                peer_feedback: 'feedback de par',
+                performance_review: 'avaliação formal',
+                self_review: 'autoavaliação',
+                upwards_review: 'avaliação ascendente',
+                meeting_summary: 'resumo de reunião',
+                recall_transcript: 'transcrição de reunião',
+              };
+              const SENTIMENT_LABELS: Record<string, string> = {
+                positive: 'positivo',
+                neutral: 'neutro',
+                negative: 'negativo',
+                mixed: 'misto',
+              };
+              const translate = (map: Record<string, string>, key: string) => map[key] || key.replace(/_/g, ' ');
+
               const byType: Record<string, number> = {};
               const bySentiment: Record<string, number> = {};
               const tagCount: Record<string, number> = {};
@@ -539,11 +562,21 @@ serve(async (req) => {
                 if (e.sentiment) bySentiment[e.sentiment] = (bySentiment[e.sentiment] || 0) + 1;
                 (e.tags || []).forEach((t: string) => { tagCount[t] = (tagCount[t] || 0) + 1; });
               });
-              const topTags = Object.entries(tagCount).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([t, n]) => `${t} (${n})`).join(', ');
-              teamPatternsSummary = `Últimas 40 evidências registradas no time:
-- Por tipo: ${Object.entries(byType).map(([k, v]) => `${k}: ${v}`).join(', ') || '—'}
-- Por sentimento: ${Object.entries(bySentiment).map(([k, v]) => `${k}: ${v}`).join(', ') || '—'}
-- Tags recorrentes: ${topTags || '—'}`;
+              const total = (evs || []).length;
+              const MIN_FOR_STATS = 8;
+              if (total < MIN_FOR_STATS) {
+                teamPatternsSummary = `Apenas ${total} evidência(s) registrada(s) recentemente — amostra pequena demais para padrões estatísticos. NÃO cite percentuais nem tendências; sugira que ${leaderFirstName} registre mais notas para análises mais ricas.`;
+              } else {
+                const topTags = Object.entries(tagCount).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([t, n]) => `${t} (${n})`).join(', ');
+                const typeLine = Object.entries(byType).map(([k, v]) => `${translate(EVIDENCE_TYPE_LABELS, k)}: ${v}`).join(', ') || '—';
+                const sentLine = Object.entries(bySentiment).map(([k, v]) => `${translate(SENTIMENT_LABELS, k)}: ${v}`).join(', ') || '—';
+                teamPatternsSummary = `Últimas ${total} evidências registradas no time:
+- Por tipo: ${typeLine}
+- Por sentimento: ${sentLine}
+- Tags recorrentes: ${topTags || '—'}
+
+Use APENAS estes números. Não invente percentuais nem tendências que não estão aqui.`;
+              }
             }
           }
 
@@ -570,6 +603,7 @@ serve(async (req) => {
         teamPatternsSummary,
         recentReflections,
         directReportsList,
+        channel,
       });
     }
 

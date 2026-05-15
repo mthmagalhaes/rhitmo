@@ -216,6 +216,7 @@ async function callLeaderMentorFromDM(
 
     const payload = {
       mode: 'leader_self',
+      channel: 'slack',
       question,
       leaderUserId: persona.userId,
       leaderName,
