@@ -1,11 +1,15 @@
 // Item do feed cross-member do Diário v2.
-// Cada linha mostra: avatar do liderado, nome, cargo, snippet, tags, timestamp,
-// ícone de privacidade. Click navega para a página clássica filtrada por aquela pessoa.
+// Linha compacta colapsável: ícone privacidade + data + avatar/nome + título + tags + chevron.
+// Snippet completo aparece só ao expandir. "Abrir nota" deep-linka pra página clássica.
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Lock, Eye } from 'lucide-react';
+import { ChevronDown, Lock, Eye, ExternalLink, Calendar as CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import { MemberAvatar } from '@/components/MemberAvatar';
+import { getTagColor, getTagEmoji, getTagLabel } from '@/lib/tagConfig';
 
 export interface FeedItem {
   id: string;
@@ -31,81 +35,113 @@ function stripHtml(html: string): string {
 
 export function DiaryFeedItem({ item }: DiaryFeedItemProps) {
   const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
   const isShared = item.visibility === 'shared';
   const dateIso = item.occurred_at || item.created_at;
-  const snippet = stripHtml(item.content || '').slice(0, 220);
+  const dateLabel = format(new Date(dateIso), 'dd/MM/yyyy');
+  const fullText = stripHtml(item.content || '');
 
   return (
-    <button
-      type="button"
-      onClick={() => navigate(`/lider/diario?member=${item.member_id}#${item.id}`)}
-      className="group w-full text-left rounded-2xl border border-border/50 bg-card hover:bg-muted/40 hover:border-border transition-colors p-4 sm:p-5"
-    >
-      <div className="flex items-start gap-3">
+    <div className="rounded-xl border border-border/50 bg-card hover:border-border transition-colors overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full text-left flex items-center gap-3 px-3.5 py-2.5 hover:bg-muted/40 transition-colors"
+      >
+        {isShared ? (
+          <Eye className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        ) : (
+          <Lock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        )}
+        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground shrink-0 tabular-nums">
+          <CalendarIcon className="h-3 w-3" />
+          {dateLabel}
+        </span>
         <MemberAvatar
           memberId={item.member_id}
           memberName={item.member_name}
           avatarUrl={item.member_avatar}
           size="sm"
-          className="h-9 w-9 shrink-0 mt-0.5"
+          className="h-5 w-5 shrink-0"
         />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-medium text-foreground truncate">
-              {item.member_name}
-            </span>
-            {item.member_role && (
-              <span className="text-xs text-muted-foreground truncate">
-                · {item.member_role}
-              </span>
+        <span className="text-xs text-foreground/80 shrink-0 truncate max-w-[140px]">
+          {item.member_name}
+        </span>
+        <span className="text-sm font-medium text-foreground truncate flex-1 min-w-0">
+          {item.title || 'Sem título'}
+        </span>
+        {item.tags?.slice(0, 2).map((tag) => (
+          <span
+            key={tag}
+            className={cn(
+              'hidden md:inline-flex items-center gap-1 text-[11px] rounded-md px-1.5 py-0.5 border shrink-0',
+              getTagColor(tag),
             )}
-            <span className="text-xs text-muted-foreground ml-auto shrink-0">
-              {formatDistanceToNow(new Date(dateIso), { addSuffix: true, locale: ptBR })}
+          >
+            <span>{getTagEmoji(tag)}</span>
+            {getTagLabel(tag)}
+          </span>
+        ))}
+        {item.tags && item.tags.length > 2 && (
+          <span className="hidden md:inline text-[11px] text-muted-foreground shrink-0">
+            +{item.tags.length - 2}
+          </span>
+        )}
+        <ChevronDown
+          className={cn(
+            'h-4 w-4 text-muted-foreground shrink-0 transition-transform',
+            open && 'rotate-180',
+          )}
+        />
+      </button>
+
+      {open && (
+        <div className="px-3.5 pb-3.5 pt-1 border-t border-border/50 bg-muted/20">
+          <div className="flex items-center gap-2 mt-2.5 mb-2 flex-wrap text-[11px] text-muted-foreground">
+            {item.member_role && <span>{item.member_role}</span>}
+            <span>·</span>
+            <span>
+              {formatDistanceToNow(new Date(dateIso), {
+                addSuffix: true,
+                locale: ptBR,
+              })}
             </span>
+            <div className="flex items-center gap-1 ml-auto flex-wrap md:hidden">
+              {item.tags?.map((tag) => (
+                <span
+                  key={tag}
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 border',
+                    getTagColor(tag),
+                  )}
+                >
+                  <span>{getTagEmoji(tag)}</span>
+                  {getTagLabel(tag)}
+                </span>
+              ))}
+            </div>
           </div>
-
-          {item.title && (
-            <p className="font-serif text-sm font-semibold text-foreground mt-1.5 truncate">
-              {item.title}
+          {fullText && (
+            <p className="text-sm text-foreground/85 leading-relaxed whitespace-pre-wrap">
+              {fullText}
             </p>
           )}
-
-          {snippet && (
-            <p className="text-sm text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
-              {snippet}
-            </p>
-          )}
-
-          <div className="flex items-center gap-2 mt-2.5 flex-wrap">
-            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-              {isShared ? (
-                <>
-                  <Eye className="h-3 w-3" />
-                  Compartilhada
-                </>
-              ) : (
-                <>
-                  <Lock className="h-3 w-3" />
-                  Privada
-                </>
-              )}
-            </span>
-            {item.tags?.slice(0, 3).map((tag) => (
-              <span
-                key={tag}
-                className="inline-flex items-center text-[11px] text-muted-foreground bg-muted/60 rounded-md px-1.5 py-0.5"
-              >
-                {tag}
-              </span>
-            ))}
-            {item.tags && item.tags.length > 3 && (
-              <span className="text-[11px] text-muted-foreground">
-                +{item.tags.length - 3}
-              </span>
-            )}
+          <div className="mt-3 flex justify-end">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs gap-1.5 rounded-lg"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/lider/diario?member=${item.member_id}#${item.id}`);
+              }}
+            >
+              <ExternalLink className="h-3 w-3" />
+              Abrir nota
+            </Button>
           </div>
         </div>
-      </div>
-    </button>
+      )}
+    </div>
   );
 }

@@ -1,104 +1,57 @@
+## Ajustes no piloto `/lider/diario-v2`
 
-## Piloto: Diário de Bordo V2 (rota paralela)
+Três mudanças focadas pra deixar o feed mais escaneável e com paridade de filtros do clássico, antes de decidir migração.
 
-Criar uma versão alternativa em `/lider/diario-v2` para validar a abordagem AI-Native cross-member **sem tocar no `/lider/diario` atual**. Se aprovado depois do uso real, migramos a rota original e replicamos a fórmula em Objetivos e Avaliações.
+### 1. Card compacto colapsável (igual ao clássico)
+Substituir o `DiaryFeedItem` atual (mostra snippet de 2 linhas + tags + privacidade sempre) por uma linha compacta no padrão do `/lider/diario`:
 
-### Por que Diário como cobaia?
-
-- É a página com o "vazio mais gritante" hoje (cadeado + "selecione alguém")
-- Maior densidade de dados pra IA cruzar (notas privadas de todo o time)
-- Padrões cross-member (gaps de cobertura, recência) só aparecem nessa visão agregada
-
-### Como vai parecer
-
-```text
-┌─────────────────────────────────────────────────────────────┐
-│ Diário de Bordo                              [+ Nova nota] │
-│ Suas notas privadas sobre o time, em um só lugar.          │
-├─────────────────────────────────────────────────────────────┤
-│ ┌─ INSIGHT DA RHITMO ──────────────────────────────────┐   │
-│ │ ✦ 3 liderados sem nota há +14 dias: Laís, Yasmin,    │   │
-│ │   Guilherme. Próxima 1:1 da Laís é em 2 dias.        │   │
-│ │   [Criar nota da Laís]   [Ver cobertura completa]    │   │
-│ └──────────────────────────────────────────────────────┘   │
-├─────────────────────────────────────────────────────────────┤
-│ [Todos os liderados ▾] [Todos os times ▾] [30 dias ▾] [⌕] │
-├─────────────────────────────────────────────────────────────┤
-│ HOJE                                                       │
-│  ● Gabriela Lucas · Business Ops · há 2h                  │
-│    "Conversa sobre prioridade Q3..."     🔒 · 🏷 Prioridades│
-│                                                            │
-│  ● Matheus · COO · há 5h                                  │
-│    "Pediu feedback sobre apresentação..."  🔒 · 🏷 Feedback│
-│                                                            │
-│ ESTA SEMANA                                                │
-│  ● Giovanna Barletta · há 2 dias                           │
-│    ...                                                     │
-│                                                            │
-│ MAIS ANTIGAS                                               │
-│  ...                              [Carregar mais]          │
-└─────────────────────────────────────────────────────────────┘
+```
+🔒 📅 11/05/2026  Apresentação Comfaster   [Destaque Positivo]            ⌄
 ```
 
-### Os 3 elementos-chave
+- Header: ícone de privacidade + data formatada (dd/MM/yyyy) + título + tags + chevron à direita.
+- Avatar + nome do liderado entram **antes do título** no mesmo header (é cross-member, então o "quem" precisa aparecer sem expandir).
+- Click no chevron expande in-place mostrando: snippet/conteúdo completo, "há X horas", botão "Abrir nota" (mantém deep-link para `/lider/diario?member={id}#{noteId}`).
+- Sem snippet visível no estado fechado — alinhado ao "uma vez feita a nota, não preciso ler tudo ali".
+- Estado de expansão é local ao item (useState), não persiste em URL.
 
-**1. Insight Card (o "AI-Native moment")**
-Bloco no topo, gerado client-side a partir do mesmo dataset da página. Mostra **gaps de cobertura**:
-- Liderados sem nota há +14 dias (calibra com `health-status-logic`: 7 / 8-14 / +14)
-- Cruza com próximas 1:1s — se há 1:1 nos próximos 3 dias e zero notas recentes, vira flag prioritária
-- CTA primário abre o dialog de nota nova com pessoa pré-selecionada
+### 2. Contador dinâmico de registros
+Adicionar bloco de cabeçalho idêntico ao clássico, logo abaixo do header da página:
 
-Se não houver gaps, vira estado positivo ("Cobertura em dia. Última nota há 2h."). Sem edge function — pura agregação determinística do que já vem da query.
+```
+Anotações
+{N} registros no histórico.
+```
 
-**2. Feed cronológico cross-member**
-Substitui o painel direito vazio. Lista as notas do líder agrupadas em buckets temporais (Hoje / Esta semana / Mais antigas), cada item com:
-- Avatar + nome + cargo do liderado
-- Snippet da nota (3 linhas, fade)
-- Tags + timestamp relativo + ícone de privacidade
-- Click → navega para `/lider/diario?member={id}` (a versão antiga, abrindo direto na nota daquela pessoa)
+- N = `items.length` (resultado pós-filtros), atualiza ao mudar liderado/time/período/busca/tags.
+- Substitui visualmente o título "Diário de Bordo" duplicado — fica: H1 "Diário de Bordo" + subtítulo privacy → Insight Card → bloco "Anotações · N registros" + botão Nova nota → Filtros → Feed.
+- Move o botão "Nova nota" pra esse bloco (próximo ao contador), liberando o header do topo.
 
-**3. Filtros leves no topo**
-- Dropdown "Liderado" (substitui a master list lateral)
-- Dropdown "Time"
-- Dropdown "Período" (7d / 30d / 90d / tudo)
-- Busca textual
+### 3. Paridade de filtros com o clássico
+Estender `DiaryFilters.tsx` adicionando duas linhas:
 
-Filtros vivem na URL (`?member=X&period=30d`) pra preservar deep-link.
+**Linha 1 (já existe):** busca + Liderado + Time + Período.
 
-### Coexistência com o /lider/diario atual
+**Linha 2 (nova):** chips de tag + filtro de data customizada + ordenação.
+- **Tags:** chips clicáveis multi-seleção usando o mesmo conjunto do clássico (`1:1`, `PDI`, `Check-in`, `Feedback Difícil`, `Melhoria`, `Destaque`, `Risco`) — derivado de `tagConfig`/`FeedbackFilters` existente. Estado em URL como `?tags=pdi,risco`.
+- **Filtrar data:** popover com date range (reusar `DateRangePicker`/lógica do `FeedbackFilters` clássico). Estado em URL como `?from=...&to=...`. Quando setado, sobrepõe o filtro de Período.
+- **Ordenação:** select "Mais recentes" / "Mais antigos". Estado em URL como `?sort=desc|asc` (default `desc`).
 
-| | `/lider/diario` (atual) | `/lider/diario-v2` (novo) |
-|---|---|---|
-| Layout | full-bleed, master-detail 260px | normal `max-w-5xl` |
-| Entry point | escolher pessoa pra ver algo | feed agregado + insight |
-| Continua existindo? | ✅ sim, intacto | ✅ novo, paralelo |
-| Sidebar | aponta para `/lider/diario` (atual) | aparece um banner discreto no topo das duas rotas com "Experimentar nova versão" / "Voltar ao Diário clássico" |
+Aplicar todos os filtros no `useMemo` de `items` e reordenar antes de bucketar. Quando `sort=asc`, inverter a ordem dentro de cada bucket e exibir buckets em ordem cronológica crescente (Mais antigas → Esta semana → Hoje).
 
 ### Detalhes técnicos
 
-- **Nova rota**: `/lider/diario-v2` em `src/App.tsx`
-- **Nova página**: `src/pages/lider/DiarioV2.tsx`
-- **Novos componentes** (em `src/components/leader/diario-v2/`):
-  - `DiaryCoverageInsight.tsx` — card de insight no topo
-  - `DiaryFeedItem.tsx` — item do feed
-  - `DiaryFilters.tsx` — barra de filtros
-  - `VersionSwitchBanner.tsx` — banner discreto pra alternar entre v1/v2 (montado nas duas páginas)
-- **Query**: `safeQuery` em `feedbacks` filtrado por `manager_id = auth.uid()`, ordenado por `created_at desc`, `LIMIT 50` + paginação cursor-based
-- **Cobertura**: agregação no client a partir de `useLeaderMembers` (já dá `last_signal_at`) cruzado com `useLeaderInbox` ou query de 1:1s próximas
-- Sem mudanças em: schema, RLS, edge functions, `AppSidebar`, `navigation.ts`, `MemberAdminSheet`
+**Arquivos a editar:**
+- `src/components/leader/diario-v2/DiaryFeedItem.tsx` — virar card colapsável (chevron, useState local, header compacto com avatar+data+título+tags).
+- `src/components/leader/diario-v2/DiaryFilters.tsx` — segunda linha com tags/data/ordenação; expandir props.
+- `src/pages/lider/DiarioV2.tsx` — adicionar bloco "Anotações · N registros" + botão Nova nota; ler/escrever `tags`, `from`, `to`, `sort` nos searchParams; aplicar filtros e ordenação no `useMemo`.
 
-### Critério pra promover v2 → v1
+**Sem mudanças em:** schema, RLS, edge functions, `Diario.tsx` clássico, `AppSidebar`, `navigation.ts`, `NewNoteDialog`.
 
-Depois de alguns dias usando, valida:
-1. Abrir Diário v2 = ver algo útil sem clicar?
-2. Insight Card te leva a ações (criar nota, abordar alguém)?
-3. Filtros no topo substituem bem a master list?
+**Reuso:** importar lista de tags de `src/lib/tagConfig.ts` (ou do componente `FeedbackFilters` se já exportado) pra manter paridade visual e semântica com o clássico.
 
-Se sim → promovemos v2 pra `/lider/diario`, arquivamos a v1, e replicamos a fórmula em Objetivos (lista cross-member + insight de prazos) e Avaliações (ciclos ativos + insight de pendências).
-
-### Fora de escopo deste piloto
-
-- Migrar Objetivos e Avaliações
-- Mexer em `/lider/1on1s` (agenda tem natureza diferente)
-- Edge function de IA pro insight (v1 é regra determinística; v2 pode virar IA depois)
-- Mudar a página de detalhe individual da nota
+### Fora de escopo
+- Migração para `/lider/diario`.
+- Replicação para Objetivos/Avaliações.
+- Edição/exclusão inline a partir do feed (continua via deep-link).
+- Persistir estado de expansão entre sessões.
