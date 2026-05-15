@@ -72,9 +72,9 @@ async function loadEvidenceRow(docId: string): Promise<EvidenceData | null> {
     },
     {
       table: 'peer_feedback_requests',
-      select: 'id, member_id, responded_at, created_at, edge_strength_at_request',
+      select: 'id, subject_member_id, responded_at, created_at',
       map: (r) => r ? {
-        id: r.id, member_id: r.member_id, source_table: 'peer_feedback_requests', source_id: r.id,
+        id: r.id, member_id: r.subject_member_id, source_table: 'peer_feedback_requests', source_id: r.id,
         evidence_type: 'peer_feedback', occurred_at: r.responded_at ?? r.created_at,
         title: 'Peer feedback (anônimo)', summary: null,
         visibility: 'private_leader', metadata: {},
