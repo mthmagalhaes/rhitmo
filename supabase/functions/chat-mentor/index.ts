@@ -677,8 +677,8 @@ Use APENAS estes números. Não invente percentuais nem tendências que não est
     const targetManagerName = managerName || 'o gestor';
     const managerFirstName = targetManagerName.split(' ')[0];
 
-    if (mode === 'member' && (!question || !feedbacks || !memberName)) {
-      log.warn('invalid_params', { hasQuestion: !!question, hasFeedbacks: !!feedbacks, hasMemberName: !!memberName });
+    if ((mode === 'member' || mode === 'member_self') && (!question || !feedbacks || !memberName)) {
+      log.warn('invalid_params', { mode, hasQuestion: !!question, hasFeedbacks: !!feedbacks, hasMemberName: !!memberName });
       return new Response(
         JSON.stringify({ error: 'Parâmetros inválidos: question, feedbacks e memberName são obrigatórios' }),
         { status: 400, headers: respHeaders }
