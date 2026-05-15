@@ -14,6 +14,14 @@ type: feature
 ## ⚠️ CRÍTICO: server-to-server pro chat-mentor (modo `leader_self`)
 O `slack-bot` chama `chat-mentor` com `mode: 'leader_self'` via service-role token. Por causa do hardening anti-IDoR (chat_mentor_idor), `chat-mentor` exige um JWT de usuário real **OU** o header `x-cron-secret: ${CRON_SECRET}` + `leaderUserId` no body. Sem o header, a chamada volta 401 e toda DM da Rhitmo morre com "⚠️ Tive um problema ao puxar o contexto do seu time agora". Qualquer novo caller server-to-server (orchestrator, cron, AI Assistant) **PRECISA** mandar o `x-cron-secret`. Validação extra: chat-mentor confirma `auth.admin.getUserById(leaderUserId)` antes de confiar.
 
+## ⚠️ CRÍTICO: `channel: 'slack'` no payload pro chat-mentor
+Toda chamada server-to-server do slack-bot pro `chat-mentor` (modo `leader_self`) precisa incluir `channel: 'slack'` no body. Isso troca a frase de redirecionamento "selecione no canto superior direito (Trocar contexto)" — que é UI da web e não existe no Slack — por "peça aqui mesmo: 'me fala sobre o(a) [nome]'". Sem esse flag a IA alucina menus inexistentes.
+
+## ⚠️ Anti-alucinação no leader_self (Sprint pós-launch)
+- `teamPatternsSummary` em chat-mentor traduz tokens crus (`note`, `autonomy_check`, `neutral`) para PT-BR ANTES de mandar pro LLM, senão a IA narra os tokens como insights.
+- Se houver < 8 evidências, manda mensagem explícita "amostra pequena demais, NÃO cite percentuais" em vez de despejar contagens vazias — evita o LLM inventar "75% das suas notas são neutras".
+- Prompt do leader-coach (`_shared/rhitmo-leader-coach.ts`) é **proporcional ao input**: saudação → 1 linha, pergunta meta → 2-4 linhas, só pedido explícito de análise dispara H3 + Síntese Honesta. Não despeje template de coaching em toda mensagem.
+
 ## Goal
 Give the Slack bot multi-turn memory + real LLM responses so flows like Pulse Survey, 1:1 Prep, Self-Review, and free chat run as a real conversation.
 
