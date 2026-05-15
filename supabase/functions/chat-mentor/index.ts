@@ -407,6 +407,7 @@ serve(async (req) => {
   try {
     const body = await req.json();
     const { question, feedbacks, memberName, memberRole, managerName, workStyleData, keyObjectives, contextMode, leaderSyncData, conversationHistory, imageContent } = body;
+    const channel: 'web' | 'slack' = body.channel === 'slack' ? 'slack' : 'web';
     const mode: string = body.mode === 'leader_self' ? 'leader_self' : 'member';
     let leaderUserId: string | undefined = body.leaderUserId;
     const leaderName: string = body.leaderName || managerName || 'líder';
