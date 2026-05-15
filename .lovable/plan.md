@@ -1,123 +1,136 @@
-## Diagnóstico do retrocesso
-
-Hoje a "alma" da Rhitmo está fragmentada em 4 lugares com pesos muito diferentes, e o Slack acaba ficando órfão da maior parte dela:
-
-```text
-                 ┌─ Web Mentor Chat (chat-mentor) ─────────────────────────┐
-                 │  • RHITMO_IDENTITY (21 linhas)                          │
-SOURCE-OF-TRUTH  │  + GUARDRAILS_PROMPT                                    │
-ATUAL            │  + ANALYSIS_RULES                                       │
-                 │  + buildLeaderCoachSystemPrompt (modo coaching pessoal) │
-                 │  + ~250 linhas de prompt INLINE em chat-mentor/index.ts │
-                 │    (matriz integrada, drafting, tom, formatação,        │
-                 │     anti-injection, citações, janela temporal…)         │
-                 └─────────────────────────────────────────────────────────┘
-
-                 ┌─ Slack DM (slack-bot) ──────────────────────────────────┐
-                 │  • Líder em general_chat → callLeaderMentorFromDM       │
-                 │       → herda TUDO do chat-mentor ✅                     │
-                 │  • Liderado / pulse / 1v1_prep / self_review            │
-                 │       → buildSystemPromptForIntent()                    │
-                 │       → 1 LINHA de prompt, sem RAG, sem guard-rails ❌   │
-                 │  • /nota, /kudos, /brief, /mentor, /meu-rhitmo          │
-                 │       → cada um com prompt inline próprio               │
-                 └─────────────────────────────────────────────────────────┘
-```
-
-Resultados práticos do que você está sentindo:
-- Liderado falando com a Rhitmo no Slack recebe um modelo "burro": sem identidade, sem matriz integrada, sem citações, sem anti-alucinação.
-- Pulse / 1:1 prep / self-review no Slack rodam com prompts de 1 linha — perdem tom, perdem formatação, perdem guard-rails.
-- Qualquer mudança de tom/regra hoje exige editar prompt inline em `chat-mentor/index.ts` (~250 linhas), `rhitmo-constitution.ts`, `rhitmo-leader-coach.ts` e múltiplos pontos do `slack-bot/index.ts`. Drift é inevitável.
-- Não existe um documento auditável que descreva "como a Rhitmo deve se comportar" — só código.
-
 ## Objetivo
 
-Tratar a constituição da Rhitmo como **produto versionado em Markdown**, e fazer o código ler dela. Web e Slack passam a compor o system prompt a partir dos mesmos blocos `.md`.
+Fechar o ciclo da alma centralizada: web e Slack passam a montar 100% do system prompt via `composeSystemPrompt(...)` do `_shared/soul/loader.ts`. Liderado falando com a Rhitmo no Slack DM deixa de cair no prompt de 1 linha e passa a usar o mesmo motor de RAG do `chat-mentor`, agora em modo `member_self`.
 
-## Estrutura proposta de docs
-
-Criar `supabase/functions/_shared/soul/` com Markdown puro (sem código), versionados no repo:
+## Diagnóstico do estado atual
 
 ```text
-supabase/functions/_shared/soul/
-  00-identity.md            # Quem é a Rhitmo, missão, diferencial, core user
-  01-guardrails.md          # Regras de ouro (anti-alucinação, rastreabilidade,
-                            #   segurança, anti-jailbreak, anti-prompt-injection)
-  02-analysis-matrix.md     # Camada Fática + Comportamental + Síntese (Melancia)
-  03-tone-and-format.md     # Tom HR Executive + diretrizes de formatação +
-                            #   "resposta proporcional ao input" + Síntese Honesta
-  04-drafting.md            # Gerador de rascunhos (calibrado por Rhitmo Sync)
-  05-citations.md           # Protocolo [doc:UUID] e janela temporal
-  06-identity-protocol.md   # Protagonista / filtro de ruído / apelidos
-  modes/
-    leader-member.md        # Modo "líder analisando liderado X" (web + Slack)
-    leader-self.md          # Modo coaching pessoal do líder
-    member-self.md          # Modo "Meu Rhitmo" (liderado falando da própria carreira)
-    pulse-survey.md         # Pulse conversacional
-    one-on-one-prep.md      # Preparação de 1:1
-    self-review.md          # Wizard de autoavaliação
-  channels/
-    web.md                  # Markdown rico, headings H3, blockquotes, pílulas
-    slack.md                # *negrito*, _itálico_, • bullets, sem H3, sem tabelas
+chat-mentor/index.ts (1266 linhas)
+├── mode='leader_self' → buildLeaderCoachSystemPrompt()    ✅ já isolado
+└── mode='member'      → memberSystemPrompt INLINE         ❌ ~250 linhas
+                        (linhas 833-1068, usa
+                         RHITMO_IDENTITY, GUARDRAILS_PROMPT,
+                         ANALYSIS_RULES + tom + drafting +
+                         identidade + protocolo + citações)
+
+slack-bot/index.ts
+├── leader  + general_chat → callLeaderMentorFromDM → chat-mentor leader_self  ✅
+├── member  + general_chat → callLovableAI(prompt 1 linha)                     ❌ retrocesso
+├── pulse_survey / 1v1_prep / self_review → callLovableAI(prompt 1 linha)      ❌
+└── buildSystemPromptForIntent() = 4 strings hardcoded                          ❌
 ```
 
-Cada arquivo é um bloco coeso e curto (≤ 80 linhas), com frontmatter mínimo:
-```text
----
-id: guardrails
-applies_to: [web, slack]
-version: 1
----
-```
+Falta em `chat-mentor` o modo `member_self` (liderado falando da própria carreira). O `.md` `modes/member-self.md` já existe; só falta um caminho de execução que carregue dados do próprio liderado e chame o loader.
 
-## Loader compartilhado
+## Entregáveis
 
-Criar `supabase/functions/_shared/soul/loader.ts`:
+### 1. Refatorar `chat-mentor/index.ts` modo `member` para usar o loader
 
-- `loadSoul(modules: string[], channel: 'web' | 'slack'): string`
-  Lê os `.md` no boot do edge (cache em memória), concatena na ordem canônica, injeta o bloco `channels/{channel}.md` ao final, e devolve o system prompt.
-- `composeSystemPrompt({ mode, channel, vars })` — recebe `mode` (`leader-member`, `leader-self`, `member-self`, `pulse-survey`, etc.), aplica substituições simples `{{memberName}}`, `{{firstName}}`, `{{leaderSyncData}}`, etc., e devolve string final.
+- Substituir as ~250 linhas de `memberSystemPrompt` (linhas 833-1068) por:
+  ```ts
+  const systemPrompt = systemPromptOverride ?? await composeSystemPrompt({
+    mode: 'leader-member',
+    channel: channel === 'slack' ? 'slack' : 'web',
+    vars: {
+      memberName, firstName, memberRole: memberRole || 'Não informado',
+      managerName: targetManagerName, managerFirstName,
+    },
+    appendices: [
+      contextModeInstruction,         // já existe (manual vs auto)
+      objectivesSection,              // já existe
+      formatWorkStyle(workStyleData), // já existe
+      formatLeaderProfile(leaderSyncData),
+      timeWindowBlock,                // extrair o `if (timeWindow)` atual
+      `## HISTÓRICO DE NOTAS (CONTEXT_DOCUMENTS)\n\n${contextLines}`,
+    ],
+  });
+  ```
+- Mover blocos hoje hardcoded no prompt (drafting, citações, identidade, anti-injection, formato de saída, síntese honesta, janela temporal) para os `.md` correspondentes em `_shared/soul/`. Em quase todos os casos esses blocos JÁ EXISTEM nos `.md` — só precisamos confirmar paridade e remover do código.
+  - `04-drafting.md` ← bloco "GERADOR DE RASCUNHOS" + tabela de calibração Rhitmo Sync
+  - `03-tone-and-format.md` ← Executive Summary + Síntese Honesta + "o que evitar"
+  - `05-citations.md` ← protocolo `[doc:UUID]` + janela temporal + nota sobre `ctx:slack_activity_rollup`
+  - `06-identity-protocol.md` ← protagonista / filtro de ruído / variações de apelido
+  - `01-guardrails.md` ← anti prompt-injection + cautela com transcrição
+- Refatorar `buildLeaderCoachSystemPrompt` (linha 599) para virar wrapper de `composeSystemPrompt({ mode: 'leader-self', channel, vars, appendices })`. `rhitmo-leader-coach.ts` fica como façade até remover.
+- Marcar `RHITMO_IDENTITY`, `GUARDRAILS_PROMPT`, `ANALYSIS_RULES` em `rhitmo-constitution.ts` como deprecated (re-exports vazios ou avisando).
 
-Os `.md` ficam **dentro do bundle** do edge function (Deno lê via `import.meta.url` + `Deno.readTextFile`), então deploy continua atômico — nada externo a buscar em runtime.
+### 2. Adicionar modo `member_self` em `chat-mentor/index.ts`
 
-## Refatoração dos consumidores
+Hoje só aceita `mode = 'leader_self' | 'member'`. Adicionar terceiro:
 
-1. `supabase/functions/chat-mentor/index.ts`
-   - Substituir os ~250 linhas inline por `composeSystemPrompt({ mode: 'leader-member' | 'leader-self', channel: payload.channel ?? 'web', vars })`.
-   - `RHITMO_IDENTITY`, `GUARDRAILS_PROMPT`, `ANALYSIS_RULES` em `rhitmo-constitution.ts` viram re-exports do loader (compat) e depois deprecam.
-   - `rhitmo-leader-coach.ts` vira um wrapper fino sobre `composeSystemPrompt({ mode: 'leader-self' })`.
+- `body.mode === 'member_self'` → liderado conversando da própria carreira (Meu Rhitmo).
+- Resolução de contexto:
+  - `memberId` resolvido via `linked_user_id = auth user` (mesma lógica do endpoint `/meu-rhitmo`).
+  - RAG do próprio histórico do liderado: feedbacks compartilhados (`visibility='shared'`) + `context_evidence` onde ele é protagonista. Threshold/top-k iguais ao modo member.
+  - **NÃO incluir** notas privadas do líder (RLS deve garantir, mas o filtro explícito é defesa em profundidade).
+- Prompt: `composeSystemPrompt({ mode: 'member-self', channel, vars: { memberName }, appendices: [contextLines, timeWindowBlock] })`.
+- Resposta segue a mesma forma (streaming/JSON) do modo `member`.
 
-2. `supabase/functions/slack-bot/index.ts`
-   - `buildSystemPromptForIntent(intent)` passa a chamar `composeSystemPrompt({ mode: intentToMode(intent), channel: 'slack', vars })`.
-   - **Roteamento ampliado**: hoje só `leader + general_chat` cai em `callLeaderMentorFromDM`. Novo critério:
-     - `leader + general_chat` → `chat-mentor` (leader_self) — já funciona.
-     - `member + general_chat` → nova rota `chat-mentor` modo `member_self` (RAG do próprio histórico do liderado, igual ao que /meu-rhitmo já tem).
-     - `pulse_survey` / `1v1_prep` / `self_review` → continua local no slack-bot, mas com system prompt vindo do loader (mesma alma, sem RAG pesado).
-   - `/nota`, `/kudos`, `/brief`, `/mentor`, `/meu-rhitmo` deixam de ter prompt hardcoded e passam a montar via loader (modos dedicados em `soul/modes/`).
+### 3. Refatorar `slack-bot/index.ts`
 
-3. `src/lib/rhyVoice.ts` (frontend)
-   - Continua com microcopy de UI (botões, placeholders), mas referencia `03-tone-and-format.md` como fonte na descrição do arquivo, para que mudanças de tom em UI também olhem para o mesmo doc.
+- `buildSystemPromptForIntent(intent)` deixa de existir como string-table. Vira:
+  ```ts
+  async function buildSystemPromptForIntent(intent: string, vars: Record<string,string>) {
+    const map: Record<string, Mode> = {
+      pulse_survey: 'pulse-survey',
+      '1v1_prep':   'one-on-one-prep',
+      self_review:  'self-review',
+      general_chat: 'leader-self', // fallback genérico só pra modos sem rota dedicada
+    };
+    return composeSystemPrompt({ mode: map[intent] ?? 'leader-self', channel: 'slack', vars });
+  }
+  ```
+- **Roteamento ampliado** (bloco `if persona.persona === 'leader' && intent === 'general_chat'` na linha 2614):
+  ```ts
+  if (intent === 'general_chat' && persona.userId && persona.workspaceId) {
+    if (persona.persona === 'leader') {
+      assistantText = await callLeaderMentorFromDM(persona, userText, recent);
+    } else if (persona.persona === 'member' || persona.persona === 'liderado') {
+      assistantText = await callMemberMentorFromDM(persona, userText, recent); // novo
+    } else {
+      // fallback p/ personas sem contexto resolvido
+      assistantText = await callLovableAI([{role:'system', content: await buildSystemPromptForIntent(intent, {})}, ...recent, {role:'user', content: userText}]);
+    }
+  }
+  ```
+- Criar `callMemberMentorFromDM(persona, question, history)`: análogo a `callLeaderMentorFromDM`, mas faz `POST /functions/v1/chat-mentor` com `mode: 'member_self'`, `memberUserId: persona.userId`, `channel: 'slack'`. Retorna texto convertido com `markdownToSlackMrkdwn` + `smartTruncate`.
+- Mirror para web (`mirrorSlackTurnToWebThread`) também passa a rodar para member, espelhando em uma thread tipo `meu-rhitmo` (mesmo mecanismo, só ajusta `type` se necessário). Essa parte é opcional nesta sprint — se gerar atrito com schema atual do `chat_threads.type`, deixa para sprint seguinte e só registra TODO.
 
-## Garantias contra drift
+### 4. Garantias contra drift
 
-- **Teste único de paridade**: `supabase/functions/_shared/soul/loader_test.ts` valida que para cada `mode`, gerar com `channel: web` e `channel: slack` produz strings que contêm os mesmos `id`s de blocos (mesma alma, só formatação muda). CI quebra se alguém esquecer um bloco em um canal.
-- **Snapshot dos prompts finais**: salvar em `_test/__snapshots__/` os prompts compostos. Qualquer mudança em `.md` exige aprovar o snapshot — vira revisão de produto, não de código.
-- **Regra de ouro nova no `mem://core`**: "Toda mudança de comportamento da Rhitmo (alma, guard-rail, tom, modo) começa em `_shared/soul/*.md`. Prompt inline em edge function = bug."
+- Estender `loader_test.ts` com 2 novos casos:
+  - `member-self` com `channel: 'slack'` contém o bloco `mode-member-self` e o bloco `channel-slack`, e NÃO contém `channel-web`.
+  - Snapshot dos modos `leader-member` e `member-self` (web e slack) salvos em `_test/__snapshots__/`. Mudança em `.md` exige aprovação do snapshot.
+- Atualizar `mem://ai/soul-centralizada-md`: marcar Sprint atual como ✅ refatoração concluída, listar os 3 caminhos vivos (web `leader-member`, web/slack `leader-self`, slack/web `member-self` via chat-mentor).
 
-## O que NÃO muda agora
+### 5. QA manual antes de fechar
 
-- RAG / busca semântica / `embed-context-evidence` / janela temporal — segue como está, só passa a ser instruído pelo `05-citations.md`.
-- Slack manifest, comandos, fluxo de OAuth, AI Assistant container — intactos.
-- Modelo (Gemini 2.5 Flash) e gateway — intactos.
-- Persistência de conversas (`slack_conversations`, threads web) — intacta.
+1. Web Mentor Chat com líder analisando liderado X — resposta mantém H3 + emoji + Síntese Honesta + citações `[doc:UUID]`.
+2. Web "Coaching pessoal do líder" — resposta mantém tom de provocação, sem citar liderado específico.
+3. Slack DM líder ("como vai a Gabi este mês?") — mesma estrutura do web, mas em mrkdwn (`*negrito*`, sem `###`), com janela temporal aplicada.
+4. Slack DM liderado ("o que vc acha de eu pedir aumento?") — agora responde como `member_self`: tom acolhedor, RAG do próprio histórico, NÃO sugere mostrar pro líder, formato Slack mrkdwn.
+5. Slack `pulse_survey` / `1v1_prep` / `self_review` — sai do prompt 1-linha, passa a herdar identidade + guard-rails do soul (formato Slack).
 
-## Entregáveis em ordem
+## O que NÃO muda
 
-1. Criar a árvore `_shared/soul/` com os 9 docs base + 6 modos + 2 canais, extraindo o conteúdo do que já existe hoje (sem reescrever a alma — só consolidar).
-2. Loader + testes de paridade web↔slack.
-3. Refatorar `chat-mentor` para consumir o loader (sem mudar comportamento web — só trocar a fonte).
-4. Refatorar `slack-bot` para usar loader em todos os modos e rotear `member general_chat` para `chat-mentor` (modo `member_self`).
-5. Atualizar memórias (`mem://ai/constituicao-rhitmo-centralizada` e core) apontando que `_shared/soul/` é a fonte única.
-6. QA manual: mesmo prompt do líder no web e no Slack DM deve produzir a mesma estrutura de resposta (formatação adaptada ao canal).
+- RAG, embeddings, `match_feedbacks`, `match_context_evidence`, `embed-context-evidence`, `detectTimeWindow` — intactos.
+- Streaming, persistência de threads (`mentor_messages`, `chat_threads`, `slack_conversations`) — intactos.
+- Slack manifest, OAuth, AI Assistant container, comandos slash — intactos.
+- Modelo (`google/gemini-2.5-flash` no Slack, `gpt-5`/configurado no web) e gateway — intactos.
 
-Depois disso, qualquer ajuste fino de soul vira PR de `.md` — auditável, versionado, sem caçar prompt em 4 arquivos.
+## Ordem de execução
+
+1. Adicionar modo `member_self` em `chat-mentor` (reusa loader que já existe).
+2. Refatorar prompt do modo `member` para `composeSystemPrompt({mode:'leader-member'})` + appendices.
+3. Refatorar `buildLeaderCoachSystemPrompt` para wrapper do loader.
+4. Trocar `buildSystemPromptForIntent` no slack-bot por chamada async ao loader.
+5. Adicionar `callMemberMentorFromDM` + roteamento `member general_chat → chat-mentor member_self`.
+6. Estender testes de paridade + snapshots.
+7. QA manual nos 5 cenários acima.
+8. Atualizar memória.
+
+## Riscos e mitigação
+
+- **Paridade de prompt**: se algum bloco `.md` ainda não capturar 100% do que está inline (ex: tabela de calibração de drafting com 7 linhas exatas), o tom da resposta pode mudar sutilmente. Mitigação: comparar prompt antes/depois no snapshot e ajustar o `.md` antes do merge.
+- **`mode: 'member_self'` é caminho novo**: começar com o roteamento Slack atrás de uma flag implícita (só aciona se `persona.persona === 'member'` E `persona.userId` resolvido); se algo der errado, cai no `callLovableAI` antigo. Após 1 semana estável, remover o fallback.
+- **`channel: 'slack'` em chat-mentor**: hoje o JSON aceita `channel` mas só o usa para o leader_self. Garantir que o caminho `member` também respeita e passa para o loader (afeta formatação final).

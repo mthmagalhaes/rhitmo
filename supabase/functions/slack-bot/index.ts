@@ -255,7 +255,84 @@ async function callLeaderMentorFromDM(
   }
 }
 
-// ── Sprint 20: Mirror Slack DM turns into web Mentor Chat history ────────
+// ── Sprint atual: Member DM as Career Partner ─────────────
+// Roteia DMs do liderado em general_chat para chat-mentor (mode=member_self),
+// para que ele tenha o motor RAG do próprio histórico (notas compartilhadas,
+// pulses, peer/upwards/self reviews) em vez do prompt de 1 linha.
+async function callMemberMentorFromDM(
+  persona: PersonaResult,
+  question: string,
+  history: Array<{ role: 'user' | 'assistant'; content: string }>,
+): Promise<string> {
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    if (!persona.memberId || !persona.userId) {
+      console.warn('[DM-MEMBER] missing memberId/userId, falling back');
+      return '';
+    }
+
+    // Resolve member name + recent shared evidences (own history).
+    const [memberRes, fbRes] = await Promise.all([
+      supabase.from('team_members').select('id, full_name, role').eq('id', persona.memberId).single(),
+      supabase
+        .from('feedbacks')
+        .select('id, content, type, occurred_at, created_at, member_id, visibility')
+        .eq('member_id', persona.memberId)
+        .eq('visibility', 'shared')
+        .order('created_at', { ascending: false })
+        .limit(10),
+    ]);
+
+    const memberName = (memberRes.data as any)?.full_name || 'você';
+    const memberRole = (memberRes.data as any)?.role || null;
+    const feedbacks = (fbRes.data as any[]) || [];
+
+    const conversationHistory = [...history, { role: 'user' as const, content: question }];
+
+    const payload = {
+      mode: 'member_self',
+      channel: 'slack',
+      question,
+      memberUserId: persona.userId,
+      memberName,
+      memberRole,
+      feedbacks,
+      conversationHistory,
+      contextMode: 'auto',
+    };
+
+    console.log('[DM-MEMBER] Calling chat-mentor member_self', {
+      memberId: persona.memberId,
+      historyLen: conversationHistory.length,
+      feedbacksLen: feedbacks.length,
+    });
+
+    const res = await fetch(`${supabaseUrl}/functions/v1/chat-mentor`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${serviceKey}`,
+        'Content-Type': 'application/json',
+        'x-cron-secret': Deno.env.get('CRON_SECRET') ?? '',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => '');
+      console.error('[DM-MEMBER] chat-mentor error', res.status, errBody.slice(0, 300));
+      return '';
+    }
+    const data = await res.json();
+    const reply = data.response || data.reply || data.message || '';
+    if (!reply) return '';
+    return smartTruncate(markdownToSlackMrkdwn(reply), 2900);
+  } catch (err) {
+    console.error('[DM-MEMBER] threw:', err);
+    return '';
+  }
+}
 // Cria/mantém uma thread espelho em `chat_threads` (source='slack') por sessão
 // Slack ativa, e insere as mensagens em `mentor_messages`. Falhas são silenciosas
 // (apenas logam) — nunca bloqueiam a resposta no Slack.
@@ -2610,15 +2687,21 @@ Deno.serve(async (req) => {
                       // Sprint 20: Leader DMs get the full Context Graph via
                       // chat-mentor (leader_self mode). Other personas keep the
                       // simple LLM path until their dedicated route is wired.
-                      let assistantText: string;
+                      let assistantText: string = '';
                       if (
-                        persona.persona === 'leader' &&
                         conv.intent === 'general_chat' &&
                         persona.userId &&
                         persona.workspaceId
                       ) {
-                        assistantText = await callLeaderMentorFromDM(persona, userText, recent);
-                      } else {
+                        if (persona.persona === 'leader' || persona.persona === 'hr_admin') {
+                          assistantText = await callLeaderMentorFromDM(persona, userText, recent);
+                        } else if (persona.persona === 'direct_report' && persona.memberId) {
+                          // Sprint atual: liderado em DM agora usa member_self com RAG do
+                          // próprio histórico, em vez do prompt de 1 linha.
+                          assistantText = await callMemberMentorFromDM(persona, userText, recent);
+                        }
+                      }
+                      if (!assistantText) {
                         const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
                           { role: 'system', content: buildSystemPromptForIntent(conv.intent) },
                           ...recent,
