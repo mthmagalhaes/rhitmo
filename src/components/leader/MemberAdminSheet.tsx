@@ -5,7 +5,9 @@
 // /lider/avaliacoes, /lider/mentor — acessíveis via "Abrir em…" no rodapé.
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import {
   Sheet,
   SheetContent,
