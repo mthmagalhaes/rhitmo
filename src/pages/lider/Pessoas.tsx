@@ -1055,7 +1055,7 @@ function InvitesTab({ onBulk, onAddSingle, canBulk }: { onBulk: () => void; onAd
           </p>
         </div>
         <Button onClick={onInvite} className="rounded-xl gap-2">
-          <UserPlus className="w-4 h-4" /> Convidar liderados
+          <UserPlus className="w-4 h-4" /> {inviteLabel}
         </Button>
       </div>
 
@@ -1063,8 +1063,8 @@ function InvitesTab({ onBulk, onAddSingle, canBulk }: { onBulk: () => void; onAd
         <EmptyStateHero
           icon={MailPlus}
           title="Sem convites pendentes"
-          description="Adicione liderados em massa colando uma lista de e-mails. Cada um recebe um convite personalizado."
-          ctaLabel="Convidar liderados"
+          description={emptyDescription}
+          ctaLabel={inviteLabel}
           ctaIcon={UserPlus}
           onCta={onInvite}
           variant="compact"
