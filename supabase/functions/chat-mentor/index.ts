@@ -417,34 +417,65 @@ serve(async (req) => {
     // otherwise any authenticated user could enumerate other leaders' teams,
     // context evidence, sentiment tags, and weekly reflections.
     if (mode === 'leader_self') {
-      const authHeader = req.headers.get('Authorization');
-      if (!authHeader?.startsWith('Bearer ')) {
-        return new Response(
-          JSON.stringify({ error: 'Unauthorized' }),
-          { status: 401, headers: respHeaders }
+      // Trusted server-to-server channel (slack-bot, orchestrators, crons):
+      // x-cron-secret matches CRON_SECRET → trust body-supplied leaderUserId.
+      // This avoids reopening the IDoR fix for browser callers (which still
+      // require a real user JWT below).
+      const cronSecret = req.headers.get('x-cron-secret');
+      const internalSecret = Deno.env.get('CRON_SECRET');
+      const isInternal = !!cronSecret && !!internalSecret && cronSecret === internalSecret;
+
+      if (isInternal) {
+        if (!leaderUserId) {
+          return new Response(
+            JSON.stringify({ error: 'leaderUserId required for internal calls' }),
+            { status: 400, headers: respHeaders }
+          );
+        }
+        // Confirm the id maps to a real auth user before trusting it.
+        const admin = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
         );
-      }
-      const authClient = createClient(
-        Deno.env.get('SUPABASE_URL')!,
-        Deno.env.get('SUPABASE_ANON_KEY')!,
-        { global: { headers: { Authorization: authHeader } } },
-      );
-      const { data: { user }, error: authError } = await authClient.auth.getUser();
-      if (authError || !user) {
-        return new Response(
-          JSON.stringify({ error: 'Unauthorized' }),
-          { status: 401, headers: respHeaders }
+        const { data: u, error: uErr } = await admin.auth.admin.getUserById(leaderUserId);
+        if (uErr || !u?.user) {
+          log.warn('leader_self_internal_unknown_user', { requested: leaderUserId });
+          return new Response(
+            JSON.stringify({ error: 'Unknown leaderUserId' }),
+            { status: 400, headers: respHeaders }
+          );
+        }
+        log.info('leader_self_internal_call', { leaderUserId });
+      } else {
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader?.startsWith('Bearer ')) {
+          return new Response(
+            JSON.stringify({ error: 'Unauthorized' }),
+            { status: 401, headers: respHeaders }
+          );
+        }
+        const authClient = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_ANON_KEY')!,
+          { global: { headers: { Authorization: authHeader } } },
         );
+        const { data: { user }, error: authError } = await authClient.auth.getUser();
+        if (authError || !user) {
+          return new Response(
+            JSON.stringify({ error: 'Unauthorized' }),
+            { status: 401, headers: respHeaders }
+          );
+        }
+        if (leaderUserId && leaderUserId !== user.id) {
+          log.warn('leader_self_idor_blocked', { caller: user.id, requested: leaderUserId });
+          return new Response(
+            JSON.stringify({ error: 'Forbidden' }),
+            { status: 403, headers: respHeaders }
+          );
+        }
+        // Always trust auth.uid() over body-supplied id.
+        leaderUserId = user.id;
       }
-      if (leaderUserId && leaderUserId !== user.id) {
-        log.warn('leader_self_idor_blocked', { caller: user.id, requested: leaderUserId });
-        return new Response(
-          JSON.stringify({ error: 'Forbidden' }),
-          { status: 403, headers: respHeaders }
-        );
-      }
-      // Always trust auth.uid() over body-supplied id.
-      leaderUserId = user.id;
     }
 
     log.info('start', { mode, memberName, memberRole, feedbacksCount: feedbacks?.length, hasImage: !!imageContent?.isImage, contextMode: contextMode || 'auto' });
