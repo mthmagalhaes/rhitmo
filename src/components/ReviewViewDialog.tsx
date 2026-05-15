@@ -113,7 +113,7 @@ export const ReviewViewDialog = ({
       <!DOCTYPE html>
       <html>
         <head>
-          <title>${review.title}</title>
+          <title>${safeTitle}</title>
           <style>
             @page {
               margin: 0;
