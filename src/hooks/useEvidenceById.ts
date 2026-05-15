@@ -173,31 +173,37 @@ async function loadFullContent(ev: EvidenceData): Promise<string | null> {
       case 'pulse_surveys': {
         const { data } = await supabase
           .from('pulse_surveys')
-          .select('name, type, response_score, response_text')
+          .select('name, type, motivation, questions, responses, summary')
           .eq('id', id)
           .maybeSingle();
-        const row = data as { name?: string; type?: string; response_score?: number; response_text?: string } | null;
+        const row = data as { name?: string; type?: string; motivation?: string; questions?: any; responses?: any; summary?: any } | null;
         if (!row) return null;
         const parts: string[] = [];
         if (row.name) parts.push(`**${row.name}**`);
         if (row.type) parts.push(`Tipo: ${row.type}`);
-        if (typeof row.response_score === 'number') parts.push(`Nota: ${row.response_score}`);
-        if (row.response_text) parts.push(`\n${row.response_text}`);
+        if (row.motivation) parts.push(`\n_${row.motivation}_`);
+        if (Array.isArray(row.responses) && row.responses.length > 0) {
+          parts.push('\n**Respostas:**');
+          row.responses.forEach((r: any, i: number) => {
+            const q = Array.isArray(row.questions) ? row.questions[i]?.text ?? row.questions[i] : null;
+            const val = typeof r === 'string' ? r : (r?.value ?? r?.text ?? JSON.stringify(r));
+            parts.push(q ? `• ${q}\n  → ${val}` : `• ${val}`);
+          });
+        }
+        if (row.summary && typeof row.summary === 'object') {
+          const s = (row.summary as any).text ?? (row.summary as any).summary;
+          if (s) parts.push(`\n**Resumo:**\n${s}`);
+        }
         return parts.join('\n') || null;
       }
       case 'peer_feedback_requests': {
         const { data } = await supabase
           .from('peer_feedback_requests')
-          .select('response_strengths, response_improvements, response_collaboration')
+          .select('response_text, responded_at')
           .eq('id', id)
           .maybeSingle();
-        const row = data as { response_strengths?: string; response_improvements?: string; response_collaboration?: string } | null;
-        if (!row) return null;
-        const blocks: string[] = [];
-        if (row.response_strengths) blocks.push(`**Pontos fortes**\n${row.response_strengths}`);
-        if (row.response_improvements) blocks.push(`**A desenvolver**\n${row.response_improvements}`);
-        if (row.response_collaboration) blocks.push(`**Colaboração**\n${row.response_collaboration}`);
-        return blocks.join('\n\n') || null;
+        const row = data as { response_text?: string } | null;
+        return row?.response_text ?? null;
       }
       default:
         return null;
