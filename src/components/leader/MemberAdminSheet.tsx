@@ -110,6 +110,23 @@ export function MemberAdminSheet({
   const [editOpen, setEditOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [acting, setActing] = useState(false);
+  const [resendingSync, setResendingSync] = useState(false);
+
+  const { data: syncData } = useQuery({
+    queryKey: ['member-sync', member?.id],
+    queryFn: async () => {
+      if (!member?.id) return null;
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('work_style_data, chronotype, feedback_style, recognition_style, motivators, user_manual, sync_completed_at')
+        .eq('id', member.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: open && !!member?.id,
+    staleTime: 30_000,
+  });
 
   if (!member) return null;
 
