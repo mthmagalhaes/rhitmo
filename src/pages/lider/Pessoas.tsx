@@ -996,12 +996,11 @@ function InviteRowMenu({
   );
 }
 
-function InvitesTab({ onBulk, onAddSingle, canBulk }: { onBulk: () => void; onAddSingle: () => void; canBulk: boolean }) {
-  const onInvite = canBulk ? onBulk : onAddSingle;
-  const inviteLabel = canBulk ? 'Convidar liderados' : 'Adicionar liderado';
+function InvitesTab({ onBulk, canBulk }: { onBulk: () => void; onAddSingle?: () => void; canBulk: boolean }) {
+  const inviteLabel = 'Convidar em massa';
   const emptyDescription = canBulk
-    ? 'Adicione liderados em massa colando uma lista de e-mails. Cada um recebe um convite personalizado.'
-    : 'Adicione liderados um a um para começar. Convites em massa estão disponíveis para o RH.';
+    ? 'Convide vários liderados de uma vez colando uma lista de e-mails. Cada um recebe um convite personalizado.'
+    : 'Use o botão "Adicionar liderado" no topo para cadastrar uma pessoa por vez. Convites em massa estão disponíveis para o RH e o owner do workspace.';
   const qc = useQueryClient();
   const { data: pending } = useQuery({
     queryKey: ['pending-invites'],
@@ -1054,9 +1053,11 @@ function InvitesTab({ onBulk, onAddSingle, canBulk }: { onBulk: () => void; onAd
             {pending?.length ?? 0} liderado(s) ainda não aceitaram o convite.
           </p>
         </div>
-        <Button onClick={onInvite} className="rounded-xl gap-2">
-          <UserPlus className="w-4 h-4" /> {inviteLabel}
-        </Button>
+        {canBulk && (
+          <Button onClick={onBulk} className="rounded-xl gap-2">
+            <MailPlus className="w-4 h-4" /> {inviteLabel}
+          </Button>
+        )}
       </div>
 
       {!pending?.length ? (
@@ -1064,9 +1065,9 @@ function InvitesTab({ onBulk, onAddSingle, canBulk }: { onBulk: () => void; onAd
           icon={MailPlus}
           title="Sem convites pendentes"
           description={emptyDescription}
-          ctaLabel={inviteLabel}
-          ctaIcon={UserPlus}
-          onCta={onInvite}
+          ctaLabel={canBulk ? inviteLabel : undefined}
+          ctaIcon={canBulk ? MailPlus : undefined}
+          onCta={canBulk ? onBulk : undefined}
           variant="compact"
         />
       ) : (
@@ -1159,7 +1160,6 @@ export default function LiderPessoas() {
       content: (
         <InvitesTab
           onBulk={() => setInviteOpen(true)}
-          onAddSingle={() => setNewMemberOpen(true)}
           canBulk={canManageTeams}
         />
       ),
@@ -1190,22 +1190,22 @@ export default function LiderPessoas() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {canManageTeams && (
-            <Button
-              variant="outline"
-              onClick={() => setNewTeamOpen(true)}
-              className="rounded-xl gap-2"
-            >
-              <Plus className="w-4 h-4" /> Adicionar time
-            </Button>
-          )}
-          <Button
-            onClick={() => setNewMemberOpen(true)}
-            className="rounded-xl gap-2"
-            disabled={!workspace}
-          >
-            <UserPlus className="w-4 h-4" /> Adicionar liderado
-          </Button>
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={() => setNewMemberOpen(true)}
+                  className="rounded-xl gap-2"
+                  disabled={!workspace}
+                >
+                  <UserPlus className="w-4 h-4" /> Adicionar liderado
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs text-xs">
+                Cadastra um liderado com ou sem e-mail. Com e-mail, vira convite automático.
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </header>
 
