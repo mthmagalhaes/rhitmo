@@ -21,7 +21,6 @@ import { toast } from 'sonner';
 import DOMPurify from 'dompurify';
 import ReactMarkdown from 'react-markdown';
 import { MentorChat } from '@/components/MentorChat';
-import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 import { AvatarLibrary } from '@/components/avatar/AvatarLibrary';
 import { MemberAvatar } from '@/components/MemberAvatar';
