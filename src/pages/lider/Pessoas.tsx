@@ -996,12 +996,11 @@ function InviteRowMenu({
   );
 }
 
-function InvitesTab({ onBulk, onAddSingle, canBulk }: { onBulk: () => void; onAddSingle: () => void; canBulk: boolean }) {
-  const onInvite = canBulk ? onBulk : onAddSingle;
-  const inviteLabel = canBulk ? 'Convidar liderados' : 'Adicionar liderado';
+function InvitesTab({ onBulk, canBulk }: { onBulk: () => void; onAddSingle?: () => void; canBulk: boolean }) {
+  const inviteLabel = 'Convidar em massa';
   const emptyDescription = canBulk
-    ? 'Adicione liderados em massa colando uma lista de e-mails. Cada um recebe um convite personalizado.'
-    : 'Adicione liderados um a um para começar. Convites em massa estão disponíveis para o RH.';
+    ? 'Convide vários liderados de uma vez colando uma lista de e-mails. Cada um recebe um convite personalizado.'
+    : 'Use o botão "Adicionar liderado" no topo para cadastrar uma pessoa por vez. Convites em massa estão disponíveis para o RH e o owner do workspace.';
   const qc = useQueryClient();
   const { data: pending } = useQuery({
     queryKey: ['pending-invites'],
