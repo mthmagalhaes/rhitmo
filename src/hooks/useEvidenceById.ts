@@ -170,6 +170,35 @@ async function loadFullContent(ev: EvidenceData): Promise<string | null> {
           .maybeSingle();
         return (data as { message?: string } | null)?.message ?? null;
       }
+      case 'pulse_surveys': {
+        const { data } = await supabase
+          .from('pulse_surveys')
+          .select('name, type, response_score, response_text')
+          .eq('id', id)
+          .maybeSingle();
+        const row = data as { name?: string; type?: string; response_score?: number; response_text?: string } | null;
+        if (!row) return null;
+        const parts: string[] = [];
+        if (row.name) parts.push(`**${row.name}**`);
+        if (row.type) parts.push(`Tipo: ${row.type}`);
+        if (typeof row.response_score === 'number') parts.push(`Nota: ${row.response_score}`);
+        if (row.response_text) parts.push(`\n${row.response_text}`);
+        return parts.join('\n') || null;
+      }
+      case 'peer_feedback_requests': {
+        const { data } = await supabase
+          .from('peer_feedback_requests')
+          .select('response_strengths, response_improvements, response_collaboration')
+          .eq('id', id)
+          .maybeSingle();
+        const row = data as { response_strengths?: string; response_improvements?: string; response_collaboration?: string } | null;
+        if (!row) return null;
+        const blocks: string[] = [];
+        if (row.response_strengths) blocks.push(`**Pontos fortes**\n${row.response_strengths}`);
+        if (row.response_improvements) blocks.push(`**A desenvolver**\n${row.response_improvements}`);
+        if (row.response_collaboration) blocks.push(`**Colaboração**\n${row.response_collaboration}`);
+        return blocks.join('\n\n') || null;
+      }
       default:
         return null;
     }
