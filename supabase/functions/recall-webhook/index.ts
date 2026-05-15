@@ -22,7 +22,79 @@ Deno.serve(async (req) => {
   const RECALL_API_KEY = Deno.env.get("RECALL_API_KEY")!;
 
   try {
-    const body = await req.json();
+    // SECURITY (recall_webhook_no_sig): verify Svix-style HMAC signature
+    // before trusting the payload. Without this, anyone who knows the URL
+    // can spoof bot.done events, trigger transcript reprocessing, and waste
+    // AI credits. Recall.ai uses Svix headers: webhook-id / -timestamp / -signature.
+    const rawBody = await req.text();
+    const webhookSecret = Deno.env.get("RECALL_WEBHOOK_SECRET");
+    if (webhookSecret) {
+      const sigHeader = req.headers.get("webhook-signature");
+      const msgId = req.headers.get("webhook-id");
+      const msgTs = req.headers.get("webhook-timestamp");
+      if (!sigHeader || !msgId || !msgTs) {
+        console.warn("recall-webhook: missing Svix signature headers");
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // Reject events older than 5 minutes (replay protection)
+      const tsNum = Number(msgTs);
+      if (!Number.isFinite(tsNum) || Math.abs(Date.now() / 1000 - tsNum) > 300) {
+        console.warn("recall-webhook: stale or invalid timestamp");
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // Svix secret format: "whsec_<base64>" — strip the prefix if present.
+      const secretB64 = webhookSecret.startsWith("whsec_")
+        ? webhookSecret.slice(6)
+        : webhookSecret;
+      let keyBytes: Uint8Array;
+      try {
+        keyBytes = Uint8Array.from(atob(secretB64), (c) => c.charCodeAt(0));
+      } catch {
+        keyBytes = new TextEncoder().encode(secretB64);
+      }
+      const cryptoKey = await crypto.subtle.importKey(
+        "raw",
+        keyBytes as BufferSource,
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign"],
+      );
+      const toSign = new TextEncoder().encode(`${msgId}.${msgTs}.${rawBody}`);
+      const sigBuf = await crypto.subtle.sign("HMAC", cryptoKey, toSign);
+      const expected = btoa(String.fromCharCode(...new Uint8Array(sigBuf)));
+      // Header may carry several space-separated "v1,<sig>" values; accept any match.
+      const provided = sigHeader
+        .split(" ")
+        .map((p) => p.split(",")[1])
+        .filter(Boolean);
+      const valid = provided.some((p) => {
+        if (p.length !== expected.length) return false;
+        let diff = 0;
+        for (let i = 0; i < p.length; i++) diff |= p.charCodeAt(i) ^ expected.charCodeAt(i);
+        return diff === 0;
+      });
+      if (!valid) {
+        console.warn("recall-webhook: invalid signature");
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else {
+      // Soft-fail in dev when secret isn't configured: log loudly so it gets
+      // wired up in prod (the Supabase secrets UI). Do not block events.
+      console.warn(
+        "recall-webhook: RECALL_WEBHOOK_SECRET not set — accepting unauthenticated webhook (insecure, configure in production)",
+      );
+    }
+
+    const body = JSON.parse(rawBody);
     console.log("Recall webhook received:", JSON.stringify(body).slice(0, 800));
 
     const event = body.event as string | undefined;

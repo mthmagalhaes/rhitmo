@@ -1,14 +1,15 @@
 /**
  * Validates the x-cron-secret header.
- * Accepts either:
- *  - the CRON_SECRET env var (manual triggers / external systems)
- *  - the internal pg_cron trigger constant (jobs scheduled in the database)
  *
- * The function is also expected to receive a valid Supabase Bearer token
- * (anon or service_role) as defense in depth — pg_net always sends one.
+ * SECURITY: The previous version accepted a hardcoded constant
+ * ('INTERNAL_CRON_TRIGGER') as a valid secret to support pg_cron jobs.
+ * Anyone reading this source could trigger cron-protected functions (running
+ * AI calls, wasting credits, generating bogus recaps). That bypass has been
+ * removed — pg_cron jobs must now also send the real CRON_SECRET value.
+ *
+ * The function is additionally expected to receive a valid Supabase Bearer
+ * token (anon or service_role) as defense in depth — pg_net always sends one.
  */
-const INTERNAL_CRON_TRIGGER = 'INTERNAL_CRON_TRIGGER';
-
 export function validateCronSecret(req: Request): { valid: boolean; error?: Response } {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -29,9 +30,19 @@ export function validateCronSecret(req: Request): { valid: boolean; error?: Resp
     };
   }
 
-  // Accept either the user-defined secret OR the internal cron trigger constant.
-  if (provided === INTERNAL_CRON_TRIGGER) return { valid: true };
-  if (userSecret && provided === userSecret) return { valid: true };
+  // Constant-time compare against the env-provided secret only. No hardcoded
+  // bypass — callers (including pg_cron) must send the real CRON_SECRET.
+  if (!userSecret) {
+    console.error('CRON_SECRET env var not configured — rejecting all cron calls');
+    return {
+      valid: false,
+      error: new Response(JSON.stringify({ error: 'Cron secret not configured' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }),
+    };
+  }
+  if (provided === userSecret) return { valid: true };
 
   return {
     valid: false,
