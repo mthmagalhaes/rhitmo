@@ -1160,7 +1160,6 @@ export default function LiderPessoas() {
       content: (
         <InvitesTab
           onBulk={() => setInviteOpen(true)}
-          onAddSingle={() => setNewMemberOpen(true)}
           canBulk={canManageTeams}
         />
       ),
