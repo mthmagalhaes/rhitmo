@@ -30,7 +30,7 @@ const RhitmoSync = lazy(() => import("./pages/RhitmoSync"));
 const Invite = lazy(() => import("./pages/Invite"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const Admin = lazy(() => import("./pages/Admin"));
-const HelpCenter = lazy(() => import("./pages/HelpCenter"));
+
 const BriefPage = lazy(() => import("@/pages/BriefPage"));
 const HRDashboard = lazy(() => import("./pages/HRDashboard"));
 const CompetencyFramework = lazy(() => import("./pages/CompetencyFramework"));
@@ -50,7 +50,7 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const GoogleCalendarCallback = lazy(() => import("./pages/GoogleCalendarCallback"));
 const Evidence = lazy(() => import("./pages/Evidence"));
 const SlackChannels = lazy(() => import("./pages/SlackChannels"));
-const HelpRedirect = lazy(() => import("./pages/HelpRedirect"));
+
 
 // ── New role-based pages ──
 const LiderInicio = lazy(() => import("./pages/lider/Inicio"));
@@ -172,7 +172,7 @@ const App = () => (
               {/* Legacy deep-links → redirect to new host pages with tab pre-selected */}
               <Route path="/analytics" element={<Navigate to="/lider/pessoas?tab=analytics" replace />} />
               <Route path="/billing" element={<Navigate to="/lider/configuracoes?tab=faturamento" replace />} />
-              <Route path="/help" element={<DirectReportGuard><HelpRedirect /></DirectReportGuard>} />
+              
               <Route path="/evidence" element={Leader(<Evidence />)} />
               <Route path="/slack/channels" element={Leader(<SlackChannels />)} />
               {/* Legacy brief redirect */}
