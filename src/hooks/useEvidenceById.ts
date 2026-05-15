@@ -48,7 +48,60 @@ async function loadEvidenceRow(docId: string): Promise<EvidenceData | null> {
     .limit(1)
     .maybeSingle();
 
-  return (fallback.data as EvidenceData) ?? null;
+  if (fallback.data) return fallback.data as EvidenceData;
+
+  // 3) Last-resort: the AI may cite IDs of source tables that DON'T have a
+  // context_evidence row yet (pulse_surveys, peer_feedback_requests, or 360°
+  // performance_reviews). Probe each table by id and synthesize a virtual
+  // evidence row. RLS on each base table is what governs access (leader yes,
+  // member no), so this is safe.
+  const probes: Array<{
+    table: 'pulse_surveys' | 'peer_feedback_requests' | 'performance_reviews';
+    select: string;
+    map: (row: any) => EvidenceData | null;
+  }> = [
+    {
+      table: 'pulse_surveys',
+      select: 'id, member_id, type, name, completed_at, created_at',
+      map: (r) => r ? {
+        id: r.id, member_id: r.member_id, source_table: 'pulse_surveys', source_id: r.id,
+        evidence_type: 'pulse', occurred_at: r.completed_at ?? r.created_at,
+        title: r.name ?? `Pulse ${r.type ?? ''}`.trim(), summary: null,
+        visibility: 'private_leader', metadata: {},
+      } : null,
+    },
+    {
+      table: 'peer_feedback_requests',
+      select: 'id, subject_member_id, responded_at, created_at',
+      map: (r) => r ? {
+        id: r.id, member_id: r.subject_member_id, source_table: 'peer_feedback_requests', source_id: r.id,
+        evidence_type: 'peer_feedback', occurred_at: r.responded_at ?? r.created_at,
+        title: 'Peer feedback (anônimo)', summary: null,
+        visibility: 'private_leader', metadata: {},
+      } : null,
+    },
+    {
+      table: 'performance_reviews',
+      select: 'id, member_id, review_type, created_at',
+      map: (r) => r ? {
+        id: r.id, member_id: r.member_id, source_table: 'performance_reviews', source_id: r.id,
+        evidence_type: r.review_type ?? 'review', occurred_at: r.created_at,
+        title: r.review_type === 'self' ? 'Autoavaliação'
+          : r.review_type === 'peer' ? 'Avaliação de par'
+          : r.review_type === 'upwards' ? 'Upwards review'
+          : 'Avaliação',
+        summary: null, visibility: 'private_leader', metadata: {},
+      } : null,
+    },
+  ];
+
+  for (const p of probes) {
+    const { data } = await supabase.from(p.table).select(p.select).eq('id', docId).maybeSingle();
+    const ev = p.map(data);
+    if (ev) return ev;
+  }
+
+  return null;
 }
 
 async function loadFullContent(ev: EvidenceData): Promise<string | null> {
@@ -116,6 +169,41 @@ async function loadFullContent(ev: EvidenceData): Promise<string | null> {
           .eq('id', id)
           .maybeSingle();
         return (data as { message?: string } | null)?.message ?? null;
+      }
+      case 'pulse_surveys': {
+        const { data } = await supabase
+          .from('pulse_surveys')
+          .select('name, type, motivation, questions, responses, summary')
+          .eq('id', id)
+          .maybeSingle();
+        const row = data as { name?: string; type?: string; motivation?: string; questions?: any; responses?: any; summary?: any } | null;
+        if (!row) return null;
+        const parts: string[] = [];
+        if (row.name) parts.push(`**${row.name}**`);
+        if (row.type) parts.push(`Tipo: ${row.type}`);
+        if (row.motivation) parts.push(`\n_${row.motivation}_`);
+        if (Array.isArray(row.responses) && row.responses.length > 0) {
+          parts.push('\n**Respostas:**');
+          row.responses.forEach((r: any, i: number) => {
+            const q = Array.isArray(row.questions) ? row.questions[i]?.text ?? row.questions[i] : null;
+            const val = typeof r === 'string' ? r : (r?.value ?? r?.text ?? JSON.stringify(r));
+            parts.push(q ? `• ${q}\n  → ${val}` : `• ${val}`);
+          });
+        }
+        if (row.summary && typeof row.summary === 'object') {
+          const s = (row.summary as any).text ?? (row.summary as any).summary;
+          if (s) parts.push(`\n**Resumo:**\n${s}`);
+        }
+        return parts.join('\n') || null;
+      }
+      case 'peer_feedback_requests': {
+        const { data } = await supabase
+          .from('peer_feedback_requests')
+          .select('response_text, responded_at')
+          .eq('id', id)
+          .maybeSingle();
+        const row = data as { response_text?: string } | null;
+        return row?.response_text ?? null;
       }
       default:
         return null;
