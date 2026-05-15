@@ -11,6 +11,9 @@ type: feature
 - **Sprint 11.2 (LLM + trigger)** — DONE: Lovable AI Gateway wired, `start_rhitmo_chat` button creates `general_chat` conversations.
 - **Sprint 18 (conversational by default)** — DONE: DM autenticada SEM conversa ativa **auto-cria** uma `general_chat` no próprio handler de DM (slack-bot/index.ts ~linha 2234) e responde via LLM no mesmo turno. Welcome menu nunca mais aparece como resposta a DM autenticada — só em `app_home_opened` (1ª vez) ou para `unauthenticated`. Welcome DM do `slack-link` foi reescrita pra dizer "é só me mandar uma mensagem aqui no DM".
 
+## ⚠️ CRÍTICO: server-to-server pro chat-mentor (modo `leader_self`)
+O `slack-bot` chama `chat-mentor` com `mode: 'leader_self'` via service-role token. Por causa do hardening anti-IDoR (chat_mentor_idor), `chat-mentor` exige um JWT de usuário real **OU** o header `x-cron-secret: ${CRON_SECRET}` + `leaderUserId` no body. Sem o header, a chamada volta 401 e toda DM da Rhitmo morre com "⚠️ Tive um problema ao puxar o contexto do seu time agora". Qualquer novo caller server-to-server (orchestrator, cron, AI Assistant) **PRECISA** mandar o `x-cron-secret`. Validação extra: chat-mentor confirma `auth.admin.getUserById(leaderUserId)` antes de confiar.
+
 ## Goal
 Give the Slack bot multi-turn memory + real LLM responses so flows like Pulse Survey, 1:1 Prep, Self-Review, and free chat run as a real conversation.
 
