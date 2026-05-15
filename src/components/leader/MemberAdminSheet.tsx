@@ -159,7 +159,7 @@ export function MemberAdminSheet({
 
   const syncUrl = `${window.location.origin}/sync/${member.id}`;
   const hasSync = !!(syncData?.work_style_data || syncData?.chronotype || syncData?.feedback_style || syncData?.recognition_style);
-  const syncCompletedAt = syncData?.sync_completed_at as string | null | undefined;
+  const syncCompletedAt = (syncData?.work_style_data as { completed_at?: string } | null)?.completed_at;
 
   const handleCopySyncLink = async () => {
     try {
