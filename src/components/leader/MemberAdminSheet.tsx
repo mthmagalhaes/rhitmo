@@ -37,6 +37,10 @@ import {
   Sparkles,
   ClipboardList,
   ArrowRight,
+  Music,
+  Copy,
+  Loader2,
+  Clock,
 } from 'lucide-react';
 import type { LeaderMemberRow } from '@/hooks/useLeaderMembers';
 
