@@ -553,7 +553,7 @@ serve(async (req) => {
     const isFirstMessage = !Array.isArray(conversationHistory) || conversationHistory.length === 0;
     if (isFirstMessage && question && isCapabilitiesQuestion(question) && !imageContent?.isImage) {
       const memberFirstName = memberName ? memberName.split(' ')[0] : undefined;
-      const reply = buildCapabilitiesReply(mode as 'leader_self' | 'member', memberFirstName);
+      const reply = buildCapabilitiesReply(mode === 'leader_self' ? 'leader_self' : 'member', memberFirstName);
       log.info('capabilities_short_circuit', { mode });
       return new Response(
         JSON.stringify({ response: reply, capabilities_mode: true }),
