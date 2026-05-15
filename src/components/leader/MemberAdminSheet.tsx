@@ -321,7 +321,85 @@ export function MemberAdminSheet({
 
             <Separator />
 
-            {/* Atalhos operacionais */}
+            {/* Rhitmo Sync */}
+            <div className="p-6 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground inline-flex items-center gap-1.5">
+                  <Music className="h-3.5 w-3.5" />
+                  Rhitmo Sync
+                </h3>
+                {hasSync ? (
+                  <Badge className="text-[11px] h-5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20">
+                    Preenchido
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-[11px] h-5 border-amber-500/40 text-amber-700 dark:text-amber-400">
+                    Pendente
+                  </Badge>
+                )}
+              </div>
+
+              {hasSync ? (
+                <div className="space-y-3">
+                  {syncCompletedAt && (
+                    <p className="text-xs text-muted-foreground">
+                      Preenchido em {format(new Date(syncCompletedAt), "dd/MM/yyyy", { locale: ptBR })}.
+                    </p>
+                  )}
+                  <div className="space-y-2">
+                    {syncData?.chronotype && <SyncRow label="Cronotipo" value={String(syncData.chronotype)} />}
+                    {syncData?.feedback_style && <SyncRow label="Feedback" value={String(syncData.feedback_style)} />}
+                    {syncData?.recognition_style && <SyncRow label="Reconhecimento" value={String(syncData.recognition_style)} />}
+                    {Array.isArray(syncData?.motivators) && (syncData.motivators as string[]).length > 0 && (
+                      <SyncRow label="Motivadores" value={(syncData.motivators as string[]).join(', ')} />
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Reenviar a pesquisa substitui o perfil atual em todo o Rhitmo (chat, briefs, avaliações).
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl gap-2"
+                      onClick={handleResendSync}
+                      disabled={resendingSync || !member.email}
+                    >
+                      {resendingSync ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                      Reenviar pesquisa
+                    </Button>
+                    <Button variant="ghost" size="sm" className="rounded-xl gap-2" onClick={handleCopySyncLink}>
+                      <Copy className="h-3.5 w-3.5" />
+                      Copiar link
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground inline-flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5" />
+                    Aguardando preenchimento.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      className="rounded-xl gap-2"
+                      onClick={handleResendSync}
+                      disabled={resendingSync || !member.email}
+                    >
+                      {resendingSync ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                      Enviar pesquisa
+                    </Button>
+                    <Button variant="ghost" size="sm" className="rounded-xl gap-2" onClick={handleCopySyncLink}>
+                      <Copy className="h-3.5 w-3.5" />
+                      Copiar link
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <Separator />
             <div className="p-6 space-y-3">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Abrir em…
