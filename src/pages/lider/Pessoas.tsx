@@ -996,7 +996,12 @@ function InviteRowMenu({
   );
 }
 
-function InvitesTab({ onInvite }: { onInvite: () => void }) {
+function InvitesTab({ onBulk, onAddSingle, canBulk }: { onBulk: () => void; onAddSingle: () => void; canBulk: boolean }) {
+  const onInvite = canBulk ? onBulk : onAddSingle;
+  const inviteLabel = canBulk ? 'Convidar liderados' : 'Adicionar liderado';
+  const emptyDescription = canBulk
+    ? 'Adicione liderados em massa colando uma lista de e-mails. Cada um recebe um convite personalizado.'
+    : 'Adicione liderados um a um para começar. Convites em massa estão disponíveis para o RH.';
   const qc = useQueryClient();
   const { data: pending } = useQuery({
     queryKey: ['pending-invites'],
@@ -1050,7 +1055,7 @@ function InvitesTab({ onInvite }: { onInvite: () => void }) {
           </p>
         </div>
         <Button onClick={onInvite} className="rounded-xl gap-2">
-          <UserPlus className="w-4 h-4" /> Convidar liderados
+          <UserPlus className="w-4 h-4" /> {inviteLabel}
         </Button>
       </div>
 
@@ -1058,8 +1063,8 @@ function InvitesTab({ onInvite }: { onInvite: () => void }) {
         <EmptyStateHero
           icon={MailPlus}
           title="Sem convites pendentes"
-          description="Adicione liderados em massa colando uma lista de e-mails. Cada um recebe um convite personalizado."
-          ctaLabel="Convidar liderados"
+          description={emptyDescription}
+          ctaLabel={inviteLabel}
           ctaIcon={UserPlus}
           onCta={onInvite}
           variant="compact"
@@ -1151,7 +1156,13 @@ export default function LiderPessoas() {
       value: 'convites',
       label: 'Convites',
       icon: MailPlus,
-      content: <InvitesTab onInvite={() => setInviteOpen(true)} />,
+      content: (
+        <InvitesTab
+          onBulk={() => setInviteOpen(true)}
+          onAddSingle={() => setNewMemberOpen(true)}
+          canBulk={canManageTeams}
+        />
+      ),
     },
     {
       value: 'times',

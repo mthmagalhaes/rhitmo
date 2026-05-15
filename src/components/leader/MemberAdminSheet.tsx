@@ -5,7 +5,9 @@
 // /lider/avaliacoes, /lider/mentor — acessíveis via "Abrir em…" no rodapé.
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import {
   Sheet,
   SheetContent,
@@ -35,6 +37,10 @@ import {
   Sparkles,
   ClipboardList,
   ArrowRight,
+  Music,
+  Copy,
+  Loader2,
+  Clock,
 } from 'lucide-react';
 import type { LeaderMemberRow } from '@/hooks/useLeaderMembers';
 
@@ -91,6 +97,15 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+function SyncRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-4 text-sm">
+      <span className="text-muted-foreground shrink-0 text-xs uppercase tracking-wider">{label}</span>
+      <span className="text-right text-foreground/90 capitalize">{value}</span>
+    </div>
+  );
+}
+
 export function MemberAdminSheet({
   open,
   onOpenChange,
@@ -104,6 +119,23 @@ export function MemberAdminSheet({
   const [editOpen, setEditOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [acting, setActing] = useState(false);
+  const [resendingSync, setResendingSync] = useState(false);
+
+  const { data: syncData } = useQuery({
+    queryKey: ['member-sync', member?.id],
+    queryFn: async () => {
+      if (!member?.id) return null;
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('work_style_data, chronotype, feedback_style, recognition_style, motivators, user_manual')
+        .eq('id', member.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: open && !!member?.id,
+    staleTime: 30_000,
+  });
 
   if (!member) return null;
 
@@ -131,6 +163,43 @@ export function MemberAdminSheet({
       toast.error(`Falha: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setActing(false);
+    }
+  };
+
+  const syncUrl = `${window.location.origin}/sync/${member.id}`;
+  const hasSync = !!(syncData?.work_style_data || syncData?.chronotype || syncData?.feedback_style || syncData?.recognition_style);
+  const syncCompletedAt = (syncData?.work_style_data as { completed_at?: string } | null)?.completed_at;
+
+  const handleCopySyncLink = async () => {
+    try {
+      await navigator.clipboard.writeText(syncUrl);
+      toast.success('Link copiado.');
+    } catch {
+      toast.error('Falha ao copiar link.');
+    }
+  };
+
+  const handleResendSync = async () => {
+    if (!member.email) {
+      toast.error('Esse liderado não tem e-mail cadastrado.');
+      return;
+    }
+    setResendingSync(true);
+    try {
+      const { error } = await supabase.functions.invoke('send-transactional-email', {
+        body: {
+          templateName: 'sync-invite',
+          recipientEmail: member.email,
+          idempotencyKey: `sync-invite-resend-${member.id}-${Date.now()}`,
+          templateData: { memberName: member.name, syncUrl },
+        },
+      });
+      if (error) throw error;
+      toast.success(`Pesquisa enviada para ${member.email}`);
+    } catch (err) {
+      toast.error(`Falha: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setResendingSync(false);
     }
   };
 
@@ -261,7 +330,85 @@ export function MemberAdminSheet({
 
             <Separator />
 
-            {/* Atalhos operacionais */}
+            {/* Rhitmo Sync */}
+            <div className="p-6 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground inline-flex items-center gap-1.5">
+                  <Music className="h-3.5 w-3.5" />
+                  Rhitmo Sync
+                </h3>
+                {hasSync ? (
+                  <Badge className="text-[11px] h-5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20">
+                    Preenchido
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-[11px] h-5 border-amber-500/40 text-amber-700 dark:text-amber-400">
+                    Pendente
+                  </Badge>
+                )}
+              </div>
+
+              {hasSync ? (
+                <div className="space-y-3">
+                  {syncCompletedAt && (
+                    <p className="text-xs text-muted-foreground">
+                      Preenchido em {format(new Date(syncCompletedAt), "dd/MM/yyyy", { locale: ptBR })}.
+                    </p>
+                  )}
+                  <div className="space-y-2">
+                    {syncData?.chronotype && <SyncRow label="Cronotipo" value={String(syncData.chronotype)} />}
+                    {syncData?.feedback_style && <SyncRow label="Feedback" value={String(syncData.feedback_style)} />}
+                    {syncData?.recognition_style && <SyncRow label="Reconhecimento" value={String(syncData.recognition_style)} />}
+                    {Array.isArray(syncData?.motivators) && (syncData.motivators as string[]).length > 0 && (
+                      <SyncRow label="Motivadores" value={(syncData.motivators as string[]).join(', ')} />
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Reenviar a pesquisa substitui o perfil atual em todo o Rhitmo (chat, briefs, avaliações).
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl gap-2"
+                      onClick={handleResendSync}
+                      disabled={resendingSync || !member.email}
+                    >
+                      {resendingSync ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                      Reenviar pesquisa
+                    </Button>
+                    <Button variant="ghost" size="sm" className="rounded-xl gap-2" onClick={handleCopySyncLink}>
+                      <Copy className="h-3.5 w-3.5" />
+                      Copiar link
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground inline-flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5" />
+                    Aguardando preenchimento.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      className="rounded-xl gap-2"
+                      onClick={handleResendSync}
+                      disabled={resendingSync || !member.email}
+                    >
+                      {resendingSync ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                      Enviar pesquisa
+                    </Button>
+                    <Button variant="ghost" size="sm" className="rounded-xl gap-2" onClick={handleCopySyncLink}>
+                      <Copy className="h-3.5 w-3.5" />
+                      Copiar link
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <Separator />
             <div className="p-6 space-y-3">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Abrir em…
