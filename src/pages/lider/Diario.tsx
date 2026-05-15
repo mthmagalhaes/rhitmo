@@ -1,257 +1,302 @@
-// Diário de Bordo — Master-Detail estilo Notion/Windmill.
-// - Banner de privacidade fixo no topo da coluna direita
-// - Botão "Nova anotação" abre o NewNoteDialog completo (Magic Paste, templates, smart date, AI title)
-// - Feed cronológico abaixo (todas as notas do liderado: privadas + compartilhadas)
-// - placeholderData evita "piscar" ao trocar de liderado
+// Diário de Bordo — visão cross-member AI-Native.
+// Insight de cobertura no topo + feed cronológico de TODAS as notas do líder
+// agrupadas por bucket temporal, com filtros por liderado/time/tags/data e busca.
 import { useMemo, useState } from 'react';
-import { isWithinInterval, startOfDay, endOfDay } from 'date-fns';
-import type { DateRange } from 'react-day-picker';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Lock, PenSquare, Search } from 'lucide-react';
+import { isToday, isThisWeek, subDays } from 'date-fns';
+import { Lock, PenSquare, Inbox } from 'lucide-react';
+import type { DateRange } from 'react-day-picker';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { MemberAvatar } from '@/components/MemberAvatar';
-import { MemberMasterList } from '@/components/leader/MemberMasterList';
-import { EmptyMemberDetail } from '@/components/leader/EmptyMemberDetail';
-import { FeedbackTimeline } from '@/components/FeedbackTimeline';
-import { FeedbackFilters } from '@/components/FeedbackFilters';
-import { NewNoteDialog } from '@/components/NewNoteDialog';
-import { useToast } from '@/hooks/use-toast';
+import { useEffectiveUser } from '@/hooks/useEffectiveUser';
+import { useLeaderMembers } from '@/hooks/useLeaderMembers';
 import { supabase } from '@/integrations/supabase/client';
-import { useLeaderMembers, type LeaderMemberRow } from '@/hooks/useLeaderMembers';
-import { VersionSwitchBanner } from '@/components/leader/diario-v2/VersionSwitchBanner';
+import { safeQuery } from '@/lib/supabaseSafe';
+import { NewNoteDialog } from '@/components/NewNoteDialog';
+import { DiaryCoverageInsight } from '@/components/leader/diario/DiaryCoverageInsight';
+import { DiaryFeedItem, type FeedItem } from '@/components/leader/diario/DiaryFeedItem';
+import {
+  DiaryFilters,
+  type Period,
+  type SortOrder,
+} from '@/components/leader/diario/DiaryFilters';
+
+interface FeedbackRow {
+  id: string;
+  member_id: string;
+  title: string | null;
+  content: string;
+  tags: string[] | null;
+  visibility: string | null;
+  occurred_at: string;
+  created_at: string;
+}
 
 export default function LiderDiario() {
-  const { workspace } = useLeaderMembers(); // pré-aquece cache + obtém workspace para o NewNoteDialog
-  const [selected, setSelected] = useState<LeaderMemberRow | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
-  const [dateRange, setDateRange] = useState<DateRange | undefined>();
-  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
-  const { toast } = useToast();
+  const { id: effectiveUserId } = useEffectiveUser();
+  const { workspace, teams, members } = useLeaderMembers();
   const queryClient = useQueryClient();
 
-  const { data: feedbacks = [] } = useQuery({
-    queryKey: ['feedbacks', selected?.id],
-    enabled: !!selected,
-    // Mantém os dados anteriores enquanto o próximo liderado carrega:
-    // troca de pessoa fica instantânea, sem flicker de tela inteira.
-    placeholderData: (prev) => prev,
-    queryFn: async () => {
-      // Diário mostra TODAS as notas do liderado (privadas + compartilhadas).
-      // O líder vê tudo de qualquer forma; a distinção visual fica por conta
-      // do FeedbackTimeline (cadeado vs. olho).
-      const { data, error } = await supabase
-        .from('feedbacks')
-        .select('*')
-        .eq('member_id', selected!.id)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
+  const [searchParams, setSearchParams] = useSearchParams();
+  const memberId = searchParams.get('member') ?? 'all';
+  const teamId = searchParams.get('team') ?? 'all';
+  const period = (searchParams.get('period') as Period) || '30d';
+  const query = searchParams.get('q') ?? '';
+  const tagsParam = searchParams.get('tags') ?? '';
+  const selectedTags = tagsParam ? tagsParam.split(',').filter(Boolean) : [];
+  const sort = (searchParams.get('sort') as SortOrder) || 'newest';
+  const fromParam = searchParams.get('from');
+  const toParam = searchParams.get('to');
+  const dateRange: DateRange | undefined = fromParam
+    ? { from: new Date(fromParam), to: toParam ? new Date(toParam) : undefined }
+    : undefined;
+
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const [presetMemberId, setPresetMemberId] = useState<string | undefined>();
+
+  const updateParam = (key: string, value: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (value && value !== 'all' && value !== '') next.set(key, value);
+    else next.delete(key);
+    setSearchParams(next, { replace: true });
+  };
+
+  const updateDateRange = (range: DateRange | undefined) => {
+    const next = new URLSearchParams(searchParams);
+    if (range?.from) next.set('from', range.from.toISOString());
+    else next.delete('from');
+    if (range?.to) next.set('to', range.to.toISOString());
+    else next.delete('to');
+    setSearchParams(next, { replace: true });
+  };
+
+  // Carrega TODAS as notas do líder (cross-member) — RLS garante manager_id = auth.uid()
+  // Quando dateRange está setado, ignoramos o período e buscamos sem limite temporal.
+  const hasCustomDate = !!dateRange?.from;
+  const { data: feedbacks = [], isLoading } = useQuery({
+    queryKey: ['diario-feedbacks', effectiveUserId, period, hasCustomDate],
+    enabled: !!effectiveUserId,
     staleTime: 30_000,
+    queryFn: async () => {
+      let q = supabase
+        .from('feedbacks')
+        .select('id, member_id, title, content, tags, visibility, occurred_at, created_at')
+        .eq('manager_id', effectiveUserId!)
+        .order('occurred_at', { ascending: false })
+        .limit(200);
+      if (!hasCustomDate && period !== 'all') {
+        const days = period === '7d' ? 7 : period === '30d' ? 30 : 90;
+        q = q.gte('occurred_at', subDays(new Date(), days).toISOString());
+      }
+      return await safeQuery<FeedbackRow[]>(q);
+    },
   });
 
-  const filtered = useMemo(() => {
-    let result = [...feedbacks];
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter((fb) => {
+  const memberById = useMemo(() => {
+    return new Map(members.map((x) => [x.id, x]));
+  }, [members]);
+
+  const items: FeedItem[] = useMemo(() => {
+    const teamMemberIds =
+      teamId === 'all'
+        ? null
+        : new Set(members.filter((m) => m.team_id === teamId).map((m) => m.id));
+    const q = query.trim().toLowerCase();
+    const fromTime = dateRange?.from ? new Date(dateRange.from).setHours(0, 0, 0, 0) : null;
+    const toTime = dateRange?.to ? new Date(dateRange.to).setHours(23, 59, 59, 999) : null;
+
+    const filtered = feedbacks.filter((fb) => {
+      if (memberId !== 'all' && fb.member_id !== memberId) return false;
+      if (teamMemberIds && !teamMemberIds.has(fb.member_id)) return false;
+      if (selectedTags.length > 0) {
+        const tags = fb.tags ?? [];
+        if (!selectedTags.some((t) => tags.includes(t))) return false;
+      }
+      if (fromTime !== null) {
+        const t = new Date(fb.occurred_at || fb.created_at).getTime();
+        if (t < fromTime) return false;
+        if (toTime !== null && t > toTime) return false;
+      }
+      if (q) {
         const titleMatch = fb.title?.toLowerCase().includes(q);
         const plain = (fb.content ?? '').replace(/<[^>]*>/g, '').toLowerCase();
-        return titleMatch || plain.includes(q);
-      });
-    }
-    if (selectedTags.length > 0) {
-      result = result.filter((fb) =>
-        fb.tags?.some((t) => selectedTags.includes(t)),
-      );
-    }
-    if (dateRange?.from) {
-      const from = startOfDay(dateRange.from);
-      if (dateRange.to) {
-        const to = endOfDay(dateRange.to);
-        result = result.filter((fb) =>
-          isWithinInterval(new Date(fb.occurred_at || fb.created_at), {
-            start: from,
-            end: to,
-          }),
-        );
-      } else {
-        result = result.filter(
-          (fb) => new Date(fb.occurred_at || fb.created_at) >= from,
-        );
+        if (!titleMatch && !plain.includes(q)) return false;
       }
-    }
-    result.sort((a, b) => {
-      const dA = new Date(a.occurred_at || a.created_at).getTime();
-      const dB = new Date(b.occurred_at || b.created_at).getTime();
-      return sortOrder === 'newest' ? dB - dA : dA - dB;
+      return true;
     });
-    return result;
-  }, [feedbacks, searchQuery, selectedTags, sortOrder, dateRange]);
 
-  async function handleDelete(id: string) {
-    const { error } = await supabase.from('feedbacks').delete().eq('id', id);
-    if (error) {
-      toast({
-        title: 'Erro ao excluir',
-        description: error.message,
-        variant: 'destructive',
-      });
-      return;
-    }
-    queryClient.invalidateQueries({ queryKey: ['feedbacks', selected?.id] });
-  }
+    const sorted = [...filtered].sort((a, b) => {
+      const ta = new Date(a.occurred_at || a.created_at).getTime();
+      const tb = new Date(b.occurred_at || b.created_at).getTime();
+      return sort === 'newest' ? tb - ta : ta - tb;
+    });
+
+    return sorted.map((fb) => {
+      const m = memberById.get(fb.member_id);
+      return {
+        ...fb,
+        member_name: m?.name ?? 'Liderado removido',
+        member_role: m?.role ?? null,
+        member_avatar: m?.avatar ?? null,
+      };
+    });
+  }, [feedbacks, memberId, teamId, query, members, memberById, selectedTags, dateRange, sort]);
+
+  const buckets = useMemo(() => {
+    const today: FeedItem[] = [];
+    const week: FeedItem[] = [];
+    const older: FeedItem[] = [];
+    items.forEach((it) => {
+      const d = new Date(it.occurred_at || it.created_at);
+      if (isToday(d)) today.push(it);
+      else if (isThisWeek(d, { weekStartsOn: 1 })) week.push(it);
+      else older.push(it);
+    });
+    return { today, week, older };
+  }, [items]);
+
+  const orderedSections =
+    sort === 'newest'
+      ? [
+          { title: 'Hoje', items: buckets.today },
+          { title: 'Esta semana', items: buckets.week },
+          { title: 'Mais antigas', items: buckets.older },
+        ]
+      : [
+          { title: 'Mais antigas', items: buckets.older },
+          { title: 'Esta semana', items: buckets.week },
+          { title: 'Hoje', items: buckets.today },
+        ];
+
+  const handleCreateNoteFor = (m: { id: string }) => {
+    setPresetMemberId(m.id);
+    setNoteDialogOpen(true);
+  };
+
+  const onNoteSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['diario-feedbacks'] });
+    queryClient.invalidateQueries({ queryKey: ['team-members'] });
+  };
+
+  const presetMember = presetMemberId ? memberById.get(presetMemberId) : undefined;
+  const total = items.length;
+  const selectedMemberName =
+    memberId !== 'all' ? memberById.get(memberId)?.name : undefined;
 
   return (
-    <div className="flex h-[calc(100svh-3.5rem)] lg:h-[calc(100svh-3rem)] overflow-hidden">
-      <MemberMasterList
-        selectedMemberId={selected?.id ?? null}
-        onSelect={(m) => setSelected(m)}
+    <div className="max-w-5xl mx-auto px-6 lg:px-8 py-6 space-y-5">
+      {/* Header */}
+      <header className="min-w-0">
+        <h1 className="font-serif text-2xl font-bold tracking-tight">Diário de Bordo</h1>
+        <p className="text-sm text-muted-foreground mt-1 inline-flex items-center gap-1.5">
+          <Lock className="h-3 w-3" />
+          Suas notas privadas sobre o time, em um só lugar.
+        </p>
+      </header>
+
+      {/* Insight Card */}
+      {members.length > 0 && (
+        <DiaryCoverageInsight members={members} onCreateNoteFor={handleCreateNoteFor} />
+      )}
+
+      {/* Bloco Anotações + contador dinâmico + CTA Nova nota */}
+      <div className="flex items-end justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="font-serif text-lg font-bold tracking-tight">Anotações</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {total === 0
+              ? 'Nenhuma anotação para os filtros atuais.'
+              : `${total} ${total === 1 ? 'registro' : 'registros'} no histórico${
+                  selectedMemberName ? ` de ${selectedMemberName.split(' ')[0]}` : ''
+                }.`}
+          </p>
+        </div>
+        <Button
+          onClick={() => {
+            setPresetMemberId(undefined);
+            setNoteDialogOpen(true);
+          }}
+          className="rounded-xl gap-2 shrink-0"
+        >
+          <PenSquare className="h-4 w-4" />
+          Nova nota
+        </Button>
+      </div>
+
+      {/* Filtros */}
+      <DiaryFilters
+        members={members}
+        teams={teams}
+        memberId={memberId}
+        teamId={teamId}
+        period={period}
+        query={query}
+        selectedTags={selectedTags}
+        dateRange={dateRange}
+        sort={sort}
+        onMemberChange={(v) => updateParam('member', v)}
+        onTeamChange={(v) => updateParam('team', v)}
+        onPeriodChange={(v) => updateParam('period', v)}
+        onQueryChange={(v) => updateParam('q', v)}
+        onTagsChange={(tags) => updateParam('tags', tags.join(','))}
+        onDateRangeChange={updateDateRange}
+        onSortChange={(v) => updateParam('sort', v === 'newest' ? '' : v)}
       />
 
-      <main className="flex-1 min-w-0 overflow-y-auto bg-background">
-        <div className="lg:hidden px-4 sm:px-6 pt-4" />
-
-        {!selected ? (
-          <div className="max-w-5xl px-6 lg:px-8 py-6 space-y-4">
-            <header className="mb-2">
-              <h1 className="font-serif text-2xl font-bold tracking-tight">
-                Diário de Bordo
-              </h1>
-              <p className="text-sm text-muted-foreground mt-1 inline-flex items-center gap-1.5">
-                <Lock className="h-3 w-3" />
-                Notas privadas, visíveis apenas para você.
-              </p>
-            </header>
-            <VersionSwitchBanner variant="v1-to-v2" />
-            <EmptyMemberDetail
-              icon={Lock}
-              title="Selecione alguém na lista ao lado"
-              description="Cada liderado tem seu próprio diário privado. Escolha alguém à esquerda para acessar suas anotações privadas."
-            />
-          </div>
-        ) : (
-          <div className="max-w-5xl px-6 lg:px-8 py-6 space-y-6">
-            {/* Eyebrow */}
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Diário de Bordo
-            </p>
-
-            {/* Cabeçalho do liderado */}
-            <header className="flex items-center gap-3 -mt-3">
-              <MemberAvatar
-                memberId={selected.id}
-                memberName={selected.name}
-                avatarUrl={selected.avatar}
-                size="lg"
-              />
-              <div>
-                <h1 className="font-serif text-2xl font-bold tracking-tight">
-                  {selected.name}
-                </h1>
-                {selected.role && (
-                  <p className="text-sm text-muted-foreground">
-                    {selected.role}
-                  </p>
-                )}
-              </div>
-            </header>
-
-            {/* Banner de privacidade — fixo, discreto */}
-            <div className="flex items-start gap-2.5 rounded-xl bg-muted/60 border border-border/60 px-3.5 py-2.5">
-              <Lock className="h-3.5 w-3.5 text-foreground/70 mt-0.5 shrink-0" />
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                <span className="font-medium text-foreground">Notas privadas por padrão.</span>{' '}
-                Você decide o que compartilhar com {selected.name.split(' ')[0]} a cada anotação.
-              </p>
-            </div>
-
-            {/* Ação primária — abre o NewNoteDialog completo (Magic Paste, templates, smart date, AI title) */}
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="font-serif text-lg font-bold tracking-tight">
-                  Anotações
-                </h2>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {feedbacks.length === 0
-                    ? 'Nenhuma anotação ainda.'
-                    : `${feedbacks.length} ${feedbacks.length === 1 ? 'registro' : 'registros'} no histórico.`}
-                </p>
-              </div>
-              <Button
-                onClick={() => setNoteDialogOpen(true)}
-                className="rounded-xl gap-2 shrink-0"
-              >
-                <PenSquare className="h-4 w-4" />
-                Nova anotação
-              </Button>
-            </div>
-
-            {/* Filtros (só quando há notas) */}
-            {feedbacks.length > 0 && (
-              <FeedbackFilters
-                searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
-                selectedTags={selectedTags}
-                onTagsChange={setSelectedTags}
-                sortOrder={sortOrder}
-                onSortChange={setSortOrder}
-                dateRange={dateRange}
-                onDateRangeChange={setDateRange}
-              />
-            )}
-
-            {/* Feed cronológico */}
-            {feedbacks.length === 0 ? (
-              <Card className="p-8 text-center rounded-2xl border-dashed bg-transparent">
-                <PenSquare className="h-7 w-7 text-muted-foreground/50 mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground mb-4">
-                  Você ainda não tem anotações para{' '}
-                  <span className="font-medium text-foreground">
-                    {selected.name.split(' ')[0]}
-                  </span>
-                  . Registre uma observação rápida, cole uma transcrição ou use um template.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setNoteDialogOpen(true)}
-                  className="rounded-xl gap-2"
-                >
-                  <PenSquare className="h-3.5 w-3.5" />
-                  Criar primeira anotação
-                </Button>
-              </Card>
-            ) : filtered.length === 0 ? (
-              <Card className="p-8 text-center rounded-2xl border-dashed">
-                <Search className="h-7 w-7 text-muted-foreground/50 mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground">
-                  Nenhuma nota encontrada para estes filtros.
-                </p>
-              </Card>
-            ) : (
-              <FeedbackTimeline
-                feedbacks={filtered as any}
-                onDelete={handleDelete}
-              />
-            )}
-          </div>
-        )}
-      </main>
+      {/* Feed */}
+      {isLoading ? (
+        <div className="space-y-2">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-12 rounded-xl bg-muted/40 animate-pulse" />
+          ))}
+        </div>
+      ) : items.length === 0 ? (
+        <Card className="p-10 text-center rounded-2xl border-dashed bg-transparent">
+          <Inbox className="h-7 w-7 text-muted-foreground/50 mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">
+            {feedbacks.length === 0
+              ? 'Você ainda não tem anotações no período selecionado.'
+              : 'Nenhuma nota encontrada para estes filtros.'}
+          </p>
+        </Card>
+      ) : (
+        <div className="space-y-6">
+          {orderedSections.map(
+            (s) =>
+              s.items.length > 0 && (
+                <FeedSection key={s.title} title={s.title} items={s.items} />
+              ),
+          )}
+        </div>
+      )}
 
       <NewNoteDialog
         open={noteDialogOpen}
         onOpenChange={setNoteDialogOpen}
-        selectedMemberId={selected?.id}
-        memberName={selected?.name}
+        selectedMemberId={presetMemberId}
+        memberName={presetMember?.name}
         workspaceId={workspace?.id}
-        onSuccess={() =>
-          queryClient.invalidateQueries({ queryKey: ['feedbacks', selected?.id] })
-        }
+        onSuccess={onNoteSuccess}
       />
     </div>
+  );
+}
+
+function FeedSection({ title, items }: { title: string; items: FeedItem[] }) {
+  return (
+    <section>
+      <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-2.5">
+        {title}{' '}
+        <span className="text-muted-foreground/60 font-normal normal-case tracking-normal">
+          · {items.length}
+        </span>
+      </h2>
+      <div className="space-y-1.5">
+        {items.map((it) => (
+          <DiaryFeedItem key={it.id} item={it} />
+        ))}
+      </div>
+    </section>
   );
 }
