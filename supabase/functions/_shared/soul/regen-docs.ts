@@ -14,14 +14,19 @@ const FILES = [
   "04-drafting.md",
   "05-citations.md",
   "06-identity-protocol.md",
+  "07-memory.md",
+  "08-disc-calibration.md",
   "modes/leader-member.md",
   "modes/leader-self.md",
   "modes/member-self.md",
+  "modes/monthly-recap.md",
   "modes/one-on-one-prep.md",
   "modes/pulse-survey.md",
+  "modes/quarterly-recap.md",
   "modes/self-review.md",
   "channels/web.md",
   "channels/slack.md",
+  "channels/whatsapp.md",
 ];
 
 const BASE = new URL("./", import.meta.url);
