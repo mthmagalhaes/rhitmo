@@ -55,3 +55,50 @@ const prompt = composeSystemPrompt({
 ```
 
 A ordem de concatenação é estável (definida em `loader.ts`) para que mudanças nos `.md` produzam diffs reproduzíveis no snapshot dos prompts finais.
+
+## Arquivos adicionados (v2)
+
+| Arquivo | Descrição |
+|---|---|
+| `07-memory.md` | Instruções sobre uso do `rhy_context_cache` e calibração por profundidade de uso |
+| `08-disc-calibration.md` | Calibração de tom e abordagem por perfil DISC/work_style_data |
+| `modes/monthly-recap.md` | Geração e confirmação do Resumo Mensal (Rhitmo Mensal) |
+| `modes/quarterly-recap.md` | Geração e confirmação do Acompanhamento Trimestral |
+| `channels/whatsapp.md` | Formatação para canal WhatsApp (futuro) |
+
+## Variáveis novas (adicionar ao loader.ts)
+
+| Variável | Tipo | Fonte |
+|---|---|---|
+| `{{sessionSummary}}` | string | `rhy_context_cache.summary` |
+| `{{sessionCount}}` | number | `rhy_context_cache.session_count` |
+| `{{pendingActions}}` | string[] | `rhy_context_cache.pending_actions` |
+| `{{monthlyRecaps}}` | object[] | `monthly_recaps` confirmados do período |
+| `{{previousQuarterSummary}}` | object | `quarterly_recaps` do trimestre anterior |
+| `{{quarterLabel}}` | string | Ex.: "Q1 2026 (Jan–Mar)" |
+| `{{monthlyRecapCount}}` | number | Quantidade de mensais confirmados no trimestre |
+| `{{nextQuarterDate}}` | string | Data de início do próximo trimestre |
+| `{{periodStart}}` / `{{periodEnd}}` | date | Início e fim do período de análise |
+| `{{evidenceCount}}` | number | Quantidade de feedbacks no período |
+| `{{nextMonth}}` | string | Nome do próximo mês |
+
+Todas as novas vars são opcionais. Chamadas existentes sem essas chaves continuam funcionando — placeholders ausentes permanecem visíveis (`{{var}}`) para debug.
+
+## Ordem de carregamento (loader.ts) — atualizada
+
+```
+Base disponível:
+  00-identity → 01-guardrails → 02-analysis-matrix →
+  03-tone-and-format → 04-drafting → 05-citations →
+  06-identity-protocol → 07-memory → 08-disc-calibration
+
+Modo (um por chamada):
+  modes/leader-member | leader-self | member-self |
+  monthly-recap | quarterly-recap |
+  one-on-one-prep | pulse-survey | self-review
+
+Canal (um por chamada):
+  channels/web | slack | whatsapp
+```
+
+Nota: os modos só carregam os blocos que listam em `extends` — 07-memory e 08-disc-calibration são incluídos pelos modos `leader-self`, `monthly-recap` e `quarterly-recap`. Os demais modos permanecem inalterados para preservar snapshots existentes.
