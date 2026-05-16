@@ -29,7 +29,7 @@ function readDoc(relPath: string): string {
   return stripped;
 }
 
-export type Channel = "web" | "slack";
+export type Channel = "web" | "slack" | "whatsapp";
 
 export type Mode =
   | "leader-member"
@@ -37,7 +37,16 @@ export type Mode =
   | "member-self"
   | "pulse-survey"
   | "one-on-one-prep"
-  | "self-review";
+  | "self-review"
+  | "monthly-recap"
+  | "quarterly-recap";
+
+// Variáveis opcionais reconhecidas pelos modos novos (v2 da alma):
+//   sessionSummary, sessionCount, pendingActions,
+//   monthlyRecaps, previousQuarterSummary, quarterLabel, monthlyRecapCount,
+//   nextQuarterDate, periodStart, periodEnd, periodLabel, evidenceCount, nextMonth,
+//   work_style_data
+// Todas opcionais — ausentes preservam {{placeholder}} para debug.
 
 /** Ordem canônica dos blocos base por modo. NÃO mudar sem atualizar snapshot. */
 const MODE_BLOCKS: Record<Mode, string[]> = {
@@ -55,6 +64,7 @@ const MODE_BLOCKS: Record<Mode, string[]> = {
     "00-identity.md",
     "01-guardrails.md",
     "03-tone-and-format.md",
+    "07-memory.md",
     "modes/leader-self.md",
   ],
   "member-self": [
@@ -81,11 +91,32 @@ const MODE_BLOCKS: Record<Mode, string[]> = {
     "01-guardrails.md",
     "modes/self-review.md",
   ],
+  "monthly-recap": [
+    "00-identity.md",
+    "01-guardrails.md",
+    "02-analysis-matrix.md",
+    "03-tone-and-format.md",
+    "05-citations.md",
+    "07-memory.md",
+    "08-disc-calibration.md",
+    "modes/monthly-recap.md",
+  ],
+  "quarterly-recap": [
+    "00-identity.md",
+    "01-guardrails.md",
+    "02-analysis-matrix.md",
+    "03-tone-and-format.md",
+    "05-citations.md",
+    "07-memory.md",
+    "08-disc-calibration.md",
+    "modes/quarterly-recap.md",
+  ],
 };
 
 const CHANNEL_BLOCK: Record<Channel, string> = {
   web: "channels/web.md",
   slack: "channels/slack.md",
+  whatsapp: "channels/whatsapp.md",
 };
 
 export interface ComposeOptions {
