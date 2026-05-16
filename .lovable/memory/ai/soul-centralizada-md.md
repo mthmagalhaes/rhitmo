@@ -39,7 +39,9 @@ const sys = await composeSystemPrompt({
 });
 ```
 
-## Regenerar snapshots
+## Bundle nas edge functions publicadas
+Runtime das edge functions **não expõe os `.md` no filesystem** do módulo (erro `path not found: .../soul/00-identity.md`). Por isso o `loader.ts` lê de `docs.generated.ts` (mapa estático `SOUL_DOCS`) embutido no bundle. Após editar qualquer `.md` da alma:
 ```
+deno run --allow-read --allow-write supabase/functions/_shared/soul/regen-docs.ts
 deno run --allow-read --allow-write supabase/functions/_shared/soul/regen-snapshots.ts
 ```
