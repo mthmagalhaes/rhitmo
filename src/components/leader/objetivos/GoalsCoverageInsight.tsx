@@ -50,7 +50,7 @@ export function GoalsCoverageInsight({ members, summaryByMember, onPickMember }:
                       memberId={m.id}
                       memberName={m.name}
                       avatarUrl={m.avatar}
-                      size="xs"
+                      size="sm"
                     />
                     <span>{m.name.split(' ')[0]}</span>
                     <ArrowRight className="h-3 w-3 opacity-60" />
