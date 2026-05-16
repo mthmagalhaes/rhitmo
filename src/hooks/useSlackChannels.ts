@@ -102,7 +102,7 @@ export function useSlackChannelMutations() {
         const { error } = await supabase
           .from('workspace_slack_settings')
           .upsert(
-            { workspace_id: ws.id, [field]: enabled },
+            { workspace_id: ws.id, [field]: enabled } as never,
             { onConflict: 'workspace_id' },
           );
         if (error) throw error;
