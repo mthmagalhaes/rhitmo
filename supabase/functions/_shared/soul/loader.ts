@@ -6,14 +6,23 @@
 // Regra de ouro: prompt inline em edge function = bug. Toda mudança de
 // comportamento começa por um .md em supabase/functions/_shared/soul/.
 
-const BASE_URL = new URL("./", import.meta.url);
+// Os .md são embutidos no bundle via `docs.generated.ts` (gerado a partir
+// dos arquivos editoriais em soul/**/*.md). Isso evita depender de
+// Deno.readTextFile em runtime — o filesystem das edge functions publicadas
+// não expõe esses .md como arquivos físicos no caminho do módulo.
+import { SOUL_DOCS } from "./docs.generated.ts";
 
 /** Lê um .md do bundle (com cache em memória durante a vida do isolate). */
 const cache = new Map<string, string>();
-async function readDoc(relPath: string): Promise<string> {
+function readDoc(relPath: string): string {
   if (cache.has(relPath)) return cache.get(relPath)!;
-  const url = new URL(relPath, BASE_URL);
-  const raw = await Deno.readTextFile(url);
+  const raw = SOUL_DOCS[relPath];
+  if (raw === undefined) {
+    throw new Error(
+      `[soul/loader] Missing doc "${relPath}" in SOUL_DOCS. ` +
+        `Regenere supabase/functions/_shared/soul/docs.generated.ts.`,
+    );
+  }
   // Remove frontmatter (--- ... ---) — só metadados, não vai no prompt.
   const stripped = raw.replace(/^---[\s\S]*?---\s*\n/, "").trim();
   cache.set(relPath, stripped);
@@ -107,8 +116,8 @@ export async function composeSystemPrompt(opts: ComposeOptions): Promise<string>
 
   const parts: string[] = ["# RHITMO — CONSTITUIÇÃO"];
 
-  for (const b of blocks) parts.push(await readDoc(b));
-  parts.push(await readDoc(channelBlock));
+  for (const b of blocks) parts.push(readDoc(b));
+  parts.push(readDoc(channelBlock));
 
   const compiled = parts.join("\n\n---\n\n");
   const interpolated = opts.vars ? interpolate(compiled, opts.vars) : compiled;

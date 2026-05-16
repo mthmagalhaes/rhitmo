@@ -1,40 +1,71 @@
-## Reorganização dos CTAs em /lider/pessoas
+Diagnóstico
 
-### Problema
-Hoje a aba **Convites** mostra até 3 botões com semânticas sobrepostas:
-1. "Adicionar liderado" (header) — cadastro 1:1, email opcional
-2. "Adicionar time" (header) — cria time, não pessoa (só HR/Owner)
-3. "Convidar liderados" (tab + empty state) — bulk para HR/Owner; cai no mesmo dialog do #1 para líder comum (vira CTA duplicado idêntico)
+O problema não parece ser a API do Slack nem OAuth. O Slack está funcionando até o ponto de receber a DM e chamar a função interna `chat-mentor`.
 
-### Mudanças
+O erro real está em `chat-mentor`:
 
-**1. Header da página `/lider/pessoas`**
-- Manter **um único CTA primário**: `Adicionar liderado` (universal, abre `NewMemberDialog`)
-- Adicionar tooltip explicando "com ou sem e-mail — sem e-mail vira cadastro silencioso, com e-mail vira convite"
-- **Remover** `Adicionar time` do header global
+```text
+path not found: /var/tmp/sb-compile-edge-runtime/functions/_shared/soul/00-identity.md
+```
 
-**2. Aba Times**
-- Mover `Adicionar time` para dentro da aba **Times** (já existe `onNewTeam` no `TeamTabs` como pílula "Novo Time"; garantir botão também no header da aba para HR/Owner)
+Fluxo que quebrou:
 
-**3. Aba Convites**
-- HR/Owner: botão renomeado para **`Convidar em massa`** (abre `BulkOnboardDialog`) — deixa claro que é diferente do header
-- Líder comum (sem `canBulk`): **esconder** o CTA da aba (o header já cobre o caso 1:1) — elimina duplicata
-- Empty state:
-  - HR/Owner: "Convide vários liderados de uma vez colando e-mails" + botão `Convidar em massa`
-  - Líder comum: "Use **Adicionar liderado** no topo para cadastrar uma pessoa por vez" (texto, sem botão)
+```text
+Slack DM
+  -> slack-bot recebe a mensagem
+  -> chama chat-mentor em modo leader_self
+  -> chat-mentor monta o prompt via composeSystemPrompt
+  -> loader.ts tenta ler arquivos .md com Deno.readTextFile
+  -> runtime publicado não encontra os .md no bundle
+  -> chat-mentor retorna 500
+  -> slack-bot mostra: "Tive um problema ao puxar o contexto..."
+```
 
-**4. Microcopy**
-- Tooltip do header: `Cadastra um liderado com ou sem e-mail. Com e-mail, vira convite automático.`
-- Subtítulo da aba Convites mantém foco em "convites pendentes" (estado), não em ação
+Causa provável
 
-### Fora de escopo
-- Lógica do `BulkOnboardDialog`, RLS, edge functions
-- Comportamento de Liderados/Analytics
-- Roteamento `?tab=convites`
-- Permissões (`canBulk`, `canManageTeams` permanecem como estão)
+A centralização da “alma” da Rhitmo em arquivos `.md` está correta como arquitetura, mas o loader atual depende de leitura de filesystem em runtime:
 
-### Arquivos afetados
-- `src/pages/lider/Pessoas.tsx` (header, tab Convites, empty state, condicionais por papel)
-- Possivelmente um pequeno ajuste na aba Times para reposicionar `Adicionar time`
+```ts
+Deno.readTextFile(new URL(relPath, import.meta.url))
+```
 
-Sem migrações, sem edge functions, sem mudança de tipos.
+No ambiente das funções publicadas, esses `.md` não estão disponíveis como arquivos físicos no caminho esperado. Por isso o Slack falha sempre que o `chat-mentor` precisa compor o prompt.
+
+Plano de correção
+
+1. Tornar os prompts `.md` parte explícita do bundle
+   - Criar um módulo TypeScript gerado, por exemplo `supabase/functions/_shared/soul/docs.generated.ts`.
+   - Esse arquivo exporta um map estático:
+
+```ts
+export const SOUL_DOCS = {
+  "00-identity.md": `...conteúdo...`,
+  "modes/leader-self.md": `...conteúdo...`,
+  "channels/slack.md": `...conteúdo...`,
+}
+```
+
+2. Ajustar `loader.ts`
+   - Remover `Deno.readTextFile` do caminho de produção.
+   - Fazer `readDoc(relPath)` buscar em `SOUL_DOCS[relPath]`.
+   - Manter remoção de frontmatter e cache em memória.
+   - Se faltar documento, lançar erro claro com a chave ausente.
+
+3. Criar/ajustar script de geração
+   - Atualizar `regen-snapshots.ts` ou criar um script pequeno para regenerar `docs.generated.ts` a partir dos `.md`.
+   - Assim a fonte editorial continua sendo `.md`, preservando a regra da memória: mudanças de alma começam nos `.md`.
+
+4. Reforçar teste contra regressão
+   - Adicionar teste em `loader_test.ts` garantindo que `composeSystemPrompt({ mode: "leader-self", channel: "slack" })` não depende de `Deno.readTextFile` em runtime.
+   - Manter snapshots existentes.
+
+5. Validar o caminho que falhou
+   - Rodar teste da função/loader localmente.
+   - Depois verificar logs de `chat-mentor` e `slack-bot`: o erro `path not found ... soul/00-identity.md` deve desaparecer.
+
+Fora de escopo
+
+- Não mudar o comportamento conversacional da Rhitmo.
+- Não alterar OAuth, manifest, comandos Slack ou permissões.
+- Não mexer em RLS ou banco.
+- Não desfazer a arquitetura da alma centralizada em `.md`; apenas tornar o carregamento compatível com o runtime publicado.
