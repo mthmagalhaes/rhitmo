@@ -64,6 +64,7 @@ const MODE_BLOCKS: Record<Mode, string[]> = {
     "00-identity.md",
     "01-guardrails.md",
     "03-tone-and-format.md",
+    "07-memory.md",
     "modes/leader-self.md",
   ],
   "member-self": [
@@ -90,11 +91,32 @@ const MODE_BLOCKS: Record<Mode, string[]> = {
     "01-guardrails.md",
     "modes/self-review.md",
   ],
+  "monthly-recap": [
+    "00-identity.md",
+    "01-guardrails.md",
+    "02-analysis-matrix.md",
+    "03-tone-and-format.md",
+    "05-citations.md",
+    "07-memory.md",
+    "08-disc-calibration.md",
+    "modes/monthly-recap.md",
+  ],
+  "quarterly-recap": [
+    "00-identity.md",
+    "01-guardrails.md",
+    "02-analysis-matrix.md",
+    "03-tone-and-format.md",
+    "05-citations.md",
+    "07-memory.md",
+    "08-disc-calibration.md",
+    "modes/quarterly-recap.md",
+  ],
 };
 
 const CHANNEL_BLOCK: Record<Channel, string> = {
   web: "channels/web.md",
   slack: "channels/slack.md",
+  whatsapp: "channels/whatsapp.md",
 };
 
 export interface ComposeOptions {
