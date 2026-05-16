@@ -116,8 +116,8 @@ export async function composeSystemPrompt(opts: ComposeOptions): Promise<string>
 
   const parts: string[] = ["# RHITMO — CONSTITUIÇÃO"];
 
-  for (const b of blocks) parts.push(await readDoc(b));
-  parts.push(await readDoc(channelBlock));
+  for (const b of blocks) parts.push(readDoc(b));
+  parts.push(readDoc(channelBlock));
 
   const compiled = parts.join("\n\n---\n\n");
   const interpolated = opts.vars ? interpolate(compiled, opts.vars) : compiled;
