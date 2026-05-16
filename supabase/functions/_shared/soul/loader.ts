@@ -29,7 +29,7 @@ function readDoc(relPath: string): string {
   return stripped;
 }
 
-export type Channel = "web" | "slack";
+export type Channel = "web" | "slack" | "whatsapp";
 
 export type Mode =
   | "leader-member"
@@ -37,7 +37,16 @@ export type Mode =
   | "member-self"
   | "pulse-survey"
   | "one-on-one-prep"
-  | "self-review";
+  | "self-review"
+  | "monthly-recap"
+  | "quarterly-recap";
+
+// Variáveis opcionais reconhecidas pelos modos novos (v2 da alma):
+//   sessionSummary, sessionCount, pendingActions,
+//   monthlyRecaps, previousQuarterSummary, quarterLabel, monthlyRecapCount,
+//   nextQuarterDate, periodStart, periodEnd, periodLabel, evidenceCount, nextMonth,
+//   work_style_data
+// Todas opcionais — ausentes preservam {{placeholder}} para debug.
 
 /** Ordem canônica dos blocos base por modo. NÃO mudar sem atualizar snapshot. */
 const MODE_BLOCKS: Record<Mode, string[]> = {
