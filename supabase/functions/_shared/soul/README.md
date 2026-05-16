@@ -24,6 +24,8 @@ soul/
   04-drafting.md          Gerador de rascunhos calibrado por Rhitmo Sync
   05-citations.md         Protocolo [doc:UUID] e janela temporal
   06-identity-protocol.md Protagonista / filtro de ruído / apelidos
+  07-memory.md            Memória de relacionamento (rhy_context_cache) + calibração por uso
+  08-disc-calibration.md  Calibração de tom por perfil DISC / work_style_data
   modes/
     leader-member.md      Líder analisando liderado X (web + Slack via /mentor)
     leader-self.md        Coaching pessoal do líder (DM Slack + Mentor sem liderado)
@@ -31,9 +33,12 @@ soul/
     pulse-survey.md       Pulse conversacional
     one-on-one-prep.md    Preparação de 1:1
     self-review.md        Wizard de autoavaliação
+    monthly-recap.md      Rhitmo Mensal (3 blocos: Mandou bem / Atenção / Padrão)
+    quarterly-recap.md    Rhitmo Trimestral (6 blocos: destaques → ação)
   channels/
     web.md                Markdown rico, H3 com emoji, blockquotes, pílulas [doc:UUID]
     slack.md              *negrito*, _itálico_, • bullets, sem H3, sem tabelas
+    whatsapp.md           *negrito* simples, sem #, sem tabelas, brevidade máxima
 ```
 
 ## Como compor
