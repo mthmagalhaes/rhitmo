@@ -20,7 +20,9 @@ export default function LiderContexto() {
   const { workspaceId } = useAccount();
   const [searchParams, setSearchParams] = useSearchParams();
   const memberParam = searchParams.get('member');
-  const tabParam = searchParams.get('tab') === 'rede' ? 'rede' : 'evidencias';
+  const rawTab = searchParams.get('tab');
+  const tabParam = rawTab === 'rede' ? 'rede' : rawTab === 'slack' ? 'slack' : 'evidencias';
+  const { data: pendingSlackCount = 0 } = useEvidencePendingCount();
 
   const [memberId, setMemberId] = useState<string | null>(memberParam);
   const [sources, setSources] = useState<SourceKey[]>([]);
