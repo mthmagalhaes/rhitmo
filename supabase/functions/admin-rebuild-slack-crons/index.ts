@@ -40,7 +40,32 @@ Deno.serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ ok: true, result: data }, null, 2), {
+    // Fire each Slack pipeline function once immediately to validate end-to-end
+    const targets = [
+      'detect-network-signals',
+      'slack-ambient-classifier',
+      'slack-weekly-rollup',
+    ];
+    const runs: Record<string, { status: number; body: string }> = {};
+    for (const fn of targets) {
+      try {
+        const r = await fetch(`${SUPABASE_URL}/functions/v1/${fn}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-cron-secret': CRON_SECRET,
+            Authorization: `Bearer ${ANON_KEY}`,
+          },
+          body: JSON.stringify({ trigger: 'admin-rebuild-run-once' }),
+        });
+        const text = await r.text();
+        runs[fn] = { status: r.status, body: text.slice(0, 500) };
+      } catch (e) {
+        runs[fn] = { status: 0, body: e instanceof Error ? e.message : String(e) };
+      }
+    }
+
+    return new Response(JSON.stringify({ ok: true, rebuild: data, runs }, null, 2), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
