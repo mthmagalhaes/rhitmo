@@ -532,7 +532,8 @@ async function processWorkspace(
           category: 'reconhecimento',
           relevance_score: score,
           summary,
-          status: 'pending',
+          status: 'approved',
+          reviewed_at: new Date().toISOString(),
           attribution: 'reaction',
           captured_at: new Date(parseFloat(msg.ts) * 1000).toISOString(),
         });
@@ -580,7 +581,9 @@ async function processWorkspace(
           category: r.category ?? 'outro',
           relevance_score: r.relevance_score,
           summary: r.summary,
-          status: 'pending',
+          // Auto-aprovado quando alta confiança e categoria útil; senão fica pendente p/ triagem
+          status: (r.relevance_score >= 0.7 && (r.category ?? 'outro') !== 'outro') ? 'approved' : 'pending',
+          reviewed_at: (r.relevance_score >= 0.7 && (r.category ?? 'outro') !== 'outro') ? new Date().toISOString() : null,
           captured_at: new Date(parseFloat(target.msg.ts) * 1000).toISOString(),
         };
 

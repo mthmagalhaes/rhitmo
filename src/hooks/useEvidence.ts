@@ -148,5 +148,25 @@ export function useEvidenceMutations() {
     onError: (e: Error) => toast({ title: 'Erro ao converter', description: e.message, variant: 'destructive' }),
   });
 
-  return { dismiss, convertToFeedback };
+  const approve = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from('slack_ambient_evidence')
+        .update({ status: 'approved', reviewed_at: new Date().toISOString() })
+        .in('id', ids);
+      if (error) throw error;
+    },
+    onSuccess: (_, ids) => {
+      invalidate();
+      qc.invalidateQueries({ queryKey: ['team-timeline'] });
+      qc.invalidateQueries({ queryKey: ['context-brief'] });
+      toast({
+        title: ids.length === 1 ? 'Sinal aprovado' : `${ids.length} sinais aprovados`,
+        description: 'Já aparecem no Brief e nas evidências do liderado.',
+      });
+    },
+    onError: (e: Error) => toast({ title: 'Erro ao aprovar', description: e.message, variant: 'destructive' }),
+  });
+
+  return { dismiss, convertToFeedback, approve };
 }
