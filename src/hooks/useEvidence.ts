@@ -32,11 +32,6 @@ export interface SlackEvidence {
   participants: Array<{ member_id: string; slack_user_id?: string; name?: string }>;
   member?: { id: string; name: string; email: string | null } | null;
 }
-  captured_at: string;
-  reviewed_at: string | null;
-  created_at: string;
-  member?: { id: string; name: string; email: string | null } | null;
-}
 
 interface UseEvidenceOptions {
   status?: EvidenceStatus | 'all';
