@@ -158,8 +158,14 @@ export default function LiderContexto() {
             )}
           </TabsContent>
 
-          <TabsContent value="rede" className="mt-5">
-            <NetworkSignalsFeed />
+          <TabsContent value="rede" className="mt-5 space-y-6">
+            <MemberNetworkPanel />
+            <div>
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-3">
+                Alertas da rede
+              </h3>
+              <NetworkSignalsFeed />
+            </div>
           </TabsContent>
 
           <TabsContent value="slack" className="mt-5">
