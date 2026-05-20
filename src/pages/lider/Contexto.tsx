@@ -79,7 +79,7 @@ export default function LiderContexto() {
           value={tabParam}
           onValueChange={(v) => {
             const next = new URLSearchParams(searchParams);
-            if (v === 'rede') next.set('tab', 'rede');
+            if (v === 'rede' || v === 'slack') next.set('tab', v);
             else next.delete('tab');
             setSearchParams(next, { replace: true });
           }}
@@ -92,6 +92,15 @@ export default function LiderContexto() {
             <TabsTrigger value="rede" className="rounded-lg gap-1.5">
               <Network className="h-3.5 w-3.5" />
               Rede
+            </TabsTrigger>
+            <TabsTrigger value="slack" className="rounded-lg gap-1.5">
+              <Slack className="h-3.5 w-3.5" />
+              Sinais do Slack
+              {pendingSlackCount > 0 && (
+                <Badge variant="secondary" className="ml-1 h-4 px-1.5 text-[10px]">
+                  {pendingSlackCount}
+                </Badge>
+              )}
             </TabsTrigger>
           </TabsList>
 
@@ -150,6 +159,10 @@ export default function LiderContexto() {
 
           <TabsContent value="rede" className="mt-5">
             <NetworkSignalsFeed />
+          </TabsContent>
+
+          <TabsContent value="slack" className="mt-5">
+            <SlackSignalsTriage />
           </TabsContent>
         </Tabs>
       </div>
