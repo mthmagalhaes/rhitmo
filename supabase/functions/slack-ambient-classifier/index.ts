@@ -310,6 +310,8 @@ interface WorkspaceStats {
   channels_skipped_private: number;
   channels_with_messages: number;
   messages_fetched: number;
+  threads_fetched: number;
+  thread_replies_added: number;
   messages_dropped_bot: number;
   messages_dropped_subtype: number;
   messages_dropped_noise: number;
@@ -323,6 +325,8 @@ interface WorkspaceStats {
   llm_calls: number;
   llm_returned: number;
   llm_above_threshold: number;
+  mention_evidence_added: number;
+  reaction_evidence_added: number;
   saved: number;
   duplicates: number;
   errors: number;
@@ -333,11 +337,13 @@ function emptyStats(): WorkspaceStats {
     channels_total: 0, channels_excluded: 0, channels_already_member: 0,
     channels_autojoin_ok: 0, channels_autojoin_failed: 0, channels_skipped_private: 0,
     channels_with_messages: 0, messages_fetched: 0,
+    threads_fetched: 0, thread_replies_added: 0,
     messages_dropped_bot: 0, messages_dropped_subtype: 0, messages_dropped_noise: 0,
     messages_dropped_no_user: 0, messages_dropped_unresolved_author: 0,
     authors_resolved_cached: 0, authors_resolved_email_match: 0,
     authors_unresolved_no_email: 0, authors_unresolved_email_not_in_team: 0,
     candidates: 0, llm_calls: 0, llm_returned: 0, llm_above_threshold: 0,
+    mention_evidence_added: 0, reaction_evidence_added: 0,
     saved: 0, duplicates: 0, errors: 0,
   };
 }
