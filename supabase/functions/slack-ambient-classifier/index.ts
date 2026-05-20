@@ -544,7 +544,7 @@ Deno.serve(async (req) => {
           settings.workspace_id,
           settings,
         );
-        totalProcessed += result.processed;
+        totalProcessed += result.messages_fetched;
         totalSaved += result.saved;
         totalErrors += result.errors;
         workspaceResults.push({ workspace_id: settings.workspace_id, ...result });
@@ -563,7 +563,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         ok: true,
         workspaces: workspaceResults.length,
-        messages_processed: totalProcessed,
+        messages_fetched: totalProcessed,
         evidences_saved: totalSaved,
         errors: totalErrors,
         details: workspaceResults,
