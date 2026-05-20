@@ -23,6 +23,10 @@ const MODEL = 'google/gemini-2.5-flash-lite';
 const MAX_MESSAGES_PER_CHANNEL = 200;
 const RELEVANCE_THRESHOLD = 0.6;
 const BATCH_SIZE = 20;
+const MAX_THREADS_PER_CHANNEL = 20;
+const MAX_REPLIES_PER_THREAD = 50;
+const MIN_TEXT_LENGTH = 8;
+const REACTION_MIN_COUNT = 3;
 
 // ── Slack helpers ─────────────────────────────────────────
 async function slackCall(token: string, method: string, params: Record<string, string> = {}) {
@@ -107,10 +111,43 @@ const NOISE_PATTERNS = [
 function isNoise(text: string | undefined, hasBotId: boolean): boolean {
   if (!text || hasBotId) return true;
   const trimmed = text.trim();
-  if (trimmed.length < 20) return true;
+  if (trimmed.length < MIN_TEXT_LENGTH) return true;
   if (trimmed.length > 2000) return true; // long copy-paste, low signal
   for (const re of NOISE_PATTERNS) if (re.test(trimmed)) return true;
   return false;
+}
+
+// Subtypes que ainda contêm texto humano relevante
+const ALLOWED_SUBTYPES = new Set(['thread_broadcast', 'file_share', 'me_message']);
+
+function isDroppedSubtype(subtype: string | undefined): boolean {
+  if (!subtype) return false;
+  return !ALLOWED_SUBTYPES.has(subtype);
+}
+
+// Extrai IDs de usuários Slack mencionados no texto (<@U…>)
+function extractMentions(text: string | undefined): string[] {
+  if (!text) return [];
+  const matches = text.matchAll(/<@([UW][A-Z0-9]+)>/g);
+  const ids = new Set<string>();
+  for (const m of matches) ids.add(m[1]);
+  return [...ids];
+}
+
+async function fetchReplies(
+  token: string,
+  channelId: string,
+  threadTs: string,
+): Promise<any[]> {
+  const json = await slackCall(token, 'conversations.replies', {
+    channel: channelId,
+    ts: threadTs,
+    limit: String(MAX_REPLIES_PER_THREAD),
+  });
+  if (!json.ok) return [];
+  const all = (json.messages ?? []) as any[];
+  // Remove a raiz; já foi tratada via history
+  return all.filter((m) => m.ts !== threadTs);
 }
 
 // ── Member resolution ─────────────────────────────────────
@@ -273,6 +310,8 @@ interface WorkspaceStats {
   channels_skipped_private: number;
   channels_with_messages: number;
   messages_fetched: number;
+  threads_fetched: number;
+  thread_replies_added: number;
   messages_dropped_bot: number;
   messages_dropped_subtype: number;
   messages_dropped_noise: number;
@@ -286,6 +325,8 @@ interface WorkspaceStats {
   llm_calls: number;
   llm_returned: number;
   llm_above_threshold: number;
+  mention_evidence_added: number;
+  reaction_evidence_added: number;
   saved: number;
   duplicates: number;
   errors: number;
@@ -296,11 +337,13 @@ function emptyStats(): WorkspaceStats {
     channels_total: 0, channels_excluded: 0, channels_already_member: 0,
     channels_autojoin_ok: 0, channels_autojoin_failed: 0, channels_skipped_private: 0,
     channels_with_messages: 0, messages_fetched: 0,
+    threads_fetched: 0, thread_replies_added: 0,
     messages_dropped_bot: 0, messages_dropped_subtype: 0, messages_dropped_noise: 0,
     messages_dropped_no_user: 0, messages_dropped_unresolved_author: 0,
     authors_resolved_cached: 0, authors_resolved_email_match: 0,
     authors_unresolved_no_email: 0, authors_unresolved_email_not_in_team: 0,
     candidates: 0, llm_calls: 0, llm_returned: 0, llm_above_threshold: 0,
+    mention_evidence_added: 0, reaction_evidence_added: 0,
     saved: 0, duplicates: 0, errors: 0,
   };
 }
@@ -409,26 +452,103 @@ async function processWorkspace(
 
     if (!ch.is_member && ch.is_private) { stats.channels_skipped_private++; continue; }
 
-    const messages = await fetchHistory(slackToken, ch.id, lastRun);
-    if (messages.length === 0) continue;
+    const rootMessages = await fetchHistory(slackToken, ch.id, lastRun);
+    if (rootMessages.length === 0) continue;
     stats.channels_with_messages++;
-    stats.messages_fetched += messages.length;
+    stats.messages_fetched += rootMessages.length;
 
+    // 1) Puxa réplicas de threads ativas (cap por canal)
+    const threadRoots = rootMessages
+      .filter((m) => (m.reply_count ?? 0) > 0 && m.thread_ts)
+      .slice(0, MAX_THREADS_PER_CHANNEL);
+
+    const replyMessages: any[] = [];
+    for (const root of threadRoots) {
+      const replies = await fetchReplies(slackToken, ch.id, root.thread_ts ?? root.ts);
+      stats.threads_fetched++;
+      stats.thread_replies_added += replies.length;
+      replyMessages.push(...replies);
+    }
+
+    const allMessages = [...rootMessages, ...replyMessages];
+
+    // 2) Filtragem + resolução de autor
     const candidates: Array<{ msg: any; author: ResolvedAuthor }> = [];
-    for (const msg of messages) {
+    const reactionRich: Array<{ msg: any; author: ResolvedAuthor }> = [];
+    for (const msg of allMessages) {
       if (msg.bot_id) { stats.messages_dropped_bot++; continue; }
-      if (msg.subtype) { stats.messages_dropped_subtype++; continue; }
-      if (isNoise(msg.text, !!msg.bot_id)) { stats.messages_dropped_noise++; continue; }
+      if (isDroppedSubtype(msg.subtype)) { stats.messages_dropped_subtype++; continue; }
       if (!msg.user) { stats.messages_dropped_no_user++; continue; }
 
       const author = await resolveAuthorInstr(admin, slackToken, workspaceId, msg.user, authorCache, stats);
       if (!author) { stats.messages_dropped_unresolved_author++; continue; }
-      candidates.push({ msg, author });
+
+      // Caminho A: mensagem com texto → LLM
+      if (!isNoise(msg.text, !!msg.bot_id)) {
+        candidates.push({ msg, author });
+      } else {
+        stats.messages_dropped_noise++;
+      }
+
+      // Caminho B: mensagem com reações fortes → evidência sintética
+      const reactionCount = Array.isArray(msg.reactions)
+        ? msg.reactions.reduce((acc: number, r: any) => acc + (r.count ?? 0), 0)
+        : 0;
+      if (reactionCount >= REACTION_MIN_COUNT) {
+        reactionRich.push({ msg, author });
+      }
+    }
+
+    // 3) Evidências sintéticas de reação (sem LLM)
+    for (const { msg, author } of reactionRich) {
+      const reactions = msg.reactions as Array<{ name: string; count: number; users: string[] }>;
+      const totalCount = reactions.reduce((acc, r) => acc + (r.count ?? 0), 0);
+      const uniqueUsers = new Set<string>();
+      for (const r of reactions) for (const u of r.users ?? []) uniqueUsers.add(u);
+      const emojiList = reactions
+        .sort((a, b) => (b.count ?? 0) - (a.count ?? 0))
+        .slice(0, 4)
+        .map((r) => `:${r.name}:`)
+        .join(' ');
+      const score = Math.min(0.6 + 0.1 * totalCount, 0.95);
+      const summary = `Post recebeu ${totalCount} reações (${emojiList}) de ${uniqueUsers.size} colega${uniqueUsers.size === 1 ? '' : 's'}.`;
+
+      const permalinkRes = await slackCall(slackToken, 'chat.getPermalink', {
+        channel: ch.id, message_ts: msg.ts,
+      });
+      const permalink = permalinkRes.ok ? permalinkRes.permalink : null;
+
+      const { error: rxErr } = await admin
+        .from('slack_ambient_evidence')
+        .insert({
+          workspace_id: author.workspace_id,
+          manager_id: author.manager_id,
+          member_id: author.member_id,
+          slack_channel_id: ch.id,
+          slack_channel_name: ch.name,
+          slack_message_ts: msg.ts,
+          message_text: msg.text ?? '',
+          permalink,
+          category: 'reconhecimento',
+          relevance_score: score,
+          summary,
+          status: 'pending',
+          attribution: 'reaction',
+          captured_at: new Date(parseFloat(msg.ts) * 1000).toISOString(),
+        });
+      if (rxErr) {
+        if (rxErr.message?.includes('duplicate key')) stats.duplicates++;
+        else { console.error('[insert reaction]', rxErr.message); stats.errors++; }
+      } else {
+        stats.saved++;
+        stats.reaction_evidence_added++;
+      }
     }
 
     if (candidates.length === 0) continue;
     stats.candidates += candidates.length;
 
+    // 4) Classificação LLM em batch
     for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
       const slice = candidates.slice(i, i + BATCH_SIZE);
       const inputs: ClassificationInput[] = slice.map((c, idx) => ({
@@ -449,33 +569,60 @@ async function processWorkspace(
         });
         const permalink = permalinkRes.ok ? permalinkRes.permalink : null;
 
+        const basePayload = {
+          workspace_id: target.author.workspace_id,
+          manager_id: target.author.manager_id,
+          slack_channel_id: ch.id,
+          slack_channel_name: ch.name,
+          slack_message_ts: target.msg.ts,
+          message_text: target.msg.text,
+          permalink,
+          category: r.category ?? 'outro',
+          relevance_score: r.relevance_score,
+          summary: r.summary,
+          status: 'pending',
+          captured_at: new Date(parseFloat(target.msg.ts) * 1000).toISOString(),
+        };
+
+        // 4a) Evidência principal: autor
         const { error: insertErr } = await admin
           .from('slack_ambient_evidence')
-          .insert({
-            workspace_id: target.author.workspace_id,
-            manager_id: target.author.manager_id,
-            member_id: target.author.member_id,
-            slack_channel_id: ch.id,
-            slack_channel_name: ch.name,
-            slack_message_ts: target.msg.ts,
-            message_text: target.msg.text,
-            permalink,
-            category: r.category ?? 'outro',
-            relevance_score: r.relevance_score,
-            summary: r.summary,
-            status: 'pending',
-            captured_at: new Date(parseFloat(target.msg.ts) * 1000).toISOString(),
-          });
+          .insert({ ...basePayload, member_id: target.author.member_id, attribution: 'author' });
 
         if (insertErr) {
-          if (insertErr.message?.includes('duplicate key')) {
-            stats.duplicates++;
-          } else {
-            console.error('[insert]', insertErr.message);
-            stats.errors++;
-          }
+          if (insertErr.message?.includes('duplicate key')) stats.duplicates++;
+          else { console.error('[insert]', insertErr.message); stats.errors++; }
         } else {
           stats.saved++;
+        }
+
+        // 4b) Evidências secundárias: menções (só para reconhecimento/conflito)
+        if (r.category === 'reconhecimento' || r.category === 'conflito') {
+          const mentioned = extractMentions(target.msg.text);
+          for (const slackUserId of mentioned) {
+            if (slackUserId === target.msg.user) continue; // ignora self-mention
+            const mentionedAuthor = await resolveAuthorInstr(
+              admin, slackToken, workspaceId, slackUserId, authorCache, stats,
+            );
+            if (!mentionedAuthor) continue;
+            if (mentionedAuthor.member_id === target.author.member_id) continue;
+
+            const { error: mErr } = await admin
+              .from('slack_ambient_evidence')
+              .insert({
+                ...basePayload,
+                manager_id: mentionedAuthor.manager_id,
+                member_id: mentionedAuthor.member_id,
+                attribution: 'mentioned',
+              });
+            if (mErr) {
+              if (mErr.message?.includes('duplicate key')) stats.duplicates++;
+              else { console.error('[insert mention]', mErr.message); stats.errors++; }
+            } else {
+              stats.saved++;
+              stats.mention_evidence_added++;
+            }
+          }
         }
       }
     }

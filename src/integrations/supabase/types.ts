@@ -2298,6 +2298,7 @@ export type Database = {
       }
       slack_ambient_evidence: {
         Row: {
+          attribution: string
           captured_at: string
           category: Database["public"]["Enums"]["slack_evidence_category"]
           created_at: string
@@ -2317,6 +2318,7 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          attribution?: string
           captured_at?: string
           category?: Database["public"]["Enums"]["slack_evidence_category"]
           created_at?: string
@@ -2336,6 +2338,7 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          attribution?: string
           captured_at?: string
           category?: Database["public"]["Enums"]["slack_evidence_category"]
           created_at?: string
