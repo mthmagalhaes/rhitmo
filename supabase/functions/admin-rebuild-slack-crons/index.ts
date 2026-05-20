@@ -31,12 +31,20 @@ Deno.serve(async (req) => {
     }
 
     // Verify caller identity via their JWT
-    const userClient = createClient(SUPABASE_URL, ANON_KEY, {
-      global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } },
-    });
-    const { data: { user }, error: userErr } = await userClient.auth.getUser();
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const token = authHeader.replace(/^Bearer\s+/i, '');
+    console.log('[auth] has_header:', !!authHeader, 'token_len:', token.length);
+
+    if (!token) {
+      return new Response(JSON.stringify({ error: 'Unauthorized — no auth header', headers_seen: [...req.headers.keys()] }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
+    const { data: { user }, error: userErr } = await admin.auth.getUser(token);
     if (userErr || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized — login required' }), {
+      return new Response(JSON.stringify({ error: 'Unauthorized — invalid token', detail: userErr?.message }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
