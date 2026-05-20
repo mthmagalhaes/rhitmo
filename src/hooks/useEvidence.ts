@@ -24,6 +24,17 @@ export interface SlackEvidence {
   captured_at: string;
   reviewed_at: string | null;
   created_at: string;
+  thread_root_ts: string | null;
+  thread_topic: string | null;
+  theme_tags: string[];
+  executive_summary: string | null;
+  key_quote: string | null;
+  participants: Array<{ member_id: string; slack_user_id?: string; name?: string }>;
+  member?: { id: string; name: string; email: string | null } | null;
+}
+  captured_at: string;
+  reviewed_at: string | null;
+  created_at: string;
   member?: { id: string; name: string; email: string | null } | null;
 }
 
