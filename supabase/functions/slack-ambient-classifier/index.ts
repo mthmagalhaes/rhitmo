@@ -230,6 +230,8 @@ interface ClassificationInput {
   idx: number;
   text: string;
   channel_name: string;
+  author_name?: string;
+  thread_context?: string; // multi-line "Autor: mensagem" das últimas N msgs da thread
 }
 
 interface ClassificationResult {
@@ -237,32 +239,33 @@ interface ClassificationResult {
   relevance_score: number;
   category: 'entrega' | 'bloqueio' | 'reconhecimento' | 'conflito' | 'outro';
   summary: string;
+  executive_summary?: string;
+  key_quote?: string;
+  thread_topic?: string;
+  theme_tags?: string[];
 }
 
 async function classifyBatch(
   apiKey: string,
   inputs: ClassificationInput[],
 ): Promise<ClassificationResult[]> {
-  const prompt = `Você analisa mensagens de Slack para extrair evidências sobre desempenho profissional. Para cada mensagem, retorne JSON com:
+  const prompt = `Você é a Rhitmo analisando mensagens de Slack para extrair evidências de gestão úteis para o líder. Para cada item, considere a mensagem ALVO no contexto da thread inteira (quando houver). Mensagens curtas tipo "mandou bem", "ok", "vou alterar" só fazem sentido com o contexto. Retorne um array JSON. Cada item:
+
 - idx: índice original
-- relevance_score: 0.0 a 1.0 (0 = irrelevante, 1 = evidência clara para review)
-- category: "entrega" (concluiu algo), "bloqueio" (impedimento), "reconhecimento" (elogio dado/recebido), "conflito" (atrito interpessoal), "outro"
-- summary: 1 frase neutra em português, terceira pessoa, fato concreto.
+- relevance_score: 0.0 a 1.0
+- category: "entrega" | "bloqueio" | "reconhecimento" | "conflito" | "outro"
+- summary: 1 frase neutra, terceira pessoa, fato concreto (PT-BR)
+- thread_topic: 3 a 6 palavras descrevendo o assunto da thread (ex: "Aditivo contrato cliente Acme", "Bug copy de tarefa anterior")
+- theme_tags: array de 1 a 3 tags curtas em snake_case (ex: ["churn","cliente_acme","operacoes"])
+- executive_summary: 1 a 2 frases para o LÍDER ler — o que aconteceu na thread + por que importa pra gestão. Foque no ângulo gerencial (risco, entrega, dinâmica de time), não em descrever a mensagem.
+- key_quote: a frase mais representativa da thread, citada literalmente entre aspas. Pode ser da mensagem alvo OU de outra mensagem da thread se for mais reveladora. Máx 180 chars.
 
-Critérios para alta relevância (score >= 0.6):
-- Menciona entrega/conclusão concreta de trabalho
-- Menciona bloqueio explícito ou pedido de ajuda técnica
-- Reconhecimento explícito ("ótimo trabalho", "obrigado por...")
-- Sinal claro de conflito ou tensão
+Alta relevância (>=0.6): entrega concreta, bloqueio/risco explícito, reconhecimento explícito, conflito/tensão, decisão importante.
+Baixa (<0.6): small talk, memes, status genérico sem contexto.
 
-BAIXA relevância (score < 0.6):
-- Small talk, memes, GIFs
-- Mensagens vagas ou status genérico
-- Apenas links sem contexto
+Retorne APENAS o array JSON, sem texto extra.
 
-Retorne APENAS um array JSON válido, sem texto extra.
-
-Mensagens:
+Itens:
 ${JSON.stringify(inputs, null, 2)}`;
 
   const res = await fetch(LOVABLE_AI, {
