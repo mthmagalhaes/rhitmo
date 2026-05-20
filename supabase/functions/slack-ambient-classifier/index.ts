@@ -475,8 +475,24 @@ async function processWorkspace(
 
     const allMessages = [...rootMessages, ...replyMessages];
 
+    // ── Indexa threads por thread_ts (para construir contexto e participantes) ──
+    type ThreadIndex = {
+      messages: any[]; // ordenado por ts asc
+      participants: Map<string, { slack_user_id: string; name?: string; member?: ResolvedAuthor | null }>;
+    };
+    const threadIndex = new Map<string, ThreadIndex>();
+    const getThreadKey = (m: any): string => m.thread_ts ?? m.ts;
+    for (const m of allMessages) {
+      const key = getThreadKey(m);
+      if (!threadIndex.has(key)) threadIndex.set(key, { messages: [], participants: new Map() });
+      threadIndex.get(key)!.messages.push(m);
+    }
+    for (const t of threadIndex.values()) {
+      t.messages.sort((a, b) => parseFloat(a.ts) - parseFloat(b.ts));
+    }
+
     // 2) Filtragem + resolução de autor
-    const candidates: Array<{ msg: any; author: ResolvedAuthor }> = [];
+    const candidates: Array<{ msg: any; author: ResolvedAuthor; threadKey: string }> = [];
     const reactionRich: Array<{ msg: any; author: ResolvedAuthor }> = [];
     for (const msg of allMessages) {
       if (msg.bot_id) { stats.messages_dropped_bot++; continue; }
@@ -486,9 +502,16 @@ async function processWorkspace(
       const author = await resolveAuthorInstr(admin, slackToken, workspaceId, msg.user, authorCache, stats);
       if (!author) { stats.messages_dropped_unresolved_author++; continue; }
 
+      // registra participante na thread
+      const tk = getThreadKey(msg);
+      const tIdx = threadIndex.get(tk);
+      if (tIdx && !tIdx.participants.has(msg.user)) {
+        tIdx.participants.set(msg.user, { slack_user_id: msg.user, member: author });
+      }
+
       // Caminho A: mensagem com texto → LLM
       if (!isNoise(msg.text, !!msg.bot_id)) {
-        candidates.push({ msg, author });
+        candidates.push({ msg, author, threadKey: tk });
       } else {
         stats.messages_dropped_noise++;
       }
@@ -535,6 +558,9 @@ async function processWorkspace(
           category: 'reconhecimento',
           relevance_score: score,
           summary,
+          executive_summary: `${uniqueUsers.size} colega(s) reagiram ao post (${emojiList}). Sinal de reconhecimento social do time.`,
+          key_quote: (msg.text ?? '').slice(0, 180),
+          thread_root_ts: msg.thread_ts ?? msg.ts,
           status: 'approved',
           reviewed_at: new Date().toISOString(),
           attribution: 'reaction',
@@ -552,11 +578,31 @@ async function processWorkspace(
     if (candidates.length === 0) continue;
     stats.candidates += candidates.length;
 
+    // helper: serializa contexto da thread (até 8 msgs ao redor)
+    const buildThreadContext = (threadKey: string, targetTs: string): string => {
+      const t = threadIndex.get(threadKey);
+      if (!t || t.messages.length <= 1) return '';
+      const msgs = t.messages.slice(0, 10);
+      return msgs
+        .map((m) => {
+          const author = m.user
+            ? (authorCache.get(`${workspaceId}:${m.user}`)?.member_id ?? m.user)
+            : 'sistema';
+          const marker = m.ts === targetTs ? '👉 ' : '';
+          const txt = (m.text ?? '').replace(/\s+/g, ' ').slice(0, 280);
+          return `${marker}[${author}] ${txt}`;
+        })
+        .join('\n');
+    };
+
     // 4) Classificação LLM em batch
     for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
       const slice = candidates.slice(i, i + BATCH_SIZE);
       const inputs: ClassificationInput[] = slice.map((c, idx) => ({
-        idx, text: c.msg.text, channel_name: ch.name,
+        idx,
+        text: c.msg.text,
+        channel_name: ch.name,
+        thread_context: buildThreadContext(c.threadKey, c.msg.ts),
       }));
       stats.llm_calls++;
       const results = await classifyBatch(apiKey, inputs);
@@ -573,17 +619,35 @@ async function processWorkspace(
         });
         const permalink = permalinkRes.ok ? permalinkRes.permalink : null;
 
+        // participantes resolvidos da thread (até 6)
+        const tIdx = threadIndex.get(target.threadKey);
+        const participantsArr = tIdx
+          ? Array.from(tIdx.participants.values())
+              .filter((p) => p.member?.member_id)
+              .slice(0, 6)
+              .map((p) => ({
+                member_id: p.member!.member_id,
+                slack_user_id: p.slack_user_id,
+              }))
+          : [];
+
         const basePayload = {
           workspace_id: target.author.workspace_id,
           manager_id: target.author.manager_id,
           slack_channel_id: ch.id,
           slack_channel_name: ch.name,
           slack_message_ts: target.msg.ts,
+          thread_root_ts: target.msg.thread_ts ?? target.msg.ts,
           message_text: target.msg.text,
           permalink,
           category: r.category ?? 'outro',
           relevance_score: r.relevance_score,
           summary: r.summary,
+          executive_summary: r.executive_summary ?? r.summary,
+          key_quote: r.key_quote ?? (target.msg.text ?? '').slice(0, 180),
+          thread_topic: r.thread_topic ?? null,
+          theme_tags: Array.isArray(r.theme_tags) ? r.theme_tags.slice(0, 5) : [],
+          participants: participantsArr,
           // Auto-aprovado quando alta confiança e categoria útil; senão fica pendente p/ triagem
           status: (r.relevance_score >= 0.7 && (r.category ?? 'outro') !== 'outro') ? 'approved' : 'pending',
           reviewed_at: (r.relevance_score >= 0.7 && (r.category ?? 'outro') !== 'outro') ? new Date().toISOString() : null,
