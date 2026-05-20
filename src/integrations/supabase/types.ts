@@ -3468,6 +3468,14 @@ export type Database = {
           read_ct: number
         }[]
       }
+      rebuild_slack_cron_jobs: {
+        Args: {
+          p_anon_key: string
+          p_cron_secret: string
+          p_supabase_url: string
+        }
+        Returns: Json
+      }
       rls_check_member_access: {
         Args: { _member_team_id: string }
         Returns: boolean
