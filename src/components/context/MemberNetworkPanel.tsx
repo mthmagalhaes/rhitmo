@@ -80,7 +80,7 @@ function useTopThemes(memberId: string | null) {
 
 export function MemberNetworkPanel() {
   const { workspaceId } = useAccount();
-  const { members, loading } = useLeaderMembers();
+  const { members, isLoading: loading } = useLeaderMembers();
   const [memberId, setMemberId] = useState<string | null>(null);
 
   const activeMember = useMemo(
