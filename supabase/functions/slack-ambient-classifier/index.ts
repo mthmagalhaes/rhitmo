@@ -111,10 +111,43 @@ const NOISE_PATTERNS = [
 function isNoise(text: string | undefined, hasBotId: boolean): boolean {
   if (!text || hasBotId) return true;
   const trimmed = text.trim();
-  if (trimmed.length < 20) return true;
+  if (trimmed.length < MIN_TEXT_LENGTH) return true;
   if (trimmed.length > 2000) return true; // long copy-paste, low signal
   for (const re of NOISE_PATTERNS) if (re.test(trimmed)) return true;
   return false;
+}
+
+// Subtypes que ainda contêm texto humano relevante
+const ALLOWED_SUBTYPES = new Set(['thread_broadcast', 'file_share', 'me_message']);
+
+function isDroppedSubtype(subtype: string | undefined): boolean {
+  if (!subtype) return false;
+  return !ALLOWED_SUBTYPES.has(subtype);
+}
+
+// Extrai IDs de usuários Slack mencionados no texto (<@U…>)
+function extractMentions(text: string | undefined): string[] {
+  if (!text) return [];
+  const matches = text.matchAll(/<@([UW][A-Z0-9]+)>/g);
+  const ids = new Set<string>();
+  for (const m of matches) ids.add(m[1]);
+  return [...ids];
+}
+
+async function fetchReplies(
+  token: string,
+  channelId: string,
+  threadTs: string,
+): Promise<any[]> {
+  const json = await slackCall(token, 'conversations.replies', {
+    channel: channelId,
+    ts: threadTs,
+    limit: String(MAX_REPLIES_PER_THREAD),
+  });
+  if (!json.ok) return [];
+  const all = (json.messages ?? []) as any[];
+  // Remove a raiz; já foi tratada via history
+  return all.filter((m) => m.ts !== threadTs);
 }
 
 // ── Member resolution ─────────────────────────────────────
