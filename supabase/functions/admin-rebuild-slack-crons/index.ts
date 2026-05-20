@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
     }
 
     // Call SECURITY DEFINER function via service role
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
+    // (admin client already created above)
     const { data, error } = await admin.rpc('rebuild_slack_cron_jobs', {
       p_cron_secret: CRON_SECRET,
       p_anon_key: ANON_KEY,
