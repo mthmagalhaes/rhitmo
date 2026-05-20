@@ -1,65 +1,82 @@
 ## Diagnóstico
 
-O `slack-ambient-classifier` está rodando, mas captura pouco porque o desenho atual só pega o "topo" das conversas e descarta os formatos onde seu time de fato interage. Hoje temos **7 evidências em 3 canais** num workspace com 5 liderados muito ativos.
+Coletamos 56 `slack_ambient_evidence`, mas **apenas 1** aparece em `context_evidence` (que alimenta o Brief executivo, a aba Evidências de `/lider/contexto` e a Rede).
 
-Os 4 buracos, em ordem de impacto:
+Causa: o trigger `ctx_evidence_from_slack` só propaga quando `status IN ('approved','converted_to_feedback')`. Todas as 56 estão como `pending` — esperando triagem manual em `/evidence`.
 
-### 1. Threads são invisíveis (maior buraco)
-`conversations.history` retorna **apenas mensagens raiz**. Toda resposta dentro de thread (`thread_ts != ts`) só aparece via `conversations.replies`. Se a Yasmin abre um post e Guilherme/Laís/Giovanna/Gabriela respondem em thread, a gente vê só a Yasmin.
+Hoje o líder não tem como nem ver, nem aprovar esses sinais de dentro de `/lider/contexto`. A página parece vazia mesmo com a coleta funcionando.
 
-### 2. Só o autor vira evidência — menções e kudos cruzados se perdem
-Se o Guilherme escreve "mandou bem demais @gabriela na call de hoje", a evidência hoje é atribuída ao **Guilherme** (autor), não à **Gabriela** (sujeito do reconhecimento). Em time pequeno e coeso, isso esvazia metade do sinal — reconhecimento e feedback público entre pares.
+Breakdown atual:
+- bloqueio: 18 · entrega: 14 · reconhecimento: 20 (6 author + 11 reactions + 3 mentions) · conflito: 1 · outro: 3
 
-### 3. Reações/emojis são ignoradas
-Não chamamos `reactions.get` nem lemos o array `reactions` que já vem em `conversations.history`. Um post de entrega com 🎉🚀✅ de 4 colegas é sinal forte de reconhecimento e hoje vale zero.
+## O que vamos fazer
 
-### 4. Filtro de ruído derruba ack curtos legítimos
-`text.length < 20` descarta "entreguei o relatório", "subi em prod", "fechei o cliente X", "obrigado!", "feito ✅". Em chat corporativo brasileiro, muita evidência real cabe em <20 chars.
+Duas mudanças complementares — uma **automática** (pra mostrar valor já) e uma **manual** (pra o líder revisar/corrigir).
 
-Bônus: `subtype` é descartado por inteiro, mas `thread_broadcast` e algumas mensagens com arquivo anexado têm subtype e são relevantes.
+### 1. Auto-aprovar sinais de alta confiança
 
-## O que mudar (escopo desta sprint)
+Subir um job/migration que marca como `approved` toda `slack_ambient_evidence` com:
+- `relevance_score ≥ 0.7` **e** `category != 'outro'`, **ou**
+- `attribution = 'reaction'` (≥3 reações já é sinal social forte)
 
-Tudo dentro de `supabase/functions/slack-ambient-classifier/index.ts`. Sem mexer em schema, RLS, cron, prompts de produto ou UI.
+Efeito imediato: o trigger existente propaga essas linhas pra `context_evidence`, e elas começam a aparecer no Brief executivo, na aba Evidências e (depois do próximo cron) na Rede. Os outros sinais (baixa relevância, "outro") ficam em `pending` pra triagem.
 
-### A. Ler threads
-Para cada mensagem do `conversations.history` que tenha `reply_count > 0`, chamar `conversations.replies` e adicionar as respostas (sem a raiz, que já temos) na lista de candidatos. Mesmo filtro de ruído, mesmo pipeline LLM. Cap de 50 replies por thread, 20 threads por canal/run para conter custo e rate-limit.
+Backfill: rodar 1x via migration nos 56 registros atuais. Daqui pra frente o `slack-ambient-classifier` pode já gravar `status='approved'` quando bater os critérios.
 
-### B. Atribuir menções como evidência secundária
-Para cada mensagem que passar no LLM com `relevance_score ≥ 0.6` E tiver categoria `reconhecimento` ou `conflito`, extrair `<@U…>` do texto e, para cada usuário mencionado que resolva a um `team_member`, inserir uma **segunda linha** em `slack_ambient_evidence` com o membro mencionado como `member_id` e um campo `attribution = 'mentioned'` (default `'author'`). Isso preserva auditabilidade — mesma mensagem aparece no contexto do autor e do mencionado, com rótulo claro.
+### 2. Nova aba "Sinais do Slack" em `/lider/contexto`
 
-Requer migration mínima: `ALTER TABLE slack_ambient_evidence ADD COLUMN attribution text NOT NULL DEFAULT 'author' CHECK (attribution IN ('author','mentioned'))` + ajuste da unique constraint para incluir `attribution` (senão duplica).
+Terceira aba ao lado de Evidências e Rede. Lista **apenas as `slack_ambient_evidence` em `pending`** do time do líder (filtro via `is_team_leader`), agrupadas por liderado.
 
-### C. Capturar reconhecimento via reações
-Quando `conversations.history` retornar `reactions: [{name, users[], count}]` numa mensagem cujo autor resolva a um `team_member` E a soma de `count` for ≥ 3, gerar uma evidência sintética `category='reconhecimento'`, `relevance_score = min(0.6 + 0.1*count, 0.95)`, `summary = "Post recebeu N reações (🎉, ✅, 🚀) de M colegas"`. Sem chamar LLM nesse caminho — economia + sinal claro.
+Cada card mostra:
+- categoria (chip colorido: entrega/bloqueio/reconhecimento/conflito) + score de relevância
+- snippet da mensagem original + link "Ver no Slack"
+- canal + "há X dias"
+- chip de atribuição (author / mentioned / reaction)
+- ações: **Aprovar** (status → approved, vai pro Brief), **Virar feedback** (abre dialog Magic Paste pré-preenchido), **Dispensar** (status → dismissed)
 
-### D. Afrouxar filtro de ruído
-- Mínimo de 20 → **8 caracteres**.
-- Deixar de descartar `subtype === 'thread_broadcast'` e `subtype === 'file_share'` (tem `text` legítimo).
-- Manter regex de "só emoji / só URL / só pontuação".
-- Manter `bot_id` como descarte.
+Header da aba: contador "X sinais pendentes" + botão "Aprovar todos de alta confiança" (rodada manual do auto-approve, caso o líder pause o automático no futuro).
 
-### E. Instrumentação adicional
-Adicionar ao `WorkspaceStats` os contadores: `threads_fetched`, `thread_replies_added`, `mention_evidence_added`, `reaction_evidence_added`. Sem isso a gente não consegue medir o ganho real desta mudança.
+Reuso: o componente `EvidenceCard` em `src/components/evidence/EvidenceCard.tsx` já faz quase tudo isso pra `/evidence`. Vamos extrair pra um hook compartilhado e dropar dentro da nova aba — sem duplicar lógica.
 
-## Validação
+### 3. Indicador visual nas outras superfícies
 
-Antes de mexer em UI:
-1. Rodar `slack-ambient-classifier` manualmente.
-2. Esperar `saved ≥ 30` numa run (vs 7 acumuladas em vários dias).
-3. Conferir que aparecem evidências para os 5 liderados (Yasmin, Guilherme, Laís, Giovanna, Gabriela) — não só Yasmin.
-4. Conferir pelo menos 1 evidência com `attribution = 'mentioned'` e 1 com origem em reação.
+- **Aba Evidências**: cards vindos do Slack (source_table = `slack_ambient_evidence`) já têm meta em `sourceMeta.ts`. Confirmar que renderizam com ícone/cor do Slack e mostram o canal no snippet.
+- **MemberMasterList** (Master-Detail do Brief em outras páginas — fora de escopo agora, mas anotar): contador de sinais novos por liderado.
 
-## Fora de escopo (deixar para depois)
+## Fora de escopo
 
-- Search backfill histórico (`search.messages` para puxar últimos 30 dias).
-- Detectar conflito implícito via padrão de reação 👎/😬/⚠️.
-- DM ao liderado avisando que aquela mensagem virou evidência.
-- Mudar prompt do Gemini.
-- Mexer em `slack-weekly-rollup` ou `detect-network-signals` (essas se beneficiam automaticamente do volume maior).
+- Refazer o Brief executivo (já consome `context_evidence`, vai pegar os novos sinais automaticamente).
+- Mudanças no `slack-weekly-rollup` ou `detect-network-signals` (vão se beneficiar do volume aprovado naturalmente).
+- Notificações Slack/email avisando "5 sinais novos pra revisar" — sprint separada.
 
-## Riscos
+## Detalhes técnicos
 
-- **Custo Gemini sobe** proporcional a replies de thread. Mitigar com caps já citados (50 replies/thread, 20 threads/canal).
-- **Rate-limit Slack** com mais chamadas (`conversations.replies` por thread, `chat.getPermalink` por evidência). O `slackCall` já tem backoff 429; capar threads por run resolve.
-- **Atribuição por menção pode gerar falso-positivo** ("não foi a @gabriela"). Por isso restringimos só a `reconhecimento` e `conflito` — categorias onde o LLM já filtrou intenção.
+**Migration**:
+```sql
+-- 1) Backfill: aprovar sinais existentes que batem critério
+UPDATE slack_ambient_evidence
+SET status = 'approved'
+WHERE status = 'pending'
+  AND (
+    (relevance_score >= 0.7 AND category != 'outro')
+    OR attribution = 'reaction'
+  );
+-- Trigger ctx_evidence_from_slack já existente popula context_evidence
+```
+
+**Frontend** (`src/pages/lider/Contexto.tsx`):
+- Adicionar `<TabsTrigger value="slack">` com badge de contagem pending
+- Novo componente `SlackSignalsTriage.tsx` que usa hook `usePendingSlackEvidence(workspaceId)` (query direta em `slack_ambient_evidence` filtrada por status='pending' + leader scope)
+- Mutations: `approveEvidence`, `dismissEvidence`, `convertToFeedback` (reusar de `useEvidence.ts`)
+
+**Edge function** (`slack-ambient-classifier/index.ts`):
+- Ao inserir, setar `status = 'approved'` quando `relevance_score >= 0.7 && category !== 'outro'` ou quando vier de reação. Caso contrário, manter `pending`.
+
+## Critérios de validação
+
+- Após migration: `context_evidence` cresce de ~1 pra ~40+ linhas vindas do Slack.
+- `/lider/contexto` aba Evidências passa a mostrar cards do Slack.
+- Brief executivo de Yasmin/Guilherme/Laís/Giovanna/Gabriela puxa pelo menos 1 win/risk vindo do Slack.
+- Nova aba "Sinais do Slack" mostra os ~15 pendentes restantes (baixa confiança) pra triagem.
+
+Posso seguir com a implementação?

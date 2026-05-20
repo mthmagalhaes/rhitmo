@@ -3,21 +3,26 @@
 // Sprint 14: aba "Rede" lista sinais derivados do grafo (ONA).
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Layers, Loader2, Network } from 'lucide-react';
+import { Layers, Loader2, Network, Slack } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useAccount } from '@/contexts/AccountContext';
 import { useTeamTimeline } from '@/hooks/useTeamTimeline';
+import { useEvidencePendingCount } from '@/hooks/useEvidence';
 import { EvidenceCard } from '@/components/context/EvidenceCard';
 import { MemberFilterSelect } from '@/components/context/MemberFilterSelect';
 import { SourceFilterChips, SOURCE_KEYS, type SourceKey } from '@/components/context/SourceFilterChips';
 import { NetworkSignalsFeed } from '@/components/context/NetworkSignalsFeed';
+import { SlackSignalsTriage } from '@/components/context/SlackSignalsTriage';
 
 export default function LiderContexto() {
   const { workspaceId } = useAccount();
   const [searchParams, setSearchParams] = useSearchParams();
   const memberParam = searchParams.get('member');
-  const tabParam = searchParams.get('tab') === 'rede' ? 'rede' : 'evidencias';
+  const rawTab = searchParams.get('tab');
+  const tabParam = rawTab === 'rede' ? 'rede' : rawTab === 'slack' ? 'slack' : 'evidencias';
+  const { data: pendingSlackCount = 0 } = useEvidencePendingCount();
 
   const [memberId, setMemberId] = useState<string | null>(memberParam);
   const [sources, setSources] = useState<SourceKey[]>([]);
@@ -74,7 +79,7 @@ export default function LiderContexto() {
           value={tabParam}
           onValueChange={(v) => {
             const next = new URLSearchParams(searchParams);
-            if (v === 'rede') next.set('tab', 'rede');
+            if (v === 'rede' || v === 'slack') next.set('tab', v);
             else next.delete('tab');
             setSearchParams(next, { replace: true });
           }}
@@ -87,6 +92,15 @@ export default function LiderContexto() {
             <TabsTrigger value="rede" className="rounded-lg gap-1.5">
               <Network className="h-3.5 w-3.5" />
               Rede
+            </TabsTrigger>
+            <TabsTrigger value="slack" className="rounded-lg gap-1.5">
+              <Slack className="h-3.5 w-3.5" />
+              Sinais do Slack
+              {pendingSlackCount > 0 && (
+                <Badge variant="secondary" className="ml-1 h-4 px-1.5 text-[10px]">
+                  {pendingSlackCount}
+                </Badge>
+              )}
             </TabsTrigger>
           </TabsList>
 
@@ -145,6 +159,10 @@ export default function LiderContexto() {
 
           <TabsContent value="rede" className="mt-5">
             <NetworkSignalsFeed />
+          </TabsContent>
+
+          <TabsContent value="slack" className="mt-5">
+            <SlackSignalsTriage />
           </TabsContent>
         </Tabs>
       </div>
