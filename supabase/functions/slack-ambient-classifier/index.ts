@@ -23,6 +23,10 @@ const MODEL = 'google/gemini-2.5-flash-lite';
 const MAX_MESSAGES_PER_CHANNEL = 200;
 const RELEVANCE_THRESHOLD = 0.6;
 const BATCH_SIZE = 20;
+const MAX_THREADS_PER_CHANNEL = 20;
+const MAX_REPLIES_PER_THREAD = 50;
+const MIN_TEXT_LENGTH = 8;
+const REACTION_MIN_COUNT = 3;
 
 // ── Slack helpers ─────────────────────────────────────────
 async function slackCall(token: string, method: string, params: Record<string, string> = {}) {
