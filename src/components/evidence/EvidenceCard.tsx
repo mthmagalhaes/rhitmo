@@ -109,7 +109,7 @@ export function EvidenceCard({ evidence, selected, onSelect, onDismiss, onConver
               <span>Também na thread:</span>
               <div className="flex -space-x-1.5">
                 {participants.slice(0, 5).map((p) => (
-                  <MemberAvatar key={p.member_id} memberId={p.member_id} memberName={p.name || ''} size="xs" />
+                  <MemberAvatar key={p.member_id} memberId={p.member_id} memberName={p.name || ''} size="sm" />
                 ))}
               </div>
               {participants.length > 5 && <span>+{participants.length - 5}</span>}
