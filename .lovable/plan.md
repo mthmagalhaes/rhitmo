@@ -1,82 +1,101 @@
-## Diagnóstico
 
-Coletamos 56 `slack_ambient_evidence`, mas **apenas 1** aparece em `context_evidence` (que alimenta o Brief executivo, a aba Evidências de `/lider/contexto` e a Rede).
+## Diagnóstico (o que está limitando hoje)
 
-Causa: o trigger `ctx_evidence_from_slack` só propaga quando `status IN ('approved','converted_to_feedback')`. Todas as 56 estão como `pending` — esperando triagem manual em `/evidence`.
+**Sinais Slack (`slack_ambient_evidence`):**
+- O classifier roda mensagem-a-mensagem. Cada reply curta ("mandou bem", "bele, vou alterar de tarde") é classificada isoladamente, sem ver a thread inteira. Por isso o `summary` fica genérico e o card mostra só a frase solta.
+- Não armazenamos: tópico/tema da thread, transcrição da thread, nem uma análise executiva (o "porquê isso importa pro líder").
 
-Hoje o líder não tem como nem ver, nem aprovar esses sinais de dentro de `/lider/contexto`. A página parece vazia mesmo com a coleta funcionando.
+**Rede de colaboração:**
+- Já temos `graph_events_raw` + `team_network_edges` (build-team-graph) e `network_signals` (isolate, super_connector, drop, spike). 
+- Mas em `/lider/contexto` só existe a aba **Rede** com sinais derivados (alertas). Não há nada do tipo "com quem o Guilherme mais conversa" e "sobre quais temas".
+- Não temos extração de temas/tópicos — `slack_ambient_evidence.category` é só entrega/bloqueio/reconhecimento/conflito/outro, sem domínio (cliente X, projeto Y, churn, criativo…).
 
-Breakdown atual:
-- bloqueio: 18 · entrega: 14 · reconhecimento: 20 (6 author + 11 reactions + 3 mentions) · conflito: 1 · outro: 3
+---
 
-## O que vamos fazer
+## Proposta — 3 frentes
 
-Duas mudanças complementares — uma **automática** (pra mostrar valor já) e uma **manual** (pra o líder revisar/corrigir).
+### Frente 1 — Classificação por thread (não por mensagem)
 
-### 1. Auto-aprovar sinais de alta confiança
+Mudar o `slack-ambient-classifier` para agrupar mensagens da mesma `thread_ts` antes de chamar o Gemini e gerar **uma evidência por thread** (não uma por reply).
 
-Subir um job/migration que marca como `approved` toda `slack_ambient_evidence` com:
-- `relevance_score ≥ 0.7` **e** `category != 'outro'`, **ou**
-- `attribution = 'reaction'` (≥3 reações já é sinal social forte)
+Novo formato do prompt entrega:
+- `thread_topic` (curto, 3–6 palavras: "Aditivo contrato cliente X", "Bug copy de tarefa anterior")
+- `theme_tags` (array de 1–3 tags livres normalizadas: ["churn", "cliente-acme", "criativo"])
+- `executive_summary` (1–2 frases, ângulo de gestão: o que aconteceu + por que importa pro líder)
+- `key_quote` (a frase mais representativa da thread, citada literalmente)
+- `participants` (Slack user IDs que falaram na thread → resolvidos pra `team_members`)
+- `category` + `relevance_score` (igual hoje)
 
-Efeito imediato: o trigger existente propaga essas linhas pra `context_evidence`, e elas começam a aparecer no Brief executivo, na aba Evidências e (depois do próximo cron) na Rede. Os outros sinais (baixa relevância, "outro") ficam em `pending` pra triagem.
+Replies que pertencem a thread já processada **não geram nova evidência** — apenas atualizam o `executive_summary`/`participants` se o líder ainda não revisou.
 
-Backfill: rodar 1x via migration nos 56 registros atuais. Daqui pra frente o `slack-ambient-classifier` pode já gravar `status='approved'` quando bater os critérios.
+### Frente 2 — Card de sinal com contexto rico
 
-### 2. Nova aba "Sinais do Slack" em `/lider/contexto`
+Refazer o `EvidenceCard` (quando `source = slack`) pra mostrar:
+1. Header: liderado, canal, "há X tempo", tag de categoria
+2. **Análise executiva** (`executive_summary`) — em destaque, fonte serif
+3. **Frase capturada** (`key_quote`) — em itálico, com aspas, abaixo
+4. **Tema / Tópico** (`thread_topic` + chips dos `theme_tags`)
+5. **Quem participou** (avatares dos `participants` resolvidos)
+6. Footer: "Ver thread no Slack" · Aprovar · Virar nota · Dispensar
 
-Terceira aba ao lado de Evidências e Rede. Lista **apenas as `slack_ambient_evidence` em `pending`** do time do líder (filtro via `is_team_leader`), agrupadas por liderado.
+Isso resolve direto o problema das frases tipo "Obrigada timeeee" virando sinais sem sentido.
 
-Cada card mostra:
-- categoria (chip colorido: entrega/bloqueio/reconhecimento/conflito) + score de relevância
-- snippet da mensagem original + link "Ver no Slack"
-- canal + "há X dias"
-- chip de atribuição (author / mentioned / reaction)
-- ações: **Aprovar** (status → approved, vai pro Brief), **Virar feedback** (abre dialog Magic Paste pré-preenchido), **Dispensar** (status → dismissed)
+### Frente 3 — Nova visão "Rede & Temas" por liderado
 
-Header da aba: contador "X sinais pendentes" + botão "Aprovar todos de alta confiança" (rodada manual do auto-approve, caso o líder pause o automático no futuro).
+Atualmente `/lider/contexto?tab=rede` mostra **alertas** da rede. Adicionar uma seção/aba **Mapa do liderado** (ou redesenhar a aba Rede em 2 colunas):
 
-Reuso: o componente `EvidenceCard` em `src/components/evidence/EvidenceCard.tsx` já faz quase tudo isso pra `/evidence`. Vamos extrair pra um hook compartilhado e dropar dentro da nova aba — sem duplicar lógica.
+**A. Top colaboradores (últimos 30/90 dias)**
+- Lê `team_network_edges` filtrado por `member_id = liderado`
+- Top 5–8 pessoas com peso, mini-barra por canal (DM / thread / mention / reaction / meeting)
+- Permite clicar e ver as últimas threads compartilhadas
 
-### 3. Indicador visual nas outras superfícies
+**B. Temas em foco (últimos 30 dias)**
+- Agrega `theme_tags` de `slack_ambient_evidence` aprovadas do liderado
+- Word-cloud / lista ranqueada com contagem
+- Cada tema abre as evidências relacionadas
 
-- **Aba Evidências**: cards vindos do Slack (source_table = `slack_ambient_evidence`) já têm meta em `sourceMeta.ts`. Confirmar que renderizam com ícone/cor do Slack e mostram o canal no snippet.
-- **MemberMasterList** (Master-Detail do Brief em outras páginas — fora de escopo agora, mas anotar): contador de sinais novos por liderado.
+**C. Resumo executivo do mês** (gerado sob demanda pelo Gemini)
+- "Guilherme passou o mês majoritariamente em churn e renovação de contratos, conversando com Renato (ops) e Laís (criativo). Sinal de atenção: drop de interação com time de produto."
 
-## Fora de escopo
+---
 
-- Refazer o Brief executivo (já consome `context_evidence`, vai pegar os novos sinais automaticamente).
-- Mudanças no `slack-weekly-rollup` ou `detect-network-signals` (vão se beneficiar do volume aprovado naturalmente).
-- Notificações Slack/email avisando "5 sinais novos pra revisar" — sprint separada.
+## Mudanças técnicas (resumo)
 
-## Detalhes técnicos
+**Schema (`slack_ambient_evidence`):**
+- `thread_ts` (já existe via `slack_message_ts`, mas adicionar `thread_root_ts text`)
+- `thread_topic text`
+- `theme_tags text[]`
+- `executive_summary text`
+- `key_quote text`
+- `participants jsonb` (array de `{ member_id, slack_user_id, name }`)
+- índice em `(manager_id, member_id)` + GIN em `theme_tags`
 
-**Migration**:
-```sql
--- 1) Backfill: aprovar sinais existentes que batem critério
-UPDATE slack_ambient_evidence
-SET status = 'approved'
-WHERE status = 'pending'
-  AND (
-    (relevance_score >= 0.7 AND category != 'outro')
-    OR attribution = 'reaction'
-  );
--- Trigger ctx_evidence_from_slack já existente popula context_evidence
-```
+**Edge function `slack-ambient-classifier`:**
+- Reescrever loop principal: agrupar por `thread_root_ts`, montar payload com todas as mensagens da thread (texto + autor), enviar ao Gemini em batch (1 thread = 1 item).
+- Upsert por `(workspace_id, slack_channel_id, thread_root_ts)` em vez de `(channel, ts)`.
 
-**Frontend** (`src/pages/lider/Contexto.tsx`):
-- Adicionar `<TabsTrigger value="slack">` com badge de contagem pending
-- Novo componente `SlackSignalsTriage.tsx` que usa hook `usePendingSlackEvidence(workspaceId)` (query direta em `slack_ambient_evidence` filtrada por status='pending' + leader scope)
-- Mutations: `approveEvidence`, `dismissEvidence`, `convertToFeedback` (reusar de `useEvidence.ts`)
+**Frontend:**
+- `src/components/evidence/EvidenceCard.tsx` — novo layout pra `source=slack` com seções descritas na Frente 2.
+- `src/components/context/SlackSignalsTriage.tsx` — usa o novo card; sem mudança estrutural grande.
+- `src/components/context/MemberNetworkPanel.tsx` *(novo)* — Top colaboradores + Temas + Resumo executivo.
+- `src/pages/lider/Contexto.tsx` — na aba **Rede**, dividir em 2 sub-abas: "Mapa" (novo) e "Alertas" (atual `NetworkSignalsFeed`).
 
-**Edge function** (`slack-ambient-classifier/index.ts`):
-- Ao inserir, setar `status = 'approved'` quando `relevance_score >= 0.7 && category !== 'outro'` ou quando vier de reação. Caso contrário, manter `pending`.
+**Hooks novos:**
+- `useMemberCollaborators(memberId, windowDays)` — query em `team_network_edges`
+- `useMemberThemes(memberId, windowDays)` — agrega `theme_tags`
+- `useMemberMonthlyDigest(memberId)` — chama edge function de resumo executivo on-demand
 
-## Critérios de validação
+**Brief & DMs Slack:** o `_shared/briefGenerator.ts` passa a usar `executive_summary` (em vez de `summary`) e a expor "Temas da quinzena" + "Top colaboradores" no bloco Contexto.
 
-- Após migration: `context_evidence` cresce de ~1 pra ~40+ linhas vindas do Slack.
-- `/lider/contexto` aba Evidências passa a mostrar cards do Slack.
-- Brief executivo de Yasmin/Guilherme/Laís/Giovanna/Gabriela puxa pelo menos 1 win/risk vindo do Slack.
-- Nova aba "Sinais do Slack" mostra os ~15 pendentes restantes (baixa confiança) pra triagem.
+---
 
-Posso seguir com a implementação?
+## Migração de dados existentes
+
+As 43 evidências atuais ficam com `executive_summary = summary` e `thread_topic = null`. Um botão "Reprocessar com contexto de thread" (admin/owner) chama o classifier num modo backfill que recalcula só threads das últimas 4 semanas.
+
+---
+
+## Fora do escopo desta entrega
+- Detecção de tópicos cross-time (clustering longitudinal de temas) — fica pra depois
+- Heatmap visual da rede do time inteiro (já temos `network_signals`; o foco aqui é a visão **do liderado**, não do org)
+- Integrações fora do Slack (GitHub/Linear/Jira) — Layer 2 do Windmill, projeto separado

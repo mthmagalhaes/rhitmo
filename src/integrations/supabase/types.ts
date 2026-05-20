@@ -2302,11 +2302,14 @@ export type Database = {
           captured_at: string
           category: Database["public"]["Enums"]["slack_evidence_category"]
           created_at: string
+          executive_summary: string | null
           feedback_id: string | null
           id: string
+          key_quote: string | null
           manager_id: string
           member_id: string
           message_text: string
+          participants: Json
           permalink: string | null
           relevance_score: number
           reviewed_at: string | null
@@ -2315,6 +2318,9 @@ export type Database = {
           slack_message_ts: string
           status: Database["public"]["Enums"]["slack_evidence_status"]
           summary: string | null
+          theme_tags: string[]
+          thread_root_ts: string | null
+          thread_topic: string | null
           workspace_id: string
         }
         Insert: {
@@ -2322,11 +2328,14 @@ export type Database = {
           captured_at?: string
           category?: Database["public"]["Enums"]["slack_evidence_category"]
           created_at?: string
+          executive_summary?: string | null
           feedback_id?: string | null
           id?: string
+          key_quote?: string | null
           manager_id: string
           member_id: string
           message_text: string
+          participants?: Json
           permalink?: string | null
           relevance_score?: number
           reviewed_at?: string | null
@@ -2335,6 +2344,9 @@ export type Database = {
           slack_message_ts: string
           status?: Database["public"]["Enums"]["slack_evidence_status"]
           summary?: string | null
+          theme_tags?: string[]
+          thread_root_ts?: string | null
+          thread_topic?: string | null
           workspace_id: string
         }
         Update: {
@@ -2342,11 +2354,14 @@ export type Database = {
           captured_at?: string
           category?: Database["public"]["Enums"]["slack_evidence_category"]
           created_at?: string
+          executive_summary?: string | null
           feedback_id?: string | null
           id?: string
+          key_quote?: string | null
           manager_id?: string
           member_id?: string
           message_text?: string
+          participants?: Json
           permalink?: string | null
           relevance_score?: number
           reviewed_at?: string | null
@@ -2355,6 +2370,9 @@ export type Database = {
           slack_message_ts?: string
           status?: Database["public"]["Enums"]["slack_evidence_status"]
           summary?: string | null
+          theme_tags?: string[]
+          thread_root_ts?: string | null
+          thread_topic?: string | null
           workspace_id?: string
         }
         Relationships: [

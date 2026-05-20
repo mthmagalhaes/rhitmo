@@ -1,4 +1,4 @@
-import { X, FileText, ExternalLink, Hash } from 'lucide-react';
+import { X, FileText, ExternalLink, Hash, Sparkles, Users } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,9 @@ export function EvidenceCard({ evidence, selected, onSelect, onDismiss, onConver
   const cat = CATEGORY_LABEL[evidence.category] || CATEGORY_LABEL.outro;
   const member = evidence.member;
   const captured = formatDistanceToNow(new Date(evidence.captured_at), { addSuffix: true, locale: ptBR });
+  const exec = evidence.executive_summary || evidence.summary;
+  const quote = evidence.key_quote || evidence.message_text;
+  const participants = (evidence.participants ?? []).filter((p) => p.member_id !== evidence.member_id);
 
   return (
     <div
@@ -61,12 +64,57 @@ export function EvidenceCard({ evidence, selected, onSelect, onDismiss, onConver
             </Badge>
           </div>
 
-          {/* Message */}
-          <blockquote className="border-l-2 border-primary/20 pl-4 mb-3">
-            <p className="text-sm text-foreground/90 leading-relaxed line-clamp-4 whitespace-pre-wrap">
-              {evidence.message_text}
+          {/* Thread topic */}
+          {evidence.thread_topic && (
+            <p className="font-serif text-base font-semibold text-foreground mb-2 leading-snug">
+              {evidence.thread_topic}
             </p>
-          </blockquote>
+          )}
+
+          {/* Executive summary */}
+          {exec && (
+            <div className="flex gap-2 mb-3">
+              <Sparkles className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+              <p className="text-sm text-foreground/90 leading-relaxed">{exec}</p>
+            </div>
+          )}
+
+          {/* Key quote */}
+          {quote && (
+            <blockquote className="border-l-2 border-primary/30 pl-3 mb-3">
+              <p className="text-sm italic text-muted-foreground line-clamp-3 whitespace-pre-wrap">
+                "{quote}"
+              </p>
+            </blockquote>
+          )}
+
+          {/* Theme tags */}
+          {evidence.theme_tags && evidence.theme_tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {evidence.theme_tags.map((t) => (
+                <span
+                  key={t}
+                  className="inline-flex items-center rounded-md bg-muted/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+                >
+                  #{t}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Participants */}
+          {participants.length > 0 && (
+            <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
+              <Users className="h-3 w-3" />
+              <span>Também na thread:</span>
+              <div className="flex -space-x-1.5">
+                {participants.slice(0, 5).map((p) => (
+                  <MemberAvatar key={p.member_id} memberId={p.member_id} memberName={p.name || ''} size="sm" />
+                ))}
+              </div>
+              {participants.length > 5 && <span>+{participants.length - 5}</span>}
+            </div>
+          )}
 
           {/* Meta */}
           <div className="flex items-center gap-3 mb-4 text-xs text-muted-foreground">
