@@ -16,6 +16,8 @@ import { SourceFilterChips, SOURCE_KEYS, type SourceKey } from '@/components/con
 import { NetworkSignalsFeed } from '@/components/context/NetworkSignalsFeed';
 import { SlackSignalsTriage } from '@/components/context/SlackSignalsTriage';
 import { MemberNetworkPanel } from '@/components/context/MemberNetworkPanel';
+import { DebugContextoBanner } from '@/components/context/DebugContextoBanner';
+import { useEvidence } from '@/hooks/useEvidence';
 
 export default function LiderContexto() {
   const { workspaceId } = useAccount();
