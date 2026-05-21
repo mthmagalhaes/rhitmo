@@ -7,9 +7,16 @@ import { useEvidence, useEvidenceMutations, type SlackEvidence } from '@/hooks/u
 import { EvidenceCard } from '@/components/evidence/EvidenceCard';
 
 export function SlackSignalsTriage() {
-  const { data: evidences = [], isLoading } = useEvidence({ status: 'pending' });
+  const { data: evidences = [], isLoading, error } = useEvidence({ status: 'pending' });
   const { dismiss, convertToFeedback, approve } = useEvidenceMutations();
   const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  if (error && import.meta.env.DEV) {
+    // surface raw error so the dev banner / console capture it
+    // eslint-disable-next-line no-console
+    console.error('[SlackSignalsTriage] useEvidence error:', error);
+  }
+
 
   const highConfidenceIds = useMemo(
     () =>

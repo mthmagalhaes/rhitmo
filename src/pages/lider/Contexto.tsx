@@ -16,6 +16,8 @@ import { SourceFilterChips, SOURCE_KEYS, type SourceKey } from '@/components/con
 import { NetworkSignalsFeed } from '@/components/context/NetworkSignalsFeed';
 import { SlackSignalsTriage } from '@/components/context/SlackSignalsTriage';
 import { MemberNetworkPanel } from '@/components/context/MemberNetworkPanel';
+import { DebugContextoBanner } from '@/components/context/DebugContextoBanner';
+import { useEvidence } from '@/hooks/useEvidence';
 
 export default function LiderContexto() {
   const { workspaceId } = useAccount();
@@ -42,12 +44,15 @@ export default function LiderContexto() {
     isFetchingNextPage,
     hasNextPage,
     fetchNextPage,
+    error: timelineError,
   } = useTeamTimeline({
     workspaceId,
     memberIds,
     sourceTables,
     enabled: !!workspaceId,
   });
+
+  const { error: slackError } = useEvidence({ status: 'pending' });
 
   const rows = useMemo(() => (data?.pages ?? []).flat(), [data]);
 
@@ -75,6 +80,14 @@ export default function LiderContexto() {
             Use para investigar e auditar a evidência por trás de cada insight do Brief.
           </p>
         </header>
+
+        <DebugContextoBanner
+          timelineError={timelineError}
+          slackError={slackError}
+          rowsLength={rows.length}
+        />
+
+
 
         <Tabs
           value={tabParam}

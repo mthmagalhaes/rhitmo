@@ -55,12 +55,8 @@ export function useTeamTimeline({
         });
         return rows ?? [];
       } catch (err) {
-        // Defensive logging — useInfiniteQuery swallows the original message
-        // into `isError` only, which made the Contexto bug invisible.
-        if (import.meta.env.DEV) {
-          const detail = err instanceof SupabaseSafeError ? err.message : String(err);
-          console.error('[useTeamTimeline] get_team_timeline failed:', detail, err);
-        }
+        const detail = err instanceof SupabaseSafeError ? err.message : String(err);
+        console.error('[useTeamTimeline] get_team_timeline failed:', detail, err);
         throw err;
       }
     },
@@ -70,5 +66,6 @@ export function useTeamTimeline({
       return last?.occurred_at ?? undefined;
     },
     staleTime: 30_000,
+    retry: 1,
   });
 }
