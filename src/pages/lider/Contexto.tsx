@@ -44,12 +44,15 @@ export default function LiderContexto() {
     isFetchingNextPage,
     hasNextPage,
     fetchNextPage,
+    error: timelineError,
   } = useTeamTimeline({
     workspaceId,
     memberIds,
     sourceTables,
     enabled: !!workspaceId,
   });
+
+  const { error: slackError } = useEvidence({ status: 'pending' });
 
   const rows = useMemo(() => (data?.pages ?? []).flat(), [data]);
 
