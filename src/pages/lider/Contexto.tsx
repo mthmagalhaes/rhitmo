@@ -81,6 +81,14 @@ export default function LiderContexto() {
           </p>
         </header>
 
+        <DebugContextoBanner
+          timelineError={timelineError}
+          slackError={slackError}
+          rowsLength={rows.length}
+        />
+
+
+
         <Tabs
           value={tabParam}
           onValueChange={(v) => {
