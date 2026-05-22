@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAccount } from '@/contexts/AccountContext';
 import { useAdmin } from '@/hooks/useAdmin';
 import { Loader2 } from 'lucide-react';
-import { LEADER_HOME, DIRECT_REPORT_HOME, resolvePersona } from '@/lib/navigation';
+import { getHomeRoute } from '@/lib/navigation';
 
 interface DirectReportGuardProps {
   children: React.ReactNode;
@@ -12,7 +12,7 @@ interface DirectReportGuardProps {
 export function DirectReportGuard({ children }: DirectReportGuardProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isLinkedMember, isLeader, isHRAdmin, needsOnboarding, loading } = useAccount();
+  const { isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, needsOnboarding, loading } = useAccount();
   const { isAdmin, loading: adminLoading } = useAdmin();
 
   useEffect(() => {
@@ -34,8 +34,10 @@ export function DirectReportGuard({ children }: DirectReportGuardProps) {
 
     // Smart redirect from legacy /dashboard → role-based home.
     if (location.pathname === '/dashboard') {
-      const persona = resolvePersona({ isLinkedMember, isLeader, isHRAdmin });
-      navigate(persona === 'leader' ? LEADER_HOME : DIRECT_REPORT_HOME, { replace: true });
+      navigate(
+        getHomeRoute({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner }),
+        { replace: true },
+      );
     }
   }, [
     loading,
@@ -44,6 +46,7 @@ export function DirectReportGuard({ children }: DirectReportGuardProps) {
     isLinkedMember,
     isLeader,
     isHRAdmin,
+    isWorkspaceOwner,
     needsOnboarding,
     location.pathname,
     navigate,
