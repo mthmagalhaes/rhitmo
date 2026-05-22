@@ -17,6 +17,7 @@ import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import {
   LEADER_NAV_ITEMS,
   DIRECT_REPORT_NAV_ITEMS,
+  HR_ADMIN_NAV_ITEMS,
   type SidebarPersona,
 } from '@/lib/navigation';
 
