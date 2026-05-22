@@ -31,10 +31,10 @@ export function WorkspaceSwitcher({ onOpenInvite }: WorkspaceSwitcherProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { id: userId } = useEffectiveUser();
-  const { workspaceId, isHRAdmin, isLeader, isLinkedMember } = useAccount();
+  const { workspaceId, isHRAdmin, isLeader, isLinkedMember, isWorkspaceOwner } = useAccount();
   const { reset: resetTour, isLeader: tourCanRun } = useOnboardingTour();
 
-  const persona = resolvePersona({ isLinkedMember, isLeader, isHRAdmin });
+  const persona = resolvePersona({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner });
   const settingsRoute = persona === 'leader' ? '/lider/configuracoes' : '/liderado/configuracoes';
   const helpRoute = `${settingsRoute}?tab=ajuda`;
   const canInvite = persona === 'leader' && !!onOpenInvite;
