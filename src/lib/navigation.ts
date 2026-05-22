@@ -1,17 +1,17 @@
 import {
   Calendar,
   BookOpen,
-  Activity,
   ClipboardList,
-  Settings,
   Compass,
   Heart,
   Home,
   Target,
   FileText,
-  Layers,
-  Sparkles,
   Users,
+  LayoutDashboard,
+  Building2,
+  BarChart3,
+  ListChecks,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -36,12 +36,19 @@ export const LEADER_NAV_ITEMS: NavItem[] = [
   { id: 'diario', labelKey: 'nav.lider.diario', icon: BookOpen, to: '/lider/diario' },
   { id: 'objetivos', labelKey: 'nav.lider.objetivos', icon: Target, to: '/lider/objetivos' },
   { id: 'avaliacoes', labelKey: 'nav.lider.avaliacoes', icon: ClipboardList, to: '/lider/avaliacoes' },
-  // TODO: reabilitar Pulse quando a feature for reaberta para o líder.
-  // Rota /lider/pulse continua viva; só escondemos o ponto de entrada do sidebar.
-  // { id: 'pulse', labelKey: 'nav.lider.pulse', icon: Activity, to: '/lider/pulse' },
-  // TODO: reabilitar quando ONA + conectores externos + agente Rhitmo estiverem prontos.
-  // Rota /lider/contexto continua viva para deep-links de auditoria (Brief 1:1, EvidenceDrawer).
-  // { id: 'contexto', labelKey: 'nav.lider.contexto', icon: Layers, to: '/lider/contexto' },
+];
+
+/**
+ * Primary navigation for HR Admins that don't also own the workspace.
+ * Replaces the leader sidebar to avoid empty 1:1/Diário/Objetivos screens
+ * and to make /hr the obvious entry point.
+ */
+export const HR_ADMIN_NAV_ITEMS: NavItem[] = [
+  { id: 'overview', labelKey: 'nav.hr.overview', icon: LayoutDashboard, to: '/hr' },
+  { id: 'members', labelKey: 'nav.hr.members', icon: Users, to: '/hr/members' },
+  { id: 'teams', labelKey: 'nav.hr.teams', icon: Building2, to: '/hr/teams' },
+  { id: 'analytics', labelKey: 'nav.hr.analytics', icon: BarChart3, to: '/hr/analytics' },
+  { id: 'framework', labelKey: 'nav.hr.framework', icon: ListChecks, to: '/hr/competency-framework' },
 ];
 
 /**
@@ -56,18 +63,23 @@ export const DIRECT_REPORT_NAV_ITEMS: NavItem[] = [
   { id: 'avaliacoes', labelKey: 'nav.liderado.avaliacoes', icon: FileText, to: '/liderado/avaliacoes' },
 ];
 
-export type SidebarPersona = 'leader' | 'direct_report';
+export type SidebarPersona = 'leader' | 'hr_admin' | 'direct_report';
 
 export function resolvePersona(opts: {
   isLinkedMember: boolean;
   isLeader: boolean;
   isHRAdmin: boolean;
+  isWorkspaceOwner?: boolean;
 }): SidebarPersona {
   if (opts.isLinkedMember && !opts.isLeader && !opts.isHRAdmin) return 'direct_report';
+  // HR Admin que NÃO é Owner do workspace → fluxo focado em RH (sidebar /hr/*).
+  // Owner continua como 'leader' mesmo se também for HR Admin (mantém visão dupla).
+  if (opts.isHRAdmin && !opts.isWorkspaceOwner) return 'hr_admin';
   return 'leader';
 }
 
 export const LEADER_HOME = '/lider/inicio';
+export const HR_ADMIN_HOME = '/hr';
 export const DIRECT_REPORT_HOME = '/liderado/inicio';
 
 /**
@@ -79,6 +91,10 @@ export function getHomeRoute(opts: {
   isLinkedMember: boolean;
   isLeader: boolean;
   isHRAdmin: boolean;
+  isWorkspaceOwner?: boolean;
 }): string {
-  return resolvePersona(opts) === 'leader' ? LEADER_HOME : DIRECT_REPORT_HOME;
+  const persona = resolvePersona(opts);
+  if (persona === 'direct_report') return DIRECT_REPORT_HOME;
+  if (persona === 'hr_admin') return HR_ADMIN_HOME;
+  return LEADER_HOME;
 }
