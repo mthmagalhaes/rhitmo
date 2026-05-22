@@ -6,11 +6,12 @@ import { ProfileSettingsDialog } from '@/components/ProfileSettingsDialog';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { User, CreditCard, Plug, LifeBuoy, Slack, Calendar, Pencil, Loader2, Link as LinkIcon, Unlink, Check } from 'lucide-react';
+import { User, CreditCard, Plug, LifeBuoy, Slack, Calendar, Pencil, Loader2, Link as LinkIcon, Unlink, Check, Shield } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useSlackConnection } from '@/hooks/useSlackConnection';
 import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
 import { AmbientSlackSettings } from '@/components/settings/AmbientSlackSettings';
+import { AccessTab } from '@/components/settings/AccessTab';
 
 function ProfileTab() {
   const [open, setOpen] = useState(false);
@@ -152,10 +153,20 @@ function IntegrationsTab() {
 }
 
 export default function LiderConfiguracoes() {
+  const { isHRAdmin, isWorkspaceOwner } = useAccount();
+  const canManageAccess = isHRAdmin || isWorkspaceOwner;
+
   const tabs: PageTab[] = [
     { value: 'perfil', label: 'Perfil', icon: User, content: <ProfileTab /> },
     { value: 'faturamento', label: 'Faturamento', icon: CreditCard, content: <BillingContent /> },
     { value: 'integracoes', label: 'Integrações', icon: Plug, content: <IntegrationsTab /> },
+    {
+      value: 'acessos',
+      label: 'Acessos',
+      icon: Shield,
+      hidden: !canManageAccess,
+      content: <AccessTab />,
+    },
     { value: 'ajuda', label: 'Ajuda', icon: LifeBuoy, content: <HelpCenterContent /> },
   ];
   return (

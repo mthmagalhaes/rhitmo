@@ -1297,6 +1297,13 @@
       "avaliacoes": "Avaliações que recebi",
       "configuracoes": "Configurações"
     },
+    "hr": {
+      "overview": "Visão geral",
+      "members": "Liderados",
+      "teams": "Times",
+      "analytics": "Analytics",
+      "framework": "Frameworks"
+    },
     "cta": {
       "pergunte_mentor": "Pergunte à Rhitmo",
       "meu_rhitmo": "Meu Rhitmo",

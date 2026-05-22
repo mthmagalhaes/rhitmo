@@ -3379,6 +3379,15 @@ export type Database = {
         Args: { _member_id: string }
         Returns: boolean
       }
+      list_workspace_hr_admins: {
+        Args: { _workspace_id: string }
+        Returns: {
+          added_at: string
+          email: string
+          full_name: string
+          user_id: string
+        }[]
+      }
       manage_hr_admin: {
         Args: { _action: string; _user_id: string; _workspace_id: string }
         Returns: undefined

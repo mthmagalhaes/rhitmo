@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAccount } from '@/contexts/AccountContext';
-import { resolvePersona, LEADER_HOME, DIRECT_REPORT_HOME } from '@/lib/navigation';
+import { resolvePersona, getHomeRoute } from '@/lib/navigation';
 
 interface Props {
   /** Which persona the route tree is intended for. */
@@ -15,9 +15,13 @@ interface Props {
  *
  * Note: super-admin / impersonation flows are handled upstream by AdminGuard
  * and DirectReportGuard. This guard runs only for already-authenticated users.
+ *
+ * HR Admins (non-owner) resolve to persona='hr_admin' and are redirected to /hr
+ * if they hit a /lider/* route directly. Owners that are also HR Admins keep
+ * persona='leader' and can still browse /lider/*.
  */
 export function RoleRouteGuard({ expects, children }: Props) {
-  const { loading, isLeader, isHRAdmin, isLinkedMember } = useAccount();
+  const { loading, isLeader, isHRAdmin, isLinkedMember, isWorkspaceOwner } = useAccount();
   const location = useLocation();
 
   if (loading) {
@@ -28,10 +32,10 @@ export function RoleRouteGuard({ expects, children }: Props) {
     );
   }
 
-  const persona = resolvePersona({ isLinkedMember, isLeader, isHRAdmin });
+  const persona = resolvePersona({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner });
 
   if (persona !== expects) {
-    const target = persona === 'leader' ? LEADER_HOME : DIRECT_REPORT_HOME;
+    const target = getHomeRoute({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner });
     if (location.pathname !== target) {
       return <Navigate to={target} replace />;
     }
