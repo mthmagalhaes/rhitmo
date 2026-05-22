@@ -1228,7 +1228,7 @@ export default function LiderPessoas() {
       <BulkOnboardDialog
         open={inviteOpen}
         onOpenChange={setInviteOpen}
-        workspaceNames={workspaceId ? [workspaceId] : []}
+        workspaceNames={workspace?.name ? [workspace.name] : []}
       />
     </div>
   );
