@@ -89,7 +89,12 @@ export function GlobalSearchDialog({ open, onOpenChange, persona }: Props) {
     staleTime: 60_000,
   });
 
-  const navItems = persona === 'leader' ? LEADER_NAV_ITEMS : DIRECT_REPORT_NAV_ITEMS;
+  const navItems =
+    persona === 'leader'
+      ? LEADER_NAV_ITEMS
+      : persona === 'hr_admin'
+        ? HR_ADMIN_NAV_ITEMS
+        : DIRECT_REPORT_NAV_ITEMS;
 
   const go = (path: string) => {
     onOpenChange(false);
