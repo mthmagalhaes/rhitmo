@@ -13,8 +13,9 @@ import { useImpersonation } from '@/hooks/useImpersonation';
 import {
   LEADER_NAV_ITEMS,
   DIRECT_REPORT_NAV_ITEMS,
+  HR_ADMIN_NAV_ITEMS,
   LEADER_HOME,
-  
+
   resolvePersona,
 } from '@/lib/navigation';
 import { NavLink } from '@/components/NavLink';
@@ -50,7 +51,7 @@ export function AppSidebar() {
   const { isAdmin } = useAdmin();
   const { id: effectiveUserId, isImpersonating } = useEffectiveUser();
   const { stopImpersonation, impersonatedEmail } = useImpersonation();
-  const { isLeader, isHRAdmin, isLinkedMember, linkedMember, workspaceId } = useAccount();
+  const { isLeader, isHRAdmin, isLinkedMember, isWorkspaceOwner, linkedMember, workspaceId } = useAccount();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mentorOpen, setMentorOpen] = useState(false);
@@ -61,8 +62,13 @@ export function AppSidebar() {
   const isSuperAdmin = isAdmin && user?.email === 'matheus@rhitmo.co' && !isImpersonating;
   const isInHRContext = location.pathname.startsWith('/hr');
 
-  const persona = resolvePersona({ isLinkedMember, isLeader, isHRAdmin });
-  const navItems = persona === 'leader' ? LEADER_NAV_ITEMS : DIRECT_REPORT_NAV_ITEMS;
+  const persona = resolvePersona({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner });
+  const navItems =
+    persona === 'leader'
+      ? LEADER_NAV_ITEMS
+      : persona === 'hr_admin'
+        ? HR_ADMIN_NAV_ITEMS
+        : DIRECT_REPORT_NAV_ITEMS;
   
 
   const userName =
