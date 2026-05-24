@@ -661,7 +661,14 @@ function TeamsTab({ onNewTeam, workspaceId }: { onNewTeam: () => void; workspace
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return q ? teams.filter((t) => t.name.toLowerCase().includes(q)) : teams;
+    const base = q ? teams.filter((t) => t.name.toLowerCase().includes(q)) : teams;
+    // Sem líder primeiro — chamar atenção do HR Admin / Owner.
+    return [...base].sort((a, b) => {
+      const aNo = a.leader_user_id ? 1 : 0;
+      const bNo = b.leader_user_id ? 1 : 0;
+      if (aNo !== bNo) return aNo - bNo;
+      return a.name.localeCompare(b.name);
+    });
   }, [teams, query]);
 
   const refresh = () => {
