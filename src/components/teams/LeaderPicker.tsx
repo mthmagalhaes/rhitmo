@@ -131,23 +131,15 @@ export function LeaderPicker({ workspaceId, value, onChange, disabled }: LeaderP
         body: { email, name, role: 'leader', workspace_id: workspaceId },
       });
       if (error) throw error;
-      // admin-invite-user provisiona o auth.user, mas a resposta atual não
-      // devolve user_id. Buscamos via profiles (criado pelo trigger handle_new_user).
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id, full_name, email')
-        .ilike('email', email)
-        .limit(1)
-        .maybeSingle();
-
-      if (!profile?.id) {
-        throw new Error('Convite enviado, mas não consegui localizar o usuário recém-criado. Atualize e tente vincular como líder existente.');
+      const newUserId = (data as any)?.user_id as string | undefined;
+      if (!newUserId) {
+        throw new Error('Convite enviado, mas o servidor não devolveu o ID do líder. Recarregue a página e tente novamente.');
       }
 
       onChange({
-        user_id: (profile as any).id,
-        name: (profile as any).full_name || name,
-        email: (profile as any).email || email,
+        user_id: newUserId,
+        name,
+        email,
         origin: 'invited',
         pending: true,
       });
