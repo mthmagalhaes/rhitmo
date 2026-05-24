@@ -607,6 +607,8 @@ interface TeamRow {
   name: string;
   created_at: string;
   member_count: number;
+  leader_user_id: string | null;
+  leader_name: string | null;
 }
 
 function TeamsTab({ onNewTeam, workspaceId }: { onNewTeam: () => void; workspaceId: string | null }) {
@@ -621,29 +623,38 @@ function TeamsTab({ onNewTeam, workspaceId }: { onNewTeam: () => void; workspace
     queryFn: async () => {
       const { data: rows, error } = await supabase
         .from('teams')
-        .select('id, name, created_at')
+        .select('id, name, created_at, leader_user_id')
         .eq('workspace_id', workspaceId!)
         .order('name');
       if (error) throw error;
 
-      const list = (rows ?? []) as Array<{ id: string; name: string; created_at: string }>;
+      const list = (rows ?? []) as Array<{ id: string; name: string; created_at: string; leader_user_id: string | null }>;
       const ids = list.map((t) => t.id);
 
-      // Member counts
       const counts = new Map<string, number>();
+      const leaderNames = new Map<string, string>();
       if (ids.length) {
-        const { data: members } = await supabase
-          .from('team_members')
-          .select('team_id')
-          .in('team_id', ids);
+        const [{ data: members }, { data: leaderMembers }] = await Promise.all([
+          supabase.from('team_members').select('team_id').in('team_id', ids),
+          supabase
+            .from('team_members')
+            .select('linked_user_id, name, email')
+            .in('linked_user_id', list.map((t) => t.leader_user_id).filter(Boolean) as string[]),
+        ]);
         members?.forEach((m: { team_id: string }) => {
           counts.set(m.team_id, (counts.get(m.team_id) ?? 0) + 1);
+        });
+        (leaderMembers ?? []).forEach((m: any) => {
+          if (m.linked_user_id && !leaderNames.has(m.linked_user_id)) {
+            leaderNames.set(m.linked_user_id, m.name || m.email || '');
+          }
         });
       }
 
       return list.map((t) => ({
         ...t,
         member_count: counts.get(t.id) ?? 0,
+        leader_name: t.leader_user_id ? (leaderNames.get(t.leader_user_id) ?? null) : null,
       }));
     },
   });
