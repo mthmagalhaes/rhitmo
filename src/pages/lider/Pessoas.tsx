@@ -607,6 +607,8 @@ interface TeamRow {
   name: string;
   created_at: string;
   member_count: number;
+  leader_user_id: string | null;
+  leader_name: string | null;
 }
 
 function TeamsTab({ onNewTeam, workspaceId }: { onNewTeam: () => void; workspaceId: string | null }) {
@@ -621,36 +623,52 @@ function TeamsTab({ onNewTeam, workspaceId }: { onNewTeam: () => void; workspace
     queryFn: async () => {
       const { data: rows, error } = await supabase
         .from('teams')
-        .select('id, name, created_at')
+        .select('id, name, created_at, leader_user_id')
         .eq('workspace_id', workspaceId!)
         .order('name');
       if (error) throw error;
 
-      const list = (rows ?? []) as Array<{ id: string; name: string; created_at: string }>;
+      const list = (rows ?? []) as Array<{ id: string; name: string; created_at: string; leader_user_id: string | null }>;
       const ids = list.map((t) => t.id);
 
-      // Member counts
       const counts = new Map<string, number>();
+      const leaderNames = new Map<string, string>();
       if (ids.length) {
-        const { data: members } = await supabase
-          .from('team_members')
-          .select('team_id')
-          .in('team_id', ids);
+        const [{ data: members }, { data: leaderMembers }] = await Promise.all([
+          supabase.from('team_members').select('team_id').in('team_id', ids),
+          supabase
+            .from('team_members')
+            .select('linked_user_id, name, email')
+            .in('linked_user_id', list.map((t) => t.leader_user_id).filter(Boolean) as string[]),
+        ]);
         members?.forEach((m: { team_id: string }) => {
           counts.set(m.team_id, (counts.get(m.team_id) ?? 0) + 1);
+        });
+        (leaderMembers ?? []).forEach((m: any) => {
+          if (m.linked_user_id && !leaderNames.has(m.linked_user_id)) {
+            leaderNames.set(m.linked_user_id, m.name || m.email || '');
+          }
         });
       }
 
       return list.map((t) => ({
         ...t,
         member_count: counts.get(t.id) ?? 0,
+        leader_name: t.leader_user_id ? (leaderNames.get(t.leader_user_id) ?? null) : null,
       }));
     },
   });
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return q ? teams.filter((t) => t.name.toLowerCase().includes(q)) : teams;
+    const base = q ? teams.filter((t) => t.name.toLowerCase().includes(q)) : teams;
+    // Sem líder primeiro — chamar atenção do HR Admin / Owner.
+    return [...base].sort((a, b) => {
+      const aNo = a.leader_user_id ? 1 : 0;
+      const bNo = b.leader_user_id ? 1 : 0;
+      if (aNo !== bNo) return aNo - bNo;
+      return a.name.localeCompare(b.name);
+    });
   }, [teams, query]);
 
   const refresh = () => {
@@ -703,8 +721,9 @@ function TeamsTab({ onNewTeam, workspaceId }: { onNewTeam: () => void; workspace
 
       {/* Tabela densa */}
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
-        <div className="grid grid-cols-[minmax(0,3fr)_140px_160px_32px] gap-4 px-5 py-2.5 bg-muted/30 border-b border-border/40 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        <div className="grid grid-cols-[minmax(0,2.5fr)_minmax(0,2fr)_120px_140px_32px] gap-4 px-5 py-2.5 bg-muted/30 border-b border-border/40 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           <div>Nome</div>
+          <div>Líder</div>
           <div>Liderados</div>
           <div>Criado</div>
           <div />
@@ -719,12 +738,28 @@ function TeamsTab({ onNewTeam, workspaceId }: { onNewTeam: () => void; workspace
               const isSemTime = t.name === 'Sem Time';
               return (
                 <li key={t.id} className="border-b border-border/30 last:border-b-0">
-                  <div className="grid grid-cols-[minmax(0,3fr)_140px_160px_32px] gap-4 px-5 py-3 items-center hover:bg-muted/30 transition-colors">
+                  <div className="grid grid-cols-[minmax(0,2.5fr)_minmax(0,2fr)_120px_140px_32px] gap-4 px-5 py-3 items-center hover:bg-muted/30 transition-colors">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="rounded-lg bg-primary/10 p-1.5 shrink-0">
                         <Building2 className="h-3.5 w-3.5 text-primary" />
                       </div>
                       <span className="text-[13px] font-medium text-foreground truncate">{t.name}</span>
+                    </div>
+                    <div className="min-w-0">
+                      {t.leader_user_id ? (
+                        <span className="text-[13px] text-foreground truncate block">
+                          {t.leader_name ?? 'Líder vinculado'}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setEditTeam(t)}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/10 px-2 py-1 text-[11px] font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
+                        >
+                          <AlertTriangle className="h-3 w-3" />
+                          Sem líder — definir
+                        </button>
+                      )}
                     </div>
                     <div className="text-[13px] text-muted-foreground">
                       {t.member_count} {t.member_count === 1 ? 'pessoa' : 'pessoas'}
@@ -740,7 +775,7 @@ function TeamsTab({ onNewTeam, workspaceId }: { onNewTeam: () => void; workspace
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-44">
                         <DropdownMenuItem onClick={() => setEditTeam(t)} disabled={isSemTime}>
-                          <Pencil className="h-3.5 w-3.5 mr-2" /> Renomear
+                          <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
@@ -766,6 +801,7 @@ function TeamsTab({ onNewTeam, workspaceId }: { onNewTeam: () => void; workspace
             open={!!editTeam}
             onOpenChange={(o) => !o && setEditTeam(null)}
             team={editTeam}
+            workspaceId={workspaceId}
             onSuccess={refresh}
           />
           <DeleteTeamDialog

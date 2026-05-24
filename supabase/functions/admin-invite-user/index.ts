@@ -166,7 +166,8 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         message: `Convite enviado para ${email}`,
-        assigned_plan: plan
+        assigned_plan: plan,
+        user_id: invitation?.user?.id ?? null,
       }),
       {
         status: 200,
