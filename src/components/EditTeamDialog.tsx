@@ -49,27 +49,25 @@ export const EditTeamDialog = ({
     setTeamName(team.name);
     setInitialLeaderId(team.leader_user_id ?? null);
 
-    // Hidrata candidato atual a partir de profiles (se houver líder).
+    // Hidrata candidato atual via team_members (não temos tabela profiles).
     (async () => {
       if (!team.leader_user_id) {
         setLeader(null);
         return;
       }
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id, full_name, email')
-        .eq('id', team.leader_user_id)
+      const { data: row } = await supabase
+        .from('team_members')
+        .select('linked_user_id, name, email')
+        .eq('linked_user_id', team.leader_user_id)
+        .limit(1)
         .maybeSingle();
-      if (profile) {
-        setLeader({
-          user_id: (profile as any).id,
-          name: (profile as any).full_name || (profile as any).email || 'Líder atual',
-          email: (profile as any).email ?? null,
-          origin: 'leader',
-        });
-      } else {
-        setLeader(null);
-      }
+      const r = row as any;
+      setLeader({
+        user_id: team.leader_user_id,
+        name: r?.name || r?.email || 'Líder atual',
+        email: r?.email ?? null,
+        origin: 'leader',
+      });
     })();
   }, [open, team]);
 
