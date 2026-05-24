@@ -52,72 +52,43 @@ export function LeaderPicker({ workspaceId, value, onChange, disabled }: LeaderP
     (async () => {
       setLoadingList(true);
       try {
-        const map = new Map<string, CandidateRow>();
-
-        const [{ data: ws }, { data: teams }, { data: members }] = await Promise.all([
+        // Fonte de candidatos: liderados do workspace já com conta vinculada
+        // (linked_user_id em team_members). Também flagamos quem já é líder
+        // de algum time. HR/Owner que não estão em team_members usam "Convidar
+        // novo". team_members tem name/email denormalizados — não dependemos
+        // de tabela profiles (que não existe neste schema).
+        const [{ data: rows }, { data: leaderTeams }] = await Promise.all([
           supabase
-            .from('workspaces')
-            .select('owner_id, hr_admin_ids')
-            .eq('id', workspaceId)
-            .maybeSingle(),
+            .from('team_members')
+            .select('linked_user_id, name, email, teams!inner(workspace_id)')
+            .eq('teams.workspace_id', workspaceId)
+            .not('linked_user_id', 'is', null),
           supabase
             .from('teams')
             .select('leader_user_id')
             .eq('workspace_id', workspaceId)
             .not('leader_user_id', 'is', null),
-          supabase
-            .from('team_members')
-            .select('linked_user_id, teams!inner(workspace_id)')
-            .eq('teams.workspace_id', workspaceId)
-            .not('linked_user_id', 'is', null),
         ]);
 
-        const userIds = new Set<string>();
-        const origins = new Map<string, LeaderCandidate['origin']>();
+        const leaderIds = new Set<string>();
+        (leaderTeams ?? []).forEach((t: any) => {
+          if (t.leader_user_id) leaderIds.add(t.leader_user_id as string);
+        });
 
-        if (ws?.owner_id) {
-          userIds.add(ws.owner_id);
-          origins.set(ws.owner_id, 'owner');
-        }
-        for (const id of (ws?.hr_admin_ids ?? []) as string[]) {
-          userIds.add(id);
-          if (!origins.has(id)) origins.set(id, 'hr_admin');
-        }
-        for (const t of teams ?? []) {
-          const id = (t as any).leader_user_id as string;
-          if (!id) continue;
-          userIds.add(id);
-          if (!origins.has(id)) origins.set(id, 'leader');
-        }
-        for (const m of members ?? []) {
-          const id = (m as any).linked_user_id as string;
-          if (!id) continue;
-          userIds.add(id);
-          if (!origins.has(id)) origins.set(id, 'member');
-        }
-
-        if (userIds.size === 0) {
-          if (!cancelled) setCandidates([]);
-          return;
-        }
-
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, full_name, email')
-          .in('id', Array.from(userIds));
-
-        for (const p of profiles ?? []) {
-          const id = (p as any).id as string;
-          map.set(id, {
-            user_id: id,
-            name: (p as any).full_name || (p as any).email || 'Sem nome',
-            email: (p as any).email ?? null,
-            origin: origins.get(id) ?? 'member',
+        const map = new Map<string, CandidateRow>();
+        (rows ?? []).forEach((r: any) => {
+          const uid = r.linked_user_id as string | null;
+          if (!uid || map.has(uid)) return;
+          map.set(uid, {
+            user_id: uid,
+            name: r.name || r.email || 'Usuário',
+            email: r.email ?? null,
+            origin: leaderIds.has(uid) ? 'leader' : 'member',
           });
-        }
+        });
 
         if (!cancelled) {
-          const rows = Array.from(map.values()).sort((a, b) => {
+          const list = Array.from(map.values()).sort((a, b) => {
             const order: Record<LeaderCandidate['origin'], number> = {
               owner: 0, hr_admin: 1, leader: 2, member: 3, invited: 4,
             };
@@ -126,7 +97,7 @@ export function LeaderPicker({ workspaceId, value, onChange, disabled }: LeaderP
             if (oa !== ob) return oa - ob;
             return a.name.localeCompare(b.name);
           });
-          setCandidates(rows);
+          setCandidates(list);
         }
       } finally {
         if (!cancelled) setLoadingList(false);
