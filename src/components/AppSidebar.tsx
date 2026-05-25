@@ -40,6 +40,7 @@ import { GlobalSearchDialog } from '@/components/sidebar/GlobalSearchDialog';
 import { MentorChat } from '@/components/MentorChat';
 import { NewMemberDialog } from '@/components/NewMemberDialog';
 import { cn } from '@/lib/utils';
+import { prefetchRoute } from '@/lib/routeLoaders';
 
 export function AppSidebar() {
   const { t } = useTranslation();
@@ -153,6 +154,8 @@ export function AppSidebar() {
                     to={item.to}
                     end
                     aria-label={item.ariaLabel ?? t(item.labelKey)}
+                    onMouseEnter={() => prefetchRoute(item.to)}
+                    onFocus={() => prefetchRoute(item.to)}
                     className={cn(
                       'rounded-xl tracking-tight font-medium transition-colors',
                       'text-sidebar-foreground/75 hover:text-sidebar-foreground hover:bg-sidebar-accent/40',
