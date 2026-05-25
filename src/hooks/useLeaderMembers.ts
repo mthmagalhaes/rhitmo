@@ -63,6 +63,7 @@ export function useLeaderMembers(opts: UseLeaderMembersOptions = {}) {
     },
     enabled: !!effectiveUserId,
     staleTime: 30_000,
+    placeholderData: keepPreviousData,
   });
 
   const { data: teams = [], isLoading: teamsLoading } = useQuery({
@@ -79,6 +80,7 @@ export function useLeaderMembers(opts: UseLeaderMembersOptions = {}) {
     },
     enabled: !!workspace,
     staleTime: 30_000,
+    placeholderData: keepPreviousData,
   });
 
   const { data: members = [], isLoading: membersLoading } = useQuery({
@@ -115,6 +117,7 @@ export function useLeaderMembers(opts: UseLeaderMembersOptions = {}) {
     },
     enabled: !!workspace,
     staleTime: 30_000,
+    placeholderData: keepPreviousData,
   });
 
   return {
