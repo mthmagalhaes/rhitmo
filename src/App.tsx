@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -20,59 +20,56 @@ import { AdminGuard } from "./components/admin/AdminGuard";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { HRAdminGuard } from "./components/HRAdminGuard";
 import { EvidenceDrawer } from "./components/context/EvidenceDrawer";
-
-// ── Lazy-loaded pages ──
-const MemberDetails = lazy(() => import("./pages/MemberDetails"));
-const Analytics = lazy(() => import("./pages/Analytics"));
-const Billing = lazy(() => import("./pages/Billing"));
-const PersonaSelector = lazy(() => import("./pages/PersonaSelector"));
-const RhitmoSync = lazy(() => import("./pages/RhitmoSync"));
-const Invite = lazy(() => import("./pages/Invite"));
-const Onboarding = lazy(() => import("./pages/Onboarding"));
-const Admin = lazy(() => import("./pages/Admin"));
-
-const BriefPage = lazy(() => import("@/pages/BriefPage"));
-const HRDashboard = lazy(() => import("./pages/HRDashboard"));
-const CompetencyFramework = lazy(() => import("./pages/CompetencyFramework"));
-const HRTeams = lazy(() => import("./pages/HRTeams"));
-const HRMembers = lazy(() => import("./pages/HRMembers"));
-const HRAnalytics = lazy(() => import("./pages/HRAnalytics"));
-const TermsOfService = lazy(() => import("./pages/TermsOfService"));
-const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
-const DirectReportReviewView = lazy(() => import("./pages/DirectReportReviewView"));
-const SlackConnect = lazy(() => import("./pages/SlackConnect"));
-const DesignSystem = lazy(() => import("./pages/DesignSystem"));
-const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
-const RecorderPopup = lazy(() => import("./pages/RecorderPopup"));
-const Enterprise = lazy(() => import("./pages/Enterprise"));
-
-const ResetPassword = lazy(() => import("./pages/ResetPassword"));
-const GoogleCalendarCallback = lazy(() => import("./pages/GoogleCalendarCallback"));
-const Evidence = lazy(() => import("./pages/Evidence"));
-const SlackChannels = lazy(() => import("./pages/SlackChannels"));
-
-
-// ── New role-based pages ──
-const LiderInicio = lazy(() => import("./pages/lider/Inicio"));
-const LiderOneOnOnes = lazy(() => import("./pages/lider/OneOnOnes"));
-const LiderDiario = lazy(() => import("./pages/lider/Diario"));
-const LiderPulse = lazy(() => import("./pages/lider/Pulse"));
-const LiderPulseDetail = lazy(() => import("./pages/lider/PulseDetail"));
-const LiderAvaliacoes = lazy(() => import("./pages/lider/Avaliacoes"));
-const LiderObjetivos = lazy(() => import("./pages/lider/Objetivos"));
-const LiderPessoas = lazy(() => import("./pages/lider/Pessoas"));
-const LiderConfiguracoes = lazy(() => import("./pages/lider/Configuracoes"));
-const LiderContexto = lazy(() => import("./pages/lider/Contexto"));
-const LiderMentor = lazy(() => import("./pages/lider/Mentor"));
-const LiderMentorThread = lazy(() => import("./pages/lider/MentorThread"));
-const LideradoInicio = lazy(() => import("./pages/liderado/Inicio"));
-const LideradoCompass = lazy(() => import("./pages/liderado/Compass"));
-const LideradoOneOnOnes = lazy(() => import("./pages/liderado/OneOnOnes"));
-const LideradoPulse = lazy(() => import("./pages/liderado/Pulse"));
-const LideradoPDI = lazy(() => import("./pages/liderado/PDI"));
-const LideradoAvaliacoes = lazy(() => import("./pages/liderado/Avaliacoes"));
-const LideradoMeuRhitmo = lazy(() => import("./pages/liderado/MeuRhitmo"));
-const LideradoConfiguracoes = lazy(() => import("./pages/liderado/Configuracoes"));
+import { RouteSkeleton } from "./components/RouteSkeleton";
+// ── Lazy components (centralized in routeLoaders so the sidebar can prefetch) ──
+import {
+  MemberDetails,
+  Analytics,
+  Billing,
+  PersonaSelector,
+  RhitmoSync,
+  Invite,
+  Onboarding,
+  Admin,
+  BriefPage,
+  HRDashboard,
+  CompetencyFramework,
+  HRTeams,
+  HRMembers,
+  HRAnalytics,
+  TermsOfService,
+  PrivacyPolicy,
+  DirectReportReviewView,
+  SlackConnect,
+  DesignSystem,
+  Unsubscribe,
+  RecorderPopup,
+  Enterprise,
+  ResetPassword,
+  GoogleCalendarCallback,
+  Evidence,
+  SlackChannels,
+  LiderInicio,
+  LiderOneOnOnes,
+  LiderDiario,
+  LiderPulse,
+  LiderPulseDetail,
+  LiderAvaliacoes,
+  LiderObjetivos,
+  LiderPessoas,
+  LiderConfiguracoes,
+  LiderContexto,
+  LiderMentor,
+  LiderMentorThread,
+  LideradoInicio,
+  LideradoCompass,
+  LideradoOneOnOnes,
+  LideradoPulse,
+  LideradoPDI,
+  LideradoAvaliacoes,
+  LideradoMeuRhitmo,
+  LideradoConfiguracoes,
+} from "@/lib/routeLoaders";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -85,13 +82,15 @@ const queryClient = new QueryClient({
   },
 });
 
-const RouteFallback = () => (
+const PublicFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
     <div className="h-8 w-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
   </div>
 );
 
-// Helper: wrap a leaf in DirectReportGuard + AppLayout + RoleRouteGuard
+// Helper: wrap a leaf in DirectReportGuard + AppLayout + RoleRouteGuard.
+// AppLayout owns its own internal <Suspense> so the sidebar/header stay
+// mounted while the route chunk loads.
 const Leader = (node: React.ReactNode) => (
   <DirectReportGuard>
     <AppLayout>
@@ -107,6 +106,12 @@ const DirectReport = (node: React.ReactNode) => (
   </DirectReportGuard>
 );
 
+// Wrap a leaf with a full-screen Suspense — used for public/auth routes
+// where there is no AppLayout to absorb the fallback.
+const Public = (node: React.ReactNode) => (
+  <Suspense fallback={<PublicFallback />}>{node}</Suspense>
+);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -118,17 +123,16 @@ const App = () => (
       <EvidenceDrawer />
       <AuthEventProvider>
         <BrowserRouter>
-          <Suspense fallback={<RouteFallback />}>
-            <Routes>
+          <Routes>
               {/* Landing */}
               <Route path="/" element={<Landing />} />
 
               {/* Auth */}
-              <Route path="/auth/start" element={<PersonaSelector />} />
+              <Route path="/auth/start" element={Public(<PersonaSelector />)} />
               <Route path="/auth" element={<AuthPage />} />
 
               {/* Onboarding */}
-              <Route path="/onboarding" element={<Onboarding />} />
+              <Route path="/onboarding" element={Public(<Onboarding />)} />
 
               {/* Legacy redirects → DirectReportGuard decides leader vs direct report */}
               <Route path="/dashboard" element={
@@ -172,7 +176,7 @@ const App = () => (
               {/* Legacy deep-links → redirect to new host pages with tab pre-selected */}
               <Route path="/analytics" element={<Navigate to="/lider/pessoas?tab=analytics" replace />} />
               <Route path="/billing" element={<Navigate to="/lider/configuracoes?tab=faturamento" replace />} />
-              
+
               <Route path="/evidence" element={Leader(<Evidence />)} />
               <Route path="/slack/channels" element={Leader(<SlackChannels />)} />
               {/* Legacy brief redirect */}
@@ -181,32 +185,29 @@ const App = () => (
               {/* Design System (super admin) */}
               <Route path="/design-system" element={
                 <AdminGuard>
-                  <AdminLayout><DesignSystem /></AdminLayout>
+                  <AdminLayout>{Public(<DesignSystem />)}</AdminLayout>
                 </AdminGuard>
               } />
 
               {/* Recorder standalone */}
-              <Route path="/recorder" element={<RecorderPopup />} />
+              <Route path="/recorder" element={Public(<RecorderPopup />)} />
 
               {/* Slack OAuth connect */}
-              <Route path="/slack/connect" element={<SlackConnect />} />
+              <Route path="/slack/connect" element={Public(<SlackConnect />)} />
 
               {/* Public routes */}
-              <Route path="/sync/:memberId" element={<RhitmoSync />} />
-              <Route path="/invite" element={<Invite />} />
-              <Route path="/review/:reviewId" element={<DirectReportReviewView />} />
-              <Route path="/terms-of-service" element={<TermsOfService />} />
-              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-              <Route path="/enterprise" element={<Enterprise />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/auth/google/callback" element={<GoogleCalendarCallback />} />
-              
+              <Route path="/sync/:memberId" element={Public(<RhitmoSync />)} />
+              <Route path="/invite" element={Public(<Invite />)} />
+              <Route path="/review/:reviewId" element={Public(<DirectReportReviewView />)} />
+              <Route path="/terms-of-service" element={Public(<TermsOfService />)} />
+              <Route path="/privacy-policy" element={Public(<PrivacyPolicy />)} />
+              <Route path="/enterprise" element={Public(<Enterprise />)} />
+              <Route path="/reset-password" element={Public(<ResetPassword />)} />
+              <Route path="/auth/google/callback" element={Public(<GoogleCalendarCallback />)} />
 
               {/* Admin (self-wraps with AdminLayout) */}
               <Route path="/admin" element={
-                <AdminGuard>
-                  <Admin />
-                </AdminGuard>
+                <AdminGuard>{Public(<Admin />)}</AdminGuard>
               } />
 
               {/* HR */}
@@ -217,12 +218,11 @@ const App = () => (
               <Route path="/hr/competency-framework" element={<AppLayout><HRAdminGuard><CompetencyFramework /></HRAdminGuard></AppLayout>} />
 
               {/* Unsubscribe */}
-              <Route path="/unsubscribe" element={<Unsubscribe />} />
+              <Route path="/unsubscribe" element={Public(<Unsubscribe />)} />
 
               {/* CATCH-ALL */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </Suspense>
         </BrowserRouter>
       </AuthEventProvider>
     </TooltipProvider>
@@ -233,3 +233,5 @@ const App = () => (
 );
 
 export default App;
+// Re-export RouteSkeleton so AppLayout can import it without circular deps.
+export { RouteSkeleton };
