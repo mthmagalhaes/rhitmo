@@ -253,6 +253,13 @@ const HRTeams = () => {
           </div>
         </SheetContent>
       </Sheet>
+
+      <NewTeamDialog
+        open={newTeamOpen}
+        onOpenChange={setNewTeamOpen}
+        workspaceId={workspaceId}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['hr-leaders', workspaceId] })}
+      />
     </div>
   );
 };
