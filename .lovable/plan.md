@@ -1,90 +1,140 @@
-## Escopo
+# Plano: deixar a navegação entre rotas mais rápida (sem mexer em Cloud/IA)
 
-Três ajustes em `/lider/objetivos` e nos componentes de meta (`GoalsManager`, `NewGoalDialog`, `GoalCard`, `GoalsMemberSheet`).
+A lentidão que você sente não vem do banco — vem de **como o frontend troca de rota**. Hoje, cada clique no menu:
 
----
+1. Desmonta a sidebar + layout (porque o `<Suspense>` global está no topo).
+2. Mostra um spinner de tela cheia.
+3. Baixa o chunk JS da página (sem pré-carregar nada).
+4. Remonta tudo.
 
-### 1. Metas decrescentes (ex: Gross Dollar Retention)
-
-Hoje o progresso é calculado como `current / target`. Para uma meta de "reduzir churn" ou "atingir 87% de GDR" partindo de 91,2%, isso mostra >100% como se já estivesse pronta, quando na verdade ainda está distante do alvo.
-
-**Solução:**
-- Adicionar coluna `metric_baseline numeric` em `goals` (valor inicial registrado na criação).
-- Adicionar coluna `metric_direction text` com valores `'up'` (default) ou `'down'`, inferida automaticamente na criação: se `metric_current > metric_target` → `'down'`; senão `'up'`. Pode ser sobrescrita manualmente via toggle "Subir / Descer" no `NewGoalDialog`.
-- Novo cálculo em `GoalCard.getProgress()` e `useTeamGoalsSummary`:
-  - `up`:   `(current − baseline) / (target − baseline)`
-  - `down`: `(baseline − current) / (baseline − target)`
-  - Clampar entre 0 e 100.
-- Label do progresso passa a mostrar `baseline → current → target` para metas decrescentes.
-
-### 2. Modal "Nova Meta" não fecha ao clicar no X
-
-A causa está em `GoalsMemberSheet.tsx`:
-
-```tsx
-if (initialNewGoal && open && !newOpen) {
-  setTimeout(() => setNewOpen(true), 0);
-}
-```
-
-Esse bloco roda **a cada render**. Quando o usuário fecha o `NewGoalDialog` (X), `newOpen` vira `false`, o Sheet re-renderiza com `initialNewGoal` ainda `true` e a condição reabre o dialog imediatamente — sensação de "não fecha".
-
-**Solução:**
-- Substituir por um `useEffect` que dispare apenas na **transição** de abertura do sheet (deps: `open`, `member?.id`).
-- Após abrir o dialog uma vez, marcar `initialNewGoal` como consumido (callback `onInitialNewGoalConsumed` no pai, ou estado local `hasOpenedOnce`).
-- Garantir que o X do `NewGoalDialog` só feche o dialog, sem mexer no sheet.
-
-### 3. Meta para múltiplos liderados
-
-Permitir, na página `/lider/objetivos`, criar a mesma meta para vários liderados de uma vez (ex.: meta de equipe de CS aplicada a todos os CSMs).
-
-**Solução de UX:**
-- Na `GoalsCrossMemberTable`, adicionar coluna de seleção (checkbox por linha + "selecionar todos").
-- Quando ≥1 selecionado, surgir botão flutuante "Nova meta para N liderados" no topo (header da página).
-- Reutilizar `NewGoalDialog` com nova prop opcional `memberIds?: string[]` (quando presente, ignora `memberId` único). O submit faz `insert` em batch (`goals.insert(memberIds.map(id => ({...payload, member_id: id})))`).
-- Toast: "Meta criada para N liderados". Invalidar `['team-goals-summary']` e cada `['goals', memberId]`.
-- O fluxo de criação por liderado único (botão "Nova meta" na linha e dentro do sheet) continua intacto.
-
-> Nota: cada inserção continua sendo uma meta independente (uma linha por liderado). Isso preserva RLS, edição/atualização de progresso por pessoa e o cálculo de cobertura. Não criamos vínculo "meta compartilhada" — se o usuário quiser editar todas depois, edita uma a uma. (Posso evoluir para "meta-grupo" num próximo passo se necessário.)
+Tudo abaixo é puramente frontend (Vite + React). **Zero custo de Cloud, zero edge function nova, zero migração de banco.**
 
 ---
 
-## Mudanças técnicas
+## 1. Manter a "casca" do app montada ao trocar de rota (maior ganho percebido)
 
-**Migration (Supabase):**
-```sql
-ALTER TABLE public.goals
-  ADD COLUMN metric_baseline numeric,
-  ADD COLUMN metric_direction text NOT NULL DEFAULT 'up'
-    CHECK (metric_direction IN ('up','down'));
+**Problema:** em `src/App.tsx`, o `<Suspense fallback={<RouteFallback />}>` envolve **todas** as `<Routes>`. Resultado: ao ir de `/lider/inicio` → `/lider/diario`, a sidebar pisca e some por ~300-800ms.
+
+**Mudança:**
+- Remover o `<Suspense>` global do `App.tsx`.
+- Criar um `<Suspense>` *interno* dentro de `AppLayout.tsx`, envolvendo apenas `<main>{children}</main>`.
+- Fallback vira um skeleton pequeno (header + 2 cards), não tela cheia.
+- Rotas públicas (Landing, Auth, Invite) ganham seu próprio `<Suspense>` local.
+
+**Efeito:** sidebar e header não piscam mais. A troca de rota fica visualmente instantânea, mesmo enquanto o chunk carrega.
+
+---
+
+## 2. Pré-carregar a próxima rota no hover/focus da sidebar
+
+**Como:** expor as funções `import()` dos `lazy(...)` (ex.: `const loadDiario = () => import("./pages/lider/Diario")`) e disparar essa função no `onMouseEnter` / `onFocus` dos itens do `AppSidebar`.
+
+**Resultado:** quando o usuário clica, o JS já está no cache do browser. Praticamente elimina a espera do chunk.
+
+Custo: nenhum, é só `<link rel="modulepreload">` implícito do Vite.
+
+---
+
+## 3. Code-splitting controlado no build (manualChunks)
+
+`vite.config.ts` hoje não define `build.rollupOptions.output.manualChunks`. Bibliotecas pesadas (tiptap, pdfjs-dist, mammoth, marked, react-markdown, recharts, radix-ui, lucide-react) caem em chunks misturados, fazendo cada rota baixar mais do que precisa.
+
+**Mudança:** adicionar `manualChunks` agrupando:
+- `vendor-react` (react, react-dom, react-router)
+- `vendor-radix` (todos `@radix-ui/*`)
+- `vendor-tiptap` (`@tiptap/*`, `prosemirror-*`)
+- `vendor-pdf` (pdfjs-dist, mammoth) — usado só em upload
+- `vendor-charts` (recharts) — usado só em analytics
+- `vendor-markdown` (marked, react-markdown, dompurify)
+
+Cada rota baixa menos. Cache do navegador entre deploys melhora também (mudar uma página não invalida o vendor).
+
+---
+
+## 4. Lazy-load real das libs pesadas dentro dos componentes
+
+Hoje várias páginas importam estaticamente libs que só usam em ações pontuais:
+
+- `pdfjs-dist` e `mammoth` (parsing de arquivo) → `await import(...)` dentro do handler de upload.
+- `lamejs` (gravação) → já é usado só no Recorder; conferir que não vaza para o bundle principal.
+- `marked` + `react-markdown` → carregar dinamicamente só onde renderiza markdown longo (mentor chat, recaps).
+
+Sem mudar nenhum comportamento — só move o `import` para dentro da função que usa.
+
+---
+
+## 5. Quebrar `src/pages/lider/Pessoas.tsx` (1.271 linhas) em chunks por aba
+
+Hoje a página inteira (tabela, analytics, convites, faturamento) entra num único chunk. Cada aba vira `lazy(() => import('./pessoas/TabAnalytics'))` etc. Só a aba ativa baixa.
+
+Aplicar o mesmo padrão em `Mentor.tsx` (597 linhas) extraindo o painel de histórico / galeria de prompts.
+
+---
+
+## 6. Pequenos ajustes no React Query
+
+O `QueryClient` já tem `staleTime: 60s` e `refetchOnWindowFocus: false` (bom). Dois ajustes finos:
+
+- Em `useRecaps.ts`, dois hooks usam `refetchOnMount: 'always'` — trocar para o default a menos que o usuário realmente precise de dados frescos a cada navegação (são recaps mensais).
+- Garantir `placeholderData: keepPreviousData` nas listas grandes (`useLeaderMembers`, `useTeamTimeline`) para que a troca de aba não mostre skeleton se já temos dados.
+
+---
+
+## O que NÃO vai mudar
+
+- Nenhuma edge function nova ou alterada.
+- Nenhuma migração de banco, nenhum índice novo, nenhuma RLS tocada.
+- Nenhum modelo de IA novo, nenhum custo de gateway.
+- Slack/Recall/Stripe intocados.
+- Cron jobs intocados (a retenção de logs do plano anterior continua valendo).
+
+---
+
+## Detalhes técnicos (resumo)
+
+```text
+App.tsx
+  - remover <Suspense> global
+  - rotas públicas: <Suspense> local
+  - rotas Leader/DirectReport: AppLayout cuida do Suspense interno
+
+AppLayout.tsx
+  <main>
+    <Suspense fallback={<RouteSkeleton />}>{children}</Suspense>
+  </main>
+
+AppSidebar.tsx
+  - cada NavLink recebe onMouseEnter/onFocus que dispara o import() da rota
+
+vite.config.ts
+  build: {
+    rollupOptions: {
+      output: { manualChunks: { ... } }
+    }
+  }
+
+Pessoas.tsx / Mentor.tsx
+  - extrair sub-componentes pesados para lazy()
+
+Hooks
+  - useRecaps: remover refetchOnMount:'always'
+  - useLeaderMembers/useTeamTimeline: placeholderData: keepPreviousData
 ```
-Backfill: `UPDATE goals SET metric_baseline = metric_current WHERE metric_baseline IS NULL;`
-RLS: nada muda (colunas seguem as policies da tabela `goals`).
-
-**Frontend:**
-- `src/components/NewGoalDialog.tsx`
-  - Aceita `memberIds?: string[]` (multi-insert).
-  - Calcula `metric_direction` automaticamente; permite override via toggle.
-  - Grava `metric_baseline = metric_current` na criação.
-- `src/components/GoalCard.tsx`
-  - `getProgress()` usa `metric_direction` + `metric_baseline`.
-  - Label adapta texto para metas decrescentes.
-- `src/hooks/useTeamGoalsSummary.ts`
-  - Lê novas colunas e usa a mesma fórmula no `percentComplete`.
-- `src/components/leader/objetivos/GoalsMemberSheet.tsx`
-  - Substituir o `if (...) setTimeout` por `useEffect` com guard `hasOpenedOnce`.
-- `src/components/leader/objetivos/GoalsCrossMemberTable.tsx`
-  - Coluna checkbox + estado `selectedIds`.
-  - Novo callback `onBulkNewGoal(ids: string[])`.
-- `src/pages/lider/Objetivos.tsx`
-  - Estado `bulkSelection`; abre `NewGoalDialog` direto (fora do sheet) quando criando em lote.
-
-**Sem alterações em:** RLS, edge functions, AI router, Slack, billing.
 
 ---
 
 ## Validação
 
-1. Criar meta "Atingir 87% GDR" com current=91,2 → barra mostra ~46% (não 100%).
-2. Abrir sheet → "Nova meta" → clicar X → dialog fecha, sheet permanece aberto. Clicar X do sheet → ambos fecham.
-3. Selecionar 3 liderados → "Nova meta para 3" → criar uma vez → aparecer 3 linhas distintas, uma por liderado.
+1. Build local: comparar tamanho dos chunks antes/depois (`dist/assets/*.js`).
+2. Navegar `/lider/inicio` → `/lider/diario` → `/lider/pessoas`: sidebar não pisca, sem flash de tela em branco.
+3. Hover em "Diário" antes de clicar: chunk aparece como `(prefetch)` na aba Network.
+4. Abrir aba Analytics em `/lider/pessoas` pela primeira vez baixa só o chunk daquela aba.
+
+## Risco
+
+Baixo. São mudanças de empacotamento e UX de loading. Se algo der ruim:
+- Reverter o `manualChunks` é trivial (1 commit).
+- O Suspense interno tem fallback funcional — pior caso, volta a aparecer um spinner pequeno em vez de tela cheia.
+- Nenhum dado de usuário, RLS ou histórico é tocado.
+
+Posso implementar em uma única rodada e validar com `npm run build` no fim.
