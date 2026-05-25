@@ -27,6 +27,8 @@ interface Goal {
   metric_current?: number | null;
   metric_target?: number | null;
   metric_unit?: string | null;
+  metric_baseline?: number | null;
+  metric_direction?: string | null;
   completed_at?: string | null;
 }
 
@@ -41,10 +43,29 @@ interface GoalCardProps {
 export const GoalCard = ({ goal, onEdit, onDelete, onComplete, onReactivate }: GoalCardProps) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
+  const isDown = goal.metric_direction === 'down';
+
   const getProgress = () => {
-    if (!goal.metric_target || goal.metric_target === 0) return null;
-    const current = goal.metric_current || 0;
-    return Math.min(Math.round((current / goal.metric_target) * 100), 100);
+    if (goal.metric_target == null) return null;
+    const current = Number(goal.metric_current ?? 0);
+    const target = Number(goal.metric_target);
+    const baseline = goal.metric_baseline != null
+      ? Number(goal.metric_baseline)
+      : (isDown ? Math.max(current, target) : 0);
+
+    if (isDown) {
+      const span = baseline - target;
+      if (span <= 0) return null;
+      const pct = ((baseline - current) / span) * 100;
+      return Math.max(0, Math.min(100, Math.round(pct)));
+    }
+    const span = target - baseline;
+    if (span <= 0) {
+      if (!target) return null;
+      return Math.max(0, Math.min(100, Math.round((current / target) * 100)));
+    }
+    const pct = ((current - baseline) / span) * 100;
+    return Math.max(0, Math.min(100, Math.round(pct)));
   };
 
   const getStatusConfig = () => {
