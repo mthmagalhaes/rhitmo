@@ -1,7 +1,8 @@
-// Convida (ou promove) um HR Admin para um workspace.
+// Convida, reenvia ou promove um HR Admin para um workspace.
 // Autorização: caller precisa ser super admin OU Owner do workspace OU HR Admin existente do workspace.
-// Caso o e-mail ainda não tenha conta, dispara convite via Supabase Auth Admin com redirect /hr.
-// Caso o usuário já exista, apenas adiciona ao array hr_admin_ids via RPC manage_hr_admin.
+// action = 'invite' (default) | 'resend'
+//   invite: cria conta (se não existir) + envia convite via Supabase Auth Admin.
+//   resend: gera novo link de convite via generateLink (não falha se já existe).
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -17,7 +18,9 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) throw new Error('Não autorizado');
 
-    const { email, name, workspace_id } = await req.json();
+    const body = await req.json();
+    const { email, name, workspace_id } = body;
+    const action: 'invite' | 'resend' = body.action === 'resend' ? 'resend' : 'invite';
     if (!email || !workspace_id) throw new Error('email e workspace_id são obrigatórios');
 
     const normalizedEmail = String(email).trim().toLowerCase();
@@ -54,25 +57,28 @@ serve(async (req) => {
       throw new Error('Sem permissão para gerenciar HR Admins deste workspace');
     }
 
-    // 3) Procura usuário existente por e-mail.
-    const { data: existing } = await supabaseAdmin
-      .from('auth_users_view' as any)
-      .select('id')
-      .ilike('email', normalizedEmail)
-      .maybeSingle()
-      .then((r) => r, () => ({ data: null }));
-
-    let targetUserId: string | null = (existing as { id?: string } | null)?.id ?? null;
-
-    if (!targetUserId) {
-      // Fallback: busca via admin.listUsers (mais robusto).
+    // 3) Procura usuário existente via admin.listUsers.
+    let targetUserId: string | null = null;
+    {
       const { data: list } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
       const match = list?.users?.find((u) => u.email?.toLowerCase() === normalizedEmail);
       targetUserId = match?.id ?? null;
     }
 
     let invited = false;
-    if (!targetUserId) {
+    let resent = false;
+
+    if (action === 'resend') {
+      // Reenvia gerando um novo link (mesmo se usuário já existe).
+      const { data: link, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'invite',
+        email: normalizedEmail,
+        options: { redirectTo: 'https://rhitmo.co/hr' },
+      } as any);
+      if (linkError) throw new Error(linkError.message);
+      targetUserId = targetUserId ?? link?.user?.id ?? null;
+      resent = true;
+    } else if (!targetUserId) {
       // Cria conta + envia convite com redirect para /hr.
       const { data: invitation, error: inviteError } =
         await supabaseAdmin.auth.admin.inviteUserByEmail(normalizedEmail, {
@@ -86,16 +92,16 @@ serve(async (req) => {
 
     if (!targetUserId) throw new Error('Não foi possível resolver o usuário-alvo');
 
-    // 4) Promove a HR Admin (RPC com autorização espelhada).
+    // 4) Promove a HR Admin (idempotente — não falha se já está na lista).
     const { error: promoteError } = await supabaseUser.rpc('manage_hr_admin', {
       _workspace_id: workspace_id,
       _user_id: targetUserId,
       _action: 'add',
     });
-    if (promoteError) throw new Error(promoteError.message);
+    if (promoteError && action !== 'resend') throw new Error(promoteError.message);
 
     return new Response(
-      JSON.stringify({ ok: true, invited, user_id: targetUserId, workspace: ws.name }),
+      JSON.stringify({ ok: true, invited, resent, user_id: targetUserId, workspace: ws.name }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (err) {
