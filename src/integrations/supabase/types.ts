@@ -2553,6 +2553,102 @@ export type Database = {
           },
         ]
       }
+      support_ticket_counters: {
+        Row: {
+          seq: number
+          yymm: string
+        }
+        Insert: {
+          seq?: number
+          yymm: string
+        }
+        Update: {
+          seq?: number
+          yymm?: string
+        }
+        Relationships: []
+      }
+      support_tickets: {
+        Row: {
+          affected_user_email: string | null
+          affected_user_id: string | null
+          category: string
+          created_at: string
+          edge_functions: string[]
+          files_touched: string[]
+          hypothesis: string | null
+          id: string
+          memory_refs: string[]
+          metadata: Json
+          opened_by: string
+          resolution_proposal: string | null
+          resolution_summary: string | null
+          resolved_at: string | null
+          root_cause: string | null
+          route: string | null
+          severity: string
+          status: string
+          symptom: string | null
+          tags: string[]
+          ticket_number: string
+          title: string
+          updated_at: string
+          workspace_id: string | null
+        }
+        Insert: {
+          affected_user_email?: string | null
+          affected_user_id?: string | null
+          category: string
+          created_at?: string
+          edge_functions?: string[]
+          files_touched?: string[]
+          hypothesis?: string | null
+          id?: string
+          memory_refs?: string[]
+          metadata?: Json
+          opened_by: string
+          resolution_proposal?: string | null
+          resolution_summary?: string | null
+          resolved_at?: string | null
+          root_cause?: string | null
+          route?: string | null
+          severity: string
+          status?: string
+          symptom?: string | null
+          tags?: string[]
+          ticket_number: string
+          title: string
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          affected_user_email?: string | null
+          affected_user_id?: string | null
+          category?: string
+          created_at?: string
+          edge_functions?: string[]
+          files_touched?: string[]
+          hypothesis?: string | null
+          id?: string
+          memory_refs?: string[]
+          metadata?: Json
+          opened_by?: string
+          resolution_proposal?: string | null
+          resolution_summary?: string | null
+          resolved_at?: string | null
+          root_cause?: string | null
+          route?: string | null
+          severity?: string
+          status?: string
+          symptom?: string | null
+          tags?: string[]
+          ticket_number?: string
+          title?: string
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Relationships: []
+      }
       suppressed_emails: {
         Row: {
           created_at: string
@@ -3544,6 +3640,11 @@ export type Database = {
           p_work_style_data?: Json
         }
         Returns: boolean
+      }
+      support_ticket_open: { Args: { payload: Json }; Returns: string }
+      support_ticket_update: {
+        Args: { p_ticket_number: string; patch: Json }
+        Returns: undefined
       }
       update_feedback_streak: {
         Args: { p_user_id: string; p_workspace_id: string }
