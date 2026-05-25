@@ -1,6 +1,6 @@
 ---
 name: rhitmo-support
-description: Use quando o Matheus trouxer um problema reportado por usuário da Rhitmo — bug, dúvida de uso, dado inconsistente, regressão ou pedido de feature. Triggers típicos em PT-BR: "support", "rhitmo support", "ticket", "fulano tá com bug", "usuário reclamou", "investigar problema do…", "abre um ticket", colagens de print/erro vindo de usuário final. A skill faz triagem, abre ticket em `support_tickets`, investiga (logs + schema + código + memórias do projeto) e devolve diagnóstico estruturado com solução proposta — sem aplicar nada sem confirmação.
+description: "Use quando o Matheus trouxer um problema reportado por usuário da Rhitmo (bug, dúvida de uso, dado inconsistente, regressão ou pedido de feature). Triggers típicos em PT-BR: support, rhitmo support, ticket, fulano tá com bug, usuário reclamou, investigar problema do, abre um ticket, colagens de print/erro vindo de usuário final. A skill faz triagem, abre ticket em support_tickets, investiga (logs + schema + código + memórias) e devolve diagnóstico estruturado com solução proposta — sem aplicar nada sem confirmação."
 ---
 
 # Rhitmo Support
