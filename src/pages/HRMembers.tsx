@@ -1,6 +1,9 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { NewMemberDialog } from '@/components/NewMemberDialog';
+import { BulkOnboardDialog } from '@/components/admin/BulkOnboardDialog';
+import { UserPlus, Upload } from 'lucide-react';
 import { useHRAdmin } from '@/components/HRAdminGuard';
 import { Input } from '@/components/ui/input';
 import { MemberProfileSheet } from '@/components/hr/MemberProfileSheet';
