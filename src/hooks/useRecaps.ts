@@ -69,7 +69,6 @@ export function useMonthlyRecaps(memberId: string | undefined, monthsBack = 6) {
       return (data ?? []) as unknown as MonthlyRecap[];
     },
     enabled: !!memberId,
-    refetchOnMount: 'always',
   });
 }
 
@@ -211,7 +210,6 @@ export function useQuarterlyRecaps(memberId: string | undefined, monthsBack = 12
       return (data ?? []) as unknown as QuarterlyRecap[];
     },
     enabled: !!memberId,
-    refetchOnMount: 'always',
   });
 }
 

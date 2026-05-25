@@ -2,7 +2,7 @@
 // (1:1s, Diário, Objetivos) and the legacy MembersGrid. Returns the workspace,
 // teams and members visible to the current effective user, plus the last
 // feedback date per member.
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import type { Workspace, Team } from '@/types/team';
