@@ -1,11 +1,13 @@
 // Sprint 19 — Objetivos cross-member estilo Diário/Pessoas.
 // Insight de cobertura + tabela densa (1 linha por liderado) + sheet lateral.
+// Suporta criação de meta para múltiplos liderados via seleção em lote.
 import { useMemo, useState } from 'react';
 import { useLeaderMembers } from '@/hooks/useLeaderMembers';
 import { useTeamGoalsSummary } from '@/hooks/useTeamGoalsSummary';
 import { GoalsCoverageInsight } from '@/components/leader/objetivos/GoalsCoverageInsight';
 import { GoalsCrossMemberTable } from '@/components/leader/objetivos/GoalsCrossMemberTable';
 import { GoalsMemberSheet } from '@/components/leader/objetivos/GoalsMemberSheet';
+import { NewGoalDialog } from '@/components/NewGoalDialog';
 import type { LeaderMemberRow } from '@/hooks/useLeaderMembers';
 
 export default function LiderObjetivos() {
@@ -16,6 +18,9 @@ export default function LiderObjetivos() {
   const [sheetMember, setSheetMember] = useState<LeaderMemberRow | null>(null);
   const [sheetNewGoal, setSheetNewGoal] = useState(false);
 
+  const [bulkIds, setBulkIds] = useState<string[]>([]);
+  const [bulkOpen, setBulkOpen] = useState(false);
+
   const openMember = (m: LeaderMemberRow) => {
     setSheetNewGoal(false);
     setSheetMember(m);
@@ -23,6 +28,10 @@ export default function LiderObjetivos() {
   const openNewGoalFor = (m: LeaderMemberRow) => {
     setSheetNewGoal(true);
     setSheetMember(m);
+  };
+  const openBulkNewGoal = (ids: string[]) => {
+    setBulkIds(ids);
+    setBulkOpen(true);
   };
 
   return (
@@ -46,6 +55,7 @@ export default function LiderObjetivos() {
         summaryByMember={summaryByMember}
         onOpenMember={openMember}
         onNewGoal={openNewGoalFor}
+        onBulkNewGoal={openBulkNewGoal}
       />
 
       <GoalsMemberSheet
@@ -53,6 +63,12 @@ export default function LiderObjetivos() {
         open={!!sheetMember}
         onOpenChange={(o) => { if (!o) { setSheetMember(null); setSheetNewGoal(false); } }}
         initialNewGoal={sheetNewGoal}
+      />
+
+      <NewGoalDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        memberIds={bulkIds}
       />
     </div>
   );

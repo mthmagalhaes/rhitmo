@@ -1,5 +1,6 @@
 // Tabela densa cross-member para /lider/objetivos. 1 linha por liderado com
 // resumo das metas (ativas, próxima due, % conclusão) e ação rápida.
+// Suporta seleção múltipla para criar a mesma meta para vários liderados.
 import { useMemo, useState } from 'react';
 import { format, parseISO, isBefore } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -7,6 +8,7 @@ import { Search, ChevronRight, AlertTriangle, Plus, MoreHorizontal } from 'lucid
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -27,6 +29,7 @@ interface Props {
   summaryByMember: Map<string, MemberGoalsSummary>;
   onOpenMember: (m: LeaderMemberRow) => void;
   onNewGoal: (m: LeaderMemberRow) => void;
+  onBulkNewGoal: (ids: string[]) => void;
 }
 
 export function GoalsCrossMemberTable({
@@ -35,10 +38,12 @@ export function GoalsCrossMemberTable({
   summaryByMember,
   onOpenMember,
   onNewGoal,
+  onBulkNewGoal,
 }: Props) {
   const [query, setQuery] = useState('');
   const [teamId, setTeamId] = useState<string>('all');
   const [status, setStatus] = useState<StatusFilter>('all');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const teamById = useMemo(
     () => Object.fromEntries(teams.map((t) => [t.id, t.name])),
@@ -73,6 +78,30 @@ export function GoalsCrossMemberTable({
     }
     return { all: members.length, withActive, withoutActive, overdue };
   }, [members, summaryByMember]);
+
+  const toggleOne = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const allFilteredSelected = filtered.length > 0 && filtered.every((m) => selected.has(m.id));
+  const toggleAll = () => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allFilteredSelected) {
+        filtered.forEach((m) => next.delete(m.id));
+      } else {
+        filtered.forEach((m) => next.add(m.id));
+      }
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelected(new Set());
 
   return (
     <div className="space-y-4">
@@ -121,9 +150,37 @@ export function GoalsCrossMemberTable({
         </div>
       </div>
 
+      {/* Barra de ação em lote */}
+      {selected.size > 0 && (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-primary/30 bg-primary/5 px-4 py-2.5">
+          <div className="text-sm">
+            <span className="font-medium">{selected.size}</span>{' '}
+            liderado{selected.size !== 1 ? 's' : ''} selecionado{selected.size !== 1 ? 's' : ''}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={clearSelection}>
+              Limpar
+            </Button>
+            <Button
+              size="sm"
+              className="gap-2 rounded-xl"
+              onClick={() => onBulkNewGoal(Array.from(selected))}
+            >
+              <Plus className="h-4 w-4" />
+              Nova meta para {selected.size}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Tabela */}
       <div className="rounded-2xl border bg-card overflow-hidden">
-        <div className="grid grid-cols-[1.4fr_1fr_0.7fr_1fr_1fr_auto] gap-3 px-4 py-2.5 text-[11px] uppercase tracking-wider text-muted-foreground border-b bg-muted/30">
+        <div className="grid grid-cols-[auto_1.4fr_1fr_0.7fr_1fr_1fr_auto] gap-3 px-4 py-2.5 text-[11px] uppercase tracking-wider text-muted-foreground border-b bg-muted/30 items-center">
+          <Checkbox
+            checked={allFilteredSelected}
+            onCheckedChange={toggleAll}
+            aria-label="Selecionar todos"
+          />
           <div>Liderado</div>
           <div>Time</div>
           <div>Metas ativas</div>
@@ -144,12 +201,23 @@ export function GoalsCrossMemberTable({
             const nextDue = s?.nextDue ? parseISO(s.nextDue) : null;
             const isLate = nextDue && isBefore(nextDue, new Date());
             const pct = s?.percentComplete ?? 0;
+            const isSelected = selected.has(m.id);
             return (
-              <button
+              <div
                 key={m.id}
                 onClick={() => onOpenMember(m)}
-                className="w-full text-left grid grid-cols-[1.4fr_1fr_0.7fr_1fr_1fr_auto] gap-3 items-center px-4 py-2.5 border-b last:border-b-0 hover:bg-muted/40 transition-colors"
+                className={cn(
+                  "w-full text-left grid grid-cols-[auto_1.4fr_1fr_0.7fr_1fr_1fr_auto] gap-3 items-center px-4 py-2.5 border-b last:border-b-0 hover:bg-muted/40 transition-colors cursor-pointer",
+                  isSelected && "bg-primary/5",
+                )}
               >
+                <div onClick={(e) => e.stopPropagation()} className="flex items-center">
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={() => toggleOne(m.id)}
+                    aria-label={`Selecionar ${m.name}`}
+                  />
+                </div>
                 <div className="flex items-center gap-2.5 min-w-0">
                   <MemberAvatar memberId={m.id} memberName={m.name} avatarUrl={m.avatar} size="sm" />
                   <div className="min-w-0">
@@ -217,7 +285,7 @@ export function GoalsCrossMemberTable({
                   </DropdownMenu>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </div>
-              </button>
+              </div>
             );
           })
         )}
