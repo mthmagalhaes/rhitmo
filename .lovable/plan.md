@@ -1,55 +1,77 @@
+# Skill: rhitmo-support
 
-## Problema
+Habilidade que transforma o agente em "Support da Rhitmo": ao receber um print/descrição + sua hipótese, ela faz triagem, investiga (logs + código + memórias) e propõe uma solução, registrando tudo num ticket auditável.
 
-Convite do Guto travou na URL `/auth/v1/verify?token=…&redirect_to=https://rhitmo.co/hr`. Praticamente sempre é **token consumido por prefetch de e-mail** (Gmail/antivírus abre o link em background → one-shot queima → humano abre depois e fica em branco) ou **expiração de 24h**. Hoje a aba `Acessos` só tem "Convidar" + "Remover" — sem reenviar e sem status — então o HR Admin fica sem saída.
+## Triggers
+Frases típicas: "support", "rhitmo support", "ticket", "fulano tá com um bug", "usuário reclamou", "investigar problema do…".
 
-## Plano
+## O que a skill faz (workflow)
 
-### 1. Backend: `invite-hr-admin` ganha modo "resend" + retorna link cru
+1. **Coleta inicial** — extrai do input: usuário afetado (email/nome), rota/feature, comportamento esperado vs. observado, sua hipótese. Se faltar usuário ou rota, pergunta **só isso** antes de seguir.
+2. **Triagem (categoriza)** — `bug` | `dúvida_uso` | `regressão` | `dado_inconsistente` | `feature_request`. Define severidade `low|medium|high|critical` (critical = bloqueio total, perda de dado, vazamento entre workspaces).
+3. **Cria ticket em estado `investigating`** já no início (RPC `support_ticket_open`) — assim mesmo se a investigação for interrompida, fica rastro.
+4. **Investigação paralela** (sempre roda os 4, salvo se irrelevante):
+   - **Logs**: `supabase--edge_function_logs` na função suspeita + `supabase--analytics_query` (postgres_logs/auth_logs/edge_logs) janela últimas 24h filtrando pelo `user_id` quando possível.
+   - **Schema/RLS**: `supabase--read_query` nas tabelas envolvidas + revisão de policies (especial atenção a `effective_user_id`, `is_team_leader`, `is_hr_admin_of_workspace`).
+   - **Código**: `rg` por rota/componente/edge function citados.
+   - **Memórias**: checa `mem://index.md` por decisões prévias relacionadas (ex: Safe Supabase Wrappers, Role Resolution Priority, RLS Recursion Prevention) — evita propor algo que já foi rejeitado.
+5. **Diagnóstico estruturado** — responde em PT-BR no formato:
+   ```
+   🎫 #TKT-XXXX · [severidade] · [categoria]
+   📍 Sintoma: ...
+   🔎 Causa raiz: ... (com refs a arquivos/linhas/policies)
+   💊 Solução proposta: ... (passos concretos, batched)
+   ⚠️ Riscos / regressões: ...
+   🧪 Como validar: ...
+   ```
+6. **Atualiza ticket** (`support_ticket_update`) com `root_cause`, `resolution_proposal`, arquivos tocados, função(ões) impactada(s), refs de memória consultadas.
+7. **Aguarda decisão**: skill **não implementa sozinha** — apresenta diagnóstico, pergunta "aplicar agora?". Quando o fix for aprovado e implementado, marca ticket `resolved` com `resolution_summary` + link do commit/migration.
 
-Mudanças na edge function `supabase/functions/invite-hr-admin/index.ts`:
+## Guardrails (não-negociáveis)
+- **Read-only por padrão**: investigação nunca usa `supabase--insert` / `supabase--migration`. Só cria/atualiza ticket (operação isolada e reversível) e propõe SQL/código — execução pede confirmação.
+- **PII**: ticket guarda `affected_user_email` mas nunca cola transcrições/feedbacks/notas privadas no campo `description`. Referencia por id.
+- **Workspace isolation**: ao consultar dados, sempre filtra pelo `workspace_id` do usuário afetado — evita expor dados cruzados durante triagem.
+- **Memória primeiro**: antes de propor mudança em RLS, edge function, ou fluxo Slack/Recall, leia a memória relacionada listada em `mem://index.md`. Se a solução contradiz uma memória, sinaliza explicitamente "isto contraria mem://…, confirmar antes".
+- **Sem invenção**: se logs/código não confirmam a hipótese, ticket vira `needs_more_info` com perguntas concretas — não chuta.
 
-- Aceita `action: 'invite' | 'resend'` (default `'invite'`).
-- No caso `resend`, **não** chama `inviteUserByEmail` de novo (que falha se já existe). Usa `supabaseAdmin.auth.admin.generateLink({ type: 'invite', email, options: { redirectTo: 'https://rhitmo.co/hr' } })` para gerar um token novo, e dispara o e-mail (o `generateLink` já envia quando a integração de e-mail do Supabase está ativa; se não, dá fallback pro mesmo template via `inviteUserByEmail` apenas se nunca logou).
-- Retorna também `last_sign_in_at` e `action_link` (útil pra debugar/copiar manualmente em caso extremo — só visível pro HR Admin que está convidando, não exposto fora dela).
-- Autorização continua a mesma (super admin / owner / HR Admin existente).
+## Estrutura do ticket (nova tabela)
+Migration cria `support_tickets`:
+- `id uuid` + `ticket_number text` (gerado: `TKT-{yymm}-{seq}`)
+- `opened_by uuid` (auth.uid do operador da skill — você, Matheus)
+- `affected_user_email`, `affected_user_id?`, `workspace_id?`
+- `category text`, `severity text`, `status text` (`investigating|needs_more_info|diagnosed|resolved|wont_fix|duplicate`)
+- `title text`, `symptom text`, `hypothesis text`, `root_cause text?`, `resolution_proposal text?`, `resolution_summary text?`
+- `route text?`, `edge_functions text[]`, `files_touched text[]`, `memory_refs text[]`
+- `tags text[]`, `metadata jsonb` (logs trechos, query results resumidos)
+- `created_at`, `updated_at`, `resolved_at?`
 
-### 2. RPC `list_workspace_hr_admins` retorna status
+RLS: apenas `is_admin()` (super admin) lê/escreve. Owners/HR não veem — é ferramenta interna.
 
-Migration ajusta a função pra incluir, por HR Admin:
-- `last_sign_in_at timestamptz` (do `auth.users`)
-- `invited_at timestamptz` (do `auth.users.invited_at`)
-- `status text` derivado: `'active'` se `last_sign_in_at IS NOT NULL`, senão `'pending'`.
+Helpers (security definer):
+- `support_ticket_open(payload jsonb) returns text` → retorna `ticket_number`.
+- `support_ticket_update(ticket_number text, patch jsonb) returns void`.
 
-Sem mudança de schema, só `CREATE OR REPLACE FUNCTION` mantendo `SECURITY DEFINER`.
+## Estrutura de arquivos do skill
 
-### 3. UI: `src/components/settings/AccessTab.tsx`
+```
+.agents/skills/rhitmo-support/
+├── SKILL.md                    # workflow + triggers + guardrails (este plano resumido)
+├── references/
+│   ├── investigation-playbook.md   # queries SQL prontas (logs por user_id, RLS check, etc.)
+│   ├── severity-matrix.md          # critérios objetivos low→critical
+│   └── known-pitfalls.md           # armadilhas recorrentes (RLS recursion, .catch em builder, etc.)
+└── scripts/
+    └── open-ticket.sh          # wrapper opcional via psql pra abrir ticket fora da skill
+```
 
-Para cada linha de HR Admin:
-- Badge **"Ativo"** (verde discreto) ou **"Convite pendente"** (âmbar).
-- Se `pending`: botão **"Reenviar convite"** (ícone `RotateCw`) que chama `invite-hr-admin` com `action: 'resend'`. Toast: "Novo link enviado para `<email>`. Peça pra abrir direto no app do e-mail (sem prévia)."
-- Mantém botão de remover.
-- Bloco de ajuda discreto no fim do card:
-  > Se o link não abrir (página em branco), o token provavelmente foi consumido pelo antivírus do e-mail. Reenvie o convite e peça pra abrir **direto do e-mail no celular**, ou peça pro convidado usar **"Esqueci minha senha"** em `rhitmo.co/auth` com o mesmo e-mail — ele já tem conta criada e cai no /hr.
+## Etapas de implementação (modo build)
 
-### 4. Microcopy do convite atual
+1. Migration `support_tickets` + 2 RPCs security definer + RLS super-admin-only.
+2. Criar `.agents/skills/rhitmo-support/SKILL.md` + 3 references + script.
+3. `skills--apply_draft` em `.agents/skills/rhitmo-support`.
+4. Smoke test: acionar a skill com um caso fake ("usuário X não consegue abrir convite") e validar que ticket é criado, diagnóstico segue o formato, e nada é mutado fora da tabela `support_tickets`.
 
-Atualiza o texto de ajuda do form de convite na `AccessTab` pra alinhar expectativa:
-
-> Convite expira em 24h. Se o link travar em branco, reenvie aqui ou peça pra usar "Esqueci minha senha" no /auth.
-
-### 5. Validação manual após deploy
-
-- Reenviar convite pro Guto pela UI.
-- Confirmar que `https://rhitmo.co/hr` continua na allowlist de Redirect URLs do Auth (Cloud → Auth → URL Configuration). Se não estiver, adicionar.
-- Caso o reenvio também falhe pra ele, instruir reset de senha como fallback imediato — a conta dele já existe.
-
-## Arquivos afetados
-
-- `supabase/functions/invite-hr-admin/index.ts` (modo resend + generateLink)
-- `supabase/migrations/<novo>.sql` (replace `list_workspace_hr_admins` com status)
-- `src/components/settings/AccessTab.tsx` (badge status, botão reenviar, microcopy)
-
-## Fora de escopo
-
-- Mudar pra fluxo de convite custom (sem `/auth/v1/verify`): tem valor, mas é projeto maior. Por ora resolvemos o caso real do Guto com reenvio + fallback de reset de senha.
+## Out of scope (deliberado)
+- UI pra visualizar tickets (fica pra depois — por enquanto consulta via `supabase--read_query`).
+- Notificação automática quando ticket resolvido (sem Slack/email — você acompanha pelo chat).
+- Auto-fix: skill **propõe**, você aprova, build mode aplica.
