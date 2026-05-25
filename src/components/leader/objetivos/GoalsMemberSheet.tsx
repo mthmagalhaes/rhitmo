@@ -1,6 +1,6 @@
 // Sheet lateral aberto ao clicar em uma linha de /lider/objetivos.
 // Reusa GoalsManager + NewGoalDialog sem alterações.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
@@ -22,12 +22,17 @@ interface Props {
 export function GoalsMemberSheet({ member, open, onOpenChange, initialNewGoal }: Props) {
   const [newOpen, setNewOpen] = useState(false);
 
-  // Sincroniza estado inicial sempre que o member ou o open mudam.
-  // (Não é Effect; basta acionar via prop quando o pai abrir.)
-  if (initialNewGoal && open && !newOpen) {
-    // setTimeout para evitar set durante render
-    setTimeout(() => setNewOpen(true), 0);
-  }
+  // Abre o dialog apenas na transição "sheet abriu" — evita loop de reabertura
+  // ao fechar o X do dialog enquanto o sheet ainda está aberto.
+  useEffect(() => {
+    if (open && initialNewGoal && member) {
+      setNewOpen(true);
+    }
+    if (!open) {
+      setNewOpen(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, member?.id]);
 
   return (
     <>
