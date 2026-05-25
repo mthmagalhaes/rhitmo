@@ -1,67 +1,90 @@
-# Plano: cortar Cloud usage sem risco para o projeto
+## Escopo
 
-## Verificação de risco (já feita)
-
-Antes de propor, chequei o que pode quebrar:
-
-1. **`grep` em todo `supabase/functions` e `src`** por uso de `cron.job_run_details` ou `net._http_response` → **zero ocorrências**. Nenhuma edge function, frontend ou RPC lê dessas tabelas. São logs operacionais puros do Postgres/pg_net.
-2. **`function_logs_retention_weekly`** já existente limpa `public.function_logs` (logs aplicativos da Rhitmo) — **não toca** em `cron.job_run_details` nem `net._http_response`. Por isso o disco encheu: ninguém estava limpando.
-3. **`process-email-queue`** roda cada 5s mas é "inteligente" — só dispara `http_post` se tem mensagem em `pgmq.q_auth_emails` ou `q_transactional_emails`. Mesmo assim, o `SELECT CASE...` grava 1 linha em `job_run_details` a cada 5s = ~17k/dia.
-4. **`event-dispatcher`** tem o truque do `-a` (no minuto) + `-b` (`pg_sleep(30)` + post) = efetivamente cada 30s. Aumentar pra 60s atrasa eventos em até 30s.
-
-**Conclusão**: limpeza dos 2 logs é zero-risco. Mudança de frequência tem trade-off pequeno e mensurável.
-
-## O que vai ser feito
-
-### 1. Limpeza única (operação de dados, via `insert tool`)
-- `DELETE FROM cron.job_run_details WHERE start_time < now() - interval '7 days'` (em lotes via loop pra não segurar lock) — preserva últimos 7 dias pra debug recente
-- `DELETE FROM net._http_response WHERE created < now() - interval '24 hours'`
-- Em seguida `VACUUM` nas duas tabelas pra devolver o espaço ao SO
-
-**Resultado esperado**: DB de 2.9 GB → ~50 MB.
-
-### 2. Retenção contínua (novo cron diário, via `insert tool`)
-Cron `db_logs_retention_daily` rodando 03:15 UTC:
-- Mantém 7 dias de `cron.job_run_details`
-- Mantém 24h de `net._http_response`
-
-Garante que o disco estabiliza e nunca volta a crescer.
-
-### 3. Reduzir frequência dos 2 crons mais barulhentos (via `insert tool`)
-- **`process-email-queue`**: 5s → **15s**. Para email transacional/auth, 15s é imperceptível. Reduz 3x as escritas em `job_run_details`.
-- **`check-pending-leader-presence-every-minute`**: cada minuto → **cada 5 min**. Já chequei: é um polling de presença de líderes pendentes, não tem SLA crítico.
-
-**Não vou mexer em**:
-- `event-dispatcher-30s-a/b` (mantém 30s — o sistema de eventos pode ter consumidores que dependem dessa janela; mudar exige análise separada)
-- Nenhum outro cron diário/horário (já são baixa frequência)
-
-## Trade-offs honestos
-
-| Mudança | Trade-off | Risco real |
-|---|---|---|
-| Apagar `job_run_details` >7d | Perde histórico de "esse cron rodou em 12/abril?" | Zero — nada lê isso |
-| Apagar `_http_response` >24h | Perde body de respostas async do pg_net | Zero — nenhuma função consulta |
-| `process-email-queue` 5s→15s | Email pode demorar +10s pra sair | Baixíssimo |
-| `check-pending-leader-presence` 1min→5min | Detecção de presença de líder pendente atrasa até 4min | Baixíssimo |
-
-## O que **NÃO** vou fazer
-
-- Não vou alterar schema de tabela de produto
-- Não vou tocar em `feedbacks`, `performance_reviews`, `context_evidence`, `meeting_transcripts`, `chat_threads` ou qualquer dado de usuário
-- Não vou desabilitar nenhum cron
-- Não vou mexer em RLS, edge functions de produto, ou autenticação
-
-## Como reverter se algo der errado
-
-- Crons: `SELECT cron.alter_job(...)` pra voltar frequência original (guardo as values atuais antes de mudar)
-- Logs deletados: **não revertíveis**, mas como ninguém os usa, não há impacto
-
-## Impacto financeiro estimado
-
-- DB de 2.9 GB → 50 MB elimina a maior fatia de disco do Cloud usage
-- Menos escritas/segundo reduz compute também
-- Esperado: voltar pra **dentro dos $25 grátis** com folga
+Três ajustes em `/lider/objetivos` e nos componentes de meta (`GoalsManager`, `NewGoalDialog`, `GoalCard`, `GoalsMemberSheet`).
 
 ---
 
-Posso seguir?
+### 1. Metas decrescentes (ex: Gross Dollar Retention)
+
+Hoje o progresso é calculado como `current / target`. Para uma meta de "reduzir churn" ou "atingir 87% de GDR" partindo de 91,2%, isso mostra >100% como se já estivesse pronta, quando na verdade ainda está distante do alvo.
+
+**Solução:**
+- Adicionar coluna `metric_baseline numeric` em `goals` (valor inicial registrado na criação).
+- Adicionar coluna `metric_direction text` com valores `'up'` (default) ou `'down'`, inferida automaticamente na criação: se `metric_current > metric_target` → `'down'`; senão `'up'`. Pode ser sobrescrita manualmente via toggle "Subir / Descer" no `NewGoalDialog`.
+- Novo cálculo em `GoalCard.getProgress()` e `useTeamGoalsSummary`:
+  - `up`:   `(current − baseline) / (target − baseline)`
+  - `down`: `(baseline − current) / (baseline − target)`
+  - Clampar entre 0 e 100.
+- Label do progresso passa a mostrar `baseline → current → target` para metas decrescentes.
+
+### 2. Modal "Nova Meta" não fecha ao clicar no X
+
+A causa está em `GoalsMemberSheet.tsx`:
+
+```tsx
+if (initialNewGoal && open && !newOpen) {
+  setTimeout(() => setNewOpen(true), 0);
+}
+```
+
+Esse bloco roda **a cada render**. Quando o usuário fecha o `NewGoalDialog` (X), `newOpen` vira `false`, o Sheet re-renderiza com `initialNewGoal` ainda `true` e a condição reabre o dialog imediatamente — sensação de "não fecha".
+
+**Solução:**
+- Substituir por um `useEffect` que dispare apenas na **transição** de abertura do sheet (deps: `open`, `member?.id`).
+- Após abrir o dialog uma vez, marcar `initialNewGoal` como consumido (callback `onInitialNewGoalConsumed` no pai, ou estado local `hasOpenedOnce`).
+- Garantir que o X do `NewGoalDialog` só feche o dialog, sem mexer no sheet.
+
+### 3. Meta para múltiplos liderados
+
+Permitir, na página `/lider/objetivos`, criar a mesma meta para vários liderados de uma vez (ex.: meta de equipe de CS aplicada a todos os CSMs).
+
+**Solução de UX:**
+- Na `GoalsCrossMemberTable`, adicionar coluna de seleção (checkbox por linha + "selecionar todos").
+- Quando ≥1 selecionado, surgir botão flutuante "Nova meta para N liderados" no topo (header da página).
+- Reutilizar `NewGoalDialog` com nova prop opcional `memberIds?: string[]` (quando presente, ignora `memberId` único). O submit faz `insert` em batch (`goals.insert(memberIds.map(id => ({...payload, member_id: id})))`).
+- Toast: "Meta criada para N liderados". Invalidar `['team-goals-summary']` e cada `['goals', memberId]`.
+- O fluxo de criação por liderado único (botão "Nova meta" na linha e dentro do sheet) continua intacto.
+
+> Nota: cada inserção continua sendo uma meta independente (uma linha por liderado). Isso preserva RLS, edição/atualização de progresso por pessoa e o cálculo de cobertura. Não criamos vínculo "meta compartilhada" — se o usuário quiser editar todas depois, edita uma a uma. (Posso evoluir para "meta-grupo" num próximo passo se necessário.)
+
+---
+
+## Mudanças técnicas
+
+**Migration (Supabase):**
+```sql
+ALTER TABLE public.goals
+  ADD COLUMN metric_baseline numeric,
+  ADD COLUMN metric_direction text NOT NULL DEFAULT 'up'
+    CHECK (metric_direction IN ('up','down'));
+```
+Backfill: `UPDATE goals SET metric_baseline = metric_current WHERE metric_baseline IS NULL;`
+RLS: nada muda (colunas seguem as policies da tabela `goals`).
+
+**Frontend:**
+- `src/components/NewGoalDialog.tsx`
+  - Aceita `memberIds?: string[]` (multi-insert).
+  - Calcula `metric_direction` automaticamente; permite override via toggle.
+  - Grava `metric_baseline = metric_current` na criação.
+- `src/components/GoalCard.tsx`
+  - `getProgress()` usa `metric_direction` + `metric_baseline`.
+  - Label adapta texto para metas decrescentes.
+- `src/hooks/useTeamGoalsSummary.ts`
+  - Lê novas colunas e usa a mesma fórmula no `percentComplete`.
+- `src/components/leader/objetivos/GoalsMemberSheet.tsx`
+  - Substituir o `if (...) setTimeout` por `useEffect` com guard `hasOpenedOnce`.
+- `src/components/leader/objetivos/GoalsCrossMemberTable.tsx`
+  - Coluna checkbox + estado `selectedIds`.
+  - Novo callback `onBulkNewGoal(ids: string[])`.
+- `src/pages/lider/Objetivos.tsx`
+  - Estado `bulkSelection`; abre `NewGoalDialog` direto (fora do sheet) quando criando em lote.
+
+**Sem alterações em:** RLS, edge functions, AI router, Slack, billing.
+
+---
+
+## Validação
+
+1. Criar meta "Atingir 87% GDR" com current=91,2 → barra mostra ~46% (não 100%).
+2. Abrir sheet → "Nova meta" → clicar X → dialog fecha, sheet permanece aberto. Clicar X do sheet → ambos fecham.
+3. Selecionar 3 liderados → "Nova meta para 3" → criar uma vez → aparecer 3 linhas distintas, uma por liderado.
