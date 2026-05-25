@@ -121,9 +121,15 @@ export const GoalCard = ({ goal, onEdit, onDelete, onComplete, onReactivate }: G
             {progress !== null && (
               <div className="mb-3">
                 <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                  <span>Progresso</span>
+                  <span className="flex items-center gap-1">
+                    Progresso
+                    {isDown && <span className="text-[10px] uppercase tracking-wide opacity-70">(meta decrescente)</span>}
+                  </span>
                   <span>
-                    {goal.metric_current || 0}{goal.metric_unit ? ` ${goal.metric_unit}` : ''} → {goal.metric_target}{goal.metric_unit ? ` ${goal.metric_unit}` : ''} ({progress}%)
+                    {goal.metric_baseline != null && Number(goal.metric_baseline) !== 0 && (
+                      <>{Number(goal.metric_baseline)}{goal.metric_unit ? ` ${goal.metric_unit}` : ''} → </>
+                    )}
+                    {goal.metric_current ?? 0}{goal.metric_unit ? ` ${goal.metric_unit}` : ''} → {goal.metric_target}{goal.metric_unit ? ` ${goal.metric_unit}` : ''} ({progress}%)
                   </span>
                 </div>
                 <Progress value={progress} className="h-2" />
