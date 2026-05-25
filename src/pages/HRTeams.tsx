@@ -103,7 +103,12 @@ const HRTeams = () => {
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight text-foreground">Times e Líderes</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Times e Líderes</h1>
+        <Button onClick={() => setNewTeamOpen(true)} className="rounded-xl gap-2">
+          <Plus className="h-4 w-4" /> Novo Time
+        </Button>
+      </div>
         {/* Search */}
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
