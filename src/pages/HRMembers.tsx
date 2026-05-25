@@ -243,6 +243,26 @@ export default function HRMembers() {
         memberId={selectedMemberId || ''}
         workspaceId={workspaceId}
       />
+      <NewMemberDialog
+        open={newMemberOpen}
+        onOpenChange={setNewMemberOpen}
+        workspaceId={workspaceId}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['hr-members', workspaceId] });
+          queryClient.invalidateQueries({ queryKey: ['hr-leaders', workspaceId] });
+        }}
+      />
+      <BulkOnboardDialog
+        open={bulkOpen}
+        onOpenChange={(open) => {
+          setBulkOpen(open);
+          if (!open) {
+            queryClient.invalidateQueries({ queryKey: ['hr-members', workspaceId] });
+            queryClient.invalidateQueries({ queryKey: ['hr-leaders', workspaceId] });
+          }
+        }}
+        workspaceNames={workspaceName ? [workspaceName] : []}
+      />
     </div>
   );
 }
