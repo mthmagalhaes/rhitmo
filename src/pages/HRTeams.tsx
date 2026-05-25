@@ -55,6 +55,8 @@ const HRTeams = () => {
     return <HRUpgradeGate title="Times e líderes exigem Enterprise" description="A prévia Pulse mostra a visão geral. Para cadastrar e acompanhar múltiplos líderes, faça upgrade para o plano Enterprise." />;
   }
   const [selectedLeader, setSelectedLeader] = useState<Leader | null>(null);
+  const [newTeamOpen, setNewTeamOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data: leadersData, isLoading } = useQuery({
     queryKey: ['hr-leaders', workspaceId],
