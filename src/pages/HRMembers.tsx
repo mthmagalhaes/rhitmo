@@ -82,11 +82,21 @@ export default function HRMembers() {
   return (
     <div className="space-y-6 p-4 md:p-8 max-w-6xl mx-auto">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Liderados</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Visão completa de todos os colaboradores
-        </p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Liderados</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Visão completa de todos os colaboradores
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" className="rounded-xl gap-2" onClick={() => setBulkOpen(true)}>
+            <Upload className="h-4 w-4" /> Importar em massa
+          </Button>
+          <Button className="rounded-xl gap-2" onClick={() => setNewMemberOpen(true)}>
+            <UserPlus className="h-4 w-4" /> Convidar liderado
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
