@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
+import { RouteSkeleton } from '@/components/RouteSkeleton';
 import { AppSidebar } from '@/components/AppSidebar';
 import { WorkspaceOnboarding } from '@/components/WorkspaceOnboarding';
 import { HRAdminWorkspaceOnboarding } from '@/components/HRAdminWorkspaceOnboarding';
@@ -155,8 +156,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           )}
           
-          <main className="flex-1">
-            {children}
+          <main className="flex-1" id="main-content">
+            <Suspense fallback={<RouteSkeleton />}>
+              {children}
+            </Suspense>
           </main>
         </SidebarInset>
       </div>
