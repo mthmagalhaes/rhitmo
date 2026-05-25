@@ -946,7 +946,9 @@ export type Database = {
           description: string | null
           id: string
           member_id: string
+          metric_baseline: number | null
           metric_current: number | null
+          metric_direction: string
           metric_target: number | null
           metric_unit: string | null
           start_date: string | null
@@ -961,7 +963,9 @@ export type Database = {
           description?: string | null
           id?: string
           member_id: string
+          metric_baseline?: number | null
           metric_current?: number | null
+          metric_direction?: string
           metric_target?: number | null
           metric_unit?: string | null
           start_date?: string | null
@@ -976,7 +980,9 @@ export type Database = {
           description?: string | null
           id?: string
           member_id?: string
+          metric_baseline?: number | null
           metric_current?: number | null
+          metric_direction?: string
           metric_target?: number | null
           metric_unit?: string | null
           start_date?: string | null
