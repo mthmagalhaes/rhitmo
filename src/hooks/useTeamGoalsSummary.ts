@@ -13,6 +13,8 @@ export interface GoalRow {
   target_date: string | null;
   metric_current: number | null;
   metric_target: number | null;
+  metric_baseline: number | null;
+  metric_direction: string | null;
   completed_at: string | null;
 }
 
