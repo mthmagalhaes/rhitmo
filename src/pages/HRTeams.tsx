@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { NewTeamDialog } from '@/components/NewTeamDialog';
+import { Plus } from 'lucide-react';
 import { useHRAdmin } from '@/components/HRAdminGuard';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -53,6 +55,8 @@ const HRTeams = () => {
     return <HRUpgradeGate title="Times e líderes exigem Enterprise" description="A prévia Pulse mostra a visão geral. Para cadastrar e acompanhar múltiplos líderes, faça upgrade para o plano Enterprise." />;
   }
   const [selectedLeader, setSelectedLeader] = useState<Leader | null>(null);
+  const [newTeamOpen, setNewTeamOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data: leadersData, isLoading } = useQuery({
     queryKey: ['hr-leaders', workspaceId],
@@ -99,7 +103,12 @@ const HRTeams = () => {
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight text-foreground">Times e Líderes</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Times e Líderes</h1>
+        <Button onClick={() => setNewTeamOpen(true)} className="rounded-xl gap-2">
+          <Plus className="h-4 w-4" /> Novo Time
+        </Button>
+      </div>
         {/* Search */}
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -244,6 +253,13 @@ const HRTeams = () => {
           </div>
         </SheetContent>
       </Sheet>
+
+      <NewTeamDialog
+        open={newTeamOpen}
+        onOpenChange={setNewTeamOpen}
+        workspaceId={workspaceId}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['hr-leaders', workspaceId] })}
+      />
     </div>
   );
 };
