@@ -7,20 +7,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Send, Trash2, Shield, UserPlus, Crown } from 'lucide-react';
+import { Loader2, Send, Trash2, Shield, UserPlus, Crown, RotateCw, Info } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface HRAdminRow {
   user_id: string;
   email: string | null;
   full_name: string | null;
+  invited_at: string | null;
+  last_sign_in_at: string | null;
+  status: 'pending' | 'active' | null;
 }
 
-/**
- * Aba "Acessos" em /lider/configuracoes — visível apenas para Owner ou HR Admin.
- * Permite listar, convidar e remover HR Admins do workspace atual sem precisar
- * passar pelo super admin.
- */
 export function AccessTab() {
   const { workspaceId, isHRAdmin, isWorkspaceOwner } = useAccount();
   const queryClient = useQueryClient();
@@ -28,6 +26,7 @@ export function AccessTab() {
   const [name, setName] = useState('');
   const [inviting, setInviting] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
 
   const canManage = isHRAdmin || isWorkspaceOwner;
 
@@ -77,7 +76,7 @@ export function AccessTab() {
     setInviting(true);
     try {
       const { data, error } = await supabase.functions.invoke('invite-hr-admin', {
-        body: { email: email.trim(), name: name.trim() || null, workspace_id: workspaceId },
+        body: { email: email.trim(), name: name.trim() || null, workspace_id: workspaceId, action: 'invite' },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -94,6 +93,27 @@ export function AccessTab() {
       toast.error('Falha ao convidar', { description: message });
     } finally {
       setInviting(false);
+    }
+  };
+
+  const handleResend = async (adminEmail: string, userId: string) => {
+    if (!workspaceId) return;
+    setResendingId(userId);
+    try {
+      const { data, error } = await supabase.functions.invoke('invite-hr-admin', {
+        body: { email: adminEmail, workspace_id: workspaceId, action: 'resend' },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`Novo convite enviado para ${adminEmail}`, {
+        description: 'Peça pra abrir direto no app de e-mail (sem prévia/preview) — o link é de uso único.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['hr-admins', workspaceId] });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erro desconhecido';
+      toast.error('Falha ao reenviar', { description: message });
+    } finally {
+      setResendingId(null);
     }
   };
 
@@ -194,7 +214,7 @@ export function AccessTab() {
               Enviar convite
             </Button>
             <p className="text-[11px] text-muted-foreground">
-              Se a pessoa já tem conta Rhitmo, é promovida na hora. Se não, recebe convite por e-mail com acesso ao painel /hr.
+              Convite expira em 24h. Se a pessoa já tem conta Rhitmo, é promovida na hora. Se o link travar em branco, reenvie aqui na lista abaixo.
             </p>
           </div>
 
@@ -212,32 +232,71 @@ export function AccessTab() {
               </p>
             ) : (
               <div className="space-y-2">
-                {admins.map((a) => (
-                  <div
-                    key={a.user_id}
-                    className="flex items-center justify-between rounded-xl border border-border/50 px-4 py-3"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-medium text-sm truncate">{a.full_name ?? a.email ?? a.user_id}</p>
-                      {a.email && <p className="text-xs text-muted-foreground truncate">{a.email}</p>}
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => handleRemove(a.user_id)}
-                      disabled={removingId === a.user_id}
+                {admins.map((a) => {
+                  const isPending = a.status === 'pending';
+                  return (
+                    <div
+                      key={a.user_id}
+                      className="flex items-center justify-between rounded-xl border border-border/50 px-4 py-3 gap-3"
                     >
-                      {removingId === a.user_id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-4 h-4" />
-                      )}
-                    </Button>
-                  </div>
-                ))}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium text-sm truncate">{a.full_name ?? a.email ?? a.user_id}</p>
+                          {isPending ? (
+                            <Badge variant="outline" className="text-[10px] border-amber-400/50 text-amber-700 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-300">
+                              Convite pendente
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px] border-emerald-400/50 text-emerald-700 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-300">
+                              Ativo
+                            </Badge>
+                          )}
+                        </div>
+                        {a.email && <p className="text-xs text-muted-foreground truncate">{a.email}</p>}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {isPending && a.email && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleResend(a.email!, a.user_id)}
+                            disabled={resendingId === a.user_id}
+                            className="rounded-xl gap-1.5 text-xs"
+                          >
+                            {resendingId === a.user_id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <RotateCw className="w-3.5 h-3.5" />
+                            )}
+                            Reenviar
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleRemove(a.user_id)}
+                          disabled={removingId === a.user_id}
+                        >
+                          {removingId === a.user_id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
+          </div>
+
+          <div className="rounded-xl bg-muted/40 border border-border/40 p-3 flex gap-2.5 text-[11px] text-muted-foreground">
+            <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+            <p className="leading-relaxed">
+              <strong className="text-foreground">Link de convite em branco?</strong> O antivírus do e-mail (Gmail/Outlook corporativo) costuma abrir o link em segundo plano e queimar o token de uso único. Use <strong>Reenviar</strong> acima e peça pra abrir direto do app de e-mail no celular. Como alternativa imediata, a pessoa pode usar <strong>"Esqueci minha senha"</strong> em <code className="text-foreground">rhitmo.co/auth</code> com o mesmo e-mail — a conta já existe e cai direto no painel /hr.
+            </p>
           </div>
         </CardContent>
       </Card>

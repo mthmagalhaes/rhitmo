@@ -3385,6 +3385,9 @@ export type Database = {
           added_at: string
           email: string
           full_name: string
+          invited_at: string
+          last_sign_in_at: string
+          status: string
           user_id: string
         }[]
       }
