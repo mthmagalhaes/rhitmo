@@ -1,42 +1,67 @@
-## Problema
+# Plano: cortar Cloud usage sem risco para o projeto
 
-Guto é HR Admin (não-Owner) → cai na sidebar `/hr/*`. As páginas `/hr/teams` e `/hr/members` são read-only hoje. Os dialogs de criação (`NewTeamDialog`, `NewMemberDialog`, `BulkOnboardDialog`) só existem em `/lider/pessoas` e no dropdown do WorkspaceSwitcher (esse último só "Convidar membros" individual). Resultado: HR Admin não consegue cadastrar time, líder ou liderado sem saber do botão "Ver como Líder".
+## Verificação de risco (já feita)
 
-## Solução
+Antes de propor, chequei o que pode quebrar:
 
-Reusar os dialogs existentes (já têm RLS/permissões corretas) plugando-os nos headers das páginas HR. Zero migration, zero mudança em backend.
+1. **`grep` em todo `supabase/functions` e `src`** por uso de `cron.job_run_details` ou `net._http_response` → **zero ocorrências**. Nenhuma edge function, frontend ou RPC lê dessas tabelas. São logs operacionais puros do Postgres/pg_net.
+2. **`function_logs_retention_weekly`** já existente limpa `public.function_logs` (logs aplicativos da Rhitmo) — **não toca** em `cron.job_run_details` nem `net._http_response`. Por isso o disco encheu: ninguém estava limpando.
+3. **`process-email-queue`** roda cada 5s mas é "inteligente" — só dispara `http_post` se tem mensagem em `pgmq.q_auth_emails` ou `q_transactional_emails`. Mesmo assim, o `SELECT CASE...` grava 1 linha em `job_run_details` a cada 5s = ~17k/dia.
+4. **`event-dispatcher`** tem o truque do `-a` (no minuto) + `-b` (`pg_sleep(30)` + post) = efetivamente cada 30s. Aumentar pra 60s atrasa eventos em até 30s.
 
-### 1. `/hr/teams` — botão "Novo Time"
-- Adicionar `<Button>` "Novo Time" no header, à direita do `<h1>`
-- Abrir `NewTeamDialog` (que já tem o fluxo wizard de 2 passos: nome + LeaderPicker)
-- `LeaderPicker` já permite escolher qualquer usuário do workspace como líder → resolve "cadastrar líder"
-- Após sucesso: invalidar `['hr-leaders', workspaceId]`
+**Conclusão**: limpeza dos 2 logs é zero-risco. Mudança de frequência tem trade-off pequeno e mensurável.
 
-### 2. `/hr/members` — botões "Convidar liderado" + "Importar em massa"
-- Header com 2 botões: "Convidar liderado" (abre `NewMemberDialog`) + "Importar em massa" (abre `BulkOnboardDialog`)
-- Memória `mem://features/people/member-admin-sheet-rhitmo-sync` confirma: bulk só HR/Owner — Guto é HR Admin, está ok
-- `NewMemberDialog` precisa do `workspaceId` (já disponível via `useHRAdmin`) e provavelmente um `leaderId` — checar assinatura; se obrigar líder, expor seletor de líder dentro do próprio dialog (já é o padrão dele em /lider/pessoas) ou passar `null` para HR Admin escolher
-- Após sucesso: invalidar `['hr-members', workspaceId]` e `['hr-leaders', workspaceId]`
+## O que vai ser feito
 
-### 3. Empty states
-- Quando `/hr/teams` retorna lista vazia: substituir o card "Nenhum líder cadastrado" por CTA primário "Criar primeiro time"
-- Quando `/hr/members` retorna lista vazia: CTA primário "Convidar primeiro liderado"
+### 1. Limpeza única (operação de dados, via `insert tool`)
+- `DELETE FROM cron.job_run_details WHERE start_time < now() - interval '7 days'` (em lotes via loop pra não segurar lock) — preserva últimos 7 dias pra debug recente
+- `DELETE FROM net._http_response WHERE created < now() - interval '24 hours'`
+- Em seguida `VACUUM` nas duas tabelas pra devolver o espaço ao SO
 
-### 4. Resposta imediata pro Guto (chat)
-Mensagem explicando o workaround atual (Ver como Líder → /lider/pessoas) enquanto a build sobe, e avisando que vai resolver na sidebar de HR.
+**Resultado esperado**: DB de 2.9 GB → ~50 MB.
 
-## Arquivos afetados
+### 2. Retenção contínua (novo cron diário, via `insert tool`)
+Cron `db_logs_retention_daily` rodando 03:15 UTC:
+- Mantém 7 dias de `cron.job_run_details`
+- Mantém 24h de `net._http_response`
 
-- `src/pages/HRTeams.tsx` — header com botão + dialog + invalidação
-- `src/pages/HRMembers.tsx` — header com 2 botões + dialogs + invalidação
-- (verificar assinatura de `NewMemberDialog` e `BulkOnboardDialog` antes de plugar)
+Garante que o disco estabiliza e nunca volta a crescer.
 
-## Fora de escopo
+### 3. Reduzir frequência dos 2 crons mais barulhentos (via `insert tool`)
+- **`process-email-queue`**: 5s → **15s**. Para email transacional/auth, 15s é imperceptível. Reduz 3x as escritas em `job_run_details`.
+- **`check-pending-leader-presence-every-minute`**: cada minuto → **cada 5 min**. Já chequei: é um polling de presença de líderes pendentes, não tem SLA crítico.
 
-- Não mexer em RLS / migrations (dialogs existentes já têm permissões corretas)
-- Não mover dialogs para WorkspaceSwitcher (memória já fixa que bulk fica em /admin + /lider/pessoas; agora ganha /hr/* também por simetria de persona)
-- Não tocar `/lider/pessoas` — segue como hub do líder
+**Não vou mexer em**:
+- `event-dispatcher-30s-a/b` (mantém 30s — o sistema de eventos pode ter consumidores que dependem dessa janela; mudar exige análise separada)
+- Nenhum outro cron diário/horário (já são baixa frequência)
 
-## Memória a atualizar
+## Trade-offs honestos
 
-- `mem://features/people/member-admin-sheet-rhitmo-sync` → adicionar nota "HR Admin também tem CTAs de criar time/liderado/bulk em /hr/teams e /hr/members"
+| Mudança | Trade-off | Risco real |
+|---|---|---|
+| Apagar `job_run_details` >7d | Perde histórico de "esse cron rodou em 12/abril?" | Zero — nada lê isso |
+| Apagar `_http_response` >24h | Perde body de respostas async do pg_net | Zero — nenhuma função consulta |
+| `process-email-queue` 5s→15s | Email pode demorar +10s pra sair | Baixíssimo |
+| `check-pending-leader-presence` 1min→5min | Detecção de presença de líder pendente atrasa até 4min | Baixíssimo |
+
+## O que **NÃO** vou fazer
+
+- Não vou alterar schema de tabela de produto
+- Não vou tocar em `feedbacks`, `performance_reviews`, `context_evidence`, `meeting_transcripts`, `chat_threads` ou qualquer dado de usuário
+- Não vou desabilitar nenhum cron
+- Não vou mexer em RLS, edge functions de produto, ou autenticação
+
+## Como reverter se algo der errado
+
+- Crons: `SELECT cron.alter_job(...)` pra voltar frequência original (guardo as values atuais antes de mudar)
+- Logs deletados: **não revertíveis**, mas como ninguém os usa, não há impacto
+
+## Impacto financeiro estimado
+
+- DB de 2.9 GB → 50 MB elimina a maior fatia de disco do Cloud usage
+- Menos escritas/segundo reduz compute também
+- Esperado: voltar pra **dentro dos $25 grátis** com folga
+
+---
+
+Posso seguir?
