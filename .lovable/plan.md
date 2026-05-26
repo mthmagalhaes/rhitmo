@@ -1,78 +1,44 @@
-# 7 ajustes em /lider/avaliacoes (Rhitmo)
+# Reintroduzir Editar/Excluir no feed do Diário de Bordo
 
-Escopo: só presentation. Zero migração, zero edge function nova, zero RLS, zero custo de IA/Cloud.
+## Problema
+Na versão atual de `/lider/diario` (feed cross-member), ao expandir uma nota só aparece o botão **"Abrir nota"**, que joga o usuário pra página clássica. As ações **Editar** e **Excluir** existiam antes (no `NoteCard` por liderado) mas não foram portadas pro novo `DiaryFeedItem`.
 
-## Arquivos tocados
+## Solução (apenas frontend, sem backend/migration)
 
-- `src/lib/rhitmoState.ts` — labels + tooltips
-- `src/components/leader/avaliacoes/ReviewsCrossMemberTable.tsx` — coluna, ordenação, datas humanizadas, chip-zero, opacity
-- `src/components/leader/avaliacoes/ReviewsCoverageInsight.tsx` — banner + bulk action
+Adicionar duas ações inline no rodapé da nota expandida em `src/components/leader/diario/DiaryFeedItem.tsx`, do lado esquerdo, mantendo "Abrir nota" à direita:
 
----
-
-## 1. Renomear chips + adicionar tooltip (`rhitmoState.ts` + tabela)
-
-- `Em construção` → **"Rascunho pendente"** (CTA real, vira âmbar com `animate-pulse` leve).
-- `Sem Rhitmo` → **"Sem histórico"**.
-- `Confirmado` mantém.
-- Adicionar `RHITMO_TOOLTIP` exportado e envolver o `<Badge>` da coluna com `Tooltip` do shadcn (delay padrão).
-- Renomear cabeçalho da coluna: **"Estado Rhitmo" → "Cadência"**.
-
-## 2. "Últ. Mensal" humanizado
-
-- Continuar mostrando `abr 2026`, somar sufixo `· há N mês(es)` calculado com a função `monthsAgo` já existente no arquivo.
-- Se `monthsAgo >= 2`, adicionar pílula discreta `atrasado` (vermelho `bg-destructive/10 text-destructive`).
-- `"—"` quando não houver data (igual hoje).
-
-## 3. Banner do topo alinhado ao mês corrente
-
-Em `ReviewsCoverageInsight.tsx`:
-
-- Texto atual: *"X de Y liderados estão sem o Acompanhamento Mensal deste mês."*
-- Novo: *"X de Y sem o Mensal de **mai/2026** (mês corrente)."* — usa `format(new Date(), 'MMM yyyy', { locale: ptBR })`.
-- Resolve a contradição percebida vs. a coluna "Últ. Mensal = abr 2026".
-
-## 4. Bulk action "Gerar Mensal para os N"
-
-No mesmo `ReviewsCoverageInsight.tsx`, quando `missing.length >= 3`:
-
-- Adicionar botão primário **"Gerar Mensal para os N"** ao lado da lista de chips.
-- Itera client-side `Promise.allSettled(missing.map(m => supabase.functions.invoke('generate-monthly-recap', { body: { member_id: m.id } })))`.
-- Toast agregado: *"N Mensais gerados, revise abaixo."* + invalidate `['team-monthly-recaps']` e `['monthly-recaps']`.
-- Loading state com `Loader2` no botão. Reaproveita a edge function já existente — sem mudança de backend.
-
-## 5. Esconder chip "Sem Formal 6m+" quando zero
-
-Na linha de filtros da tabela, só renderiza o chip se `counters.noFormal6m > 0`. Reduz ruído.
-
-## 6. Linhas "Em dia" mais leves
-
-Quando `nextAction === 'none'`, aplicar `opacity-60` no `<button>` da linha. O olho vai direto pras que pedem ação. Hover restaura opacity total.
-
-## 7. Ordenação inteligente por padrão
-
-Trocar o `sort((a,b) => a.name.localeCompare(...))` por prioridade composta:
-
-```text
-0. rhitmoState === 'B'                       (rascunho pendente — CTA mais quente)
-1. lastMonthlyAt nulo OU monthsAgo >= 2     (atrasados)
-2. !hasCurrentMonthRecap                     (mês corrente faltando)
-3. resto
-→ desempate: name.localeCompare(pt-BR)
+```
+[Editar]  [Excluir]                              [Abrir nota ↗]
 ```
 
-Resultado: líder abre a tela e o que pede ação já está no topo, sem precisar filtrar.
+### 1. Editar
+- Botão `variant="ghost"` com ícone `Pencil`.
+- Abre o **`NewNoteDialog`** existente em modo edição (ele já aceita `feedbackId` / nota existente — vou confirmar a prop ao implementar e, se faltar, passar via `editingFeedback`).
+- Pré-popular: título, conteúdo HTML, tags, visibility, occurred_at, member_id.
+- Ao salvar: invalidar `['diario-feedbacks']` e fechar.
 
----
+### 2. Excluir
+- Botão `variant="ghost"` com ícone `Trash2` em `text-destructive`.
+- Abre `AlertDialog` de confirmação ("Excluir esta anotação? Esta ação não pode ser desfeita.").
+- Confirma → `supabase.from('feedbacks').delete().eq('id', item.id)` (RLS já permite: `manager_id = auth.uid()`).
+- Toast de sucesso/erro + invalidar `['diario-feedbacks']` e `['team-members']`.
 
-## Validação (após implementar)
+### 3. Estado no componente
+- `DiaryFeedItem` ganha dois estados locais: `editOpen` e `deleteOpen`.
+- Como o `NewNoteDialog` provavelmente vive hoje só no nível da página, vou:
+  - **Opção A (preferida):** instanciar `NewNoteDialog` dentro do próprio `DiaryFeedItem` (já é um padrão em outros lugares do app) — mantém o componente autônomo.
+  - **Opção B:** subir o estado pra `Diario.tsx` via callback `onEdit(item)` se o `NewNoteDialog` não suportar bem múltiplas instâncias. Decidir na hora de implementar olhando o componente.
 
-1. Abrir `/lider/avaliacoes` → coluna se chama **Cadência**, chips renomeados, hover mostra tooltip.
-2. Banner cita o mês corrente em pt-BR (ex.: "mai 2026").
-3. Com 6 sem mensal, aparece botão **"Gerar Mensal para os 6"**; ao clicar, dispara em paralelo e toast confirma.
-4. Linhas "Em dia" aparecem mais claras; rascunhos pendentes ficam no topo.
-5. Coluna "Últ. Mensal" mostra `abr 2026 · há 1 mês`; se >2 meses, badge `atrasado`.
+### 4. Acessibilidade / UX
+- Botões com `aria-label` claros.
+- `e.stopPropagation()` para não colapsar a linha ao clicar.
+- Mantém `opacity-60`/hover atuais.
 
-## Risco
+## Arquivos tocados
+- `src/components/leader/diario/DiaryFeedItem.tsx` (principal)
+- `src/pages/lider/Diario.tsx` (apenas se precisar elevar estado — Opção B)
 
-Baixíssimo. Só UI da página `/lider/avaliacoes`. Bulk action reaproveita `generate-monthly-recap` existente (custo IA = mesmo que clicar 6 vezes manual). Nada quebra fluxo atual: todas as ações antigas continuam funcionando exatamente igual.
+## Fora de escopo
+- Sem mudanças em RLS, edge functions, schema.
+- Sem mexer no `NoteCard` clássico.
+- Sem mudar o layout colapsado da linha (só o rodapé do expandido).
