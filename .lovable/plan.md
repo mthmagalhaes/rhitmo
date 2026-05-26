@@ -1,140 +1,78 @@
-# Plano: deixar a navegação entre rotas mais rápida (sem mexer em Cloud/IA)
+# 7 ajustes em /lider/avaliacoes (Rhitmo)
 
-A lentidão que você sente não vem do banco — vem de **como o frontend troca de rota**. Hoje, cada clique no menu:
+Escopo: só presentation. Zero migração, zero edge function nova, zero RLS, zero custo de IA/Cloud.
 
-1. Desmonta a sidebar + layout (porque o `<Suspense>` global está no topo).
-2. Mostra um spinner de tela cheia.
-3. Baixa o chunk JS da página (sem pré-carregar nada).
-4. Remonta tudo.
+## Arquivos tocados
 
-Tudo abaixo é puramente frontend (Vite + React). **Zero custo de Cloud, zero edge function nova, zero migração de banco.**
-
----
-
-## 1. Manter a "casca" do app montada ao trocar de rota (maior ganho percebido)
-
-**Problema:** em `src/App.tsx`, o `<Suspense fallback={<RouteFallback />}>` envolve **todas** as `<Routes>`. Resultado: ao ir de `/lider/inicio` → `/lider/diario`, a sidebar pisca e some por ~300-800ms.
-
-**Mudança:**
-- Remover o `<Suspense>` global do `App.tsx`.
-- Criar um `<Suspense>` *interno* dentro de `AppLayout.tsx`, envolvendo apenas `<main>{children}</main>`.
-- Fallback vira um skeleton pequeno (header + 2 cards), não tela cheia.
-- Rotas públicas (Landing, Auth, Invite) ganham seu próprio `<Suspense>` local.
-
-**Efeito:** sidebar e header não piscam mais. A troca de rota fica visualmente instantânea, mesmo enquanto o chunk carrega.
+- `src/lib/rhitmoState.ts` — labels + tooltips
+- `src/components/leader/avaliacoes/ReviewsCrossMemberTable.tsx` — coluna, ordenação, datas humanizadas, chip-zero, opacity
+- `src/components/leader/avaliacoes/ReviewsCoverageInsight.tsx` — banner + bulk action
 
 ---
 
-## 2. Pré-carregar a próxima rota no hover/focus da sidebar
+## 1. Renomear chips + adicionar tooltip (`rhitmoState.ts` + tabela)
 
-**Como:** expor as funções `import()` dos `lazy(...)` (ex.: `const loadDiario = () => import("./pages/lider/Diario")`) e disparar essa função no `onMouseEnter` / `onFocus` dos itens do `AppSidebar`.
+- `Em construção` → **"Rascunho pendente"** (CTA real, vira âmbar com `animate-pulse` leve).
+- `Sem Rhitmo` → **"Sem histórico"**.
+- `Confirmado` mantém.
+- Adicionar `RHITMO_TOOLTIP` exportado e envolver o `<Badge>` da coluna com `Tooltip` do shadcn (delay padrão).
+- Renomear cabeçalho da coluna: **"Estado Rhitmo" → "Cadência"**.
 
-**Resultado:** quando o usuário clica, o JS já está no cache do browser. Praticamente elimina a espera do chunk.
+## 2. "Últ. Mensal" humanizado
 
-Custo: nenhum, é só `<link rel="modulepreload">` implícito do Vite.
+- Continuar mostrando `abr 2026`, somar sufixo `· há N mês(es)` calculado com a função `monthsAgo` já existente no arquivo.
+- Se `monthsAgo >= 2`, adicionar pílula discreta `atrasado` (vermelho `bg-destructive/10 text-destructive`).
+- `"—"` quando não houver data (igual hoje).
 
----
+## 3. Banner do topo alinhado ao mês corrente
 
-## 3. Code-splitting controlado no build (manualChunks)
+Em `ReviewsCoverageInsight.tsx`:
 
-`vite.config.ts` hoje não define `build.rollupOptions.output.manualChunks`. Bibliotecas pesadas (tiptap, pdfjs-dist, mammoth, marked, react-markdown, recharts, radix-ui, lucide-react) caem em chunks misturados, fazendo cada rota baixar mais do que precisa.
+- Texto atual: *"X de Y liderados estão sem o Acompanhamento Mensal deste mês."*
+- Novo: *"X de Y sem o Mensal de **mai/2026** (mês corrente)."* — usa `format(new Date(), 'MMM yyyy', { locale: ptBR })`.
+- Resolve a contradição percebida vs. a coluna "Últ. Mensal = abr 2026".
 
-**Mudança:** adicionar `manualChunks` agrupando:
-- `vendor-react` (react, react-dom, react-router)
-- `vendor-radix` (todos `@radix-ui/*`)
-- `vendor-tiptap` (`@tiptap/*`, `prosemirror-*`)
-- `vendor-pdf` (pdfjs-dist, mammoth) — usado só em upload
-- `vendor-charts` (recharts) — usado só em analytics
-- `vendor-markdown` (marked, react-markdown, dompurify)
+## 4. Bulk action "Gerar Mensal para os N"
 
-Cada rota baixa menos. Cache do navegador entre deploys melhora também (mudar uma página não invalida o vendor).
+No mesmo `ReviewsCoverageInsight.tsx`, quando `missing.length >= 3`:
 
----
+- Adicionar botão primário **"Gerar Mensal para os N"** ao lado da lista de chips.
+- Itera client-side `Promise.allSettled(missing.map(m => supabase.functions.invoke('generate-monthly-recap', { body: { member_id: m.id } })))`.
+- Toast agregado: *"N Mensais gerados, revise abaixo."* + invalidate `['team-monthly-recaps']` e `['monthly-recaps']`.
+- Loading state com `Loader2` no botão. Reaproveita a edge function já existente — sem mudança de backend.
 
-## 4. Lazy-load real das libs pesadas dentro dos componentes
+## 5. Esconder chip "Sem Formal 6m+" quando zero
 
-Hoje várias páginas importam estaticamente libs que só usam em ações pontuais:
+Na linha de filtros da tabela, só renderiza o chip se `counters.noFormal6m > 0`. Reduz ruído.
 
-- `pdfjs-dist` e `mammoth` (parsing de arquivo) → `await import(...)` dentro do handler de upload.
-- `lamejs` (gravação) → já é usado só no Recorder; conferir que não vaza para o bundle principal.
-- `marked` + `react-markdown` → carregar dinamicamente só onde renderiza markdown longo (mentor chat, recaps).
+## 6. Linhas "Em dia" mais leves
 
-Sem mudar nenhum comportamento — só move o `import` para dentro da função que usa.
+Quando `nextAction === 'none'`, aplicar `opacity-60` no `<button>` da linha. O olho vai direto pras que pedem ação. Hover restaura opacity total.
 
----
+## 7. Ordenação inteligente por padrão
 
-## 5. Quebrar `src/pages/lider/Pessoas.tsx` (1.271 linhas) em chunks por aba
-
-Hoje a página inteira (tabela, analytics, convites, faturamento) entra num único chunk. Cada aba vira `lazy(() => import('./pessoas/TabAnalytics'))` etc. Só a aba ativa baixa.
-
-Aplicar o mesmo padrão em `Mentor.tsx` (597 linhas) extraindo o painel de histórico / galeria de prompts.
-
----
-
-## 6. Pequenos ajustes no React Query
-
-O `QueryClient` já tem `staleTime: 60s` e `refetchOnWindowFocus: false` (bom). Dois ajustes finos:
-
-- Em `useRecaps.ts`, dois hooks usam `refetchOnMount: 'always'` — trocar para o default a menos que o usuário realmente precise de dados frescos a cada navegação (são recaps mensais).
-- Garantir `placeholderData: keepPreviousData` nas listas grandes (`useLeaderMembers`, `useTeamTimeline`) para que a troca de aba não mostre skeleton se já temos dados.
-
----
-
-## O que NÃO vai mudar
-
-- Nenhuma edge function nova ou alterada.
-- Nenhuma migração de banco, nenhum índice novo, nenhuma RLS tocada.
-- Nenhum modelo de IA novo, nenhum custo de gateway.
-- Slack/Recall/Stripe intocados.
-- Cron jobs intocados (a retenção de logs do plano anterior continua valendo).
-
----
-
-## Detalhes técnicos (resumo)
+Trocar o `sort((a,b) => a.name.localeCompare(...))` por prioridade composta:
 
 ```text
-App.tsx
-  - remover <Suspense> global
-  - rotas públicas: <Suspense> local
-  - rotas Leader/DirectReport: AppLayout cuida do Suspense interno
-
-AppLayout.tsx
-  <main>
-    <Suspense fallback={<RouteSkeleton />}>{children}</Suspense>
-  </main>
-
-AppSidebar.tsx
-  - cada NavLink recebe onMouseEnter/onFocus que dispara o import() da rota
-
-vite.config.ts
-  build: {
-    rollupOptions: {
-      output: { manualChunks: { ... } }
-    }
-  }
-
-Pessoas.tsx / Mentor.tsx
-  - extrair sub-componentes pesados para lazy()
-
-Hooks
-  - useRecaps: remover refetchOnMount:'always'
-  - useLeaderMembers/useTeamTimeline: placeholderData: keepPreviousData
+0. rhitmoState === 'B'                       (rascunho pendente — CTA mais quente)
+1. lastMonthlyAt nulo OU monthsAgo >= 2     (atrasados)
+2. !hasCurrentMonthRecap                     (mês corrente faltando)
+3. resto
+→ desempate: name.localeCompare(pt-BR)
 ```
+
+Resultado: líder abre a tela e o que pede ação já está no topo, sem precisar filtrar.
 
 ---
 
-## Validação
+## Validação (após implementar)
 
-1. Build local: comparar tamanho dos chunks antes/depois (`dist/assets/*.js`).
-2. Navegar `/lider/inicio` → `/lider/diario` → `/lider/pessoas`: sidebar não pisca, sem flash de tela em branco.
-3. Hover em "Diário" antes de clicar: chunk aparece como `(prefetch)` na aba Network.
-4. Abrir aba Analytics em `/lider/pessoas` pela primeira vez baixa só o chunk daquela aba.
+1. Abrir `/lider/avaliacoes` → coluna se chama **Cadência**, chips renomeados, hover mostra tooltip.
+2. Banner cita o mês corrente em pt-BR (ex.: "mai 2026").
+3. Com 6 sem mensal, aparece botão **"Gerar Mensal para os 6"**; ao clicar, dispara em paralelo e toast confirma.
+4. Linhas "Em dia" aparecem mais claras; rascunhos pendentes ficam no topo.
+5. Coluna "Últ. Mensal" mostra `abr 2026 · há 1 mês`; se >2 meses, badge `atrasado`.
 
 ## Risco
 
-Baixo. São mudanças de empacotamento e UX de loading. Se algo der ruim:
-- Reverter o `manualChunks` é trivial (1 commit).
-- O Suspense interno tem fallback funcional — pior caso, volta a aparecer um spinner pequeno em vez de tela cheia.
-- Nenhum dado de usuário, RLS ou histórico é tocado.
-
-Posso implementar em uma única rodada e validar com `npm run build` no fim.
+Baixíssimo. Só UI da página `/lider/avaliacoes`. Bulk action reaproveita `generate-monthly-recap` existente (custo IA = mesmo que clicar 6 vezes manual). Nada quebra fluxo atual: todas as ações antigas continuam funcionando exatamente igual.
