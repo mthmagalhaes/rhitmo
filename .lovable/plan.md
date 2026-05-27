@@ -1,100 +1,89 @@
-## Diagnóstico — por que o Guto trava nas 3 telas
+## Frente B — Setup da Empresa unificado
 
-Guto é **HR Admin** de Faster Ops (não Super Admin). Os 3 caminhos foram escritos como se "admin = super_admin" e quebram exatamente nesse ponto:
+Frente A já está no ar (Guto consegue convidar líderes, importar CSV e o `+ Criar novo time` foi removido do NewMemberDialog). Agora simplificamos o fluxo para que o Guto tenha **um lugar só** para montar a empresa inteira, mantendo o cadastro 1‑a‑1 como caminho principal e o CSV como alternativa.
 
-| Tela | Erro real | Causa raiz |
-|---|---|---|
-| **Novo Time → Convidar novo líder** | `Edge Function returned a non-2xx` | `admin-invite-user` chama `check_is_admin()` (só super_admin). HR Admin recebe `400 "Apenas administradores podem convidar usuários"`. |
-| **Novo Membro → + Criar novo time** | `new row violates RLS for table "teams"` | `NewMemberDialog` faz `INSERT teams` **sem `leader_user_id`**. A policy `teams_insert` exige `rls_check_workspace_access`, que para HR Admin **passa** — mas o trigger de consistência (`liderado-precisa-leader`, ver `mem://architecture/papeis-e-permissoes`) bloqueia time sem líder. Resultado: time sem líder não pode existir, e esse caminho nunca devia ter sido oferecido. |
-| **Importar em massa** | `Edge Function returned a non-2xx` | `bulk-onboard` também usa `check_is_admin()` → mesmo bloqueio do HR Admin. |
+### B1. RPC `setup_company_unit` (migration)
 
-## Plano — 2 frentes, na ordem
+`SECURITY DEFINER`, recebe:
+```text
+{ workspace_id, team: {id? | name}, leader: {user_id? | invite:{email,name}}, members: [{user_id? | invite:{email,name}}] }
+```
 
-### Frente A — Desbloquear o Guto hoje (bug fixes, ~30 min de trabalho)
+Numa transação:
+1. Valida caller = Super Admin OR Owner(workspace) OR HR Admin(workspace) — senão 403.
+2. Acha/cria o time **já com `leader_user_id`** (nunca passa pelo trigger `liderado-precisa-leader` com NULL).
+3. Para o líder e cada liderado: se `user_id` existir, vincula em `team_members`; se for `invite`, chama internamente a mesma lógica do `admin-invite-user` (cria auth user + profile + role + team_member) sem disparar e-mail (modo silencioso, igual ao bulk-onboard).
+4. Retorna `{ team_id, leader: {user_id,status}, members: [{email,user_id,status}] }`.
 
-**A1. `supabase/functions/admin-invite-user/index.ts`**
-Trocar o gate `check_is_admin()` por uma regra que aceite quem realmente tem direito de convidar:
-- Super Admin (mantém)
-- **OU** Owner do `workspace_id` recebido
-- **OU** HR Admin do `workspace_id` recebido (`is_hr_admin_of_workspace`)
-- **OU** Líder (sem `workspace_id`, fluxo legado de auto-provisionamento do "Meu time") — continua como hoje, mas só pode convidar um liderado/líder pra si.
+Disparo de convites continua manual via "Disparar convites" em Estrutura — mesma UX do bulk hoje.
 
-Validação extra: se `workspace_id` for passado, conferir que o caller pertence a ele antes de criar workspace/time auto-provisionados.
+### B2. Novo hub `/admin/setup` — `CompanySetupHub`
 
-**A2. `supabase/functions/bulk-onboard/index.ts`**
-Mesma lógica: aceitar Super Admin, Owner ou HR Admin do(s) workspace(s) listados no CSV. Já que o CSV traz `workspace` por linha, validar que o caller é HR/Owner de **todos** os workspaces presentes; se algum não bater, devolver erro claro indicando quais linhas.
-
-**A3. `src/components/NewMemberDialog.tsx`**
-Remover a opção `+ Criar novo time...` do Select. Se o workspace ainda não tem times, mostrar empty-state com CTA "Criar time primeiro" que abre `NewTeamDialog`. Isso elimina a categoria inteira de times-sem-líder e o erro de RLS.
-
-**A4. Mensagens de erro úteis**
-Hoje todos os erros das edges aparecem como "Edge Function returned a non-2xx". No `LeaderPicker.handleInvite`, `NewMemberDialog.handleSubmit` e `BulkOnboardDialog`, ler `error.context?.body` (Supabase Functions) e mostrar a mensagem do servidor. Custa nada e o Guto saberia exatamente o que aconteceu.
-
-### Frente B — Simplificar o fluxo de setup (UX unificada)
-
-Hoje existem 3 entradas paralelas com regras diferentes para HR Admin:
-- `/lider/pessoas` aba Times → **Novo Time**
-- `/lider/pessoas` aba Pessoas → **Convidar liderado** + **Importar em massa**
-- Sidebar workspace switcher → **Convidar membros** (NewMemberDialog individual)
-
-**B1. Novo componente `CompanySetupHub`** (rota `/admin/setup` ou aba "Setup" em `/admin`)
-
-Um único hub com 3 cards equivalentes, todos respeitando o mesmo modelo Time → Líder → Liderados:
+Header com contagem (`X times · Y líderes · Z liderados` do workspace ativo) e 3 cards equivalentes:
 
 ```text
 ┌─────────────────────────────────────────────────────────┐
 │  Setup da Empresa · Faster Ops                          │
 │  5 times · 3 líderes · 12 liderados                     │
-├─────────────────────────────────────────────────────────┤
-│  [ Cadastro 1 a 1 ]  [ Importar planilha ]  [ Convidar │
-│                                              líder ]    │
-└─────────────────────────────────────────────────────────┘
+├──────────────┬──────────────────┬───────────────────────┤
+│ Cadastro     │ Importar         │ Convidar              │
+│ 1 a 1        │ planilha         │ líder avulso          │
+│ (wizard)     │ (CSV existente)  │ (LeaderPicker)        │
+└──────────────┴──────────────────┴───────────────────────┘
 ```
 
-- **Cadastro 1 a 1** → wizard de 3 passos:
-  1. Time (escolher existente ou criar novo nome)
-  2. Líder (LeaderPicker — escolher existente OU convidar novo)
-  3. Liderados (lista inline, adicionar quantos quiser antes de confirmar)
-  Um único submit no fim cria tudo numa transação RPC, garantindo que time nunca existe sem líder.
+- **Cadastro 1 a 1** → wizard de 3 passos (padrão Pulse wizard, ver `mem://design/wizards/pulse-wizard-pattern`):
+  1. **Time** — escolher existente OU digitar nome novo
+  2. **Líder** — LeaderPicker (existente OU convidar novo: email+nome)
+  3. **Liderados** — lista inline, adicionar N (existente OU convite), remover, confirmar
+  Submit único → `setup_company_unit` RPC → toast "Time X criado com líder Y e N liderados" + CTA "Cadastrar outro time" ou "Disparar convites agora".
 
-- **Importar planilha** → mantém o CSV atual, mas com preview agrupado por time (não por linha): "Time Produtech: Douglas (líder), 4 liderados". Permite editar líder antes de confirmar.
+- **Importar planilha** → reaproveita `BulkOnboardDialog` existente, sem mudanças.
 
-- **Convidar líder** → atalho rápido pra quando o Guto só quer mandar 1 convite individual.
+- **Convidar líder avulso** → abre `LeaderPicker` em dialog, atalho para o caso "só quero mandar 1 convite".
 
-**B2. RPC `setup_company_unit`** (nova migration)
+### B3. Consolidação de entradas (HR Admin / Owner)
 
-Função SECURITY DEFINER que recebe `{workspace_id, team_name, leader: {user_id|invite}, members: [...]}` e faz tudo numa transação:
-- Cria/encontra time
-- Vincula líder (convida via `admin-invite-user` se necessário)
-- Cria team_members
-- Garante invariante "time tem líder" mesmo durante a criação
+- Sidebar workspace switcher (HR Admin/Owner): adicionar item **"Setup da Empresa"** apontando para `/admin/setup`, acima de "Convidar membros" (que vira atalho rápido individual). Líder comum não vê esse item — mantém só "Convidar membros".
+- Rota `/admin/setup` adicionada em `App.tsx`, gate por `isHRAdmin || isWorkspaceOwner || isSuperAdmin`.
+- `/lider/pessoas` continua intocado — é o fluxo do dia-a-dia do líder comum.
+- `NewTeamDialog` standalone permanece para o caso de líder comum no `/lider/pessoas` aba Times.
 
-Validação interna: caller tem que ser Owner OU HR Admin do workspace OU Super Admin.
+### Validação
 
-**B3. Consolidar entradas**
+1. Logar como `guto.biazzi@fstr.co`:
+   - `/admin/setup` aparece na sidebar, contagem do workspace correta.
+   - Wizard 1a1: criar time novo + convidar líder novo + 2 liderados novos → 1 RPC, todos criados, sem e-mail; "Disparar convites" funciona.
+   - Wizard 1a1: time existente + líder existente + 1 liderado novo → vincula sem duplicar.
+   - Tentar via DevTools chamar RPC com `workspace_id` alheio → 403.
+2. Logar como líder comum: `/admin/setup` redireciona (sem acesso); `/lider/pessoas` continua igual.
+3. CSV em `/admin/setup` → mesmo comportamento do `BulkOnboardDialog` atual.
 
-- `/lider/pessoas` aba Pessoas continua existindo pra fluxo do dia-a-dia do líder comum (não-HR).
-- HR Admin/Owner: sidebar passa a oferecer **"Setup da Empresa"** como entrada principal e mantém **"Convidar membros"** só pra fluxo individual rápido.
-- `NewTeamDialog` standalone permanece, mas pra HR Admin a primeira sugestão é abrir o hub.
+### Arquivos a criar/editar
 
-## Validação
+**Migration**
+- `supabase/migrations/<ts>_setup_company_unit.sql` — função `public.setup_company_unit(...)` SECURITY DEFINER + GRANT EXECUTE para `authenticated`.
 
-1. Logar como `guto.biazzi@fstr.co` (HR Admin de Faster Ops), executar:
-   - Convidar líder via LeaderPicker → 200, e-mail disparado
-   - Importar 5 linhas válidas → 200, todos criados
-   - Tentar criar time em workspace alheio → 403 com mensagem clara
-2. Logar como líder comum (não HR) → fluxo `/lider/pessoas` continua funcionando igual.
-3. Testes Deno em `admin-invite-user` e `bulk-onboard` cobrindo: super_admin OK, hr_admin OK, owner OK, líder comum sem workspace_id OK (fluxo legado), líder de outro workspace **bloqueado**.
+**Frontend (novos)**
+- `src/pages/admin/CompanySetup.tsx` — rota `/admin/setup`, layout do hub.
+- `src/components/admin/setup/SetupHubCards.tsx` — 3 cards.
+- `src/components/admin/setup/OneByOneWizard.tsx` — wizard 3 passos.
+- `src/components/admin/setup/StepTeam.tsx`, `StepLeader.tsx`, `StepMembers.tsx`.
 
-## Fora de escopo agora
+**Frontend (editar)**
+- `src/App.tsx` — rota `/admin/setup` com gate de role.
+- `src/components/layout/WorkspaceSwitcher.tsx` (ou equivalente — ver `mem://design/sidebar/workspace-switcher-actions`) — item "Setup da Empresa" para HR Admin/Owner.
 
-- Slack invites (já funcionam, fire-and-forget no NewMemberDialog).
-- Mudar schema de `teams` pra tornar `leader_user_id` NOT NULL — depende de migration de dados separada.
-- Redesenhar `/lider/pessoas` do líder comum (esse fluxo não tá quebrado).
+### Fora de escopo
 
-## Ordem de execução sugerida
+- Mudar `teams.leader_user_id` para NOT NULL (precisa migration de dados de times legados sem líder).
+- Mudar o fluxo do líder comum em `/lider/pessoas`.
+- Redesign do `BulkOnboardDialog` (reaproveitado como está).
+- Auto-disparo de e-mails no submit do wizard — segue padrão silencioso + "Disparar convites" manual.
 
-1. **Hoje:** A1 + A2 + A3 + A4 (desbloqueia Guto, deploy isolado, baixíssimo risco)
-2. **Depois:** B2 (RPC) → B1 (hub) → B3 (consolidação de entradas)
+### Ordem de execução
 
-Posso começar pela Frente A só, ou já emendar a B na sequência?
+1. Migration `setup_company_unit` (sozinha, esperar aprovação).
+2. Hub + wizard + cards (frontend).
+3. Rota + item de sidebar.
+4. Smoke test logado como Guto.
