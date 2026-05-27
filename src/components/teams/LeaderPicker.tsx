@@ -131,29 +131,41 @@ export function LeaderPicker({ workspaceId, value, onChange, disabled }: LeaderP
         body: { email, name, role: 'leader', workspace_id: workspaceId },
       });
       if (error) throw error;
-      const newUserId = (data as any)?.user_id as string | undefined;
+      const payload = data as { user_id?: string; already_existed?: boolean; was_confirmed?: boolean } | null;
+      const newUserId = payload?.user_id;
       if (!newUserId) {
         throw new Error('Convite enviado, mas o servidor não devolveu o ID do líder. Recarregue a página e tente novamente.');
       }
+
+      const pending = !(payload?.already_existed && payload?.was_confirmed);
 
       onChange({
         user_id: newUserId,
         name,
         email,
-        origin: 'invited',
-        pending: true,
+        origin: payload?.already_existed ? 'member' : 'invited',
+        pending,
       });
-      toast.success(`Convite enviado para ${email}. Já vinculei como líder do time.`);
+
+      if (payload?.already_existed && payload?.was_confirmed) {
+        toast.success(`${email} já tem conta na Rhitmo. Vinculei direto como líder.`);
+      } else if (payload?.already_existed) {
+        toast.success(`${email} já tinha convite pendente. Vinculei como líder do time.`);
+      } else {
+        toast.success(`Convite enviado para ${email}. Já vinculei como líder.`);
+      }
       setNewName('');
       setNewEmail('');
       setTab('existing');
     } catch (err: any) {
       console.error('invite leader error', err);
-      toast.error(err?.message ?? 'Erro ao convidar líder');
+      toast.error(humanizeInviteError(err));
     } finally {
       setInviting(false);
     }
   };
+
+  
 
   return (
     <div className="space-y-3">
