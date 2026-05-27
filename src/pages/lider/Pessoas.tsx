@@ -1094,7 +1094,52 @@ function InvitesTab({ onBulk, canBulk, workspaceId }: { onBulk: () => void; onAd
   }, [pending, suppressed]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {canBulk && leaderInvites && leaderInvites.length > 0 && (
+        <div className="space-y-2">
+          <div>
+            <h2 className="font-serif text-lg font-bold tracking-tight">Líderes convidados</h2>
+            <p className="text-sm text-muted-foreground">
+              {leaderInvites.length} líder(es) ainda não aceitou(aram) o convite. O time já está vinculado.
+            </p>
+          </div>
+          <div className="space-y-2">
+            {leaderInvites.map((t) => (
+              <Card key={t.id} className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
+                <CardContent className="flex items-center justify-between py-3 gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="rounded-xl bg-amber-500/10 p-2 shrink-0">
+                      <UserPlus className="w-4 h-4 text-amber-600" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate">
+                        {t.leader_name || t.leader_email || 'Líder convidado'}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {t.leader_email ?? 'sem e-mail'} · Time <span className="font-medium">{t.name}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[11px] text-muted-foreground hidden md:inline whitespace-nowrap">
+                      {formatDistanceToNow(new Date(t.created_at), { addSuffix: true, locale: ptBR })}
+                    </span>
+                    <Badge variant="outline" className="text-xs border-amber-500/40 text-amber-700 dark:text-amber-400">
+                      Aguardando aceite
+                    </Badge>
+                    <ResendLeaderInviteButton
+                      email={t.leader_email}
+                      name={t.leader_name}
+                      workspaceId={workspaceId}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="font-serif text-lg font-bold tracking-tight">Convites pendentes</h2>
@@ -1108,6 +1153,7 @@ function InvitesTab({ onBulk, canBulk, workspaceId }: { onBulk: () => void; onAd
           </Button>
         )}
       </div>
+
 
       {!pending?.length ? (
         <EmptyStateHero
