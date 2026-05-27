@@ -175,6 +175,12 @@ export default function HRMembers() {
 
                   {/* Badges + action */}
                   <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                    {member.invite_status && member.invite_status !== 'accepted' && (
+                      <Badge variant="outline" className="text-[11px] px-2 py-0.5 gap-1 bg-amber-50 text-amber-700 border-amber-200">
+                        <Calendar className="h-3 w-3" />
+                        Aguardando aceite
+                      </Badge>
+                    )}
                     <div className="flex items-center gap-1.5">
                       <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                       <Badge variant="outline" className={`text-[11px] px-2 py-0.5 ${badge.className}`}>
