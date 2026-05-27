@@ -1289,13 +1289,8 @@ export default function LiderPessoas() {
         />
       ),
     },
-    {
-      value: 'times',
-      label: 'Times',
-      icon: Building2,
-      hidden: !canManageTeams,
-      content: <TeamsTab onNewTeam={() => setNewTeamOpen(true)} workspaceId={workspaceId} />,
-    },
+    // Aba "Times" removida — gestão de times mora em /workspace/teams.
+
     {
       value: 'analytics',
       label: 'Analytics',
