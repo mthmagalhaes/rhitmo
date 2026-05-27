@@ -83,20 +83,58 @@ serve(async (req) => {
       : 'https://rhitmo.co/lider/inicio';
 
     // Convidar usuário via Admin API com plano atribuído
-    const { data: invitation, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-      data: { 
+    let invitation: { user: { id: string; email_confirmed_at?: string | null; last_sign_in_at?: string | null } | null } | null = null;
+    let alreadyExisted = false;
+    let wasConfirmed = false;
+
+    const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+      data: {
         full_name: name || null,
-        assigned_plan: plan 
+        assigned_plan: plan
       },
       redirectTo: redirectUrl
     });
 
     if (inviteError) {
-      console.error('❌ Invite error:', inviteError);
-      throw new Error(inviteError.message);
-    }
+      const isEmailExists =
+        (inviteError as any)?.code === 'email_exists' ||
+        (inviteError as any)?.status === 422 ||
+        /already.*registered|already.*exists/i.test(inviteError.message ?? '');
 
-    console.log('✅ Invite sent successfully with plan:', plan);
+      if (!isEmailExists) {
+        console.error('❌ Invite error:', inviteError);
+        throw new Error(inviteError.message);
+      }
+
+      // Email já existe — buscar o user existente e devolver 200 com flag.
+      console.log('ℹ️ Email already exists, resolving existing user:', email);
+      let foundUser: any = null;
+      let page = 1;
+      // listUsers é paginado; em workspaces grandes pode precisar de várias páginas.
+      // Limitamos a 10 páginas (10k usuários) por segurança.
+      while (page <= 10 && !foundUser) {
+        const { data: list, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
+        if (listErr) {
+          console.error('❌ Could not list users to resolve existing email:', listErr);
+          throw new Error('E-mail já cadastrado, mas não consegui localizar o usuário existente.');
+        }
+        foundUser = (list?.users ?? []).find((u) => (u.email ?? '').toLowerCase() === email.toLowerCase()) ?? null;
+        if ((list?.users?.length ?? 0) < 1000) break;
+        page += 1;
+      }
+
+      if (!foundUser) {
+        throw new Error('E-mail já cadastrado, mas não consegui localizar o usuário existente.');
+      }
+
+      invitation = { user: { id: foundUser.id, email_confirmed_at: foundUser.email_confirmed_at, last_sign_in_at: foundUser.last_sign_in_at } };
+      alreadyExisted = true;
+      wasConfirmed = !!(foundUser.email_confirmed_at || foundUser.last_sign_in_at);
+      console.log('✅ Resolved existing user:', foundUser.id, 'confirmed:', wasConfirmed);
+    } else {
+      invitation = inviteData as any;
+      console.log('✅ Invite sent successfully with plan:', plan);
+    }
 
     // Se HR Admin, adicionar ao workspace
     if (isHrAdmin && invitation?.user?.id) {
