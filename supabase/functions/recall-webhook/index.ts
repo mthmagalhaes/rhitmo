@@ -495,6 +495,14 @@ async function handleBotDone(
 
   console.log(`Found ${memberIds.length} member(s) for this meeting`);
 
+  // Resolve meeting title from upcoming_meetings (fallback to default)
+  const meetingTitle = await resolveMeetingTitle(
+    supabaseAdmin,
+    botRecord.user_id as string,
+    botRecord.meeting_id as string | null,
+    botRecord.meeting_url as string | null,
+  );
+
   // Save full transcript to feedbacks (no truncation — leaders/members read this directly)
   const createdIds: { memberId: string; transcriptId: string; feedbackId: string }[] = [];
 
@@ -505,6 +513,7 @@ async function handleBotDone(
       memberId,
       formattedTranscript,
       formattedTranscript,
+      meetingTitle,
     );
     if (created) {
       createdIds.push({ memberId, ...created });
@@ -520,7 +529,7 @@ async function handleBotDone(
         member_id: null,
         transcript: formattedTranscript,
         processing_status: "completed",
-        leader_notes: "Transcrição automática via Recall.ai",
+        leader_notes: `Transcrição automática via Recall.ai — ${meetingTitle}`,
       })
       .select("id")
       .single();
@@ -672,6 +681,7 @@ async function createTranscriptAndFeedback(
   memberId: string,
   fullTranscript: string,
   truncatedContent: string,
+  meetingTitle: string,
 ): Promise<{ transcriptId: string; feedbackId: string } | null> {
   const { data: mt, error: mtError } = await supabaseAdmin
     .from("meeting_transcripts")
@@ -680,7 +690,7 @@ async function createTranscriptAndFeedback(
       member_id: memberId,
       transcript: fullTranscript,
       processing_status: "completed",
-      leader_notes: "Transcrição automática via Recall.ai",
+      leader_notes: `Transcrição automática via Recall.ai — ${meetingTitle}`,
     })
     .select("id")
     .single();
@@ -698,7 +708,7 @@ async function createTranscriptAndFeedback(
       content: truncatedContent,
       type: "neutral",
       source: "recall_bot",
-      title: "Transcrição de reunião",
+      title: meetingTitle,
       meeting_transcript_id: mt.id,
       visibility: "private_leader",
     })
@@ -712,6 +722,51 @@ async function createTranscriptAndFeedback(
 
   console.log(`Created transcript ${mt.id} + feedback ${fb.id} for member ${memberId}`);
   return { transcriptId: mt.id, feedbackId: fb.id };
+}
+
+// ── Helper: Resolve meeting title from upcoming_meetings ───────────────────
+// Falls back to a generic default when title can't be found, so naming is
+// never broken even for ad-hoc bots that have no calendar event.
+async function resolveMeetingTitle(
+  supabaseAdmin: any,
+  userId: string,
+  meetingId: string | null,
+  meetingUrl: string | null,
+): Promise<string> {
+  const DEFAULT_TITLE = "Transcrição de reunião";
+  const sanitize = (raw: unknown): string | null => {
+    if (typeof raw !== "string") return null;
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+    return trimmed.length > 120 ? `${trimmed.slice(0, 117)}...` : trimmed;
+  };
+
+  try {
+    if (meetingId) {
+      const { data } = await supabaseAdmin
+        .from("upcoming_meetings")
+        .select("title")
+        .eq("id", meetingId)
+        .maybeSingle();
+      const t = sanitize(data?.title);
+      if (t) return t;
+    }
+    if (meetingUrl && userId) {
+      const { data } = await supabaseAdmin
+        .from("upcoming_meetings")
+        .select("title")
+        .eq("user_id", userId)
+        .eq("meet_link", meetingUrl)
+        .order("start_time", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const t = sanitize(data?.title);
+      if (t) return t;
+    }
+  } catch (e) {
+    console.error("[resolveMeetingTitle] lookup failed:", e);
+  }
+  return DEFAULT_TITLE;
 }
 
 // ── Helper: Trigger background analysis (non-blocking) ─────────────────────
