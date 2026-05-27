@@ -1024,7 +1024,7 @@ function InviteRowMenu({
   );
 }
 
-function InvitesTab({ onBulk, canBulk }: { onBulk: () => void; onAddSingle?: () => void; canBulk: boolean }) {
+function InvitesTab({ onBulk, canBulk, workspaceId }: { onBulk: () => void; onAddSingle?: () => void; canBulk: boolean; workspaceId: string | null }) {
   const inviteLabel = 'Convidar em massa';
   const emptyDescription = canBulk
     ? 'Convide vários liderados de uma vez colando uma lista de e-mails. Cada um recebe um convite personalizado.'
@@ -1041,6 +1041,27 @@ function InvitesTab({ onBulk, canBulk }: { onBulk: () => void; onAddSingle?: () 
         .limit(20);
       if (error) throw error;
       return data || [];
+    },
+  });
+
+  // Convites de líder feitos via NewTeamDialog → vivem em teams.leader_user_id
+  // apontando para usuários ainda não confirmados. RPC get_workspace_teams_overview
+  // já marca leader_invite_pending por time.
+  const { data: leaderInvites } = useQuery({
+    queryKey: ['leader-invites', workspaceId],
+    enabled: !!workspaceId && canBulk,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_workspace_teams_overview', { _workspace_id: workspaceId! });
+      if (error) throw error;
+      return ((data ?? []) as Array<{
+        id: string;
+        name: string;
+        leader_user_id: string | null;
+        leader_name: string | null;
+        leader_email: string | null;
+        leader_invite_pending: boolean;
+        created_at: string;
+      }>).filter((t) => t.leader_invite_pending && t.leader_user_id);
     },
   });
 
