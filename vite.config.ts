@@ -40,7 +40,11 @@ export default defineConfig(({ mode }) => ({
           if (id.includes('@radix-ui')) return 'vendor-radix';
           if (id.includes('@tiptap') || id.includes('prosemirror')) return 'vendor-tiptap';
           if (id.includes('pdfjs-dist') || id.includes('mammoth')) return 'vendor-pdf';
-          if (id.includes('recharts') || id.includes('d3-')) return 'vendor-charts';
+          // NOTE: do NOT group recharts/d3-* into a single vendor-charts chunk.
+          // Splitting d3 submodules across a manual chunk creates a TDZ
+          // ("Cannot access 'S' before initialization") that crashes the app
+          // on boot, since vendor chunks are modulepreloaded on every route.
+          // Let Rollup colocate them with the routes that import them.
           if (id.includes('react-markdown') || id.includes('marked') || id.includes('dompurify')) {
             return 'vendor-markdown';
           }
