@@ -59,11 +59,43 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: isAdmin } = await supabaseUser.rpc('check_is_admin');
-    if (!isAdmin) throw new Error('Apenas super admins podem importar em massa');
+    // Authorization: aceita Super Admin OU Owner/HR Admin de TODOS os
+    // workspaces listados no CSV. Líder comum não tem acesso ao bulk.
+    const { data: { user: caller }, error: callerErr } = await supabaseUser.auth.getUser();
+    if (callerErr || !caller) throw new Error('Não autorizado');
 
-    // Pre-fetch workspaces and teams for matching
-    const { data: allWorkspaces } = await supabaseAdmin.from('workspaces').select('id, name, owner_id, hr_admin_ids');
+    const { data: isSuperAdmin } = await supabaseUser.rpc('check_is_admin');
+
+    // Pre-fetch workspaces (usado em authorization e em matching).
+    const { data: allWorkspaces } = await supabaseAdmin
+      .from('workspaces')
+      .select('id, name, owner_id, hr_admin_ids');
+
+    if (!isSuperAdmin) {
+      const wsNames = Array.from(
+        new Set(users.map(u => (u.workspace || '').trim().toLowerCase()).filter(Boolean))
+      );
+      const wsByName = new Map(
+        (allWorkspaces || []).map((w: any) => [String(w.name || '').toLowerCase().trim(), w])
+      );
+      const unauthorized: string[] = [];
+      for (const wsName of wsNames) {
+        const ws = wsByName.get(wsName);
+        if (!ws) {
+          unauthorized.push(`"${wsName}" (não encontrado)`);
+          continue;
+        }
+        const isOwner = ws.owner_id === caller.id;
+        const isHr = Array.isArray(ws.hr_admin_ids) && ws.hr_admin_ids.includes(caller.id);
+        if (!isOwner && !isHr) unauthorized.push(`"${ws.name}"`);
+      }
+      if (unauthorized.length > 0) {
+        throw new Error(
+          `Você não é Owner nem HR Admin de: ${unauthorized.join(', ')}. Remova essas linhas do CSV ou peça acesso.`
+        );
+      }
+    }
+
     const { data: allTeams } = await supabaseAdmin.from('teams').select('id, name, workspace_id, leader_user_id');
 
     const wsMap = new Map((allWorkspaces || []).map(w => [w.name.toLowerCase().trim(), w]));

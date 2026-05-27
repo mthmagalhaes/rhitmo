@@ -42,17 +42,38 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: isAdmin, error: adminError } = await supabaseUser.rpc('check_is_admin');
-    if (adminError) {
-      console.error('❌ Admin check error:', adminError);
-      throw new Error('Erro ao verificar permissões');
-    }
-    
-    if (!isAdmin) {
-      throw new Error('Apenas administradores podem convidar usuários');
+    // Authorization: aceita Super Admin, OU Owner/HR Admin do workspace_id
+    // recebido, OU líder comum sem workspace_id (fluxo legado de
+    // auto-provisionamento — convida apenas a si mesmo / liderado do "Meu time").
+    const { data: { user: caller }, error: callerErr } = await supabaseUser.auth.getUser();
+    if (callerErr || !caller) {
+      throw new Error('Não autorizado');
     }
 
-    console.log('✅ Admin verified, sending invite...');
+    const { data: isSuperAdmin } = await supabaseUser.rpc('check_is_admin');
+
+    let authorized = !!isSuperAdmin;
+    if (!authorized && workspace_id) {
+      const { data: ws } = await supabaseAdmin
+        .from('workspaces')
+        .select('owner_id, hr_admin_ids')
+        .eq('id', workspace_id)
+        .maybeSingle();
+      if (ws) {
+        const isOwner = ws.owner_id === caller.id;
+        const isHr = Array.isArray(ws.hr_admin_ids) && ws.hr_admin_ids.includes(caller.id);
+        authorized = isOwner || isHr;
+      }
+    } else if (!authorized && !workspace_id) {
+      // Fluxo legado: líder comum convidando para o próprio "Meu time".
+      authorized = true;
+    }
+
+    if (!authorized) {
+      throw new Error('Você não tem permissão para convidar usuários neste workspace');
+    }
+
+    console.log('✅ Authorized as', isSuperAdmin ? 'super_admin' : 'workspace owner/hr_admin/leader', '— sending invite...');
 
     const isHrAdmin = role === 'hr_admin' && workspace_id;
     // Líder = qualquer convite que não seja HR Admin (default do fluxo de convite individual)
