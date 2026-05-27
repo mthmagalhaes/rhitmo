@@ -729,9 +729,19 @@ function TeamsTab({ onNewTeam, workspaceId }: { onNewTeam: () => void; workspace
                     </div>
                     <div className="min-w-0">
                       {t.leader_user_id ? (
-                        <span className="text-[13px] text-foreground truncate block">
-                          {t.leader_name ?? 'Líder vinculado'}
-                        </span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-[13px] text-foreground truncate">
+                            {t.leader_name ?? t.leader_email ?? 'Líder vinculado'}
+                          </span>
+                          {t.leader_invite_pending && (
+                            <Badge
+                              variant="outline"
+                              className="shrink-0 border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[10px] font-medium px-1.5 py-0"
+                            >
+                              Aguardando aceite
+                            </Badge>
+                          )}
+                        </div>
                       ) : (
                         <button
                           type="button"
