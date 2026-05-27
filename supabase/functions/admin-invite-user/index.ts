@@ -115,7 +115,12 @@ serve(async (req) => {
     // Se Líder: provisionar workspace + team automaticamente para que ele
     // já caia logado num app funcional (sem essa etapa, /lider/inicio fica vazio
     // e o usuário não tem como começar — foi o caso da Ana Campos / Fapeduca).
-    if (isLeader && invitation?.user?.id) {
+    // Só auto-provisiona workspace+time quando o líder está sendo convidado
+    // SEM workspace destino (fluxo legado de auto-cadastro). Quando workspace_id
+    // é informado (ex.: HR Admin convidando líder pro time existente), o líder
+    // entra naquele workspace — provisionar outro cria workspaces órfãos e quebra
+    // o status do time na aba Times.
+    if (isLeader && invitation?.user?.id && !workspace_id) {
       try {
         const workspaceName = (name && name.trim().length > 0)
           ? `Workspace de ${name.trim().split(' ')[0]}`

@@ -609,6 +609,8 @@ interface TeamRow {
   member_count: number;
   leader_user_id: string | null;
   leader_name: string | null;
+  leader_email: string | null;
+  leader_invite_pending: boolean;
 }
 
 function TeamsTab({ onNewTeam, workspaceId }: { onNewTeam: () => void; workspaceId: string | null }) {
@@ -621,40 +623,19 @@ function TeamsTab({ onNewTeam, workspaceId }: { onNewTeam: () => void; workspace
     queryKey: ['workspace-teams-detail', workspaceId],
     enabled: !!workspaceId,
     queryFn: async () => {
-      const { data: rows, error } = await supabase
-        .from('teams')
-        .select('id, name, created_at, leader_user_id')
-        .eq('workspace_id', workspaceId!)
-        .order('name');
+      const { data, error } = await supabase.rpc('get_workspace_teams_overview', {
+        _workspace_id: workspaceId!,
+      });
       if (error) throw error;
-
-      const list = (rows ?? []) as Array<{ id: string; name: string; created_at: string; leader_user_id: string | null }>;
-      const ids = list.map((t) => t.id);
-
-      const counts = new Map<string, number>();
-      const leaderNames = new Map<string, string>();
-      if (ids.length) {
-        const [{ data: members }, { data: leaderMembers }] = await Promise.all([
-          supabase.from('team_members').select('team_id').in('team_id', ids),
-          supabase
-            .from('team_members')
-            .select('linked_user_id, name, email')
-            .in('linked_user_id', list.map((t) => t.leader_user_id).filter(Boolean) as string[]),
-        ]);
-        members?.forEach((m: { team_id: string }) => {
-          counts.set(m.team_id, (counts.get(m.team_id) ?? 0) + 1);
-        });
-        (leaderMembers ?? []).forEach((m: any) => {
-          if (m.linked_user_id && !leaderNames.has(m.linked_user_id)) {
-            leaderNames.set(m.linked_user_id, m.name || m.email || '');
-          }
-        });
-      }
-
-      return list.map((t) => ({
-        ...t,
-        member_count: counts.get(t.id) ?? 0,
-        leader_name: t.leader_user_id ? (leaderNames.get(t.leader_user_id) ?? null) : null,
+      return ((data ?? []) as any[]).map((r) => ({
+        id: r.id,
+        name: r.name,
+        created_at: r.created_at,
+        leader_user_id: r.leader_user_id,
+        leader_name: r.leader_name,
+        leader_email: r.leader_email,
+        leader_invite_pending: !!r.leader_invite_pending,
+        member_count: Number(r.member_count ?? 0),
       }));
     },
   });
@@ -662,11 +643,12 @@ function TeamsTab({ onNewTeam, workspaceId }: { onNewTeam: () => void; workspace
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const base = q ? teams.filter((t) => t.name.toLowerCase().includes(q)) : teams;
-    // Sem líder primeiro — chamar atenção do HR Admin / Owner.
+    // Ordem: sem líder → líder pendente → líder ativo. Chama atenção pro que falta agir.
+    const weight = (t: TeamRow) => (!t.leader_user_id ? 0 : t.leader_invite_pending ? 1 : 2);
     return [...base].sort((a, b) => {
-      const aNo = a.leader_user_id ? 1 : 0;
-      const bNo = b.leader_user_id ? 1 : 0;
-      if (aNo !== bNo) return aNo - bNo;
+      const wa = weight(a);
+      const wb = weight(b);
+      if (wa !== wb) return wa - wb;
       return a.name.localeCompare(b.name);
     });
   }, [teams, query]);
@@ -747,9 +729,19 @@ function TeamsTab({ onNewTeam, workspaceId }: { onNewTeam: () => void; workspace
                     </div>
                     <div className="min-w-0">
                       {t.leader_user_id ? (
-                        <span className="text-[13px] text-foreground truncate block">
-                          {t.leader_name ?? 'Líder vinculado'}
-                        </span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-[13px] text-foreground truncate">
+                            {t.leader_name ?? t.leader_email ?? 'Líder vinculado'}
+                          </span>
+                          {t.leader_invite_pending && (
+                            <Badge
+                              variant="outline"
+                              className="shrink-0 border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[10px] font-medium px-1.5 py-0"
+                            >
+                              Aguardando aceite
+                            </Badge>
+                          )}
+                        </div>
                       ) : (
                         <button
                           type="button"

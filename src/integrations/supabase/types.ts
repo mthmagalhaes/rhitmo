@@ -3459,6 +3459,19 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_workspace_teams_overview: {
+        Args: { _workspace_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          leader_email: string
+          leader_invite_pending: boolean
+          leader_name: string
+          leader_user_id: string
+          member_count: number
+          name: string
+        }[]
+      }
       is_admin: { Args: never; Returns: boolean }
       is_admin_user: { Args: { _user_id: string }; Returns: boolean }
       is_hr_admin_of_workspace: {
