@@ -3247,6 +3247,7 @@ export type Database = {
           days_since_last_feedback: number
           has_skills_map: boolean
           has_sync: boolean
+          invite_status: string
           last_feedback_date: string
           leader_id: string
           leader_name: string
