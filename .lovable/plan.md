@@ -1,48 +1,77 @@
-# Diagnóstico
+Diagnóstico confirmado
 
-**Não é créditos do Lovable AI/Cloud.** Backend está saudável (`cloud_status: ACTIVE_HEALTHY`), todos os assets sobem HTTP 200, e o `index.html` em produção (`rhitmo.co`, `app-rhitmo.lovable.app`, `rhitmo.app`) já contém o bundle correto.
+A plataforma continua fora do ar por um erro de bundling frontend em produção, não por créditos, Lovable Cloud ou backend.
 
-A tela preta vem de **um erro JS fatal em produção** no chunk `vendor-charts`:
+Evidências:
+- `https://rhitmo.co/` responde HTTP 200 e entrega HTML/assets normalmente.
+- Lovable Cloud respondeu saudável.
+- O browser quebra antes do React montar com:
 
-```
-ReferenceError: Cannot access 'S' before initialization
-  at https://rhitmo.co/assets/vendor-charts-DnctLiPC.js:9:16763
-```
-
-Como esse chunk é precarregado via `<link rel="modulepreload">` em **todas** as páginas (inclusive `/`), ele é avaliado no boot — quando explode, o React não monta e o `<div id="root">` fica vazio → tela preta. Por isso o sintoma parece "site fora do ar" mesmo o backend estando OK.
-
-## Causa raiz
-
-`vite.config.ts` agrupa Recharts + todas as libs `d3-*` em um único chunk `vendor-charts`:
-
-```ts
-if (id.includes('recharts') || id.includes('d3-')) return 'vendor-charts';
+```text
+TypeError: Cannot read properties of undefined (reading 'createContext')
+at /assets/vendor-i18n-Bw1tAm9q.js:1:2691
 ```
 
-Esse padrão é conhecido por criar **TDZ (temporal dead zone) entre módulos `d3-*`** quando minificados — uma variável (minificada como `S`) é acessada antes de ser inicializada por ordem de avaliação imposta pelo split. Antes funcionava por sorte de ordering; mudou com a última build.
+Causa raiz
 
-## Fix proposto
+A implementação recente de performance adicionou `manualChunks` no `vite.config.ts`, separando bibliotecas em chunks como:
 
-Mudança cirúrgica em `vite.config.ts`:
+```text
+vendor-react
+vendor-i18n
+vendor-radix
+vendor-pdf
+vendor-markdown
+vendor-tiptap
+```
 
-1. **Remover a regra `vendor-charts`** do `manualChunks` (deixar o Rollup colocar Recharts/d3 nos chunks das rotas que os usam — `Analytics`, `HRAnalytics`, `HealthScoreHero`, `SkillRadar`, `chart.tsx`).
-2. Como bônus de performance: a home (`/`) e rotas leves deixam de baixar ~140KB de charts no boot.
+O fix anterior removeu apenas `vendor-charts`, que causava o erro `Cannot access 'S' before initialization`. Isso corrigiu uma parte, mas não a raiz estrutural: o split manual ainda está criando ciclos entre chunks.
 
-Nenhum código de aplicação muda. Sem migração, sem mudança de feature, sem risco de regressão de dados.
+O erro atual mostra um ciclo direto:
 
-## Validação pós-deploy
+```text
+vendor-i18n imports vendor-react
+vendor-react imports vendor-i18n
+```
 
-1. `curl -s https://rhitmo.co | grep vendor-charts` → não deve mais aparecer como modulepreload na home.
-2. Abrir `rhitmo.co` em browser limpo → home renderiza.
-3. Abrir `/lider/analytics` (que usa Recharts) → gráficos continuam funcionando.
-4. Console sem `ReferenceError: Cannot access 'S' before initialization`.
+Mais especificamente:
+- `vendor-i18n` começa com `import { r as I } from './vendor-react...'` e usa `I.createContext()`.
+- `vendor-react` começa com `import { g as wa } from './vendor-i18n...'`.
+- Quando o browser avalia os módulos, `vendor-i18n` tenta usar React antes de `vendor-react` estar inicializado, então `I` fica `undefined`.
 
-## Riscos
+Isso explica a tela vazia: o erro acontece no boot, antes de qualquer rota, auth, loader ou layout renderizar.
 
-- **Nenhum funcional**: charts só são importados nas mesmas rotas; vão pro chunk delas.
-- **Cache**: usuários com versão antiga em cache vão receber o novo hash automaticamente (Vite gera novo nome).
-- Não é preciso rollback nem ticket pra Lovable — é fix nosso, no `vite.config.ts`.
+Plano de correção emergencial
 
-## Próximo passo
+1. Reverter o `manualChunks` customizado em `vite.config.ts`
+   - Remover o bloco `build.rollupOptions.output.manualChunks` inteiro.
+   - Deixar Rollup/Vite decidir a divisão dos chunks automaticamente.
+   - Isso elimina os ciclos artificiais entre `vendor-react`, `vendor-i18n` e outros vendors React-dependent.
 
-Aprovar para eu aplicar o patch no `vite.config.ts` (em build mode) e você republica logo em seguida.
+2. Manter os ganhos seguros de performance já implementados
+   - Não mexer em `routeLoaders.ts`.
+   - Não mexer no prefetch da sidebar.
+   - Não mexer no `<Suspense>` local do `AppLayout`.
+   - Não mexer nos ajustes de React Query.
+
+3. Atualizar o diagnóstico em `.lovable/plan.md`
+   - Registrar que o problema não era só `vendor-charts`.
+   - Registrar a causa final: chunk splitting manual criando ciclos de inicialização entre vendors.
+
+4. Validação pós-publicação
+   - Abrir `https://rhitmo.co` em browser limpo.
+   - Console sem:
+     - `Cannot access 'S' before initialization`
+     - `Cannot read properties of undefined (reading 'createContext')`
+   - `curl https://rhitmo.co` deve mostrar novos hashes de assets.
+   - Home deve renderizar.
+   - Rotas autenticadas devem voltar a carregar normalmente.
+   - Testar pelo menos uma rota com gráficos depois, como `/lider/analytics`, para confirmar que Recharts continua funcionando.
+
+Risco
+
+Baixo e preferível para incidente de produção.
+
+Trade-off: pode haver uma pequena perda do cache fino por vendor chunk, mas a plataforma volta a montar. O prefetch e o Suspense local continuam melhorando a percepção de velocidade sem arriscar ciclos de módulo.
+
+Não vou aplicar sem sua confirmação. Ao aprovar, faço só esse rollback cirúrgico no `vite.config.ts` e atualizo o diagnóstico.
