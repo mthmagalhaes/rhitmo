@@ -113,32 +113,31 @@ export function OneByOneWizard({ open, onOpenChange, workspaceId, workspaceName 
       });
     });
 
-    const { data, error } = await safeFunctionInvoke<{ results: Array<{ email: string; status: string; message: string }>, summary: { ok: number; errors: number; skipped: number } }>(
-      'bulk-onboard',
-      { body: { users: rows } },
-    );
+    try {
+      const data = await safeFunctionInvoke<{ results: Array<{ email: string; status: string; message: string }>; summary: { ok: number; errors: number; skipped: number } }>(
+        'bulk-onboard',
+        { users: rows },
+      );
 
-    if (error || !data) {
+      const okCount = (data.results || []).filter(r => r.status === 'ok' || r.status === 'skipped').length;
+      const errorCount = (data.results || []).filter(r => r.status === 'error').length;
+      const errorMessages = (data.results || []).filter(r => r.status === 'error').map(r => `${r.email}: ${r.message}`);
+
+      setSubmitResult({ ok: okCount, errors: errorCount, messages: errorMessages });
+      setStep('done');
+      qc.invalidateQueries({ queryKey: ['setup-teams', workspaceId] });
+      qc.invalidateQueries({ queryKey: ['setup-stats', workspaceId] });
+      qc.invalidateQueries({ queryKey: ['admin-structure-teams'] });
+      qc.invalidateQueries({ queryKey: ['admin-structure-members'] });
+      qc.invalidateQueries({ queryKey: ['leader-members'] });
+      if (errorCount === 0) {
+        toast.success(`Time "${selectedTeamName}" cadastrado!`);
+      } else {
+        toast.warning(`${okCount} ok, ${errorCount} com erro`);
+      }
+    } catch (err: any) {
       setStep(3);
-      toast.error(error?.message || 'Falha ao salvar — tente novamente');
-      return;
-    }
-
-    const okCount = (data.results || []).filter(r => r.status === 'ok' || r.status === 'skipped').length;
-    const errorCount = (data.results || []).filter(r => r.status === 'error').length;
-    const errorMessages = (data.results || []).filter(r => r.status === 'error').map(r => `${r.email}: ${r.message}`);
-
-    setSubmitResult({ ok: okCount, errors: errorCount, messages: errorMessages });
-    setStep('done');
-    qc.invalidateQueries({ queryKey: ['setup-teams', workspaceId] });
-    qc.invalidateQueries({ queryKey: ['setup-stats', workspaceId] });
-    qc.invalidateQueries({ queryKey: ['admin-structure-teams'] });
-    qc.invalidateQueries({ queryKey: ['admin-structure-members'] });
-    qc.invalidateQueries({ queryKey: ['leader-members'] });
-    if (errorCount === 0) {
-      toast.success(`Time "${selectedTeamName}" cadastrado!`);
-    } else {
-      toast.warning(`${okCount} ok, ${errorCount} com erro`);
+      toast.error(err?.message || 'Falha ao salvar — tente novamente');
     }
   };
 
