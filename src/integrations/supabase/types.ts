@@ -3491,6 +3491,7 @@ export type Database = {
         Args: { _member_id: string; _user_id: string }
         Returns: boolean
       }
+      is_workspace_admin: { Args: { _workspace_id: string }; Returns: boolean }
       is_workspace_owner: {
         Args: { _member_id: string; _user_id: string }
         Returns: boolean

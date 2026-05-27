@@ -1,89 +1,121 @@
-# Nomear anotação com o título da reunião + roadmap p/ ingestão direta
+# Nova constituição de papéis — Owner deixa de ser "olho de Deus operacional"
 
-## 1. Título dinâmico da transcrição (entrega imediata)
+## Decisões aprovadas
 
-Hoje, ao final do `bot.done`, o `recall-webhook` cria `feedbacks` sempre com `title: "Transcrição de reunião"` (linha 701). O título da reunião do Google Calendar já existe em `upcoming_meetings.title`, e o bot guarda `meeting_id` apontando pra essa linha.
+1. **Owner NÃO vê notas privadas / 1:1s / feedbacks** de times que não lidera.
+2. **Owner como líder = líder normal** dos times onde está como `leader_user_id`. Sem override.
+3. **/lider/*** passa a mostrar **só times** onde `auth.uid() = teams.leader_user_id`.
+4. **/workspace** é a nova rota dedicada do Owner (e HR Admin) — estrutura, membros, billing, health agregado. SEM conteúdo qualitativo.
 
-### O que muda
+## Matriz final
 
-`supabase/functions/recall-webhook/index.ts`:
 
-1. **Buscar o título uma vez** logo após resolver `botRecord`, antes do loop de members:
-   - Se `botRecord.meeting_id` → `SELECT title, start_time FROM upcoming_meetings WHERE id = ...`
-   - Fallback: se não houver `meeting_id` (bot manual sem evento), tentar via `meeting_url` + `user_id`.
-   - Se nada for encontrado → manter "Transcrição de reunião" como default seguro.
+| Capacidade                                               | Owner           | HR Admin | Leader            | Liderado       |
+| -------------------------------------------------------- | --------------- | -------- | ----------------- | -------------- |
+| Estrutura (times, membros, líderes)                      | ✅ todos         | ✅ todos  | ❌ só seus         | ❌              |
+| Convidar/remover membro, criar/editar time, trocar líder | ✅               | ✅        | só p/ seus times  | ❌              |
+| Analytics agregado (engagement, risco, health)           | ✅               | ✅        | só do seu time    | ❌              |
+| Perfis Rhitmo Sync / DISC                                | ✅               | ✅        | só seus liderados | só o próprio   |
+| Formal reviews `shared_with_member=true`                 | ✅               | ✅        | só seus liderados | só os próprios |
+| **Feedbacks privados, notas, 1:1s, transcrições, PDIs**  | **❌** (mudança) | ❌        | ✅ seus            | ❌              |
+| Billing, transferir ownership, definir HR Admin          | ✅               | ❌        | ❌                 | ❌              |
 
-2. **Passar `meetingTitle` para `createTranscriptAndFeedback`** e usar como `title` do feedback:
-   - Formato: `"{meetingTitle}"` puro (ex.: `"1:1 Matheus & Guto"`).
-   - Truncar em ~120 chars para caber bem na UI do Diário/Contexto.
-   - Sanitizar `null`/string vazia → fallback default.
 
-3. **Manter `leader_notes: "Transcrição automática via Recall.ai"`** no `meeting_transcripts` (é metadado interno, não aparece como título na UI).
+Owner × HR Admin na prática viram quase iguais em conteúdo. A diferença é **administrativa**: Owner controla conta/billing/ownership; HR Admin opera RH (competências, convites).
 
-4. **Branch sem members matched** (linha 515-529): também usar o título resolvido no `leader_notes` opcional, mas sem criar feedback (comportamento atual preservado).
+---
 
-### Onde aparece o ganho
+## Parte 1 — Migração de RLS (backend)
 
-- `/lider/diario` (lista cronológica de notas) → cards mostram o nome real da reunião.
-- `/lider/contexto` (timeline cross-member) → idem.
-- `MemberProfileSheet` / `EvidenceDrawer` → idem.
+Remover o branch `is_workspace_owner_of_member(...)` das policies SELECT das seguintes tabelas (conteúdo qualitativo):
 
-Zero migração de banco — só edge function. Transcrições antigas mantêm o título genérico (aceitável; podemos rodar um backfill opcional depois se o Guto pedir).
+- `feedbacks`
+- `meeting_transcripts`
+- `goals`
+- `development_plans`
+- `development_items`
+- `performance_reviews`
+- `pulse_surveys` (manter HR e liderado, remover owner)
+- `peer_feedback_requests`
+- `review_peers`
+- `monthly_recaps`
+- `quarterly_recaps`
 
-## 2. Ingestão direta via Google Workspace (avaliação, sem build agora)
+Owner que também for `leader_user_id` continua acessando via `is_team_leader(...)` — sem perda. Owner que NÃO é leader do time perde acesso.
 
-Pergunta do Guto: "se tivermos acesso ao Admin do Google Workspace, dá pra puxar as transcrições direto do Google em vez do bot Rhitmo?"
+Manter `is_workspace_owner_of_member` apenas em queries **estruturais/analytics** (RPCs `get_hr_*`, `get_team_pulse`, etc.) onde já dá pra trocar por `is_hr_admin_of_workspace OR owner_id = effective_user_id()`.
 
-Resposta curta: **tecnicamente sim, mas com trade-offs importantes — não é um swap 1:1 do Recall.ai**.
+Criar função helper `is_workspace_admin(workspace_id)` que retorna `true` para Owner OU HR Admin daquele workspace — para uso nas RPCs estruturais (substitui dois checks separados).
 
-### Como funcionaria
+## Parte 2 — Frontend /lider/* (filtrar só times do líder)
 
-O Google Meet hoje gera transcrições nativas (recurso Gemini for Workspace / Meet Premium) e as salva como **Google Docs no Drive do organizador da reunião**. Existem duas APIs relevantes:
+Hoje hooks como `useLeaderMembers`, `useTeamTimeline`, e várias queries em `/lider/pessoas`, `/lider/diario`, `/lider/contexto`, `/lider/inicio` dependem de RLS para retornar "o que o usuário pode ver". Após a migração de RLS, o filtro fica **automático** — Owner que não lidera o time deixa de receber as linhas.
 
-- **Google Meet API v2** (`conferenceRecords.transcripts.list`) — lista transcrições de cada conferência encerrada, com link pro Doc + entries estruturadas (speaker, timestamps).
-- **Google Drive API** — busca o próprio Doc da transcrição quando precisamos do texto completo.
+Ajustes necessários:
 
-### Pré-requisitos do lado do cliente
+- `**/lider/inicio` `TeamPulseBento**` — recalcular `sem nota recente` apenas em liderados de times próprios (já vai vir filtrado, validar).
+- `**/lider/pessoas` aba Liderados** — não mostrar mais Lucas/Vinicius do Comercial pra você (são liderados do Caio).
+- `**/lider/pessoas` aba Times** — mostra só times onde `leader_user_id = você` (Owner perde visão dos times de outros líderes aqui — ele vai pra `/workspace`).
+- `**useLeaderMembers**` — confirmar que já usa `teams.leader_user_id = effective_user_id()`. Provavelmente sim; validar.
+- `**MemberMasterList**` das páginas master-detail (`/lider/1on1s`, `/lider/diario`, `/lider/objetivos`) — passa a listar só liderados de times seus.
 
-- Plano Google Workspace que **inclua transcrição nativa** (Business Standard+/Enterprise/Gemini add-on). Sem isso, o Google simplesmente não gera transcript e a API retorna vazio.
-- Transcrição precisa estar **ligada manualmente em cada reunião** (ou via política de Workspace forçando default on). Hoje é opt-in por reunião.
-- Idioma: cobertura nativa do Google é menor que Recall (PT-BR funciona, mas qualidade varia por sotaque).
-- **Admin consent OAuth** com escopos sensíveis: `meetings.space.readonly`, `drive.readonly`. Em workspaces estritos, isso passa por approval do admin (formulário OAuth verification do Google).
+Sem mudança no menu lateral — `/lider/*` continua sendo "espaço do líder".
 
-### Trade-offs Recall.ai vs. ingestão nativa
+## Parte 3 — Nova rota `/workspace` (visão Owner + HR Admin)
 
-| Critério | Recall.ai (hoje) | Google Meet API direto |
-|---|---|---|
-| Funciona em qualquer plano Workspace | ✅ | ❌ (precisa Gemini/Business Standard+) |
-| Funciona em Zoom / Teams | ✅ | ❌ (só Meet) |
-| Detecção automática de líder presente | ✅ (já implementado) | ❌ precisa re-implementar via participants endpoint |
-| Custo por reunião | ~$0.30 / 30min | $0 (cliente já paga Workspace) |
-| UX "bot na sala" | Aparece como participante | Invisível — vantagem real |
-| Latência até transcrição disponível | ~minutos após fim | Pode levar 10–60min após conferência |
-| Identificação de speakers | Mapeada via roster Recall | `participant.signedinUser` (precisa cross-ref com `team_members`) |
+Rota acessível para `isWorkspaceOwner OR isHRAdmin`. Layout master-detail com sidebar própria (similar a `/admin` hoje).
 
-### Recomendação
+Seções:
 
-**Não trocar o Recall.ai — somar como segundo conector opcional.** Faz sentido como upsell para clientes Enterprise que:
-- Não querem bot na sala por questão de compliance/UX;
-- Já pagam Gemini for Workspace;
-- Operam só no Meet.
+```text
+┌─────────────────────────────────────────────────────────┐
+│  Faster Ops  · você é Owner                             │
+├─────────────────────────────────────────────────────────┤
+│  [📊 Visão geral] [👥 Pessoas] [🏢 Times]               │
+│  [⚙️  HR Admins] [💳 Billing] [🔧 Configurações]        │
+└─────────────────────────────────────────────────────────┘
+```
 
-### Plano sugerido (fase 2, não agora)
+- **Visão geral**: KPIs estruturais (nº de líderes, nº de liderados ativos, cobertura de 1:1, % com PDI, health score por time). Reaproveita componentes de `HRDashboard`/`HRAnalytics`.
+- **Pessoas**: lista plana de todos do workspace com filtro por papel/time. Pode editar líder, time, remover, reenviar convite. Reaproveita `HRMembers` + `MemberProfileSheet` (que já tem ações de admin).
+- **Times**: tabela de todos os times do workspace, leader, nº de liderados. Pode criar/editar/deletar/trocar líder. Reaproveita aba "Times" atual de `/lider/pessoas` mas sem o filtro de "só meus times".
+- **HR Admins**: cards `HRAdminInviteCard` + `HRAdminsListCard` (já existem em `AdminWorkspaces`).
+- **Billing**: redirect/embed do `/billing` atual.
+- **Configurações**: nome do workspace, idioma padrão, integrações.
 
-1. Nova tabela `workspace_meet_integrations` (workspace_id, admin_email, refresh_token criptografado, scopes).
-2. Tela em `/lider/configuracoes` → seção "Google Meet (Workspace nativo)" para o admin autorizar.
-3. Cron `fetch-meet-transcripts` (a cada 15min) que:
-   - Lista `conferenceRecords` recentes;
-   - Para cada uma com transcript pronto, baixa o Doc, formata, e cria `meeting_transcripts` + `feedbacks` reutilizando a mesma pipeline do Recall (`findAllMeetingMembers`, etc.).
-4. Toggle por workspace: `meet_native | recall_bot | both` para decidir fonte preferida quando ambos estão disponíveis.
+Reaproveitamento massivo — quase nenhum componente novo. Maior trabalho é o roteamento e a separação visual.
 
-Quero validar antes de codar: faz sentido entregar **agora só o item 1** (título dinâmico) e deixar o item 2 num card de roadmap pra discutirmos depois com o Guto? Ou já topa investir nas duas frentes?
+A aba **"Times"** que hoje vive em `/lider/pessoas?tab=times` (mostrando "Times organizam seus liderados em grupos. Toda a operação fica embaixo de você (dono do workspace)") é movida pra `/workspace/times`. Em `/lider/pessoas` essa aba some (líder não cria/deleta times — Owner/HR faz).
 
-## Detalhes técnicos (parte 1)
+## Parte 4 — Atalho/Navegação
 
-- Arquivo único alterado: `supabase/functions/recall-webhook/index.ts`.
-- Nova função helper `resolveMeetingTitle(supabaseAdmin, botRecord)` retornando `string` (já com fallback).
-- Assinatura de `createTranscriptAndFeedback` ganha `meetingTitle: string`.
-- Sem alteração de schema, RLS, ou tipos do front.
-- Risco: nulo — fallback preserva comportamento atual.
+- **Workspace switcher** (sidebar topo): para Owner/HR Admin, adicionar item "Visão do workspace" → `/workspace`.
+- **Sidebar `/lider**`: nenhum item novo. Continua "operacional do líder".
+- `**/admin**` (super_admin [Matheus@rhitmo.co](mailto:Matheus@rhitmo.co)): inalterado — é outra dimensão (cross-workspace, suporte Rhitmo).
+
+## Parte 5 — Comunicação ao usuário
+
+Banner one-time no primeiro acesso pós-migração para quem é Owner:
+
+> "A constituição da Rhitmo mudou. Como Owner, você agora vê apenas as notas privadas dos times que lidera diretamente. Para visão completa do workspace (times, pessoas, billing, health), use a nova área **Visão do workspace**."
+
+## Detalhes técnicos
+
+- **Migração**: 1 migration SQL recriando as 11 policies SELECT (drop + recreate). Aprovada antes de tocar em código frontend.
+- `**is_workspace_admin(_workspace_id)**` nova função `SECURITY DEFINER LANGUAGE plpgsql` retornando `owner_id = effective_user_id() OR effective_user_id() = ANY(hr_admin_ids)`.
+- **AccountContext**: já expõe `isWorkspaceOwner` e `isHRAdmin`. Adicionar `isWorkspaceAdmin = isWorkspaceOwner || isHRAdmin` para gating da nova rota.
+- **Roteamento**: criar `src/pages/workspace/{Overview,People,Teams,HRAdmins,Settings}.tsx`. Layout em `src/components/workspace/WorkspaceLayout.tsx`.
+- **Memória**: atualizar `mem://architecture/papeis-e-permissoes` com nova matriz; criar `mem://architecture/workspace-route-and-owner-scope`.
+
+# Importante
+
+Não quebre nada que já esteja funcionando  
+Não perca o histórico de nenhum líder, liderado e Rh Admin.  
+
+
+## Fora do escopo (não fazer agora)
+
+- Override "acessar como Owner" com log de auditoria.
+- Permissões granulares (ex: HR só lê de certos times).
+- Transferência de ownership via UI (continua via DB/Admin).
+- Quebrar `/admin` (super_admin) em algo diferente.
