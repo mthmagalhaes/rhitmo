@@ -310,3 +310,15 @@ function originLabel(origin: LeaderCandidate['origin']): string {
     case 'invited': return 'Convidado';
   }
 }
+
+function humanizeInviteError(err: any): string {
+  const code = err?.context?.code || err?.code;
+  const msg = err?.message ?? '';
+  if (code === 'email_exists' || /already.*registered|already.*exists/i.test(msg)) {
+    return 'Esse e-mail já tem conta. Use "Escolher existente" para vincular como líder.';
+  }
+  if (/non-2xx/i.test(msg)) {
+    return 'Não consegui enviar o convite agora. Tenta de novo em alguns segundos.';
+  }
+  return msg || 'Erro ao convidar líder';
+}
