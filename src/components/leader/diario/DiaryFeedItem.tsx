@@ -226,7 +226,7 @@ export function DiaryFeedItem({ item }: DiaryFeedItemProps) {
 
       const { data, error } = await supabase
         .from('feedbacks')
-        .insert(insertPayload)
+        .insert([insertPayload])
         .select('id, member_id')
         .single();
 
