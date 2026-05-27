@@ -129,5 +129,6 @@ Antes de propor fix em qualquer dos domínios abaixo, leia a memória correspond
 - Slack DM / comandos → `features/slack/*`
 - Recall.ai / transcript → `features/recall-ai/*`
 - Review formal/360/peer → `features/performance/*`
+- Tela branca em produção / "app fora do ar" → `references/known-pitfalls.md` seção "Build / Bundling (Vite)" + playbook "Frontend boot quebrado"
 
 Mais armadilhas concretas em `references/known-pitfalls.md`.

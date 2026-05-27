@@ -112,3 +112,34 @@ FROM support_tickets
 WHERE created_at > now() - interval '30 days'
 ORDER BY created_at DESC LIMIT 20;
 ```
+
+## Frontend boot quebrado / tela branca em produção
+
+Quando o sintoma é "app fora do ar" mas backend está OK:
+
+1. **Confirmar que é frontend, não backend**:
+   ```bash
+   curl -sI https://rhitmo.co                       # espera 200
+   curl -s https://rhitmo.co | grep -oE 'assets/[^"]+\.js' | head -5
+   ```
+   Se HTML chega e backend está `ACTIVE_HEALTHY` (via `supabase--cloud_status`), é bundle.
+
+2. **Capturar o erro real** do browser (preview da sandbox ou prod):
+   - `code--read_console_logs` no preview, ou pedir ao Matheus screenshot do console em prod.
+   - Procurar especificamente: `Cannot access '\w+' before initialization` ou `Cannot read properties of undefined (reading 'createContext'...)`.
+
+3. **Identificar o chunk culpado**:
+   ```bash
+   # qual chunk lança o erro? (ex: vendor-i18n-XXXX.js:1:NNNN)
+   # baixar e ver o início — primeiros imports revelam o ciclo:
+   curl -s https://rhitmo.co/assets/vendor-i18n-XXXX.js | head -c 400
+   curl -s https://rhitmo.co/assets/vendor-react-YYYY.js | head -c 400
+   ```
+   Se cada um importa do outro → ciclo de chunk.
+
+4. **Fix imediato**: remover `manualChunks` em `vite.config.ts` (ver pitfall em `known-pitfalls.md`).
+
+5. **Validar pós-deploy**:
+   - `curl -s https://rhitmo.co | grep -oE 'assets/[^"]+\.js'` → novos hashes.
+   - Browser console limpo (só `Auth event: INITIAL_SESSION` é esperado).
+   - Smoke test em rota com lib pesada (`/lider/analytics` para Recharts, `/lider/diario` para Tiptap, `/lider/configuracoes` para Radix).
