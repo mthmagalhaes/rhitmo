@@ -210,12 +210,18 @@ const App = () => (
                 <AdminGuard>{Public(<Admin />)}</AdminGuard>
               } />
 
-              {/* HR */}
+              {/* Workspace admin (Owner OR HR Admin) — /hr/* kept for backwards-compat deep links */}
+              <Route path="/workspace" element={<Navigate to="/hr" replace />} />
+              <Route path="/workspace/teams" element={<Navigate to="/hr/teams" replace />} />
+              <Route path="/workspace/people" element={<Navigate to="/hr/members" replace />} />
+              <Route path="/workspace/analytics" element={<Navigate to="/hr/analytics" replace />} />
+              <Route path="/workspace/competencies" element={<Navigate to="/hr/competency-framework" replace />} />
               <Route path="/hr" element={<AppLayout><HRAdminGuard><HRDashboard /></HRAdminGuard></AppLayout>} />
               <Route path="/hr/teams" element={<AppLayout><HRAdminGuard><HRTeams /></HRAdminGuard></AppLayout>} />
               <Route path="/hr/analytics" element={<AppLayout><HRAdminGuard><HRAnalytics /></HRAdminGuard></AppLayout>} />
               <Route path="/hr/members" element={<AppLayout><HRAdminGuard><HRMembers /></HRAdminGuard></AppLayout>} />
               <Route path="/hr/competency-framework" element={<AppLayout><HRAdminGuard><CompetencyFramework /></HRAdminGuard></AppLayout>} />
+
 
               {/* Unsubscribe */}
               <Route path="/unsubscribe" element={Public(<Unsubscribe />)} />

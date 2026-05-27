@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ChevronsUpDown, Building2, Check, Settings, LifeBuoy, UserPlus, Sparkles } from 'lucide-react';
+import { ChevronsUpDown, Building2, Check, Settings, LifeBuoy, UserPlus, Sparkles, Shield } from 'lucide-react';
 import { useOnboardingTour } from '@/hooks/useOnboardingTour';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
@@ -121,6 +121,16 @@ export function WorkspaceSwitcher({ onOpenInvite }: WorkspaceSwitcherProps) {
           </>
         )}
 
+        {(isWorkspaceOwner || isHRAdmin) && (
+          <DropdownMenuItem
+            onSelect={() => navigate('/workspace')}
+            className="flex items-center gap-2"
+          >
+            <Shield className="h-3.5 w-3.5 text-muted-foreground" />
+            <span>Visão do workspace</span>
+          </DropdownMenuItem>
+        )}
+
         <DropdownMenuItem
           onSelect={() => navigate(settingsRoute)}
           className="flex items-center gap-2"
@@ -128,6 +138,7 @@ export function WorkspaceSwitcher({ onOpenInvite }: WorkspaceSwitcherProps) {
           <Settings className="h-3.5 w-3.5 text-muted-foreground" />
           <span>{t('sidebar.workspace.settings', 'Configurações')}</span>
         </DropdownMenuItem>
+
 
         <DropdownMenuItem
           onSelect={() => navigate(helpRoute)}
