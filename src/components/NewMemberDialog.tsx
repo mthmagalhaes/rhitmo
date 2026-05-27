@@ -97,19 +97,12 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
       return;
     }
 
-    if (!selectedTeamId && !isCreatingTeam) {
+    if (!selectedTeamId) {
       toast({
         title: "Time obrigatório",
-        description: "Selecione um time para o membro",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (isCreatingTeam && !newTeamName.trim()) {
-      toast({
-        title: "Nome do time obrigatório",
-        description: "Digite um nome para o novo time",
+        description: teams.length === 0
+          ? "Crie um time primeiro (com líder definido) antes de adicionar liderados."
+          : "Selecione um time para o membro",
         variant: "destructive"
       });
       return;
@@ -130,33 +123,7 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
         throw new Error('Usuário não autenticado');
       }
 
-      let teamId = selectedTeamId;
-
-      // Criar novo time se necessário
-      if (isCreatingTeam && newTeamName.trim()) {
-        const { data: newTeam, error: teamError } = await supabase
-          .from('teams')
-          .insert({ 
-            workspace_id: workspaceId, 
-            name: newTeamName.trim() 
-          })
-          .select()
-          .single();
-
-        if (teamError) {
-          // Verificar se é erro de duplicidade (UNIQUE constraint)
-          if (teamError.code === '23505') {
-            throw new Error('Já existe um time com este nome. Selecione-o na lista.');
-          }
-          throw teamError;
-        }
-        
-        if (!newTeam || !newTeam.id) {
-          throw new Error('Erro ao criar o time. Tente novamente.');
-        }
-        
-        teamId = newTeam.id;
-      }
+      const teamId = selectedTeamId;
 
       // Validação final: garantir que teamId é um UUID válido
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
