@@ -229,9 +229,15 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Convite enviado para ${email}`,
+        message: alreadyExisted
+          ? (wasConfirmed
+              ? `${email} já tem conta na Rhitmo. Vinculei direto.`
+              : `${email} já tinha convite pendente. Vinculei como líder.`)
+          : `Convite enviado para ${email}`,
         assigned_plan: plan,
         user_id: invitation?.user?.id ?? null,
+        already_existed: alreadyExisted,
+        was_confirmed: wasConfirmed,
       }),
       {
         status: 200,
