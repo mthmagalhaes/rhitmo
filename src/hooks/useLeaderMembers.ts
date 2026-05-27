@@ -34,18 +34,13 @@ export function useLeaderMembers(opts: UseLeaderMembersOptions = {}) {
   const { includeArchived = false } = opts;
   const { id: effectiveUserId } = useEffectiveUser();
 
+  // Leader-only scope: resolve workspace strictly via teams.leader_user_id.
+  // Owners that don't lead any team see an empty /lider/* view here —
+  // full workspace visibility lives in /workspace/* (HRAdminGuard).
   const { data: workspace, isLoading: workspaceLoading } = useQuery({
-    queryKey: ['workspace', effectiveUserId],
+    queryKey: ['workspace-leader-scope', effectiveUserId],
     queryFn: async () => {
       if (!effectiveUserId) return null;
-      const { data: owned } = await supabase
-        .from('workspaces')
-        .select('*')
-        .eq('owner_id', effectiveUserId)
-        .eq('is_active', true)
-        .limit(1)
-        .maybeSingle();
-      if (owned) return owned as Workspace;
       const { data: leaderTeam } = await supabase
         .from('teams')
         .select('workspace_id')
@@ -59,7 +54,7 @@ export function useLeaderMembers(opts: UseLeaderMembersOptions = {}) {
         .eq('id', leaderTeam.workspace_id)
         .eq('is_active', true)
         .maybeSingle();
-      return ws as Workspace | null;
+      return (ws as Workspace | null) ?? null;
     },
     enabled: !!effectiveUserId,
     staleTime: 30_000,
@@ -67,30 +62,33 @@ export function useLeaderMembers(opts: UseLeaderMembersOptions = {}) {
   });
 
   const { data: teams = [], isLoading: teamsLoading } = useQuery({
-    queryKey: ['teams', workspace?.id],
+    queryKey: ['teams-leader-scope', workspace?.id, effectiveUserId],
     queryFn: async () => {
-      if (!workspace) return [];
+      if (!workspace || !effectiveUserId) return [];
       const { data, error } = await supabase
         .from('teams')
         .select('*')
         .eq('workspace_id', workspace.id)
+        .eq('leader_user_id', effectiveUserId)
         .order('name');
       if (error) throw error;
       return (data ?? []) as Team[];
     },
-    enabled: !!workspace,
+    enabled: !!workspace && !!effectiveUserId,
     staleTime: 30_000,
     placeholderData: keepPreviousData,
   });
 
+  const teamIds = teams.map((t) => t.id);
+
   const { data: members = [], isLoading: membersLoading } = useQuery({
-    queryKey: ['team-members', workspace?.id, includeArchived],
+    queryKey: ['team-members-leader-scope', workspace?.id, teamIds, includeArchived],
     queryFn: async () => {
-      if (!workspace) return [];
+      if (!workspace || teamIds.length === 0) return [];
       let q = supabase
         .from('team_members')
-        .select('*, teams!inner(workspace_id)')
-        .eq('teams.workspace_id', workspace.id);
+        .select('*')
+        .in('team_id', teamIds);
       if (!includeArchived) {
         q = q.is('archived_at', null);
       }
@@ -115,10 +113,11 @@ export function useLeaderMembers(opts: UseLeaderMembersOptions = {}) {
         } as LeaderMemberRow;
       });
     },
-    enabled: !!workspace,
+    enabled: !!workspace && teamIds.length > 0,
     staleTime: 30_000,
     placeholderData: keepPreviousData,
   });
+
 
   return {
     workspace: workspace ?? null,
