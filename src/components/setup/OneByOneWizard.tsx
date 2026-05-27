@@ -170,7 +170,7 @@ export function OneByOneWizard({ open, onOpenChange, workspaceId, workspaceName 
                 <div className={cn(
                   'flex items-center gap-1.5 px-2 py-1 rounded-lg',
                   step === n ? 'bg-primary/10 text-primary font-semibold' :
-                  (typeof step === 'number' && step > n) ? 'text-foreground' : 'text-muted-foreground',
+                  (typeof step === 'number' && step > (n as number)) ? 'text-foreground' : 'text-muted-foreground',
                 )}>
                   <Icon className="h-3.5 w-3.5" /> {label}
                 </div>
