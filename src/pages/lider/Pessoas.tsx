@@ -1210,6 +1210,7 @@ export default function LiderPessoas() {
         <InvitesTab
           onBulk={() => setInviteOpen(true)}
           canBulk={canManageTeams}
+          workspaceId={workspaceId}
         />
       ),
     },
