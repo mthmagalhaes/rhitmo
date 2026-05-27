@@ -158,7 +158,7 @@ serve(async (req) => {
     // é informado (ex.: HR Admin convidando líder pro time existente), o líder
     // entra naquele workspace — provisionar outro cria workspaces órfãos e quebra
     // o status do time na aba Times.
-    if (isLeader && invitation?.user?.id && !workspace_id) {
+    if (isLeader && invitation?.user?.id && !workspace_id && !alreadyExisted) {
       try {
         const workspaceName = (name && name.trim().length > 0)
           ? `Workspace de ${name.trim().split(' ')[0]}`
