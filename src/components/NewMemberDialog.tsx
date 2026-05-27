@@ -368,33 +368,27 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
 
             <div className="space-y-2">
               <Label htmlFor="team">Time *</Label>
-              <Select 
-                value={isCreatingTeam ? '__create_new__' : selectedTeamId} 
-                onValueChange={handleTeamChange}
-                disabled={loading}
-              >
-                <SelectTrigger id="team">
-                  <SelectValue placeholder="Selecione um time" />
-                </SelectTrigger>
-                <SelectContent>
-                  {teams.map(team => (
-                    <SelectItem key={team.id} value={team.id}>
-                      {team.name}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="__create_new__">
-                    + Criar novo time...
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              
-              {isCreatingTeam && (
-                <Input
-                  placeholder="Nome do novo time (ex: Marketing)"
-                  value={newTeamName}
-                  onChange={(e) => setNewTeamName(e.target.value)}
+              {teams.length === 0 ? (
+                <div className="rounded-xl border border-amber-500/40 bg-amber-50 dark:bg-amber-950/20 px-3 py-2.5 text-xs text-amber-900 dark:text-amber-200">
+                  Nenhum time encontrado neste workspace. Crie um time (com líder definido) antes de adicionar liderados.
+                </div>
+              ) : (
+                <Select
+                  value={selectedTeamId}
+                  onValueChange={handleTeamChange}
                   disabled={loading}
-                />
+                >
+                  <SelectTrigger id="team">
+                    <SelectValue placeholder="Selecione um time" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teams.map(team => (
+                      <SelectItem key={team.id} value={team.id}>
+                        {team.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
             </div>
 
