@@ -851,6 +851,35 @@ function ResendInviteButton({ memberId, memberName, memberEmail, isBounced }: { 
   );
 }
 
+function ResendLeaderInviteButton({ email, name, workspaceId }: { email: string | null; name: string | null; workspaceId: string | null }) {
+  const [sending, setSending] = useState(false);
+  const handleResend = async () => {
+    if (!email) {
+      toast.error('Esse líder não tem e-mail cadastrado.');
+      return;
+    }
+    setSending(true);
+    try {
+      const { error } = await supabase.functions.invoke('admin-invite-user', {
+        body: { email, name: name ?? email, role: 'leader', workspace_id: workspaceId },
+      });
+      if (error) throw error;
+      toast.success(`Convite reenviado para ${email}.`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Falha ao reenviar: ${msg}`);
+    } finally {
+      setSending(false);
+    }
+  };
+  return (
+    <Button size="sm" variant="outline" className="rounded-xl gap-2" onClick={handleResend} disabled={sending}>
+      {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+      Reenviar
+    </Button>
+  );
+}
+
 // (EditEmailButton legado removido — substituído pelo InviteRowMenu)
 
 // Kebab menu para cada convite pendente.
@@ -1024,7 +1053,7 @@ function InviteRowMenu({
   );
 }
 
-function InvitesTab({ onBulk, canBulk }: { onBulk: () => void; onAddSingle?: () => void; canBulk: boolean }) {
+function InvitesTab({ onBulk, canBulk, workspaceId }: { onBulk: () => void; onAddSingle?: () => void; canBulk: boolean; workspaceId: string | null }) {
   const inviteLabel = 'Convidar em massa';
   const emptyDescription = canBulk
     ? 'Convide vários liderados de uma vez colando uma lista de e-mails. Cada um recebe um convite personalizado.'
@@ -1041,6 +1070,27 @@ function InvitesTab({ onBulk, canBulk }: { onBulk: () => void; onAddSingle?: () 
         .limit(20);
       if (error) throw error;
       return data || [];
+    },
+  });
+
+  // Convites de líder feitos via NewTeamDialog → vivem em teams.leader_user_id
+  // apontando para usuários ainda não confirmados. RPC get_workspace_teams_overview
+  // já marca leader_invite_pending por time.
+  const { data: leaderInvites } = useQuery({
+    queryKey: ['leader-invites', workspaceId],
+    enabled: !!workspaceId && canBulk,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_workspace_teams_overview', { _workspace_id: workspaceId! });
+      if (error) throw error;
+      return ((data ?? []) as Array<{
+        id: string;
+        name: string;
+        leader_user_id: string | null;
+        leader_name: string | null;
+        leader_email: string | null;
+        leader_invite_pending: boolean;
+        created_at: string;
+      }>).filter((t) => t.leader_invite_pending && t.leader_user_id);
     },
   });
 
@@ -1073,7 +1123,52 @@ function InvitesTab({ onBulk, canBulk }: { onBulk: () => void; onAddSingle?: () 
   }, [pending, suppressed]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {canBulk && leaderInvites && leaderInvites.length > 0 && (
+        <div className="space-y-2">
+          <div>
+            <h2 className="font-serif text-lg font-bold tracking-tight">Líderes convidados</h2>
+            <p className="text-sm text-muted-foreground">
+              {leaderInvites.length} líder(es) ainda não aceitou(aram) o convite. O time já está vinculado.
+            </p>
+          </div>
+          <div className="space-y-2">
+            {leaderInvites.map((t) => (
+              <Card key={t.id} className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
+                <CardContent className="flex items-center justify-between py-3 gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="rounded-xl bg-amber-500/10 p-2 shrink-0">
+                      <UserPlus className="w-4 h-4 text-amber-600" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate">
+                        {t.leader_name || t.leader_email || 'Líder convidado'}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {t.leader_email ?? 'sem e-mail'} · Time <span className="font-medium">{t.name}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[11px] text-muted-foreground hidden md:inline whitespace-nowrap">
+                      {formatDistanceToNow(new Date(t.created_at), { addSuffix: true, locale: ptBR })}
+                    </span>
+                    <Badge variant="outline" className="text-xs border-amber-500/40 text-amber-700 dark:text-amber-400">
+                      Aguardando aceite
+                    </Badge>
+                    <ResendLeaderInviteButton
+                      email={t.leader_email}
+                      name={t.leader_name}
+                      workspaceId={workspaceId}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="font-serif text-lg font-bold tracking-tight">Convites pendentes</h2>
@@ -1087,6 +1182,7 @@ function InvitesTab({ onBulk, canBulk }: { onBulk: () => void; onAddSingle?: () 
           </Button>
         )}
       </div>
+
 
       {!pending?.length ? (
         <EmptyStateHero
@@ -1189,6 +1285,7 @@ export default function LiderPessoas() {
         <InvitesTab
           onBulk={() => setInviteOpen(true)}
           canBulk={canManageTeams}
+          workspaceId={workspaceId}
         />
       ),
     },

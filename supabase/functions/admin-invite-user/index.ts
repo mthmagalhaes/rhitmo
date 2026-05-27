@@ -83,20 +83,58 @@ serve(async (req) => {
       : 'https://rhitmo.co/lider/inicio';
 
     // Convidar usuário via Admin API com plano atribuído
-    const { data: invitation, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-      data: { 
+    let invitation: { user: { id: string; email_confirmed_at?: string | null; last_sign_in_at?: string | null } | null } | null = null;
+    let alreadyExisted = false;
+    let wasConfirmed = false;
+
+    const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+      data: {
         full_name: name || null,
-        assigned_plan: plan 
+        assigned_plan: plan
       },
       redirectTo: redirectUrl
     });
 
     if (inviteError) {
-      console.error('❌ Invite error:', inviteError);
-      throw new Error(inviteError.message);
-    }
+      const isEmailExists =
+        (inviteError as any)?.code === 'email_exists' ||
+        (inviteError as any)?.status === 422 ||
+        /already.*registered|already.*exists/i.test(inviteError.message ?? '');
 
-    console.log('✅ Invite sent successfully with plan:', plan);
+      if (!isEmailExists) {
+        console.error('❌ Invite error:', inviteError);
+        throw new Error(inviteError.message);
+      }
+
+      // Email já existe — buscar o user existente e devolver 200 com flag.
+      console.log('ℹ️ Email already exists, resolving existing user:', email);
+      let foundUser: any = null;
+      let page = 1;
+      // listUsers é paginado; em workspaces grandes pode precisar de várias páginas.
+      // Limitamos a 10 páginas (10k usuários) por segurança.
+      while (page <= 10 && !foundUser) {
+        const { data: list, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
+        if (listErr) {
+          console.error('❌ Could not list users to resolve existing email:', listErr);
+          throw new Error('E-mail já cadastrado, mas não consegui localizar o usuário existente.');
+        }
+        foundUser = (list?.users ?? []).find((u) => (u.email ?? '').toLowerCase() === email.toLowerCase()) ?? null;
+        if ((list?.users?.length ?? 0) < 1000) break;
+        page += 1;
+      }
+
+      if (!foundUser) {
+        throw new Error('E-mail já cadastrado, mas não consegui localizar o usuário existente.');
+      }
+
+      invitation = { user: { id: foundUser.id, email_confirmed_at: foundUser.email_confirmed_at, last_sign_in_at: foundUser.last_sign_in_at } };
+      alreadyExisted = true;
+      wasConfirmed = !!(foundUser.email_confirmed_at || foundUser.last_sign_in_at);
+      console.log('✅ Resolved existing user:', foundUser.id, 'confirmed:', wasConfirmed);
+    } else {
+      invitation = inviteData as any;
+      console.log('✅ Invite sent successfully with plan:', plan);
+    }
 
     // Se HR Admin, adicionar ao workspace
     if (isHrAdmin && invitation?.user?.id) {
@@ -120,7 +158,7 @@ serve(async (req) => {
     // é informado (ex.: HR Admin convidando líder pro time existente), o líder
     // entra naquele workspace — provisionar outro cria workspaces órfãos e quebra
     // o status do time na aba Times.
-    if (isLeader && invitation?.user?.id && !workspace_id) {
+    if (isLeader && invitation?.user?.id && !workspace_id && !alreadyExisted) {
       try {
         const workspaceName = (name && name.trim().length > 0)
           ? `Workspace de ${name.trim().split(' ')[0]}`
@@ -191,9 +229,15 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Convite enviado para ${email}`,
+        message: alreadyExisted
+          ? (wasConfirmed
+              ? `${email} já tem conta na Rhitmo. Vinculei direto.`
+              : `${email} já tinha convite pendente. Vinculei como líder.`)
+          : `Convite enviado para ${email}`,
         assigned_plan: plan,
         user_id: invitation?.user?.id ?? null,
+        already_existed: alreadyExisted,
+        was_confirmed: wasConfirmed,
       }),
       {
         status: 200,

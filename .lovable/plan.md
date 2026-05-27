@@ -1,86 +1,89 @@
+## Diagnóstico do erro do Guto
 
-## Diagnóstico
+Pelos logs da edge `admin-invite-user`:
 
-Quando o Guto criou o time **Produto/Tech** e convidou um novo líder pelo `LeaderPicker`, dois problemas se combinaram:
+```
+ERROR ❌ Invite error: AuthApiError: A user with this email address has already been registered
+status: 422, code: "email_exists"
+email: guto.biazzi@fstr.co
+```
 
-**1. Auto-provisionamento indevido em `admin-invite-user`**
-Quando `role: 'leader'` é enviado, a edge function **sempre** cria um workspace novo + um time "Meu time" para o líder convidado — mesmo quando ele está sendo convidado *para dentro* do workspace do Guto. Resultado: o líder vira owner de um workspace paralelo, e quando aceitar o convite cai num app vazio em vez do Produto/Tech do Guto.
+Guto tentou criar o time "Produto/Tech" e na aba **"Convidar novo"** digitou um e-mail que **já existe** em `auth.users` (no caso, o próprio e-mail dele). A edge derruba 400, a UI mostra o toast genérico **"Edge Function returned a non-2xx status code"** e o botão "Criar time" continua desabilitado porque o `leader` não foi setado. Guto fica preso sem entender o que aconteceu.
 
-**2. Aba Times não mostra status de líder pendente**
-Em `src/pages/lider/Pessoas.tsx` (TeamsTab, linhas ~620-660):
-- O nome do líder é resolvido por `team_members.linked_user_id IN (leader_user_ids)`.
-- Líder recém-convidado **não está em `team_members`** → `leader_name` fica `null` → cai no fallback genérico "Líder vinculado".
-- Não há badge "Aguardando aceite". Guto vê o time, mas sem saber que o líder ainda não entrou.
+Outros problemas operacionais que ele relatou:
+- **Sem visibilidade do status**: depois de criar time + convidar líder, ele não enxerga em lugar nenhum "convidei X, aguardando aceite, último envio Y".
+- **Muitos cliques**: 2 steps no dialog + LeaderPicker com 2 sub-tabs, sem atalho pra "eu mesmo sou o líder".
+- **Sem alternativa pra corner cases**: usuário já cadastrado, e-mail digitado errado, líder que já lidera outro time, etc.
 
-Por isso ele "não consegue ver o status do time": o time aparece, mas sem nome do líder e sem indicação de pendência.
+## O que vamos entregar
 
----
+### 1. Edge `admin-invite-user`: handle "user already exists"
 
-## Plano (escopo cirúrgico — só corrigir os 2 bugs)
+Quando `inviteUserByEmail` devolver `email_exists` (status 422 / code `email_exists`):
 
-### 1. `supabase/functions/admin-invite-user/index.ts`
-Pular o bloco de bootstrap (workspace + "Meu time") quando o convite for **direcionado a um workspace existente**. Critério: se `workspace_id` foi enviado, o líder vai entrar nesse workspace — não precisa (e não deve) ganhar um workspace próprio.
+1. Buscar o usuário existente via `supabaseAdmin.auth.admin.listUsers` filtrado por email (ou query direta em `auth.users` por service role).
+2. Devolver `200` com `{ success: true, user_id, already_existed: true, was_confirmed: <bool> }` em vez de 400.
+3. Pular o reenvio de e-mail de convite (o usuário já existe — opcionalmente reenviar magic link se `was_confirmed === false`, controlado por flag `resend: true` no body).
+4. Continuar o restante do fluxo (HR Admin add, bootstrap legado, `waitlist_leads.update`, `emit member.invited`) usando o `user_id` resolvido.
+
+Frontend (`LeaderPicker.handleInvite`):
+- Se `already_existed && was_confirmed`: toast info "Esse e-mail já tem conta na Rhitmo. Vinculei direto como líder." e seta o `leader` com `pending: false`.
+- Se `already_existed && !was_confirmed`: toast info "Já havia um convite pendente para esse e-mail. Vinculei como líder e reenvio disponível." com `pending: true`.
+
+### 2. UX: reduzir cliques no Novo Time
+
+`NewTeamDialog`:
+- Mostrar **3 opções claras** já no step 1, em vez do wizard cego:
+  - **Botão primário "Sou eu o líder"** (1 clique → cria time direto, mesmo para HR/Owner — útil quando o próprio HR vai liderar)
+  - **"Escolher alguém do workspace"** (abre LeaderPicker aba existente)
+  - **"Convidar novo líder por e-mail"** (abre LeaderPicker aba invite)
+- Step 2 vira o conteúdo correspondente, com **"Voltar"** sempre visível.
+- Validação: nome + leader_user_id antes de habilitar "Criar time" (já existe; manter).
+
+### 3. Aba "Convites" — status visível do que Guto fez
+
+Hoje a aba **Convites** em `/lider/pessoas` mostra convites de liderados, mas **não convites de líder** feitos via NewTeamDialog. Vamos:
+
+- Estender a RPC `get_workspace_teams_overview` (criada na sprint anterior) ou criar `get_workspace_invitations` que devolve:
+  - Convites pendentes (líder, liderado, HR) — `email`, `role`, `invited_at`, `invited_by`, `team_name`, `status` (`pending` / `accepted` / `expired`).
+  - Resolve `accepted` por `auth.users.email_confirmed_at IS NOT NULL` ou `last_sign_in_at IS NOT NULL`.
+- Na aba **Convites**, adicionar seção **"Convites recentes"** com cada linha mostrando:
+  - Nome + e-mail
+  - Badge: `Aguardando aceite` (amber) · `Aceito` (emerald) · `E-mail já registrado` (slate)
+  - Time vinculado (se houver)
+  - Ações: **Reenviar convite**, **Copiar link**, **Remover convite** (se ainda pending)
+
+### 4. Toast de erro: mensagens humanas
+
+`LeaderPicker` e `NewMemberDialog` hoje fazem `toast.error(err?.message)`. Trocar para um map:
 
 ```ts
-// antes: if (isLeader && invitation?.user?.id) { ...bootstrap... }
-// depois:
-if (isLeader && invitation?.user?.id && !workspace_id) {
-  // bootstrap só no fluxo legado (líder se auto-convidando, sem workspace destino)
-  ...
+function humanizeInviteError(err: any): string {
+  const code = err?.context?.code || err?.code;
+  if (code === 'email_exists') return 'Esse e-mail já tem conta. Use "Escolher existente" pra vincular como líder.';
+  if (err?.message?.includes('non-2xx')) return 'Não consegui enviar o convite. Tenta de novo em alguns segundos.';
+  return err?.message ?? 'Erro ao convidar';
 }
 ```
 
-Nada mais muda nessa função — `teams.leader_user_id` já é setado pelo frontend no `NewTeamDialog`/`EditTeamDialog`.
+## Arquivos afetados
 
-### 2. Mostrar status do líder pendente na aba Times
-
-**2a. Nova RPC `get_workspace_teams_overview(_workspace_id uuid)`** (SECURITY DEFINER) que retorna por time:
-- `id, name, created_at, member_count, leader_user_id`
-- `leader_name, leader_email` — resolvidos de `team_members` OU de `auth.users.raw_user_meta_data->>'full_name'` + `auth.users.email` quando o líder ainda não virou team_member
-- `leader_invite_pending boolean` — `true` quando `auth.users.email_confirmed_at IS NULL` E `last_sign_in_at IS NULL`
-
-Acesso: só Owner do workspace, HR Admin do workspace, ou Super Admin. Mesmas regras de RLS que já existem (`is_workspace_owner_of_member` style).
-
-**2b. `src/pages/lider/Pessoas.tsx` — `TeamsTab`**
-Trocar o `useQuery` atual por uma chamada `supabase.rpc('get_workspace_teams_overview', { _workspace_id })`. Adaptar `TeamRow` para incluir `leader_email` + `leader_invite_pending`.
-
-Na renderização da coluna "Líder" (linha ~745):
-```tsx
-{t.leader_user_id ? (
-  <div className="flex items-center gap-2 min-w-0">
-    <span className="text-[13px] text-foreground truncate">
-      {t.leader_name ?? t.leader_email ?? 'Líder vinculado'}
-    </span>
-    {t.leader_invite_pending && (
-      <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400 text-[10px]">
-        Aguardando aceite
-      </Badge>
-    )}
-  </div>
-) : (
-  <button onClick={() => setEditTeam(t)} ...>Sem líder — definir</button>
-)}
+```text
+supabase/functions/admin-invite-user/index.ts   (handle email_exists → resolve user, return 200)
+src/components/teams/LeaderPicker.tsx           (consome already_existed, humanize error)
+src/components/NewTeamDialog.tsx                (3 opções no step 1, atalho "Sou eu o líder")
+src/pages/lider/Pessoas.tsx                     (aba Convites: seção convites de líder + status)
+supabase/migrations/<ts>_invitations_overview.sql (RPC get_workspace_invitations)
 ```
 
-Ordenação: time com líder pendente vem **depois** de "sem líder" mas **antes** dos times saudáveis — chama atenção sem poluir.
+## Fora do escopo
 
-### 3. (Opcional, mas barato) Toast pós-criação do time
-Em `NewTeamDialog`, após criar com líder convidado novo, trocar o toast genérico por:
-> "Time Produto/Tech criado. Convite enviado para {email}. Status fica como 'aguardando aceite' até o líder entrar."
+- Reescrever fluxo de bulk onboarding.
+- Mexer no `/setup` wizard.
+- Mudar tabelas existentes (`teams`, `team_members`) — só nova RPC + ajuste de edge.
 
-Resolve a expectativa do Guto sem precisar mexer em mais nada.
+## Validação (com Guto)
 
----
-
-## Fora de escopo
-- Não mexer no fluxo de cadastro de liderado (a mensagem "aguardando aceite" no liderado é correta — o time só destrava feedback/RAG depois que o líder aceita).
-- Não mexer no `bulk-onboard` (já trata o caso corretamente).
-- Não criar nova rota `/lider/times` separada — a aba existente em `/lider/pessoas?tab=times` já é o lugar certo.
-
-## Risco
-Baixo. A mudança em `admin-invite-user` afeta apenas o ramo `workspace_id !== null` (que hoje produz workspaces órfãos — provavelmente já temos lixo no banco para limpar depois). A RPC nova é aditiva.
-
-## Validação
-1. Guto cria time → convida líder novo → vê badge **"Aguardando aceite"** com email do líder na aba Times.
-2. Líder confirma email → próximo refresh, badge some, nome do líder aparece normal.
-3. Conferir no banco: nenhum workspace novo é criado quando `workspace_id` foi passado.
+1. Guto cria "Produto/Tech" → clica "Convidar novo" → digita e-mail dele mesmo → vê toast **"Esse e-mail já tem conta, vinculei como líder"** + time criado.
+2. Convida outro líder novo → vê na aba **Convites** linha com badge **"Aguardando aceite"** + botão **Reenviar**.
+3. Quando o líder aceitar e fizer login, a linha vira **"Aceito"** no próximo refresh.
