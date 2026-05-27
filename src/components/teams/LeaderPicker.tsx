@@ -26,6 +26,7 @@ interface LeaderPickerProps {
   value: LeaderCandidate | null;
   onChange: (leader: LeaderCandidate | null) => void;
   disabled?: boolean;
+  defaultTab?: 'existing' | 'invite';
 }
 
 interface CandidateRow {
@@ -35,8 +36,8 @@ interface CandidateRow {
   origin: LeaderCandidate['origin'];
 }
 
-export function LeaderPicker({ workspaceId, value, onChange, disabled }: LeaderPickerProps) {
-  const [tab, setTab] = useState<'existing' | 'invite'>('existing');
+export function LeaderPicker({ workspaceId, value, onChange, disabled, defaultTab = 'existing' }: LeaderPickerProps) {
+  const [tab, setTab] = useState<'existing' | 'invite'>(defaultTab);
   const [candidates, setCandidates] = useState<CandidateRow[]>([]);
   const [loadingList, setLoadingList] = useState(false);
   const [query, setQuery] = useState('');
