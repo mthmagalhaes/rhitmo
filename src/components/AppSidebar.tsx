@@ -64,12 +64,18 @@ export function AppSidebar() {
   const isInHRContext = location.pathname.startsWith('/hr');
 
   const persona = resolvePersona({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner });
+  // Quando o Owner/HR Admin entra em /hr/* (visão do workspace), forçamos o
+  // menu de HR para que ele veja Times, Pessoas, Analytics e Framework —
+  // mesmo que sua persona padrão seja "leader". Sair de /hr volta ao menu de líder.
+  const isInWorkspaceContext = location.pathname.startsWith('/hr');
   const navItems =
-    persona === 'leader'
-      ? LEADER_NAV_ITEMS
-      : persona === 'hr_admin'
-        ? HR_ADMIN_NAV_ITEMS
-        : DIRECT_REPORT_NAV_ITEMS;
+    isInWorkspaceContext && (isWorkspaceOwner || isHRAdmin)
+      ? HR_ADMIN_NAV_ITEMS
+      : persona === 'leader'
+        ? LEADER_NAV_ITEMS
+        : persona === 'hr_admin'
+          ? HR_ADMIN_NAV_ITEMS
+          : DIRECT_REPORT_NAV_ITEMS;
   
 
   const userName =
