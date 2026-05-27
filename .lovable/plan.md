@@ -1,44 +1,48 @@
-# Reintroduzir Editar/Excluir no feed do Diário de Bordo
+# Diagnóstico
 
-## Problema
-Na versão atual de `/lider/diario` (feed cross-member), ao expandir uma nota só aparece o botão **"Abrir nota"**, que joga o usuário pra página clássica. As ações **Editar** e **Excluir** existiam antes (no `NoteCard` por liderado) mas não foram portadas pro novo `DiaryFeedItem`.
+**Não é créditos do Lovable AI/Cloud.** Backend está saudável (`cloud_status: ACTIVE_HEALTHY`), todos os assets sobem HTTP 200, e o `index.html` em produção (`rhitmo.co`, `app-rhitmo.lovable.app`, `rhitmo.app`) já contém o bundle correto.
 
-## Solução (apenas frontend, sem backend/migration)
-
-Adicionar duas ações inline no rodapé da nota expandida em `src/components/leader/diario/DiaryFeedItem.tsx`, do lado esquerdo, mantendo "Abrir nota" à direita:
+A tela preta vem de **um erro JS fatal em produção** no chunk `vendor-charts`:
 
 ```
-[Editar]  [Excluir]                              [Abrir nota ↗]
+ReferenceError: Cannot access 'S' before initialization
+  at https://rhitmo.co/assets/vendor-charts-DnctLiPC.js:9:16763
 ```
 
-### 1. Editar
-- Botão `variant="ghost"` com ícone `Pencil`.
-- Abre o **`NewNoteDialog`** existente em modo edição (ele já aceita `feedbackId` / nota existente — vou confirmar a prop ao implementar e, se faltar, passar via `editingFeedback`).
-- Pré-popular: título, conteúdo HTML, tags, visibility, occurred_at, member_id.
-- Ao salvar: invalidar `['diario-feedbacks']` e fechar.
+Como esse chunk é precarregado via `<link rel="modulepreload">` em **todas** as páginas (inclusive `/`), ele é avaliado no boot — quando explode, o React não monta e o `<div id="root">` fica vazio → tela preta. Por isso o sintoma parece "site fora do ar" mesmo o backend estando OK.
 
-### 2. Excluir
-- Botão `variant="ghost"` com ícone `Trash2` em `text-destructive`.
-- Abre `AlertDialog` de confirmação ("Excluir esta anotação? Esta ação não pode ser desfeita.").
-- Confirma → `supabase.from('feedbacks').delete().eq('id', item.id)` (RLS já permite: `manager_id = auth.uid()`).
-- Toast de sucesso/erro + invalidar `['diario-feedbacks']` e `['team-members']`.
+## Causa raiz
 
-### 3. Estado no componente
-- `DiaryFeedItem` ganha dois estados locais: `editOpen` e `deleteOpen`.
-- Como o `NewNoteDialog` provavelmente vive hoje só no nível da página, vou:
-  - **Opção A (preferida):** instanciar `NewNoteDialog` dentro do próprio `DiaryFeedItem` (já é um padrão em outros lugares do app) — mantém o componente autônomo.
-  - **Opção B:** subir o estado pra `Diario.tsx` via callback `onEdit(item)` se o `NewNoteDialog` não suportar bem múltiplas instâncias. Decidir na hora de implementar olhando o componente.
+`vite.config.ts` agrupa Recharts + todas as libs `d3-*` em um único chunk `vendor-charts`:
 
-### 4. Acessibilidade / UX
-- Botões com `aria-label` claros.
-- `e.stopPropagation()` para não colapsar a linha ao clicar.
-- Mantém `opacity-60`/hover atuais.
+```ts
+if (id.includes('recharts') || id.includes('d3-')) return 'vendor-charts';
+```
 
-## Arquivos tocados
-- `src/components/leader/diario/DiaryFeedItem.tsx` (principal)
-- `src/pages/lider/Diario.tsx` (apenas se precisar elevar estado — Opção B)
+Esse padrão é conhecido por criar **TDZ (temporal dead zone) entre módulos `d3-*`** quando minificados — uma variável (minificada como `S`) é acessada antes de ser inicializada por ordem de avaliação imposta pelo split. Antes funcionava por sorte de ordering; mudou com a última build.
 
-## Fora de escopo
-- Sem mudanças em RLS, edge functions, schema.
-- Sem mexer no `NoteCard` clássico.
-- Sem mudar o layout colapsado da linha (só o rodapé do expandido).
+## Fix proposto
+
+Mudança cirúrgica em `vite.config.ts`:
+
+1. **Remover a regra `vendor-charts`** do `manualChunks` (deixar o Rollup colocar Recharts/d3 nos chunks das rotas que os usam — `Analytics`, `HRAnalytics`, `HealthScoreHero`, `SkillRadar`, `chart.tsx`).
+2. Como bônus de performance: a home (`/`) e rotas leves deixam de baixar ~140KB de charts no boot.
+
+Nenhum código de aplicação muda. Sem migração, sem mudança de feature, sem risco de regressão de dados.
+
+## Validação pós-deploy
+
+1. `curl -s https://rhitmo.co | grep vendor-charts` → não deve mais aparecer como modulepreload na home.
+2. Abrir `rhitmo.co` em browser limpo → home renderiza.
+3. Abrir `/lider/analytics` (que usa Recharts) → gráficos continuam funcionando.
+4. Console sem `ReferenceError: Cannot access 'S' before initialization`.
+
+## Riscos
+
+- **Nenhum funcional**: charts só são importados nas mesmas rotas; vão pro chunk delas.
+- **Cache**: usuários com versão antiga em cache vão receber o novo hash automaticamente (Vite gera novo nome).
+- Não é preciso rollback nem ticket pra Lovable — é fix nosso, no `vite.config.ts`.
+
+## Próximo passo
+
+Aprovar para eu aplicar o patch no `vite.config.ts` (em build mode) e você republica logo em seguida.
