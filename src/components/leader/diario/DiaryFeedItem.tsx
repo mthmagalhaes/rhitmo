@@ -215,6 +215,7 @@ export function DiaryFeedItem({ item }: DiaryFeedItemProps) {
       const insertPayload = {
         manager_id: managerId,
         member_id: cloneTargetId,
+        type: 'feedback',
         title: item.title,
         content: item.content,
         tags: item.tags ?? [],
