@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ChevronsUpDown, Building2, Check, Settings, LifeBuoy, UserPlus, Sparkles } from 'lucide-react';
+import { ChevronsUpDown, Building2, Check, Settings, LifeBuoy, UserPlus, Sparkles, Shield } from 'lucide-react';
 import { useOnboardingTour } from '@/hooks/useOnboardingTour';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
