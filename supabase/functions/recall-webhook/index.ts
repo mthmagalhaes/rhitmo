@@ -495,6 +495,14 @@ async function handleBotDone(
 
   console.log(`Found ${memberIds.length} member(s) for this meeting`);
 
+  // Resolve meeting title from upcoming_meetings (fallback to default)
+  const meetingTitle = await resolveMeetingTitle(
+    supabaseAdmin,
+    botRecord.user_id as string,
+    botRecord.meeting_id as string | null,
+    botRecord.meeting_url as string | null,
+  );
+
   // Save full transcript to feedbacks (no truncation — leaders/members read this directly)
   const createdIds: { memberId: string; transcriptId: string; feedbackId: string }[] = [];
 
@@ -505,6 +513,7 @@ async function handleBotDone(
       memberId,
       formattedTranscript,
       formattedTranscript,
+      meetingTitle,
     );
     if (created) {
       createdIds.push({ memberId, ...created });
@@ -520,7 +529,7 @@ async function handleBotDone(
         member_id: null,
         transcript: formattedTranscript,
         processing_status: "completed",
-        leader_notes: "Transcrição automática via Recall.ai",
+        leader_notes: `Transcrição automática via Recall.ai — ${meetingTitle}`,
       })
       .select("id")
       .single();
