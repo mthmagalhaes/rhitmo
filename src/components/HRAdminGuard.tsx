@@ -8,6 +8,10 @@ import { Loader2 } from 'lucide-react';
 interface HRAdminContextType {
   workspaceId: string;
   workspaceName: string;
+  /** True when the user is the workspace Owner (regardless of HR Admin). */
+  isOwner: boolean;
+  /** True when the user is listed in workspaces.hr_admin_ids. */
+  isHRAdmin: boolean;
 }
 
 const HRAdminContext = createContext<HRAdminContextType | null>(null);
@@ -18,21 +22,62 @@ export const useHRAdmin = () => {
   return ctx;
 };
 
+/**
+ * Workspace Admin guard.
+ *
+ * Allows access to /hr/* (and /workspace/*) for either the workspace Owner
+ * OR an HR Admin. Pre-2026-05 this was HR-only; Owner now also enters
+ * because Owner lost "see-all" inside /lider/* and needs a dedicated
+ * structural/analytics view of the workspace.
+ */
 export const HRAdminGuard = ({ children }: { children: React.ReactNode }) => {
   const { user, loading: authLoading } = useAuth();
 
   const { data: workspace, isLoading } = useQuery({
-    queryKey: ['hr-admin-workspace', user?.id],
+    queryKey: ['workspace-admin-workspace', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      if (!user?.id) return null;
+      // Try Owner first (single owner per workspace).
+      const ownedRes = await supabase
         .from('workspaces')
-        .select('id, name')
-        .contains('hr_admin_ids', [user!.id])
+        .select('id, name, owner_id, hr_admin_ids')
+        .eq('owner_id', user.id)
+        .eq('is_active', true)
+        .order('name', { ascending: true })
+        .limit(1)
         .maybeSingle();
-      if (error) throw error;
-      return data;
+
+      if (ownedRes.data) {
+        return {
+          id: ownedRes.data.id,
+          name: ownedRes.data.name,
+          isOwner: true,
+          isHRAdmin: (ownedRes.data.hr_admin_ids ?? []).includes(user.id),
+        };
+      }
+
+      // Fall back to HR Admin membership.
+      const hrRes = await supabase
+        .from('workspaces')
+        .select('id, name, owner_id, hr_admin_ids')
+        .contains('hr_admin_ids', [user.id])
+        .eq('is_active', true)
+        .order('name', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (hrRes.data) {
+        return {
+          id: hrRes.data.id,
+          name: hrRes.data.name,
+          isOwner: hrRes.data.owner_id === user.id,
+          isHRAdmin: true,
+        };
+      }
+      return null;
     },
     enabled: !!user && !authLoading,
+    staleTime: 5 * 60 * 1000,
   });
 
   if (authLoading || isLoading) {
@@ -48,7 +93,14 @@ export const HRAdminGuard = ({ children }: { children: React.ReactNode }) => {
   }
 
   return (
-    <HRAdminContext.Provider value={{ workspaceId: workspace.id, workspaceName: workspace.name }}>
+    <HRAdminContext.Provider
+      value={{
+        workspaceId: workspace.id,
+        workspaceName: workspace.name,
+        isOwner: workspace.isOwner,
+        isHRAdmin: workspace.isHRAdmin,
+      }}
+    >
       {children}
     </HRAdminContext.Provider>
   );
