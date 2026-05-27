@@ -3282,9 +3282,11 @@ export type Database = {
           feedback_count: number
           feedback_style: string
           has_pdi: boolean
+          invite_status: string
           last_feedback_date: string
           leader_id: string
           leader_name: string
+          linked_user_id: string
           member_email: string
           member_id: string
           member_name: string
@@ -3293,6 +3295,8 @@ export type Database = {
           pdi_count: number
           recognition_style: string
           skills_data: Json
+          team_id: string
+          team_name: string
           user_manual: Json
           work_style_data: Json
         }[]
