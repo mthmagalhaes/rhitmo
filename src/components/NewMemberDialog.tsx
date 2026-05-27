@@ -77,14 +77,7 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
   };
 
   const handleTeamChange = (value: string) => {
-    if (value === '__create_new__') {
-      setIsCreatingTeam(true);
-      setSelectedTeamId('');
-    } else {
-      setIsCreatingTeam(false);
-      setSelectedTeamId(value);
-      setNewTeamName('');
-    }
+    setSelectedTeamId(value);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
