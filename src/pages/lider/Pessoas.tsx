@@ -851,6 +851,35 @@ function ResendInviteButton({ memberId, memberName, memberEmail, isBounced }: { 
   );
 }
 
+function ResendLeaderInviteButton({ email, name, workspaceId }: { email: string | null; name: string | null; workspaceId: string | null }) {
+  const [sending, setSending] = useState(false);
+  const handleResend = async () => {
+    if (!email) {
+      toast.error('Esse líder não tem e-mail cadastrado.');
+      return;
+    }
+    setSending(true);
+    try {
+      const { error } = await supabase.functions.invoke('admin-invite-user', {
+        body: { email, name: name ?? email, role: 'leader', workspace_id: workspaceId },
+      });
+      if (error) throw error;
+      toast.success(`Convite reenviado para ${email}.`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Falha ao reenviar: ${msg}`);
+    } finally {
+      setSending(false);
+    }
+  };
+  return (
+    <Button size="sm" variant="outline" className="rounded-xl gap-2" onClick={handleResend} disabled={sending}>
+      {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+      Reenviar
+    </Button>
+  );
+}
+
 // (EditEmailButton legado removido — substituído pelo InviteRowMenu)
 
 // Kebab menu para cada convite pendente.
