@@ -46,6 +46,7 @@ async function callMonthlyRecapAI(
   memberName: string,
   feedbacks: Array<{ id: string; content: string; type: string; sentiment: string | null; tags: string[] | null; occurred_at: string; summary: string | null }>,
   meetings: Array<{ id: string; leader_notes: string | null; transcript: string | null; extracted_themes: string[] | null; created_at: string }>,
+  contextEvidence: Array<{ id: string; evidence_type: string; occurred_at: string; title: string | null; summary: string | null; leader_edited_summary: string | null; metadata: any }>,
 ): Promise<MonthlyRecapAI | null> {
   const apiKey = Deno.env.get('LOVABLE_API_KEY');
   if (!apiKey) throw new Error('LOVABLE_API_KEY not configured');
@@ -66,7 +67,8 @@ REGRAS ESPECÍFICAS DO MENSAL:
 3. **PROSA LIMPA NO TEXT**: o campo "text" deve ser uma frase factual sobre o que ${memberName} fez, em linguagem natural. NUNCA inclua "(feedback_id=...)", "(meeting_id=...)", "(data=...)", UUIDs, IDs técnicos ou datas em parênteses dentro do text. As referências e datas vão SOMENTE no campo evidence — elas serão renderizadas como chips visuais separadas, fora do parágrafo.
 4. Linguagem factual e seca. Não use "incrível", "fantástico", "preocupante demais". Use "entregou X", "atrasou Y", "comunicou de forma proativa".
 5. Foque APENAS em ações de ${memberName}. Ignore o que outras pessoas fizeram.
-6. Resposta deve ser JSON válido em português brasileiro.
+6. **Contexto agregado (Slack, pulses, sinais de rede, peer feedback)**: trate como contexto ambiental — útil para reforçar padrões observados em feedbacks/1:1s, mas NÃO como evidência única de highlight/concern. Resumos do Slack são agregados de mensagens públicas, nunca cite mensagens cruas. Se aparecer no array de evidências de contexto, você pode mencionar o padrão na prosa do dominant_pattern, mas a evidence formal continua sendo feedback_id/meeting_id.
+7. Resposta deve ser JSON válido em português brasileiro.
 
 EXEMPLO BOM (faça assim):
   text: "Apresentou as análises de LTV e CAC no All Hands, recebendo feedback positivo pela didática e clareza."
@@ -74,6 +76,23 @@ EXEMPLO BOM (faça assim):
 
 EXEMPLO RUIM (NÃO faça assim):
   text: "Apresentou as análises de LTV e CAC (feedback_id=c7d155ec-4709-4ef9-b671-ff395474ab40, data=2026-03-12)."`;
+
+  const contextText = contextEvidence.length > 0
+    ? `\n\n## CONTEXTO AGREGADO (Slack, pulses, sinais de rede — ambiental, NÃO usar como evidence formal) (${contextEvidence.length}):\n${contextEvidence
+        .map((c) => {
+          const md = c.metadata ?? {};
+          const themes = Array.isArray(md.themes) ? md.themes.slice(0, 4).join(', ') : '';
+          const channels = Array.isArray(md.top_channels) ? md.top_channels.slice(0, 3).join(', ') : '';
+          const collabs = Array.isArray(md.top_collaborators)
+            ? md.top_collaborators.slice(0, 3).map((x: any) => x?.name).filter(Boolean).join(', ')
+            : '';
+          const narrative = (c.leader_edited_summary ?? c.summary ?? '').slice(0, 400);
+          const tone = md.ai_assessment?.tone;
+          const assess = md.ai_assessment?.summary;
+          return `[${c.evidence_type} | ${c.occurred_at.slice(0, 10)}${c.title ? ' | ' + c.title : ''}]\n${narrative}${themes ? '\nTemas: ' + themes : ''}${channels ? '\nCanais: ' + channels : ''}${collabs ? '\nColabora com: ' + collabs : ''}${assess ? `\nAvaliação Rhitmo (${tone ?? 'neutro'}): ${assess}` : ''}`;
+        })
+        .join('\n\n')}`
+    : '';
 
   const evidenceText = [
     feedbacks.length > 0
@@ -92,7 +111,9 @@ EXEMPLO RUIM (NÃO faça assim):
           )
           .join('\n\n')}`
       : '',
+    contextText,
   ].join('');
+
 
   const userPrompt = `Liderado: ${memberName}
 
