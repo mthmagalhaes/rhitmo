@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
       // Settings atuais
       const { data: settings } = await admin
         .from('workspace_slack_settings')
-        .select('autojoin_public_channels, excluded_channel_ids, ambient_mode_enabled')
+        .select('autojoin_public_channels, excluded_channel_ids, ambient_mode_enabled, rollup_frequency, last_rollup_at')
         .eq('workspace_id', workspaceId)
         .maybeSingle();
 
@@ -127,11 +127,14 @@ Deno.serve(async (req) => {
           settings: {
             autojoin_public_channels: settings?.autojoin_public_channels ?? true,
             ambient_mode_enabled: settings?.ambient_mode_enabled ?? false,
+            rollup_frequency: (settings as any)?.rollup_frequency ?? 'weekly',
+            last_rollup_at: (settings as any)?.last_rollup_at ?? null,
           },
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
+
 
     if (action === 'join') {
       const channelId = body?.channel_id;
