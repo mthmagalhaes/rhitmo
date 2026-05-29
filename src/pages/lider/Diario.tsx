@@ -102,11 +102,36 @@ export default function LiderDiario() {
     },
   });
 
+  // Sprint Support: também consome rollups semanais do Slack
+  // (`context_evidence.evidence_type = 'slack_activity_rollup'`) para que
+  // o líder veja o que os liderados andaram falando/fazendo no Slack como
+  // mais uma evidência do Diário. Read-only, sem ações destrutivas.
+  const memberIdsForRoll = useMemo(() => members.map((m) => m.id), [members]);
+  const { data: slackRollups = [] } = useQuery({
+    queryKey: ['diario-slack-rollups', effectiveUserId, period, hasCustomDate, memberIdsForRoll.length],
+    enabled: !!effectiveUserId && memberIdsForRoll.length > 0,
+    staleTime: 60_000,
+    queryFn: async () => {
+      let q = supabase
+        .from('context_evidence')
+        .select('id, member_id, title, summary, occurred_at')
+        .eq('evidence_type', 'slack_activity_rollup')
+        .in('member_id', memberIdsForRoll)
+        .order('occurred_at', { ascending: false })
+        .limit(100);
+      if (!hasCustomDate && period !== 'all') {
+        const days = period === '7d' ? 7 : period === '30d' ? 30 : 90;
+        q = q.gte('occurred_at', subDays(new Date(), days).toISOString());
+      }
+      return await safeQuery<Array<{ id: string; member_id: string; title: string | null; summary: string | null; occurred_at: string }>>(q);
+    },
+  });
+
   const memberById = useMemo(() => {
     return new Map(members.map((x) => [x.id, x]));
   }, [members]);
 
-  const items: FeedItem[] = useMemo(() => {
+  const items: DiaryItem[] = useMemo(() => {
     const teamMemberIds =
       teamId === 'all'
         ? null
@@ -135,13 +160,7 @@ export default function LiderDiario() {
       return true;
     });
 
-    const sorted = [...filtered].sort((a, b) => {
-      const ta = new Date(a.occurred_at || a.created_at).getTime();
-      const tb = new Date(b.occurred_at || b.created_at).getTime();
-      return sort === 'newest' ? tb - ta : ta - tb;
-    });
-
-    return sorted.map((fb) => {
+    const fbItems: DiaryItem[] = filtered.map((fb) => {
       const m = memberById.get(fb.member_id);
       return {
         ...fb,
@@ -150,14 +169,61 @@ export default function LiderDiario() {
         member_avatar: m?.avatar ?? null,
       };
     });
-  }, [feedbacks, memberId, teamId, query, members, memberById, selectedTags, dateRange, sort]);
+
+    // Slack rollups com os mesmos filtros (membro, time, data, busca, tag).
+    // Tags não se aplicam (rollups não têm tags do líder), então quando o
+    // usuário filtra por tag, escondemos os rollups.
+    const slackItems: DiaryItem[] = selectedTags.length > 0
+      ? []
+      : (slackRollups ?? [])
+          .filter((r) => {
+            if (memberId !== 'all' && r.member_id !== memberId) return false;
+            if (teamMemberIds && !teamMemberIds.has(r.member_id)) return false;
+            if (fromTime !== null) {
+              const t = new Date(r.occurred_at).getTime();
+              if (t < fromTime) return false;
+              if (toTime !== null && t > toTime) return false;
+            }
+            if (q) {
+              const hay = `${r.title ?? ''} ${r.summary ?? ''}`.toLowerCase();
+              if (!hay.includes(q)) return false;
+            }
+            return true;
+          })
+          .map<SlackRollupItem>((r) => {
+            const m = memberById.get(r.member_id);
+            return {
+              kind: 'slack_rollup',
+              id: r.id,
+              member_id: r.member_id,
+              member_name: m?.name ?? 'Liderado removido',
+              member_avatar: m?.avatar ?? null,
+              title: r.title ?? 'Atividade no Slack',
+              summary: r.summary ?? '',
+              occurred_at: r.occurred_at,
+            };
+          });
+
+    const all = [...fbItems, ...slackItems];
+    all.sort((a, b) => {
+      const ta = new Date(
+        isSlackRollup(a) ? a.occurred_at : a.occurred_at || a.created_at,
+      ).getTime();
+      const tb = new Date(
+        isSlackRollup(b) ? b.occurred_at : b.occurred_at || b.created_at,
+      ).getTime();
+      return sort === 'newest' ? tb - ta : ta - tb;
+    });
+    return all;
+  }, [feedbacks, slackRollups, memberId, teamId, query, members, memberById, selectedTags, dateRange, sort]);
 
   const buckets = useMemo(() => {
-    const today: FeedItem[] = [];
-    const week: FeedItem[] = [];
-    const older: FeedItem[] = [];
+    const today: DiaryItem[] = [];
+    const week: DiaryItem[] = [];
+    const older: DiaryItem[] = [];
     items.forEach((it) => {
-      const d = new Date(it.occurred_at || it.created_at);
+      const dIso = isSlackRollup(it) ? it.occurred_at : it.occurred_at || it.created_at;
+      const d = new Date(dIso);
       if (isToday(d)) today.push(it);
       else if (isThisWeek(d, { weekStartsOn: 1 })) week.push(it);
       else older.push(it);
@@ -177,6 +243,7 @@ export default function LiderDiario() {
           { title: 'Esta semana', items: buckets.week },
           { title: 'Hoje', items: buckets.today },
         ];
+
 
   const handleCreateNoteFor = (m: { id: string }) => {
     setPresetMemberId(m.id);
