@@ -25,7 +25,7 @@ export default function LiderMentorThread() {
   const location = useLocation();
   const { user } = useAuth();
   const { id: effectiveUserId } = useEffectiveUser();
-  const { members } = useLeaderMembers();
+  const { members, isLoading: membersLoading } = useLeaderMembers();
 
   const initialPrompt = (location.state as { initialPrompt?: string } | null)?.initialPrompt;
 
@@ -51,7 +51,7 @@ export default function LiderMentorThread() {
     return members.find((m) => m.id === thread.member_id) ?? null;
   }, [thread?.member_id, members]);
 
-  const { data: memberFeedbacks = [] } = useQuery({
+  const { data: memberFeedbacks = [], isLoading: feedbacksLoading } = useQuery({
     queryKey: ['mentor-thread-feedbacks', thread?.member_id],
     queryFn: async () => {
       if (!thread?.member_id) return [];
@@ -80,11 +80,37 @@ export default function LiderMentorThread() {
     return null;
   }
 
-  // Wait for thread metadata before mounting MentorChat (avoid wrong member context flash)
-  if (threadLoading) {
+  // CRITICAL: wait for thread metadata AND (when the thread has a member)
+  // for members/feedbacks queries to settle. Otherwise the MentorChat may
+  // mount with memberId=undefined + feedbacks=[] and autoSendInitialPrompt
+  // will send mode='leader_self' to chat-mentor, producing a generic
+  // "sem citações / não conheço o perfil" answer for the wrong reasons.
+  const hasMember = !!thread?.member_id;
+  const waitingForMemberContext = hasMember && (membersLoading || feedbacksLoading);
+
+  if (threadLoading || waitingForMemberContext) {
     return (
       <div className="flex items-center justify-center h-[calc(100svh-3rem)] bg-background">
         <div className="h-7 w-7 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+      </div>
+    );
+  }
+
+  // Thread aponta para um liderado que não está no escopo do líder atual
+  // (arquivado, migrado de time, sem permissão). Em vez de cair silenciosamente
+  // em coach mode, avisa explicitamente.
+  if (hasMember && !member) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[calc(100svh-3rem)] bg-background gap-3 px-6 text-center">
+        <p className="text-sm text-muted-foreground max-w-md">
+          Não encontrei esse liderado no seu escopo atual. Talvez ele tenha sido arquivado ou movido de time.
+        </p>
+        <button
+          onClick={() => navigate('/lider/mentor')}
+          className="text-sm text-primary hover:underline"
+        >
+          Voltar para o Pergunte à Rhitmo
+        </button>
       </div>
     );
   }
@@ -119,3 +145,4 @@ export default function LiderMentorThread() {
     />
   );
 }
+
