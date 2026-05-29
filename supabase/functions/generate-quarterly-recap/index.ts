@@ -478,7 +478,7 @@ Deno.serve(async (req) => {
       // FROM_RAW: pull raw feedbacks + 1:1s of the quarter directly
       const startIso = new Date(startMonth + 'T00:00:00Z').toISOString();
       const endIso = new Date(endMonth + 'T00:00:00Z').toISOString();
-      const [{ data: feedbacks }, { data: meetings }] = await Promise.all([
+      const [{ data: feedbacks }, { data: meetings }, { data: contextEv }] = await Promise.all([
         admin
           .from('feedbacks')
           .select('id, content, type, sentiment, tags, occurred_at, summary')
@@ -498,21 +498,32 @@ Deno.serve(async (req) => {
           .eq('processing_status', 'completed')
           .order('created_at', { ascending: true })
           .limit(15),
+        admin
+          .from('context_evidence')
+          .select('id, evidence_type, occurred_at, title, summary, leader_edited_summary, metadata')
+          .eq('member_id', member.id)
+          .gte('occurred_at', startIso)
+          .lt('occurred_at', endIso)
+          .is('deleted_at', null)
+          .order('occurred_at', { ascending: false })
+          .limit(150),
       ]);
 
       const fbList = feedbacks ?? [];
       const mtList = meetings ?? [];
-      if (fbList.length === 0 && mtList.length === 0) {
+      const ctxList = contextEv ?? [];
+      if (fbList.length === 0 && mtList.length === 0 && ctxList.length === 0) {
         return new Response(
           JSON.stringify({
-            error: 'Nenhum feedback ou 1:1 encontrado no trimestre. Registre evidências antes de tentar o modo rápido.',
+            error: 'Nenhum feedback, 1:1 ou sinal agregado encontrado no trimestre. Registre evidências antes de tentar o modo rápido.',
           }),
           { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       }
 
-      ai = await callQuarterlyRecapFromRawAI((member as any).name, fbList as any, mtList as any, previous);
+      ai = await callQuarterlyRecapFromRawAI((member as any).name, fbList as any, mtList as any, ctxList as any, previous);
       totalFeedbacks = fbList.length;
+
       totalMeetings = mtList.length;
       generationMode = 'from_raw';
     }
