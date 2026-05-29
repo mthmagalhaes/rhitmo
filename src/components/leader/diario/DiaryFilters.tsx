@@ -159,6 +159,17 @@ export function DiaryFilters({
               {tag.emoji} {getTagLabel(tag.key)}
             </Button>
           ))}
+          <div className="w-px h-5 bg-border mx-0.5" aria-hidden />
+          <Button
+            variant={source === 'slack' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => onSourceChange(source === 'slack' ? 'all' : 'slack')}
+            className="h-8 text-xs gap-1.5"
+            title="Mostrar apenas resumos semanais do Slack"
+          >
+            <SlackIcon className="h-3.5 w-3.5" />
+            Slack
+          </Button>
         </div>
 
         <Popover>
