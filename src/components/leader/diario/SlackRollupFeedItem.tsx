@@ -95,6 +95,7 @@ interface SlackEvidenceLite {
   slack_channel_name: string | null;
   permalink: string | null;
   captured_at: string;
+  category: string | null;
 }
 
 export function SlackRollupFeedItem({ item, onCopyToMember }: Props) {
