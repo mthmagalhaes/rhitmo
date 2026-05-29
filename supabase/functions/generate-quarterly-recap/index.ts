@@ -216,6 +216,17 @@ Matriz de next_action_key (escolha UMA conforme classificação):
     ? meetings.map((m) => `[meeting_id=${m.id} | ${m.created_at.slice(0, 10)}]\nNotas líder: ${m.leader_notes?.slice(0, 400) || '(vazio)'}`).join('\n\n')
     : '(sem 1:1s registrados no período)';
 
+  const contextText = contextEvidence.length > 0
+    ? contextEvidence.map((c) => {
+        const md = c.metadata ?? {};
+        const themes = Array.isArray(md.themes) ? md.themes.slice(0, 4).join(', ') : '';
+        const channels = Array.isArray(md.top_channels) ? md.top_channels.slice(0, 3).join(', ') : '';
+        const narrative = (c.leader_edited_summary ?? c.summary ?? '').slice(0, 400);
+        const assess = md.ai_assessment?.summary;
+        return `[${c.evidence_type} | ${c.occurred_at.slice(0, 10)}]\n${narrative}${themes ? '\nTemas: ' + themes : ''}${channels ? '\nCanais: ' + channels : ''}${assess ? '\nAvaliação Rhitmo: ' + assess : ''}`;
+      }).join('\n\n')
+    : '(sem contexto agregado no período)';
+
   const previousText = previous
     ? `Trimestre anterior:\n- Classificação: ${previous.classification ?? 'não informada'}\n- Risco turnover: ${previous.turnover_risk ?? 'não informado'}\n- Padrão geral: ${previous.dominant_summary ?? 'não informado'}`
     : 'Trimestre anterior: (sem histórico)';
@@ -230,7 +241,11 @@ ${feedbacksText}
 ## 1:1s (${meetings.length}):
 ${meetingsText}
 
+## CONTEXTO AGREGADO — Slack/pulses/sinais (${contextEvidence.length}) — ambiental, NÃO usar como evidência única de highlight:
+${contextText}
+
 ${previousText}
+
 
 Responda APENAS com JSON no formato:
 {
