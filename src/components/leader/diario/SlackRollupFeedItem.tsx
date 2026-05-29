@@ -179,10 +179,16 @@ export function SlackRollupFeedItem({ item, onCopyToMember }: Props) {
     }
   };
 
-  const handleCopyToMember = () => {
+  const handleCopyToMember = async () => {
     if (!onCopyToMember) return;
+    const content = buildPlainText();
+    try {
+      await navigator.clipboard.writeText(content);
+    } catch {
+      // segue mesmo se clipboard falhar — o conteúdo já vai pré-preenchido no dialog
+    }
     onCopyToMember({
-      content: buildPlainText(),
+      content,
       title: `Resumo Slack — semana de ${weekLabel}`,
     });
   };
