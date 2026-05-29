@@ -359,7 +359,7 @@ export default function LiderDiario() {
   );
 }
 
-function FeedSection({ title, items }: { title: string; items: FeedItem[] }) {
+function FeedSection({ title, items }: { title: string; items: DiaryItem[] }) {
   return (
     <section>
       <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-2.5">
@@ -369,9 +369,13 @@ function FeedSection({ title, items }: { title: string; items: FeedItem[] }) {
         </span>
       </h2>
       <div className="space-y-1.5">
-        {items.map((it) => (
-          <DiaryFeedItem key={it.id} item={it} />
-        ))}
+        {items.map((it) =>
+          isSlackRollup(it) ? (
+            <SlackRollupFeedItem key={it.id} item={it} />
+          ) : (
+            <DiaryFeedItem key={it.id} item={it} />
+          ),
+        )}
       </div>
     </section>
   );
