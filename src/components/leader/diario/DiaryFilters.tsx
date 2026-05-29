@@ -1,5 +1,5 @@
 // Barra de filtros do Diário v2 — substitui a master list lateral.
-// Estado vive na URL (member, team, period, q, tags, from, to, sort).
+// Estado vive na URL (member, team, period, q, tags, source, from, to, sort).
 import { Search, CalendarIcon, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -16,9 +16,12 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { getTagLabel } from '@/lib/tagConfig';
+import { SlackIcon } from '@/components/icons/SlackIcon';
 import type { LeaderMemberRow } from '@/hooks/useLeaderMembers';
 import type { Team } from '@/types/team';
 import type { DateRange } from 'react-day-picker';
+
+export type DiarySource = 'all' | 'slack';
 
 export type Period = '7d' | '30d' | '90d' | 'all';
 export type SortOrder = 'newest' | 'oldest';
@@ -39,6 +42,7 @@ interface DiaryFiltersProps {
   period: Period;
   query: string;
   selectedTags: string[];
+  source: DiarySource;
   dateRange: DateRange | undefined;
   sort: SortOrder;
   onMemberChange: (id: string) => void;
@@ -46,6 +50,7 @@ interface DiaryFiltersProps {
   onPeriodChange: (p: Period) => void;
   onQueryChange: (q: string) => void;
   onTagsChange: (tags: string[]) => void;
+  onSourceChange: (s: DiarySource) => void;
   onDateRangeChange: (range: DateRange | undefined) => void;
   onSortChange: (s: SortOrder) => void;
 }
@@ -58,6 +63,7 @@ export function DiaryFilters({
   period,
   query,
   selectedTags,
+  source,
   dateRange,
   sort,
   onMemberChange,
@@ -65,6 +71,7 @@ export function DiaryFilters({
   onPeriodChange,
   onQueryChange,
   onTagsChange,
+  onSourceChange,
   onDateRangeChange,
   onSortChange,
 }: DiaryFiltersProps) {
@@ -152,6 +159,17 @@ export function DiaryFilters({
               {tag.emoji} {getTagLabel(tag.key)}
             </Button>
           ))}
+          <div className="w-px h-5 bg-border mx-0.5" aria-hidden />
+          <Button
+            variant={source === 'slack' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => onSourceChange(source === 'slack' ? 'all' : 'slack')}
+            className="h-8 text-xs gap-1.5"
+            title="Mostrar apenas resumos semanais do Slack"
+          >
+            <SlackIcon className="h-3.5 w-3.5" />
+            Slack
+          </Button>
         </div>
 
         <Popover>
