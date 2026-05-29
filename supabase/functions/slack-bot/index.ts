@@ -188,10 +188,80 @@ async function callLovableAI(
   }
 }
 
-// ── Sprint 20: Leader DM as AI Colleague ─────────────────
-// Routes the leader's DM (general_chat) into the chat-mentor edge function
-// so the bot has full Context Graph (team, feedbacks, evidences, sync data)
-// instead of the dumb LLM with only the conversation turns.
+// ── Sprint Support: NL member resolution for leader DMs ──
+// Tenta detectar se a pergunta do líder cita um liderado específico do time.
+// Estratégia: tokenizar a pergunta, comparar com nome/primeiro nome dos
+// team_members do workspace, retornar match único (case-insensitive).
+// Sem match único → null (fica em coaching mode, comportamento atual).
+interface ResolvedMember {
+  id: string;
+  name: string;
+  role: string | null;
+  work_style_data: unknown | null;
+}
+
+function stripDiacritics(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+async function resolveMemberFromQuestion(
+  workspaceId: string,
+  leaderUserId: string,
+  question: string,
+): Promise<ResolvedMember | null> {
+  try {
+    const { data: members } = await supabase
+      .from('team_members')
+      .select('id, name, role, work_style_data')
+      .eq('workspace_id', workspaceId)
+      .eq('manager_id', leaderUserId)
+      .eq('is_archived', false);
+    if (!members || members.length === 0) return null;
+
+    const normQ = ' ' + stripDiacritics(question.toLowerCase()) + ' ';
+    const matches = new Map<string, ResolvedMember>();
+
+    for (const m of members as any[]) {
+      if (!m?.name) continue;
+      const tokens = stripDiacritics(String(m.name).toLowerCase())
+        .split(/\s+/)
+        .filter((t: string) => t.length >= 3);
+      // Match if either the full name appears OR the first name appears as
+      // a whole word AND the leader has only one member with that first name.
+      const fullName = stripDiacritics(String(m.name).toLowerCase());
+      if (normQ.includes(' ' + fullName + ' ')) {
+        matches.set(m.id, m as ResolvedMember);
+        continue;
+      }
+      const firstName = tokens[0];
+      if (!firstName) continue;
+      const firstNameRegex = new RegExp(`(^|[^a-z])${firstName}([^a-z]|$)`);
+      if (firstNameRegex.test(normQ)) {
+        // Check ambiguity later (after loop): only accept if unique by first name
+        matches.set(m.id, m as ResolvedMember);
+      }
+    }
+
+    if (matches.size === 0) return null;
+    if (matches.size === 1) return [...matches.values()][0];
+
+    // Multiple matches → check if exactly one is a "full name" hit
+    const fullHits = [...matches.values()].filter((m) =>
+      normQ.includes(' ' + stripDiacritics(m.name.toLowerCase()) + ' '),
+    );
+    if (fullHits.length === 1) return fullHits[0];
+    return null;
+  } catch (err) {
+    console.warn('[DM-MENTOR] resolveMemberFromQuestion failed:', err);
+    return null;
+  }
+}
+
+// ── Sprint 20 + Support: Leader DM as AI Colleague ───────
+// Routes the leader's DM (general_chat) into chat-mentor with the full
+// Context Graph. If the question cites a specific direct report, switches
+// to mode='member' with feedbacks/role/work_style_data; otherwise falls
+// back to mode='leader_self' (coaching mode).
 async function callLeaderMentorFromDM(
   persona: PersonaResult,
   question: string,
@@ -201,21 +271,34 @@ async function callLeaderMentorFromDM(
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-    // Fetch leader profile + sync data in parallel
-    const [profileRes, wsRes] = await Promise.all([
+    // Fetch leader profile + sync data + maybe resolve a member from NL
+    const [profileRes, wsRes, resolvedMember] = await Promise.all([
       supabase.from('profiles').select('full_name').eq('user_id', persona.userId!).maybeSingle(),
       supabase.from('workspaces').select('leader_sync_data').eq('id', persona.workspaceId!).single(),
+      resolveMemberFromQuestion(persona.workspaceId!, persona.userId!, question),
     ]);
     const leaderName = (profileRes.data as any)?.full_name || 'líder';
     const leaderSyncData = (wsRes.data as any)?.leader_sync_data || null;
+
+    // If a member was resolved, fetch their recent feedbacks (RAG context)
+    let memberFeedbacks: unknown[] = [];
+    if (resolvedMember) {
+      const { data: fbs } = await supabase
+        .from('feedbacks')
+        .select('id, title, content, occurred_at, created_at, tags')
+        .eq('member_id', resolvedMember.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      memberFeedbacks = fbs ?? [];
+      console.log('[DM-MENTOR] member_resolved:', resolvedMember.name, '(', resolvedMember.id, ') | feedbacks:', memberFeedbacks.length);
+    }
 
     // History MUST include the current user message as the last turn
     // (chat-mentor does .slice(0, -1) on history and adds `question` as the
     // current user turn separately).
     const conversationHistory = [...history, { role: 'user' as const, content: question }];
 
-    const payload = {
-      mode: 'leader_self',
+    const basePayload: Record<string, unknown> = {
       channel: 'slack',
       question,
       leaderUserId: persona.userId,
@@ -226,7 +309,23 @@ async function callLeaderMentorFromDM(
       contextMode: 'auto',
     };
 
-    console.log('[DM-MENTOR] Calling chat-mentor leader_self', {
+    const payload: Record<string, unknown> = resolvedMember
+      ? {
+          ...basePayload,
+          mode: 'member',
+          memberName: resolvedMember.name,
+          memberRole: resolvedMember.role ?? undefined,
+          workStyleData: resolvedMember.work_style_data ?? undefined,
+          feedbacks: memberFeedbacks,
+        }
+      : {
+          ...basePayload,
+          mode: 'leader_self',
+        };
+
+    console.log('[DM-MENTOR] Calling chat-mentor', {
+      mode: payload.mode,
+      member: resolvedMember?.name ?? '(none)',
       historyLen: conversationHistory.length,
       question: question.substring(0, 60),
     });
