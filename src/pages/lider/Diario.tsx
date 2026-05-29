@@ -280,6 +280,10 @@ export default function LiderDiario() {
   const selectedMemberName =
     memberId !== 'all' ? memberById.get(memberId)?.name : undefined;
 
+  // Contagem de pendentes p/ badge da aba Sinais
+  const { data: pendingSignals = [] } = useEvidence({ status: 'pending' });
+  const pendingCount = pendingSignals.length;
+
   return (
     <div className="max-w-5xl mx-auto px-6 lg:px-8 py-6 space-y-5">
       {/* Header */}
@@ -287,85 +291,121 @@ export default function LiderDiario() {
         <h1 className="font-serif text-2xl font-bold tracking-tight">Diário de Bordo</h1>
         <p className="text-sm text-muted-foreground mt-1 inline-flex items-center gap-1.5">
           <Lock className="h-3 w-3" />
-          Suas notas privadas sobre o time, em um só lugar.
+          Suas evidências privadas sobre o time, em um só lugar.
         </p>
       </header>
 
-      {/* Insight Card */}
-      {members.length > 0 && (
-        <DiaryCoverageInsight members={members} onCreateNoteFor={handleCreateNoteFor} />
-      )}
+      <Tabs
+        value={tab}
+        onValueChange={(v) => updateParam('tab', v === 'signals' ? 'signals' : '')}
+        className="w-full"
+      >
+        <TabsList className="bg-transparent border-b border-border rounded-none h-auto p-0 gap-6 justify-start w-full">
+          <TabsTrigger
+            value="notes"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 pb-3 text-sm font-semibold tracking-tight"
+          >
+            Anotações
+          </TabsTrigger>
+          <TabsTrigger
+            value="signals"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 pb-3 text-sm font-semibold tracking-tight gap-2"
+          >
+            <SlackIcon className="h-3.5 w-3.5" />
+            Sinais do Slack
+            {pendingCount > 0 && (
+              <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-bold">
+                {pendingCount}
+              </Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Bloco Anotações + contador dinâmico + CTA Nova nota */}
-      <div className="flex items-end justify-between gap-3 flex-wrap">
-        <div>
-          <h2 className="font-serif text-lg font-bold tracking-tight">Anotações</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {total === 0
-              ? 'Nenhuma anotação para os filtros atuais.'
-              : `${total} ${total === 1 ? 'registro' : 'registros'} no histórico${
-                  selectedMemberName ? ` de ${selectedMemberName.split(' ')[0]}` : ''
-                }.`}
-          </p>
-        </div>
-        <Button
-          onClick={() => {
-            setPresetMemberId(undefined);
-            setNoteDialogOpen(true);
-          }}
-          className="rounded-xl gap-2 shrink-0"
-        >
-          <PenSquare className="h-4 w-4" />
-          Nova nota
-        </Button>
-      </div>
-
-      {/* Filtros */}
-      <DiaryFilters
-        members={members}
-        teams={teams}
-        memberId={memberId}
-        teamId={teamId}
-        period={period}
-        query={query}
-        selectedTags={selectedTags}
-        dateRange={dateRange}
-        sort={sort}
-        onMemberChange={(v) => updateParam('member', v)}
-        onTeamChange={(v) => updateParam('team', v)}
-        onPeriodChange={(v) => updateParam('period', v)}
-        onQueryChange={(v) => updateParam('q', v)}
-        onTagsChange={(tags) => updateParam('tags', tags.join(','))}
-        onDateRangeChange={updateDateRange}
-        onSortChange={(v) => updateParam('sort', v === 'newest' ? '' : v)}
-      />
-
-      {/* Feed */}
-      {isLoading ? (
-        <div className="space-y-2">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="h-12 rounded-xl bg-muted/40 animate-pulse" />
-          ))}
-        </div>
-      ) : items.length === 0 ? (
-        <Card className="p-10 text-center rounded-2xl border-dashed bg-transparent">
-          <Inbox className="h-7 w-7 text-muted-foreground/50 mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">
-            {feedbacks.length === 0
-              ? 'Você ainda não tem anotações no período selecionado.'
-              : 'Nenhuma nota encontrada para estes filtros.'}
-          </p>
-        </Card>
-      ) : (
-        <div className="space-y-6">
-          {orderedSections.map(
-            (s) =>
-              s.items.length > 0 && (
-                <FeedSection key={s.title} title={s.title} items={s.items} />
-              ),
+        <TabsContent value="notes" className="mt-6 space-y-5">
+          {/* Insight Card */}
+          {members.length > 0 && (
+            <DiaryCoverageInsight members={members} onCreateNoteFor={handleCreateNoteFor} />
           )}
-        </div>
-      )}
+
+          {/* Bloco Anotações + contador dinâmico + CTA Nova nota */}
+          <div className="flex items-end justify-between gap-3 flex-wrap">
+            <div>
+              <h2 className="font-serif text-lg font-bold tracking-tight">Anotações</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {total === 0
+                  ? 'Nenhuma anotação para os filtros atuais.'
+                  : `${total} ${total === 1 ? 'registro' : 'registros'} no histórico${
+                      selectedMemberName ? ` de ${selectedMemberName.split(' ')[0]}` : ''
+                    }.`}
+              </p>
+            </div>
+            <Button
+              onClick={() => {
+                setPresetMemberId(undefined);
+                setNoteDialogOpen(true);
+              }}
+              className="rounded-xl gap-2 shrink-0"
+            >
+              <PenSquare className="h-4 w-4" />
+              Nova nota
+            </Button>
+          </div>
+
+          {/* Filtros */}
+          <DiaryFilters
+            members={members}
+            teams={teams}
+            memberId={memberId}
+            teamId={teamId}
+            period={period}
+            query={query}
+            selectedTags={selectedTags}
+            source={source}
+            dateRange={dateRange}
+            sort={sort}
+            onMemberChange={(v) => updateParam('member', v)}
+            onTeamChange={(v) => updateParam('team', v)}
+            onPeriodChange={(v) => updateParam('period', v)}
+            onQueryChange={(v) => updateParam('q', v)}
+            onTagsChange={(tags) => updateParam('tags', tags.join(','))}
+            onSourceChange={(v) => updateParam('source', v === 'slack' ? 'slack' : '')}
+            onDateRangeChange={updateDateRange}
+            onSortChange={(v) => updateParam('sort', v === 'newest' ? '' : v)}
+          />
+
+          {/* Feed */}
+          {isLoading ? (
+            <div className="space-y-2">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="h-12 rounded-xl bg-muted/40 animate-pulse" />
+              ))}
+            </div>
+          ) : items.length === 0 ? (
+            <Card className="p-10 text-center rounded-2xl border-dashed bg-transparent">
+              <Inbox className="h-7 w-7 text-muted-foreground/50 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">
+                {feedbacks.length === 0
+                  ? 'Você ainda não tem anotações no período selecionado.'
+                  : 'Nenhuma nota encontrada para estes filtros.'}
+              </p>
+            </Card>
+          ) : (
+            <div className="space-y-6">
+              {orderedSections.map(
+                (s) =>
+                  s.items.length > 0 && (
+                    <FeedSection key={s.title} title={s.title} items={s.items} />
+                  ),
+              )}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="signals" className="mt-6">
+          <DiarySlackSignalsTab />
+        </TabsContent>
+      </Tabs>
+
 
       <NewNoteDialog
         open={noteDialogOpen}
