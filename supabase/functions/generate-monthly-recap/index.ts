@@ -256,8 +256,8 @@ Deno.serve(async (req) => {
 
     const { start, end } = monthRange(periodMonth);
 
-    // Fetch evidence
-    const [{ data: feedbacks }, { data: meetings }] = await Promise.all([
+    // Fetch evidence (feedbacks + 1:1s + context_evidence agregado do mês)
+    const [{ data: feedbacks }, { data: meetings }, { data: contextEv }] = await Promise.all([
       admin
         .from('feedbacks')
         .select('id, content, type, sentiment, tags, occurred_at, summary')
@@ -275,16 +275,26 @@ Deno.serve(async (req) => {
         .lt('created_at', end)
         .eq('processing_status', 'completed')
         .order('created_at', { ascending: true }),
+      admin
+        .from('context_evidence')
+        .select('id, evidence_type, occurred_at, title, summary, leader_edited_summary, metadata')
+        .eq('member_id', member.id)
+        .gte('occurred_at', start)
+        .lt('occurred_at', end)
+        .is('deleted_at', null)
+        .order('occurred_at', { ascending: false })
+        .limit(50),
     ]);
 
     const fbCount = feedbacks?.length ?? 0;
     const mtCount = meetings?.length ?? 0;
-    const totalEvidence = fbCount + mtCount;
+    const ctxCount = contextEv?.length ?? 0;
+    const totalEvidence = fbCount + mtCount + ctxCount;
 
     if (totalEvidence === 0) {
       return new Response(
         JSON.stringify({
-          error: 'Sem evidências no mês — registre ao menos uma nota ou 1:1 antes de gerar.',
+          error: 'Sem evidências no mês — registre ao menos uma nota, 1:1 ou capture sinais do Slack antes de gerar.',
         }),
         { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
@@ -294,7 +304,9 @@ Deno.serve(async (req) => {
       (member as any).name,
       (feedbacks ?? []) as any,
       (meetings ?? []) as any,
+      (contextEv ?? []) as any,
     );
+
 
     if (!ai) {
       return new Response(JSON.stringify({ error: 'AI generation failed' }), {
