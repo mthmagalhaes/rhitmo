@@ -63,6 +63,7 @@ export function DiaryFilters({
   period,
   query,
   selectedTags,
+  source,
   dateRange,
   sort,
   onMemberChange,
@@ -70,6 +71,7 @@ export function DiaryFilters({
   onPeriodChange,
   onQueryChange,
   onTagsChange,
+  onSourceChange,
   onDateRangeChange,
   onSortChange,
 }: DiaryFiltersProps) {
