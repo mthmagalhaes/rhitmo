@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { useSlackConnection } from '@/hooks/useSlackConnection';
 import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
 import { AmbientSlackSettings } from '@/components/settings/AmbientSlackSettings';
+import { SlackHealthPanel } from '@/components/leader/settings/SlackHealthPanel';
+
 import { AccessTab } from '@/components/settings/AccessTab';
 
 function ProfileTab() {
@@ -143,7 +145,9 @@ function IntegrationsTab() {
                   </Button>
                 )}
                 {isSlack && it.connected && <AmbientSlackSettings variant="embedded" />}
+                {isSlack && it.connected && <SlackHealthPanel />}
               </CardContent>
+
             </Card>
           );
         })}

@@ -3398,6 +3398,10 @@ export type Database = {
           total_seats: number
         }[]
       }
+      get_slack_orchestrator_health: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
       get_suppressed_member_emails: {
         Args: never
         Returns: {
