@@ -287,8 +287,9 @@ async function processMember(
         evidence_count: rows.length,
         window_start: windowStart.toISOString(),
         window_end: windowEnd.toISOString(),
-        window_days: WINDOW_DAYS,
+        window_days: windowDays,
         schema_version: 2,
+
       },
     },
     { onConflict: 'source_table,source_id' },
