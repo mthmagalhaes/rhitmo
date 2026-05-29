@@ -61,10 +61,11 @@ export function SlackHealthPanel() {
   const { toast } = useToast();
   const [testing, setTesting] = useState(false);
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['slack-orchestrator-health', effectiveUserId],
     enabled: !!effectiveUserId,
     staleTime: 30_000,
+    retry: 1,
     queryFn: async () => {
       return await safeRpc<OrchestratorHealth>('get_slack_orchestrator_health', {
         p_user_id: effectiveUserId!,
