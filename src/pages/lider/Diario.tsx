@@ -17,10 +17,19 @@ import { NewNoteDialog } from '@/components/NewNoteDialog';
 import { DiaryCoverageInsight } from '@/components/leader/diario/DiaryCoverageInsight';
 import { DiaryFeedItem, type FeedItem } from '@/components/leader/diario/DiaryFeedItem';
 import {
+  SlackRollupFeedItem,
+  type SlackRollupItem,
+} from '@/components/leader/diario/SlackRollupFeedItem';
+import {
   DiaryFilters,
   type Period,
   type SortOrder,
 } from '@/components/leader/diario/DiaryFilters';
+
+type DiaryItem = FeedItem | SlackRollupItem;
+function isSlackRollup(it: DiaryItem): it is SlackRollupItem {
+  return (it as SlackRollupItem).kind === 'slack_rollup';
+}
 
 interface FeedbackRow {
   id: string;
