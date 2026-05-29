@@ -179,6 +179,7 @@ async function callQuarterlyRecapFromRawAI(
   memberName: string,
   feedbacks: Array<{ id: string; content: string; type: string; sentiment: string | null; tags: string[] | null; occurred_at: string; summary: string | null }>,
   meetings: Array<{ id: string; leader_notes: string | null; extracted_themes: string[] | null; created_at: string }>,
+  contextEvidence: Array<{ id: string; evidence_type: string; occurred_at: string; title: string | null; summary: string | null; leader_edited_summary: string | null; metadata: any }>,
   previous: { classification: Classification | null; turnover_risk: TurnoverRisk | null; dominant_summary: string | null } | null,
 ): Promise<QuarterlyRecapAI | null> {
   const apiKey = Deno.env.get('LOVABLE_API_KEY');
@@ -196,7 +197,8 @@ REGRAS CRÍTICAS DO MODO RÁPIDO:
 3. Linguagem factual e seca. Sem "incrível", "preocupante demais". Use "entregou X", "atrasou Y".
 4. Foque APENAS em ações de ${memberName}.
 5. Como você está olhando dados brutos sem curadoria humana, seja CONSERVADOR na classificação — prefira "dentro_esperado" se não houver sinal forte.
-6. Resposta JSON válida em português brasileiro.
+6. **Contexto agregado (Slack, pulses, sinais de rede, peer feedback)**: trate como sinal ambiental — pode reforçar padrões observados em feedbacks/1:1s, mas NÃO conta sozinho como highlight. Resumos do Slack são agregados, nunca cite mensagens cruas.
+7. Resposta JSON válida em português brasileiro.
 
 Mesma estrutura do trimestral padrão: highlights, recurring_patterns, evolution_vs_previous, suggested_classification, suggested_turnover_risk, suggested_next_action_key.
 
@@ -209,6 +211,7 @@ Matriz de next_action_key (escolha UMA conforme classificação):
   const feedbacksText = feedbacks.length > 0
     ? feedbacks.map((f) => `[feedback_id=${f.id} | ${f.occurred_at.slice(0, 10)} | type=${f.type} | sentiment=${f.sentiment ?? '?'}]\n${f.summary || f.content.slice(0, 400)}`).join('\n\n')
     : '(sem feedbacks no período)';
+
   const meetingsText = meetings.length > 0
     ? meetings.map((m) => `[meeting_id=${m.id} | ${m.created_at.slice(0, 10)}]\nNotas líder: ${m.leader_notes?.slice(0, 400) || '(vazio)'}`).join('\n\n')
     : '(sem 1:1s registrados no período)';
