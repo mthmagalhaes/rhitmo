@@ -1,11 +1,15 @@
-// Slack Weekly Rollup — Sprint 22
+// Slack Weekly Rollup — Sprint 23 (consolidação total)
 // Cron diário 04:30 UTC: para cada (workspace, member) com >=3 evidências
 // em slack_ambient_evidence nos últimos 7d, gera um resumo agregado
-// (temas + top colaboradores + canais + narrativa) e upserta como
-// context_evidence(evidence_type='slack_activity_rollup'). O Mentor (web + Slack)
-// consome isso via match_context_evidence (RAG) automaticamente.
+// (temas + top colaboradores + canais + narrativa + bullets temáticos
+// atrelados a evidências reais + avaliação curta da IA) e upserta como
+// context_evidence(evidence_type='slack_activity_rollup'). Esse card é
+// a ÚNICA superfície que o líder vê no Diário: virou anotação editável,
+// com expansão de evidências (permalinks) e ações de gestão.
 //
-// Privacidade: nunca expõe mensagens cruas, apenas agregação narrativa.
+// Privacidade: nunca expõe mensagens cruas no `summary` salvo (só na
+// narrativa neutra). Os permalinks são renderizados pelo frontend sob
+// demanda, buscando direto na tabela slack_ambient_evidence (cobre RLS).
 // Bots/DMs/canais privados já filtrados pelo classifier.
 
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
@@ -37,11 +41,19 @@ interface AmbientRow {
   captured_at: string;
 }
 
+interface RollupHighlight {
+  bullet: string;
+  subject: string;
+  evidence_ids: string[];
+}
+
 interface RollupOutput {
   themes: string[];
+  narrative: string;
+  highlights: RollupHighlight[];
+  ai_assessment: { tone: string; summary: string };
   top_collaborators: { name: string; interactions: number }[];
   top_channels: string[];
-  narrative: string;
 }
 
 // Deterministic UUID v5-ish from a string (avoids extra deps)
@@ -49,7 +61,6 @@ async function deterministicUuid(input: string): Promise<string> {
   const buf = new TextEncoder().encode(input);
   const hash = await crypto.subtle.digest('SHA-256', buf);
   const b = new Uint8Array(hash).slice(0, 16);
-  // Force version 5 + variant bits
   b[6] = (b[6] & 0x0f) | 0x50;
   b[8] = (b[8] & 0x3f) | 0x80;
   const hex = Array.from(b).map((x) => x.toString(16).padStart(2, '0')).join('');
@@ -95,30 +106,51 @@ async function generateRollup(
   collaborators: { name: string; interactions: number }[],
   topChannels: string[],
 ): Promise<RollupOutput | null> {
+  // Lista de evidências com IDs para a IA referenciar
   const evidenceList = rows
     .slice(0, 60)
     .map(
-      (r, i) =>
-        `${i + 1}. [#${r.slack_channel_name ?? r.slack_channel_id} · ${r.category}] ${r.summary ?? r.message_text.slice(0, 120)}`,
+      (r) =>
+        `- id=${r.id} | canal=#${r.slack_channel_name ?? r.slack_channel_id} | cat=${r.category} | "${(r.summary ?? r.message_text).slice(0, 200)}"`,
     )
     .join('\n');
 
+  const validIds = rows.slice(0, 60).map((r) => r.id);
+
   const prompt = `Você é um analista que sintetiza atividade pública de Slack para um líder de pessoas.
-Analise os sinais agregados de ${memberName} nos últimos ${WINDOW_DAYS} dias e devolva JSON com:
-- themes: 2 a 4 temas/projetos concretos em que a pessoa esteve envolvida (frases curtas em português)
-- narrative: 2 a 3 frases neutras, terceira pessoa, descrevendo o foco da semana e como vem colaborando
-- (mantenha top_collaborators e top_channels iguais aos fornecidos abaixo)
+Analise os sinais agregados de ${memberName} nos últimos ${WINDOW_DAYS} dias e devolva JSON estruturado.
 
-NÃO cite mensagens literais. NÃO invente. Se sinal for fraco, seja honesto ("sinal fraco esta semana").
+REGRAS:
+- NÃO cite mensagens literais. NÃO invente nada.
+- Cada highlight DEVE referenciar 1+ IDs de evidências reais da lista abaixo (campo evidence_ids).
+- Se sinal for fraco, seja honesto na narrative ("sinal fraco esta semana") e retorne highlights vazio.
+- Tom da avaliação: "construtivo" | "preocupação" | "positivo" | "neutro".
 
-Top colaboradores (já calculado): ${JSON.stringify(collaborators)}
-Top canais: ${JSON.stringify(topChannels)}
+Formato esperado:
+{
+  "themes": ["2-4 temas/projetos concretos curtos"],
+  "narrative": "2-3 frases neutras, terceira pessoa, descrevendo foco da semana",
+  "highlights": [
+    {
+      "bullet": "Frase concreta do que aconteceu (1 frase, ~15-25 palavras)",
+      "subject": "Assunto/projeto em 1-3 palavras (chip)",
+      "evidence_ids": ["uuid1","uuid2"]
+    }
+    // 3 a 5 highlights
+  ],
+  "ai_assessment": {
+    "tone": "construtivo|preocupação|positivo|neutro",
+    "summary": "1-2 frases — leitura da IA sobre o padrão da semana"
+  }
+}
+
+Top colaboradores (já calculado, NÃO altere): ${JSON.stringify(collaborators)}
+Top canais (já calculado, NÃO altere): ${JSON.stringify(topChannels)}
 
 Sinais classificados:
 ${evidenceList}
 
-Retorne APENAS JSON válido no formato:
-{ "themes": [], "narrative": "" }`;
+Retorne APENAS JSON válido.`;
 
   const res = await fetch(LOVABLE_AI, {
     method: 'POST',
@@ -139,9 +171,38 @@ Retorne APENAS JSON válido no formato:
   const content = json.choices?.[0]?.message?.content ?? '{}';
   try {
     const parsed = JSON.parse(content);
+    const validSet = new Set(validIds);
+    const highlights: RollupHighlight[] = Array.isArray(parsed.highlights)
+      ? parsed.highlights
+          .filter(
+            (h: any) =>
+              h && typeof h.bullet === 'string' && typeof h.subject === 'string',
+          )
+          .map((h: any) => ({
+            bullet: h.bullet.slice(0, 240),
+            subject: h.subject.slice(0, 40),
+            evidence_ids: Array.isArray(h.evidence_ids)
+              ? h.evidence_ids.filter((x: any) => typeof x === 'string' && validSet.has(x)).slice(0, 5)
+              : [],
+          }))
+          .slice(0, 5)
+      : [];
+    const tone = ['construtivo', 'preocupação', 'preocupacao', 'positivo', 'neutro'].includes(
+      parsed.ai_assessment?.tone,
+    )
+      ? parsed.ai_assessment.tone
+      : 'neutro';
     return {
       themes: Array.isArray(parsed.themes) ? parsed.themes.slice(0, 4) : [],
       narrative: typeof parsed.narrative === 'string' ? parsed.narrative : '',
+      highlights,
+      ai_assessment: {
+        tone,
+        summary:
+          typeof parsed.ai_assessment?.summary === 'string'
+            ? parsed.ai_assessment.summary
+            : '',
+      },
       top_collaborators: collaborators,
       top_channels: topChannels,
     };
@@ -196,15 +257,13 @@ async function processMember(
     return false;
   }
 
-  // Deterministic source_id per member + week, so daily reruns upsert the same row
   const weekKey = windowStart.toISOString().slice(0, 10);
   const sourceId = await deterministicUuid(`slack_rollup:${memberId}:${weekKey}`);
-
   const titleThemes = rollup.themes.slice(0, 2).join(' · ') || 'Atividade no Slack';
 
   const { error } = await admin.from('context_evidence').upsert(
     {
-      id: sourceId, // also reuse as id to keep stable
+      id: sourceId,
       workspace_id: workspaceId,
       member_id: memberId,
       source_table: 'slack_ambient_evidence',
@@ -218,12 +277,16 @@ async function processMember(
       visibility: 'private_leader',
       metadata: {
         themes: rollup.themes,
+        narrative: rollup.narrative,
+        highlights: rollup.highlights,
+        ai_assessment: rollup.ai_assessment,
         top_collaborators: rollup.top_collaborators,
         top_channels: rollup.top_channels,
         evidence_count: rows.length,
         window_start: windowStart.toISOString(),
         window_end: windowEnd.toISOString(),
         window_days: WINDOW_DAYS,
+        schema_version: 2,
       },
     },
     { onConflict: 'source_table,source_id' },
@@ -261,7 +324,6 @@ Deno.serve(async (req) => {
   let totalMembers = 0;
 
   try {
-    // Pull last-7d ambient rows from workspaces with ambient mode ON
     const { data: rows, error } = await admin
       .from('slack_ambient_evidence')
       .select('id, member_id, workspace_id, manager_id, slack_channel_id, slack_channel_name, message_text, category, summary, captured_at')
@@ -277,7 +339,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Group by (workspace, member)
     const groups = new Map<string, AmbientRow[]>();
     for (const r of rows as AmbientRow[]) {
       const k = `${r.workspace_id}:${r.member_id}`;
@@ -286,7 +347,6 @@ Deno.serve(async (req) => {
       groups.set(k, arr);
     }
 
-    // Resolve member names in batch
     const memberIds = Array.from(new Set((rows as AmbientRow[]).map((r) => r.member_id)));
     const { data: members } = await admin
       .from('team_members')
