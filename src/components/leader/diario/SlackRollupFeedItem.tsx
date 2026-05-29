@@ -68,6 +68,12 @@ export interface SlackRollupItem {
   occurred_at: string;
   highlights: SlackRollupHighlight[];
   ai_assessment: SlackRollupAssessment | null;
+  themes: string[];
+  top_channels: string[];
+  top_collaborators: { name: string; interactions: number }[];
+  evidence_count: number;
+  window_start: string | null;
+  window_end: string | null;
 }
 
 interface Props {
