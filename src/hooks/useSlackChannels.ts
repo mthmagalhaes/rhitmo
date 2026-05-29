@@ -18,8 +18,11 @@ interface ChannelsResponse {
   settings: {
     autojoin_public_channels: boolean;
     ambient_mode_enabled: boolean;
+    rollup_frequency: 'off' | 'weekly' | 'biweekly' | 'monthly';
+    last_rollup_at: string | null;
   };
 }
+
 
 export function useSlackChannels() {
   return useQuery<ChannelsResponse>({
