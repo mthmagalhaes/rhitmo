@@ -469,14 +469,24 @@ export function SlackRollupFeedItem({ item, onCopyToMember }: Props) {
                         className="rounded-lg border border-border/60 bg-card p-2.5 text-xs flex items-start gap-2"
                       >
                         <div className="flex-1 min-w-0">
-                          {ev.slack_channel_name && (
-                            <span className="font-medium text-primary/80">
-                              #{ev.slack_channel_name}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {ev.slack_channel_name && (
+                              <span className="font-medium text-primary/80">
+                                #{ev.slack_channel_name}
+                              </span>
+                            )}
+                            <span className="text-muted-foreground">
+                              · {format(new Date(ev.captured_at), 'dd/MM HH:mm', { locale: ptBR })}
                             </span>
-                          )}
-                          <span className="text-muted-foreground">
-                            {' '}· {format(new Date(ev.captured_at), 'dd/MM HH:mm', { locale: ptBR })}
-                          </span>
+                            {ev.category && ev.category !== 'outro' && (
+                              <Badge
+                                variant="secondary"
+                                className="text-[9px] font-medium bg-muted text-foreground/70 border-border/60 px-1.5 py-0 h-4"
+                              >
+                                {ev.category}
+                              </Badge>
+                            )}
+                          </div>
                           <p className="mt-1 text-foreground/80 line-clamp-3 leading-relaxed">
                             {ev.message_text}
                           </p>
