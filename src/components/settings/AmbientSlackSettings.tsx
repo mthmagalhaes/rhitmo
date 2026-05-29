@@ -91,6 +91,37 @@ export function AmbientSlackSettings({ variant = 'card' }: Props) {
         />
       </div>
 
+      <div className="flex items-start justify-between gap-4 rounded-xl border border-border/40 p-3">
+        <div className="flex-1 min-w-0">
+          <Label htmlFor="rollup-frequency" className="text-sm font-medium flex items-center gap-1.5">
+            <CalendarClock className="h-3.5 w-3.5 text-muted-foreground" />
+            Frequência do resumo no Diário
+          </Label>
+          <p className="text-xs text-muted-foreground mt-1">
+            Define a cadência com que a Rhitmo entrega o resumo do Slack no seu Diário de Bordo.
+            Em "Desligado", os sinais continuam alimentando o Mentor, mas nenhum card é gerado.
+          </p>
+        </div>
+        <Select
+          value={settings?.rollup_frequency ?? 'weekly'}
+          disabled={!canEdit || busy}
+          onValueChange={(v) =>
+            updateRollupFrequency.mutate(v as 'off' | 'weekly' | 'biweekly' | 'monthly')
+          }
+        >
+          <SelectTrigger id="rollup-frequency" className="w-[140px] h-9 rounded-xl text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="weekly">Semanal</SelectItem>
+            <SelectItem value="biweekly">Quinzenal</SelectItem>
+            <SelectItem value="monthly">Mensal</SelectItem>
+            <SelectItem value="off">Desligado</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+
       <div className="flex items-center justify-between gap-3 pt-1 flex-wrap">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
