@@ -42,6 +42,7 @@ interface DiaryFiltersProps {
   period: Period;
   query: string;
   selectedTags: string[];
+  source: DiarySource;
   dateRange: DateRange | undefined;
   sort: SortOrder;
   onMemberChange: (id: string) => void;
@@ -49,6 +50,7 @@ interface DiaryFiltersProps {
   onPeriodChange: (p: Period) => void;
   onQueryChange: (q: string) => void;
   onTagsChange: (tags: string[]) => void;
+  onSourceChange: (s: DiarySource) => void;
   onDateRangeChange: (range: DateRange | undefined) => void;
   onSortChange: (s: SortOrder) => void;
 }
