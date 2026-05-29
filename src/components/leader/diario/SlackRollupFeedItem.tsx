@@ -389,6 +389,61 @@ export function SlackRollupFeedItem({ item, onCopyToMember }: Props) {
             </div>
           )}
 
+          {/* Temas */}
+          {!editing && item.themes.length > 0 && (
+            <div className="space-y-1.5">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Temas
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {item.themes.map((t, i) => (
+                  <Badge
+                    key={i}
+                    variant="secondary"
+                    className="text-[10px] font-medium bg-muted text-foreground/75 border-border/60 px-2 py-0 h-5"
+                  >
+                    {t}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Atividade: canais + colaboradores */}
+          {!editing && (item.top_channels.length > 0 || item.top_collaborators.length > 0) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {item.top_channels.length > 0 && (
+                <div className="space-y-1.5">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Canais ativos
+                  </div>
+                  <ul className="space-y-1">
+                    {item.top_channels.slice(0, 5).map((ch, i) => (
+                      <li key={i} className="text-xs text-primary/80 truncate">
+                        #{ch.replace(/^#/, '')}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {item.top_collaborators.length > 0 && (
+                <div className="space-y-1.5">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Colabora com
+                  </div>
+                  <ul className="space-y-1">
+                    {item.top_collaborators.slice(0, 5).map((c, i) => (
+                      <li key={i} className="text-xs text-foreground/80 truncate">
+                        {c.name}
+                        <span className="text-muted-foreground"> · {c.interactions}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Evidences */}
           {!editing && hasEvidences && (
             <div>
@@ -400,7 +455,7 @@ export function SlackRollupFeedItem({ item, onCopyToMember }: Props) {
                 <ChevronDown
                   className={cn('h-3 w-3 transition-transform', showEvidences && 'rotate-180')}
                 />
-                {showEvidences ? 'Ocultar evidências' : `Ver evidências (${allEvidenceIds.length})`}
+                {showEvidences ? 'Ocultar evidências' : `Ver evidências${totalEvidenceCount ? ` (${totalEvidenceCount})` : ''}`}
               </button>
 
               {showEvidences && (
