@@ -223,7 +223,9 @@ async function processMember(
   windowStart: Date,
   windowEnd: Date,
   userCache: Map<string, string>,
+  windowDays: number,
 ): Promise<boolean> {
+
   // Collaborators from mentions in the messages
   const mentionCount: Record<string, number> = {};
   for (const r of rows) {
