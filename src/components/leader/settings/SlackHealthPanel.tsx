@@ -110,13 +110,36 @@ export function SlackHealthPanel() {
   };
 
 
-  if (isLoading || !data) {
+  if (isLoading) {
     return (
       <div className="mt-3 rounded-xl border border-border/50 bg-muted/20 px-3 py-2.5">
         <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
           <Loader2 className="h-3 w-3 animate-spin" />
           Carregando saúde do orquestrador…
         </div>
+      </div>
+    );
+  }
+
+  if (isError || !data) {
+    return (
+      <div className="mt-3 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2.5 space-y-2">
+        <p className="text-[11px] text-destructive/90 leading-relaxed">
+          Não consegui carregar a saúde do orquestrador.
+          {error instanceof Error && (
+            <span className="block text-[10px] text-destructive/70 mt-0.5 font-mono break-all">
+              {error.message}
+            </span>
+          )}
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full rounded-xl text-xs"
+          onClick={() => refetch()}
+        >
+          Tentar novamente
+        </Button>
       </div>
     );
   }
