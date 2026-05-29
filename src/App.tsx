@@ -177,7 +177,7 @@ const App = () => (
               <Route path="/analytics" element={<Navigate to="/lider/pessoas?tab=analytics" replace />} />
               <Route path="/billing" element={<Navigate to="/lider/configuracoes?tab=faturamento" replace />} />
 
-              <Route path="/evidence" element={Leader(<Evidence />)} />
+              <Route path="/evidence" element={<Navigate to="/lider/diario?tab=signals" replace />} />
               <Route path="/slack/channels" element={Leader(<SlackChannels />)} />
               {/* Legacy brief redirect */}
               <Route path="/brief/:meetingId" element={Leader(<BriefPage />)} />
