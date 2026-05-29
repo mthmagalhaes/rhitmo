@@ -7,7 +7,14 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Eye, ShieldCheck, Hash, Loader2 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Eye, ShieldCheck, Hash, Loader2, CalendarClock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useSlackChannels, useSlackChannelMutations } from '@/hooks/useSlackChannels';
 import { useAccount } from '@/contexts/AccountContext';
@@ -20,10 +27,14 @@ export function AmbientSlackSettings({ variant = 'card' }: Props) {
   const { isHRAdmin, isWorkspaceOwner } = useAccount();
   const canEdit = Boolean(isHRAdmin || isWorkspaceOwner);
   const { data, isLoading } = useSlackChannels();
-  const { updateAutojoin, updateAmbientEnabled } = useSlackChannelMutations();
+  const { updateAutojoin, updateAmbientEnabled, updateRollupFrequency } = useSlackChannelMutations();
 
   const settings = data?.settings;
-  const busy = updateAutojoin.isPending || updateAmbientEnabled.isPending;
+  const busy =
+    updateAutojoin.isPending ||
+    updateAmbientEnabled.isPending ||
+    updateRollupFrequency.isPending;
+
 
   const readOnlyBadge = !canEdit && (
     <TooltipProvider delayDuration={150}>
