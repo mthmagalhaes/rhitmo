@@ -1,5 +1,5 @@
 // Barra de filtros do Diário v2 — substitui a master list lateral.
-// Estado vive na URL (member, team, period, q, tags, from, to, sort).
+// Estado vive na URL (member, team, period, q, tags, source, from, to, sort).
 import { Search, CalendarIcon, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -16,9 +16,12 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { getTagLabel } from '@/lib/tagConfig';
+import { SlackIcon } from '@/components/icons/SlackIcon';
 import type { LeaderMemberRow } from '@/hooks/useLeaderMembers';
 import type { Team } from '@/types/team';
 import type { DateRange } from 'react-day-picker';
+
+export type DiarySource = 'all' | 'slack';
 
 export type Period = '7d' | '30d' | '90d' | 'all';
 export type SortOrder = 'newest' | 'oldest';
