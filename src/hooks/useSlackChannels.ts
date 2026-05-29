@@ -181,5 +181,6 @@ export function useSlackChannelMutations() {
       toast({ title: 'Erro ao sair do canal', description: e.message, variant: 'destructive' }),
   });
 
-  return { toggleExclude, updateAutojoin, updateAmbientEnabled, joinChannel, leaveChannel };
+  return { toggleExclude, updateAutojoin, updateAmbientEnabled, updateRollupFrequency, joinChannel, leaveChannel };
 }
+
