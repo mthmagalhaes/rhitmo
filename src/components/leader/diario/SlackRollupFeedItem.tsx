@@ -111,19 +111,41 @@ export function SlackRollupFeedItem({ item, onCopyToMember }: Props) {
   const firstName = item.member_name.split(' ')[0];
   const displayedSummary = item.leader_edited_summary ?? item.summary;
   const allEvidenceIds = item.highlights.flatMap((h) => h.evidence_ids);
-  const hasEvidences = allEvidenceIds.length > 0;
+  const hasIdEvidences = allEvidenceIds.length > 0;
+  const totalEvidenceCount = hasIdEvidences
+    ? allEvidenceIds.length
+    : item.evidence_count;
+  const canFetchByWindow =
+    !hasIdEvidences && !!item.window_start && !!item.window_end && !!item.member_id;
+  const hasEvidences = hasIdEvidences || canFetchByWindow;
   const cardTitle = `Semana de ${weekLabel} — ${firstName} no Slack`;
 
   const { data: evidences, isLoading: loadingEvidences } = useQuery({
-    queryKey: ['slack-rollup-evidences', item.id, allEvidenceIds.join(',')],
+    queryKey: [
+      'slack-rollup-evidences',
+      item.id,
+      hasIdEvidences ? allEvidenceIds.join(',') : `window:${item.window_start}:${item.window_end}`,
+    ],
     enabled: showEvidences && hasEvidences,
     staleTime: 5 * 60_000,
     queryFn: async (): Promise<SlackEvidenceLite[]> => {
+      if (hasIdEvidences) {
+        const { data, error } = await supabase
+          .from('slack_ambient_evidence')
+          .select('id, message_text, slack_channel_name, permalink, captured_at, category')
+          .in('id', allEvidenceIds)
+          .limit(20);
+        if (error) throw error;
+        return (data ?? []) as SlackEvidenceLite[];
+      }
       const { data, error } = await supabase
         .from('slack_ambient_evidence')
-        .select('id, message_text, slack_channel_name, permalink, captured_at')
-        .in('id', allEvidenceIds)
-        .limit(20);
+        .select('id, message_text, slack_channel_name, permalink, captured_at, category')
+        .eq('member_id', item.member_id)
+        .gte('captured_at', item.window_start!)
+        .lte('captured_at', item.window_end!)
+        .order('relevance_score', { ascending: false })
+        .limit(8);
       if (error) throw error;
       return (data ?? []) as SlackEvidenceLite[];
     },
