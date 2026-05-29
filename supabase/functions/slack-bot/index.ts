@@ -291,7 +291,10 @@ async function callLeaderMentorFromDM(
         .limit(50);
       memberFeedbacks = fbs ?? [];
       console.log('[DM-MENTOR] member_resolved:', resolvedMember.name, '(', resolvedMember.id, ') | feedbacks:', memberFeedbacks.length);
+    } else {
+      console.log('[DM-MENTOR] member_NOT_resolved | question:', question.substring(0, 120));
     }
+
 
     // History MUST include the current user message as the last turn
     // (chat-mentor does .slice(0, -1) on history and adds `question` as the

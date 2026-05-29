@@ -10,8 +10,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
-import { supabase } from '@/integrations/supabase/client';
 import { safeRpc, safeFunctionInvoke } from '@/lib/supabaseSafe';
+
 
 interface OrchestratorHealth {
   last_orchestrator_run: string | null;
