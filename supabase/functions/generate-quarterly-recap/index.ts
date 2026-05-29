@@ -179,6 +179,7 @@ async function callQuarterlyRecapFromRawAI(
   memberName: string,
   feedbacks: Array<{ id: string; content: string; type: string; sentiment: string | null; tags: string[] | null; occurred_at: string; summary: string | null }>,
   meetings: Array<{ id: string; leader_notes: string | null; extracted_themes: string[] | null; created_at: string }>,
+  contextEvidence: Array<{ id: string; evidence_type: string; occurred_at: string; title: string | null; summary: string | null; leader_edited_summary: string | null; metadata: any }>,
   previous: { classification: Classification | null; turnover_risk: TurnoverRisk | null; dominant_summary: string | null } | null,
 ): Promise<QuarterlyRecapAI | null> {
   const apiKey = Deno.env.get('LOVABLE_API_KEY');
@@ -196,7 +197,8 @@ REGRAS CRÍTICAS DO MODO RÁPIDO:
 3. Linguagem factual e seca. Sem "incrível", "preocupante demais". Use "entregou X", "atrasou Y".
 4. Foque APENAS em ações de ${memberName}.
 5. Como você está olhando dados brutos sem curadoria humana, seja CONSERVADOR na classificação — prefira "dentro_esperado" se não houver sinal forte.
-6. Resposta JSON válida em português brasileiro.
+6. **Contexto agregado (Slack, pulses, sinais de rede, peer feedback)**: trate como sinal ambiental — pode reforçar padrões observados em feedbacks/1:1s, mas NÃO conta sozinho como highlight. Resumos do Slack são agregados, nunca cite mensagens cruas.
+7. Resposta JSON válida em português brasileiro.
 
 Mesma estrutura do trimestral padrão: highlights, recurring_patterns, evolution_vs_previous, suggested_classification, suggested_turnover_risk, suggested_next_action_key.
 
@@ -209,9 +211,21 @@ Matriz de next_action_key (escolha UMA conforme classificação):
   const feedbacksText = feedbacks.length > 0
     ? feedbacks.map((f) => `[feedback_id=${f.id} | ${f.occurred_at.slice(0, 10)} | type=${f.type} | sentiment=${f.sentiment ?? '?'}]\n${f.summary || f.content.slice(0, 400)}`).join('\n\n')
     : '(sem feedbacks no período)';
+
   const meetingsText = meetings.length > 0
     ? meetings.map((m) => `[meeting_id=${m.id} | ${m.created_at.slice(0, 10)}]\nNotas líder: ${m.leader_notes?.slice(0, 400) || '(vazio)'}`).join('\n\n')
     : '(sem 1:1s registrados no período)';
+
+  const contextText = contextEvidence.length > 0
+    ? contextEvidence.map((c) => {
+        const md = c.metadata ?? {};
+        const themes = Array.isArray(md.themes) ? md.themes.slice(0, 4).join(', ') : '';
+        const channels = Array.isArray(md.top_channels) ? md.top_channels.slice(0, 3).join(', ') : '';
+        const narrative = (c.leader_edited_summary ?? c.summary ?? '').slice(0, 400);
+        const assess = md.ai_assessment?.summary;
+        return `[${c.evidence_type} | ${c.occurred_at.slice(0, 10)}]\n${narrative}${themes ? '\nTemas: ' + themes : ''}${channels ? '\nCanais: ' + channels : ''}${assess ? '\nAvaliação Rhitmo: ' + assess : ''}`;
+      }).join('\n\n')
+    : '(sem contexto agregado no período)';
 
   const previousText = previous
     ? `Trimestre anterior:\n- Classificação: ${previous.classification ?? 'não informada'}\n- Risco turnover: ${previous.turnover_risk ?? 'não informado'}\n- Padrão geral: ${previous.dominant_summary ?? 'não informado'}`
@@ -227,7 +241,11 @@ ${feedbacksText}
 ## 1:1s (${meetings.length}):
 ${meetingsText}
 
+## CONTEXTO AGREGADO — Slack/pulses/sinais (${contextEvidence.length}) — ambiental, NÃO usar como evidência única de highlight:
+${contextText}
+
 ${previousText}
+
 
 Responda APENAS com JSON no formato:
 {
@@ -460,7 +478,7 @@ Deno.serve(async (req) => {
       // FROM_RAW: pull raw feedbacks + 1:1s of the quarter directly
       const startIso = new Date(startMonth + 'T00:00:00Z').toISOString();
       const endIso = new Date(endMonth + 'T00:00:00Z').toISOString();
-      const [{ data: feedbacks }, { data: meetings }] = await Promise.all([
+      const [{ data: feedbacks }, { data: meetings }, { data: contextEv }] = await Promise.all([
         admin
           .from('feedbacks')
           .select('id, content, type, sentiment, tags, occurred_at, summary')
@@ -480,21 +498,32 @@ Deno.serve(async (req) => {
           .eq('processing_status', 'completed')
           .order('created_at', { ascending: true })
           .limit(15),
+        admin
+          .from('context_evidence')
+          .select('id, evidence_type, occurred_at, title, summary, leader_edited_summary, metadata')
+          .eq('member_id', member.id)
+          .gte('occurred_at', startIso)
+          .lt('occurred_at', endIso)
+          .is('deleted_at', null)
+          .order('occurred_at', { ascending: false })
+          .limit(150),
       ]);
 
       const fbList = feedbacks ?? [];
       const mtList = meetings ?? [];
-      if (fbList.length === 0 && mtList.length === 0) {
+      const ctxList = contextEv ?? [];
+      if (fbList.length === 0 && mtList.length === 0 && ctxList.length === 0) {
         return new Response(
           JSON.stringify({
-            error: 'Nenhum feedback ou 1:1 encontrado no trimestre. Registre evidências antes de tentar o modo rápido.',
+            error: 'Nenhum feedback, 1:1 ou sinal agregado encontrado no trimestre. Registre evidências antes de tentar o modo rápido.',
           }),
           { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       }
 
-      ai = await callQuarterlyRecapFromRawAI((member as any).name, fbList as any, mtList as any, previous);
+      ai = await callQuarterlyRecapFromRawAI((member as any).name, fbList as any, mtList as any, ctxList as any, previous);
       totalFeedbacks = fbList.length;
+
       totalMeetings = mtList.length;
       generationMode = 'from_raw';
     }

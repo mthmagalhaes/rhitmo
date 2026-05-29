@@ -18,8 +18,11 @@ interface ChannelsResponse {
   settings: {
     autojoin_public_channels: boolean;
     ambient_mode_enabled: boolean;
+    rollup_frequency: 'off' | 'weekly' | 'biweekly' | 'monthly';
+    last_rollup_at: string | null;
   };
 }
+
 
 export function useSlackChannels() {
   return useQuery<ChannelsResponse>({
@@ -118,6 +121,33 @@ export function useSlackChannelMutations() {
   const updateAutojoin = updateSetting('autojoin_public_channels');
   const updateAmbientEnabled = updateSetting('ambient_mode_enabled');
 
+  const updateRollupFrequency = useMutation({
+    mutationFn: async (value: 'off' | 'weekly' | 'biweekly' | 'monthly') => {
+      const { data: ws } = await supabase
+        .from('workspaces')
+        .select('id')
+        .or(`owner_id.eq.${effectiveUserId},hr_admin_ids.cs.{${effectiveUserId}}`)
+        .limit(1)
+        .maybeSingle();
+      if (!ws) throw new Error('Workspace não encontrado');
+
+      const { error } = await supabase
+        .from('workspace_slack_settings')
+        .upsert(
+          { workspace_id: ws.id, rollup_frequency: value } as never,
+          { onConflict: 'workspace_id' },
+        );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidate();
+      toast({ title: 'Frequência atualizada' });
+    },
+    onError: (e: Error) =>
+      toast({ title: 'Erro ao atualizar frequência', description: e.message, variant: 'destructive' }),
+  });
+
+
   // Convidar bot a um canal público
   const joinChannel = useMutation({
     mutationFn: async (channelId: string) => {
@@ -151,5 +181,6 @@ export function useSlackChannelMutations() {
       toast({ title: 'Erro ao sair do canal', description: e.message, variant: 'destructive' }),
   });
 
-  return { toggleExclude, updateAutojoin, updateAmbientEnabled, joinChannel, leaveChannel };
+  return { toggleExclude, updateAutojoin, updateAmbientEnabled, updateRollupFrequency, joinChannel, leaveChannel };
 }
+

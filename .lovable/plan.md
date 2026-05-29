@@ -1,59 +1,49 @@
-## Problema
+# Frequência dos Resumos Slack + RAG nos Recaps
 
-Os cards de Resumo Semanal expandidos hoje mostram só o parágrafo da IA. Faltam os blocos que existiam na antiga aba "Sinais do Slack" (e que o usuário pediu para resgatar):
+Dois ajustes em sequência, conectados pelo mesmo objetivo: dar controle ao líder sobre quando o Diário recebe resumos do Slack e garantir que tudo que aparece no Diário entra no RAG de Mensal/Trimestral/Formal.
 
-- **Temas** detectados (tags)
-- **Top canais** onde a pessoa atuou
-- **Top parceiros** (com quem mais conversou)
-- **Avaliação Rhitmo** (tom)
-- **Evidências-fonte** (mensagens originais com permalink pro Slack)
+## 1. Frequência configurável por workspace
 
-Hoje o componente espera `highlights[]`, `ai_assessment` e `evidence_ids` por highlight — mas os rollups que já estão no banco (`context_evidence.metadata`) seguem o schema antigo: `themes[]`, `top_channels[]`, `top_collaborators[]`, `evidence_count`, `window_start`, `window_end`. Por isso o expand fica vazio.
+**Schema (`workspace_slack_settings`)** — adicionar coluna:
+- `rollup_frequency text not null default 'weekly'` com check em `('off','weekly','biweekly','monthly')`.
+- `last_rollup_at timestamptz` (para o cron decidir se já está na hora de rodar de novo).
 
-## Solução
+**Edge function `slack-weekly-rollup`** — passa a respeitar a frequência por workspace:
+- `off` → pula o workspace.
+- `weekly` (default) → comportamento atual, janela 7d.
+- `biweekly` → só roda se `last_rollup_at` >= 14d atrás; janela 14d.
+- `monthly` → só roda se `last_rollup_at` >= 28d atrás; janela 30d.
+- Atualiza `last_rollup_at` ao final de cada execução por workspace.
+- `MIN_EVIDENCES` segue 3; `source_id` determinístico passa a usar `member_id + window_start` (já é o caso, só confirmar que a janela variável não gera colisão entre frequências diferentes).
 
-Renderizar **ambos os schemas** no card expandido (legado + novo), e buscar evidências-fonte direto em `slack_ambient_evidence` pela janela `member_id + captured_at BETWEEN window_start AND window_end` quando não houver `evidence_ids`.
+**UI (`AmbientSlackSettings.tsx`)** — abaixo dos dois toggles existentes, novo bloco "Frequência do resumo no Diário":
+- `Select` com 4 opções: Semanal · Quinzenal · Mensal · Desligado.
+- Texto auxiliar: "Define a cadência com que a Rhitmo entrega o resumo do Slack no seu Diário de Bordo."
+- Quando `Desligado`, mantém o Ambient Mode capturando sinais para o Mentor mas não gera cards no Diário (deixar claro no helper text).
+- Mesma permissão atual: HR Admin ou Workspace Owner.
+- Hook `useSlackChannels`/`useSlackChannelMutations`: estender `ChannelsResponse.settings` e adicionar `updateRollupFrequency` no mesmo padrão dos outros toggles.
 
-### 1. `src/pages/lider/Diario.tsx` — carregar metadata completo
+**`slack-list-channels`** — devolver `rollup_frequency` junto das settings já retornadas.
 
-Estender `SlackRollupItem` e o mapper para incluir os campos legados:
+## 2. RAG: Mensal e Trimestral consumirem `context_evidence`
 
-```ts
-themes: string[];
-top_channels: string[];
-top_collaborators: { name: string; interactions: number }[];
-evidence_count: number;
-window_start: string | null;
-window_end: string | null;
-```
+`generate-formal-review` **já** lê `context_evidence` (inclui `slack_activity_rollup`, pulses, network signals, peer feedback). `generate-monthly-recap` e `generate-quarterly-recap` **não** — então o que aparece no Diário do líder não influencia o Rhitmo Mensal nem o Trimestral hoje.
 
-Mapear de `r.metadata.themes`, `r.metadata.top_channels`, etc. (fallback `[]`).
+**Ajuste em `generate-monthly-recap/index.ts` e `generate-quarterly-recap/index.ts`**:
+- Adicionar fetch de `context_evidence` filtrado por `member_id` + janela do recap (mês/trimestre), com `deleted_at is null`, ordenado por `occurred_at desc`, limit razoável (50 mensal / 150 trimestral).
+- Incluir os campos relevantes no payload do prompt como bloco "Sinais do Slack & contexto agregado" (themes, top_channels, top_collaborators, narrative, ai_assessment, highlights). Reusar `leader_edited_summary` quando presente, igual ao card do Diário.
+- Reforçar no system prompt que esses são resumos agregados, não mensagens cruas (mesmo padrão do `chat-mentor`).
 
-### 2. `src/components/leader/diario/SlackRollupFeedItem.tsx` — bloco expandido enriquecido
+## Detalhes técnicos
 
-Ordem dentro do `open && (...)`:
+- Migration única: `ALTER TABLE public.workspace_slack_settings ADD COLUMN rollup_frequency text NOT NULL DEFAULT 'weekly' CHECK (rollup_frequency IN ('off','weekly','biweekly','monthly')), ADD COLUMN last_rollup_at timestamptz;`
+- Sem mudança em RLS/GRANTs (tabela já existente).
+- Cron do `slack-weekly-rollup` continua diário 04:30 UTC — só a lógica interna de "rodar agora ou pular" muda.
+- `embed-context-evidence` continua processando todos os rollups; nenhuma mudança.
+- `chat-mentor` continua puxando via `match_context_evidence` (RAG) — nenhuma mudança.
 
-1. **Narrativa** (já existe — `displayedSummary` ou editor).
-2. **Avaliação Rhitmo** (já existe, quando `ai_assessment`).
-3. **Temas** — chips horizontais (`Badge` secundary) de `themes[]` quando houver. Header pequeno "Temas".
-4. **Atividade** — grid 2 colunas (`md:grid-cols-2`):
-   - **Canais ativos**: lista `top_channels` (até 5) com `#nome` em `text-primary/80`.
-   - **Colabora com**: lista `top_collaborators` (até 5) com nome + `(N)` em `text-muted-foreground`.
-5. **Highlights** (quando `highlights.length > 0` — schema novo): bullets com chip de subject.
-6. **Evidências-fonte** (expansível): botão "Ver evidências (N)" onde N = `evidence_count` (ou `evidence_ids.length` se houver). Ao abrir, lazy-load:
-   - Se `evidence_ids.length > 0`: `slack_ambient_evidence.in('id', evidence_ids)`.
-   - Senão, fallback: `slack_ambient_evidence.eq('member_id', member_id).gte('captured_at', window_start).lte('captured_at', window_end).order('relevance_score desc').limit(8)`.
-   - Cada evidência mostra: `#canal · data hora`, `message_text` (line-clamp-3), badge `category`, e link "Abrir no Slack" com `permalink`.
+## Não-escopo
 
-### 3. Sem mudança no edge / migration
-
-Os rollups novos do `slack-weekly-rollup` continuam gerando `highlights[]` e `ai_assessment` (já implementado). O card só passa a renderizar também o que já existe nos rollups antigos sem exigir regeração.
-
-## Resultado visual
-
-Cards continuam compactos colapsados. Ao expandir, o usuário vê: narrativa → avaliação Rhitmo → temas (chips) → canais + parceiros (2 colunas) → highlights (se houver) → "Ver evidências (N)" expansível com mensagens originais + permalinks pro Slack — exatamente o conteúdo da antiga aba de Sinais, agora dentro do banner.
-
-## Arquivos
-
-- `src/pages/lider/Diario.tsx` — estender interface + mapper.
-- `src/components/leader/diario/SlackRollupFeedItem.tsx` — adicionar blocos Temas / Atividade / fallback de evidências por janela temporal.
+- Não criar UI por liderado (frequência é por workspace).
+- Não mexer no `slack-ambient-classifier` (captura continua igual, 2x/dia).
+- Não alterar o card visual `SlackRollupFeedItem` no Diário.

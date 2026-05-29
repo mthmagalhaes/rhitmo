@@ -223,7 +223,9 @@ async function processMember(
   windowStart: Date,
   windowEnd: Date,
   userCache: Map<string, string>,
+  windowDays: number,
 ): Promise<boolean> {
+
   // Collaborators from mentions in the messages
   const mentionCount: Record<string, number> = {};
   for (const r of rows) {
@@ -285,8 +287,9 @@ async function processMember(
         evidence_count: rows.length,
         window_start: windowStart.toISOString(),
         window_end: windowEnd.toISOString(),
-        window_days: WINDOW_DAYS,
+        window_days: windowDays,
         schema_version: 2,
+
       },
     },
     { onConflict: 'source_table,source_id' },
@@ -317,37 +320,94 @@ Deno.serve(async (req) => {
   const admin = getAdminClient();
   const run = await startAutomationRun(admin, 'slack-weekly-rollup');
 
-  const windowEnd = new Date();
-  const windowStart = new Date(windowEnd.getTime() - WINDOW_DAYS * 24 * 3600 * 1000);
+  // Carrega settings de TODOS workspaces que têm Slack ativo, decide janela por
+  // frequência (off | weekly=7d | biweekly=14d | monthly=30d) e respeita
+  // last_rollup_at para não rodar antes da hora.
+  const FREQ_DAYS: Record<string, number> = {
+    weekly: 7,
+    biweekly: 14,
+    monthly: 30,
+  };
+  const FREQ_MIN_GAP_HOURS: Record<string, number> = {
+    weekly: 6 * 24,      // só roda se passou ≥6d desde último
+    biweekly: 13 * 24,
+    monthly: 27 * 24,
+  };
+
+  const nowMs = Date.now();
+  const maxWindowDays = 30; // janela mais larga possível para pre-fetch único
 
   let totalRollups = 0;
   let totalMembers = 0;
+  const skippedWorkspaces: string[] = [];
 
   try {
+    const { data: settingsRows, error: settingsErr } = await admin
+      .from('workspace_slack_settings')
+      .select('workspace_id, ambient_mode_enabled, rollup_frequency, last_rollup_at');
+    if (settingsErr) throw settingsErr;
+
+    // Mapa: workspace_id -> { frequencyDays, shouldRun }
+    const wsPlans = new Map<string, { freqDays: number; freq: string }>();
+    for (const s of settingsRows ?? []) {
+      const freq = (s.rollup_frequency ?? 'weekly') as string;
+      if (freq === 'off' || s.ambient_mode_enabled === false) {
+        skippedWorkspaces.push(`${s.workspace_id}:${freq === 'off' ? 'off' : 'ambient_off'}`);
+        continue;
+      }
+      const minGapHours = FREQ_MIN_GAP_HOURS[freq] ?? FREQ_MIN_GAP_HOURS.weekly;
+      if (s.last_rollup_at) {
+        const hoursSince = (nowMs - new Date(s.last_rollup_at).getTime()) / 3_600_000;
+        if (hoursSince < minGapHours) {
+          skippedWorkspaces.push(`${s.workspace_id}:too_recent`);
+          continue;
+        }
+      }
+      wsPlans.set(s.workspace_id, { freqDays: FREQ_DAYS[freq] ?? 7, freq });
+    }
+
+    if (wsPlans.size === 0) {
+      await run.finish('success', 0, undefined);
+      return new Response(
+        JSON.stringify({ ok: true, message: 'No workspaces due', skipped: skippedWorkspaces.length }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    const windowEndGlobal = new Date();
+    const windowStartGlobal = new Date(windowEndGlobal.getTime() - maxWindowDays * 24 * 3600 * 1000);
+
     const { data: rows, error } = await admin
       .from('slack_ambient_evidence')
       .select('id, member_id, workspace_id, manager_id, slack_channel_id, slack_channel_name, message_text, category, summary, captured_at')
-      .gte('captured_at', windowStart.toISOString())
+      .in('workspace_id', Array.from(wsPlans.keys()))
+      .gte('captured_at', windowStartGlobal.toISOString())
       .order('captured_at', { ascending: false })
-      .limit(5000);
+      .limit(8000);
     if (error) throw error;
 
     if (!rows || rows.length === 0) {
+      // Ainda atualiza last_rollup_at? Não — só atualiza quando algo é processado.
       await run.finish('success', 0);
       return new Response(JSON.stringify({ ok: true, message: 'No ambient evidence in window' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    // Agrupa por workspace+member, filtrando pela janela específica de cada workspace
     const groups = new Map<string, AmbientRow[]>();
     for (const r of rows as AmbientRow[]) {
+      const plan = wsPlans.get(r.workspace_id);
+      if (!plan) continue;
+      const wsWindowStartMs = nowMs - plan.freqDays * 24 * 3600 * 1000;
+      if (new Date(r.captured_at).getTime() < wsWindowStartMs) continue;
       const k = `${r.workspace_id}:${r.member_id}`;
       const arr = groups.get(k) ?? [];
       arr.push(r);
       groups.set(k, arr);
     }
 
-    const memberIds = Array.from(new Set((rows as AmbientRow[]).map((r) => r.member_id)));
+    const memberIds = Array.from(new Set(Array.from(groups.values()).flatMap((g) => g.map((r) => r.member_id))));
     const { data: members } = await admin
       .from('team_members')
       .select('id, name')
@@ -356,12 +416,17 @@ Deno.serve(async (req) => {
     (members ?? []).forEach((m: any) => nameById.set(m.id, m.name));
 
     const userCache = new Map<string, string>();
+    const touchedWorkspaces = new Set<string>();
 
     for (const [key, evList] of groups) {
       if (evList.length < MIN_EVIDENCES) continue;
       const [workspaceId, memberId] = key.split(':');
+      const plan = wsPlans.get(workspaceId)!;
       const memberName = nameById.get(memberId) ?? 'liderado';
       totalMembers++;
+
+      const wsWindowEnd = new Date();
+      const wsWindowStart = new Date(wsWindowEnd.getTime() - plan.freqDays * 24 * 3600 * 1000);
 
       const ok = await processMember(
         admin,
@@ -371,20 +436,34 @@ Deno.serve(async (req) => {
         memberId,
         memberName,
         evList,
-        windowStart,
-        windowEnd,
+        wsWindowStart,
+        wsWindowEnd,
         userCache,
+        plan.freqDays,
       );
-      if (ok) totalRollups++;
+      if (ok) {
+        totalRollups++;
+        touchedWorkspaces.add(workspaceId);
+      }
+    }
+
+    // Marca last_rollup_at para workspaces que receberam pelo menos 1 rollup
+    if (touchedWorkspaces.size > 0) {
+      const nowIso = new Date().toISOString();
+      await admin
+        .from('workspace_slack_settings')
+        .update({ last_rollup_at: nowIso })
+        .in('workspace_id', Array.from(touchedWorkspaces));
     }
 
     await run.finish(totalRollups > 0 ? 'success' : 'partial', totalRollups);
     return new Response(
       JSON.stringify({
         ok: true,
+        workspaces_due: wsPlans.size,
+        workspaces_skipped: skippedWorkspaces.length,
         members_evaluated: totalMembers,
         rollups_upserted: totalRollups,
-        window_days: WINDOW_DAYS,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
@@ -397,3 +476,4 @@ Deno.serve(async (req) => {
     });
   }
 });
+
