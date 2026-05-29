@@ -55,12 +55,14 @@ export default function LiderDiario() {
   const queryClient = useQueryClient();
 
   const [searchParams, setSearchParams] = useSearchParams();
+  const tab = (searchParams.get('tab') === 'signals' ? 'signals' : 'notes') as 'notes' | 'signals';
   const memberId = searchParams.get('member') ?? 'all';
   const teamId = searchParams.get('team') ?? 'all';
   const period = (searchParams.get('period') as Period) || '30d';
   const query = searchParams.get('q') ?? '';
   const tagsParam = searchParams.get('tags') ?? '';
   const selectedTags = tagsParam ? tagsParam.split(',').filter(Boolean) : [];
+  const source = (searchParams.get('source') === 'slack' ? 'slack' : 'all') as DiarySource;
   const sort = (searchParams.get('sort') as SortOrder) || 'newest';
   const fromParam = searchParams.get('from');
   const toParam = searchParams.get('to');
