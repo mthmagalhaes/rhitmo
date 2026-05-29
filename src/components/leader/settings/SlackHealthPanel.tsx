@@ -66,18 +66,21 @@ export function SlackHealthPanel() {
     enabled: !!effectiveUserId,
     staleTime: 30_000,
     queryFn: async () => {
-      return await safeRpc<OrchestratorHealth>(
-        supabase.rpc('get_slack_orchestrator_health', { p_user_id: effectiveUserId! }),
-      );
+      return await safeRpc<OrchestratorHealth>('get_slack_orchestrator_health', {
+        p_user_id: effectiveUserId!,
+      });
     },
   });
 
   const handleTest = async () => {
     setTesting(true);
     try {
-      const res = await safeFunctionInvoke<{ ok: boolean; scenario?: string; member_name?: string; stage?: string }>(
-        supabase.functions.invoke('admin-test-orchestrator', { body: {} }),
-      );
+      const res = await safeFunctionInvoke<{
+        ok: boolean;
+        scenario?: string;
+        member_name?: string;
+        stage?: string;
+      }>('admin-test-orchestrator', {});
       if (res?.ok) {
         toast({
           title: 'DM de teste enviada ao Slack',
@@ -90,9 +93,10 @@ export function SlackHealthPanel() {
       } else {
         toast({
           title: 'Não consegui enviar',
-          description: res?.stage === 'no_slack_integration'
-            ? 'Conecte o Slack antes de testar.'
-            : 'Tente novamente em alguns segundos.',
+          description:
+            res?.stage === 'no_slack_integration'
+              ? 'Conecte o Slack antes de testar.'
+              : 'Tente novamente em alguns segundos.',
           variant: 'destructive',
         });
       }
@@ -103,6 +107,7 @@ export function SlackHealthPanel() {
       setTesting(false);
     }
   };
+
 
   if (isLoading || !data) {
     return (
