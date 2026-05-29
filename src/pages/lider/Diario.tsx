@@ -213,6 +213,7 @@ export default function LiderDiario() {
 
     const slackItems: DiaryItem[] = dedupedRollups.map<SlackRollupItem>((r) => {
       const m = memberById.get(r.member_id);
+      const md = r.metadata ?? {};
       return {
         kind: 'slack_rollup',
         id: r.id,
@@ -223,8 +224,14 @@ export default function LiderDiario() {
         summary: r.summary ?? '',
         leader_edited_summary: r.leader_edited_summary,
         occurred_at: r.occurred_at,
-        highlights: r.metadata?.highlights ?? [],
-        ai_assessment: r.metadata?.ai_assessment ?? null,
+        highlights: Array.isArray(md.highlights) ? md.highlights : [],
+        ai_assessment: md.ai_assessment ?? null,
+        themes: Array.isArray(md.themes) ? md.themes : [],
+        top_channels: Array.isArray(md.top_channels) ? md.top_channels : [],
+        top_collaborators: Array.isArray(md.top_collaborators) ? md.top_collaborators : [],
+        evidence_count: typeof md.evidence_count === 'number' ? md.evidence_count : 0,
+        window_start: md.window_start ?? null,
+        window_end: md.window_end ?? null,
       };
     });
 

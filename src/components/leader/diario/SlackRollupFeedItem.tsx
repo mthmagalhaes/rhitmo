@@ -68,6 +68,12 @@ export interface SlackRollupItem {
   occurred_at: string;
   highlights: SlackRollupHighlight[];
   ai_assessment: SlackRollupAssessment | null;
+  themes: string[];
+  top_channels: string[];
+  top_collaborators: { name: string; interactions: number }[];
+  evidence_count: number;
+  window_start: string | null;
+  window_end: string | null;
 }
 
 interface Props {
@@ -89,6 +95,7 @@ interface SlackEvidenceLite {
   slack_channel_name: string | null;
   permalink: string | null;
   captured_at: string;
+  category: string | null;
 }
 
 export function SlackRollupFeedItem({ item, onCopyToMember }: Props) {
@@ -105,19 +112,41 @@ export function SlackRollupFeedItem({ item, onCopyToMember }: Props) {
   const firstName = item.member_name.split(' ')[0];
   const displayedSummary = item.leader_edited_summary ?? item.summary;
   const allEvidenceIds = item.highlights.flatMap((h) => h.evidence_ids);
-  const hasEvidences = allEvidenceIds.length > 0;
+  const hasIdEvidences = allEvidenceIds.length > 0;
+  const totalEvidenceCount = hasIdEvidences
+    ? allEvidenceIds.length
+    : item.evidence_count;
+  const canFetchByWindow =
+    !hasIdEvidences && !!item.window_start && !!item.window_end && !!item.member_id;
+  const hasEvidences = hasIdEvidences || canFetchByWindow;
   const cardTitle = `Semana de ${weekLabel} — ${firstName} no Slack`;
 
   const { data: evidences, isLoading: loadingEvidences } = useQuery({
-    queryKey: ['slack-rollup-evidences', item.id, allEvidenceIds.join(',')],
+    queryKey: [
+      'slack-rollup-evidences',
+      item.id,
+      hasIdEvidences ? allEvidenceIds.join(',') : `window:${item.window_start}:${item.window_end}`,
+    ],
     enabled: showEvidences && hasEvidences,
     staleTime: 5 * 60_000,
     queryFn: async (): Promise<SlackEvidenceLite[]> => {
+      if (hasIdEvidences) {
+        const { data, error } = await supabase
+          .from('slack_ambient_evidence')
+          .select('id, message_text, slack_channel_name, permalink, captured_at, category')
+          .in('id', allEvidenceIds)
+          .limit(20);
+        if (error) throw error;
+        return (data ?? []) as SlackEvidenceLite[];
+      }
       const { data, error } = await supabase
         .from('slack_ambient_evidence')
-        .select('id, message_text, slack_channel_name, permalink, captured_at')
-        .in('id', allEvidenceIds)
-        .limit(20);
+        .select('id, message_text, slack_channel_name, permalink, captured_at, category')
+        .eq('member_id', item.member_id)
+        .gte('captured_at', item.window_start!)
+        .lte('captured_at', item.window_end!)
+        .order('relevance_score', { ascending: false })
+        .limit(8);
       if (error) throw error;
       return (data ?? []) as SlackEvidenceLite[];
     },
@@ -360,6 +389,61 @@ export function SlackRollupFeedItem({ item, onCopyToMember }: Props) {
             </div>
           )}
 
+          {/* Temas */}
+          {!editing && item.themes.length > 0 && (
+            <div className="space-y-1.5">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Temas
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {item.themes.map((t, i) => (
+                  <Badge
+                    key={i}
+                    variant="secondary"
+                    className="text-[10px] font-medium bg-muted text-foreground/75 border-border/60 px-2 py-0 h-5"
+                  >
+                    {t}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Atividade: canais + colaboradores */}
+          {!editing && (item.top_channels.length > 0 || item.top_collaborators.length > 0) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {item.top_channels.length > 0 && (
+                <div className="space-y-1.5">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Canais ativos
+                  </div>
+                  <ul className="space-y-1">
+                    {item.top_channels.slice(0, 5).map((ch, i) => (
+                      <li key={i} className="text-xs text-primary/80 truncate">
+                        #{ch.replace(/^#/, '')}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {item.top_collaborators.length > 0 && (
+                <div className="space-y-1.5">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Colabora com
+                  </div>
+                  <ul className="space-y-1">
+                    {item.top_collaborators.slice(0, 5).map((c, i) => (
+                      <li key={i} className="text-xs text-foreground/80 truncate">
+                        {c.name}
+                        <span className="text-muted-foreground"> · {c.interactions}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Evidences */}
           {!editing && hasEvidences && (
             <div>
@@ -371,7 +455,7 @@ export function SlackRollupFeedItem({ item, onCopyToMember }: Props) {
                 <ChevronDown
                   className={cn('h-3 w-3 transition-transform', showEvidences && 'rotate-180')}
                 />
-                {showEvidences ? 'Ocultar evidências' : `Ver evidências (${allEvidenceIds.length})`}
+                {showEvidences ? 'Ocultar evidências' : `Ver evidências${totalEvidenceCount ? ` (${totalEvidenceCount})` : ''}`}
               </button>
 
               {showEvidences && (
@@ -385,14 +469,24 @@ export function SlackRollupFeedItem({ item, onCopyToMember }: Props) {
                         className="rounded-lg border border-border/60 bg-card p-2.5 text-xs flex items-start gap-2"
                       >
                         <div className="flex-1 min-w-0">
-                          {ev.slack_channel_name && (
-                            <span className="font-medium text-primary/80">
-                              #{ev.slack_channel_name}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {ev.slack_channel_name && (
+                              <span className="font-medium text-primary/80">
+                                #{ev.slack_channel_name}
+                              </span>
+                            )}
+                            <span className="text-muted-foreground">
+                              · {format(new Date(ev.captured_at), 'dd/MM HH:mm', { locale: ptBR })}
                             </span>
-                          )}
-                          <span className="text-muted-foreground">
-                            {' '}· {format(new Date(ev.captured_at), 'dd/MM HH:mm', { locale: ptBR })}
-                          </span>
+                            {ev.category && ev.category !== 'outro' && (
+                              <Badge
+                                variant="secondary"
+                                className="text-[9px] font-medium bg-muted text-foreground/70 border-border/60 px-1.5 py-0 h-4"
+                              >
+                                {ev.category}
+                              </Badge>
+                            )}
+                          </div>
                           <p className="mt-1 text-foreground/80 line-clamp-3 leading-relaxed">
                             {ev.message_text}
                           </p>
