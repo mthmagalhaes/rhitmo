@@ -71,10 +71,12 @@ interface NewNoteDialogProps {
   memberName?: string;
   onSuccess?: () => void;
   workspaceId?: string;
+  initialContent?: string;
+  initialTitle?: string;
 }
 
-export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName, onSuccess, workspaceId }: NewNoteDialogProps) => {
-  const [content, setContent] = useState('');
+export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName, onSuccess, workspaceId, initialContent, initialTitle }: NewNoteDialogProps) => {
+  const [content, setContent] = useState(initialContent ?? '');
   const [memberId, setMemberId] = useState(selectedMemberId || '');
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [sharedMemberIds, setSharedMemberIds] = useState<string[]>([]);

@@ -1,7 +1,6 @@
 // Diário de Bordo — visão cross-member AI-Native.
-// Tabs: Anotações (default) | Sinais do Slack (absorve /evidence).
-// Insight de cobertura no topo + feed cronológico agrupado por bucket
-// temporal, com filtros e chip "Slack" para isolar rollups semanais.
+// Página única com anotações (notas do líder + resumos semanais do Slack como
+// anotações enriquecidas). Filtros via URL; chip "Slack" isola rollups.
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -10,12 +9,8 @@ import { Lock, PenSquare, Inbox } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { SlackIcon } from '@/components/icons/SlackIcon';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { useLeaderMembers } from '@/hooks/useLeaderMembers';
-import { useEvidence } from '@/hooks/useEvidence';
 import { supabase } from '@/integrations/supabase/client';
 import { safeQuery } from '@/lib/supabaseSafe';
 import { NewNoteDialog } from '@/components/NewNoteDialog';
@@ -24,6 +19,8 @@ import { DiaryFeedItem, type FeedItem } from '@/components/leader/diario/DiaryFe
 import {
   SlackRollupFeedItem,
   type SlackRollupItem,
+  type SlackRollupHighlight,
+  type SlackRollupAssessment,
 } from '@/components/leader/diario/SlackRollupFeedItem';
 import {
   DiaryFilters,
@@ -31,7 +28,6 @@ import {
   type SortOrder,
   type DiarySource,
 } from '@/components/leader/diario/DiaryFilters';
-import { DiarySlackSignalsTab } from '@/components/leader/diario/DiarySlackSignalsTab';
 
 type DiaryItem = FeedItem | SlackRollupItem;
 function isSlackRollup(it: DiaryItem): it is SlackRollupItem {
@@ -49,13 +45,23 @@ interface FeedbackRow {
   created_at: string;
 }
 
+interface SlackRollupRow {
+  id: string;
+  member_id: string;
+  title: string | null;
+  summary: string | null;
+  leader_edited_summary: string | null;
+  occurred_at: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  metadata: any;
+}
+
 export default function LiderDiario() {
   const { id: effectiveUserId } = useEffectiveUser();
   const { workspace, teams, members } = useLeaderMembers();
   const queryClient = useQueryClient();
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const tab = (searchParams.get('tab') === 'signals' ? 'signals' : 'notes') as 'notes' | 'signals';
   const memberId = searchParams.get('member') ?? 'all';
   const teamId = searchParams.get('team') ?? 'all';
   const period = (searchParams.get('period') as Period) || '30d';
@@ -72,6 +78,8 @@ export default function LiderDiario() {
 
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   const [presetMemberId, setPresetMemberId] = useState<string | undefined>();
+  const [prefillContent, setPrefillContent] = useState<string | undefined>();
+  const [prefillTitle, setPrefillTitle] = useState<string | undefined>();
 
   const updateParam = (key: string, value: string) => {
     const next = new URLSearchParams(searchParams);
@@ -89,8 +97,6 @@ export default function LiderDiario() {
     setSearchParams(next, { replace: true });
   };
 
-  // Carrega TODAS as notas do líder (cross-member) — RLS garante manager_id = auth.uid()
-  // Quando dateRange está setado, ignoramos o período e buscamos sem limite temporal.
   const hasCustomDate = !!dateRange?.from;
   const { data: feedbacks = [], isLoading } = useQuery({
     queryKey: ['diario-feedbacks', effectiveUserId, period, hasCustomDate],
@@ -111,10 +117,7 @@ export default function LiderDiario() {
     },
   });
 
-  // Sprint Support: também consome rollups semanais do Slack
-  // (`context_evidence.evidence_type = 'slack_activity_rollup'`) para que
-  // o líder veja o que os liderados andaram falando/fazendo no Slack como
-  // mais uma evidência do Diário. Read-only, sem ações destrutivas.
+  // Rollups semanais do Slack — agora trazem highlights + avaliação + edição
   const memberIdsForRoll = useMemo(() => members.map((m) => m.id), [members]);
   const { data: slackRollups = [] } = useQuery({
     queryKey: ['diario-slack-rollups', effectiveUserId, period, hasCustomDate, memberIdsForRoll.length],
@@ -123,8 +126,9 @@ export default function LiderDiario() {
     queryFn: async () => {
       let q = supabase
         .from('context_evidence')
-        .select('id, member_id, title, summary, occurred_at')
+        .select('id, member_id, title, summary, leader_edited_summary, occurred_at, metadata')
         .eq('evidence_type', 'slack_activity_rollup')
+        .is('deleted_at', null)
         .in('member_id', memberIdsForRoll)
         .order('occurred_at', { ascending: false })
         .limit(100);
@@ -132,7 +136,7 @@ export default function LiderDiario() {
         const days = period === '7d' ? 7 : period === '30d' ? 30 : 90;
         q = q.gte('occurred_at', subDays(new Date(), days).toISOString());
       }
-      return await safeQuery<Array<{ id: string; member_id: string; title: string | null; summary: string | null; occurred_at: string }>>(q);
+      return await safeQuery<SlackRollupRow[]>(q);
     },
   });
 
@@ -179,8 +183,7 @@ export default function LiderDiario() {
       };
     });
 
-    // Slack rollups: 1 por (liderado, semana ISO) — mantém o mais recente.
-    // Tags são do líder; quando filtra por tag, escondemos rollups.
+    // Slack rollups: 1 por (liderado, semana ISO).
     const rawRollups = selectedTags.length > 0
       ? []
       : (slackRollups ?? []).filter((r) => {
@@ -192,13 +195,12 @@ export default function LiderDiario() {
             if (toTime !== null && t > toTime) return false;
           }
           if (q) {
-            const hay = `${r.title ?? ''} ${r.summary ?? ''}`.toLowerCase();
+            const hay = `${r.title ?? ''} ${r.summary ?? ''} ${r.leader_edited_summary ?? ''}`.toLowerCase();
             if (!hay.includes(q)) return false;
           }
           return true;
         });
 
-    // Dedupe por (member_id, ISO week) — mantém o mais recente.
     const seenWeek = new Set<string>();
     const dedupedRollups = [...rawRollups]
       .sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime())
@@ -219,11 +221,13 @@ export default function LiderDiario() {
         member_avatar: m?.avatar ?? null,
         title: r.title ?? 'Atividade no Slack',
         summary: r.summary ?? '',
+        leader_edited_summary: r.leader_edited_summary,
         occurred_at: r.occurred_at,
+        highlights: r.metadata?.highlights ?? [],
+        ai_assessment: r.metadata?.ai_assessment ?? null,
       };
     });
 
-    // Filtro por fonte: chip "Slack" isola somente rollups.
     const all = source === 'slack' ? slackItems : [...fbItems, ...slackItems];
     all.sort((a, b) => {
       const ta = new Date(
@@ -264,9 +268,17 @@ export default function LiderDiario() {
           { title: 'Hoje', items: buckets.today },
         ];
 
-
   const handleCreateNoteFor = (m: { id: string }) => {
     setPresetMemberId(m.id);
+    setPrefillContent(undefined);
+    setPrefillTitle(undefined);
+    setNoteDialogOpen(true);
+  };
+
+  const handleCopyRollupToMember = ({ content, title }: { content: string; title: string }) => {
+    setPresetMemberId(undefined);
+    setPrefillContent(content);
+    setPrefillTitle(title);
     setNoteDialogOpen(true);
   };
 
@@ -280,10 +292,6 @@ export default function LiderDiario() {
   const selectedMemberName =
     memberId !== 'all' ? memberById.get(memberId)?.name : undefined;
 
-  // Contagem de pendentes p/ badge da aba Sinais
-  const { data: pendingSignals = [] } = useEvidence({ status: 'pending' });
-  const pendingCount = pendingSignals.length;
-
   return (
     <div className="max-w-5xl mx-auto px-6 lg:px-8 py-6 space-y-5">
       {/* Header */}
@@ -295,117 +303,90 @@ export default function LiderDiario() {
         </p>
       </header>
 
-      <Tabs
-        value={tab}
-        onValueChange={(v) => updateParam('tab', v === 'signals' ? 'signals' : '')}
-        className="w-full"
-      >
-        <TabsList className="bg-transparent border-b border-border rounded-none h-auto p-0 gap-6 justify-start w-full">
-          <TabsTrigger
-            value="notes"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 pb-3 text-sm font-semibold tracking-tight"
-          >
-            Anotações
-          </TabsTrigger>
-          <TabsTrigger
-            value="signals"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 pb-3 text-sm font-semibold tracking-tight gap-2"
-          >
-            <SlackIcon className="h-3.5 w-3.5" />
-            Sinais do Slack
-            {pendingCount > 0 && (
-              <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-bold">
-                {pendingCount}
-              </Badge>
-            )}
-          </TabsTrigger>
-        </TabsList>
+      {/* Insight Card */}
+      {members.length > 0 && (
+        <DiaryCoverageInsight members={members} onCreateNoteFor={handleCreateNoteFor} />
+      )}
 
-        <TabsContent value="notes" className="mt-6 space-y-5">
-          {/* Insight Card */}
-          {members.length > 0 && (
-            <DiaryCoverageInsight members={members} onCreateNoteFor={handleCreateNoteFor} />
+      {/* Bloco Anotações + contador dinâmico + CTA Nova nota */}
+      <div className="flex items-end justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="font-serif text-lg font-bold tracking-tight">Anotações</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {total === 0
+              ? 'Nenhuma anotação para os filtros atuais.'
+              : `${total} ${total === 1 ? 'registro' : 'registros'} no histórico${
+                  selectedMemberName ? ` de ${selectedMemberName.split(' ')[0]}` : ''
+                }.`}
+          </p>
+        </div>
+        <Button
+          onClick={() => {
+            setPresetMemberId(undefined);
+            setPrefillContent(undefined);
+            setPrefillTitle(undefined);
+            setNoteDialogOpen(true);
+          }}
+          className="rounded-xl gap-2 shrink-0"
+        >
+          <PenSquare className="h-4 w-4" />
+          Nova nota
+        </Button>
+      </div>
+
+      {/* Filtros */}
+      <DiaryFilters
+        members={members}
+        teams={teams}
+        memberId={memberId}
+        teamId={teamId}
+        period={period}
+        query={query}
+        selectedTags={selectedTags}
+        source={source}
+        dateRange={dateRange}
+        sort={sort}
+        onMemberChange={(v) => updateParam('member', v)}
+        onTeamChange={(v) => updateParam('team', v)}
+        onPeriodChange={(v) => updateParam('period', v)}
+        onQueryChange={(v) => updateParam('q', v)}
+        onTagsChange={(tags) => updateParam('tags', tags.join(','))}
+        onSourceChange={(v) => updateParam('source', v === 'slack' ? 'slack' : '')}
+        onDateRangeChange={updateDateRange}
+        onSortChange={(v) => updateParam('sort', v === 'newest' ? '' : v)}
+      />
+
+      {/* Feed */}
+      {isLoading ? (
+        <div className="space-y-2">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-12 rounded-xl bg-muted/40 animate-pulse" />
+          ))}
+        </div>
+      ) : items.length === 0 ? (
+        <Card className="p-10 text-center rounded-2xl border-dashed bg-transparent">
+          <Inbox className="h-7 w-7 text-muted-foreground/50 mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">
+            {feedbacks.length === 0
+              ? 'Você ainda não tem anotações no período selecionado.'
+              : 'Nenhuma nota encontrada para estes filtros.'}
+          </p>
+        </Card>
+      ) : (
+        <div className="space-y-6">
+          {orderedSections.map(
+            (s) =>
+              s.items.length > 0 && (
+                <FeedSection
+                  key={s.title}
+                  title={s.title}
+                  items={s.items}
+                  onCopyRollupToMember={handleCopyRollupToMember}
+                />
+              ),
           )}
-
-          {/* Bloco Anotações + contador dinâmico + CTA Nova nota */}
-          <div className="flex items-end justify-between gap-3 flex-wrap">
-            <div>
-              <h2 className="font-serif text-lg font-bold tracking-tight">Anotações</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {total === 0
-                  ? 'Nenhuma anotação para os filtros atuais.'
-                  : `${total} ${total === 1 ? 'registro' : 'registros'} no histórico${
-                      selectedMemberName ? ` de ${selectedMemberName.split(' ')[0]}` : ''
-                    }.`}
-              </p>
-            </div>
-            <Button
-              onClick={() => {
-                setPresetMemberId(undefined);
-                setNoteDialogOpen(true);
-              }}
-              className="rounded-xl gap-2 shrink-0"
-            >
-              <PenSquare className="h-4 w-4" />
-              Nova nota
-            </Button>
-          </div>
-
-          {/* Filtros */}
-          <DiaryFilters
-            members={members}
-            teams={teams}
-            memberId={memberId}
-            teamId={teamId}
-            period={period}
-            query={query}
-            selectedTags={selectedTags}
-            source={source}
-            dateRange={dateRange}
-            sort={sort}
-            onMemberChange={(v) => updateParam('member', v)}
-            onTeamChange={(v) => updateParam('team', v)}
-            onPeriodChange={(v) => updateParam('period', v)}
-            onQueryChange={(v) => updateParam('q', v)}
-            onTagsChange={(tags) => updateParam('tags', tags.join(','))}
-            onSourceChange={(v) => updateParam('source', v === 'slack' ? 'slack' : '')}
-            onDateRangeChange={updateDateRange}
-            onSortChange={(v) => updateParam('sort', v === 'newest' ? '' : v)}
-          />
-
-          {/* Feed */}
-          {isLoading ? (
-            <div className="space-y-2">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="h-12 rounded-xl bg-muted/40 animate-pulse" />
-              ))}
-            </div>
-          ) : items.length === 0 ? (
-            <Card className="p-10 text-center rounded-2xl border-dashed bg-transparent">
-              <Inbox className="h-7 w-7 text-muted-foreground/50 mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">
-                {feedbacks.length === 0
-                  ? 'Você ainda não tem anotações no período selecionado.'
-                  : 'Nenhuma nota encontrada para estes filtros.'}
-              </p>
-            </Card>
-          ) : (
-            <div className="space-y-6">
-              {orderedSections.map(
-                (s) =>
-                  s.items.length > 0 && (
-                    <FeedSection key={s.title} title={s.title} items={s.items} />
-                  ),
-              )}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="signals" className="mt-6">
-          <DiarySlackSignalsTab />
-        </TabsContent>
-      </Tabs>
-
+        </div>
+      )}
 
       <NewNoteDialog
         open={noteDialogOpen}
@@ -414,12 +395,22 @@ export default function LiderDiario() {
         memberName={presetMember?.name}
         workspaceId={workspace?.id}
         onSuccess={onNoteSuccess}
+        initialContent={prefillContent}
+        initialTitle={prefillTitle}
       />
     </div>
   );
 }
 
-function FeedSection({ title, items }: { title: string; items: DiaryItem[] }) {
+function FeedSection({
+  title,
+  items,
+  onCopyRollupToMember,
+}: {
+  title: string;
+  items: DiaryItem[];
+  onCopyRollupToMember: (payload: { content: string; title: string }) => void;
+}) {
   return (
     <section>
       <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-2.5">
@@ -431,7 +422,7 @@ function FeedSection({ title, items }: { title: string; items: DiaryItem[] }) {
       <div className="space-y-1.5">
         {items.map((it) =>
           isSlackRollup(it) ? (
-            <SlackRollupFeedItem key={it.id} item={it} />
+            <SlackRollupFeedItem key={it.id} item={it} onCopyToMember={onCopyRollupToMember} />
           ) : (
             <DiaryFeedItem key={it.id} item={it} />
           ),

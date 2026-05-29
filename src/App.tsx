@@ -47,7 +47,6 @@ import {
   Enterprise,
   ResetPassword,
   GoogleCalendarCallback,
-  Evidence,
   SlackChannels,
   LiderInicio,
   LiderOneOnOnes,
@@ -177,7 +176,7 @@ const App = () => (
               <Route path="/analytics" element={<Navigate to="/lider/pessoas?tab=analytics" replace />} />
               <Route path="/billing" element={<Navigate to="/lider/configuracoes?tab=faturamento" replace />} />
 
-              <Route path="/evidence" element={<Navigate to="/lider/diario?tab=signals" replace />} />
+              <Route path="/evidence" element={<Navigate to="/lider/diario" replace />} />
               <Route path="/slack/channels" element={Leader(<SlackChannels />)} />
               {/* Legacy brief redirect */}
               <Route path="/brief/:meetingId" element={Leader(<BriefPage />)} />

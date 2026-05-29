@@ -1,60 +1,103 @@
 ## Objetivo
 
-Reduzir o ruído do Slack no Diário de Bordo e absorver /evidence como uma aba dentro de /lider/diario, mantendo o design escolhido (abas minimalistas estilo Linear/Notion).
+Unificar tudo do Slack num único card semanal por liderado dentro da aba **Anotações** do Diário. O card é uma "anotação" gerada pela IA com evidências, fontes e avaliação — editável e gerenciável como qualquer outra nota. Elimina a aba "Sinais do Slack" e a rota `/evidence`.
+
+## Por que faz sentido (avaliação cofundador)
+
+- `slack_ambient_evidence` permanece como matéria-prima (alimenta o rollup + RAG). Custo baixo (~$0.08/mês/workspace), nada muda no classifier.
+- O líder consome 1 card/semana/liderado com **toda a profundidade** que hoje está espalhada em N sinais → menos ruído, mais sinal.
+- "Dispensar" deixa de existir: tudo entra na RAG do Mentor de qualquer jeito; o ato de "dispensar" era cosmético.
+- "Virar nota" também some: o card **já é** a nota. Pode editar texto, copiar pra outro liderado, excluir.
+- Mantém auditabilidade via seção expansível com permalinks Slack.
 
 ## Mudanças
 
-### 1. Aba "Anotações" (atual) — consolidação semanal do Slack
+### 1. Enriquecer o payload do rollup (`slack-weekly-rollup`)
 
-**Backend (migration):**
-- Atualizar `slack-weekly-rollup` para garantir 1 `context_evidence(evidence_type='slack_activity_rollup')` por `(member_id, ISO week)` (idempotência já existe via SHA-256, validar).
-- A query do feed do Diário já lê esses rollups. O ajuste é puramente de **agrupamento visual**: hoje 1 rollup vira 1 linha por dia; vamos garantir que só apareça **1 card por liderado por semana**, sempre no bucket da semana correspondente.
-- Sem mudança de schema. Sem mudança nos crons (já roda 04:30 UTC diário, mas só persiste 1 row/semana/liderado).
+Atualmente o JSON salvo em `context_evidence.metadata` é `{themes, top_collaborators, top_channels, narrative}`. Vamos enriquecer para o card precisar de tudo em 1 leitura:
 
-**Frontend (`src/pages/lider/Diario.tsx` + `SlackRollupFeedItem.tsx`):**
-- Reescrever `SlackRollupFeedItem` como card consolidado (estilo do protótipo v1):
-  - Ícone Slack monocromático violet em círculo
-  - Título "Semana de DD/MM — {Nome} no Slack"
-  - 3 bullets temáticos extraídos do `summary` (já vem do JSON `{themes[], narrative}`)
-  - Footer com chips de tema + link "Abrir no Slack" no hover
-- No agrupador por bucket, dedupe: para cada liderado, manter apenas o rollup mais recente dentro do bucket.
+```json
+{
+  "themes": ["..."],
+  "narrative": "2-3 frases gerais",
+  "highlights": [
+    {
+      "bullet": "Defendeu prazo realista do projeto X em #squad-growth",
+      "subject": "Negociação de escopo",
+      "evidence_ids": ["<uuid slack_ambient_evidence>", "..."]
+    },
+    ... (3 a 5 bullets)
+  ],
+  "ai_assessment": {
+    "tone": "construtivo|preocupação|positivo|neutro",
+    "summary": "1-2 frases — leitura da IA sobre padrão da semana (mesmo formato dos sinais hoje)"
+  },
+  "top_collaborators": [...],
+  "top_channels": [...],
+  "evidence_count": N,
+  "window_start": "...",
+  "window_end": "..."
+}
+```
 
-**Filtro Slack (chip ao lado das tags):**
-- `DiaryFilters.tsx`: adicionar chip "Slack" com `SlackIcon` oficial colorido (componente já existe em `src/components/icons/SlackIcon.tsx`).
-- Param `?source=slack` no URL. Quando ativo, lista só `DiaryItem` com `kind === 'slack_rollup'`.
+- Prompt do Gemini atualizado pra emitir bullets temáticos atrelados a `evidence_ids` reais (passamos a lista de IDs+resumos no input).
+- `ai_assessment` reaproveita o mesmo padrão usado hoje no `EvidenceCard` (avaliação curta IA).
+- Idempotência por `(member_id, ISO week)` mantida.
 
-### 2. Aba "Sinais do Slack" (nova, absorve /evidence)
+### 2. Card semanal vira anotação editável
+
+Hoje `SlackRollupFeedItem.tsx` é read-only. Vamos:
+
+- Renderizar **bullets temáticos** com `subject` (chip pequeno) + texto, mantendo logo Slack monocromático.
+- Adicionar bloco **"Avaliação da IA"** no rodapé (mesma pílula visual do `EvidenceCard`).
+- Adicionar seção expansível **"▸ Ver evidências (N)"** que lista 3-5 trechos com permalink "Abrir no Slack" (busca `slack_ambient_evidence` por `evidence_ids`).
+- Menu de ações `⋯` (igual `NoteCard`):
+  - **Editar** (abre editor inline; salva em campo novo `context_evidence.leader_edited_summary` — preserva original em `metadata.narrative`)
+  - **Copiar texto**
+  - **Copiar para outro liderado** (cria `feedback` ou nova `context_evidence` no destino — escolha de implementação no detalhe técnico)
+  - **Excluir** (soft delete via `context_evidence.deleted_at` novo campo, oculta do feed; matéria-prima `slack_ambient_evidence` permanece intacta)
+
+### 3. Remover aba "Sinais do Slack" e rota `/evidence`
+
+- `src/pages/lider/Diario.tsx`: remover `<TabsList>` e `DiarySlackSignalsTab`. Volta a ser página única ("Anotações").
+- `src/App.tsx`: `/evidence` → `<Navigate to="/lider/diario" replace />`.
+- Deletar `src/pages/Evidence.tsx`, `src/components/leader/diario/DiarySlackSignalsTab.tsx`.
+- Manter `useEvidence`, `useEvidenceMutations`, `EvidenceCard` por ora (chamados por outras superfícies; remoção em sprint separada se confirmar zero uso).
+
+### 4. Filtro Slack
+
+Mantém o chip "Slack" no `DiaryFilters.tsx` filtrando `kind === 'slack_rollup'` — agora ainda mais útil.
+
+## Detalhes técnicos
+
+**Migration:**
+- `ALTER TABLE context_evidence ADD COLUMN leader_edited_summary text NULL;`
+- `ALTER TABLE context_evidence ADD COLUMN deleted_at timestamptz NULL;`
+- Atualizar política RLS de UPDATE/DELETE para permitir o líder dono (`manager_id = auth.uid()`) editar `leader_edited_summary` e marcar `deleted_at` apenas em rows `evidence_type='slack_activity_rollup'`. Outros tipos seguem imutáveis.
+- Filtro `deleted_at IS NULL` na query do feed em `Diario.tsx`.
+
+**Edge function `slack-weekly-rollup`:**
+- Passar `id` de cada `slack_ambient_evidence` para o prompt; pedir array `highlights[].evidence_ids`.
+- Persistir o novo metadata enriquecido.
+- Mesmas guardas de idempotência e privacidade (nunca msgs cruas no `summary`, só nos permalinks expansíveis renderizados client-side).
 
 **Frontend:**
-- Adicionar tabs no topo de `Diario.tsx` (shadcn `Tabs`, estilo underline minimalista do protótipo):
-  - "Anotações" (default)
-  - "Sinais do Slack" com badge de contagem de pendentes (via `useEvidence({status:'pending'})`)
-- Criar componente `DiarySlackSignalsTab.tsx` que reusa `EvidenceCard` + `EvidenceFilters` + `useEvidence` + `useEvidenceMutations` (lógica idêntica a `Evidence.tsx` hoje).
-- Mantém ações: Virar nota, Dispensar, Aprovar alta confiança em massa, Selecionar todas.
-- Manter link "Gerenciar canais" → /slack/channels no header da aba.
+- `SlackRollupFeedItem.tsx` reescrito com seções: header, bullets+subjects, avaliação IA, "Ver evidências" (lazy fetch via novo hook `useSlackRollupEvidences(evidenceIds)` que faz 1 `select id, message_text, slack_channel_name, permalink, captured_at from slack_ambient_evidence where id in (...)`).
+- Menu `⋯` com `DropdownMenu` shadcn, igual padrão `NoteCard`.
+- "Copiar para outro liderado" abre `MemberPickerDialog` e duplica como `feedback` privado (mais leve que criar outro context_evidence — usa fluxo existente).
 
-**Roteamento:**
-- `/evidence` permanece como redirect para `/lider/diario?tab=signals` (compat de bookmarks/DMs).
-- `?tab=signals|notes` controla a aba ativa via URL param.
-
-### 3. Detalhes visuais (do protótipo v1)
-
-- Tabs underline (`border-b-2 border-stone-900` no ativo, `text-stone-400` nos demais)
-- Badge violet `bg-violet-100 text-violet-600 rounded text-[10px] font-bold` na aba Slack
-- Chip Slack no toolbar com logo multicolor 12px + texto "Slack"
-- Manter design system Creme/Bento (rounded-2xl, soft shadows, tracking-tight, Lora nos títulos)
-
-## Out of scope
-
-- Mudar cron do classifier ou rollup
-- Mexer no chat-mentor (já consome `context_evidence` via RAG)
-- Mudar página /lider/contexto
-- Esconder ou desabilitar a página /evidence (vira redirect)
+**Out of scope:**
+- Mudanças no `chat-mentor` (já lê `context_evidence` via RAG).
+- Mudar cadência do classifier (segue 2x/dia) ou rollup (segue diário, mas só 1 row/semana).
+- Remover hooks `useEvidence*` (limpeza separada).
+- Notificação no Slack quando um novo rollup é criado.
 
 ## Verificação
 
-- `/lider/diario` mostra aba Anotações default com 1 card semanal/liderado de Slack misturado às notas
-- Filtro chip "Slack" isola só os cards semanais
-- Aba "Sinais do Slack" replica /evidence com mesmas ações
-- `/evidence` redireciona para `?tab=signals`
-- Build limpo, sem erro TS
+- `/lider/diario` mostra só a aba Anotações (sem Tabs).
+- Card semanal Slack mostra: bullets com subject chips, avaliação IA, "Ver evidências (N)" expansível com permalinks.
+- Menu ⋯ permite editar texto inline, copiar, copiar p/ outro liderado, excluir.
+- Excluir oculta do feed mas não apaga `slack_ambient_evidence` nem quebra RAG.
+- `/evidence` redireciona pra `/lider/diario`.
+- Filtro "Slack" isola só esses cards.
+- Build limpo.

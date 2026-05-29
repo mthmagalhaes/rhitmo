@@ -400,9 +400,11 @@ export type Database = {
         Row: {
           actor_user_id: string | null
           created_at: string
+          deleted_at: string | null
           embedding: string | null
           evidence_type: string
           id: string
+          leader_edited_summary: string | null
           member_id: string
           metadata: Json
           occurred_at: string
@@ -419,9 +421,11 @@ export type Database = {
         Insert: {
           actor_user_id?: string | null
           created_at?: string
+          deleted_at?: string | null
           embedding?: string | null
           evidence_type: string
           id?: string
+          leader_edited_summary?: string | null
           member_id: string
           metadata?: Json
           occurred_at: string
@@ -438,9 +442,11 @@ export type Database = {
         Update: {
           actor_user_id?: string | null
           created_at?: string
+          deleted_at?: string | null
           embedding?: string | null
           evidence_type?: string
           id?: string
+          leader_edited_summary?: string | null
           member_id?: string
           metadata?: Json
           occurred_at?: string
