@@ -3025,6 +3025,8 @@ export type Database = {
           created_at: string
           excluded_channel_ids: string[]
           last_classifier_run_at: string | null
+          last_rollup_at: string | null
+          rollup_frequency: string
           updated_at: string
           workspace_id: string
         }
@@ -3034,6 +3036,8 @@ export type Database = {
           created_at?: string
           excluded_channel_ids?: string[]
           last_classifier_run_at?: string | null
+          last_rollup_at?: string | null
+          rollup_frequency?: string
           updated_at?: string
           workspace_id: string
         }
@@ -3043,6 +3047,8 @@ export type Database = {
           created_at?: string
           excluded_channel_ids?: string[]
           last_classifier_run_at?: string | null
+          last_rollup_at?: string | null
+          rollup_frequency?: string
           updated_at?: string
           workspace_id?: string
         }
