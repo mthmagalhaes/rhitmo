@@ -32,7 +32,7 @@ export const loadRecorderPopup = () => import('@/pages/RecorderPopup');
 export const loadEnterprise = () => import('@/pages/Enterprise');
 export const loadResetPassword = () => import('@/pages/ResetPassword');
 export const loadGoogleCalendarCallback = () => import('@/pages/GoogleCalendarCallback');
-export const loadEvidence = () => import('@/pages/Evidence');
+
 export const loadSlackChannels = () => import('@/pages/SlackChannels');
 
 export const loadLiderInicio = () => import('@/pages/lider/Inicio');
@@ -82,7 +82,7 @@ export const RecorderPopup = lazy(loadRecorderPopup);
 export const Enterprise = lazy(loadEnterprise);
 export const ResetPassword = lazy(loadResetPassword);
 export const GoogleCalendarCallback = lazy(loadGoogleCalendarCallback);
-export const Evidence = lazy(loadEvidence);
+
 export const SlackChannels = lazy(loadSlackChannels);
 
 export const LiderInicio = lazy(loadLiderInicio);

@@ -52,10 +52,8 @@ interface SlackRollupRow {
   summary: string | null;
   leader_edited_summary: string | null;
   occurred_at: string;
-  metadata: {
-    highlights?: SlackRollupHighlight[];
-    ai_assessment?: SlackRollupAssessment;
-  } | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  metadata: any;
 }
 
 export default function LiderDiario() {
