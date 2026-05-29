@@ -179,41 +179,52 @@ export default function LiderDiario() {
       };
     });
 
-    // Slack rollups com os mesmos filtros (membro, time, data, busca, tag).
-    // Tags não se aplicam (rollups não têm tags do líder), então quando o
-    // usuário filtra por tag, escondemos os rollups.
-    const slackItems: DiaryItem[] = selectedTags.length > 0
+    // Slack rollups: 1 por (liderado, semana ISO) — mantém o mais recente.
+    // Tags são do líder; quando filtra por tag, escondemos rollups.
+    const rawRollups = selectedTags.length > 0
       ? []
-      : (slackRollups ?? [])
-          .filter((r) => {
-            if (memberId !== 'all' && r.member_id !== memberId) return false;
-            if (teamMemberIds && !teamMemberIds.has(r.member_id)) return false;
-            if (fromTime !== null) {
-              const t = new Date(r.occurred_at).getTime();
-              if (t < fromTime) return false;
-              if (toTime !== null && t > toTime) return false;
-            }
-            if (q) {
-              const hay = `${r.title ?? ''} ${r.summary ?? ''}`.toLowerCase();
-              if (!hay.includes(q)) return false;
-            }
-            return true;
-          })
-          .map<SlackRollupItem>((r) => {
-            const m = memberById.get(r.member_id);
-            return {
-              kind: 'slack_rollup',
-              id: r.id,
-              member_id: r.member_id,
-              member_name: m?.name ?? 'Liderado removido',
-              member_avatar: m?.avatar ?? null,
-              title: r.title ?? 'Atividade no Slack',
-              summary: r.summary ?? '',
-              occurred_at: r.occurred_at,
-            };
-          });
+      : (slackRollups ?? []).filter((r) => {
+          if (memberId !== 'all' && r.member_id !== memberId) return false;
+          if (teamMemberIds && !teamMemberIds.has(r.member_id)) return false;
+          if (fromTime !== null) {
+            const t = new Date(r.occurred_at).getTime();
+            if (t < fromTime) return false;
+            if (toTime !== null && t > toTime) return false;
+          }
+          if (q) {
+            const hay = `${r.title ?? ''} ${r.summary ?? ''}`.toLowerCase();
+            if (!hay.includes(q)) return false;
+          }
+          return true;
+        });
 
-    const all = [...fbItems, ...slackItems];
+    // Dedupe por (member_id, ISO week) — mantém o mais recente.
+    const seenWeek = new Set<string>();
+    const dedupedRollups = [...rawRollups]
+      .sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime())
+      .filter((r) => {
+        const weekKey = `${r.member_id}:${formatISO(startOfISOWeek(new Date(r.occurred_at)), { representation: 'date' })}`;
+        if (seenWeek.has(weekKey)) return false;
+        seenWeek.add(weekKey);
+        return true;
+      });
+
+    const slackItems: DiaryItem[] = dedupedRollups.map<SlackRollupItem>((r) => {
+      const m = memberById.get(r.member_id);
+      return {
+        kind: 'slack_rollup',
+        id: r.id,
+        member_id: r.member_id,
+        member_name: m?.name ?? 'Liderado removido',
+        member_avatar: m?.avatar ?? null,
+        title: r.title ?? 'Atividade no Slack',
+        summary: r.summary ?? '',
+        occurred_at: r.occurred_at,
+      };
+    });
+
+    // Filtro por fonte: chip "Slack" isola somente rollups.
+    const all = source === 'slack' ? slackItems : [...fbItems, ...slackItems];
     all.sort((a, b) => {
       const ta = new Date(
         isSlackRollup(a) ? a.occurred_at : a.occurred_at || a.created_at,
@@ -224,7 +235,7 @@ export default function LiderDiario() {
       return sort === 'newest' ? tb - ta : ta - tb;
     });
     return all;
-  }, [feedbacks, slackRollups, memberId, teamId, query, members, memberById, selectedTags, dateRange, sort]);
+  }, [feedbacks, slackRollups, memberId, teamId, query, members, memberById, selectedTags, source, dateRange, sort]);
 
   const buckets = useMemo(() => {
     const today: DiaryItem[] = [];
