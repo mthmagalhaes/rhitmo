@@ -1,16 +1,21 @@
 // Diário de Bordo — visão cross-member AI-Native.
-// Insight de cobertura no topo + feed cronológico de TODAS as notas do líder
-// agrupadas por bucket temporal, com filtros por liderado/time/tags/data e busca.
+// Tabs: Anotações (default) | Sinais do Slack (absorve /evidence).
+// Insight de cobertura no topo + feed cronológico agrupado por bucket
+// temporal, com filtros e chip "Slack" para isolar rollups semanais.
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { isToday, isThisWeek, subDays } from 'date-fns';
+import { isToday, isThisWeek, subDays, startOfISOWeek, formatISO } from 'date-fns';
 import { Lock, PenSquare, Inbox } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { SlackIcon } from '@/components/icons/SlackIcon';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { useLeaderMembers } from '@/hooks/useLeaderMembers';
+import { useEvidence } from '@/hooks/useEvidence';
 import { supabase } from '@/integrations/supabase/client';
 import { safeQuery } from '@/lib/supabaseSafe';
 import { NewNoteDialog } from '@/components/NewNoteDialog';
@@ -24,7 +29,9 @@ import {
   DiaryFilters,
   type Period,
   type SortOrder,
+  type DiarySource,
 } from '@/components/leader/diario/DiaryFilters';
+import { DiarySlackSignalsTab } from '@/components/leader/diario/DiarySlackSignalsTab';
 
 type DiaryItem = FeedItem | SlackRollupItem;
 function isSlackRollup(it: DiaryItem): it is SlackRollupItem {
