@@ -1,8 +1,8 @@
-// Card semanal de atividade no Slack — agora é uma ANOTAÇÃO completa,
-// editável pelo líder, com bullets+assuntos, avaliação da IA, evidências
-// expansíveis (com permalinks) e menu de ações (editar, copiar texto,
-// copiar pra outro liderado, excluir). Remove a necessidade da aba
-// "Sinais do Slack": tudo que o líder precisa está aqui.
+// Card semanal do Slack — alinhado ao padrão do DiaryFeedItem.
+// Colapsado: linha compacta com Slack icon, data, avatar, nome, título e badge.
+// ⋯ e chevron sempre visíveis (sem opacity-hover).
+// Expandido: bullets com subject chips, narrativa, avaliação Rhitmo,
+// evidências expansíveis com permalinks (lazy fetch).
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -16,6 +16,7 @@ import {
   Trash2,
   ExternalLink,
   Sparkles,
+  Calendar as CalendarIcon,
   Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -40,6 +41,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { SlackIcon } from '@/components/icons/SlackIcon';
+import { MemberAvatar } from '@/components/MemberAvatar';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -92,21 +94,23 @@ interface SlackEvidenceLite {
 export function SlackRollupFeedItem({ item, onCopyToMember }: Props) {
   const qc = useQueryClient();
   const { toast } = useToast();
-  const [expanded, setExpanded] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [showEvidences, setShowEvidences] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(item.leader_edited_summary ?? item.summary);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const weekLabel = format(new Date(item.occurred_at), 'dd/MM', { locale: ptBR });
+  const dateLabel = format(new Date(item.occurred_at), 'dd/MM/yyyy', { locale: ptBR });
   const firstName = item.member_name.split(' ')[0];
   const displayedSummary = item.leader_edited_summary ?? item.summary;
   const allEvidenceIds = item.highlights.flatMap((h) => h.evidence_ids);
   const hasEvidences = allEvidenceIds.length > 0;
+  const cardTitle = `Semana de ${weekLabel} — ${firstName} no Slack`;
 
-  // Lazy fetch das evidências apenas quando o usuário expande
   const { data: evidences, isLoading: loadingEvidences } = useQuery({
     queryKey: ['slack-rollup-evidences', item.id, allEvidenceIds.join(',')],
-    enabled: expanded && hasEvidences,
+    enabled: showEvidences && hasEvidences,
     staleTime: 5 * 60_000,
     queryFn: async (): Promise<SlackEvidenceLite[]> => {
       const { data, error } = await supabase
@@ -155,9 +159,11 @@ export function SlackRollupFeedItem({ item, onCopyToMember }: Props) {
   });
 
   const buildPlainText = () => {
-    const lines = [`Semana de ${weekLabel} — ${firstName} no Slack`, ''];
+    const lines = [cardTitle, ''];
     if (item.highlights.length > 0) {
-      item.highlights.forEach((h) => lines.push(`• ${h.subject ? `[${h.subject}] ` : ''}${h.bullet}`));
+      item.highlights.forEach((h) =>
+        lines.push(`• ${h.subject ? `[${h.subject}] ` : ''}${h.bullet}`),
+      );
       lines.push('');
     }
     if (displayedSummary) {
@@ -185,187 +191,231 @@ export function SlackRollupFeedItem({ item, onCopyToMember }: Props) {
     try {
       await navigator.clipboard.writeText(content);
     } catch {
-      // segue mesmo se clipboard falhar — o conteúdo já vai pré-preenchido no dialog
+      // segue mesmo se clipboard falhar
     }
-    onCopyToMember({
-      content,
-      title: `Resumo Slack — semana de ${weekLabel}`,
-    });
+    onCopyToMember({ content, title: `Resumo Slack — semana de ${weekLabel}` });
   };
 
   return (
-    <div className="group rounded-2xl border border-border bg-card p-5 shadow-sm hover:shadow-md hover:border-primary/20 transition-all">
-      {/* Header */}
-      <div className="flex justify-between items-start mb-3 gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-            <SlackIcon className="h-4 w-4" />
-          </div>
-          <div className="min-w-0">
-            <h4 className="text-sm font-bold text-foreground tracking-tight truncate">
-              Semana de {weekLabel} — {firstName} no Slack
-            </h4>
-            <p className="text-xs text-muted-foreground">
-              Resumo automático · {item.member_name} · {format(new Date(item.occurred_at), 'dd/MM/yyyy', { locale: ptBR })}
-            </p>
-          </div>
-        </div>
+    <div className="rounded-xl border border-border/50 bg-card hover:border-border transition-colors overflow-hidden">
+      <div className="w-full flex items-center gap-3 px-3.5 py-2.5 hover:bg-muted/40 transition-colors">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="flex-1 min-w-0 flex items-center gap-3 text-left"
+        >
+          <SlackIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground shrink-0 tabular-nums">
+            <CalendarIcon className="h-3 w-3" />
+            {dateLabel}
+          </span>
+          <MemberAvatar
+            memberId={item.member_id}
+            memberName={item.member_name}
+            avatarUrl={item.member_avatar}
+            size="sm"
+            className="h-5 w-5 shrink-0"
+          />
+          <span className="text-xs text-foreground/80 shrink-0 truncate max-w-[140px]">
+            {item.member_name}
+          </span>
+          <span className="text-sm font-medium text-foreground truncate flex-1 min-w-0">
+            {cardTitle}
+          </span>
+          <Badge
+            variant="secondary"
+            className="hidden md:inline-flex shrink-0 text-[10px] font-medium bg-primary/5 text-primary/80 border-primary/10 px-1.5 py-0 h-4"
+          >
+            Resumo semanal
+          </Badge>
+        </button>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 data-[state=open]:opacity-100"
+              className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+              onClick={(e) => e.stopPropagation()}
+              aria-label="Ações do resumo"
             >
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52">
-            <DropdownMenuItem onSelect={() => { setDraft(displayedSummary); setEditing(true); }}>
-              <Pencil className="h-3.5 w-3.5 mr-2" />
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem
+              onClick={() => {
+                setDraft(displayedSummary);
+                setEditing(true);
+                setOpen(true);
+              }}
+            >
+              <Pencil className="h-4 w-4 mr-2" />
               Editar resumo
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={handleCopyText}>
-              <Copy className="h-3.5 w-3.5 mr-2" />
+            <DropdownMenuItem onClick={handleCopyText}>
+              <Copy className="h-4 w-4 mr-2" />
               Copiar texto
             </DropdownMenuItem>
             {onCopyToMember && (
-              <DropdownMenuItem onSelect={handleCopyToMember}>
-                <CopyPlus className="h-3.5 w-3.5 mr-2" />
+              <DropdownMenuItem onClick={handleCopyToMember}>
+                <CopyPlus className="h-4 w-4 mr-2" />
                 Copiar para outro liderado
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onSelect={() => setConfirmDelete(true)}
+              onClick={() => setConfirmDelete(true)}
               className="text-destructive focus:text-destructive"
             >
-              <Trash2 className="h-3.5 w-3.5 mr-2" />
+              <Trash2 className="h-4 w-4 mr-2" />
               Excluir
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-label={open ? 'Recolher' : 'Expandir'}
+          className="shrink-0 text-muted-foreground hover:text-foreground"
+        >
+          <ChevronDown
+            className={cn('h-4 w-4 transition-transform', open && 'rotate-180')}
+          />
+        </button>
       </div>
 
-      {/* Highlights */}
-      {item.highlights.length > 0 && !editing && (
-        <ul className="space-y-2.5 pl-[44px] mb-3">
-          {item.highlights.map((h, i) => (
-            <li key={i} className="text-sm text-muted-foreground leading-relaxed">
-              <div className="flex items-start gap-2">
-                <span className="text-primary/60 mt-1 shrink-0">•</span>
-                <div className="flex-1 min-w-0">
-                  {h.subject && (
-                    <Badge
-                      variant="secondary"
-                      className="mr-2 align-middle text-[10px] font-medium bg-primary/5 text-primary/80 border-primary/10 px-1.5 py-0 h-4"
-                    >
-                      {h.subject}
-                    </Badge>
-                  )}
-                  <span className="text-foreground/90">{h.bullet}</span>
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {/* Summary / Editor */}
-      {editing ? (
-        <div className="pl-[44px] space-y-2">
-          <Textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            rows={4}
-            className="text-sm rounded-xl"
-            placeholder="Reescreva o resumo desta semana…"
-          />
-          <div className="flex items-center justify-end gap-2">
-            <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
-              Cancelar
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => saveEdit.mutate()}
-              disabled={saveEdit.isPending}
-              className="gap-1.5"
-            >
-              {saveEdit.isPending && <Loader2 className="h-3 w-3 animate-spin" />}
-              Salvar
-            </Button>
-          </div>
-        </div>
-      ) : (
-        item.highlights.length === 0 &&
-        displayedSummary && (
-          <p className="pl-[44px] text-sm text-muted-foreground leading-relaxed">
-            {displayedSummary}
-          </p>
-        )
-      )}
-
-      {/* AI assessment */}
-      {!editing && item.ai_assessment?.summary && (
-        <div
-          className={cn(
-            'mt-3 ml-[44px] rounded-xl border px-3 py-2 flex items-start gap-2',
-            TONE_STYLES[item.ai_assessment.tone] ?? TONE_STYLES.neutro,
-          )}
-        >
-          <Sparkles className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-          <div className="text-xs leading-relaxed">
-            <span className="font-semibold mr-1.5">Avaliação Rhitmo:</span>
-            {item.ai_assessment.summary}
-          </div>
-        </div>
-      )}
-
-      {/* Expandable evidences */}
-      {!editing && hasEvidences && (
-        <div className="mt-3 pl-[44px]">
-          <button
-            type="button"
-            onClick={() => setExpanded((v) => !v)}
-            className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ChevronDown className={cn('h-3 w-3 transition-transform', expanded && 'rotate-180')} />
-            {expanded ? 'Ocultar evidências' : `Ver evidências (${allEvidenceIds.length})`}
-          </button>
-
-          {expanded && (
-            <div className="mt-2 space-y-1.5">
-              {loadingEvidences ? (
-                <div className="text-[11px] text-muted-foreground">Carregando…</div>
-              ) : evidences && evidences.length > 0 ? (
-                evidences.map((ev) => (
-                  <div
-                    key={ev.id}
-                    className="rounded-lg border border-border/60 bg-muted/30 p-2.5 text-xs flex items-start gap-2"
-                  >
-                    <div className="flex-1 min-w-0">
-                      {ev.slack_channel_name && (
-                        <span className="font-medium text-primary/80">#{ev.slack_channel_name}</span>
-                      )}
-                      <span className="text-muted-foreground"> · {format(new Date(ev.captured_at), 'dd/MM HH:mm', { locale: ptBR })}</span>
-                      <p className="mt-1 text-foreground/80 line-clamp-3 leading-relaxed">{ev.message_text}</p>
-                    </div>
-                    {ev.permalink && (
-                      <a
-                        href={ev.permalink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="shrink-0 inline-flex items-center gap-1 text-[10px] text-primary hover:underline mt-0.5"
+      {open && (
+        <div className="px-3.5 pb-3.5 pt-3 border-t border-border/50 bg-muted/20 space-y-3">
+          {/* Highlights */}
+          {item.highlights.length > 0 && !editing && (
+            <ul className="space-y-2">
+              {item.highlights.map((h, i) => (
+                <li key={i} className="text-sm leading-relaxed flex items-start gap-2">
+                  <span className="text-primary/60 mt-1 shrink-0">•</span>
+                  <div className="flex-1 min-w-0">
+                    {h.subject && (
+                      <Badge
+                        variant="secondary"
+                        className="mr-2 align-middle text-[10px] font-medium bg-primary/5 text-primary/80 border-primary/10 px-1.5 py-0 h-4"
                       >
-                        <ExternalLink className="h-3 w-3" />
-                        Slack
-                      </a>
+                        {h.subject}
+                      </Badge>
                     )}
+                    <span className="text-foreground/90">{h.bullet}</span>
                   </div>
-                ))
-              ) : (
-                <div className="text-[11px] text-muted-foreground">Evidências indisponíveis.</div>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {/* Summary / Editor */}
+          {editing ? (
+            <div className="space-y-2">
+              <Textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                rows={4}
+                className="text-sm rounded-xl"
+                placeholder="Reescreva o resumo desta semana…"
+              />
+              <div className="flex items-center justify-end gap-2">
+                <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => saveEdit.mutate()}
+                  disabled={saveEdit.isPending}
+                  className="gap-1.5"
+                >
+                  {saveEdit.isPending && <Loader2 className="h-3 w-3 animate-spin" />}
+                  Salvar
+                </Button>
+              </div>
+            </div>
+          ) : (
+            item.highlights.length === 0 &&
+            displayedSummary && (
+              <p className="text-sm text-foreground/85 leading-relaxed whitespace-pre-wrap">
+                {displayedSummary}
+              </p>
+            )
+          )}
+
+          {/* AI assessment */}
+          {!editing && item.ai_assessment?.summary && (
+            <div
+              className={cn(
+                'rounded-xl border px-3 py-2 flex items-start gap-2',
+                TONE_STYLES[item.ai_assessment.tone] ?? TONE_STYLES.neutro,
+              )}
+            >
+              <Sparkles className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <div className="text-xs leading-relaxed">
+                <span className="font-semibold mr-1.5">Avaliação Rhitmo:</span>
+                {item.ai_assessment.summary}
+              </div>
+            </div>
+          )}
+
+          {/* Evidences */}
+          {!editing && hasEvidences && (
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowEvidences((v) => !v)}
+                className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronDown
+                  className={cn('h-3 w-3 transition-transform', showEvidences && 'rotate-180')}
+                />
+                {showEvidences ? 'Ocultar evidências' : `Ver evidências (${allEvidenceIds.length})`}
+              </button>
+
+              {showEvidences && (
+                <div className="mt-2 space-y-1.5">
+                  {loadingEvidences ? (
+                    <div className="text-[11px] text-muted-foreground">Carregando…</div>
+                  ) : evidences && evidences.length > 0 ? (
+                    evidences.map((ev) => (
+                      <div
+                        key={ev.id}
+                        className="rounded-lg border border-border/60 bg-card p-2.5 text-xs flex items-start gap-2"
+                      >
+                        <div className="flex-1 min-w-0">
+                          {ev.slack_channel_name && (
+                            <span className="font-medium text-primary/80">
+                              #{ev.slack_channel_name}
+                            </span>
+                          )}
+                          <span className="text-muted-foreground">
+                            {' '}· {format(new Date(ev.captured_at), 'dd/MM HH:mm', { locale: ptBR })}
+                          </span>
+                          <p className="mt-1 text-foreground/80 line-clamp-3 leading-relaxed">
+                            {ev.message_text}
+                          </p>
+                        </div>
+                        {ev.permalink && (
+                          <a
+                            href={ev.permalink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="shrink-0 inline-flex items-center gap-1 text-[10px] text-primary hover:underline mt-0.5"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            Slack
+                          </a>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-[11px] text-muted-foreground">
+                      Evidências indisponíveis.
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -377,7 +427,8 @@ export function SlackRollupFeedItem({ item, onCopyToMember }: Props) {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir este resumo?</AlertDialogTitle>
             <AlertDialogDescription>
-              O resumo some do seu Diário. As mensagens originais no Slack não são afetadas, e a Rhitmo continua usando os sinais brutos como contexto do Mentor.
+              O resumo some do seu Diário. As mensagens originais no Slack não são afetadas,
+              e a Rhitmo continua usando os sinais brutos como contexto do Mentor.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
