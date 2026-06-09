@@ -227,7 +227,7 @@ export function useAdminCompaniesData() {
     });
 
     return rows;
-  }, [workspacesQ.data, teamsQ.data, membersQ.data, leaderSyncByUser, userById]);
+  }, [workspacesQ.data, teamsQ.data, membersQ.data, userById]);
 
   return {
     workspaces: workspacesQ.data || [],
