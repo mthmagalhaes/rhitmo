@@ -135,11 +135,8 @@ export function useAdminCompaniesData() {
     return m;
   }, [workspacesQ.data]);
 
-  const leaderSyncByUser = useMemo(() => {
-    const m = new Map<string, string | null>();
-    (leaderSyncQ.data || []).forEach((r) => m.set(r.user_id, r.leader_sync_completed_at));
-    return m;
-  }, [leaderSyncQ.data]);
+  // (owner sync derived above as ownerSyncCompleted)
+
 
   const getUserLabel = (userId: string | null | undefined) => {
     if (!userId) return null;
