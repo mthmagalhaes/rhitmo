@@ -39,6 +39,7 @@ export default function HRMembers() {
   const [search, setSearch] = useState('');
   const [newMemberOpen, setNewMemberOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [dispatchOpen, setDispatchOpen] = useState(false);
 
   if (!planLoading && !hasHrDashboard) {
     return <HRUpgradeGate title="Liderados exigem Enterprise" description="A gestão completa de liderados por RH Admin fica disponível no upgrade Enterprise." />;
