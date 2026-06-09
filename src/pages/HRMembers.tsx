@@ -261,7 +261,7 @@ export default function HRMembers() {
 
   const handleBulkResendSyncConfirmed = async () => {
     const targets = members
-      .filter((m: any) => selectedIds.has(m.member_id))
+      .filter((m: any) => selectedIds.has(m.member_id) && !m.has_sync)
       .map((m: any) => ({ id: m.member_id, name: m.member_name, email: m.member_email }));
     if (targets.length === 0) return;
     setActingId('bulk');
@@ -537,11 +537,6 @@ export default function HRMembers() {
                         {!member.has_sync && (
                           <Badge variant="outline" className="text-[11px] text-muted-foreground">
                             Sync pendente
-                          </Badge>
-                        )}
-                        {member.pdi_count === 0 && (
-                          <Badge variant="outline" className="text-[11px] text-muted-foreground">
-                            Sem PDI
                           </Badge>
                         )}
                       </div>
