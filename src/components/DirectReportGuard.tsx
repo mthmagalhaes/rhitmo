@@ -37,7 +37,7 @@ export function DirectReportGuard({ children }: DirectReportGuardProps) {
     // Smart redirect from legacy /dashboard → role-based home.
     if (location.pathname === '/dashboard') {
       navigate(
-        getHomeRoute({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner }),
+        getHomeRoute({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, activeMode }),
         { replace: true },
       );
     }
