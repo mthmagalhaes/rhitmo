@@ -71,7 +71,7 @@ const getActivityBadge = (days: number) => {
 };
 
 type EditTarget = { id: string; name: string; role: string; teamId: string };
-type PendencyFilter = 'all' | 'no_invite' | 'no_feedback' | 'no_pdi' | 'no_sync';
+type PendencyFilter = 'all' | 'no_invite' | 'no_feedback' | 'no_sync';
 
 export default function HRMembers() {
   const { workspaceId, workspaceName } = useHRAdmin();

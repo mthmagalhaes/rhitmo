@@ -1,76 +1,70 @@
 
-# Ajustes no painel HR Admin
+# Refinamentos no painel HR Admin → Liderados
 
-Pacote de melhorias **só na camada de apresentação** (frontend) das telas `/hr/teams` e `/hr/members`. Nenhuma RLS, migration ou edge function é alterada — apenas reaproveitamos o que já existe (`admin-invite-user`, `send-disc-invite`, `get_hr_all_members`, `MemberAdminSheet.handleResendSync`).
-
----
-
-## 1. Sidebar: ocultar "Frameworks"
-
-- `src/lib/navigation.ts`: remover o item `framework` do array de nav do HR Admin. A rota `/hr/competency-framework` continua existindo (acessível por link direto), só some do menu.
-- Nada mais muda — código de Competency Framework fica intacto para quando a gente retomar.
-
-## 2. `/hr/teams` — Times e Líderes
-
-Sem mexer no RPC `get_hr_leaders_overview`. Só ajustes visuais e de copy em `src/pages/HRTeams.tsx`:
-
-- **Renomear "Sem feedback" → "Sem registros"** no badge de atividade do líder (label fica mais fiel: o líder não cadastrou anotações/evidências do time ainda). O badge vermelho de inatividade longa (`60d inativo`) continua igual.
-- **Tooltip no ícone ⚠️** ao lado do nome do líder: "Este líder está há 60+ dias sem registrar feedbacks ou evidências do time."
-- **Tooltip no badge "Sync ✓"** dentro do Sheet do time: "Este liderado já preencheu a pesquisa Rhitmo Sync (cronotipo, estilo de feedback, motivadores)."
-- **Mostrar `Pendente` em cinza** ao lado de quem não tem Sync, em vez de só omitir — fica explícito que existe um estado.
-
-## 3. `/hr/members` — Liderados (mudança maior)
-
-Tudo em `src/pages/HRMembers.tsx`, reaproveitando RPC e componentes existentes.
-
-### 3.1 Layout em tabela com coluna "Time"
-- Trocar a lista de Cards por uma **tabela** (`<Table>` shadcn) com colunas: **Liderado · E-mail · Time · Líder · Status · Atividade · Ações**.
-- A coluna **Time** vem de `team_name` no retorno do RPC `get_hr_all_members` (já existe; verificar; se faltar, pegar via lazy fetch igual já fazemos com `team_id`). 
-- Mantém densidade Linear/Notion: avatar pequeno + duas linhas só na coluna principal.
-
-### 3.2 Filtros de pendência
-Adicionar um `Select` "Pendência" com:
-- Todos
-- Sem cadastro aceito (`invite_status !== 'accepted'`)
-- Sem feedback (30d) (`days_since_last_feedback > 30`)
-- Sem PDI (`pdi_count === 0`)
-- Sem Rhitmo Sync (`has_sync === false`)
-
-Filtros aplicados **no client** sobre o resultado do RPC atual (paginação fica como está). Filtro de Time também: dropdown usando a lista distinta de `team_name`.
-
-### 3.3 Seleção em lote + ação
-- Checkbox por linha + checkbox "selecionar todos" no header (escopo: linhas visíveis após filtros).
-- Quando `selectedIds.length > 0`, aparece uma **barra fixa no topo da tabela** com: `N selecionados · [Reenviar convite] [Reenviar Rhitmo Sync] [Limpar]`.
-- "Reenviar convite": loop chamando `admin-invite-user` por e-mail (já é o que faz o `DispatchInvitesDialog`, mas escopado à seleção).
-- "Reenviar Rhitmo Sync": loop chamando `send-disc-invite` (mesma edge usada em `MemberAdminSheet.handleResendSync`), passando `member_id` + `email`. Reaproveitamos a mesma confirmação visual ("substitui o perfil atual…") em um `AlertDialog` antes do disparo.
-
-### 3.4 Reenviar Rhitmo Sync individual
-- No menu kebab da linha + na visão de detalhe (item 3.5), adicionar **"Reenviar pesquisa Rhitmo Sync"** quando `has_sync === false` (ou também quando preenchido, com aviso de sobrescrita).
-- Reaproveita a lógica de `handleResendSync` do `MemberAdminSheet` (extrair para hook `useResendRhitmoSync(memberId, email)` em `src/hooks/` para usar nos dois lugares — líder e HR).
-
-### 3.5 Fix do "Perfil não encontrado"
-Sintoma reportado: ao clicar em "Ver Perfil", o sheet abre vazio com "Perfil não encontrado".
-- Causa provável: `get_hr_member_profile` retornou `null` no primeiro hit (race / cache). Vamos:
-  1. Garantir `enabled: open && !!memberId && !!workspaceId` (já existe — manter).
-  2. Adicionar `retry: 1` e, no estado `!profile && !isLoading`, mostrar **um botão "Tentar novamente"** que faz `qc.invalidateQueries`.
-  3. Logar com `console.warn` o `memberId` e o `workspaceId` quando vier `null` para abrirmos ticket de support se o caso persistir após reload.
-- Não vamos mexer no RPC nesta sprint — apenas garantir UX resiliente e instrumentação.
-
-### 3.6 Botão "Lembrar pendentes" do header
-- Manter, mas **abrir o filtro "Sem cadastro aceito" automaticamente antes** (e rolar pro topo da tabela) em vez de só disparar tudo. Assim Matheus/Guto veem quem vai receber antes de confirmar. O `DispatchInvitesDialog` continua sendo a confirmação final.
+Tudo client-side em `src/pages/HRMembers.tsx` e `src/components/hr/MemberProfileSheet.tsx`. Sem migrations, sem edge functions novas.
 
 ---
+
+## 1. Sheet "Ver perfil" — eliminar "Perfil não encontrado" e enriquecer dados
+
+**Investigação do bug:** o RPC `get_hr_member_profile(_workspace_id, _member_id)` retorna 0 linhas se o `workspaceId` injetado pelo `useHRAdmin()` ainda não resolveu (`''`) no momento em que o sheet abre. Hoje o `enabled` já checa `!!workspaceId`, mas a query pode ter rodado uma vez antes do contexto popular, ficar em cache como `null` e nunca refazer.
+
+**Correções:**
+- Passar `selectedMemberId` para o sheet **só quando ambos** `memberId` e `workspaceId` estão prontos; resetar `selectedMemberId` no `onOpenChange(false)` para invalidar cache do react-query (`queryKey` único por par).
+- Trocar `retry: 1` por `retry: 2` + `retryDelay: 400ms` para cobrir a janela real do RPC.
+- Quando `!profile && !isLoading`, em vez do estado "Perfil não encontrado" como destino final, **fazer um refetch automático uma vez** e só mostrar a mensagem se ainda assim vier vazio — com botão "Tentar novamente" mantido como fallback manual.
+- Log estruturado (`console.warn`) já existe; manter.
+
+**Enriquecimento do perfil (campos novos no header e cards):**
+O RPC já devolve `team_name`, `leader_name`, `invite_status`, `linked_user_id`, `feedback_count`, `last_feedback_date`, `pdi_count`, `has_pdi`, `chronotype`, `feedback_style`, `motivadores`, `user_manual`, `skills_data`, `created_at`. Vamos usar tudo + agregar **sem novas chamadas RPC** o que dá pra puxar direto de `feedbacks`/`one_on_ones`/`development_plans` num único `useQuery` paralelo dentro do sheet (HR Admin já tem RLS pra ler):
+
+- **Card "Atividade recente"** (novo): nº de feedbacks últimos 30d, nº de 1:1s últimos 90d, data da última 1:1.
+- **Header chips**: data do último feedback (relativa), tempo de casa (`created_at`), status do convite com cor.
+- **Card "Líder atual"**: nome + e-mail + link "Ver time" (apenas exibição).
+- **Cards já existentes** (Feedbacks, PDI, Rhitmo Sync, Skills) ficam.
+
+Remover **card "PDI"** da grid superior (decisão do item 2 abaixo) — substituir pelo novo card "Atividade recente".
+
+## 2. Remover PDI da listagem
+
+Decisão de produto: PDI é do liderado, não enriquece a visão de HR sobre engajamento do líder.
+
+- **Filtro à direita "PDI" (Todos / Com PDI / Sem PDI)** → remover por completo. Limpar `pdiFilter` state e parâmetro `_has_pdi` da chamada do RPC (passar sempre `null`).
+- **Filtro de pendência** → remover a opção `Sem PDI` do dropdown.
+- **Coluna Atividade** → remover o badge `Sem PDI`. Mantém `Ativo / Xd atrás / Sem feedback` + `Sync pendente`.
+- **Sheet de perfil** → remover o card PDI da grid superior (substituído por "Atividade recente", conforme item 1).
+- **Não removemos do banco/RPC** — só paramos de exibir. `pdi_count` continua vindo, mas é ignorado na UI.
+
+## 3. Filtro "Pendência" — renomear e simplificar
+
+No `Select` da direita do filtro de pendência:
+- Trigger: trocar placeholder/valor default de "Sem filtro de pendência" para **"Pendência"**.
+- Primeira opção (`value="all"`): renomear "Sem filtro de pendência" → **"Todas"**.
+- Remover `Sem PDI` (item 2).
+- Opções finais: Todas · Cadastro pendente · Sem feedback (30d+) · Sem Rhitmo Sync.
+
+## 4. Ações em lote sensíveis ao contexto da seleção
+
+Hoje a barra "N selecionados" sempre mostra `Reenviar convite` e `Reenviar Rhitmo Sync`. Isso permite mandar convite pra alguém já ativo. Vamos calcular dois subconjuntos a partir de `selectedIds`:
+
+- `pendingInviteIds` = selecionados com `invite_status !== 'accepted'`.
+- `pendingSyncIds` = selecionados com `has_sync === false`.
+
+Regras de exibição dos botões:
+- **Reenviar convite** só aparece se `pendingInviteIds.length > 0`. Label vira `Reenviar convite (N)`. Ao clicar, dispara só para esses IDs (já é o filtro atual em `handleBulkResendInvite`, mas hoje o botão não comunicava isso).
+- **Reenviar Rhitmo Sync** só aparece se `pendingSyncIds.length > 0`. Label `Reenviar Rhitmo Sync (N)`. `handleBulkResendSyncConfirmed` passa a filtrar pelos `pendingSyncIds` em vez de todos os selecionados. Texto do `AlertDialog` ajustado pra refletir o N efetivo.
+- Quando a seleção é 100% homogênea (ex.: 2 ativos sem sync), só aparece o botão relevante.
+- Quando nenhum dos dois se aplica (ex.: 2 vinculados com sync), mostrar **um aviso inline** discreto: "Nenhuma ação em lote disponível para esta seleção" + botão "Limpar".
 
 ## Detalhes técnicos
 
-- **Sem migrations, sem edge functions novas.** Tudo client-side.
-- **Hook novo:** `src/hooks/useResendRhitmoSync.ts` — extraído de `MemberAdminSheet`, retorna `{ resend, isPending }`. Substitui chamada local nos dois consumidores.
-- **Reuso:** `Table`, `Checkbox`, `Select`, `AlertDialog`, `DropdownMenu` (todos já no shadcn do projeto).
-- **Paginação:** mantém os 20/página do RPC. Filtros client agem sobre a página atual; adicionar nota no rodapé "Filtros aplicados nesta página".
-- **Memory hit:** `mem://features/people/member-admin-sheet-rhitmo-sync` já documenta o padrão de reenvio — vamos seguir a mesma copy de aviso.
+- Arquivos editados: `src/pages/HRMembers.tsx`, `src/components/hr/MemberProfileSheet.tsx`.
+- Sem mudança em RPCs, edge functions, tabelas, RLS, navegação ou outros papéis (líder/liderado intactos).
+- React Query keys: nova query do sheet `['hr-member-activity', workspaceId, memberId]` para contagem de 1:1s/feedbacks recentes (lê `feedbacks` e `one_on_ones` direto via RLS de HR Admin).
+- Acessibilidade: botões em lote mantêm `aria-label` descritivo com o N.
 
 ## Fora de escopo
-- Mudar `get_hr_all_members` para incluir mais campos (faremos só se o `team_name` não vier).
-- Repensar a IA de Frameworks.
-- Mudar a estrutura de RLS ou auth.
-- Tabela cross-workspace.
+- Mudar o RPC `get_hr_member_profile` (só vamos arrancar mais dados se realmente faltar; por ora ele já entrega o suficiente).
+- Repensar PDI fora dessa tela (continua existindo em `/lider/...` e no portal do liderado).
+- Remover Frameworks (já feito em sprint anterior).
+- Mexer em `/hr/teams`.
