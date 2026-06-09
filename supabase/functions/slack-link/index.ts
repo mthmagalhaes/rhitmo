@@ -46,7 +46,9 @@ async function verifyStateToken(state: string): Promise<StateResult> {
   const timestamp = parseInt(timestampStr);
   const now = Math.floor(Date.now() / 1000);
 
-  if (now - timestamp > 600) {
+  // TTL aumentado de 10 min → 1 h para acomodar o fluxo signup + confirmação
+  // de email + primeiro login antes do front chamar a edge.
+  if (now - timestamp > 3600) {
     console.error('[STATE] Token expired:', now - timestamp, 'seconds old');
     return { ok: false, reason: 'state_expired' };
   }
