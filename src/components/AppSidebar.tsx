@@ -198,27 +198,27 @@ export function AppSidebar() {
           </div>
         )}
 
-        {/* HR context switcher (kept for HR Admins) */}
-        {open && !isInHRContext && isHRAdmin && (
+        {/* Quick toggle entre Empresa e Minha equipe (sincroniza activeMode + rota) */}
+        {open && availableModes.length > 1 && persona === 'leader' && (
           <div className="px-3 pt-4">
             <Button
               variant="outline"
               size="sm"
               className="w-full justify-start gap-2 rounded-xl text-xs text-muted-foreground hover:text-primary"
-              onClick={() => navigate('/hr')}
+              onClick={() => { setMode('company'); navigate('/hr'); }}
             >
               <ArrowRightLeft className="h-3.5 w-3.5" />
               {t('sidebar.backToHRPanel')}
             </Button>
           </div>
         )}
-        {open && isInHRContext && isHRAdmin && (
+        {open && availableModes.length > 1 && persona === 'hr_admin' && isTeamLeader && (
           <div className="px-3 pt-4">
             <Button
               variant="outline"
               size="sm"
               className="w-full justify-start gap-2 rounded-xl text-xs text-muted-foreground hover:text-primary"
-              onClick={() => navigate(LEADER_HOME)}
+              onClick={() => { setMode('leader'); navigate(LEADER_HOME); }}
             >
               <ArrowRightLeft className="h-3.5 w-3.5" />
               {t('sidebar.viewAsLeader')}
