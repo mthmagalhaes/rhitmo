@@ -17,6 +17,7 @@ interface AccountContextValue {
   isHRAdmin: boolean;
   isWorkspaceOwner: boolean;
   isLeader: boolean;
+  isTeamLeader: boolean;
   isUser: boolean;
   linkedMember: LinkedMemberData | null;
   isLinkedMember: boolean;
