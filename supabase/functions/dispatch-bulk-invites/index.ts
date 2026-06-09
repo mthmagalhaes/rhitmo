@@ -70,13 +70,7 @@ serve(async (req) => {
       throw new Error('Apenas super admins, Owner ou HR Admin do workspace podem disparar convites');
     }
 
-    // Load workspace
-    const { data: workspace, error: wsErr } = await supabaseAdmin
-      .from('workspaces')
-      .select('id, name, owner_id, hr_admin_ids')
-      .eq('id', workspace_id)
-      .single();
-    if (wsErr || !workspace) throw new Error('Workspace não encontrado');
+    // Workspace already loaded above for permission check
 
     // Load teams + members for context
     const { data: teamsData } = await supabaseAdmin
