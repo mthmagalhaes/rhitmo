@@ -664,7 +664,7 @@ export default function HRMembers() {
       <AlertDialog open={confirmBulkSync} onOpenChange={setConfirmBulkSync}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reenviar Rhitmo Sync para {selectedCount} liderado{selectedCount > 1 ? 's' : ''}?</AlertDialogTitle>
+            <AlertDialogTitle>Enviar Rhitmo Sync para {pendingSyncCount} liderado{pendingSyncCount > 1 ? 's' : ''}?</AlertDialogTitle>
             <AlertDialogDescription>
               Reenviar a pesquisa substitui o perfil atual em todo o Rhitmo (chat, briefs, avaliações) quando o liderado responder de novo. Quem ainda não preencheu apenas receberá o convite.
             </AlertDialogDescription>
