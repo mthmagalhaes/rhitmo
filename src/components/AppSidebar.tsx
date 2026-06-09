@@ -8,6 +8,7 @@ import { useAdmin } from '@/hooks/useAdmin';
 import { useAccount } from '@/contexts/AccountContext';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { useImpersonation } from '@/hooks/useImpersonation';
+import { useActiveMode } from '@/hooks/useActiveMode';
 
 
 import {
