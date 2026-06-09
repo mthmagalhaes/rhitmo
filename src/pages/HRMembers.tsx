@@ -395,20 +395,10 @@ export default function HRMembers() {
         <Select value={pendency} onValueChange={(v) => setPendency(v as PendencyFilter)}>
           <SelectTrigger className="w-full lg:w-[200px]"><SelectValue placeholder="Pendência" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Sem filtro de pendência</SelectItem>
+            <SelectItem value="all">Todas</SelectItem>
             <SelectItem value="no_invite">Cadastro pendente</SelectItem>
             <SelectItem value="no_feedback">Sem feedback (30d+)</SelectItem>
-            <SelectItem value="no_pdi">Sem PDI</SelectItem>
             <SelectItem value="no_sync">Sem Rhitmo Sync</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={pdiFilter} onValueChange={(v) => { setPdiFilter(v); setPage(0); }}>
-          <SelectTrigger className="w-full lg:w-[140px]"><SelectValue placeholder="PDI" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="with_pdi">Com PDI</SelectItem>
-            <SelectItem value="without_pdi">Sem PDI</SelectItem>
           </SelectContent>
         </Select>
       </div>
