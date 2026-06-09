@@ -19,6 +19,9 @@ Para usuários com **dois ou mais papéis** (Owner + Leader, HR + Owner + Leader
 ## Regras
 
 - **Default** = `'leader'` na primeira sessão (multi-role users escolhem a visão macro ativamente).
-- **Pure HR Admin** (HR + não-Owner): só vê modo `'company'` — continua single-role como antes.
+- **`canSeeLeader = isTeamLeader`** — vem direto do RPC `get_account_context.is_team_leader` (true se o usuário é `leader_user_id` de algum time). Não derivar de `isLeader` no `AccountContext`, que conflate HR Admin com líder de time e gera falsos negativos pra HR Admin que também lidera (ex: Matheus na Faster, onde Guto é Owner).
+- **`canSeeCompany = isHRAdmin || isWorkspaceOwner`**.
+- **HR Admin puro** (sem time): só vê modo `'company'`.
+- **Líder puro**: só vê modo `'leader'`.
 - **Liderado puro**: não afetado, segue persona `'direct_report'`.
 - O modo **nunca afeta RLS ou data scoping** — é puramente camada de navegação/UX.
