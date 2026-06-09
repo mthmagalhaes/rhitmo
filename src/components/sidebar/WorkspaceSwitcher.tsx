@@ -153,39 +153,6 @@ export function WorkspaceSwitcher({ onOpenInvite }: WorkspaceSwitcherProps) {
           </>
         )}
 
-        {(isWorkspaceOwner || isHRAdmin) && (
-          <>
-            <DropdownMenuItem
-              onSelect={() => navigate('/hr')}
-              className="flex items-center gap-2"
-            >
-              <Shield className="h-3.5 w-3.5 text-muted-foreground" />
-              <span>Visão do workspace</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={() => navigate('/hr/teams')}
-              className="flex items-center gap-2"
-            >
-              <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-              <span>Times</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={() => navigate('/hr/members')}
-              className="flex items-center gap-2"
-            >
-              <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-              <span>Pessoas do workspace</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={() => navigate('/hr/analytics')}
-              className="flex items-center gap-2"
-            >
-              <Shield className="h-3.5 w-3.5 text-muted-foreground" />
-              <span>Analytics</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-          </>
-        )}
 
         <DropdownMenuItem
           onSelect={() => navigate(settingsRoute)}
