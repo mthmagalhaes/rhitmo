@@ -53,7 +53,7 @@ export function AppSidebar() {
   const { isAdmin } = useAdmin();
   const { id: effectiveUserId, isImpersonating } = useEffectiveUser();
   const { stopImpersonation, impersonatedEmail } = useImpersonation();
-  const { isLeader, isHRAdmin, isLinkedMember, isWorkspaceOwner, linkedMember, workspaceId } = useAccount();
+  const { isLeader, isHRAdmin, isLinkedMember, isWorkspaceOwner, isTeamLeader, linkedMember, workspaceId } = useAccount();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mentorOpen, setMentorOpen] = useState(false);
@@ -64,20 +64,28 @@ export function AppSidebar() {
   const isSuperAdmin = isAdmin && user?.email === 'matheus@rhitmo.co' && !isImpersonating;
   const isInHRContext = location.pathname.startsWith('/hr');
 
-  const { mode: activeMode } = useActiveMode();
-  const persona = resolvePersona({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, activeMode });
-  // Quando o Owner/HR Admin entra em /hr/* (visão do workspace), forçamos o
-  // menu de HR para que ele veja Times, Pessoas, Analytics e Framework —
-  // mesmo que sua persona padrão seja "leader". Sair de /hr volta ao menu de líder.
-  const isInWorkspaceContext = location.pathname.startsWith('/hr');
+  const { mode: activeMode, setMode, availableModes } = useActiveMode();
+
+  // Sincroniza modo ativo com a rota: se a pessoa cair direto em /hr/* (link,
+  // refresh, redirect) o chip e o menu devem refletir "Empresa"; em /lider/*
+  // devem refletir "Minha equipe". Sem isso, o switcher mostra um modo e a
+  // tela mostra outro contexto.
+  useEffect(() => {
+    if (!availableModes || availableModes.length < 2) return;
+    if (location.pathname.startsWith('/hr') && activeMode !== 'company' && availableModes.includes('company')) {
+      setMode('company');
+    } else if (location.pathname.startsWith('/lider') && activeMode !== 'leader' && availableModes.includes('leader')) {
+      setMode('leader');
+    }
+  }, [location.pathname, activeMode, availableModes, setMode]);
+
+  const persona = resolvePersona({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, isTeamLeader, activeMode });
   const navItems =
-    isInWorkspaceContext && (isWorkspaceOwner || isHRAdmin)
-      ? HR_ADMIN_NAV_ITEMS
-      : persona === 'leader'
-        ? LEADER_NAV_ITEMS
-        : persona === 'hr_admin'
-          ? HR_ADMIN_NAV_ITEMS
-          : DIRECT_REPORT_NAV_ITEMS;
+    persona === 'leader'
+      ? LEADER_NAV_ITEMS
+      : persona === 'hr_admin'
+        ? HR_ADMIN_NAV_ITEMS
+        : DIRECT_REPORT_NAV_ITEMS;
   
 
   const userName =
