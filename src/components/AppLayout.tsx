@@ -62,6 +62,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   // CRITICAL: Never show onboarding if there was an error resolving workspace.
   // RLS errors return null workspace + error, and treating that as "no workspace"
   // would trap existing users in onboarding.
+  // Guard extra: só mostra setup quando o usuário declarou intent='leader'.
+  // Sem essa intent, liderados vinculados que tiveram falha temporária em
+  // `get_account_context` (RLS, cache, race) seriam empurrados a criar
+  // workspace duplicado — foi a causa raiz do incidente Faster/Guto.
   const baseNeedsWorkspaceSetup = allContextResolved
     && user
     && !workspaceId
