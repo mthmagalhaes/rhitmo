@@ -73,6 +73,13 @@ export interface PersonaOpts {
   isHRAdmin: boolean;
   isWorkspaceOwner?: boolean;
   /**
+   * True when the user is `leader_user_id` of at least one team in the
+   * active workspace (vem do RPC `get_account_context.is_team_leader`).
+   * Fonte da verdade para "tem visão de líder real"; `isLeader` no
+   * AccountContext é amplo (inclui HR Admin) e não serve para isso.
+   */
+  isTeamLeader?: boolean;
+  /**
    * For users that hold both leader and owner/HR roles, indicates which
    * "view" they're actively using. Defaults to 'leader'.
    */
@@ -82,18 +89,16 @@ export interface PersonaOpts {
 export function resolvePersona(opts: PersonaOpts): SidebarPersona {
   if (opts.isLinkedMember && !opts.isLeader && !opts.isHRAdmin) return 'direct_report';
 
-  const pureHRAdmin = opts.isHRAdmin && !opts.isWorkspaceOwner && !opts.isLeader;
-  if (pureHRAdmin) return 'hr_admin';
+  const hasLeaderAccess = opts.isTeamLeader ?? (opts.isLeader && !opts.isHRAdmin);
+  const hasCompanyAccess = !!opts.isHRAdmin || !!opts.isWorkspaceOwner;
 
-  // Multi-role users (Leader + Owner/HR) switch via activeMode.
-  const hasCompanyAccess = opts.isHRAdmin || opts.isWorkspaceOwner;
-  const isAlsoLeader = opts.isLeader && !(opts.isHRAdmin && !opts.isWorkspaceOwner);
-  if (hasCompanyAccess && isAlsoLeader) {
+  // Multi-role (líder de time + Owner/HR): activeMode decide.
+  if (hasLeaderAccess && hasCompanyAccess) {
     return opts.activeMode === 'company' ? 'hr_admin' : 'leader';
   }
 
-  // Single-role: HR admin (no leader) → hr_admin, owner-only/leader → leader.
-  if (hasCompanyAccess && !isAlsoLeader) return 'hr_admin';
+  // Single-role.
+  if (hasCompanyAccess && !hasLeaderAccess) return 'hr_admin';
   return 'leader';
 }
 

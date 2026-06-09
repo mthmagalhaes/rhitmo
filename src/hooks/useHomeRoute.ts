@@ -8,8 +8,8 @@ import { getHomeRoute, LEADER_HOME } from '@/lib/navigation';
  * (the DirectReportGuard upstream will redirect again if needed).
  */
 export function useHomeRoute(): string {
-  const { isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, loading } = useAccount();
+  const { isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, isTeamLeader, loading } = useAccount();
   const { mode: activeMode } = useActiveMode();
   if (loading) return LEADER_HOME;
-  return getHomeRoute({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, activeMode });
+  return getHomeRoute({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, isTeamLeader, activeMode });
 }

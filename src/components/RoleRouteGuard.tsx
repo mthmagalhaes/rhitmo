@@ -22,7 +22,7 @@ interface Props {
  * persona='leader' and can still browse /lider/*.
  */
 export function RoleRouteGuard({ expects, children }: Props) {
-  const { loading, isLeader, isHRAdmin, isLinkedMember, isWorkspaceOwner } = useAccount();
+  const { loading, isLeader, isHRAdmin, isLinkedMember, isWorkspaceOwner, isTeamLeader } = useAccount();
   const { mode: activeMode } = useActiveMode();
   const location = useLocation();
 
@@ -34,10 +34,10 @@ export function RoleRouteGuard({ expects, children }: Props) {
     );
   }
 
-  const persona = resolvePersona({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, activeMode });
+  const persona = resolvePersona({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, isTeamLeader, activeMode });
 
   if (persona !== expects) {
-    const target = getHomeRoute({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, activeMode });
+    const target = getHomeRoute({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, isTeamLeader, activeMode });
     if (location.pathname !== target) {
       return <Navigate to={target} replace />;
     }

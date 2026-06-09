@@ -1,74 +1,82 @@
-# Fix — Matheus/Vitor não veem "Minha equipe" no switcher
-
 ## Causa raiz
 
-Bug em `useActiveMode` combinado com semântica do RPC `get_account_context`:
+O switcher está mudando só o rótulo/estado local para `Minha equipe`, mas a tela continua em `/hr/members`. O `AppSidebar` tem uma regra que força menu de RH sempre que a URL começa com `/hr`, independentemente do `activeMode` estar como `leader`:
 
-1. **RPC `get_account_context`** calcula `v_is_leader` (= o usuário lidera algum time) mas **não retorna esse flag no JSON**. Só retorna `role` (string única) e `is_workspace_owner`. Quando o usuário é HR Admin, `role='hr_admin'` ofusca o fato de ele também liderar um time.
-
-2. **`AccountContext`** deriva `isLeader = role==='leader' || role==='hr_admin'` — ou seja, todo HR Admin marca `isLeader=true`, mesmo HR puro sem time.
-
-3. **`useActiveMode`** usa `pureHRAdmin = isHRAdmin && !isWorkspaceOwner` pra tentar excluir HR puro. **Falha** para o caso real do Matheus na Faster:
-   - Guto é Owner da Faster (não o Matheus).
-   - Matheus está em `hr_admin_ids` e lidera o time de Operações.
-   - RPC retorna: `role='hr_admin'`, `is_workspace_owner=false`.
-   - Resultado em useActiveMode: `pureHRAdmin=true`, `canSeeLeader=false`. ❌ Switcher esconde "Minha equipe".
-
-O mesmo acontece com qualquer Owner que não esteja em `hr_admin_ids` mas seja HR de outra empresa, ou HR que também lidera time sem ser owner — a heurística é frágil porque conflate três coisas distintas: "tem time", "é owner", "é HR".
-
-## Fix
-
-Tornar **"lidera ao menos um time no workspace ativo"** um sinal explícito vindo do backend, e usar esse sinal direto no `useActiveMode`.
-
-### 1. Migração — estender `get_account_context`
-
-Adicionar `is_team_leader` ao JSON de retorno (calculado já existe como `v_is_leader`, basta expor):
-
-```sql
-RETURN jsonb_build_object(
-  'workspace_id', v_workspace_id,
-  'role', v_role,
-  'is_workspace_owner', v_is_owner,
-  'is_team_leader', v_is_leader,         -- NOVO
-  'linked_member', v_linked,
-  'has_pending_invite', v_pending
-);
+```text
+URL atual: /hr/members
+activeMode: leader
+AppSidebar: pathname startsWith('/hr') -> usa HR_ADMIN_NAV_ITEMS
+conteúdo da rota: continua HRMembers porque a rota /hr/members não redireciona
 ```
 
-Sem mudança de comportamento pra outros consumidores — campo novo opcional.
+Além disso, `resolvePersona` ainda usa `isLeader` com uma exceção antiga para HR Admin não-owner, o que conflita com o novo sinal correto `isTeamLeader`. Resultado: multi-função pode ter o chip `Minha equipe`, mas a rota, sidebar e CTAs continuam no contexto de Empresa/RH.
 
-### 2. `AccountContext` — expor `isTeamLeader`
+## Objetivo
 
-Adicionar `isTeamLeader: boolean` ao value, derivado de `data?.is_team_leader`. Manter `isLeader` como está (não quebrar consumidores existentes que usam o sentido amplo).
+Para qualquer usuário que seja líder de time e também tenha acesso de empresa (Owner ou HR Admin):
 
-### 3. `useActiveMode` — usar `isTeamLeader` como verdade
+- `Minha equipe` deve levar para `/lider/inicio` e renderizar sidebar de líder.
+- `Empresa` deve levar para `/hr` e renderizar sidebar de empresa.
+- Entrar direto em `/hr/*` enquanto o modo ativo é `leader` deve alinhar o modo para `company`, ou redirecionar de forma consistente.
+- Entrar direto em `/lider/*` enquanto o modo ativo é `company` deve alinhar o modo para `leader`, ou redirecionar de forma consistente.
+- Líder puro, HR puro, Owner puro e liderado puro não devem mudar de comportamento.
 
-```ts
-const canSeeLeader = isTeamLeader;                 // troca a heurística
-const canSeeCompany = isHRAdmin || isWorkspaceOwner;
-```
+## Implementação proposta
 
-Resultado pro Matheus na Faster: `canSeeLeader=true`, `canSeeCompany=true` → switcher exibe "Modo: Minha equipe / Empresa". ✓
-Pro Vitor (Owner do C-Level que lidera o próprio time): mesma coisa. ✓
-HR Admin puro (Guto sem time): `isTeamLeader=false` → continua só com "Empresa". ✓
-Líder puro: `isTeamLeader=true`, `canSeeCompany=false` → só "Minha equipe". ✓
+1. **Centralizar a persona em `isTeamLeader`**
+   - Atualizar `src/lib/navigation.ts` para aceitar `isTeamLeader` em `PersonaOpts`.
+   - `resolvePersona` passa a usar:
+     - `hasLeaderAccess = isTeamLeader || (isLeader && !isHRAdmin)` para compatibilidade.
+     - `hasCompanyAccess = isHRAdmin || isWorkspaceOwner`.
+     - Se ambos forem true, `activeMode` decide: `leader` ou `hr_admin`.
+   - Remover a lógica antiga que exclui HR Admin não-owner de `isAlsoLeader`.
 
-### 4. Pequena melhoria UX no `WorkspaceSwitcher`
+2. **Propagar `isTeamLeader` para os consumidores**
+   - Atualizar chamadas em:
+     - `AppSidebar.tsx`
+     - `RoleRouteGuard.tsx`
+     - `DirectReportGuard.tsx`
+     - `useHomeRoute.ts`
+     - `WorkspaceSwitcher.tsx`
+   - Isso garante que Matheus, Vitor e qualquer líder multi-função sejam tratados como líderes reais quando `activeMode='leader'`.
 
-Quando `canSwitch=true`, garantir que o item "Minha equipe" sempre apareça primeiro (já é o caso pela ordem em `availableModes`), com o ícone `Users` e descrição secundária pequena ("Sidebar de líder"). Bug visual de ordem não foi reportado mas vale conferir.
+3. **Corrigir o AppSidebar para respeitar o modo ativo**
+   - Substituir a regra “se está em `/hr`, força menu RH” por uma regra compatível com o modo:
+     - Se `activeMode === 'company'` e há acesso de empresa, usar menu RH.
+     - Se `activeMode === 'leader'` e há liderança de time, usar menu de líder, mesmo que a URL ainda seja `/hr/*` por alguns instantes.
+   - Ajustar os botões auxiliares:
+     - Em modo líder, mostrar opção clara para “Ver como Empresa”.
+     - Em modo empresa, mostrar “Ver como Líder” apenas se `isTeamLeader=true`.
 
-## Arquivos tocados
+4. **Sincronizar rota e modo no switcher**
+   - Ao selecionar `Minha equipe` no `WorkspaceSwitcher`:
+     - `setMode('leader')`
+     - navegar para `/lider/inicio`
+   - Ao selecionar `Empresa`:
+     - `setMode('company')`
+     - navegar para `/hr`
+   - Atualizar também os botões legados “Ver como Líder/Voltar ao Painel RH” para chamar `setMode(...)` antes de navegar.
 
-- `supabase/migrations/<novo>_get_account_context_is_team_leader.sql`
-- `src/contexts/AccountContext.tsx` — adicionar `isTeamLeader` ao tipo e ao value
-- `src/hooks/useActiveMode.ts` — trocar heurística por `isTeamLeader`
+5. **Adicionar um pequeno guard de consistência de contexto**
+   - Criar/ajustar uma lógica leve no layout/sidebar para quando a pessoa cair por link direto:
+     - Se está em `/hr/*`, tem `company` disponível e modo atual não é `company`, atualizar o modo para `company`.
+     - Se está em `/lider/*`, tem `leader` disponível e modo atual não é `leader`, atualizar para `leader`.
+   - Isso evita estados impossíveis como `Minha equipe` + tela `/hr/members`.
 
-## Fora deste fix
+6. **Atualizar memória/plano técnico**
+   - Atualizar a memória do Active Mode Switcher com a nova regra: URL e modo precisam estar sincronizados; `isTeamLeader` é a fonte para liderança real.
 
-- Não mexe em RLS, persona, navegação.
-- `isLeader` no AccountContext mantém o sentido amplo (compatibilidade).
-- Sem mudança em `resolvePersona` — quem decide o modo continua sendo o `activeMode` persistido.
+## Validação
 
-## Memória a atualizar
-
-`mem://design/sidebar/active-mode-switcher` — substituir a regra "pureHRAdmin = isHRAdmin && !isWorkspaceOwner" por "canSeeLeader = data.is_team_leader (vindo de get_account_context)".
+- Cenário Matheus/Faster em `/hr/members`:
+  - Clicar `Minha equipe` deve ir para `/lider/inicio` e exibir menu `Visão geral / Liderados / Diário / Objetivos / Avaliações`.
+- Cenário Vitor/Owner + líder:
+  - Deve alternar entre `/lider/inicio` e `/hr` corretamente.
+- HR Admin puro:
+  - Continua sem opção `Minha equipe`.
+- Líder puro:
+  - Continua sem opção `Empresa`.
+- Link direto `/hr/members`:
+  - Modo e chip devem ficar `Empresa`, não `Minha equipe`.
+- Link direto `/lider/inicio`:
+  - Modo e chip devem ficar `Minha equipe`.

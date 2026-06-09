@@ -19,9 +19,9 @@ Para usuários com **dois ou mais papéis** (Owner + Leader, HR + Owner + Leader
 ## Regras
 
 - **Default** = `'leader'` na primeira sessão (multi-role users escolhem a visão macro ativamente).
-- **`canSeeLeader = isTeamLeader`** — vem direto do RPC `get_account_context.is_team_leader` (true se o usuário é `leader_user_id` de algum time). Não derivar de `isLeader` no `AccountContext`, que conflate HR Admin com líder de time e gera falsos negativos pra HR Admin que também lidera (ex: Matheus na Faster, onde Guto é Owner).
+- **`canSeeLeader = isTeamLeader`** — vem direto do RPC `get_account_context.is_team_leader`.
 - **`canSeeCompany = isHRAdmin || isWorkspaceOwner`**.
-- **HR Admin puro** (sem time): só vê modo `'company'`.
-- **Líder puro**: só vê modo `'leader'`.
-- **Liderado puro**: não afetado, segue persona `'direct_report'`.
+- **`resolvePersona`** usa `isTeamLeader` (não `isLeader`) para decidir se tem acesso de líder real. Multi-role com `activeMode='leader'` → persona `leader`; `'company'` → `hr_admin`.
+- **AppSidebar** escolhe o menu pela `persona` (que segue `activeMode`), nunca pelo `location.pathname`. Um efeito sincroniza modo ↔ URL: cair em `/hr/*` força modo `company`; cair em `/lider/*` força `leader`. Evita o estado "chip Minha equipe + tela /hr/members".
+- **WorkspaceSwitcher** e os botões auxiliares chamam `setMode(...)` antes de `navigate(...)` para manter modo e rota sempre alinhados.
 - O modo **nunca afeta RLS ou data scoping** — é puramente camada de navegação/UX.
