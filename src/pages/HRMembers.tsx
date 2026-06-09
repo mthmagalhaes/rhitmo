@@ -329,6 +329,11 @@ export default function HRMembers() {
 
   const selectedCount = selectedIds.size;
   const bulkBusy = actingId === 'bulk' || syncPending;
+  const selectedMembers = members.filter((m: any) => selectedIds.has(m.member_id));
+  const pendingInviteCount = selectedMembers.filter(
+    (m: any) => m.invite_status && m.invite_status !== 'accepted'
+  ).length;
+  const pendingSyncCount = selectedMembers.filter((m: any) => !m.has_sync).length;
 
   return (
     <div className="space-y-6 p-4 md:p-8 max-w-6xl mx-auto">
@@ -408,26 +413,35 @@ export default function HRMembers() {
         <div className="sticky top-2 z-10 flex items-center justify-between gap-3 rounded-2xl border bg-primary/5 px-4 py-2.5 shadow-sm">
           <span className="text-sm font-medium">{selectedCount} selecionado{selectedCount > 1 ? 's' : ''}</span>
           <div className="flex items-center gap-2 flex-wrap">
-            <Button
-              size="sm"
-              variant="outline"
-              className="rounded-xl gap-2"
-              onClick={handleBulkResendInvite}
-              disabled={bulkBusy}
-            >
-              {bulkBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-              Reenviar convite
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="rounded-xl gap-2"
-              onClick={() => setConfirmBulkSync(true)}
-              disabled={bulkBusy}
-            >
-              <Music className="h-3.5 w-3.5" />
-              Reenviar Rhitmo Sync
-            </Button>
+            {pendingInviteCount > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-xl gap-2"
+                onClick={handleBulkResendInvite}
+                disabled={bulkBusy}
+              >
+                {bulkBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                Reenviar convite ({pendingInviteCount})
+              </Button>
+            )}
+            {pendingSyncCount > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-xl gap-2"
+                onClick={() => setConfirmBulkSync(true)}
+                disabled={bulkBusy}
+              >
+                <Music className="h-3.5 w-3.5" />
+                Enviar Rhitmo Sync ({pendingSyncCount})
+              </Button>
+            )}
+            {pendingInviteCount === 0 && pendingSyncCount === 0 && (
+              <span className="text-xs text-muted-foreground">
+                Nenhuma ação em lote disponível para esta seleção
+              </span>
+            )}
             <Button size="sm" variant="ghost" className="rounded-xl" onClick={() => setSelectedIds(new Set())}>
               Limpar
             </Button>
