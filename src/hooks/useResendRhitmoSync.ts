@@ -12,7 +12,7 @@ export interface ResendSyncTarget {
 }
 
 export function buildSyncUrl(memberId: string) {
-  return `${window.location.origin}/rhitmo-sync?member=${memberId}`;
+  return `${window.location.origin}/sync/${memberId}`;
 }
 
 export function useResendRhitmoSync() {
