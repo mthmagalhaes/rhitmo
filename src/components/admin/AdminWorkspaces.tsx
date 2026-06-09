@@ -90,6 +90,7 @@ export const AdminWorkspaces = () => {
             <TabsTrigger value="cards">Cards</TabsTrigger>
             <TabsTrigger value="orgchart">Organograma</TabsTrigger>
             <TabsTrigger value="pending">O que falta</TabsTrigger>
+            <TabsTrigger value="access">Acessos</TabsTrigger>
             <TabsTrigger value="legacy">Estrutura (legado)</TabsTrigger>
           </TabsList>
 
