@@ -176,9 +176,11 @@ Deno.serve(async (req) => {
     console.log(`[sync] Fetched ${allEvents.length} events from Google Calendar`);
 
     // ── Fetch ALL team members across every team this user leads ──
+    // Include linked_user_id so we can deduplicate when the same person has
+    // multiple team_members records (e.g. Camila with duplicate row).
     const { data: members } = await supabaseAdmin
       .from("team_members")
-      .select("id, name, role, email, teams!inner(leader_user_id)")
+      .select("id, name, role, email, linked_user_id, teams!inner(leader_user_id)")
       .eq("teams.leader_user_id", userId)
       .not("email", "is", null);
 
@@ -189,14 +191,19 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Build normalized email lookup (lowercase, trim)
-    const membersByEmail = new Map<string, { id: string; name: string; role: string }>();
+    // Build normalized email lookup (lowercase, trim). When duplicates exist,
+    // prefer the record that already has linked_user_id set.
+    const membersByEmail = new Map<string, { id: string; name: string; role: string; linked_user_id: string | null }>();
     for (const m of members) {
-      if (m.email) {
-        membersByEmail.set(m.email.toLowerCase().trim(), { id: m.id, name: m.name, role: m.role });
+      if (!m.email) continue;
+      const key = m.email.toLowerCase().trim();
+      const existing = membersByEmail.get(key);
+      if (!existing || (!existing.linked_user_id && m.linked_user_id)) {
+        membersByEmail.set(key, { id: m.id, name: m.name, role: m.role, linked_user_id: m.linked_user_id });
       }
     }
 
+    const leaderEmail = (authUser.email || "").toLowerCase().trim();
     console.log(`[sync] Loaded ${membersByEmail.size} team members with emails: ${[...membersByEmail.keys()].join(", ")}`);
 
     // ── Match events to members and upsert ──
