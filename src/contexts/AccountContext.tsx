@@ -148,6 +148,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       isHRAdmin: !loading && role === 'hr_admin',
       isWorkspaceOwner: !loading && !!data?.is_workspace_owner,
       isLeader: loading || role === 'leader' || role === 'hr_admin',
+      isTeamLeader: !loading && !!data?.is_team_leader,
       isUser: !loading && role === 'user',
       linkedMember,
       isLinkedMember: !!linkedMember,
