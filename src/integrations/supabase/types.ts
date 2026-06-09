@@ -3139,6 +3139,22 @@ export type Database = {
       }
       admin_funnel_metrics: { Args: never; Returns: Json }
       admin_revenue_metrics: { Args: never; Returns: Json }
+      admin_workspace_access_audit: {
+        Args: { p_workspace_id: string }
+        Returns: {
+          email: string
+          expected_persona: string
+          has_linked_member: boolean
+          is_consistent: boolean
+          is_team_leader: boolean
+          is_workspace_owner: boolean
+          name: string
+          notes: string
+          resolved_persona: string
+          resolved_role: string
+          user_id: string
+        }[]
+      }
       append_slack_conversation_turn: {
         Args: {
           p_conversation_id: string

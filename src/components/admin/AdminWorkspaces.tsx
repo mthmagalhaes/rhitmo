@@ -11,8 +11,9 @@ import { CompanyCardsGrid } from './companies/CompanyCardsGrid';
 import { CompanyOrgChart } from './companies/CompanyOrgChart';
 import { PendingChecklistTable } from './companies/PendingChecklistTable';
 import { NewCompanyWizard } from './wizards/NewCompanyWizard';
+import { WorkspaceAccessAudit } from './companies/WorkspaceAccessAudit';
 
-type SubTab = 'cards' | 'orgchart' | 'pending' | 'legacy';
+type SubTab = 'cards' | 'orgchart' | 'pending' | 'access' | 'legacy';
 
 export const AdminWorkspaces = () => {
   const data = useAdminCompaniesData();
@@ -89,6 +90,7 @@ export const AdminWorkspaces = () => {
             <TabsTrigger value="cards">Cards</TabsTrigger>
             <TabsTrigger value="orgchart">Organograma</TabsTrigger>
             <TabsTrigger value="pending">O que falta</TabsTrigger>
+            <TabsTrigger value="access">Acessos</TabsTrigger>
             <TabsTrigger value="legacy">Estrutura (legado)</TabsTrigger>
           </TabsList>
 
@@ -129,6 +131,17 @@ export const AdminWorkspaces = () => {
                 workspaceFilter={orgChartWs || 'all'}
                 onWorkspaceFilterChange={(v) => setOrgChartWs(v === 'all' ? null : v)}
                 workspaces={filteredWorkspaces}
+              />
+            )}
+          </TabsContent>
+
+          <TabsContent value="access" className="mt-4">
+            {data.isLoading ? (
+              <Loading />
+            ) : (
+              <WorkspaceAccessAudit
+                workspaces={filteredWorkspaces}
+                initialWorkspaceId={orgChartWs}
               />
             )}
           </TabsContent>
