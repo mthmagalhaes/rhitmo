@@ -85,10 +85,17 @@ export function useLeaderMembers(opts: UseLeaderMembersOptions = {}) {
     queryKey: ['team-members-leader-scope', workspace?.id, teamIds, includeArchived],
     queryFn: async () => {
       if (!workspace || teamIds.length === 0) return [];
+      // Defense-in-depth: inner-join + re-filter por leader_user_id.
+      // A RLS de team_members libera leitura para Owners/HR Admins do workspace
+      // (rls_check_member_read_access), então .in('team_id', teamIds) por si só
+      // não é suficiente — precisamos amarrar ao mesmo predicado da seleção de
+      // teams acima, garantindo que nenhum cache stale ou bug futuro vaze
+      // liderados de outros líderes para alguém que também é Owner.
       let q = supabase
         .from('team_members')
-        .select('*')
-        .in('team_id', teamIds);
+        .select('*, teams!inner(leader_user_id)')
+        .in('team_id', teamIds)
+        .eq('teams.leader_user_id', effectiveUserId);
       if (!includeArchived) {
         q = q.is('archived_at', null);
       }

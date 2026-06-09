@@ -401,10 +401,12 @@ export default function LiderDiario() {
         selectedMemberId={presetMemberId}
         memberName={presetMember?.name}
         workspaceId={workspace?.id}
+        members={members.map((m) => ({ id: m.id, name: m.name }))}
         onSuccess={onNoteSuccess}
         initialContent={prefillContent}
         initialTitle={prefillTitle}
       />
+
     </div>
   );
 }

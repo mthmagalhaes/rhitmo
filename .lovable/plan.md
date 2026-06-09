@@ -1,84 +1,87 @@
-# Plano de correções — Tickets do Guto (Faster)
+# 🎫 Bug — `/lider/diario` mostra todos os liderados do workspace
 
-Ordem otimizada por impacto × risco. Ticket #5 (tela branca) fica fora — aguarda evidências.
+**Afetado:** matheus.magalhaes@fstr.co (Mateus, Owner do workspace Faster Ops)
+**Rotas:** `/lider/diario` (Insight) e dialog "Nova Anotação" (lista suspensa)
+**Severidade:** alta — vaza nomes de liderados de outros líderes (Douglas, Yasmin, Vitor, Caio)
 
----
+## Diagnóstico
 
-## Ticket #1 — `/hr/liderados` vazio (CRÍTICO)
+Confirmei no banco:
 
-**Causa:** RPC `get_hr_all_members` chama `jsonb_array_length(skills_data)`, mas no workspace da Faster há linhas onde `skills_data` é objeto `{}` (não array), o que estoura exceção e devolve set vazio.
+- Mateus lidera **5 times** em Faster Ops (Business Ops, CreativeOps, Customer Success, Expansão, People) → **7 liderados diretos**.
+- Workspace Faster Ops tem **28 liderados ativos** no total (somando times do Douglas/Produtech, Yasmin/Excelência, Vitor, Caio).
+- Airton, Aristoteles e Bianca — que apareceram pra ele — pertencem a Produtech (líder Douglas) e Excelência Criativa (líder Yasmin).
 
-**Fix:** Migration que recria `get_hr_all_members` envolvendo o cálculo com guarda de tipo:
-```sql
-CASE WHEN jsonb_typeof(tm.skills_data) = 'array'
-     THEN jsonb_array_length(tm.skills_data) > 0
-     ELSE false END AS has_skills_map
+### Causa raiz
+
+**Bug A — `NewNoteDialog` (lista suspensa "Liderado(s)"): bug óbvio no código.**
+`src/components/NewNoteDialog.tsx:201-213` carrega `team_members` filtrando **só por `workspace_id`**, sem restringir aos times liderados pelo usuário:
+
+```ts
+.from('team_members')
+.select('id, name, teams!inner(workspace_id)')
+.eq('teams.workspace_id', workspaceId)
 ```
-Mesma guarda em qualquer outro `jsonb_array_length` da função.
 
-**Validação:** rodar a RPC com `_workspace_id` da Faster e confirmar retorno > 0; abrir `/hr/liderados` logado como Guto.
+Como a RLS `tm_read` libera leitura para owner do workspace, a query devolve os 28. → Por isso aparece Airton, Aristoteles, Bianca, Brunna, Caio, Camila etc. no dropdown.
 
----
+**Bug B — Insight "22 liderados sem nota recente".**
+`useLeaderMembers` (no código atual) já filtra estritamente por `teams.leader_user_id = effectiveUserId` e deveria devolver apenas 7. O número 22 bate exatamente com **(28 ativos − ~6 com nota nos últimos 14d)** — comportamento do código **antigo** desse hook (pré-Sprint 12). Hipótese principal: o build publicado ainda é o anterior à correção do hook. Vamos confirmar com o Mateus republicando depois do fix A; se persistir, é o sintoma do Bug C abaixo.
 
-## Ticket #2 — Slack "No workspace found" para HR Admin / Líder
+**Bug C (preventivo) — não confiar só na RLS.**
+A RLS `rls_check_member_read_access` permite owner/HR-Admin lerem todos os `team_members` do workspace. Isso é correto pra rotas `/workspace/*` e `/hr/*`, mas significa que **qualquer query em `/lider/*` que não filtre explicitamente por `teams.leader_user_id` vai vazar dados**. Precisamos blindar o hook compartilhado.
 
-**Causa:** `slack-link/index.ts` resolve workspace só por `workspaces.owner_id` ou `team_members.linked_user_id`. Guto é HR Admin e Líder — nenhum dos dois.
+## Plano
 
-**Fix em `supabase/functions/slack-link/index.ts`:**
-1. Após tentar Owner, tentar `workspaces.hr_admin_ids @> [user_id]`.
-2. Se nada, tentar `teams.leader_user_id = user_id` → pega `workspace_id` do team.
-3. Manter fallback atual (`linked_user_id`) por último.
-4. Log claro de qual caminho resolveu (para debug futuro).
+### 1. Corrigir `NewNoteDialog` (Bug A — principal)
 
-**Validação:** curl edge function com auth do Guto + `supabase--edge_function_logs`.
+Em `src/components/NewNoteDialog.tsx`:
+- Remover `loadTeamMembers` que consulta `team_members` por `workspace_id`.
+- Em vez disso, **receber a lista de liderados como prop** (`members: Array<{id, name}>`) do componente pai. Os pais já têm a lista correta via `useLeaderMembers`.
+- Atualizar chamadas em `Diario.tsx`, `Inicio.tsx`, `OneOnOnes.tsx`, `Mentor.tsx`, `Pessoas.tsx` etc. para passar `members={members}` (vindos do `useLeaderMembers`).
+- Manter o filtro por `selectedMemberId` (quando o dialog é aberto pré-selecionado pra 1 liderado) inalterado.
 
----
+### 2. Blindar `useLeaderMembers` (Bug C — defesa em profundidade)
 
-## Ticket #4 — HR Admin não consegue disparar convites em massa
+Em `src/hooks/useLeaderMembers.ts`, na query final de `team_members`:
+- Em vez de só `.in('team_id', teamIds)`, fazer **inner join** explícito e re-filtrar:
+  ```ts
+  .select('*, teams!inner(id, leader_user_id)')
+  .eq('teams.leader_user_id', effectiveUserId)
+  ```
+- Garante que mesmo se um cache stale ou RLS permissiva vazasse linhas, a query rejeite.
 
-**Causa:** `dispatch-bulk-invites` exige `check_is_admin` (super admin). Tela `/hr/liderados` também não tem botão.
+### 3. Auditoria rápida (read-only)
 
-**Fix em duas partes:**
+Rodar `rg -n "from\('team_members'\)" src/` e revisar cada call site em código `/lider/*`:
+- `useLeaderInbox`, `useLeaderInfo`, `useTeamGoalsSummary`, `useTeamReviewsSummary`, etc.
+- Se algum filtrar só por `workspace_id`, aplicar a mesma blindagem da etapa 2.
 
-**4A · Edge function** (`dispatch-bulk-invites/index.ts`):
-- Trocar gate `check_is_admin` por: super admin **OU** (HR Admin/Owner do `workspace_id` recebido).
-- Validar via `is_hr_admin_of_workspace(user_id, workspace_id)` ou checagem direta em `workspaces` (`owner_id` / `hr_admin_ids`).
+### 4. Validar
 
-**4B · UI** (`src/pages/HRMembers.tsx`):
-- Adicionar botão "Disparar convites pendentes" no header, ao lado de "Importar em massa".
-- Dialog de confirmação mostrando `dry_run` (lista de pendentes) → botão "Enviar agora".
-- Feedback de sucesso/erro com summary (`sent`, `errors`).
+- Mateus republica e abre `/lider/diario` → insight deve dizer "X liderados sem nota recente" com X ≤ 7.
+- Abrir "Nova nota" → lista deve mostrar apenas os 7 liderados diretos dele (Gabriela Lucas, Yasmin Nóbrega, Guilherme Cunha, Laís Isfer, Giovanna Barletta, Matheus, People).
+- Confirmar que `/workspace/pessoas` (visão Owner) continua mostrando os 28 — aí o escopo amplo é correto.
 
-**Validação:** dry_run + envio real em 1 pendente do workspace da Faster.
+## Sobre "dividir os caps"
 
----
+Não é necessário criar novo modelo de permissão. A arquitetura atual já separa:
 
-## Ticket #3 — DMs duplicadas / reuniões de grupo viram 1:1
+- **`/lider/*`** → escopo "líder direto" (só times onde `leader_user_id = você`). É aqui que o bug está.
+- **`/workspace/*` e `/hr/*`** → escopo Owner / HR Admin (workspace inteiro).
 
-**Causa:** `fetch-calendar-events` classifica como 1:1 qualquer evento com ≥1 membro presente nos attendees. Em reuniões de grupo (3+ pessoas) e em casos onde um liderado tem múltiplos `team_members` (ex. Camila com record duplicado), gera múltiplos `upcoming_meetings` → múltiplas DMs.
+Mateus é Owner **e** líder de 5 times. O esperado é:
+- Em `/lider/diario`, `/lider/pessoas`, `/lider/1on1s` → vê só os 7 liderados diretos dele.
+- Em `/workspace/pessoas` → vê os 28 do workspace (papel de Owner).
 
-**Fix em `supabase/functions/fetch-calendar-events/index.ts`:**
-1. Contar attendees externos (excluindo o próprio líder + recursos `resource.calendar.google.com`).
-2. Só inserir em `upcoming_meetings` quando: `attendee_count ≤ 3` **E** exatamente 1 `team_member` matched (deduplicar por `linked_user_id` antes do match).
-3. Dedup por `(event_id, leader_user_id)` no upsert (constraint já existe? confirmar antes da migration).
-4. Log explícito quando descartar evento de grupo.
+O fix acima restaura essa separação sem precisar de novos toggles ou roles.
 
-**Acompanhamento (sem código novo):** orientar Guto a deduplicar o record da Camila em `/hr/liderados`.
+## Riscos
 
-**Validação:** rodar manualmente para o user_id do Guto, conferir `upcoming_meetings` antes/depois.
+- Mudar `NewNoteDialog` pra receber `members` via prop quebra qualquer caller que não passe a prop. Vou atualizar todos os call sites no mesmo commit e manter fallback opcional (`members?: …`) com warning no console se vier vazio.
+- Nenhum risco de RLS / migration — mudanças são 100% client-side.
 
----
+## Fora de escopo
 
-## Ordem de execução proposta
-
-1. Ticket #1 (migration única, desbloqueia HR view)
-2. Ticket #2 (edge function, isolado)
-3. Ticket #4A + #4B (edge + UI, fecha loop de onboarding HR)
-4. Ticket #3 (edge function, mais sensível — testar com dry-run)
-
-Cada ticket é commit/migration independente. Posso aplicar tudo em sequência ou pausar para você validar entre eles.
-
-## Fora deste plano
-
-- **Ticket #5 (tela branca no convite):** aguardando console + URL exata do Guto.
-- **URL "normal" aparecendo após republicar:** assunto separado, conforme você confirmou.
+- Telas `/workspace/*` e `/hr/*` (Mateus está nelas como Owner/HR-Admin e o escopo amplo é intencional).
+- Reformular RLS de `team_members` (segue como está; defesa em profundidade no client).
