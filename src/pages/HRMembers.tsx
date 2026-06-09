@@ -91,7 +91,10 @@ export default function HRMembers() {
             Visão completa de todos os colaboradores
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" className="rounded-xl gap-2" onClick={() => setDispatchOpen(true)}>
+            <Send className="h-4 w-4" /> Disparar convites pendentes
+          </Button>
           <Button variant="outline" className="rounded-xl gap-2" onClick={() => setBulkOpen(true)}>
             <Upload className="h-4 w-4" /> Importar em massa
           </Button>
