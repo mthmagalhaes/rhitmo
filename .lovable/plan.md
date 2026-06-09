@@ -1,110 +1,128 @@
+# Fase 2 — Admin reformulado + Fase 3 — Wizard de nova empresa
 
-## Problema
+Hoje a aba **Workspaces** do `/admin` é uma árvore expansível (`AdminStructure.tsx`, 886 linhas) que mistura criar/editar/deletar workspace, time e membro num único componente. Funciona, mas: (1) não há visão de empresa como entidade, (2) não dá pra ver organograma, (3) "o que falta" cada usuário fazer (Rhitmo sync, vincular líder, responder pulse) só aparece se você cavar, (4) times órfãos e workspaces errados se misturam silenciosamente.
 
-Hoje `resolvePersona` retorna **uma única persona** por usuário, com prioridade Owner/HR > Leader. Resultado:
+A Fase 2 reorganiza essa aba em **três visões irmãs** com filtros fortes, e a Fase 3 adiciona um wizard pra fundar empresa nova sem dor.
 
-- **Vitor** (CEO, Owner): cai em `/lider/inicio` mas só "é líder" do time C-Level. Não tem caminho claro pra ver a Faster inteira.
-- **Matheus** (COO, Owner + HR Admin + Leader de Operações): mesma coisa, e ainda perde o atalho pro `/hr` quando está em modo líder.
-- **Guto** (HR Admin puro): já cai em `/hr` (correto).
+---
 
-Falta um conceito explícito de **"modo ativo"** com troca de sidebar.
+## Fase 2 — Admin reformulado
 
-## Solução: Modo ativo + Workspace Switcher dupla persona
+### 2.1 Nova IA da aba "Workspaces" → renomeada para **"Empresas"**
 
-### Conceito
-
-Para usuários com **dois ou mais papéis elegíveis** (Leader + Owner, Leader + HR Admin, ou os três), introduzimos um **modo ativo** persistido por sessão:
-
-- **Modo "Minha equipe"** → sidebar atual de líder (`/lider/*`)
-- **Modo "Empresa"** → sidebar de HR/Owner (`/hr/*`)
-
-O `WorkspaceSwitcher` (canto superior esquerdo da sidebar) ganha uma seção nova **"Modo"** acima da lista de workspaces, com os dois itens e um check no atual. Um clique:
-
-1. Atualiza o modo ativo (localStorage + estado global).
-2. Redireciona para a home do modo escolhido (`/lider/inicio` ou `/hr`).
-3. A sidebar se redesenha porque `resolvePersona` agora usa o modo ativo como tiebreaker.
-
-### Default ao logar
-
-- Default = **"Minha equipe"** (`/lider/inicio`) para qualquer usuário multi-papel — owners/HR escolhem ativamente quando querem a visão macro.
-- Usuários single-role continuam exatamente como hoje (HR puro vai pra `/hr`, liderado vai pra `/liderado/*`).
-
-### Indicação visual
-
-- Trigger do switcher mostra um chip pequeno do modo atual ao lado do nome do workspace: `Faster · Minha equipe` ou `Faster · Empresa`.
-- Substitui o badge atual `· RH` (que hoje só aparece pra HR Admin) por essa lógica unificada.
-
-### Exemplos práticos
-
-| Usuário | Papéis | Modo default | Pode trocar para |
-|---|---|---|---|
-| Vitor | Owner | Minha equipe | Empresa |
-| Matheus | Owner + HR + Leader | Minha equipe | Empresa |
-| Guto | HR Admin (não-owner) | Empresa (único modo) | — |
-| Douglas | Leader puro | Minha equipe (único modo) | — |
-| Liderado | Direct report | Liderado (único) | — |
-
-## Mudanças técnicas
-
-**Novo: `useActiveMode` hook** (`src/hooks/useActiveMode.ts`)
-- Estado: `'leader' | 'company'`
-- Persiste em `localStorage` por `userId` (key: `rhitmo:active-mode:<userId>`)
-- Default `'leader'` na primeira sessão.
-- Expõe `mode`, `setMode(next)`, e `availableModes` derivado de `useAccount()`.
-
-**`src/lib/navigation.ts`**
-- `resolvePersona()` ganha parâmetro opcional `activeMode`.
-- Quando o usuário tem ambos (`isLeader && (isHRAdmin || isWorkspaceOwner)`), retorna `'hr_admin'` se `activeMode==='company'`, senão `'leader'`. Comportamento pra single-role usuários é idêntico ao atual.
-- `getHomeRoute()` aceita o mesmo parâmetro.
-
-**`src/components/sidebar/WorkspaceSwitcher.tsx`**
-- Usa `useActiveMode()`.
-- Renderiza nova seção "Modo" no topo do dropdown com dois itens só se `availableModes.length > 1`.
-- Trigger mostra chip do modo atual.
-- Mantém os atalhos atuais (Settings, Help Center, Convidar) — eles aparecem conforme o modo ativo já naturalmente, então sem mudança de lógica ali.
-
-**`src/components/RoleRouteGuard.tsx`**
-- Lê `activeMode` e passa pra `resolvePersona`. Assim, se Matheus em modo "company" tentar entrar em `/lider/inicio` direto pela URL, é redirecionado pra `/hr`; e vice-versa. Pra usuários single-role nada muda.
-
-**`src/hooks/useHomeRoute.ts`**
-- Mesma propagação de `activeMode`.
-
-**`AccountContext`** — sem mudanças (continua resolvendo papéis brutos via RPC).
-
-### Diagrama
+Três sub-abas dentro de `AdminWorkspaces.tsx`:
 
 ```text
-┌──────────────────────────────────────┐
-│ [🏢] Faster · Minha equipe    [⌄]    │ ← trigger
-└──────────────────────────────────────┘
-        │ clica
-        ▼
-┌──────────────────────────────────────┐
-│ MODO                                 │
-│  ✓ Minha equipe   (sidebar líder)    │
-│    Empresa        (sidebar /hr)      │
-│ ─────────────────────────────────────│
-│ WORKSPACES                           │
-│  ✓ Faster                            │
-│    Outro workspace                   │
-│ ─────────────────────────────────────│
-│ Visão do workspace · Times · Pessoas │ (atalhos atuais)
-│ Configurações · Central de Ajuda     │
-└──────────────────────────────────────┘
+┌─ Empresas (admin) ───────────────────────────────────────┐
+│  [Cards]  [Organograma]  [O que falta]                   │
+│  ─────────────────────────────────────────────────────── │
+│  Filtros globais: busca · segmento · status · tem líder? │
+└───────────────────────────────────────────────────────────┘
 ```
 
-## O que NÃO muda nesta fase
+Filtros vivem no topo e se aplicam às três visões (`useState` compartilhado em `AdminWorkspaces`). Mantemos `HRAdminInviteCard` e `HRAdminsListCard` no rodapé.
 
-- Estrutura de dados (workspaces/teams/papéis) — já consolidada na Fase 1.
-- Páginas `/hr/*` e `/lider/*` em si — só o que muda é qual conjunto a sidebar mostra.
-- Lógica de impersonation, RLS, AccountContext.
+### 2.2 Visão "Cards" (default)
 
-## Memory a salvar após approval
+Grid de **CompanyCard** (uma por workspace), Bento-style `rounded-2xl` + shadow soft. Cada card:
 
-`mem://design/sidebar/active-mode-switcher` — Owners/HR que também são líderes alternam entre "Minha equipe" (/lider) e "Empresa" (/hr) via WorkspaceSwitcher; default = Minha equipe; persistido em localStorage por userId; aplicado em `resolvePersona` + `RoleRouteGuard`.
+```text
+┌───────────────────────────────────────────┐
+│ Faster        [Pago · Pro]   ⋮            │
+│ 24 pessoas · 5 times · Owner: Vitor       │
+│ ─────────────────────────────────────────  │
+│ ✓ 18 com Rhitmo Sync   ⚠ 4 sem líder      │
+│ ⚠ 2 órfãos             ✓ 22/24 ativos      │
+│ ─────────────────────────────────────────  │
+│ [Abrir organograma]   [Impersonar Owner]  │
+└───────────────────────────────────────────┘
+```
 
-## Próximas fases (não inclusas aqui — confirmar depois)
+Substitui a árvore atual como entrada principal. Clicar em "Abrir organograma" leva à sub-aba 2.3 já filtrada por aquele workspace.
 
-- Fase 2: Admin reformulado (org chart, "O que falta", filtros).
-- Fase 3: Wizard de nova empresa.
-- Fase 4: Health-score por empresa.
+### 2.3 Visão "Organograma"
+
+Diagrama hierárquico read-only por workspace (workspace → times → líderes → liderados). Implementação simples em SVG/HTML puro (sem libs novas): layout em árvore vertical com `flex` + linhas via `border`, expandindo um time por vez. Cada nó mostra avatar + nome + chip do papel; nós com pendências ficam com borda âmbar.
+
+Filtro de workspace no topo da sub-aba (default = primeira empresa). Times órfãos (sem `leader_user_id`) aparecem numa faixa "Times sem líder" acima do organograma — visual claro do problema que o Matheus relatou.
+
+### 2.4 Visão "O que falta"
+
+Tabela achatada (cross-workspace) de **pendências por pessoa**, derivada client-side dos dados que já carregamos:
+
+| Pessoa | Empresa | Time | Papel | Pendências |
+|---|---|---|---|---|
+| Ana    | Faster | Ops | Liderada | `Rhitmo Sync` `Conta não criada` |
+| Time X | Faster | —   | —        | `Sem líder` |
+| João   | Acme   | Dev | Líder    | `Não respondeu pesquisa` |
+
+Pendências derivadas:
+- `Sem conta` → `team_members.linked_user_id IS NULL`
+- `Rhitmo Sync pendente` → membro sem `disc_profile`/sem `personality_data` (campo já lido em outras telas)
+- `Sem líder` → time com `leader_user_id IS NULL`
+- `Workspace errado` → membro cujo `linked_user_id` é Owner de outro workspace ativo (heurística leve)
+- `Pesquisa Rhitmo pendente` → líder sem `leader_sync_completed_at`
+
+Filtros adicionais nesta visão: tipo de pendência (multi-select), workspace, papel. Botões inline por linha: `Reenviar convite`, `Reenviar pesquisa`, `Abrir card`.
+
+### 2.5 O que sobra do `AdminStructure` atual
+
+Toda a lógica de CRUD (dialogs de criar/editar/deletar workspace/time/membro) é **preservada e extraída** para `useAdminStructureMutations.ts`, consumida pelos novos componentes via menu `⋮` em cada card/nó. Sem perda de funcionalidade.
+
+---
+
+## Fase 3 — Wizard `/admin/empresas/nova`
+
+Botão **"Nova empresa"** no header da aba Empresas abre wizard full-screen seguindo o padrão validado (`mem://design/wizards/pulse-wizard-pattern`): 5 passos, footer com progresso fino + Voltar/Próximo.
+
+### Passos
+
+1. **Empresa** — nome, segmento (`beta` / `paid` / `trial` / `internal` / `test`), `client_account`, plano (`pulse`/`pro`/`business`).
+2. **Owner** — buscar usuário existente OU convidar por e-mail (cria placeholder via `admin-invite-user` edge function já existente).
+3. **HR Admin(s)** — opcional, multi-select de usuários existentes + convite por e-mail. Pode ser o próprio Owner.
+4. **Times e líderes** — repeater (`name` + líder via search). Permite "Adicionar time" várias vezes. Pelo menos um time.
+5. **Revisão** — preview do que vai ser criado + botão "Criar empresa".
+
+### Backend
+
+Tudo via tooling já existente — sem migration nova:
+- `INSERT workspaces` (com `client_account`/`customer_segment`/`plan_tier`).
+- `INSERT teams` em batch.
+- `UPDATE workspaces.hr_admin_ids` se houver HR.
+- Convites de Owner/HR/Líder via `admin-invite-user` (já existe).
+
+Sucesso → fecha wizard, invalida queries `admin-structure-*`, navega pra `/admin` aba Empresas com card recém-criado destacado por 3s.
+
+---
+
+## Estrutura de arquivos
+
+```text
+src/components/admin/
+├── AdminWorkspaces.tsx           [refactor: 3 sub-abas + filtros]
+├── companies/
+│   ├── CompanyCard.tsx           [novo]
+│   ├── CompanyCardsGrid.tsx      [novo]
+│   ├── CompanyOrgChart.tsx       [novo]
+│   ├── PendingChecklistTable.tsx [novo]
+│   └── useCompanyHealth.ts       [novo — deriva contadores]
+├── wizards/
+│   ├── NewCompanyWizard.tsx      [novo — Fase 3]
+│   └── steps/{Empresa,Owner,HR,Times,Revisao}.tsx
+└── AdminStructure.tsx            [reduz a hub legado; CRUD extraído]
+
+src/hooks/useAdminStructureMutations.ts  [novo — reutiliza dialogs existentes]
+```
+
+### Memórias a salvar após approval
+
+- `mem://admin/companies-tab-overhaul` — 3 sub-abas (Cards, Organograma, O que falta) + filtros globais; "O que falta" deriva pendências client-side.
+- `mem://features/admin/new-company-wizard` — wizard 5 passos sob `/admin` → "Nova empresa"; usa `admin-invite-user` pra Owner/HR/líder.
+
+---
+
+## Fora desta fase
+
+- **Fase 4 — Health-score por empresa** (deixada pra depois conforme pedido).
+- Mudanças de schema. Reaproveitamos `workspaces`, `teams`, `team_members`, `user_roles`, `client_account`, `customer_segment`.
+- Drag-and-drop no organograma (read-only por ora).
