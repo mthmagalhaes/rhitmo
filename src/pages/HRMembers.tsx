@@ -274,6 +274,11 @@ export default function HRMembers() {
         }}
         workspaceNames={workspaceName ? [workspaceName] : []}
       />
+      <DispatchInvitesDialog
+        open={dispatchOpen}
+        onOpenChange={setDispatchOpen}
+        workspaceId={workspaceId}
+      />
     </div>
   );
 }
