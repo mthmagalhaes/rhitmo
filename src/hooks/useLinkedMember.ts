@@ -72,6 +72,8 @@ export function useLinkedMember() {
         .select('id, name, email, role, avatar, skills_data, work_style_data, chronotype, feedback_style, recognition_style, motivators, user_manual, updated_at')
         .eq('linked_user_id', effectiveUserId)
         .eq('invite_status', 'accepted')
+        .order('created_at', { ascending: true })
+        .limit(1)
         .maybeSingle();
       
       if (error) {
