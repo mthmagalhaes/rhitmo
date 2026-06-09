@@ -170,9 +170,16 @@ export function MemberProfileSheet({
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : !profile ? (
-          <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
+          <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground p-6">
             <UserX className="h-10 w-10 opacity-40" />
-            <p className="text-sm">Perfil não encontrado</p>
+            <div className="text-center space-y-1">
+              <p className="text-sm font-medium">Perfil não encontrado</p>
+              <p className="text-xs">Pode ser uma falha temporária de cache ou de permissão.</p>
+            </div>
+            <Button variant="outline" size="sm" className="rounded-xl gap-2" onClick={() => refetch()} disabled={isFetching}>
+              {isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              Tentar novamente
+            </Button>
           </div>
         ) : (
           <div className="flex flex-col h-full">
