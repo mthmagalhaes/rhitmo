@@ -467,6 +467,8 @@ Deno.serve(async (req) => {
           matched: matchedMeetings.length,
           no_attendees: eventsSkippedNoAttendees,
           no_match: eventsSkippedNoMatch,
+          skipped_group: eventsSkippedGroup,
+          skipped_multiple_members: eventsSkippedMultipleMembers,
           team_members_loaded: membersByEmail.size,
         },
       }),
