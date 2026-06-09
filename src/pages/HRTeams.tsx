@@ -156,7 +156,16 @@ const HRTeams = () => {
                         {leader.leader_name}
                       </h3>
                       {leader.days_since_last_feedback >= 60 && (
-                        <AlertTriangle className="h-4 w-4 text-amber-500" />
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <AlertTriangle className="h-4 w-4 text-amber-500 cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Este líder está há 60+ dias sem registrar feedbacks ou evidências do time.
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       )}
                     </div>
                     <p className="text-sm text-gray-500">{leader.leader_email}</p>
