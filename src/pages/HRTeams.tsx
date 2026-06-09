@@ -16,6 +16,12 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   Users, Search, AlertTriangle, ChevronRight,
   FileText, CheckCircle, XCircle
 } from 'lucide-react';
@@ -93,7 +99,7 @@ const HRTeams = () => {
 
   const activityBadge = (days: number) => {
     if (days === 999)
-      return <Badge variant="destructive" className="text-xs">Sem feedback</Badge>;
+      return <Badge variant="destructive" className="text-xs">Sem registros</Badge>;
     if (days >= 60)
       return <Badge variant="destructive" className="text-xs">{days}d inativo</Badge>;
     if (days >= 30)
@@ -150,7 +156,16 @@ const HRTeams = () => {
                         {leader.leader_name}
                       </h3>
                       {leader.days_since_last_feedback >= 60 && (
-                        <AlertTriangle className="h-4 w-4 text-amber-500" />
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <AlertTriangle className="h-4 w-4 text-amber-500 cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Este líder está há 60+ dias sem registrar feedbacks ou evidências do time.
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       )}
                     </div>
                     <p className="text-sm text-gray-500">{leader.leader_email}</p>
@@ -214,11 +229,26 @@ const HRTeams = () => {
                       <p className="font-medium text-sm text-gray-900">{member.name}</p>
                       <p className="text-xs text-gray-500">{member.email ?? member.role}</p>
                     </div>
-                    {member.has_sync && (
-                      <Badge className="bg-violet-100 text-violet-700 hover:bg-violet-100 text-xs">
-                        Sync ✓
-                      </Badge>
-                    )}
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          {member.has_sync ? (
+                            <Badge className="bg-violet-100 text-violet-700 hover:bg-violet-100 text-xs cursor-help">
+                              Sync ✓
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-xs text-muted-foreground cursor-help">
+                              Sync pendente
+                            </Badge>
+                          )}
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {member.has_sync
+                            ? 'Este liderado já preencheu a pesquisa Rhitmo Sync (cronotipo, estilo de feedback, motivadores).'
+                            : 'Este liderado ainda não preencheu a pesquisa Rhitmo Sync.'}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                   <div className="flex items-center gap-3 text-xs text-gray-500">
                     <span className="flex items-center gap-1">

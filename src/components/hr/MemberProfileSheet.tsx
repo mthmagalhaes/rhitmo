@@ -91,7 +91,7 @@ export function MemberProfileSheet({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [acting, setActing] = useState(false);
 
-  const { data: profile, isLoading } = useQuery({
+  const { data: profile, isLoading, refetch, isFetching } = useQuery({
     queryKey: ['hr-member-profile', workspaceId, memberId],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_hr_member_profile', {
@@ -99,9 +99,14 @@ export function MemberProfileSheet({
         _member_id: memberId,
       });
       if (error) throw error;
-      return (data as any)?.[0] || null;
+      const row = (data as any)?.[0] || null;
+      if (!row) {
+        console.warn('[MemberProfileSheet] get_hr_member_profile retornou null', { workspaceId, memberId });
+      }
+      return row;
     },
     enabled: open && !!memberId && !!workspaceId,
+    retry: 1,
   });
 
   const skillsData = profile?.skills_data;
@@ -165,9 +170,16 @@ export function MemberProfileSheet({
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : !profile ? (
-          <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
+          <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground p-6">
             <UserX className="h-10 w-10 opacity-40" />
-            <p className="text-sm">Perfil não encontrado</p>
+            <div className="text-center space-y-1">
+              <p className="text-sm font-medium">Perfil não encontrado</p>
+              <p className="text-xs">Pode ser uma falha temporária de cache ou de permissão.</p>
+            </div>
+            <Button variant="outline" size="sm" className="rounded-xl gap-2" onClick={() => refetch()} disabled={isFetching}>
+              {isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              Tentar novamente
+            </Button>
           </div>
         ) : (
           <div className="flex flex-col h-full">
