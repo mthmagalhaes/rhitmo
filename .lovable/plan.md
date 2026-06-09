@@ -1,53 +1,41 @@
-# Diagnóstico — caso Bianca / Faster
+# Validação — Telas por papel no workspace Faster
 
-Bianca tem **duas linhas** em `team_members` no time "Excelência criativa" do Faster:
+Rodei `get_account_context` para todos os 14 usuários ativos do Faster (cadastrados pelo Guto + leaders + owner). Cada um já resolve para a persona correta — **nenhuma correção de dados ou código é necessária**. Abaixo o mapa de quem vai para qual tela, e o porquê.
 
-| id | linked_user_id | invite_status | origem provável |
-|---|---|---|---|
-| `afe577ba…` ("Bianca Brand Hayakawa") | ✅ a15b87ec… | `accepted` | criada/linkada depois (fluxo correto) |
-| `4a52cc20…` ("Bianca Brand") | ❌ NULL | `none` | linha órfã do primeiro bulk-onboard (antes do fix) |
+## Mapa de personas (Faster)
 
-O link `rhitmo.co/sync/4a52cc20…` da 1ª screenshot aponta justamente para a linha órfã — daí o "Falta ativar conta".
-
-A 2ª screenshot (`/lider/inicio` com sidebar "Faster · MINHA EQUIPE", "Voltar ao Painel RH", "Bom dia, Bianca", 0 liderados) é **resíduo do estado anterior** ao fix do `get_account_context`. Rodando o RPC agora:
-
+```text
+Usuário                  | role     | owner | team_leader | linked | Tela alvo
+-------------------------|----------|-------|-------------|--------|----------------------
+Vitor (owner)            | leader   |  ✅   |    ✅       |   —    | /lider/inicio
+Matheus M. (HR+Líder)    | hr_admin |   —   |    ✅       |   —    | /lider/inicio (multi-role; switch para /hr)
+Guto (HR + membro)       | hr_admin |   —   |     —       |  C-Lvl | /hr  (HR vence linked_member)
+Caio (Líder Comercial)   | leader   |   —   |    ✅       |   —    | /lider/inicio
+Yasmin (Líder Excel.)    | leader   |   —   |    ✅       |   —    | /lider/inicio
+Douglas (Líder Produtech)| leader   |   —   |    ✅       |   —    | /lider/inicio
+Bianca, Jesse, Gabriela, |          |       |             |        |
+Matheus liderado, Camila,| user     |   —   |     —       |  ✅    | /liderado/inicio
+Guilherme C, Laís,       |          |       |             |        |
+Vinicius                 |          |       |             |        |
 ```
-role = 'user'
-workspace_id = null
-is_workspace_owner = false
-is_team_leader = false
-linked_member = { id: afe577ba…, name: Bianca Brand Hayakawa }
-```
 
-Ou seja: o backend já entrega Bianca como **liderada** corretamente. `RoleRouteGuard` deve redirecioná-la de `/lider/*` para `/liderado/inicio` no próximo refresh. O sidebar "MINHA EQUIPE" e "Voltar ao Painel RH" só aparecem se `is_workspace_owner=true` OU `isHRAdmin=true` — nenhum dos dois é o caso dela hoje.
+Pendente esperado: **Lucas Fernandes** (`lucas.fernandes@fstr.co`) ainda tem `invite_status='none'` e `linked_user_id=NULL` — é só um convite que ainda não foi aceito. Ao logar pela primeira vez o `get_account_context` via `has_pending_invite` o ligará automaticamente; sem ação.
 
-A única coisa que ainda quebra é o link de sync antigo que ela recebeu por e-mail (apontando para a linha órfã).
+## Por que tudo casa hoje
 
-# Plano
+1. **RPC `get_account_context**` já decide a ordem certa: Owner → HR Admin → Team Leader → Liderado. Quando o usuário é HR Admin (Guto), `linked_member` ainda vem preenchido, mas `resolvePersona` em `src/lib/navigation.ts` aplica a regra: `isLinkedMember && !isLeader && !isHRAdmin` — então HR sempre vai para `/hr`, não para `/liderado`.
+2. `**RoleRouteGuard**` redireciona automaticamente quem entra em `/lider/*` ou `/liderado/*` da persona errada para o `getHomeRoute(...)` correto.
+3. **Multi-role** (Matheus M.: HR Admin + Líder de 4 times; Vitor: Owner + Líder de C-Level) já é tratado por `useActiveMode` — sidebar mostra o switcher Líder ↔ Empresa.
+4. **Líderes que também aparecem como membros em outros times** (Caio em C-Level, Yasmin em CreativeOps, Douglas em C-Level): a RPC pula `linked_member` quando `is_team_leader=true`, então eles vão direto para `/lider/inicio` (comportamento correto pelo modelo de papéis).
 
-## 1. Limpar a linha órfã da Bianca
-Deletar `team_members.id = 4a52cc20-cc01-4f93-8d74-4541095379f8`. Bianca permanece corretamente vinculada via `afe577ba…` (status `accepted`, `linked_user_id` setado).
+## Plano
 
-Efeito:
-- `/sync/4a52cc20…` passa a mostrar "convite inválido" (esperado — o convite real é o accepted).
-- Bianca loga normalmente em `bianca.brand@fstr.co` → cai em `/liderado/inicio` como liderada.
+Como o estado já está consistente, este plano é só uma rede de segurança:
 
-## 2. Auditar Faster inteiro
-Já rodei a query — Bianca é o **único** caso de duplicata `(email, team_id)` no workspace Faster. Os outros membros do Guto estão limpos.
+1. **Sanity check pós-fix** — rodar uma única query SQL parametrizada que retorna, para cada `linked_user_id` distinto do Faster, a persona resolvida pelo `get_account_context`, e gravar o resultado em `.lovable/plan.md` como evidência do snapshot. Sem mudanças de código nem de schema.
+2. **Comunicar Guto** — pedir para cada liderado fazer logout/login (caso algum tenha logado antes do fix do RPC de ontem, o cache local de 5min do AccountContext pode ainda mostrar a tela antiga; um refresh resolve).
+3. **Sem migração** — nenhuma alteração em RPC, RLS, `RoleRouteGuard`, `resolvePersona` ou tabelas.
 
-## 3. Validar que Bianca enxerga a tela certa
-Depois da limpeza, pedir pra Bianca:
-1. Fazer logout
-2. Logar de novo com `bianca.brand@fstr.co`
-3. Deve cair em `/liderado/inicio` (sidebar de liderado, não "MINHA EQUIPE")
+Se você quiser que eu vá além disso (ex.: adicionar um botão "Forçar refetch de papel" para o caso de Guto precisar reauditar membros sem pedir logout, ou um relatório admin em `/admin` listando "persona resolvida vs. esperada" por workspace) > Pode fazer só precisa achar um nome mais didático para "refetch", pense sempre simples.
 
-## 4. Sobre "me mandar os e-mails por time"
-Não é necessário neste momento. O Guto já fez o cadastro corretamente — o problema é apenas a **1 linha órfã** legada criada antes do fix `bulk-onboard` desta sessão. Os próximos bulk-onboards que ele rodar já vão criar com `invite_status='accepted'` direto, sem gerar órfãs.
-
-Se aparecer outro liderado do Faster reclamando da mesma tela ("Bom dia, Fulano" com sidebar de líder), basta reabrir e rodar a mesma auditoria — mas pelos dados atuais isso não deve acontecer.
-
-# Detalhes técnicos
-
-- DELETE single row em `team_members` (RLS via service_role na migration).
-- Não mexer em `afe577ba…` nem em `user_roles` de Bianca.
-- Não recriar workspace nem teams.
+&nbsp;
