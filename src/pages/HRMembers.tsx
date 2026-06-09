@@ -3,7 +3,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { NewMemberDialog } from '@/components/NewMemberDialog';
 import { BulkOnboardDialog } from '@/components/admin/BulkOnboardDialog';
-import { UserPlus, Upload } from 'lucide-react';
+import { DispatchInvitesDialog } from '@/components/hr/DispatchInvitesDialog';
+import { UserPlus, Upload, Send } from 'lucide-react';
 import { useHRAdmin } from '@/components/HRAdminGuard';
 import { Input } from '@/components/ui/input';
 import { MemberProfileSheet } from '@/components/hr/MemberProfileSheet';
@@ -38,6 +39,7 @@ export default function HRMembers() {
   const [search, setSearch] = useState('');
   const [newMemberOpen, setNewMemberOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [dispatchOpen, setDispatchOpen] = useState(false);
 
   if (!planLoading && !hasHrDashboard) {
     return <HRUpgradeGate title="Liderados exigem Enterprise" description="A gestão completa de liderados por RH Admin fica disponível no upgrade Enterprise." />;
@@ -89,7 +91,10 @@ export default function HRMembers() {
             Visão completa de todos os colaboradores
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" className="rounded-xl gap-2" onClick={() => setDispatchOpen(true)}>
+            <Send className="h-4 w-4" /> Disparar convites pendentes
+          </Button>
           <Button variant="outline" className="rounded-xl gap-2" onClick={() => setBulkOpen(true)}>
             <Upload className="h-4 w-4" /> Importar em massa
           </Button>
@@ -268,6 +273,11 @@ export default function HRMembers() {
           }
         }}
         workspaceNames={workspaceName ? [workspaceName] : []}
+      />
+      <DispatchInvitesDialog
+        open={dispatchOpen}
+        onOpenChange={setDispatchOpen}
+        workspaceId={workspaceId}
       />
     </div>
   );

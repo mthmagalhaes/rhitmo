@@ -41,7 +41,7 @@ serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // Verify caller is super admin
+    // Verify caller is super admin OR HR Admin / Owner of the target workspace
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) throw new Error('Não autorizado');
 
@@ -50,16 +50,27 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY')!,
       { global: { headers: { Authorization: authHeader } } }
     );
-    const { data: isAdmin } = await supabaseUser.rpc('check_is_admin');
-    if (!isAdmin) throw new Error('Apenas super admins podem disparar convites em massa');
+    const { data: { user }, error: userErr } = await supabaseUser.auth.getUser();
+    if (userErr || !user) throw new Error('Não autorizado');
 
-    // Load workspace
+    const { data: isAdmin } = await supabaseUser.rpc('check_is_admin');
+
+    // Load workspace (needed for both gate + dispatch)
     const { data: workspace, error: wsErr } = await supabaseAdmin
       .from('workspaces')
       .select('id, name, owner_id, hr_admin_ids')
       .eq('id', workspace_id)
       .single();
     if (wsErr || !workspace) throw new Error('Workspace não encontrado');
+
+    const isOwner = workspace.owner_id === user.id;
+    const isHRAdmin = (workspace.hr_admin_ids || []).includes(user.id);
+
+    if (!isAdmin && !isOwner && !isHRAdmin) {
+      throw new Error('Apenas super admins, Owner ou HR Admin do workspace podem disparar convites');
+    }
+
+    // Workspace already loaded above for permission check
 
     // Load teams + members for context
     const { data: teamsData } = await supabaseAdmin

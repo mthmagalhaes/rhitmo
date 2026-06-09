@@ -118,16 +118,44 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    const { data: workspace } = await serviceClient
+    // Resolve workspace via multiple paths: Owner → HR Admin → Team Leader → Linked Member
+    let workspaceId: string | undefined;
+    let resolvedVia = 'none';
+
+    // 1) Owner
+    const { data: ownedWs } = await serviceClient
       .from('workspaces')
       .select('id')
       .eq('owner_id', user.id)
       .eq('is_active', true)
       .limit(1)
       .maybeSingle();
+    if (ownedWs?.id) { workspaceId = ownedWs.id; resolvedVia = 'owner'; }
 
-    // Also check if user is a linked member
-    let workspaceId = workspace?.id;
+    // 2) HR Admin
+    if (!workspaceId) {
+      const { data: hrWs } = await serviceClient
+        .from('workspaces')
+        .select('id')
+        .contains('hr_admin_ids', [user.id])
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle();
+      if (hrWs?.id) { workspaceId = hrWs.id; resolvedVia = 'hr_admin'; }
+    }
+
+    // 3) Team Leader
+    if (!workspaceId) {
+      const { data: ledTeam } = await serviceClient
+        .from('teams')
+        .select('workspace_id')
+        .eq('leader_user_id', user.id)
+        .limit(1)
+        .maybeSingle();
+      if (ledTeam?.workspace_id) { workspaceId = ledTeam.workspace_id; resolvedVia = 'leader'; }
+    }
+
+    // 4) Linked Member (fallback)
     if (!workspaceId) {
       const { data: member } = await serviceClient
         .from('team_members')
@@ -135,16 +163,17 @@ Deno.serve(async (req) => {
         .eq('linked_user_id', user.id)
         .limit(1)
         .maybeSingle();
-
-      if (member) {
+      if (member?.team_id) {
         const { data: team } = await serviceClient
           .from('teams')
           .select('workspace_id')
           .eq('id', member.team_id)
           .single();
-        workspaceId = team?.workspace_id;
+        if (team?.workspace_id) { workspaceId = team.workspace_id; resolvedVia = 'linked_member'; }
       }
     }
+
+    console.log('[LINK] Workspace resolution for', user.id, '→', workspaceId ?? 'none', `(via ${resolvedVia})`);
 
     if (!workspaceId) {
       return new Response(JSON.stringify({ error: 'No workspace found for user' }), {
