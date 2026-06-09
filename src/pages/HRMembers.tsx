@@ -1,13 +1,13 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { NewMemberDialog } from '@/components/NewMemberDialog';
 import { BulkOnboardDialog } from '@/components/admin/BulkOnboardDialog';
 import { DispatchInvitesDialog } from '@/components/hr/DispatchInvitesDialog';
-import { UserPlus, Upload, Send } from 'lucide-react';
 import { useHRAdmin } from '@/components/HRAdminGuard';
 import { Input } from '@/components/ui/input';
 import { MemberProfileSheet } from '@/components/hr/MemberProfileSheet';
+import { EditMemberDialog } from '@/components/EditMemberDialog';
 import {
   Select,
   SelectContent,
@@ -18,7 +18,39 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Search, Users, CheckCircle2, Calendar, Loader2, UserCheck, Sparkles } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Search,
+  Users,
+  CheckCircle2,
+  Calendar,
+  Loader2,
+  Sparkles,
+  UserPlus,
+  Upload,
+  Send,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  BellRing,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { HRUpgradeGate } from '@/components/hr/HRUpgradeGate';
 
@@ -32,6 +64,8 @@ const getActivityBadge = (days: number) => {
   return { label: 'Sem feedback', className: 'bg-red-100 text-red-700 border-red-200' };
 };
 
+type EditTarget = { id: string; name: string; role: string; teamId: string };
+
 export default function HRMembers() {
   const { workspaceId, workspaceName } = useHRAdmin();
   const { hasHrDashboard, isLoading: planLoading } = usePlanLimits();
@@ -40,15 +74,14 @@ export default function HRMembers() {
   const [newMemberOpen, setNewMemberOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [dispatchOpen, setDispatchOpen] = useState(false);
-
-  if (!planLoading && !hasHrDashboard) {
-    return <HRUpgradeGate title="Liderados exigem Enterprise" description="A gestão completa de liderados por RH Admin fica disponível no upgrade Enterprise." />;
-  }
   const [selectedLeader, setSelectedLeader] = useState('all');
   const [pdiFilter, setPdiFilter] = useState('all');
   const [page, setPage] = useState(0);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [profileSheetOpen, setProfileSheetOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
+  const [actingId, setActingId] = useState<string | null>(null);
 
   const { data: leadersData } = useQuery({
     queryKey: ['hr-leaders', workspaceId],
@@ -80,6 +113,83 @@ export default function HRMembers() {
   const totalCount = members[0]?.total_count || 0;
   const totalPages = Math.ceil(Number(totalCount) / ITEMS_PER_PAGE);
   const leaders = (leadersData as any)?.leaders || [];
+  const pendingCount = useMemo(
+    () => members.filter((m: any) => m.invite_status && m.invite_status !== 'accepted').length,
+    [members]
+  );
+
+  const refreshAll = () => {
+    queryClient.invalidateQueries({ queryKey: ['hr-members', workspaceId] });
+    queryClient.invalidateQueries({ queryKey: ['hr-leaders', workspaceId] });
+  };
+
+  const handleResendInvite = async (member: any) => {
+    if (!member?.member_email) {
+      toast.error('Sem e-mail cadastrado para reenviar.');
+      return;
+    }
+    setActingId(member.member_id);
+    try {
+      const { error } = await supabase.functions.invoke('admin-invite-user', {
+        body: {
+          email: member.member_email,
+          name: member.member_name,
+          workspace_id: workspaceId,
+        },
+      });
+      if (error) throw error;
+      toast.success(`Lembrete enviado para ${member.member_email}`);
+      refreshAll();
+    } catch (err) {
+      toast.error(`Falha ao reenviar: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  const handleOpenEdit = async (member: any) => {
+    setActingId(member.member_id);
+    try {
+      // get_hr_all_members não retorna team_id; busca rapidinho.
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('team_id')
+        .eq('id', member.member_id)
+        .maybeSingle();
+      if (error) throw error;
+      setEditTarget({
+        id: member.member_id,
+        name: member.member_name ?? '',
+        role: member.member_role ?? '',
+        teamId: data?.team_id ?? '',
+      });
+    } catch (err) {
+      toast.error(`Não foi possível abrir o editor: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirmDelete) return;
+    setActingId(confirmDelete.id);
+    try {
+      await supabase.from('feedbacks').delete().eq('member_id', confirmDelete.id);
+      const { error } = await supabase.from('team_members').delete().eq('id', confirmDelete.id);
+      if (error) throw error;
+      toast.success(`${confirmDelete.name} removido.`);
+      refreshAll();
+      setConfirmDelete(null);
+    } catch (err) {
+      toast.error(`Falha ao remover: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  if (!planLoading && !hasHrDashboard) {
+    return <HRUpgradeGate title="Liderados exigem Enterprise" description="A gestão completa de liderados por RH Admin fica disponível no upgrade Enterprise." />;
+  }
 
   return (
     <div className="space-y-6 p-4 md:p-8 max-w-6xl mx-auto">
@@ -92,8 +202,15 @@ export default function HRMembers() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="outline" className="rounded-xl gap-2" onClick={() => setDispatchOpen(true)}>
-            <Send className="h-4 w-4" /> Disparar convites pendentes
+          <Button
+            variant="outline"
+            className="rounded-xl gap-2"
+            onClick={() => setDispatchOpen(true)}
+            disabled={pendingCount === 0}
+            title={pendingCount === 0 ? 'Sem cadastros pendentes' : 'Enviar lembrete de cadastro a todos os pendentes'}
+          >
+            <BellRing className="h-4 w-4" />
+            Lembrar pendentes{pendingCount > 0 ? ` (${pendingCount})` : ''}
           </Button>
           <Button variant="outline" className="rounded-xl gap-2" onClick={() => setBulkOpen(true)}>
             <Upload className="h-4 w-4" /> Importar em massa
@@ -156,6 +273,8 @@ export default function HRMembers() {
         ) : (
           members.map((member: any) => {
             const badge = getActivityBadge(member.days_since_last_feedback);
+            const isPending = member.invite_status && member.invite_status !== 'accepted';
+            const isActing = actingId === member.member_id;
             return (
               <Card
                 key={member.member_id}
@@ -178,13 +297,19 @@ export default function HRMembers() {
                     </div>
                   </div>
 
-                  {/* Badges + action */}
+                  {/* Badges + actions */}
                   <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                    {member.invite_status && member.invite_status !== 'accepted' && (
-                      <Badge variant="outline" className="text-[11px] px-2 py-0.5 gap-1 bg-amber-50 text-amber-700 border-amber-200">
-                        <Calendar className="h-3 w-3" />
-                        Aguardando aceite
-                      </Badge>
+                    {isPending && (
+                      <button
+                        type="button"
+                        onClick={() => handleResendInvite(member)}
+                        disabled={isActing}
+                        className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50 transition-colors"
+                        title="Clique para reenviar o lembrete de cadastro"
+                      >
+                        {isActing ? <Loader2 className="h-3 w-3 animate-spin" /> : <BellRing className="h-3 w-3" />}
+                        Lembrar cadastro
+                      </button>
                     )}
                     <div className="flex items-center gap-1.5">
                       <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
@@ -224,6 +349,44 @@ export default function HRMembers() {
                     >
                       Ver Perfil
                     </Button>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-xl"
+                          disabled={isActing}
+                          aria-label="Ações"
+                        >
+                          {isActing ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <MoreHorizontal className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-52">
+                        <DropdownMenuItem onClick={() => handleOpenEdit(member)}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Editar dados
+                        </DropdownMenuItem>
+                        {isPending && (
+                          <DropdownMenuItem onClick={() => handleResendInvite(member)}>
+                            <Send className="h-4 w-4 mr-2" />
+                            Reenviar convite
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => setConfirmDelete({ id: member.member_id, name: member.member_name })}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Remover
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </CardContent>
               </Card>
@@ -258,19 +421,13 @@ export default function HRMembers() {
         open={newMemberOpen}
         onOpenChange={setNewMemberOpen}
         workspaceId={workspaceId}
-        onSuccess={() => {
-          queryClient.invalidateQueries({ queryKey: ['hr-members', workspaceId] });
-          queryClient.invalidateQueries({ queryKey: ['hr-leaders', workspaceId] });
-        }}
+        onSuccess={refreshAll}
       />
       <BulkOnboardDialog
         open={bulkOpen}
         onOpenChange={(open) => {
           setBulkOpen(open);
-          if (!open) {
-            queryClient.invalidateQueries({ queryKey: ['hr-members', workspaceId] });
-            queryClient.invalidateQueries({ queryKey: ['hr-leaders', workspaceId] });
-          }
+          if (!open) refreshAll();
         }}
         workspaceNames={workspaceName ? [workspaceName] : []}
       />
@@ -279,6 +436,33 @@ export default function HRMembers() {
         onOpenChange={setDispatchOpen}
         workspaceId={workspaceId}
       />
+      <EditMemberDialog
+        open={!!editTarget}
+        onOpenChange={(open) => { if (!open) setEditTarget(null); }}
+        member={editTarget}
+        workspaceId={workspaceId}
+        onSuccess={refreshAll}
+      />
+      <AlertDialog open={!!confirmDelete} onOpenChange={(open) => { if (!open) setConfirmDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover {confirmDelete?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação é irreversível. Todos os feedbacks e dados deste liderado serão excluídos. O usuário continua existindo na plataforma, mas perde o vínculo com o time.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {actingId === confirmDelete?.id && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Sim, remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
