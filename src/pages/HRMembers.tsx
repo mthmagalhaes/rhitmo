@@ -84,7 +84,7 @@ export default function HRMembers() {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [dispatchOpen, setDispatchOpen] = useState(false);
   const [selectedLeader, setSelectedLeader] = useState('all');
-  const [pdiFilter, setPdiFilter] = useState('all');
+  
   const [pendency, setPendency] = useState<PendencyFilter>('all');
   const [teamFilter, setTeamFilter] = useState('all');
   const [page, setPage] = useState(0);
@@ -106,13 +106,13 @@ export default function HRMembers() {
   });
 
   const { data: membersData, isLoading } = useQuery({
-    queryKey: ['hr-members', workspaceId, search, selectedLeader, pdiFilter, page],
+    queryKey: ['hr-members', workspaceId, search, selectedLeader, page],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_hr_all_members', {
         _workspace_id: workspaceId,
         _search: search || null,
         _leader_id: selectedLeader === 'all' ? null : selectedLeader,
-        _has_pdi: pdiFilter === 'all' ? null : pdiFilter === 'with_pdi',
+        _has_pdi: null,
         _limit: ITEMS_PER_PAGE,
         _offset: page * ITEMS_PER_PAGE,
       });
@@ -159,8 +159,6 @@ export default function HRMembers() {
           return m.invite_status && m.invite_status !== 'accepted';
         case 'no_feedback':
           return (m.days_since_last_feedback ?? 999) > 30;
-        case 'no_pdi':
-          return (m.pdi_count ?? 0) === 0;
         case 'no_sync':
           return !m.has_sync;
         default:
@@ -185,7 +183,7 @@ export default function HRMembers() {
   // Reset seleção quando filtros/página mudam.
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [page, pendency, teamFilter, search, selectedLeader, pdiFilter]);
+  }, [page, pendency, teamFilter, search, selectedLeader]);
 
   const refreshAll = () => {
     queryClient.invalidateQueries({ queryKey: ['hr-members', workspaceId] });
