@@ -116,17 +116,6 @@ export function useAdminCompaniesData() {
     },
   });
 
-  const leaderSyncQ = useQuery({
-    queryKey: ['admin-companies-leader-sync'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('user_preferences')
-        .select('user_id, leader_sync_completed_at');
-      if (error) throw error;
-      return data as { user_id: string; leader_sync_completed_at: string | null }[];
-    },
-  });
-
   const isLoading =
     workspacesQ.isLoading || teamsQ.isLoading || membersQ.isLoading || usersQ.isLoading;
 
@@ -135,6 +124,16 @@ export function useAdminCompaniesData() {
     (usersQ.data || []).forEach((u) => m.set(u.user_id, u));
     return m;
   }, [usersQ.data]);
+
+  // Owners that haven't completed Rhitmo leader sync yet (per workspace).
+  const ownerSyncCompleted = useMemo(() => {
+    const m = new Map<string, boolean>();
+    (workspacesQ.data || []).forEach((w) => {
+      if (!m.has(w.owner_id)) m.set(w.owner_id, false);
+      if (w.leader_sync_completed_at) m.set(w.owner_id, true);
+    });
+    return m;
+  }, [workspacesQ.data]);
 
   const leaderSyncByUser = useMemo(() => {
     const m = new Map<string, string | null>();
