@@ -115,3 +115,10 @@ project_id = "lybkgujyezzzvbzypxed"
     verify_jwt = false
   [functions.generate-quarterly-recap-cron]
     verify_jwt = false
+
+
+[auth.rate_limit]
+# Roteamos auth emails via auth-email-hook -> pgmq -> Mailgun; o gargalo real
+# é a fila, não o GoTrue. Subimos para 60/h para evitar "email rate limit
+# exceeded" em onboarding (signup + invite + recovery somam na mesma cota).
+email_sent = 60

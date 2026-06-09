@@ -96,11 +96,20 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
       });
       setIsForgotPassword(false);
     } catch (error: any) {
-      toast({ title: t('common.error'), description: error.message, variant: "destructive" });
+      const raw = String(error?.message ?? '');
+      let title = t('common.error') as string;
+      let description = raw;
+      if (/rate limit|too many requests|over_email_send_rate/i.test(raw)) {
+        title = 'Limite temporário de envios';
+        description = 'Atingimos o limite de e-mails de autenticação nos últimos minutos. Aguarde ~10 minutos e tente novamente, ou peça ao seu líder/RH para reenviar o convite.';
+      }
+      console.warn('[forgot-password] resetPasswordForEmail failed', { code: error?.code, status: error?.status, message: raw });
+      toast({ title, description, variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
+
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
