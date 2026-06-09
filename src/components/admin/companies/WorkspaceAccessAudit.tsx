@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, AlertTriangle, RefreshCw, Loader2 } from 'lucide-react';
-import type { AdminWorkspaceRow } from '@/hooks/useAdminCompaniesData';
+import type { CompanyWorkspace } from '@/hooks/useAdminCompaniesData';
 
 interface AuditRow {
   user_id: string;
