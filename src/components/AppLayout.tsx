@@ -93,7 +93,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     && !hasPendingInviteByEmail
     && signupPersona === 'hr_admin';
 
-  const needsWorkspaceSetup = (baseNeedsWorkspaceSetup && signupPersona !== 'hr_admin') || personaForcesLeader;
+  // Só mostra setup de líder quando o usuário declarou explicitamente persona='leader'.
+  // A heurística (`baseNeedsWorkspaceSetup`) sozinha causava criação de workspace
+  // duplicado por liderados — agora exige confirmação via signup_persona.
+  const needsWorkspaceSetup = personaForcesLeader;
   const needsHRAdminWorkspaceSetup = personaForcesHRAdmin;
 
   const showActivity = !!user;
