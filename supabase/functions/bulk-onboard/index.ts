@@ -258,15 +258,27 @@ serve(async (req) => {
               const existingResult = results.find(r => r.email === email);
               if (existingResult) existingResult.message += ` (time "${teamName}" não encontrado)`;
             } else {
-              // Check if already a member
-              const { data: existingMember } = await supabaseAdmin
+              // Dedupe forte: já existe esta pessoa em QUALQUER time deste workspace?
+              const wsTeamIds = (teamsByWs.get(ws.id) || []).map(t => t.id);
+              const { data: existingInWs } = await supabaseAdmin
                 .from('team_members')
-                .select('id')
-                .eq('team_id', team.id)
-                .eq('email', email)
+                .select('id, team_id, name')
+                .in('team_id', wsTeamIds)
+                .or(`email.eq.${email},linked_user_id.eq.${userId}`)
+                .limit(1)
                 .maybeSingle();
 
-              if (!existingMember) {
+              if (existingInWs) {
+                // Atualiza nome se mudou; opcionalmente realoca para o team correto
+                const patch: Record<string, unknown> = {};
+                if (row.name && row.name !== existingInWs.name) patch.name = row.name;
+                if (existingInWs.team_id !== team.id) patch.team_id = team.id;
+                if (Object.keys(patch).length > 0) {
+                  await supabaseAdmin.from('team_members').update(patch).eq('id', existingInWs.id);
+                }
+                const existingResult = results.find(r => r.email === email);
+                if (existingResult) existingResult.message += ` + Já era liderado neste workspace (atualizado)`;
+              } else {
                 const { error: memberErr } = await supabaseAdmin.from('team_members').insert({
                   name: row.name || email.split('@')[0],
                   email: email,
@@ -285,11 +297,9 @@ serve(async (req) => {
                     existingResult.status = 'ok';
                   }
                 }
-              } else {
-                const existingResult = results.find(r => r.email === email);
-                if (existingResult) existingResult.message += ` + Já é membro do time "${teamName}"`;
               }
             }
+
           }
         }
 

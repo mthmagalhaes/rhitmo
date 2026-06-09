@@ -172,6 +172,8 @@ export default function Onboarding() {
         .from('team_members')
         .select('id, name, email, role')
         .eq('linked_user_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(1)
         .maybeSingle();
       
       if (error) {
@@ -204,12 +206,10 @@ export default function Onboarding() {
     if (didRestore && !completed) saveDraft(formData, currentStep);
   }, [formData, currentStep, didRestore, completed, saveDraft]);
 
-  // Redirecionar se não é um linked member
-  useEffect(() => {
-    if (!authLoading && !memberLoading && !memberData) {
-      navigate('/', { replace: true });
-    }
-  }, [authLoading, memberLoading, memberData, navigate]);
+  // NOTA: removido o navigate('/') silencioso quando memberData é null.
+  // Em vez disso, mostramos uma tela amigável abaixo (ver bloco de render).
+  // Isso evita loop em branco para usuários que ainda não foram vinculados.
+
 
   // Pré-preencher cargo quando dados carregarem (apenas se ainda não houver draft)
   useEffect(() => {
@@ -423,6 +423,37 @@ export default function Onboarding() {
               Redirecionando...
             </p>
           </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // Loading: ainda buscando vínculo do liderado
+  if (authLoading || memberLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
+        <Card className="max-w-md w-full p-8 text-center space-y-4">
+          <Loader2 className="h-10 w-10 text-primary animate-spin mx-auto" />
+          <p className="text-sm text-muted-foreground">Carregando seu perfil…</p>
+        </Card>
+      </div>
+    );
+  }
+
+  // Sem vínculo: usuário autenticado mas não é liderado neste workspace
+  if (!memberData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
+        <Card className="max-w-md w-full p-8 text-center space-y-4">
+          <div className="text-5xl">🤔</div>
+          <h1 className="text-xl font-bold">Não encontramos seu cadastro</h1>
+          <p className="text-sm text-muted-foreground">
+            Você está autenticado, mas ainda não há um cadastro de liderado vinculado ao seu e-mail.
+            Peça ao HR Admin ou ao seu líder para verificar.
+          </p>
+          <Button variant="outline" onClick={() => navigate('/', { replace: true })}>
+            Ir para o início
+          </Button>
         </Card>
       </div>
     );

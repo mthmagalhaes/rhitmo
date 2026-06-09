@@ -1,87 +1,75 @@
-# 🎫 Bug — `/lider/diario` mostra todos os liderados do workspace
+# 🎫 TKT — Tela branca no onboarding (Faster Ops)
 
-**Afetado:** matheus.magalhaes@fstr.co (Mateus, Owner do workspace Faster Ops)
-**Rotas:** `/lider/diario` (Insight) e dialog "Nova Anotação" (lista suspensa)
-**Severidade:** alta — vaza nomes de liderados de outros líderes (Douglas, Yasmin, Vitor, Caio)
+## 📌 Sintoma
+Usuários importados pelo Guto acessam pelo magic link, veem por um instante o wizard "Bem-vindo ao Rhitmo / Identidade · Job Crafting · Futuro" com o nome em branco ("Olá, !") e a tela fica branca.
 
-## Diagnóstico
+## 🔎 Causa raiz (confirmada em produção)
+**7 usuários ativos do workspace Faster Ops têm linhas duplicadas em `team_members`** com o mesmo `email` e `linked_user_id`, mas nomes ligeiramente diferentes (ex.: "Bianca Brand" + "Bianca Brand Hayakawa", "Renato Tsukahara" + "Renato Tsukahara Gomes", "Camila De/de Oliveira Correia" etc.).
 
-Confirmei no banco:
+Tanto `useLinkedMember.ts:75` quanto `Onboarding.tsx:175` chamam `.maybeSingle()` em `team_members WHERE linked_user_id = auth.uid()`. Com 2+ linhas o PostgREST retorna erro `PGRST116` ("multiple rows returned"), o código pega o erro e devolve `null`:
 
-- Mateus lidera **5 times** em Faster Ops (Business Ops, CreativeOps, Customer Success, Expansão, People) → **7 liderados diretos**.
-- Workspace Faster Ops tem **28 liderados ativos** no total (somando times do Douglas/Produtech, Yasmin/Excelência, Vitor, Caio).
-- Airton, Aristoteles e Bianca — que apareceram pra ele — pertencem a Produtech (líder Douglas) e Excelência Criativa (líder Yasmin).
+- `useLinkedMember` → `linkedMember=null` → `isLinkedMember=false`
+- `Onboarding` → `memberData=null` → `useEffect` (linha 207) faz `navigate('/')` → Index renderiza sem workspace válido → tela branca
 
-### Causa raiz
+A dedupe do `bulk-onboard` (chave `team_id+email`) falhou em algum momento (provavelmente segunda rodada de importação com nome corrigido criando linha nova ao invés de atualizar a existente).
 
-**Bug A — `NewNoteDialog` (lista suspensa "Liderado(s)"): bug óbvio no código.**
-`src/components/NewNoteDialog.tsx:201-213` carrega `team_members` filtrando **só por `workspace_id`**, sem restringir aos times liderados pelo usuário:
+Por que a tela pisca antes de embranquecer: o wizard renderiza sem gate de `memberLoading`, então aparece um frame com o cabeçalho (sem nome) antes do redirect.
 
-```ts
-.from('team_members')
-.select('id, name, teams!inner(workspace_id)')
-.eq('teams.workspace_id', workspaceId)
-```
+## 💊 Solução proposta (2 camadas)
 
-Como a RLS `tm_read` libera leitura para owner do workspace, a query devolve os 28. → Por isso aparece Airton, Aristoteles, Bianca, Brunna, Caio, Camila etc. no dropdown.
-
-**Bug B — Insight "22 liderados sem nota recente".**
-`useLeaderMembers` (no código atual) já filtra estritamente por `teams.leader_user_id = effectiveUserId` e deveria devolver apenas 7. O número 22 bate exatamente com **(28 ativos − ~6 com nota nos últimos 14d)** — comportamento do código **antigo** desse hook (pré-Sprint 12). Hipótese principal: o build publicado ainda é o anterior à correção do hook. Vamos confirmar com o Mateus republicando depois do fix A; se persistir, é o sintoma do Bug C abaixo.
-
-**Bug C (preventivo) — não confiar só na RLS.**
-A RLS `rls_check_member_read_access` permite owner/HR-Admin lerem todos os `team_members` do workspace. Isso é correto pra rotas `/workspace/*` e `/hr/*`, mas significa que **qualquer query em `/lider/*` que não filtre explicitamente por `teams.leader_user_id` vai vazar dados**. Precisamos blindar o hook compartilhado.
-
-## Plano
-
-### 1. Corrigir `NewNoteDialog` (Bug A — principal)
-
-Em `src/components/NewNoteDialog.tsx`:
-- Remover `loadTeamMembers` que consulta `team_members` por `workspace_id`.
-- Em vez disso, **receber a lista de liderados como prop** (`members: Array<{id, name}>`) do componente pai. Os pais já têm a lista correta via `useLeaderMembers`.
-- Atualizar chamadas em `Diario.tsx`, `Inicio.tsx`, `OneOnOnes.tsx`, `Mentor.tsx`, `Pessoas.tsx` etc. para passar `members={members}` (vindos do `useLeaderMembers`).
-- Manter o filtro por `selectedMemberId` (quando o dialog é aberto pré-selecionado pra 1 liderado) inalterado.
-
-### 2. Blindar `useLeaderMembers` (Bug C — defesa em profundidade)
-
-Em `src/hooks/useLeaderMembers.ts`, na query final de `team_members`:
-- Em vez de só `.in('team_id', teamIds)`, fazer **inner join** explícito e re-filtrar:
-  ```ts
-  .select('*, teams!inner(id, leader_user_id)')
-  .eq('teams.leader_user_id', effectiveUserId)
+### Camada 1 — Limpeza de dados (migration única)
+- Para cada `(email, linked_user_id)` com >1 linhas em `team_members`:
+  - Manter a linha mais antiga (`MIN(created_at)`)
+  - Migrar `team_id`, `feedbacks.member_id`, `goals.member_id`, `performance_reviews.member_id`, `development_plans.member_id`, `context_evidence.member_id`, `pulse_surveys.member_id`, `peer_feedback_requests.target_member_id`, `review_peers.peer_member_id` da linha "perdedora" para a "vencedora" (UPDATE com ON CONFLICT DO NOTHING quando houver unique)
+  - DELETE da(s) linha(s) perdedora(s)
+- Adicionar constraint `UNIQUE (workspace_id, lower(email))` derivado via JOIN com `teams` — implementar como índice único parcial baseado em função:
   ```
-- Garante que mesmo se um cache stale ou RLS permissiva vazasse linhas, a query rejeite.
+  CREATE UNIQUE INDEX team_members_unique_email_per_workspace
+  ON team_members (
+    (SELECT workspace_id FROM teams WHERE teams.id = team_members.team_id),
+    lower(email)
+  ) WHERE email IS NOT NULL AND archived_at IS NULL;
+  ```
+  Se Postgres não aceitar subquery em índice (não aceita), criar coluna gerada `workspace_id` em `team_members` OU adicionar trigger BEFORE INSERT/UPDATE que bloqueia duplicatas.
 
-### 3. Auditoria rápida (read-only)
+### Camada 2 — Hardening de código (defensivo)
 
-Rodar `rg -n "from\('team_members'\)" src/` e revisar cada call site em código `/lider/*`:
-- `useLeaderInbox`, `useLeaderInfo`, `useTeamGoalsSummary`, `useTeamReviewsSummary`, etc.
-- Se algum filtrar só por `workspace_id`, aplicar a mesma blindagem da etapa 2.
+**`src/hooks/useLinkedMember.ts` (linha 70-80)**
+- Trocar `.maybeSingle()` por `.order('created_at', { ascending: true }).limit(1).maybeSingle()` para nunca quebrar em duplicatas — sempre pega o mais antigo (canônico).
 
-### 4. Validar
+**`src/pages/Onboarding.tsx` (linha 167-184 e 207-212)**
+- Mesma troca em `memberData`.
+- Substituir o `navigate('/')` silencioso por uma tela amigável quando `!memberData && !memberLoading` ("Não encontramos seu cadastro como liderado — fale com seu HR Admin"). Hoje cai em loop em branco.
+- Adicionar gate de loading antes de renderizar o wizard (evita o flash "Olá, !").
 
-- Mateus republica e abre `/lider/diario` → insight deve dizer "X liderados sem nota recente" com X ≤ 7.
-- Abrir "Nova nota" → lista deve mostrar apenas os 7 liderados diretos dele (Gabriela Lucas, Yasmin Nóbrega, Guilherme Cunha, Laís Isfer, Giovanna Barletta, Matheus, People).
-- Confirmar que `/workspace/pessoas` (visão Owner) continua mostrando os 28 — aí o escopo amplo é correto.
+**`supabase/functions/bulk-onboard/index.ts` (linha 262-267)**
+- Trocar a checagem `eq('team_id').eq('email')` por `eq('email', email).eq('team_id', team.id)` **+** verificação extra por `linked_user_id` antes de inserir; se já existe linha com mesmo `linked_user_id` no workspace, fazer UPDATE de nome ao invés de INSERT.
 
-## Sobre "dividir os caps"
+## ⚠️ Riscos / regressões
+- Migration de merge de dados é destrutiva. Vou:
+  - Rodar primeiro um SELECT de auditoria (já feito acima — 7 pares confirmados)
+  - Migrar referências antes do DELETE
+  - Logar via `RAISE NOTICE` o que foi consolidado
+- Index único pode falhar se houver duplicatas em outros workspaces — a migration faz cleanup global, não só Faster Ops.
 
-Não é necessário criar novo modelo de permissão. A arquitetura atual já separa:
+## 🧪 Validação
+1. SELECT pós-migration confirma 0 duplicatas em `(linked_user_id, email)` ativos.
+2. Bianca/Renato/Camila/Glaucia/Guilherme/Marina/Thalia logam → wizard carrega com nome preenchido e progride.
+3. Tentar reimportar Bianca com nome diferente → bulk-onboard atualiza nome, não cria linha nova.
+4. Verificar /lider/diario do Guto (HR) — lista de liderados volta a aparecer (Print 1 era sintoma colateral do mesmo bug + jsonb_typeof, já corrigido).
 
-- **`/lider/*`** → escopo "líder direto" (só times onde `leader_user_id = você`). É aqui que o bug está.
-- **`/workspace/*` e `/hr/*`** → escopo Owner / HR Admin (workspace inteiro).
+## 📦 Arquivos tocados
+- `supabase/migrations/<novo>.sql` — dedupe + index único
+- `src/hooks/useLinkedMember.ts` — `.order().limit(1)`
+- `src/pages/Onboarding.tsx` — `.order().limit(1)` + loading gate + erro amigável
+- `supabase/functions/bulk-onboard/index.ts` — dedupe por `linked_user_id`
 
-Mateus é Owner **e** líder de 5 times. O esperado é:
-- Em `/lider/diario`, `/lider/pessoas`, `/lider/1on1s` → vê só os 7 liderados diretos dele.
-- Em `/workspace/pessoas` → vê os 28 do workspace (papel de Owner).
+## Status dos outros bugs do dump anterior
+| Ticket | Status |
+|---|---|
+| #1 Liderados vazio (jsonb guard) | ✅ Aplicado — provavelmente também impactado pelas duplicatas, vai melhorar com este fix |
+| #2/5 Tela branca | 🔴 Este plano resolve |
+| #3 Notificações de reuniões não-1:1 | ✅ Aplicado em `fetch-calendar-events`, aguardando próxima janela do cron para validar em prod |
+| #4 Disparar convites pendentes | ✅ Botão entregue em `/hr/membros` |
 
-O fix acima restaura essa separação sem precisar de novos toggles ou roles.
-
-## Riscos
-
-- Mudar `NewNoteDialog` pra receber `members` via prop quebra qualquer caller que não passe a prop. Vou atualizar todos os call sites no mesmo commit e manter fallback opcional (`members?: …`) com warning no console se vier vazio.
-- Nenhum risco de RLS / migration — mudanças são 100% client-side.
-
-## Fora de escopo
-
-- Telas `/workspace/*` e `/hr/*` (Mateus está nelas como Owner/HR-Admin e o escopo amplo é intencional).
-- Reformular RLS de `team_members` (segue como está; defesa em profundidade no client).
+→ **Aplicar a migration + ajustes de código?** (sim / só código sem migration / mais info)
