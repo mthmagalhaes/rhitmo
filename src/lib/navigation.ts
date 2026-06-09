@@ -11,7 +11,8 @@ import {
   LayoutDashboard,
   Building2,
   BarChart3,
-  ListChecks,
+  // ListChecks reservado para reativar Frameworks no menu HR.
+
   type LucideIcon,
 } from 'lucide-react';
 
