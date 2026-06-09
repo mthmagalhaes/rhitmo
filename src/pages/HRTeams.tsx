@@ -16,6 +16,12 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   Users, Search, AlertTriangle, ChevronRight,
   FileText, CheckCircle, XCircle
 } from 'lucide-react';
