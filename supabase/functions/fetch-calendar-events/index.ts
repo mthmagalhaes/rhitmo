@@ -220,9 +220,11 @@ Deno.serve(async (req) => {
 
     let eventsSkippedNoAttendees = 0;
     let eventsSkippedNoMatch = 0;
+    let eventsSkippedGroup = 0;
+    let eventsSkippedMultipleMembers = 0;
 
     for (const event of allEvents) {
-      const attendees: Array<{ email: string; displayName?: string }> = (event.attendees as Array<{ email: string; displayName?: string }>) || [];
+      const attendees: Array<{ email: string; displayName?: string; resource?: boolean }> = (event.attendees as Array<{ email: string; displayName?: string; resource?: boolean }>) || [];
       const startObj = event.start as { dateTime?: string; date?: string } | undefined;
       const endObj = event.end as { dateTime?: string; date?: string } | undefined;
       const startTime = startObj?.dateTime || startObj?.date;
@@ -242,58 +244,91 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      let foundMatch = false;
-      for (const attendee of allParticipants) {
+      // ── 1:1 classification ──
+      // Count only HUMAN attendees other than the leader.
+      // Drop resources (rooms) and Google Calendar resource emails.
+      const humanOthers = allParticipants.filter((a) => {
+        const e = (a.email || "").toLowerCase().trim();
+        if (!e) return false;
+        if (a.resource === true) return false;
+        if (e.endsWith("@resource.calendar.google.com")) return false;
+        if (e === leaderEmail) return false;
+        return true;
+      });
+
+      // Group meeting (>2 other people) → not a 1:1, skip.
+      if (humanOthers.length > 2) {
+        eventsSkippedGroup++;
+        if (eventsSkippedGroup <= 5) {
+          console.log(`[sync] Skipping group event "${event.summary}" (${humanOthers.length} other attendees)`);
+        }
+        continue;
+      }
+
+      // Find matching members, deduplicating by linked_user_id (or member id)
+      const matchedSet = new Map<string, { id: string; name: string; role: string }>();
+      for (const attendee of humanOthers) {
         const email = attendee.email?.toLowerCase().trim();
         if (!email) continue;
         const member = membersByEmail.get(email);
         if (!member) continue;
-
-        foundMatch = true;
-        const meetLink = extractMeetLink(event);
-
-        const { data: upserted } = await supabaseAdmin
-          .from("upcoming_meetings")
-          .upsert(
-            {
-              user_id: userId,
-              member_id: member.id,
-              google_event_id: event.id as string,
-              title: (event.summary as string) || "Reunião",
-              start_time: startTime,
-              end_time: endTime || null,
-              meet_link: meetLink,
-              attendees: JSON.stringify(allParticipants.map((a) => a.email)),
-              synced_at: new Date().toISOString(),
-            },
-            { onConflict: "user_id,google_event_id,member_id" }
-          )
-          .select("id")
-          .single();
-
-        matchedMeetings.push({
-          id: upserted?.id,
-          title: (event.summary as string) || "Reunião",
-          start_time: startTime,
-          end_time: endTime || null,
-          meet_link: meetLink,
-          member_id: member.id,
-          member_name: member.name,
-          member_role: member.role,
-        });
-      }
-
-      if (!foundMatch) {
-        eventsSkippedNoMatch++;
-        // Log first few unmatched events for debugging
-        if (eventsSkippedNoMatch <= 5) {
-          const participantEmails = allParticipants.map(a => a.email?.toLowerCase()).filter(Boolean);
-          console.log(`[sync] No match for "${event.summary}" — attendees: ${participantEmails.join(", ")}`);
+        const dedupKey = member.linked_user_id || member.id;
+        if (!matchedSet.has(dedupKey)) {
+          matchedSet.set(dedupKey, { id: member.id, name: member.name, role: member.role });
         }
       }
+
+      if (matchedSet.size === 0) {
+        eventsSkippedNoMatch++;
+        if (eventsSkippedNoMatch <= 5) {
+          const participantEmails = humanOthers.map(a => a.email?.toLowerCase()).filter(Boolean);
+          console.log(`[sync] No match for "${event.summary}" — attendees: ${participantEmails.join(", ")}`);
+        }
+        continue;
+      }
+
+      // More than one DISTINCT member matched → group meeting in disguise, skip.
+      if (matchedSet.size > 1) {
+        eventsSkippedMultipleMembers++;
+        console.log(`[sync] Skipping event "${event.summary}" — ${matchedSet.size} distinct members matched`);
+        continue;
+      }
+
+      const member = [...matchedSet.values()][0];
+      const meetLink = extractMeetLink(event);
+
+      const { data: upserted } = await supabaseAdmin
+        .from("upcoming_meetings")
+        .upsert(
+          {
+            user_id: userId,
+            member_id: member.id,
+            google_event_id: event.id as string,
+            title: (event.summary as string) || "Reunião",
+            start_time: startTime,
+            end_time: endTime || null,
+            meet_link: meetLink,
+            attendees: JSON.stringify(humanOthers.map((a) => a.email)),
+            synced_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id,google_event_id,member_id" }
+        )
+        .select("id")
+        .single();
+
+      matchedMeetings.push({
+        id: upserted?.id,
+        title: (event.summary as string) || "Reunião",
+        start_time: startTime,
+        end_time: endTime || null,
+        meet_link: meetLink,
+        member_id: member.id,
+        member_name: member.name,
+        member_role: member.role,
+      });
     }
 
-    console.log(`[sync] Results: ${matchedMeetings.length} matched, ${eventsSkippedNoAttendees} no attendees, ${eventsSkippedNoMatch} no member match`);
+    console.log(`[sync] Results: ${matchedMeetings.length} matched, ${eventsSkippedNoAttendees} no attendees, ${eventsSkippedNoMatch} no member match, ${eventsSkippedGroup} group, ${eventsSkippedMultipleMembers} multi-member`);
 
     // ── Auto-schedule Recall bots (2 min before meeting) ──
     if (autoTranscribe && RECALL_API_KEY) {
