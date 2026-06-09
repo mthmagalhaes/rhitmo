@@ -1,140 +1,110 @@
-# Hierarquia Rhitmo v2 — Empresa, Times, Líderes, Liderados
 
-## 1. Recomendação de modelo (baseada em benchmarks)
+## Problema
 
-Pesquisei como Lattice, CultureAmp, 15Five, Leapsome, Workday e BambooHR estruturam isso. **Todos seguem o mesmo padrão**:
+Hoje `resolvePersona` retorna **uma única persona** por usuário, com prioridade Owner/HR > Leader. Resultado:
+
+- **Vitor** (CEO, Owner): cai em `/lider/inicio` mas só "é líder" do time C-Level. Não tem caminho claro pra ver a Faster inteira.
+- **Matheus** (COO, Owner + HR Admin + Leader de Operações): mesma coisa, e ainda perde o atalho pro `/hr` quando está em modo líder.
+- **Guto** (HR Admin puro): já cai em `/hr` (correto).
+
+Falta um conceito explícito de **"modo ativo"** com troca de sidebar.
+
+## Solução: Modo ativo + Workspace Switcher dupla persona
+
+### Conceito
+
+Para usuários com **dois ou mais papéis elegíveis** (Leader + Owner, Leader + HR Admin, ou os três), introduzimos um **modo ativo** persistido por sessão:
+
+- **Modo "Minha equipe"** → sidebar atual de líder (`/lider/*`)
+- **Modo "Empresa"** → sidebar de HR/Owner (`/hr/*`)
+
+O `WorkspaceSwitcher` (canto superior esquerdo da sidebar) ganha uma seção nova **"Modo"** acima da lista de workspaces, com os dois itens e um check no atual. Um clique:
+
+1. Atualiza o modo ativo (localStorage + estado global).
+2. Redireciona para a home do modo escolhido (`/lider/inicio` ou `/hr`).
+3. A sidebar se redesenha porque `resolvePersona` agora usa o modo ativo como tiebreaker.
+
+### Default ao logar
+
+- Default = **"Minha equipe"** (`/lider/inicio`) para qualquer usuário multi-papel — owners/HR escolhem ativamente quando querem a visão macro.
+- Usuários single-role continuam exatamente como hoje (HR puro vai pra `/hr`, liderado vai pra `/liderado/*`).
+
+### Indicação visual
+
+- Trigger do switcher mostra um chip pequeno do modo atual ao lado do nome do workspace: `Faster · Minha equipe` ou `Faster · Empresa`.
+- Substitui o badge atual `· RH` (que hoje só aparece pra HR Admin) por essa lógica unificada.
+
+### Exemplos práticos
+
+| Usuário | Papéis | Modo default | Pode trocar para |
+|---|---|---|---|
+| Vitor | Owner | Minha equipe | Empresa |
+| Matheus | Owner + HR + Leader | Minha equipe | Empresa |
+| Guto | HR Admin (não-owner) | Empresa (único modo) | — |
+| Douglas | Leader puro | Minha equipe (único modo) | — |
+| Liderado | Direct report | Liderado (único) | — |
+
+## Mudanças técnicas
+
+**Novo: `useActiveMode` hook** (`src/hooks/useActiveMode.ts`)
+- Estado: `'leader' | 'company'`
+- Persiste em `localStorage` por `userId` (key: `rhitmo:active-mode:<userId>`)
+- Default `'leader'` na primeira sessão.
+- Expõe `mode`, `setMode(next)`, e `availableModes` derivado de `useAccount()`.
+
+**`src/lib/navigation.ts`**
+- `resolvePersona()` ganha parâmetro opcional `activeMode`.
+- Quando o usuário tem ambos (`isLeader && (isHRAdmin || isWorkspaceOwner)`), retorna `'hr_admin'` se `activeMode==='company'`, senão `'leader'`. Comportamento pra single-role usuários é idêntico ao atual.
+- `getHomeRoute()` aceita o mesmo parâmetro.
+
+**`src/components/sidebar/WorkspaceSwitcher.tsx`**
+- Usa `useActiveMode()`.
+- Renderiza nova seção "Modo" no topo do dropdown com dois itens só se `availableModes.length > 1`.
+- Trigger mostra chip do modo atual.
+- Mantém os atalhos atuais (Settings, Help Center, Convidar) — eles aparecem conforme o modo ativo já naturalmente, então sem mudança de lógica ali.
+
+**`src/components/RoleRouteGuard.tsx`**
+- Lê `activeMode` e passa pra `resolvePersona`. Assim, se Matheus em modo "company" tentar entrar em `/lider/inicio` direto pela URL, é redirecionado pra `/hr`; e vice-versa. Pra usuários single-role nada muda.
+
+**`src/hooks/useHomeRoute.ts`**
+- Mesma propagação de `activeMode`.
+
+**`AccountContext`** — sem mudanças (continua resolvendo papéis brutos via RPC).
+
+### Diagrama
 
 ```text
-Company (1 conta) ─┬─ Department / Team ──┬─ Manager
-                   │                       └─ Direct Reports
-                   ├─ Department / Team ──┬─ Manager
-                   │                       └─ Direct Reports
-                   └─ HR Admin (transversal, vê tudo)
+┌──────────────────────────────────────┐
+│ [🏢] Faster · Minha equipe    [⌄]    │ ← trigger
+└──────────────────────────────────────┘
+        │ clica
+        ▼
+┌──────────────────────────────────────┐
+│ MODO                                 │
+│  ✓ Minha equipe   (sidebar líder)    │
+│    Empresa        (sidebar /hr)      │
+│ ─────────────────────────────────────│
+│ WORKSPACES                           │
+│  ✓ Faster                            │
+│    Outro workspace                   │
+│ ─────────────────────────────────────│
+│ Visão do workspace · Times · Pessoas │ (atalhos atuais)
+│ Configurações · Central de Ajuda     │
+└──────────────────────────────────────┘
 ```
 
-Ninguém em SaaS de people-ops cria "um workspace por head". A figura de "workspace" no mercado **é a empresa**. Times/departamentos vivem dentro dela. Heads (Matheus COO, Douglas CTO) são **líderes de times**, não donos de workspaces separados.
+## O que NÃO muda nesta fase
 
-### Decisão proposta: **Modelo A — 1 Workspace = 1 Empresa**
+- Estrutura de dados (workspaces/teams/papéis) — já consolidada na Fase 1.
+- Páginas `/hr/*` e `/lider/*` em si — só o que muda é qual conjunto a sidebar mostra.
+- Lógica de impersonation, RLS, AccountContext.
 
-Aplicado à Faster ficaria:
+## Memory a salvar após approval
 
-```text
-Workspace: Faster
-├─ Owner: Vitor (CEO) e Matheus (COO - matheus.magalhaes@fstr.co) — vê tudo, se precisar use botões para separar os caps de matheus como líder e como Owner
-├─ HR Admin: Guto — cadastra e mantém
-└─ Times:
-   ├─ Operações      → Líder: Matheus  → Gabi, Gui, Laís, Giovanna, Yas
-   ├─ Tecnologia     → Líder: Douglas  → Airton, Aristóteles, Brunna, Rodrigo, Wenderson
-   ├─ Marketing      → Líder: Jesse    → (liderados)
-   ├─ Vendas         → Líder: Caio     → (liderados)
-   ├─ RH             → Líder: Guto     → (liderados)
-   └─ C-Level        → Líder: Vitor    → Matheus, Douglas, Jesse, Caio, Guto
-```
+`mem://design/sidebar/active-mode-switcher` — Owners/HR que também são líderes alternam entre "Minha equipe" (/lider) e "Empresa" (/hr) via WorkspaceSwitcher; default = Minha equipe; persistido em localStorage por userId; aplicado em `resolvePersona` + `RoleRouteGuard`.
 
-**Por quê:**
+## Próximas fases (não inclusas aqui — confirmar depois)
 
-- Vitor vê a empresa inteira sem precisar ser invitee em N workspaces.
-- Guto cadastra uma vez, num lugar só.
-- Matheus continua vendo só os 5 dele (RLS por `teams.leader_user_id` já garante).
-- Billing fica simples (1 assinatura por empresa).
-- Acaba a confusão atual de "Faster", "Faster Ops", "Workspace de Douglas".
-
-### O que muda vs. hoje
-
-
-| Hoje                                                              | Depois                                                           |
-| ----------------------------------------------------------------- | ---------------------------------------------------------------- |
-| 3 workspaces da Faster (Faster, Faster Ops, Workspace de Douglas) | 1 workspace "Faster"                                             |
-| Matheus é Owner de "Faster Ops"                                   | Matheus é Líder do time "Operações" dentro de "Faster"           |
-| Douglas é Owner de "Workspace de Douglas"                         | Douglas é Líder do time "Tecnologia" dentro de "Faster"          |
-| Vitor não enxerga nada cross-workspace                            | Vitor é Owner da "Faster" e enxerga tudo                         |
-| Times órfãos ("Sem time", "Lideratos Vitor")                      | Estrutura validada (todo time tem líder, todo liderado tem time) |
-
-
-## 2. Fluxo de cadastro novo: "Onboarding de Empresa"
-
-Resposta sua: **HR Admin estrutura, Líder completa**. Implementação:
-
-### Etapa 1 — HR Admin (Guto) cria a empresa (Wizard `/admin/empresas/nova`)
-
-1. Nome da empresa + segmento.
-2. Definir Owner (CEO/Founder) — campo único.
-3. Adicionar Heads/Líderes — lista simples: nome, email, time que ele lidera.
-  - Cada linha cria 1 time + atribui o líder.
-4. Revisão visual em árvore antes de salvar.
-5. Confirma → cria workspace + times + dispara convites para Owner e Líderes.
-
-### Etapa 2 — Cada Líder recebe convite e completa o time dele
-
-- Email para Matheus: "Você foi adicionado como líder do time Operações na Faster. Adicione seus liderados."
-- Ele entra em `/lider/pessoas` → botão "Adicionar liderado" (já existe, individual).
-- Ou Guto faz por ele via bulk-onboard direcionado a um time específico.
-
-### Etapa 3 — Liderado recebe convite e faz onboarding (já existe)
-
-## 3. Painel Admin reformulado
-
-Três telas, todas com filtro de empresa fixo no topo:
-
-### 3.1 `/admin` → **Visão Geral** (já existe, ajustes)
-
-- KPIs: empresas, líderes únicos, liderados, % de cadastros completos.
-- Lista de empresas com health-score: ✅ tudo certo / ⚠️ pendências (times sem líder, líderes sem liderados, liderados sem responder pesquisa).
-
-### 3.2 `/admin/empresas/:id` → **Organograma da Empresa** (nova)
-
-- Layout em árvore tipo o organograma que você mandou (Vitor no topo, heads em segunda linha, liderados abaixo).
-- Cada nó mostra: avatar, nome, papel, status (ativo, convite pendente, pesquisa Rhitmo Sync pendente).
-- Ações inline: editar, mover de time, remover, reenviar convite.
-- Badge de alerta em cada nó com pendência.
-- Botão "+ Adicionar time" e "+ Adicionar pessoa".
-
-### 3.3 `/admin/pessoas` → **Lista plana global** (existe, simplificar)
-
-- Mantém a tabela atual mas:
-  - Filtros mais claros: Empresa, Papel, Status de cadastro, Pesquisa Rhitmo Sync (respondeu/pendente).
-  - Coluna nova **"O que falta"**: chips tipo "Não respondeu pesquisa", "Sem time", "Convite expirou".
-  - Bulk actions: reenviar convite, mover de time, arquivar.
-
-### 3.4 `/admin/workspaces` (atual) → **Renomear para "Empresas"**
-
-- Cards de empresa (não accordion gigante).
-- Cada card: nome, owner, # times, # liderados, health-score, botão "Abrir organograma".
-
-## 4. Migração dos dados existentes
-
-Faster tem hoje 3 workspaces. Antes de qualquer fix de UI, precisamos consolidar:
-
-1. **Auditoria** (read-only): listar todos workspaces da Faster, contagem de times, liderados, líderes.
-2. **Plano de merge** (eu apresento depois da auditoria — você aprova caso a caso):
-  - Renomear "Faster" → manter como canônico.
-  - Mover times de "Faster Ops" e "Workspace de Douglas" para "Faster" (mantendo `leader_user_id`).
-  - Limpar times órfãos ("Sem time", duplicados).
-  - Reatribuir `owner_id = vitor@faster.co` e `hr_admin_ids = [guto@faster.co]`.
-3. **Arquivar** os 2 workspaces vazios após o merge.
-
-Tudo isso por migration auditável, sem perder histórico (feedbacks/1:1s ficam vinculados aos `team_members` que migrarem junto).
-
-## 5. Mudanças técnicas (detalhe para a build)
-
-- **Schema**: nenhum breaking change. Modelo já suporta — só estamos usando errado. Eventualmente adicionar `teams.department` (label opcional pra organograma agrupar).
-- **Wizard novo**: `src/pages/admin/NewCompanyWizard.tsx` + edge `create-company` (cria workspace + N times + N convites de líder em 1 transação).
-- **Organograma**: `src/pages/admin/CompanyOrgChart.tsx` usando React Flow ou árvore CSS simples.
-- **Admin Workspaces → Empresas**: refactor `AdminWorkspaces.tsx` para grid de cards.
-- **Pessoas**: nova coluna "O que falta" via RPC `get_member_pending_actions(member_id)`.
-- **Health-check**: RPC `get_company_health(workspace_id)` retornando `{teams_without_leader, members_without_team, members_without_survey, invites_expired}`.
-
-## 6. Entrega faseada sugerida
-
-
-| Fase                               | Escopo                                                | Resultado visível                                               |
-| ---------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------- |
-| **1. Auditoria + Merge da Faster** | Migration de consolidação                             | Vitor vira Owner, 1 workspace só, Matheus continua vendo seus 5 |
-| **2. Admin reformulado**           | Cards de Empresa + Organograma + coluna "O que falta" | Você consegue diagnosticar qualquer cliente em 1 tela           |
-| **3. Wizard de Empresa Nova**      | `/admin/empresas/nova` + edge `create-company`        | Guto cadastra um cliente novo em 5 minutos sem confusão         |
-| **4. Health-score por empresa**    | RPC + badges                                          | Onboarding incompleto vira alerta proativo                      |
-
-
----
-
-**Próximo passo:** quer que eu comece pela **Fase 1 (auditoria + merge da Faster)** para destravar o problema imediato, e depois sigo para as fases 2-4? Ou prefere que eu já entregue o admin reformulado (Fase 2) em paralelo, já desenhado para o modelo novo?
+- Fase 2: Admin reformulado (org chart, "O que falta", filtros).
+- Fase 3: Wizard de nova empresa.
+- Fase 4: Health-score por empresa.

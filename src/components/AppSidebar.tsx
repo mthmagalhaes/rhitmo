@@ -8,6 +8,7 @@ import { useAdmin } from '@/hooks/useAdmin';
 import { useAccount } from '@/contexts/AccountContext';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { useImpersonation } from '@/hooks/useImpersonation';
+import { useActiveMode } from '@/hooks/useActiveMode';
 
 
 import {
@@ -63,7 +64,8 @@ export function AppSidebar() {
   const isSuperAdmin = isAdmin && user?.email === 'matheus@rhitmo.co' && !isImpersonating;
   const isInHRContext = location.pathname.startsWith('/hr');
 
-  const persona = resolvePersona({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner });
+  const { mode: activeMode } = useActiveMode();
+  const persona = resolvePersona({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, activeMode });
   // Quando o Owner/HR Admin entra em /hr/* (visão do workspace), forçamos o
   // menu de HR para que ele veja Times, Pessoas, Analytics e Framework —
   // mesmo que sua persona padrão seja "leader". Sair de /hr volta ao menu de líder.

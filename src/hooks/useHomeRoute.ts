@@ -1,4 +1,5 @@
 import { useAccount } from '@/contexts/AccountContext';
+import { useActiveMode } from './useActiveMode';
 import { getHomeRoute, LEADER_HOME } from '@/lib/navigation';
 
 /**
@@ -8,6 +9,7 @@ import { getHomeRoute, LEADER_HOME } from '@/lib/navigation';
  */
 export function useHomeRoute(): string {
   const { isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, loading } = useAccount();
+  const { mode: activeMode } = useActiveMode();
   if (loading) return LEADER_HOME;
-  return getHomeRoute({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner });
+  return getHomeRoute({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, activeMode });
 }

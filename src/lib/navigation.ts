@@ -65,16 +65,35 @@ export const DIRECT_REPORT_NAV_ITEMS: NavItem[] = [
 
 export type SidebarPersona = 'leader' | 'hr_admin' | 'direct_report';
 
-export function resolvePersona(opts: {
+export type ActiveMode = 'leader' | 'company';
+
+export interface PersonaOpts {
   isLinkedMember: boolean;
   isLeader: boolean;
   isHRAdmin: boolean;
   isWorkspaceOwner?: boolean;
-}): SidebarPersona {
+  /**
+   * For users that hold both leader and owner/HR roles, indicates which
+   * "view" they're actively using. Defaults to 'leader'.
+   */
+  activeMode?: ActiveMode;
+}
+
+export function resolvePersona(opts: PersonaOpts): SidebarPersona {
   if (opts.isLinkedMember && !opts.isLeader && !opts.isHRAdmin) return 'direct_report';
-  // HR Admin que NÃO é Owner do workspace → fluxo focado em RH (sidebar /hr/*).
-  // Owner continua como 'leader' mesmo se também for HR Admin (mantém visão dupla).
-  if (opts.isHRAdmin && !opts.isWorkspaceOwner) return 'hr_admin';
+
+  const pureHRAdmin = opts.isHRAdmin && !opts.isWorkspaceOwner && !opts.isLeader;
+  if (pureHRAdmin) return 'hr_admin';
+
+  // Multi-role users (Leader + Owner/HR) switch via activeMode.
+  const hasCompanyAccess = opts.isHRAdmin || opts.isWorkspaceOwner;
+  const isAlsoLeader = opts.isLeader && !(opts.isHRAdmin && !opts.isWorkspaceOwner);
+  if (hasCompanyAccess && isAlsoLeader) {
+    return opts.activeMode === 'company' ? 'hr_admin' : 'leader';
+  }
+
+  // Single-role: HR admin (no leader) → hr_admin, owner-only/leader → leader.
+  if (hasCompanyAccess && !isAlsoLeader) return 'hr_admin';
   return 'leader';
 }
 
@@ -87,12 +106,7 @@ export const DIRECT_REPORT_HOME = '/liderado/inicio';
  * Use inside authenticated pages (NotFound, MemberDetails, etc.)
  * to avoid the legacy /dashboard hop.
  */
-export function getHomeRoute(opts: {
-  isLinkedMember: boolean;
-  isLeader: boolean;
-  isHRAdmin: boolean;
-  isWorkspaceOwner?: boolean;
-}): string {
+export function getHomeRoute(opts: PersonaOpts): string {
   const persona = resolvePersona(opts);
   if (persona === 'direct_report') return DIRECT_REPORT_HOME;
   if (persona === 'hr_admin') return HR_ADMIN_HOME;

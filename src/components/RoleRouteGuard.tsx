@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAccount } from '@/contexts/AccountContext';
+import { useActiveMode } from '@/hooks/useActiveMode';
 import { resolvePersona, getHomeRoute } from '@/lib/navigation';
 
 interface Props {
@@ -22,6 +23,7 @@ interface Props {
  */
 export function RoleRouteGuard({ expects, children }: Props) {
   const { loading, isLeader, isHRAdmin, isLinkedMember, isWorkspaceOwner } = useAccount();
+  const { mode: activeMode } = useActiveMode();
   const location = useLocation();
 
   if (loading) {
@@ -32,10 +34,10 @@ export function RoleRouteGuard({ expects, children }: Props) {
     );
   }
 
-  const persona = resolvePersona({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner });
+  const persona = resolvePersona({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, activeMode });
 
   if (persona !== expects) {
-    const target = getHomeRoute({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner });
+    const target = getHomeRoute({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, activeMode });
     if (location.pathname !== target) {
       return <Navigate to={target} replace />;
     }
