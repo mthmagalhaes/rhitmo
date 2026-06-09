@@ -99,7 +99,7 @@ const HRTeams = () => {
 
   const activityBadge = (days: number) => {
     if (days === 999)
-      return <Badge variant="destructive" className="text-xs">Sem feedback</Badge>;
+      return <Badge variant="destructive" className="text-xs">Sem registros</Badge>;
     if (days >= 60)
       return <Badge variant="destructive" className="text-xs">{days}d inativo</Badge>;
     if (days >= 30)
