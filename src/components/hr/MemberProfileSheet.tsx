@@ -106,7 +106,27 @@ export function MemberProfileSheet({
       return row;
     },
     enabled: open && !!memberId && !!workspaceId,
-    retry: 1,
+    retry: 2,
+    retryDelay: 400,
+  });
+
+  const { data: activity } = useQuery({
+    queryKey: ['hr-member-activity', workspaceId, memberId],
+    enabled: open && !!memberId && !!workspaceId && !!profile,
+    queryFn: async () => {
+      const since30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const since90 = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+      const [fb, oo, lastOo] = await Promise.all([
+        supabase.from('feedbacks').select('id', { count: 'exact', head: true }).eq('member_id', memberId).gte('occurred_at', since30),
+        supabase.from('one_on_ones').select('id', { count: 'exact', head: true }).eq('member_id', memberId).gte('scheduled_at', since90),
+        supabase.from('one_on_ones').select('scheduled_at').eq('member_id', memberId).order('scheduled_at', { ascending: false }).limit(1).maybeSingle(),
+      ]);
+      return {
+        feedbacks_30d: fb.count ?? 0,
+        one_on_ones_90d: oo.count ?? 0,
+        last_one_on_one: (lastOo.data as any)?.scheduled_at ?? null,
+      };
+    },
   });
 
   const skillsData = profile?.skills_data;
