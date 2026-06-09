@@ -188,27 +188,17 @@ export function useAdminCompaniesData() {
       }
     });
 
-    // Líderes sem pesquisa Rhitmo
-    const leaderIds = new Set(
-      (teamsQ.data || []).map((t) => t.leader_user_id).filter(Boolean) as string[],
-    );
-    leaderIds.forEach((leaderId) => {
-      const completed = leaderSyncByUser.get(leaderId);
-      if (!completed) {
-        const ws = (workspacesQ.data || []).find((w) =>
-          (teamsQ.data || []).some((t) => t.workspace_id === w.id && t.leader_user_id === leaderId),
-        );
-        const team = (teamsQ.data || []).find((t) => t.leader_user_id === leaderId);
+    // Owners sem pesquisa Rhitmo (workspace.leader_sync_completed_at NULL)
+    (workspacesQ.data || []).forEach((w) => {
+      if (!w.leader_sync_completed_at) {
         rows.push({
-          id: `leader:${leaderId}`,
+          id: `owner:${w.id}`,
           kind: 'leader',
-          personName: getUserLabel(leaderId) || '—',
-          email: userById.get(leaderId)?.email,
-          workspaceId: ws?.id || '',
-          workspaceName: ws?.name || '—',
-          teamId: team?.id,
-          teamName: team?.name,
-          role: 'Líder',
+          personName: getUserLabel(w.owner_id) || '—',
+          email: userById.get(w.owner_id)?.email,
+          workspaceId: w.id,
+          workspaceName: w.name,
+          role: 'Owner',
           pendings: ['rhitmo_sync_leader'],
         });
       }
