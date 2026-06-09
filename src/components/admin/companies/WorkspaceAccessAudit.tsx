@@ -29,7 +29,7 @@ const personaLabel: Record<string, string> = {
 };
 
 interface Props {
-  workspaces: AdminWorkspaceRow[];
+  workspaces: CompanyWorkspace[];
   initialWorkspaceId?: string | null;
 }
 
