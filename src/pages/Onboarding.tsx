@@ -172,6 +172,8 @@ export default function Onboarding() {
         .from('team_members')
         .select('id, name, email, role')
         .eq('linked_user_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(1)
         .maybeSingle();
       
       if (error) {
@@ -204,12 +206,10 @@ export default function Onboarding() {
     if (didRestore && !completed) saveDraft(formData, currentStep);
   }, [formData, currentStep, didRestore, completed, saveDraft]);
 
-  // Redirecionar se não é um linked member
-  useEffect(() => {
-    if (!authLoading && !memberLoading && !memberData) {
-      navigate('/', { replace: true });
-    }
-  }, [authLoading, memberLoading, memberData, navigate]);
+  // NOTA: removido o navigate('/') silencioso quando memberData é null.
+  // Em vez disso, mostramos uma tela amigável abaixo (ver bloco de render).
+  // Isso evita loop em branco para usuários que ainda não foram vinculados.
+
 
   // Pré-preencher cargo quando dados carregarem (apenas se ainda não houver draft)
   useEffect(() => {
