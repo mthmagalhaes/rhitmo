@@ -34,14 +34,12 @@ function readStored(userId: string | null): ActiveMode | null {
  */
 export function useActiveMode() {
   const { id: userId } = useEffectiveUser();
-  const { isLeader, isHRAdmin, isWorkspaceOwner, loading } = useAccount();
+  const { isTeamLeader, isHRAdmin, isWorkspaceOwner, loading } = useAccount();
 
-  // `useAccount.isLeader` is true for HR admins too; we want the "leader mode"
-  // to mean "manages a team directly". Pure HR admin (HR + not owner) doesn't
-  // see leader mode — they live exclusively in /hr.
-  const pureHRAdmin = isHRAdmin && !isWorkspaceOwner;
+  // canSeeLeader = "lidera ao menos um time" (vem do RPC get_account_context.is_team_leader).
+  // Independente de papel HR/Owner — um HR Admin que também lidera um time deve ver os dois modos.
+  const canSeeLeader = isTeamLeader;
   const canSeeCompany = isHRAdmin || isWorkspaceOwner;
-  const canSeeLeader = isLeader && !pureHRAdmin;
 
   const availableModes: ActiveMode[] = [];
   if (canSeeLeader) availableModes.push('leader');
