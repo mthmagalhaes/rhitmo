@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAccount } from '@/contexts/AccountContext';
+import { useActiveMode } from '@/hooks/useActiveMode';
 import { resolvePersona, getHomeRoute } from '@/lib/navigation';
 
 interface Props {
