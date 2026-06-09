@@ -33,9 +33,10 @@ export function WorkspaceSwitcher({ onOpenInvite }: WorkspaceSwitcherProps) {
   const navigate = useNavigate();
   const { id: userId } = useEffectiveUser();
   const { workspaceId, isHRAdmin, isLeader, isLinkedMember, isWorkspaceOwner } = useAccount();
+  const { mode: activeMode, setMode, canSwitch } = useActiveMode();
   const { reset: resetTour, isLeader: tourCanRun } = useOnboardingTour();
 
-  const persona = resolvePersona({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner });
+  const persona = resolvePersona({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, activeMode });
   // HR Admin (não-owner) usa as configurações do líder — é onde mora a aba "Acessos".
   const settingsRoute = persona === 'direct_report' ? '/liderado/configuracoes' : '/lider/configuracoes';
   const helpRoute = `${settingsRoute}?tab=ajuda`;
