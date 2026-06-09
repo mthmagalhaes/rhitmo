@@ -68,7 +68,9 @@ export function WorkspaceSwitcher({ onOpenInvite }: WorkspaceSwitcherProps) {
 
   const current = workspaces.find((w) => w.id === workspaceId) ?? workspaces[0] ?? null;
   const hasMultiple = workspaces.length > 1;
-  const showHRContext = isHRAdmin && current;
+  const modeLabel = activeMode === 'company' ? 'Empresa' : 'Minha equipe';
+  const showModeChip = canSwitch || (isHRAdmin && current);
+  const chipText = canSwitch ? modeLabel : isHRAdmin ? 'RH' : null;
 
   const trigger = (
     <button
@@ -86,9 +88,9 @@ export function WorkspaceSwitcher({ onOpenInvite }: WorkspaceSwitcherProps) {
       <div className="flex-1 min-w-0">
         <p className="font-semibold truncate text-sidebar-foreground leading-tight">
           {current?.name ?? 'Workspace'}
-          {showHRContext && (
+          {showModeChip && chipText && (
             <span className="ml-1.5 text-[10px] uppercase tracking-wide text-muted-foreground/70 font-medium">
-              · RH
+              · {chipText}
             </span>
           )}
         </p>
@@ -101,6 +103,34 @@ export function WorkspaceSwitcher({ onOpenInvite }: WorkspaceSwitcherProps) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64">
+        {canSwitch && (
+          <>
+            <DropdownMenuLabel className="text-xs">Modo</DropdownMenuLabel>
+            <DropdownMenuItem
+              onSelect={() => {
+                setMode('leader');
+                navigate('/lider/inicio');
+              }}
+              className="flex items-center gap-2"
+            >
+              <Users className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="flex-1 truncate">Minha equipe</span>
+              {activeMode === 'leader' && <Check className="h-3.5 w-3.5 text-primary" />}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() => {
+                setMode('company');
+                navigate('/hr');
+              }}
+              className="flex items-center gap-2"
+            >
+              <Shield className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="flex-1 truncate">Empresa</span>
+              {activeMode === 'company' && <Check className="h-3.5 w-3.5 text-primary" />}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
         {hasMultiple && (
           <>
             <DropdownMenuLabel className="text-xs">Workspaces</DropdownMenuLabel>
