@@ -306,23 +306,13 @@ export function MemberProfileSheet({
                   <div className="flex items-center gap-2 mb-2">
                     <Target className="h-4 w-4 text-muted-foreground" />
                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      PDI
+                      Atividade recente
                     </span>
                   </div>
-                  <p className="text-2xl font-bold tracking-tight">{profile.pdi_count}</p>
-                  <div className="flex items-center gap-1 mt-1">
-                    {profile.has_pdi ? (
-                      <>
-                        <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                        <span className="text-xs text-emerald-600">PDI ativo</span>
-                      </>
-                    ) : (
-                      <>
-                        <AlertCircle className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">Sem PDI</span>
-                      </>
-                    )}
-                  </div>
+                  <p className="text-2xl font-bold tracking-tight">{activity?.feedbacks_30d ?? 0}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    feedbacks nos últimos 30d · {activity?.feedbacks_90d ?? 0} em 90d
+                  </p>
                 </CardContent>
               </Card>
             </div>
