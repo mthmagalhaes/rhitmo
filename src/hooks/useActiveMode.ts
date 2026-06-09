@@ -24,8 +24,8 @@ function readStored(userId: string | null): ActiveMode | null {
 /**
  * Active "mode" for users that hold more than one role (Owner/HR + Leader).
  *
- * - Single-role users see `availableModes` with a single entry (their natural mode)
- *   and `setMode` is a no-op.
+ * - Single-role users see `availableModes` with a single entry and `setMode`
+ *   is effectively a no-op for them.
  * - Multi-role users default to `'leader'` and can flip to `'company'` via the
  *   WorkspaceSwitcher; choice persists per-user in localStorage.
  *
@@ -34,44 +34,40 @@ function readStored(userId: string | null): ActiveMode | null {
  */
 export function useActiveMode() {
   const { id: userId } = useEffectiveUser();
-  const { isLeader, isHRAdmin, isWorkspaceOwner, isLinkedMember, loading } = useAccount();
+  const { isLeader, isHRAdmin, isWorkspaceOwner, loading } = useAccount();
 
-  const hasCompanyMode = isHRAdmin || isWorkspaceOwner;
-  // "Leader mode" is only meaningful if the user has team-level surfaces.
-  // For HR-admin-only (no team), we keep `leader` out of availableModes.
-  const hasLeaderMode = isLeader && !(isHRAdmin && !isWorkspaceOwner && !hasAnyTeamLeadership());
-  // Simpler: leader mode available when isLeader true AND not a pure HR-only user.
-  // useAccount.isLeader is true for HR admins too (legacy), so we filter:
+  // `useAccount.isLeader` is true for HR admins too; we want the "leader mode"
+  // to mean "manages a team directly". Pure HR admin (HR + not owner) doesn't
+  // see leader mode — they live exclusively in /hr.
   const pureHRAdmin = isHRAdmin && !isWorkspaceOwner;
+  const canSeeCompany = isHRAdmin || isWorkspaceOwner;
   const canSeeLeader = isLeader && !pureHRAdmin;
-  const canSeeCompany = hasCompanyMode;
 
   const availableModes: ActiveMode[] = [];
-  if (canSeeLeader || (!canSeeCompany && !isLinkedMember)) availableModes.push('leader');
+  if (canSeeLeader) availableModes.push('leader');
   if (canSeeCompany) availableModes.push('company');
-  // Fallback: at least one mode if user is leader-only
   if (availableModes.length === 0) availableModes.push('leader');
 
   const defaultMode: ActiveMode = availableModes.includes('leader') ? 'leader' : 'company';
 
   const [mode, setModeState] = useState<ActiveMode>(() => {
     const stored = readStored(userId);
-    if (stored && availableModes.includes(stored)) return stored;
+    if (stored && (stored === 'leader' ? canSeeLeader : canSeeCompany)) return stored;
     return defaultMode;
   });
 
-  // Re-sync when userId changes or roles finish loading.
   useEffect(() => {
     if (loading) return;
     const stored = readStored(userId);
-    const next = stored && availableModes.includes(stored) ? stored : defaultMode;
-    setModeState(next);
+    const validStored = stored && (stored === 'leader' ? canSeeLeader : canSeeCompany);
+    setModeState(validStored ? (stored as ActiveMode) : defaultMode);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, loading, canSeeLeader, canSeeCompany]);
 
   const setMode = useCallback(
     (next: ActiveMode) => {
-      if (!availableModes.includes(next)) return;
+      const allowed = next === 'leader' ? canSeeLeader : canSeeCompany;
+      if (!allowed) return;
       const key = storageKey(userId);
       if (key) {
         try {
@@ -82,7 +78,6 @@ export function useActiveMode() {
       }
       setModeState(next);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [userId, canSeeLeader, canSeeCompany],
   );
 
@@ -92,9 +87,4 @@ export function useActiveMode() {
     availableModes,
     canSwitch: availableModes.length > 1,
   };
-}
-
-// Placeholder to satisfy the early reference above; replaced by inline logic.
-function hasAnyTeamLeadership(): boolean {
-  return false;
 }
