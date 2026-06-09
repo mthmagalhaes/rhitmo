@@ -91,7 +91,7 @@ export function MemberProfileSheet({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [acting, setActing] = useState(false);
 
-  const { data: profile, isLoading } = useQuery({
+  const { data: profile, isLoading, refetch, isFetching } = useQuery({
     queryKey: ['hr-member-profile', workspaceId, memberId],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_hr_member_profile', {
@@ -99,9 +99,14 @@ export function MemberProfileSheet({
         _member_id: memberId,
       });
       if (error) throw error;
-      return (data as any)?.[0] || null;
+      const row = (data as any)?.[0] || null;
+      if (!row) {
+        console.warn('[MemberProfileSheet] get_hr_member_profile retornou null', { workspaceId, memberId });
+      }
+      return row;
     },
     enabled: open && !!memberId && !!workspaceId,
+    retry: 1,
   });
 
   const skillsData = profile?.skills_data;
