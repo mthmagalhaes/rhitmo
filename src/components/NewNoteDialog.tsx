@@ -73,9 +73,16 @@ interface NewNoteDialogProps {
   workspaceId?: string;
   initialContent?: string;
   initialTitle?: string;
+  /**
+   * Liderados que o usuário pode anotar nesta sessão.
+   * Quando informado, evita query ampla por workspace_id (que vazaria
+   * liderados de outros líderes para Owners/HR Admins do workspace).
+   * Pais já têm essa lista via `useLeaderMembers`.
+   */
+  members?: Array<{ id: string; name: string }>;
 }
 
-export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName, onSuccess, workspaceId, initialContent, initialTitle }: NewNoteDialogProps) => {
+export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName, onSuccess, workspaceId, initialContent, initialTitle, members: scopedMembers }: NewNoteDialogProps) => {
   const [content, setContent] = useState(initialContent ?? '');
   const [memberId, setMemberId] = useState(selectedMemberId || '');
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
