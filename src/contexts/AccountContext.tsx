@@ -59,6 +59,7 @@ interface AccountContextRPCResult {
   workspace_id: string | null;
   role: AccountRole;
   is_workspace_owner?: boolean;
+  is_team_leader?: boolean;
   linked_member: LinkedMemberData | null;
   has_pending_invite: boolean;
 }
