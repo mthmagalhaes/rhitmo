@@ -11,8 +11,9 @@ import { CompanyCardsGrid } from './companies/CompanyCardsGrid';
 import { CompanyOrgChart } from './companies/CompanyOrgChart';
 import { PendingChecklistTable } from './companies/PendingChecklistTable';
 import { NewCompanyWizard } from './wizards/NewCompanyWizard';
+import { WorkspaceAccessAudit } from './companies/WorkspaceAccessAudit';
 
-type SubTab = 'cards' | 'orgchart' | 'pending' | 'legacy';
+type SubTab = 'cards' | 'orgchart' | 'pending' | 'access' | 'legacy';
 
 export const AdminWorkspaces = () => {
   const data = useAdminCompaniesData();
