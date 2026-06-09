@@ -15,6 +15,7 @@ export function DirectReportGuard({ children }: DirectReportGuardProps) {
   const location = useLocation();
   const { isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, needsOnboarding, loading } = useAccount();
   const { isAdmin, loading: adminLoading } = useAdmin();
+  const { mode: activeMode } = useActiveMode();
 
   useEffect(() => {
     if (location.pathname === '/onboarding') return;
