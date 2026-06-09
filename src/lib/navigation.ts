@@ -48,7 +48,8 @@ export const HR_ADMIN_NAV_ITEMS: NavItem[] = [
   { id: 'members', labelKey: 'nav.hr.members', icon: Users, to: '/hr/members' },
   { id: 'teams', labelKey: 'nav.hr.teams', icon: Building2, to: '/hr/teams' },
   { id: 'analytics', labelKey: 'nav.hr.analytics', icon: BarChart3, to: '/hr/analytics' },
-  { id: 'framework', labelKey: 'nav.hr.framework', icon: ListChecks, to: '/hr/competency-framework' },
+  // Frameworks oculto no menu enquanto a feature não está pronta — rota continua viva.
+  // { id: 'framework', labelKey: 'nav.hr.framework', icon: ListChecks, to: '/hr/competency-framework' },
 ];
 
 /**
