@@ -4,6 +4,7 @@ import { useAccount } from '@/contexts/AccountContext';
 import { useAdmin } from '@/hooks/useAdmin';
 import { Loader2 } from 'lucide-react';
 import { getHomeRoute } from '@/lib/navigation';
+import { useActiveMode } from '@/hooks/useActiveMode';
 
 interface DirectReportGuardProps {
   children: React.ReactNode;
