@@ -1,75 +1,140 @@
-# 🎫 TKT — Tela branca no onboarding (Faster Ops)
+# Hierarquia Rhitmo v2 — Empresa, Times, Líderes, Liderados
 
-## 📌 Sintoma
-Usuários importados pelo Guto acessam pelo magic link, veem por um instante o wizard "Bem-vindo ao Rhitmo / Identidade · Job Crafting · Futuro" com o nome em branco ("Olá, !") e a tela fica branca.
+## 1. Recomendação de modelo (baseada em benchmarks)
 
-## 🔎 Causa raiz (confirmada em produção)
-**7 usuários ativos do workspace Faster Ops têm linhas duplicadas em `team_members`** com o mesmo `email` e `linked_user_id`, mas nomes ligeiramente diferentes (ex.: "Bianca Brand" + "Bianca Brand Hayakawa", "Renato Tsukahara" + "Renato Tsukahara Gomes", "Camila De/de Oliveira Correia" etc.).
+Pesquisei como Lattice, CultureAmp, 15Five, Leapsome, Workday e BambooHR estruturam isso. **Todos seguem o mesmo padrão**:
 
-Tanto `useLinkedMember.ts:75` quanto `Onboarding.tsx:175` chamam `.maybeSingle()` em `team_members WHERE linked_user_id = auth.uid()`. Com 2+ linhas o PostgREST retorna erro `PGRST116` ("multiple rows returned"), o código pega o erro e devolve `null`:
+```text
+Company (1 conta) ─┬─ Department / Team ──┬─ Manager
+                   │                       └─ Direct Reports
+                   ├─ Department / Team ──┬─ Manager
+                   │                       └─ Direct Reports
+                   └─ HR Admin (transversal, vê tudo)
+```
 
-- `useLinkedMember` → `linkedMember=null` → `isLinkedMember=false`
-- `Onboarding` → `memberData=null` → `useEffect` (linha 207) faz `navigate('/')` → Index renderiza sem workspace válido → tela branca
+Ninguém em SaaS de people-ops cria "um workspace por head". A figura de "workspace" no mercado **é a empresa**. Times/departamentos vivem dentro dela. Heads (Matheus COO, Douglas CTO) são **líderes de times**, não donos de workspaces separados.
 
-A dedupe do `bulk-onboard` (chave `team_id+email`) falhou em algum momento (provavelmente segunda rodada de importação com nome corrigido criando linha nova ao invés de atualizar a existente).
+### Decisão proposta: **Modelo A — 1 Workspace = 1 Empresa**
 
-Por que a tela pisca antes de embranquecer: o wizard renderiza sem gate de `memberLoading`, então aparece um frame com o cabeçalho (sem nome) antes do redirect.
+Aplicado à Faster ficaria:
 
-## 💊 Solução proposta (2 camadas)
+```text
+Workspace: Faster
+├─ Owner: Vitor (CEO) e Matheus (COO - matheus.magalhaes@fstr.co) — vê tudo, se precisar use botões para separar os caps de matheus como líder e como Owner
+├─ HR Admin: Guto — cadastra e mantém
+└─ Times:
+   ├─ Operações      → Líder: Matheus  → Gabi, Gui, Laís, Giovanna, Yas
+   ├─ Tecnologia     → Líder: Douglas  → Airton, Aristóteles, Brunna, Rodrigo, Wenderson
+   ├─ Marketing      → Líder: Jesse    → (liderados)
+   ├─ Vendas         → Líder: Caio     → (liderados)
+   ├─ RH             → Líder: Guto     → (liderados)
+   └─ C-Level        → Líder: Vitor    → Matheus, Douglas, Jesse, Caio, Guto
+```
 
-### Camada 1 — Limpeza de dados (migration única)
-- Para cada `(email, linked_user_id)` com >1 linhas em `team_members`:
-  - Manter a linha mais antiga (`MIN(created_at)`)
-  - Migrar `team_id`, `feedbacks.member_id`, `goals.member_id`, `performance_reviews.member_id`, `development_plans.member_id`, `context_evidence.member_id`, `pulse_surveys.member_id`, `peer_feedback_requests.target_member_id`, `review_peers.peer_member_id` da linha "perdedora" para a "vencedora" (UPDATE com ON CONFLICT DO NOTHING quando houver unique)
-  - DELETE da(s) linha(s) perdedora(s)
-- Adicionar constraint `UNIQUE (workspace_id, lower(email))` derivado via JOIN com `teams` — implementar como índice único parcial baseado em função:
-  ```
-  CREATE UNIQUE INDEX team_members_unique_email_per_workspace
-  ON team_members (
-    (SELECT workspace_id FROM teams WHERE teams.id = team_members.team_id),
-    lower(email)
-  ) WHERE email IS NOT NULL AND archived_at IS NULL;
-  ```
-  Se Postgres não aceitar subquery em índice (não aceita), criar coluna gerada `workspace_id` em `team_members` OU adicionar trigger BEFORE INSERT/UPDATE que bloqueia duplicatas.
+**Por quê:**
 
-### Camada 2 — Hardening de código (defensivo)
+- Vitor vê a empresa inteira sem precisar ser invitee em N workspaces.
+- Guto cadastra uma vez, num lugar só.
+- Matheus continua vendo só os 5 dele (RLS por `teams.leader_user_id` já garante).
+- Billing fica simples (1 assinatura por empresa).
+- Acaba a confusão atual de "Faster", "Faster Ops", "Workspace de Douglas".
 
-**`src/hooks/useLinkedMember.ts` (linha 70-80)**
-- Trocar `.maybeSingle()` por `.order('created_at', { ascending: true }).limit(1).maybeSingle()` para nunca quebrar em duplicatas — sempre pega o mais antigo (canônico).
+### O que muda vs. hoje
 
-**`src/pages/Onboarding.tsx` (linha 167-184 e 207-212)**
-- Mesma troca em `memberData`.
-- Substituir o `navigate('/')` silencioso por uma tela amigável quando `!memberData && !memberLoading` ("Não encontramos seu cadastro como liderado — fale com seu HR Admin"). Hoje cai em loop em branco.
-- Adicionar gate de loading antes de renderizar o wizard (evita o flash "Olá, !").
 
-**`supabase/functions/bulk-onboard/index.ts` (linha 262-267)**
-- Trocar a checagem `eq('team_id').eq('email')` por `eq('email', email).eq('team_id', team.id)` **+** verificação extra por `linked_user_id` antes de inserir; se já existe linha com mesmo `linked_user_id` no workspace, fazer UPDATE de nome ao invés de INSERT.
+| Hoje                                                              | Depois                                                           |
+| ----------------------------------------------------------------- | ---------------------------------------------------------------- |
+| 3 workspaces da Faster (Faster, Faster Ops, Workspace de Douglas) | 1 workspace "Faster"                                             |
+| Matheus é Owner de "Faster Ops"                                   | Matheus é Líder do time "Operações" dentro de "Faster"           |
+| Douglas é Owner de "Workspace de Douglas"                         | Douglas é Líder do time "Tecnologia" dentro de "Faster"          |
+| Vitor não enxerga nada cross-workspace                            | Vitor é Owner da "Faster" e enxerga tudo                         |
+| Times órfãos ("Sem time", "Lideratos Vitor")                      | Estrutura validada (todo time tem líder, todo liderado tem time) |
 
-## ⚠️ Riscos / regressões
-- Migration de merge de dados é destrutiva. Vou:
-  - Rodar primeiro um SELECT de auditoria (já feito acima — 7 pares confirmados)
-  - Migrar referências antes do DELETE
-  - Logar via `RAISE NOTICE` o que foi consolidado
-- Index único pode falhar se houver duplicatas em outros workspaces — a migration faz cleanup global, não só Faster Ops.
 
-## 🧪 Validação
-1. SELECT pós-migration confirma 0 duplicatas em `(linked_user_id, email)` ativos.
-2. Bianca/Renato/Camila/Glaucia/Guilherme/Marina/Thalia logam → wizard carrega com nome preenchido e progride.
-3. Tentar reimportar Bianca com nome diferente → bulk-onboard atualiza nome, não cria linha nova.
-4. Verificar /lider/diario do Guto (HR) — lista de liderados volta a aparecer (Print 1 era sintoma colateral do mesmo bug + jsonb_typeof, já corrigido).
+## 2. Fluxo de cadastro novo: "Onboarding de Empresa"
 
-## 📦 Arquivos tocados
-- `supabase/migrations/<novo>.sql` — dedupe + index único
-- `src/hooks/useLinkedMember.ts` — `.order().limit(1)`
-- `src/pages/Onboarding.tsx` — `.order().limit(1)` + loading gate + erro amigável
-- `supabase/functions/bulk-onboard/index.ts` — dedupe por `linked_user_id`
+Resposta sua: **HR Admin estrutura, Líder completa**. Implementação:
 
-## Status dos outros bugs do dump anterior
-| Ticket | Status |
-|---|---|
-| #1 Liderados vazio (jsonb guard) | ✅ Aplicado — provavelmente também impactado pelas duplicatas, vai melhorar com este fix |
-| #2/5 Tela branca | 🔴 Este plano resolve |
-| #3 Notificações de reuniões não-1:1 | ✅ Aplicado em `fetch-calendar-events`, aguardando próxima janela do cron para validar em prod |
-| #4 Disparar convites pendentes | ✅ Botão entregue em `/hr/membros` |
+### Etapa 1 — HR Admin (Guto) cria a empresa (Wizard `/admin/empresas/nova`)
 
-→ **Aplicar a migration + ajustes de código?** (sim / só código sem migration / mais info)
+1. Nome da empresa + segmento.
+2. Definir Owner (CEO/Founder) — campo único.
+3. Adicionar Heads/Líderes — lista simples: nome, email, time que ele lidera.
+  - Cada linha cria 1 time + atribui o líder.
+4. Revisão visual em árvore antes de salvar.
+5. Confirma → cria workspace + times + dispara convites para Owner e Líderes.
+
+### Etapa 2 — Cada Líder recebe convite e completa o time dele
+
+- Email para Matheus: "Você foi adicionado como líder do time Operações na Faster. Adicione seus liderados."
+- Ele entra em `/lider/pessoas` → botão "Adicionar liderado" (já existe, individual).
+- Ou Guto faz por ele via bulk-onboard direcionado a um time específico.
+
+### Etapa 3 — Liderado recebe convite e faz onboarding (já existe)
+
+## 3. Painel Admin reformulado
+
+Três telas, todas com filtro de empresa fixo no topo:
+
+### 3.1 `/admin` → **Visão Geral** (já existe, ajustes)
+
+- KPIs: empresas, líderes únicos, liderados, % de cadastros completos.
+- Lista de empresas com health-score: ✅ tudo certo / ⚠️ pendências (times sem líder, líderes sem liderados, liderados sem responder pesquisa).
+
+### 3.2 `/admin/empresas/:id` → **Organograma da Empresa** (nova)
+
+- Layout em árvore tipo o organograma que você mandou (Vitor no topo, heads em segunda linha, liderados abaixo).
+- Cada nó mostra: avatar, nome, papel, status (ativo, convite pendente, pesquisa Rhitmo Sync pendente).
+- Ações inline: editar, mover de time, remover, reenviar convite.
+- Badge de alerta em cada nó com pendência.
+- Botão "+ Adicionar time" e "+ Adicionar pessoa".
+
+### 3.3 `/admin/pessoas` → **Lista plana global** (existe, simplificar)
+
+- Mantém a tabela atual mas:
+  - Filtros mais claros: Empresa, Papel, Status de cadastro, Pesquisa Rhitmo Sync (respondeu/pendente).
+  - Coluna nova **"O que falta"**: chips tipo "Não respondeu pesquisa", "Sem time", "Convite expirou".
+  - Bulk actions: reenviar convite, mover de time, arquivar.
+
+### 3.4 `/admin/workspaces` (atual) → **Renomear para "Empresas"**
+
+- Cards de empresa (não accordion gigante).
+- Cada card: nome, owner, # times, # liderados, health-score, botão "Abrir organograma".
+
+## 4. Migração dos dados existentes
+
+Faster tem hoje 3 workspaces. Antes de qualquer fix de UI, precisamos consolidar:
+
+1. **Auditoria** (read-only): listar todos workspaces da Faster, contagem de times, liderados, líderes.
+2. **Plano de merge** (eu apresento depois da auditoria — você aprova caso a caso):
+  - Renomear "Faster" → manter como canônico.
+  - Mover times de "Faster Ops" e "Workspace de Douglas" para "Faster" (mantendo `leader_user_id`).
+  - Limpar times órfãos ("Sem time", duplicados).
+  - Reatribuir `owner_id = vitor@faster.co` e `hr_admin_ids = [guto@faster.co]`.
+3. **Arquivar** os 2 workspaces vazios após o merge.
+
+Tudo isso por migration auditável, sem perder histórico (feedbacks/1:1s ficam vinculados aos `team_members` que migrarem junto).
+
+## 5. Mudanças técnicas (detalhe para a build)
+
+- **Schema**: nenhum breaking change. Modelo já suporta — só estamos usando errado. Eventualmente adicionar `teams.department` (label opcional pra organograma agrupar).
+- **Wizard novo**: `src/pages/admin/NewCompanyWizard.tsx` + edge `create-company` (cria workspace + N times + N convites de líder em 1 transação).
+- **Organograma**: `src/pages/admin/CompanyOrgChart.tsx` usando React Flow ou árvore CSS simples.
+- **Admin Workspaces → Empresas**: refactor `AdminWorkspaces.tsx` para grid de cards.
+- **Pessoas**: nova coluna "O que falta" via RPC `get_member_pending_actions(member_id)`.
+- **Health-check**: RPC `get_company_health(workspace_id)` retornando `{teams_without_leader, members_without_team, members_without_survey, invites_expired}`.
+
+## 6. Entrega faseada sugerida
+
+
+| Fase                               | Escopo                                                | Resultado visível                                               |
+| ---------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------- |
+| **1. Auditoria + Merge da Faster** | Migration de consolidação                             | Vitor vira Owner, 1 workspace só, Matheus continua vendo seus 5 |
+| **2. Admin reformulado**           | Cards de Empresa + Organograma + coluna "O que falta" | Você consegue diagnosticar qualquer cliente em 1 tela           |
+| **3. Wizard de Empresa Nova**      | `/admin/empresas/nova` + edge `create-company`        | Guto cadastra um cliente novo em 5 minutos sem confusão         |
+| **4. Health-score por empresa**    | RPC + badges                                          | Onboarding incompleto vira alerta proativo                      |
+
+
+---
+
+**Próximo passo:** quer que eu comece pela **Fase 1 (auditoria + merge da Faster)** para destravar o problema imediato, e depois sigo para as fases 2-4? Ou prefere que eu já entregue o admin reformulado (Fase 2) em paralelo, já desenhado para o modelo novo?
