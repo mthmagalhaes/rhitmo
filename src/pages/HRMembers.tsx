@@ -613,7 +613,10 @@ export default function HRMembers() {
 
       <MemberProfileSheet
         open={profileSheetOpen}
-        onOpenChange={setProfileSheetOpen}
+        onOpenChange={(o) => {
+          setProfileSheetOpen(o);
+          if (!o) setSelectedMemberId(null);
+        }}
         memberId={selectedMemberId || ''}
         workspaceId={workspaceId}
       />
