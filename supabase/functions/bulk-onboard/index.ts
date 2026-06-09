@@ -285,6 +285,10 @@ serve(async (req) => {
                   role: 'Liderado',
                   team_id: team.id,
                   linked_user_id: userId,
+                  // Marca como aceito desde já: o user já existe e está vinculado.
+                  // Sem isso, get_account_context ignorava o vínculo e o liderado
+                  // caía no modal "Bem-vindo ao Rhitmo" (criando workspace dup).
+                  invite_status: 'accepted',
                 });
                 if (memberErr) {
                   const existingResult = results.find(r => r.email === email);
