@@ -135,6 +135,17 @@ export const AdminWorkspaces = () => {
             )}
           </TabsContent>
 
+          <TabsContent value="access" className="mt-4">
+            {data.isLoading ? (
+              <Loading />
+            ) : (
+              <WorkspaceAccessAudit
+                workspaces={filteredWorkspaces}
+                initialWorkspaceId={orgChartWs}
+              />
+            )}
+          </TabsContent>
+
           <TabsContent value="legacy" className="mt-4">
             <AdminStructure />
           </TabsContent>
