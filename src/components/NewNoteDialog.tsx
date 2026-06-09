@@ -200,20 +200,34 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
   };
 
   React.useEffect(() => {
-    if (open && !selectedMemberId && workspaceId) {
-      loadTeamMembers();
+    if (!open || selectedMemberId) return;
+    // Prefer the leader-scoped list passed by the parent (via useLeaderMembers).
+    if (scopedMembers && scopedMembers.length >= 0) {
+      setTeamMembers(scopedMembers.map((m) => ({ id: m.id, name: m.name })));
+      return;
     }
-  }, [open, selectedMemberId, workspaceId]);
+    // Fallback: query restrita por leader_user_id do usuário atual.
+    // NUNCA filtrar só por workspace_id — RLS libera todo o workspace pra
+    // Owners/HR Admins e isso vazaria liderados de outros líderes.
+    loadTeamMembers();
+  }, [open, selectedMemberId, workspaceId, scopedMembers]);
 
   const loadTeamMembers = async () => {
-    if (!workspaceId) return;
-    
-    const { data } = await supabase
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    let query = supabase
       .from('team_members')
-      .select('id, name, teams!inner(workspace_id)')
-      .eq('teams.workspace_id', workspaceId)
+      .select('id, name, teams!inner(leader_user_id, workspace_id)')
+      .eq('teams.leader_user_id', user.id)
+      .is('archived_at', null)
       .order('name');
-    
+
+    if (workspaceId) {
+      query = query.eq('teams.workspace_id', workspaceId);
+    }
+
+    const { data } = await query;
     if (data) {
       setTeamMembers(data);
     }
