@@ -71,7 +71,7 @@ const getActivityBadge = (days: number) => {
 };
 
 type EditTarget = { id: string; name: string; role: string; teamId: string };
-type PendencyFilter = 'all' | 'no_invite' | 'no_feedback' | 'no_pdi' | 'no_sync';
+type PendencyFilter = 'all' | 'no_invite' | 'no_feedback' | 'no_sync';
 
 export default function HRMembers() {
   const { workspaceId, workspaceName } = useHRAdmin();
@@ -84,7 +84,7 @@ export default function HRMembers() {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [dispatchOpen, setDispatchOpen] = useState(false);
   const [selectedLeader, setSelectedLeader] = useState('all');
-  const [pdiFilter, setPdiFilter] = useState('all');
+  
   const [pendency, setPendency] = useState<PendencyFilter>('all');
   const [teamFilter, setTeamFilter] = useState('all');
   const [page, setPage] = useState(0);
@@ -106,13 +106,13 @@ export default function HRMembers() {
   });
 
   const { data: membersData, isLoading } = useQuery({
-    queryKey: ['hr-members', workspaceId, search, selectedLeader, pdiFilter, page],
+    queryKey: ['hr-members', workspaceId, search, selectedLeader, page],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_hr_all_members', {
         _workspace_id: workspaceId,
         _search: search || null,
         _leader_id: selectedLeader === 'all' ? null : selectedLeader,
-        _has_pdi: pdiFilter === 'all' ? null : pdiFilter === 'with_pdi',
+        _has_pdi: null,
         _limit: ITEMS_PER_PAGE,
         _offset: page * ITEMS_PER_PAGE,
       });
@@ -159,8 +159,6 @@ export default function HRMembers() {
           return m.invite_status && m.invite_status !== 'accepted';
         case 'no_feedback':
           return (m.days_since_last_feedback ?? 999) > 30;
-        case 'no_pdi':
-          return (m.pdi_count ?? 0) === 0;
         case 'no_sync':
           return !m.has_sync;
         default:
@@ -185,7 +183,7 @@ export default function HRMembers() {
   // Reset seleção quando filtros/página mudam.
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [page, pendency, teamFilter, search, selectedLeader, pdiFilter]);
+  }, [page, pendency, teamFilter, search, selectedLeader]);
 
   const refreshAll = () => {
     queryClient.invalidateQueries({ queryKey: ['hr-members', workspaceId] });
@@ -263,7 +261,7 @@ export default function HRMembers() {
 
   const handleBulkResendSyncConfirmed = async () => {
     const targets = members
-      .filter((m: any) => selectedIds.has(m.member_id))
+      .filter((m: any) => selectedIds.has(m.member_id) && !m.has_sync)
       .map((m: any) => ({ id: m.member_id, name: m.member_name, email: m.member_email }));
     if (targets.length === 0) return;
     setActingId('bulk');
@@ -331,6 +329,11 @@ export default function HRMembers() {
 
   const selectedCount = selectedIds.size;
   const bulkBusy = actingId === 'bulk' || syncPending;
+  const selectedMembers = members.filter((m: any) => selectedIds.has(m.member_id));
+  const pendingInviteCount = selectedMembers.filter(
+    (m: any) => m.invite_status && m.invite_status !== 'accepted'
+  ).length;
+  const pendingSyncCount = selectedMembers.filter((m: any) => !m.has_sync).length;
 
   return (
     <div className="space-y-6 p-4 md:p-8 max-w-6xl mx-auto">
@@ -397,20 +400,10 @@ export default function HRMembers() {
         <Select value={pendency} onValueChange={(v) => setPendency(v as PendencyFilter)}>
           <SelectTrigger className="w-full lg:w-[200px]"><SelectValue placeholder="Pendência" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Sem filtro de pendência</SelectItem>
+            <SelectItem value="all">Todas</SelectItem>
             <SelectItem value="no_invite">Cadastro pendente</SelectItem>
             <SelectItem value="no_feedback">Sem feedback (30d+)</SelectItem>
-            <SelectItem value="no_pdi">Sem PDI</SelectItem>
             <SelectItem value="no_sync">Sem Rhitmo Sync</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={pdiFilter} onValueChange={(v) => { setPdiFilter(v); setPage(0); }}>
-          <SelectTrigger className="w-full lg:w-[140px]"><SelectValue placeholder="PDI" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="with_pdi">Com PDI</SelectItem>
-            <SelectItem value="without_pdi">Sem PDI</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -420,26 +413,35 @@ export default function HRMembers() {
         <div className="sticky top-2 z-10 flex items-center justify-between gap-3 rounded-2xl border bg-primary/5 px-4 py-2.5 shadow-sm">
           <span className="text-sm font-medium">{selectedCount} selecionado{selectedCount > 1 ? 's' : ''}</span>
           <div className="flex items-center gap-2 flex-wrap">
-            <Button
-              size="sm"
-              variant="outline"
-              className="rounded-xl gap-2"
-              onClick={handleBulkResendInvite}
-              disabled={bulkBusy}
-            >
-              {bulkBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-              Reenviar convite
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="rounded-xl gap-2"
-              onClick={() => setConfirmBulkSync(true)}
-              disabled={bulkBusy}
-            >
-              <Music className="h-3.5 w-3.5" />
-              Reenviar Rhitmo Sync
-            </Button>
+            {pendingInviteCount > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-xl gap-2"
+                onClick={handleBulkResendInvite}
+                disabled={bulkBusy}
+              >
+                {bulkBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                Reenviar convite ({pendingInviteCount})
+              </Button>
+            )}
+            {pendingSyncCount > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-xl gap-2"
+                onClick={() => setConfirmBulkSync(true)}
+                disabled={bulkBusy}
+              >
+                <Music className="h-3.5 w-3.5" />
+                Enviar Rhitmo Sync ({pendingSyncCount})
+              </Button>
+            )}
+            {pendingInviteCount === 0 && pendingSyncCount === 0 && (
+              <span className="text-xs text-muted-foreground">
+                Nenhuma ação em lote disponível para esta seleção
+              </span>
+            )}
             <Button size="sm" variant="ghost" className="rounded-xl" onClick={() => setSelectedIds(new Set())}>
               Limpar
             </Button>
@@ -537,11 +539,6 @@ export default function HRMembers() {
                             Sync pendente
                           </Badge>
                         )}
-                        {member.pdi_count === 0 && (
-                          <Badge variant="outline" className="text-[11px] text-muted-foreground">
-                            Sem PDI
-                          </Badge>
-                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
@@ -616,7 +613,10 @@ export default function HRMembers() {
 
       <MemberProfileSheet
         open={profileSheetOpen}
-        onOpenChange={setProfileSheetOpen}
+        onOpenChange={(o) => {
+          setProfileSheetOpen(o);
+          if (!o) setSelectedMemberId(null);
+        }}
         memberId={selectedMemberId || ''}
         workspaceId={workspaceId}
       />
@@ -667,7 +667,7 @@ export default function HRMembers() {
       <AlertDialog open={confirmBulkSync} onOpenChange={setConfirmBulkSync}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reenviar Rhitmo Sync para {selectedCount} liderado{selectedCount > 1 ? 's' : ''}?</AlertDialogTitle>
+            <AlertDialogTitle>Enviar Rhitmo Sync para {pendingSyncCount} liderado{pendingSyncCount > 1 ? 's' : ''}?</AlertDialogTitle>
             <AlertDialogDescription>
               Reenviar a pesquisa substitui o perfil atual em todo o Rhitmo (chat, briefs, avaliações) quando o liderado responder de novo. Quem ainda não preencheu apenas receberá o convite.
             </AlertDialogDescription>

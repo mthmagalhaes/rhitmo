@@ -106,7 +106,25 @@ export function MemberProfileSheet({
       return row;
     },
     enabled: open && !!memberId && !!workspaceId,
-    retry: 1,
+    retry: 2,
+    retryDelay: 400,
+  });
+
+  const { data: activity } = useQuery({
+    queryKey: ['hr-member-activity', workspaceId, memberId],
+    enabled: open && !!memberId && !!workspaceId && !!profile,
+    queryFn: async () => {
+      const since30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const since90 = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+      const [fb30, fb90] = await Promise.all([
+        supabase.from('feedbacks').select('id', { count: 'exact', head: true }).eq('member_id', memberId).gte('occurred_at', since30),
+        supabase.from('feedbacks').select('id', { count: 'exact', head: true }).eq('member_id', memberId).gte('occurred_at', since90),
+      ]);
+      return {
+        feedbacks_30d: fb30.count ?? 0,
+        feedbacks_90d: fb90.count ?? 0,
+      };
+    },
   });
 
   const skillsData = profile?.skills_data;
@@ -288,23 +306,13 @@ export function MemberProfileSheet({
                   <div className="flex items-center gap-2 mb-2">
                     <Target className="h-4 w-4 text-muted-foreground" />
                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      PDI
+                      Atividade recente
                     </span>
                   </div>
-                  <p className="text-2xl font-bold tracking-tight">{profile.pdi_count}</p>
-                  <div className="flex items-center gap-1 mt-1">
-                    {profile.has_pdi ? (
-                      <>
-                        <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                        <span className="text-xs text-emerald-600">PDI ativo</span>
-                      </>
-                    ) : (
-                      <>
-                        <AlertCircle className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">Sem PDI</span>
-                      </>
-                    )}
-                  </div>
+                  <p className="text-2xl font-bold tracking-tight">{activity?.feedbacks_30d ?? 0}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    feedbacks nos últimos 30d · {activity?.feedbacks_90d ?? 0} em 90d
+                  </p>
                 </CardContent>
               </Card>
             </div>
