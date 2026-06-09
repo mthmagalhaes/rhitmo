@@ -13,7 +13,7 @@ interface DirectReportGuardProps {
 export function DirectReportGuard({ children }: DirectReportGuardProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, needsOnboarding, loading } = useAccount();
+  const { isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, isTeamLeader, needsOnboarding, loading } = useAccount();
   const { isAdmin, loading: adminLoading } = useAdmin();
   const { mode: activeMode } = useActiveMode();
 
@@ -37,7 +37,7 @@ export function DirectReportGuard({ children }: DirectReportGuardProps) {
     // Smart redirect from legacy /dashboard → role-based home.
     if (location.pathname === '/dashboard') {
       navigate(
-        getHomeRoute({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, activeMode }),
+        getHomeRoute({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, isTeamLeader, activeMode }),
         { replace: true },
       );
     }
