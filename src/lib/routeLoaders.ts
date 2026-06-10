@@ -72,6 +72,7 @@ export const HRDashboard = lazy(loadHRDashboard);
 export const CompetencyFramework = lazy(loadCompetencyFramework);
 export const HRTeams = lazy(loadHRTeams);
 export const HRMembers = lazy(loadHRMembers);
+export const HRPessoas = lazy(loadHRPessoas);
 export const HRAnalytics = lazy(loadHRAnalytics);
 export const TermsOfService = lazy(loadTermsOfService);
 export const PrivacyPolicy = lazy(loadPrivacyPolicy);
