@@ -36,6 +36,7 @@ import {
   CompetencyFramework,
   HRTeams,
   HRMembers,
+  HRPessoas,
   HRAnalytics,
   TermsOfService,
   PrivacyPolicy,
