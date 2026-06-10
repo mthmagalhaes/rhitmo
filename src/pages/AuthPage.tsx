@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useHomeRoute } from '@/hooks/useHomeRoute';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
+import { setSignupPersona } from '@/lib/signupPersona';
 
 type BillingCycle = 'quarterly' | 'semiannual' | 'annual';
 type Persona = 'leader' | 'hr_admin';
@@ -23,16 +24,12 @@ const AuthPage = () => {
   const cycleParam = (searchParams.get('cycle') ?? 'annual') as BillingCycle;
   const personaParam = searchParams.get('persona') as Persona | null;
 
-  // Persist persona to localStorage so it survives the Google OAuth round-trip.
+  // Persist persona so it survives the Google OAuth round-trip.
   // Plan=pro implies leader (only leaders can subscribe).
   useEffect(() => {
     const persona: Persona | null = personaParam ?? (planParam === 'pro' ? 'leader' : null);
     if (persona === 'leader' || persona === 'hr_admin') {
-      try {
-        localStorage.setItem('signup_persona', persona);
-      } catch {
-        // ignore
-      }
+      setSignupPersona(persona);
     }
   }, [personaParam, planParam]);
 

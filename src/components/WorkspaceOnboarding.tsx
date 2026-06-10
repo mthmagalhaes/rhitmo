@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { clearSignupPersona } from '@/lib/signupPersona';
 
 interface WorkspaceOnboardingProps {
   userId: string;
@@ -104,7 +105,7 @@ export function WorkspaceOnboarding({ userId, userMetadata, onComplete }: Worksp
       });
 
       // Clear persona intent now that the leader workspace is set up.
-      try { localStorage.removeItem('signup_persona'); } catch { /* ignore */ }
+      clearSignupPersona();
 
       onComplete();
     } catch (error: any) {

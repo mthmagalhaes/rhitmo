@@ -2,6 +2,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
+import { setSignupPersona } from '@/lib/signupPersona';
 import { ArrowLeft, ArrowRight, Target, Building2, Sparkles } from 'lucide-react';
 
 type Persona = 'leader' | 'hr_admin';
@@ -12,11 +13,7 @@ export default function PersonaSelector() {
   const lang = i18n.language?.startsWith('en') ? 'en' : i18n.language?.startsWith('es') ? 'es' : 'pt';
 
   const choose = (persona: Persona) => {
-    try {
-      localStorage.setItem('signup_persona', persona);
-    } catch {
-      // ignore
-    }
+    setSignupPersona(persona);
     navigate(`/auth?mode=signup&persona=${persona}`);
   };
 

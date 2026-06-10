@@ -32,6 +32,11 @@ interface NewTeam {
 const SEGMENTS = ['beta', 'paid', 'trial', 'internal', 'test'] as const;
 const PLANS = ['pulse', 'pro', 'business'] as const;
 
+// RFC-light email regex: bom o suficiente pra evitar typo grosso ("foo@bar", "foo@").
+// Backend (Supabase Auth) faz validação final.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const isValidEmail = (e: string) => EMAIL_RE.test(e.trim());
+
 export const NewCompanyWizard = ({ open, onOpenChange, users }: Props) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -81,11 +86,17 @@ export const NewCompanyWizard = ({ open, onOpenChange, users }: Props) => {
 
   const canNext = useMemo(() => {
     if (step === 1) return name.trim().length >= 2;
-    if (step === 2) return !!ownerId || ownerInviteEmail.trim().length > 3;
-    if (step === 3) return true;
-    if (step === 4) return teams.some((t) => t.name.trim().length > 0);
+    if (step === 2) return !!ownerId || isValidEmail(ownerInviteEmail);
+    if (step === 3) return !hrInviteEmail.trim() || isValidEmail(hrInviteEmail);
+    if (step === 4) {
+      const hasNamedTeam = teams.some((t) => t.name.trim().length > 0);
+      const everyInviteValid = teams.every(
+        (t) => !t.leaderInviteEmail.trim() || isValidEmail(t.leaderInviteEmail),
+      );
+      return hasNamedTeam && everyInviteValid;
+    }
     return true;
-  }, [step, name, ownerId, ownerInviteEmail, teams]);
+  }, [step, name, ownerId, ownerInviteEmail, hrInviteEmail, teams]);
 
   // Lightweight user search
   const [ownerSearch, setOwnerSearch] = useState('');
@@ -125,10 +136,14 @@ export const NewCompanyWizard = ({ open, onOpenChange, users }: Props) => {
 
 
   const inviteByEmail = async (email: string, fullName: string | null, role: 'owner' | 'hr_admin' | 'leader', workspace_id?: string) => {
+    const cleanEmail = email.trim();
+    if (!isValidEmail(cleanEmail)) {
+      throw new Error(`E-mail inválido: "${cleanEmail}"`);
+    }
     const { data, error } = await supabase.functions.invoke('admin-invite-user', {
       body: {
-        email,
-        name: fullName || email.split('@')[0],
+        email: cleanEmail,
+        name: fullName || cleanEmail.split('@')[0],
         assigned_plan: plan,
         role,
         workspace_id,
