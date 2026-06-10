@@ -1,91 +1,134 @@
-## Contexto
+# Plano: Corrigir gaps dos 3 caminhos de onboarding
 
-A nova `/hr/pessoas` ganhou a visão unificada (Owner/HR/Líder/Liderado) mas perdeu 3 coisas que existiam em `/hr/members`:
-
-1. **Status Rhitmo Sync** ("Sync pendente" vs feito) por pessoa.
-2. **Status de vínculo** ("Vinculado" vs "Convite pendente") — hoje só temos `status`, sem distinguir liderado **convidado e não logado** de liderado **vinculado a um user**.
-3. **Coluna Ações** (`Ver` + `⋯` com Editar, Mover de time, Reenviar convite, Reenviar Sync, Remover). Inclua a opção reset de senha que só tem hoje para Super admin
-
-Avaliação rápida (PM + UX + Cofounder):
-
-- **PM:** sem ações inline a página vira read-only, e RH perde o trabalho diário (mexer em time/liderança, cobrar Sync). Bloqueador.
-- **UX:** padrão correto é coluna "Ações" à direita + clique na linha abre **Sheet lateral** (mesmo padrão Linear/Notion). Reaproveitar `MemberAdminSheet` que já existe e a memória `member-admin-sheet-rhitmo-sync` documenta — evita refazer Sync UI.
-- **Cofounder técnico:** só precisamos expandir 2 colunas no RPC `get_workspace_people` (`has_sync`, `is_linked`) e plugar componentes já existentes (`MemberAdminSheet`, `EditMemberDialog`). Sem nova tabela, sem nova edge function.
-
-Importante: ações de **Líder/HR/Owner** são diferentes das de **Liderado** (não dá pra "mover de time" um Owner). Vamos diferenciar por papel.
+Plano dividido em 3 sprints sequenciais. Cada sprint é deployável sozinha, sem quebrar caminhos existentes. Total estimado: ~2 dias de trabalho.
 
 ---
 
-## Plano
+## Sprint 1 — Bloqueadores (CRÍTICO + ALTA segurança)
 
-### Fase 1 — Backend (1 migration, aditiva)
+Resolve os 5 itens que impedem o usuário de chegar ao primeiro valor ou abrem brecha de abuso.
 
-Atualizar `public.get_workspace_people(p_workspace_id)` para retornar 2 colunas novas:
+### 1.1 — Owner duplicado no Wizard (G11 + G12)
 
-- `has_sync boolean` — `team_members.skills_data IS NOT NULL OR job_crafting_profile IS NOT NULL` (mesma regra usada hoje em `/hr/members`).
-- `is_linked boolean` — `team_members.linked_user_id IS NOT NULL`.
+**Problema:** `admin-invite-user` auto-cria workspace "Meu time" toda vez que recebe um convite sem `workspace_id`, então o Wizard sempre gera workspace órfão antes do real.
 
-Nenhuma policy/grant novo. Atualizar `WorkspacePerson` em `useWorkspacePeople.ts`.
+**Fix em `supabase/functions/admin-invite-user/index.ts`:**
+- Aceitar novo parâmetro opcional `skip_auto_provision: boolean` no body.
+- Aceitar novo parâmetro opcional `redirect_to: string` (validar prefixo `https://rhitmo.co/`).
+- Wizard passa `skip_auto_provision: true` + `redirect_to: 'https://rhitmo.co/lider/inicio'` (ou rota de onboarding de owner se existir).
+- Bloco linhas 161-197: pular se `skip_auto_provision === true` OU se `role === 'owner'`.
 
-### Fase 2 — UI: novas colunas de status
+**Fix em `src/components/admin/wizards/NewCompanyWizard.tsx`:**
+- `inviteByEmail()` (linha 113) passa `skip_auto_provision: true` quando `role === 'owner'`.
+- Após criar o workspace real, fazer `UPDATE workspaces SET owner_id = resolvedOwnerId` para garantir consistência (já é feito no INSERT — só validar).
 
-Em `HRPessoas.tsx`:
+### 1.2 — Spam-invite por qualquer usuário (G14)
 
-- Coluna **Status** passa a mostrar 2 chips empilhados para liderados:
-  - Vínculo: `Vinculado` (emerald) / `Convite pendente` (amber) / `Não vinculado` (slate, quando criado sem email).
-  - Sync: `Sync ✓` (emerald sutil) / `Sync pendente` (amber sutil).
-  - Para Owner/HR/Líder puros: só o chip `Ativo` (como hoje).
-- Nova métrica no segmento: contador "Sync pendente" (clicável) ao lado de "Convites pendentes".
+**Fix em `supabase/functions/admin-invite-user/index.ts:67-69`:**
+- Remover o branch `else if (!authorized && !workspace_id) { authorized = true; }`.
+- Substituir por: autorizar apenas se o caller for super_admin OU se for o fluxo legado de líder convidando para o próprio workspace (verificar via `EXISTS workspaces WHERE owner_id = caller.id`).
+- Migrar callers do frontend que dependiam do branch antigo para passar `workspace_id` explícito.
 
-### Fase 3 — Coluna "Ações" + Sheet lateral
+### 1.3 — Liderado nunca recebe Auth invite (G1)
 
-Adicionar coluna final `Ações` com:
+**Problema:** `NewMemberDialog` só insere em `team_members` + envia e-mail transacional manual; o liderado não tem conta `auth.users` real.
 
-- **Clique na linha** (qualquer célula exceto a coluna ações) → abre Sheet lateral.
-  - Se a pessoa tem `member_id` (é liderado) → reaproveita `MemberAdminSheet` existente (já tem Rhitmo Sync, reenviar pesquisa, perfil).
-  - Se é só Líder/HR/Owner sem `member_id` → Sheet leve novo (`WorkspacePersonSheet`) com: nome, e-mail, papéis, workspaces, botão "Editar nome/e-mail" (reusa `admin-update-user`), "Remover papel HR" (quando aplicável).
-- **Botão `⋯**` (DropdownMenu) na própria linha, com itens contextuais ao papel:
-  - Liderado: Ver perfil · Editar (nome/time/cargo) · Mover de time · Transferir liderança · Reenviar convite (se pendente) · Reenviar Rhitmo Sync (se `!has_sync`) · Remover.
-  - Líder: Ver perfil · Editar nome/e-mail · Remover papel de líder (se também é liderado, mantém o cadastro).
-  - HR Admin: Ver perfil · Remover papel HR (não permite remover o último HR/Owner — guarda).
-  - Owner: Ver perfil (só leitura; transferir Owner fica fora de escopo, já existe em outro lugar).
+**Decisão de design:** Manter o fluxo "lazy" (sem conta Auth pré-criada) porque é mais barato e o liderado pode optar por não usar. **Mas garantir o link no primeiro signup.**
 
-Reaproveitar componentes existentes:
+**Fix em `src/contexts/AuthEventProvider.tsx`:**
+- No evento `SIGNED_IN` e `INITIAL_SESSION`, após resolver `user`, chamar RPC `claim_team_member_by_email(user.email)` (já existe na migration `20260514024702`).
+- Idempotente: se já está linkado, RPC retorna sem efeito.
+- Remover comentário de "auto-link desabilitado" (linha 74-77).
 
-- `EditMemberDialog` para editar liderado (nome, time, cargo).
-- `admin-update-user` edge function para editar nome/e-mail de qualquer usuário.
-- `invite-hr-admin` com `action: 'revoke'` para remover papel HR.
-- Lógica de remover liderado e reenviar Sync já existe em `useResendRhitmoSync` e no padrão de `HRMembers.tsx` (copiar `handleDelete` + `handleResendSyncOne`).
+**Fix complementar em `src/components/NewMemberDialog.tsx`:**
+- Adicionar opção "Criar conta agora (envia convite por e-mail)" como toggle — quando marcada, chama `admin-invite-user` com `workspace_id` em vez de só inserir `team_members`. Mantém o fluxo lazy como default para não quebrar UX atual.
 
-### Fase 4 — Limpeza visual
+### 1.4 — HR Admin: líder não recebe convite + time sem leader_user_id (G6 + G7)
 
-- "Mover de time" e "Transferir liderança" abrem o mesmo `EditMemberDialog` (já suporta `team_id` e troca de líder via `leader_user_id` no time-pai? — confirmar; se não suportar troca de líder direto, abrir submenu com select de líderes do workspace e gravar via `team_members.leader_override` ou trocar `team_id` para um time do novo líder; manter comportamento idêntico ao `/hr/members` atual).
-- Manter o card Bento/`rounded-2xl`, sem regressão visual.
+**Fix na migration RPC `create_hr_admin_starter_workspace`:**
+- Após inserir `team_members` com email do líder, marcar `team_members.role = 'leader'` (ou criar coluna `is_team_leader boolean`) para distinguir.
+- Criar nova migration com **trigger** `AFTER UPDATE OF linked_user_id ON team_members`: quando `linked_user_id` passa de NULL para UUID e o `role/is_team_leader` indica líder, fazer `UPDATE teams SET leader_user_id = NEW.linked_user_id WHERE id = NEW.team_id AND leader_user_id IS NULL`.
+
+**Fix em `src/components/HRAdminWorkspaceOnboarding.tsx`:**
+- Após o RPC retornar sucesso, se `leaderEmail` foi fornecido, chamar `supabase.functions.invoke('admin-invite-user', { body: { email, role: 'leader', workspace_id } })`.
+- Toast: "Convite enviado para {email}. Você pode acompanhar em Pessoas."
 
 ---
 
-## Detalhes técnicos
+## Sprint 2 — Robustez (MÉDIA)
 
-**Arquivos a criar:**
+Resolve falhas silenciosas em casos secundários.
 
-- `src/components/hr/WorkspacePersonSheet.tsx` — sheet leve p/ Líder/HR/Owner.
-- `supabase/migrations/<ts>_get_workspace_people_v2.sql` — atualiza a função (CREATE OR REPLACE).
+### 2.1 — `AuthPage.tsx:59` poll sem escopo de owner (G2)
+- Adicionar `.eq('owner_id', user.id)` na query.
 
-**Arquivos a editar:**
+### 2.2 — `invite-hr-admin` pagina só 200 usuários (G8)
+- Trocar `listUsers({ page: 1, perPage: 200 })` por loop paginado igual ao `admin-invite-user` (até 10.000).
+- Considerar extrair helper compartilhado em `_shared/findUserByEmail.ts`.
 
-- `src/hooks/useWorkspacePeople.ts` — adicionar `has_sync`, `is_linked`.
-- `src/pages/HRPessoas.tsx` — coluna Status nova, coluna Ações, DropdownMenu, integração com `MemberAdminSheet`, `EditMemberDialog`, confirm dialogs.
+### 2.3 — RPC HR admin: erro feio em workspace duplicado (G9)
+- Wrapping no frontend (`HRAdminWorkspaceOnboarding`) em try/catch: se erro contém "já possui workspace", mostrar toast amigável "Você já tem um workspace ativo." e `navigate('/hr', { replace: true })`.
 
-**Sem mexer em:** `/admin`, `/hr/members` (mantém redirect), `MemberAdminSheet.tsx`, edge functions, RLS, `AccountContext`.
+### 2.4 — Owner com workspace antigo (G15)
+- No Wizard, step 2 (Owner): se `ownerId` selecionado já tem workspace (query `from('workspaces').select('id').eq('owner_id', ownerId).maybeSingle()`), mostrar warning visual: "Este usuário já é owner de outro workspace. Continuar criará um segundo workspace para ele."
 
-**Riscos / guardas:**
+### 2.5 — `get_account_context`: desempate determinístico
+- Auditar a RPC (não foi lida ainda no diagnóstico). Adicionar `ORDER BY created_at DESC LIMIT 1` ou critério explícito — owner mais recente vence.
+- Garantir que `is_workspace_owner` retorne o workspace ativo correto.
 
-- Não permitir remover o último HR Admin nem o Owner do workspace (validação client + a edge `invite-hr-admin` já valida server-side).
-- Para pessoas com múltiplos papéis (ex.: Líder + Liderado), o menu mostra ações dos dois papéis numa única lista com separadores.
-- Performance: a coluna Sync já vem do RPC, então não há N+1.
+---
 
-**Tente incluir (ou se ficar muito grande com risco de quebrar, fazemos na próxima sprint):**
+## Sprint 3 — Polimento (BAIXA)
 
-- Edição inline de papéis (promover Liderado→HR direto da tabela).
-- Transferência de Owner.
-- Bulk actions (checkbox + ações em massa) — a barra de seleção pode entrar numa Fase 5 se você quiser repetir o padrão do `/admin`.
+UX pequenos que somam confiança.
+
+### 3.1 — `signup_persona` em sessionStorage (G4)
+- Trocar `localStorage` por `sessionStorage` em `PersonaSelector.tsx:16`, `AuthPage.tsx:29-36`, `Auth.tsx:69`, `AppLayout.tsx:49-96`.
+
+### 3.2 — `window.location.href` → `navigate()` (G10)
+- Em `AppLayout.tsx:133`, trocar por `navigate('/hr', { replace: true })`.
+
+### 3.3 — Progress bar real no Onboarding (G5)
+- `Onboarding.tsx:394`: animar entre 0→90% durante análise, 100% ao concluir.
+
+### 3.4 — Validações no Wizard (G17 + G18)
+- Step 4: validar `leaderInviteEmail` com regex de e-mail antes de habilitar "Próximo".
+- Step 5 (revisão): filtrar visualmente times com nome vazio e desabilitar "Criar empresa" se nenhum time válido.
+
+### 3.5 — `team_members.user_id` semântica (G3)
+- Não renomear (alto risco). Adicionar comentário SQL `COMMENT ON COLUMN team_members.user_id IS 'Criador do registro (líder), não o usuário liderado. Use linked_user_id para o usuário vinculado.'`
+- Adicionar comentário JSDoc no tipo TS gerado se possível (via `src/integrations/supabase/types.ts` é auto-gerado — pular essa parte).
+
+---
+
+## Sequência de execução técnica
+
+```text
+Sprint 1
+├─ Migration: trigger leader_user_id auto-fill (1.4)
+├─ Edge fn: admin-invite-user — skip_auto_provision + redirect_to + auth check (1.1, 1.2)
+├─ Edge fn: deploy
+├─ Frontend: NewCompanyWizard passa skip_auto_provision (1.1)
+├─ Frontend: AuthEventProvider chama claim_team_member_by_email (1.3)
+├─ Frontend: HRAdminWorkspaceOnboarding chama admin-invite-user pós-RPC (1.4)
+└─ Frontend: NewMemberDialog ganha toggle "criar conta agora" (1.3)
+
+Sprint 2
+├─ Migration: get_account_context ORDER BY (2.5)
+├─ Edge fn: invite-hr-admin paginação + helper compartilhado (2.2)
+└─ Frontend: AuthPage scope, HRAdminWorkspaceOnboarding error handling, Wizard warning (2.1, 2.3, 2.4)
+
+Sprint 3
+└─ Frontend only: storage swap, navigate(), progress bar, validações Wizard
+```
+
+## O que NÃO faz parte deste plano
+
+- Refatorar o modelo de `team_members` (campo `user_id` semanticamente ambíguo permanece — só ganha comment).
+- Criar fluxo público de "signup como Owner sem ser Líder" (caminho atualmente só existe via Wizard).
+- Migrar workspaces órfãos já criados em produção — requer script de saneamento separado (fora deste plano; pode ser feito após Sprint 1 via SQL ad-hoc).
+
+## Risco residual
+
+- **Mudança em `admin-invite-user` é breaking change** para qualquer caller que dependia do auto-provision implícito. Mitigação: `skip_auto_provision` é opt-in, default mantém comportamento atual durante uma janela de transição; em uma segunda PR (após confirmar nenhum caller frontend depende), inverter o default.
+- **Trigger no `team_members.linked_user_id`** pode disparar em casos inesperados (impersonation, backfill). Mitigação: condicionar trigger a `OLD.linked_user_id IS NULL AND NEW.linked_user_id IS NOT NULL` apenas.

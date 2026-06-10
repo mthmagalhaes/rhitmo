@@ -14,8 +14,16 @@ serve(async (req) => {
   }
 
   try {
-    const { email, name, assigned_plan, role, workspace_id } = await req.json();
-    
+    const {
+      email,
+      name,
+      assigned_plan,
+      role,
+      workspace_id,
+      skip_auto_provision,
+      redirect_to,
+    } = await req.json();
+
     if (!email) {
       throw new Error('Email é obrigatório');
     }
@@ -43,8 +51,11 @@ serve(async (req) => {
     );
 
     // Authorization: aceita Super Admin, OU Owner/HR Admin do workspace_id
-    // recebido, OU líder comum sem workspace_id (fluxo legado de
-    // auto-provisionamento — convida apenas a si mesmo / liderado do "Meu time").
+    // recebido, OU líder comum que já possui workspace próprio (fluxo de
+    // auto-cadastro do "Meu time" sem workspace_id explícito).
+    //
+    // O branch antigo "qualquer authenticated sem workspace_id => permitido"
+    // foi removido — abria brecha pra spam de convites (G14 do diagnóstico).
     const { data: { user: caller }, error: callerErr } = await supabaseUser.auth.getUser();
     if (callerErr || !caller) {
       throw new Error('Não autorizado');
@@ -65,8 +76,16 @@ serve(async (req) => {
         authorized = isOwner || isHr;
       }
     } else if (!authorized && !workspace_id) {
-      // Fluxo legado: líder comum convidando para o próprio "Meu time".
-      authorized = true;
+      // Fluxo legado sem workspace_id: só liberamos se o caller já é owner
+      // de pelo menos um workspace. Mantém compat com NewMemberDialog do líder
+      // e bloqueia abuso por usuários autenticados quaisquer.
+      const { data: ownedWs } = await supabaseAdmin
+        .from('workspaces')
+        .select('id')
+        .eq('owner_id', caller.id)
+        .limit(1)
+        .maybeSingle();
+      authorized = !!ownedWs;
     }
 
     if (!authorized) {
@@ -76,11 +95,18 @@ serve(async (req) => {
     console.log('✅ Authorized as', isSuperAdmin ? 'super_admin' : 'workspace owner/hr_admin/leader', '— sending invite...');
 
     const isHrAdmin = role === 'hr_admin' && workspace_id;
-    // Líder = qualquer convite que não seja HR Admin (default do fluxo de convite individual)
-    const isLeader = !isHrAdmin;
-    const redirectUrl = isHrAdmin
+    const isOwnerInvite = role === 'owner';
+    // Líder = qualquer convite que não seja HR Admin ou Owner (fluxo individual default)
+    const isLeader = !isHrAdmin && !isOwnerInvite;
+
+    // Caller (ex.: Wizard) pode sobrescrever o redirect desde que aponte para
+    // o domínio oficial — evita open-redirect.
+    const isSafeRedirect = typeof redirect_to === 'string'
+      && /^https:\/\/(rhitmo\.co|app-rhitmo\.lovable\.app)\//.test(redirect_to);
+    const defaultRedirect = isHrAdmin
       ? 'https://rhitmo.co/hr'
       : 'https://rhitmo.co/lider/inicio';
+    const redirectUrl = isSafeRedirect ? redirect_to : defaultRedirect;
 
     // Convidar usuário via Admin API com plano atribuído
     let invitation: { user: { id: string; email_confirmed_at?: string | null; last_sign_in_at?: string | null } | null } | null = null;
@@ -158,7 +184,7 @@ serve(async (req) => {
     // é informado (ex.: HR Admin convidando líder pro time existente), o líder
     // entra naquele workspace — provisionar outro cria workspaces órfãos e quebra
     // o status do time na aba Times.
-    if (isLeader && invitation?.user?.id && !workspace_id && !alreadyExisted) {
+    if (isLeader && invitation?.user?.id && !workspace_id && !alreadyExisted && !skip_auto_provision) {
       try {
         const workspaceName = (name && name.trim().length > 0)
           ? `Workspace de ${name.trim().split(' ')[0]}`

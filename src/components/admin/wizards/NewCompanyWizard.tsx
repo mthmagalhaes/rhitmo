@@ -110,6 +110,10 @@ export const NewCompanyWizard = ({ open, onOpenChange, users }: Props) => {
         assigned_plan: plan,
         role,
         workspace_id,
+        // Wizard cria o workspace real depois — não queremos que o convite
+        // de owner/líder dispare auto-provisionamento de "Meu time" órfão.
+        skip_auto_provision: true,
+        redirect_to: role === 'hr_admin' ? 'https://rhitmo.co/hr' : 'https://rhitmo.co/lider/inicio',
       },
     });
     if (error) throw error;
