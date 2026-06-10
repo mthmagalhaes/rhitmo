@@ -15,6 +15,8 @@ export interface WorkspacePerson {
   leader_name: string | null;
   status: 'active' | 'pending_invite';
   invite_status: string | null;
+  has_sync: boolean;
+  is_linked: boolean;
   last_activity_at: string | null;
   created_at: string | null;
 }
