@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { emit } from "../_shared/emit.ts";
+import { findUserByEmail } from "../_shared/findUserByEmail.ts";
+
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -132,22 +134,9 @@ serve(async (req) => {
         throw new Error(inviteError.message);
       }
 
-      // Email já existe — buscar o user existente e devolver 200 com flag.
+      // Email já existe — buscar o user existente via helper compartilhado.
       console.log('ℹ️ Email already exists, resolving existing user:', email);
-      let foundUser: any = null;
-      let page = 1;
-      // listUsers é paginado; em workspaces grandes pode precisar de várias páginas.
-      // Limitamos a 10 páginas (10k usuários) por segurança.
-      while (page <= 10 && !foundUser) {
-        const { data: list, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
-        if (listErr) {
-          console.error('❌ Could not list users to resolve existing email:', listErr);
-          throw new Error('E-mail já cadastrado, mas não consegui localizar o usuário existente.');
-        }
-        foundUser = (list?.users ?? []).find((u) => (u.email ?? '').toLowerCase() === email.toLowerCase()) ?? null;
-        if ((list?.users?.length ?? 0) < 1000) break;
-        page += 1;
-      }
+      const foundUser = await findUserByEmail(supabaseAdmin, email);
 
       if (!foundUser) {
         throw new Error('E-mail já cadastrado, mas não consegui localizar o usuário existente.');
@@ -157,6 +146,7 @@ serve(async (req) => {
       alreadyExisted = true;
       wasConfirmed = !!(foundUser.email_confirmed_at || foundUser.last_sign_in_at);
       console.log('✅ Resolved existing user:', foundUser.id, 'confirmed:', wasConfirmed);
+
     } else {
       invitation = inviteData as any;
       console.log('✅ Invite sent successfully with plan:', plan);

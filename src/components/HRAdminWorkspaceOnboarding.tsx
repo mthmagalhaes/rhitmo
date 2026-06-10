@@ -41,7 +41,12 @@ export function HRAdminWorkspaceOnboarding({ onComplete }: HRAdminWorkspaceOnboa
 
       if (error) {
         const rawMsg = error.message || '';
-        if (/já possui (um )?workspace/i.test(rawMsg)) {
+        const isDuplicateWorkspace =
+          /já possui (um )?workspace/i.test(rawMsg) ||
+          /já existe.*workspace/i.test(rawMsg) ||
+          /workspace.*já.*associad/i.test(rawMsg) ||
+          /duplicate key.*workspaces/i.test(rawMsg);
+        if (isDuplicateWorkspace) {
           toast({
             title: 'Você já tem um workspace ativo',
             description: 'Redirecionando para o painel de RH.',
@@ -52,6 +57,7 @@ export function HRAdminWorkspaceOnboarding({ onComplete }: HRAdminWorkspaceOnboa
         }
         throw error;
       }
+
 
       // Dispara convite Auth para o primeiro líder, agora que temos workspace_id.
       // Sem isso, o líder ficaria registrado em team_members mas nunca receberia
