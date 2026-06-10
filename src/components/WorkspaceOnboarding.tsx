@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { clearSignupPersona } from '@/lib/signupPersona';
 
 interface WorkspaceOnboardingProps {
   userId: string;
