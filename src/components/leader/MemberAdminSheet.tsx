@@ -49,6 +49,7 @@ import {
   Copy,
   Loader2,
   Clock,
+  Trash2,
 } from 'lucide-react';
 import type { LeaderMemberRow } from '@/hooks/useLeaderMembers';
 
