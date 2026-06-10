@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Building2, Loader2, UserPlus } from 'lucide-react';
+import { clearSignupPersona } from '@/lib/signupPersona';
 
 interface HRAdminWorkspaceOnboardingProps {
   onComplete: () => void;
@@ -51,7 +52,7 @@ export function HRAdminWorkspaceOnboarding({ onComplete }: HRAdminWorkspaceOnboa
             title: 'Você já tem um workspace ativo',
             description: 'Redirecionando para o painel de RH.',
           });
-          try { localStorage.removeItem('signup_persona'); } catch { /* ignore */ }
+          clearSignupPersona();
           onComplete();
           return;
         }
@@ -85,7 +86,7 @@ export function HRAdminWorkspaceOnboarding({ onComplete }: HRAdminWorkspaceOnboa
           : 'Sua visão inicial de RH está pronta.',
       });
 
-      try { localStorage.removeItem('signup_persona'); } catch { /* ignore */ }
+      clearSignupPersona();
       onComplete();
     } catch (error: any) {
       console.error('Erro ao criar workspace RH:', error);
