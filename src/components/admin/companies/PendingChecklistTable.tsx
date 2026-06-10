@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Users, User, AlertTriangle } from 'lucide-react';
+import { Users, User, AlertTriangle, ArrowLeft } from 'lucide-react';
 import {
   PENDING_LABEL,
   type PendingRow,
@@ -50,8 +51,23 @@ export const PendingChecklistTable = ({
     });
   }, [rows, workspaceFilter, typeFilter, search]);
 
+  const activeWs = workspaceFilter !== 'all'
+    ? workspaces.find((w) => w.id === workspaceFilter)
+    : null;
+
   return (
     <div className="space-y-3">
+      {activeWs && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onWorkspaceFilterChange('all')}
+          className="gap-1.5 -ml-2 text-xs"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Voltar para empresas · filtrando <strong className="ml-1">{activeWs.name}</strong>
+        </Button>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <Input
           placeholder="Buscar pessoa, e-mail ou empresa…"
