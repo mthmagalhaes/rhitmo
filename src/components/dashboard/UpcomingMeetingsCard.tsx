@@ -239,6 +239,28 @@ export const UpcomingMeetingsCard = () => {
           const bot = meeting.id ? getBotStatus(meeting.id, meeting.meet_link) : undefined;
           const isAutoScheduled = autoTranscribe && bot?.status === 'scheduled';
 
+          // Reunião está acontecendo agora? (start_time entre -45min e +5min de now)
+          const startMs = new Date(meeting.start_time).getTime();
+          const minutesSinceStart = (Date.now() - startMs) / 60_000;
+          const isHappeningNow = minutesSinceStart >= -5 && minutesSinceStart <= 45;
+          // Bot ainda recuperável? (sem bot ativo + dentro da janela retroativa)
+          const noActiveBot = !bot || bot.status === 'error' || bot.status === 'skipped_no_leader' || bot.status === 'unrecoverable';
+          const canSendRetroactive = isHappeningNow && noActiveBot && !!meeting.meet_link;
+
+          const triggerBot = (retroactive: boolean) => {
+            if (!canScheduleBot) return;
+            setSchedulingMeetingId(meeting.id);
+            scheduleBot.mutate({
+              meeting_id: meeting.id,
+              meeting_url: meeting.meet_link!,
+              member_id: meeting.member_id,
+              start_time: meeting.start_time,
+              trigger_source: retroactive ? 'manual_retroactive' : 'manual',
+            }, {
+              onSettled: () => setSchedulingMeetingId(null),
+            });
+          };
+
           return (
             <div key={meeting.id || meeting.member_id + meeting.start_time}>
               <div
@@ -303,7 +325,29 @@ export const UpcomingMeetingsCard = () => {
                         </span>
                       );
                     }
-                    // No bot — show manual button (unless auto-transcribe will handle on next sync)
+                    // Reunião rolando AGORA sem bot → botão de resgate.
+                    if (canSendRetroactive) {
+                      return (
+                        <button
+                          className="h-8 px-2.5 rounded-lg bg-red-500/10 flex items-center gap-1.5 hover:bg-red-500/20 transition-colors text-xs font-medium text-red-600 dark:text-red-400 disabled:opacity-40 disabled:cursor-not-allowed animate-pulse"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!confirm('Enviar bot agora? Ele vai gravar a partir deste momento — o que já passou da reunião não pode ser recuperado.')) return;
+                            triggerBot(true);
+                          }}
+                          disabled={schedulingMeetingId === meeting.id || !canScheduleBot}
+                          title={!canScheduleBot ? 'Limite de reuniões com bot atingido.' : 'Bot não entrou — enviar agora'}
+                        >
+                          {schedulingMeetingId === meeting.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Mic className="h-3.5 w-3.5" />
+                          )}
+                          Enviar agora
+                        </button>
+                      );
+                    }
+                    // No bot — auto on: pendente; auto off: botão "Transcrever".
                     if (autoTranscribe) {
                       return (
                         <span className="flex items-center gap-1 text-xs text-muted-foreground/60 font-medium">
@@ -317,16 +361,7 @@ export const UpcomingMeetingsCard = () => {
                         className="h-8 px-2.5 rounded-lg bg-primary/10 flex items-center gap-1.5 hover:bg-primary/20 transition-colors text-xs font-medium text-primary disabled:opacity-40 disabled:cursor-not-allowed"
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (!canScheduleBot) return;
-                          setSchedulingMeetingId(meeting.id);
-                          scheduleBot.mutate({
-                            meeting_id: meeting.id,
-                            meeting_url: meeting.meet_link!,
-                            member_id: meeting.member_id,
-                            start_time: meeting.start_time,
-                          }, {
-                            onSettled: () => setSchedulingMeetingId(null),
-                          });
+                          triggerBot(false);
                         }}
                         disabled={schedulingMeetingId === meeting.id || !canScheduleBot}
                         title={!canScheduleBot ? 'Limite de reuniões com bot atingido. Faça upgrade.' : undefined}

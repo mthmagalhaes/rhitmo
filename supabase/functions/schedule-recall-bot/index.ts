@@ -51,10 +51,16 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { meeting_id, meeting_url, member_id, start_time, trigger_source } = body;
 
-    // This function is invoked manually by leaders (button click). Default to 'manual'.
-    // Auto-calendar sync uses fetch-calendar-events which inserts directly with default 'auto_calendar'.
-    const triggerSource: "manual" | "auto_calendar" =
-      trigger_source === "auto_calendar" ? "auto_calendar" : "manual";
+    // 'manual' = botão "Transcrever" antes da reunião.
+    // 'manual_retroactive' = botão "Enviar bot agora" quando a reunião já começou
+    // (ou o bot automático não entrou). joinAt vira agora+30s nesse caso.
+    // 'auto_calendar' = fetch-calendar-events agendando 2min antes do start.
+    const triggerSource: "manual" | "manual_retroactive" | "auto_calendar" =
+      trigger_source === "auto_calendar"
+        ? "auto_calendar"
+        : trigger_source === "manual_retroactive"
+        ? "manual_retroactive"
+        : "manual";
 
     if (!meeting_url || !start_time) {
       return new Response(JSON.stringify({ error: "meeting_url and start_time are required" }), {
@@ -166,8 +172,24 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Schedule bot via Recall.ai API
-    const joinAt = new Date(new Date(start_time).getTime() - 2 * 60 * 1000).toISOString();
+    // Schedule bot via Recall.ai API.
+    // Normal: join 2min antes do start. Retroativo / start já passou: agora + 30s
+    // (Recall exige join_at no futuro). Limite: só permite retroativo se start_time
+    // está dentro dos últimos 45min, senão recusa.
+    const startMs = new Date(start_time).getTime();
+    const nowMs = Date.now();
+    const minutesSinceStart = (nowMs - startMs) / 60_000;
+
+    if (triggerSource === "manual_retroactive" && minutesSinceStart > 45) {
+      return new Response(JSON.stringify({
+        error: "A reunião começou há mais de 45 minutos. Não dá pra recuperar com bot retroativo.",
+      }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const idealJoin = startMs - 2 * 60 * 1000;
+    const joinAt = idealJoin > nowMs
+      ? new Date(idealJoin).toISOString()
+      : new Date(nowMs + 30 * 1000).toISOString();
 
     const recallResponse = await fetch("https://us-west-2.recall.ai/api/v1/bot/", {
       method: "POST",
