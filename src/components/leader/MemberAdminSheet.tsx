@@ -21,8 +21,16 @@ import { Separator } from '@/components/ui/separator';
 import { MemberAvatar } from '@/components/MemberAvatar';
 import { EditMemberDialog } from '@/components/EditMemberDialog';
 import { InviteMemberDialog } from '@/components/InviteMemberDialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
+import { invalidateLeaderPeople } from '@/lib/queryKeys';
 import { toast } from 'sonner';
+import { differenceInHours } from 'date-fns';
 
 import {
   Mail,
@@ -41,6 +49,7 @@ import {
   Copy,
   Loader2,
   Clock,
+  Trash2,
 } from 'lucide-react';
 import type { LeaderMemberRow } from '@/hooks/useLeaderMembers';
 
@@ -120,6 +129,8 @@ export function MemberAdminSheet({
   const [inviteOpen, setInviteOpen] = useState(false);
   const [acting, setActing] = useState(false);
   const [resendingSync, setResendingSync] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
 
   const { data: syncData } = useQuery({
     queryKey: ['member-sync', member?.id],
@@ -143,8 +154,44 @@ export function MemberAdminSheet({
   const isArchived = !!member.archived_at;
 
   const refresh = () => {
-    qc.invalidateQueries({ queryKey: ['leader-members'] });
+    invalidateLeaderPeople(qc);
     onChanged?.();
+  };
+
+  const hoursSinceArchived = member.archived_at
+    ? differenceInHours(new Date(), new Date(member.archived_at))
+    : 0;
+  const canHardDelete = isArchived && hoursSinceArchived >= 24;
+
+  const handleHardDelete = async () => {
+    if (deleteConfirm.trim() !== member.name.trim()) {
+      toast.error('Digite o nome do liderado exatamente como aparece para confirmar.');
+      return;
+    }
+    setActing(true);
+    try {
+      const { error } = await supabase.rpc('delete_archived_member', { p_member_id: member.id });
+      if (error) throw error;
+      toast.success(`${member.name} foi excluído definitivamente.`);
+      setDeleteOpen(false);
+      setDeleteConfirm('');
+      onOpenChange(false);
+      invalidateLeaderPeople(qc);
+      onChanged?.();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('archive_cooldown_active')) {
+        toast.error('Aguarde 24h após arquivar para excluir definitivamente.');
+      } else if (msg.includes('forbidden')) {
+        toast.error('Você não tem permissão para excluir este liderado.');
+      } else if (msg.includes('member_not_archived')) {
+        toast.error('Só é possível excluir liderados arquivados.');
+      } else {
+        toast.error(`Falha: ${msg}`);
+      }
+    } finally {
+      setActing(false);
+    }
   };
 
   const handleArchiveToggle = async () => {
@@ -463,10 +510,71 @@ export function MemberAdminSheet({
               <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
                 Arquivar preserva o histórico de feedbacks e 1:1s, mas remove o liderado das listas ativas.
               </p>
+
+              {isArchived && (
+                <div className="mt-4 pt-4 border-t border-border/50">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-xl gap-2 w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/5 border-destructive/20"
+                    onClick={() => setDeleteOpen(true)}
+                    disabled={!canHardDelete || acting}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Excluir definitivamente
+                  </Button>
+                  <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                    {canHardDelete
+                      ? 'Remove o liderado e todos os feedbacks, 1:1s e avaliações vinculados. Esta ação não pode ser desfeita.'
+                      : `Disponível ${24 - hoursSinceArchived}h após arquivar — janela de segurança para evitar exclusão por engano.`}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </SheetContent>
       </Sheet>
+
+      <AlertDialog open={deleteOpen} onOpenChange={(v) => { setDeleteOpen(v); if (!v) setDeleteConfirm(''); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir {member.name} definitivamente?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                Esta ação remove o liderado e <strong>todo o histórico vinculado</strong>: feedbacks,
+                1:1s, avaliações, objetivos e contexto. Não pode ser desfeita.
+              </span>
+              <span className="block">
+                Se o liderado tinha conta de login no Rhitmo, a conta dele permanece — só o vínculo
+                com o seu time é apagado.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 pt-2">
+            <Label htmlFor="confirm-delete" className="text-xs">
+              Para confirmar, digite o nome <strong>{member.name}</strong>:
+            </Label>
+            <Input
+              id="confirm-delete"
+              value={deleteConfirm}
+              onChange={(e) => setDeleteConfirm(e.target.value)}
+              placeholder={member.name}
+              className="rounded-xl"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={acting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleHardDelete(); }}
+              disabled={acting || deleteConfirm.trim() !== member.name.trim()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {acting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : null}
+              Excluir definitivamente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Sub-diálogos reusados */}
       {workspaceId && (
