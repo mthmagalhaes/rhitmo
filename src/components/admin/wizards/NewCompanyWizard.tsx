@@ -314,6 +314,23 @@ export const NewCompanyWizard = ({ open, onOpenChange, users }: Props) => {
                     )}
                   </div>
 
+                  {ownerId && ownerExistingWorkspaces.length > 0 && (
+                    <Alert className="rounded-xl border-amber-300 bg-amber-50 text-amber-900">
+                      <AlertTriangle className="h-4 w-4 !text-amber-700" />
+                      <AlertDescription className="text-xs">
+                        Este usuário já é Owner de {ownerExistingWorkspaces.length} workspace
+                        {ownerExistingWorkspaces.length > 1 ? 's' : ''} ativo
+                        {ownerExistingWorkspaces.length > 1 ? 's' : ''}
+                        {ownerExistingWorkspaces.length <= 3 && (
+                          <> ({ownerExistingWorkspaces.map((w) => w.name).join(', ')})</>
+                        )}
+                        . Continuar criará um novo — confirme que é intencional.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+
+
                   <div className="text-xs text-muted-foreground pt-4">— ou convidar por e-mail —</div>
                   <div className="grid grid-cols-2 gap-3">
                     <Input
