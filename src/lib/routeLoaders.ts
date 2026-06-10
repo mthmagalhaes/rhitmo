@@ -21,6 +21,7 @@ export const loadHRDashboard = () => import('@/pages/HRDashboard');
 export const loadCompetencyFramework = () => import('@/pages/CompetencyFramework');
 export const loadHRTeams = () => import('@/pages/HRTeams');
 export const loadHRMembers = () => import('@/pages/HRMembers');
+export const loadHRPessoas = () => import('@/pages/HRPessoas');
 export const loadHRAnalytics = () => import('@/pages/HRAnalytics');
 export const loadTermsOfService = () => import('@/pages/TermsOfService');
 export const loadPrivacyPolicy = () => import('@/pages/PrivacyPolicy');
