@@ -501,6 +501,30 @@ Deno.serve(async (req) => {
       .eq("user_id", userId)
       .lt("start_time", oneHourAgo);
 
+    // ── Limpa órfãos: eventos que sumiram do Google (cancelados/deletados antes do start_time) ──
+    // Lista todos os google_event_id vistos no payload e deleta o que não aparece mais
+    // dentro da janela 48h (sempre que start_time ainda está no futuro).
+    const seenEventIds = new Set<string>();
+    for (const ev of allEvents) {
+      if (ev.id) seenEventIds.add(ev.id as string);
+    }
+    const { data: existingFuture } = await supabaseAdmin
+      .from("upcoming_meetings")
+      .select("id, google_event_id, start_time")
+      .eq("user_id", userId)
+      .gte("start_time", now.toISOString())
+      .lte("start_time", in48h.toISOString());
+
+    const orphanIds = (existingFuture || [])
+      .filter((r) => r.google_event_id && !seenEventIds.has(r.google_event_id))
+      .map((r) => r.id);
+
+    if (orphanIds.length > 0) {
+      console.log(`[sync] Deletando ${orphanIds.length} reuniões órfãs (sumiram do Google Calendar)`);
+      await supabaseAdmin.from("upcoming_meetings").delete().in("id", orphanIds);
+    }
+
+
     return new Response(
       JSON.stringify({
         meetings: matchedMeetings,
