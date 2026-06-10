@@ -172,8 +172,24 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Schedule bot via Recall.ai API
-    const joinAt = new Date(new Date(start_time).getTime() - 2 * 60 * 1000).toISOString();
+    // Schedule bot via Recall.ai API.
+    // Normal: join 2min antes do start. Retroativo / start já passou: agora + 30s
+    // (Recall exige join_at no futuro). Limite: só permite retroativo se start_time
+    // está dentro dos últimos 45min, senão recusa.
+    const startMs = new Date(start_time).getTime();
+    const nowMs = Date.now();
+    const minutesSinceStart = (nowMs - startMs) / 60_000;
+
+    if (triggerSource === "manual_retroactive" && minutesSinceStart > 45) {
+      return new Response(JSON.stringify({
+        error: "A reunião começou há mais de 45 minutos. Não dá pra recuperar com bot retroativo.",
+      }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const idealJoin = startMs - 2 * 60 * 1000;
+    const joinAt = idealJoin > nowMs
+      ? new Date(idealJoin).toISOString()
+      : new Date(nowMs + 30 * 1000).toISOString();
 
     const recallResponse = await fetch("https://us-west-2.recall.ai/api/v1/bot/", {
       method: "POST",
