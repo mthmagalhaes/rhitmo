@@ -864,7 +864,4 @@ export const AdminUsers = () => {
 
     </div>
   );
-
-};
-
 };
