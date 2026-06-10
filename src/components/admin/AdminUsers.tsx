@@ -28,7 +28,9 @@ import { useImpersonation } from '@/hooks/useImpersonation';
 import { CustomAvatar } from '@/components/avatar/CustomAvatar';
 import { AVATAR_VARIANTS } from '@/components/avatar/avatarData';
 import type { PlanTier } from '@/types/team';
-import { DataExportCard } from './AdminAccessParts';
+import { DataExportCard, HRAdminInviteCard, HRAdminsListCard } from './AdminAccessParts';
+import { SuperAdminsCard } from './SuperAdminsCard';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface CapEntry { id?: string; name?: string; team_id?: string; team_name?: string; workspace_name?: string; workspace_id?: string; member_id?: string; member_name?: string; }
 
@@ -77,6 +79,7 @@ const SEGMENT_STYLES: Record<string, string> = {
 export const AdminUsers = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [tab, setTab] = useState<'usuarios' | 'convites' | 'acesso'>('usuarios');
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -457,44 +460,49 @@ export const AdminUsers = () => {
           Painel admin
         </div>
         <h1 className="font-serif text-2xl font-bold tracking-tight">Pessoas</h1>
-        <p className="text-sm text-muted-foreground">Gestão completa de usuários, workspaces e clientes.</p>
+        <p className="text-sm text-muted-foreground">Usuários, convites e governança de acesso.</p>
       </header>
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[220px] max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Buscar nome, email, ID, cliente, workspace..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
-        </div>
-        <Select value={capFilter} onValueChange={v => setCapFilter(v as CapFilter)}>
-          <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder="Papel" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os papéis</SelectItem>
-            <SelectItem value="super_admin">Super Admin</SelectItem>
-            <SelectItem value="owner">Owners</SelectItem>
-            <SelectItem value="hr_admin">HR Admins</SelectItem>
-            <SelectItem value="leader">Líderes</SelectItem>
-            <SelectItem value="member">Liderados</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={statusFilter} onValueChange={v => setStatusFilter(v as StatusFilter)}>
-          <SelectTrigger className="w-[130px] h-9"><SelectValue placeholder="Status" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os status</SelectItem>
-            <SelectItem value="active">Ativo</SelectItem>
-            <SelectItem value="suspended">Suspenso</SelectItem>
-            <SelectItem value="no_workspace">Sem workspace</SelectItem>
-          </SelectContent>
-        </Select>
-        <div className="ml-auto flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={exportCSV} className="gap-2 h-9">
-            <Download className="h-4 w-4" /> Exportar CSV
-          </Button>
-          <Button size="sm" onClick={() => setInviteOpen(true)} className="gap-2 h-9">
-            <UserPlus className="h-4 w-4" /> Convidar líder
-          </Button>
-        </div>
-      </div>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
+        <TabsList className="rounded-xl">
+          <TabsTrigger value="usuarios">Usuários</TabsTrigger>
+          <TabsTrigger value="convites">Convites</TabsTrigger>
+          <TabsTrigger value="acesso">Acesso & Governança</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="usuarios" className="mt-4 space-y-6">
+          {/* Filters */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[220px] max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Buscar nome, email, ID, cliente, workspace..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
+            </div>
+            <Select value={capFilter} onValueChange={v => setCapFilter(v as CapFilter)}>
+              <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder="Papel" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os papéis</SelectItem>
+                <SelectItem value="super_admin">Super Admin</SelectItem>
+                <SelectItem value="owner">Owners</SelectItem>
+                <SelectItem value="hr_admin">HR Admins</SelectItem>
+                <SelectItem value="leader">Líderes</SelectItem>
+                <SelectItem value="member">Liderados</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={v => setStatusFilter(v as StatusFilter)}>
+              <SelectTrigger className="w-[130px] h-9"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os status</SelectItem>
+                <SelectItem value="active">Ativo</SelectItem>
+                <SelectItem value="suspended">Suspenso</SelectItem>
+                <SelectItem value="no_workspace">Sem workspace</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="ml-auto flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={exportCSV} className="gap-2 h-9">
+                <Download className="h-4 w-4" /> Exportar CSV
+              </Button>
+            </div>
+          </div>
 
 
       <Card>
