@@ -359,9 +359,8 @@ export default function HRPessoas() {
       />
       <BulkOnboardDialog
         open={bulkDialogOpen}
-        onOpenChange={setBulkDialogOpen}
-        workspaceId={workspaceId}
-        onSuccess={onInviteSuccess}
+        onOpenChange={(o) => { setBulkDialogOpen(o); if (!o) onInviteSuccess(); }}
+        workspaceNames={[workspaceName]}
       />
       <InviteHRAdminDialog
         open={hrDialogOpen}
