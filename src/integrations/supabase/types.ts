@@ -3496,6 +3496,26 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_workspace_people: {
+        Args: { p_workspace_id: string }
+        Returns: {
+          avatar_url: string
+          created_at: string
+          email: string
+          full_name: string
+          invite_status: string
+          last_activity_at: string
+          leader_name: string
+          leader_user_id: string
+          member_id: string
+          roles: string[]
+          status: string
+          team_count: number
+          team_id: string
+          team_name: string
+          user_id: string
+        }[]
+      }
       get_workspace_teams_overview: {
         Args: { _workspace_id: string }
         Returns: {
