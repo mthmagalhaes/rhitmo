@@ -1,124 +1,91 @@
-## Objetivo
+## Contexto
 
-Transformar a aba "Liderados" do painel RH num **diretório único de pessoas do workspace** (Owner + HR Admins + Líderes + Liderados), com papéis como coluna/filtro — espelhando o padrão de `/admin` mas com escopo intra-workspace. `/admin` (super-admin Rhitmo, cross-workspace) permanece intocado.
+A nova `/hr/pessoas` ganhou a visão unificada (Owner/HR/Líder/Liderado) mas perdeu 3 coisas que existiam em `/hr/members`:
 
-## Princípios de não-quebra
+1. **Status Rhitmo Sync** ("Sync pendente" vs feito) por pessoa.
+2. **Status de vínculo** ("Vinculado" vs "Convite pendente") — hoje só temos `status`, sem distinguir liderado **convidado e não logado** de liderado **vinculado a um user**.
+3. **Coluna Ações** (`Ver` + `⋯` com Editar, Mover de time, Reenviar convite, Reenviar Sync, Remover). Inclua a opção reset de senha que só tem hoje para Super admin
 
-1. **Aditivo primeiro, destrutivo por último.** Nova página coexiste com a antiga até validação.
-2. **Reuso máximo.** `AdminUsers.tsx` é referência de UX, não de código — copiamos o padrão, não a tabela (escopo e RLS são diferentes).
-3. **Zero mudança em `/admin`, `/lider/*`, `/liderado/*`.** Apenas `/hr/*` muda.
-4. **RLS via RPC `SECURITY DEFINER`** com `workspace_id` fixado pelo guard — sem expor políticas novas em tabelas existentes.
-5. **Convites continuam usando as 3 edge functions existentes** (`admin-invite-user`, `invite-hr-admin`, `bulk-onboard`/`admin-invite-user` p/ líder) — só muda o ponto de entrada.
+Avaliação rápida (PM + UX + Cofounder):
 
-## Faseamento
+- **PM:** sem ações inline a página vira read-only, e RH perde o trabalho diário (mexer em time/liderança, cobrar Sync). Bloqueador.
+- **UX:** padrão correto é coluna "Ações" à direita + clique na linha abre **Sheet lateral** (mesmo padrão Linear/Notion). Reaproveitar `MemberAdminSheet` que já existe e a memória `member-admin-sheet-rhitmo-sync` documenta — evita refazer Sync UI.
+- **Cofounder técnico:** só precisamos expandir 2 colunas no RPC `get_workspace_people` (`has_sync`, `is_linked`) e plugar componentes já existentes (`MemberAdminSheet`, `EditMemberDialog`). Sem nova tabela, sem nova edge function.
 
-### Fase 1 — Backend (RPC + nada destrutivo)
+Importante: ações de **Líder/HR/Owner** são diferentes das de **Liderado** (não dá pra "mover de time" um Owner). Vamos diferenciar por papel.
 
-**Nova RPC `get_workspace_people(p_workspace_id uuid)`** — `SECURITY DEFINER`, valida que `auth.uid()` é Owner ou HR Admin do workspace antes de retornar. Retorna 1 row por pessoa com:
+---
 
-- `user_id`, `full_name`, `email`, `avatar_url`
-- `roles[]` agregado: `owner` | `hr_admin` | `leader` | `member` (uma pessoa pode ter várias)
-- `team_id`, `team_name` (do `team_members` quando aplicável; primeiro time se múltiplos)
-- `leader_user_id`, `leader_name` (do `teams.leader_user_id`)
-- `status`: `active` | `pending_invite` | `unlinked` (placeholder)
-- `last_activity_at` (max de last_sign_in / last feedback / last meeting)
-- `created_at` do vínculo mais antigo
+## Plano
 
-Fontes agregadas em UNION:
-- `workspaces.owner_id` → role `owner`
-- `unnest(workspaces.hr_admin_ids)` → role `hr_admin`
-- `teams.leader_user_id` (DISTINCT) → role `leader`
-- `team_members.linked_user_id` (where `workspace_id=p_workspace_id`) → role `member`
-- `team_members` sem `linked_user_id` mas com `pending_email` → status `pending_invite`
+### Fase 1 — Backend (1 migration, aditiva)
 
-Sem novas tabelas. Sem novas policies em tabelas existentes.
+Atualizar `public.get_workspace_people(p_workspace_id)` para retornar 2 colunas novas:
 
-### Fase 2 — Frontend (nova página, antiga preservada)
+- `has_sync boolean` — `team_members.skills_data IS NOT NULL OR job_crafting_profile IS NOT NULL` (mesma regra usada hoje em `/hr/members`).
+- `is_linked boolean` — `team_members.linked_user_id IS NOT NULL`.
 
-**Nova rota `/hr/pessoas`** apontando para `src/pages/HRPessoas.tsx` (nova). `HRMembers.tsx` permanece acessível em `/hr/members` durante a transição (link no sidebar HR passa a apontar para `/hr/pessoas`, mas a rota antiga responde).
+Nenhuma policy/grant novo. Atualizar `WorkspacePerson` em `useWorkspacePeople.ts`.
 
-**`HRPessoas.tsx`** — segue padrão visual de `AdminUsers.tsx` (memo `admin/management-tools`) mas adaptado ao workspace:
+### Fase 2 — UI: novas colunas de status
 
-- Header com 5 filtros: busca (nome/email), **papel** (multi: Owner/HR/Líder/Liderado/Sem líder), **time**, **líder**, **status** (Ativo/Convite pendente).
-- Segmentos clicáveis acima da tabela: `Todos · Liderados · Líderes · HR · Sem líder · Convites pendentes`.
-- Botão primário **"Convidar"** (split-button): Liderado / Líder / HR Admin → abre os 3 dialogs/wizards existentes.
-- Colunas: Pessoa (avatar+nome+email) · Time · Líder · **Papéis** (chips coloridos seguindo memo `papeis-e-permissoes`) · Status · Última atividade · Ações.
-- Row click → reaproveita `MemberAdminSheet` quando a pessoa é Liderado; para Líder/HR, sheet leve com dados do workspace (sem campos comportamentais — esses são só de Liderado).
-- Export CSV reusa `src/lib/csvExport.ts`.
+Em `HRPessoas.tsx`:
 
-**Sidebar HR** (`AppSidebar.tsx`, seção HR): item "Liderados" vira **"Pessoas"** apontando para `/hr/pessoas`. `/hr/teams` permanece como complemento estrutural.
+- Coluna **Status** passa a mostrar 2 chips empilhados para liderados:
+  - Vínculo: `Vinculado` (emerald) / `Convite pendente` (amber) / `Não vinculado` (slate, quando criado sem email).
+  - Sync: `Sync ✓` (emerald sutil) / `Sync pendente` (amber sutil).
+  - Para Owner/HR/Líder puros: só o chip `Ativo` (como hoje).
+- Nova métrica no segmento: contador "Sync pendente" (clicável) ao lado de "Convites pendentes".
 
-### Fase 3 — Migração e cleanup
+### Fase 3 — Coluna "Ações" + Sheet lateral
 
-Após 1–2 semanas de uso validado:
-- `/hr/members` redireciona para `/hr/pessoas`.
-- `HRMembers.tsx` removido (manter PR separado para reverter rápido se necessário).
+Adicionar coluna final `Ações` com:
+
+- **Clique na linha** (qualquer célula exceto a coluna ações) → abre Sheet lateral.
+  - Se a pessoa tem `member_id` (é liderado) → reaproveita `MemberAdminSheet` existente (já tem Rhitmo Sync, reenviar pesquisa, perfil).
+  - Se é só Líder/HR/Owner sem `member_id` → Sheet leve novo (`WorkspacePersonSheet`) com: nome, e-mail, papéis, workspaces, botão "Editar nome/e-mail" (reusa `admin-update-user`), "Remover papel HR" (quando aplicável).
+- **Botão `⋯**` (DropdownMenu) na própria linha, com itens contextuais ao papel:
+  - Liderado: Ver perfil · Editar (nome/time/cargo) · Mover de time · Transferir liderança · Reenviar convite (se pendente) · Reenviar Rhitmo Sync (se `!has_sync`) · Remover.
+  - Líder: Ver perfil · Editar nome/e-mail · Remover papel de líder (se também é liderado, mantém o cadastro).
+  - HR Admin: Ver perfil · Remover papel HR (não permite remover o último HR/Owner — guarda).
+  - Owner: Ver perfil (só leitura; transferir Owner fica fora de escopo, já existe em outro lugar).
+
+Reaproveitar componentes existentes:
+
+- `EditMemberDialog` para editar liderado (nome, time, cargo).
+- `admin-update-user` edge function para editar nome/e-mail de qualquer usuário.
+- `invite-hr-admin` com `action: 'revoke'` para remover papel HR.
+- Lógica de remover liderado e reenviar Sync já existe em `useResendRhitmoSync` e no padrão de `HRMembers.tsx` (copiar `handleDelete` + `handleResendSyncOne`).
+
+### Fase 4 — Limpeza visual
+
+- "Mover de time" e "Transferir liderança" abrem o mesmo `EditMemberDialog` (já suporta `team_id` e troca de líder via `leader_user_id` no time-pai? — confirmar; se não suportar troca de líder direto, abrir submenu com select de líderes do workspace e gravar via `team_members.leader_override` ou trocar `team_id` para um time do novo líder; manter comportamento idêntico ao `/hr/members` atual).
+- Manter o card Bento/`rounded-2xl`, sem regressão visual.
+
+---
 
 ## Detalhes técnicos
 
-### RPC (sketch)
+**Arquivos a criar:**
 
-```sql
-CREATE OR REPLACE FUNCTION public.get_workspace_people(p_workspace_id uuid)
-RETURNS TABLE (
-  user_id uuid, full_name text, email text, avatar_url text,
-  roles text[], team_id uuid, team_name text,
-  leader_user_id uuid, leader_name text,
-  status text, last_activity_at timestamptz, created_at timestamptz
-)
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
-AS $$
-BEGIN
-  IF NOT (
-    EXISTS (SELECT 1 FROM workspaces w
-            WHERE w.id = p_workspace_id
-              AND (w.owner_id = auth.uid()
-                   OR auth.uid() = ANY(COALESCE(w.hr_admin_ids, '{}'::uuid[]))))
-  ) THEN
-    RAISE EXCEPTION 'forbidden' USING ERRCODE = '42501';
-  END IF;
-  -- UNION das 4 fontes + agregação por user_id ...
-END $$;
+- `src/components/hr/WorkspacePersonSheet.tsx` — sheet leve p/ Líder/HR/Owner.
+- `supabase/migrations/<ts>_get_workspace_people_v2.sql` — atualiza a função (CREATE OR REPLACE).
 
-GRANT EXECUTE ON FUNCTION public.get_workspace_people(uuid) TO authenticated;
-```
+**Arquivos a editar:**
 
-### Componentes novos / alterados
+- `src/hooks/useWorkspacePeople.ts` — adicionar `has_sync`, `is_linked`.
+- `src/pages/HRPessoas.tsx` — coluna Status nova, coluna Ações, DropdownMenu, integração com `MemberAdminSheet`, `EditMemberDialog`, confirm dialogs.
 
-- `src/pages/HRPessoas.tsx` (novo) — página principal.
-- `src/components/hr/PeopleTable.tsx` (novo) — tabela com filtros/segmentos.
-- `src/components/hr/InvitePersonMenu.tsx` (novo) — split-button reusando dialogs existentes.
-- `src/hooks/useWorkspacePeople.ts` (novo) — wrapper do `safeRpc('get_workspace_people')`.
-- `src/components/AppSidebar.tsx` — rótulo "Liderados" → "Pessoas", `to="/hr/pessoas"`.
-- `src/App.tsx` — registrar rota `/hr/pessoas` (mantendo `/hr/members`).
+**Sem mexer em:** `/admin`, `/hr/members` (mantém redirect), `MemberAdminSheet.tsx`, edge functions, RLS, `AccountContext`.
 
-### Não muda
+**Riscos / guardas:**
 
-- `/admin` e tudo em `src/components/admin/*`.
-- RLS de `team_members`, `workspaces`, `teams`, `feedbacks`, etc.
-- `HRAdminGuard` (já permite Owner + HR).
-- `AccountContext` / `useUserRole` / `useEffectiveUser`.
-- Edge functions de convite.
+- Não permitir remover o último HR Admin nem o Owner do workspace (validação client + a edge `invite-hr-admin` já valida server-side).
+- Para pessoas com múltiplos papéis (ex.: Líder + Liderado), o menu mostra ações dos dois papéis numa única lista com separadores.
+- Performance: a coluna Sync já vem do RPC, então não há N+1.
 
-### Riscos e mitigações
+**Tente incluir (ou se ficar muito grande com risco de quebrar, fazemos na próxima sprint):**
 
-| Risco | Mitigação |
-|---|---|
-| Vazamento cross-workspace | RPC `SECURITY DEFINER` valida Owner/HR antes de qualquer SELECT; `workspace_id` vem do guard, não do client. |
-| Duplicação de pessoa com múltiplos papéis | Agregação por `user_id` no RPC; `roles[]` como array. |
-| Líder em vários times | Mostrar primeiro time + chip "+N times"; sheet detalha. |
-| Performance em workspace grande | RPC com `LIMIT/OFFSET` no client (paginação ou virtualização); índices já existentes em `team_members.workspace_id` e `teams.workspace_id`. |
-| Quebrar bookmarks de `/hr/members` | Rota antiga preservada com redirect na Fase 3. |
-
-## Verificação por fase
-
-- **Fase 1:** chamar RPC como Owner, HR Admin, Líder puro, Liderado puro → só Owner/HR retornam dados; cross-workspace bloqueado.
-- **Fase 2:** abrir `/hr/pessoas` com cada papel — Owner/HR veem; Líder puro/Liderado são bloqueados pelo `HRAdminGuard` existente. Convites criam linhas corretas. CSV exporta filtrado.
-- **Fase 3:** `/hr/members` redireciona; sem regressão no `/admin` nem no `/lider/*`.
-
-## Fora de escopo desta entrega
-
-- Mudar política de "Owner enxerga tudo" em `/lider/*` (já existe e funciona).
-- Billing / segmentos comerciais (são de `/admin`, não de `/hr`).
-- Impersonation (só super-admin).
-- Edição inline de papéis na tabela — Fase 4 futura.
+- Edição inline de papéis (promover Liderado→HR direto da tabela).
+- Transferência de Owner.
+- Bulk actions (checkbox + ações em massa) — a barra de seleção pode entrar numa Fase 5 se você quiser repetir o padrão do `/admin`.
