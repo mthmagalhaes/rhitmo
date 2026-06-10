@@ -4,16 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Loader2 } from 'lucide-react';
-import { AdminStructure } from './AdminStructure';
 import { HRAdminInviteCard, HRAdminsListCard } from './AdminAccessParts';
 import { useAdminCompaniesData } from '@/hooks/useAdminCompaniesData';
 import { CompanyCardsGrid } from './companies/CompanyCardsGrid';
-import { CompanyOrgChart } from './companies/CompanyOrgChart';
 import { PendingChecklistTable } from './companies/PendingChecklistTable';
 import { NewCompanyWizard } from './wizards/NewCompanyWizard';
-import { WorkspaceAccessAudit } from './companies/WorkspaceAccessAudit';
 
-type SubTab = 'cards' | 'orgchart' | 'pending' | 'access' | 'legacy';
+type SubTab = 'cards' | 'pending';
 
 export const AdminWorkspaces = () => {
   const data = useAdminCompaniesData();
@@ -21,7 +18,7 @@ export const AdminWorkspaces = () => {
   const [search, setSearch] = useState('');
   const [segment, setSegment] = useState('all');
   const [status, setStatus] = useState<'all' | 'active' | 'inactive'>('all');
-  const [orgChartWs, setOrgChartWs] = useState<string | null>(null);
+  const [pendingWsFilter, setPendingWsFilter] = useState<string | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
 
   const filteredWorkspaces = data.workspaces.filter((w) => {
@@ -46,7 +43,7 @@ export const AdminWorkspaces = () => {
           <div>
             <h1 className="text-2xl font-serif tracking-tight">Empresas</h1>
             <p className="text-sm text-muted-foreground">
-              Cards, organograma e pendências de cada empresa cadastrada.
+              Cards e pendências de cada empresa cadastrada.
             </p>
           </div>
           <Button onClick={() => setWizardOpen(true)} className="rounded-xl gap-2">
@@ -88,10 +85,7 @@ export const AdminWorkspaces = () => {
         <Tabs value={tab} onValueChange={(v) => setTab(v as SubTab)}>
           <TabsList className="rounded-xl">
             <TabsTrigger value="cards">Cards</TabsTrigger>
-            <TabsTrigger value="orgchart">Organograma</TabsTrigger>
             <TabsTrigger value="pending">O que falta</TabsTrigger>
-            <TabsTrigger value="access">Acessos</TabsTrigger>
-            <TabsTrigger value="legacy">Estrutura (legado)</TabsTrigger>
           </TabsList>
 
           <TabsContent value="cards" className="mt-4">
@@ -101,21 +95,7 @@ export const AdminWorkspaces = () => {
               <CompanyCardsGrid
                 workspaces={filteredWorkspaces}
                 healthByWorkspace={data.healthByWorkspace}
-                onOpenOrgChart={(id) => { setOrgChartWs(id); setTab('orgchart'); }}
-              />
-            )}
-          </TabsContent>
-
-          <TabsContent value="orgchart" className="mt-4">
-            {data.isLoading ? (
-              <Loading />
-            ) : (
-              <CompanyOrgChart
-                workspaces={filteredWorkspaces}
-                teams={data.teams}
-                members={data.members}
-                getUserLabel={data.getUserLabel}
-                initialWorkspaceId={orgChartWs}
+                onOpenOrgChart={(id) => { setPendingWsFilter(id); setTab('pending'); }}
               />
             )}
           </TabsContent>
@@ -128,26 +108,11 @@ export const AdminWorkspaces = () => {
                 rows={data.pendingRows.filter((r) =>
                   filteredWorkspaces.some((w) => w.id === r.workspaceId),
                 )}
-                workspaceFilter={orgChartWs || 'all'}
-                onWorkspaceFilterChange={(v) => setOrgChartWs(v === 'all' ? null : v)}
+                workspaceFilter={pendingWsFilter || 'all'}
+                onWorkspaceFilterChange={(v) => setPendingWsFilter(v === 'all' ? null : v)}
                 workspaces={filteredWorkspaces}
               />
             )}
-          </TabsContent>
-
-          <TabsContent value="access" className="mt-4">
-            {data.isLoading ? (
-              <Loading />
-            ) : (
-              <WorkspaceAccessAudit
-                workspaces={filteredWorkspaces}
-                initialWorkspaceId={orgChartWs}
-              />
-            )}
-          </TabsContent>
-
-          <TabsContent value="legacy" className="mt-4">
-            <AdminStructure />
           </TabsContent>
         </Tabs>
       </div>

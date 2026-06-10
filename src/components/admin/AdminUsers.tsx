@@ -28,6 +28,7 @@ import { useImpersonation } from '@/hooks/useImpersonation';
 import { CustomAvatar } from '@/components/avatar/CustomAvatar';
 import { AVATAR_VARIANTS } from '@/components/avatar/avatarData';
 import type { PlanTier } from '@/types/team';
+import { DataExportCard } from './AdminAccessParts';
 
 interface CapEntry { id?: string; name?: string; team_id?: string; team_name?: string; workspace_name?: string; workspace_id?: string; member_id?: string; member_name?: string; }
 
@@ -459,22 +460,6 @@ export const AdminUsers = () => {
         <p className="text-sm text-muted-foreground">Gestão completa de usuários, workspaces e clientes.</p>
       </header>
 
-      {/* Segment counters */}
-      <div className="flex flex-wrap items-center gap-2">
-        {(['beta', 'paid', 'trial', 'internal', 'test'] as const).map(seg => (
-          <button
-            key={seg}
-            onClick={() => setSegmentFilter(segmentFilter === seg ? 'all' : seg)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${SEGMENT_STYLES[seg]} ${segmentFilter === seg ? 'ring-2 ring-offset-1 ring-primary/40' : 'opacity-80 hover:opacity-100'}`}
-          >
-            {SEGMENT_LABELS[seg]}: {segmentCounts[seg]}
-          </button>
-        ))}
-        {segmentFilter !== 'all' && (
-          <button onClick={() => setSegmentFilter('all')} className="text-xs text-muted-foreground underline">limpar</button>
-        )}
-      </div>
-
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[220px] max-w-md">
@@ -501,15 +486,6 @@ export const AdminUsers = () => {
             <SelectItem value="no_workspace">Sem workspace</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={workspaceFilter} onValueChange={setWorkspaceFilter}>
-          <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="Workspace" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos workspaces</SelectItem>
-            {allWorkspaces.map(ws => (
-              <SelectItem key={ws.id} value={ws.id}>{ws.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
         <div className="ml-auto flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={exportCSV} className="gap-2 h-9">
             <Download className="h-4 w-4" /> Exportar CSV
@@ -519,6 +495,7 @@ export const AdminUsers = () => {
           </Button>
         </div>
       </div>
+
 
       <Card>
         <CardHeader>
@@ -849,6 +826,11 @@ export const AdminUsers = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <div className="pt-4">
+        <DataExportCard />
+      </div>
     </div>
   );
+
 };

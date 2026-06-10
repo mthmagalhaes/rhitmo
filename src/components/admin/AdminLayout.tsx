@@ -4,7 +4,6 @@ import {
   LayoutDashboard,
   Users,
   Building2,
-  Activity,
   LogOut,
   ShieldCheck,
 } from 'lucide-react';
@@ -21,11 +20,10 @@ interface AdminLayoutProps {
   onTabChange?: (tab: AdminTab) => void;
 }
 
-const TABS: Array<{ value: AdminTab; icon: React.ElementType; label: string; description: string }> = [
-  { value: 'overview', icon: LayoutDashboard, label: 'Visão geral', description: 'KPIs e alertas' },
-  { value: 'users', icon: Users, label: 'Pessoas', description: 'Usuários e papéis' },
-  { value: 'workspaces', icon: Building2, label: 'Workspaces', description: 'Times, membros e HR' },
-  { value: 'system', icon: Activity, label: 'Sistema', description: 'Saúde, logs e exportação' },
+const TABS: Array<{ value: AdminTab; icon: React.ElementType; label: string }> = [
+  { value: 'overview', icon: LayoutDashboard, label: 'Visão geral' },
+  { value: 'users', icon: Users, label: 'Pessoas' },
+  { value: 'workspaces', icon: Building2, label: 'Empresas' },
 ];
 
 export const AdminLayout = ({ children, activeTab, onTabChange }: AdminLayoutProps) => {
@@ -48,7 +46,6 @@ export const AdminLayout = ({ children, activeTab, onTabChange }: AdminLayoutPro
   return (
     <div className="flex min-h-screen w-full bg-background">
       <aside className="w-60 bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex flex-col">
-        {/* Header */}
         <div className="px-4 pt-5 pb-3 flex items-center gap-2">
           <RhitmoLogo size="sm" className="text-primary" />
           <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
@@ -57,7 +54,6 @@ export const AdminLayout = ({ children, activeTab, onTabChange }: AdminLayoutPro
           </div>
         </div>
 
-        {/* Nav */}
         <nav className="px-2 flex flex-col gap-0.5">
           {TABS.map((tab) => {
             const Icon = tab.icon;
@@ -81,7 +77,6 @@ export const AdminLayout = ({ children, activeTab, onTabChange }: AdminLayoutPro
           })}
         </nav>
 
-        {/* User block ancorado logo abaixo da nav (não no rodapé da viewport) */}
         <div className="mt-3 mx-2 pt-3 border-t border-sidebar-border/60 space-y-1">
           <div className="flex items-center gap-2 px-2 py-1.5 rounded-xl">
             <div className="h-7 w-7 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[11px] font-semibold shrink-0">
@@ -100,9 +95,11 @@ export const AdminLayout = ({ children, activeTab, onTabChange }: AdminLayoutPro
           >
             <LogOut className="h-3.5 w-3.5" /> Sair
           </Button>
+          <p className="px-2 pt-1 text-[10px] text-muted-foreground/70">
+            Logs: <a href="/admin/logs" className="underline hover:text-foreground">/admin/logs</a>
+          </p>
         </div>
 
-        {/* Spacer ocupa o resto da viewport sem afastar visualmente o Sair da nav */}
         <div className="flex-1" />
       </aside>
 

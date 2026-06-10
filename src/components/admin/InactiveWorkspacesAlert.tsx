@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { AlertTriangle } from 'lucide-react';
 
 export const InactiveWorkspacesAlert = () => {
@@ -41,16 +40,10 @@ export const InactiveWorkspacesAlert = () => {
           <p className="font-medium text-amber-700 dark:text-amber-400">
             {alerts.inactiveWorkspaces} workspace{alerts.inactiveWorkspaces > 1 ? 's' : ''} sem atividade há 30+ dias
           </p>
-          <p className="text-sm text-muted-foreground">Verifique na aba Inteligência para detalhes</p>
+          <p className="text-sm text-muted-foreground">
+            Veja em Empresas &gt; O que falta para detalhes de cada uma.
+          </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="ml-auto"
-          onClick={() => window.dispatchEvent(new CustomEvent('admin-tab-change', { detail: 'intelligence' }))}
-        >
-          Ver detalhes
-        </Button>
       </CardContent>
     </Card>
   );
