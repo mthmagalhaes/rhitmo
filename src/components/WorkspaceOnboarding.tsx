@@ -104,7 +104,7 @@ export function WorkspaceOnboarding({ userId, userMetadata, onComplete }: Worksp
       });
 
       // Clear persona intent now that the leader workspace is set up.
-      try { localStorage.removeItem('signup_persona'); } catch { /* ignore */ }
+      clearSignupPersona();
 
       onComplete();
     } catch (error: any) {

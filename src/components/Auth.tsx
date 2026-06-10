@@ -11,6 +11,7 @@ import { Loader2, MailCheck, Sparkles } from 'lucide-react';
 import { RhitmoLogo } from '@/components/RhitmoLogo';
 import { RhythmWave } from '@/components/RhythmWave';
 import { trackFunnel, trackSignupConversion } from '@/lib/analytics';
+import { setSignupPersona } from '@/lib/signupPersona';
 
 interface AuthProps {
   defaultMode?: 'login' | 'signup';

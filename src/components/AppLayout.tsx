@@ -10,6 +10,7 @@ import { LeaderTour } from '@/components/onboarding/LeaderTour';
 import { useAuth } from '@/hooks/useAuth';
 import { useAccount } from '@/contexts/AccountContext';
 import { AccountLoadFailed, AccountLoadingSlow, AccountLoadingDelayedBanner } from '@/components/AccountLoadFailed';
+import { getSignupPersona, clearSignupPersona } from '@/lib/signupPersona';
 
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -45,16 +46,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('rhitmo:start-tour', handler);
   }, []);
 
-  // Read persona intent from localStorage (set during signup persona selector or OAuth round-trip).
-  const [signupPersona, setSignupPersona] = useState<'leader' | 'hr_admin' | null>(() => {
-    if (typeof window === 'undefined') return null;
-    try {
-      const v = localStorage.getItem('signup_persona');
-      return v === 'leader' || v === 'hr_admin' ? v : null;
-    } catch {
-      return null;
-    }
-  });
+  // Read persona intent (set during signup persona selector or OAuth round-trip).
+  // Uses sessionStorage with localStorage fallback — see src/lib/signupPersona.ts.
+  const [signupPersona, setSignupPersonaState] = useState<'leader' | 'hr_admin' | null>(
+    () => getSignupPersona(),
+  );
 
   // CRITICAL: All context must be fully resolved before deciding on onboarding.
   const allContextResolved = !authLoading && !accountLoading;
@@ -99,8 +95,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const showActivity = !!user;
 
   const handleWorkspaceComplete = () => {
-    try { localStorage.removeItem('signup_persona'); } catch { /* ignore */ }
-    setSignupPersona(null);
+    clearSignupPersona();
+    setSignupPersonaState(null);
     refetchWorkspace();
     queryClient.invalidateQueries({ queryKey: ['workspace'] });
     queryClient.invalidateQueries({ queryKey: ['teams'] });
@@ -110,8 +106,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!allContextResolved) return;
     if (workspaceId || isLinkedMember || isHRAdmin) {
-      try { localStorage.removeItem('signup_persona'); } catch { /* ignore */ }
-      if (signupPersona !== null) setSignupPersona(null);
+      clearSignupPersona();
+      if (signupPersona !== null) setSignupPersonaState(null);
     }
   }, [allContextResolved, workspaceId, isLinkedMember, isHRAdmin, signupPersona]);
 
