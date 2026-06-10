@@ -224,6 +224,20 @@ Deno.serve(async (req) => {
     let eventsSkippedMultipleMembers = 0;
 
     for (const event of allEvents) {
+      // Skip eventos cancelados/declinados pelo organizador.
+      const eventStatus = (event.status as string) || "confirmed";
+      if (eventStatus === "cancelled") {
+        // Limpa upcoming_meetings se existia.
+        if (event.id) {
+          await supabaseAdmin
+            .from("upcoming_meetings")
+            .delete()
+            .eq("user_id", userId)
+            .eq("google_event_id", event.id as string);
+        }
+        continue;
+      }
+
       const attendees: Array<{ email: string; displayName?: string; resource?: boolean }> = (event.attendees as Array<{ email: string; displayName?: string; resource?: boolean }>) || [];
       const startObj = event.start as { dateTime?: string; date?: string } | undefined;
       const endObj = event.end as { dateTime?: string; date?: string } | undefined;
@@ -245,8 +259,7 @@ Deno.serve(async (req) => {
       }
 
       // ── 1:1 classification ──
-      // Count only HUMAN attendees other than the leader.
-      // Drop resources (rooms) and Google Calendar resource emails.
+      // Conta apenas HUMANOS além do líder (drop resources/salas).
       const humanOthers = allParticipants.filter((a) => {
         const e = (a.email || "").toLowerCase().trim();
         if (!e) return false;
@@ -256,8 +269,9 @@ Deno.serve(async (req) => {
         return true;
       });
 
-      // Group meeting (>2 other people) → not a 1:1, skip.
-      if (humanOthers.length > 2) {
+      // Group meeting (>3 outros humanos) → claramente grupo grande, skip.
+      // Antes era >2, mas 1:1 com 2 liderados (skip-level/mentoria conjunta) é legítimo.
+      if (humanOthers.length > 3) {
         eventsSkippedGroup++;
         if (eventsSkippedGroup <= 5) {
           console.log(`[sync] Skipping group event "${event.summary}" (${humanOthers.length} other attendees)`);
@@ -287,46 +301,74 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // More than one DISTINCT member matched → group meeting in disguise, skip.
-      if (matchedSet.size > 1) {
+      // Mais de 3 liderados na mesma reunião → grupo disfarçado, skip.
+      // Até 3: trata como 1:1 multi-membro e cria uma linha por liderado
+      // (skip-level, mentoria conjunta, pair). Bot é deduplicado por meeting_url
+      // mais abaixo, então só um bot será criado.
+      if (matchedSet.size > 3) {
         eventsSkippedMultipleMembers++;
-        console.log(`[sync] Skipping event "${event.summary}" — ${matchedSet.size} distinct members matched`);
+        console.log(`[sync] Skipping event "${event.summary}" — ${matchedSet.size} distinct members matched (>3)`);
         continue;
       }
 
-      const member = [...matchedSet.values()][0];
       const meetLink = extractMeetLink(event);
+      const matchedMembersArr = [...matchedSet.values()];
+      const isMultiMember = matchedMembersArr.length > 1;
 
-      const { data: upserted } = await supabaseAdmin
-        .from("upcoming_meetings")
-        .upsert(
-          {
-            user_id: userId,
-            member_id: member.id,
-            google_event_id: event.id as string,
-            title: (event.summary as string) || "Reunião",
-            start_time: startTime,
-            end_time: endTime || null,
-            meet_link: meetLink,
-            attendees: JSON.stringify(humanOthers.map((a) => a.email)),
-            synced_at: new Date().toISOString(),
-          },
-          { onConflict: "user_id,google_event_id,member_id" }
-        )
-        .select("id")
-        .single();
+      for (const member of matchedMembersArr) {
+        // Se reagendamento (start_time mudou > 15min) e brief já foi enviado,
+        // resetar brief_dm_sent_at para o orchestrator avisar de novo.
+        const { data: existingRow } = await supabaseAdmin
+          .from("upcoming_meetings")
+          .select("id, start_time, brief_dm_sent_at")
+          .eq("user_id", userId)
+          .eq("google_event_id", event.id as string)
+          .eq("member_id", member.id)
+          .maybeSingle();
 
-      matchedMeetings.push({
-        id: upserted?.id,
-        title: (event.summary as string) || "Reunião",
-        start_time: startTime,
-        end_time: endTime || null,
-        meet_link: meetLink,
-        member_id: member.id,
-        member_name: member.name,
-        member_role: member.role,
-      });
+        let resetBrief = false;
+        if (existingRow?.brief_dm_sent_at && existingRow.start_time) {
+          const oldMs = new Date(existingRow.start_time).getTime();
+          const newMs = new Date(startTime).getTime();
+          if (Math.abs(newMs - oldMs) > 15 * 60 * 1000) {
+            resetBrief = true;
+            console.log(`[sync] Meeting ${existingRow.id} rescheduled by ${Math.round((newMs - oldMs) / 60000)}min → resetando brief_dm_sent_at`);
+          }
+        }
+
+        const upsertPayload: Record<string, unknown> = {
+          user_id: userId,
+          member_id: member.id,
+          google_event_id: event.id as string,
+          title: (event.summary as string) || "Reunião",
+          start_time: startTime,
+          end_time: endTime || null,
+          meet_link: meetLink,
+          attendees: JSON.stringify(humanOthers.map((a) => a.email)),
+          synced_at: new Date().toISOString(),
+        };
+        if (resetBrief) upsertPayload.brief_dm_sent_at = null;
+
+        const { data: upserted } = await supabaseAdmin
+          .from("upcoming_meetings")
+          .upsert(upsertPayload, { onConflict: "user_id,google_event_id,member_id" })
+          .select("id")
+          .single();
+
+        matchedMeetings.push({
+          id: upserted?.id,
+          title: ((event.summary as string) || "Reunião") + (isMultiMember ? ` (+${matchedMembersArr.length - 1})` : ""),
+          start_time: startTime,
+          end_time: endTime || null,
+          meet_link: meetLink,
+          member_id: member.id,
+          member_name: member.name,
+          member_role: member.role,
+        });
+      }
     }
+
+
 
     console.log(`[sync] Results: ${matchedMeetings.length} matched, ${eventsSkippedNoAttendees} no attendees, ${eventsSkippedNoMatch} no member match, ${eventsSkippedGroup} group, ${eventsSkippedMultipleMembers} multi-member`);
 
