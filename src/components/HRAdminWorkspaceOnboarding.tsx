@@ -33,17 +33,50 @@ export function HRAdminWorkspaceOnboarding({ onComplete }: HRAdminWorkspaceOnboa
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.rpc('create_hr_admin_starter_workspace' as any, {
+      const { data: newWorkspaceId, error } = await supabase.rpc('create_hr_admin_starter_workspace' as never, {
         _workspace_name: workspaceName.trim(),
         _team_name: teamName.trim() || 'Primeiro time',
         _leader_email: leaderEmail.trim() || null,
-      });
+      } as never);
 
-      if (error) throw error;
+      if (error) {
+        const rawMsg = error.message || '';
+        if (/já possui (um )?workspace/i.test(rawMsg)) {
+          toast({
+            title: 'Você já tem um workspace ativo',
+            description: 'Redirecionando para o painel de RH.',
+          });
+          try { localStorage.removeItem('signup_persona'); } catch { /* ignore */ }
+          onComplete();
+          return;
+        }
+        throw error;
+      }
+
+      // Dispara convite Auth para o primeiro líder, agora que temos workspace_id.
+      // Sem isso, o líder ficaria registrado em team_members mas nunca receberia
+      // o e-mail de convite — gap G6 do diagnóstico.
+      if (leaderEmail.trim() && newWorkspaceId) {
+        try {
+          await supabase.functions.invoke('admin-invite-user', {
+            body: {
+              email: leaderEmail.trim().toLowerCase(),
+              name: leaderEmail.trim().split('@')[0],
+              role: 'leader',
+              workspace_id: newWorkspaceId,
+            },
+          });
+        } catch (inviteErr) {
+          console.warn('Falha ao enviar convite do líder:', inviteErr);
+          // Não bloqueia o onboarding — HR Admin pode reenviar depois.
+        }
+      }
 
       toast({
         title: 'Workspace criado!',
-        description: 'Sua visão inicial de RH está pronta.',
+        description: leaderEmail.trim()
+          ? `Convite enviado para ${leaderEmail.trim()}.`
+          : 'Sua visão inicial de RH está pronta.',
       });
 
       try { localStorage.removeItem('signup_persona'); } catch { /* ignore */ }
