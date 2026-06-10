@@ -46,7 +46,7 @@ export const LEADER_NAV_ITEMS: NavItem[] = [
  */
 export const HR_ADMIN_NAV_ITEMS: NavItem[] = [
   { id: 'overview', labelKey: 'nav.hr.overview', icon: LayoutDashboard, to: '/hr' },
-  { id: 'members', labelKey: 'nav.hr.members', icon: Users, to: '/hr/members' },
+  { id: 'members', labelKey: 'nav.hr.members', icon: Users, to: '/hr/pessoas' },
   { id: 'teams', labelKey: 'nav.hr.teams', icon: Building2, to: '/hr/teams' },
   { id: 'analytics', labelKey: 'nav.hr.analytics', icon: BarChart3, to: '/hr/analytics' },
   // Frameworks oculto no menu enquanto a feature não está pronta — rota continua viva.
