@@ -1,17 +1,19 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Plus, Trash2, Loader2, Search } from 'lucide-react';
+import { Plus, Trash2, Loader2, Search, AlertTriangle } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { UserMeta } from '@/hooks/useAdminCompaniesData';
+
 
 interface Props {
   open: boolean;
@@ -101,6 +103,26 @@ export const NewCompanyWizard = ({ open, onOpenChange, users }: Props) => {
         .slice(0, 8),
     [users, ownerSearch],
   );
+
+  // Warning quando o owner selecionado já é dono de outro(s) workspace(s).
+  // Não bloqueia — só avisa, porque pode ser intencional (múltiplas empresas).
+  const [ownerExistingWorkspaces, setOwnerExistingWorkspaces] = useState<
+    { id: string; name: string }[]
+  >([]);
+  useEffect(() => {
+    if (!ownerId) { setOwnerExistingWorkspaces([]); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('workspaces')
+        .select('id, name')
+        .eq('owner_id', ownerId)
+        .eq('is_active', true);
+      if (!cancelled) setOwnerExistingWorkspaces(data ?? []);
+    })();
+    return () => { cancelled = true; };
+  }, [ownerId]);
+
 
   const inviteByEmail = async (email: string, fullName: string | null, role: 'owner' | 'hr_admin' | 'leader', workspace_id?: string) => {
     const { data, error } = await supabase.functions.invoke('admin-invite-user', {
@@ -291,6 +313,23 @@ export const NewCompanyWizard = ({ open, onOpenChange, users }: Props) => {
                       <div className="px-3 py-4 text-xs text-muted-foreground">Nenhum resultado</div>
                     )}
                   </div>
+
+                  {ownerId && ownerExistingWorkspaces.length > 0 && (
+                    <Alert className="rounded-xl border-amber-300 bg-amber-50 text-amber-900">
+                      <AlertTriangle className="h-4 w-4 !text-amber-700" />
+                      <AlertDescription className="text-xs">
+                        Este usuário já é Owner de {ownerExistingWorkspaces.length} workspace
+                        {ownerExistingWorkspaces.length > 1 ? 's' : ''} ativo
+                        {ownerExistingWorkspaces.length > 1 ? 's' : ''}
+                        {ownerExistingWorkspaces.length <= 3 && (
+                          <> ({ownerExistingWorkspaces.map((w) => w.name).join(', ')})</>
+                        )}
+                        . Continuar criará um novo — confirme que é intencional.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+
 
                   <div className="text-xs text-muted-foreground pt-4">— ou convidar por e-mail —</div>
                   <div className="grid grid-cols-2 gap-3">

@@ -58,6 +58,7 @@ const AuthPage = () => {
           const { data } = await supabase
             .from('workspaces')
             .select('id')
+            .eq('owner_id', user.id)
             .maybeSingle();
           if (data) {
             workspace = data;
@@ -65,6 +66,7 @@ const AuthPage = () => {
           }
           await new Promise((r) => setTimeout(r, 500));
         }
+
 
         if (!workspace) {
           navigate(home, { replace: true });

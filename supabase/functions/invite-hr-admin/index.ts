@@ -5,6 +5,8 @@
 //   resend: gera novo link de convite via generateLink (não falha se já existe).
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { findUserByEmail } from '../_shared/findUserByEmail.ts';
+
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -57,13 +59,13 @@ serve(async (req) => {
       throw new Error('Sem permissão para gerenciar HR Admins deste workspace');
     }
 
-    // 3) Procura usuário existente via admin.listUsers.
+    // 3) Procura usuário existente via helper paginado compartilhado.
     let targetUserId: string | null = null;
     {
-      const { data: list } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
-      const match = list?.users?.find((u) => u.email?.toLowerCase() === normalizedEmail);
-      targetUserId = match?.id ?? null;
+      const found = await findUserByEmail(supabaseAdmin, normalizedEmail);
+      targetUserId = found?.id ?? null;
     }
+
 
     let invited = false;
     let resent = false;
