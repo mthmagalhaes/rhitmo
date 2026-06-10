@@ -65,11 +65,7 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
 
   // Persist persona for OAuth round-trip
   if (typeof window !== 'undefined' && persona) {
-    try {
-      localStorage.setItem('signup_persona', persona);
-    } catch {
-      // ignore
-    }
+    setSignupPersona(persona);
   }
 
   const personaTitle = isSignUp && persona === 'leader'
