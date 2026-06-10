@@ -3214,6 +3214,10 @@ export type Database = {
         Returns: string
       }
       debug_context_access: { Args: { _workspace_id?: string }; Returns: Json }
+      delete_archived_member: {
+        Args: { p_member_id: string }
+        Returns: undefined
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
