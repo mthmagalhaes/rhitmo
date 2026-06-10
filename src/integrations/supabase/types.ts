@@ -3503,7 +3503,9 @@ export type Database = {
           created_at: string
           email: string
           full_name: string
+          has_sync: boolean
           invite_status: string
+          is_linked: boolean
           last_activity_at: string
           leader_name: string
           leader_user_id: string
