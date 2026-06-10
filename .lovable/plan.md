@@ -1,53 +1,86 @@
-# Arquivar liderado em /lider/pessoas — diagnóstico + fix
+## Diagnóstico (UX + benchmark)
 
-## O que está acontecendo
+Olhando o painel atual e comparando com benchmarks de super admin (Linear, Stripe Dashboard, Vercel, Notion Admin, WorkOS), encontramos 4 problemas estruturais:
 
-Reproduzi o caminho do código. **O arquivamento funciona no banco** — o `UPDATE team_members SET archived_at = now()` roda com sucesso (por isso o toast "1 liderado(s) arquivado(s)" aparece). O que está quebrado é o **refresh da lista no front**:
+1. **Empresas em cards centralizados** — bom para 5 empresas, ruim para 50+. Benchmarks usam **lista densa/tabela** como visão primária (escaneabilidade, ordenação, comparação de números). Cards viram "modo opcional" ou ficham embaixo da linha clicada.
+2. **Botão "Organograma" engana** — ele não abre um organograma; só pula para a aba "O que falta" filtrada pela empresa. Isso quebra expectativa e não tem caminho de volta óbvio.
+3. **Convites espalhados** — "Convidar líder" mora em Pessoas, "Convidar HR Admin" mora em Empresas (junto com lista de HR Admins ativos). Super admin não deveria caçar onde convidar cada papel.
+4. **Governança escondida em Empresas** — "HR Admins ativos" não pertence ao escopo da aba Empresas; é uma visão de **pessoas com privilégio elevado**, o que em Stripe/Vercel/WorkOS vive em "Team" / "Members" / "Access".
 
-- A query real da tabela de Pessoas usa a key `['team-members-leader-scope', workspaceId, teamIds, includeArchived]` (`src/hooks/useLeaderMembers.ts:85`).
-- Mas tanto o `refresh()` em `src/pages/lider/Pessoas.tsx:180` quanto o `MemberAdminSheet` (`src/components/leader/MemberAdminSheet.tsx:146`) invalidam keys antigas/erradas (`['team-members', workspaceId]` e `['leader-members']`).
-- Resultado: o React Query nunca refaz a query, a linha do Matheus continua renderizada com o cache antigo, mesmo arquivada. Um F5 faz ela sumir (e ela só reaparece se o toggle "Mostrar arquivados" estiver ligado).
+## O que muda
 
-Além disso, **não existe hoje fluxo para excluir** um liderado arquivado — só dá pra arquivar/restaurar. Pra um líder que parou de usar a si mesmo como liderado (como o caso do Mateus se auto-listando), arquivar + esconder é o suficiente, mas faz sentido oferecer "excluir definitivamente" para quem foi adicionado por engano.
+### Sidebar (mantém 3 abas, papéis ficam claros)
 
-## Solução proposta
+```text
+Visão geral   → KPIs + alertas + waitlist (igual hoje)
+Pessoas       → TODAS as pessoas + TODOS os convites + governança (HR Admins, Super Admins)
+Empresas      → Lista das empresas com saúde e pendências
+Logs (rodapé) → igual hoje
+```
 
-### 1. Fix do refresh (bug — fazer já)
-- `src/pages/lider/Pessoas.tsx` `refresh()`: invalidar por predicado, cobrindo as keys reais:
-  ```ts
-  qc.invalidateQueries({ predicate: q =>
-    ['team-members-leader-scope','workspace-teams-detail','teams','pending-invites']
-      .includes(q.queryKey[0] as string)
-  });
-  ```
-- `src/components/leader/MemberAdminSheet.tsx`: trocar `['leader-members']` pela mesma chamada por predicado (cobre `team-members-leader-scope` e `member-sync`).
-- Padronizar num helper `invalidateLeaderPeople(qc)` em `src/lib/queryKeys.ts` (novo) para não voltar a quebrar.
+### Pessoas (vira o centro de identidade)
 
-### 2. UX do arquivamento (polimento curto)
-- Após arquivar, mostrar o toast atual **com action** "Ver arquivados" que liga o toggle `showArchived` — assim o usuário entende para onde o liderado foi.
-- Se o usuário arquivou estando com `showArchived = false`, manter a linha sumindo (comportamento esperado). Se estiver com `true`, manter a linha visível com badge "Arquivado".
+Estrutura nova em 3 sub-abas:
 
-### 3. Excluir definitivamente (nova ação, só em arquivados)
-- No `MemberAdminSheet`, quando `isArchived === true`, abaixo do botão "Restaurar liderado" adicionar um botão destrutivo **"Excluir definitivamente"** com `AlertDialog` de confirmação dupla (digitar o nome do liderado).
-- Backend: nova RPC `delete_archived_member(p_member_id uuid)` (SECURITY DEFINER) que:
-  1. Confere que `auth.uid()` é leader do time do membro (ou HR Admin / Owner do workspace).
-  2. Confere `archived_at IS NOT NULL` e que está arquivado há ≥ 24h (janela de arrependimento) — caso contrário retorna erro amigável "Aguarde 24h após arquivar para excluir".
-  3. Faz `DELETE FROM team_members WHERE id = p_member_id`. As FKs em cascata (`feedbacks`, `goals`, `performance_reviews`, `upcoming_meetings`, `context_evidence`, etc.) já têm `ON DELETE CASCADE` — vou auditar na migration e ajustar o que faltar para `SET NULL` em tabelas onde queremos preservar o histórico audit-only (ex.: `mentor_messages.member_id`).
-- O `linked_user_id` (conta auth) **não** é tocado — só o vínculo `team_members` é removido. Se o liderado tinha login, ele continua existindo, só deixa de aparecer no time.
+- **Usuários** (tabela atual, sem mudança de dados) — segue com filtros, export CSV, edit, impersonate.
+- **Convites** — um único formulário com seletor de **papel**:
+  - Líder (Owner de novo workspace, planos Pulse/Pro/Business) — fluxo atual `admin-invite-user`
+  - HR Admin (workspace existente) — fluxo atual `admin-invite-user` com `role: 'hr_admin'`
+  - (Liderado fica fora; é convidado pelo líder dentro do produto)
+  Lista de convites pendentes/enviados embaixo, com reenviar / revogar.
+- **Acesso & Governança** — quem tem privilégio elevado:
+  - HR Admins ativos por workspace (vem do `HRAdminsListCard`)
+  - Super Admins (listagem read-only de `user_roles` com `app_role='super_admin'`)
+  - Última atividade / último login quando disponível
 
-## Arquivos tocados
+Remove os cards "Convidar HR Admin" e "HR Admins ativos" do rodapé de Empresas.
 
-- `src/lib/queryKeys.ts` (novo, helper de invalidação)
-- `src/pages/lider/Pessoas.tsx` (refresh + action no toast)
-- `src/components/leader/MemberAdminSheet.tsx` (refresh + botão "Excluir definitivamente" + AlertDialog)
-- `supabase/migrations/<novo>.sql` (RPC `delete_archived_member` + auditoria de FKs)
+### Empresas (vira lista densa, sem promessa falsa de organograma)
 
-## Riscos
-- Excluir definitivamente é irreversível. Mitigamos com: só em arquivados, janela de 24h, confirmação por digitação do nome.
-- Auditar cada FK antes de assumir CASCADE — se alguma referência crítica não tiver, a migration ajusta para `ON DELETE SET NULL` (manter linha de auditoria) ou bloqueia exclusão com mensagem clara.
+- Visão padrão: **tabela** com colunas: Empresa · Owner · Plano · Segmento · Pessoas · Times · Sync · Pendências · Status · Ações. Linha clicável abre **drawer lateral** com o detalhe completo da empresa (owner, times, pendências, ações de suspender/editar segmento/cliente). Toggle "Cards / Lista" no topo para quem prefere a visão atual.
+- Sub-abas reduzidas para **Empresas** e **O que falta** (renomeia "Cards" para "Empresas" porque a visão não é mais "só cards").
+- Botão "Organograma" some. No lugar:
+  - "Ver detalhes" → abre o drawer lateral da empresa.
+  - "Ver pendências" → leva para "O que falta" já filtrado por aquela empresa (comportamento de hoje, mas com label honesto).
+- Drawer e "O que falta" ganham **breadcrumb / botão "Voltar para empresas"** explícito, resolvendo a queixa de não ter como voltar.
 
-## Validação
-- Arquivar o Mateus em /lider/pessoas → linha some imediatamente, sem F5.
-- Toggle "Mostrar arquivados" → linha reaparece com badge "Arquivado".
-- Abrir sheet do Mateus arquivado → ver "Excluir definitivamente" desabilitado por 24h, depois habilitado.
-- Após excluir → linha some das duas visões; conta `mateus.magalhaes@fpstr.co` continua existindo no auth.
+### Visão geral (sem mudança de escopo)
+
+Mantém KPIs, alerta de workspaces inativos e waitlist. Só adiciona um link de atalho "Convidar líder/HR Admin" → leva pra Pessoas › Convites.
+
+## Por que essa divisão (benchmark)
+
+- **Stripe Dashboard / Vercel Team / WorkOS Admin** colocam *quem* (pessoas, papéis, convites, governança) numa única seção e *o quê* (organizações/projetos/workspaces) noutra. Convidar é sempre uma ação de "Pessoas".
+- **Linear Admin** usa tabela densa para listas longas e drawer para detalhe; cards ficam reservados para dashboards executivos.
+- **Notion Admin** separa "Members" (identidade/acesso) de "Workspaces" (entidade) — exatamente a divisão proposta aqui.
+
+## Detalhes técnicos
+
+- `Admin.tsx`: nenhuma mudança de rota; tipos `AdminTab` continuam `overview | users | workspaces`.
+- `AdminUsers.tsx`:
+  - Envolver conteúdo atual em `<Tabs>` com 3 sub-abas (`usuarios`, `convites`, `acesso`).
+  - Mover o dialog "Convidar líder" atual para a sub-aba "Convites" como formulário inline.
+  - Mover `<HRAdminInviteCard />` e `<HRAdminsListCard />` (de `AdminAccessParts.tsx`) para a sub-aba "Convites" / "Acesso & Governança" respectivamente.
+  - Nova query super admins: `supabase.from('user_roles').select('user_id').eq('role','super_admin')` cruzando com `get_all_users_with_metadata` (read-only, sem mutação).
+- `AdminWorkspaces.tsx`:
+  - Remove o bloco final com `<HRAdminInviteCard />` e `<HRAdminsListCard />`.
+  - Sub-aba "Cards" passa a renderizar `CompaniesTable` (novo) por padrão, com toggle `Tabela | Cards` controlando exibição. `CompanyCardsGrid` continua existindo, só deixa de ser o default.
+  - Novo `CompanyDetailDrawer` (Sheet shadcn): recebe `workspaceId`, mostra cabeçalho + KPIs do `healthByWorkspace` + lista de times + atalho "Ver pendências".
+  - Botão "Organograma" no card vira "Ver detalhes" (abre drawer); ação secundária "Pendências" usa o fluxo atual de pulo para a sub-aba "O que falta".
+  - "O que falta" ganha header com `← Voltar para empresas` quando há `workspaceFilter` aplicado.
+- Sem migration de banco. Sem mudança de RLS. Sem mudança em edge functions.
+
+## Arquivos
+
+- `src/components/admin/AdminUsers.tsx` (refator: 3 sub-abas, importa cards de governança).
+- `src/components/admin/AdminWorkspaces.tsx` (remove bloco HR Admin do rodapé, adiciona toggle Tabela/Cards, integra drawer e breadcrumb).
+- `src/components/admin/companies/CompaniesTable.tsx` (novo).
+- `src/components/admin/companies/CompanyDetailDrawer.tsx` (novo).
+- `src/components/admin/companies/PendingChecklistTable.tsx` (acrescenta breadcrumb "Voltar").
+- `src/components/admin/AdminAccessParts.tsx` (sem mudança de API; só passa a ser consumido em outra aba).
+
+## Fora de escopo (deixar para depois, se quiser)
+
+- Organograma de verdade (visualização hierárquica navegável da empresa).
+- Audit log por usuário (quem mudou o quê e quando).
+- Bulk actions na tabela de empresas (suspender várias, mudar segmento em massa).
