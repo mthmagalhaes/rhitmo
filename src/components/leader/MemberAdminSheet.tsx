@@ -129,6 +129,8 @@ export function MemberAdminSheet({
   const [inviteOpen, setInviteOpen] = useState(false);
   const [acting, setActing] = useState(false);
   const [resendingSync, setResendingSync] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
 
   const { data: syncData } = useQuery({
     queryKey: ['member-sync', member?.id],
@@ -152,8 +154,44 @@ export function MemberAdminSheet({
   const isArchived = !!member.archived_at;
 
   const refresh = () => {
-    qc.invalidateQueries({ queryKey: ['leader-members'] });
+    invalidateLeaderPeople(qc);
     onChanged?.();
+  };
+
+  const hoursSinceArchived = member.archived_at
+    ? differenceInHours(new Date(), new Date(member.archived_at))
+    : 0;
+  const canHardDelete = isArchived && hoursSinceArchived >= 24;
+
+  const handleHardDelete = async () => {
+    if (deleteConfirm.trim() !== member.name.trim()) {
+      toast.error('Digite o nome do liderado exatamente como aparece para confirmar.');
+      return;
+    }
+    setActing(true);
+    try {
+      const { error } = await supabase.rpc('delete_archived_member', { p_member_id: member.id });
+      if (error) throw error;
+      toast.success(`${member.name} foi excluído definitivamente.`);
+      setDeleteOpen(false);
+      setDeleteConfirm('');
+      onOpenChange(false);
+      invalidateLeaderPeople(qc);
+      onChanged?.();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('archive_cooldown_active')) {
+        toast.error('Aguarde 24h após arquivar para excluir definitivamente.');
+      } else if (msg.includes('forbidden')) {
+        toast.error('Você não tem permissão para excluir este liderado.');
+      } else if (msg.includes('member_not_archived')) {
+        toast.error('Só é possível excluir liderados arquivados.');
+      } else {
+        toast.error(`Falha: ${msg}`);
+      }
+    } finally {
+      setActing(false);
+    }
   };
 
   const handleArchiveToggle = async () => {
