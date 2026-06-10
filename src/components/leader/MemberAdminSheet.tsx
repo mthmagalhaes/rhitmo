@@ -21,8 +21,16 @@ import { Separator } from '@/components/ui/separator';
 import { MemberAvatar } from '@/components/MemberAvatar';
 import { EditMemberDialog } from '@/components/EditMemberDialog';
 import { InviteMemberDialog } from '@/components/InviteMemberDialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
+import { invalidateLeaderPeople } from '@/lib/queryKeys';
 import { toast } from 'sonner';
+import { differenceInHours } from 'date-fns';
 
 import {
   Mail,
