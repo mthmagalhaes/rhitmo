@@ -135,6 +135,7 @@ const PREFETCH_MAP: Record<string, () => Promise<unknown>> = {
   '/hr': loadHRDashboard,
   '/hr/teams': loadHRTeams,
   '/hr/members': loadHRMembers,
+  '/hr/pessoas': loadHRPessoas,
   '/hr/analytics': loadHRAnalytics,
   '/hr/competency-framework': loadCompetencyFramework,
 
