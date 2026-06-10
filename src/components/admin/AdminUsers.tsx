@@ -655,6 +655,7 @@ export const AdminUsers = () => {
                 })}
               </TableBody>
             </Table>
+          )}
           </CardContent>
         </Card>
         </TabsContent>
