@@ -71,10 +71,22 @@ export function AuthEventProvider({ children }: { children: React.ReactNode }) {
       return false;
     };
 
-    // Auto-link by email has been REMOVED from the auth event flow.
-    // It was causing race conditions where leaders could be momentarily
-    // linked as team members during session restoration.
-    // Email-based linking should only happen via explicit invite acceptance.
+    // Auto-link por e-mail via RPC idempotente. Resolve o caso do liderado
+    // adicionado via NewMemberDialog (sem invite token) — quando ele cria
+    // conta com o mesmo e-mail, o team_members órfão é vinculado.
+    // A RPC é SECURITY DEFINER mas só vincula registros cujo email == p_email,
+    // então não há risco de cross-link.
+    const claimOrphanTeamMembers = async (userId: string, userEmail?: string | null) => {
+      if (!userEmail) return;
+      try {
+        await supabase.rpc('claim_team_member_by_email' as never, {
+          p_user_id: userId,
+          p_email: userEmail,
+        } as never);
+      } catch (err) {
+        console.warn('claim_team_member_by_email failed:', err);
+      }
+    };
 
     const processInviteFlows = async (sessionUser?: { id: string; email?: string | null } | null) => {
       const resolvedUser = sessionUser ?? (await supabase.auth.getUser()).data.user;
@@ -82,7 +94,10 @@ export function AuthEventProvider({ children }: { children: React.ReactNode }) {
 
       processedUserIdRef.current = resolvedUser.id;
 
-      await processPendingInvite(resolvedUser.id, resolvedUser.email);
+      const linkedViaInvite = await processPendingInvite(resolvedUser.id, resolvedUser.email);
+      if (!linkedViaInvite) {
+        await claimOrphanTeamMembers(resolvedUser.id, resolvedUser.email);
+      }
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
