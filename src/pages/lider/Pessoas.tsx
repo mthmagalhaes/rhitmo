@@ -43,6 +43,7 @@ import { useLeaderMembers, type LeaderMemberRow } from '@/hooks/useLeaderMembers
 import { trackFunnel } from '@/lib/analytics';
 import { downloadCsv } from '@/lib/csvExport';
 import { cn } from '@/lib/utils';
+import { invalidateLeaderPeople } from '@/lib/queryKeys';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -178,7 +179,7 @@ function PeopleListTab({ onNewMember }: { onNewMember: () => void }) {
   };
 
   const refresh = () => {
-    qc.invalidateQueries({ queryKey: ['team-members', workspace?.id] });
+    invalidateLeaderPeople(qc);
   };
 
   const exportCsv = (rows: LeaderMemberRow[], scope: 'all' | 'selected') => {
@@ -219,7 +220,11 @@ function PeopleListTab({ onNewMember }: { onNewMember: () => void }) {
         workspaceId: workspace?.id ?? null,
         payload: { count: ids.length },
       });
-      toast.success(`${ids.length} liderado(s) arquivado(s).`);
+      toast.success(`${ids.length} liderado(s) arquivado(s).`, {
+        action: showArchived
+          ? undefined
+          : { label: 'Ver arquivados', onClick: () => setShowArchived(true) },
+      });
       setSelected(new Set());
       refresh();
     } catch (err) {
