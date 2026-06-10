@@ -655,9 +655,35 @@ export const AdminUsers = () => {
                 })}
               </TableBody>
             </Table>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+        </TabsContent>
+
+        <TabsContent value="convites" className="mt-4 space-y-6">
+          <Card className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
+            <CardHeader>
+              <CardTitle className="text-base font-serif tracking-tight flex items-center gap-2">
+                <UserPlus className="h-4 w-4" /> Convidar líder
+              </CardTitle>
+              <CardDescription>
+                Cria a conta, envia magic link e configura um workspace novo no nome do líder.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => setInviteOpen(true)} className="gap-2 rounded-xl">
+                <Mail className="h-4 w-4" /> Abrir formulário de convite
+              </Button>
+            </CardContent>
+          </Card>
+          <HRAdminInviteCard />
+        </TabsContent>
+
+        <TabsContent value="acesso" className="mt-4 space-y-6">
+          <HRAdminsListCard />
+          <SuperAdminsCard />
+          <DataExportCard />
+        </TabsContent>
+      </Tabs>
 
       {/* Edit User Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
@@ -835,10 +861,9 @@ export const AdminUsers = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="pt-4">
-        <DataExportCard />
-      </div>
     </div>
   );
+
+};
 
 };
