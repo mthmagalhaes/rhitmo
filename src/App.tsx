@@ -209,6 +209,9 @@ const App = () => (
               <Route path="/admin" element={
                 <AdminGuard>{Public(<Admin />)}</AdminGuard>
               } />
+              <Route path="/admin/logs" element={
+                <AdminGuard>{Public(<AdminLogsPage />)}</AdminGuard>
+              } />
 
               {/* Workspace admin (Owner OR HR Admin) — /hr/* kept for backwards-compat deep links */}
               <Route path="/workspace" element={<Navigate to="/hr" replace />} />
