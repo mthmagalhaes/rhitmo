@@ -28,6 +28,7 @@ import { useImpersonation } from '@/hooks/useImpersonation';
 import { CustomAvatar } from '@/components/avatar/CustomAvatar';
 import { AVATAR_VARIANTS } from '@/components/avatar/avatarData';
 import type { PlanTier } from '@/types/team';
+import { DataExportCard } from './AdminAccessParts';
 
 interface CapEntry { id?: string; name?: string; team_id?: string; team_name?: string; workspace_name?: string; workspace_id?: string; member_id?: string; member_name?: string; }
 
@@ -825,6 +826,11 @@ export const AdminUsers = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <div className="pt-4">
+        <DataExportCard />
+      </div>
     </div>
   );
+
 };
