@@ -22,10 +22,11 @@ const segmentColors: Record<string, string> = {
 interface Props {
   workspace: CompanyWorkspace;
   health: CompanyHealth;
-  onOpenOrgChart: () => void;
+  onOpenDetail: () => void;
+  onOpenPendings: () => void;
 }
 
-export const CompanyCard = ({ workspace, health, onOpenOrgChart }: Props) => {
+export const CompanyCard = ({ workspace, health, onOpenDetail, onOpenPendings }: Props) => {
   const synced = health.totalMembers > 0 ? `${health.syncedMembers}/${health.totalMembers}` : '0/0';
   const linked = health.totalMembers > 0 ? `${health.linkedMembers}/${health.totalMembers}` : '0/0';
 
@@ -92,8 +93,11 @@ export const CompanyCard = ({ workspace, health, onOpenOrgChart }: Props) => {
       </div>
 
       <div className="mt-4 flex gap-2">
-        <Button size="sm" variant="outline" className="rounded-xl gap-1.5" onClick={onOpenOrgChart}>
-          Organograma <ArrowRight className="h-3.5 w-3.5" />
+        <Button size="sm" variant="outline" className="rounded-xl gap-1.5" onClick={onOpenDetail}>
+          Ver detalhes <ArrowRight className="h-3.5 w-3.5" />
+        </Button>
+        <Button size="sm" variant="ghost" className="rounded-xl" onClick={onOpenPendings}>
+          Pendências
         </Button>
       </div>
     </Card>

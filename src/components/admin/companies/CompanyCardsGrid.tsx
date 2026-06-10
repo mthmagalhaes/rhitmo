@@ -4,10 +4,11 @@ import type { CompanyWorkspace, CompanyHealth } from '@/hooks/useAdminCompaniesD
 interface Props {
   workspaces: CompanyWorkspace[];
   healthByWorkspace: Map<string, CompanyHealth>;
-  onOpenOrgChart: (workspaceId: string) => void;
+  onOpenDetail: (workspaceId: string) => void;
+  onOpenPendings: (workspaceId: string) => void;
 }
 
-export const CompanyCardsGrid = ({ workspaces, healthByWorkspace, onOpenOrgChart }: Props) => {
+export const CompanyCardsGrid = ({ workspaces, healthByWorkspace, onOpenDetail, onOpenPendings }: Props) => {
   if (workspaces.length === 0) {
     return (
       <div className="text-center py-12 text-sm text-muted-foreground">
@@ -32,7 +33,8 @@ export const CompanyCardsGrid = ({ workspaces, healthByWorkspace, onOpenOrgChart
             key={ws.id}
             workspace={ws}
             health={health}
-            onOpenOrgChart={() => onOpenOrgChart(ws.id)}
+            onOpenDetail={() => onOpenDetail(ws.id)}
+            onOpenPendings={() => onOpenPendings(ws.id)}
           />
         );
       })}
