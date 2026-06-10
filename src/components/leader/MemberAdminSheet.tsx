@@ -510,10 +510,71 @@ export function MemberAdminSheet({
               <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
                 Arquivar preserva o histórico de feedbacks e 1:1s, mas remove o liderado das listas ativas.
               </p>
+
+              {isArchived && (
+                <div className="mt-4 pt-4 border-t border-border/50">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-xl gap-2 w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/5 border-destructive/20"
+                    onClick={() => setDeleteOpen(true)}
+                    disabled={!canHardDelete || acting}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Excluir definitivamente
+                  </Button>
+                  <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                    {canHardDelete
+                      ? 'Remove o liderado e todos os feedbacks, 1:1s e avaliações vinculados. Esta ação não pode ser desfeita.'
+                      : `Disponível ${24 - hoursSinceArchived}h após arquivar — janela de segurança para evitar exclusão por engano.`}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </SheetContent>
       </Sheet>
+
+      <AlertDialog open={deleteOpen} onOpenChange={(v) => { setDeleteOpen(v); if (!v) setDeleteConfirm(''); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir {member.name} definitivamente?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                Esta ação remove o liderado e <strong>todo o histórico vinculado</strong>: feedbacks,
+                1:1s, avaliações, objetivos e contexto. Não pode ser desfeita.
+              </span>
+              <span className="block">
+                Se o liderado tinha conta de login no Rhitmo, a conta dele permanece — só o vínculo
+                com o seu time é apagado.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 pt-2">
+            <Label htmlFor="confirm-delete" className="text-xs">
+              Para confirmar, digite o nome <strong>{member.name}</strong>:
+            </Label>
+            <Input
+              id="confirm-delete"
+              value={deleteConfirm}
+              onChange={(e) => setDeleteConfirm(e.target.value)}
+              placeholder={member.name}
+              className="rounded-xl"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={acting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleHardDelete(); }}
+              disabled={acting || deleteConfirm.trim() !== member.name.trim()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {acting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : null}
+              Excluir definitivamente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Sub-diálogos reusados */}
       {workspaceId && (
