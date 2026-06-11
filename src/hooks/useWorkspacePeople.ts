@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { safeRpc } from '@/lib/supabaseSafe';
+import { useAuth } from '@/hooks/useAuth';
 
 export interface WorkspacePerson {
   user_id: string | null;
@@ -22,15 +23,23 @@ export interface WorkspacePerson {
 }
 
 export function useWorkspacePeople(workspaceId: string | null | undefined) {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ['workspace-people', workspaceId],
+    // user.id included so a session refresh re-issues the RPC with the new JWT
+    queryKey: ['workspace-people', workspaceId, user?.id],
     queryFn: async () => {
       const rows = await safeRpc<WorkspacePerson[]>('get_workspace_people', {
         p_workspace_id: workspaceId,
       });
       return rows ?? [];
     },
-    enabled: !!workspaceId,
+    enabled: !!workspaceId && !!user?.id,
     staleTime: 60 * 1000,
+    retry: (failureCount, error) => {
+      // Retry once on "forbidden" — usually a transient JWT-hydration race.
+      const msg = error instanceof Error ? error.message : '';
+      if (msg.includes('forbidden') && failureCount < 2) return true;
+      return failureCount < 1;
+    },
   });
 }
