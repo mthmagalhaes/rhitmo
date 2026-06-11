@@ -1209,69 +1209,8 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* ============== COMPARISON TABLE ============== */}
-      <section className="py-28 px-6 bg-slate-50/40">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16 max-w-3xl mx-auto">
-            <p className="text-[10px] uppercase tracking-[0.3em] text-indigo-500 font-bold mb-4">{t.comparisonOverline}</p>
-            <h2 className="font-serif text-5xl md:text-6xl font-bold tracking-tight leading-[1.05] text-slate-900 mb-6">
-              {t.comparisonTitle}
-            </h2>
-            <p className="text-lg text-slate-500 leading-relaxed">
-              {lang === 'pt' ? 'A pergunta é com qual ferramenta. Funcionalidades reais, não promessas de roadmap.' : 'The question is with which tool. Real features, not roadmap promises.'}
-            </p>
-          </div>
 
-          <div className="hidden md:block">
-            <div className="rounded-3xl border border-slate-100 overflow-hidden shadow-sm bg-white">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-white border-b border-slate-100 hover:bg-white">
-                    <TableHead className="font-bold text-slate-900 py-5 pl-6">{t.compFeature}</TableHead>
-                    <TableHead className="text-center text-slate-400 py-5 font-semibold">{t.compSpreadsheets}</TableHead>
-                    <TableHead className="text-center text-slate-400 py-5 font-semibold">{t.compQulture}</TableHead>
-                    <TableHead className="text-center text-slate-400 py-5 font-semibold">{t.compLattice}</TableHead>
-                    <TableHead className="text-center font-bold py-5 bg-slate-900 text-white">{t.compRhitmo}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {t.compRows.map((row, i) => (
-                    <TableRow key={row.feature} className="border-slate-50 hover:bg-slate-50/40">
-                      <TableCell className="font-medium text-slate-700 py-4 pl-6">{row.feature}</TableCell>
-                      <TableCell className="text-center py-4"><ComparisonIcon status={row.spreadsheets} /></TableCell>
-                      <TableCell className="text-center py-4"><ComparisonIcon status={row.qulture} /></TableCell>
-                      <TableCell className="text-center py-4"><ComparisonIcon status={row.lattice} /></TableCell>
-                      <TableCell className="text-center py-4 bg-indigo-50/40 border-x border-indigo-100"><ComparisonIcon status={row.rhitmo} /></TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            <p className="text-sm text-slate-400 text-center mt-6">{t.compLegend}</p>
-          </div>
 
-          <div className="md:hidden max-w-lg mx-auto">
-            <Accordion type="single" collapsible className="space-y-3">
-              {t.compRows.map((row, i) => (
-                <AccordionItem key={i} value={`comp-${i}`} className="border border-slate-100 rounded-2xl px-4 bg-white">
-                  <AccordionTrigger className="text-sm font-medium hover:no-underline text-slate-700">
-                    {row.feature}
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <div className="grid grid-cols-2 gap-3 text-sm py-2">
-                      <div className="flex justify-between"><span className="text-slate-400">{t.compSpreadsheets}</span> <ComparisonIcon status={row.spreadsheets} /></div>
-                      <div className="flex justify-between"><span className="text-slate-400">{t.compQulture}</span> <ComparisonIcon status={row.qulture} /></div>
-                      <div className="flex justify-between"><span className="text-slate-400">{t.compLattice}</span> <ComparisonIcon status={row.lattice} /></div>
-                      <div className="flex justify-between rounded-lg bg-indigo-50/50 px-2 py-1"><span className="font-medium text-indigo-700">{t.compRhitmo}</span> <ComparisonIcon status={row.rhitmo} /></div>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-            <p className="text-sm text-slate-400 text-center mt-4">{t.compLegend}</p>
-          </div>
-        </div>
-      </section>
 
       {/* ============== FOR LEADERS / REPORTS / HR ============== */}
       <section className="py-28 px-6 bg-white">
