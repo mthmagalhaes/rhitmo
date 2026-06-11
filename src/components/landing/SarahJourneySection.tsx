@@ -41,8 +41,8 @@ function JourneyMock({ kind, lang }: { kind: MockKind; lang: Lang }) {
     return (
       <div className={card}>
         <div className="flex items-center gap-2 mb-3">
-          <div className="w-8 h-8 rounded-lg bg-[#4A154B]/10 flex items-center justify-center">
-            <Slack className="w-4 h-4 text-[#4A154B]" />
+          <div className="w-8 h-8 rounded-lg bg-white border border-slate-100 flex items-center justify-center">
+            <SlackIcon className="w-4 h-4" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
