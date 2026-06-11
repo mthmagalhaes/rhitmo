@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Slack, Lock, CheckCircle2, Sparkles, FileText } from "lucide-react";
+import { Lock, CheckCircle2, Sparkles, FileText } from "lucide-react";
+import { SlackIcon } from "@/components/icons/SlackIcon";
 import cafeMorning from "@/assets/landing/journey/journey-1-cafe-morning.jpg";
 import loftNight from "@/assets/landing/journey/journey-2-loft.jpg";
 import sunsetCliff from "@/assets/landing/journey/journey-3-sunset.jpg";
@@ -40,8 +41,8 @@ function JourneyMock({ kind, lang }: { kind: MockKind; lang: Lang }) {
     return (
       <div className={card}>
         <div className="flex items-center gap-2 mb-3">
-          <div className="w-8 h-8 rounded-lg bg-[#4A154B]/10 flex items-center justify-center">
-            <Slack className="w-4 h-4 text-[#4A154B]" />
+          <div className="w-8 h-8 rounded-lg bg-white border border-slate-100 flex items-center justify-center">
+            <SlackIcon className="w-4 h-4" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
@@ -109,8 +110,8 @@ function JourneyMock({ kind, lang }: { kind: MockKind; lang: Lang }) {
     return (
       <div className={card}>
         <div className="flex items-center gap-2 mb-3">
-          <div className="w-8 h-8 rounded-lg bg-[#4A154B]/10 flex items-center justify-center">
-            <Slack className="w-4 h-4 text-[#4A154B]" />
+          <div className="w-8 h-8 rounded-lg bg-white border border-slate-100 flex items-center justify-center">
+            <SlackIcon className="w-4 h-4" />
           </div>
           <span className="text-[12px] font-semibold text-slate-900">Rhitmo</span>
           <span className="text-[9px] px-1 py-px rounded bg-slate-100 text-slate-500 font-semibold">APP</span>
