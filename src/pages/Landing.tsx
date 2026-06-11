@@ -13,6 +13,7 @@ import analyticsScreenshot from "@/assets/analytics-screenshot.png";
 import heroLeaderFlow from "@/assets/hero-leader-flow.png";
 import heroDuoFeedback from "@/assets/hero-duo-feedback.png";
 import cinematicOffice from "@/assets/landing-cinematic-office.jpg";
+import { WeekTimelineSection } from "@/components/landing/WeekTimelineSection";
 import { cn } from "@/lib/utils";
 
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
@@ -58,25 +59,21 @@ const translations = {
     heroSubtitle: "O que levava 2 horas agora leva poucos minutos. Rhitmo é a plataforma AI-first feita para líderes que transforma anotações, conversas e sinais em avaliações de performance justas e prontas.",
     seePlans: "Preços",
     
-    // Before vs After
-    beforeAfterOverline: "O dia a dia sem IA",
-    beforeAfterTitle: "Antes era burocracia. Agora é estratégia.",
-    withoutRhitmo: "Sem Rhitmo",
-    withRhitmo: "Com Rhitmo",
-    beforeItems: [
-      "4h por review, reescrevendo do zero toda vez",
-      "Viés invisível passando despercebido em cada avaliação",
-      "70% das conversas do trimestre esquecidas",
-      "Feedback genérico: \"precisa melhorar comunicação\"",
-      "Dados espalhados entre planilhas, docs e e-mails",
+    // Week timeline (substitui Before vs After)
+    weekOverline: "Uma semana na sua liderança",
+    weekTitle: "Mesma agenda. Trabalho diferente.",
+    weekSubtitle: "Cinco dias, lado a lado. Onde antes você gastava horas, a Rhitmo entrega pronto.",
+    weekColLeft: "Sem Rhitmo",
+    weekColRight: "Com Rhitmo",
+    weekDays: [
+      { day: "SEG", time: "09:00", left: "Caçar prints e mensagens no Slack pra lembrar o que rolou na sprint passada.", leftBadge: "45min manual", right: "Rollup semanal do Slack já anotado por liderado, no Diário de Bordo.", rightBadge: "automático", mock: "slack" as const },
+      { day: "TER", time: "14:00", left: "Anotar a 1:1 no Notion, depois esquecer onde salvei e perder os action items.", leftBadge: "20min + perda", right: "1:1 transcrita pelo Recall, com tags e action items prontos pra acompanhar.", rightBadge: "Recall + IA", mock: "oneonone" as const },
+      { day: "QUA", time: "11:00", left: "Reler conversas antigas pra ter certeza do contexto antes de dar um feedback difícil.", leftBadge: "1h relendo", right: "Feedback ancorado em evidências reais do trimestre, todas no mesmo lugar.", rightBadge: "evidência viva", mock: "tough" as const },
+      { day: "QUI", time: "16:00", left: "Mandar form de check-in e esperar 3 dias por 4 respostas dispersas.", leftBadge: "3 dias de espera", right: "Pulse do time com sinais da rede em tempo real, sem formulário extra.", rightBadge: "tempo real", mock: "pulse" as const },
+      { day: "SEX", time: "17:00", left: "Abrir doc em branco pra escrever a review do trimestre. Do zero. Outra vez.", leftBadge: "4h por liderado", right: "Avaliação mensal com draft pronto e citações auditáveis pra você só revisar.", rightBadge: "pronto", mock: "reviews" as const },
     ],
-    afterItems: [
-      "Draft completo em 30 segundos. Você só revisa.",
-      "Viés detectado e corrigido antes de salvar",
-      "Cada 1:1 registrada automaticamente com contexto",
-      "Feedback baseado em evidências reais, não memória",
-      "Tudo centralizado, organizado por IA",
-    ],
+    weekFooterNumber: "+5h",
+    weekFooterLabel: "Mesmas 5 horas da sua semana. Devolvidas pra você liderar.",
     // Video
     videoTitle: "Veja Rhitmo em ação",
     videoSubtitle: "Veja como uma review de 4 horas vira 2 minutos.",
@@ -278,25 +275,21 @@ const translations = {
     heroSubtitle: "What took 4 hours now takes 2 minutes. Rhitmo is the only AI-native leadership partner that turns your conversations into ready-made reviews.",
     seePlans: "Pricing",
     
-    // Before vs After
-    beforeAfterOverline: "Day-to-day without AI",
-    beforeAfterTitle: "It used to be bureaucracy. Now it's strategy.",
-    withoutRhitmo: "Without Rhitmo",
-    withRhitmo: "With Rhitmo",
-    beforeItems: [
-      "4 hours per review, rewriting from scratch every time",
-      "Invisible bias slipping through every evaluation",
-      "70% of quarterly conversations forgotten",
-      "Generic feedback: \"needs to improve communication\"",
-      "Data scattered across spreadsheets, docs and emails",
+    // Week timeline (replaces Before vs After)
+    weekOverline: "A week in your leadership",
+    weekTitle: "Same calendar. Different work.",
+    weekSubtitle: "Five days, side by side. Where you used to spend hours, Rhitmo delivers it done.",
+    weekColLeft: "Without Rhitmo",
+    weekColRight: "With Rhitmo",
+    weekDays: [
+      { day: "MON", time: "09:00", left: "Hunt for Slack screenshots to remember what happened last sprint.", leftBadge: "45min manual", right: "Weekly Slack rollup already logged per report, inside the Journal.", rightBadge: "automatic", mock: "slack" as const },
+      { day: "TUE", time: "14:00", left: "Take 1:1 notes in Notion, then lose them and miss the action items.", leftBadge: "20min + lost", right: "1:1 transcribed by Recall, with tags and action items ready to track.", rightBadge: "Recall + AI", mock: "oneonone" as const },
+      { day: "WED", time: "11:00", left: "Reread old threads to make sure of the context before a hard feedback.", leftBadge: "1h re-reading", right: "Feedback anchored in real evidence from the whole quarter, in one place.", rightBadge: "living evidence", mock: "tough" as const },
+      { day: "THU", time: "16:00", left: "Send a check-in form and wait 3 days for 4 scattered answers.", leftBadge: "3 days waiting", right: "Team Pulse with real-time signals from the network. No extra survey.", rightBadge: "real time", mock: "pulse" as const },
+      { day: "FRI", time: "17:00", left: "Open a blank doc to write the review. From scratch. Again.", leftBadge: "4h per report", right: "Monthly review with a ready draft and auditable citations to review.", rightBadge: "ready", mock: "reviews" as const },
     ],
-    afterItems: [
-      "Full draft in 30 seconds. You just review.",
-      "Bias detected and corrected before saving",
-      "Every 1:1 recorded automatically with context",
-      "Feedback based on real evidence, not memory",
-      "Everything centralized, organized by AI",
-    ],
+    weekFooterNumber: "+5h",
+    weekFooterLabel: "Five hours of your week. Given back to you to lead.",
     videoTitle: "See Rhitmo in action",
     videoSubtitle: "See how a 4-hour review becomes 2 minutes.",
     // Comparison
@@ -1150,60 +1143,21 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* ============== BEFORE / AFTER ============== */}
-      <section className="py-28 px-6 bg-slate-50/40">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16 max-w-3xl mx-auto">
-            <p className="text-[10px] uppercase tracking-[0.3em] text-indigo-500 font-bold mb-4">{t.beforeAfterOverline}</p>
-            <h2 className="font-serif text-5xl md:text-6xl font-bold tracking-tight leading-[1.05] text-slate-900 mb-6">
-              {t.beforeAfterTitle}
-            </h2>
-            <p className="text-lg text-slate-500 leading-relaxed">
-              {lang === 'pt' ? 'Veja o que muda quando IA assume o trabalho operacional.' : 'See what changes when AI takes over the busywork.'}
-            </p>
-          </div>
+      {/* ============== WEEK TIMELINE ============== */}
+      <WeekTimelineSection
+        lang={lang}
+        copy={{
+          overline: t.weekOverline,
+          title: t.weekTitle,
+          subtitle: t.weekSubtitle,
+          colLeft: t.weekColLeft,
+          colRight: t.weekColRight,
+          days: t.weekDays,
+          footerNumber: t.weekFooterNumber,
+          footerLabel: t.weekFooterLabel,
+        }}
+      />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Without */}
-            <div className="bg-white rounded-3xl p-8 lg:p-10 border border-slate-100 shadow-sm">
-              <div className="flex items-center gap-3 mb-6 pb-6 border-b border-slate-100">
-                <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
-                  <XCircle className="h-5 w-5 text-red-500" />
-                </div>
-                <h3 className="text-lg font-semibold text-slate-700">{t.withoutRhitmo}</h3>
-              </div>
-              <ul className="space-y-4">
-                {t.beforeItems.map((item, i) => (
-                  <li key={i} className="flex items-start gap-3">
-                    <span className="mt-2 w-1 h-1 rounded-full bg-slate-300 shrink-0" />
-                    <span className="text-slate-500 leading-relaxed">{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* With */}
-            <div className="iridescent-surface rounded-3xl p-1.5">
-              <div className="bg-white rounded-[1.4rem] p-8 lg:p-10 h-full">
-                <div className="flex items-center gap-3 mb-6 pb-6 border-b border-slate-100">
-                  <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
-                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-slate-900">{t.withRhitmo}</h3>
-                </div>
-                <ul className="space-y-4">
-                  {t.afterItems.map((item, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-1 shrink-0" />
-                      <span className="text-slate-800 leading-relaxed font-medium">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* ============== NUMBERS BENTO ============== */}
       <section id="impacto" className="py-28 px-6 bg-white">
