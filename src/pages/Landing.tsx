@@ -58,25 +58,21 @@ const translations = {
     heroSubtitle: "O que levava 2 horas agora leva poucos minutos. Rhitmo é a plataforma AI-first feita para líderes que transforma anotações, conversas e sinais em avaliações de performance justas e prontas.",
     seePlans: "Preços",
     
-    // Before vs After
-    beforeAfterOverline: "O dia a dia sem IA",
-    beforeAfterTitle: "Antes era burocracia. Agora é estratégia.",
-    withoutRhitmo: "Sem Rhitmo",
-    withRhitmo: "Com Rhitmo",
-    beforeItems: [
-      "4h por review, reescrevendo do zero toda vez",
-      "Viés invisível passando despercebido em cada avaliação",
-      "70% das conversas do trimestre esquecidas",
-      "Feedback genérico: \"precisa melhorar comunicação\"",
-      "Dados espalhados entre planilhas, docs e e-mails",
+    // Week timeline (substitui Before vs After)
+    weekOverline: "Uma semana na sua liderança",
+    weekTitle: "Mesma agenda. Trabalho diferente.",
+    weekSubtitle: "Cinco dias, lado a lado. Onde antes você gastava horas, a Rhitmo entrega pronto.",
+    weekColLeft: "Sem Rhitmo",
+    weekColRight: "Com Rhitmo",
+    weekDays: [
+      { day: "SEG", time: "09:00", left: "Caçar prints e mensagens no Slack pra lembrar o que rolou na sprint passada.", leftBadge: "45min manual", right: "Rollup semanal do Slack já anotado por liderado, no Diário de Bordo.", rightBadge: "automático", mock: "slack" as const },
+      { day: "TER", time: "14:00", left: "Anotar a 1:1 no Notion, depois esquecer onde salvei e perder os action items.", leftBadge: "20min + perda", right: "1:1 transcrita pelo Recall, com tags e action items prontos pra acompanhar.", rightBadge: "Recall + IA", mock: "oneonone" as const },
+      { day: "QUA", time: "11:00", left: "Reler conversas antigas pra ter certeza do contexto antes de dar um feedback difícil.", leftBadge: "1h relendo", right: "Feedback ancorado em evidências reais do trimestre, todas no mesmo lugar.", rightBadge: "evidência viva", mock: "tough" as const },
+      { day: "QUI", time: "16:00", left: "Mandar form de check-in e esperar 3 dias por 4 respostas dispersas.", leftBadge: "3 dias de espera", right: "Pulse do time com sinais da rede em tempo real, sem formulário extra.", rightBadge: "tempo real", mock: "pulse" as const },
+      { day: "SEX", time: "17:00", left: "Abrir doc em branco pra escrever a review do trimestre. Do zero. Outra vez.", leftBadge: "4h por liderado", right: "Avaliação mensal com draft pronto e citações auditáveis pra você só revisar.", rightBadge: "pronto", mock: "reviews" as const },
     ],
-    afterItems: [
-      "Draft completo em 30 segundos. Você só revisa.",
-      "Viés detectado e corrigido antes de salvar",
-      "Cada 1:1 registrada automaticamente com contexto",
-      "Feedback baseado em evidências reais, não memória",
-      "Tudo centralizado, organizado por IA",
-    ],
+    weekFooterNumber: "+5h",
+    weekFooterLabel: "Mesmas 5 horas da sua semana. Devolvidas pra você liderar.",
     // Video
     videoTitle: "Veja Rhitmo em ação",
     videoSubtitle: "Veja como uma review de 4 horas vira 2 minutos.",
