@@ -876,494 +876,484 @@ const Landing = () => {
         <link rel="canonical" href="https://rhitmo.co/" />
       </Helmet>
     <div className="min-h-screen bg-background">
-      {/* Navbar */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+  return (
+    <div className="bg-white text-slate-900 antialiased">
+      <Helmet>
+        <link rel="canonical" href="https://rhitmo.co/" />
+      </Helmet>
+
+      {/* Scoped CSS — iridescent surface + post-its */}
+      <style>{`
+        .iridescent-surface {
+          background:
+            radial-gradient(120% 80% at 0% 0%, rgba(199,210,254,0.55) 0%, rgba(199,210,254,0) 55%),
+            radial-gradient(120% 80% at 100% 0%, rgba(252,202,233,0.45) 0%, rgba(252,202,233,0) 55%),
+            radial-gradient(120% 80% at 50% 100%, rgba(186,230,253,0.55) 0%, rgba(186,230,253,0) 60%),
+            linear-gradient(135deg, #eef2ff 0%, #fdf2f8 50%, #eff6ff 100%);
+        }
+        .post-it { box-shadow: 2px 6px 18px rgba(15,23,42,0.06); transition: transform .25s ease; }
+        .post-it:hover { transform: rotate(0deg) translateY(-2px); }
+      `}</style>
+
+      {/* ============== HEADER ============== */}
+      <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-slate-100">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center">
-            <RhitmoLogo size="sm" className="text-primary" />
+            <RhitmoLogo size="sm" className="text-slate-900" />
           </Link>
 
-          {/* Desktop: Botões normais */}
-          <div className="hidden md:flex items-center gap-3">
-            <a href="#impacto">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground min-h-[44px]">
-                {t.featuresNav}
-              </Button>
-            </a>
-            <a href="#pricing">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground min-h-[44px]">
-                {t.pricingNav}
-              </Button>
-            </a>
-            <a href="#faq">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground min-h-[44px]">
-                {t.faqNav}
-              </Button>
-            </a>
-            <Button variant="ghost" size="icon" className="rounded-full" onClick={toggleTheme}>
-              {landingTheme === 'light' ? <Moon className="h-[18px] w-[18px]" /> : <Sun className="h-[18px] w-[18px]" />}
-              <span className="sr-only">{t.toggleTheme}</span>
-            </Button>
+          {/* Desktop nav */}
+          <div className="hidden md:flex items-center gap-1">
+            <a href="#impacto" className="px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">{t.featuresNav}</a>
+            <a href="#pricing" className="px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">{t.pricingNav}</a>
+            <a href="#faq" className="px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">{t.faqNav}</a>
+            <div className="w-px h-5 bg-slate-200 mx-2" />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full">
+                <button className="p-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors" aria-label="Language">
                   <Globe className="h-[18px] w-[18px]" />
-                  <span className="sr-only">Language</span>
-                </Button>
+                </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => setLang('pt')} className="gap-2">
-                  🇧🇷 Português
-                  {lang === 'pt' && <Check className="ml-auto h-4 w-4" />}
+                  🇧🇷 Português {lang === 'pt' && <Check className="ml-auto h-4 w-4" />}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setLang('en')} className="gap-2">
-                  🇺🇸 English
-                  {lang === 'en' && <Check className="ml-auto h-4 w-4" />}
+                  🇺🇸 English {lang === 'en' && <Check className="ml-auto h-4 w-4" />}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Link to="/auth">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground min-h-[44px]">
-                {t.signIn}
-              </Button>
+            <Link to="/auth" className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
+              {t.signIn}
             </Link>
-            <Link to="/auth/start">
-              <Button className="min-h-[44px]">
-                {t.getStarted}
-              </Button>
+            <Link
+              to="/auth/start"
+              className="ml-2 inline-flex items-center bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-full text-sm font-semibold transition-colors"
+            >
+              {t.getStarted}
             </Link>
           </div>
 
-          {/* Mobile: Hamburger menu */}
+          {/* Mobile */}
           <div className="flex items-center gap-1 md:hidden">
-            <Button variant="ghost" size="icon" className="rounded-full h-11 w-11" onClick={toggleTheme}>
-              {landingTheme === 'light' ? <Moon className="h-[18px] w-[18px]" /> : <Sun className="h-[18px] w-[18px]" />}
-              <span className="sr-only">{t.toggleTheme}</span>
-            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full h-11 w-11">
+                <button className="p-2 rounded-full text-slate-500" aria-label="Language">
                   <Globe className="h-[18px] w-[18px]" />
-                  <span className="sr-only">Language</span>
-                </Button>
+                </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setLang('pt')} className="gap-2">
-                  🇧🇷 Português
-                  {lang === 'pt' && <Check className="ml-auto h-4 w-4" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setLang('en')} className="gap-2">
-                  🇺🇸 English
-                  {lang === 'en' && <Check className="ml-auto h-4 w-4" />}
-                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLang('pt')} className="gap-2">🇧🇷 Português {lang === 'pt' && <Check className="ml-auto h-4 w-4" />}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLang('en')} className="gap-2">🇺🇸 English {lang === 'en' && <Check className="ml-auto h-4 w-4" />}</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-11 w-11">
+                <button className="p-2 text-slate-700" aria-label="Menu">
                   <Menu className="h-6 w-6" />
-                  <span className="sr-only">Menu</span>
-                </Button>
+                </button>
               </SheetTrigger>
-            <SheetContent side="right" className="w-[280px] pt-12">
-              <nav className="flex flex-col gap-4">
-                <SheetClose asChild>
-                  <a href="#impacto">
-                    <Button variant="outline" className="w-full justify-start min-h-[44px]">
-                      {t.featuresNav}
-                    </Button>
-                  </a>
-                </SheetClose>
-                <SheetClose asChild>
-                  <a href="#pricing">
-                    <Button variant="outline" className="w-full justify-start min-h-[44px]">
-                      {t.pricingNav}
-                    </Button>
-                  </a>
-                </SheetClose>
-                <SheetClose asChild>
-                  <a href="#faq">
-                    <Button variant="outline" className="w-full justify-start min-h-[44px]">
-                      {t.faqNav}
-                    </Button>
-                  </a>
-                </SheetClose>
-                <SheetClose asChild>
-                  <Link to="/auth">
-                    <Button variant="outline" className="w-full justify-start min-h-[44px]">
-                      {t.signIn}
-                    </Button>
-                  </Link>
-                </SheetClose>
-                <SheetClose asChild>
-                  <Link to="/auth/start">
-                    <Button className="w-full min-h-[44px]">
+              <SheetContent side="right" className="w-[280px] pt-12 bg-white">
+                <nav className="flex flex-col gap-2">
+                  <SheetClose asChild><a href="#impacto" className="px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">{t.featuresNav}</a></SheetClose>
+                  <SheetClose asChild><a href="#pricing" className="px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">{t.pricingNav}</a></SheetClose>
+                  <SheetClose asChild><a href="#faq" className="px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">{t.faqNav}</a></SheetClose>
+                  <div className="h-px bg-slate-100 my-2" />
+                  <SheetClose asChild><Link to="/auth" className="px-3 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg">{t.signIn}</Link></SheetClose>
+                  <SheetClose asChild>
+                    <Link to="/auth/start" className="mt-2 inline-flex items-center justify-center bg-slate-900 text-white px-4 py-3 rounded-full text-sm font-semibold">
                       {t.getStarted}
-                    </Button>
-                  </Link>
-                </SheetClose>
-              </nav>
-            </SheetContent>
+                    </Link>
+                  </SheetClose>
+                </nav>
+              </SheetContent>
             </Sheet>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative bg-gradient-to-b from-background to-muted/30 overflow-hidden">
-        <div className="absolute bottom-0 left-0 right-0">
-          <RhythmWave variant="hero" height={140} className="opacity-80" />
-        </div>
-        <div className="relative max-w-7xl mx-auto px-6 lg:px-8 py-24 lg:py-32">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-            
-            {/* Coluna Esquerda - Texto */}
-            <div className="space-y-6 text-left">
+      {/* ============== HERO ============== */}
+      <section className="pt-20 lg:pt-28 pb-20 px-6">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <div className="space-y-8">
+            <div className="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full text-xs font-semibold text-indigo-600">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-indigo-500" />
+              {t.aiNativeBadge}
+            </div>
+            <h1 className="font-serif text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] text-slate-900">
+              {t.heroTitle}
+            </h1>
+            <p className="text-xl text-slate-500 leading-relaxed max-w-xl">
+              {t.heroSubtitle}
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={() => navigate('/auth/start')}
+                className="bg-slate-900 hover:bg-slate-800 text-white px-7 py-3.5 rounded-full font-semibold text-base shadow-xl shadow-slate-200 transition-all hover:scale-[1.02]"
+              >
+                {t.getStarted}
+              </button>
+              <a
+                href="#pricing"
+                className="border border-slate-200 hover:border-slate-300 hover:bg-slate-50 px-7 py-3.5 rounded-full font-semibold text-base text-slate-700 transition-colors"
+              >
+                {t.seePlans}
+              </a>
+            </div>
+            <p className="text-xs text-slate-400 pt-2">
+              {lang === 'pt' ? 'Sem cartão de crédito para começar. Cancele quando quiser.' : 'No credit card to start. Cancel anytime.'}
+            </p>
+          </div>
 
-              <h1 className="font-serif text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight text-foreground">
-                {t.heroTitle}
-              </h1>
-              
-              <p className="text-lg text-muted-foreground leading-relaxed max-w-xl">
-                {t.heroSubtitle}
-              </p>
-              
-              <div className="pt-4 flex flex-wrap gap-3">
-                <Button size="lg" className="text-base px-8 rounded-xl" onClick={() => navigate('/auth/start')}>
-                  {t.getStarted}
-                </Button>
-                <Button size="lg" variant="outline" className="text-base px-8 rounded-xl" asChild>
-                  <a href="#pricing">{t.seePlans}</a>
-                </Button>
+          {/* Iridescent product card */}
+          <div className="relative">
+            <div className="iridescent-surface rounded-[2rem] p-6 lg:p-8 shadow-2xl shadow-indigo-100/40 border border-white/60">
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                {/* Browser top bar */}
+                <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-slate-50/50">
+                  <span className="w-2.5 h-2.5 rounded-full bg-slate-200" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-slate-200" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-slate-200" />
+                  <div className="ml-3 text-[11px] text-slate-400 font-medium">rhitmo.co · {lang === 'pt' ? 'Avaliação · Q3' : 'Review · Q3'}</div>
+                </div>
+                {/* Card content */}
+                <div className="p-6 space-y-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-200 to-pink-200" />
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900">Maria Santos</div>
+                      <div className="text-xs text-slate-400">{lang === 'pt' ? 'Engenheira · 12 1:1s neste trimestre' : 'Engineer · 12 1:1s this quarter'}</div>
+                    </div>
+                    <span className="ml-auto text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">{lang === 'pt' ? 'Draft pronto' : 'Draft ready'}</span>
+                  </div>
+                  <div className="border-l-4 border-indigo-400 bg-indigo-50/40 p-4 rounded-r-lg">
+                    <p className="text-sm text-slate-700 leading-relaxed">
+                      {lang === 'pt'
+                        ? 'Maria demonstrou domínio técnico crescente ao liderar a refatoração do pipeline de feedback. Em três 1:1s consecutivas trouxe ideias estruturadas...'
+                        : 'Maria has shown growing technical mastery leading the feedback pipeline refactor. Across three consecutive 1:1s she brought structured ideas...'}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-2 w-full bg-slate-100 rounded-full" />
+                    <div className="h-2 w-5/6 bg-slate-100 rounded-full" />
+                    <div className="h-2 w-2/3 bg-slate-100 rounded-full" />
+                  </div>
+                  <div className="flex items-center justify-between pt-2">
+                    <div className="flex items-center gap-2 text-xs text-slate-400">
+                      <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
+                      {lang === 'pt' ? '8 evidências citadas' : '8 cited evidences'}
+                    </div>
+                    <div className="text-xs font-semibold text-emerald-600">{lang === 'pt' ? 'Sem viés detectado' : 'No bias detected'}</div>
+                  </div>
+                </div>
               </div>
             </div>
-            
-            {/* Coluna Direita - Imagem Premium */}
-            <div className="relative">
-              {/* Glow effect sutil */}
-              <div className="absolute -inset-6 bg-gradient-to-r from-primary/15 to-primary/10 rounded-3xl blur-3xl opacity-30" />
-              
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/30 hover:shadow-xl transition-all duration-500">
-                <img src={heroLeaderFlow} alt={t.heroAlt} className="w-full h-full object-cover aspect-[4/3]" />
+
+            {/* Floating AI analysis card */}
+            <div className="hidden md:block absolute -bottom-6 -left-6 bg-white p-4 rounded-2xl shadow-xl border border-slate-100 w-56">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center">
+                  <Sparkles className="h-3 w-3 text-indigo-600" />
+                </div>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{lang === 'pt' ? 'Análise IA' : 'AI Analysis'}</p>
               </div>
+              <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                <div className="w-2/3 h-full bg-gradient-to-r from-indigo-500 to-pink-400" />
+              </div>
+              <p className="text-[11px] text-slate-500 mt-2 leading-snug">{lang === 'pt' ? '420+ mensagens analisadas' : '420+ messages analyzed'}</p>
             </div>
-            
           </div>
         </div>
       </section>
 
-      <WaveDivider className="bg-background" />
+      {/* ============== SOCIAL PROOF STRIP ============== */}
+      <section className="py-12 border-y border-slate-100 bg-white">
+        <div className="max-w-7xl mx-auto px-6 text-center">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-8">
+            {lang === 'pt' ? 'Usado por líderes em times de tecnologia, saúde e serviços' : 'Used by leaders in tech, healthcare, and services teams'}
+          </p>
+          <div className="flex flex-wrap justify-center items-center gap-x-12 gap-y-6 opacity-50">
+            <span className="text-base font-bold tracking-tight text-slate-500">Nubank</span>
+            <span className="text-base font-bold tracking-tight text-slate-500">iFood</span>
+            <span className="text-base font-bold tracking-tight text-slate-500">Loft</span>
+            <span className="text-base font-bold tracking-tight text-slate-500">Hospital Albert Einstein</span>
+            <span className="text-base font-bold tracking-tight text-slate-500">Stone</span>
+            <span className="text-base font-bold tracking-tight text-slate-500">Movile</span>
+          </div>
+        </div>
+      </section>
 
-      {/* Seção: Antes vs. Depois — Split Timeline */}
-      <section className="py-28 bg-background">
-        <div className="container mx-auto px-4">
+      {/* ============== BEFORE / AFTER ============== */}
+      <section className="py-28 px-6 bg-slate-50/40">
+        <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16 max-w-3xl mx-auto">
-            <div className="inline-flex items-center gap-3 mb-6">
-              <span className="h-px w-8 bg-primary/20" />
-              <p className="text-[10px] uppercase tracking-[0.45em] text-muted-foreground">{t.beforeAfterOverline}</p>
-              <span className="h-px w-8 bg-primary/20" />
-            </div>
-            <h2 className="font-serif text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] text-foreground mb-8">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-indigo-500 font-bold mb-4">{t.beforeAfterOverline}</p>
+            <h2 className="font-serif text-5xl md:text-6xl font-bold tracking-tight leading-[1.05] text-slate-900 mb-6">
               {t.beforeAfterTitle}
             </h2>
-            <p className="text-lg lg:text-xl text-muted-foreground/80 leading-relaxed">
+            <p className="text-lg text-slate-500 leading-relaxed">
               {lang === 'pt' ? 'Veja o que muda quando IA assume o trabalho operacional.' : 'See what changes when AI takes over the busywork.'}
             </p>
           </div>
 
-          <div className="relative max-w-5xl mx-auto">
-            {/* Arrow indicator between cards - desktop only */}
-            <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-primary text-primary-foreground items-center justify-center shadow-lg z-10">
-              <ArrowRight className="h-5 w-5" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Without */}
+            <div className="bg-white rounded-3xl p-8 lg:p-10 border border-slate-100 shadow-sm">
+              <div className="flex items-center gap-3 mb-6 pb-6 border-b border-slate-100">
+                <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
+                  <XCircle className="h-5 w-5 text-red-500" />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-700">{t.withoutRhitmo}</h3>
+              </div>
+              <ul className="space-y-4">
+                {t.beforeItems.map((item, i) => (
+                  <li key={i} className="flex items-start gap-3">
+                    <span className="mt-2 w-1 h-1 rounded-full bg-slate-300 shrink-0" />
+                    <span className="text-slate-500 leading-relaxed">{item}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 max-w-5xl mx-auto">
-              {/* Row 1: Headers */}
-              <div className="bg-muted rounded-t-2xl md:rounded-tr-none md:rounded-tl-2xl p-8 lg:p-10 pb-0 lg:pb-0 border border-b-0 border-destructive/10">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
-                    <XCircle className="h-5 w-5 text-destructive" />
+            {/* With */}
+            <div className="iridescent-surface rounded-3xl p-1.5">
+              <div className="bg-white rounded-[1.4rem] p-8 lg:p-10 h-full">
+                <div className="flex items-center gap-3 mb-6 pb-6 border-b border-slate-100">
+                  <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
+                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                   </div>
-                  <h3 className="text-2xl font-bold tracking-tight text-foreground">{t.withoutRhitmo}</h3>
+                  <h3 className="text-lg font-semibold text-slate-900">{t.withRhitmo}</h3>
                 </div>
+                <ul className="space-y-4">
+                  {t.afterItems.map((item, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-1 shrink-0" />
+                      <span className="text-slate-800 leading-relaxed font-medium">{item}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <div className="bg-gradient-to-br from-primary/5 to-emerald-500/5 rounded-t-2xl md:rounded-tl-none md:rounded-tr-2xl p-8 lg:p-10 pb-0 lg:pb-0 border border-b-0 border-primary/20">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <CheckCircle2 className="h-5 w-5 text-primary" />
-                  </div>
-                  <h3 className="text-2xl font-bold tracking-tight text-foreground">{t.withRhitmo}</h3>
-                </div>
-              </div>
-
-              {/* Rows 2+: Interleaved items */}
-              {t.beforeItems.map((beforeItem, i) => {
-                const afterItem = t.afterItems[i];
-                const isLast = i === t.beforeItems.length - 1;
-                return (
-                  <React.Fragment key={i}>
-                    <div className={`bg-muted px-8 lg:px-10 py-2.5 border-x border-destructive/10 ${isLast ? 'pb-8 lg:pb-10 border-b rounded-b-2xl md:rounded-br-none md:rounded-bl-2xl' : ''} ${i === 0 ? 'pt-6' : ''}`}>
-                      <div className="flex items-start gap-3">
-                        <XCircle className="h-4 w-4 text-destructive/60 mt-1 shrink-0" />
-                        <span className="text-muted-foreground leading-relaxed text-base">{beforeItem}</span>
-                      </div>
-                    </div>
-                    <div className={`bg-gradient-to-br from-primary/5 to-emerald-500/5 px-8 lg:px-10 py-2.5 border-x border-primary/20 ${isLast ? 'pb-8 lg:pb-10 border-b rounded-b-2xl md:rounded-bl-none md:rounded-br-2xl' : ''} ${i === 0 ? 'pt-6' : ''}`}>
-                      <div className="flex items-start gap-3">
-                        <CheckCircle2 className="h-4 w-4 text-primary mt-1 shrink-0" />
-                        <span className="text-foreground leading-relaxed text-base font-medium">{afterItem}</span>
-                      </div>
-                    </div>
-                  </React.Fragment>
-                );
-              })}
             </div>
           </div>
         </div>
       </section>
 
-
-      {/* Seção: Rhitmo vs. Outros — Feature Showdown */}
-      <section className="py-28 bg-background">
-        <div className="container mx-auto px-4">
+      {/* ============== NUMBERS BENTO ============== */}
+      <section id="impacto" className="py-28 px-6 bg-white">
+        <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16 max-w-3xl mx-auto">
-            <div className="inline-flex items-center gap-3 mb-6">
-              <span className="h-px w-8 bg-primary/20" />
-              <p className="text-[10px] uppercase tracking-[0.45em] text-muted-foreground">{t.comparisonOverline}</p>
-              <span className="h-px w-8 bg-primary/20" />
+            <p className="text-[10px] uppercase tracking-[0.3em] text-indigo-500 font-bold mb-4">{t.numbersOverline}</p>
+            <h2 className="font-serif text-5xl md:text-6xl font-bold tracking-tight leading-[1.05] text-slate-900 mb-6">
+              {t.numbersTitle}
+            </h2>
+            <p className="text-lg text-slate-500 leading-relaxed">
+              {lang === 'pt' ? 'Resultados reais de quem já usa Rhitmo no dia a dia.' : 'Real results from leaders who already use Rhitmo daily.'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-2 bg-slate-50/60 rounded-3xl p-10 lg:p-12 border border-slate-100">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center">
+                  <Clock className="h-5 w-5 text-indigo-500" />
+                </div>
+                <span className="text-[10px] uppercase tracking-[0.3em] text-slate-400 font-bold">{lang === 'pt' ? 'Produtividade' : 'Productivity'}</span>
+              </div>
+              <div className="font-serif text-6xl lg:text-7xl font-bold tracking-tight text-slate-900 mb-5">{t.numbersStat1}</div>
+              <p className="text-base text-slate-500 leading-relaxed">{t.numbersLabel1}</p>
             </div>
-            <h2 className="font-serif text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] text-foreground mb-8">
+
+            <div className="flex flex-col gap-6">
+              <div className="bg-slate-50/60 rounded-3xl p-8 border border-slate-100 flex-1">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center">
+                    <AlertCircle className="h-4 w-4 text-red-500" />
+                  </div>
+                  <span className="text-[10px] uppercase tracking-[0.3em] text-slate-400 font-bold">{lang === 'pt' ? 'Equidade' : 'Equity'}</span>
+                </div>
+                <div className="font-serif text-4xl font-bold tracking-tight text-slate-900 mb-2">{t.numbersStat2}</div>
+                <p className="text-sm text-slate-500 leading-relaxed">{t.numbersLabel2}</p>
+              </div>
+              <div className="bg-slate-50/60 rounded-3xl p-8 border border-slate-100 flex-1">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-9 h-9 rounded-full bg-emerald-50 flex items-center justify-center">
+                    <DollarSign className="h-4 w-4 text-emerald-500" />
+                  </div>
+                  <span className="text-[10px] uppercase tracking-[0.3em] text-slate-400 font-bold">{lang === 'pt' ? 'Economia' : 'Savings'}</span>
+                </div>
+                <div className="font-serif text-4xl font-bold tracking-tight text-slate-900 mb-2">{t.numbersStat3}</div>
+                <p className="text-sm text-slate-500 leading-relaxed">{t.numbersLabel3}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============== COMPARISON TABLE ============== */}
+      <section className="py-28 px-6 bg-slate-50/40">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-16 max-w-3xl mx-auto">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-indigo-500 font-bold mb-4">{t.comparisonOverline}</p>
+            <h2 className="font-serif text-5xl md:text-6xl font-bold tracking-tight leading-[1.05] text-slate-900 mb-6">
               {t.comparisonTitle}
             </h2>
-            <p className="text-lg lg:text-xl text-muted-foreground/80 leading-relaxed">
+            <p className="text-lg text-slate-500 leading-relaxed">
               {lang === 'pt' ? 'A pergunta é com qual ferramenta. Funcionalidades reais, não promessas de roadmap.' : 'The question is with which tool. Real features, not roadmap promises.'}
             </p>
           </div>
 
-          {/* Desktop: Premium Table */}
-          <div className="hidden md:block max-w-5xl mx-auto">
-            <div className="rounded-2xl border overflow-hidden shadow-md">
+          <div className="hidden md:block">
+            <div className="rounded-3xl border border-slate-100 overflow-hidden shadow-sm bg-white">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-muted/30 border-b-2">
-                    <TableHead className="font-bold text-foreground py-5 pl-6">{t.compFeature}</TableHead>
-                    <TableHead className="text-center text-muted-foreground py-5">{t.compSpreadsheets}</TableHead>
-                    <TableHead className="text-center text-muted-foreground py-5">{t.compQulture}</TableHead>
-                    <TableHead className="text-center text-muted-foreground py-5">{t.compLattice}</TableHead>
-                    <TableHead className="text-center font-bold py-5 bg-primary text-primary-foreground rounded-t-none">{t.compRhitmo}</TableHead>
+                  <TableRow className="bg-white border-b border-slate-100 hover:bg-white">
+                    <TableHead className="font-bold text-slate-900 py-5 pl-6">{t.compFeature}</TableHead>
+                    <TableHead className="text-center text-slate-400 py-5 font-semibold">{t.compSpreadsheets}</TableHead>
+                    <TableHead className="text-center text-slate-400 py-5 font-semibold">{t.compQulture}</TableHead>
+                    <TableHead className="text-center text-slate-400 py-5 font-semibold">{t.compLattice}</TableHead>
+                    <TableHead className="text-center font-bold py-5 bg-slate-900 text-white">{t.compRhitmo}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {t.compRows.map((row, i) => (
-                    <TableRow key={row.feature} className={i % 2 === 0 ? 'bg-background' : 'bg-muted/20'}>
-                      <TableCell className="font-medium text-foreground py-4 pl-6">{row.feature}</TableCell>
+                    <TableRow key={row.feature} className="border-slate-50 hover:bg-slate-50/40">
+                      <TableCell className="font-medium text-slate-700 py-4 pl-6">{row.feature}</TableCell>
                       <TableCell className="text-center py-4"><ComparisonIcon status={row.spreadsheets} /></TableCell>
                       <TableCell className="text-center py-4"><ComparisonIcon status={row.qulture} /></TableCell>
                       <TableCell className="text-center py-4"><ComparisonIcon status={row.lattice} /></TableCell>
-                      <TableCell className="text-center py-4 bg-primary/5 border-x border-primary/10"><ComparisonIcon status={row.rhitmo} /></TableCell>
+                      <TableCell className="text-center py-4 bg-indigo-50/40 border-x border-indigo-100"><ComparisonIcon status={row.rhitmo} /></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </div>
-            <p className="text-sm text-muted-foreground text-center mt-6">{t.compLegend}</p>
+            <p className="text-sm text-slate-400 text-center mt-6">{t.compLegend}</p>
           </div>
 
-          {/* Mobile: Accordion cards */}
           <div className="md:hidden max-w-lg mx-auto">
             <Accordion type="single" collapsible className="space-y-3">
               {t.compRows.map((row, i) => (
-                <AccordionItem key={i} value={`comp-${i}`} className="border rounded-xl px-4 bg-card">
-                  <AccordionTrigger className="text-sm font-medium hover:no-underline">
+                <AccordionItem key={i} value={`comp-${i}`} className="border border-slate-100 rounded-2xl px-4 bg-white">
+                  <AccordionTrigger className="text-sm font-medium hover:no-underline text-slate-700">
                     {row.feature}
                   </AccordionTrigger>
                   <AccordionContent>
                     <div className="grid grid-cols-2 gap-3 text-sm py-2">
-                      <div className="flex justify-between"><span className="text-muted-foreground">{t.compSpreadsheets}</span> <ComparisonIcon status={row.spreadsheets} /></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">{t.compQulture}</span> <ComparisonIcon status={row.qulture} /></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">{t.compLattice}</span> <ComparisonIcon status={row.lattice} /></div>
-                      <div className="flex justify-between rounded-lg bg-primary/5 px-2 py-1"><span className="font-medium text-primary">{t.compRhitmo}</span> <ComparisonIcon status={row.rhitmo} /></div>
+                      <div className="flex justify-between"><span className="text-slate-400">{t.compSpreadsheets}</span> <ComparisonIcon status={row.spreadsheets} /></div>
+                      <div className="flex justify-between"><span className="text-slate-400">{t.compQulture}</span> <ComparisonIcon status={row.qulture} /></div>
+                      <div className="flex justify-between"><span className="text-slate-400">{t.compLattice}</span> <ComparisonIcon status={row.lattice} /></div>
+                      <div className="flex justify-between rounded-lg bg-indigo-50/50 px-2 py-1"><span className="font-medium text-indigo-700">{t.compRhitmo}</span> <ComparisonIcon status={row.rhitmo} /></div>
                     </div>
                   </AccordionContent>
                 </AccordionItem>
               ))}
             </Accordion>
-            <p className="text-sm text-muted-foreground text-center mt-4">{t.compLegend}</p>
+            <p className="text-sm text-slate-400 text-center mt-4">{t.compLegend}</p>
           </div>
         </div>
       </section>
 
-      {/* Seção: Números Concretos */}
-      <section id="impacto" className="py-28 bg-gradient-to-br from-muted/30 to-primary/5">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16 max-w-3xl mx-auto">
-            <div className="inline-flex items-center gap-3 mb-6">
-              <span className="h-px w-8 bg-primary/20" />
-              <p className="text-[10px] uppercase tracking-[0.45em] text-muted-foreground">{t.numbersOverline}</p>
-              <span className="h-px w-8 bg-primary/20" />
-            </div>
-            <h2 className="font-serif text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] text-foreground mb-8">
-              {t.numbersTitle}
-            </h2>
-            <p className="text-lg lg:text-xl text-muted-foreground/80 leading-relaxed">
-              {lang === 'pt' ? 'Resultados reais de quem já usa Rhitmo no dia a dia.' : 'Real results from leaders who already use Rhitmo daily.'}
-            </p>
-          </div>
-
-          {/* Bento Grid — Hero card + 2 secondary */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {/* Hero Card — spans 2 cols */}
-            <div className="md:col-span-2 bg-card rounded-2xl p-10 lg:p-12 border-l-4 border-l-primary border shadow-md hover:shadow-lg transition-all duration-300 flex flex-col justify-center">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Clock className="h-6 w-6 text-primary" />
-                </div>
-                <span className="text-[10px] uppercase tracking-[0.45em] text-muted-foreground">{lang === 'pt' ? 'Produtividade' : 'Productivity'}</span>
-              </div>
-              <div className="font-serif text-6xl lg:text-7xl font-bold tracking-tight text-foreground mb-4">{t.numbersStat1}</div>
-              <p className="text-base text-muted-foreground leading-relaxed max-w-lg">{t.numbersLabel1}</p>
-            </div>
-
-            {/* Secondary Cards — stacked */}
-            <div className="flex flex-col gap-6">
-              <div className="bg-card rounded-2xl p-8 border-l-4 border-l-destructive border shadow-md hover:shadow-lg transition-all duration-300 flex-1">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
-                    <AlertCircle className="h-5 w-5 text-destructive" />
-                  </div>
-                  <span className="text-[10px] uppercase tracking-[0.45em] text-muted-foreground">{lang === 'pt' ? 'Equidade' : 'Equity'}</span>
-                </div>
-                <div className="font-serif text-4xl font-bold tracking-tight text-foreground mb-2">{t.numbersStat2}</div>
-                <p className="text-sm text-muted-foreground leading-relaxed">{t.numbersLabel2}</p>
-              </div>
-              <div className="bg-card rounded-2xl p-8 border-l-4 border-l-primary border shadow-md hover:shadow-lg transition-all duration-300 flex-1">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <DollarSign className="h-5 w-5 text-primary" />
-                  </div>
-                  <span className="text-[10px] uppercase tracking-[0.45em] text-muted-foreground">{lang === 'pt' ? 'Economia' : 'Savings'}</span>
-                </div>
-                <div className="font-serif text-4xl font-bold tracking-tight text-foreground mb-2">{t.numbersStat3}</div>
-                <p className="text-sm text-muted-foreground leading-relaxed">{t.numbersLabel3}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Seção 1: Para Líderes - Fundo Branco */}
-      <section className="py-24 bg-muted/30">
-        <div className="container mx-auto px-4">
+      {/* ============== FOR LEADERS / REPORTS / HR ============== */}
+      <section className="py-28 px-6 bg-white">
+        <div className="max-w-5xl mx-auto space-y-28">
+          {/* Leaders */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-16 items-center">
-            {/* Texto */}
             <div className="space-y-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium">
-                <Zap className="h-4 w-4" />
-                {t.forLeaders}
-              </div>
-              <h2 className="font-serif text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight leading-[1.05] text-foreground">
-                {t.leadersTitle}
-              </h2>
-              <div className="space-y-4 text-lg text-muted-foreground leading-relaxed">
+              <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.25em] text-indigo-600">
+                <Zap className="h-3.5 w-3.5" /> {t.forLeaders}
+              </span>
+              <h3 className="font-serif text-4xl lg:text-5xl font-bold tracking-tight leading-[1.05] text-slate-900">{t.leadersTitle}</h3>
+              <div className="space-y-4 text-lg text-slate-500 leading-relaxed">
                 <p>{t.leadersP1}</p>
                 <p>{t.leadersP2}</p>
               </div>
             </div>
-            
-            {/* Visual - Browser Frame com Mentor Chat */}
-            <div>
-              <BrowserFrame>
+            <div className="iridescent-surface rounded-3xl p-1.5 shadow-xl shadow-indigo-100/40">
+              <div className="bg-white rounded-[1.4rem] p-6">
                 <SimpleChatMockup t={t} />
-              </BrowserFrame>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* Seção 2: Para Pessoas Lideradas - Fundo Cinza Suave */}
-      <section className="py-24 bg-background">
-        <div className="container mx-auto px-4">
+          {/* Reports */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-16 items-center">
-            {/* Visual - Foto Humana (emoção) */}
-            <div className="md:order-1 order-2">
-              <HumanImageContainer>
-                <div className="relative w-full h-full">
-                  <img src={heroDuoFeedback} alt={t.duoAlt} className="w-full h-full object-cover rounded-2xl" />
-                </div>
-              </HumanImageContainer>
-            </div>
-            
-            {/* Texto - Direita em desktop */}
-            <div className="space-y-6 md:order-2 order-1">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 text-sm font-medium">
-                <Heart className="h-4 w-4" />
-                {t.forReports}
-              </div>
-              <h2 className="font-serif text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight leading-[1.05] text-foreground">
-                {t.reportsTitle}
-              </h2>
-              <div className="space-y-4 text-lg text-muted-foreground leading-relaxed">
+            <div className="md:order-2 space-y-6">
+              <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.25em] text-emerald-600">
+                <Heart className="h-3.5 w-3.5" /> {t.forReports}
+              </span>
+              <h3 className="font-serif text-4xl lg:text-5xl font-bold tracking-tight leading-[1.05] text-slate-900">{t.reportsTitle}</h3>
+              <div className="space-y-4 text-lg text-slate-500 leading-relaxed">
                 <p>{t.reportsP1}</p>
                 <p>{t.reportsP2}</p>
               </div>
             </div>
+            <div className="md:order-1 rounded-3xl overflow-hidden border border-slate-100 shadow-sm">
+              <img src={heroDuoFeedback} alt={t.duoAlt} className="w-full aspect-[4/3] object-cover" />
+            </div>
           </div>
-        </div>
-      </section>
 
-      {/* Seção 3: Para RH - Fundo Branco */}
-      <section className="py-24 bg-muted/30">
-        <div className="container mx-auto px-4">
+          {/* HR */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-16 items-center">
-            {/* Texto */}
             <div className="space-y-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-500/10 text-slate-600 text-sm font-medium">
-                <BarChart className="h-4 w-4" />
-                {t.forHR}
-              </div>
-              <h2 className="font-serif text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight leading-[1.05] text-foreground">
-                {t.hrTitle}
-              </h2>
-              <div className="space-y-4 text-lg text-muted-foreground leading-relaxed">
+              <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.25em] text-slate-600">
+                <BarChart className="h-3.5 w-3.5" /> {t.forHR}
+              </span>
+              <h3 className="font-serif text-4xl lg:text-5xl font-bold tracking-tight leading-[1.05] text-slate-900">{t.hrTitle}</h3>
+              <div className="space-y-4 text-lg text-slate-500 leading-relaxed">
                 <p>{t.hrP1}</p>
                 <p>{t.hrP2}</p>
               </div>
             </div>
-            
-            {/* Visual - Browser Frame Wide com Analytics */}
-            <div>
-              <BrowserFrame wide>
-                <img src={analyticsScreenshot} alt={t.analyticsAlt} className="w-full h-full object-cover object-top" />
-              </BrowserFrame>
+            <div className="rounded-3xl overflow-hidden border border-slate-100 shadow-sm bg-white">
+              <img src={analyticsScreenshot} alt={t.analyticsAlt} className="w-full object-cover object-top" />
             </div>
           </div>
         </div>
       </section>
 
+      {/* ============== POST-IT TESTIMONIALS ============== */}
+      <section className="py-28 px-6 bg-slate-50/40 overflow-hidden">
+        <div className="max-w-5xl mx-auto text-center mb-16">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-indigo-500 font-bold mb-4">
+            {lang === 'pt' ? 'Quem já usa' : 'Real users'}
+          </p>
+          <h2 className="font-serif text-5xl md:text-6xl font-bold tracking-tight leading-[1.05] text-slate-900 mb-4">
+            {lang === 'pt' ? 'Feedback real de líderes reais.' : 'Real feedback from real leaders.'}
+          </h2>
+          <p className="text-lg text-slate-500">
+            {lang === 'pt' ? 'Anotações anônimas de quem trocou planilhas e docs por Rhitmo.' : 'Anonymous notes from teams who replaced spreadsheets and docs with Rhitmo.'}
+          </p>
+        </div>
 
-
-
-
-      {/* FAQ Section */}
-      <section id="faq" className="py-24 bg-muted/30">
-        <div className="container mx-auto px-4 max-w-3xl">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-3 mb-6">
-              <span className="h-px w-8 bg-primary/20" />
-              <p className="text-[10px] uppercase tracking-[0.45em] text-muted-foreground">FAQ</p>
-              <span className="h-px w-8 bg-primary/20" />
+        <div className="flex flex-wrap justify-center gap-6 max-w-5xl mx-auto py-6">
+          {testimonials.map((it, i) => (
+            <div
+              key={i}
+              className={cn('post-it w-64 p-6 border flex flex-col justify-between gap-6', it.color, it.rot)}
+            >
+              <p className="text-base font-medium leading-snug text-slate-800 italic">"{it.quote}"</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">{it.author}</p>
             </div>
-            <h2 className="font-serif text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] text-foreground">
+          ))}
+        </div>
+      </section>
+
+      {/* ============== FAQ ============== */}
+      <section id="faq" className="py-28 px-6 bg-white">
+        <div className="max-w-3xl mx-auto">
+          <div className="text-center mb-12">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-indigo-500 font-bold mb-4">FAQ</p>
+            <h2 className="font-serif text-5xl md:text-6xl font-bold tracking-tight leading-[1.05] text-slate-900">
               {t.faqTitle}
             </h2>
           </div>
           <Accordion type="single" collapsible className="space-y-3">
             {t.faqItems.map((item, i) => (
-              <AccordionItem key={i} value={`faq-${i}`} className="border rounded-xl px-6 bg-card">
-                <AccordionTrigger className="text-left font-medium hover:no-underline">
+              <AccordionItem key={i} value={`faq-${i}`} className="border border-slate-100 rounded-2xl px-6 bg-white">
+                <AccordionTrigger className="text-left font-semibold text-slate-900 hover:no-underline">
                   {item.q}
                 </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground leading-relaxed">
+                <AccordionContent className="text-slate-500 leading-relaxed">
                   {item.a}
                 </AccordionContent>
               </AccordionItem>
@@ -1372,34 +1362,47 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Pricing Section — Sem mensal. Trimestral / Semestral / Anual. */}
-      <WaveDivider className="bg-background" />
+      {/* ============== PRICING ============== */}
       <PricingSection t={t} lang={lang} navigate={navigate} />
 
-      {/* Footer */}
-      <WaveDivider className="bg-muted/30" />
-      <footer className="bg-muted/30 py-12 pb-20">
-        <div className="container mx-auto px-4 text-center space-y-6">
-          <RhitmoLogo size="sm" className="mx-auto text-primary" />
-          <div className="flex justify-center gap-6 text-sm text-muted-foreground">
-            <Link to="/terms-of-service" className="hover:text-foreground transition-colors">
-              {t.footerTerms}
-            </Link>
-            <Link to="/privacy-policy" className="hover:text-foreground transition-colors">
-              {t.footerPrivacy}
-            </Link>
+      {/* ============== FOOTER ============== */}
+      <footer className="py-20 px-6 border-t border-slate-100 bg-white">
+        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-10">
+          <div className="col-span-2">
+            <RhitmoLogo size="sm" className="text-slate-900" />
+            <p className="mt-4 text-sm text-slate-400 max-w-xs leading-relaxed">
+              {lang === 'pt'
+                ? 'O parceiro AI-nativo de liderança que transforma conversas em avaliações de desempenho prontas.'
+                : 'The AI-native leadership partner that turns conversations into ready-made performance reviews.'}
+            </p>
           </div>
-          <p className="text-sm text-muted-foreground">
-            {t.footerRights}
-          </p>
-          <Link to="/auth" className="text-xs text-muted-foreground/70 hover:text-primary transition-colors inline-block">
-            {t.footerLogin}
-          </Link>
+          <div>
+            <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-900 mb-5">{lang === 'pt' ? 'Produto' : 'Product'}</h4>
+            <ul className="space-y-3 text-sm text-slate-500">
+              <li><a href="#impacto" className="hover:text-slate-900 transition-colors">{t.featuresNav}</a></li>
+              <li><a href="#pricing" className="hover:text-slate-900 transition-colors">{t.pricingNav}</a></li>
+              <li><a href="#faq" className="hover:text-slate-900 transition-colors">{t.faqNav}</a></li>
+              <li><Link to="/enterprise" className="hover:text-slate-900 transition-colors">{t.enterpriseNav}</Link></li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-900 mb-5">{lang === 'pt' ? 'Legal' : 'Legal'}</h4>
+            <ul className="space-y-3 text-sm text-slate-500">
+              <li><Link to="/terms-of-service" className="hover:text-slate-900 transition-colors">{t.footerTerms}</Link></li>
+              <li><Link to="/privacy-policy" className="hover:text-slate-900 transition-colors">{t.footerPrivacy}</Link></li>
+              <li><Link to="/auth" className="hover:text-slate-900 transition-colors">{t.footerLogin}</Link></li>
+            </ul>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto mt-16 pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 text-[11px] font-medium text-slate-400">
+          <span>{t.footerRights}</span>
+          <div className="flex gap-6 uppercase tracking-[0.2em] font-bold">
+            <span>SOC 2 Type II</span>
+            <span>LGPD</span>
+          </div>
         </div>
       </footer>
-
-      
     </div>
-  </div>;
+  );
 };
 export default Landing;
