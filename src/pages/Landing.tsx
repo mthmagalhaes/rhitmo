@@ -12,6 +12,7 @@ import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X, Chec
 import analyticsScreenshot from "@/assets/analytics-screenshot.png";
 import heroLeaderFlow from "@/assets/hero-leader-flow.png";
 import heroDuoFeedback from "@/assets/hero-duo-feedback.png";
+import cinematicOffice from "@/assets/landing-cinematic-office.jpg";
 import { cn } from "@/lib/utils";
 
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
@@ -1121,6 +1122,33 @@ const Landing = () => {
         </div>
       </section>
 
+
+      {/* ============== CINEMATIC QUOTE ============== */}
+      <section className="w-full px-4 md:px-8 pb-12 md:pb-20">
+        <div className="relative w-full overflow-hidden rounded-3xl aspect-[4/5] md:aspect-[21/9] shadow-[0_20px_60px_-20px_rgba(0,0,0,0.35)]">
+          <img
+            src={cinematicOffice}
+            alt={lang === 'pt' ? 'Escritório ao entardecer com líderes conversando' : 'Office at dusk with leaders in conversation'}
+            loading="lazy"
+            width={1920}
+            height={1080}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/45 to-black/30" />
+          <div className="relative z-10 flex h-full w-full flex-col items-center justify-center px-6 text-center">
+            <h2 className="font-serif text-white text-4xl md:text-6xl lg:text-7xl font-semibold tracking-tight leading-[1.05] max-w-4xl">
+              {lang === 'pt' ? 'Toda história merece ser lembrada.' : 'Every story deserves to be remembered.'}
+            </h2>
+            <a
+              href="#impacto"
+              className="mt-10 inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-md border border-white/25 px-6 py-3 text-sm font-medium text-white hover:bg-white/20 transition-colors"
+            >
+              {lang === 'pt' ? 'Veja como funciona' : 'See how it works'}
+              <ArrowRight className="h-4 w-4" />
+            </a>
+          </div>
+        </div>
+      </section>
 
       {/* ============== BEFORE / AFTER ============== */}
       <section className="py-28 px-6 bg-slate-50/40">
