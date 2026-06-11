@@ -1142,60 +1142,21 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* ============== BEFORE / AFTER ============== */}
-      <section className="py-28 px-6 bg-slate-50/40">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16 max-w-3xl mx-auto">
-            <p className="text-[10px] uppercase tracking-[0.3em] text-indigo-500 font-bold mb-4">{t.beforeAfterOverline}</p>
-            <h2 className="font-serif text-5xl md:text-6xl font-bold tracking-tight leading-[1.05] text-slate-900 mb-6">
-              {t.beforeAfterTitle}
-            </h2>
-            <p className="text-lg text-slate-500 leading-relaxed">
-              {lang === 'pt' ? 'Veja o que muda quando IA assume o trabalho operacional.' : 'See what changes when AI takes over the busywork.'}
-            </p>
-          </div>
+      {/* ============== WEEK TIMELINE ============== */}
+      <WeekTimelineSection
+        lang={lang}
+        copy={{
+          overline: t.weekOverline,
+          title: t.weekTitle,
+          subtitle: t.weekSubtitle,
+          colLeft: t.weekColLeft,
+          colRight: t.weekColRight,
+          days: t.weekDays,
+          footerNumber: t.weekFooterNumber,
+          footerLabel: t.weekFooterLabel,
+        }}
+      />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Without */}
-            <div className="bg-white rounded-3xl p-8 lg:p-10 border border-slate-100 shadow-sm">
-              <div className="flex items-center gap-3 mb-6 pb-6 border-b border-slate-100">
-                <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
-                  <XCircle className="h-5 w-5 text-red-500" />
-                </div>
-                <h3 className="text-lg font-semibold text-slate-700">{t.withoutRhitmo}</h3>
-              </div>
-              <ul className="space-y-4">
-                {t.beforeItems.map((item, i) => (
-                  <li key={i} className="flex items-start gap-3">
-                    <span className="mt-2 w-1 h-1 rounded-full bg-slate-300 shrink-0" />
-                    <span className="text-slate-500 leading-relaxed">{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* With */}
-            <div className="iridescent-surface rounded-3xl p-1.5">
-              <div className="bg-white rounded-[1.4rem] p-8 lg:p-10 h-full">
-                <div className="flex items-center gap-3 mb-6 pb-6 border-b border-slate-100">
-                  <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
-                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-slate-900">{t.withRhitmo}</h3>
-                </div>
-                <ul className="space-y-4">
-                  {t.afterItems.map((item, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-1 shrink-0" />
-                      <span className="text-slate-800 leading-relaxed font-medium">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* ============== NUMBERS BENTO ============== */}
       <section id="impacto" className="py-28 px-6 bg-white">
