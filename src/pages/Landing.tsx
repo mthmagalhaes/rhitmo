@@ -13,7 +13,7 @@ import analyticsScreenshot from "@/assets/analytics-screenshot.png";
 import heroLeaderFlow from "@/assets/hero-leader-flow.png";
 import heroDuoFeedback from "@/assets/hero-duo-feedback.png";
 import cinematicOffice from "@/assets/landing-cinematic-office.jpg";
-import { WeekTimelineSection } from "@/components/landing/WeekTimelineSection";
+import { SarahJourneySection } from "@/components/landing/SarahJourneySection";
 import { cn } from "@/lib/utils";
 
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
@@ -59,21 +59,16 @@ const translations = {
     heroSubtitle: "O que levava 2 horas agora leva poucos minutos. Rhitmo é a plataforma AI-first feita para líderes que transforma anotações, conversas e sinais em avaliações de performance justas e prontas.",
     seePlans: "Preços",
     
-    // Week timeline (substitui Before vs After)
-    weekOverline: "Uma semana na sua liderança",
-    weekTitle: "Mesma agenda. Trabalho diferente.",
-    weekSubtitle: "Cinco dias, lado a lado. Onde antes você gastava horas, a Rhitmo entrega pronto.",
-    weekColLeft: "Sem Rhitmo",
-    weekColRight: "Com Rhitmo",
-    weekDays: [
-      { day: "SEG", time: "09:00", left: "Caçar prints e mensagens no Slack pra lembrar o que rolou na sprint passada.", leftBadge: "45min manual", right: "Rollup semanal do Slack já anotado por liderado, no Diário de Bordo.", rightBadge: "automático", mock: "slack" as const },
-      { day: "TER", time: "14:00", left: "Anotar a 1:1 no Notion, depois esquecer onde salvei e perder os action items.", leftBadge: "20min + perda", right: "1:1 transcrita pelo Recall, com tags e action items prontos pra acompanhar.", rightBadge: "Recall + IA", mock: "oneonone" as const },
-      { day: "QUA", time: "11:00", left: "Reler conversas antigas pra ter certeza do contexto antes de dar um feedback difícil.", leftBadge: "1h relendo", right: "Feedback ancorado em evidências reais do trimestre, todas no mesmo lugar.", rightBadge: "evidência viva", mock: "tough" as const },
-      { day: "QUI", time: "16:00", left: "Mandar form de check-in e esperar 3 dias por 4 respostas dispersas.", leftBadge: "3 dias de espera", right: "Pulse do time com sinais da rede em tempo real, sem formulário extra.", rightBadge: "tempo real", mock: "pulse" as const },
-      { day: "SEX", time: "17:00", left: "Abrir doc em branco pra escrever a review do trimestre. Do zero. Outra vez.", leftBadge: "4h por liderado", right: "Avaliação mensal com draft pronto e citações auditáveis pra você só revisar.", rightBadge: "pronto", mock: "reviews" as const },
+    // Journey (Meet Ana — Windmill style)
+    journeyOverline: "Como funciona",
+    journeyTitle: "Conheça a Ana.\nA jornada dela com a Rhitmo.",
+    journeySubtitle: "Do primeiro dia até a primeira avaliação formal, a Rhitmo trabalha em background pra você liderar melhor.",
+    journeyActs: [
+      { tag: "SEMANA 1", label: "Onboarding", title: "Ana entra no time", body: "Antes do líder lembrar, a Rhitmo manda um check-in no Slack. O líder vê o gap antes da próxima 1:1, e quem vem depois ganha o walkthrough no dia um.", mock: "slackDM" as const },
+      { tag: "TODA SEMANA", label: "1:1s", title: "1:1s que se preparam sozinhas", body: "Sem 'então… do que a gente fala?'. A Rhitmo monta a pauta a partir do trabalho real da semana, e a Ana adiciona o que importa pra ela.", mock: "oneOnOne" as const },
+      { tag: "CONTÍNUO", label: "Feedback", title: "Feedback no calor do momento", body: "A Rhitmo nota quando a Ana fecha um projeto com alguém e pergunta direto: como ela mandou? A Ana vê o feedback no mesmo dia, não seis meses depois.", mock: "peerFeedback" as const },
+      { tag: "FIM DO TRI", label: "Review", title: "Avaliações que nascem prontas", body: "A Rhitmo escreve o draft da review a partir de evidência real. O líder revisa em vez de reconstruir o trimestre de memória, e a Ana vê o quarter inteiro sem surpresa.", mock: "review" as const },
     ],
-    weekFooterNumber: "+5h",
-    weekFooterLabel: "Mesmas 5 horas da sua semana. Devolvidas pra você liderar.",
     // Video
     videoTitle: "Veja Rhitmo em ação",
     videoSubtitle: "Veja como uma review de 4 horas vira 2 minutos.",
@@ -275,21 +270,16 @@ const translations = {
     heroSubtitle: "What took 4 hours now takes 2 minutes. Rhitmo is the only AI-native leadership partner that turns your conversations into ready-made reviews.",
     seePlans: "Pricing",
     
-    // Week timeline (replaces Before vs After)
-    weekOverline: "A week in your leadership",
-    weekTitle: "Same calendar. Different work.",
-    weekSubtitle: "Five days, side by side. Where you used to spend hours, Rhitmo delivers it done.",
-    weekColLeft: "Without Rhitmo",
-    weekColRight: "With Rhitmo",
-    weekDays: [
-      { day: "MON", time: "09:00", left: "Hunt for Slack screenshots to remember what happened last sprint.", leftBadge: "45min manual", right: "Weekly Slack rollup already logged per report, inside the Journal.", rightBadge: "automatic", mock: "slack" as const },
-      { day: "TUE", time: "14:00", left: "Take 1:1 notes in Notion, then lose them and miss the action items.", leftBadge: "20min + lost", right: "1:1 transcribed by Recall, with tags and action items ready to track.", rightBadge: "Recall + AI", mock: "oneonone" as const },
-      { day: "WED", time: "11:00", left: "Reread old threads to make sure of the context before a hard feedback.", leftBadge: "1h re-reading", right: "Feedback anchored in real evidence from the whole quarter, in one place.", rightBadge: "living evidence", mock: "tough" as const },
-      { day: "THU", time: "16:00", left: "Send a check-in form and wait 3 days for 4 scattered answers.", leftBadge: "3 days waiting", right: "Team Pulse with real-time signals from the network. No extra survey.", rightBadge: "real time", mock: "pulse" as const },
-      { day: "FRI", time: "17:00", left: "Open a blank doc to write the review. From scratch. Again.", leftBadge: "4h per report", right: "Monthly review with a ready draft and auditable citations to review.", rightBadge: "ready", mock: "reviews" as const },
+    // Journey (Meet Ana — Windmill style)
+    journeyOverline: "How it works",
+    journeyTitle: "Meet Ana.\nHer journey with Rhitmo.",
+    journeySubtitle: "From day one to her first performance review, Rhitmo works behind the scenes so you can lead better.",
+    journeyActs: [
+      { tag: "WEEK 1", label: "Onboarding", title: "Ana joins the team", body: "Before her manager even thinks about it, Rhitmo sends a Slack check-in. The manager sees the gap before the next 1:1, and future new hires get the walkthrough on day one.", mock: "slackDM" as const },
+      { tag: "WEEKLY", label: "1:1s", title: "1:1s that prep themselves", body: "No more 'so… what should we talk about?'. Rhitmo pulls the agenda from the week's actual work, and Ana adds what's on her mind.", mock: "oneOnOne" as const },
+      { tag: "ONGOING", label: "Feedback", title: "Continuous feedback, not annual surprises", body: "Rhitmo notices when Ana wraps a project with someone and asks them directly: how'd she do? Ana sees the feedback the same day, not six months later.", mock: "peerFeedback" as const },
+      { tag: "QUARTER END", label: "Review", title: "Performance reviews, already written", body: "Rhitmo drafts Ana's review from real evidence. Her manager reviews the work instead of reconstructing the quarter from memory.", mock: "review" as const },
     ],
-    weekFooterNumber: "+5h",
-    weekFooterLabel: "Five hours of your week. Given back to you to lead.",
     videoTitle: "See Rhitmo in action",
     videoSubtitle: "See how a 4-hour review becomes 2 minutes.",
     // Comparison
@@ -1143,20 +1133,17 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* ============== WEEK TIMELINE ============== */}
-      <WeekTimelineSection
+      {/* ============== MEET ANA — JOURNEY ============== */}
+      <SarahJourneySection
         lang={lang}
         copy={{
-          overline: t.weekOverline,
-          title: t.weekTitle,
-          subtitle: t.weekSubtitle,
-          colLeft: t.weekColLeft,
-          colRight: t.weekColRight,
-          days: t.weekDays,
-          footerNumber: t.weekFooterNumber,
-          footerLabel: t.weekFooterLabel,
+          overline: t.journeyOverline,
+          title: t.journeyTitle,
+          subtitle: t.journeySubtitle,
+          acts: t.journeyActs,
         }}
       />
+
 
 
       {/* ============== NUMBERS BENTO ============== */}
