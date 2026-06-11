@@ -13,7 +13,7 @@ import analyticsScreenshot from "@/assets/analytics-screenshot.png";
 import heroLeaderFlow from "@/assets/hero-leader-flow.png";
 import heroDuoFeedback from "@/assets/hero-duo-feedback.png";
 import { cn } from "@/lib/utils";
-import { AINativeBadge } from "@/components/ui/AINativeBadge";
+
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import {
   DropdownMenu,
@@ -56,7 +56,7 @@ const translations = {
     heroTitle: "Nunca mais escreva uma avaliação de desempenho do zero.",
     heroSubtitle: "O que levava 4 horas agora leva 2 minutos. Rhitmo é o único parceiro AI-nativo de liderança que transforma suas conversas em reviews prontas.",
     seePlans: "Preços",
-    aiNativeBadge: "AI-Native desde o dia 1",
+    
     // Before vs After
     beforeAfterOverline: "O dia a dia sem IA",
     beforeAfterTitle: "Antes era burocracia. Agora é estratégia.",
@@ -276,7 +276,7 @@ const translations = {
     heroTitle: "Never write a performance review from scratch again.",
     heroSubtitle: "What took 4 hours now takes 2 minutes. Rhitmo is the only AI-native leadership partner that turns your conversations into ready-made reviews.",
     seePlans: "Pricing",
-    aiNativeBadge: "AI-Native since day 1. Not an add-on",
+    
     // Before vs After
     beforeAfterOverline: "Day-to-day without AI",
     beforeAfterTitle: "It used to be bureaucracy. Now it's strategy.",
