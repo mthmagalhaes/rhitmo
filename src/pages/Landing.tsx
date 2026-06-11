@@ -1121,22 +1121,6 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* ============== SOCIAL PROOF STRIP ============== */}
-      <section className="py-12 border-y border-slate-100 bg-white">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-8">
-            {lang === 'pt' ? 'Usado por líderes em times de tecnologia, saúde e serviços' : 'Used by leaders in tech, healthcare, and services teams'}
-          </p>
-          <div className="flex flex-wrap justify-center items-center gap-x-12 gap-y-6 opacity-50">
-            <span className="text-base font-bold tracking-tight text-slate-500">Nubank</span>
-            <span className="text-base font-bold tracking-tight text-slate-500">iFood</span>
-            <span className="text-base font-bold tracking-tight text-slate-500">Loft</span>
-            <span className="text-base font-bold tracking-tight text-slate-500">Hospital Albert Einstein</span>
-            <span className="text-base font-bold tracking-tight text-slate-500">Stone</span>
-            <span className="text-base font-bold tracking-tight text-slate-500">Movile</span>
-          </div>
-        </div>
-      </section>
 
       {/* ============== BEFORE / AFTER ============== */}
       <section className="py-28 px-6 bg-slate-50/40">
