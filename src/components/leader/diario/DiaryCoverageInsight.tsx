@@ -110,11 +110,21 @@ export function DiaryCoverageInsight({ members, onCreateNoteFor }: DiaryCoverage
     );
   }
 
+  if (dismissed) return null;
+
   const top = gaps.slice(0, 3);
   const rest = gaps.length - top.length;
 
   return (
-    <div className="rounded-2xl border border-border/60 bg-gradient-to-br from-primary/[0.04] to-transparent p-4 sm:p-5">
+    <div className="relative rounded-2xl border border-border/60 bg-gradient-to-br from-primary/[0.04] to-transparent p-4 sm:p-5">
+      <button
+        type="button"
+        onClick={handleDismiss}
+        aria-label="Dispensar insight"
+        className="absolute top-3 right-3 text-muted-foreground/60 hover:text-foreground transition-colors rounded-md p-1 hover:bg-muted/60"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
       <div className="flex items-start gap-3">
         <div className="h-8 w-8 shrink-0 rounded-xl bg-primary/10 flex items-center justify-center">
           <Sparkles className="h-4 w-4 text-primary" />
