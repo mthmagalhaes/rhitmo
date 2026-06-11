@@ -122,7 +122,7 @@ function InviteHRAdminDialog({
 export default function HRPessoas() {
   const { workspaceId, workspaceName } = useHRAdmin();
   const queryClient = useQueryClient();
-  const { data: people = [], isLoading, refetch } = useWorkspacePeople(workspaceId);
+  const { data: people = [], isLoading, error: peopleError, refetch } = useWorkspacePeople(workspaceId);
   const { resend: resendSync, pending: syncPending } = useResendRhitmoSync();
 
   const [search, setSearch] = useState('');
