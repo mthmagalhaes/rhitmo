@@ -1,68 +1,100 @@
-# Skill: rhitmo-rls-migration
+# Skill: rhitmo-edge-function
 
-Skill local em `.agents/skills/rhitmo-rls-migration/` que ensina futuras instâncias do agente a escrever migrations RLS da Rhitmo seguindo os padrões já consolidados — evitando os 5 bugs históricos: GRANT esquecido, recursão de RLS, `effective_user_id()` sem `LIMIT 1`, role em coluna do `profiles`, e ausência de `_assert_rpc_runs()` em migrations críticas de RPC.
+Skill local em `.agents/skills/rhitmo-edge-function/` que ensina futuras instâncias a criar e modificar Supabase Edge Functions na Rhitmo seguindo os padrões já consolidados, evitando os bugs recorrentes: prompt inline, `.catch()` direto em PostgrestBuilder, falta de ownership chain, CORS quebrado, JWT não validado e duplicação de helpers que já existem em `_shared/`.
 
-## Quando vai disparar
-Descrição focada em: "write a Supabase migration that creates/alters tables in public, adds RLS policies, creates SECURITY DEFINER functions, or adds RPCs called from the frontend in the Rhitmo project".
+## Quando dispara
+Descrição focada em: "create or edit a Supabase Edge Function in the Rhitmo project (supabase/functions/<name>/index.ts) — includes AI calls, Slack handlers, cron jobs, RPC wrappers, OAuth callbacks, and service_role mutations".
 
 ## Estrutura
 
 ```
-.agents/skills/rhitmo-rls-migration/
-├── SKILL.md                       # entrypoint + checklist obrigatório
+.agents/skills/rhitmo-edge-function/
+├── SKILL.md                       # entrypoint + regras de ouro + checklist
 └── references/
-    ├── template-table.md          # template canônico CREATE TABLE + GRANT + RLS + POLICY
-    ├── rls-patterns.md            # padrões: workspace isolation, leader/member ownership, has_role, papéis Rhitmo
+    ├── template-function.md       # template canônico (auth + user-client + service-client)
+    ├── shared-helpers.md          # mapa de tudo que existe em _shared/ (não recriar)
     └── anti-patterns.md           # bugs recorrentes + como evitar
 ```
 
-## Conteúdo do SKILL.md (resumo)
+## SKILL.md (resumo)
 
-**Regras de ouro (não-negociáveis):**
-1. Toda `CREATE TABLE public.X` na mesma migration: GRANT → ENABLE RLS → POLICY (ordem fixa)
-2. `LANGUAGE plpgsql` + `SECURITY DEFINER` + `SET search_path = public` em toda função usada em RLS
-3. Nunca FK para `auth.users` — usar `uuid` solto e validar via `auth.uid()`
-4. Role NUNCA em coluna de `profiles`/tabela principal — só em `user_roles` (privilege escalation)
-5. `effective_user_id()` sempre com `LIMIT 1` (impersonação retorna múltiplas linhas)
-6. RPC chamada do frontend → adicionar `SELECT _assert_rpc_runs('nome_rpc')` no final da migration (memória `architecture/rpc-smoke-assertion`)
-7. Workspace isolation: ownership por `leader_user_id` em `teams`, não por workspace owner direto
+**Regras de ouro:**
+1. **Sempre** importar `corsHeaders` de `npm:@supabase/supabase-js@2/cors` — nunca redeclarar. OPTIONS responde 200 antes de qualquer lógica.
+2. **JWT obrigatório** via `supabase.auth.getUser()` (cliente com Authorization header do usuário). 401 imediato se inválido. Cron usa `cronAuth.ts` com `x-cron-secret`.
+3. **Ownership chain antes de service_role**: nunca usar `SUPABASE_SERVICE_ROLE_KEY` direto sobre dados do usuário sem checar que `auth.uid()` é dono/líder/HR do recurso (memória `security/edge-function-ownership-pattern`).
+4. **Nunca** `.catch()` direto em PostgrestBuilder/RPC — usar `safeRpc/safeQuery/safeFunctionInvoke` do `_shared/safeSupabase.ts`.
+5. **AI = Lovable AI Gateway**, não chamar OpenAI/Anthropic diretamente. Usar `_shared/aiGateway.ts` (gemini-2.5-flash default; pro só quando necessário — memória `monetization/modelo-economico-e-margens-abril-2026`).
+6. **Prompt da Rhitmo NUNCA inline** — `composeSystemPrompt({ mode, channel, ... })` do `_shared/soul/loader.ts`. Prompt inline = bug (memória `ai/soul-centralizada-md`). Aciona skill `rhitmo-soul-editor`.
+7. **Validar input com Zod** antes de processar; 400 com erro claro em validation fail.
+8. **CORS em TODA resposta** (incluindo errors). `Content-Type: application/json` quando JSON.
+9. **Logger estruturado** via `_shared/logger.ts`; nunca `console.log` cru em produção.
+10. **`EdgeRuntime.waitUntil(...)`** para trabalho async pós-resposta (Slack 3s deadline, webhooks idempotentes).
+11. **Slack handlers** respondem 200 vazio em <3s; processamento via `waitUntil` + `response_url` (memória `slack/technical-architecture`).
+12. **Sem subfolders** em `supabase/functions/<name>/` — tudo em `index.ts` (+ `*_test.ts` opcional). Lógica reutilizável vai pra `_shared/`.
+13. **Edge function em `verify_jwt = false`** é o default no Cloud — não tocar `config.toml` por isso. Tocar só pra overrides reais.
 
-**Checklist antes de submeter migration:**
-- [ ] GRANT presente p/ cada tabela nova (authenticated + service_role; anon só se policy permite)
-- [ ] RLS habilitado
-- [ ] Pelo menos uma POLICY (sem policy = tabela trancada)
-- [ ] Funções em RLS são SECURITY DEFINER + plpgsql + search_path
-- [ ] Nenhuma policy faz SELECT na própria tabela (recursão)
-- [ ] Se criou RPC pública: `_assert_rpc_runs` no final
-- [ ] Se policy referencia `effective_user_id()`: confirmar que a função interna usa LIMIT 1
-- [ ] `description` da migration é prosa em PT, sem SQL, sem keywords
+**Checklist antes de marcar como pronta:**
+- [ ] `corsHeaders` importado, OPTIONS tratado, presente em todas as respostas
+- [ ] `supabase.auth.getUser()` chamado (ou `cronAuth` validado) — sem caminho anônimo silencioso
+- [ ] Service role só após ownership check explícito
+- [ ] Input validado com Zod → 400 estruturado em falha
+- [ ] Sem `.catch()` direto em builder/rpc — `safeSupabase` em uso
+- [ ] Se chama LLM: via `aiGateway.ts` + `composeSystemPrompt` (não prompt inline)
+- [ ] Sem fetch direto a OpenAI/Anthropic/Slack-sem-helper
+- [ ] Logger estruturado em vez de console.log cru
+- [ ] Trabalho longo embrulhado em `EdgeRuntime.waitUntil`
+- [ ] Reutiliza helpers de `_shared/` em vez de duplicar
+- [ ] `*_test.ts` quando lógica não-trivial (segue `edge-function-testing`)
 
-## references/template-table.md
-Template completo para 3 casos: (a) tabela owned by leader, (b) tabela compartilhada workspace, (c) tabela read-only do liderado vinculado. Inclui trigger `updated_at` padrão.
+## references/template-function.md
 
-## references/rls-patterns.md
-- Papéis Rhitmo (5: Super Admin, Owner, HR Admin, Leader, Liderado) → ponteiro para `mem://architecture/papeis-e-permissoes`
-- Padrão "leader vê seu time": `EXISTS (SELECT 1 FROM team_members WHERE manager_id = auth.uid())`
-- Padrão "owner vê tudo no workspace": `is_workspace_owner_of_member(member_id)`
-- Padrão "HR admin do workspace": `is_hr_admin_of_workspace(workspace_id)`
-- Padrão "liderado vê o próprio": `member_id IN (SELECT id FROM team_members WHERE linked_user_id = auth.uid())`
-- Ownership chain em edge function com service_role → ponteiro para `mem://security/edge-function-ownership-pattern`
+Template canônico cobrindo:
+- **(a) Endpoint autenticado básico**: CORS → OPTIONS → user-client (Authorization fwd) → `getUser()` → Zod validate → service-client após ownership → resposta.
+- **(b) Cron-only**: validação `x-cron-secret` via `cronAuth.ts`, sem `getUser()`.
+- **(c) Webhook externo (Slack/Stripe)**: signature verify primeiro, 200 imediato, processamento em `EdgeRuntime.waitUntil`.
+- **(d) AI call**: `composeSystemPrompt` + `aiGateway.callAI` + parsing seguro + persistência via safeRpc.
+
+## references/shared-helpers.md
+
+Mapa do que já existe em `supabase/functions/_shared/` (NÃO recriar):
+- `aiGateway.ts` — wrapper Lovable AI Gateway (gemini-2.5-flash / pro), token accounting
+- `aiPricing.ts` — cálculo de custo por chamada
+- `safeSupabase.ts` — `safeRpc / tryRpc / safeQuery / safeFunctionInvoke`
+- `logger.ts` — logger estruturado
+- `emit.ts` — emissão de eventos para `events` table
+- `cronAuth.ts` — validação de `x-cron-secret`
+- `notifications.ts` — DM Slack, email pgmq, in-app
+- `slackCommands.ts` — registry e payload de slash commands
+- `findUserByEmail.ts` — lookup seguro em `auth.users` via service role
+- `soul/loader.ts` (+ `soul/*.md`) — `composeSystemPrompt({ mode, channel, vars })`
+- `rhy-voice.ts` — `wrapAsRhy()` para mensagens curtas no tom da Rhy
+- `briefGenerator.ts` — geração do brief 1:1 (consumido pelo orchestrator)
+- `recallParticipants.ts` — parsing do bot Recall.ai
+- `quarterlyNudgeHelpers.ts` — janelas trimestrais
+- `featureFlags.ts` — feature flags por workspace
+- `email-templates/`, `transactional-email-templates/` — React Email
 
 ## references/anti-patterns.md
-1. CHECK constraint com `now()` → usar TRIGGER (já no contrato Cloud)
-2. Policy recursiva (SELECT da própria tabela) → SECURITY DEFINER function
-3. Role em `profiles.role` → `user_roles` + `has_role(uid, role)`
-4. `effective_user_id()` interno sem LIMIT 1 → vazamento entre workspaces durante impersonação
-5. Esquecer GRANT → "permission denied for table" no Data API
-6. FK para `auth.users` → migrações quebram em restore
-7. `ALTER DATABASE postgres` → rejeitado pelo Cloud
-8. Editar `auth`/`storage`/`realtime`/`supabase_functions`/`vault` → proibido
-9. Criar RPC nova sem `_assert_rpc_runs` → frontend quebra em produção sem aviso
+
+1. **Prompt inline** em vez de `composeSystemPrompt` → drift web↔slack, viola memória central.
+2. **Fetch direto a OpenAI/Anthropic** → custo errado, sem accounting, fora do gateway.
+3. **`SUPABASE_SERVICE_ROLE_KEY` sem ownership check** → vazamento entre workspaces; sempre validar `auth.uid()` vs recurso antes.
+4. **`.catch()` em PostgrestBuilder** → engole erro real, retorna `{ data: undefined }` silencioso. Use `safeRpc/safeQuery`.
+5. **CORS faltando em response de erro** → frontend recebe "CORS error" e mascara o 500.
+6. **`console.log` cru** → poluição do log retention (memória `infrastructure/db-logs-retention`); use `logger.ts`.
+7. **Trabalho > 3s sem `waitUntil` em handler Slack** → Slack faz retry → DM duplicada.
+8. **FK para `auth.users` em INSERT** → não acontece em SQL, mas em edge function inserir sem checar usuário ativo → órfãos.
+9. **Subfolder em `supabase/functions/<name>/`** → não deployam; tudo em `index.ts`.
+10. **Modificar `supabase/config.toml` só pra `verify_jwt = false`** → default já é esse no Cloud.
+11. **Esquecer Zod / aceitar `req.json()` cru** → 500 em payload inválido; sempre `safeParse`.
+12. **Chamar edge function por path** (`fetch('/api/x')`) → use `supabase.functions.invoke()` ou URL completa com `VITE_SUPABASE_PROJECT_ID`.
+13. **`process.env`** → não existe em Deno; use `Deno.env.get(...)`.
+14. **Importar `src/integrations/supabase/client`** → contexto frontend, não roda em edge function.
 
 ## Hand-off
-Após gravar os 4 arquivos, chamar `skills--apply_draft` com `.agents/skills/rhitmo-rls-migration`.
+Após gravar os 4 arquivos, `skills--apply_draft .agents/skills/rhitmo-edge-function`.
 
 ## Não inclui
-- Não cria migration nova agora — só ensina o processo.
-- Não altera RLS de tabela existente.
-- Não duplica o que já está em `mem://architecture/papeis-e-permissoes` ou `mem://architecture/rls-recursion-prevention` — referencia.
+- Não cria edge function nova agora.
+- Não migra funções com prompt inline (skill `rhitmo-soul-editor` já cobre).
+- Não duplica regras já em `cto-prompting-standards` — referencia.
