@@ -1009,13 +1009,6 @@ const Landing = () => {
             
             {/* Coluna Esquerda - Texto */}
             <div className="space-y-6 text-left">
-              {/* AI-Native Badge */}
-              <div>
-                <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 text-sm font-medium text-foreground">
-                  <Sparkles className="h-4 w-4 text-primary animate-pulse" />
-                  {t.aiNativeBadge}
-                </span>
-              </div>
 
               <h1 className="font-serif text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight text-foreground">
                 {t.heroTitle}
