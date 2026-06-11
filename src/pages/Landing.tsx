@@ -832,16 +832,26 @@ const Landing = () => {
 
   const t = translations[lang];
 
+  // Landing v3 (Editorial Light Mode — Windmill-inspired) é light-only por design.
+  // Tema dark fica disponível apenas no app autenticado.
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.toggle('dark', landingTheme === 'dark');
-    localStorage.setItem('theme', landingTheme);
-    return () => {
-      // Let ThemeProvider take over on unmount
-    };
-  }, [landingTheme]);
+    root.classList.remove('dark');
+    localStorage.setItem('theme', 'light');
+  }, []);
 
-  const toggleTheme = () => setLandingTheme(prev => prev === 'light' ? 'dark' : 'light');
+  // Quotes de prova social (post-its). Estáticas para evitar acoplar i18n agora.
+  const testimonials = lang === 'pt' ? [
+    { quote: 'Reescrever a review do zero virou coisa do passado. Em 2 minutos tenho um draft melhor do que eu faria em 4 horas.', author: 'Head of Engineering', color: 'bg-yellow-50 border-yellow-100', rot: '-rotate-2' },
+    { quote: 'Detector de viés me salvou de mandar uma review enviesada sem perceber. Isso vale o ano todo.', author: 'Tech Lead', color: 'bg-blue-50 border-blue-100', rot: 'rotate-1' },
+    { quote: 'Pela primeira vez todas as 1:1s do trimestre estão registradas. Avaliação virou consequência, não tarefa.', author: 'Engineering Manager', color: 'bg-pink-50 border-pink-100', rot: '-rotate-1' },
+    { quote: 'Era a única coisa que adiava sem dó. Agora finalizo o ciclo de avaliação em uma tarde.', author: 'Diretor de Operações', color: 'bg-emerald-50 border-emerald-100', rot: 'rotate-3' },
+  ] : [
+    { quote: 'Writing reviews from scratch is a thing of the past. Two minutes for a draft better than what I would write in four hours.', author: 'Head of Engineering', color: 'bg-yellow-50 border-yellow-100', rot: '-rotate-2' },
+    { quote: 'The bias detector saved me from sending a biased review without realizing. Worth it for the year alone.', author: 'Tech Lead', color: 'bg-blue-50 border-blue-100', rot: 'rotate-1' },
+    { quote: 'For the first time every 1:1 of the quarter is logged. The review became a consequence, not a task.', author: 'Engineering Manager', color: 'bg-pink-50 border-pink-100', rot: '-rotate-1' },
+    { quote: 'It was the one thing I always postponed. Now I close the review cycle in an afternoon.', author: 'Director of Operations', color: 'bg-emerald-50 border-emerald-100', rot: 'rotate-3' },
+  ];
 
   const { isAdmin, isRealAdmin, loading: adminLoading } = useAdmin();
 
