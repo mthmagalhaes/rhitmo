@@ -1,86 +1,38 @@
-## Diagnóstico (UX + benchmark)
+## Análise — "perdi acesso aos perfis dos liderados" (Gutemberg / Faster)
 
-Olhando o painel atual e comparando com benchmarks de super admin (Linear, Stripe Dashboard, Vercel, Notion Admin, WorkOS), encontramos 4 problemas estruturais:
+### O que está acontecendo
+Print mostra **/hr/pessoas** do workspace **Faster** com **todas as abas zeradas** ("Todos · 0", "Liderados · 0", etc.) e a mensagem "Nenhuma pessoa encontrada com esses filtros". Ou seja: a página está carregando, o `workspaceName` resolveu certo ("Diretório do workspace Faster"), mas o RPC `get_workspace_people` está retornando vazio para o Guto.
 
-1. **Empresas em cards centralizados** — bom para 5 empresas, ruim para 50+. Benchmarks usam **lista densa/tabela** como visão primária (escaneabilidade, ordenação, comparação de números). Cards viram "modo opcional" ou ficham embaixo da linha clicada.
-2. **Botão "Organograma" engana** — ele não abre um organograma; só pula para a aba "O que falta" filtrada pela empresa. Isso quebra expectativa e não tem caminho de volta óbvio.
-3. **Convites espalhados** — "Convidar líder" mora em Pessoas, "Convidar HR Admin" mora em Empresas (junto com lista de HR Admins ativos). Super admin não deveria caçar onde convidar cada papel.
-4. **Governança escondida em Empresas** — "HR Admins ativos" não pertence ao escopo da aba Empresas; é uma visão de **pessoas com privilégio elevado**, o que em Stripe/Vercel/WorkOS vive em "Team" / "Members" / "Access".
+### O que verifiquei no banco
+- Guto (`guto.biazzi@fstr.co`, `20156655-…`): conta única, último login 02/jun.
+- Workspace `Faster` (`27ee8977-…`): `is_active=true`, owner = `vitor@fstr.co`, **Guto está em `hr_admin_ids`** (junto com Matheus).
+- Dados existem e estão saudáveis: **9 times**, **20 liderados ativos** (não arquivados), **18 vinculados**, **5 líderes distintos**, 0 convites pendentes.
+- Não há erros recentes em `postgres_logs`/`postgrest_logs` para `get_workspace_people` nem `forbidden`.
+- Função `get_workspace_people(uuid)` existe em versão única, `SECURITY DEFINER`, com `GRANT EXECUTE` para `authenticated` ok.
 
-## O que muda
+### Hipótese mais provável
+O `HRAdminGuard` resolve corretamente o workspace pelo `user.id`, mas o `useWorkspacePeople` está sendo chamado num momento em que o **JWT do supabase-js ainda não tem `sub`** (estado intermediário de hidratação da sessão) **ou** com um `workspaceId` formatado de maneira que não bate na checagem. Como o RPC levanta `EXCEPTION 'forbidden'` quando o `auth.uid()` não está em `owner_id`/`hr_admin_ids` e o `useQuery` está usando `safeRpc` (que **lança** em erro), provavelmente o erro está sendo silenciado por um boundary mais acima e a lista cai pra `[]`. Não há `onError` em `useWorkspacePeople`, então o usuário vê "vazio" em vez de uma mensagem.
 
-### Sidebar (mantém 3 abas, papéis ficam claros)
+Vetores secundários a descartar:
+- Possível duplicidade futura de `Faster (legado)` afetando o `HRAdminGuard` (hoje legado é `is_active=false`, então não afeta).
+- Cache stale do React Query persistido com `[]` antes da sessão hidratar.
 
-```text
-Visão geral   → KPIs + alertas + waitlist (igual hoje)
-Pessoas       → TODAS as pessoas + TODOS os convites + governança (HR Admins, Super Admins)
-Empresas      → Lista das empresas com saúde e pendências
-Logs (rodapé) → igual hoje
-```
+### Plano de correção (mínimo invasivo, não-destrutivo)
 
-### Pessoas (vira o centro de identidade)
+1. **Diagnóstico in-app**: em `useWorkspacePeople`, trocar `safeRpc` por chamada que preserve `error` e retornar `{ data, error, isLoading }`. Em `HRPessoas`, quando `error` existir, mostrar banner com a mensagem real (ex.: "forbidden" ou erro de rede) e botão "Tentar novamente". Isso elimina a falsa tela "vazia" definitivamente.
+2. **Hardening do RPC**: em `get_workspace_people`, em vez de `RAISE EXCEPTION 'forbidden'`, retornar `0 rows` apenas quando `auth.uid()` é `NULL` (sessão ainda não pronta) e manter o `RAISE` somente quando há `uid` mas sem permissão — assim evita estado "vazio sem erro" silencioso e ainda protege.
+3. **Refetch ao trocar sessão**: garantir que a `queryKey` do `useWorkspacePeople` inclua o `user.id` além do `workspaceId`, para invalidar quando o JWT muda.
+4. **Auditoria pontual da conta do Guto**: rodar `select get_workspace_people('27ee8977-…')` autenticado como ele (via edge function utilitária temporária `debug-rpc-as-user` restrita a super_admin) para confirmar que o RPC devolve as 25+ linhas. Se devolver, fechamos como bug de UI/sessão. Se não devolver, é regressão do RPC.
 
-Estrutura nova em 3 sub-abas:
+### Comunicação imediata pro Guto (enquanto corrigimos)
+> "Oi Guto, identificamos um bug de carregamento: a lista de pessoas está retornando vazia mesmo com seu acesso de HR Admin correto. Os dados estão íntegros (20 liderados, 9 times). Estamos subindo um fix em algumas horas. Por enquanto, tenta: (1) sair e entrar de novo, (2) limpar cache do navegador, ou (3) acessar pelo perfil do Matheus."
 
-- **Usuários** (tabela atual, sem mudança de dados) — segue com filtros, export CSV, edit, impersonate.
-- **Convites** — um único formulário com seletor de **papel**:
-  - Líder (Owner de novo workspace, planos Pulse/Pro/Business) — fluxo atual `admin-invite-user`
-  - HR Admin (workspace existente) — fluxo atual `admin-invite-user` com `role: 'hr_admin'`
-  - (Liderado fica fora; é convidado pelo líder dentro do produto)
-  Lista de convites pendentes/enviados embaixo, com reenviar / revogar.
-- **Acesso & Governança** — quem tem privilégio elevado:
-  - HR Admins ativos por workspace (vem do `HRAdminsListCard`)
-  - Super Admins (listagem read-only de `user_roles` com `app_role='super_admin'`)
-  - Última atividade / último login quando disponível
+### Escopo / Arquivos
+- `src/hooks/useWorkspacePeople.ts` — expor `error` + incluir `user.id` na `queryKey`.
+- `src/pages/HRPessoas.tsx` — estado de erro com retry, não cair no "vazio".
+- Migration nova — refino do `get_workspace_people` para distinguir "sessão sem uid" vs "uid sem permissão".
+- (Opcional) edge function `debug-rpc-as-user` gated por super_admin para reproduzir o caso em produção.
 
-Remove os cards "Convidar HR Admin" e "HR Admins ativos" do rodapé de Empresas.
-
-### Empresas (vira lista densa, sem promessa falsa de organograma)
-
-- Visão padrão: **tabela** com colunas: Empresa · Owner · Plano · Segmento · Pessoas · Times · Sync · Pendências · Status · Ações. Linha clicável abre **drawer lateral** com o detalhe completo da empresa (owner, times, pendências, ações de suspender/editar segmento/cliente). Toggle "Cards / Lista" no topo para quem prefere a visão atual.
-- Sub-abas reduzidas para **Empresas** e **O que falta** (renomeia "Cards" para "Empresas" porque a visão não é mais "só cards").
-- Botão "Organograma" some. No lugar:
-  - "Ver detalhes" → abre o drawer lateral da empresa.
-  - "Ver pendências" → leva para "O que falta" já filtrado por aquela empresa (comportamento de hoje, mas com label honesto).
-- Drawer e "O que falta" ganham **breadcrumb / botão "Voltar para empresas"** explícito, resolvendo a queixa de não ter como voltar.
-
-### Visão geral (sem mudança de escopo)
-
-Mantém KPIs, alerta de workspaces inativos e waitlist. Só adiciona um link de atalho "Convidar líder/HR Admin" → leva pra Pessoas › Convites.
-
-## Por que essa divisão (benchmark)
-
-- **Stripe Dashboard / Vercel Team / WorkOS Admin** colocam *quem* (pessoas, papéis, convites, governança) numa única seção e *o quê* (organizações/projetos/workspaces) noutra. Convidar é sempre uma ação de "Pessoas".
-- **Linear Admin** usa tabela densa para listas longas e drawer para detalhe; cards ficam reservados para dashboards executivos.
-- **Notion Admin** separa "Members" (identidade/acesso) de "Workspaces" (entidade) — exatamente a divisão proposta aqui.
-
-## Detalhes técnicos
-
-- `Admin.tsx`: nenhuma mudança de rota; tipos `AdminTab` continuam `overview | users | workspaces`.
-- `AdminUsers.tsx`:
-  - Envolver conteúdo atual em `<Tabs>` com 3 sub-abas (`usuarios`, `convites`, `acesso`).
-  - Mover o dialog "Convidar líder" atual para a sub-aba "Convites" como formulário inline.
-  - Mover `<HRAdminInviteCard />` e `<HRAdminsListCard />` (de `AdminAccessParts.tsx`) para a sub-aba "Convites" / "Acesso & Governança" respectivamente.
-  - Nova query super admins: `supabase.from('user_roles').select('user_id').eq('role','super_admin')` cruzando com `get_all_users_with_metadata` (read-only, sem mutação).
-- `AdminWorkspaces.tsx`:
-  - Remove o bloco final com `<HRAdminInviteCard />` e `<HRAdminsListCard />`.
-  - Sub-aba "Cards" passa a renderizar `CompaniesTable` (novo) por padrão, com toggle `Tabela | Cards` controlando exibição. `CompanyCardsGrid` continua existindo, só deixa de ser o default.
-  - Novo `CompanyDetailDrawer` (Sheet shadcn): recebe `workspaceId`, mostra cabeçalho + KPIs do `healthByWorkspace` + lista de times + atalho "Ver pendências".
-  - Botão "Organograma" no card vira "Ver detalhes" (abre drawer); ação secundária "Pendências" usa o fluxo atual de pulo para a sub-aba "O que falta".
-  - "O que falta" ganha header com `← Voltar para empresas` quando há `workspaceFilter` aplicado.
-- Sem migration de banco. Sem mudança de RLS. Sem mudança em edge functions.
-
-## Arquivos
-
-- `src/components/admin/AdminUsers.tsx` (refator: 3 sub-abas, importa cards de governança).
-- `src/components/admin/AdminWorkspaces.tsx` (remove bloco HR Admin do rodapé, adiciona toggle Tabela/Cards, integra drawer e breadcrumb).
-- `src/components/admin/companies/CompaniesTable.tsx` (novo).
-- `src/components/admin/companies/CompanyDetailDrawer.tsx` (novo).
-- `src/components/admin/companies/PendingChecklistTable.tsx` (acrescenta breadcrumb "Voltar").
-- `src/components/admin/AdminAccessParts.tsx` (sem mudança de API; só passa a ser consumido em outra aba).
-
-## Fora de escopo (deixar para depois, se quiser)
-
-- Organograma de verdade (visualização hierárquica navegável da empresa).
-- Audit log por usuário (quem mudou o quê e quando).
-- Bulk actions na tabela de empresas (suspender várias, mudar segmento em massa).
+### Fora de escopo
+- Repensar modelo de papéis ou reescrever a página.
+- Mexer no `HRAdminGuard` além da `queryKey`.
