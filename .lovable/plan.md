@@ -1,38 +1,43 @@
-## Análise — "perdi acesso aos perfis dos liderados" (Gutemberg / Faster)
+## 🎫 TKT-2606-0003 · high · bug
+👤 Afetado: guto.biazzi@fstr.co
+📍 Rota: /hr/pessoas
 
-### O que está acontecendo
-Print mostra **/hr/pessoas** do workspace **Faster** com **todas as abas zeradas** ("Todos · 0", "Liderados · 0", etc.) e a mensagem "Nenhuma pessoa encontrada com esses filtros". Ou seja: a página está carregando, o `workspaceName` resolveu certo ("Diretório do workspace Faster"), mas o RPC `get_workspace_people` está retornando vazio para o Guto.
+### 📌 Sintoma
+Banner vermelho: `RPC get_workspace_people failed: column tm.job_crafting_profile does not exist`. Lista zerada.
 
-### O que verifiquei no banco
-- Guto (`guto.biazzi@fstr.co`, `20156655-…`): conta única, último login 02/jun.
-- Workspace `Faster` (`27ee8977-…`): `is_active=true`, owner = `vitor@fstr.co`, **Guto está em `hr_admin_ids`** (junto com Matheus).
-- Dados existem e estão saudáveis: **9 times**, **20 liderados ativos** (não arquivados), **18 vinculados**, **5 líderes distintos**, 0 convites pendentes.
-- Não há erros recentes em `postgres_logs`/`postgrest_logs` para `get_workspace_people` nem `forbidden`.
-- Função `get_workspace_people(uuid)` existe em versão única, `SECURITY DEFINER`, com `GRANT EXECUTE` para `authenticated` ok.
+### 🔎 Causa raiz
+A migration mais recente de `public.get_workspace_people` (criada na correção anterior do estado de sessão) calcula `has_sync` como:
 
-### Hipótese mais provável
-O `HRAdminGuard` resolve corretamente o workspace pelo `user.id`, mas o `useWorkspacePeople` está sendo chamado num momento em que o **JWT do supabase-js ainda não tem `sub`** (estado intermediário de hidratação da sessão) **ou** com um `workspaceId` formatado de maneira que não bate na checagem. Como o RPC levanta `EXCEPTION 'forbidden'` quando o `auth.uid()` não está em `owner_id`/`hr_admin_ids` e o `useQuery` está usando `safeRpc` (que **lança** em erro), provavelmente o erro está sendo silenciado por um boundary mais acima e a lista cai pra `[]`. Não há `onError` em `useWorkspacePeople`, então o usuário vê "vazio" em vez de uma mensagem.
+```sql
+(tm.skills_data IS NOT NULL OR tm.job_crafting_profile IS NOT NULL)
+```
 
-Vetores secundários a descartar:
-- Possível duplicidade futura de `Faster (legado)` afetando o `HRAdminGuard` (hoje legado é `is_active=false`, então não afeta).
-- Cache stale do React Query persistido com `[]` antes da sessão hidratar.
+Mas `team_members` **não tem** a coluna `job_crafting_profile` — só `skills_data` (confirmado em `information_schema.columns`). A coluna provavelmente foi removida em refactor anterior do Rhitmo Sync, mas o RPC ficou referenciando. Como `STABLE` + planejador resolve nomes em execução, o erro só aparece quando a função efetivamente roda — por isso passou despercebido até o Guto carregar.
 
-### Plano de correção (mínimo invasivo, não-destrutivo)
+Mesmo bug presente em dois lugares dentro da função:
+- bloco `pending` (CTE) — linha do `has_sync` de convites pendentes
+- `SELECT` final — `CASE WHEN tm.id IS NULL ... ELSE (tm.skills_data IS NOT NULL OR tm.job_crafting_profile IS NOT NULL)`
 
-1. **Diagnóstico in-app**: em `useWorkspacePeople`, trocar `safeRpc` por chamada que preserve `error` e retornar `{ data, error, isLoading }`. Em `HRPessoas`, quando `error` existir, mostrar banner com a mensagem real (ex.: "forbidden" ou erro de rede) e botão "Tentar novamente". Isso elimina a falsa tela "vazia" definitivamente.
-2. **Hardening do RPC**: em `get_workspace_people`, em vez de `RAISE EXCEPTION 'forbidden'`, retornar `0 rows` apenas quando `auth.uid()` é `NULL` (sessão ainda não pronta) e manter o `RAISE` somente quando há `uid` mas sem permissão — assim evita estado "vazio sem erro" silencioso e ainda protege.
-3. **Refetch ao trocar sessão**: garantir que a `queryKey` do `useWorkspacePeople` inclua o `user.id` além do `workspaceId`, para invalidar quando o JWT muda.
-4. **Auditoria pontual da conta do Guto**: rodar `select get_workspace_people('27ee8977-…')` autenticado como ele (via edge function utilitária temporária `debug-rpc-as-user` restrita a super_admin) para confirmar que o RPC devolve as 25+ linhas. Se devolver, fechamos como bug de UI/sessão. Se não devolver, é regressão do RPC.
+### 💊 Solução
+Nova migration que recria `get_workspace_people` idêntica à versão atual, **trocando** as duas expressões de `has_sync` por:
 
-### Comunicação imediata pro Guto (enquanto corrigimos)
-> "Oi Guto, identificamos um bug de carregamento: a lista de pessoas está retornando vazia mesmo com seu acesso de HR Admin correto. Os dados estão íntegros (20 liderados, 9 times). Estamos subindo um fix em algumas horas. Por enquanto, tenta: (1) sair e entrar de novo, (2) limpar cache do navegador, ou (3) acessar pelo perfil do Matheus."
+```sql
+(tm.skills_data IS NOT NULL)
+```
+
+Sem mexer em RLS, sem mexer em assinatura/retorno (mesmas 17 colunas), sem mexer em frontend.
+
+### ⚠️ Riscos
+Nenhum. `has_sync` passa a refletir apenas `skills_data`, que é o sinal real de Rhitmo Sync hoje. Se no futuro voltarmos a ter um segundo sinal (ex.: `work_style_data`), trocamos a expressão na função.
+
+### 🧪 Validação
+1. Após a migration, Guto recarrega `/hr/pessoas` → tabela popula com 20+ pessoas, banner some.
+2. `SELECT count(*) FROM get_workspace_people('27ee8977-…')` rodado como super_admin retorna >0.
+3. Atualiza ticket TKT-2606-0003 → `resolved`.
 
 ### Escopo / Arquivos
-- `src/hooks/useWorkspacePeople.ts` — expor `error` + incluir `user.id` na `queryKey`.
-- `src/pages/HRPessoas.tsx` — estado de erro com retry, não cair no "vazio".
-- Migration nova — refino do `get_workspace_people` para distinguir "sessão sem uid" vs "uid sem permissão".
-- (Opcional) edge function `debug-rpc-as-user` gated por super_admin para reproduzir o caso em produção.
+- `supabase/migrations/<novo>.sql` — `CREATE OR REPLACE FUNCTION public.get_workspace_people(...)` sem `job_crafting_profile`.
 
 ### Fora de escopo
-- Repensar modelo de papéis ou reescrever a página.
-- Mexer no `HRAdminGuard` além da `queryKey`.
+- Reintroduzir coluna `job_crafting_profile` (não é o pedido; foi removida intencionalmente).
+- Mexer em `useWorkspacePeople` / `HRPessoas.tsx` (já estão corretos — inclusive foi o tratamento de erro novo que mostrou a mensagem real).
