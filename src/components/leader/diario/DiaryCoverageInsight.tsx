@@ -2,11 +2,12 @@
 // Calcula gaps de cobertura (liderados sem nota há +14 dias) a partir do
 // dataset que a página já carrega. Sem edge function, sem IA — pura agregação
 // determinística (calibrada com health-status-logic: 7 / 8-14 / +14).
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { differenceInDays } from 'date-fns';
-import { Sparkles, PenSquare, CheckCircle2 } from 'lucide-react';
+import { Sparkles, PenSquare, CheckCircle2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MemberAvatar } from '@/components/MemberAvatar';
+import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import type { LeaderMemberRow } from '@/hooks/useLeaderMembers';
 
 interface DiaryCoverageInsightProps {
