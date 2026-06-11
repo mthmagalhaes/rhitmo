@@ -13,6 +13,7 @@ import analyticsScreenshot from "@/assets/analytics-screenshot.png";
 import heroLeaderFlow from "@/assets/hero-leader-flow.png";
 import heroDuoFeedback from "@/assets/hero-duo-feedback.png";
 import cinematicOffice from "@/assets/landing-cinematic-office.jpg";
+import { WeekTimelineSection } from "@/components/landing/WeekTimelineSection";
 import { cn } from "@/lib/utils";
 
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
