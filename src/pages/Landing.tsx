@@ -1002,7 +1002,7 @@ const Landing = () => {
                   <span className="w-2.5 h-2.5 rounded-full bg-slate-200" />
                   <span className="w-2.5 h-2.5 rounded-full bg-slate-200" />
                   <span className="w-2.5 h-2.5 rounded-full bg-slate-200" />
-                  <div className="ml-3 text-[11px] text-slate-400 font-medium">rhitmo.co · Pessoas · Gabriela Lucas</div>
+                  <div className="ml-3 text-[11px] text-slate-400 font-medium">rhitmo.co · Pessoas · Joana Silva</div>
                 </div>
 
                 {/* Sheet header — creme */}
@@ -1015,7 +1015,7 @@ const Landing = () => {
                       </div>
                     </div>
                     <div>
-                      <div className="font-serif text-lg font-bold tracking-tight text-slate-900 leading-tight">Gabriela Lucas</div>
+                      <div className="font-serif text-lg font-bold tracking-tight text-slate-900 leading-tight">Joana Silva</div>
                       <div className="text-xs text-slate-500">Analista de Business Ops</div>
                     </div>
                   </div>
