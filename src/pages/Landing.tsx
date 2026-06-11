@@ -8,7 +8,7 @@ import { WaveDivider } from "@/components/WaveDivider";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
-import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X, Check, Moon, Sun, Globe, Building, Clock, AlertCircle, DollarSign, Shield, Mic, XCircle, CheckCircle2, Target, Users, FileText, ArrowRight } from "lucide-react";
+import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X, Check, Moon, Sun, Globe, Building, Clock, AlertCircle, DollarSign, Shield, Mic, XCircle, CheckCircle2, Target, Users, FileText, ArrowRight, BookOpen, Lock, Calendar, Music2, ChevronDown } from "lucide-react";
 import analyticsScreenshot from "@/assets/analytics-screenshot.png";
 import heroLeaderFlow from "@/assets/hero-leader-flow.png";
 import heroDuoFeedback from "@/assets/hero-duo-feedback.png";
@@ -993,62 +993,129 @@ const Landing = () => {
             </p>
           </div>
 
-          {/* Iridescent product card */}
-          <div className="relative">
-            <div className="iridescent-surface rounded-[2rem] p-6 lg:p-8 shadow-2xl shadow-indigo-100/40 border border-white/60">
+          {/* Product mockup — Rhitmo Mensal sheet */}
+          <div className="relative" aria-hidden="true">
+            <div className="iridescent-surface rounded-[2rem] p-5 lg:p-7 shadow-2xl shadow-amber-100/40 border border-white/60">
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                 {/* Browser top bar */}
                 <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-slate-50/50">
                   <span className="w-2.5 h-2.5 rounded-full bg-slate-200" />
                   <span className="w-2.5 h-2.5 rounded-full bg-slate-200" />
                   <span className="w-2.5 h-2.5 rounded-full bg-slate-200" />
-                  <div className="ml-3 text-[11px] text-slate-400 font-medium">rhitmo.co · {lang === 'pt' ? 'Avaliação · Q3' : 'Review · Q3'}</div>
+                  <div className="ml-3 text-[11px] text-slate-400 font-medium">rhitmo.co · Pessoas · Gabriela Lucas</div>
                 </div>
-                {/* Card content */}
-                <div className="p-6 space-y-5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-200 to-pink-200" />
+
+                {/* Sheet header — creme */}
+                <div className="bg-[#f5f0e8] px-6 pt-6 pb-5 border-b border-slate-200/60">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-300 to-rose-300 flex items-center justify-center">
+                      <div className="flex gap-1">
+                        <span className="w-1 h-1 rounded-full bg-slate-700/70" />
+                        <span className="w-1 h-1 rounded-full bg-slate-700/70" />
+                      </div>
+                    </div>
                     <div>
-                      <div className="text-sm font-semibold text-slate-900">Maria Santos</div>
-                      <div className="text-xs text-slate-400">{lang === 'pt' ? 'Engenheira · 12 1:1s neste trimestre' : 'Engineer · 12 1:1s this quarter'}</div>
+                      <div className="font-serif text-lg font-bold tracking-tight text-slate-900 leading-tight">Gabriela Lucas</div>
+                      <div className="text-xs text-slate-500">Analista de Business Ops</div>
                     </div>
-                    <span className="ml-auto text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">{lang === 'pt' ? 'Draft pronto' : 'Draft ready'}</span>
                   </div>
-                  <div className="border-l-4 border-indigo-400 bg-indigo-50/40 p-4 rounded-r-lg">
-                    <p className="text-sm text-slate-700 leading-relaxed">
-                      {lang === 'pt'
-                        ? 'Maria demonstrou domínio técnico crescente ao liderar a refatoração do pipeline de feedback. Em três 1:1s consecutivas trouxe ideias estruturadas...'
-                        : 'Maria has shown growing technical mastery leading the feedback pipeline refactor. Across three consecutive 1:1s she brought structured ideas...'}
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="h-2 w-full bg-slate-100 rounded-full" />
-                    <div className="h-2 w-5/6 bg-slate-100 rounded-full" />
-                    <div className="h-2 w-2/3 bg-slate-100 rounded-full" />
-                  </div>
-                  <div className="flex items-center justify-between pt-2">
-                    <div className="flex items-center gap-2 text-xs text-slate-400">
-                      <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
-                      {lang === 'pt' ? '8 evidências citadas' : '8 cited evidences'}
+                </div>
+
+                {/* Sheet body */}
+                <div className="bg-[#faf7f1] px-6 py-5 space-y-4">
+                  {/* Rhitmo desta pessoa banner */}
+                  <div className="bg-white rounded-2xl border border-slate-100 px-4 py-3 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
+                      <Music2 className="h-4 w-4 text-indigo-500" />
                     </div>
-                    <div className="text-xs font-semibold text-emerald-600">{lang === 'pt' ? 'Sem viés detectado' : 'No bias detected'}</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[13px] font-semibold text-slate-900">Rhitmo desta pessoa</span>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-full">
+                          <CheckCircle2 className="h-2.5 w-2.5" /> 6 confirmados
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-400">6 mensais no histórico</div>
+                    </div>
+                  </div>
+
+                  {/* Tabs */}
+                  <div className="inline-flex bg-slate-100/70 p-1 rounded-full text-[11px] font-medium">
+                    <span className="bg-white text-slate-900 px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5">
+                      <Music2 className="h-3 w-3" /> Acompanhamento Mensal
+                    </span>
+                    <span className="text-slate-500 px-3 py-1.5 flex items-center gap-1.5">
+                      <Sparkles className="h-3 w-3" /> Histórico Formal
+                    </span>
+                  </div>
+
+                  {/* Current month placeholder */}
+                  <div className="border border-dashed border-slate-200 rounded-2xl px-4 py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-3.5 w-3.5 text-slate-400" />
+                      <span className="text-[13px] font-semibold text-slate-700">Junho de 2026</span>
+                    </div>
+                    <span className="text-[10px] font-medium text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded-full">Mês em curso</span>
+                  </div>
+
+                  {/* Confirmed month — focus card */}
+                  <div className="bg-white rounded-2xl ring-1 ring-indigo-300/60 border border-white shadow-[0_4px_24px_-12px_rgba(79,70,229,0.18)] overflow-hidden">
+                    <div className="px-4 py-3 flex items-center justify-between border-b border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-3.5 w-3.5 text-slate-500" />
+                        <span className="font-serif text-[15px] font-bold tracking-tight text-slate-900">Rhitmo Mensal — Maio de 2026</span>
+                      </div>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full shrink-0">
+                        <CheckCircle2 className="h-2.5 w-2.5" /> Confirmado 10/06
+                      </span>
+                    </div>
+
+                    <div className="px-4 py-4 space-y-3.5 relative">
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 mb-1">1. Mandou bem</p>
+                        <p className="text-[13px] text-slate-700 leading-snug">Liderou a refatoração do fechamento contábil sem travar o time.</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 mb-1">2. Atenção</p>
+                        <p className="text-[13px] text-slate-700 leading-snug">Solicitou auxílio para destravar sprints de conciliação bancária e contas a pagar.</p>
+                        <span className="inline-flex items-center gap-1.5 mt-2 text-[10px] text-slate-500 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-full">
+                          <FileText className="h-2.5 w-2.5" /> Anotação · 27/05
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 mb-1">3. Padrão do mês</p>
+                        <p className="text-[13px] text-slate-700 leading-snug">Foco em execução financeira e busca proativa por desbloqueio.</p>
+                      </div>
+                      <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Floating AI analysis card */}
-            <div className="hidden md:block absolute -bottom-6 -left-6 bg-white p-4 rounded-2xl shadow-xl border border-slate-100 w-56">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center">
-                  <Sparkles className="h-3 w-3 text-indigo-600" />
+            {/* Floating Diário de Bordo mini-card */}
+            <div className="hidden md:block absolute -bottom-8 -left-4 bg-white p-4 rounded-2xl shadow-xl shadow-slate-300/40 border border-slate-100 w-64">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">
+                  <BookOpen className="h-3.5 w-3.5 text-indigo-600" />
                 </div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{lang === 'pt' ? 'Análise IA' : 'AI Analysis'}</p>
+                <div>
+                  <p className="font-serif text-[13px] font-bold tracking-tight text-slate-900 leading-none">Diário de Bordo</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">5 registros · Gabriela</p>
+                </div>
               </div>
-              <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                <div className="w-2/3 h-full bg-gradient-to-r from-indigo-500 to-pink-400" />
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-[11px]">
+                  <Lock className="h-2.5 w-2.5 text-slate-400 shrink-0" />
+                  <span className="text-slate-400">08/06</span>
+                  <span className="text-slate-700 truncate">Alinhamento Operações</span>
+                </div>
+                <div className="flex items-center gap-2 text-[11px]">
+                  <Lock className="h-2.5 w-2.5 text-slate-400 shrink-0" />
+                  <span className="text-slate-400">27/05</span>
+                  <span className="text-slate-700 truncate">sync · automações financeiro</span>
+                </div>
               </div>
-              <p className="text-[11px] text-slate-500 mt-2 leading-snug">{lang === 'pt' ? '420+ mensagens analisadas' : '420+ messages analyzed'}</p>
             </div>
           </div>
         </div>
