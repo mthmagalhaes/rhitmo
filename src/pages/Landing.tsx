@@ -12,6 +12,7 @@ import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X, Chec
 import analyticsScreenshot from "@/assets/analytics-screenshot.png";
 import heroLeaderFlow from "@/assets/hero-leader-flow.png";
 import heroDuoFeedback from "@/assets/hero-duo-feedback.png";
+import cinematicOffice from "@/assets/landing-cinematic-office.jpg";
 import { cn } from "@/lib/utils";
 
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
