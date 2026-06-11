@@ -421,7 +421,22 @@ export default function HRPessoas() {
                 <Loader2 className="h-5 w-5 animate-spin inline" />
               </TableCell></TableRow>
             )}
-            {!isLoading && filtered.length === 0 && (
+            {!isLoading && peopleError && (
+              <TableRow><TableCell colSpan={7} className="py-10">
+                <div className="flex flex-col items-center gap-3 text-center">
+                  <p className="text-sm text-destructive">
+                    Não foi possível carregar a lista de pessoas.
+                  </p>
+                  <p className="text-xs text-muted-foreground max-w-md">
+                    {peopleError instanceof Error ? peopleError.message : String(peopleError)}
+                  </p>
+                  <Button variant="outline" size="sm" onClick={() => refetch()}>
+                    Tentar novamente
+                  </Button>
+                </div>
+              </TableCell></TableRow>
+            )}
+            {!isLoading && !peopleError && filtered.length === 0 && (
               <TableRow><TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                 Nenhuma pessoa encontrada com esses filtros.
               </TableCell></TableRow>
