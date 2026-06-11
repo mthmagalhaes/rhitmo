@@ -55,7 +55,7 @@ const translations = {
     // Hero
     heroTitle: "Nunca mais escreva uma avaliação de desempenho do zero.",
     heroSubtitle: "O que levava 4 horas agora leva 2 minutos. Rhitmo é o único parceiro AI-nativo de liderança que transforma suas conversas em reviews prontas.",
-    seePlans: "Ver planos",
+    seePlans: "Preços",
     aiNativeBadge: "AI-Native desde o dia 1",
     // Before vs After
     beforeAfterOverline: "O dia a dia sem IA",
@@ -275,7 +275,7 @@ const translations = {
     toggleTheme: "Toggle theme",
     heroTitle: "Never write a performance review from scratch again.",
     heroSubtitle: "What took 4 hours now takes 2 minutes. Rhitmo is the only AI-native leadership partner that turns your conversations into ready-made reviews.",
-    seePlans: "See plans",
+    seePlans: "Pricing",
     aiNativeBadge: "AI-Native since day 1. Not an add-on",
     // Before vs After
     beforeAfterOverline: "Day-to-day without AI",
@@ -1047,13 +1047,19 @@ const Landing = () => {
       {/* Seção: Antes vs. Depois — Split Timeline */}
       <section className="py-28 bg-background">
         <div className="container mx-auto px-4">
-          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{t.beforeAfterOverline}</p>
-          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-4 text-foreground">
-            {t.beforeAfterTitle}
-          </h2>
-          <p className="text-lg text-muted-foreground text-center mb-14 max-w-2xl mx-auto">
-            {lang === 'pt' ? 'Veja o que muda quando IA assume o trabalho operacional.' : 'See what changes when AI takes over the busywork.'}
-          </p>
+          <div className="text-center mb-16 max-w-3xl mx-auto">
+            <div className="inline-flex items-center gap-3 mb-6">
+              <span className="h-px w-8 bg-primary/20" />
+              <p className="text-[10px] uppercase tracking-[0.45em] text-muted-foreground">{t.beforeAfterOverline}</p>
+              <span className="h-px w-8 bg-primary/20" />
+            </div>
+            <h2 className="font-serif text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] text-foreground mb-8">
+              {t.beforeAfterTitle}
+            </h2>
+            <p className="text-lg lg:text-xl text-muted-foreground/80 leading-relaxed">
+              {lang === 'pt' ? 'Veja o que muda quando IA assume o trabalho operacional.' : 'See what changes when AI takes over the busywork.'}
+            </p>
+          </div>
 
           <div className="relative max-w-5xl mx-auto">
             {/* Arrow indicator between cards - desktop only */}
@@ -1106,44 +1112,23 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Seção: Vídeo Demo */}
-      <section className="py-24 bg-muted/50">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center space-y-8">
-            
-            {/* Título */}
-            <div className="space-y-3">
-              <p className="uppercase text-xs font-semibold tracking-widest text-primary">{lang === 'pt' ? 'Demonstração' : 'Demo'}</p>
-              <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-foreground">{t.videoTitle}</h2>
-              <p className="text-lg text-muted-foreground">
-                {t.videoSubtitle}
-              </p>
-            </div>
-            
-            {/* Vídeo YouTube Embed */}
-            <div className="relative">
-              {/* Glow effect sutil */}
-              <div className="absolute -inset-4 bg-gradient-to-r from-primary/10 to-emerald-500/10 rounded-3xl blur-2xl opacity-50" />
-              
-              <div className="relative rounded-2xl overflow-hidden shadow-xl">
-                <iframe className="w-full aspect-video" src="https://www.youtube.com/embed/bRQiwrBGlsc" title="Rhitmo - Tour Completo" frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />
-              </div>
-            </div>
-            
-          </div>
-        </div>
-      </section>
 
       {/* Seção: Rhitmo vs. Outros — Feature Showdown */}
       <section className="py-28 bg-background">
         <div className="container mx-auto px-4">
-          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{t.comparisonOverline}</p>
-          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-4 text-foreground">
-            {t.comparisonTitle}
-          </h2>
-          <p className="text-lg text-muted-foreground text-center mb-14 max-w-2xl mx-auto">
-            {lang === 'pt' ? 'A pergunta é com qual ferramenta. Funcionalidades reais, não promessas de roadmap.' : 'The question is with which tool. Real features, not roadmap promises.'}
-          </p>
+          <div className="text-center mb-16 max-w-3xl mx-auto">
+            <div className="inline-flex items-center gap-3 mb-6">
+              <span className="h-px w-8 bg-primary/20" />
+              <p className="text-[10px] uppercase tracking-[0.45em] text-muted-foreground">{t.comparisonOverline}</p>
+              <span className="h-px w-8 bg-primary/20" />
+            </div>
+            <h2 className="font-serif text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] text-foreground mb-8">
+              {t.comparisonTitle}
+            </h2>
+            <p className="text-lg lg:text-xl text-muted-foreground/80 leading-relaxed">
+              {lang === 'pt' ? 'A pergunta é com qual ferramenta. Funcionalidades reais, não promessas de roadmap.' : 'The question is with which tool. Real features, not roadmap promises.'}
+            </p>
+          </div>
 
           {/* Desktop: Premium Table */}
           <div className="hidden md:block max-w-5xl mx-auto">
@@ -1201,13 +1186,19 @@ const Landing = () => {
       {/* Seção: Números Concretos */}
       <section id="impacto" className="py-28 bg-gradient-to-br from-muted/30 to-primary/5">
         <div className="container mx-auto px-4">
-          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{t.numbersOverline}</p>
-          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-4 text-foreground">
-            {t.numbersTitle}
-          </h2>
-          <p className="text-lg text-muted-foreground text-center mb-14 max-w-2xl mx-auto">
-            {lang === 'pt' ? 'Resultados reais de quem já usa Rhitmo no dia a dia.' : 'Real results from leaders who already use Rhitmo daily.'}
-          </p>
+          <div className="text-center mb-16 max-w-3xl mx-auto">
+            <div className="inline-flex items-center gap-3 mb-6">
+              <span className="h-px w-8 bg-primary/20" />
+              <p className="text-[10px] uppercase tracking-[0.45em] text-muted-foreground">{t.numbersOverline}</p>
+              <span className="h-px w-8 bg-primary/20" />
+            </div>
+            <h2 className="font-serif text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] text-foreground mb-8">
+              {t.numbersTitle}
+            </h2>
+            <p className="text-lg lg:text-xl text-muted-foreground/80 leading-relaxed">
+              {lang === 'pt' ? 'Resultados reais de quem já usa Rhitmo no dia a dia.' : 'Real results from leaders who already use Rhitmo daily.'}
+            </p>
+          </div>
 
           {/* Bento Grid — Hero card + 2 secondary */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
@@ -1217,7 +1208,7 @@ const Landing = () => {
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
                   <Clock className="h-6 w-6 text-primary" />
                 </div>
-                <span className="uppercase text-xs font-semibold tracking-widest text-primary">{lang === 'pt' ? 'Produtividade' : 'Productivity'}</span>
+                <span className="text-[10px] uppercase tracking-[0.45em] text-muted-foreground">{lang === 'pt' ? 'Produtividade' : 'Productivity'}</span>
               </div>
               <div className="font-serif text-6xl lg:text-7xl font-bold tracking-tight text-foreground mb-4">{t.numbersStat1}</div>
               <p className="text-base text-muted-foreground leading-relaxed max-w-lg">{t.numbersLabel1}</p>
@@ -1230,7 +1221,7 @@ const Landing = () => {
                   <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
                     <AlertCircle className="h-5 w-5 text-destructive" />
                   </div>
-                  <span className="uppercase text-xs font-semibold tracking-widest text-destructive">{lang === 'pt' ? 'Equidade' : 'Equity'}</span>
+                  <span className="text-[10px] uppercase tracking-[0.45em] text-muted-foreground">{lang === 'pt' ? 'Equidade' : 'Equity'}</span>
                 </div>
                 <div className="font-serif text-4xl font-bold tracking-tight text-foreground mb-2">{t.numbersStat2}</div>
                 <p className="text-sm text-muted-foreground leading-relaxed">{t.numbersLabel2}</p>
@@ -1240,7 +1231,7 @@ const Landing = () => {
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                     <DollarSign className="h-5 w-5 text-primary" />
                   </div>
-                  <span className="uppercase text-xs font-semibold tracking-widest text-primary">{lang === 'pt' ? 'Economia' : 'Savings'}</span>
+                  <span className="text-[10px] uppercase tracking-[0.45em] text-muted-foreground">{lang === 'pt' ? 'Economia' : 'Savings'}</span>
                 </div>
                 <div className="font-serif text-4xl font-bold tracking-tight text-foreground mb-2">{t.numbersStat3}</div>
                 <p className="text-sm text-muted-foreground leading-relaxed">{t.numbersLabel3}</p>
@@ -1260,7 +1251,7 @@ const Landing = () => {
                 <Zap className="h-4 w-4" />
                 {t.forLeaders}
               </div>
-              <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
+              <h2 className="font-serif text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight leading-[1.05] text-foreground">
                 {t.leadersTitle}
               </h2>
               <div className="space-y-4 text-lg text-muted-foreground leading-relaxed">
@@ -1298,7 +1289,7 @@ const Landing = () => {
                 <Heart className="h-4 w-4" />
                 {t.forReports}
               </div>
-              <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
+              <h2 className="font-serif text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight leading-[1.05] text-foreground">
                 {t.reportsTitle}
               </h2>
               <div className="space-y-4 text-lg text-muted-foreground leading-relaxed">
@@ -1320,7 +1311,7 @@ const Landing = () => {
                 <BarChart className="h-4 w-4" />
                 {t.forHR}
               </div>
-              <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
+              <h2 className="font-serif text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight leading-[1.05] text-foreground">
                 {t.hrTitle}
               </h2>
               <div className="space-y-4 text-lg text-muted-foreground leading-relaxed">
@@ -1339,61 +1330,6 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Seção: Para quem é Rhitmo — Persona Cards */}
-      <section className="py-28 bg-background">
-        <div className="container mx-auto px-4">
-          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">{t.forWhoOverline}</p>
-          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-4 text-foreground">
-            {t.forWhoTitle}
-          </h2>
-          <p className="text-lg text-muted-foreground text-center mb-14 max-w-2xl mx-auto">
-            {lang === 'pt' ? 'Três perfis, uma plataforma. Encontre o seu.' : 'Three profiles, one platform. Find yours.'}
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {/* Líder — Card em destaque */}
-            <div className="bg-card rounded-2xl border-2 border-primary p-8 lg:p-10 shadow-lg relative flex flex-col">
-              <span className="absolute -top-3 left-6 bg-primary text-primary-foreground text-xs font-semibold px-4 py-1.5 rounded-full">{t.forWhoLeaderBadge}</span>
-              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-5">
-                <Target className="h-7 w-7 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold text-foreground mb-3">{t.forWhoLeaderTitle}</h3>
-              <p className="text-muted-foreground leading-relaxed flex-1">{t.forWhoLeaderText}</p>
-              <Button className="w-full rounded-xl mt-6" onClick={() => navigate('/auth/start')}>
-                {lang === 'pt' ? 'Começar grátis' : 'Get started free'}
-              </Button>
-            </div>
-
-            {/* PME */}
-            <div className="bg-card rounded-2xl border p-8 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all duration-300 relative flex flex-col">
-              <span className="absolute -top-3 left-6 bg-accent text-accent-foreground text-xs font-semibold px-3 py-1 rounded-full">{t.forWhoPmeBadge}</span>
-              <div className="w-14 h-14 rounded-full bg-accent/50 flex items-center justify-center mb-5">
-                <Users className="h-7 w-7 text-accent-foreground" />
-              </div>
-              <h3 className="text-xl font-bold text-foreground mb-3">{t.forWhoPmeTitle}</h3>
-              <p className="text-muted-foreground leading-relaxed flex-1">{t.forWhoPmeText}</p>
-              <Button variant="outline" className="w-full rounded-xl mt-6" onClick={() => navigate('/auth/start')}>
-                {lang === 'pt' ? 'Começar grátis' : 'Get started free'}
-              </Button>
-            </div>
-
-            {/* Enterprise */}
-            <div className="bg-card rounded-2xl border p-8 shadow-md hover:-translate-y-1 hover:shadow-lg transition-all duration-300 relative flex flex-col">
-              <span className="absolute -top-3 left-6 bg-muted text-muted-foreground text-xs font-semibold px-3 py-1 rounded-full border">{t.forWhoEntBadge}</span>
-              <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-5">
-                <Building className="h-7 w-7 text-muted-foreground" />
-              </div>
-              <h3 className="text-xl font-bold text-foreground mb-3">{t.forWhoEntTitle}</h3>
-              <p className="text-muted-foreground leading-relaxed flex-1">{t.forWhoEntText}</p>
-              <Button variant="outline" className="w-full rounded-xl mt-6" asChild>
-                <Link to="/enterprise">
-                  {t.forWhoEntLink} <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
-                </Link>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
 
 
 
@@ -1401,10 +1337,16 @@ const Landing = () => {
       {/* FAQ Section */}
       <section id="faq" className="py-24 bg-muted/30">
         <div className="container mx-auto px-4 max-w-3xl">
-          <p className="uppercase text-xs font-semibold tracking-widest text-primary text-center mb-3">FAQ</p>
-          <h2 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight text-center mb-12 text-foreground">
-            {t.faqTitle}
-          </h2>
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-3 mb-6">
+              <span className="h-px w-8 bg-primary/20" />
+              <p className="text-[10px] uppercase tracking-[0.45em] text-muted-foreground">FAQ</p>
+              <span className="h-px w-8 bg-primary/20" />
+            </div>
+            <h2 className="font-serif text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] text-foreground">
+              {t.faqTitle}
+            </h2>
+          </div>
           <Accordion type="single" collapsible className="space-y-3">
             {t.faqItems.map((item, i) => (
               <AccordionItem key={i} value={`faq-${i}`} className="border rounded-xl px-6 bg-card">
