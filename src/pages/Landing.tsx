@@ -1016,7 +1016,7 @@ const Landing = () => {
                     </div>
                     <div>
                       <div className="font-serif text-lg font-bold tracking-tight text-slate-900 leading-tight">Joana Silva</div>
-                      <div className="text-xs text-slate-500">Analista de Business Ops</div>
+                      <div className="text-xs text-slate-500">Analista de Finance Ops</div>
                     </div>
                   </div>
                 </div>
