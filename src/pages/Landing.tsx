@@ -1101,7 +1101,7 @@ const Landing = () => {
                 </div>
                 <div>
                   <p className="font-serif text-[13px] font-bold tracking-tight text-slate-900 leading-none">Diário de Bordo</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">5 registros · Gabriela</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">5 registros · Joana Silva</p>
                 </div>
               </div>
               <div className="space-y-2">
