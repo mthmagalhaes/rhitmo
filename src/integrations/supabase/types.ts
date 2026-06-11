@@ -3127,6 +3127,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _assert_rpc_runs: { Args: { _sql: string }; Returns: undefined }
       _ctx_resolve_workspace: { Args: { _member_id: string }; Returns: string }
       acknowledge_network_signal: {
         Args: { _signal_id: string }
