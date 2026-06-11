@@ -814,10 +814,7 @@ const Landing = () => {
     return () => window.clearTimeout(t);
   }, [hash]);
 
-  const [landingTheme, setLandingTheme] = useState<'light' | 'dark'>(() => {
-    const saved = localStorage.getItem('theme');
-    return saved === 'dark' ? 'dark' : 'light';
-  });
+  // Landing v3 é light-only — sem state de tema.
 
   const [lang, setLang] = useState<'pt' | 'en'>(() => {
     const saved = localStorage.getItem('rhitmo-lang');
