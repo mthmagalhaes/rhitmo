@@ -41,6 +41,44 @@ export function DiaryCoverageInsight({ members, onCreateNoteFor }: DiaryCoverage
       });
   }, [members]);
 
+  const { id: userId } = useEffectiveUser();
+  const signature = useMemo(
+    () => gaps.map((g) => `${g.member.id}:${g.daysSince ?? 'n'}`).join('|'),
+    [gaps],
+  );
+  const storageKey = userId ? `rhitmo:diary-coverage-dismissed:${userId}` : null;
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    if (!storageKey || gaps.length === 0) {
+      setDismissed(false);
+      return;
+    }
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) return setDismissed(false);
+      const parsed = JSON.parse(raw) as { at: number; sig: string };
+      const within7d = Date.now() - parsed.at < 7 * 24 * 60 * 60 * 1000;
+      setDismissed(within7d && parsed.sig === signature);
+    } catch {
+      setDismissed(false);
+    }
+  }, [storageKey, signature, gaps.length]);
+
+  const handleDismiss = () => {
+    if (storageKey) {
+      try {
+        localStorage.setItem(
+          storageKey,
+          JSON.stringify({ at: Date.now(), sig: signature }),
+        );
+      } catch {
+        /* noop */
+      }
+    }
+    setDismissed(true);
+  };
+
   // Estado positivo — ninguém atrasado
   if (gaps.length === 0) {
     const mostRecent = members
