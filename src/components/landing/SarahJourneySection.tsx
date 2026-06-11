@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Slack, Lock, CheckCircle2, Sparkles, FileText } from "lucide-react";
-import officeNight from "@/assets/landing-cinematic-office.jpg";
+import cafeMorning from "@/assets/landing/journey/journey-1-cafe-morning.jpg";
 import loftNight from "@/assets/landing/journey/journey-2-loft.jpg";
 import sunsetCliff from "@/assets/landing/journey/journey-3-sunset.jpg";
 import officeGolden from "@/assets/landing/journey/journey-4-office-golden.jpg";
