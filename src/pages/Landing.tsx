@@ -1133,20 +1133,17 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* ============== WEEK TIMELINE ============== */}
-      <WeekTimelineSection
+      {/* ============== MEET ANA — JOURNEY ============== */}
+      <SarahJourneySection
         lang={lang}
         copy={{
-          overline: t.weekOverline,
-          title: t.weekTitle,
-          subtitle: t.weekSubtitle,
-          colLeft: t.weekColLeft,
-          colRight: t.weekColRight,
-          days: t.weekDays,
-          footerNumber: t.weekFooterNumber,
-          footerLabel: t.weekFooterLabel,
+          overline: t.journeyOverline,
+          title: t.journeyTitle,
+          subtitle: t.journeySubtitle,
+          acts: t.journeyActs,
         }}
       />
+
 
 
       {/* ============== NUMBERS BENTO ============== */}
