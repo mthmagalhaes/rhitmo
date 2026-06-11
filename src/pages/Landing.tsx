@@ -871,11 +871,6 @@ const Landing = () => {
   }
   if (user) return null;
 
-  return <div className="transition-colors duration-300">
-      <Helmet>
-        <link rel="canonical" href="https://rhitmo.co/" />
-      </Helmet>
-    <div className="min-h-screen bg-background">
   return (
     <div className="bg-white text-slate-900 antialiased">
       <Helmet>
