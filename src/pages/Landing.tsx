@@ -54,7 +54,7 @@ const translations = {
     toggleTheme: "Alternar tema",
     // Hero
     heroTitle: "Nunca mais escreva uma avaliação de desempenho do zero.",
-    heroSubtitle: "O que levava 4 horas agora leva 2 minutos. Rhitmo é o único parceiro AI-nativo de liderança que transforma suas conversas em reviews prontas.",
+    heroSubtitle: "O que levava 2 horas agora leva poucos minutos. Rhitmo é o único parceiro AI-nativo de liderança que transforma suas anotações, conversas e sinais em avaliações de performance justasprontas.",
     seePlans: "Preços",
     
     // Before vs After
