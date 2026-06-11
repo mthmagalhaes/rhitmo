@@ -1146,52 +1146,64 @@ const Landing = () => {
 
 
 
-      {/* ============== NUMBERS BENTO ============== */}
+      {/* ============== NUMBERS — EDITORIAL ============== */}
       <section id="impacto" className="py-28 px-6 bg-white">
         <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16 max-w-3xl mx-auto">
-            <p className="text-[10px] uppercase tracking-[0.3em] text-indigo-500 font-bold mb-4">{t.numbersOverline}</p>
-            <h2 className="font-serif text-5xl md:text-6xl font-bold tracking-tight leading-[1.05] text-slate-900 mb-6">
-              {t.numbersTitle}
+          {/* Header — alinhado à esquerda, editorial */}
+          <div className="max-w-3xl mb-20">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-indigo-500 font-bold mb-6">{t.numbersOverline}</p>
+            <h2 className="font-serif text-5xl md:text-7xl font-bold tracking-tight leading-[1.02] text-slate-900">
+              <span className="block">{lang === 'pt' ? 'Não é promessa.' : 'Not a promise.'}</span>
+              <span className="block italic text-slate-400 font-normal">{lang === 'pt' ? 'São números.' : 'These are numbers.'}</span>
             </h2>
-            <p className="text-lg text-slate-500 leading-relaxed">
-              {lang === 'pt' ? 'Resultados reais de quem já usa Rhitmo no dia a dia.' : 'Real results from leaders who already use Rhitmo daily.'}
+            <p className="text-base text-slate-400 mt-6 max-w-xl">
+              {lang === 'pt' ? 'Cada número aqui tem fonte. Sem hype, sem roadmap.' : 'Every number here has a source. No hype, no roadmap.'}
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2 bg-slate-50/60 rounded-3xl p-10 lg:p-12 border border-slate-100">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center">
-                  <Clock className="h-5 w-5 text-indigo-500" />
-                </div>
-                <span className="text-[10px] uppercase tracking-[0.3em] text-slate-400 font-bold">{lang === 'pt' ? 'Produtividade' : 'Productivity'}</span>
-              </div>
-              <div className="font-serif text-6xl lg:text-7xl font-bold tracking-tight text-slate-900 mb-5">{t.numbersStat1}</div>
-              <p className="text-base text-slate-500 leading-relaxed">{t.numbersLabel1}</p>
+          {/* Stat-hero — Produtividade */}
+          <div className="border-t border-slate-200 pt-12 pb-20">
+            <div className="flex items-center gap-4 mb-10">
+              <span className="font-mono text-[11px] tracking-[0.25em] text-slate-400">01 / {lang === 'pt' ? 'PRODUTIVIDADE' : 'PRODUCTIVITY'}</span>
             </div>
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-10 lg:gap-16 items-center">
+              <div className="lg:col-span-3 font-serif font-bold tracking-tight text-slate-900 leading-[0.9] flex items-baseline gap-4 md:gap-8">
+                <span className="text-[80px] md:text-[140px]">4h</span>
+                <span className="text-4xl md:text-6xl text-indigo-400 font-light">→</span>
+                <span className="text-[80px] md:text-[140px]">2min</span>
+              </div>
+              <div className="lg:col-span-2 space-y-5">
+                <p className="text-lg text-slate-600 leading-relaxed">
+                  {lang === 'pt'
+                    ? <>Redigir uma avaliação de desempenho consome em média <span className="text-slate-900 font-medium">4 horas por liderado</span>. Com Rhitmo, o draft sai pronto em <span className="text-slate-900 font-medium">2 minutos</span> a partir do contexto já capturado.</>
+                    : <>Writing a performance review takes on average <span className="text-slate-900 font-medium">4 hours per report</span>. With Rhitmo, the draft is ready in <span className="text-slate-900 font-medium">2 minutes</span> from context already captured.</>}
+                </p>
+                <p className="text-xs text-slate-400 font-mono tracking-wide">{lang === 'pt' ? 'Fonte: Gallup, 2024 · Benchmark Rhitmo' : 'Source: Gallup, 2024 · Rhitmo benchmark'}</p>
+              </div>
+            </div>
+          </div>
 
-            <div className="flex flex-col gap-6">
-              <div className="bg-slate-50/60 rounded-3xl p-8 border border-slate-100 flex-1">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center">
-                    <AlertCircle className="h-4 w-4 text-red-500" />
-                  </div>
-                  <span className="text-[10px] uppercase tracking-[0.3em] text-slate-400 font-bold">{lang === 'pt' ? 'Equidade' : 'Equity'}</span>
-                </div>
-                <div className="font-serif text-4xl font-bold tracking-tight text-slate-900 mb-2">{t.numbersStat2}</div>
-                <p className="text-sm text-slate-500 leading-relaxed">{t.numbersLabel2}</p>
-              </div>
-              <div className="bg-slate-50/60 rounded-3xl p-8 border border-slate-100 flex-1">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-9 h-9 rounded-full bg-emerald-50 flex items-center justify-center">
-                    <DollarSign className="h-4 w-4 text-emerald-500" />
-                  </div>
-                  <span className="text-[10px] uppercase tracking-[0.3em] text-slate-400 font-bold">{lang === 'pt' ? 'Economia' : 'Savings'}</span>
-                </div>
-                <div className="font-serif text-4xl font-bold tracking-tight text-slate-900 mb-2">{t.numbersStat3}</div>
-                <p className="text-sm text-slate-500 leading-relaxed">{t.numbersLabel3}</p>
-              </div>
+          {/* Stats 2 + 3 — supporting evidence */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-slate-200 border-t border-slate-200">
+            <div className="bg-white pt-12 pb-4 md:pr-10">
+              <span className="font-mono text-[11px] tracking-[0.25em] text-slate-400 block mb-8">02 / {lang === 'pt' ? 'EQUIDADE' : 'EQUITY'}</span>
+              <div className="font-serif text-7xl md:text-8xl font-bold tracking-tight text-slate-900 mb-6">38×</div>
+              <p className="text-base text-slate-600 leading-relaxed mb-4 max-w-sm">
+                {lang === 'pt'
+                  ? <>Mulheres recebem <span className="text-slate-900 font-medium">38× mais feedback sobre personalidade</span> do que homens. Rhitmo detecta e sinaliza antes da publicação.</>
+                  : <>Women receive <span className="text-slate-900 font-medium">38× more personality feedback</span> than men. Rhitmo detects and flags before you publish.</>}
+              </p>
+              <p className="text-xs text-slate-400 font-mono tracking-wide">{lang === 'pt' ? 'Fonte: Stanford VMware Women\'s Leadership Lab' : 'Source: Stanford VMware Women\'s Leadership Lab'}</p>
+            </div>
+            <div className="bg-white pt-12 pb-4 md:pl-10">
+              <span className="font-mono text-[11px] tracking-[0.25em] text-slate-400 block mb-8">03 / {lang === 'pt' ? 'ECONOMIA' : 'SAVINGS'}</span>
+              <div className="font-serif text-7xl md:text-8xl font-bold tracking-tight text-slate-900 mb-6">−60%</div>
+              <p className="text-base text-slate-600 leading-relaxed mb-4 max-w-sm">
+                {lang === 'pt'
+                  ? <>Avaliações tradicionais custam até <span className="text-slate-900 font-medium">US$ 35M/ano</span> em grandes empresas. Rhitmo corta o custo em 60% mantendo a precisão.</>
+                  : <>Traditional reviews cost up to <span className="text-slate-900 font-medium">$35M/year</span> in large companies. Rhitmo cuts that by 60% while keeping precision.</>}
+              </p>
+              <p className="text-xs text-slate-400 font-mono tracking-wide">{lang === 'pt' ? 'Fonte: Deloitte, Reinventing Performance Management' : 'Source: Deloitte, Reinventing Performance Management'}</p>
             </div>
           </div>
         </div>
