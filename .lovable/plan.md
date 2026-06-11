@@ -1,51 +1,68 @@
-# Skill: rhitmo-soul-editor
+# Skill: rhitmo-rls-migration
 
-Skill local (drafted em `.agents/skills/rhitmo-soul-editor/`) que ensina futuras instâncias do agente a editar a alma da Rhitmo com segurança, evitando os bugs recorrentes (prompt inline, esquecer `regen-docs`, snapshot drift, paridade web↔slack quebrada).
+Skill local em `.agents/skills/rhitmo-rls-migration/` que ensina futuras instâncias do agente a escrever migrations RLS da Rhitmo seguindo os padrões já consolidados — evitando os 5 bugs históricos: GRANT esquecido, recursão de RLS, `effective_user_id()` sem `LIMIT 1`, role em coluna do `profiles`, e ausência de `_assert_rpc_runs()` em migrations críticas de RPC.
 
 ## Quando vai disparar
-Descrição focada em: "edit Rhitmo identity, guardrails, tone, mode, channel; modify `supabase/functions/_shared/soul/*.md`; add new mode or channel; debug prompt drift between web and Slack".
+Descrição focada em: "write a Supabase migration that creates/alters tables in public, adds RLS policies, creates SECURITY DEFINER functions, or adds RPCs called from the frontend in the Rhitmo project".
 
-## Estrutura do diretório
+## Estrutura
 
 ```
-.agents/skills/rhitmo-soul-editor/
-├── SKILL.md                       # entrypoint curto + checklist
+.agents/skills/rhitmo-rls-migration/
+├── SKILL.md                       # entrypoint + checklist obrigatório
 └── references/
-    ├── architecture.md            # mapa do soul/ (00–08, modes/, channels/, loader, docs.generated, snapshots)
-    ├── workflows.md               # 4 fluxos passo-a-passo
-    └── anti-patterns.md           # bugs comuns + como evitar
+    ├── template-table.md          # template canônico CREATE TABLE + GRANT + RLS + POLICY
+    ├── rls-patterns.md            # padrões: workspace isolation, leader/member ownership, has_role, papéis Rhitmo
+    └── anti-patterns.md           # bugs recorrentes + como evitar
 ```
 
 ## Conteúdo do SKILL.md (resumo)
 
-- **Regra de ouro**: prompt inline em edge function = bug. Toda mudança começa por um `.md` em `supabase/functions/_shared/soul/`.
-- **Checklist obrigatório após editar qualquer `.md`**:
-  1. `deno run --allow-read --allow-write supabase/functions/_shared/soul/regen-docs.ts`
-  2. `deno run --allow-read --allow-write supabase/functions/_shared/soul/regen-snapshots.ts`
-  3. Revisar diff dos snapshots em `__snapshots__/`
-  4. Rodar `loader_test.ts` (11 testes, paridade web↔slack)
-  5. Commitar `.md` + `docs.generated.ts` + snapshots juntos
-- Ponteiros para os 3 references conforme o tipo de mudança.
+**Regras de ouro (não-negociáveis):**
+1. Toda `CREATE TABLE public.X` na mesma migration: GRANT → ENABLE RLS → POLICY (ordem fixa)
+2. `LANGUAGE plpgsql` + `SECURITY DEFINER` + `SET search_path = public` em toda função usada em RLS
+3. Nunca FK para `auth.users` — usar `uuid` solto e validar via `auth.uid()`
+4. Role NUNCA em coluna de `profiles`/tabela principal — só em `user_roles` (privilege escalation)
+5. `effective_user_id()` sempre com `LIMIT 1` (impersonação retorna múltiplas linhas)
+6. RPC chamada do frontend → adicionar `SELECT _assert_rpc_runs('nome_rpc')` no final da migration (memória `architecture/rpc-smoke-assertion`)
+7. Workspace isolation: ownership por `leader_user_id` em `teams`, não por workspace owner direto
 
-## Workflows cobertos (references/workflows.md)
+**Checklist antes de submeter migration:**
+- [ ] GRANT presente p/ cada tabela nova (authenticated + service_role; anon só se policy permite)
+- [ ] RLS habilitado
+- [ ] Pelo menos uma POLICY (sem policy = tabela trancada)
+- [ ] Funções em RLS são SECURITY DEFINER + plpgsql + search_path
+- [ ] Nenhuma policy faz SELECT na própria tabela (recursão)
+- [ ] Se criou RPC pública: `_assert_rpc_runs` no final
+- [ ] Se policy referencia `effective_user_id()`: confirmar que a função interna usa LIMIT 1
+- [ ] `description` da migration é prosa em PT, sem SQL, sem keywords
 
-1. **Editar bloco existente** (ex.: ajustar tom em `03-tone-and-format.md`)
-2. **Adicionar novo modo** (criar `modes/X.md` + registrar em `MODE_BLOCKS` do `loader.ts` + adicionar em `FILES` do `regen-docs.ts` + atualizar `Mode` type)
-3. **Adicionar novo canal** (criar `channels/X.md` + `CHANNEL_BLOCK` + `Channel` type + `FILES`)
-4. **Migrar edge function com prompt inline** (substituir por `composeSystemPrompt({mode, channel, vars, appendices})`, deprecar `rhitmo-constitution.ts`)
+## references/template-table.md
+Template completo para 3 casos: (a) tabela owned by leader, (b) tabela compartilhada workspace, (c) tabela read-only do liderado vinculado. Inclui trigger `updated_at` padrão.
 
-## Anti-patterns (references/anti-patterns.md)
+## references/rls-patterns.md
+- Papéis Rhitmo (5: Super Admin, Owner, HR Admin, Leader, Liderado) → ponteiro para `mem://architecture/papeis-e-permissoes`
+- Padrão "leader vê seu time": `EXISTS (SELECT 1 FROM team_members WHERE manager_id = auth.uid())`
+- Padrão "owner vê tudo no workspace": `is_workspace_owner_of_member(member_id)`
+- Padrão "HR admin do workspace": `is_hr_admin_of_workspace(workspace_id)`
+- Padrão "liderado vê o próprio": `member_id IN (SELECT id FROM team_members WHERE linked_user_id = auth.uid())`
+- Ownership chain em edge function com service_role → ponteiro para `mem://security/edge-function-ownership-pattern`
 
-- Editar `.md` e esquecer `regen-docs.ts` → bundle desatualizado em runtime
-- Adicionar modo no `loader.ts` mas não em `regen-docs.ts FILES` → "Missing doc" em produção
-- Mudar snapshot sem revisar diff → drift silencioso entre web e Slack
-- Recriar prompt inline em nova edge function (lista as 6 que ainda precisam migrar: `generate-brief`, `generate-formal-review`, `meu-rhitmo`, `self-reflection`, `slack-rhitmo-orchestrator`, `briefGenerator.ts`)
-- Adicionar `extends memory/disc` em modo legado sem regenerar snapshot
+## references/anti-patterns.md
+1. CHECK constraint com `now()` → usar TRIGGER (já no contrato Cloud)
+2. Policy recursiva (SELECT da própria tabela) → SECURITY DEFINER function
+3. Role em `profiles.role` → `user_roles` + `has_role(uid, role)`
+4. `effective_user_id()` interno sem LIMIT 1 → vazamento entre workspaces durante impersonação
+5. Esquecer GRANT → "permission denied for table" no Data API
+6. FK para `auth.users` → migrações quebram em restore
+7. `ALTER DATABASE postgres` → rejeitado pelo Cloud
+8. Editar `auth`/`storage`/`realtime`/`supabase_functions`/`vault` → proibido
+9. Criar RPC nova sem `_assert_rpc_runs` → frontend quebra em produção sem aviso
 
 ## Hand-off
-Após gravar os 4 arquivos, chamar `skills--apply_draft` com `.agents/skills/rhitmo-soul-editor` para ativar a skill no workspace.
+Após gravar os 4 arquivos, chamar `skills--apply_draft` com `.agents/skills/rhitmo-rls-migration`.
 
 ## Não inclui
-- Não cria novos modos/canais agora (só ensina o processo).
-- Não migra as 6 edge functions pendentes (skill apenas documenta o caminho).
-- Não altera nenhum `.md` da alma, nem `loader.ts`, nem código de produção.
+- Não cria migration nova agora — só ensina o processo.
+- Não altera RLS de tabela existente.
+- Não duplica o que já está em `mem://architecture/papeis-e-permissoes` ou `mem://architecture/rls-recursion-prevention` — referencia.
