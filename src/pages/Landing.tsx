@@ -274,25 +274,21 @@ const translations = {
     heroSubtitle: "What took 4 hours now takes 2 minutes. Rhitmo is the only AI-native leadership partner that turns your conversations into ready-made reviews.",
     seePlans: "Pricing",
     
-    // Before vs After
-    beforeAfterOverline: "Day-to-day without AI",
-    beforeAfterTitle: "It used to be bureaucracy. Now it's strategy.",
-    withoutRhitmo: "Without Rhitmo",
-    withRhitmo: "With Rhitmo",
-    beforeItems: [
-      "4 hours per review, rewriting from scratch every time",
-      "Invisible bias slipping through every evaluation",
-      "70% of quarterly conversations forgotten",
-      "Generic feedback: \"needs to improve communication\"",
-      "Data scattered across spreadsheets, docs and emails",
+    // Week timeline (replaces Before vs After)
+    weekOverline: "A week in your leadership",
+    weekTitle: "Same calendar. Different work.",
+    weekSubtitle: "Five days, side by side. Where you used to spend hours, Rhitmo delivers it done.",
+    weekColLeft: "Without Rhitmo",
+    weekColRight: "With Rhitmo",
+    weekDays: [
+      { day: "MON", time: "09:00", left: "Hunt for Slack screenshots to remember what happened last sprint.", leftBadge: "45min manual", right: "Weekly Slack rollup already logged per report, inside the Journal.", rightBadge: "automatic", mock: "slack" as const },
+      { day: "TUE", time: "14:00", left: "Take 1:1 notes in Notion, then lose them and miss the action items.", leftBadge: "20min + lost", right: "1:1 transcribed by Recall, with tags and action items ready to track.", rightBadge: "Recall + AI", mock: "oneonone" as const },
+      { day: "WED", time: "11:00", left: "Reread old threads to make sure of the context before a hard feedback.", leftBadge: "1h re-reading", right: "Feedback anchored in real evidence from the whole quarter, in one place.", rightBadge: "living evidence", mock: "tough" as const },
+      { day: "THU", time: "16:00", left: "Send a check-in form and wait 3 days for 4 scattered answers.", leftBadge: "3 days waiting", right: "Team Pulse with real-time signals from the network. No extra survey.", rightBadge: "real time", mock: "pulse" as const },
+      { day: "FRI", time: "17:00", left: "Open a blank doc to write the review. From scratch. Again.", leftBadge: "4h per report", right: "Monthly review with a ready draft and auditable citations to review.", rightBadge: "ready", mock: "reviews" as const },
     ],
-    afterItems: [
-      "Full draft in 30 seconds. You just review.",
-      "Bias detected and corrected before saving",
-      "Every 1:1 recorded automatically with context",
-      "Feedback based on real evidence, not memory",
-      "Everything centralized, organized by AI",
-    ],
+    weekFooterNumber: "+5h",
+    weekFooterLabel: "Five hours of your week. Given back to you to lead.",
     videoTitle: "See Rhitmo in action",
     videoSubtitle: "See how a 4-hour review becomes 2 minutes.",
     // Comparison
