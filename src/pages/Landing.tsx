@@ -1270,32 +1270,6 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* ============== POST-IT TESTIMONIALS ============== */}
-      <section className="py-28 px-6 bg-slate-50/40 overflow-hidden">
-        <div className="max-w-5xl mx-auto text-center mb-16">
-          <p className="text-[10px] uppercase tracking-[0.3em] text-indigo-500 font-bold mb-4">
-            {lang === 'pt' ? 'Quem já usa' : 'Real users'}
-          </p>
-          <h2 className="font-serif text-5xl md:text-6xl font-bold tracking-tight leading-[1.05] text-slate-900 mb-4">
-            {lang === 'pt' ? 'Feedback real de líderes reais.' : 'Real feedback from real leaders.'}
-          </h2>
-          <p className="text-lg text-slate-500">
-            {lang === 'pt' ? 'Anotações anônimas de quem trocou planilhas e docs por Rhitmo.' : 'Anonymous notes from teams who replaced spreadsheets and docs with Rhitmo.'}
-          </p>
-        </div>
-
-        <div className="flex flex-wrap justify-center gap-6 max-w-5xl mx-auto py-6">
-          {testimonials.map((it, i) => (
-            <div
-              key={i}
-              className={cn('post-it w-64 p-6 border flex flex-col justify-between gap-6', it.color, it.rot)}
-            >
-              <p className="text-base font-medium leading-snug text-slate-800 italic">"{it.quote}"</p>
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">{it.author}</p>
-            </div>
-          ))}
-        </div>
-      </section>
 
       {/* ============== FAQ ============== */}
       <section id="faq" className="py-28 px-6 bg-white">
