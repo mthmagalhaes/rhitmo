@@ -50,8 +50,8 @@ async function slackApi(method: string, body: Record<string, unknown>) {
 // ── Friendly date formatting (pt-BR) ────────────────────────
 function formatMeetingTime(iso: string): { context: string; relative: string } {
   const start = new Date(iso);
-  const now = new Date();
-  const diffH = Math.round((start.getTime() - now.getTime()) / (1000 * 60 * 60));
+  const diffMin = Math.round((start.getTime() - Date.now()) / 60000);
+  const diffH = Math.round(diffMin / 60);
 
   const dateFmt = new Intl.DateTimeFormat('pt-BR', {
     weekday: 'long',
@@ -62,12 +62,15 @@ function formatMeetingTime(iso: string): { context: string; relative: string } {
     timeZone: 'America/Sao_Paulo',
   }).format(start);
 
-  let relative = `em ${diffH}h`;
-  if (diffH >= 18 && diffH <= 30) relative = 'amanhã';
-  else if (diffH < 12) relative = `em ${diffH}h`;
+  let relative: string;
+  if (diffMin < 1) relative = 'agora';
+  else if (diffMin < 60) relative = `em ${diffMin} min`;
+  else if (diffH >= 18 && diffH <= 30) relative = 'amanhã';
+  else relative = `em ${diffH}h`;
 
   return { context: `📅 ${dateFmt}`, relative };
 }
+
 
 // ── Pulse type → human label ────────────────────────────────
 function pulseTypeLabel(type: string | null | undefined): string {
