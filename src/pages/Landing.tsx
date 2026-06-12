@@ -277,7 +277,7 @@ const translations = {
     journeyActs: [
       { tag: "WEEK 1", label: "Onboarding", title: "Ana joins the team", body: "Before her manager even thinks about it, Rhitmo sends a Slack check-in. The manager sees the gap before the next 1:1, and future new hires get the walkthrough on day one.", mock: "slackDM" as const },
       { tag: "WEEKLY", label: "1:1s", title: "1:1s that prep themselves", body: "No more 'so… what should we talk about?'. Rhitmo pulls the agenda from the week's actual work, and Ana adds what's on her mind.", mock: "oneOnOne" as const },
-      { tag: "ONGOING", label: "Feedback", title: "Continuous feedback, not annual surprises", body: "Rhitmo notices when Ana wraps a project with someone and asks them directly: how'd she do? Ana sees the feedback the same day, not six months later.", mock: "peerFeedback" as const },
+      { tag: "MEMORY", label: "Journal", title: "The memory great leaders don't have time to keep", body: "Every hallway chat, hard feedback, highlight or worrying pattern becomes a private note in Ana's journal. When the 1:1, review or quarterly recap comes around, nothing is lost. Rhitmo remembers for you.", mock: "journal" as const },
       { tag: "QUARTER END", label: "Review", title: "Performance reviews, already written", body: "Rhitmo drafts Ana's review from real evidence. Her manager reviews the work instead of reconstructing the quarter from memory.", mock: "review" as const },
     ],
     videoTitle: "See Rhitmo in action",
