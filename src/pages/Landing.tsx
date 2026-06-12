@@ -1418,7 +1418,7 @@ const Landing = () => {
 
 
       {/* ============== FAQ ============== */}
-      <section id="faq" className="py-28 px-6 bg-white">
+      <section id="faq" className="py-20 px-6 bg-white">
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-12">
             <p className="text-[10px] uppercase tracking-[0.3em] text-indigo-500 font-bold mb-4">FAQ</p>
