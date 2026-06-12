@@ -1372,7 +1372,7 @@ const Landing = () => {
             </div>
             <div className="iridescent-surface rounded-3xl p-1.5 shadow-xl shadow-indigo-100/40">
               <div className="bg-white rounded-[1.4rem] p-6">
-                <SimpleChatMockup t={t} />
+                <LeaderBriefMockup />
               </div>
             </div>
           </div>
