@@ -601,9 +601,9 @@ const PricingSection = ({
     lang === 'pt'
       ? [
           { title: 'Mentor AI ilimitado', desc: 'Seu Chief of Staff conversacional, 24/7, com memória do time.' },
-          { title: '1:1s, Pulse, PDI e 360°', desc: 'O ciclo completo de gestão de pessoas em um lugar.' },
-          { title: 'Transcrição de reunião ilimitada', desc: 'Bot entra nas reuniões, transcreve e vira evidência automaticamente.' },
-          { title: 'Slack bidirecional', desc: 'Rhitmo puxa contexto e devolve briefs por DM, sem trocar de aba.' },
+          { title: '1:1s', desc: 'Lembretes de pauta dos seus 1:1s.' },
+          { title: 'Transcrição de reunião ilimitada', desc: 'Transcrição que vira anotação automaticamente e você pode focar em conversas profundas ao invés de anotar.' },
+          { title: 'Slack', desc: 'Tenha Rhitmo conectado com seu Slack para lembretes, briefs e chat onde você já passa maior parte do tempo.' },
           { title: 'Detecção de viés em tempo real', desc: 'Avaliações 38× menos enviesadas, direto no editor.' },
           
         ]
