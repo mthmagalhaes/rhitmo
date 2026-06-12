@@ -56,7 +56,7 @@ import {
   LiderPulse,
   LiderPulseDetail,
   LiderAvaliacoes,
-  LiderObjetivos,
+  // LiderObjetivos, // oculto — rota desativada, dados intactos
   LiderPessoas,
   LiderConfiguracoes,
   LiderContexto,
