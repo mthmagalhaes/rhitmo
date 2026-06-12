@@ -257,10 +257,12 @@ export function MemberAdminSheet({
 
   const shortcuts: Array<{ icon: typeof BookOpen; label: string; path: string }> = [
     { icon: BookOpen, label: 'Diário de bordo', path: `/lider/diario?member=${member.id}` },
-    { icon: Target, label: 'Objetivos', path: `/lider/objetivos?member=${member.id}` },
+    // Objetivos oculto enquanto a feature está pausada.
+    // { icon: Target, label: 'Objetivos', path: `/lider/objetivos?member=${member.id}` },
     { icon: ClipboardList, label: 'Avaliações', path: `/lider/avaliacoes?member=${member.id}` },
     { icon: Sparkles, label: 'Rhitmo (chat)', path: `/lider/mentor?member=${member.id}` },
   ];
+
 
   return (
     <>
