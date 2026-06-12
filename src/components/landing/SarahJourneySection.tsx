@@ -30,7 +30,7 @@ interface Props {
 const IMAGES: Record<MockKind, string> = {
   slackDM: cafeMorning,
   oneOnOne: loftNight,
-  peerFeedback: sunsetCliff,
+  journal: sunsetCliff,
   review: officeGolden,
 };
 
