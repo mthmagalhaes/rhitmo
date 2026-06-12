@@ -1164,7 +1164,7 @@ const Landing = () => {
           {/* Stat-hero — Produtividade */}
           <div className="border-t border-slate-200 pt-12 pb-20">
             <div className="flex items-center gap-4 mb-10">
-              <span className="font-mono text-[11px] tracking-[0.25em] text-slate-400">01 / {lang === 'pt' ? 'PRODUTIVIDADE' : 'PRODUCTIVITY'}</span>
+              <span className="font-mono text-[11px] tracking-[0.25em] text-slate-400">01 / {lang === 'pt' ? 'AGILIDADE' : 'PRODUCTIVITY'}</span>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-10 lg:gap-16 items-center">
               <div className="lg:col-span-3 font-serif font-bold tracking-tight text-slate-900 leading-[0.9] flex items-baseline gap-4 md:gap-8">
@@ -1196,11 +1196,11 @@ const Landing = () => {
               <p className="text-xs text-slate-400 font-mono tracking-wide">{lang === 'pt' ? "Fonte: Language Bias in performance feedback, 2024\n\n" : 'Source: Stanford VMware Women\'s Leadership Lab'}</p>
             </div>
             <div className="bg-white pt-12 pb-4 md:pl-10">
-              <span className="font-mono text-[11px] tracking-[0.25em] text-slate-400 block mb-8">03 / {lang === 'pt' ? 'ECONOMIA' : 'SAVINGS'}</span>
-              <div className="font-serif text-7xl md:text-8xl font-bold tracking-tight text-slate-900 mb-6">−60%</div>
+              <span className="font-mono text-[11px] tracking-[0.25em] text-slate-400 block mb-8">03 / {lang === 'pt' ? 'RETENÇÃO' : 'SAVINGS'}</span>
+              <div className="font-serif text-7xl md:text-8xl font-bold tracking-tight text-slate-900 mb-6">3x</div>
               <p className="text-base text-slate-600 leading-relaxed mb-4 max-w-sm">
                 {lang === 'pt'
-                  ? <>Avaliações tradicionais custam até <span className="text-slate-900 font-medium">US$ 35M/ano</span> em grandes empresas. Rhitmo corta o custo em 60% mantendo a precisão.</>
+                  ? <>Times que entendem o que é esperado têm <span className="text-slate-900 font-medium">3× mais chance de permanecer na empresa</span>. Feedback vago não é só injusto, mas muito caro. Rhitmo transforma o dia a dia em clareza acionável.</>
                   : <>Traditional reviews cost up to <span className="text-slate-900 font-medium">$35M/year</span> in large companies. Rhitmo cuts that by 60% while keeping precision.</>}
               </p>
               <p className="text-xs text-slate-400 font-mono tracking-wide">{lang === 'pt' ? 'Fonte: Deloitte, Reinventing Performance Management' : 'Source: Deloitte, Reinventing Performance Management'}</p>
