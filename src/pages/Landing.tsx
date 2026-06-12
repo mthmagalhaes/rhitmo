@@ -1193,7 +1193,7 @@ const Landing = () => {
                   ? <>Mulheres recebem <span className="text-slate-900 font-medium">38× mais feedback sobre personalidade</span> do que homens. Rhitmo detecta e sinaliza antes da publicação.</>
                   : <>Women receive <span className="text-slate-900 font-medium">38× more personality feedback</span> than men. Rhitmo detects and flags before you publish.</>}
               </p>
-              <p className="text-xs text-slate-400 font-mono tracking-wide">{lang === 'pt' ? 'Fonte: Stanford VMware Women\'s Leadership Lab' : 'Source: Stanford VMware Women\'s Leadership Lab'}</p>
+              <p className="text-xs text-slate-400 font-mono tracking-wide">{lang === 'pt' ? "Fonte: Language Bias in performance feedback, 2024\n\n" : 'Source: Stanford VMware Women\'s Leadership Lab'}</p>
             </div>
             <div className="bg-white pt-12 pb-4 md:pl-10">
               <span className="font-mono text-[11px] tracking-[0.25em] text-slate-400 block mb-8">03 / {lang === 'pt' ? 'ECONOMIA' : 'SAVINGS'}</span>
