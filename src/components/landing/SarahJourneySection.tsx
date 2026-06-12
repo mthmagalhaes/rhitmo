@@ -86,7 +86,7 @@ function JourneyMock({ kind, lang }: { kind: MockKind; lang: Lang }) {
         <p className="text-[10px] text-slate-400 mb-3">{lang === "pt" ? "Auto-gerada · 14/mar" : "Auto-generated · Mar 14"}</p>
         <div className="space-y-2">
           {[
-            lang === "pt" ? "Follow-up no walkthrough do design system" : "Follow up on design-system walkthrough",
+            lang === "pt" ? "Follow-up nos playbooks da área" : "Follow up on design-system walkthrough",
             lang === "pt" ? "PR de onboarding teve reviews fortes" : "Onboarding PR got strong reviews",
             lang === "pt" ? "Sprint planning — capacity check" : "Sprint planning — capacity check",
           ].map((t, i) => (
