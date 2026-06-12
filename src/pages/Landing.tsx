@@ -1157,7 +1157,7 @@ const Landing = () => {
               <span className="block italic text-slate-400 font-normal">{lang === 'pt' ? 'São números.' : 'These are numbers.'}</span>
             </h2>
             <p className="text-base text-slate-400 mt-6 max-w-xl">
-              {lang === 'pt' ? 'Cada número aqui tem fonte. Sem hype, sem roadmap.' : 'Every number here has a source. No hype, no roadmap.'}
+              {lang === 'pt' ? "\n" : 'Every number here has a source. No hype, no roadmap.'}
             </p>
           </div>
 
