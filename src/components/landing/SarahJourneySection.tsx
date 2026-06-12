@@ -80,7 +80,7 @@ function JourneyMock({ kind, lang }: { kind: MockKind; lang: Lang }) {
       <div className={card}>
         <div className="flex items-center gap-2 mb-1">
           <div className="w-7 h-7 rounded-lg bg-rose-50 flex items-center justify-center text-[11px]">🎯</div>
-          <span className="text-[12px] font-semibold text-slate-900">{lang === "pt" ? "Pauta da 1:1 — Ana / Matheus" : "1:1 Agenda — Ana / Matheus"}</span>
+          <span className="text-[12px] font-semibold text-slate-900">{lang === "pt" ? "Pauta da 1:1 — Ana / José" : "1:1 Agenda — Ana / Matheus"}</span>
           <Lock className="ml-auto w-3 h-3 text-slate-400" />
         </div>
         <p className="text-[10px] text-slate-400 mb-3">{lang === "pt" ? "Auto-gerada · 14/mar" : "Auto-generated · Mar 14"}</p>
