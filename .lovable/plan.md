@@ -1,40 +1,72 @@
-## Objetivo
+## Diagnóstico
 
-Remover Objetivos da navegação e dos pontos de entrada visíveis ao usuário, **sem apagar dados, tabela `goals`, RLS, hooks ou edge functions**. Reversível em minutos (basta reativar o item de menu e a rota).
+A Journey 3 atual ("Feedback no calor do momento") promete algo que a Rhitmo **não faz hoje**: um bot do Slack que detecta fim de projeto e pergunta proativamente a um par como a Ana mandou (peer feedback automático cross-member). Isso só existe parcialmente como `request-peer-feedback` no fluxo formal de 360°, não como nudge contínuo no Slack pós-projeto. Vender isso na landing é promessa furada.
 
-## O que muda (UI apenas)
+O que a Rhitmo **realmente** entrega de valor nesse ato da jornada é o **Diário de Bordo**: o líder (Matheus / José) registra evidências privadas sobre cada liderado — anotações de 1:1, check-ins, feedbacks difíceis, melhorias, destaques, recortes do Slack — e a Rhitmo nunca esquece. Essa memória vira matéria-prima para 1:1, brief, recap mensal/trimestral e avaliação formal. É o "anti-recência" — o líder não precisa lembrar de tudo no Q-end porque está tudo lá, organizado por pessoa e por tag.
 
-1. **Sidebar do líder** — `src/lib/navigation.ts`
-   - Comentar (não deletar) o item `objetivos` em `LEADER_NAV_ITEMS`, deixando um comentário "oculto enquanto repensamos a feature; rota e dados continuam vivos".
+## Proposta para Journey 3 (PT + EN)
 
-2. **Rota** — `src/App.tsx`
-   - Comentar a rota `/lider/objetivos` e o import de `LiderObjetivos`. Se alguém digitar a URL, cai no `NotFound` (que já redireciona pro home da persona).
+Mantém a imagem de fundo (`sunsetCliff` / pôr do sol no penhasco — metáfora de "fim de dia, momento de registrar"). Troca o mock e o copy.
 
-3. **Pontos de entrada para Objetivos dentro de outras telas**
-   - `src/components/leader/MemberAdminSheet.tsx` (linha 260): remover o link "Objetivos" do menu de atalhos do sheet do liderado.
-   - Nenhum outro CTA visível precisa mexer (a menção em `MembersGrid.tsx:53` é só um comentário de código; `MemberDetails.tsx:779` usa a palavra "objetivos" para itens de PDI, não para a feature Goals).
+**Tag:** `MEMÓRIA` (PT) / `MEMORY` (EN)
+**Label do pager:** `Diário` / `Journal`
+**Título:** `A memória que líder bom não tem tempo de manter` (PT) / `The memory great leaders don't have time to keep` (EN)
+**Body (PT):** `Toda conversa de corredor, feedback difícil, destaque ou padrão preocupante vira uma nota privada no Diário de Bordo da Ana. Quando chegar a 1:1, a avaliação ou o recap trimestral, nada se perde — a Rhitmo lembra por você.`
+**Body (EN):** `Every hallway chat, hard feedback, highlight or worrying pattern becomes a private note in Ana's journal. When the 1:1, review or quarterly recap comes around, nothing is lost — Rhitmo remembers for you.`
 
-4. **Insight "destrava PDI e Avaliação Formal"**
-   - Não precisa editar nada: o componente `GoalsCoverageInsight` só aparece em `/lider/objetivos`, que estará oculta. A copy enganosa some junto.
+## Mock novo: `journal` (recorte do Diário de Bordo)
 
-## O que **NÃO** muda
+Substitui o mock `peerFeedback`. Card branco `rounded-2xl shadow-2xl` (mesma DNA dos outros mocks, ~320px). Recorte fiel do print enviado:
 
-- Tabela `goals`, RLS, policies, GRANTs — intactas.
-- Hooks (`useTeamGoalsSummary`), componentes (`GoalsManager`, `GoalCard`, `NewGoalDialog`, `GoalsCrossMemberTable`, `GoalsCoverageInsight`, `GoalsMemberSheet`) — ficam no repositório, sem uso, prontos para reativar.
-- Edge functions que leem `goals` no contexto de IA (`chat-mentor`, `generate-review`, `generate-nudges`, `mirror-weekly`, `meu-rhitmo`, `analyze-feedback*`) — **continuam consumindo** os dados existentes. Se a tabela estiver vazia para a maioria, o impacto é nulo; para quem já cadastrou metas, a IA segue usando como sinal silencioso.
-- i18n keys de `nav.lider.objetivos` — ficam nos JSON, sem custo.
+```text
+┌──────────────────────────────────────────┐
+│ 📓 Diário de Bordo            🔒 privado │
+│ 6 registros · Gabriela Lucas             │
+├──────────────────────────────────────────┤
+│ [🎯 1:1] [✅ Check-in] [🔥 Difícil]      │
+│ [⭐ Destaque]                            │
+├──────────────────────────────────────────┤
+│ ESTA SEMANA · 2                          │
+│                                          │
+│ 🔒 11/jun  🟠 Gabriela                   │
+│    Apresentação Comfaster   📢 Reunião   │
+│                                          │
+│ 🔒 08/jun  🟠 Gabriela                   │
+│    Alinhamento Operações    📢 Reunião   │
+└──────────────────────────────────────────┘
+```
+
+- Header: ícone livro/notebook + "Diário de Bordo" + chip `🔒 privado` (reforça Zero Trust).
+- Subtítulo: `6 registros · Gabriela Lucas` (mostra que é por pessoa).
+- Linha de tag-chips: 1:1, Check-in, Difícil, Destaque (mostra taxonomia rica).
+- Grupo "ESTA SEMANA · 2" + 2 linhas de nota com ícone de cadeado, data, avatar laranja, título e chip de origem ("Reunião"). Bate exatamente com a captura.
+- EN: traduz títulos para `Captain's Log`/`Notes`, "THIS WEEK", "Hard feedback", "Highlight", "Meeting".
+
+## Arquivos a tocar
+
+1. **`src/components/landing/SarahJourneySection.tsx`**
+   - `type MockKind`: adicionar `"journal"`, remover `"peerFeedback"` (não é usado em mais lugar nenhum — verificado).
+   - `IMAGES`: trocar `peerFeedback: sunsetCliff` por `journal: sunsetCliff` (mantém a foto).
+   - `JourneyMock`: substituir bloco `if (kind === "peerFeedback")` por novo bloco `if (kind === "journal")` renderizando o card acima. Usar `Lock`, `BookOpen`/`NotebookPen` do lucide, chips redondos `bg-slate-100`, avatar `bg-gradient-to-br from-orange-300 to-orange-400`, divisor `border-slate-100`. Sem dependências novas.
+
+2. **`src/pages/Landing.tsx`**
+   - Linha 69 (PT) e linha 280 (EN): trocar o ato 3.
+     - PT: `{ tag: "MEMÓRIA", label: "Diário", title: "A memória que líder bom não tem tempo de manter", body: "Toda conversa de corredor, feedback difícil, destaque ou padrão preocupante vira uma nota privada no Diário de Bordo da Ana. Quando chegar a 1:1, a avaliação ou o recap trimestral, nada se perde — a Rhitmo lembra por você.", mock: "journal" as const }`
+     - EN equivalente com `mock: "journal"`.
+
+## O que NÃO muda
+
+- Imagem de fundo (`journey-3-sunset.jpg`).
+- Estrutura do `SarahJourneySection` (stage, pager, animação).
+- Outros 3 atos (slackDM, oneOnOne, review) — só o ato 3 é refeito.
+- Nenhum back-end, nenhuma rota, nenhuma migração.
 
 ## Validação
 
-- `/lider/inicio` → sidebar mostra: Início, Pessoas, Diário, Avaliações (sem Objetivos).
-- `/lider/objetivos` digitado na URL → cai em `NotFound` → redireciona pro home.
-- Sheet de liderado (`MemberAdminSheet`) → menu de atalhos sem "Objetivos".
-- Brief / Mentor / Review continuam funcionando (não dependem de UI).
+- `/` → scrollar até "Conheça a Ana" → clicar passo 3 → ver card Diário de Bordo sobre o pôr do sol.
+- Toggle EN → confirmar copy traduzido + chips em inglês.
+- Mobile: card aparece abaixo da foto (já é o padrão do componente).
 
-## Reverter no futuro
+## Reversão
 
-Descomentar 3 blocos (nav item, rota+import, link no MemberAdminSheet). Sem migração, sem backfill.
-
-## Memória
-
-Atualizar `mem://index.md` com uma linha em Core: "Objetivos (Goals) está oculto da UI desde jun/2026 — schema, hooks e consumo por IA continuam vivos. Não re-adicionar ao menu sem decisão de produto."
+Reverter os 3 blocos editados (tipo, mock, copy PT, copy EN). Sem efeito colateral.
