@@ -7,7 +7,7 @@ import sunsetCliff from "@/assets/landing/journey/journey-3-sunset.jpg";
 import officeGolden from "@/assets/landing/journey/journey-4-office-golden.jpg";
 
 type Lang = "pt" | "en";
-type MockKind = "slackDM" | "oneOnOne" | "peerFeedback" | "review";
+type MockKind = "slackDM" | "oneOnOne" | "journal" | "review";
 
 interface Act {
   tag: string;
