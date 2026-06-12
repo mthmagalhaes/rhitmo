@@ -1406,9 +1406,12 @@ const Landing = () => {
                 <p>{t.hrP2}</p>
               </div>
             </div>
-            <div className="rounded-3xl overflow-hidden border border-slate-100 shadow-sm bg-white">
-              <img src={analyticsScreenshot} alt={t.analyticsAlt} className="w-full object-cover object-top" />
+            <div className="iridescent-surface rounded-3xl p-1.5 shadow-xl shadow-slate-200/50">
+              <div className="bg-white rounded-[1.4rem] overflow-hidden">
+                <HRRiskMockup />
+              </div>
             </div>
+
           </div>
         </div>
       </section>
