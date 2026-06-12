@@ -612,13 +612,13 @@ const LeaderBriefMockup = () => (
           <div className="flex gap-2.5">
             <div className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
             <div className="text-slate-700">
-              <span className="font-medium">Pulse:</span> clareza de prioridades caiu 2 pontos em 3 semanas.
+              <span className="font-medium">Tema recorrente:</span> carga de trabalho apareceu nas últimas 2 conversas, vale revisitar.
             </div>
           </div>
           <div className="flex gap-2.5">
             <div className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
             <div className="text-slate-700">
-              <span className="font-medium">Peer feedback novo:</span> 2 pares destacaram condução do incidente do dia 04.
+              <span className="font-medium">Reconhecimento:</span> Maria liderou a entrega do incidente do dia 04, espaço para celebrar.
             </div>
           </div>
         </div>
