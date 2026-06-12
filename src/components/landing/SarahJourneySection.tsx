@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Lock, CheckCircle2, Sparkles, FileText } from "lucide-react";
+import { Lock, CheckCircle2, Sparkles, FileText, BookOpen, Calendar, Megaphone } from "lucide-react";
 import { SlackIcon } from "@/components/icons/SlackIcon";
 import cafeMorning from "@/assets/landing/journey/journey-1-cafe-morning.jpg";
 import loftNight from "@/assets/landing/journey/journey-2-loft.jpg";
