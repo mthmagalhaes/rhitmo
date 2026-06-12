@@ -106,35 +106,58 @@ function JourneyMock({ kind, lang }: { kind: MockKind; lang: Lang }) {
     );
   }
 
-  if (kind === "peerFeedback") {
+  if (kind === "journal") {
+    const tags = lang === "pt"
+      ? [{ e: "🎯", t: "1:1" }, { e: "✅", t: "Check-in" }, { e: "🔥", t: "Difícil" }, { e: "⭐", t: "Destaque" }]
+      : [{ e: "🎯", t: "1:1" }, { e: "✅", t: "Check-in" }, { e: "🔥", t: "Hard" }, { e: "⭐", t: "Highlight" }];
+    const notes = lang === "pt"
+      ? [
+          { date: "11/jun", title: "Apresentação Comfaster", source: "Reunião" },
+          { date: "08/jun", title: "Alinhamento Operações", source: "Reunião" },
+        ]
+      : [
+          { date: "Jun 11", title: "Comfaster presentation", source: "Meeting" },
+          { date: "Jun 08", title: "Ops alignment", source: "Meeting" },
+        ];
     return (
       <div className={card}>
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-8 h-8 rounded-lg bg-white border border-slate-100 flex items-center justify-center">
-            <SlackIcon className="w-4 h-4" />
+        <div className="flex items-center gap-2 mb-1">
+          <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">
+            <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
           </div>
-          <span className="text-[12px] font-semibold text-slate-900">Rhitmo</span>
-          <span className="text-[9px] px-1 py-px rounded bg-slate-100 text-slate-500 font-semibold">APP</span>
-          <span className="ml-auto text-[10px] text-slate-400">{lang === "pt" ? "qui 16:12" : "Thu 4:12"}</span>
+          <span className="text-[12px] font-semibold text-slate-900">
+            {lang === "pt" ? "Diário de Bordo" : "Captain's Log"}
+          </span>
+          <span className="ml-auto inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 font-semibold">
+            <Lock className="w-2.5 h-2.5" /> {lang === "pt" ? "privado" : "private"}
+          </span>
         </div>
-        <p className="text-[12px] text-slate-700 leading-relaxed mb-3">
-          {lang === "pt"
-            ? <>Oi <span className="text-indigo-600">@Alex</span>, vi que você e <span className="text-indigo-600">@Ana</span> fecharam o redesign de onboarding essa semana. Como ela mandou?</>
-            : <>Hey <span className="text-indigo-600">@Alex</span>, saw you and <span className="text-indigo-600">@Ana</span> wrapped the onboarding redesign this week. How'd she do?</>}
+        <p className="text-[10px] text-slate-400 mb-3 ml-9 -mt-1">
+          {lang === "pt" ? "6 registros · Ana Souza" : "6 entries · Ana Souza"}
         </p>
-        <div className="flex items-start gap-2 pt-2 border-t border-slate-100">
-          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-200 to-amber-400 shrink-0" />
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-semibold text-slate-900">Alex</span>
-              <span className="text-[10px] text-slate-400">{lang === "pt" ? "qui 16:18" : "Thu 4:18"}</span>
+        <div className="flex flex-wrap gap-1 mb-3 pb-3 border-b border-slate-100">
+          {tags.map((tag, i) => (
+            <span key={i} className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-slate-50 border border-slate-100 text-slate-600">
+              <span>{tag.e}</span>{tag.t}
+            </span>
+          ))}
+        </div>
+        <p className="text-[9px] uppercase tracking-[0.15em] text-slate-400 font-semibold mb-2">
+          {lang === "pt" ? "Esta semana · 2" : "This week · 2"}
+        </p>
+        <div className="space-y-2">
+          {notes.map((n, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Lock className="w-2.5 h-2.5 text-slate-300 shrink-0" />
+              <Calendar className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+              <span className="text-[10px] text-slate-400 shrink-0">{n.date}</span>
+              <div className="w-4 h-4 rounded-full bg-gradient-to-br from-orange-300 to-orange-400 shrink-0" />
+              <span className="text-[11px] text-slate-700 truncate flex-1">{n.title}</span>
+              <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full bg-slate-50 border border-slate-100 text-slate-500 shrink-0">
+                <Megaphone className="w-2.5 h-2.5" />{n.source}
+              </span>
             </div>
-            <p className="text-[11px] text-slate-600 leading-snug mt-0.5">
-              {lang === "pt"
-                ? "Muito bem. Pegou meus comentários e voltou com v2 melhor no mesmo dia."
-                : "Really good. Took my review notes seriously and had a cleaner v2 by end of day."}
-            </p>
-          </div>
+          ))}
         </div>
       </div>
     );
