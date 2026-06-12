@@ -1178,7 +1178,7 @@ const Landing = () => {
                     ? <>Redigir uma avaliação de desempenho consome em média <span className="text-slate-900 font-medium">4 horas por liderado</span>. Com Rhitmo, o draft sai pronto em <span className="text-slate-900 font-medium">2 minutos</span> a partir do contexto já capturado.</>
                     : <>Writing a performance review takes on average <span className="text-slate-900 font-medium">4 hours per report</span>. With Rhitmo, the draft is ready in <span className="text-slate-900 font-medium">2 minutes</span> from context already captured.</>}
                 </p>
-                <p className="text-xs text-slate-400 font-mono tracking-wide">{lang === 'pt' ? 'Fonte: Gallup, 2024 · Benchmark Rhitmo' : 'Source: Gallup, 2024 · Rhitmo benchmark'}</p>
+                <p className="text-xs text-slate-400 font-mono tracking-wide">{lang === 'pt' ? "\n" : 'Source: Gallup, 2024 · Rhitmo benchmark'}</p>
               </div>
             </div>
           </div>
