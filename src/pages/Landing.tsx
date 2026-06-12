@@ -675,7 +675,7 @@ const HRRiskMockup = () => (
             <div className="font-semibold text-sm text-slate-900 truncate">Camila Souza · Produto</div>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-500 text-white uppercase tracking-wide shrink-0">Médio</span>
           </div>
-          <div className="text-xs text-slate-600 mt-0.5">Peer feedback recorrente sobre sobrecarga em 2 sprints seguidas.</div>
+          <div className="text-xs text-slate-600 mt-0.5">Menções recorrentes a sobrecarga em 1:1s e queda de evidências positivas no último ciclo de avaliação.</div>
         </div>
       </div>
 
