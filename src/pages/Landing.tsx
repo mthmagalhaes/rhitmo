@@ -663,7 +663,7 @@ const HRRiskMockup = () => (
             <div className="font-semibold text-sm text-slate-900 truncate">João Ferreira · Engenharia</div>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-600 text-white uppercase tracking-wide shrink-0">Alto</span>
           </div>
-          <div className="text-xs text-slate-600 mt-0.5">Pulse de energia caiu 3 pontos em 2 semanas e sem 1:1 há 21 dias.</div>
+          <div className="text-xs text-slate-600 mt-0.5">Sinais de desengajamento em 3 das últimas 1:1s e sem registro de reconhecimento há 45 dias. Risco de turnover.</div>
         </div>
       </div>
 
@@ -675,7 +675,7 @@ const HRRiskMockup = () => (
             <div className="font-semibold text-sm text-slate-900 truncate">Camila Souza · Produto</div>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-500 text-white uppercase tracking-wide shrink-0">Médio</span>
           </div>
-          <div className="text-xs text-slate-600 mt-0.5">Peer feedback recorrente sobre sobrecarga em 2 sprints seguidas.</div>
+          <div className="text-xs text-slate-600 mt-0.5">Menções recorrentes a sobrecarga em 1:1s e queda de evidências positivas no último ciclo de avaliação.</div>
         </div>
       </div>
 
