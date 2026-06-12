@@ -1289,7 +1289,7 @@ const Landing = () => {
 
 
       {/* ============== NUMBERS — EDITORIAL ============== */}
-      <section id="impacto" className="py-28 px-6 bg-white">
+      <section id="impacto" className="py-20 px-6 bg-white">
         <div className="max-w-5xl mx-auto">
           {/* Header — alinhado à esquerda, editorial */}
           <div className="max-w-3xl mb-20">
