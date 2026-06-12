@@ -112,7 +112,7 @@ function JourneyMock({ kind, lang }: { kind: MockKind; lang: Lang }) {
       : [{ e: "🎯", t: "1:1" }, { e: "✅", t: "Check-in" }, { e: "🔥", t: "Hard" }, { e: "⭐", t: "Highlight" }];
     const notes = lang === "pt"
       ? [
-          { date: "11/jun", title: "Apresentação Comfaster", source: "Reunião" },
+          { date: "11/jun", title: "Apresentação AllHands", source: "Reunião" },
           { date: "08/jun", title: "Alinhamento Operações", source: "Reunião" },
         ]
       : [
