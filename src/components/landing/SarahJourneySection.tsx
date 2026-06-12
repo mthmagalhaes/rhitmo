@@ -66,7 +66,7 @@ function JourneyMock({ kind, lang }: { kind: MockKind; lang: Lang }) {
             </div>
             <p className="text-[11px] text-slate-600 leading-snug mt-0.5">
               {lang === "pt"
-                ? "Tá indo bem! Queria um walkthrough do design system."
+                ? "Tá indo bem! Queria saber onde encontrar os playbooks da área"
                 : "Going well! Would love a walkthrough of the design system."}
             </p>
           </div>
