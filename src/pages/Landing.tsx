@@ -1168,7 +1168,7 @@ const Landing = () => {
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-10 lg:gap-16 items-center">
               <div className="lg:col-span-3 font-serif font-bold tracking-tight text-slate-900 leading-[0.9] flex items-baseline gap-4 md:gap-8">
-                <span className="text-[80px] md:text-[140px]">4h</span>
+                <span className="text-[80px] md:text-[140px]">6h</span>
                 <span className="text-4xl md:text-6xl text-indigo-400 font-light">→</span>
                 <span className="text-[80px] md:text-[140px]">2min</span>
               </div>
