@@ -65,7 +65,7 @@ const translations = {
     journeySubtitle: "Do primeiro dia até a primeira avaliação formal, a Rhitmo trabalha em background pra você liderar melhor.",
     journeyActs: [
       { tag: "SEMANA 1", label: "Onboarding", title: "Ana entra no time", body: "Antes do líder lembrar, a Rhitmo manda um check-in. O líder vê o gap antes da próxima 1:1, e quem vem depois ganha o walkthrough no dia um.", mock: "slackDM" as const },
-      { tag: "TODA SEMANA", label: "1:1s", title: "1:1s que se preparam sozinhas", body: "Sem 'então… do que a gente fala?'. A Rhitmo monta a pauta a partir do trabalho real da semana, e a Ana adiciona o que importa pra ela.", mock: "oneOnOne" as const },
+      { tag: "TODA SEMANA", label: "1:1s", title: "1:1s que se preparam sozinhas", body: "Sem 'então… do que a gente fala?'. A Rhitmo monta a pauta a partir do trabalho real da semana, das anotações e evidências enviadas...e a Ana adiciona o que importa pra ela.", mock: "oneOnOne" as const },
       { tag: "CONTÍNUO", label: "Feedback", title: "Feedback no calor do momento", body: "A Rhitmo nota quando a Ana fecha um projeto com alguém e pergunta direto: como ela mandou? A Ana vê o feedback no mesmo dia, não seis meses depois.", mock: "peerFeedback" as const },
       { tag: "FIM DO TRI", label: "Review", title: "Avaliações que nascem prontas", body: "A Rhitmo escreve o draft da review a partir de evidência real. O líder revisa em vez de reconstruir o trimestre de memória, e a Ana vê o quarter inteiro sem surpresa.", mock: "review" as const },
     ],
