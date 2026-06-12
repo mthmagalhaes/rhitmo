@@ -1355,8 +1355,9 @@ const Landing = () => {
 
 
       {/* ============== FOR LEADERS / REPORTS / HR ============== */}
-      <section className="py-28 px-6 bg-white">
-        <div className="max-w-5xl mx-auto space-y-28">
+      <section className="py-20 px-6 bg-white">
+        <div className="max-w-5xl mx-auto space-y-20">
+
           {/* Leaders */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-16 items-center">
             <div className="space-y-6">
