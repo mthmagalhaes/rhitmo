@@ -9,7 +9,7 @@ import { WaveDivider } from "@/components/WaveDivider";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import { Zap, Heart, BarChart, Sparkles, Send, Loader2, ImageIcon, Menu, X, Check, Moon, Sun, Globe, Building, Clock, AlertCircle, DollarSign, Shield, Mic, XCircle, CheckCircle2, Target, Users, FileText, ArrowRight, BookOpen, Lock, Calendar, Music2, ChevronDown } from "lucide-react";
-import analyticsScreenshot from "@/assets/analytics-screenshot.png";
+
 import heroLeaderFlow from "@/assets/hero-leader-flow.png";
 import heroDuoFeedback from "@/assets/hero-duo-feedback.png";
 import cinematicOffice from "@/assets/landing-cinematic-office.jpg";
@@ -255,11 +255,15 @@ const translations = {
     positioningCTA: "Essa é a nossa missão. Junte-se a nós →",
     faqTitle: "Perguntas frequentes",
     faqItems: [
-      { q: "Rhitmo substitui plataformas de RH tradicionais?", a: "Não completamente. Se você precisa de 360° ou pesquisa de clima hoje, use sua plataforma atual + Rhitmo. Se precisa só de reviews e 1:1s melhores, use só Rhitmo." },
-      { q: "A IA realmente escreve tudo ou só dá sugestões?", a: "Escreve tudo. Você recebe um draft completo de 2-3 páginas. Não são bullet points, é texto corrido pronto para revisão." },
-      { q: "Como Rhitmo detecta viés?", a: "IA analisa linguagem em tempo real e alerta sobre: viés de gênero (ex: \"agressiva\" vs. \"assertivo\"), viés de personalidade (foco em \"como é\" vs. \"o que fez\"), generalizações (\"sempre\", \"nunca\")." },
-      { q: "Preciso treinar meu time para usar?", a: "Não. Interface é autoexplicativa. A maioria dos usuários começa a usar em menos de 5 minutos." },
-      { q: "Meus dados estão seguros?", a: "Sim. Notas de líderes são privadas por padrão. Compartilhamento é uma ação explícita. Seguimos as melhores práticas de segurança e LGPD." },
+      { q: "Rhitmo substitui plataformas de RH tradicionais?", a: "Não completamente. Se você precisa de pesquisa de clima ou um portal completo de benefícios hoje, mantenha sua plataforma atual e use Rhitmo em paralelo. Se o que dói é review, 1:1 e contexto perdido, Rhitmo resolve sozinha — e muitos clientes operam exatamente assim, com Rhitmo + uma ferramenta tradicional só onde faz sentido." },
+      { q: "A IA realmente escreve a review ou só dá sugestões?", a: "Escreve por completo. Você recebe um draft de 2 a 3 páginas com texto corrido, baseado em feedbacks, 1:1s, pulses e peer reviews registrados no período. Cada afirmação vem com uma citação clicável da evidência original, então você revisa em vez de reconstruir o trimestre de memória." },
+      { q: "Como funciona o brief antes de cada 1:1?", a: "Cerca de 18 horas antes da reunião, a Rhitmo te manda uma DM no Slack com o que importa discutir: pendências do último 1:1, sinais recentes de pulse, peer feedback novo e tópicos quentes na rede da pessoa. Você chega preparado sem abrir o app, e a pauta da própria 1:1 já vem sugerida a partir do histórico real." },
+      { q: "Como Rhitmo detecta viés enquanto escrevo?", a: "Enquanto você digita uma review ou um feedback, a Rhitmo destaca em tempo real linguagem tendenciosa: viés de gênero (\"agressiva\" vs. \"assertivo\"), viés de personalidade (foco em \"como é\" em vez de \"o que fez\"), generalizações como \"sempre\" e \"nunca\", e ataques à pessoa em vez do comportamento. Não é auditoria depois, é prevenção no momento do registro." },
+      { q: "Qual a diferença entre self, peer, upwards e 360°?", a: "São quatro lentes que se complementam: o liderado faz uma autoavaliação conversacional, os pares respondem 3 perguntas curtas, o liderado avalia o próprio líder (upwards) e tudo isso vira um 360° quando você precisa. Todas as respostas viram evidência citável na review formal, sem você precisar consolidar nada manualmente." },
+      { q: "O que dá pra fazer só pelo Slack?", a: "Praticamente tudo o que importa no dia a dia: receber briefs de 1:1, gerar pauta, conversar com a Rhitmo em DM como se fosse um chief of staff, responder pulses, registrar uma observação rápida sobre alguém e disparar peer feedback. Para quem vive no Slack, dá pra usar a Rhitmo sem nunca abrir a aba." },
+      { q: "Como funciona a transcrição automática das reuniões?", a: "Um bot entra na sua Meet, Zoom ou Teams, transcreve e devolve as anotações estruturadas — sem você precisar digitar nada durante a conversa. A transcrição bruta fica visível apenas para você, líder; o liderado vê só o que for explicitamente compartilhado. O plano Pro inclui 30 horas de transcrição por mês." },
+      { q: "Quanto tempo até eu ver valor?", a: "O onboarding leva menos de 5 minutos. Os primeiros briefs de 1:1 chegam já na primeira semana, conforme a Rhitmo aprende sua rotina. A grande virada acontece no fim do trimestre, quando a review sai pronta em 2 minutos em vez das 4 horas que custavam antes." },
+      { q: "Privacidade, LGPD e segurança dos dados?", a: "Suas notas como líder são privadas por padrão; compartilhar é uma ação explícita e visível. Aplicamos Row-Level Security por cadeia de liderança, então dados de um time nunca vazam para outro. Seguimos LGPD, você pode exportar e excluir o histórico a qualquer momento, e a assinatura pode ser cancelada quando quiser sem reter seus dados." },
     ],
   },
   en: {
@@ -454,11 +458,15 @@ const translations = {
     positioningCTA: "That's our mission. Join us →",
     faqTitle: "Frequently asked questions",
     faqItems: [
-      { q: "Does Rhitmo replace traditional HR platforms?", a: "Not completely. If you need 360° or engagement surveys today, use your current platform + Rhitmo. If you only need better reviews and 1:1s, just use Rhitmo." },
-      { q: "Does the AI really write everything or just suggest?", a: "It writes everything. You get a full 2-3 page draft. Not bullet points, ready-to-review prose." },
-      { q: "How does Rhitmo detect bias?", a: "AI analyzes language in real time and flags: gender bias (e.g., \"aggressive\" vs. \"assertive\"), personality bias (focus on \"who they are\" vs. \"what they did\"), generalizations (\"always\", \"never\")." },
-      { q: "Do I need to train my team to use it?", a: "No. The interface is self-explanatory. Most users start using it in under 5 minutes." },
-      { q: "Is my data secure?", a: "Yes. Leader notes are private by default. Sharing is an explicit action. We follow security best practices and LGPD compliance." },
+      { q: "Does Rhitmo replace traditional HR platforms?", a: "Not completely. If you need engagement surveys or a full benefits portal today, keep your current platform and run Rhitmo alongside it. If the real pain is reviews, 1:1s and lost context, Rhitmo handles that on its own — and many customers operate exactly like this: Rhitmo plus a traditional tool only where it actually adds value." },
+      { q: "Does the AI really write the review or just suggest things?", a: "It writes the whole thing. You get a 2-3 page draft in flowing prose, grounded in the feedback, 1:1s, pulses and peer reviews logged during the period. Every claim comes with a clickable citation back to the source evidence, so you review instead of reconstructing the quarter from memory." },
+      { q: "How does the brief before each 1:1 work?", a: "About 18 hours before the meeting, Rhitmo sends you a Slack DM with what matters: open items from the last 1:1, recent pulse signals, fresh peer feedback and hot topics across the person's network. You walk in prepared without opening the app, and the agenda for the 1:1 is already drafted from the real history." },
+      { q: "How does Rhitmo detect bias while I write?", a: "As you type a review or feedback, Rhitmo highlights biased language in real time: gender bias (\"aggressive\" vs. \"assertive\"), personality bias (focusing on \"who they are\" instead of \"what they did\"), generalizations like \"always\" and \"never\", and attacks on the person rather than the behavior. It's not a post-hoc audit, it's prevention at the moment of writing." },
+      { q: "What's the difference between self, peer, upwards and 360° reviews?", a: "They are four complementary lenses: the report does a conversational self-review, peers answer 3 short questions, the report rates their own leader (upwards), and all of it becomes a 360° when you need it. Every answer turns into citable evidence in the formal review, so you don't have to consolidate anything by hand." },
+      { q: "What can I actually do from Slack alone?", a: "Almost everything that matters day to day: receive 1:1 briefs, generate an agenda, chat with Rhitmo in DM like a chief of staff, answer pulses, log a quick note about someone, and trigger peer feedback. If you live in Slack, you can use Rhitmo without ever opening the tab." },
+      { q: "How does automatic meeting transcription work?", a: "A bot joins your Meet, Zoom or Teams call, transcribes it and gives back structured notes — you don't type during the conversation. The raw transcript stays visible only to you, the leader; the report only sees what you explicitly share. The Pro plan includes 30 hours of transcription per month." },
+      { q: "How long until I see value?", a: "Onboarding takes under 5 minutes. The first 1:1 briefs land within the first week, as Rhitmo learns your routine. The big payoff happens at the end of the quarter, when a review comes out in 2 minutes instead of the 4 hours it used to take." },
+      { q: "Privacy, GDPR/LGPD and data security?", a: "Your notes as a leader are private by default; sharing is an explicit, visible action. We enforce Row-Level Security along the leadership chain, so one team's data never leaks to another. We're LGPD compliant, you can export and delete your history at any time, and you can cancel the subscription whenever without us holding your data." },
     ],
   },
 };
@@ -568,6 +576,140 @@ const SimpleChatMockup = ({ t }: { t: Translations }) => <div className="bg-card
     </div>
   </div>;
 
+// ============== LEADER BRIEF (Slack DM) MOCKUP ==============
+const LeaderBriefMockup = () => (
+  <div className="bg-card h-full overflow-hidden font-sans">
+    {/* Slack-style header */}
+    <div className="px-5 py-3 border-b flex items-center gap-3">
+      <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">R</div>
+      <div className="flex-1">
+        <div className="font-semibold text-sm flex items-center gap-1.5">
+          Rhitmo
+          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 uppercase tracking-wider">App</span>
+        </div>
+        <div className="text-xs text-muted-foreground">Mensagem direta · hoje, 08:12</div>
+      </div>
+    </div>
+
+    {/* Brief card */}
+    <div className="p-5 space-y-3">
+      <div className="text-sm leading-relaxed">
+        Bom dia 👋 Sua <span className="font-semibold">1:1 com Maria Santos</span> é hoje às 16h. Aqui vai a prep:
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+        <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
+          <Calendar className="h-3.5 w-3.5 text-indigo-600" />
+          <span className="text-xs font-semibold text-slate-700">Brief de 1:1 · Maria Santos</span>
+        </div>
+        <div className="px-4 py-3 space-y-2.5 text-sm">
+          <div className="flex gap-2.5">
+            <div className="mt-1 h-1.5 w-1.5 rounded-full bg-indigo-500 shrink-0" />
+            <div className="text-slate-700">
+              <span className="font-medium">Pendência da última 1:1:</span> alinhar escopo do projeto Atlas até sexta.
+            </div>
+          </div>
+          <div className="flex gap-2.5">
+            <div className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+            <div className="text-slate-700">
+              <span className="font-medium">Pulse:</span> clareza de prioridades caiu 2 pontos em 3 semanas.
+            </div>
+          </div>
+          <div className="flex gap-2.5">
+            <div className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+            <div className="text-slate-700">
+              <span className="font-medium">Peer feedback novo:</span> 2 pares destacaram condução do incidente do dia 04.
+            </div>
+          </div>
+        </div>
+        <div className="px-4 py-3 border-t border-slate-100 flex flex-wrap gap-2">
+          <button className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">Abrir pauta completa</button>
+          <button className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors">+ Adicionar item</button>
+        </div>
+      </div>
+
+      <div className="text-xs text-muted-foreground">Quer aprofundar algum desses tópicos? É só responder aqui.</div>
+    </div>
+  </div>
+);
+
+// ============== HR RISK ALERTS MOCKUP ==============
+const HRRiskMockup = () => (
+  <div className="bg-card h-full overflow-hidden">
+    {/* Header */}
+    <div className="px-5 py-4 border-b flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center">
+          <Shield className="h-4 w-4 text-white" />
+        </div>
+        <div>
+          <div className="font-semibold text-sm">Radar de Risco</div>
+          <div className="text-xs text-muted-foreground">7 dias · todos os times</div>
+        </div>
+      </div>
+      <div className="flex items-center gap-1.5 text-xs font-semibold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-full">
+        <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
+        3 ativos
+      </div>
+    </div>
+
+    {/* Alerts list */}
+    <div className="p-4 space-y-2.5">
+      {/* Alert 1 — High */}
+      <div className="rounded-xl border border-rose-200/70 bg-gradient-to-r from-rose-50/60 to-white p-3.5 flex items-start gap-3">
+        <div className="h-8 w-8 rounded-full bg-rose-100 flex items-center justify-center shrink-0 text-rose-700 font-semibold text-xs">JF</div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <div className="font-semibold text-sm text-slate-900 truncate">João Ferreira · Engenharia</div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-600 text-white uppercase tracking-wide shrink-0">Alto</span>
+          </div>
+          <div className="text-xs text-slate-600 mt-0.5">Pulse de energia caiu 3 pontos em 2 semanas e sem 1:1 há 21 dias.</div>
+        </div>
+      </div>
+
+      {/* Alert 2 — Medium */}
+      <div className="rounded-xl border border-amber-200/70 bg-gradient-to-r from-amber-50/60 to-white p-3.5 flex items-start gap-3">
+        <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0 text-amber-700 font-semibold text-xs">CS</div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <div className="font-semibold text-sm text-slate-900 truncate">Camila Souza · Produto</div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-500 text-white uppercase tracking-wide shrink-0">Médio</span>
+          </div>
+          <div className="text-xs text-slate-600 mt-0.5">Peer feedback recorrente sobre sobrecarga em 2 sprints seguidas.</div>
+        </div>
+      </div>
+
+      {/* Alert 3 — Low */}
+      <div className="rounded-xl border border-slate-200 bg-white p-3.5 flex items-start gap-3">
+        <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0 text-slate-700 font-semibold text-xs">RM</div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <div className="font-semibold text-sm text-slate-900 truncate">Rafael Moura · Dados</div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-400 text-white uppercase tracking-wide shrink-0">Atenção</span>
+          </div>
+          <div className="text-xs text-slate-600 mt-0.5">Sem registros de feedback na última 1:1 — cobertura abaixo do time.</div>
+        </div>
+      </div>
+    </div>
+
+    {/* Footer KPIs */}
+    <div className="px-5 py-3 border-t bg-slate-50/60 grid grid-cols-3 gap-4">
+      <div>
+        <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Saúde geral</div>
+        <div className="text-base font-bold text-slate-900">82<span className="text-xs text-slate-400">/100</span></div>
+      </div>
+      <div>
+        <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Cobertura</div>
+        <div className="text-base font-bold text-slate-900">94%</div>
+      </div>
+      <div>
+        <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Mitigados</div>
+        <div className="text-base font-bold text-emerald-600">+12</div>
+      </div>
+    </div>
+  </div>
+);
+
 // ============== PRICING SECTION (Windmill v3 — single card per-seat) ==============
 // Pricing v3 — 08/05/2026: 1 plano único.
 // Líder + 3 liderados grátis. R$ 49,90/liderado a partir do 4º.
@@ -632,7 +774,7 @@ const PricingSection = ({
         ];
 
   return (
-    <section id="pricing" className="py-28 bg-background">
+    <section id="pricing" className="py-20 bg-background">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center space-y-4 mb-10">
@@ -1147,7 +1289,7 @@ const Landing = () => {
 
 
       {/* ============== NUMBERS — EDITORIAL ============== */}
-      <section id="impacto" className="py-28 px-6 bg-white">
+      <section id="impacto" className="py-20 px-6 bg-white">
         <div className="max-w-5xl mx-auto">
           {/* Header — alinhado à esquerda, editorial */}
           <div className="max-w-3xl mb-20">
@@ -1213,8 +1355,9 @@ const Landing = () => {
 
 
       {/* ============== FOR LEADERS / REPORTS / HR ============== */}
-      <section className="py-28 px-6 bg-white">
-        <div className="max-w-5xl mx-auto space-y-28">
+      <section className="py-20 px-6 bg-white">
+        <div className="max-w-5xl mx-auto space-y-20">
+
           {/* Leaders */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-16 items-center">
             <div className="space-y-6">
@@ -1229,7 +1372,7 @@ const Landing = () => {
             </div>
             <div className="iridescent-surface rounded-3xl p-1.5 shadow-xl shadow-indigo-100/40">
               <div className="bg-white rounded-[1.4rem] p-6">
-                <SimpleChatMockup t={t} />
+                <LeaderBriefMockup />
               </div>
             </div>
           </div>
@@ -1263,16 +1406,19 @@ const Landing = () => {
                 <p>{t.hrP2}</p>
               </div>
             </div>
-            <div className="rounded-3xl overflow-hidden border border-slate-100 shadow-sm bg-white">
-              <img src={analyticsScreenshot} alt={t.analyticsAlt} className="w-full object-cover object-top" />
+            <div className="iridescent-surface rounded-3xl p-1.5 shadow-xl shadow-slate-200/50">
+              <div className="bg-white rounded-[1.4rem] overflow-hidden">
+                <HRRiskMockup />
+              </div>
             </div>
+
           </div>
         </div>
       </section>
 
 
       {/* ============== FAQ ============== */}
-      <section id="faq" className="py-28 px-6 bg-white">
+      <section id="faq" className="py-20 px-6 bg-white">
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-12">
             <p className="text-[10px] uppercase tracking-[0.3em] text-indigo-500 font-bold mb-4">FAQ</p>
