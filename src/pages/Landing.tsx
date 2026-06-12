@@ -120,8 +120,8 @@ const translations = {
     // HR
     forHR: "Para RH",
     hrTitle: "Escale a cultura. Elimine o gargalo operacional.",
-    hrP1: "Seus gestores gastam 4h por review. Com Rhitmo, são 2 minutos. Isso são centenas de horas devolvidas por ciclo de avaliação, sem perder qualidade.",
-    hrP2: "Coaching personalizado no fluxo de trabalho, visibilidade total de métricas de saúde dos times. ROI mensurável, não promessa de consultoria.",
+    hrP1: "Seus gestores gastavam muitas horas para elaborar review mal feitas. Com Rhitmo, eles levam 2 minutos para avaliações mais justas. Isso são centenas de horas devolvidas por ciclo de avaliação, sem perder qualidade.",
+    hrP2: "Além disso, todo líder tem um coaching de liderança personalizado. RH possui visibilidade total de métricas de saúde dos times.",
     // Pricing
     pricingTitle: "Simples. Transparente.",
     pricingSubtitle: "Sem plano mensal. A mudança de cultura na liderança exige no mínimo 90 dias de consistência.",
