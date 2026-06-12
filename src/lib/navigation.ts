@@ -35,9 +35,12 @@ export const LEADER_NAV_ITEMS: NavItem[] = [
   { id: 'inicio', labelKey: 'nav.lider.inicio', icon: Home, to: '/lider/inicio' },
   { id: 'pessoas', labelKey: 'nav.lider.pessoas', icon: Users, to: '/lider/pessoas' },
   { id: 'diario', labelKey: 'nav.lider.diario', icon: BookOpen, to: '/lider/diario' },
-  { id: 'objetivos', labelKey: 'nav.lider.objetivos', icon: Target, to: '/lider/objetivos' },
+  // Objetivos: oculto da sidebar enquanto repensamos a feature.
+  // Rota, tabela `goals`, hooks e consumo por IA continuam vivos. Não re-adicionar sem decisão de produto.
+  // { id: 'objetivos', labelKey: 'nav.lider.objetivos', icon: Target, to: '/lider/objetivos' },
   { id: 'avaliacoes', labelKey: 'nav.lider.avaliacoes', icon: ClipboardList, to: '/lider/avaliacoes' },
 ];
+
 
 /**
  * Primary navigation for HR Admins that don't also own the workspace.

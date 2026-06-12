@@ -56,7 +56,7 @@ import {
   LiderPulse,
   LiderPulseDetail,
   LiderAvaliacoes,
-  LiderObjetivos,
+  // LiderObjetivos, // oculto — rota desativada, dados intactos
   LiderPessoas,
   LiderConfiguracoes,
   LiderContexto,
@@ -154,7 +154,7 @@ const App = () => (
               <Route path="/lider/pulse" element={Leader(<LiderPulse />)} />
               <Route path="/lider/pulse/:id" element={Leader(<LiderPulseDetail />)} />
               <Route path="/lider/avaliacoes" element={Leader(<LiderAvaliacoes />)} />
-              <Route path="/lider/objetivos" element={Leader(<LiderObjetivos />)} />
+              {/* <Route path="/lider/objetivos" element={Leader(<LiderObjetivos />)} /> oculto — feature pausada */}
               <Route path="/lider/pessoas" element={Leader(<LiderPessoas />)} />
               <Route path="/lider/pessoas-v2" element={<Navigate to="/lider/pessoas" replace />} />
               <Route path="/lider/configuracoes" element={Leader(<LiderConfiguracoes />)} />
