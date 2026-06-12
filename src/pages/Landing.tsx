@@ -778,7 +778,8 @@ const PricingSection = ({
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center space-y-4 mb-10">
-          <p className="uppercase text-xs font-semibold tracking-widest text-primary">
+          <p className="inline-flex items-center gap-3 text-[11px] uppercase tracking-[0.28em] text-slate-500 font-semibold">
+            <span className="h-px w-8 bg-slate-300" aria-hidden="true" />
             {lang === 'pt' ? 'Plano' : 'Plan'}
           </p>
           <h2 className="font-serif text-3xl lg:text-5xl font-bold tracking-tight text-foreground">
@@ -1293,7 +1294,10 @@ const Landing = () => {
         <div className="max-w-5xl mx-auto">
           {/* Header — alinhado à esquerda, editorial */}
           <div className="max-w-3xl mb-20">
-            <p className="text-[10px] uppercase tracking-[0.3em] text-indigo-500 font-bold mb-6">{t.numbersOverline}</p>
+            <p className="inline-flex items-center gap-3 text-[11px] uppercase tracking-[0.28em] text-slate-500 font-semibold mb-6">
+              <span className="h-px w-8 bg-slate-300" aria-hidden="true" />
+              {t.numbersOverline}
+            </p>
             <h2 className="font-serif text-5xl md:text-7xl font-bold tracking-tight leading-[1.02] text-slate-900">
               <span className="block">{lang === 'pt' ? 'Não é promessa.' : 'Not a promise.'}</span>
               <span className="block italic text-slate-400 font-normal">{lang === 'pt' ? 'São números.' : 'These are numbers.'}</span>
@@ -1361,8 +1365,9 @@ const Landing = () => {
           {/* Leaders */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-16 items-center">
             <div className="space-y-6">
-              <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.25em] text-indigo-600">
-                <Zap className="h-3.5 w-3.5" /> {t.forLeaders}
+              <span className="inline-flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.28em] text-indigo-700">
+                <span className="h-px w-8 bg-indigo-300" aria-hidden="true" />
+                <Zap className="h-3 w-3" /> {t.forLeaders}
               </span>
               <h3 className="font-serif text-4xl lg:text-5xl font-bold tracking-tight leading-[1.05] text-slate-900">{t.leadersTitle}</h3>
               <div className="space-y-4 text-lg text-slate-500 leading-relaxed">
@@ -1380,8 +1385,9 @@ const Landing = () => {
           {/* Reports */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-16 items-center">
             <div className="md:order-2 space-y-6">
-              <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.25em] text-emerald-600">
-                <Heart className="h-3.5 w-3.5" /> {t.forReports}
+              <span className="inline-flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-700">
+                <span className="h-px w-8 bg-emerald-300" aria-hidden="true" />
+                <Heart className="h-3 w-3" /> {t.forReports}
               </span>
               <h3 className="font-serif text-4xl lg:text-5xl font-bold tracking-tight leading-[1.05] text-slate-900">{t.reportsTitle}</h3>
               <div className="space-y-4 text-lg text-slate-500 leading-relaxed">
@@ -1397,8 +1403,9 @@ const Landing = () => {
           {/* HR */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-16 items-center">
             <div className="space-y-6">
-              <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.25em] text-slate-600">
-                <BarChart className="h-3.5 w-3.5" /> {t.forHR}
+              <span className="inline-flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-700">
+                <span className="h-px w-8 bg-slate-300" aria-hidden="true" />
+                <BarChart className="h-3 w-3" /> {t.forHR}
               </span>
               <h3 className="font-serif text-4xl lg:text-5xl font-bold tracking-tight leading-[1.05] text-slate-900">{t.hrTitle}</h3>
               <div className="space-y-4 text-lg text-slate-500 leading-relaxed">
@@ -1421,7 +1428,10 @@ const Landing = () => {
       <section id="faq" className="py-20 px-6 bg-white">
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-12">
-            <p className="text-[10px] uppercase tracking-[0.3em] text-indigo-500 font-bold mb-4">FAQ</p>
+            <p className="inline-flex items-center gap-3 text-[11px] uppercase tracking-[0.28em] text-slate-500 font-semibold mb-4">
+              <span className="h-px w-8 bg-slate-300" aria-hidden="true" />
+              FAQ
+            </p>
             <h2 className="font-serif text-5xl md:text-6xl font-bold tracking-tight leading-[1.05] text-slate-900">
               {t.faqTitle}
             </h2>
