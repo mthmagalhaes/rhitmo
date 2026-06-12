@@ -774,7 +774,7 @@ const PricingSection = ({
         ];
 
   return (
-    <section id="pricing" className="py-28 bg-background">
+    <section id="pricing" className="py-20 bg-background">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center space-y-4 mb-10">
