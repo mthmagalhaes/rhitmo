@@ -243,8 +243,15 @@ export const UpcomingMeetingsCard = () => {
           const startMs = new Date(meeting.start_time).getTime();
           const minutesSinceStart = (Date.now() - startMs) / 60_000;
           const isHappeningNow = minutesSinceStart >= -5 && minutesSinceStart <= 45;
+          // Bot drifted? Foi agendado pro horário antigo (>5min depois do start real)
+          // e por isso não vai entrar a tempo — tratar como "sem bot ativo".
+          const botScheduledMs = bot?.scheduled_at ? new Date(bot.scheduled_at).getTime() : null;
+          const botDriftedTooLate =
+            bot?.status === 'scheduled' &&
+            botScheduledMs !== null &&
+            botScheduledMs - startMs > 5 * 60 * 1000;
           // Bot ainda recuperável? (sem bot ativo + dentro da janela retroativa)
-          const noActiveBot = !bot || bot.status === 'error' || bot.status === 'skipped_no_leader' || bot.status === 'unrecoverable';
+          const noActiveBot = !bot || bot.status === 'error' || bot.status === 'skipped_no_leader' || bot.status === 'unrecoverable' || botDriftedTooLate;
           const canSendRetroactive = isHappeningNow && noActiveBot && !!meeting.meet_link;
 
           const triggerBot = (retroactive: boolean) => {
