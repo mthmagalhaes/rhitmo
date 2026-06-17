@@ -307,7 +307,7 @@ export const UpcomingMeetingsCard = () => {
                         </span>
                       );
                     }
-                    if (bot?.status === 'scheduled') {
+                    if (bot?.status === 'scheduled' && !botDriftedTooLate) {
                       return (
                         <span className="flex items-center gap-1 text-xs font-medium">
                           {isAutoScheduled ? (
