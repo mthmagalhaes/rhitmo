@@ -494,7 +494,7 @@ Deno.serve(async (req) => {
                 },
               },
               automatic_leave: {
-                waiting_room_timeout: 120,
+                waiting_room_timeout: 300,
                 in_call_not_recording_timeout: 180,
                 noone_joined_timeout: 300,
               },
