@@ -90,7 +90,7 @@ export const EditTeamDialog = ({
 
     setLoading(true);
     try {
-      const update: Record<string, any> = { name: teamName.trim() };
+      const update: { name: string; leader_user_id?: string } = { name: teamName.trim() };
       if (canManageLeader && leader?.user_id && leader.user_id !== initialLeaderId) {
         update.leader_user_id = leader.user_id;
       }
