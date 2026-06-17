@@ -379,16 +379,55 @@ Deno.serve(async (req) => {
       for (const meeting of matchedMeetings) {
         if (!meeting.meet_link || !meeting.id) continue;
 
-        // Dedup by meeting_id AND meeting_url (fallback for recurring meetings with same link)
+        // Join 2 minutes before meeting start
+        const joinAt = new Date(new Date(meeting.start_time).getTime() - 2 * 60 * 1000).toISOString();
+        const newJoinMs = new Date(joinAt).getTime();
+
+        // Dedup by meeting_id (with drift detection)
         const { data: existingByMeetingId } = await supabaseAdmin
           .from("recall_bots")
-          .select("id")
+          .select("id, recall_bot_id, status, scheduled_at")
           .eq("user_id", userId)
           .eq("meeting_id", meeting.id)
           .not("status", "eq", "error")
           .maybeSingle();
 
-        if (existingByMeetingId) continue;
+        if (existingByMeetingId) {
+          // ── Drift detection ──
+          // Reunião foi remarcada no Google após o bot ser agendado. Se o bot
+          // ainda está em estado ajustável (scheduled / joining) e a divergência
+          // for > 5min, cancela o bot antigo no Recall e deixa o fluxo abaixo
+          // recriar no horário correto. Foi o bug do dia 17/06 (bot agendado
+          // pras 13:58 BRT enquanto a reunião era 11:00 BRT).
+          const reschedulable = ["scheduled", "joining"].includes(existingByMeetingId.status as string);
+          const oldMs = existingByMeetingId.scheduled_at
+            ? new Date(existingByMeetingId.scheduled_at as string).getTime()
+            : null;
+          const driftMin = oldMs ? Math.abs(newJoinMs - oldMs) / 60_000 : 0;
+          const meetingStillFuture = new Date(meeting.start_time).getTime() > Date.now() - 5 * 60 * 1000;
+
+          if (reschedulable && oldMs && driftMin > 5 && meetingStillFuture) {
+            console.log(`[sync] Drift on meeting ${meeting.id}: bot was ${existingByMeetingId.scheduled_at}, should be ${joinAt} (drift=${Math.round(driftMin)}min). Cancelling old bot.`);
+            try {
+              await fetch(`https://us-west-2.recall.ai/api/v1/bot/${existingByMeetingId.recall_bot_id}/leave/`, {
+                method: "POST",
+                headers: { Authorization: `Token ${RECALL_API_KEY}` },
+              });
+            } catch (e) {
+              console.warn(`[sync] Failed to cancel drifted bot:`, e);
+            }
+            await supabaseAdmin
+              .from("recall_bots")
+              .update({
+                status: "error",
+                error_message: `Reunião remarcada — bot recriado para o novo horário (${joinAt})`,
+              })
+              .eq("id", existingByMeetingId.id);
+            // Fall through to create new bot below.
+          } else {
+            continue;
+          }
+        }
 
         // Fallback: check by meeting_url to prevent duplicate bots for same link.
         // IMPORTANT: skipped_no_leader and error MUST block re-scheduling within the
@@ -400,8 +439,9 @@ Deno.serve(async (req) => {
           .eq("user_id", userId)
           .eq("meeting_url", meeting.meet_link)
           .not("status", "eq", "done")
-          .gte("scheduled_at", new Date(new Date(meeting.start_time).getTime() - 30 * 60 * 1000).toISOString())
-          .lte("scheduled_at", new Date(new Date(meeting.start_time).getTime() + 30 * 60 * 1000).toISOString())
+          .not("status", "eq", "error")
+          .gte("scheduled_at", new Date(newJoinMs - 30 * 60 * 1000).toISOString())
+          .lte("scheduled_at", new Date(newJoinMs + 30 * 60 * 1000).toISOString())
           .maybeSingle();
 
         if (existingByUrl) {
@@ -418,13 +458,10 @@ Deno.serve(async (req) => {
           .eq("meeting_id", meeting.id)
           .gte("created_at", dayAgo);
 
-        if ((recentAttempts ?? 0) >= 2) {
+        if ((recentAttempts ?? 0) >= 3) {
           console.log(`[sync] Meeting ${meeting.id} already had ${recentAttempts} attempts in 24h, skipping`);
           continue;
         }
-
-        // Join 2 minutes before meeting start
-        const joinAt = new Date(new Date(meeting.start_time).getTime() - 2 * 60 * 1000).toISOString();
 
         try {
           const recallResponse = await fetch("https://us-west-2.recall.ai/api/v1/bot/", {
@@ -457,7 +494,7 @@ Deno.serve(async (req) => {
                 },
               },
               automatic_leave: {
-                waiting_room_timeout: 120,
+                waiting_room_timeout: 300,
                 in_call_not_recording_timeout: 180,
                 noone_joined_timeout: 300,
               },
