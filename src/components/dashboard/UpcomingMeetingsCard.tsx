@@ -382,6 +382,33 @@ export const UpcomingMeetingsCard = () => {
                       </button>
                     );
                   })()}
+                  {/* Botão discreto "Chamar bot agora" — sempre disponível como fallback,
+                      exceto quando bot já está gravando/transcrito. Aparece no hover. */}
+                  {meeting.meet_link &&
+                    bot?.status !== 'recording' &&
+                    bot?.status !== 'done' &&
+                    !canSendRetroactive && (
+                      <button
+                        className="h-8 w-8 rounded-lg bg-muted/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary/15 disabled:opacity-40 disabled:cursor-not-allowed"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const isFuture = startMs - Date.now() > 5 * 60 * 1000;
+                          const msg = isFuture
+                            ? 'Enviar bot agora? Ele vai entrar na reunião imediatamente, mesmo antes do horário marcado.'
+                            : 'Enviar bot agora? Ele vai gravar a partir deste momento — o que já passou da reunião não pode ser recuperado.';
+                          if (!confirm(msg)) return;
+                          triggerBot(true);
+                        }}
+                        disabled={schedulingMeetingId === meeting.id || !canScheduleBot}
+                        title={!canScheduleBot ? 'Limite de reuniões com bot atingido.' : 'Chamar bot agora — útil se ele não entrou ou foi removido'}
+                      >
+                        {schedulingMeetingId === meeting.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                        ) : (
+                          <Mic className="h-3.5 w-3.5 text-muted-foreground hover:text-primary" />
+                        )}
+                      </button>
+                    )}
                   {meeting.meet_link && (
                     <a
                       href={meeting.meet_link}
@@ -393,6 +420,7 @@ export const UpcomingMeetingsCard = () => {
                       <ExternalLink className="h-3.5 w-3.5 text-primary" />
                     </a>
                   )}
+
                   <button
                     className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={(e) => {
