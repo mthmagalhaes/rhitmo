@@ -284,8 +284,8 @@ Deno.serve(async (req) => {
         member_id: member_id || null,
         recall_bot_id: recallData.id,
         meeting_url: meeting_url,
-        status: "scheduled",
-        scheduled_at: joinAt,
+        status: isAdhoc ? "joining" : "scheduled",
+        scheduled_at: joinAt ?? new Date(nowMs).toISOString(),
         leader_email: leaderEmail,
         trigger_source: triggerSource,
       })
