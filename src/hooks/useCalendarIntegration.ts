@@ -174,8 +174,14 @@ export const useCalendarIntegration = () => {
       return data;
     },
     onSuccess: () => {
+      // Refetch imediato + sondagens curtas pra refletir transições (joining → in_waiting_room → recording)
+      // sem o líder achar que "nada aconteceu".
       queryClient.invalidateQueries({ queryKey: ['recall-bots'] });
-      toast({ title: 'Bot agendado', description: 'O Rhitmo entrará na reunião automaticamente para transcrever.' });
+      const delays = [3000, 8000, 15000, 30000, 60000];
+      delays.forEach((d) => setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['recall-bots'] });
+      }, d));
+      toast({ title: 'Bot enviado', description: 'O Rhitmo está entrando na reunião. Aceite na sala de espera se aparecer.' });
     },
     onError: (error: any) => {
       let msg = 'Erro ao agendar bot de transcrição.';
