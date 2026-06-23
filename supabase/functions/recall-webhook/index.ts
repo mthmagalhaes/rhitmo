@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
 
     const eventStatusMap: Record<string, string> = {
       "bot.joining_call": "joining",
-      "bot.in_waiting_room": "joining",
+      "bot.in_waiting_room": "in_waiting_room",
       "bot.in_call_not_recording": "joining",
       "bot.recording_permission_allowed": "joining",
       "bot.in_call_recording": "recording",
@@ -148,9 +148,9 @@ Deno.serve(async (req) => {
 
       const finalStatus = isFatal || isKickedFromWaitingRoom ? "error" : newStatus;
       const errorMessage = isFatal
-        ? `Fatal error: ${subCode || statusCode || "unknown"}`
+        ? `Bot falhou: ${subCode || statusCode || "erro desconhecido"}`
         : isKickedFromWaitingRoom
-        ? "Bot expulso da sala de espera"
+        ? "Host rejeitou o bot na sala de espera. Tente enviar de novo após aceitar."
         : null;
 
       await supabaseAdmin
@@ -161,8 +161,9 @@ Deno.serve(async (req) => {
         })
         .eq("id", botRecord.id);
 
-      console.log(`Bot ${botId} status: ${event} → ${finalStatus}`);
+      console.log(`Bot ${botId} status: ${event} → ${finalStatus}${subCode ? ` (sub_code=${subCode})` : ""}`);
     }
+
 
     // ── Leader presence detection ─────────────────────────────────────────
     // When recording starts:

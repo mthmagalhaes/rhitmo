@@ -332,6 +332,17 @@ export const UpcomingMeetingsCard = () => {
                         </span>
                       );
                     }
+                    if (bot?.status === 'in_waiting_room') {
+                      return (
+                        <span
+                          className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 font-medium"
+                          title="O host precisa aceitar o Rhitmo na sala de espera do Google Meet."
+                        >
+                          <Clock className="h-3.5 w-3.5" />
+                          Sala de espera
+                        </span>
+                      );
+                    }
                     // Reunião rolando AGORA sem bot → botão de resgate.
                     if (canSendRetroactive) {
                       return (

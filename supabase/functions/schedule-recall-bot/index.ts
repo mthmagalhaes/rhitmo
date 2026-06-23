@@ -135,7 +135,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Check if bot already scheduled for this meeting (by meeting_id or meeting_url)
+    // Check if bot already scheduled for this meeting (by meeting_id or meeting_url).
+    // Estados "finais sem sucesso" (skipped_no_leader, error, unrecoverable, done)
+    // NÃO bloqueiam um novo envio — é exatamente o caso de resgate manual em que
+    // o líder chegou atrasado depois do bot automático ter sido removido.
+    const TERMINAL_OR_RECOVERABLE = ["error", "skipped_no_leader", "unrecoverable", "done"];
+    const LIVE_STATUSES = ["scheduled", "joining", "in_waiting_room", "in_call_recording", "recording", "in_call_not_recording", "processing"];
 
     if (meeting_id) {
       const { data: existing } = await supabaseAdmin
@@ -143,7 +148,7 @@ Deno.serve(async (req) => {
         .select("id, status")
         .eq("user_id", userId)
         .eq("meeting_id", meeting_id)
-        .not("status", "eq", "error")
+        .in("status", LIVE_STATUSES)
         .maybeSingle();
 
       if (existing) {
@@ -154,15 +159,15 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Fallback dedup by meeting_url (prevents duplicate bots for recurring meetings with same link).
-    // Manual flow allows retry after error/skipped_no_leader (the leader explicitly clicked again),
-    // but blocks duplicates within the meeting window if a live bot already exists.
+    // Fallback dedup by meeting_url — só bloqueia se já existe bot VIVO.
+    // Bots em estado terminal (skipped_no_leader, error, done, unrecoverable) são histórico,
+    // e o líder pode (e deve poder) reenviar manualmente.
     const { data: existingByUrl } = await supabaseAdmin
       .from("recall_bots")
       .select("id, status")
       .eq("user_id", userId)
       .eq("meeting_url", meeting_url)
-      .in("status", ["scheduled", "joining", "in_waiting_room", "in_call_recording", "recording", "in_call_not_recording"])
+      .in("status", LIVE_STATUSES)
       .maybeSingle();
 
     if (existingByUrl) {
@@ -173,9 +178,10 @@ Deno.serve(async (req) => {
     }
 
     // Schedule bot via Recall.ai API.
-    // Normal: join 2min antes do start. Retroativo / start já passou: agora + 30s
-    // (Recall exige join_at no futuro). Limite: só permite retroativo se start_time
-    // está dentro dos últimos 45min, senão recusa.
+    // - auto_calendar / manual antes do início: join 2min antes do start (scheduled bot).
+    // - manual_retroactive: bot ad-hoc REAL (omitimos join_at). Quando join_at é null
+    //   ou < 10min no futuro, a Recall trata como ad-hoc e o bot entra "agora".
+    //   Limite: só permite resgate se start_time está dentro dos últimos 45min.
     const startMs = new Date(start_time).getTime();
     const nowMs = Date.now();
     const minutesSinceStart = (nowMs - startMs) / 60_000;
@@ -186,52 +192,83 @@ Deno.serve(async (req) => {
       }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Bot agendado normal: join 2min antes; se já estourou esse horário (mas
+    // ainda não é resgate), usar ad-hoc também.
     const idealJoin = startMs - 2 * 60 * 1000;
-    const joinAt = idealJoin > nowMs
-      ? new Date(idealJoin).toISOString()
-      : new Date(nowMs + 30 * 1000).toISOString();
+    const isAdhoc = triggerSource === "manual_retroactive" || idealJoin <= nowMs;
+    const joinAt = isAdhoc ? null : new Date(idealJoin).toISOString();
 
-    const recallResponse = await fetch("https://us-west-2.recall.ai/api/v1/bot/", {
-      method: "POST",
-      headers: {
-        "Authorization": `Token ${RECALL_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        meeting_url: meeting_url,
-        join_at: joinAt,
-        bot_name: "Rhitmo",
-        chat: {
-          on_bot_join: {
-            send_to: "everyone",
-            message: "👋 Olá! Sou o assistente Rhitmo. Esta reunião está sendo transcrita para fins de anotações e desenvolvimento profissional. Se tiver dúvidas, fale com seu líder.",
-            pin: true,
-          },
+    const recallPayload: Record<string, unknown> = {
+      meeting_url: meeting_url,
+      bot_name: "Rhitmo",
+      chat: {
+        on_bot_join: {
+          send_to: "everyone",
+          message: "👋 Olá! Sou o assistente Rhitmo. Esta reunião está sendo transcrita para fins de anotações e desenvolvimento profissional. Se tiver dúvidas, fale com seu líder.",
+          pin: true,
         },
-        recording_config: {
-          transcript: {
-            provider: {
-              recallai_streaming: {
-                mode: "prioritize_accuracy",
-                language_code: "auto",
-              },
+      },
+      recording_config: {
+        transcript: {
+          provider: {
+            recallai_streaming: {
+              mode: "prioritize_accuracy",
+              language_code: "auto",
             },
           },
         },
-        automatic_leave: {
-          waiting_room_timeout: 300,
-          in_call_not_recording_timeout: 180,
-          noone_joined_timeout: 300,
-        },
-      }),
-    });
+      },
+      automatic_leave: {
+        // 600s é o teto da Recall pra Google Meet — dá margem real pro host aceitar.
+        waiting_room_timeout: 600,
+        in_call_not_recording_timeout: 180,
+        noone_joined_timeout: 300,
+      },
+    };
+    if (joinAt) recallPayload.join_at = joinAt;
 
-    const recallData = await recallResponse.json();
+    // Retry com backoff curto pros transientes/ad-hoc pool da Recall (429/502/503/504/507).
+    async function callRecallWithRetry(maxAttempts = 3): Promise<Response> {
+      let attempt = 0;
+      let lastResp: Response | null = null;
+      while (attempt < maxAttempts) {
+        attempt++;
+        const resp = await fetch("https://us-west-2.recall.ai/api/v1/bot/", {
+          method: "POST",
+          headers: {
+            "Authorization": `Token ${RECALL_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(recallPayload),
+        });
+        if (resp.ok) return resp;
+        const transient = [429, 502, 503, 504, 507].includes(resp.status);
+        lastResp = resp;
+        if (!transient || attempt >= maxAttempts) return resp;
+        const retryAfter = Number(resp.headers.get("Retry-After"));
+        const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
+          ? Math.min(retryAfter * 1000, 8000)
+          : 1500 * attempt;
+        console.warn(`Recall ${resp.status} on attempt ${attempt}/${maxAttempts}, retrying in ${waitMs}ms`);
+        await new Promise((r) => setTimeout(r, waitMs));
+      }
+      return lastResp!;
+    }
+
+    const recallResponse = await callRecallWithRetry();
+    const recallData = await recallResponse.json().catch(() => ({}));
 
     if (!recallResponse.ok) {
-      console.error("Recall.ai API error:", recallData);
-      return new Response(JSON.stringify({ error: "Failed to schedule bot", details: recallData }), {
-        status: 502,
+      console.error("Recall.ai API error:", recallResponse.status, recallData);
+      const userMsg = recallResponse.status === 507
+        ? "Sem capacidade ad-hoc no momento. Tente de novo em alguns segundos."
+        : recallResponse.status === 429
+        ? "Muitas solicitações ao mesmo tempo. Aguarde alguns segundos e tente de novo."
+        : recallResponse.status >= 500
+        ? "Falha temporária do serviço de bots. Tente de novo."
+        : "Não foi possível enviar o bot.";
+      return new Response(JSON.stringify({ error: userMsg, details: recallData, status: recallResponse.status }), {
+        status: recallResponse.status === 507 || recallResponse.status === 429 ? recallResponse.status : 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -247,8 +284,8 @@ Deno.serve(async (req) => {
         member_id: member_id || null,
         recall_bot_id: recallData.id,
         meeting_url: meeting_url,
-        status: "scheduled",
-        scheduled_at: joinAt,
+        status: isAdhoc ? "joining" : "scheduled",
+        scheduled_at: joinAt ?? new Date(nowMs).toISOString(),
         leader_email: leaderEmail,
         trigger_source: triggerSource,
       })
