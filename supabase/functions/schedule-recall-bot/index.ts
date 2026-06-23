@@ -135,7 +135,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Check if bot already scheduled for this meeting (by meeting_id or meeting_url)
+    // Check if bot already scheduled for this meeting (by meeting_id or meeting_url).
+    // Estados "finais sem sucesso" (skipped_no_leader, error, unrecoverable, done)
+    // NÃO bloqueiam um novo envio — é exatamente o caso de resgate manual em que
+    // o líder chegou atrasado depois do bot automático ter sido removido.
+    const TERMINAL_OR_RECOVERABLE = ["error", "skipped_no_leader", "unrecoverable", "done"];
+    const LIVE_STATUSES = ["scheduled", "joining", "in_waiting_room", "in_call_recording", "recording", "in_call_not_recording", "processing"];
 
     if (meeting_id) {
       const { data: existing } = await supabaseAdmin
@@ -143,7 +148,7 @@ Deno.serve(async (req) => {
         .select("id, status")
         .eq("user_id", userId)
         .eq("meeting_id", meeting_id)
-        .not("status", "eq", "error")
+        .in("status", LIVE_STATUSES)
         .maybeSingle();
 
       if (existing) {
@@ -154,15 +159,15 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Fallback dedup by meeting_url (prevents duplicate bots for recurring meetings with same link).
-    // Manual flow allows retry after error/skipped_no_leader (the leader explicitly clicked again),
-    // but blocks duplicates within the meeting window if a live bot already exists.
+    // Fallback dedup by meeting_url — só bloqueia se já existe bot VIVO.
+    // Bots em estado terminal (skipped_no_leader, error, done, unrecoverable) são histórico,
+    // e o líder pode (e deve poder) reenviar manualmente.
     const { data: existingByUrl } = await supabaseAdmin
       .from("recall_bots")
       .select("id, status")
       .eq("user_id", userId)
       .eq("meeting_url", meeting_url)
-      .in("status", ["scheduled", "joining", "in_waiting_room", "in_call_recording", "recording", "in_call_not_recording"])
+      .in("status", LIVE_STATUSES)
       .maybeSingle();
 
     if (existingByUrl) {
