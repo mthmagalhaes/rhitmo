@@ -21,6 +21,7 @@ import { Separator } from '@/components/ui/separator';
 import { MemberAvatar } from '@/components/MemberAvatar';
 import { EditMemberDialog } from '@/components/EditMemberDialog';
 import { InviteMemberDialog } from '@/components/InviteMemberDialog';
+import { RelationshipSignalsCard } from '@/components/leader/RelationshipSignalsCard';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
