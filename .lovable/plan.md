@@ -1,73 +1,89 @@
-# Camada de Ambiente: o Coach que "sente a sala"
+## Diagnóstico
 
-## Resposta direta à pergunta
+### Bug 1 — "❌ Apenas líderes podem gerar pautas"
 
-**Sim, é possível — e é exatamente onde o Recall.ai vira vantagem injusta da Rhitmo.**
+Em `supabase/functions/slack-bot/index.ts:765` a função `getUserPersona()` resolve o papel assim, **nessa ordem**:
 
-Pesquisa rápida do mercado:
+1. `workspace.owner_id === user_id` → `leader`
+2. `workspace.hr_admin_ids` contém o user → `hr_admin`
+3. existe linha em `team_members` com `linked_user_id = user_id` → **`direct_report`** (sai aqui)
+4. fallback → `leader`
 
+O `prep_1on1_brief` (linha 2032) bloqueia qualquer persona ≠ `'leader'`. Resultado: **todo líder que também é liderado de alguém** (caso clássico do Matheus, e de qualquer líder dentro de uma hierarquia) é classificado como `direct_report` e nunca consegue gerar pauta — mesmo sendo o dono da reunião.
 
-| Ferramenta                 | Tem camada de ambiente?                                                                                                                                                                      | Faz drift longitudinal por pessoa?                    |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| **Granola**                | ❌ Só transcrição + summary. API expõe `transcript`, `summary`, `attendees`. Nada de sentimento, talk-time, energia.                                                                          | ❌ Zero                                                |
-| **Otter**                  | ❌ Talk-time básico, nada subjetivo                                                                                                                                                           | ❌                                                     |
-| **Fireflies**              | ✅ Talk-time, silêncio, monólogos, filler words, WPM, perguntas, sentimento (tudo derivado do transcript)                                                                                     | ⚠️ Agregação por período, não por dyad líder↔liderado |
-| **Gong / Chorus**          | ✅✅ Talk-ratio, paciência, monólogos, sentimento, trackers de tópico, scorecards por rep ao longo do tempo. Padrão-ouro — mas focado em vendas                                                | ✅ Por rep, não por relação líder↔liderado             |
-| **Read.ai**                | ✅✅✅ Único multimodal: análise facial + prosódia (pitch, volume) + NLP. Read Score = sentimento + engajamento por pessoa em tempo real                                                        | ⚠️ Histórico pessoal sim, dyad recorrente não         |
-| **Recall.ai** (nossa base) | ❌ "Cru" por design — mas expõe `audio_separate_raw` (PCM por pessoa), `video_separate_png` (frames faciais 2fps por pessoa), `participant_events` (speech_on/off, webcam_on/off, join/leave) | —                                                     |
+A autorização correta para "Gerar Pauta" não é "é líder no workspace", é "é o dono daquela `upcoming_meeting`". O `briefGenerator.ts:113` já valida `meeting.user_id !== expectedUserId` — a checagem de persona no Slack é redundante e quebra o fluxo.
 
+### Bug 2 — Pauta/Brief pobre em contexto longitudinal
 
-**Insight central da pesquisa:** o Recall já entrega mais sinal bruto do que o Read.ai precisa internamente. O que falta é a camada de modelos + persistência longitudinal por dyad. **Nenhum produto do mercado faz drift por relação líder↔liderado recorrente** — esse é o whitespace da Rhitmo.
+`briefGenerator.ts` hoje injeta no prompt:
+- 10 action items pendentes (de `feedbacks`)
+- últimas **5 notas** (de `feedbacks`, qualquer tipo, content truncado em 300 char)
+- rede ONA + sinais + 2 vozes de pares
+- rollup Slack 7d
 
-Evidência acadêmica (MDPI 2024, Frontiers 2025, arXiv 2025): **a variação do baseline pessoal prediz bem-estar/burnout/desengajamento muito melhor que valores absolutos**. Pessoa naturalmente quieta com talk-time baixo é normal; a mesma pessoa caindo 3σ abaixo do próprio baseline em 6 semanas é sinal real.
-
----
-
-## Proposta em 3 fases
-
-### Fase 1 — "Sinais da reunião" (transcript + eventos, baixo custo)
-
-Sem áudio/vídeo extra, só explorar o que o Recall já manda no webhook `bot.done`:
-
-Por participante, por reunião:
-
-- **Talk-time** (segundos e %)
-- **Razão de fala líder↔liderado** (50/50? 80/20?)
-- **Silêncios longos** (gaps >3s)
-- **Interrupções** (overlap de fala)
-- **Câmera ligada** (% da reunião)
-- **Atraso** (join vs. start do calendário)
-- **Perguntas feitas** (NLP simples no transcript)
-- **Tamanho médio da resposta** (palavras/turno)
-- **Sentimento da sessão por pessoa** (LLM no transcript — Gemini 2.5 Flash, ~$0.002/reunião)
-
-Output: nova tabela `meeting_signals` com 1 linha por (reunião × participante), ~15 colunas numéricas.
-
-### Fase 2 — "Memória do dyad" (drift longitudinal — o diferencial real)
-
-- Detector de série recorrente: mesmas 2 pessoas, cadência semanal → `meeting_series_id`
-- Baseline pessoal rolante (4 semanas) por participante × série
-- Alerta de drift: ≥3 sinais divergindo do baseline na mesma direção → flag no Brief da próxima 1:1
-- Card no `/lider/[liderado]`: "Nas últimas 6 sessões com Isaac: talk-time ↓22%, perguntas ↓40%, silêncio ↑15%. Padrão consistente com início de desengajamento."
-- Alimenta o **Brief pré-1:1** e a **Matriz de Análise Integrada** (Watermelon detection ganha lastro factual, não só interpretativo)
-
-### Fase 3 — "Camada multimodal" (opcional, alto valor, custo médio)
-
-- `audio_separate_raw` → librosa/openSMILE → energia (RMS), pitch (F0), taxa de fala, pausas
-- `video_separate_png` (2fps já cortado por pessoa) → MediaPipe Face Mesh → contato visual, sorrisos, acenos
-- LGPD/GDPR: opt-in explícito, desligável no workspace, frames descartados pós-processamento
-- Trava EU: Read.ai desliga facial na Europa por GDPR — replicamos a regra
+**Não puxa nada das últimas 1:1s de fato**: nem `meeting_transcripts` (transcript/resumo do que foi conversado), nem `monthly_recaps`/`quarterly_recaps` confirmados (a "memória" oficial do liderado), nem o último `brief_cache` consumido (o que foi proposto da última vez e ficou em aberto). Por isso a pauta sente-se "genérica" reunião após reunião.
 
 ---
 
-## Recomendação
+## Plano
 
-Começar **Fase 1 + Fase 2** juntas. Fase 1 sozinha vira "mais um Fireflies"; Fase 2 é o que ninguém faz e conecta com tudo que a Rhitmo já tem (Brief, Mentor Chat, Watermelon, Pulse). Fase 3 fica para depois — vale validar com 5–10 líderes se os sinais Tier 1 já produzem insights acionáveis antes de investir em prosódia/visão.
+### 1. Corrigir autorização do botão "Gerar Pauta" (Slack)
 
-## Próximo passo
+Em `supabase/functions/slack-bot/index.ts` (case `prep_1on1_brief`, ~linha 2028):
 
-Preciso de uma decisão antes de detalhar o plano técnico:
+- Remover o gate `persona !== 'leader'`.
+- Exigir apenas `briefPersona.userId` (usuário autenticado via slack_integrations).
+- Confiar na checagem real de ownership que já existe em `briefGenerator.ts:113` (`meeting.user_id !== expectedUserId` → throw `Forbidden`).
+- Capturar especificamente o `Forbidden` e devolver mensagem clara: "Essa reunião não está vinculada à sua conta Rhitmo."
+- Mesma correção no caminho de fallback (busca em `upcoming_meetings` já filtra por `user_id`, ok).
 
-1. **Escopo**: começar Fase 1+2 juntas, ou só Fase 1 primeiro pra validar com usuários reais? Fase 1+2
-2. **Onde aparece**: novo card no `/lider/[liderado]`, dentro do Brief de 1:1, ou ambos? Acho que ninguém nem acessa o brieg, precisava ser em `/lider/[liderado de um jeito amigável.` 
-3. **Quem vê**: só o líder, ou o liderado também enxerga os próprios sinais (transparência radical estilo "Mirror")? Só o lider.
+Opcional (defesa em profundidade): também relaxar o mesmo gate em `prep_1on1_brief` da DM proativa (`slack-rhitmo-orchestrator`) se aplicável — verificar e alinhar.
+
+### 2. Enriquecer o Brief com memória longitudinal real
+
+Adicionar ao `briefGenerator.ts`, antes da chamada AI, três novos blocos de contexto (todos com try/catch + fallback silencioso, padrão atual do arquivo):
+
+**a) Últimas 1:1s factuais (`meeting_transcripts`)**
+- Buscar últimos 3 transcripts da dupla líder↔liderado (filtrar por `member_id` e janela 90d).
+- Usar `summary` quando existir; senão, primeiros 600 char do transcript.
+- Injetar como bloco `Últimas 1:1s registradas:` no prompt.
+
+**b) Memória oficial (`monthly_recaps` + `quarterly_recaps` confirmados)**
+- Último `quarterly_recaps` `status='confirmed'` do `member_id` → highlights + recurring_patterns + classification + turnover_risk.
+- Últimos 2 `monthly_recaps` `status='confirmed'` → highlight_text + concern_text + dominant_pattern.
+- Injetar como bloco `Memória confirmada do liderado (já validada por você):`.
+- Isso ancora a IA na narrativa oficial, evitando reinvenção a cada brief (alinha com `mem://features/performance/formal-review-rag-completo`).
+
+**c) Brief anterior + o que ficou aberto**
+- Se `meeting.brief_cache` anterior existe (mesmo expirado para o cache de 30min), extrair `suggested_agenda` + `pending_items` da última geração.
+- Injetar como `Da última pauta sugerida, ainda em aberto:` para a IA marcar continuidade ("retomar X que ficou de você fechar com Maria") em vez de propor tópicos do zero.
+
+### 3. Ajuste no prompt
+
+Reforçar no `userPrompt` de `generateBriefForMeeting`:
+- "Conecte os tópicos da agenda com padrões já observados nas últimas 1:1s e na memória confirmada — cite a data quando ajudar."
+- "Se um tópico está aparecendo pela 3ª reunião seguida sem resolução, sinalize explicitamente no `coaching_reminder`."
+- Manter limite: máx. 3 itens de agenda, máx. 5 pendências, baseado APENAS no contexto fornecido.
+
+### 4. Telemetria mínima
+
+Adicionar log estruturado em `briefGenerator.ts` com contagens: `{ feedbacks_used, transcripts_used, monthly_recaps_used, quarterly_recap_used: bool, previous_brief_used: bool }`. Ajuda a diagnosticar "por que a pauta está rasa" sem ler o prompt inteiro do log.
+
+---
+
+## Arquivos afetados
+
+- `supabase/functions/slack-bot/index.ts` — remover gate de persona em `prep_1on1_brief`, tratar `Forbidden` do briefGenerator.
+- `supabase/functions/_shared/briefGenerator.ts` — adicionar 3 blocos de contexto + ajuste de prompt + telemetria.
+- Sem migrations, sem mudança de schema, sem mudança de UI.
+
+## Validação
+
+1. **Bug do líder**: pedir ao Matheus para clicar "Gerar Pauta" no card da Yasmin novamente — deve gerar a pauta (não mais "Apenas líderes…").
+2. **Pauta enriquecida**: comparar a próxima pauta gerada com a anterior — deve referenciar datas/temas das últimas 1:1s e citar o último mensal/trimestral confirmado quando existir.
+3. **Sem regressão**: liderado sem nenhuma 1:1 registrada ainda deve continuar recebendo pauta com tópicos genéricos (check-in + prioridades), não erro.
+
+## Fora de escopo (proposto separar)
+
+- Migrar `briefGenerator.ts` para `composeSystemPrompt()` do soul loader (dívida técnica conhecida em `mem://ai/soul-centralizada-md`) — recomendo abrir como passo seguinte, não misturar com o fix urgente.
+- Repensar `getUserPersona()` para suportar papel híbrido "líder E liderado" — afeta outros comandos (`/nota`, `/brief` via slash, `/mentor`); merece plano próprio.
