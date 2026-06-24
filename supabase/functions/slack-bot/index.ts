@@ -2029,8 +2029,11 @@ async function processInteraction(body: string, timestamp: string, signature: st
         console.log('[INTERACT] prep_1on1_brief clicked | slackUser:', slackUserId, '| value:', action.value, '| team:', payload.team?.id);
         const briefPersona = await getUserPersona(slackUserId);
         console.log('[INTERACT] prep_1on1_brief persona:', briefPersona.persona, '| userId:', briefPersona.userId);
-        if (briefPersona.persona !== 'leader' || !briefPersona.userId) {
-          if (responseUrl) await sendDelayedResponse(responseUrl, { text: '❌ Apenas líderes podem gerar pautas.' });
+        // Authorization is by meeting ownership (briefGenerator validates
+        // meeting.user_id === expectedUserId), not by workspace persona —
+        // leaders that are also someone else's direct report used to fail here.
+        if (!briefPersona.userId) {
+          if (responseUrl) await sendDelayedResponse(responseUrl, { text: '❌ Conecte sua conta Rhitmo no Slack para gerar pautas.' });
           break;
         }
         const [meetingId] = (action.value || '').split(':');
@@ -2055,7 +2058,16 @@ async function processInteraction(body: string, timestamp: string, signature: st
           console.log(`[INTERACT] prep_1on1_brief: brief ${result.cached ? 'cached' : 'generated'} for member=${result.member_id}`);
           if (responseUrl) await sendDelayedResponse(responseUrl, { blocks, response_type: 'ephemeral' });
         } catch (err) {
-          console.error('[INTERACT] prep_1on1_brief failed, falling back:', err);
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error('[INTERACT] prep_1on1_brief failed:', msg);
+          if (msg === 'Forbidden') {
+            if (responseUrl) await sendDelayedResponse(responseUrl, { text: '❌ Essa reunião não está vinculada à sua conta Rhitmo.' });
+            break;
+          }
+          if (msg === 'Meeting not found') {
+            if (responseUrl) await sendDelayedResponse(responseUrl, { text: '❌ Reunião não encontrada.' });
+            break;
+          }
           // Fallback: legacy summary so user gets something
           const { data: meeting } = await supabase
             .from('upcoming_meetings')
