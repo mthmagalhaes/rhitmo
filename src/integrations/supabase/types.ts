@@ -1260,6 +1260,95 @@ export type Database = {
           },
         ]
       }
+      meeting_signals: {
+        Row: {
+          avg_turn_words: number | null
+          created_at: string
+          id: string
+          interruptions_made: number | null
+          is_leader: boolean
+          manager_id: string
+          meeting_seconds: number | null
+          meeting_transcript_id: string | null
+          member_id: string | null
+          occurred_at: string
+          participant_name: string | null
+          questions_asked: number | null
+          recall_bot_id: string
+          sentiment_label: string | null
+          sentiment_score: number | null
+          sentiment_summary: string | null
+          series_key: string | null
+          silence_seconds: number | null
+          talk_pct: number | null
+          talk_seconds: number | null
+          turn_count: number | null
+          updated_at: string
+          words_per_minute: number | null
+          words_total: number | null
+        }
+        Insert: {
+          avg_turn_words?: number | null
+          created_at?: string
+          id?: string
+          interruptions_made?: number | null
+          is_leader?: boolean
+          manager_id: string
+          meeting_seconds?: number | null
+          meeting_transcript_id?: string | null
+          member_id?: string | null
+          occurred_at?: string
+          participant_name?: string | null
+          questions_asked?: number | null
+          recall_bot_id: string
+          sentiment_label?: string | null
+          sentiment_score?: number | null
+          sentiment_summary?: string | null
+          series_key?: string | null
+          silence_seconds?: number | null
+          talk_pct?: number | null
+          talk_seconds?: number | null
+          turn_count?: number | null
+          updated_at?: string
+          words_per_minute?: number | null
+          words_total?: number | null
+        }
+        Update: {
+          avg_turn_words?: number | null
+          created_at?: string
+          id?: string
+          interruptions_made?: number | null
+          is_leader?: boolean
+          manager_id?: string
+          meeting_seconds?: number | null
+          meeting_transcript_id?: string | null
+          member_id?: string | null
+          occurred_at?: string
+          participant_name?: string | null
+          questions_asked?: number | null
+          recall_bot_id?: string
+          sentiment_label?: string | null
+          sentiment_score?: number | null
+          sentiment_summary?: string | null
+          series_key?: string | null
+          silence_seconds?: number | null
+          talk_pct?: number | null
+          talk_seconds?: number | null
+          turn_count?: number | null
+          updated_at?: string
+          words_per_minute?: number | null
+          words_total?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_signals_recall_bot_id_fkey"
+            columns: ["recall_bot_id"]
+            isOneToOne: false
+            referencedRelation: "recall_bots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meeting_transcripts: {
         Row: {
           chunk_count: number | null
@@ -3388,6 +3477,28 @@ export type Database = {
           name: string
           role: string
           work_style_data: Json
+        }[]
+      }
+      get_member_signals_trend: {
+        Args: { p_limit?: number; p_member_id: string }
+        Returns: {
+          avg_turn_words: number
+          baseline_avg_turn_words: number
+          baseline_questions: number
+          baseline_sentiment: number
+          baseline_talk_pct: number
+          drift_flags: number
+          id: string
+          interruptions_made: number
+          meeting_seconds: number
+          occurred_at: string
+          participant_name: string
+          questions_asked: number
+          recall_bot_id: string
+          sentiment_label: string
+          sentiment_score: number
+          sentiment_summary: string
+          talk_pct: number
         }[]
       }
       get_member_skill_radar: { Args: { _member_id: string }; Returns: Json }
