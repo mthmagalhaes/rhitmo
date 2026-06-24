@@ -459,6 +459,13 @@ export function MemberAdminSheet({
             </div>
 
             <Separator />
+
+            {/* Sinais da relação (Camada de Ambiente) */}
+            <div className="p-6">
+              <RelationshipSignalsCard memberId={member.id} memberName={member.name} />
+            </div>
+
+            <Separator />
             <div className="p-6 space-y-3">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Abrir em…
