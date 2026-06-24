@@ -286,10 +286,132 @@ export async function generateBriefForMeeting(
     console.warn('[briefGenerator] slack context skipped:', err);
   }
 
+  // 5d. Últimas 1:1s factuais — transcripts já processados (até 90d)
+  let pastMeetingsContext = '';
+  let transcriptsUsed = 0;
+  try {
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: transcripts } = await adminClient
+      .from('meeting_transcripts')
+      .select('created_at, transcript, leader_notes, extracted_themes, extracted_commitments')
+      .eq('member_id', meeting.member_id)
+      .eq('manager_id', expectedUserId)
+      .eq('processing_status', 'completed')
+      .gte('created_at', ninetyDaysAgo)
+      .order('created_at', { ascending: false })
+      .limit(3);
+    if (transcripts && transcripts.length > 0) {
+      transcriptsUsed = transcripts.length;
+      pastMeetingsContext = transcripts
+        .map((t: any) => {
+          const d = new Date(t.created_at).toLocaleDateString('pt-BR');
+          const themes = Array.isArray(t.extracted_themes) && t.extracted_themes.length
+            ? `Temas: ${t.extracted_themes.slice(0, 5).join(', ')}.`
+            : '';
+          const commits = Array.isArray(t.extracted_commitments) && t.extracted_commitments.length
+            ? `Compromissos: ${t.extracted_commitments.slice(0, 5).map((c: any) => typeof c === 'string' ? c : (c?.text ?? '')).filter(Boolean).join('; ')}.`
+            : '';
+          const notes = (t.leader_notes || '').trim();
+          const fallback = (t.transcript || '').replace(/\s+/g, ' ').slice(0, 500);
+          const body = [themes, commits, notes ? `Notas do líder: ${notes.slice(0, 400)}` : '', !themes && !commits && !notes && fallback ? `Trecho: ${fallback}` : '']
+            .filter(Boolean).join(' ');
+          return `- [${d}] ${body || '(sem conteúdo extraído)'}`;
+        })
+        .join('\n');
+    }
+  } catch (err) {
+    console.warn('[briefGenerator] past meetings skipped:', err);
+  }
+
+  // 5e. Memória confirmada — quarterly + monthly recaps (status='confirmed')
+  let memoryContext = '';
+  let monthlyUsed = 0;
+  let quarterlyUsed = false;
+  try {
+    const { data: q } = await adminClient
+      .from('quarterly_recaps')
+      .select('period_label, period_quarter, highlights, recurring_patterns, classification, turnover_risk, evolution_vs_previous, confirmed_at')
+      .eq('member_id', meeting.member_id)
+      .eq('status', 'confirmed')
+      .order('confirmed_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (q) {
+      quarterlyUsed = true;
+      const label = q.period_label || q.period_quarter || 'último trimestre';
+      const highlights = Array.isArray(q.highlights)
+        ? q.highlights.slice(0, 3).map((h: any) => `• ${h.title}: ${h.detail}`).join('\n')
+        : '';
+      const patterns = Array.isArray(q.recurring_patterns)
+        ? q.recurring_patterns.slice(0, 3).map((p: any) => `• [${p.polarity}] ${p.pattern} (${p.frequency_note})`).join('\n')
+        : '';
+      const parts = [
+        `Trimestral confirmado (${label}) — classificação: ${q.classification ?? 'n/a'}, risco turnover: ${q.turnover_risk ?? 'n/a'}.`,
+        highlights ? `Highlights:\n${highlights}` : '',
+        patterns ? `Padrões recorrentes:\n${patterns}` : '',
+        q.evolution_vs_previous ? `Evolução vs trimestre anterior: ${q.evolution_vs_previous}` : '',
+      ].filter(Boolean);
+      memoryContext = parts.join('\n');
+    }
+
+    const { data: monthlies } = await adminClient
+      .from('monthly_recaps')
+      .select('period_month, highlight_text, concern_text, dominant_pattern, confirmed_at')
+      .eq('member_id', meeting.member_id)
+      .eq('status', 'confirmed')
+      .order('period_month', { ascending: false })
+      .limit(2);
+    if (monthlies && monthlies.length > 0) {
+      monthlyUsed = monthlies.length;
+      const lines = monthlies.map((m: any) => {
+        const month = m.period_month ? new Date(m.period_month).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : 'mês recente';
+        const bits = [
+          m.highlight_text ? `+ ${m.highlight_text}` : '',
+          m.concern_text ? `- ${m.concern_text}` : '',
+          m.dominant_pattern ? `padrão: ${m.dominant_pattern}` : '',
+        ].filter(Boolean).join(' | ');
+        return `• ${month}: ${bits}`;
+      }).join('\n');
+      memoryContext = (memoryContext ? memoryContext + '\n\nMensais confirmados:\n' : 'Mensais confirmados:\n') + lines;
+    }
+  } catch (err) {
+    console.warn('[briefGenerator] memory context skipped:', err);
+  }
+
+  // 5f. Pauta anterior — o que ficou em aberto da última geração
+  let previousBriefContext = '';
+  let previousBriefUsed = false;
+  try {
+    const prev = meeting.brief_cache as BriefData | null | undefined;
+    if (prev && (Array.isArray(prev.suggested_agenda) || Array.isArray(prev.pending_items))) {
+      previousBriefUsed = true;
+      const agenda = (prev.suggested_agenda || []).slice(0, 3).map((a) => `• ${a.topic} — ${a.rationale}`).join('\n');
+      const pendings = (prev.pending_items || []).slice(0, 5).map((p) => `• ${p.description} (${p.date})`).join('\n');
+      previousBriefContext = [
+        agenda ? `Tópicos sugeridos da última pauta:\n${agenda}` : '',
+        pendings ? `Pendências citadas da última vez:\n${pendings}` : '',
+      ].filter(Boolean).join('\n');
+    }
+  } catch (err) {
+    console.warn('[briefGenerator] previous brief skipped:', err);
+  }
+
   const startFormatted = new Date(meeting.start_time).toLocaleString('pt-BR', {
     dateStyle: 'full',
     timeStyle: 'short',
   });
+
+  console.log('[briefGenerator] context counts:', JSON.stringify({
+    member_id: meeting.member_id,
+    feedbacks_used: (recentNotes || []).length,
+    pending_items: pendingItems.length,
+    transcripts_used: transcriptsUsed,
+    monthly_recaps_used: monthlyUsed,
+    quarterly_recap_used: quarterlyUsed,
+    previous_brief_used: previousBriefUsed,
+    has_network: !!networkContext,
+    has_slack: !!slackContext,
+  }));
 
   if (!lovableApiKey) {
     throw new Error('AI not configured');
@@ -300,17 +422,22 @@ export async function generateBriefForMeeting(
 Reunião: ${meeting.title || '1:1'} com ${memberName} (${memberRole})
 Data/hora: ${startFormatted}
 
-Histórico recente (últimas notas):
+Histórico recente (últimas notas avulsas):
 ${notesContext || 'Nenhuma nota registrada ainda.'}
 
 Action items pendentes:
 ${pendingContext}
+${pastMeetingsContext ? `\nÚltimas 1:1s registradas entre vocês (até 90 dias, mais recente primeiro):\n${pastMeetingsContext}\nUse para dar continuidade real à conversa: cite a data quando ajudar e marque tópicos recorrentes.` : ''}
+${memoryContext ? `\nMemória confirmada do liderado (já validada pelo líder — é a narrativa oficial, ancore-se nela):\n${memoryContext}` : ''}
+${previousBriefContext ? `\nDa última pauta sugerida para essa dupla:\n${previousBriefContext}\nSe algo aqui não foi resolvido, retome explicitamente em vez de propor tópicos do zero.` : ''}
 ${networkContext ? `\nContexto de rede (colaboração real):\n${networkContext}\nUse isso para enriquecer o context_summary se for relevante. Tom humano, sem jargão.` : ''}
 ${slackContext ? `\nAtividade no Slack (últimos 7 dias, canais públicos — sinais agregados, NUNCA cite mensagens literais):\n${slackContext}\nUse para sinalizar foco/sobrecarga/colaboração no context_summary se ajudar a conduzir a 1:1.` : ''}
 
 Gere um brief estruturado usando a função generate_brief.
 Máximo 3 itens de agenda. Máximo 5 pendências.
-Baseie-se APENAS nas notas fornecidas. Se não há notas, sugira tópicos genéricos de 1:1 como check-in de bem-estar e alinhamento de prioridades.`;
+Conecte os tópicos com padrões já observados nas últimas 1:1s e na memória confirmada — cite a data quando ajudar.
+Se um tópico já aparece pela 3ª reunião seguida sem resolução, sinalize explicitamente no coaching_reminder.
+Baseie-se APENAS no contexto fornecido. Se não há histórico, sugira tópicos genéricos de 1:1 (check-in de bem-estar, alinhamento de prioridades).`;
 
   const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
