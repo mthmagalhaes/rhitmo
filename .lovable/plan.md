@@ -1,47 +1,73 @@
-Diagnóstico encontrado
+# Camada de Ambiente: o Coach que "sente a sala"
 
-- No evento `alinhamento isaac` do usuário `matheus.magalhaes@fstr.co`, havia um bot automático criado para `2026-06-23 12:58 UTC` e depois marcado como `skipped_no_leader`.
-- O botão manual hoje chama a mesma função de agendamento, mas a função bloqueia qualquer novo bot se já existir um registro com o mesmo `meeting_id` cujo status não seja `error`.
-- Como `skipped_no_leader` não é `error`, o reenvio manual fica bloqueado por deduplicação, mesmo sendo exatamente o caso em que deveríamos permitir resgate.
-- A documentação da Recall confirma que bot criado com `join_at` em menos de 10 minutos, ou sem `join_at`, vira bot ad-hoc. Isso é o caminho certo para “entrar agora”, mas pode falhar por pool/limite com erro `507`; nesses casos é preciso retry usando `Retry-After`.
-- A documentação também recomenda usar webhooks para status (`joining_call`, `in_waiting_room`, `in_call_recording`, `fatal`, `done`) e não depender só do retorno inicial da criação do bot, porque “criado” não significa “entrou”.
+## Resposta direta à pergunta
 
-Plano de correção
+**Sim, é possível — e é exatamente onde o Recall.ai vira vantagem injusta da Rhitmo.**
 
-1. Corrigir a deduplicação do resgate manual
-   - Em `schedule-recall-bot`, tratar `manual_retroactive` como uma ação de resgate.
-   - Permitir criar um novo bot quando o bot anterior estiver em estados finais ou recuperáveis: `skipped_no_leader`, `error`, `unrecoverable`, `done`.
-   - Se existir um bot antigo automático nesse estado, preservar o histórico, mas não bloquear o novo envio.
+Pesquisa rápida do mercado:
 
-2. Criar join realmente imediato para “Enviar bot agora”
-   - Para `manual_retroactive`, omitir `join_at` ou usar um valor ad-hoc adequado conforme a Recall, em vez de sempre `now + 30s`.
-   - Manter a janela de segurança de reunião iniciada há até 45 minutos, para evitar disparos inúteis muito depois do fim.
-   - Aumentar `waiting_room_timeout` do Google Meet para o máximo suportado pela Recall: `600s`, para dar mais tempo ao host aceitar o bot.
 
-3. Implementar retry controlado para falhas ad-hoc da Recall
-   - Se a Recall responder `507`, `502`, `503`, `504` ou `429`, não retornar apenas erro seco.
-   - Salvar/retornar uma resposta clara: “tentando novamente em instantes”.
-   - Fazer retry com backoff curto respeitando `Retry-After` quando existir.
-   - Não criar vários bots duplicados para o mesmo clique.
+| Ferramenta                 | Tem camada de ambiente?                                                                                                                                                                      | Faz drift longitudinal por pessoa?                    |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| **Granola**                | ❌ Só transcrição + summary. API expõe `transcript`, `summary`, `attendees`. Nada de sentimento, talk-time, energia.                                                                          | ❌ Zero                                                |
+| **Otter**                  | ❌ Talk-time básico, nada subjetivo                                                                                                                                                           | ❌                                                     |
+| **Fireflies**              | ✅ Talk-time, silêncio, monólogos, filler words, WPM, perguntas, sentimento (tudo derivado do transcript)                                                                                     | ⚠️ Agregação por período, não por dyad líder↔liderado |
+| **Gong / Chorus**          | ✅✅ Talk-ratio, paciência, monólogos, sentimento, trackers de tópico, scorecards por rep ao longo do tempo. Padrão-ouro — mas focado em vendas                                                | ✅ Por rep, não por relação líder↔liderado             |
+| **Read.ai**                | ✅✅✅ Único multimodal: análise facial + prosódia (pitch, volume) + NLP. Read Score = sentimento + engajamento por pessoa em tempo real                                                        | ⚠️ Histórico pessoal sim, dyad recorrente não         |
+| **Recall.ai** (nossa base) | ❌ "Cru" por design — mas expõe `audio_separate_raw` (PCM por pessoa), `video_separate_png` (frames faciais 2fps por pessoa), `participant_events` (speech_on/off, webcam_on/off, join/leave) | —                                                     |
 
-4. Melhorar status e feedback no card
-   - Depois do clique, mostrar estado real: `Solicitado`, `Entrando`, `Na sala de espera`, `Gravando`, `Falhou`.
-   - Incluir tooltip/descrição para `Na sala de espera`: o host precisa aceitar o Rhitmo no Google Meet.
-   - Se a Recall retornar `bot_kicked_from_waiting_room` ou `fatal`, mostrar opção de “Tentar de novo”.
-   - Invalidar/refazer a consulta de bots logo após o clique e em intervalos curtos por alguns minutos, para o líder não ficar com falsa sensação de sucesso.
 
-5. Fortalecer webhook e estados internos
-   - Mapear `bot.in_waiting_room` para um status próprio (`in_waiting_room`) em vez de misturar com `joining`.
-   - Salvar `error_message` com `sub_code` em eventos `bot.fatal` e rejeição da sala de espera.
-   - Garantir que bots manuais nunca sejam removidos pela rotina automática de “líder ausente”.
+**Insight central da pesquisa:** o Recall já entrega mais sinal bruto do que o Read.ai precisa internamente. O que falta é a camada de modelos + persistência longitudinal por dyad. **Nenhum produto do mercado faz drift por relação líder↔liderado recorrente** — esse é o whitespace da Rhitmo.
 
-6. Adicionar observabilidade mínima
-   - Logar no registro do bot: origem (`manual_retroactive`), tentativa, erro da Recall, `Retry-After`, e status final.
-   - Isso permitirá responder rapidamente se o bot ficou em sala de espera, foi rejeitado, não tinha pool ad-hoc, ou o link estava inválido.
+Evidência acadêmica (MDPI 2024, Frontiers 2025, arXiv 2025): **a variação do baseline pessoal prediz bem-estar/burnout/desengajamento muito melhor que valores absolutos**. Pessoa naturalmente quieta com talk-time baixo é normal; a mesma pessoa caindo 3σ abaixo do próprio baseline em 6 semanas é sinal real.
 
-Validação
+---
 
-- Reproduzir o caso do `alinhamento isaac`: com um bot antigo `skipped_no_leader`, clicar em “Enviar bot agora” deve criar um novo registro de bot, não retornar conflito.
-- Confirmar que o card muda para `Entrando` ou `Na sala de espera` após o clique.
-- Confirmar via webhook que o status evolui para `Gravando` quando o bot é aceito no Meet, ou para erro acionável quando é rejeitado/falha.
-- Testar também uma reunião futura para garantir que o agendamento automático normal continua usando bot agendado com antecedência.
+## Proposta em 3 fases
+
+### Fase 1 — "Sinais da reunião" (transcript + eventos, baixo custo)
+
+Sem áudio/vídeo extra, só explorar o que o Recall já manda no webhook `bot.done`:
+
+Por participante, por reunião:
+
+- **Talk-time** (segundos e %)
+- **Razão de fala líder↔liderado** (50/50? 80/20?)
+- **Silêncios longos** (gaps >3s)
+- **Interrupções** (overlap de fala)
+- **Câmera ligada** (% da reunião)
+- **Atraso** (join vs. start do calendário)
+- **Perguntas feitas** (NLP simples no transcript)
+- **Tamanho médio da resposta** (palavras/turno)
+- **Sentimento da sessão por pessoa** (LLM no transcript — Gemini 2.5 Flash, ~$0.002/reunião)
+
+Output: nova tabela `meeting_signals` com 1 linha por (reunião × participante), ~15 colunas numéricas.
+
+### Fase 2 — "Memória do dyad" (drift longitudinal — o diferencial real)
+
+- Detector de série recorrente: mesmas 2 pessoas, cadência semanal → `meeting_series_id`
+- Baseline pessoal rolante (4 semanas) por participante × série
+- Alerta de drift: ≥3 sinais divergindo do baseline na mesma direção → flag no Brief da próxima 1:1
+- Card no `/lider/[liderado]`: "Nas últimas 6 sessões com Isaac: talk-time ↓22%, perguntas ↓40%, silêncio ↑15%. Padrão consistente com início de desengajamento."
+- Alimenta o **Brief pré-1:1** e a **Matriz de Análise Integrada** (Watermelon detection ganha lastro factual, não só interpretativo)
+
+### Fase 3 — "Camada multimodal" (opcional, alto valor, custo médio)
+
+- `audio_separate_raw` → librosa/openSMILE → energia (RMS), pitch (F0), taxa de fala, pausas
+- `video_separate_png` (2fps já cortado por pessoa) → MediaPipe Face Mesh → contato visual, sorrisos, acenos
+- LGPD/GDPR: opt-in explícito, desligável no workspace, frames descartados pós-processamento
+- Trava EU: Read.ai desliga facial na Europa por GDPR — replicamos a regra
+
+---
+
+## Recomendação
+
+Começar **Fase 1 + Fase 2** juntas. Fase 1 sozinha vira "mais um Fireflies"; Fase 2 é o que ninguém faz e conecta com tudo que a Rhitmo já tem (Brief, Mentor Chat, Watermelon, Pulse). Fase 3 fica para depois — vale validar com 5–10 líderes se os sinais Tier 1 já produzem insights acionáveis antes de investir em prosódia/visão.
+
+## Próximo passo
+
+Preciso de uma decisão antes de detalhar o plano técnico:
+
+1. **Escopo**: começar Fase 1+2 juntas, ou só Fase 1 primeiro pra validar com usuários reais? Fase 1+2
+2. **Onde aparece**: novo card no `/lider/[liderado]`, dentro do Brief de 1:1, ou ambos? Acho que ninguém nem acessa o brieg, precisava ser em `/lider/[liderado de um jeito amigável.` 
+3. **Quem vê**: só o líder, ou o liderado também enxerga os próprios sinais (transparência radical estilo "Mirror")? Só o lider.
