@@ -558,6 +558,28 @@ async function handleBotDone(
   for (const { feedbackId } of createdIds) {
     triggerBackgroundAnalysis(supabaseUrl, serviceRoleKey, feedbackId);
   }
+
+  // Camada de Ambiente (Fase 1+2): computa sinais objetivos da reunião + sentimento.
+  // Fire-and-forget — não bloqueia a resposta do webhook.
+  try {
+    const computeUrl = `${supabaseUrl}/functions/v1/compute-meeting-signals`;
+    const p = fetch(computeUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-internal-key": serviceRoleKey,
+        Authorization: `Bearer ${serviceRoleKey}`,
+      },
+      body: JSON.stringify({ recall_bot_id: botRecord.id }),
+    }).catch((e) => console.warn("compute-meeting-signals trigger failed:", e));
+    // @ts-ignore EdgeRuntime is provided by Deno Deploy
+    if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
+      // @ts-ignore
+      EdgeRuntime.waitUntil(p);
+    }
+  } catch (e) {
+    console.warn("compute-meeting-signals dispatch error:", e);
+  }
 }
 
 // ── Helper: Format transcript with speaker names ───────────────────────────
