@@ -65,6 +65,7 @@ import { MemberAvatar } from '@/components/MemberAvatar';
 import { getTagColor, getTagEmoji, getTagLabel, VALID_TAGS } from '@/lib/tagConfig';
 import { supabase } from '@/integrations/supabase/client';
 import { useLeaderMembers } from '@/hooks/useLeaderMembers';
+import { TranscriptExpandedView } from './TranscriptExpandedView';
 
 export interface FeedItem {
   id: string;
