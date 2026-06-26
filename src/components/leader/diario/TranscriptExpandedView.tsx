@@ -8,13 +8,21 @@
 // If structured_summary is missing, we auto-trigger summarize-transcript on
 // first open so older meetings backfill themselves without manual reprocessing.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Sparkles, Send, FileText, MessageCircle, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Sparkles, Send, FileText, MessageCircle, Loader2, CheckCircle2, AlertTriangle, Download, Copy, FileDown, FileType2, Printer } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { parseTranscript, colorForSpeaker, speakerInitials } from '@/lib/transcriptParser';
