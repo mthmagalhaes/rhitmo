@@ -43,6 +43,9 @@ interface FeedbackRow {
   visibility: string | null;
   occurred_at: string;
   created_at: string;
+  source: string | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  structured_summary: any | null;
 }
 
 interface SlackRollupRow {
