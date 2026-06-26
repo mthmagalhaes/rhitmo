@@ -283,6 +283,20 @@ serve(async (req) => {
                   console.error('Background analysis trigger failed:', bgErr);
                 }
 
+                // Granola-style structured summary (non-blocking)
+                try {
+                  await fetch(`${supabaseUrl}/functions/v1/summarize-transcript`, {
+                    method: 'POST',
+                    headers: {
+                      'Authorization': `Bearer ${supabaseServiceKey}`,
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ feedbackId: feedbackData.id }),
+                  });
+                } catch (sumErr) {
+                  console.error('Transcript summary trigger failed:', sumErr);
+                }
+
                 // Classify note (non-blocking)
                 try {
                   const classifyResponse = await fetch(
