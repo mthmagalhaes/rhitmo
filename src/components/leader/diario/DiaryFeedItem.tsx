@@ -411,11 +411,17 @@ export function DiaryFeedItem({ item }: DiaryFeedItemProps) {
               ))}
             </div>
           </div>
-          {fullText && (
+          {isTranscript ? (
+            <TranscriptExpandedView
+              feedbackId={item.id}
+              content={item.content || ''}
+              structuredSummary={item.structured_summary ?? null}
+            />
+          ) : fullText ? (
             <p className="text-sm text-foreground/85 leading-relaxed whitespace-pre-wrap">
               {fullText}
             </p>
-          )}
+          ) : null}
         </div>
       )}
 
