@@ -369,12 +369,12 @@ Parágrafo único de 3 a 5 linhas descrevendo o arco do colaborador no período.
 ## 🏆 Principais contribuições
 
 ### Nome curto da entrega
-Descrição da entrega + impacto concreto. *(fonte: Anotação 12/mar)*
+Descrição da entrega + impacto concreto. *(fonte: Anotação 12/03/2026)*
 
 ### Outra entrega
-Descrição + impacto. *(fonte: 1:1 de 06/mar)*
+Descrição + impacto. *(fonte: 1:1 de 06/03/2026)*
 
-Repetir o padrão "### título / parágrafo" 3 a 5 vezes, sempre com fonte ao final.
+Repetir o padrão "### título / parágrafo" 3 a 5 vezes, sempre com fonte ao final no formato DD/MM/AAAA.
 
 ### Bloco 3 — Padrões observados (vindos dos trimestrais quando existirem)
 
@@ -391,7 +391,7 @@ O que se repetiu de preocupante + frequência. *(Mensal de fev/2026)*
 ## 🎯 Pontos de desenvolvimento
 
 ### Nome da área
-Descrição construtiva, factual, sem rótulos de personalidade ou comparações. *(1:1 de 15/fev)*
+Descrição construtiva, factual, sem rótulos de personalidade ou comparações. *(1:1 de 15/02/2026)*
 
 Repetir 1 a 3 áreas.
 
