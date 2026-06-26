@@ -165,16 +165,34 @@ export function DiaryFilters({
             </Button>
           ))}
           <div className="w-px h-5 bg-border mx-0.5" aria-hidden />
-          <Button
-            variant={source === 'slack' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => onSourceChange(source === 'slack' ? 'all' : 'slack')}
-            className="h-8 text-xs gap-1.5"
-            title="Mostrar apenas resumos semanais do Slack"
-          >
-            <SlackIcon className="h-3.5 w-3.5" />
-            Slack
-          </Button>
+          <Select value={source} onValueChange={(v) => onSourceChange(v as DiarySource)}>
+            <SelectTrigger className="w-[170px] h-8 shrink-0 text-xs">
+              <SelectValue placeholder="Origem" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as origens</SelectItem>
+              <SelectItem value="recall_bot">
+                <span className="inline-flex items-center gap-1.5">
+                  <Bot className="h-3.5 w-3.5" /> Bot (Recall)
+                </span>
+              </SelectItem>
+              <SelectItem value="transcription">
+                <span className="inline-flex items-center gap-1.5">
+                  <FileText className="h-3.5 w-3.5" /> Upload / Transcrição
+                </span>
+              </SelectItem>
+              <SelectItem value="slack">
+                <span className="inline-flex items-center gap-1.5">
+                  <SlackIcon className="h-3.5 w-3.5" /> Slack
+                </span>
+              </SelectItem>
+              <SelectItem value="manual">
+                <span className="inline-flex items-center gap-1.5">
+                  <PenLine className="h-3.5 w-3.5" /> Notas manuais
+                </span>
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <Popover>
