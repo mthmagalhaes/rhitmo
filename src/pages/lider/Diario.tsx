@@ -108,7 +108,7 @@ export default function LiderDiario() {
     queryFn: async () => {
       let q = supabase
         .from('feedbacks')
-        .select('id, member_id, title, content, tags, visibility, occurred_at, created_at')
+        .select('id, member_id, title, content, tags, visibility, occurred_at, created_at, source, structured_summary')
         .eq('manager_id', effectiveUserId!)
         .order('occurred_at', { ascending: false })
         .limit(200);
