@@ -115,6 +115,10 @@ project_id = "lybkgujyezzzvbzypxed"
     verify_jwt = false
   [functions.generate-quarterly-recap-cron]
     verify_jwt = false
+  [functions.summarize-transcript]
+    verify_jwt = false
+  [functions.chat-transcript]
+    verify_jwt = true
 
 
 [auth.rate_limit]
