@@ -327,6 +327,19 @@ export function DiaryFeedItem({ item }: DiaryFeedItemProps) {
               +{item.tags.length - 2}
             </span>
           )}
+          {showSourceChip && sourceMeta && (
+            <span
+              className={cn(
+                'hidden md:inline-flex items-center gap-1 text-[11px] rounded-md px-1.5 py-0.5 border shrink-0',
+                sourceMeta.badgeClass,
+              )}
+              aria-label={`Origem: ${sourceMeta.label}`}
+              title={`Origem: ${sourceMeta.label}`}
+            >
+              <sourceMeta.icon className="h-3 w-3" />
+              {sourceMeta.label}
+            </span>
+          )}
         </button>
 
         <DropdownMenu>
