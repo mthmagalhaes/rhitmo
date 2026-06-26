@@ -13,6 +13,7 @@ import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { useLeaderMembers } from '@/hooks/useLeaderMembers';
 import { supabase } from '@/integrations/supabase/client';
 import { safeQuery } from '@/lib/supabaseSafe';
+import { detectEffectiveSource } from '@/lib/diarySource';
 import { NewNoteDialog } from '@/components/NewNoteDialog';
 import { DiaryCoverageInsight } from '@/components/leader/diario/DiaryCoverageInsight';
 import { DiaryFeedItem, type FeedItem } from '@/components/leader/diario/DiaryFeedItem';
