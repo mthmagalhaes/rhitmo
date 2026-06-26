@@ -557,6 +557,7 @@ async function handleBotDone(
   // Trigger background analysis for each feedback (non-blocking)
   for (const { feedbackId } of createdIds) {
     triggerBackgroundAnalysis(supabaseUrl, serviceRoleKey, feedbackId);
+    triggerTranscriptSummary(supabaseUrl, serviceRoleKey, feedbackId);
   }
 
   // Camada de Ambiente (Fase 1+2): computa sinais objetivos da reunião + sentimento.
@@ -811,4 +812,26 @@ function triggerBackgroundAnalysis(
   })
     .then(() => console.log(`Background analysis triggered for feedback ${feedbackId}`))
     .catch((e) => console.error(`Failed to trigger analysis for ${feedbackId}:`, e));
+}
+
+// ── Helper: Trigger Granola-style structured summary of the transcript ─────
+// Fire-and-forget — the Diário will also auto-trigger on first open as a
+// fallback, but doing it here means the summary is usually ready before the
+// leader even opens the meeting.
+function triggerTranscriptSummary(
+  supabaseUrl: string,
+  serviceRoleKey: string,
+  feedbackId: string,
+) {
+  if (!feedbackId) return;
+  fetch(`${supabaseUrl}/functions/v1/summarize-transcript`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${serviceRoleKey}`,
+    },
+    body: JSON.stringify({ feedbackId }),
+  })
+    .then(() => console.log(`Transcript summary triggered for feedback ${feedbackId}`))
+    .catch((e) => console.error(`Failed to trigger summary for ${feedbackId}:`, e));
 }

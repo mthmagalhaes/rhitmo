@@ -65,6 +65,7 @@ import { MemberAvatar } from '@/components/MemberAvatar';
 import { getTagColor, getTagEmoji, getTagLabel, VALID_TAGS } from '@/lib/tagConfig';
 import { supabase } from '@/integrations/supabase/client';
 import { useLeaderMembers } from '@/hooks/useLeaderMembers';
+import { TranscriptExpandedView } from './TranscriptExpandedView';
 
 export interface FeedItem {
   id: string;
@@ -78,11 +79,18 @@ export interface FeedItem {
   visibility: string | null;
   occurred_at: string;
   created_at: string;
+  source?: string | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  structured_summary?: any | null;
 }
 
 interface DiaryFeedItemProps {
   item: FeedItem;
 }
+
+// Sources that carry a meeting transcript and should use the Granola-style
+// expanded view (TL;DR + structured topics + chat).
+const TRANSCRIPT_SOURCES = new Set(['recall_bot', 'transcription']);
 
 function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
@@ -118,6 +126,7 @@ export function DiaryFeedItem({ item }: DiaryFeedItemProps) {
   const dateIso = item.occurred_at || item.created_at;
   const dateLabel = format(new Date(dateIso), 'dd/MM/yyyy');
   const fullText = stripHtml(item.content || '');
+  const isTranscript = !!item.source && TRANSCRIPT_SOURCES.has(item.source);
 
   const openEdit = () => {
     setEditTitle(item.title || '');
@@ -404,11 +413,17 @@ export function DiaryFeedItem({ item }: DiaryFeedItemProps) {
               ))}
             </div>
           </div>
-          {fullText && (
+          {isTranscript ? (
+            <TranscriptExpandedView
+              feedbackId={item.id}
+              content={item.content || ''}
+              structuredSummary={item.structured_summary ?? null}
+            />
+          ) : fullText ? (
             <p className="text-sm text-foreground/85 leading-relaxed whitespace-pre-wrap">
               {fullText}
             </p>
-          )}
+          ) : null}
         </div>
       )}
 

@@ -828,6 +828,7 @@ export type Database = {
           occurred_at: string
           sentiment: string | null
           source: string
+          structured_summary: Json | null
           summary: string | null
           tags: string[] | null
           title: string | null
@@ -850,6 +851,7 @@ export type Database = {
           occurred_at?: string
           sentiment?: string | null
           source?: string
+          structured_summary?: Json | null
           summary?: string | null
           tags?: string[] | null
           title?: string | null
@@ -872,6 +874,7 @@ export type Database = {
           occurred_at?: string
           sentiment?: string | null
           source?: string
+          structured_summary?: Json | null
           summary?: string | null
           tags?: string[] | null
           title?: string | null
