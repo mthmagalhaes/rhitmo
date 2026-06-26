@@ -353,8 +353,8 @@ Período: ${periodLabel}.
 - NÃO use code fences (\`\`\`md, \`\`\`markdown ou \`\`\`).
 - NÃO use HTML (sem <div>, <span>, <table>, etc.).
 - Comece DIRETAMENTE com "## 📋 Visão geral do período".
-- Cite SEMPRE a fonte de cada afirmação entre parênteses em itálico, ex: *(fonte: Anotação 12/mar)* ou *(Trimestral Q1 2026)* ou *(Mensal de fev/2026)* ou *(1:1 de 15/fev)*. O frontend transforma isso em pílula visual automaticamente.
-- ADICIONALMENTE, para cada anotação ou 1:1 citado que tenha um \`[doc_id: <UUID>]\` no contexto de evidências abaixo, anexe ao final da frase a referência estruturada no formato \`[doc:<UUID>]\` (sem parênteses, sem itálico). Exemplo: "Entregou o redesign do checkout. *(fonte: Anotação 12/mar)* [doc:8af1b2c3-...]". Use APENAS UUIDs que apareceram em \`doc_id\` — nunca invente.
+- Cite SEMPRE a fonte de cada afirmação entre parênteses em itálico **com a data completa no formato DD/MM/AAAA**, ex: *(fonte: Anotação 12/03/2026)* ou *(1:1 de 15/02/2026)* ou *(Trimestral Q1 2026)* ou *(Mensal de fev/2026)*. NUNCA abrevie data como "12/mar" — sempre DD/MM/AAAA. O frontend transforma isso em pílula visual automaticamente.
+- ADICIONALMENTE, para cada anotação ou 1:1 citado que tenha um \`[doc_id: <UUID>]\` no contexto de evidências abaixo, anexe ao final da frase a referência estruturada no formato \`[doc:<UUID>]\` (sem parênteses, sem itálico). Exemplo: "Entregou o redesign do checkout. *(fonte: Anotação 12/03/2026)* [doc:8af1b2c3-...]". Use APENAS UUIDs que apareceram em \`doc_id\` — nunca invente.
 
 ## ESTRUTURA OBRIGATÓRIA — 7 BLOCOS NA ORDEM EXATA
 
@@ -369,12 +369,12 @@ Parágrafo único de 3 a 5 linhas descrevendo o arco do colaborador no período.
 ## 🏆 Principais contribuições
 
 ### Nome curto da entrega
-Descrição da entrega + impacto concreto. *(fonte: Anotação 12/mar)*
+Descrição da entrega + impacto concreto. *(fonte: Anotação 12/03/2026)*
 
 ### Outra entrega
-Descrição + impacto. *(fonte: 1:1 de 06/mar)*
+Descrição + impacto. *(fonte: 1:1 de 06/03/2026)*
 
-Repetir o padrão "### título / parágrafo" 3 a 5 vezes, sempre com fonte ao final.
+Repetir o padrão "### título / parágrafo" 3 a 5 vezes, sempre com fonte ao final no formato DD/MM/AAAA.
 
 ### Bloco 3 — Padrões observados (vindos dos trimestrais quando existirem)
 
@@ -391,7 +391,7 @@ O que se repetiu de preocupante + frequência. *(Mensal de fev/2026)*
 ## 🎯 Pontos de desenvolvimento
 
 ### Nome da área
-Descrição construtiva, factual, sem rótulos de personalidade ou comparações. *(1:1 de 15/fev)*
+Descrição construtiva, factual, sem rótulos de personalidade ou comparações. *(1:1 de 15/02/2026)*
 
 Repetir 1 a 3 áreas.
 
@@ -441,7 +441,7 @@ _O gestor confirma estas escolhas na aba Calibração antes de compartilhar com 
 6. **Foco em ${memberName}**: Analise APENAS ações de ${firstName}. Ignore ações de outras pessoas mencionadas.
 7. **APENAS Markdown**. Sem HTML. Sem tabelas em pipe. Sem code fences no output.
 8. **HIERARQUIA DE EVIDÊNCIAS (RAG completo)**: A **base** da review são as evidências cruas (anotações, 1:1s, sinais de contexto, pulses, peer feedback e 360°). Os recaps confirmados pelo líder ("CALIBRAÇÕES JÁ CONFIRMADAS PELO LÍDER") são uma **camada de ancoragem/triangulação** — use-os para validar padrões dos blocos 3, 5 e 6, mas NUNCA como única fonte. Sempre que possível, ancore a afirmação em uma evidência crua específica via \`[doc:UUID]\`. Se o recap diz uma coisa e a evidência crua mostra outra, prevalece a evidência crua e mencione a divergência no Bloco 4.
-9. **Citação de 360°**: Quando uma afirmação se apoiar em autoavaliação, par ou upwards, identifique a fonte no parêntese: *(autoavaliação de DD/MM)*, *(par anônimo, DD/MM)* ou *(upwards de DD/MM)* — além do \`[doc:UUID]\`.
+9. **Citação de 360°**: Quando uma afirmação se apoiar em autoavaliação, par ou upwards, identifique a fonte no parêntese com data completa: *(autoavaliação de DD/MM/AAAA)*, *(par anônimo, DD/MM/AAAA)* ou *(upwards de DD/MM/AAAA)* — além do \`[doc:UUID]\`. NUNCA omita o ano.
 10. **Bloco 6 — sugestões da IA**: Sempre proponha um valor concreto para Desempenho, Promoção e Mérito. Se não houver evidência suficiente, sugira o conservador ("Dentro do esperado", "Não neste ciclo", "Somente inflação") e justifique.
 11. **Emojis nos títulos**: Mantenha EXATAMENTE os emojis indicados em cada bloco (📋 🏆 📈 🎯 📊 ⚖️ ➡️). Não substitua nem omita.
 12. **Alerta de evidência baixa**: Se o contexto trouxer "⚠️ ALERTA DE EVIDÊNCIA BAIXA", adicione UM parágrafo final em itálico recomendando que o líder confirme cuidadosamente antes de compartilhar.`;
