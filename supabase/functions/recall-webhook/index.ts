@@ -557,6 +557,7 @@ async function handleBotDone(
   // Trigger background analysis for each feedback (non-blocking)
   for (const { feedbackId } of createdIds) {
     triggerBackgroundAnalysis(supabaseUrl, serviceRoleKey, feedbackId);
+    triggerTranscriptSummary(supabaseUrl, serviceRoleKey, feedbackId);
   }
 
   // Camada de Ambiente (Fase 1+2): computa sinais objetivos da reunião + sentimento.
