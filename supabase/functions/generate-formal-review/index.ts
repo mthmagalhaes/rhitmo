@@ -353,8 +353,8 @@ Período: ${periodLabel}.
 - NÃO use code fences (\`\`\`md, \`\`\`markdown ou \`\`\`).
 - NÃO use HTML (sem <div>, <span>, <table>, etc.).
 - Comece DIRETAMENTE com "## 📋 Visão geral do período".
-- Cite SEMPRE a fonte de cada afirmação entre parênteses em itálico, ex: *(fonte: Anotação 12/mar)* ou *(Trimestral Q1 2026)* ou *(Mensal de fev/2026)* ou *(1:1 de 15/fev)*. O frontend transforma isso em pílula visual automaticamente.
-- ADICIONALMENTE, para cada anotação ou 1:1 citado que tenha um \`[doc_id: <UUID>]\` no contexto de evidências abaixo, anexe ao final da frase a referência estruturada no formato \`[doc:<UUID>]\` (sem parênteses, sem itálico). Exemplo: "Entregou o redesign do checkout. *(fonte: Anotação 12/mar)* [doc:8af1b2c3-...]". Use APENAS UUIDs que apareceram em \`doc_id\` — nunca invente.
+- Cite SEMPRE a fonte de cada afirmação entre parênteses em itálico **com a data completa no formato DD/MM/AAAA**, ex: *(fonte: Anotação 12/03/2026)* ou *(1:1 de 15/02/2026)* ou *(Trimestral Q1 2026)* ou *(Mensal de fev/2026)*. NUNCA abrevie data como "12/mar" — sempre DD/MM/AAAA. O frontend transforma isso em pílula visual automaticamente.
+- ADICIONALMENTE, para cada anotação ou 1:1 citado que tenha um \`[doc_id: <UUID>]\` no contexto de evidências abaixo, anexe ao final da frase a referência estruturada no formato \`[doc:<UUID>]\` (sem parênteses, sem itálico). Exemplo: "Entregou o redesign do checkout. *(fonte: Anotação 12/03/2026)* [doc:8af1b2c3-...]". Use APENAS UUIDs que apareceram em \`doc_id\` — nunca invente.
 
 ## ESTRUTURA OBRIGATÓRIA — 7 BLOCOS NA ORDEM EXATA
 
