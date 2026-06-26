@@ -242,6 +242,194 @@ export function TranscriptExpandedView({ feedbackId, content, structuredSummary 
   );
 }
 
+// ----- Export menu ----------------------------------------------------------
+
+interface ExportMenuProps {
+  content: string;
+  summary: StructuredSummary | null;
+  turns: ReturnType<typeof parseTranscript>;
+}
+
+function buildMarkdown(summary: StructuredSummary | null, turns: ExportMenuProps['turns'], rawContent: string): string {
+  const lines: string[] = [];
+  lines.push('# Resumo da reunião');
+  lines.push('');
+  if (summary) {
+    if (summary.tldr) {
+      lines.push('## TL;DR');
+      lines.push(summary.tldr);
+      lines.push('');
+    }
+    if (summary.topics?.length) {
+      lines.push('## Tópicos discutidos');
+      summary.topics.forEach((t) => {
+        lines.push(`### ${t.title}`);
+        lines.push(t.summary);
+        lines.push('');
+      });
+    }
+    if (summary.decisions?.length) {
+      lines.push('## Decisões');
+      summary.decisions.forEach((d) => lines.push(`- ${d}`));
+      lines.push('');
+    }
+    if (summary.action_items?.length) {
+      lines.push('## Próximos passos');
+      summary.action_items.forEach((a) => {
+        const meta = [a.owner && `👤 ${a.owner}`, a.due && `📅 ${a.due}`].filter(Boolean).join(' · ');
+        lines.push(`- ${a.task}${meta ? ` _(${meta})_` : ''}`);
+      });
+      lines.push('');
+    }
+    if (summary.highlights?.length) {
+      lines.push('## Trechos relevantes');
+      summary.highlights.forEach((h) => lines.push(`> ${h}`));
+      lines.push('');
+    }
+  } else {
+    lines.push('_Resumo estruturado não disponível._');
+    lines.push('');
+  }
+  lines.push('---');
+  lines.push('## Transcrição');
+  lines.push('');
+  if (turns.length) {
+    turns.forEach((t) => {
+      lines.push(`**${t.speaker}:** ${t.text}`);
+      lines.push('');
+    });
+  } else {
+    lines.push(rawContent);
+  }
+  return lines.join('\n');
+}
+
+function buildPlainText(turns: ExportMenuProps['turns'], rawContent: string): string {
+  if (!turns.length) return rawContent;
+  return turns.map((t) => `${t.speaker}: ${t.text}`).join('\n\n');
+}
+
+function download(filename: string, mime: string, body: string) {
+  const blob = new Blob([body], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+function openPrintWindow(htmlBody: string) {
+  const w = window.open('', '_blank', 'width=860,height=900');
+  if (!w) {
+    toast.error('Habilite pop-ups para exportar em PDF.');
+    return;
+  }
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Resumo da reunião</title>
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #111; max-width: 720px; margin: 40px auto; padding: 0 24px; line-height: 1.55; }
+      h1 { font-size: 22px; margin: 0 0 6px; }
+      h2 { font-size: 15px; margin: 22px 0 6px; text-transform: uppercase; letter-spacing: .08em; color: #666; }
+      h3 { font-size: 14px; margin: 12px 0 4px; }
+      p, li { font-size: 13px; }
+      blockquote { border-left: 3px solid #ccc; margin: 6px 0; padding: 2px 10px; color: #555; font-style: italic; }
+      .turn { margin: 8px 0; }
+      .turn .who { font-size: 11px; color: #555; font-weight: 600; }
+      .turn .what { font-size: 13px; white-space: pre-wrap; }
+      hr { border: 0; border-top: 1px solid #eee; margin: 24px 0; }
+      @media print { body { margin: 0; } }
+    </style></head><body>${htmlBody}
+    <script>window.onload = () => { setTimeout(() => window.print(), 250); };</script>
+    </body></html>`);
+  w.document.close();
+}
+
+function buildPrintHtml(summary: StructuredSummary | null, turns: ExportMenuProps['turns'], rawContent: string): string {
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const parts: string[] = ['<h1>Resumo da reunião</h1>'];
+  if (summary?.tldr) parts.push(`<h2>TL;DR</h2><p>${esc(summary.tldr)}</p>`);
+  if (summary?.topics?.length) {
+    parts.push('<h2>Tópicos discutidos</h2>');
+    summary.topics.forEach((t) => parts.push(`<h3>${esc(t.title)}</h3><p>${esc(t.summary)}</p>`));
+  }
+  if (summary?.decisions?.length) {
+    parts.push('<h2>Decisões</h2><ul>' + summary.decisions.map((d) => `<li>${esc(d)}</li>`).join('') + '</ul>');
+  }
+  if (summary?.action_items?.length) {
+    parts.push('<h2>Próximos passos</h2><ul>' + summary.action_items.map((a) => {
+      const meta = [a.owner && `👤 ${esc(a.owner)}`, a.due && `📅 ${esc(a.due)}`].filter(Boolean).join(' · ');
+      return `<li>${esc(a.task)}${meta ? ` <em>(${meta})</em>` : ''}</li>`;
+    }).join('') + '</ul>');
+  }
+  if (summary?.highlights?.length) {
+    parts.push('<h2>Trechos relevantes</h2>' + summary.highlights.map((h) => `<blockquote>${esc(h)}</blockquote>`).join(''));
+  }
+  parts.push('<hr><h2>Transcrição</h2>');
+  if (turns.length) {
+    turns.forEach((t) => parts.push(`<div class="turn"><div class="who">${esc(t.speaker)}</div><div class="what">${esc(t.text)}</div></div>`));
+  } else {
+    parts.push(`<pre style="white-space:pre-wrap;font-family:inherit;font-size:13px;">${esc(rawContent)}</pre>`);
+  }
+  return parts.join('\n');
+}
+
+function ExportMenu({ content, summary, turns }: ExportMenuProps) {
+  const md = useMemo(() => buildMarkdown(summary, turns, content), [summary, turns, content]);
+  const txt = useMemo(() => buildPlainText(turns, content), [turns, content]);
+  const stamp = new Date().toISOString().slice(0, 10);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(md);
+      toast.success('Resumo copiado em Markdown.');
+    } catch {
+      toast.error('Não foi possível copiar.');
+    }
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" className="h-9 gap-1.5">
+          <Download className="h-3.5 w-3.5" /> Exportar
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          Compartilhar
+        </DropdownMenuLabel>
+        <DropdownMenuItem onClick={copy} className="gap-2">
+          <Copy className="h-3.5 w-3.5" /> Copiar resumo (Markdown)
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          Baixar
+        </DropdownMenuLabel>
+        <DropdownMenuItem
+          onClick={() => download(`reuniao-${stamp}.md`, 'text/markdown;charset=utf-8', md)}
+          className="gap-2"
+        >
+          <FileDown className="h-3.5 w-3.5" /> Resumo completo (.md)
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => download(`transcricao-${stamp}.txt`, 'text/plain;charset=utf-8', txt)}
+          className="gap-2"
+        >
+          <FileType2 className="h-3.5 w-3.5" /> Transcrição crua (.txt)
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => openPrintWindow(buildPrintHtml(summary, turns, content))}
+          className="gap-2"
+        >
+          <Printer className="h-3.5 w-3.5" /> Exportar em PDF
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 // ----- Chat panel ------------------------------------------------------------
 
 interface ChatMsg { role: 'user' | 'assistant'; content: string }
