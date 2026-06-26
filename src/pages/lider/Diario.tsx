@@ -71,7 +71,10 @@ export default function LiderDiario() {
   const query = searchParams.get('q') ?? '';
   const tagsParam = searchParams.get('tags') ?? '';
   const selectedTags = tagsParam ? tagsParam.split(',').filter(Boolean) : [];
-  const source = (searchParams.get('source') === 'slack' ? 'slack' : 'all') as DiarySource;
+  const sourceParam = searchParams.get('source');
+  const source = ((['recall_bot', 'transcription', 'slack', 'manual'].includes(sourceParam ?? '')
+    ? sourceParam
+    : 'all') as DiarySource);
   const sort = (searchParams.get('sort') as SortOrder) || 'newest';
   const fromParam = searchParams.get('from');
   const toParam = searchParams.get('to');
