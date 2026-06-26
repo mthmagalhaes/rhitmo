@@ -162,6 +162,11 @@ export default function LiderDiario() {
     const filtered = feedbacks.filter((fb) => {
       if (memberId !== 'all' && fb.member_id !== memberId) return false;
       if (teamMemberIds && !teamMemberIds.has(fb.member_id)) return false;
+      // Filtro por origem (aplica apenas a feedbacks; rollups Slack são tratados abaixo).
+      if (source === 'recall_bot' && fb.source !== 'recall_bot') return false;
+      if (source === 'transcription' && fb.source !== 'transcription') return false;
+      if (source === 'manual' && fb.source) return false;
+      if (source === 'slack') return false; // Slack só tem rollups, nunca aparece em feedbacks aqui.
       if (selectedTags.length > 0) {
         const tags = fb.tags ?? [];
         if (!selectedTags.some((t) => tags.includes(t))) return false;
