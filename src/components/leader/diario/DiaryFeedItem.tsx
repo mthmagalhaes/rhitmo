@@ -78,11 +78,18 @@ export interface FeedItem {
   visibility: string | null;
   occurred_at: string;
   created_at: string;
+  source?: string | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  structured_summary?: any | null;
 }
 
 interface DiaryFeedItemProps {
   item: FeedItem;
 }
+
+// Sources that carry a meeting transcript and should use the Granola-style
+// expanded view (TL;DR + structured topics + chat).
+const TRANSCRIPT_SOURCES = new Set(['recall_bot', 'transcription']);
 
 function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
