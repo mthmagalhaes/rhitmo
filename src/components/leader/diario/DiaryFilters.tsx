@@ -21,7 +21,12 @@ import type { LeaderMemberRow } from '@/hooks/useLeaderMembers';
 import type { Team } from '@/types/team';
 import type { DateRange } from 'react-day-picker';
 
-export type DiarySource = 'all' | 'slack';
+export type DiarySource =
+  | 'all'
+  | 'recall_bot'
+  | 'transcription'
+  | 'slack'
+  | 'manual';
 
 export type Period = '7d' | '30d' | '90d' | 'all';
 export type SortOrder = 'newest' | 'oldest';
