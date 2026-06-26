@@ -246,7 +246,13 @@ export default function LiderDiario() {
       };
     });
 
-    const all = source === 'slack' ? slackItems : [...fbItems, ...slackItems];
+    // Slack rollups só aparecem em 'all' ou 'slack'. Demais origens escondem rollups.
+    const includeSlack = source === 'all' || source === 'slack';
+    const includeFeedbacks = source !== 'slack';
+    const all: DiaryItem[] = [
+      ...(includeFeedbacks ? fbItems : []),
+      ...(includeSlack ? slackItems : []),
+    ];
     all.sort((a, b) => {
       const ta = new Date(
         isSlackRollup(a) ? a.occurred_at : a.occurred_at || a.created_at,
