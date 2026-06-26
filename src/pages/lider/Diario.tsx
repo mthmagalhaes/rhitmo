@@ -71,7 +71,10 @@ export default function LiderDiario() {
   const query = searchParams.get('q') ?? '';
   const tagsParam = searchParams.get('tags') ?? '';
   const selectedTags = tagsParam ? tagsParam.split(',').filter(Boolean) : [];
-  const source = (searchParams.get('source') === 'slack' ? 'slack' : 'all') as DiarySource;
+  const sourceParam = searchParams.get('source');
+  const source = ((['recall_bot', 'transcription', 'slack', 'manual'].includes(sourceParam ?? '')
+    ? sourceParam
+    : 'all') as DiarySource);
   const sort = (searchParams.get('sort') as SortOrder) || 'newest';
   const fromParam = searchParams.get('from');
   const toParam = searchParams.get('to');
@@ -159,6 +162,11 @@ export default function LiderDiario() {
     const filtered = feedbacks.filter((fb) => {
       if (memberId !== 'all' && fb.member_id !== memberId) return false;
       if (teamMemberIds && !teamMemberIds.has(fb.member_id)) return false;
+      // Filtro por origem (aplica apenas a feedbacks; rollups Slack são tratados abaixo).
+      if (source === 'recall_bot' && fb.source !== 'recall_bot') return false;
+      if (source === 'transcription' && fb.source !== 'transcription') return false;
+      if (source === 'manual' && fb.source) return false;
+      if (source === 'slack') return false; // Slack só tem rollups, nunca aparece em feedbacks aqui.
       if (selectedTags.length > 0) {
         const tags = fb.tags ?? [];
         if (!selectedTags.some((t) => tags.includes(t))) return false;
@@ -238,7 +246,13 @@ export default function LiderDiario() {
       };
     });
 
-    const all = source === 'slack' ? slackItems : [...fbItems, ...slackItems];
+    // Slack rollups só aparecem em 'all' ou 'slack'. Demais origens escondem rollups.
+    const includeSlack = source === 'all' || source === 'slack';
+    const includeFeedbacks = source !== 'slack';
+    const all: DiaryItem[] = [
+      ...(includeFeedbacks ? fbItems : []),
+      ...(includeSlack ? slackItems : []),
+    ];
     all.sort((a, b) => {
       const ta = new Date(
         isSlackRollup(a) ? a.occurred_at : a.occurred_at || a.created_at,
@@ -361,7 +375,7 @@ export default function LiderDiario() {
         onPeriodChange={(v) => updateParam('period', v)}
         onQueryChange={(v) => updateParam('q', v)}
         onTagsChange={(tags) => updateParam('tags', tags.join(','))}
-        onSourceChange={(v) => updateParam('source', v === 'slack' ? 'slack' : '')}
+        onSourceChange={(v) => updateParam('source', v === 'all' ? '' : v)}
         onDateRangeChange={updateDateRange}
         onSortChange={(v) => updateParam('sort', v === 'newest' ? '' : v)}
       />

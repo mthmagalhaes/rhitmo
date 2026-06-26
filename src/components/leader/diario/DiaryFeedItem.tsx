@@ -66,6 +66,7 @@ import { getTagColor, getTagEmoji, getTagLabel, VALID_TAGS } from '@/lib/tagConf
 import { supabase } from '@/integrations/supabase/client';
 import { useLeaderMembers } from '@/hooks/useLeaderMembers';
 import { TranscriptExpandedView } from './TranscriptExpandedView';
+import { getDiarySourceMeta, isTranscriptLike } from '@/lib/diarySource';
 
 export interface FeedItem {
   id: string;
@@ -87,10 +88,6 @@ export interface FeedItem {
 interface DiaryFeedItemProps {
   item: FeedItem;
 }
-
-// Sources that carry a meeting transcript and should use the Granola-style
-// expanded view (TL;DR + structured topics + chat).
-const TRANSCRIPT_SOURCES = new Set(['recall_bot', 'transcription']);
 
 function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
@@ -126,7 +123,10 @@ export function DiaryFeedItem({ item }: DiaryFeedItemProps) {
   const dateIso = item.occurred_at || item.created_at;
   const dateLabel = format(new Date(dateIso), 'dd/MM/yyyy');
   const fullText = stripHtml(item.content || '');
-  const isTranscript = !!item.source && TRANSCRIPT_SOURCES.has(item.source);
+  const isTranscript = isTranscriptLike(item.source, item.content);
+  const sourceMeta = getDiarySourceMeta(item.source, item.content);
+  // Omitimos o chip "Nota" (caso dominante) para evitar ruído visual.
+  const showSourceChip = sourceMeta && sourceMeta.kind !== 'manual';
 
   const openEdit = () => {
     setEditTitle(item.title || '');
@@ -325,6 +325,19 @@ export function DiaryFeedItem({ item }: DiaryFeedItemProps) {
           {item.tags && item.tags.length > 2 && (
             <span className="hidden md:inline text-[11px] text-muted-foreground shrink-0">
               +{item.tags.length - 2}
+            </span>
+          )}
+          {showSourceChip && sourceMeta && (
+            <span
+              className={cn(
+                'hidden md:inline-flex items-center gap-1 text-[11px] rounded-md px-1.5 py-0.5 border shrink-0',
+                sourceMeta.badgeClass,
+              )}
+              aria-label={`Origem: ${sourceMeta.label}`}
+              title={`Origem: ${sourceMeta.label}`}
+            >
+              <sourceMeta.icon className="h-3 w-3" />
+              {sourceMeta.label}
             </span>
           )}
         </button>

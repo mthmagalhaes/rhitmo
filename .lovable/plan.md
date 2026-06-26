@@ -1,88 +1,76 @@
+# Chips de origem + filtro + Resumo/Chat para uploads
 
-# Transcrições mais legíveis no Diário (estilo Granola)
+## 1. Helper de origem — `src/lib/diarySource.ts` (novo)
 
-Hoje o item expandido em `/lider/diario` renderiza o `content` cru da transcrição como um único parágrafo `whitespace-pre-wrap` (`DiaryFeedItem.tsx:407-411`). Para reuniões longas vira parede de texto. Vamos atacar em três camadas, todas no mesmo card expandido.
+Função `getSourceMeta(source, content)` retorna:
 
-## 1. Resumo estruturado no topo (default)
+| `feedbacks.source`    | Label              | Ícone     | Cor (badgeClass)                                 |
+| --------------------- | ------------------ | --------- | ------------------------------------------------ |
+| `recall_bot`          | Bot                | `Bot`     | indigo soft (`bg-indigo-50 text-indigo-800 …`)   |
+| `magic_paste`         | Magic Paste        | `Wand2`   | violet soft                                      |
+| `upload` (curto)      | Upload             | `Upload`  | sky soft                                         |
+| `upload` (longo)      | Transcrição        | `FileText`| amber soft                                       |
+| `slack` / ambient     | Slack              | `SlackIcon`| emerald soft                                    |
+| `manual` / null       | Nota               | `PenLine` | neutral (`bg-muted text-foreground/70`)          |
 
-Hoje já temos `feedbacks.summary` (1-2 frases) gerado por `analyze-feedback-background`. Vamos enriquecer **apenas para itens de transcrição** (source = `recall_bot` ou `magic_paste`/`upload`) com um objeto novo:
+Heurística "longo": `content.length > 1500` **ou** regex `/\*\*[^*]+:\*\*/` (formato speaker) presente → conta como transcrição mesmo via upload.
 
+Também expõe `isTranscriptLike(source, content)` para o switch do TranscriptExpandedView.
+
+## 2. Chip no feed — `DiaryFeedItem.tsx`
+
+Renderizar o chip ao lado dos chips de tag existentes (mesma altura/tipografia: `h-5 text-[10px] px-2 rounded-full` com ícone `h-3 w-3`). Posiciona depois das tags de categoria, antes do timestamp, com `aria-label` descritivo. Aparece tanto no estado colapsado quanto expandido.
+
+## 3. Filtro no header — `DiaryFilters.tsx` + `Diario.tsx`
+
+Hoje já existe um botão isolado "Slack". Substituir por um `Select` único **"Origem"** ao lado do filtro de período:
+
+- Todas as origens (default)
+- 🤖 Bot (Recall)
+- ✨ Magic Paste
+- 📄 Upload / Transcrição
+- 💬 Slack
+- ✍️ Notas manuais
+
+Estado: trocar `source: 'all' | 'slack'` por `source: 'all' | 'recall_bot' | 'magic_paste' | 'upload' | 'slack' | 'manual'`, persistido na URL (`?source=`). `Diario.tsx` aplica o filtro no `useMemo` que já existe — para `'upload'` inclui ambos `upload` e `magic_paste` se quisermos, mas mantenho separados para alinhar com os chips.
+
+Mantém o atalho visual: o chip "Slack" continua aparecendo, mas como uma opção dentro do select (sem botão duplicado).
+
+## 4. Resumo + Pergunte à Rhitmo para uploads
+
+Hoje `DiaryFeedItem` já chama `TranscriptExpandedView` quando `source === 'recall_bot'`. Vou estender:
+
+```ts
+const showRichView = isTranscriptLike(item.source, item.content);
 ```
-feedbacks.structured_summary jsonb
-  - tldr: string                 // 2-3 frases
-  - topics: [{ title, bullets[] }]
-  - decisions: string[]
-  - action_items: [{ owner, text, due? }]
-  - open_questions: string[]
-  - sentiment: 'positive'|'neutral'|'tense'
-```
 
-Migration adiciona a coluna (nullable, sem GRANT novo — herda do feedbacks). Nova edge function `summarize-transcript`:
+- `recall_bot` → sempre rico (como hoje).
+- `magic_paste` → sempre rico (já é colado de outra ferramenta).
+- `upload` → rico **somente se** for "longo" (heurística acima); upload curto vira nota simples.
+- `manual` / null → nota simples (sem abas).
 
-- Recebe `feedback_id`, valida ownership (`auth.uid()` == `manager_id`), carrega `content`.
-- Chama Lovable AI Gateway (`google/gemini-2.5-flash`) com `Output.object` (Zod) usando o schema acima — sem prompt inline da Rhitmo: usa `composeSystemPrompt({ mode: 'transcript-digest', channel: 'web' })` (novo `.md` em `_shared/soul/modes/transcript-digest.md` com guardrails: PT-BR, sem inventar dados, citar trechos curtos).
-- Persiste em `structured_summary`. Idempotente (skip se já existir, força via `?force=true`).
-- Disparado automaticamente no fim de `analyze-feedback-background` quando o feedback vem de transcrição, e via botão "Reprocessar resumo" no card.
+### Geração automática de resumo para uploads
 
-UI no card expandido — header com 3 abas (`Tabs` shadcn):
+`upload-meeting/index.ts` já invoca `summarize-transcript` (Sprint anterior). Verificar e garantir:
+- Magic Paste passa pelo mesmo trigger (chamar `summarize-transcript` após o insert em `feedbacks`, com `EdgeRuntime.waitUntil`).
+- Fallback on-the-fly que `TranscriptExpandedView` já tem (gera ao abrir se `structured_summary IS NULL`) cobre uploads antigos.
 
-- **Resumo** (default): bloco TL;DR + chips de sentimento, accordion de Tópicos, lista de Decisões, checklist de Action items (com owner), Open questions. Visual Bento `rounded-2xl`, sombra suave.
-- **Transcrição**: ver passo 2.
-- **Conversar**: ver passo 3.
+Nenhuma mudança de banco — `structured_summary` já existe em `feedbacks`. Exports (.md/.txt/PDF) e chat "Pergunte à Rhitmo" funcionam por tabela, sem distinção de origem.
 
-Loading state shimmer enquanto `structured_summary IS NULL` e job em andamento. Botão "Gerar resumo" para transcrições antigas sem `structured_summary`.
+## 5. Validação
 
-## 2. Transcrição formatada por speaker
+- `tsgo` limpo.
+- Playwright em `/lider/diario`: filtrar por cada origem, expandir um upload longo (vê as 3 abas), expandir uma nota manual curta (vê texto simples sem abas), conferir chips de origem nos cards.
 
-O `content` vem como `**Speaker:** turno **Speaker:** turno...` (visível no print). Novo util `parseTranscript(content)` em `src/lib/transcriptParser.ts`:
+## Arquivos afetados
 
-- Regex `/\*\*([^*]+):\*\*/g` divide em turnos `{ speaker, text }`.
-- Mescla turnos consecutivos do mesmo speaker (concat de frases curtas separadas por gaguejos típicos do Recall).
-- Fallback: se não houver marcador, retorna 1 bloco "Transcrição".
+- novo `src/lib/diarySource.ts`
+- editado `src/components/leader/diario/DiaryFeedItem.tsx` (chip + heurística + condição rica)
+- editado `src/components/leader/diario/DiaryFilters.tsx` (substituir botão Slack por Select Origem)
+- editado `src/pages/lider/Diario.tsx` (tipo + filtro estendido + querystring)
+- editado `supabase/functions/upload-meeting/index.ts` se necessário (garantir trigger do summarize para magic paste)
 
-Render estilo chat (não bolha — estilo Granola/Linear): coluna única, nome do speaker em `text-xs font-semibold tracking-tight` + cor estável derivada do hash do nome, parágrafo em `text-sm leading-relaxed`. Avatar circular pequeno com inicial. Espaçamento generoso entre speakers.
+## Fora de escopo
 
-Topo da aba: pílulas com **participantes** (extraídos dos turnos) + **duração estimada** (palavras/150). Campo de busca local que destaca matches inline (`<mark>`), sem refetch.
-
-Botão "Copiar transcrição" e "Baixar .txt" no canto.
-
-## 3. Chat contextual estilo Granola
-
-Aba **Conversar** abre um chat escopado àquela transcrição:
-
-- Componente novo `TranscriptChat.tsx` usando `useChat` (`@ai-sdk/react`) + `DefaultChatTransport` apontando para edge function existente `chat-mentor` com novo modo `scope: 'transcript'` e `feedback_id` no body.
-- `chat-mentor` passa a aceitar esse scope: quando presente, ignora RAG global e injeta **só** o `content` + `structured_summary` daquela transcrição como contexto, usando `composeSystemPrompt({ mode: 'transcript-chat', channel: 'web', vars: { transcriptText, structuredSummary, memberName } })`. Novo `.md` em `_shared/soul/modes/transcript-chat.md`: tom Rhitmo, sem inventar fora da transcrição, sempre citar trecho ("ela disse: '…'").
-- **Sem persistência de threads** (escopo do usuário pediu chat para tirar insights da reunião, não histórico permanente). Mensagens vivem em memória do componente, key=`feedback_id`. Botão "Limpar conversa".
-- Sugestões iniciais (chips clicáveis): "Quais decisões foram tomadas?", "O que ficou pendente?", "Como foi o tom da conversa?", "Gerar follow-up para enviar à Gabriela".
-- AI Elements: `Conversation`/`Message`/`MessageResponse`/`PromptInput` instalados via `bun x ai-elements@latest add conversation message prompt-input shimmer`. Assistant sem fundo, user em `bg-primary/10 text-foreground`. Logo do agente = mini RhythmWave SVG (já existe), nunca `Sparkles`.
-
-## 4. Espelhar para uploads (Magic Paste / upload-meeting)
-
-`upload-meeting/index.ts` e o fluxo do Magic Paste já criam `feedbacks` com `content`. Após o insert eles vão chamar `summarize-transcript` no mesmo padrão — sem mudança de UI extra, o card no Diário ganha o resumo automaticamente.
-
-## Detalhes técnicos
-
-- **Frontend**:
-  - `src/components/leader/diario/DiaryFeedItem.tsx`: substituir `<p whitespace-pre-wrap>` por `<TranscriptExpandedView feedbackId content structuredSummary />` quando `source ∈ {recall_bot, magic_paste, upload}`; manter render simples para notas curtas.
-  - Novos: `src/components/leader/diario/TranscriptExpandedView.tsx` (tabs), `TranscriptSummaryPanel.tsx`, `TranscriptBodyPanel.tsx`, `TranscriptChat.tsx`.
-  - Novo util `src/lib/transcriptParser.ts` + teste leve.
-- **Backend**:
-  - Migration: `ALTER TABLE feedbacks ADD COLUMN structured_summary jsonb;` (sem novo GRANT — tabela já tem RLS por `manager_id`).
-  - Nova edge function `summarize-transcript` seguindo skill `rhitmo-edge-function` (CORS, JWT, ownership, Zod, `safeQuery`, `aiGateway`, `composeSystemPrompt`, sem `.catch` em builder, logger estruturado).
-  - Trigger automático: ao fim de `analyze-feedback-background`, se `source` for transcrição, `EdgeRuntime.waitUntil(invoke('summarize-transcript', { feedback_id }))`.
-  - `chat-mentor/index.ts`: aceitar `scope: 'transcript'` + `feedback_id`; bypass de RAG; ownership check; usar mode `transcript-chat`.
-  - Novos arquivos soul: `_shared/soul/modes/transcript-digest.md`, `_shared/soul/modes/transcript-chat.md` + registro no `loader.ts`.
-- **Tipos**: regenerar `src/integrations/supabase/types.ts` (auto).
-
-## Fora de escopo (sprints futuras)
-
-- Persistência das conversas de transcrição como threads no Mentor.
-- Áudio/timestamps clicáveis (Recall não está retornando timeline rica hoje — só `speaker_timeline` agregado).
-- Compartilhar o resumo com o liderado (envolve novo fluxo de visibilidade — abrir como feature à parte).
-
-## Como vou validar
-
-1. `tsgo` limpo.
-2. Em /lider/diario, expandir uma transcrição recente: ver as 3 abas, resumo populado em <8s, transcrição agrupada por speaker, chat respondendo com citação.
-3. Browser via Playwright contra `localhost:8080` com sessão Supabase injetada para screenshot das 3 abas.
-4. `curl_edge_functions` em `summarize-transcript` e `chat-mentor` (scope=transcript) para confirmar 200 + payload.
+- Renomear chips ("Upload" → "Transcrição enviada" etc.) — mantenho rótulos curtos para caber.
+- Filtros combinados (origem + tag em AND complexo) — já funciona porque cada filtro é AND independente.
