@@ -163,11 +163,16 @@ export default function LiderDiario() {
     const filtered = feedbacks.filter((fb) => {
       if (memberId !== 'all' && fb.member_id !== memberId) return false;
       if (teamMemberIds && !teamMemberIds.has(fb.member_id)) return false;
-      // Filtro por origem (aplica apenas a feedbacks; rollups Slack são tratados abaixo).
-      if (source === 'recall_bot' && fb.source !== 'recall_bot') return false;
-      if (source === 'transcription' && fb.source !== 'transcription') return false;
-      if (source === 'manual' && fb.source) return false;
-      if (source === 'slack') return false; // Slack só tem rollups, nunca aparece em feedbacks aqui.
+      // Filtro por origem usa o source EFETIVO (a heurística de transcrição
+      // promove `manual` para `transcription` quando o conteúdo é claramente
+      // uma transcrição importada — espelha a regra do banco).
+      if (source !== 'all') {
+        const effective = detectEffectiveSource(fb.source, fb.content);
+        if (source === 'recall_bot' && effective !== 'recall_bot') return false;
+        if (source === 'transcription' && effective !== 'transcription') return false;
+        if (source === 'manual' && effective !== 'manual') return false;
+        if (source === 'slack') return false; // rollups Slack são incluídos abaixo.
+      }
       if (selectedTags.length > 0) {
         const tags = fb.tags ?? [];
         if (!selectedTags.some((t) => tags.includes(t))) return false;
