@@ -3315,6 +3315,10 @@ export type Database = {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
       }
+      detect_feedback_source: {
+        Args: { _content: string; _current: string }
+        Returns: string
+      }
       dismiss_recall_bot: { Args: { _bot_id: string }; Returns: boolean }
       effective_user_id: { Args: never; Returns: string }
       enqueue_email: {
