@@ -375,7 +375,7 @@ export default function LiderDiario() {
         onPeriodChange={(v) => updateParam('period', v)}
         onQueryChange={(v) => updateParam('q', v)}
         onTagsChange={(tags) => updateParam('tags', tags.join(','))}
-        onSourceChange={(v) => updateParam('source', v === 'slack' ? 'slack' : '')}
+        onSourceChange={(v) => updateParam('source', v === 'all' ? '' : v)}
         onDateRangeChange={updateDateRange}
         onSortChange={(v) => updateParam('sort', v === 'newest' ? '' : v)}
       />
