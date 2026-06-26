@@ -82,17 +82,20 @@ export function TranscriptExpandedView({ feedbackId, content, structuredSummary 
 
   return (
     <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="w-full">
-      <TabsList className="grid grid-cols-3 w-full bg-muted/40">
-        <TabsTrigger value="summary" className="gap-1.5 text-xs">
-          <Sparkles className="h-3.5 w-3.5" /> Resumo
-        </TabsTrigger>
-        <TabsTrigger value="transcript" className="gap-1.5 text-xs">
-          <FileText className="h-3.5 w-3.5" /> Transcrição
-        </TabsTrigger>
-        <TabsTrigger value="chat" className="gap-1.5 text-xs">
-          <MessageCircle className="h-3.5 w-3.5" /> Conversar
-        </TabsTrigger>
-      </TabsList>
+      <div className="flex items-center gap-2">
+        <TabsList className="grid grid-cols-3 flex-1 bg-muted/40">
+          <TabsTrigger value="summary" className="gap-1.5 text-xs">
+            <Sparkles className="h-3.5 w-3.5" /> Resumo
+          </TabsTrigger>
+          <TabsTrigger value="transcript" className="gap-1.5 text-xs">
+            <FileText className="h-3.5 w-3.5" /> Transcrição
+          </TabsTrigger>
+          <TabsTrigger value="chat" className="gap-1.5 text-xs">
+            <MessageCircle className="h-3.5 w-3.5" /> Pergunte à Rhitmo
+          </TabsTrigger>
+        </TabsList>
+        <ExportMenu content={content} summary={summary} turns={turns} />
+      </div>
 
       {/* ─── RESUMO ─── */}
       <TabsContent value="summary" className="pt-3 space-y-4">
