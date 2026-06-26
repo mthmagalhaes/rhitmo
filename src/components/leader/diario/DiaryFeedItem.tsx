@@ -66,6 +66,7 @@ import { getTagColor, getTagEmoji, getTagLabel, VALID_TAGS } from '@/lib/tagConf
 import { supabase } from '@/integrations/supabase/client';
 import { useLeaderMembers } from '@/hooks/useLeaderMembers';
 import { TranscriptExpandedView } from './TranscriptExpandedView';
+import { getDiarySourceMeta, isTranscriptLike } from '@/lib/diarySource';
 
 export interface FeedItem {
   id: string;
@@ -87,10 +88,6 @@ export interface FeedItem {
 interface DiaryFeedItemProps {
   item: FeedItem;
 }
-
-// Sources that carry a meeting transcript and should use the Granola-style
-// expanded view (TL;DR + structured topics + chat).
-const TRANSCRIPT_SOURCES = new Set(['recall_bot', 'transcription']);
 
 function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
