@@ -123,7 +123,10 @@ export function DiaryFeedItem({ item }: DiaryFeedItemProps) {
   const dateIso = item.occurred_at || item.created_at;
   const dateLabel = format(new Date(dateIso), 'dd/MM/yyyy');
   const fullText = stripHtml(item.content || '');
-  const isTranscript = !!item.source && TRANSCRIPT_SOURCES.has(item.source);
+  const isTranscript = isTranscriptLike(item.source, item.content);
+  const sourceMeta = getDiarySourceMeta(item.source, item.content);
+  // Omitimos o chip "Nota" (caso dominante) para evitar ruído visual.
+  const showSourceChip = sourceMeta && sourceMeta.kind !== 'manual';
 
   const openEdit = () => {
     setEditTitle(item.title || '');
