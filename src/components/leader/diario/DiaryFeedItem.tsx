@@ -83,6 +83,8 @@ export interface FeedItem {
   source?: string | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   structured_summary?: any | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  personal_lens?: any | null;
 }
 
 interface DiaryFeedItemProps {
