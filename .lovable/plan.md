@@ -1,93 +1,96 @@
-## Diagnóstico
+## Visão de PM
 
-Confirmei no banco para `matheus.magalhaes@fstr.co`:
+A "camada Granola" (TL;DR + Tópicos + Decisões + Próximos passos + Transcrição estruturada + Pergunte à Rhitmo + Exportar) **já existe e já é acionada automaticamente** para uploads e colagens — o gatilho é o helper `isTranscriptLike` em `src/lib/diarySource.ts`, espelhado no Postgres por `detect_feedback_source`. O `summarize-transcript` roda em background no upload e também sob demanda na primeira abertura.
 
+O caso "Alinhamento Operações" não ativou a visão rica porque o texto colado veio como **um único parágrafo corrido** (`Yasmin Nobrega: Bcë. Guilherme Cunha: Bom dia, ...`), sem quebras de linha, sem timestamps e sem cabeçalho Tactiq/Fireflies. Nenhuma das 4 regras atuais bate nesse formato:
 
-| source                    | qtd     | tamanho médio        | conteúdo                                                                                                                        |
-| ------------------------- | ------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `manual`                  | **298** | 39k chars (máx 124k) | **maioria são transcrições do Tactiq** (cabeçalho `Meeting started:`, `Participants:`, link `tactiq.io`, falas `> HH:MM Nome:`) |
-| `recall_bot`              | 36      | 46k                  | bot Rhitmo ✅                                                                                                                    |
-| `transcription`           | 3       | 6k                   | uploads recentes ✅                                                                                                              |
-| `slack_ambient` / `slack` | 3       | 200                  | Slack ✅                                                                                                                         |
+- `TIMESTAMPED_SPEAKER_REGEX` exige `> 10:32 Name:` em linhas separadas.
+- `BOLD_SPEAKER_REGEX` exige `**Name:**`.
+- `TACTIQ_HEADER_REGEX` exige `Meeting started:` + `Participants:`.
+- `GENERIC_SPEAKER_REGEX` exige `(^|\n)Capital:`.
 
+Resposta direta: **sim, dá pra estender para qualquer upload/colagem**, com 3 ajustes pequenos e 1 melhoria de UX que diferencia *transcrição falada* de *anotação longa* (para não inflar nota curta em "Resumo + Chat").
 
-Ou seja: o filtro "Upload / Transcrição" não retorna nada porque essas reuniões (Alinhamento Operações, Alinhamento Semanal, Projeto Nubank, etc.) foram gravadas historicamente com `source='manual'`. O chip "Upload" também não aparece nelas, e ao mesmo tempo o filtro "Notas manuais" fica poluído por elas.
+---
 
-A correção precisa ser uma **regra do sistema** (não só do líder Matheus), aplicável retroativamente e a qualquer nova ingestão futura.
+## Escopo
 
-## O que vou implementar
+### 1. Heurística mais robusta (frontend + DB, mesma regra)
 
-### 1. Detector heurístico unificado (frontend + backend)
+Adicionar 2 detectores que cobrem o formato "parágrafo único de fala":
 
-Criar uma função pura `detectEffectiveSource(content, currentSource)` que retorna o source **efetivo** quando o gravado for `manual` ou `null`. Regras (em ordem):
+- **Inline speaker turns**: ≥ 6 ocorrências de `Nome[ Sobrenome]: ` no mesmo texto (sem exigir `\n`), e razão `turnos / tamanho` compatível com fala (não confundir com listas/markdown).
+- **Lista de participantes explícita**: presença de `Participantes ` ou `[Alinhamento]`/`[1:1]` no início + ≥ 4 nomes próprios seguidos de `:`.
 
-1. Match Tactiq/Granola/Fireflies/GoogleMeet Transcriptions: regex em `Meeting started:` ∧ (`Participants:` ∨ `tactiq.io` ∨ `fireflies` ∨ `granola`) → `transcription`.
-2. Múltiplas falas com timestamp `^>\s?\d{1,2}:\d{2}\s+\S` (≥ 4 ocorrências) → `transcription`.
-3. Padrão Markdown `**Nome:**` em ≥ 4 linhas → `transcription`.
-4. `content.length > 1500` ∧ qualquer padrão de fala acima → `transcription`.
-5. Caso contrário, mantém o source atual (real `manual`, `recall_bot`, `slack`, etc.).
+Manter as 4 regras atuais. Promover para `transcription` quando bater qualquer uma.
 
-### 2. Frontend — chip + filtro (imediato, sem migration)
+Espelhar em `public.detect_feedback_source` via migration para reclassificar legados (o "Alinhamento Operações" é um deles) e manter a verdade canônica no DB.
 
-- `src/lib/diarySource.ts`: substituir `isTranscriptLike` por `detectEffectiveSource`; o chip e a `kind` passam a refletir a heurística. Resultado:
-  - Tactiq legado → chip "Transcrição" (amber) e cai no filtro **Upload / Transcrição**.
-  - Notas curtas reais → chip "Nota" (e cai em **Notas manuais**).
-- `src/pages/lider/Diario.tsx`: o filtro `source` passa a comparar contra `detectEffectiveSource(fb.content, fb.source)` em vez de `fb.source` cru. Isso resolve o sintoma reportado sem depender de migration.
+### 2. Pré-processamento leve para a aba "Transcrição"
 
-### 3. Backend — backfill + regra futura (a regra do sistema)
+Quando o texto vem em parágrafo único, `parseTranscript` produz um único turn gigante. Adicionar um normalizador em `src/lib/transcriptParser.ts` que, antes de parsear, insere `\n` antes de cada novo `Nome: ` detectado (mesmo regex inline). O texto original permanece intacto no DB e no `.txt` cru; o split é só de apresentação. Isso faz a aba Transcrição render como chat agrupado por falante, igual ao do bot.
 
-Migration única + trigger leve, para que toda a stack (RAG, recaps, briefs) também enxergue o source correto:
+### 3. Distinção visual: Upload curto vs Transcrição
 
-```sql
--- helper imutável reaproveitado pelo trigger
-CREATE OR REPLACE FUNCTION public.detect_feedback_source(_content text, _current text)
-RETURNS text LANGUAGE sql IMMUTABLE AS $$
-  SELECT CASE
-    WHEN _current IS NOT NULL AND _current NOT IN ('manual','') THEN _current
-    WHEN _content ~* 'Meeting started:' AND (_content ~* 'Participants:|tactiq\.io|fireflies|granola') THEN 'transcription'
-    WHEN (SELECT count(*) FROM regexp_matches(_content, '^>\s?\d{1,2}:\d{2}\s+\S', 'gm')) >= 4 THEN 'transcription'
-    WHEN (SELECT count(*) FROM regexp_matches(_content, '\*\*[^*\n:]{1,80}:\*\*', 'g')) >= 4 THEN 'transcription'
-    WHEN length(_content) > 1500
-         AND _content ~ '(^|\n)[A-ZÀ-Ý][\wÀ-ÿ ''.-]{1,60}:\s' THEN 'transcription'
-    ELSE COALESCE(_current, 'manual')
-  END;
-$$;
+Já existe o split `upload` (sky) vs `transcription_upload` (amber) em `getDiarySourceMeta`. Vamos:
 
--- backfill one-shot (apenas linhas 'manual'/NULL)
-UPDATE public.feedbacks
-SET source = public.detect_feedback_source(content, source)
-WHERE (source IS NULL OR source = 'manual')
-  AND public.detect_feedback_source(content, source) <> COALESCE(source,'manual');
+- **Não** abrir aba "Resumo/Chat" para `upload` puro com `< ~800` chars (nota textual longa, sem padrão de fala). Mostrar só o texto como hoje. Evita criar TL;DR para parágrafo de anotação.
+- **Sim** ativar para `transcription_upload` (qualquer comprimento, formato de fala) e para `upload` longo (`>= 1500` chars com pelo menos 2 parágrafos), com label "Resumo" igual ao do bot.
 
--- trigger para futuras inserções/edições
-CREATE OR REPLACE FUNCTION public.feedbacks_auto_source()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
-BEGIN
-  NEW.source := public.detect_feedback_source(NEW.content, NEW.source);
-  RETURN NEW;
-END $$;
+### 4. Reprocessamento dos legados
 
-DROP TRIGGER IF EXISTS feedbacks_auto_source_trg ON public.feedbacks;
-CREATE TRIGGER feedbacks_auto_source_trg
-BEFORE INSERT OR UPDATE OF content, source ON public.feedbacks
-FOR EACH ROW EXECUTE FUNCTION public.feedbacks_auto_source();
-```
+Acionar `summarize-transcript` em batch para os feedbacks que mudarem de `manual` → `transcription` após o trigger reclassificar. Já temos `reprocess-meeting`; basta uma chamada noturna ou um botão "Gerar resumo" no menu `…` do card quando `structured_summary IS NULL` e `isTranscriptLike == true`.
 
-Observações:
+### 5. Pequenas melhorias na visão expandida (válidas para bot + upload)
 
-- Não toca em `recall_bot`, `slack`, `slack_ambient`, `magic_paste` — só promove `manual`/NULL quando o conteúdo é claramente transcrição.
-- Como `recall-webhook` e `upload-meeting` já gravam o source certo, o trigger é defensivo (não muda o fluxo atual).
-- Como bônus, o `summarize-transcript` (que hoje só é disparado em `recall_bot`/`upload-meeting`) passa a poder ser invocado on-demand no `TranscriptExpandedView` para esses Tactiq legados — já é o comportamento atual quando `structured_summary` está vazio.
+- Mostrar o **chip de origem** (Bot / Transcrição / Upload) ao lado das tabs, para o líder saber a procedência mesmo dentro da visão rica.
+- No Exportar `.txt` de upload, se a transcrição foi "splitada" para visualização, exportar a versão normalizada (uma linha por falante) — é o que o mercado faz (Granola, Fathom, Otter).
 
-### 4. Validação
+---
 
-Antes de subir a migration, rodo um `SELECT count(*) GROUP BY detect_feedback_source(...)` para confirmar quantos dos 298 serão reclassificados (esperado: praticamente todos, exceto notas curtas reais). Pós-deploy, abro o Diário do Matheus e valido:
+## Diferenças honestas em relação ao Bot
 
-- Filtro **Upload / Transcrição** mostra as reuniões "Alinhamento Operações" etc.
-- Filtro **Notas manuais** fica restrito a notas curtas reais.
-- Chip "Transcrição" aparece em cada item legado.
+| Aspecto | Bot (Recall) | Upload / Colagem |
+|---|---|---|
+| Timestamps por fala | Sim | Geralmente não |
+| Diarização confiável | Sim (speaker_timeline) | Heurística por padrão de nome |
+| Áudio anexado | Sim | Não |
+| Sinais relacionais (talk-time, sentimento por trecho) | Sim (`meeting_signals`) | Parcial — só o que dá pra inferir do texto |
+| Resumo estruturado, tópicos, decisões, ações | **Sim** | **Sim** (mesma função) |
+| Pergunte à Rhitmo (escopo da reunião) | **Sim** | **Sim** |
+| Exportar (Markdown / .md / .txt / PDF) | **Sim** | **Sim** |
 
-## Fora do escopo
+O que o líder vê é praticamente igual; o que muda é a profundidade dos sinais quantitativos, e isso é honesto sinalizar com o chip de origem.
 
-- Não vou re-gerar `structured_summary` em massa (custo de LLM); fica sob demanda quando o líder abrir o item, como já funciona.
-- Não vou mexer em fontes que já gravam corretamente (`recall_bot`, `slack`, `upload-meeting`).
+---
+
+## Detalhes técnicos
+
+**Arquivos a tocar**
+- `src/lib/diarySource.ts` — adicionar `INLINE_SPEAKER_REGEX` + contagem; ajustar `detectEffectiveSource` e `getDiarySourceMeta`.
+- `src/lib/transcriptParser.ts` — normalizador opcional `normalizeInlineSpeakers(text)`.
+- `src/components/leader/diario/DiaryFeedItem.tsx` — gate da visão rica passa a usar `isTranscriptLike` + threshold de comprimento; passar `kind` do chip para o `TranscriptExpandedView` mostrar o chip de origem no header.
+- `src/components/leader/diario/TranscriptExpandedView.tsx` — receber `originMeta` e renderizar chip; usar texto normalizado para a aba Transcrição e para o `.txt`.
+- `supabase/functions/upload-meeting/index.ts` — garantir que `summarize-transcript` seja invocado também quando vier de "Magic Paste" (não só upload de arquivo).
+- **Migration**: atualizar `public.detect_feedback_source` com a nova regra inline; rodar `UPDATE` retroativo para reclassificar registros `manual` que agora batem.
+- (Opcional) Botão "Gerar resumo" no `…` do card quando faltar `structured_summary`.
+
+**Não muda**
+- Schema da `feedbacks` (já tem `structured_summary`).
+- `chat-transcript`, `summarize-transcript`, `EvidenceDrawer`, citações DD/MM/AAAA — tudo já é agnóstico à origem.
+
+**Riscos / mitigação**
+- Falso-positivo (lista de tarefas com `Nome:` virar "transcrição"): exigir ≥ 6 turnos + razão `turnos / palavras` mínima (~1 turno a cada 25 palavras).
+- Custo de LLM no backfill: limitar concorrência (5 em paralelo) e priorizar feedbacks dos últimos 90 dias do líder ativo.
+
+---
+
+## Entregáveis em ordem
+
+1. Migration + reclassificação retroativa (DB é a verdade).
+2. Helper frontend + parser normalizador.
+3. Gate atualizado no `DiaryFeedItem` + chip de origem dentro da visão rica.
+4. Garantir `summarize-transcript` no caminho de Magic Paste.
+5. (Opcional sprint seguinte) Botão manual "Gerar resumo" para legados.
+
+Pronto para implementar quando você aprovar.
