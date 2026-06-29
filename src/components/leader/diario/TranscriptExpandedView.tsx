@@ -71,9 +71,11 @@ const sentimentLabel: Record<string, { label: string; tone: string }> = {
   tense:     { label: 'Conversa tensa',  tone: 'bg-rose-500/10 text-rose-700 border-rose-200' },
 };
 
-export function TranscriptExpandedView({ feedbackId, content, structuredSummary, origin }: Props) {
+export function TranscriptExpandedView({ feedbackId, content, structuredSummary, personalLens, memberName, origin }: Props) {
   const [summary, setSummary] = useState<StructuredSummary | null>(structuredSummary);
+  const [lens, setLens] = useState<PersonalLens | null>(personalLens ?? null);
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const [lensGenerating, setLensGenerating] = useState(false);
   const [tab, setTab] = useState<'summary' | 'transcript' | 'chat'>('summary');
 
   const turns = useMemo(() => parseTranscript(content), [content]);
@@ -81,10 +83,10 @@ export function TranscriptExpandedView({ feedbackId, content, structuredSummary,
   // Auto-generate summary the first time this is opened, if missing.
   const triggeredRef = useRef(false);
   useEffect(() => {
-    if (summary || triggeredRef.current) return;
+    if ((summary && lens) || triggeredRef.current) return;
     if (!content || content.length < 200) return;
     triggeredRef.current = true;
-    setSummaryLoading(true);
+    if (!summary) setSummaryLoading(true);
     supabase.functions
       .invoke('summarize-transcript', { body: { feedbackId } })
       .then(({ data, error }) => {
@@ -93,9 +95,27 @@ export function TranscriptExpandedView({ feedbackId, content, structuredSummary,
           return;
         }
         if (data?.summary) setSummary(data.summary as StructuredSummary);
+        if (data?.personal_lens) setLens(data.personal_lens as PersonalLens);
       })
       .finally(() => setSummaryLoading(false));
-  }, [feedbackId, content, summary]);
+  }, [feedbackId, content, summary, lens]);
+
+  const regenerateLens = () => {
+    setLensGenerating(true);
+    supabase.functions
+      .invoke('summarize-transcript', { body: { feedbackId, forceLens: true } })
+      .then(({ data, error }) => {
+        if (error) {
+          toast.error('Não foi possível gerar a lente pessoal.');
+          return;
+        }
+        if (data?.personal_lens) {
+          setLens(data.personal_lens as PersonalLens);
+          toast.success('Lente pessoal gerada.');
+        }
+      })
+      .finally(() => setLensGenerating(false));
+  };
 
   const sentimentMeta = summary?.sentiment ? sentimentLabel[summary.sentiment] : null;
 
