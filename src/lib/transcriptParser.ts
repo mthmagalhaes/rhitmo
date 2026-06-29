@@ -14,9 +14,34 @@ export interface TranscriptTurn {
 
 const SPEAKER_RX = /\*\*\s*([^*:]{1,80}?)\s*:\s*\*\*/g;
 
+// Inline "Nome [Sobrenome]: " (capitalizado, até 4 palavras) usado quando o
+// texto vem em parágrafo único, sem markdown bold. Espelha INLINE_SPEAKER_REGEX
+// de `src/lib/diarySource.ts`.
+const INLINE_SPEAKER_RX =
+  /(^|[.!?\s])([A-ZÀ-Ý][a-zà-ÿ]+(?:\s[A-ZÀ-Ý][a-zà-ÿ]+){0,3}):\s/g;
+
+/**
+ * Quando o texto vem como parágrafo único ("Nome: ... Nome: ..."), insere
+ * `\n\n` antes de cada falante para que `parseTranscript` consiga agrupar.
+ * Não altera o conteúdo original guardado no banco — apenas a apresentação.
+ */
+export function normalizeInlineSpeakers(raw: string): string {
+  if (!raw) return raw;
+  if (/\*\*[^*]+:\*\*/.test(raw)) return raw; // já tem bold speakers
+  if (/\n[A-ZÀ-Ý][\wÀ-ÿ '.\-]{0,60}:\s/.test(raw)) return raw; // já está em linhas
+  const hits = (raw.match(INLINE_SPEAKER_RX) ?? []).length;
+  if (hits < 6) return raw;
+  // Reset regex (mantém /g)
+  const rx = new RegExp(INLINE_SPEAKER_RX.source, 'g');
+  return raw.replace(rx, (_m, prefix: string, name: string) => {
+    const sep = prefix === '' ? '' : prefix.replace(/\s+$/, '');
+    return `${sep}\n\n**${name}:** `;
+  });
+}
+
 export function parseTranscript(raw: string): TranscriptTurn[] {
   if (!raw) return [];
-  const text = raw.replace(/\r\n/g, "\n");
+  const text = normalizeInlineSpeakers(raw).replace(/\r\n/g, "\n");
 
   // No speaker markers → single narration turn (uploads / Whisper).
   if (!/\*\*[^*]+:\*\*/.test(text)) {
