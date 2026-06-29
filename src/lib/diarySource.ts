@@ -31,12 +31,27 @@ const TIMESTAMPED_SPEAKER_REGEX = /^>\s?\d{1,2}:\d{2}\s+\S/gm;
 const TACTIQ_HEADER_REGEX = /Meeting started:/i;
 const TACTIQ_BODY_REGEX = /Participants:|tactiq\.io|fireflies|granola/i;
 const GENERIC_SPEAKER_REGEX = /(^|\n)[A-ZÀ-Ý][\wÀ-ÿ '.\-]{1,60}:\s/;
+const ALIGNMENT_HEADER_REGEX = /^\s*\[(alinhamento|1:1|one[- ]?on[- ]?one|sync|reuni[aã]o)\]/i;
+// Inline "Nome [Sobrenome]: " (sem exigir início de linha) — cobre o caso
+// "parágrafo único" exportado por Google Meet/Whisper/etc.
+const INLINE_SPEAKER_REGEX = /(^|[.!?\s])[A-ZÀ-Ý][a-zà-ÿ]+(\s[A-ZÀ-Ý][a-zà-ÿ]+){0,3}:\s/g;
 const LONG_THRESHOLD = 1500;
+const INLINE_MIN_LEN = 400;
 const MIN_SPEAKER_HITS = 4;
+const INLINE_MIN_HITS = 6;
 
 function countMatches(text: string, regex: RegExp): number {
   // regex precisa ter flag /g
   return (text.match(regex) ?? []).length;
+}
+
+function looksLikeInlineDialogue(body: string): boolean {
+  if (body.length < INLINE_MIN_LEN) return false;
+  const hits = countMatches(body, INLINE_SPEAKER_REGEX);
+  if (hits < INLINE_MIN_HITS) return false;
+  // densidade: pelo menos ~1 turno a cada 25 palavras (evita listas de tarefas)
+  const words = body.split(/\s+/).length;
+  return hits * 25 > words / 4;
 }
 
 /**
@@ -63,7 +78,16 @@ export function detectEffectiveSource(
   if (countMatches(body, BOLD_SPEAKER_REGEX) >= MIN_SPEAKER_HITS) {
     return 'transcription';
   }
+  if (
+    ALIGNMENT_HEADER_REGEX.test(body) &&
+    countMatches(body, /[A-ZÀ-Ý][\wÀ-ÿ '.\-]{1,60}:\s/g) >= MIN_SPEAKER_HITS
+  ) {
+    return 'transcription';
+  }
   if (body.length > LONG_THRESHOLD && GENERIC_SPEAKER_REGEX.test(body)) {
+    return 'transcription';
+  }
+  if (looksLikeInlineDialogue(body)) {
     return 'transcription';
   }
   return current || 'manual';
