@@ -1,96 +1,91 @@
-## Visão de PM
 
-A "camada Granola" (TL;DR + Tópicos + Decisões + Próximos passos + Transcrição estruturada + Pergunte à Rhitmo + Exportar) **já existe e já é acionada automaticamente** para uploads e colagens — o gatilho é o helper `isTranscriptLike` em `src/lib/diarySource.ts`, espelhado no Postgres por `detect_feedback_source`. O `summarize-transcript` roda em background no upload e também sob demanda na primeira abertura.
+## Problema
 
-O caso "Alinhamento Operações" não ativou a visão rica porque o texto colado veio como **um único parágrafo corrido** (`Yasmin Nobrega: Bcë. Guilherme Cunha: Bom dia, ...`), sem quebras de linha, sem timestamps e sem cabeçalho Tactiq/Fireflies. Nenhuma das 4 regras atuais bate nesse formato:
+Hoje, quando o líder sobe a mesma transcrição (ex: "Alinhamento Operações") para vários liderados, cada cópia vira um `feedbacks` row separado. O `summarize-transcript` roda uma vez por row com o **mesmo prompt genérico** — então as diferenças entre o resumo da Laís e o da Gabriela (prints anexados) são **ruído estatístico do LLM**, não personalização real. O liderado que abre o card não vê "o que importa pra MIM nessa reunião".
 
-- `TIMESTAMPED_SPEAKER_REGEX` exige `> 10:32 Name:` em linhas separadas.
-- `BOLD_SPEAKER_REGEX` exige `**Name:**`.
-- `TACTIQ_HEADER_REGEX` exige `Meeting started:` + `Participants:`.
-- `GENERIC_SPEAKER_REGEX` exige `(^|\n)Capital:`.
+## Princípio da solução
 
-Resposta direta: **sim, dá pra estender para qualquer upload/colagem**, com 3 ajustes pequenos e 1 melhoria de UX que diferencia *transcrição falada* de *anotação longa* (para não inflar nota curta em "Resumo + Chat").
+Separar duas camadas:
 
----
+1. **Resumo base (compartilhado)** — TL;DR, tópicos, decisões, action items globais. Roda **uma vez por transcrição-fonte**, mesmo que vá para 5 liderados.
+2. **Lente pessoal (por liderado)** — destaque do que *aquela pessoa* falou, compromissos que ela assumiu, menções a ela, tom dirigido a ela. Roda 1× por member vinculado, mas com prompt minúsculo (só o nome + transcrição clipada).
 
-## Escopo
+Isso resolve os dois problemas: **consistência** (todos veem a mesma "verdade" da reunião) + **personalização real** (cada um vê sua lente) + **economia** (1 chamada cara + N chamadas baratas em vez de N chamadas caras com resultado aleatório).
 
-### 1. Heurística mais robusta (frontend + DB, mesma regra)
+## Quando fazer
 
-Adicionar 2 detectores que cobrem o formato "parágrafo único de fala":
+**No momento do upload**, não depois. O usuário já espera processamento aqui; adicionar lente pessoal não muda a percepção de latência. Pós-fato (lazy, ao abrir o card) introduz spinner ruim numa tela hoje instantânea.
 
-- **Inline speaker turns**: ≥ 6 ocorrências de `Nome[ Sobrenome]: ` no mesmo texto (sem exigir `\n`), e razão `turnos / tamanho` compatível com fala (não confundir com listas/markdown).
-- **Lista de participantes explícita**: presença de `Participantes ` ou `[Alinhamento]`/`[1:1]` no início + ≥ 4 nomes próprios seguidos de `:`.
+## Como deduplicar transcrições iguais
 
-Manter as 4 regras atuais. Promover para `transcription` quando bater qualquer uma.
+Adicionar `transcript_hash` (sha256 do `content` normalizado) em `feedbacks`. Quando `summarize-transcript` roda e encontra outro feedback com **mesmo hash + structured_summary preenchido**, copia o `tldr / topics / decisions / action_items / sentiment` desse irmão e pula a chamada cara. Só roda a lente pessoal.
 
-Espelhar em `public.detect_feedback_source` via migration para reclassificar legados (o "Alinhamento Operações" é um deles) e manter a verdade canônica no DB.
+Isso também cobre o caso retroativo: uploads antigos duplicados se beneficiam quando o próximo for processado.
 
-### 2. Pré-processamento leve para a aba "Transcrição"
+## Mudanças
 
-Quando o texto vem em parágrafo único, `parseTranscript` produz um único turn gigante. Adicionar um normalizador em `src/lib/transcriptParser.ts` que, antes de parsear, insere `\n` antes de cada novo `Nome: ` detectado (mesmo regex inline). O texto original permanece intacto no DB e no `.txt` cru; o split é só de apresentação. Isso faz a aba Transcrição render como chat agrupado por falante, igual ao do bot.
+### Banco (`feedbacks`)
+- `transcript_hash text` (índice) — preenchido por trigger na insert/update quando `content` muda e tem >500 chars.
+- `personal_lens jsonb` — novo campo separado de `structured_summary` para não invalidar cache existente. Shape:
+  ```json
+  {
+    "member_id": "uuid",
+    "member_name": "Laís Isfer",
+    "spoke": true | false,
+    "talk_share_pct": 12,
+    "key_points": ["..."],         // 2-4 bullets do que ela disse
+    "commitments": [{"task":"...", "due":"..."}],
+    "mentions": ["..."],            // o que falaram SOBRE ela
+    "questions_for_1on1": ["..."]   // 2 perguntas que o líder pode levar pra próxima 1:1
+  }
+  ```
 
-### 3. Distinção visual: Upload curto vs Transcrição
+### Edge function `summarize-transcript`
+1. Buscar `transcript_hash` do feedback.
+2. Procurar irmão com mesmo hash e `structured_summary` pronto → reusa.
+3. Se não tiver, gera `structured_summary` como hoje.
+4. **Novo passo**: carrega `member_id` + nome do liderado dono desse feedback e chama nova tool `save_personal_lens` (prompt curto, ~3k tokens; Gemini Flash). Grava em `personal_lens`.
 
-Já existe o split `upload` (sky) vs `transcription_upload` (amber) em `getDiarySourceMeta`. Vamos:
+### Edge function `upload-meeting`
+Sem mudanças na lógica de criar rows (continua 1 row por member_id selecionado). Só passa a invocar `summarize-transcript` em paralelo para todos os rows criados — a dedupe por hash garante 1 chamada base + N lentes.
 
-- **Não** abrir aba "Resumo/Chat" para `upload` puro com `< ~800` chars (nota textual longa, sem padrão de fala). Mostrar só o texto como hoje. Evita criar TL;DR para parágrafo de anotação.
-- **Sim** ativar para `transcription_upload` (qualquer comprimento, formato de fala) e para `upload` longo (`>= 1500` chars com pelo menos 2 parágrafos), com label "Resumo" igual ao do bot.
+### Frontend `TranscriptExpandedView.tsx`
+Na aba "Resumo", acima dos tópicos globais, novo bloco editorial:
 
-### 4. Reprocessamento dos legados
+```
+PARA VOCÊ · Laís Isfer
+[chip "Você participou ativamente" | "Você foi mencionada" | "Você não se manifestou"]
 
-Acionar `summarize-transcript` em batch para os feedbacks que mudarem de `manual` → `transcription` após o trigger reclassificar. Já temos `reprocess-meeting`; basta uma chamada noturna ou um botão "Gerar resumo" no menu `…` do card quando `structured_summary IS NULL` e `isTranscriptLike == true`.
+O que você trouxe
+• ...
 
-### 5. Pequenas melhorias na visão expandida (válidas para bot + upload)
+Seus compromissos
+• ... (até 15/07)
 
-- Mostrar o **chip de origem** (Bot / Transcrição / Upload) ao lado das tabs, para o líder saber a procedência mesmo dentro da visão rica.
-- No Exportar `.txt` de upload, se a transcrição foi "splitada" para visualização, exportar a versão normalizada (uma linha por falante) — é o que o mercado faz (Granola, Fathom, Otter).
+Perguntas para sua próxima 1:1 com Matheus
+• ...
+```
 
----
+Quando o feedback não tem `member_id` (nota geral sem destinatário), oculta o bloco — só o resumo base aparece.
 
-## Diferenças honestas em relação ao Bot
+### Backfill
+Migration roda `transcript_hash` para o histórico. Lente pessoal NÃO é gerada retroativamente em massa (custo) — só sob demanda: botão discreto "Gerar lente pessoal" no card quando `personal_lens IS NULL && member_id IS NOT NULL`.
 
-| Aspecto | Bot (Recall) | Upload / Colagem |
-|---|---|---|
-| Timestamps por fala | Sim | Geralmente não |
-| Diarização confiável | Sim (speaker_timeline) | Heurística por padrão de nome |
-| Áudio anexado | Sim | Não |
-| Sinais relacionais (talk-time, sentimento por trecho) | Sim (`meeting_signals`) | Parcial — só o que dá pra inferir do texto |
-| Resumo estruturado, tópicos, decisões, ações | **Sim** | **Sim** (mesma função) |
-| Pergunte à Rhitmo (escopo da reunião) | **Sim** | **Sim** |
-| Exportar (Markdown / .md / .txt / PDF) | **Sim** | **Sim** |
+## Custos
 
-O que o líder vê é praticamente igual; o que muda é a profundidade dos sinais quantitativos, e isso é honesto sinalizar com o chip de origem.
-
----
+- **Antes**: N transcrições × ~$0.005 (Gemini Flash, 60k chars) = ~$0.005 × N
+- **Depois (transcrição compartilhada com 5 liderados)**: 1 × $0.005 (base) + 5 × $0.0008 (lente, prompt 3k) = $0.009 total, vs $0.025 hoje. **~64% mais barato** + qualidade maior.
 
 ## Detalhes técnicos
 
-**Arquivos a tocar**
-- `src/lib/diarySource.ts` — adicionar `INLINE_SPEAKER_REGEX` + contagem; ajustar `detectEffectiveSource` e `getDiarySourceMeta`.
-- `src/lib/transcriptParser.ts` — normalizador opcional `normalizeInlineSpeakers(text)`.
-- `src/components/leader/diario/DiaryFeedItem.tsx` — gate da visão rica passa a usar `isTranscriptLike` + threshold de comprimento; passar `kind` do chip para o `TranscriptExpandedView` mostrar o chip de origem no header.
-- `src/components/leader/diario/TranscriptExpandedView.tsx` — receber `originMeta` e renderizar chip; usar texto normalizado para a aba Transcrição e para o `.txt`.
-- `supabase/functions/upload-meeting/index.ts` — garantir que `summarize-transcript` seja invocado também quando vier de "Magic Paste" (não só upload de arquivo).
-- **Migration**: atualizar `public.detect_feedback_source` com a nova regra inline; rodar `UPDATE` retroativo para reclassificar registros `manual` que agora batem.
-- (Opcional) Botão "Gerar resumo" no `…` do card quando faltar `structured_summary`.
+- Hash: `encode(digest(regexp_replace(content, '\s+', ' ', 'g'), 'sha256'), 'hex')` via `pgcrypto`.
+- Trigger `BEFORE INSERT OR UPDATE OF content` em `feedbacks` quando `length(content) > 500`.
+- Lente usa o mesmo `clipTranscript` (60k cap) — mas com instrução de "foque APENAS em {{member_name}}; se ela não falou, retorne `spoke:false` e preencha só `mentions` e `questions_for_1on1`".
+- `personal_lens` nunca substitui `structured_summary` — convivem. Aba "Resumo" renderiza ambos.
+- Sem mudanças em `generate-formal-review` agora — ele já lê `structured_summary` e o `content` cru; a lente é exclusiva da experiência do Diário.
 
-**Não muda**
-- Schema da `feedbacks` (já tem `structured_summary`).
-- `chat-transcript`, `summarize-transcript`, `EvidenceDrawer`, citações DD/MM/AAAA — tudo já é agnóstico à origem.
+## Fora de escopo
 
-**Riscos / mitigação**
-- Falso-positivo (lista de tarefas com `Nome:` virar "transcrição"): exigir ≥ 6 turnos + razão `turnos / palavras` mínima (~1 turno a cada 25 palavras).
-- Custo de LLM no backfill: limitar concorrência (5 em paralelo) e priorizar feedbacks dos últimos 90 dias do líder ativo.
-
----
-
-## Entregáveis em ordem
-
-1. Migration + reclassificação retroativa (DB é a verdade).
-2. Helper frontend + parser normalizador.
-3. Gate atualizado no `DiaryFeedItem` + chip de origem dentro da visão rica.
-4. Garantir `summarize-transcript` no caminho de Magic Paste.
-5. (Opcional sprint seguinte) Botão manual "Gerar resumo" para legados.
-
-Pronto para implementar quando você aprovar.
+- Permitir 1 feedback com múltiplos members (mudança de modelo grande, quebra RLS de ownership). Mantemos 1 row/member.
+- Regenerar lentes em lote no histórico.
+- Lente para uploads sem speaker detection (sem nomes na transcrição) — nesse caso o prompt degrada para "menções ao nome do liderado" apenas.
