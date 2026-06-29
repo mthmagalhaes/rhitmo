@@ -39,6 +39,17 @@ interface StructuredSummary {
   highlights?: string[];
 }
 
+interface PersonalLens {
+  member_id?: string;
+  member_name?: string;
+  spoke?: boolean;
+  participation?: 'active' | 'passive' | 'mentioned_only' | 'absent';
+  key_points?: string[];
+  commitments?: { task: string; due?: string }[];
+  mentions?: string[];
+  questions_for_1on1?: string[];
+}
+
 interface OriginMeta {
   label: string;
   badgeClass: string;
@@ -48,6 +59,8 @@ interface Props {
   feedbackId: string;
   content: string;
   structuredSummary: StructuredSummary | null;
+  personalLens?: PersonalLens | null;
+  memberName?: string;
   origin?: OriginMeta | null;
 }
 
