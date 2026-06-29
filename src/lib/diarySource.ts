@@ -127,7 +127,8 @@ export function getDiarySourceMeta(
     const speakerHeavy =
       countMatches(body, TIMESTAMPED_SPEAKER_REGEX) >= MIN_SPEAKER_HITS ||
       countMatches(body, BOLD_SPEAKER_REGEX) >= MIN_SPEAKER_HITS ||
-      TACTIQ_HEADER_REGEX.test(body);
+      TACTIQ_HEADER_REGEX.test(body) ||
+      looksLikeInlineDialogue(body);
     return speakerHeavy
       ? {
           kind: 'transcription_upload',
