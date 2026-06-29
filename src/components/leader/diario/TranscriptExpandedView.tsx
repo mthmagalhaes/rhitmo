@@ -39,10 +39,16 @@ interface StructuredSummary {
   highlights?: string[];
 }
 
+interface OriginMeta {
+  label: string;
+  badgeClass: string;
+}
+
 interface Props {
   feedbackId: string;
   content: string;
   structuredSummary: StructuredSummary | null;
+  origin?: OriginMeta | null;
 }
 
 const sentimentLabel: Record<string, { label: string; tone: string }> = {
