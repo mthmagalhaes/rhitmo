@@ -185,6 +185,14 @@ export function TranscriptExpandedView({ feedbackId, content, structuredSummary,
               </div>
             )}
 
+            <PersonalLensBlock
+              lens={lens}
+              memberName={memberName}
+              loading={lensGenerating}
+              onGenerate={memberName ? regenerateLens : undefined}
+            />
+
+
             {summary.topics && summary.topics.length > 0 && (
               <div>
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
