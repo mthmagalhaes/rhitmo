@@ -58,7 +58,7 @@ const sentimentLabel: Record<string, { label: string; tone: string }> = {
   tense:     { label: 'Conversa tensa',  tone: 'bg-rose-500/10 text-rose-700 border-rose-200' },
 };
 
-export function TranscriptExpandedView({ feedbackId, content, structuredSummary }: Props) {
+export function TranscriptExpandedView({ feedbackId, content, structuredSummary, origin }: Props) {
   const [summary, setSummary] = useState<StructuredSummary | null>(structuredSummary);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [tab, setTab] = useState<'summary' | 'transcript' | 'chat'>('summary');
