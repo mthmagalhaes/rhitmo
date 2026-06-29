@@ -39,10 +39,16 @@ interface StructuredSummary {
   highlights?: string[];
 }
 
+interface OriginMeta {
+  label: string;
+  badgeClass: string;
+}
+
 interface Props {
   feedbackId: string;
   content: string;
   structuredSummary: StructuredSummary | null;
+  origin?: OriginMeta | null;
 }
 
 const sentimentLabel: Record<string, { label: string; tone: string }> = {
@@ -52,7 +58,7 @@ const sentimentLabel: Record<string, { label: string; tone: string }> = {
   tense:     { label: 'Conversa tensa',  tone: 'bg-rose-500/10 text-rose-700 border-rose-200' },
 };
 
-export function TranscriptExpandedView({ feedbackId, content, structuredSummary }: Props) {
+export function TranscriptExpandedView({ feedbackId, content, structuredSummary, origin }: Props) {
   const [summary, setSummary] = useState<StructuredSummary | null>(structuredSummary);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [tab, setTab] = useState<'summary' | 'transcript' | 'chat'>('summary');
@@ -82,6 +88,20 @@ export function TranscriptExpandedView({ feedbackId, content, structuredSummary 
 
   return (
     <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="w-full">
+      {origin && (
+        <div className="flex items-center gap-1.5 mb-2">
+          <Badge variant="outline" className={cn('text-[10px] font-medium', origin.badgeClass)}>
+            {origin.label}
+          </Badge>
+          <span className="text-[10px] text-muted-foreground">
+            {origin.label === 'Bot'
+              ? 'Transcrição automática da reunião'
+              : origin.label === 'Transcrição'
+                ? 'Importada de ferramenta externa'
+                : 'Anotação enviada pelo líder'}
+          </span>
+        </div>
+      )}
       <div className="flex items-center gap-2">
         <TabsList className="grid grid-cols-3 flex-1 bg-muted/40">
           <TabsTrigger value="summary" className="gap-1.5 text-xs">
@@ -96,6 +116,7 @@ export function TranscriptExpandedView({ feedbackId, content, structuredSummary 
         </TabsList>
         <ExportMenu content={content} summary={summary} turns={turns} />
       </div>
+
 
       {/* ─── RESUMO ─── */}
       <TabsContent value="summary" className="pt-3 space-y-4">
