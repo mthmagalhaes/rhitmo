@@ -431,6 +431,7 @@ export function DiaryFeedItem({ item }: DiaryFeedItemProps) {
               feedbackId={item.id}
               content={item.content || ''}
               structuredSummary={item.structured_summary ?? null}
+              origin={sourceMeta ? { label: sourceMeta.label, badgeClass: sourceMeta.badgeClass } : null}
             />
           ) : fullText ? (
             <p className="text-sm text-foreground/85 leading-relaxed whitespace-pre-wrap">
