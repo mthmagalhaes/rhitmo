@@ -39,6 +39,17 @@ interface StructuredSummary {
   highlights?: string[];
 }
 
+interface PersonalLens {
+  member_id?: string;
+  member_name?: string;
+  spoke?: boolean;
+  participation?: 'active' | 'passive' | 'mentioned_only' | 'absent';
+  key_points?: string[];
+  commitments?: { task: string; due?: string }[];
+  mentions?: string[];
+  questions_for_1on1?: string[];
+}
+
 interface OriginMeta {
   label: string;
   badgeClass: string;
@@ -48,6 +59,8 @@ interface Props {
   feedbackId: string;
   content: string;
   structuredSummary: StructuredSummary | null;
+  personalLens?: PersonalLens | null;
+  memberName?: string;
   origin?: OriginMeta | null;
 }
 
@@ -58,9 +71,11 @@ const sentimentLabel: Record<string, { label: string; tone: string }> = {
   tense:     { label: 'Conversa tensa',  tone: 'bg-rose-500/10 text-rose-700 border-rose-200' },
 };
 
-export function TranscriptExpandedView({ feedbackId, content, structuredSummary, origin }: Props) {
+export function TranscriptExpandedView({ feedbackId, content, structuredSummary, personalLens, memberName, origin }: Props) {
   const [summary, setSummary] = useState<StructuredSummary | null>(structuredSummary);
+  const [lens, setLens] = useState<PersonalLens | null>(personalLens ?? null);
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const [lensGenerating, setLensGenerating] = useState(false);
   const [tab, setTab] = useState<'summary' | 'transcript' | 'chat'>('summary');
 
   const turns = useMemo(() => parseTranscript(content), [content]);
@@ -68,10 +83,10 @@ export function TranscriptExpandedView({ feedbackId, content, structuredSummary,
   // Auto-generate summary the first time this is opened, if missing.
   const triggeredRef = useRef(false);
   useEffect(() => {
-    if (summary || triggeredRef.current) return;
+    if ((summary && lens) || triggeredRef.current) return;
     if (!content || content.length < 200) return;
     triggeredRef.current = true;
-    setSummaryLoading(true);
+    if (!summary) setSummaryLoading(true);
     supabase.functions
       .invoke('summarize-transcript', { body: { feedbackId } })
       .then(({ data, error }) => {
@@ -80,9 +95,27 @@ export function TranscriptExpandedView({ feedbackId, content, structuredSummary,
           return;
         }
         if (data?.summary) setSummary(data.summary as StructuredSummary);
+        if (data?.personal_lens) setLens(data.personal_lens as PersonalLens);
       })
       .finally(() => setSummaryLoading(false));
-  }, [feedbackId, content, summary]);
+  }, [feedbackId, content, summary, lens]);
+
+  const regenerateLens = () => {
+    setLensGenerating(true);
+    supabase.functions
+      .invoke('summarize-transcript', { body: { feedbackId, forceLens: true } })
+      .then(({ data, error }) => {
+        if (error) {
+          toast.error('Não foi possível gerar a lente pessoal.');
+          return;
+        }
+        if (data?.personal_lens) {
+          setLens(data.personal_lens as PersonalLens);
+          toast.success('Lente pessoal gerada.');
+        }
+      })
+      .finally(() => setLensGenerating(false));
+  };
 
   const sentimentMeta = summary?.sentiment ? sentimentLabel[summary.sentiment] : null;
 
@@ -151,6 +184,14 @@ export function TranscriptExpandedView({ feedbackId, content, structuredSummary,
                 <p className="text-sm text-foreground leading-relaxed">{summary.tldr}</p>
               </div>
             )}
+
+            <PersonalLensBlock
+              lens={lens}
+              memberName={memberName}
+              loading={lensGenerating}
+              onGenerate={memberName ? regenerateLens : undefined}
+            />
+
 
             {summary.topics && summary.topics.length > 0 && (
               <div>
@@ -567,3 +608,132 @@ function TranscriptChat({ feedbackId }: { feedbackId: string }) {
     </div>
   );
 }
+
+// ----- Personal Lens block --------------------------------------------------
+
+const participationLabel: Record<NonNullable<PersonalLens['participation']>, { label: string; tone: string }> = {
+  active:         { label: 'Participou ativamente',     tone: 'bg-emerald-500/10 text-emerald-700 border-emerald-200' },
+  passive:        { label: 'Participação pontual',      tone: 'bg-sky-500/10 text-sky-700 border-sky-200' },
+  mentioned_only: { label: 'Foi mencionada(o), sem falar', tone: 'bg-amber-500/10 text-amber-800 border-amber-200' },
+  absent:         { label: 'Sem participação registrada',  tone: 'bg-slate-500/10 text-slate-700 border-slate-200' },
+};
+
+function PersonalLensBlock({
+  lens,
+  memberName,
+  loading,
+  onGenerate,
+}: {
+  lens: PersonalLens | null;
+  memberName?: string;
+  loading: boolean;
+  onGenerate?: () => void;
+}) {
+  if (!memberName) return null;
+
+  // Sem lente ainda — mostra CTA discreto pra gerar (usa quando feedback é antigo).
+  if (!lens) {
+    if (!onGenerate) return null;
+    return (
+      <div className="rounded-lg border border-dashed bg-muted/20 p-3 flex items-center justify-between gap-3">
+        <div className="text-xs text-muted-foreground leading-relaxed">
+          Esta transcrição ainda não tem uma <strong>lente pessoal</strong> para {memberName}.
+          Ela destaca o que essa pessoa falou, assumiu e perguntas pra próxima 1:1.
+        </div>
+        <Button size="sm" variant="outline" onClick={onGenerate} disabled={loading} className="shrink-0 gap-1.5">
+          {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+          Gerar
+        </Button>
+      </div>
+    );
+  }
+
+  const partMeta = lens.participation ? participationLabel[lens.participation] : null;
+  const hasAny =
+    (lens.key_points?.length ?? 0) +
+      (lens.commitments?.length ?? 0) +
+      (lens.mentions?.length ?? 0) +
+      (lens.questions_for_1on1?.length ?? 0) >
+    0;
+
+  if (!hasAny && !partMeta) return null;
+
+  return (
+    <div className="rounded-lg border bg-primary/[0.03] p-3 space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-[10px] uppercase tracking-wider text-primary/80 font-semibold">
+          Para {memberName.split(/\s+/)[0]} · Lente pessoal
+        </div>
+        {partMeta && (
+          <Badge variant="outline" className={cn('text-[10px]', partMeta.tone)}>
+            {partMeta.label}
+          </Badge>
+        )}
+      </div>
+
+      {lens.key_points && lens.key_points.length > 0 && (
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">
+            O que {memberName.split(/\s+/)[0]} trouxe
+          </div>
+          <ul className="space-y-1">
+            {lens.key_points.map((p, i) => (
+              <li key={i} className="text-sm text-foreground/90 flex gap-2">
+                <span className="text-primary/60 shrink-0">•</span>
+                <span>{p}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {lens.commitments && lens.commitments.length > 0 && (
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">
+            Compromissos assumidos
+          </div>
+          <ul className="space-y-1">
+            {lens.commitments.map((c, i) => (
+              <li key={i} className="text-sm rounded-md bg-card border px-2.5 py-1.5">
+                <div className="text-foreground">{c.task}</div>
+                {c.due && <div className="text-[11px] text-muted-foreground mt-0.5">📅 {c.due}</div>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {lens.mentions && lens.mentions.length > 0 && (
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">
+            Mencionado(a) na conversa
+          </div>
+          <ul className="space-y-1">
+            {lens.mentions.map((m, i) => (
+              <li key={i} className="text-xs italic text-muted-foreground border-l-2 border-primary/30 pl-2">
+                {m}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {lens.questions_for_1on1 && lens.questions_for_1on1.length > 0 && (
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">
+            Perguntas para sua próxima 1:1
+          </div>
+          <ul className="space-y-1">
+            {lens.questions_for_1on1.map((q, i) => (
+              <li key={i} className="text-sm text-foreground/90 flex gap-2">
+                <MessageCircle className="h-3.5 w-3.5 mt-0.5 text-primary/70 shrink-0" />
+                <span>{q}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+

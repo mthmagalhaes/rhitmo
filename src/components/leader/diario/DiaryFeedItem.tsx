@@ -83,6 +83,8 @@ export interface FeedItem {
   source?: string | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   structured_summary?: any | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  personal_lens?: any | null;
 }
 
 interface DiaryFeedItemProps {
@@ -431,6 +433,8 @@ export function DiaryFeedItem({ item }: DiaryFeedItemProps) {
               feedbackId={item.id}
               content={item.content || ''}
               structuredSummary={item.structured_summary ?? null}
+              personalLens={item.personal_lens ?? null}
+              memberName={item.member_name}
               origin={sourceMeta ? { label: sourceMeta.label, badgeClass: sourceMeta.badgeClass } : null}
             />
           ) : fullText ? (

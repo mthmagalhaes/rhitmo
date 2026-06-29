@@ -826,12 +826,14 @@ export type Database = {
           meeting_transcript_id: string | null
           member_id: string
           occurred_at: string
+          personal_lens: Json | null
           sentiment: string | null
           source: string
           structured_summary: Json | null
           summary: string | null
           tags: string[] | null
           title: string | null
+          transcript_hash: string | null
           type: string
           updated_at: string
           visibility: string | null
@@ -849,12 +851,14 @@ export type Database = {
           meeting_transcript_id?: string | null
           member_id: string
           occurred_at?: string
+          personal_lens?: Json | null
           sentiment?: string | null
           source?: string
           structured_summary?: Json | null
           summary?: string | null
           tags?: string[] | null
           title?: string | null
+          transcript_hash?: string | null
           type: string
           updated_at?: string
           visibility?: string | null
@@ -872,12 +876,14 @@ export type Database = {
           meeting_transcript_id?: string | null
           member_id?: string
           occurred_at?: string
+          personal_lens?: Json | null
           sentiment?: string | null
           source?: string
           structured_summary?: Json | null
           summary?: string | null
           tags?: string[] | null
           title?: string | null
+          transcript_hash?: string | null
           type?: string
           updated_at?: string
           visibility?: string | null

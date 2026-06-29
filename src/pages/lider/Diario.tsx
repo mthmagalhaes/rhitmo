@@ -47,6 +47,8 @@ interface FeedbackRow {
   source: string | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   structured_summary: any | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  personal_lens: any | null;
 }
 
 interface SlackRollupRow {
@@ -112,7 +114,7 @@ export default function LiderDiario() {
     queryFn: async () => {
       let q = supabase
         .from('feedbacks')
-        .select('id, member_id, title, content, tags, visibility, occurred_at, created_at, source, structured_summary')
+        .select('id, member_id, title, content, tags, visibility, occurred_at, created_at, source, structured_summary, personal_lens')
         .eq('manager_id', effectiveUserId!)
         .order('occurred_at', { ascending: false })
         .limit(200);
