@@ -1,3 +1,8 @@
+/**
+ * @deprecated Sprint 20 — substituído por `ReviewsMemberDetail` no layout
+ * master-detail de /lider/avaliacoes/:memberId. Mantido temporariamente para
+ * referência; não é mais importado em nenhum lugar.
+ */
 // Sheet lateral aberto ao clicar em uma linha de /lider/avaliacoes.
 // Reusa RhitmoTimelineCard + MonthlyRecapSection + PerformanceReviewList.
 import { useEffect, useMemo, useState } from 'react';
