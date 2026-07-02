@@ -172,8 +172,8 @@ export function ReviewsCrossMemberTable({
         </div>
 
         {/* Tabela — Formal-first: Últ. Formal antes de Últ. Mensal */}
-        <div className="rounded-2xl border bg-card overflow-hidden">
-          <div className="grid grid-cols-[1.4fr_0.9fr_1fr_1fr_0.9fr_1.1fr_auto] gap-3 px-4 py-2.5 text-[11px] uppercase tracking-wider text-muted-foreground border-b bg-muted/30">
+        <div className="rounded-3xl border bg-card overflow-hidden shadow-[0_2px_28px_rgba(0,0,0,0.04)]">
+          <div className="grid grid-cols-[1.4fr_0.9fr_1fr_1fr_0.9fr_1.1fr_auto] gap-3 px-4 py-2.5 text-[11px] uppercase tracking-wider text-muted-foreground border-b bg-muted/20">
             <div>Liderado</div>
             <div>Time</div>
             <div>Últ. Formal</div>
