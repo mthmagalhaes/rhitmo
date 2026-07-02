@@ -140,15 +140,20 @@ export default function LiderMentor() {
     'Você';
 
   // ── Actions ──────────────────────────────────────────────────────
-  const goToThread = (threadId: string, prompt?: string) => {
+  const goToThread = (threadId: string, prompt?: string, attach?: Attachment | null) => {
+    const state: Record<string, unknown> = {};
+    if (prompt) state.initialPrompt = prompt;
+    if (attach) state.initialAttachment = attach;
     navigate(`/lider/mentor/${threadId}`, {
-      state: prompt ? { initialPrompt: prompt } : undefined,
+      state: Object.keys(state).length ? state : undefined,
     });
   };
 
-  const startNewChat = async (prompt: string) => {
-    if (!effectiveUserId || !prompt.trim()) return;
-    const titleText = prompt.slice(0, 40) + (prompt.length > 40 ? '…' : '');
+  const startNewChat = async (prompt: string, attach?: Attachment | null) => {
+    if (!effectiveUserId) return;
+    if (!prompt.trim() && !attach) return;
+    const titleSource = prompt.trim() || (attach?.isImage ? '🖼️ Imagem anexada' : attach?.name || 'Nova conversa');
+    const titleText = titleSource.slice(0, 40) + (titleSource.length > 40 ? '…' : '');
     // For "geral" scope (no member context) we still create a member-less thread.
     const memberId = selectedMember && scope !== 'geral' ? selectedMember.id : null;
     const insertData: any = {
@@ -166,15 +171,17 @@ export default function LiderMentor() {
       console.error('Erro ao criar thread', error);
       return;
     }
-    goToThread(data.id, prompt);
+    goToThread(data.id, prompt || undefined, attach);
   };
 
   const handleSubmit = () => {
     const text = input.trim();
-    if (!text) return;
+    if (!text && !attachment) return;
     if (mode === 'member' && !selectedMember) return;
+    const currentAttachment = attachment;
     setInput('');
-    startNewChat(text);
+    setAttachment(null);
+    startNewChat(text, currentAttachment);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -188,6 +195,67 @@ export default function LiderMentor() {
     startNewChat(text);
   };
 
+  // ── Attachment handlers (paridade com MentorChat) ────────────────
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const imageItem = Array.from(items).find(item => item.type.startsWith('image/'));
+    if (!imageItem) return;
+    e.preventDefault();
+    const file = imageItem.getAsFile();
+    if (!file) return;
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      toast({ title: 'Formato inválido', description: 'Cole PNG, JPG ou WEBP.', variant: 'destructive' });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: 'Imagem muito grande', description: 'Limite: 5MB.', variant: 'destructive' });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64Full = event.target?.result as string;
+      const base64Data = base64Full.split(',')[1];
+      setAttachment({ name: 'imagem-colada.png', content: '', imageBase64: base64Data, mimeType: file.type, isImage: true });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      if (file.type.startsWith('image/')) {
+        if (file.size > 5 * 1024 * 1024) {
+          toast({ title: 'Imagem muito grande', description: 'Limite: 5MB.', variant: 'destructive' });
+          return;
+        }
+        setIsExtractingFile(true);
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(((reader.result as string) || '').split(',')[1] || '');
+          reader.onerror = () => reject(new Error('Erro ao ler imagem'));
+          reader.readAsDataURL(file);
+        });
+        setAttachment({ name: file.name, content: '', imageBase64: base64, mimeType: file.type, isImage: true });
+        return;
+      }
+      if (!isFileSupported(file)) {
+        toast({ title: 'Formato inválido', description: 'Envie PDF, Word, TXT, Markdown ou imagem.', variant: 'destructive' });
+        return;
+      }
+      setIsExtractingFile(true);
+      const text = await extractTextFromFile(file);
+      setAttachment({ name: file.name, content: text });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Não consegui ler o arquivo', description: (err as Error).message, variant: 'destructive' });
+    } finally {
+      setIsExtractingFile(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const handleClearMember = () => {
     setSelectedMember(null);
