@@ -541,17 +541,37 @@ export default function LiderMentor() {
                   <X className="h-3.5 w-3.5" />
                 </button>
               )}
+
+              {/* Anexar (imagem/pdf/word/txt/md) */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp"
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isExtractingFile || (mode === 'member' && !selectedMember)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                title="Anexar imagem, PDF, Word, TXT ou Markdown"
+              >
+                {isExtractingFile ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Paperclip className="h-3.5 w-3.5" />}
+                <span className="hidden sm:inline">Anexar</span>
+              </button>
             </div>
 
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={!input.trim()}
+              disabled={(!input.trim() && !attachment) || isExtractingFile || (mode === 'member' && !selectedMember)}
               className="h-9 w-9 rounded-full flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               aria-label="Enviar"
             >
               <ArrowUp className="h-4 w-4" />
             </button>
+
           </div>
         </div>
 
