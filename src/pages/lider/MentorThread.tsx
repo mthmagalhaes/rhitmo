@@ -27,7 +27,11 @@ export default function LiderMentorThread() {
   const { id: effectiveUserId } = useEffectiveUser();
   const { members, isLoading: membersLoading } = useLeaderMembers();
 
-  const initialPrompt = (location.state as { initialPrompt?: string } | null)?.initialPrompt;
+  const initState = (location.state ?? null) as
+    | { initialPrompt?: string; initialAttachment?: { name: string; content: string; imageBase64?: string; mimeType?: string; isImage?: boolean } | null }
+    | null;
+  const initialPrompt = initState?.initialPrompt;
+  const initialAttachment = initState?.initialAttachment ?? null;
 
   // Resolve member_id from the thread row
   const { data: thread, isLoading: threadLoading } = useQuery({
@@ -67,9 +71,9 @@ export default function LiderMentorThread() {
     staleTime: 60_000,
   });
 
-  // Clear state.initialPrompt from history so refresh doesn't re-send
+  // Clear state.initialPrompt/initialAttachment from history so refresh doesn't re-send
   useEffect(() => {
-    if (initialPrompt) {
+    if (initialPrompt || initialAttachment) {
       window.history.replaceState({}, '', location.pathname);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -131,8 +135,9 @@ export default function LiderMentorThread() {
       open={true}
       onOpenChange={() => {}}
       embedded
-      autoSendInitialPrompt={!!initialPrompt}
+      autoSendInitialPrompt={!!(initialPrompt || initialAttachment)}
       initialPrompt={initialPrompt}
+      initialAttachment={initialAttachment}
       initialThreadId={threadId}
       userType="leader"
       memberName={member?.name || userName}

@@ -73,6 +73,8 @@ interface MentorChatProps {
   onBack?: () => void;
   /** When true, hides the composer and shows a "conversation happened on Slack" banner. */
   readOnly?: boolean;
+  /** Optional attachment to hydrate on mount (used by the launchpad → thread hand-off). */
+  initialAttachment?: { name: string; content: string; imageBase64?: string; mimeType?: string; isImage?: boolean } | null;
 }
 
 // Prompt Gallery — combate "blank page anxiety". Templates curtos para o
@@ -163,6 +165,7 @@ export const MentorChat = ({
   autoSendInitialPrompt = false,
   onBack,
   readOnly = false,
+  initialAttachment = null,
 }: MentorChatProps) => {
   const isLeader = userType === 'leader';
   
@@ -294,19 +297,23 @@ export const MentorChat = ({
   // Populate input with initialPrompt when opens
   const autoSentRef = useRef(false);
   useEffect(() => {
-    if ((open || embedded) && initialPrompt && !autoSentRef.current) {
+    if ((open || embedded) && (initialPrompt || initialAttachment) && !autoSentRef.current) {
       if (autoSendInitialPrompt) {
         // Mark sent and dispatch once messages query resolves to avoid duplicate.
         autoSentRef.current = true;
+        // Hydrate attachment first so handleSend picks it up from state.
+        if (initialAttachment) setAttachment(initialAttachment);
         // Defer to next tick so threadId / state propagate first.
-        setTimeout(() => { handleSend(initialPrompt); }, 50);
+        setTimeout(() => { handleSend(initialPrompt); }, 60);
       } else {
-        setInput(initialPrompt);
+        if (initialPrompt) setInput(initialPrompt);
+        if (initialAttachment) setAttachment(initialAttachment);
         setIsCreatingNewThread(true);
         setSelectedThreadId(null);
       }
     }
-  }, [open, embedded, initialPrompt, autoSendInitialPrompt]);
+  }, [open, embedded, initialPrompt, initialAttachment, autoSendInitialPrompt]);
+
 
 
   // ── Thread helpers ───────────────────────────────────

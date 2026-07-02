@@ -2,14 +2,16 @@
 // Inspirado no Ask Windy (Windmill): composer único no topo, sugestões abaixo
 // e histórico de conversas recentes. Permite ao líder escolher o liderado
 // (ou ficar em "chat geral") e o escopo de contexto antes de iniciar.
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
-  Sparkles, ArrowUp, MessageSquare, ChevronDown, Users, Layers, History, X, Pin, Pencil, Trash2,
+  Sparkles, ArrowUp, MessageSquare, ChevronDown, Users, Layers, History, X, Pin, Pencil, Trash2, Paperclip, Loader2, FileText,
 } from 'lucide-react';
+import { extractTextFromFile, isFileSupported } from '@/lib/fileParser';
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
@@ -62,6 +64,7 @@ export default function LiderMentor() {
   const { members } = useLeaderMembers();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const [mode, setMode] = useState<'coach' | 'member'>('coach');
   const [selectedMember, setSelectedMember] = useState<LeaderMemberRow | null>(null);
@@ -74,6 +77,12 @@ export default function LiderMentor() {
   const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [deletingThread, setDeletingThread] = useState<ThreadRow | null>(null);
+
+  // ── Attachment (imagem colada/anexo de arquivo) ─────────────────
+  type Attachment = { name: string; content: string; imageBase64?: string; mimeType?: string; isImage?: boolean };
+  const [attachment, setAttachment] = useState<Attachment | null>(null);
+  const [isExtractingFile, setIsExtractingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Recent threads ───────────────────────────────────────────────
   const { data: threads = [], isLoading: threadsLoading } = useQuery({
@@ -131,15 +140,20 @@ export default function LiderMentor() {
     'Você';
 
   // ── Actions ──────────────────────────────────────────────────────
-  const goToThread = (threadId: string, prompt?: string) => {
+  const goToThread = (threadId: string, prompt?: string, attach?: Attachment | null) => {
+    const state: Record<string, unknown> = {};
+    if (prompt) state.initialPrompt = prompt;
+    if (attach) state.initialAttachment = attach;
     navigate(`/lider/mentor/${threadId}`, {
-      state: prompt ? { initialPrompt: prompt } : undefined,
+      state: Object.keys(state).length ? state : undefined,
     });
   };
 
-  const startNewChat = async (prompt: string) => {
-    if (!effectiveUserId || !prompt.trim()) return;
-    const titleText = prompt.slice(0, 40) + (prompt.length > 40 ? '…' : '');
+  const startNewChat = async (prompt: string, attach?: Attachment | null) => {
+    if (!effectiveUserId) return;
+    if (!prompt.trim() && !attach) return;
+    const titleSource = prompt.trim() || (attach?.isImage ? '🖼️ Imagem anexada' : attach?.name || 'Nova conversa');
+    const titleText = titleSource.slice(0, 40) + (titleSource.length > 40 ? '…' : '');
     // For "geral" scope (no member context) we still create a member-less thread.
     const memberId = selectedMember && scope !== 'geral' ? selectedMember.id : null;
     const insertData: any = {
@@ -157,15 +171,17 @@ export default function LiderMentor() {
       console.error('Erro ao criar thread', error);
       return;
     }
-    goToThread(data.id, prompt);
+    goToThread(data.id, prompt || undefined, attach);
   };
 
   const handleSubmit = () => {
     const text = input.trim();
-    if (!text) return;
+    if (!text && !attachment) return;
     if (mode === 'member' && !selectedMember) return;
+    const currentAttachment = attachment;
     setInput('');
-    startNewChat(text);
+    setAttachment(null);
+    startNewChat(text, currentAttachment);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -179,6 +195,67 @@ export default function LiderMentor() {
     startNewChat(text);
   };
 
+  // ── Attachment handlers (paridade com MentorChat) ────────────────
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const imageItem = Array.from(items).find(item => item.type.startsWith('image/'));
+    if (!imageItem) return;
+    e.preventDefault();
+    const file = imageItem.getAsFile();
+    if (!file) return;
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      toast({ title: 'Formato inválido', description: 'Cole PNG, JPG ou WEBP.', variant: 'destructive' });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: 'Imagem muito grande', description: 'Limite: 5MB.', variant: 'destructive' });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64Full = event.target?.result as string;
+      const base64Data = base64Full.split(',')[1];
+      setAttachment({ name: 'imagem-colada.png', content: '', imageBase64: base64Data, mimeType: file.type, isImage: true });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      if (file.type.startsWith('image/')) {
+        if (file.size > 5 * 1024 * 1024) {
+          toast({ title: 'Imagem muito grande', description: 'Limite: 5MB.', variant: 'destructive' });
+          return;
+        }
+        setIsExtractingFile(true);
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(((reader.result as string) || '').split(',')[1] || '');
+          reader.onerror = () => reject(new Error('Erro ao ler imagem'));
+          reader.readAsDataURL(file);
+        });
+        setAttachment({ name: file.name, content: '', imageBase64: base64, mimeType: file.type, isImage: true });
+        return;
+      }
+      if (!isFileSupported(file)) {
+        toast({ title: 'Formato inválido', description: 'Envie PDF, Word, TXT, Markdown ou imagem.', variant: 'destructive' });
+        return;
+      }
+      setIsExtractingFile(true);
+      const text = await extractTextFromFile(file);
+      setAttachment({ name: file.name, content: text });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Não consegui ler o arquivo', description: (err as Error).message, variant: 'destructive' });
+    } finally {
+      setIsExtractingFile(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const handleClearMember = () => {
     setSelectedMember(null);
@@ -274,21 +351,47 @@ export default function LiderMentor() {
 
         {/* ── Composer ───────────────────────────────────────────── */}
         <div className="rounded-2xl border border-border bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] focus-within:border-primary/50 focus-within:shadow-[0_0_0_2px_hsl(var(--primary)/0.1)] transition-all">
+          {/* Attachment preview */}
+          {attachment && (
+            <div className="flex items-center gap-2 px-4 pt-3">
+              <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg border border-border/50 text-sm max-w-[320px]">
+                {attachment.isImage && attachment.imageBase64 ? (
+                  <img
+                    src={`data:${attachment.mimeType};base64,${attachment.imageBase64}`}
+                    className="h-8 w-8 rounded object-cover flex-shrink-0"
+                    alt={attachment.name}
+                  />
+                ) : (
+                  <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                )}
+                <span className="truncate text-muted-foreground">{attachment.name}</span>
+                <button
+                  onClick={() => setAttachment(null)}
+                  className="p-0.5 hover:bg-accent rounded transition-colors flex-shrink-0"
+                  aria-label="Remover anexo"
+                >
+                  <X className="h-3 w-3 text-muted-foreground" />
+                </button>
+              </div>
+            </div>
+          )}
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             placeholder={
               mode === 'coach'
-                ? 'Reflita sobre sua liderança…'
+                ? 'Reflita sobre sua liderança… (Ctrl+V para colar imagem)'
                 : selectedMember
-                ? `Pergunte sobre ${selectedMember.name.split(' ')[0]}…`
+                ? `Pergunte sobre ${selectedMember.name.split(' ')[0]}… (Ctrl+V para colar imagem)`
                 : 'Selecione um liderado para começar a análise…'
             }
             rows={2}
-            disabled={mode === 'member' && !selectedMember}
+            disabled={(mode === 'member' && !selectedMember) || isExtractingFile}
             className="w-full bg-transparent border-0 outline-none text-[15px] text-foreground placeholder:text-muted-foreground resize-none min-h-[64px] max-h-[200px] px-5 pt-4 pb-2 focus:ring-0 disabled:opacity-50"
           />
+
 
           <div className="flex items-center justify-between gap-2 px-3 py-2 border-t border-border/40 flex-wrap">
             <div className="flex items-center gap-1.5 flex-wrap">
@@ -438,17 +541,37 @@ export default function LiderMentor() {
                   <X className="h-3.5 w-3.5" />
                 </button>
               )}
+
+              {/* Anexar (imagem/pdf/word/txt/md) */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp"
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isExtractingFile || (mode === 'member' && !selectedMember)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                title="Anexar imagem, PDF, Word, TXT ou Markdown"
+              >
+                {isExtractingFile ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Paperclip className="h-3.5 w-3.5" />}
+                <span className="hidden sm:inline">Anexar</span>
+              </button>
             </div>
 
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={!input.trim()}
+              disabled={(!input.trim() && !attachment) || isExtractingFile || (mode === 'member' && !selectedMember)}
               className="h-9 w-9 rounded-full flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               aria-label="Enviar"
             >
               <ArrowUp className="h-4 w-4" />
             </button>
+
           </div>
         </div>
 

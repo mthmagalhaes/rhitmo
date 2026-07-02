@@ -1,91 +1,50 @@
+## Contexto
 
-## Problema
+O **MentorChat** (dentro de uma thread já criada) **já suporta anexos**: paperclip button, `Ctrl+V` para colar imagem, PDFs/DOCX/TXT/MD/PNG/JPG/WEBP, preview inline e envio como imagem (base64 → visão) ou texto extraído. Toda a lógica em `src/components/MentorChat.tsx` + `src/lib/fileParser.ts` + `chat-mentor` edge function já funciona.
 
-Hoje, quando o líder sobe a mesma transcrição (ex: "Alinhamento Operações") para vários liderados, cada cópia vira um `feedbacks` row separado. O `summarize-transcript` roda uma vez por row com o **mesmo prompt genérico** — então as diferenças entre o resumo da Laís e o da Gabriela (prints anexados) são **ruído estatístico do LLM**, não personalização real. O liderado que abre o card não vê "o que importa pra MIM nessa reunião".
+O que **falta** é justamente a tela do screenshot: o launchpad `/lider/mentor` (`src/pages/lider/Mentor.tsx`). O composer inicial ali é um `<textarea>` puro, sem paperclip, sem paste, sem preview. Quando o líder cria a thread e cai em `/lider/mentor/:threadId`, aí o anexo funciona — mas ele já perdeu a chance de anexar junto da primeira mensagem.
 
-## Princípio da solução
+## Proposta
 
-Separar duas camadas:
+Trazer paridade de anexos entre o launchpad e o chat da thread, nos dois modos (Coach e Analisar liderado), sem duplicar lógica.
 
-1. **Resumo base (compartilhado)** — TL;DR, tópicos, decisões, action items globais. Roda **uma vez por transcrição-fonte**, mesmo que vá para 5 liderados.
-2. **Lente pessoal (por liderado)** — destaque do que *aquela pessoa* falou, compromissos que ela assumiu, menções a ela, tom dirigido a ela. Roda 1× por member vinculado, mas com prompt minúsculo (só o nome + transcrição clipada).
+### 1. Composer do launchpad ganha paperclip + paste (`src/pages/lider/Mentor.tsx`)
 
-Isso resolve os dois problemas: **consistência** (todos veem a mesma "verdade" da reunião) + **personalização real** (cada um vê sua lente) + **economia** (1 chamada cara + N chamadas baratas em vez de N chamadas caras com resultado aleatório).
+- Estado local `attachment` no mesmo formato do MentorChat: `{ name, content, imageBase64?, mimeType?, isImage? }`.
+- Botão **Anexar** (ícone `Paperclip`) na barra inferior do composer, ao lado do picker de liderado e do seletor de escopo. Aceita `.pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp` no modo Coach e no modo Analisar liderado (mesma matriz de hoje).
+- `onPaste` no textarea captura imagem do clipboard (mesma validação: png/jpg/webp, ≤5MB).
+- Preview do anexo (chip com thumb 32×32 para imagem ou ícone FileText + nome) renderizado **acima** do textarea, com `X` para remover — visual idêntico ao MentorChat para consistência.
+- Reaproveitar `extractTextFromFile` / `isFileSupported` de `@/lib/fileParser`.
+- Toast de erro para formato inválido / tamanho excedido.
+- Botão de envio fica habilitado quando **`input.trim() || attachment`** (hoje exige texto).
 
-## Quando fazer
+### 2. Propagação do anexo para a thread recém-criada
 
-**No momento do upload**, não depois. O usuário já espera processamento aqui; adicionar lente pessoal não muda a percepção de latência. Pós-fato (lazy, ao abrir o card) introduz spinner ruim numa tela hoje instantânea.
+Hoje `goToThread` passa apenas `{ initialPrompt }` via `location.state`. Estender:
 
-## Como deduplicar transcrições iguais
+- `goToThread(threadId, prompt?, attachment?)` passa `{ initialPrompt, initialAttachment }`.
+- `startNewChat` recebe o anexo do estado local e propaga.
+- `MentorThread.tsx` lê `initialAttachment` de `location.state`, limpa junto com `initialPrompt` no `useEffect` que faz `history.replaceState`, e passa como nova prop `initialAttachment` para `<MentorChat>`.
+- `MentorChat`: nova prop opcional `initialAttachment`. No mesmo `useEffect` do `autoSendInitialPrompt`, se `initialAttachment` estiver presente, hidrata `setAttachment(initialAttachment)` **antes** de disparar `handleSend(initialPrompt)` (já suporta enviar só com anexo). Nenhuma mudança no backend `chat-mentor`.
 
-Adicionar `transcript_hash` (sha256 do `content` normalizado) em `feedbacks`. Quando `summarize-transcript` roda e encontra outro feedback com **mesmo hash + structured_summary preenchido**, copia o `tldr / topics / decisions / action_items / sentiment` desse irmão e pula a chamada cara. Só roda a lente pessoal.
+### 3. Sugestões e conversas recentes continuam iguais
 
-Isso também cobre o caso retroativo: uploads antigos duplicados se beneficiam quando o próximo for processado.
-
-## Mudanças
-
-### Banco (`feedbacks`)
-- `transcript_hash text` (índice) — preenchido por trigger na insert/update quando `content` muda e tem >500 chars.
-- `personal_lens jsonb` — novo campo separado de `structured_summary` para não invalidar cache existente. Shape:
-  ```json
-  {
-    "member_id": "uuid",
-    "member_name": "Laís Isfer",
-    "spoke": true | false,
-    "talk_share_pct": 12,
-    "key_points": ["..."],         // 2-4 bullets do que ela disse
-    "commitments": [{"task":"...", "due":"..."}],
-    "mentions": ["..."],            // o que falaram SOBRE ela
-    "questions_for_1on1": ["..."]   // 2 perguntas que o líder pode levar pra próxima 1:1
-  }
-  ```
-
-### Edge function `summarize-transcript`
-1. Buscar `transcript_hash` do feedback.
-2. Procurar irmão com mesmo hash e `structured_summary` pronto → reusa.
-3. Se não tiver, gera `structured_summary` como hoje.
-4. **Novo passo**: carrega `member_id` + nome do liderado dono desse feedback e chama nova tool `save_personal_lens` (prompt curto, ~3k tokens; Gemini Flash). Grava em `personal_lens`.
-
-### Edge function `upload-meeting`
-Sem mudanças na lógica de criar rows (continua 1 row por member_id selecionado). Só passa a invocar `summarize-transcript` em paralelo para todos os rows criados — a dedupe por hash garante 1 chamada base + N lentes.
-
-### Frontend `TranscriptExpandedView.tsx`
-Na aba "Resumo", acima dos tópicos globais, novo bloco editorial:
-
-```
-PARA VOCÊ · Laís Isfer
-[chip "Você participou ativamente" | "Você foi mencionada" | "Você não se manifestou"]
-
-O que você trouxe
-• ...
-
-Seus compromissos
-• ... (até 15/07)
-
-Perguntas para sua próxima 1:1 com Matheus
-• ...
-```
-
-Quando o feedback não tem `member_id` (nota geral sem destinatário), oculta o bloco — só o resumo base aparece.
-
-### Backfill
-Migration roda `transcript_hash` para o histórico. Lente pessoal NÃO é gerada retroativamente em massa (custo) — só sob demanda: botão discreto "Gerar lente pessoal" no card quando `personal_lens IS NULL && member_id IS NOT NULL`.
-
-## Custos
-
-- **Antes**: N transcrições × ~$0.005 (Gemini Flash, 60k chars) = ~$0.005 × N
-- **Depois (transcrição compartilhada com 5 liderados)**: 1 × $0.005 (base) + 5 × $0.0008 (lente, prompt 3k) = $0.009 total, vs $0.025 hoje. **~64% mais barato** + qualidade maior.
-
-## Detalhes técnicos
-
-- Hash: `encode(digest(regexp_replace(content, '\s+', ' ', 'g'), 'sha256'), 'hex')` via `pgcrypto`.
-- Trigger `BEFORE INSERT OR UPDATE OF content` em `feedbacks` quando `length(content) > 500`.
-- Lente usa o mesmo `clipTranscript` (60k cap) — mas com instrução de "foque APENAS em {{member_name}}; se ela não falou, retorne `spoke:false` e preencha só `mentions` e `questions_for_1on1`".
-- `personal_lens` nunca substitui `structured_summary` — convivem. Aba "Resumo" renderiza ambos.
-- Sem mudanças em `generate-formal-review` agora — ele já lê `structured_summary` e o `content` cru; a lente é exclusiva da experiência do Diário.
+- Clicar em uma sugestão (`handleSuggestion`) não anexa nada — comportamento atual preservado.
+- Nada muda no MentorChat em si além da nova prop.
 
 ## Fora de escopo
 
-- Permitir 1 feedback com múltiplos members (mudança de modelo grande, quebra RLS de ownership). Mantemos 1 row/member.
-- Regenerar lentes em lote no histórico.
-- Lente para uploads sem speaker detection (sem nomes na transcrição) — nesse caso o prompt degrada para "menções ao nome do liderado" apenas.
+- Múltiplos anexos por mensagem (segue 1 por vez, como no MentorChat de hoje).
+- Suporte a áudio/vídeo anexado.
+- Persistência do anexo em `chat_messages` além do que já existe hoje (imagem vira `imageContent` no payload; texto de arquivo é concatenado à mensagem — mesmo comportamento vigente).
+- Mudanças no `chat-mentor` edge function.
+- Composer do liderado (`MeuRhitmo`) — só se pedirem depois; MentorChat já suporta lá dentro.
+
+## Detalhes técnicos
+
+- **Arquivos alterados:**
+  - `src/pages/lider/Mentor.tsx` — estado `attachment`, handlers `handleFileSelect` / `handlePaste`, botão Paperclip, preview chip, `<input type="file" hidden>`.
+  - `src/pages/lider/MentorThread.tsx` — ler `initialAttachment` de `location.state`, incluir no `history.replaceState` cleanup, passar prop.
+  - `src/components/MentorChat.tsx` — nova prop `initialAttachment?: Attachment`; hidratar `setAttachment` no mesmo bloco do `autoSendInitialPrompt`.
+- **Riscos:** `location.state` carrega base64 na navegação — imagens até 5MB codificadas em base64 ≈ ~6.7MB em memória, aceitável para uma navegação client-side. Não vai para URL nem localStorage.
+- **Sem migração de banco**, sem mudança de RLS, sem tokens extras (o custo de visão só ocorre quando o líder de fato anexa).
