@@ -64,6 +64,7 @@ export default function LiderMentor() {
   const { members } = useLeaderMembers();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const [mode, setMode] = useState<'coach' | 'member'>('coach');
   const [selectedMember, setSelectedMember] = useState<LeaderMemberRow | null>(null);
@@ -76,6 +77,12 @@ export default function LiderMentor() {
   const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [deletingThread, setDeletingThread] = useState<ThreadRow | null>(null);
+
+  // ── Attachment (imagem colada/anexo de arquivo) ─────────────────
+  type Attachment = { name: string; content: string; imageBase64?: string; mimeType?: string; isImage?: boolean };
+  const [attachment, setAttachment] = useState<Attachment | null>(null);
+  const [isExtractingFile, setIsExtractingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Recent threads ───────────────────────────────────────────────
   const { data: threads = [], isLoading: threadsLoading } = useQuery({
