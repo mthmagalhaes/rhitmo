@@ -75,7 +75,8 @@ export function ReviewsCrossMemberTable({
 }: Props) {
   const [query, setQuery] = useState('');
   const [teamId, setTeamId] = useState<string>('all');
-  const [chip, setChip] = useState<ChipFilter>('all');
+  // Default: chama atenção para quem está sem Rhitmo Formal há 6+ meses.
+  const [chip, setChip] = useState<ChipFilter>('no_formal_6m');
 
   const teamById = useMemo(
     () => Object.fromEntries(teams.map((t) => [t.id, t.name])),
@@ -119,15 +120,13 @@ export function ReviewsCrossMemberTable({
     return { all: members.length, needsMonthly, noFormal6m };
   }, [members, summaryByMember]);
 
-  // Esconder chip "Sem Formal 6m+" quando count = 0
+  // Formal-first: chip destaca cobertura de avaliação formal primeiro.
   const visibleChips = useMemo(() => {
     const items: Array<readonly [ChipFilter, string, number]> = [
-      ['all', 'Todos', counters.all],
+      ['no_formal_6m', 'Sem Formal 6m+', counters.noFormal6m],
       ['needs_monthly', 'Sem Mensal', counters.needsMonthly],
+      ['all', 'Todos', counters.all],
     ];
-    if (counters.noFormal6m > 0) {
-      items.push(['no_formal_6m', 'Sem Formal 6m+', counters.noFormal6m]);
-    }
     return items;
   }, [counters]);
 
