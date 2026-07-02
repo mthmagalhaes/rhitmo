@@ -135,8 +135,9 @@ export default function LiderMentorThread() {
       open={true}
       onOpenChange={() => {}}
       embedded
-      autoSendInitialPrompt={!!initialPrompt}
+      autoSendInitialPrompt={!!(initialPrompt || initialAttachment)}
       initialPrompt={initialPrompt}
+      initialAttachment={initialAttachment}
       initialThreadId={threadId}
       userType="leader"
       memberName={member?.name || userName}
