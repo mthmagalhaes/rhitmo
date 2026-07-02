@@ -165,6 +165,7 @@ export const MentorChat = ({
   autoSendInitialPrompt = false,
   onBack,
   readOnly = false,
+  initialAttachment = null,
 }: MentorChatProps) => {
   const isLeader = userType === 'leader';
   
