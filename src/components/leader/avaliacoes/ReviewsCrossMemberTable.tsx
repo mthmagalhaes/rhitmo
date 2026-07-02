@@ -203,7 +203,7 @@ export function ReviewsCrossMemberTable({
                   key={m.id}
                   onClick={() => onOpenMember(m)}
                   className={cn(
-                    "w-full text-left grid grid-cols-[1.4fr_0.9fr_1fr_1.1fr_0.9fr_1.1fr_auto] gap-3 items-center px-4 py-2.5 border-b last:border-b-0 hover:bg-muted/40 hover:opacity-100 transition-all",
+                    "w-full text-left grid grid-cols-[1.4fr_0.9fr_1fr_1fr_0.9fr_1.1fr_auto] gap-3 items-center px-4 py-2.5 border-b last:border-b-0 hover:bg-muted/40 hover:opacity-100 transition-all",
                     isOk && "opacity-60",
                   )}
                 >
@@ -219,25 +219,18 @@ export function ReviewsCrossMemberTable({
                   <div className="text-sm text-muted-foreground truncate">
                     {m.team_id ? teamById[m.team_id] ?? '—' : '—'}
                   </div>
-                  <div>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Badge variant="outline" className={cn('rounded-full text-[11px] cursor-help', RHITMO_CHIP[state])}>
-                          {RHITMO_LABEL[state]}
-                        </Badge>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-[260px] text-xs">
-                        {RHITMO_TOOLTIP[state]}
-                      </TooltipContent>
-                    </Tooltip>
+                  {/* Últ. Formal — em destaque */}
+                  <div className="text-sm font-medium">
+                    {formalLabel ?? <span className="text-muted-foreground font-normal">—</span>}
                   </div>
+                  {/* Últ. Mensal */}
                   <div className="text-sm min-w-0">
                     {monthlyLabel ? (
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="truncate">
+                        <span className="truncate text-muted-foreground">
                           {monthlyLabel}
                           {monthlyRel && (
-                            <span className="text-muted-foreground"> · {monthlyRel}</span>
+                            <span> · {monthlyRel}</span>
                           )}
                         </span>
                         {isLate && (
@@ -253,8 +246,18 @@ export function ReviewsCrossMemberTable({
                       <span className="text-muted-foreground">—</span>
                     )}
                   </div>
-                  <div className="text-sm">
-                    {formalLabel ?? <span className="text-muted-foreground">—</span>}
+                  {/* Cadência (Rhitmo chip) */}
+                  <div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge variant="outline" className={cn('rounded-full text-[11px] cursor-help', RHITMO_CHIP[state])}>
+                          {RHITMO_LABEL[state]}
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-[260px] text-xs">
+                        {RHITMO_TOOLTIP[state]}
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
                   <div className="text-sm">
                     {nextAction === 'monthly' && (
