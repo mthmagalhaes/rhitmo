@@ -73,6 +73,8 @@ interface MentorChatProps {
   onBack?: () => void;
   /** When true, hides the composer and shows a "conversation happened on Slack" banner. */
   readOnly?: boolean;
+  /** Optional attachment to hydrate on mount (used by the launchpad → thread hand-off). */
+  initialAttachment?: { name: string; content: string; imageBase64?: string; mimeType?: string; isImage?: boolean } | null;
 }
 
 // Prompt Gallery — combate "blank page anxiety". Templates curtos para o
