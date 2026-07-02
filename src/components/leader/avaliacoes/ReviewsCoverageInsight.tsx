@@ -78,7 +78,8 @@ export function ReviewsCoverageInsight({ members, summaryByMember, onPickMember 
   };
 
   return (
-    <Card className="p-5 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] bg-gradient-to-r from-primary/5 to-transparent">
+    <Card className="relative overflow-hidden p-6 rounded-3xl border shadow-[0_2px_28px_rgba(0,0,0,0.05)] bg-gradient-to-br from-primary/8 via-primary/3 to-transparent">
+      <div className="absolute -top-16 -right-10 h-40 w-40 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
       <div className="flex items-start gap-3">
         <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
           <Music className="h-4 w-4 text-primary" />
