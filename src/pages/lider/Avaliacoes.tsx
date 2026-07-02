@@ -48,22 +48,28 @@ export default function LiderAvaliacoes() {
             onClose={clearSelection}
           />
         ) : (
-          <div className="max-w-6xl mx-auto px-6 lg:px-8 py-6 space-y-5">
-            <header className="min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <Sparkles className="h-4 w-4 text-primary" />
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary/80">
-                  Rhitmo Formal
+          <div className="max-w-6xl mx-auto px-6 lg:px-8 py-8 space-y-6">
+            <section className="relative overflow-hidden rounded-3xl border bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-8 lg:p-10 shadow-[0_2px_28px_rgba(0,0,0,0.05)]">
+              <div className="absolute -top-20 -right-16 h-56 w-56 rounded-full bg-primary/15 blur-3xl pointer-events-none" />
+              <div className="absolute -bottom-24 -left-10 h-48 w-48 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+              <div className="relative max-w-2xl">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="h-8 w-8 rounded-xl bg-primary/15 flex items-center justify-center">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                  </div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary/80">
+                    Rhitmo Formal
+                  </p>
+                </div>
+                <h1 className="font-serif text-3xl lg:text-4xl font-bold tracking-tight leading-tight">
+                  Ciclos formais do time
+                </h1>
+                <p className="text-base text-muted-foreground mt-3 leading-relaxed">
+                  Estado do Rhitmo Formal e do Acompanhamento Mensal em uma única visão.
+                  Escolha um liderado à esquerda para abrir o ciclo dele em tela cheia.
                 </p>
               </div>
-              <h1 className="font-serif text-3xl font-bold tracking-tight">
-                Ciclos formais do time
-              </h1>
-              <p className="text-sm text-muted-foreground mt-1.5 max-w-2xl">
-                Estado do Rhitmo Formal e do Acompanhamento Mensal do time em uma única
-                visão. Escolha um liderado à esquerda para abrir o ciclo dele em tela cheia.
-              </p>
-            </header>
+            </section>
 
             <ReviewsCrossMemberTable
               members={members}
