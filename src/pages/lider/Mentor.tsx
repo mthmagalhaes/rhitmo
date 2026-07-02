@@ -351,21 +351,47 @@ export default function LiderMentor() {
 
         {/* ── Composer ───────────────────────────────────────────── */}
         <div className="rounded-2xl border border-border bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] focus-within:border-primary/50 focus-within:shadow-[0_0_0_2px_hsl(var(--primary)/0.1)] transition-all">
+          {/* Attachment preview */}
+          {attachment && (
+            <div className="flex items-center gap-2 px-4 pt-3">
+              <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg border border-border/50 text-sm max-w-[320px]">
+                {attachment.isImage && attachment.imageBase64 ? (
+                  <img
+                    src={`data:${attachment.mimeType};base64,${attachment.imageBase64}`}
+                    className="h-8 w-8 rounded object-cover flex-shrink-0"
+                    alt={attachment.name}
+                  />
+                ) : (
+                  <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                )}
+                <span className="truncate text-muted-foreground">{attachment.name}</span>
+                <button
+                  onClick={() => setAttachment(null)}
+                  className="p-0.5 hover:bg-accent rounded transition-colors flex-shrink-0"
+                  aria-label="Remover anexo"
+                >
+                  <X className="h-3 w-3 text-muted-foreground" />
+                </button>
+              </div>
+            </div>
+          )}
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             placeholder={
               mode === 'coach'
-                ? 'Reflita sobre sua liderança…'
+                ? 'Reflita sobre sua liderança… (Ctrl+V para colar imagem)'
                 : selectedMember
-                ? `Pergunte sobre ${selectedMember.name.split(' ')[0]}…`
+                ? `Pergunte sobre ${selectedMember.name.split(' ')[0]}… (Ctrl+V para colar imagem)`
                 : 'Selecione um liderado para começar a análise…'
             }
             rows={2}
-            disabled={mode === 'member' && !selectedMember}
+            disabled={(mode === 'member' && !selectedMember) || isExtractingFile}
             className="w-full bg-transparent border-0 outline-none text-[15px] text-foreground placeholder:text-muted-foreground resize-none min-h-[64px] max-h-[200px] px-5 pt-4 pb-2 focus:ring-0 disabled:opacity-50"
           />
+
 
           <div className="flex items-center justify-between gap-2 px-3 py-2 border-t border-border/40 flex-wrap">
             <div className="flex items-center gap-1.5 flex-wrap">
