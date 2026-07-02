@@ -1,10 +1,10 @@
 // Sprint 20 — Detalhe nativo do liderado em /lider/avaliacoes/:memberId.
 // Substitui o antigo ReviewsMemberSheet (overlay lateral) por conteúdo full-width
 // no shell master-detail. Formal em primeiro plano; Mensal fica em accordion.
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { startOfMonth, subMonths } from 'date-fns';
-import { Music, ChevronDown, X } from 'lucide-react';
+import { Music, ChevronDown, ArrowLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MemberAvatar } from '@/components/MemberAvatar';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
