@@ -75,7 +75,8 @@ export function ReviewsCrossMemberTable({
 }: Props) {
   const [query, setQuery] = useState('');
   const [teamId, setTeamId] = useState<string>('all');
-  const [chip, setChip] = useState<ChipFilter>('all');
+  // Default: chama atenção para quem está sem Rhitmo Formal há 6+ meses.
+  const [chip, setChip] = useState<ChipFilter>('no_formal_6m');
 
   const teamById = useMemo(
     () => Object.fromEntries(teams.map((t) => [t.id, t.name])),
@@ -119,15 +120,13 @@ export function ReviewsCrossMemberTable({
     return { all: members.length, needsMonthly, noFormal6m };
   }, [members, summaryByMember]);
 
-  // Esconder chip "Sem Formal 6m+" quando count = 0
+  // Formal-first: chip destaca cobertura de avaliação formal primeiro.
   const visibleChips = useMemo(() => {
     const items: Array<readonly [ChipFilter, string, number]> = [
-      ['all', 'Todos', counters.all],
+      ['no_formal_6m', 'Sem Formal 6m+', counters.noFormal6m],
       ['needs_monthly', 'Sem Mensal', counters.needsMonthly],
+      ['all', 'Todos', counters.all],
     ];
-    if (counters.noFormal6m > 0) {
-      items.push(['no_formal_6m', 'Sem Formal 6m+', counters.noFormal6m]);
-    }
     return items;
   }, [counters]);
 
@@ -172,14 +171,14 @@ export function ReviewsCrossMemberTable({
           </div>
         </div>
 
-        {/* Tabela */}
+        {/* Tabela — Formal-first: Últ. Formal antes de Últ. Mensal */}
         <div className="rounded-2xl border bg-card overflow-hidden">
-          <div className="grid grid-cols-[1.4fr_0.9fr_1fr_1.1fr_0.9fr_1.1fr_auto] gap-3 px-4 py-2.5 text-[11px] uppercase tracking-wider text-muted-foreground border-b bg-muted/30">
+          <div className="grid grid-cols-[1.4fr_0.9fr_1fr_1fr_0.9fr_1.1fr_auto] gap-3 px-4 py-2.5 text-[11px] uppercase tracking-wider text-muted-foreground border-b bg-muted/30">
             <div>Liderado</div>
             <div>Time</div>
-            <div>Cadência</div>
-            <div>Últ. Mensal</div>
             <div>Últ. Formal</div>
+            <div>Últ. Mensal</div>
+            <div>Cadência</div>
             <div>Próxima ação</div>
             <div />
           </div>
@@ -204,7 +203,7 @@ export function ReviewsCrossMemberTable({
                   key={m.id}
                   onClick={() => onOpenMember(m)}
                   className={cn(
-                    "w-full text-left grid grid-cols-[1.4fr_0.9fr_1fr_1.1fr_0.9fr_1.1fr_auto] gap-3 items-center px-4 py-2.5 border-b last:border-b-0 hover:bg-muted/40 hover:opacity-100 transition-all",
+                    "w-full text-left grid grid-cols-[1.4fr_0.9fr_1fr_1fr_0.9fr_1.1fr_auto] gap-3 items-center px-4 py-2.5 border-b last:border-b-0 hover:bg-muted/40 hover:opacity-100 transition-all",
                     isOk && "opacity-60",
                   )}
                 >
@@ -220,25 +219,18 @@ export function ReviewsCrossMemberTable({
                   <div className="text-sm text-muted-foreground truncate">
                     {m.team_id ? teamById[m.team_id] ?? '—' : '—'}
                   </div>
-                  <div>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Badge variant="outline" className={cn('rounded-full text-[11px] cursor-help', RHITMO_CHIP[state])}>
-                          {RHITMO_LABEL[state]}
-                        </Badge>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-[260px] text-xs">
-                        {RHITMO_TOOLTIP[state]}
-                      </TooltipContent>
-                    </Tooltip>
+                  {/* Últ. Formal — em destaque */}
+                  <div className="text-sm font-medium">
+                    {formalLabel ?? <span className="text-muted-foreground font-normal">—</span>}
                   </div>
+                  {/* Últ. Mensal */}
                   <div className="text-sm min-w-0">
                     {monthlyLabel ? (
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="truncate">
+                        <span className="truncate text-muted-foreground">
                           {monthlyLabel}
                           {monthlyRel && (
-                            <span className="text-muted-foreground"> · {monthlyRel}</span>
+                            <span> · {monthlyRel}</span>
                           )}
                         </span>
                         {isLate && (
@@ -254,8 +246,18 @@ export function ReviewsCrossMemberTable({
                       <span className="text-muted-foreground">—</span>
                     )}
                   </div>
-                  <div className="text-sm">
-                    {formalLabel ?? <span className="text-muted-foreground">—</span>}
+                  {/* Cadência (Rhitmo chip) */}
+                  <div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge variant="outline" className={cn('rounded-full text-[11px] cursor-help', RHITMO_CHIP[state])}>
+                          {RHITMO_LABEL[state]}
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-[260px] text-xs">
+                        {RHITMO_TOOLTIP[state]}
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
                   <div className="text-sm">
                     {nextAction === 'monthly' && (
