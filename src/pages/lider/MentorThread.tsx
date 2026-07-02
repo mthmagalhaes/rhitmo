@@ -27,7 +27,11 @@ export default function LiderMentorThread() {
   const { id: effectiveUserId } = useEffectiveUser();
   const { members, isLoading: membersLoading } = useLeaderMembers();
 
-  const initialPrompt = (location.state as { initialPrompt?: string } | null)?.initialPrompt;
+  const initState = (location.state ?? null) as
+    | { initialPrompt?: string; initialAttachment?: { name: string; content: string; imageBase64?: string; mimeType?: string; isImage?: boolean } | null }
+    | null;
+  const initialPrompt = initState?.initialPrompt;
+  const initialAttachment = initState?.initialAttachment ?? null;
 
   // Resolve member_id from the thread row
   const { data: thread, isLoading: threadLoading } = useQuery({
