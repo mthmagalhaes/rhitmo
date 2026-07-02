@@ -2,14 +2,16 @@
 // Inspirado no Ask Windy (Windmill): composer único no topo, sugestões abaixo
 // e histórico de conversas recentes. Permite ao líder escolher o liderado
 // (ou ficar em "chat geral") e o escopo de contexto antes de iniciar.
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
-  Sparkles, ArrowUp, MessageSquare, ChevronDown, Users, Layers, History, X, Pin, Pencil, Trash2,
+  Sparkles, ArrowUp, MessageSquare, ChevronDown, Users, Layers, History, X, Pin, Pencil, Trash2, Paperclip, Loader2, FileText,
 } from 'lucide-react';
+import { extractTextFromFile, isFileSupported } from '@/lib/fileParser';
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
