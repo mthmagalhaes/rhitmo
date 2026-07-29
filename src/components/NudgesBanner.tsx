@@ -54,7 +54,9 @@ export function NudgesBanner() {
         (a, b) => (priority[a.severity] ?? 3) - (priority[b.severity] ?? 3)
       );
     },
-    refetchInterval: 60000,
+    refetchInterval: 300000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   });
 
   const dismissMutation = useMutation({

@@ -79,7 +79,9 @@ export function useEvidencePendingCount() {
       if (error) throw error;
       return count || 0;
     },
-    refetchInterval: 60_000,
+    refetchInterval: 180_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   });
 }
 
