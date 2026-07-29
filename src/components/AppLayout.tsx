@@ -1,4 +1,4 @@
-import { Suspense, useState, useEffect } from 'react';
+import { Suspense, lazy, useState, useEffect } from 'react';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { RouteSkeleton } from '@/components/RouteSkeleton';
 import { AppSidebar } from '@/components/AppSidebar';
@@ -6,7 +6,10 @@ import { WorkspaceOnboarding } from '@/components/WorkspaceOnboarding';
 import { HRAdminWorkspaceOnboarding } from '@/components/HRAdminWorkspaceOnboarding';
 import { ActivityBadge } from '@/components/ActivityBadge';
 import { ActivitySheet } from '@/components/ActivitySheet';
-import { LeaderTour } from '@/components/onboarding/LeaderTour';
+// driver.js is only needed when the guided tour runs — keep it lazy.
+const LeaderTour = lazy(() =>
+  import('@/components/onboarding/LeaderTour').then((m) => ({ default: m.LeaderTour }))
+);
 import { useAuth } from '@/hooks/useAuth';
 import { useAccount } from '@/contexts/AccountContext';
 import { AccountLoadFailed, AccountLoadingSlow, AccountLoadingDelayedBanner } from '@/components/AccountLoadFailed';
@@ -171,7 +174,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         />
       )}
 
-      {tourRunning && <LeaderTour autoStart onClose={() => setTourRunning(false)} />}
+      {tourRunning && (
+        <Suspense fallback={null}>
+          <LeaderTour autoStart onClose={() => setTourRunning(false)} />
+        </Suspense>
+      )}
 
       {user && accountLoading && isLoadingDelayed && !isSlowLoad && (
         <AccountLoadingDelayedBanner onRetry={() => refetchWorkspace()} />

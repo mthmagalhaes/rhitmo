@@ -1,46 +1,54 @@
-## Problema
+# Deixar o Rhitmo mais leve e fluido
 
-Em `/lider/avaliacoes`, ao clicar num liderado a URL vira `/lider/avaliacoes/:memberId` e o detalhe toma a área principal — mas não há botão de voltar visível no desktop (o `X` do `ReviewsMemberDetail` é `lg:hidden`). O usuário fica preso no detalhe. Além disso, o visual está corporativo demais comparado ao editorial refinado da landing (`rhitmo.co`).
+Fiz uma auditoria completa (build real + varredura de imports). O diagnóstico principal: **o bundle inicial tem 3 MB (880 KB gzip)** e carrega bibliotecas pesadas que quase ninguém usa no primeiro paint. Além disso, há código morto e polling redundante rodando em toda navegação.
 
-## Escopo
+## Fase 1 — Tirar peso do carregamento inicial (maior ganho)
 
-Só UX/visual de `/lider/avaliacoes` e do detalhe do liderado. Sem mexer em dados, RPCs, wizard ou lógica de review.
+O `AppLayout` é eager e importa `LeaderTour` estaticamente, que puxa `driver.js`. Pelo mesmo efeito cascata, `pdfjs-dist`, `mammoth` e todo o `@tiptap`/ProseMirror acabam no chunk principal.
 
-## Mudanças
+- `LeaderTour` (e `driver.js`) → carregamento sob demanda, só quando o tour inicia.
+- `src/lib/fileParser.ts` → `import()` dinâmico de `pdfjs-dist` e `mammoth` dentro das funções de parse (só roda em upload de documento).
+- `src/components/ui/rich-text-editor.tsx` → virar componente lazy, com um placeholder simples enquanto carrega. Consumidores: NewNoteDialog, FormalReviewSheet, DiaryFeedItem, NewGoalDialog, ReviewViewDialog, FeedbackTimeline — todos dentro de diálogos/telas secundárias.
+- Rodar o build antes e depois para medir o ganho real.
 
-### 1. Navegação de volta (o principal)
+Expectativa: várias centenas de KB fora do caminho crítico, primeiro carregamento e trocas de rota visivelmente mais rápidos.
 
-**`ReviewsMemberDetail.tsx`** — header do detalhe ganha:
-- Breadcrumb clicável no topo: `Avaliações › {Nome}` (link para `/lider/avaliacoes`).
-- Botão **"← Voltar para avaliações"** (variant ghost, `rounded-full`, ícone `ArrowLeft`) visível em **todos os breakpoints** (não mais `lg:hidden`).
-- Atalho de teclado `Esc` fecha via `onClose()` (listener no componente).
+## Fase 2 — Remover código morto (risco zero)
 
-**`MemberMasterList`** — na lista, o item ativo continua destacado; clicar nele novamente também desseleciona (chama `onSelect` mas Avaliacoes trata como toggle → navega para `/lider/avaliacoes`).
+Nenhum destes tem importadores:
 
-### 2. Refino visual estilo landing
+- `src/components/NewReviewDialog.tsx` (486 linhas, já marcado como obsoleto)
+- `src/components/leader/avaliacoes/ReviewsMemberSheet.tsx` (130 linhas, substituído pelo ReviewsMemberDetail)
+- `src/data/mockData.ts` (105 linhas, não usado em produção)
+- 14 componentes shadcn nunca usados: AINativeBadge, aspect-ratio, breadcrumb, carousel, context-menu, drawer, hover-card, input-otp, menubar, navigation-menu, pagination, resizable, slider, toggle-group
+- As dependências npm que só existiam para esses componentes (~10 pacotes Radix + embla-carousel + input-otp + react-resizable-panels)
 
-A landing usa: `rounded-3xl`, gradientes suaves `from-primary/10 via-primary/5 to-transparent`, blur bolhas decorativas, `shadow-xl`/`shadow-[0_2px_28px_rgba(0,0,0,0.05)]`, chrome de janela (3 dots) em mockups, `font-serif` editorial em H1/H2, `highlight-marker` em números-chave.
+Isso não muda runtime (o tree-shaking já os cortava), mas reduz superfície de manutenção e tempo de instalação/CI.
 
-Aplicar na página cross-member (empty state) e na tabela:
+## Fase 3 — Reduzir requisições em segundo plano
 
-- **Hero cross-member** (empty state): virar um bloco editorial no estilo dos heroes da landing — gradiente `from-primary/10 via-primary/5 to-transparent`, bolha `blur-3xl` decorativa, eyebrow "Rhitmo Formal" com ícone em pill `rounded-xl bg-primary/15`, H1 `font-serif` maior (`text-3xl lg:text-4xl`), subcopy larga (`max-w-2xl`). Mesma linguagem do `FormalReviewHero`.
-- **`ReviewsCrossMemberTable.tsx`**: `rounded-3xl` (era `rounded-2xl`), shadow suave, header da tabela com `bg-muted/20` mais leve, chips-filtro viram `rounded-full` com contador em pill destacada estilo landing.
-- **`FormalReviewHero`**: já está próximo; pequenos ajustes de consistência (mesmo padding/shadow tokens da landing).
-- **Coverage insight** (`ReviewsCoverageInsight`): passar para `rounded-3xl` com o mesmo padrão de gradient sutil.
+Hoje, em **toda** rota autenticada, rodam simultaneamente:
 
-### 3. Densidade e respiro
+- `ActivityBadge` — refetch a cada 60s, e está montado duas vezes (versão mobile + desktop no AppLayout)
+- `ActivityPreview` — 30s
+- `useEvidence` — 60s
+- `useCalendarIntegration` — 10 min (aceitável)
 
-- `max-w-3xl` do detalhe → `max-w-4xl` para caber melhor o hero editorial.
-- Espaçamento `py-6` → `py-8` no detalhe e no empty state.
+Ações: montar o ActivityBadge uma única vez, subir os intervalos para 2–3 min e trocar polling constante por revalidação ao focar a janela. Menos ruído de rede durante a navegação.
 
-## Arquivos
+## Fase 4 — Opcional (avaliar depois)
 
-- `src/components/leader/avaliacoes/ReviewsMemberDetail.tsx` — header com breadcrumb + botão voltar sempre visível + Esc.
-- `src/pages/lider/Avaliacoes.tsx` — refino do empty state (hero editorial), `max-w-4xl`, toggle de seleção na master list.
-- `src/components/leader/avaliacoes/ReviewsCrossMemberTable.tsx` — `rounded-3xl`, shadow, chips refinados.
-- `src/components/leader/avaliacoes/ReviewsCoverageInsight.tsx` — tokens visuais consistentes com a landing.
-- `src/components/leader/avaliacoes/FormalReviewHero.tsx` — pequenos ajustes de paridade visual.
+- **i18n**: os 3 idiomas (~2.700 linhas de JSON) entram inteiros no bundle inicial, mesmo para usuários PT-BR. Dá para carregar o locale sob demanda — ganho bom, mas exige mudar o setup do i18next. Só faz sentido se en/es tiverem uso real.
+- **Assets de campanha**: `src/assets/google-ads/` tem 4 arquivos somando ~4 MB que não parecem usados na UI. Confirmo o não-uso e movo para fora do repositório.
+- **Landing.tsx** (1.497 linhas, eager por ser rota de entrada): seções abaixo da dobra poderiam ser lazy dentro da própria página.
 
-## Fora do escopo
+## Notas técnicas
 
-Wizard de criação da Formal, notificações, mensal (accordion mantém comportamento), dados/queries, mobile Sheet da master list.
+- `recharts` já está corretamente isolado em chunk próprio (369 KB) e só carrega no Analytics — sem ação.
+- `lamejs` já é dinâmico no RecorderPopup — sem ação.
+- Não há subscriptions realtime abertas, então não há custo de websocket permanente.
+- As rotas do `App.tsx` já são majoritariamente lazy; só Landing/Index/Auth/NotFound são eager, o que é intencional.
+
+## Sugestão de execução
+
+Fases 1 a 3 numa tacada só (é onde está o ganho real e o risco é baixo), medindo o bundle antes e depois. A Fase 4 fica para uma segunda rodada, depois de você confirmar o uso de en/es e dos criativos de anúncio.

@@ -1,9 +1,15 @@
-import * as pdfjsLib from 'pdfjs-dist';
-import mammoth from 'mammoth';
 import { supabase } from '@/integrations/supabase/client';
 
-// Configure PDF.js worker using unpkg (reliable for all versions)
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+/**
+ * pdfjs-dist and mammoth are heavy (~1MB combined) and only needed when the
+ * user actually uploads a PDF/DOCX. They are imported dynamically so they stay
+ * out of the initial bundle.
+ */
+async function loadPdfjs() {
+  const pdfjsLib = await import('pdfjs-dist');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+  return pdfjsLib;
+}
 
 // Supported file types
 type FileType = 'pdf' | 'docx' | 'txt' | 'md' | 'image';
@@ -57,6 +63,7 @@ async function extractFromText(file: File): Promise<string> {
  * Extract text from PDF files using pdfjs-dist
  */
 async function extractFromPdf(file: File): Promise<string> {
+  const pdfjsLib = await loadPdfjs();
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   let fullText = '';
@@ -77,6 +84,7 @@ async function extractFromPdf(file: File): Promise<string> {
  * Extract text from DOCX files using mammoth
  */
 async function extractFromDocx(file: File): Promise<string> {
+  const { default: mammoth } = await import('mammoth');
   const arrayBuffer = await file.arrayBuffer();
   const result = await mammoth.extractRawText({ arrayBuffer });
   return result.value;
