@@ -12,7 +12,7 @@ import { BiasUnderlineExtension, biasPluginKey } from '@/components/feedback/Bia
 import { BiasInlinePopover } from '@/components/feedback/BiasInlinePopover';
 import type { BiasMatch } from '@/lib/biasDetection';
 
-interface RichTextEditorProps {
+export interface RichTextEditorProps {
   content: string;
   onChange: (html: string) => void;
   placeholder?: string;
