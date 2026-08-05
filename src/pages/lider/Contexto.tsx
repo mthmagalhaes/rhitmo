@@ -103,10 +103,9 @@ export default function LiderContexto() {
               <Layers className="h-3.5 w-3.5" />
               Evidências
             </TabsTrigger>
-            <TabsTrigger value="rede" className="rounded-lg gap-1.5">
-              <Network className="h-3.5 w-3.5" />
-              Rede
-            </TabsTrigger>
+            {/* Rhitmo Lean: aba "Rede" (ONA) oculta — network_signals sem dados.
+                O TabsContent segue montado para ?tab=rede não quebrar links antigos. */}
+
             <TabsTrigger value="slack" className="rounded-lg gap-1.5">
               <Slack className="h-3.5 w-3.5" />
               Sinais do Slack

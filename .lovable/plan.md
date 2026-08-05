@@ -1,54 +1,93 @@
-# Deixar o Rhitmo mais leve e fluido
 
-Fiz uma auditoria completa (build real + varredura de imports). O diagnóstico principal: **o bundle inicial tem 3 MB (880 KB gzip)** e carrega bibliotecas pesadas que quase ninguém usa no primeiro paint. Além disso, há código morto e polling redundante rodando em toda navegação.
+# Rhitmo Lean: de plataforma de gestão de pessoas para 2 promessas
 
-## Fase 1 — Tirar peso do carregamento inicial (maior ganho)
+## O diagnóstico (dados reais do banco, hoje)
 
-O `AppLayout` é eager e importa `LeaderTour` estaticamente, que puxa `driver.js`. Pelo mesmo efeito cascata, `pdfjs-dist`, `mammoth` e todo o `@tiptap`/ProseMirror acabam no chunk principal.
+Antes de opinar, medimos. Contagem de linhas por tabela em produção:
 
-- `LeaderTour` (e `driver.js`) → carregamento sob demanda, só quando o tour inicia.
-- `src/lib/fileParser.ts` → `import()` dinâmico de `pdfjs-dist` e `mammoth` dentro das funções de parse (só roda em upload de documento).
-- `src/components/ui/rich-text-editor.tsx` → virar componente lazy, com um placeholder simples enquanto carrega. Consumidores: NewNoteDialog, FormalReviewSheet, DiaryFeedItem, NewGoalDialog, ReviewViewDialog, FeedbackTimeline — todos dentro de diálogos/telas secundárias.
-- Rodar o build antes e depois para medir o ganho real.
+| Sinal | Número |
+|---|---|
+| Usuários cadastrados | 45 |
+| Usuários com login nos últimos 30 dias | 2 |
+| Feedbacks/Diário | 352 (270 transcrição, 42 bot, 37 manual) |
+| Transcrições de reunião | 63 |
+| Avaliações formais | 16 — **todas** `review_type = 'manager'` |
+| Evidências de contexto | 2.997 (2.780 vêm do Slack ambient) |
+| Mentor (mensagens / threads) | 127 / 40 |
 
-Expectativa: várias centenas de KB fora do caminho crítico, primeiro carregamento e trocas de rota visivelmente mais rápidos.
+E o outro lado da moeda — features construídas que **nunca foram usadas por ninguém**:
 
-## Fase 2 — Remover código morto (risco zero)
+| Feature | Linhas |
+|---|---|
+| Pulse Surveys | 0 |
+| Peer review (`review_peers`) | 0 |
+| Peer feedback loop (`peer_feedback_requests`) | 0 |
+| ONA / rede (`network_signals`, `team_network_edges`, `graph_events_raw`) | 0 |
+| Bias detection | 0 |
+| Mirror insights | 0 |
+| Kudos | 0 |
+| Job roles / role competencies | 0 |
+| PDI (`development_plans`) | 1 |
+| Goals/OKRs | 5 (já ocultos da sidebar) |
+| Quarterly recaps | 5 |
 
-Nenhum destes tem importadores:
+Leitura de produto: **o produto tem ~12 features e 2 delas têm tração**. O custo não é só de bundle — é de superfície cognitiva no onboarding, de RLS para manter, de 86 edge functions, de crons rodando, e de um menu que promete mais do que entrega.
 
-- `src/components/NewReviewDialog.tsx` (486 linhas, já marcado como obsoleto)
-- `src/components/leader/avaliacoes/ReviewsMemberSheet.tsx` (130 linhas, substituído pelo ReviewsMemberDetail)
-- `src/data/mockData.ts` (105 linhas, não usado em produção)
-- 14 componentes shadcn nunca usados: AINativeBadge, aspect-ratio, breadcrumb, carousel, context-menu, drawer, hover-card, input-otp, menubar, navigation-menu, pagination, resizable, slider, toggle-group
-- As dependências npm que só existiam para esses componentes (~10 pacotes Radix + embla-carousel + input-otp + react-resizable-panels)
+## As duas propostas de valor que ficam
 
-Isso não muda runtime (o tree-shaking já os cortava), mas reduz superfície de manutenção e tempo de instalação/CI.
+**1. Diário de Contexto** — o líder joga tudo pra dentro (bot na reunião, upload, paste, Slack) e a Rhitmo organiza: TL;DR, tópicos, lente pessoal por liderado, "Pergunte à Rhitmo" sobre aquela reunião. É onde está 100% do volume real.
 
-## Fase 3 — Reduzir requisições em segundo plano
+**2. Avaliação Formal com evidência rastreável** — o payoff do item 1. Chega o fim do ciclo e a review sai pronta, com citações datadas e pílulas clicáveis. É o "Service-as-Software" da visão original.
 
-Hoje, em **toda** rota autenticada, rodam simultaneamente:
+Tudo que não alimenta (1) ou não é consumido por (2) sai do caminho.
 
-- `ActivityBadge` — refetch a cada 60s, e está montado duas vezes (versão mobile + desktop no AppLayout)
-- `ActivityPreview` — 30s
-- `useEvidence` — 60s
-- `useCalendarIntegration` — 10 min (aceitável)
+## O que sai — em 3 níveis de reversibilidade
 
-Ações: montar o ActivityBadge uma única vez, subir os intervalos para 2–3 min e trocar polling constante por revalidação ao focar a janela. Menos ruído de rede durante a navegação.
+### Nível A — Ocultar da navegação, manter dados e rotas (risco zero, reversível em 1 linha)
+Mesmo padrão já usado com Objetivos e Frameworks.
 
-## Fase 4 — Opcional (avaliar depois)
+- **Pulse** (`/lider/pulse`, `/liderado/pulse`) — 0 surveys criados. Sai da sidebar do líder e do liderado, sai do `TeamPulseBento` da home.
+- **PDI** (`/liderado/pdi`) — 1 registro. Sai da nav do liderado.
+- **Compass** (`/liderado/compass`) — hoje é a home do liderado; vira uma seção dentro de `/liderado/inicio` em vez de item próprio.
+- **Contexto** (`/lider/contexto`) — sobrepõe o Diário conceitualmente. O feed cross-member vira uma aba dentro do Diário, não uma rota irmã.
+- **HR Analytics / HR Teams / Competency Framework** — com 23 times e 2 usuários ativos, analytics de RH é resposta para uma pergunta que ninguém está fazendo ainda. Fica `/hr` (overview) + `/hr/pessoas`.
 
-- **i18n**: os 3 idiomas (~2.700 linhas de JSON) entram inteiros no bundle inicial, mesmo para usuários PT-BR. Dá para carregar o locale sob demanda — ganho bom, mas exige mudar o setup do i18next. Só faz sentido se en/es tiverem uso real.
-- **Assets de campanha**: `src/assets/google-ads/` tem 4 arquivos somando ~4 MB que não parecem usados na UI. Confirmo o não-uso e movo para fora do repositório.
-- **Landing.tsx** (1.497 linhas, eager por ser rota de entrada): seções abaixo da dobra poderiam ser lazy dentro da própria página.
+Resultado: sidebar do líder = **Início · Pessoas · Diário · Avaliações** (já é isso hoje, mas Pulse/Contexto ainda aparecem em outros pontos); sidebar do liderado = **Início · 1:1s · Avaliações**.
+
+### Nível B — Desativar processamento de fundo (corta custo real de IA e cron)
+Features com 0 uso que **mesmo assim rodam**:
+
+- `detect-network-signals` (cron 03:30) — ONA sem dado nenhum.
+- `request-peer-feedback` (cron 04:00) — 0 requests até hoje.
+- `mirror-weekly` — 0 insights gerados.
+- `generate-quarterly-recap-cron` + `quarterly-anniversary-cron` — 5 recaps em toda a base; manter geração sob demanda, desligar o cron.
+- `hr-risk-alerts`, `slack-weekly-rollup`, `send-evidence-digest` — avaliar por último; dependem de superfícies que estamos escondendo.
+
+Ação: desagendar os crons (não deletar as funções), remover as chamadas de UI correspondentes.
+
+### Nível C — Remover código de verdade (só depois de A e B validados)
+Componentes e edge functions que ficam órfãos após A e B: wizards de self/peer/upwards review, `SendPulseButton`/`PendingPulseAlert`, aba Rede do Contexto, extensão de bias detection no editor, `build-team-graph`. Isso é uma limpeza de segunda rodada — **não misturar com a primeira**, para conseguir reverter A/B sem conflito.
+
+## Ponto de decisão que preciso de você
+
+**Slack ambient** gera 2.780 das 2.997 evidências de contexto — 93% do pool. Mas gerou apenas 2 feedbacks no Diário. Ou seja: está capturando muito e convertendo quase nada em algo que o líder vê. Duas leituras possíveis:
+
+- É o **motor silencioso** do RAG (a review formal fica melhor por causa dele) → mantém e nem toca.
+- É **ruído caro** que infla o contexto sem melhorar output → desliga o classificador ambiente e mantém só o Slack como canal de conversa.
+
+Minha recomendação: **manter por enquanto**, mas instrumentar — logar quantas dessas 2.780 evidências efetivamente entram no prompt de uma review formal. Se for <5%, desliga na próxima rodada.
+
+## Sequência sugerida
+
+1. **Semana 1 — Nível A.** Sidebar e rotas enxutas, redirects preservados. Nada quebra, nenhum dado se perde.
+2. **Semana 1 — Nível B.** Desagendar os 5 crons de features mortas.
+3. **Validar com os 2 usuários ativos** (você + 1) e com os próximos onboardings: o funil fica mais claro?
+4. **Semana 3+ — Nível C**, com a lista de órfãos confirmada por varredura de imports.
 
 ## Notas técnicas
 
-- `recharts` já está corretamente isolado em chunk próprio (369 KB) e só carrega no Analytics — sem ação.
-- `lamejs` já é dinâmico no RecorderPopup — sem ação.
-- Não há subscriptions realtime abertas, então não há custo de websocket permanente.
-- As rotas do `App.tsx` já são majoritariamente lazy; só Landing/Index/Auth/NotFound são eager, o que é intencional.
-
-## Sugestão de execução
-
-Fases 1 a 3 numa tacada só (é onde está o ganho real e o risco é baixo), medindo o bundle antes e depois. A Fase 4 fica para uma segunda rodada, depois de você confirmar o uso de en/es e dos criativos de anúncio.
+- Ocultar item de nav = comentar entrada em `src/lib/navigation.ts` (padrão já estabelecido no arquivo, com comentário explicando a decisão de produto).
+- Rotas permanecem em `App.tsx` e `routeLoaders.ts` — links salvos, DMs antigas do Slack e e-mails continuam funcionando.
+- Nenhuma migration destrutiva em A ou B. Tabelas com 0 linhas ficam de pé.
+- Desagendamento de cron é `cron.unschedule('<job>')` — reversível com um `cron.schedule`.
+- Os ganhos de bundle da rodada anterior (880 KB → 493 KB gzip) não se sobrepõem a este trabalho: aquilo foi carregamento, isto é superfície de produto.

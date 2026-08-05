@@ -2,19 +2,15 @@ import {
   Calendar,
   BookOpen,
   ClipboardList,
-  Compass,
-  Heart,
   Home,
-  Target,
   FileText,
   Users,
   LayoutDashboard,
-  Building2,
-  BarChart3,
-  // ListChecks reservado para reativar Frameworks no menu HR.
-
+  // Compass, Heart, Target, Building2, BarChart3 e ListChecks ficam reservados
+  // para reativar Compass/Pulse/PDI/Times/Analytics/Frameworks no menu.
   type LucideIcon,
 } from 'lucide-react';
+
 
 export interface NavItem {
   id: string;
@@ -50,8 +46,11 @@ export const LEADER_NAV_ITEMS: NavItem[] = [
 export const HR_ADMIN_NAV_ITEMS: NavItem[] = [
   { id: 'overview', labelKey: 'nav.hr.overview', icon: LayoutDashboard, to: '/hr' },
   { id: 'members', labelKey: 'nav.hr.members', icon: Users, to: '/hr/pessoas' },
-  { id: 'teams', labelKey: 'nav.hr.teams', icon: Building2, to: '/hr/teams' },
-  { id: 'analytics', labelKey: 'nav.hr.analytics', icon: BarChart3, to: '/hr/analytics' },
+  // Rhitmo Lean: Times e Analytics ocultos do menu. Rotas /hr/teams e /hr/analytics
+  // continuam vivas (links salvos funcionam), mas não competem com o fluxo principal
+  // enquanto a base não pede analytics de RH. Não re-adicionar sem decisão de produto.
+  // { id: 'teams', labelKey: 'nav.hr.teams', icon: Building2, to: '/hr/teams' },
+  // { id: 'analytics', labelKey: 'nav.hr.analytics', icon: BarChart3, to: '/hr/analytics' },
   // Frameworks oculto no menu enquanto a feature não está pronta — rota continua viva.
   // { id: 'framework', labelKey: 'nav.hr.framework', icon: ListChecks, to: '/hr/competency-framework' },
 ];
@@ -61,12 +60,16 @@ export const HR_ADMIN_NAV_ITEMS: NavItem[] = [
  * Settings lives in the WorkspaceSwitcher dropdown, not here.
  */
 export const DIRECT_REPORT_NAV_ITEMS: NavItem[] = [
-  { id: 'compass', labelKey: 'nav.liderado.compass', icon: Compass, to: '/liderado/compass' },
+  { id: 'inicio', labelKey: 'nav.liderado.inicio', icon: Home, to: '/liderado/inicio' },
   { id: '1on1s', labelKey: 'nav.liderado.um_pra_um', icon: Calendar, to: '/liderado/1on1s' },
-  { id: 'pulse', labelKey: 'nav.liderado.pulse', icon: Heart, to: '/liderado/pulse' },
-  { id: 'pdi', labelKey: 'nav.liderado.pdi', icon: Target, to: '/liderado/pdi' },
   { id: 'avaliacoes', labelKey: 'nav.liderado.avaliacoes', icon: FileText, to: '/liderado/avaliacoes' },
+  // Rhitmo Lean: Compass virou seção da home (/liderado/inicio); Pulse (0 surveys criados)
+  // e PDI (1 registro) saíram do menu. Rotas, tabelas e RLS intactos.
+  // { id: 'compass', labelKey: 'nav.liderado.compass', icon: Compass, to: '/liderado/compass' },
+  // { id: 'pulse', labelKey: 'nav.liderado.pulse', icon: Heart, to: '/liderado/pulse' },
+  // { id: 'pdi', labelKey: 'nav.liderado.pdi', icon: Target, to: '/liderado/pdi' },
 ];
+
 
 export type SidebarPersona = 'leader' | 'hr_admin' | 'direct_report';
 
