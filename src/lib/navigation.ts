@@ -2,19 +2,15 @@ import {
   Calendar,
   BookOpen,
   ClipboardList,
-  Compass,
-  Heart,
   Home,
-  Target,
   FileText,
   Users,
   LayoutDashboard,
-  Building2,
-  BarChart3,
-  // ListChecks reservado para reativar Frameworks no menu HR.
-
+  // Compass, Heart, Target, Building2, BarChart3 e ListChecks ficam reservados
+  // para reativar Compass/Pulse/PDI/Times/Analytics/Frameworks no menu.
   type LucideIcon,
 } from 'lucide-react';
+
 
 export interface NavItem {
   id: string;
