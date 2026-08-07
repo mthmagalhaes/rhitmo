@@ -44,30 +44,59 @@ Deno.serve(async (req) => {
   const RECALL_API_KEY = Deno.env.get("RECALL_API_KEY");
 
   try {
-    // ── Authenticate user ──
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const supabase = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
-    if (userError || !authUser) {
-      console.error("Auth failed:", userError?.message);
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const userId = authUser.id;
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // ── Authenticate: usuário (JWT) OU cron interno (x-cron-secret + user_id) ──
+    let userId: string;
+    let authUser: { id: string; email?: string | null };
+
+    const cronSecret = req.headers.get("x-cron-secret");
+    const expectedCronSecret = Deno.env.get("CRON_SECRET");
+    const isCronCall = !!cronSecret && !!expectedCronSecret && cronSecret === expectedCronSecret;
+
+    if (isCronCall) {
+      const body = await req.json().catch(() => ({}));
+      const targetUserId = (body as { user_id?: string }).user_id;
+      if (!targetUserId) {
+        return new Response(JSON.stringify({ error: "user_id required for cron call" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: cronUser } = await supabaseAdmin.auth.admin.getUserById(targetUserId);
+      if (!cronUser?.user) {
+        return new Response(JSON.stringify({ error: "User not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      userId = cronUser.user.id;
+      authUser = { id: cronUser.user.id, email: cronUser.user.email };
+    } else {
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader?.startsWith("Bearer ")) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const supabase = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: authHeader } },
+      });
+
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.error("Auth failed:", userError?.message);
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      userId = user.id;
+      authUser = { id: user.id, email: user.email };
+    }
+
 
     // ── Fetch Google token ──
     const { data: tokenData, error: tokenError } = await supabaseAdmin
