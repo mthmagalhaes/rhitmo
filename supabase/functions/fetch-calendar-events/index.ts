@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "authorization, x-cron-secret, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 /** Extract meeting link from multiple sources in a Google Calendar event */
@@ -44,30 +44,59 @@ Deno.serve(async (req) => {
   const RECALL_API_KEY = Deno.env.get("RECALL_API_KEY");
 
   try {
-    // ── Authenticate user ──
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const supabase = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
-    if (userError || !authUser) {
-      console.error("Auth failed:", userError?.message);
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const userId = authUser.id;
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // ── Authenticate: usuário (JWT) OU cron interno (x-cron-secret + user_id) ──
+    let userId: string;
+    let authUser: { id: string; email?: string | null };
+
+    const cronSecret = req.headers.get("x-cron-secret");
+    const expectedCronSecret = Deno.env.get("CRON_SECRET");
+    const isCronCall = !!cronSecret && !!expectedCronSecret && cronSecret === expectedCronSecret;
+
+    if (isCronCall) {
+      const body = await req.json().catch(() => ({}));
+      const targetUserId = (body as { user_id?: string }).user_id;
+      if (!targetUserId) {
+        return new Response(JSON.stringify({ error: "user_id required for cron call" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: cronUser } = await supabaseAdmin.auth.admin.getUserById(targetUserId);
+      if (!cronUser?.user) {
+        return new Response(JSON.stringify({ error: "User not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      userId = cronUser.user.id;
+      authUser = { id: cronUser.user.id, email: cronUser.user.email };
+    } else {
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader?.startsWith("Bearer ")) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const supabase = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: authHeader } },
+      });
+
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.error("Auth failed:", userError?.message);
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      userId = user.id;
+      authUser = { id: user.id, email: user.email };
+    }
+
 
     // ── Fetch Google token ──
     const { data: tokenData, error: tokenError } = await supabaseAdmin
@@ -518,10 +547,44 @@ Deno.serve(async (req) => {
             autoScheduled.push(meeting.id);
             console.log(`[sync] Auto-scheduled bot for meeting ${meeting.id}: ${recallData.id}`);
           } else {
+            // Falha na API do Recall (ex.: insufficient_credit_balance). Persistimos
+            // a linha com status=error para o card "Próximas 1:1s" mostrar o motivo
+            // em vez do bot simplesmente não aparecer (incidente 15/07 → 07/08).
+            const reason =
+              recallData?.detail ||
+              recallData?.error ||
+              recallData?.message ||
+              JSON.stringify(recallData).slice(0, 300);
             console.error(`[sync] Auto-schedule failed for meeting ${meeting.id}:`, recallData);
+            await supabaseAdmin.from("recall_bots").insert({
+              user_id: userId,
+              meeting_id: meeting.id,
+              member_id: meeting.member_id,
+              meeting_url: meeting.meet_link,
+              recall_bot_id: `failed-${crypto.randomUUID()}`,
+
+              status: "error",
+              scheduled_at: joinAt,
+              leader_email: authUser.email || null,
+              trigger_source: "auto_calendar",
+              error_message: `Falha ao agendar bot (${recallResponse.status}): ${reason}`,
+            });
           }
         } catch (e) {
           console.error(`[sync] Auto-schedule error for meeting ${meeting.id}:`, e);
+          await supabaseAdmin.from("recall_bots").insert({
+            user_id: userId,
+            meeting_id: meeting.id,
+            member_id: meeting.member_id,
+            meeting_url: meeting.meet_link,
+            recall_bot_id: `failed-${crypto.randomUUID()}`,
+
+            status: "error",
+            scheduled_at: joinAt,
+            leader_email: authUser.email || null,
+            trigger_source: "auto_calendar",
+            error_message: `Falha ao agendar bot: ${e instanceof Error ? e.message : String(e)}`,
+          });
         }
       }
 
