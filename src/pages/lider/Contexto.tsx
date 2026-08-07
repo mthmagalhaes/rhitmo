@@ -3,7 +3,7 @@
 // Sprint 14: aba "Rede" lista sinais derivados do grafo (ONA).
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Layers, Loader2, Network, Slack } from 'lucide-react';
+import { Layers, Loader2, Slack } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -22,7 +22,7 @@ export default function LiderContexto() {
   const [searchParams, setSearchParams] = useSearchParams();
   const memberParam = searchParams.get('member');
   const rawTab = searchParams.get('tab');
-  const tabParam = rawTab === 'rede' ? 'rede' : rawTab === 'slack' ? 'slack' : 'evidencias';
+  const tabParam = rawTab === 'slack' ? 'slack' : 'evidencias';
   const { data: pendingSlackCount = 0 } = useEvidencePendingCount();
 
   const [memberId, setMemberId] = useState<string | null>(memberParam);
