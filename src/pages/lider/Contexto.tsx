@@ -103,8 +103,9 @@ export default function LiderContexto() {
               <Layers className="h-3.5 w-3.5" />
               Evidências
             </TabsTrigger>
-            {/* Rhitmo Lean: aba "Rede" (ONA) oculta — network_signals sem dados.
-                O TabsContent segue montado para ?tab=rede não quebrar links antigos. */}
+            {/* Rhitmo Lean: aba "Rede" (ONA) removida — network_signals sem dados.
+                ?tab=rede cai no feed de evidências. */}
+
 
             <TabsTrigger value="slack" className="rounded-lg gap-1.5">
               <Slack className="h-3.5 w-3.5" />
