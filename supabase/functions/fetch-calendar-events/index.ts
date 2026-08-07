@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { alertRecallCreditIfNeeded } from "../_shared/recallCreditAlert.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
