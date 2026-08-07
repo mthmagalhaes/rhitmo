@@ -93,6 +93,7 @@ export function AccountSetupBento({ workspaceId, memberCount, onOpenInvite }: Pr
         loading: calendar.checkingConnection,
         onAction: () => calendar.connectCalendar(),
         actionLabel: 'Conectar',
+        helpHref: '/lider/configuracoes?tab=ajuda#l-calendar',
       },
     ],
     [
