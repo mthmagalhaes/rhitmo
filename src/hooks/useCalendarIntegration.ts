@@ -154,9 +154,8 @@ export const useCalendarIntegration = () => {
       const supabaseAny = supabase as any;
       const { data, error } = await supabaseAny
         .from('recall_bots')
-        .select('id, meeting_id, meeting_url, status, scheduled_at')
-        .eq('user_id', user!.id)
-        .neq('status', 'error');
+        .select('id, meeting_id, meeting_url, status, scheduled_at, error_message')
+        .eq('user_id', user!.id);
       if (error) return [];
       return (data || []) as RecallBot[];
     },
