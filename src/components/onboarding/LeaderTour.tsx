@@ -164,7 +164,8 @@ export function LeaderTour({ autoStart = true, onClose }: LeaderTourProps) {
           popover: {
             title: 'Conecte suas ferramentas',
             description:
-              'Slack e Google Calendar fazem a Rhitmo trabalhar em background: briefs antes das 1:1s, sinais ambientes, lembretes nos canais certos.',
+              'Slack e Google Calendar fazem a Rhitmo trabalhar em background: briefs antes das 1:1s, sinais ambientes, lembretes nos canais certos. O passo a passo completo de como conectar a agenda está na aba Ajuda, aqui mesmo em Configurações.',
+
             side: 'top',
             align: 'center',
           },
