@@ -140,20 +140,37 @@ const leaderCards: FeatureCard[] = [
   },
   // Conector Chrome removido — Magic Paste e Bot Recall.ai cobrem o caso de uso.
   {
+    id: 'l-calendar',
+    icon: CalendarCheck,
+    title: 'Conectar sua agenda',
+    subtitle: 'Passo a passo do Google Calendar no Rhitmo',
+    steps: [
+      'Vá em Início e clique em "Conectar" no card "Conectar Google Calendar". Você também pode ir em Configurações → Integrações → Google Calendar → Conectar.',
+      'O Google vai pedir permissão de leitura da sua agenda. O Rhitmo usa isso apenas para identificar suas 1:1s e o link da videochamada. Nada é criado, editado ou apagado na sua agenda.',
+      'Deu certo quando o card fica verde e mostra o e-mail conectado.',
+      'A partir daí a agenda sincroniza sozinha a cada 15 minutos e suas 1:1s aparecem no card "Próximas 1:1s" na Início.',
+      'Antes de cada 1:1, a Rhitmo prepara um brief com o contexto recente daquele liderado.',
+      'Para desconectar, volte em Configurações → Integrações e clique em "Desconectar". As notas já registradas continuam no Diário.',
+    ],
+  },
+  {
     id: 'l-auto-transcription',
     icon: FileAudio,
     title: 'Transcrição Automática',
-    subtitle: 'Suas reuniões transcritas e analisadas pela IA',
+    subtitle: 'Como o bot da Rhitmo participa das suas reuniões',
     steps: [
-      'Conecte seu Google Calendar em Configurações → Integrações.',
-      'Ative o toggle "Transcrição Automática" no card de Próximas Reuniões.',
-      'O bot Rhitmo entrará automaticamente nas suas reuniões com link do Google Meet, Zoom ou Teams.',
-      'A transcrição com nomes dos participantes aparece automaticamente no Diário de Bordo de cada liderado.',
-      'A IA analisa a transcrição gerando resumo, sentimento e coaching tips — tudo automático.',
-      'Se a reunião tiver mais de um liderado, a nota é criada para cada um deles.',
+      'Pré-requisito: agenda conectada (veja "Conectar sua agenda").',
+      'Ative o toggle "Transcrição Automática" no card "Próximas 1:1s".',
+      'O bot entra por volta de 2 minutos antes do horário e aparece na sala como um participante chamado "Rhitmo".',
+      'Se a reunião tiver sala de espera, alguém precisa admitir o bot. Ele aguarda até 10 minutos.',
+      'Funciona com links de Google Meet, Zoom e Teams presentes no evento da agenda.',
+      'Ao fim, a transcrição com os nomes dos participantes vira uma nota no Diário de Bordo de cada liderado presente.',
+      'A IA gera resumo, tópicos, sentimento e coaching tips em cima dessa transcrição.',
+      'Você pode chamar o bot manualmente a qualquer momento no ícone de microfone do card "Próximas 1:1s", inclusive com a reunião já em andamento.',
     ],
   },
 ];
+
 
 const memberCards: FeatureCard[] = [
   {
