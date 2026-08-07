@@ -569,6 +569,11 @@ Deno.serve(async (req) => {
               trigger_source: "auto_calendar",
               error_message: `Falha ao agendar bot (${recallResponse.status}): ${reason}`,
             });
+            await alertRecallCreditIfNeeded(supabaseAdmin, {
+              status: recallResponse.status,
+              payload: recallData,
+              meetingUrl: meeting.meet_link,
+            });
           }
         } catch (e) {
           console.error(`[sync] Auto-schedule error for meeting ${meeting.id}:`, e);
