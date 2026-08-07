@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Slack, UserPlus, Hash, CalendarDays, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSlackConnection } from '@/hooks/useSlackConnection';
@@ -23,6 +23,7 @@ interface SetupCard {
   loading?: boolean;
   onAction: () => void;
   actionLabel: string;
+  helpHref?: string;
 }
 
 export function AccountSetupBento({ workspaceId, memberCount, onOpenInvite }: Props) {
@@ -92,6 +93,7 @@ export function AccountSetupBento({ workspaceId, memberCount, onOpenInvite }: Pr
         loading: calendar.checkingConnection,
         onAction: () => calendar.connectCalendar(),
         actionLabel: 'Conectar',
+        helpHref: '/lider/configuracoes?tab=ajuda#l-calendar',
       },
     ],
     [
@@ -170,9 +172,18 @@ export function AccountSetupBento({ workspaceId, memberCount, onOpenInvite }: Pr
               <h3 className="text-sm font-semibold tracking-tight text-foreground mb-1.5">
                 {card.title}
               </h3>
-              <p className="text-xs text-muted-foreground leading-relaxed mb-4 flex-1 line-clamp-3">
+              <p className="text-xs text-muted-foreground leading-relaxed mb-2 flex-1 line-clamp-3">
                 {card.done ? card.doneDescription : card.pendingDescription}
               </p>
+
+              {card.helpHref && (
+                <Link
+                  to={card.helpHref}
+                  className="text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors mb-3 w-fit"
+                >
+                  Como funciona
+                </Link>
+              )}
 
               {!card.done && (
                 <Button
@@ -185,6 +196,7 @@ export function AccountSetupBento({ workspaceId, memberCount, onOpenInvite }: Pr
                   {card.actionLabel}
                 </Button>
               )}
+
             </div>
           );
         })}
