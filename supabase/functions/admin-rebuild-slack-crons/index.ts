@@ -42,7 +42,6 @@ Deno.serve(async (req) => {
 
     // Fire each Slack pipeline function once immediately to validate end-to-end
     const targets = [
-      'detect-network-signals',
       'slack-ambient-classifier',
       'slack-weekly-rollup',
     ];
