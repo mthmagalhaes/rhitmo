@@ -93,7 +93,7 @@ export default function LiderContexto() {
           value={tabParam}
           onValueChange={(v) => {
             const next = new URLSearchParams(searchParams);
-            if (v === 'rede' || v === 'slack') next.set('tab', v);
+            if (v === 'slack') next.set('tab', v);
             else next.delete('tab');
             setSearchParams(next, { replace: true });
           }}
