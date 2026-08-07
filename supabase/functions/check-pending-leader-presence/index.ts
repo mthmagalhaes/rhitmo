@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
     // Find auto_calendar bots whose grace window expired and leader still not detected
     const { data: pendingBots, error } = await supabaseAdmin
       .from("recall_bots")
-      .select("id, recall_bot_id, leader_email, status, leader_detected, trigger_source, leader_check_due_at, leader_check_attempts, user_id")
+      .select("id, recall_bot_id, leader_email, status, leader_detected, trigger_source, leader_check_due_at, leader_check_attempts, user_id, member_id")
       .eq("status", "recording")
       .eq("leader_detected", false)
       .eq("trigger_source", "auto_calendar")
