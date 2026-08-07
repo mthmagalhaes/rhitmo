@@ -40,8 +40,6 @@ export const loadSlackChannels = () => import('@/pages/SlackChannels');
 export const loadLiderInicio = () => import('@/pages/lider/Inicio');
 export const loadLiderOneOnOnes = () => import('@/pages/lider/OneOnOnes');
 export const loadLiderDiario = () => import('@/pages/lider/Diario');
-export const loadLiderPulse = () => import('@/pages/lider/Pulse');
-export const loadLiderPulseDetail = () => import('@/pages/lider/PulseDetail');
 export const loadLiderAvaliacoes = () => import('@/pages/lider/Avaliacoes');
 export const loadLiderObjetivos = () => import('@/pages/lider/Objetivos');
 export const loadLiderPessoas = () => import('@/pages/lider/Pessoas');
@@ -53,7 +51,6 @@ export const loadLiderMentorThread = () => import('@/pages/lider/MentorThread');
 export const loadLideradoInicio = () => import('@/pages/liderado/Inicio');
 export const loadLideradoCompass = () => import('@/pages/liderado/Compass');
 export const loadLideradoOneOnOnes = () => import('@/pages/liderado/OneOnOnes');
-export const loadLideradoPulse = () => import('@/pages/liderado/Pulse');
 export const loadLideradoPDI = () => import('@/pages/liderado/PDI');
 export const loadLideradoAvaliacoes = () => import('@/pages/liderado/Avaliacoes');
 export const loadLideradoMeuRhitmo = () => import('@/pages/liderado/MeuRhitmo');
@@ -92,8 +89,6 @@ export const SlackChannels = lazy(loadSlackChannels);
 export const LiderInicio = lazy(loadLiderInicio);
 export const LiderOneOnOnes = lazy(loadLiderOneOnOnes);
 export const LiderDiario = lazy(loadLiderDiario);
-export const LiderPulse = lazy(loadLiderPulse);
-export const LiderPulseDetail = lazy(loadLiderPulseDetail);
 export const LiderAvaliacoes = lazy(loadLiderAvaliacoes);
 export const LiderObjetivos = lazy(loadLiderObjetivos);
 export const LiderPessoas = lazy(loadLiderPessoas);
@@ -105,7 +100,6 @@ export const LiderMentorThread = lazy(loadLiderMentorThread);
 export const LideradoInicio = lazy(loadLideradoInicio);
 export const LideradoCompass = lazy(loadLideradoCompass);
 export const LideradoOneOnOnes = lazy(loadLideradoOneOnOnes);
-export const LideradoPulse = lazy(loadLideradoPulse);
 export const LideradoPDI = lazy(loadLideradoPDI);
 export const LideradoAvaliacoes = lazy(loadLideradoAvaliacoes);
 export const LideradoMeuRhitmo = lazy(loadLideradoMeuRhitmo);
@@ -117,7 +111,6 @@ const PREFETCH_MAP: Record<string, () => Promise<unknown>> = {
   '/lider/inicio': loadLiderInicio,
   '/lider/1on1s': loadLiderOneOnOnes,
   '/lider/diario': loadLiderDiario,
-  '/lider/pulse': loadLiderPulse,
   '/lider/avaliacoes': loadLiderAvaliacoes,
   '/lider/objetivos': loadLiderObjetivos,
   '/lider/pessoas': loadLiderPessoas,
@@ -128,7 +121,6 @@ const PREFETCH_MAP: Record<string, () => Promise<unknown>> = {
   '/liderado/inicio': loadLideradoInicio,
   '/liderado/compass': loadLideradoCompass,
   '/liderado/1on1s': loadLideradoOneOnOnes,
-  '/liderado/pulse': loadLideradoPulse,
   '/liderado/pdi': loadLideradoPDI,
   '/liderado/avaliacoes': loadLideradoAvaliacoes,
   '/liderado/meu-rhitmo': loadLideradoMeuRhitmo,
