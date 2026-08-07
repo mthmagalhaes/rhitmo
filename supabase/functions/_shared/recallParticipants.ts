@@ -33,8 +33,8 @@ export function normalizeName(s: string | null | undefined): string {
 }
 
 export type ParticipantsResult =
-  | { status: "ok"; participants: RecallParticipant[] }
-  | { status: "inconclusive"; participants: RecallParticipant[] };
+  | { status: "ok"; participants: RecallParticipant[]; msSinceRecordingStart: number | null }
+  | { status: "inconclusive"; participants: RecallParticipant[]; msSinceRecordingStart: number | null };
 
 /** Fetches participants from BOTH legacy field AND participant_events.
  *  Returns a deduplicated list with a status flag.
@@ -57,9 +57,9 @@ export async function fetchAllRecallParticipantsDetailed(
     if (resp.ok) botData = await resp.json();
   } catch (e) {
     console.error(`[recallParticipants] bot/${botId} fetch failed:`, e);
-    return { status: "inconclusive", participants: [] };
+    return { status: "inconclusive", participants: [], msSinceRecordingStart: null };
   }
-  if (!botData) return { status: "inconclusive", participants: [] };
+  if (!botData) return { status: "inconclusive", participants: [], msSinceRecordingStart: null };
 
   // Legacy source
   const legacy: RecallParticipant[] = botData.meeting_participants ?? [];
@@ -128,7 +128,7 @@ export async function fetchAllRecallParticipantsDetailed(
     );
   }
 
-  return { status: inconclusive ? "inconclusive" : "ok", participants: merged };
+  return { status: inconclusive ? "inconclusive" : "ok", participants: merged, msSinceRecordingStart };
 }
 
 /** Backward-compatible wrapper. Prefer fetchAllRecallParticipantsDetailed for new code. */

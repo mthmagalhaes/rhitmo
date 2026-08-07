@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { alertRecallCreditIfNeeded } from "../_shared/recallCreditAlert.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -289,6 +290,12 @@ Deno.serve(async (req) => {
         leader_email: authUser.email || null,
         trigger_source: triggerSource,
         error_message: `Falha ao agendar bot (${recallResponse.status}): ${JSON.stringify(recallData).slice(0, 300)}`,
+      });
+
+      await alertRecallCreditIfNeeded(supabaseAdmin, {
+        status: recallResponse.status,
+        payload: recallData,
+        meetingUrl: meeting_url,
       });
 
       return new Response(JSON.stringify({ error: userMsg, details: recallData, status: recallResponse.status }), {

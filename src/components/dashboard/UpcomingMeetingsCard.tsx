@@ -287,6 +287,11 @@ export const UpcomingMeetingsCard = () => {
                     {meeting.member_name}
                   </p>
                   <p className="text-xs text-muted-foreground truncate">{meeting.title}</p>
+                  {bot?.error_message && noActiveBot && (
+                    <p className="text-xs text-destructive mt-1 line-clamp-2" title={bot.error_message}>
+                      {bot.error_message}
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {/* Recall bot status / schedule button */}

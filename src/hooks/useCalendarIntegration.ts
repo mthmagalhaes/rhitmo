@@ -20,6 +20,7 @@ interface RecallBot {
   meeting_url: string | null;
   status: string;
   scheduled_at: string | null;
+  error_message: string | null;
 }
 
 export const useCalendarIntegration = () => {
@@ -153,9 +154,8 @@ export const useCalendarIntegration = () => {
       const supabaseAny = supabase as any;
       const { data, error } = await supabaseAny
         .from('recall_bots')
-        .select('id, meeting_id, meeting_url, status, scheduled_at')
-        .eq('user_id', user!.id)
-        .neq('status', 'error');
+        .select('id, meeting_id, meeting_url, status, scheduled_at, error_message')
+        .eq('user_id', user!.id);
       if (error) return [];
       return (data || []) as RecallBot[];
     },
@@ -201,11 +201,17 @@ export const useCalendarIntegration = () => {
     },
   });
 
+  // Bots com falha agora vêm na lista (pra podermos mostrar o motivo), mas um bot
+  // vivo sempre tem prioridade sobre um registro de erro da mesma reunião.
+  const DEAD_STATUSES = ['error', 'skipped_no_leader', 'unrecoverable'];
+  const pickBot = (candidates: RecallBot[]): RecallBot | undefined =>
+    candidates.find(b => !DEAD_STATUSES.includes(b.status)) ?? candidates[0];
+
   const getBotStatus = (meetingId: string, meetingUrl?: string | null): RecallBot | undefined => {
-    const byId = recallBots.find(b => b.meeting_id === meetingId);
-    if (byId) return byId;
+    const byId = recallBots.filter(b => b.meeting_id === meetingId);
+    if (byId.length) return pickBot(byId);
     if (meetingUrl) {
-      return recallBots.find(b => b.meeting_url === meetingUrl);
+      return pickBot(recallBots.filter(b => b.meeting_url === meetingUrl));
     }
     return undefined;
   };
