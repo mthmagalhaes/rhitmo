@@ -53,8 +53,6 @@ import {
   LiderInicio,
   LiderOneOnOnes,
   LiderDiario,
-  LiderPulse,
-  LiderPulseDetail,
   LiderAvaliacoes,
   // LiderObjetivos, // oculto — rota desativada, dados intactos
   LiderPessoas,
@@ -65,7 +63,6 @@ import {
   LideradoInicio,
   LideradoCompass,
   LideradoOneOnOnes,
-  LideradoPulse,
   LideradoPDI,
   LideradoAvaliacoes,
   LideradoMeuRhitmo,
@@ -151,8 +148,8 @@ const App = () => (
               <Route path="/lider/1on1s/:meetingId" element={Leader(<BriefPage />)} />
               <Route path="/lider/diario" element={Leader(<LiderDiario />)} />
               <Route path="/lider/diario-v2" element={<Navigate to="/lider/diario" replace />} />
-              <Route path="/lider/pulse" element={Leader(<LiderPulse />)} />
-              <Route path="/lider/pulse/:id" element={Leader(<LiderPulseDetail />)} />
+              <Route path="/lider/pulse" element={<Navigate to="/lider/inicio" replace />} />
+              <Route path="/lider/pulse/:id" element={<Navigate to="/lider/inicio" replace />} />
               <Route path="/lider/avaliacoes" element={Leader(<LiderAvaliacoes />)} />
               <Route path="/lider/avaliacoes/:memberId" element={Leader(<LiderAvaliacoes />)} />
               {/* <Route path="/lider/objetivos" element={Leader(<LiderObjetivos />)} /> oculto — feature pausada */}
@@ -167,7 +164,7 @@ const App = () => (
               <Route path="/liderado/inicio" element={DirectReport(<LideradoInicio />)} />
               <Route path="/liderado/compass" element={DirectReport(<LideradoCompass />)} />
               <Route path="/liderado/1on1s" element={DirectReport(<LideradoOneOnOnes />)} />
-              <Route path="/liderado/pulse" element={DirectReport(<LideradoPulse />)} />
+              <Route path="/liderado/pulse" element={<Navigate to="/liderado/inicio" replace />} />
               <Route path="/liderado/pdi" element={DirectReport(<LideradoPDI />)} />
               <Route path="/liderado/avaliacoes" element={DirectReport(<LideradoAvaliacoes />)} />
               <Route path="/liderado/meu-rhitmo" element={DirectReport(<LideradoMeuRhitmo />)} />
