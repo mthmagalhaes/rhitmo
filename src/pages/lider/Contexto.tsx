@@ -3,7 +3,7 @@
 // Sprint 14: aba "Rede" lista sinais derivados do grafo (ONA).
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Layers, Loader2, Network, Slack } from 'lucide-react';
+import { Layers, Loader2, Slack } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -13,9 +13,7 @@ import { useEvidencePendingCount } from '@/hooks/useEvidence';
 import { EvidenceCard } from '@/components/context/EvidenceCard';
 import { MemberFilterSelect } from '@/components/context/MemberFilterSelect';
 import { SourceFilterChips, SOURCE_KEYS, type SourceKey } from '@/components/context/SourceFilterChips';
-import { NetworkSignalsFeed } from '@/components/context/NetworkSignalsFeed';
 import { SlackSignalsTriage } from '@/components/context/SlackSignalsTriage';
-import { MemberNetworkPanel } from '@/components/context/MemberNetworkPanel';
 import { DebugContextoBanner } from '@/components/context/DebugContextoBanner';
 import { useEvidence } from '@/hooks/useEvidence';
 
@@ -24,7 +22,7 @@ export default function LiderContexto() {
   const [searchParams, setSearchParams] = useSearchParams();
   const memberParam = searchParams.get('member');
   const rawTab = searchParams.get('tab');
-  const tabParam = rawTab === 'rede' ? 'rede' : rawTab === 'slack' ? 'slack' : 'evidencias';
+  const tabParam = rawTab === 'slack' ? 'slack' : 'evidencias';
   const { data: pendingSlackCount = 0 } = useEvidencePendingCount();
 
   const [memberId, setMemberId] = useState<string | null>(memberParam);
@@ -76,7 +74,7 @@ export default function LiderContexto() {
             Feed bruto do time
           </h1>
           <p className="mt-2 text-[15px] text-muted-foreground max-w-2xl leading-relaxed">
-            Tudo que aconteceu — diário, 1:1s, kudos, metas, Pulse, sinais do Slack — em ordem cronológica.
+            Tudo que aconteceu — diário, 1:1s, avaliações, sinais do Slack — em ordem cronológica.
             Use para investigar e auditar a evidência por trás de cada insight do Brief.
           </p>
         </header>
@@ -93,7 +91,7 @@ export default function LiderContexto() {
           value={tabParam}
           onValueChange={(v) => {
             const next = new URLSearchParams(searchParams);
-            if (v === 'rede' || v === 'slack') next.set('tab', v);
+            if (v === 'slack') next.set('tab', v);
             else next.delete('tab');
             setSearchParams(next, { replace: true });
           }}
@@ -103,8 +101,9 @@ export default function LiderContexto() {
               <Layers className="h-3.5 w-3.5" />
               Evidências
             </TabsTrigger>
-            {/* Rhitmo Lean: aba "Rede" (ONA) oculta — network_signals sem dados.
-                O TabsContent segue montado para ?tab=rede não quebrar links antigos. */}
+            {/* Rhitmo Lean: aba "Rede" (ONA) removida — network_signals sem dados.
+                ?tab=rede cai no feed de evidências. */}
+
 
             <TabsTrigger value="slack" className="rounded-lg gap-1.5">
               <Slack className="h-3.5 w-3.5" />
@@ -170,15 +169,6 @@ export default function LiderContexto() {
             )}
           </TabsContent>
 
-          <TabsContent value="rede" className="mt-5 space-y-6">
-            <MemberNetworkPanel />
-            <div>
-              <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-3">
-                Alertas da rede
-              </h3>
-              <NetworkSignalsFeed />
-            </div>
-          </TabsContent>
 
           <TabsContent value="slack" className="mt-5">
             <SlackSignalsTriage />
