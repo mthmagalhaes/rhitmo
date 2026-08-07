@@ -76,7 +76,7 @@ export default function LiderContexto() {
             Feed bruto do time
           </h1>
           <p className="mt-2 text-[15px] text-muted-foreground max-w-2xl leading-relaxed">
-            Tudo que aconteceu — diário, 1:1s, kudos, metas, Pulse, sinais do Slack — em ordem cronológica.
+            Tudo que aconteceu — diário, 1:1s, avaliações, sinais do Slack — em ordem cronológica.
             Use para investigar e auditar a evidência por trás de cada insight do Brief.
           </p>
         </header>
