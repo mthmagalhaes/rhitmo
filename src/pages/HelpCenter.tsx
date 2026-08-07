@@ -327,7 +327,32 @@ const faqItems = [
     q: 'Privacidade: quem vê o quê?',
     a: 'Suas notas são privadas por padrão — apenas você (líder) pode vê-las. Avaliações formais só são visíveis ao liderado quando você clica em "Compartilhar". O RH Admin vê métricas agregadas, nunca notas individuais.',
   },
+  {
+    q: 'O bot não entrou na minha reunião',
+    a: 'Confira nesta ordem: agenda conectada em Configurações → Integrações, toggle "Transcrição Automática" ativo, e o evento com link de videochamada. Se estiver tudo certo e o bot não apareceu, clique no ícone de microfone ("Chamar bot agora") no card "Próximas 1:1s". Funciona mesmo com a reunião já em andamento, inclusive 15 minutos depois de começar.',
+  },
+  {
+    q: 'O bot ficou parado na sala de espera',
+    a: 'O Google Meet e o Zoom podem exigir aprovação manual. Alguém já dentro da sala precisa admitir o participante "Rhitmo". Ele aguarda até 10 minutos antes de desistir.',
+  },
+  {
+    q: 'O bot entrou e saiu sozinho',
+    a: 'Ele sai quando não identifica você (o líder) na sala, para evitar gravar reuniões que não são suas. Entre na reunião e chame o bot de novo pelo ícone de microfone no card "Próximas 1:1s".',
+  },
+  {
+    q: 'Mudei o horário da reunião, e agora?',
+    a: 'O Rhitmo reagenda o bot sozinho na próxima sincronização da agenda, que roda a cada 15 minutos. Se o card mostrar um aviso de horário alterado, use "Chamar bot agora" para garantir a entrada.',
+  },
+  {
+    q: 'Apareceu uma mensagem em vermelho no card da reunião',
+    a: 'É o motivo real da falha vindo do serviço de transcrição, exibido para você não ficar no escuro. Se citar saldo ou crédito, é uma questão de conta e o time do Rhitmo já é avisado. Nos outros casos, tente "Chamar bot agora" e, se persistir, escreva para support@rhitmo.co com o nome da reunião.',
+  },
+  {
+    q: 'Minha reunião não aparece na lista de próximas 1:1s',
+    a: 'Só entram eventos que tenham link de videochamada e pelo menos um participante que seja um liderado cadastrado no seu time. Convites sem link, ou com pessoas que ainda não estão no Rhitmo, ficam de fora.',
+  },
 ];
+
 
 export const HelpCenterContent = () => {
   const { isHRAdmin, isUser } = useUserRole();
