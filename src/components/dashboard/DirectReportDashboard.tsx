@@ -827,37 +827,7 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                 </div>
 
                 {/* Self/Upwards Reviews espontâneos removidos — virão via Ciclos do RH Admin. */}
-                {myUpwardsReviews.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
-                      Seus feedbacks ascendentes
-                    </h3>
-                    <div className="space-y-3">
-                      {myUpwardsReviews.map((review: any) => (
-                        <Card
-                          key={review.id}
-                          className="p-5 rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)] cursor-pointer hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200"
-                          onClick={() => setSelectedReview(review)}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-semibold text-sm text-foreground">{review.title}</p>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {formatLocalDate(review.created_at, 'dd MMMM yyyy')}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge className="bg-primary/10 text-primary border-0 text-[10px]">
-                                Upwards
-                              </Badge>
-                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                            </div>
-                          </div>
-                        </Card>
-                      ))}
-                    </div>
-                  </div>
-                )}
+
               </div>
             </div>
 
