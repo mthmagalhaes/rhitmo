@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Slack, UserPlus, Hash, CalendarDays, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSlackConnection } from '@/hooks/useSlackConnection';
