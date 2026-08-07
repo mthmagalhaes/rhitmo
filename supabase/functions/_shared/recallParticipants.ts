@@ -33,8 +33,8 @@ export function normalizeName(s: string | null | undefined): string {
 }
 
 export type ParticipantsResult =
-  | { status: "ok"; participants: RecallParticipant[] }
-  | { status: "inconclusive"; participants: RecallParticipant[] };
+  | { status: "ok"; participants: RecallParticipant[]; msSinceRecordingStart: number | null }
+  | { status: "inconclusive"; participants: RecallParticipant[]; msSinceRecordingStart: number | null };
 
 /** Fetches participants from BOTH legacy field AND participant_events.
  *  Returns a deduplicated list with a status flag.
