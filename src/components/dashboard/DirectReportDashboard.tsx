@@ -491,9 +491,8 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
 
           {/* ═══ TAB 1: Visão Geral ═══ */}
           <TabsContent value="visao-geral">
-            {/* Rhitmo Lean: alerta de Pulse oculto — 0 surveys criados na base.
-                Componente preservado em src/components/pulse/PendingPulseAlert.tsx. */}
-            {false && <PendingPulseAlert memberId={linkedMember.id} />}
+
+
 
             {/* S3.4 — Self-reflection card semanal */}
             <div className="mb-6">
