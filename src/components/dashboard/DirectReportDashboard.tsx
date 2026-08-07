@@ -25,7 +25,6 @@ import { marked } from 'marked';
 import { AvatarLibrary } from '@/components/avatar/AvatarLibrary';
 import { MemberAvatar } from '@/components/MemberAvatar';
 import { SelfReflectionCard } from '@/components/dashboard/SelfReflectionCard';
-import { PendingPulseAlert } from '@/components/pulse/PendingPulseAlert';
 // Self/Peer/Upwards Review removidos do escopo do líder/liderado spontâneo —
 // virão via Ciclos de Avaliação acionados pelo RH Admin (futuro).
 import { getDateLocale } from '@/lib/dateLocale';
