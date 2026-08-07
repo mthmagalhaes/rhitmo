@@ -23,6 +23,7 @@ interface SetupCard {
   loading?: boolean;
   onAction: () => void;
   actionLabel: string;
+  helpHref?: string;
 }
 
 export function AccountSetupBento({ workspaceId, memberCount, onOpenInvite }: Props) {
