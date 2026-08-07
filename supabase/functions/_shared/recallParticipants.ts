@@ -57,9 +57,9 @@ export async function fetchAllRecallParticipantsDetailed(
     if (resp.ok) botData = await resp.json();
   } catch (e) {
     console.error(`[recallParticipants] bot/${botId} fetch failed:`, e);
-    return { status: "inconclusive", participants: [] };
+    return { status: "inconclusive", participants: [], msSinceRecordingStart: null };
   }
-  if (!botData) return { status: "inconclusive", participants: [] };
+  if (!botData) return { status: "inconclusive", participants: [], msSinceRecordingStart: null };
 
   // Legacy source
   const legacy: RecallParticipant[] = botData.meeting_participants ?? [];
