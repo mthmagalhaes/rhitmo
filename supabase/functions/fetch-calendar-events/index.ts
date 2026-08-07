@@ -561,6 +561,8 @@ Deno.serve(async (req) => {
               meeting_id: meeting.id,
               member_id: meeting.member_id,
               meeting_url: meeting.meet_link,
+              recall_bot_id: `failed-${crypto.randomUUID()}`,
+
               status: "error",
               scheduled_at: joinAt,
               leader_email: authUser.email || null,
@@ -575,6 +577,8 @@ Deno.serve(async (req) => {
             meeting_id: meeting.id,
             member_id: meeting.member_id,
             meeting_url: meeting.meet_link,
+            recall_bot_id: `failed-${crypto.randomUUID()}`,
+
             status: "error",
             scheduled_at: joinAt,
             leader_email: authUser.email || null,

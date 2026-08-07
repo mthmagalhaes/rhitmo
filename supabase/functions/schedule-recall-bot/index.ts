@@ -282,6 +282,8 @@ Deno.serve(async (req) => {
         meeting_id: meeting_id || null,
         member_id: member_id || null,
         meeting_url: meeting_url,
+        recall_bot_id: `failed-${crypto.randomUUID()}`,
+
         status: "error",
         scheduled_at: joinAt ?? new Date(nowMs).toISOString(),
         leader_email: authUser.email || null,
