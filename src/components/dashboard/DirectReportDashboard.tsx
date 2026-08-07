@@ -271,10 +271,8 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
     },
   });
 
-  // Self / Upwards Reviews spontâneos foram removidos do escopo de líder/liderado.
-  // Mantemos placeholders vazios para preservar referências antigas sem quebrar o layout.
-  const myUpwardsReviews: any[] = [];
-  const mySelfReviews: any[] = [];
+  // Self / Upwards Reviews espontâneos foram removidos do escopo de líder/liderado.
+
 
   const unreadReviews = sharedReviews.filter((r: any) => !r.member_viewed_at);
 
