@@ -72,40 +72,44 @@ Deno.serve(async (req) => {
     // Check bot meeting cap based on plan
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Get user's workspace plan_tier and beta status
-    const { data: workspaceData } = await supabaseAdmin
+    // Resolve o plano considerando TODOS os workspaces do usuário: os que ele
+    // possui E os que ele lidera. Antes olhávamos só owner_id primeiro, então
+    // um líder com workspace legado "pulse" (ex.: Douglas / Tharyane) era
+    // bloqueado mesmo liderando time em workspace enterprise+beta.
+    const { data: ownedWorkspaces } = await supabaseAdmin
       .from("workspaces")
       .select("plan_tier, is_beta_user")
-      .eq("owner_id", userId)
-      .maybeSingle();
+      .eq("owner_id", userId);
 
-    // Also check if user is leader of a team in a workspace
-    let planTier = workspaceData?.plan_tier || "pulse";
-    let isBeta = workspaceData?.is_beta_user || false;
+    const { data: ledTeams } = await supabaseAdmin
+      .from("teams")
+      .select("workspaces(plan_tier, is_beta_user)")
+      .eq("leader_user_id", userId);
 
-    if (!workspaceData) {
-      const { data: teamData } = await supabaseAdmin
-        .from("teams")
-        .select("workspace_id, workspaces(plan_tier, is_beta_user)")
-        .eq("leader_user_id", userId)
-        .limit(1)
-        .maybeSingle();
-      if (teamData?.workspaces) {
-        planTier = (teamData.workspaces as any).plan_tier || "pulse";
-        isBeta = (teamData.workspaces as any).is_beta_user || false;
-      }
-    }
-
-    // Define caps per plan.
-    // Pro (novo modelo) e Business (legado/grandfathering) têm bot ilimitado,
-    // alinhado com usePlanLimits.ts. Mantemos a chave "business" para preservar
-    // a paridade dos clientes fundadores legados.
+    // Caps por plano. Pro/Business/Enterprise = bot ilimitado.
+    // "business" é legado (clientes fundadores); "enterprise" é o tier atual
+    // do Faster — sua ausência aqui só não causou incidente porque o workspace
+    // também tem is_beta_user = true.
     const BOT_CAPS: Record<string, number> = {
       pulse: 0,
       pro: Infinity,
       business: Infinity,
+      enterprise: Infinity,
     };
-    const maxBotMeetings = isBeta ? Infinity : (BOT_CAPS[planTier] ?? 0);
+
+    const candidates: Array<{ plan_tier: string | null; is_beta_user: boolean | null }> = [
+      ...(ownedWorkspaces ?? []),
+      ...((ledTeams ?? [])
+        .map((t: any) => t.workspaces)
+        .filter(Boolean) as Array<{ plan_tier: string | null; is_beta_user: boolean | null }>),
+    ];
+
+    const isBeta = candidates.some((c) => c?.is_beta_user === true);
+    const bestCap = candidates.reduce(
+      (acc, c) => Math.max(acc, BOT_CAPS[c?.plan_tier ?? "pulse"] ?? 0),
+      0,
+    );
+    const maxBotMeetings = isBeta ? Infinity : bestCap;
 
     if (maxBotMeetings === 0) {
       return new Response(JSON.stringify({ error: "Seu plano não inclui transcrição com bot. Faça upgrade para Pro." }), {
