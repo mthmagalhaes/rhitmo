@@ -128,7 +128,7 @@ export async function fetchAllRecallParticipantsDetailed(
     );
   }
 
-  return { status: inconclusive ? "inconclusive" : "ok", participants: merged };
+  return { status: inconclusive ? "inconclusive" : "ok", participants: merged, msSinceRecordingStart };
 }
 
 /** Backward-compatible wrapper. Prefer fetchAllRecallParticipantsDetailed for new code. */
