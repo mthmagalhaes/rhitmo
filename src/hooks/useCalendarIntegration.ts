@@ -201,11 +201,17 @@ export const useCalendarIntegration = () => {
     },
   });
 
+  // Bots com falha agora vêm na lista (pra podermos mostrar o motivo), mas um bot
+  // vivo sempre tem prioridade sobre um registro de erro da mesma reunião.
+  const DEAD_STATUSES = ['error', 'skipped_no_leader', 'unrecoverable'];
+  const pickBot = (candidates: RecallBot[]): RecallBot | undefined =>
+    candidates.find(b => !DEAD_STATUSES.includes(b.status)) ?? candidates[0];
+
   const getBotStatus = (meetingId: string, meetingUrl?: string | null): RecallBot | undefined => {
-    const byId = recallBots.find(b => b.meeting_id === meetingId);
-    if (byId) return byId;
+    const byId = recallBots.filter(b => b.meeting_id === meetingId);
+    if (byId.length) return pickBot(byId);
     if (meetingUrl) {
-      return recallBots.find(b => b.meeting_url === meetingUrl);
+      return pickBot(recallBots.filter(b => b.meeting_url === meetingUrl));
     }
     return undefined;
   };
