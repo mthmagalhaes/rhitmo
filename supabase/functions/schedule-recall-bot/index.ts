@@ -292,6 +292,12 @@ Deno.serve(async (req) => {
         error_message: `Falha ao agendar bot (${recallResponse.status}): ${JSON.stringify(recallData).slice(0, 300)}`,
       });
 
+      await alertRecallCreditIfNeeded(supabaseAdmin, {
+        status: recallResponse.status,
+        payload: recallData,
+        meetingUrl: meeting_url,
+      });
+
       return new Response(JSON.stringify({ error: userMsg, details: recallData, status: recallResponse.status }), {
         status: recallResponse.status === 507 || recallResponse.status === 429 ? recallResponse.status : 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
