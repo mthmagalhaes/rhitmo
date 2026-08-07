@@ -20,6 +20,7 @@ interface RecallBot {
   meeting_url: string | null;
   status: string;
   scheduled_at: string | null;
+  error_message: string | null;
 }
 
 export const useCalendarIntegration = () => {
