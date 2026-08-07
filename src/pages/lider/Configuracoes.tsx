@@ -112,10 +112,19 @@ function IntegrationsTab() {
                     )}
                   </div>
                   <CardDescription className="text-xs mt-1">{it.desc}</CardDescription>
+                  {it.title === 'Google Calendar' && (
+                    <a
+                      href="/lider/configuracoes?tab=ajuda#l-calendar"
+                      className="text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors mt-1 inline-block"
+                    >
+                      Como funciona (passo a passo e solução de problemas)
+                    </a>
+                  )}
                   {it.connected && it.meta && (
                     <p className="text-[10px] text-muted-foreground truncate mt-1">{it.meta}</p>
                   )}
                 </div>
+
               </CardHeader>
               <CardContent>
                 {it.connected ? (
