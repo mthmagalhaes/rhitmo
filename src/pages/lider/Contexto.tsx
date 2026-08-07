@@ -13,9 +13,7 @@ import { useEvidencePendingCount } from '@/hooks/useEvidence';
 import { EvidenceCard } from '@/components/context/EvidenceCard';
 import { MemberFilterSelect } from '@/components/context/MemberFilterSelect';
 import { SourceFilterChips, SOURCE_KEYS, type SourceKey } from '@/components/context/SourceFilterChips';
-import { NetworkSignalsFeed } from '@/components/context/NetworkSignalsFeed';
 import { SlackSignalsTriage } from '@/components/context/SlackSignalsTriage';
-import { MemberNetworkPanel } from '@/components/context/MemberNetworkPanel';
 import { DebugContextoBanner } from '@/components/context/DebugContextoBanner';
 import { useEvidence } from '@/hooks/useEvidence';
 
