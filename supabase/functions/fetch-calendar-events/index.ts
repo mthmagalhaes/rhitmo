@@ -518,10 +518,40 @@ Deno.serve(async (req) => {
             autoScheduled.push(meeting.id);
             console.log(`[sync] Auto-scheduled bot for meeting ${meeting.id}: ${recallData.id}`);
           } else {
+            // Falha na API do Recall (ex.: insufficient_credit_balance). Persistimos
+            // a linha com status=error para o card "Próximas 1:1s" mostrar o motivo
+            // em vez do bot simplesmente não aparecer (incidente 15/07 → 07/08).
+            const reason =
+              recallData?.detail ||
+              recallData?.error ||
+              recallData?.message ||
+              JSON.stringify(recallData).slice(0, 300);
             console.error(`[sync] Auto-schedule failed for meeting ${meeting.id}:`, recallData);
+            await supabaseAdmin.from("recall_bots").insert({
+              user_id: userId,
+              meeting_id: meeting.id,
+              member_id: meeting.member_id,
+              meeting_url: meeting.meet_link,
+              status: "error",
+              scheduled_at: joinAt,
+              leader_email: authUser.email || null,
+              trigger_source: "auto_calendar",
+              error_message: `Falha ao agendar bot (${recallResponse.status}): ${reason}`,
+            });
           }
         } catch (e) {
           console.error(`[sync] Auto-schedule error for meeting ${meeting.id}:`, e);
+          await supabaseAdmin.from("recall_bots").insert({
+            user_id: userId,
+            meeting_id: meeting.id,
+            member_id: meeting.member_id,
+            meeting_url: meeting.meet_link,
+            status: "error",
+            scheduled_at: joinAt,
+            leader_email: authUser.email || null,
+            trigger_source: "auto_calendar",
+            error_message: `Falha ao agendar bot: ${e instanceof Error ? e.message : String(e)}`,
+          });
         }
       }
 
