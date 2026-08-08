@@ -6,6 +6,7 @@ import {
   FileText,
   Users,
   LayoutDashboard,
+  Activity,
   // Compass, Heart, Target, Building2, BarChart3 e ListChecks ficam reservados
   // para reativar Compass/Pulse/PDI/Times/Analytics/Frameworks no menu.
   type LucideIcon,
@@ -46,6 +47,8 @@ export const LEADER_NAV_ITEMS: NavItem[] = [
 export const HR_ADMIN_NAV_ITEMS: NavItem[] = [
   { id: 'overview', labelKey: 'nav.hr.overview', icon: LayoutDashboard, to: '/hr' },
   { id: 'members', labelKey: 'nav.hr.members', icon: Users, to: '/hr/pessoas' },
+  // Visão BP: cobertura e cadência das 1:1s por líder (só metadados, nunca conteúdo).
+  { id: 'ritmo', labelKey: 'nav.hr.ritmo', icon: Activity, to: '/hr/ritmo' },
   // Rhitmo Lean: Times e Analytics ocultos do menu. Rotas /hr/teams e /hr/analytics
   // continuam vivas (links salvos funcionam), mas não competem com o fluxo principal
   // enquanto a base não pede analytics de RH. Não re-adicionar sem decisão de produto.
