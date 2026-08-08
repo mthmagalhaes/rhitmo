@@ -24,6 +24,7 @@ export const loadHRTeams = () => import('@/pages/HRTeams');
 export const loadHRMembers = () => import('@/pages/HRMembers');
 export const loadHRPessoas = () => import('@/pages/HRPessoas');
 export const loadHRAnalytics = () => import('@/pages/HRAnalytics');
+export const loadHRRitmo = () => import('@/pages/HRRitmo');
 export const loadTermsOfService = () => import('@/pages/TermsOfService');
 export const loadPrivacyPolicy = () => import('@/pages/PrivacyPolicy');
 export const loadDirectReportReviewView = () => import('@/pages/DirectReportReviewView');
@@ -73,6 +74,7 @@ export const HRTeams = lazy(loadHRTeams);
 export const HRMembers = lazy(loadHRMembers);
 export const HRPessoas = lazy(loadHRPessoas);
 export const HRAnalytics = lazy(loadHRAnalytics);
+export const HRRitmo = lazy(loadHRRitmo);
 export const TermsOfService = lazy(loadTermsOfService);
 export const PrivacyPolicy = lazy(loadPrivacyPolicy);
 export const DirectReportReviewView = lazy(loadDirectReportReviewView);
@@ -131,6 +133,7 @@ const PREFETCH_MAP: Record<string, () => Promise<unknown>> = {
   '/hr/members': loadHRMembers,
   '/hr/pessoas': loadHRPessoas,
   '/hr/analytics': loadHRAnalytics,
+  '/hr/ritmo': loadHRRitmo,
   '/hr/competency-framework': loadCompetencyFramework,
 
   '/admin': loadAdmin,
