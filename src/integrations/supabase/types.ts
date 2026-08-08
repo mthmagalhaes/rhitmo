@@ -3403,6 +3403,10 @@ export type Database = {
         Args: { _workspace_id: string }
         Returns: Json
       }
+      get_hr_leader_rhythm_detail: {
+        Args: { _leader_user_id: string; _workspace_id: string }
+        Returns: Json
+      }
       get_hr_leader_team: {
         Args: { _leader_id: string; _workspace_id: string }
         Returns: Json
@@ -3438,6 +3442,7 @@ export type Database = {
           work_style_data: Json
         }[]
       }
+      get_hr_rhythm_overview: { Args: { _workspace_id: string }; Returns: Json }
       get_invite_details: {
         Args: { p_invite_token: string }
         Returns: {
