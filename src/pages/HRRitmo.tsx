@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { LeaderScreensPreview } from '@/components/hr/LeaderScreensPreview';
+import { MemberRhythmProfile } from '@/components/hr/MemberRhythmProfile';
 
 interface LeaderRhythm {
   leader_id: string;
