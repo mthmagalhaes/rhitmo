@@ -173,9 +173,11 @@ export default function HRRitmo() {
                   <span>PDI</span>
                 </div>
                 {members!.map((m) => (
-                  <div
+                  <button
                     key={m.member_id}
-                    className="grid sm:grid-cols-[1.4fr_1fr_0.8fr_1fr_0.8fr] gap-1 sm:gap-3 px-5 py-3 border-b border-border/30 last:border-0 text-sm"
+                    type="button"
+                    onClick={() => setSelectedMemberId(m.member_id)}
+                    className="w-full text-left grid sm:grid-cols-[1.4fr_1fr_0.8fr_1fr_0.8fr] gap-1 sm:gap-3 px-5 py-3 border-b border-border/30 last:border-0 text-sm transition-colors hover:bg-muted/40"
                   >
                     <div className="min-w-0">
                       <p className="font-medium truncate">{m.member_name}</p>
