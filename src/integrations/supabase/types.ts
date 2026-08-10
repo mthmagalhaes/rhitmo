@@ -3442,6 +3442,10 @@ export type Database = {
           work_style_data: Json
         }[]
       }
+      get_hr_member_rhythm_profile: {
+        Args: { _member_id: string; _workspace_id: string }
+        Returns: Json
+      }
       get_hr_rhythm_overview: { Args: { _workspace_id: string }; Returns: Json }
       get_invite_details: {
         Args: { p_invite_token: string }

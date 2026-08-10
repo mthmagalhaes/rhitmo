@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { LeaderScreensPreview } from '@/components/hr/LeaderScreensPreview';
+import { MemberRhythmProfile } from '@/components/hr/MemberRhythmProfile';
 
 interface LeaderRhythm {
   leader_id: string;
@@ -57,6 +58,7 @@ const REVIEW_LABEL: Record<MemberRhythm['review_status'], string> = {
 export default function HRRitmo() {
   const { workspaceId, workspaceName } = useHRAdmin();
   const [selected, setSelected] = useState<LeaderRhythm | null>(null);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
 
   const { data: leaders, isLoading } = useQuery({
@@ -126,16 +128,27 @@ export default function HRRitmo() {
           <div className="flex justify-center py-20">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
+        ) : selectedMemberId ? (
+          <MemberRhythmProfile
+            workspaceId={workspaceId}
+            memberId={selectedMemberId}
+            onBack={() => setSelectedMemberId(null)}
+            onOpenPreview={() => setPreviewOpen(true)}
+          />
         ) : selected ? (
           <div className="space-y-5">
             <Button
               variant="ghost"
               size="sm"
               className="rounded-xl gap-2 -ml-2"
-              onClick={() => setSelected(null)}
+              onClick={() => {
+                setSelected(null);
+                setSelectedMemberId(null);
+              }}
             >
               <ArrowLeft className="h-4 w-4" /> Todos os líderes
             </Button>
+
 
             <div>
               <h2 className="text-2xl font-bold tracking-tight font-serif">
@@ -160,9 +173,11 @@ export default function HRRitmo() {
                   <span>PDI</span>
                 </div>
                 {members!.map((m) => (
-                  <div
+                  <button
                     key={m.member_id}
-                    className="grid sm:grid-cols-[1.4fr_1fr_0.8fr_1fr_0.8fr] gap-1 sm:gap-3 px-5 py-3 border-b border-border/30 last:border-0 text-sm"
+                    type="button"
+                    onClick={() => setSelectedMemberId(m.member_id)}
+                    className="w-full text-left grid sm:grid-cols-[1.4fr_1fr_0.8fr_1fr_0.8fr] gap-1 sm:gap-3 px-5 py-3 border-b border-border/30 last:border-0 text-sm transition-colors hover:bg-muted/40"
                   >
                     <div className="min-w-0">
                       <p className="font-medium truncate">{m.member_name}</p>
@@ -185,7 +200,7 @@ export default function HRRitmo() {
                     <span className="text-xs sm:text-sm text-muted-foreground">
                       {m.has_active_plan ? 'Ativo' : '—'}
                     </span>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
