@@ -58,6 +58,7 @@ const REVIEW_LABEL: Record<MemberRhythm['review_status'], string> = {
 export default function HRRitmo() {
   const { workspaceId, workspaceName } = useHRAdmin();
   const [selected, setSelected] = useState<LeaderRhythm | null>(null);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
 
   const { data: leaders, isLoading } = useQuery({
