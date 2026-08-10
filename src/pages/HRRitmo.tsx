@@ -200,7 +200,7 @@ export default function HRRitmo() {
                     <span className="text-xs sm:text-sm text-muted-foreground">
                       {m.has_active_plan ? 'Ativo' : '—'}
                     </span>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
