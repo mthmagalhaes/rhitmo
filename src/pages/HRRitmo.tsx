@@ -128,16 +128,27 @@ export default function HRRitmo() {
           <div className="flex justify-center py-20">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
+        ) : selectedMemberId ? (
+          <MemberRhythmProfile
+            workspaceId={workspaceId}
+            memberId={selectedMemberId}
+            onBack={() => setSelectedMemberId(null)}
+            onOpenPreview={() => setPreviewOpen(true)}
+          />
         ) : selected ? (
           <div className="space-y-5">
             <Button
               variant="ghost"
               size="sm"
               className="rounded-xl gap-2 -ml-2"
-              onClick={() => setSelected(null)}
+              onClick={() => {
+                setSelected(null);
+                setSelectedMemberId(null);
+              }}
             >
               <ArrowLeft className="h-4 w-4" /> Todos os líderes
             </Button>
+
 
             <div>
               <h2 className="text-2xl font-bold tracking-tight font-serif">
