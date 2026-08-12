@@ -103,7 +103,7 @@ export function isTranscriptLike(
   content: string | null | undefined,
 ): boolean {
   const effective = detectEffectiveSource(source, content);
-  return effective === 'recall_bot' || effective === 'transcription';
+  return effective === 'recall_bot' || effective === 'transcription' || effective === 'granola';
 }
 
 export function getDiarySourceMeta(
