@@ -1717,6 +1717,7 @@ export type Database = {
       }
       note_taker_synced_notes: {
         Row: {
+          attendees: Json
           created_at: string
           external_note_id: string
           feedback_id: string | null
@@ -1724,10 +1725,12 @@ export type Database = {
           member_id: string | null
           note_created_at: string | null
           provider: string
+          status: string
           title: string | null
           user_id: string
         }
         Insert: {
+          attendees?: Json
           created_at?: string
           external_note_id: string
           feedback_id?: string | null
@@ -1735,10 +1738,12 @@ export type Database = {
           member_id?: string | null
           note_created_at?: string | null
           provider?: string
+          status?: string
           title?: string | null
           user_id: string
         }
         Update: {
+          attendees?: Json
           created_at?: string
           external_note_id?: string
           feedback_id?: string | null
@@ -1746,6 +1751,7 @@ export type Database = {
           member_id?: string | null
           note_created_at?: string | null
           provider?: string
+          status?: string
           title?: string | null
           user_id?: string
         }
