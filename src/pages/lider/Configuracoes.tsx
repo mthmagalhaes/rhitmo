@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { useSlackConnection } from '@/hooks/useSlackConnection';
 import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
 import { AmbientSlackSettings } from '@/components/settings/AmbientSlackSettings';
+import { GranolaConnectorCard } from '@/components/settings/GranolaConnectorCard';
 import { SlackHealthPanel } from '@/components/leader/settings/SlackHealthPanel';
 
 import { AccessTab } from '@/components/settings/AccessTab';
@@ -90,7 +91,29 @@ function IntegrationsTab() {
     },
   ];
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      <section className="space-y-3">
+        <div className="flex items-center gap-3">
+          <span className="h-px w-6 bg-border" aria-hidden />
+          <h2 className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+            Captura de reuniões
+          </h2>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 items-start">
+          <GranolaConnectorCard />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Já usa um note taker? Conecte e a Rhitmo dispensa o bot nessas reuniões.
+        </p>
+      </section>
+
+      <section className="space-y-3">
+        <div className="flex items-center gap-3">
+          <span className="h-px w-6 bg-border" aria-hidden />
+          <h2 className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+            Agenda e comunicação
+          </h2>
+        </div>
       <div data-tour="integrations" className="grid gap-4 md:grid-cols-2 items-start">
         {items.map((it) => {
           const isSlack = it.title === 'Slack';
@@ -161,6 +184,7 @@ function IntegrationsTab() {
           );
         })}
       </div>
+      </section>
     </div>
   );
 }
@@ -172,7 +196,7 @@ export default function LiderConfiguracoes() {
   const tabs: PageTab[] = [
     { value: 'perfil', label: 'Perfil', icon: User, content: <ProfileTab /> },
     { value: 'faturamento', label: 'Faturamento', icon: CreditCard, content: <BillingContent /> },
-    { value: 'integracoes', label: 'Integrações', icon: Plug, content: <IntegrationsTab /> },
+    { value: 'integracoes', label: 'Conectores', icon: Plug, content: <IntegrationsTab /> },
     {
       value: 'acessos',
       label: 'Acessos',
