@@ -18,8 +18,8 @@ async function invokeNoteTaker(body: Record<string, unknown>) {
   if (error) {
     let details = error.message;
     try {
-      // @ts-expect-error context existe em FunctionsHttpError
-      const text = await error.context?.text?.();
+      const ctx = (error as unknown as { context?: { text?: () => Promise<string> } }).context;
+      const text = await ctx?.text?.();
       if (text) {
         const parsed = JSON.parse(text);
         details = typeof parsed.error === 'string' ? parsed.error : details;
