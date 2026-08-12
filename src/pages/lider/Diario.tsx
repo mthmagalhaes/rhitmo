@@ -172,6 +172,7 @@ export default function LiderDiario() {
         const effective = detectEffectiveSource(fb.source, fb.content);
         if (source === 'recall_bot' && effective !== 'recall_bot') return false;
         if (source === 'transcription' && effective !== 'transcription') return false;
+        if (source === 'granola' && effective !== 'granola') return false;
         if (source === 'manual' && effective !== 'manual') return false;
         if (source === 'slack') return false; // rollups Slack são incluídos abaixo.
       }
