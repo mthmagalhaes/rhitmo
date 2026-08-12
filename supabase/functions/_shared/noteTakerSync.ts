@@ -10,6 +10,7 @@ import {
   listGranolaNotes,
   noteEmails,
   noteToContent,
+  toIsoOrNull,
   type GranolaNote,
 } from "./granolaClient.ts";
 
@@ -169,7 +170,9 @@ export async function syncNoteTakerConnection(
   // e apenas se o ciclo terminar sem erro. Assim uma falha no meio não faz
   // a janela pular notas que nunca foram lidas.
   let watermark: string | null = null;
-  const bumpWatermark = (iso: string) => {
+  const bumpWatermark = (value: string) => {
+    const iso = toIsoOrNull(value);
+    if (!iso) return;
     if (!watermark || new Date(iso) > new Date(watermark)) watermark = iso;
   };
 
