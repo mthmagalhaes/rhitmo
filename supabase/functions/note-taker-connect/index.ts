@@ -88,7 +88,8 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
-    // action === "sync"
+    // As ações abaixo dependem da conexão do próprio usuário (ownership check
+    // antes de qualquer operação com service role).
     const { data: connection } = await admin
       .from("leader_note_taker_connections")
       .select("id, user_id, provider, api_key_ciphertext, last_synced_at")
@@ -97,8 +98,95 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (!connection) return json({ error: "Nenhuma conexão encontrada" }, 404);
 
+    if (action === "list_pending") {
+      const { data, error } = await admin
+        .from("note_taker_synced_notes")
+        .select("id, external_note_id, title, note_created_at, attendees")
+        .eq("user_id", user.id)
+        .eq("provider", provider)
+        .eq("status", "pending")
+        .order("note_created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return json({ ok: true, pending: data ?? [] });
+    }
+
+    if (action === "dismiss") {
+      if (!parsed.data.note_id) return json({ error: "note_id é obrigatório" }, 400);
+      const { error } = await admin
+        .from("note_taker_synced_notes")
+        .update({ status: "dismissed" })
+        .eq("id", parsed.data.note_id)
+        .eq("user_id", user.id)
+        .eq("provider", provider);
+      if (error) throw error;
+      return json({ ok: true });
+    }
+
+    if (action === "assign") {
+      const { note_id: noteId, member_id: memberId } = parsed.data;
+      if (!noteId || !memberId) {
+        return json({ error: "note_id e member_id são obrigatórios" }, 400);
+      }
+
+      const { data: note } = await admin
+        .from("note_taker_synced_notes")
+        .select("id, external_note_id, title, note_created_at, attendees, status")
+        .eq("id", noteId)
+        .eq("user_id", user.id)
+        .eq("provider", provider)
+        .maybeSingle();
+      if (!note) return json({ error: "Nota não encontrada" }, 404);
+
+      // O liderado precisa pertencer a um time liderado por este usuário.
+      const { data: teams } = await admin
+        .from("teams")
+        .select("id")
+        .eq("leader_user_id", user.id);
+      const teamIds = (teams ?? []).map((t: { id: string }) => t.id);
+      const { data: member } = await admin
+        .from("team_members")
+        .select("id")
+        .eq("id", memberId)
+        .in("team_id", teamIds.length > 0 ? teamIds : ["00000000-0000-0000-0000-000000000000"])
+        .maybeSingle();
+      if (!member) return json({ error: "Liderado inválido" }, 403);
+
+      const apiKey = await decryptApiKey(connection.api_key_ciphertext);
+      const full = await getGranolaNote(apiKey, note.external_note_id);
+      if (!full) return json({ error: "A nota não está mais disponível no Granola" }, 404);
+      const content = noteToContent(full);
+      if (!content) return json({ error: "Nota sem conteúdo para importar" }, 400);
+
+      const ingest = await ingestNoteForMember(
+        admin,
+        {
+          userId: user.id,
+          provider,
+          externalNoteId: note.external_note_id,
+          memberId,
+          title: note.title ?? full.title ?? "Reunião (Granola)",
+          content,
+          occurredAt: note.note_created_at ?? new Date().toISOString(),
+          attendees: (note.attendees as Array<{ name: string | null; email: string | null }>) ?? [],
+        },
+        supabaseUrl,
+        serviceKey,
+      );
+      if ("error" in ingest) return json({ error: ingest.error }, 500);
+
+      await admin
+        .from("note_taker_synced_notes")
+        .update({ status: "imported", member_id: memberId, feedback_id: ingest.feedbackId })
+        .eq("id", note.id);
+
+      return json({ ok: true, feedback_id: ingest.feedbackId });
+    }
+
+    // action === "sync"
     const result = await syncNoteTakerConnection(admin, connection, supabaseUrl, serviceKey);
     return json({ ok: !result.error, ...result });
+
   } catch (err) {
     console.error("note-taker-connect error:", err);
     return json({ error: (err as Error).message ?? "Erro inesperado" }, 500);
