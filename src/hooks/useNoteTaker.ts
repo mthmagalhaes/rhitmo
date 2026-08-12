@@ -79,6 +79,7 @@ export function useNoteTaker(provider: NoteTakerProvider = 'granola') {
     mutationFn: () => invokeNoteTaker({ action: 'sync', provider }),
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey });
+      qc.invalidateQueries({ queryKey: pendingKey });
       qc.invalidateQueries({ queryKey: ['feedbacks'] });
       const imported = Number(data?.imported ?? 0);
       const unmatched = Number(data?.unmatched ?? 0);
@@ -86,7 +87,7 @@ export function useNoteTaker(provider: NoteTakerProvider = 'granola') {
         title: imported > 0 ? `${imported} nota(s) importada(s)` : 'Tudo em dia',
         description:
           unmatched > 0
-            ? `${unmatched} nota(s) sem liderado identificado foram ignoradas.`
+            ? `${unmatched} nota(s) aguardando você indicar o liderado.`
             : 'Nenhuma nota nova para importar.',
       });
     },
@@ -94,12 +95,49 @@ export function useNoteTaker(provider: NoteTakerProvider = 'granola') {
       toast({ title: 'Falha na sincronização', description: e.message, variant: 'destructive' }),
   });
 
+  const { data: pending = [] } = useQuery({
+    queryKey: pendingKey,
+    enabled: !!connection,
+    queryFn: async (): Promise<PendingNote[]> => {
+      const data = await invokeNoteTaker({ action: 'list_pending', provider });
+      return (data?.pending as PendingNote[]) ?? [];
+    },
+    staleTime: 60_000,
+  });
+
+  const assign = useMutation({
+    mutationFn: (vars: { noteId: string; memberId: string }) =>
+      invokeNoteTaker({ action: 'assign', provider, note_id: vars.noteId, member_id: vars.memberId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: pendingKey });
+      qc.invalidateQueries({ queryKey });
+      qc.invalidateQueries({ queryKey: ['feedbacks'] });
+      toast({ title: 'Nota atribuída', description: 'Ela já aparece no Diário de Bordo do liderado.' });
+    },
+    onError: (e: Error) =>
+      toast({ title: 'Não foi possível atribuir', description: e.message, variant: 'destructive' }),
+  });
+
+  const dismiss = useMutation({
+    mutationFn: (noteId: string) => invokeNoteTaker({ action: 'dismiss', provider, note_id: noteId }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: pendingKey }),
+    onError: (e: Error) =>
+      toast({ title: 'Erro ao descartar', description: e.message, variant: 'destructive' }),
+  });
+
+  const authError = /chave|api key|401|403/i.test(connection?.last_error ?? '');
+
   return {
     connection: connection ?? null,
     isConnected: !!connection,
     isLoading,
+    needsReconnect: !!connection && authError,
+    pending,
     connect,
     disconnect,
     sync,
+    assign,
+    dismiss,
   };
 }
+
