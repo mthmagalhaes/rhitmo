@@ -48,6 +48,8 @@ async function invokeNoteTaker(body: Record<string, unknown>) {
 export function useNoteTaker(provider: NoteTakerProvider = 'granola') {
   const qc = useQueryClient();
   const queryKey = ['note-taker-connection', provider];
+  const pendingKey = ['note-taker-pending', provider];
+
 
   const { data: connection, isLoading } = useQuery({
     queryKey,
