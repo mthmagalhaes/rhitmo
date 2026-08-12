@@ -4,6 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -18,9 +25,11 @@ import {
   Link as LinkIcon,
   Unlink,
   AlertTriangle,
+  X,
 } from 'lucide-react';
 import { useNoteTaker } from '@/hooks/useNoteTaker';
-import { formatDistanceToNow } from 'date-fns';
+import { useLeaderMembers } from '@/hooks/useLeaderMembers';
+import { formatDistanceToNow, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 /**
@@ -29,7 +38,19 @@ import { ptBR } from 'date-fns/locale';
  * para o browser depois de salva.
  */
 export function GranolaConnectorCard() {
-  const { connection, isConnected, isLoading, connect, disconnect, sync } = useNoteTaker('granola');
+  const {
+    connection,
+    isConnected,
+    isLoading,
+    needsReconnect,
+    pending,
+    connect,
+    disconnect,
+    sync,
+    assign,
+    dismiss,
+  } = useNoteTaker('granola');
+  const { members } = useLeaderMembers();
   const [open, setOpen] = useState(false);
   const [apiKey, setApiKey] = useState('');
 
@@ -38,6 +59,7 @@ export function GranolaConnectorCard() {
     setApiKey('');
     setOpen(false);
   };
+
 
   return (
     <>
