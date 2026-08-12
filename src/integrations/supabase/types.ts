@@ -3919,6 +3919,14 @@ export type Database = {
         Args: { _workspace_id: string }
         Returns: boolean
       }
+      schedule_note_taker_cron: {
+        Args: {
+          p_anon_key: string
+          p_cron_secret: string
+          p_supabase_url: string
+        }
+        Returns: string
+      }
       submit_rhitmo_sync: {
         Args: { p_member_id: string; p_work_style_data: Json }
         Returns: boolean
