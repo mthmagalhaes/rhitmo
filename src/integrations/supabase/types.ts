@@ -1222,6 +1222,48 @@ export type Database = {
         }
         Relationships: []
       }
+      leader_note_taker_connections: {
+        Row: {
+          account_label: string | null
+          api_key_ciphertext: string
+          created_at: string
+          id: string
+          last_cursor: string | null
+          last_error: string | null
+          last_synced_at: string | null
+          notes_imported: number
+          provider: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_label?: string | null
+          api_key_ciphertext: string
+          created_at?: string
+          id?: string
+          last_cursor?: string | null
+          last_error?: string | null
+          last_synced_at?: string | null
+          notes_imported?: number
+          provider?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_label?: string | null
+          api_key_ciphertext?: string
+          created_at?: string
+          id?: string
+          last_cursor?: string | null
+          last_error?: string | null
+          last_synced_at?: string | null
+          notes_imported?: number
+          provider?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       leader_nudges: {
         Row: {
           action_url: string | null
@@ -1670,6 +1712,42 @@ export type Database = {
           signal_type?: string
           window_days?: number
           workspace_id?: string
+        }
+        Relationships: []
+      }
+      note_taker_synced_notes: {
+        Row: {
+          created_at: string
+          external_note_id: string
+          feedback_id: string | null
+          id: string
+          member_id: string | null
+          note_created_at: string | null
+          provider: string
+          title: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          external_note_id: string
+          feedback_id?: string | null
+          id?: string
+          member_id?: string | null
+          note_created_at?: string | null
+          provider?: string
+          title?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          external_note_id?: string
+          feedback_id?: string | null
+          id?: string
+          member_id?: string | null
+          note_created_at?: string | null
+          provider?: string
+          title?: string | null
+          user_id?: string
         }
         Relationships: []
       }
