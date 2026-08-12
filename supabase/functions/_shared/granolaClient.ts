@@ -56,7 +56,10 @@ export async function listGranolaNotes(
   opts: { createdAfter?: string | null; cursor?: string | null; limit?: number },
 ): Promise<GranolaListResult> {
   const params = new URLSearchParams({ limit: String(opts.limit ?? 20) });
-  if (opts.createdAfter) params.set("created_after", opts.createdAfter);
+  // O Postgres devolve timestamptz como "2026-08-12 13:35:23.397+00"; a API do
+  // Granola só aceita ISO 8601. Normaliza e ignora datas inválidas.
+  const createdAfter = toIsoOrNull(opts.createdAfter);
+  if (createdAfter) params.set("created_after", createdAfter);
   if (opts.cursor) params.set("cursor", opts.cursor);
 
   const res = await granolaFetch(apiKey, `/v1/notes?${params.toString()}`);
