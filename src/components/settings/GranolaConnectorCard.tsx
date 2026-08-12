@@ -102,23 +102,33 @@ export function GranolaConnectorCard() {
             )}
           </div>
         </CardHeader>
-        <CardContent className="space-y-2">
+        <CardContent className="space-y-3">
           {isConnected ? (
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 rounded-xl text-xs"
-                onClick={() => sync.mutate()}
-                disabled={sync.isPending}
-              >
-                {sync.isPending ? (
-                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-3 w-3 mr-1" />
-                )}
-                Sincronizar agora
-              </Button>
+              {needsReconnect ? (
+                <Button
+                  size="sm"
+                  className="flex-1 rounded-xl text-xs"
+                  onClick={() => setOpen(true)}
+                >
+                  <LinkIcon className="h-3 w-3 mr-1" /> Reconectar
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 rounded-xl text-xs"
+                  onClick={() => sync.mutate()}
+                  disabled={sync.isPending}
+                >
+                  {sync.isPending ? (
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                  )}
+                  Sincronizar agora
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -144,7 +154,64 @@ export function GranolaConnectorCard() {
               <LinkIcon className="h-3 w-3 mr-1" /> Conectar
             </Button>
           )}
+
+          {isConnected && pending.length > 0 && (
+            <div className="rounded-xl border border-border/60 bg-muted/30 p-3 space-y-3">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                Notas aguardando atribuição
+              </p>
+              {pending.map((note) => (
+                <div key={note.id} className="space-y-1.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium truncate">
+                        {note.title ?? 'Reunião sem título'}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        {note.note_created_at
+                          ? format(new Date(note.note_created_at), "dd/MM/yyyy", { locale: ptBR })
+                          : 'Sem data'}
+                        {note.attendees && note.attendees.length > 0
+                          ? ` · ${note.attendees
+                              .map((a) => a.name ?? a.email)
+                              .filter(Boolean)
+                              .slice(0, 3)
+                              .join(', ')}`
+                          : ''}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 shrink-0"
+                      title="Descartar nota"
+                      onClick={() => dismiss.mutate(note.id)}
+                      disabled={dismiss.isPending}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <Select
+                    onValueChange={(memberId) => assign.mutate({ noteId: note.id, memberId })}
+                    disabled={assign.isPending}
+                  >
+                    <SelectTrigger className="h-8 rounded-lg text-xs">
+                      <SelectValue placeholder="Atribuir a um liderado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {members.map((m) => (
+                        <SelectItem key={m.id} value={m.id} className="text-xs">
+                          {m.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
+
       </Card>
 
       <Sheet open={open} onOpenChange={setOpen}>
