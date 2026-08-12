@@ -60,6 +60,87 @@ function matchMembers(
     .map((m) => m.id);
 }
 
+function noteAttendees(note: GranolaNote) {
+  const raw = [...(note.people ?? []), ...(note.attendees ?? [])];
+  const seen = new Set<string>();
+  const out: Array<{ name: string | null; email: string | null }> = [];
+  for (const p of raw) {
+    const key = (p?.email ?? p?.name ?? "").toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push({ name: p?.name ?? null, email: p?.email ?? null });
+  }
+  return out;
+}
+
+/**
+ * Grava a nota como evidência de um liderado e dispara o pipeline de resumo.
+ * Reutilizado pela sincronização e pela atribuição manual de notas pendentes.
+ */
+export async function ingestNoteForMember(
+  supabase: SupabaseClient,
+  params: {
+    userId: string;
+    provider: string;
+    externalNoteId: string;
+    memberId: string;
+    title: string;
+    content: string;
+    occurredAt: string;
+    attendees?: Array<{ name: string | null; email: string | null }>;
+  },
+  supabaseUrl: string,
+  serviceKey: string,
+): Promise<{ feedbackId: string } | { error: string }> {
+  const { data: feedback, error } = await supabase
+    .from("feedbacks")
+    .insert({
+      member_id: params.memberId,
+      manager_id: params.userId,
+      content: params.content,
+      title: params.title,
+      source: params.provider,
+      type: "neutral",
+      visibility: "private_leader",
+      occurred_at: params.occurredAt,
+    })
+    .select("id")
+    .single();
+
+  if (error || !feedback) {
+    console.error("note taker feedback insert error", error);
+    return { error: error?.message ?? "Falha ao gravar a nota" };
+  }
+
+  await supabase.from("note_taker_synced_notes").upsert(
+    {
+      user_id: params.userId,
+      provider: params.provider,
+      external_note_id: `${params.externalNoteId}:${params.memberId}`,
+      feedback_id: feedback.id,
+      member_id: params.memberId,
+      title: params.title,
+      note_created_at: params.occurredAt,
+      status: "imported",
+      attendees: params.attendees ?? [],
+    },
+    { onConflict: "user_id,provider,external_note_id" },
+  );
+
+  // Resumo estruturado + lente pessoal (fire-and-forget, mesmo
+  // pipeline do bot e dos uploads).
+  fetch(`${supabaseUrl}/functions/v1/summarize-transcript`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${serviceKey}`,
+    },
+    body: JSON.stringify({ feedbackId: feedback.id }),
+  }).catch((e) => console.error("summarize-transcript trigger failed", e));
+
+  return { feedbackId: feedback.id };
+}
+
 export async function syncNoteTakerConnection(
   supabase: SupabaseClient,
   connection: {
@@ -84,6 +165,14 @@ export async function syncNoteTakerConnection(
 
   const members = await loadMembers(supabase, connection.user_id);
 
+  // Marca d'água: só avança até a nota mais recente que conseguimos processar,
+  // e apenas se o ciclo terminar sem erro. Assim uma falha no meio não faz
+  // a janela pular notas que nunca foram lidas.
+  let watermark: string | null = null;
+  const bumpWatermark = (iso: string) => {
+    if (!watermark || new Date(iso) > new Date(watermark)) watermark = iso;
+  };
+
   let cursor: string | null = null;
   let pages = 0;
   try {
@@ -106,74 +195,66 @@ export async function syncNoteTakerConnection(
           .maybeSingle();
         if (existing) {
           result.skipped += 1;
+          if (listed.created_at) bumpWatermark(listed.created_at);
           continue;
         }
 
         const full = (await getGranolaNote(apiKey, listed.id)) ?? listed;
         const content = noteToContent(full);
-        if (content.length < MIN_CONTENT_LEN) {
-          result.skipped += 1;
-          continue;
-        }
-
-        const matched = matchMembers(full, members);
         const occurredAt = full.created_at ?? listed.created_at ?? new Date().toISOString();
         const title = full.title ?? listed.title ?? "Reunião (Granola)";
+        const attendees = noteAttendees(full);
 
-        if (matched.length === 0) {
+        if (content.length < MIN_CONTENT_LEN) {
+          result.skipped += 1;
           await supabase.from("note_taker_synced_notes").insert({
             user_id: connection.user_id,
             provider: connection.provider,
             external_note_id: listed.id,
             title,
             note_created_at: occurredAt,
+            status: "dismissed",
+            attendees,
+          });
+          bumpWatermark(occurredAt);
+          continue;
+        }
+
+        const matched = matchMembers(full, members);
+
+        if (matched.length === 0) {
+          // Fica pendente: o líder decide de quem é na tela de Conectores.
+          await supabase.from("note_taker_synced_notes").insert({
+            user_id: connection.user_id,
+            provider: connection.provider,
+            external_note_id: listed.id,
+            title,
+            note_created_at: occurredAt,
+            status: "pending",
+            attendees,
           });
           result.unmatched += 1;
+          bumpWatermark(occurredAt);
           continue;
         }
 
         for (const memberId of matched) {
-          const { data: feedback, error } = await supabase
-            .from("feedbacks")
-            .insert({
-              member_id: memberId,
-              manager_id: connection.user_id,
-              content,
+          const ingest = await ingestNoteForMember(
+            supabase,
+            {
+              userId: connection.user_id,
+              provider: connection.provider,
+              externalNoteId: listed.id,
+              memberId,
               title,
-              source: "granola",
-              type: "neutral",
-              visibility: "private_leader",
-              occurred_at: occurredAt,
-            })
-            .select("id")
-            .single();
-
-          if (error) {
-            console.error("granola feedback insert error", error);
-            continue;
-          }
-          result.imported += 1;
-
-          await supabase.from("note_taker_synced_notes").insert({
-            user_id: connection.user_id,
-            provider: connection.provider,
-            external_note_id: `${listed.id}:${memberId}`,
-            feedback_id: feedback.id,
-            member_id: memberId,
-            title,
-            note_created_at: occurredAt,
-          });
-
-          // Resumo estruturado + lente pessoal (fire-and-forget, mesmo
-          // pipeline do bot e dos uploads).
-          fetch(`${supabaseUrl}/functions/v1/summarize-transcript`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${serviceKey}`,
+              content,
+              occurredAt,
+              attendees,
             },
-            body: JSON.stringify({ feedbackId: feedback.id }),
-          }).catch((e) => console.error("summarize-transcript trigger failed", e));
+            supabaseUrl,
+            serviceKey,
+          );
+          if ("feedbackId" in ingest) result.imported += 1;
         }
 
         // Marca o id "cru" como visto para não reprocessar a nota inteira.
@@ -185,21 +266,31 @@ export async function syncNoteTakerConnection(
             external_note_id: listed.id,
             title,
             note_created_at: occurredAt,
+            status: "seen",
+            attendees,
           })
           .then(() => undefined, () => undefined);
+
+        bumpWatermark(occurredAt);
       }
     } while (cursor && pages < 5);
   } catch (e) {
     result.error = (e as Error).message;
   }
 
+  const update: Record<string, unknown> = {
+    last_error: result.error ?? null,
+    notes_imported: (await currentImported(supabase, connection.id)) + result.imported,
+  };
+  if (!result.error) {
+    // Sem erro: avança a janela. Usa a nota mais recente vista (ou agora,
+    // quando nada novo apareceu) para não pular notas atrasadas.
+    update.last_synced_at = watermark ?? new Date().toISOString();
+  }
+
   await supabase
     .from("leader_note_taker_connections")
-    .update({
-      last_synced_at: new Date().toISOString(),
-      last_error: result.error ?? null,
-      notes_imported: (await currentImported(supabase, connection.id)) + result.imported,
-    })
+    .update(update)
     .eq("id", connection.id);
 
   return result;
@@ -213,3 +304,4 @@ async function currentImported(supabase: SupabaseClient, id: string): Promise<nu
     .maybeSingle();
   return data?.notes_imported ?? 0;
 }
+
