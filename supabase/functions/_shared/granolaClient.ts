@@ -51,6 +51,14 @@ export async function verifyGranolaKey(
   return { ok: false, status: res.status, message };
 }
 
+/** Converte qualquer data legível para ISO 8601; null quando inválida. */
+export function toIsoOrNull(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const ms = Date.parse(value);
+  if (Number.isNaN(ms)) return null;
+  return new Date(ms).toISOString();
+}
+
 export async function listGranolaNotes(
   apiKey: string,
   opts: { createdAfter?: string | null; cursor?: string | null; limit?: number },
