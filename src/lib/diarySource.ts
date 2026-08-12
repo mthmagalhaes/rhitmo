@@ -7,7 +7,7 @@
 // gravadas historicamente como `source='manual'`. Este helper espelha a mesma
 // heurística no cliente para casos legados ainda em cache e para resiliência
 // caso o trigger seja desativado em ambiente de dev.
-import { Bot, FileText, Upload, PenLine, type LucideIcon } from 'lucide-react';
+import { Bot, FileText, Upload, PenLine, NotebookPen, type LucideIcon } from 'lucide-react';
 import { SlackIcon } from '@/components/icons/SlackIcon';
 
 export type DiarySourceKind =
@@ -15,6 +15,7 @@ export type DiarySourceKind =
   | 'upload'
   | 'transcription_upload'
   | 'slack'
+  | 'granola'
   | 'manual';
 
 export interface DiarySourceMeta {
@@ -102,7 +103,7 @@ export function isTranscriptLike(
   content: string | null | undefined,
 ): boolean {
   const effective = detectEffectiveSource(source, content);
-  return effective === 'recall_bot' || effective === 'transcription';
+  return effective === 'recall_bot' || effective === 'transcription' || effective === 'granola';
 }
 
 export function getDiarySourceMeta(
@@ -144,6 +145,15 @@ export function getDiarySourceMeta(
           badgeClass:
             'bg-sky-50 text-sky-800 border-sky-100 dark:bg-sky-950/40 dark:text-sky-200 dark:border-sky-900',
         };
+  }
+  if (effective === 'granola') {
+    return {
+      kind: 'granola',
+      label: 'Granola',
+      icon: NotebookPen,
+      badgeClass:
+        'bg-lime-50 text-lime-800 border-lime-100 dark:bg-lime-950/40 dark:text-lime-200 dark:border-lime-900',
+    };
   }
   if (effective === 'slack' || effective === 'slack_activity_rollup' || effective === 'slack_ambient') {
     return {

@@ -1,6 +1,6 @@
 // Barra de filtros do Diário v2 — substitui a master list lateral.
 // Estado vive na URL (member, team, period, q, tags, source, from, to, sort).
-import { Search, CalendarIcon, X, Bot, FileText, PenLine } from 'lucide-react';
+import { Search, CalendarIcon, X, Bot, FileText, PenLine, NotebookPen } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ export type DiarySource =
   | 'all'
   | 'recall_bot'
   | 'transcription'
+  | 'granola'
   | 'slack'
   | 'manual';
 
@@ -179,6 +180,11 @@ export function DiaryFilters({
               <SelectItem value="transcription">
                 <span className="inline-flex items-center gap-1.5">
                   <FileText className="h-3.5 w-3.5" /> Upload / Transcrição
+                </span>
+              </SelectItem>
+              <SelectItem value="granola">
+                <span className="inline-flex items-center gap-1.5">
+                  <NotebookPen className="h-3.5 w-3.5" /> Granola
                 </span>
               </SelectItem>
               <SelectItem value="slack">
