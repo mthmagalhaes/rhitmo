@@ -7,7 +7,7 @@
 // gravadas historicamente como `source='manual'`. Este helper espelha a mesma
 // heurística no cliente para casos legados ainda em cache e para resiliência
 // caso o trigger seja desativado em ambiente de dev.
-import { Bot, FileText, Upload, PenLine, type LucideIcon } from 'lucide-react';
+import { Bot, FileText, Upload, PenLine, NotebookPen, type LucideIcon } from 'lucide-react';
 import { SlackIcon } from '@/components/icons/SlackIcon';
 
 export type DiarySourceKind =
@@ -15,6 +15,7 @@ export type DiarySourceKind =
   | 'upload'
   | 'transcription_upload'
   | 'slack'
+  | 'granola'
   | 'manual';
 
 export interface DiarySourceMeta {
