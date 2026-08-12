@@ -145,6 +145,15 @@ export function getDiarySourceMeta(
             'bg-sky-50 text-sky-800 border-sky-100 dark:bg-sky-950/40 dark:text-sky-200 dark:border-sky-900',
         };
   }
+  if (effective === 'granola') {
+    return {
+      kind: 'granola',
+      label: 'Granola',
+      icon: NotebookPen,
+      badgeClass:
+        'bg-lime-50 text-lime-800 border-lime-100 dark:bg-lime-950/40 dark:text-lime-200 dark:border-lime-900',
+    };
+  }
   if (effective === 'slack' || effective === 'slack_activity_rollup' || effective === 'slack_ambient') {
     return {
       kind: 'slack',
