@@ -13,6 +13,15 @@ export interface NoteTakerConnection {
   created_at: string;
 }
 
+export interface PendingNote {
+  id: string;
+  external_note_id: string;
+  title: string | null;
+  note_created_at: string | null;
+  attendees: Array<{ name: string | null; email: string | null }> | null;
+}
+
+
 async function invokeNoteTaker(body: Record<string, unknown>) {
   const { data, error } = await supabase.functions.invoke('note-taker-connect', { body });
   if (error) {
