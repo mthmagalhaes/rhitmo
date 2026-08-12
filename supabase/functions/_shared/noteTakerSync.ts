@@ -172,7 +172,7 @@ export async function syncNoteTakerConnection(
               "Content-Type": "application/json",
               Authorization: `Bearer ${serviceKey}`,
             },
-            body: JSON.stringify({ feedback_id: feedback.id }),
+            body: JSON.stringify({ feedbackId: feedback.id }),
           }).catch((e) => console.error("summarize-transcript trigger failed", e));
         }
 
