@@ -9,9 +9,9 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
-import { encryptApiKey } from "../_shared/noteTakerCrypto.ts";
-import { verifyGranolaKey } from "../_shared/granolaClient.ts";
-import { syncNoteTakerConnection } from "../_shared/noteTakerSync.ts";
+import { decryptApiKey, encryptApiKey } from "../_shared/noteTakerCrypto.ts";
+import { getGranolaNote, noteToContent, verifyGranolaKey } from "../_shared/granolaClient.ts";
+import { ingestNoteForMember, syncNoteTakerConnection } from "../_shared/noteTakerSync.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,10 +20,13 @@ const corsHeaders = {
 };
 
 const BodySchema = z.object({
-  action: z.enum(["connect", "disconnect", "sync"]),
+  action: z.enum(["connect", "disconnect", "sync", "list_pending", "assign", "dismiss"]),
   provider: z.literal("granola").default("granola"),
   api_key: z.string().min(10).max(500).optional(),
+  note_id: z.string().uuid().optional(),
+  member_id: z.string().uuid().optional(),
 });
+
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
