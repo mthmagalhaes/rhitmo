@@ -148,11 +148,25 @@ Deno.serve(async (req) => {
         statusCode === "bot_kicked_from_waiting_room";
 
       const finalStatus = isFatal || isKickedFromWaitingRoom ? "error" : newStatus;
-      const errorMessage = isFatal
-        ? `Bot falhou: ${subCode || statusCode || "erro desconhecido"}`
-        : isKickedFromWaitingRoom
-        ? "Host rejeitou o bot na sala de espera. Tente enviar de novo após aceitar."
-        : null;
+
+      // Mensagens honestas por motivo real de saída. Antes tudo virava
+      // "Líder não detectado", o que escondia timeout de sala vazia.
+      const EXIT_REASONS: Record<string, string> = {
+        bot_kicked_from_waiting_room:
+          "Host não admitiu o bot na sala de espera. Aceite o bot e clique em Enviar agora.",
+        bot_never_admitted:
+          "O bot ficou 15 min na sala de espera sem ser admitido e saiu sozinho.",
+        noone_joined:
+          "Ninguém entrou na reunião nos primeiros 15 min — o bot saiu sozinho.",
+        everyone_left:
+          "Todos saíram da reunião — o bot encerrou a gravação.",
+        meeting_not_started:
+          "A reunião não chegou a começar dentro da janela de espera.",
+      };
+
+      const reasonKey = subCode || statusCode || "";
+      const errorMessage = EXIT_REASONS[reasonKey] ??
+        (isFatal ? `Bot falhou: ${reasonKey || "erro desconhecido"}` : null);
 
       await supabaseAdmin
         .from("recall_bots")
@@ -163,6 +177,7 @@ Deno.serve(async (req) => {
         .eq("id", botRecord.id);
 
       console.log(`Bot ${botId} status: ${event} → ${finalStatus}${subCode ? ` (sub_code=${subCode})` : ""}`);
+
     }
 
 
