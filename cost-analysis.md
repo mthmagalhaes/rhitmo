@@ -1,8 +1,8 @@
 # Rhitmo — Auditoria de Custos Operacionais por Líder Ativo
 
-> Gerado em: 15/04/2026  
+> Gerado em: 15/04/2026 · Revisado em: 13/08/2026 com a fatura real do Recall.ai (V1R4A6KP-0006, Jul/2026)  
 > Câmbio utilizado: USD 1 = BRL 5,80  
-> Atualização: migração para Lovable AI Gateway (Gemini) + Recall.ai Bot + otimizações de custo
+> Atualização: custo efetivo do Recall corrigido de $0.45/h para **$0.72/h** (machine time $0.50/h + transcrição + storage)
 
 ---
 
@@ -12,7 +12,7 @@
 |---|---|---|
 | **chat-mentor Layer 3** (Resposta RAG) | gpt-4o → $0.026/msg | gemini-2.5-flash (Lovable AI) → **$0.00** |
 | **meu-rhitmo** (chat do liderado) | gpt-4o → $0.017/msg | gemini-2.5-flash (Lovable AI) → **$0.00** |
-| **Transcrição de reunião** | Whisper (upload manual) $0.006/min | **Recall.ai Bot** (automático) → **~$0.40-0.50/hora** (machine + transcription) |
+| **Transcrição de reunião** | Whisper (upload manual) $0.006/min | **Recall.ai Bot** (automático) → **~$0.72/hora** (machine + transcription + storage, fatura real Jul/26) |
 | **generate-review, classify-note, generate-brief, analyze-job-crafting** | Lovable AI → $0.00 | Sem mudança → $0.00 |
 
 **Resultado:** custo variável de LLM caiu **~98%**. O driver de custo agora é exclusivamente o Recall.ai (machine time + transcrição).
@@ -47,18 +47,21 @@
 | **generate-brief** (brief pré-reunião) | gemini-3-flash-preview | $0.00 |
 | **analyze-job-crafting** (perfil de trabalho) | gemini-3-flash-preview | $0.00 |
 
-### 2.3 Recall.ai (transcrição automática de reunião) — ATUALIZADO
+### 2.3 Recall.ai — REVISADO com fatura real (Jul/2026)
 
-O Recall.ai cobra **dois componentes** por bot:
+O Recall.ai cobra **três componentes** por bot (confirmado na fatura V1R4A6KP-0006):
 
 | Componente | Descrição | Custo |
 |---|---|---|
-| **Bot Machine Time** | Tempo total do bot na chamada (da entrada até saída). Inclui sala de espera. | **~$0.25–0.35/hora** |
-| **Transcription** | Transcrição via `recallai_streaming` (mode: prioritize_accuracy, language: auto) | **$0.15/hora** |
-| **Storage** | Retenção de mídia/recordings | Incluso no free tier (consultar limites) |
+| **Bot Recording Hours** (machine time) | Tempo total do bot na chamada, da entrada até a saída. Inclui sala de espera. | **$0.50/hora** |
+| **Real-time Transcription** | Transcrição via `recallai_streaming` (mode: prioritize_accuracy, language: auto) | **$0.15/hora gravada** |
+| **Storage and Playback** | Retenção de mídia/recordings. **Não é grátis** e é cumulativo. | **$0.0000694444/unidade** (~16% da conta em Jul/26) |
 
-> **Custo efetivo por reunião de 30min:** ~$0.20–0.25 (machine time + transcription)
-> **Custo efetivo por hora de reunião:** ~$0.40–0.50
+> **Custo efetivo por hora de bot (fatura real Jul/2026):** **$0.72/h**
+> **Custo efetivo por reunião de 30min:** ~$0.36
+> Detalhamento em §6. O modelo anterior ($0.45/h) subestimava o custo em ~60%.
+
+
 
 #### Otimizações implementadas (15/04/2026)
 
@@ -123,10 +126,10 @@ O Recall.ai cobra **dois componentes** por bot:
 | Mentor Chat L1 (gpt-4o-mini) | 60 × $0.000048 | $0.003 |
 | Mentor Chat L3 (Lovable AI) | 60 × $0.00 | $0.00 |
 | Análise de notas (gpt-4o-mini) | 40 × $0.00063 | $0.025 |
-| **Recall.ai Bot (machine + transcription)** | **10h × $0.45** | **$4.50** |
+| **Recall.ai (machine + transcription + storage)** | **10h × $0.72** | **$7.22** |
 | Meu Rhitmo (Lovable AI) | 50 × $0.00 | $0.00 |
 | Lovable AI (classify, review, brief) | — | $0.00 |
-| **TOTAL** | | **$4.53** |
+| **TOTAL** | | **$7.25** |
 
 ### 4.3 Business (R$69) — 10 liderados, 40 reuniões/mês
 
@@ -135,10 +138,10 @@ O Recall.ai cobra **dois componentes** por bot:
 | Mentor Chat L1 (gpt-4o-mini) | 60 × $0.000048 | $0.003 |
 | Mentor Chat L3 (Lovable AI) | 60 × $0.00 | $0.00 |
 | Análise de notas (gpt-4o-mini) | 80 × $0.00063 | $0.050 |
-| **Recall.ai Bot (machine + transcription)** | **20h × $0.45** | **$9.00** |
+| **Recall.ai (machine + transcription + storage)** | **20h × $0.72** | **$14.44** |
 | Meu Rhitmo (Lovable AI) | 300 × $0.00 | $0.00 |
 | Lovable AI (classify, review, brief) | — | $0.00 |
-| **TOTAL** | | **$9.06** |
+| **TOTAL** | | **$14.49** |
 
 ---
 
@@ -146,49 +149,65 @@ O Recall.ai cobra **dois componentes** por bot:
 
 | Métrica | Pulse (grátis) | Pro (R$49) | Business (R$69) |
 |---|---|---|---|
-| Custo USD/líder/mês | $0.014 | $4.53 | $9.06 |
-| **Custo BRL/líder/mês** | **R$0,08** | **R$26,27** | **R$52,53** |
+| Custo USD/líder/mês | $0.014 | $7.25 | $14.49 |
+| **Custo BRL/líder/mês** | **R$0,08** | **R$42,05** | **R$84,04** |
 | Receita/líder/mês | R$0 | R$49 | R$69 |
-| **Margem bruta** | **-R$0,08** (subsídio) | **R$22,73 (46,4%)** | **R$16,47 (23,9%)** |
+| **Margem bruta** | **-R$0,08** (subsídio) | **R$6,95 (14,2%)** | **-R$15,04 (-21,8%)** |
 
-> ⚠️ Com os custos reais do Recall.ai (machine time + transcription), a margem do Business é apertada. As otimizações implementadas (deduplicação, auto-leave, presença do líder) são críticas para manter viabilidade.
+> 🚨 Com o custo real de $0.72/h (fatura Jul/2026), o **Business dá prejuízo** na premissa de uso plena e o Pro fica com margem de 14%. As otimizações (deduplicação, auto-leave, presença do líder) deixaram de ser "melhoria" e passaram a ser **condição de viabilidade**, e um **teto de horas de bot por plano** vira obrigatório.
 
 ### Cenário otimizado (com todas as otimizações ativas)
 
-Estimativa de economia com deduplicação (~30%), auto-leave (~15%), presença líder (~10%):
+Estimativa de economia com deduplicação (~30%), auto-leave (~15%), presença líder (~10%) → uso efetivo de 55%:
 
 | Métrica | Pro Otimizado | Business Otimizado |
 |---|---|---|
-| Recall.ai estimado | 10h × $0.45 × 0.55 = $2.48 | 20h × $0.45 × 0.55 = $4.95 |
-| Custo total USD | $2.51 | $5.00 |
-| Custo total BRL | R$14,56 | R$29,00 |
-| Margem bruta | **R$34,44 (70,3%)** | **R$40,00 (58,0%)** |
+| Recall.ai estimado | 5,5h × $0.72 = $3.97 | 11h × $0.72 = $7.94 |
+| Custo total USD | $3.99 | $7.99 |
+| Custo total BRL | R$23,16 | R$46,36 |
+| Margem bruta | **R$25,84 (52,7%)** | **R$22,64 (32,8%)** |
 
 ### Cenário intenso (power users Pro/Business)
 
 | Parâmetro | Pro Intenso | Business Intenso |
 |---|---|---|
 | Reuniões com bot/mês | 30 (15h) | 60 (30h) |
-| Custo Recall.ai (machine + transcription) | $6.75 | $13.50 |
-| Custo total USD | $6.78 | $13.55 |
-| Custo total BRL | R$39,32 | R$78,59 |
-| Margem bruta | **R$9,68 (19,8%)** | **-R$9,59 (-13,9%)** |
+| Custo Recall.ai | $10.83 | $21.66 |
+| Custo total USD | $10.86 | $21.71 |
+| Custo total BRL | R$62,99 | R$125,92 |
+| Margem bruta | **-R$13,99 (-28,6%)** | **-R$56,92 (-82,5%)** |
 
-> ⚠️ Power users do Business podem gerar prejuízo. Considerar limite de reuniões/mês ou upgrade de preço.
+> 🚨 Power users **de qualquer plano pago** geram prejuízo sem teto de horas. Teto sugerido: 12h/mês no Pro e 24h/mês no Business (com aviso ao líder e opção de comprar horas extras).
 
 ---
 
-## 6. Análise Real de Consumo (15/04/2026)
+## 6. Análise Real de Consumo — Fatura Jul/2026 (V1R4A6KP-0006)
 
-Dados reais do dashboard Recall.ai:
+Primeira fatura fechada com volume relevante. Serviço Jul 01–31/2026:
 
-| Métrica | Valor |
-|---|---|
-| Saldo inicial | $5.00 |
-| Saldo atual | $3.81 |
-| Consumo total | **$1.19** |
-| Horas gravadas | **2.377h** |
-| Custo efetivo/hora | **~$0.50/h** (machine time + transcription) |
+| Linha | Quantidade | Preço unitário | Valor |
+|---|---|---|---|
+| Bot Recording Hours | 9,4256 h | $0.50/h | $4.71 |
+| Storage and Playback | 15.756,97 unidades | $0.0000694444 | $1.09 |
+| Real-time Transcription | 6,6342 h | $0.15/h | $1.00 |
+| Crédito pré-pago aplicado | — | — | -$6.18 |
+| **Bruto do mês** | | | **$6.80** |
+| Amount due (após créditos) | | | $0.61 |
+
+### Leituras da fatura
+
+| # | Achado | Implicação |
+|---|---|---|
+| 1 | **Machine time é $0.50/h fixo**, não a faixa $0.25–0.35 documentada antes | Base de custo 43–100% maior que o modelado |
+| 2 | **Storage and Playback não é grátis** ($1.09, ~16% da conta) e é **cumulativo** | Cresce mês a mês mesmo com volume estável → exige política de retenção |
+| 3 | **Transcrição cobre só 70% das horas de bot** (6,63h de 9,43h) | ~30% do machine time é bot ocioso: sala de espera, reunião sem gravação |
+| 4 | **Custo efetivo: $0.72/h de bot** ($6.80 ÷ 9,4256h) | ~60% acima dos $0.45/h assumidos |
+
+### KPI de eficiência: razão transcrição / machine time
+
+`horas transcritas ÷ horas de bot` — em Jul/2026: **70,4%**.
+
+Quanto mais perto de 100%, menos bot ocioso pago. Metas: <70% investigar auto-leave e agendamentos fantasma; >85% saudável. Este é o indicador mais barato de acompanhar mensalmente na fatura.
 
 ### Problemas identificados e corrigidos
 
@@ -196,8 +215,9 @@ Dados reais do dashboard Recall.ai:
 |---|---|---|
 | **Bots duplicados** para mesma reunião (dedup falha por `meeting_id` apenas) | ~2x custo em reuniões afetadas | Deduplicação por `meeting_url` como fallback |
 | **setTimeout no webhook** não funciona em Deno Edge Functions | Detecção de presença do líder nunca executava | Substituído por verificação síncrona |
-| **Sem auto-leave timeouts** | Bot ficava em sala de espera/chamada indefinidamente | `waiting_room_timeout: 120s`, `noone_joined_timeout: 300s` |
+| **Sem auto-leave timeouts** | Bot ficava em sala de espera/chamada indefinidamente | `waiting_room_timeout`, `noone_joined_timeout: 300s` |
 | **leader_email ausente** em bots auto-agendados | Presença do líder não podia ser verificada | Adicionado `leader_email` no insert do `fetch-calendar-events` |
+| **Storage tratado como grátis** | Custo invisível de ~16% da conta, cumulativo | Pendente: política de retenção/expurgo de gravações |
 
 ---
 
@@ -218,7 +238,8 @@ Dados reais do dashboard Recall.ai:
 | ✅ Auto-leave timeouts (waiting room, idle, alone) | ~10-20% | **Implementado** |
 | ✅ Detecção de presença do líder | ~10-15% | **Implementado** |
 | ✅ Correção do `setTimeout` no webhook | Funcional | **Implementado** |
-| Limitar reuniões com bot por plano (ex: 15/mês no Pro) | Controla teto de custo | Pendente |
+| **Teto de horas de bot por plano** (12h Pro / 24h Business) | Impede prejuízo em power user | **Pendente — prioridade 1** |
+| **Política de retenção/expurgo de gravações** | ~16% da conta (storage cumulativo) | **Pendente — prioridade 2** |
 | Reduzir duração mínima de gravação (ignorar <5min) | ~5-10% do Recall.ai | Pendente |
 | Negociar volume com Recall.ai | ~10-30% no componente | Requer escala |
 
@@ -241,20 +262,20 @@ Dados reais do dashboard Recall.ai:
 
 ---
 
-## 9. Break-Even por Plano (cenário otimizado)
+## 9. Break-Even por Plano (cenário otimizado, custo real $0.72/h)
 
 | Plano | Custo fixo rateado (10 líderes) | Custo variável | Custo total/líder | Receita | Lucro/líder |
 |---|---|---|---|---|---|
-| Pro | ~R$17,40 | R$14,56 | R$31,96 | R$49 | **R$17,04 (34,8%)** |
-| Business | ~R$17,40 | R$29,00 | R$46,40 | R$69 | **R$22,60 (32,8%)** |
+| Pro | ~R$17,40 | R$23,16 | R$40,56 | R$49 | **R$8,44 (17,2%)** |
+| Business | ~R$17,40 | R$46,36 | R$63,76 | R$69 | **R$5,24 (7,6%)** |
 
-> Com otimizações ativas, a operação é lucrativa a partir de ~7 líderes Pro.
+> Com o custo real, o break-even só existe **no cenário otimizado**. Em uso pleno (10h/20h) o Business é negativo. A operação continua lucrativa a partir de ~7 líderes Pro, mas com folga bem menor do que a estimada antes.
 
 ---
 
 ## 10. Projeção de Escala — 50 e 100 Líderes Ativos (cenário otimizado)
 
-> Premissas: custo fixo de R$174/mês (~$30 USD × 5.80), mix de 70% Pro + 30% Business, cenário otimizado de uso. Stripe: 3,99% + R$0,39/transação.
+> Premissas: custo fixo de R$174/mês (~$30 USD × 5.80), mix de 70% Pro + 30% Business, cenário otimizado de uso (55% das horas), Recall a $0.72/h. Stripe: 3,99% + R$0,39/transação.
 
 ### 50 líderes (35 Pro + 15 Business)
 
@@ -263,13 +284,13 @@ Dados reais do dashboard Recall.ai:
 | **Receita bruta** | (35 × R$49) + (15 × R$69) | **R$2.750/mês** |
 | Stripe (taxas) | ~4,5% médio | -R$123,75 |
 | **Receita líquida** | | **R$2.626,25** |
-| Custo variável Pro | 35 × R$14,56 | R$509,60 |
-| Custo variável Business | 15 × R$29,00 | R$435,00 |
-| **Total custo variável** | | **R$944,60** |
+| Custo variável Pro | 35 × R$23,16 | R$810,60 |
+| Custo variável Business | 15 × R$46,36 | R$695,40 |
+| **Total custo variável** | | **R$1.506,00** |
 | Custo fixo plataforma | | R$174,00 |
-| **Custo total** | | **R$1.118,60** |
-| **Lucro líquido mensal** | | **R$1.507,65** |
-| **Margem líquida** | | **54,8%** |
+| **Custo total** | | **R$1.680,00** |
+| **Lucro líquido mensal** | | **R$946,25** |
+| **Margem líquida** | | **34,4%** |
 
 ### 100 líderes (70 Pro + 30 Business)
 
@@ -278,23 +299,23 @@ Dados reais do dashboard Recall.ai:
 | **Receita bruta** | (70 × R$49) + (30 × R$69) | **R$5.500/mês** |
 | Stripe (taxas) | ~4,5% médio | -R$247,50 |
 | **Receita líquida** | | **R$5.252,50** |
-| Custo variável Pro | 70 × R$14,56 | R$1.019,20 |
-| Custo variável Business | 30 × R$29,00 | R$870,00 |
-| **Total custo variável** | | **R$1.889,20** |
+| Custo variável Pro | 70 × R$23,16 | R$1.621,20 |
+| Custo variável Business | 30 × R$46,36 | R$1.390,80 |
+| **Total custo variável** | | **R$3.012,00** |
 | Custo fixo plataforma | | R$174,00 |
-| **Custo total** | | **R$2.063,20** |
-| **Lucro líquido mensal** | | **R$3.189,30** |
-| **Margem líquida** | | **60,7%** |
+| **Custo total** | | **R$3.186,00** |
+| **Lucro líquido mensal** | | **R$2.066,50** |
+| **Margem líquida** | | **37,6%** |
 
 ### Resumo visual
 
 | Escala | Receita bruta | Custo total | Lucro líquido | Margem |
 |---|---|---|---|---|
-| **10 líderes** | R$550 | R$488 | **R$62** | 11,3% |
-| **50 líderes** | R$2.750 | R$1.119 | **R$1.508** | 54,8% |
-| **100 líderes** | R$5.500 | R$2.063 | **R$3.189** | 60,7% |
+| **10 líderes** (7 Pro + 3 Business) | R$550 | R$475 | **~R$50** | 9,1% |
+| **50 líderes** | R$2.750 | R$1.680 | **R$946** | 34,4% |
+| **100 líderes** | R$5.500 | R$3.186 | **R$2.067** | 37,6% |
 
-> A margem melhora significativamente com escala. Com otimizações e negociação de volume com Recall.ai, a margem em 100 líderes pode ultrapassar 65%.
+> Com o custo real, a margem em escala cai de ~60% para ~37%. As duas alavancas que devolvem margem são **teto de horas por plano** e **negociação de volume com o Recall** (o preço de $0.50/h já é `prepaid_commit`; volume maior tende a reduzir). Uma terceira alavanca é reprecificar o Business, que hoje só se sustenta em uso moderado.
 
 ---
 
@@ -303,7 +324,8 @@ Dados reais do dashboard Recall.ai:
 - **Embeddings:** O schema possui coluna `feedbacks.embedding` (pgvector) mas nenhuma Edge Function popula embeddings atualmente. Custo futuro estimado: ~$0.00002/nota via `text-embedding-3-small`.
 - **Layer 2 (Compressor):** Implementado como JavaScript puro (substring/filtragem), sem chamada LLM — custo zero.
 - **Whisper (transcribe-audio):** Ainda ativo como fallback para uploads manuais de áudio. Custo: $0.006/min. Fluxo principal agora é via Recall.ai Bot.
-- **Recall.ai billing:** Dois componentes — **Machine Time** (tempo do bot na chamada, ~$0.25-0.35/h) e **Transcription** ($0.15/h). Machine time é cobrado desde `joining_call` até `done`, incluindo sala de espera.
+- **Recall.ai billing (fatura Jul/2026):** Três componentes — **Bot Recording Hours** ($0.50/h, cobrado de `joining_call` até `done`, incluindo sala de espera), **Real-time Transcription** ($0.15/h gravada) e **Storage and Playback** ($0.0000694444/unidade, cumulativo). Custo efetivo combinado: **$0.72 por hora de bot**.
+- **Razão transcrição/machine time:** KPI mensal de eficiência. Jul/2026 = 70,4%. Abaixo de 70% indica bot ocioso demais (sala de espera, reunião sem gravação).
 - **Recall.ai provider:** `recallai_streaming` com `mode: prioritize_accuracy` e `language_code: auto`. Detecta PT-BR, EN e ES automaticamente.
 - **Auto-leave configurado:** `waiting_room_timeout: 120s`, `in_call_not_recording_timeout: 180s`, `noone_joined_timeout: 300s`.
 - **Resend:** Dentro do free tier (3k emails/mês). Acima disso: ~$0.001/email.
