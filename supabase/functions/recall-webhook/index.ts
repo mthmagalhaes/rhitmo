@@ -345,7 +345,28 @@ async function checkLeaderPresence(
     console.warn(`Bot ${botId}: recording-duration safety check failed:`, e);
   }
 
-  // Auto-calendar bot, no real recording: leader never showed up. Remove + mark.
+  // Se o resolver não conseguiu listar NINGUÉM, o motivo não foi "líder ausente"
+  // e sim sala vazia / bot não admitido. Marcamos com a mensagem honesta e não
+  // fingimos que houve detecção de participantes.
+  if (participants.length === 0) {
+    console.warn(`Bot ${botId}: nenhum participante visível — encerrando como sala vazia`);
+    await fetch(`https://us-west-2.recall.ai/api/v1/bot/${botId}/leave/`, {
+      method: "POST",
+      headers: { Authorization: `Token ${recallApiKey}` },
+    });
+    await supabaseAdmin
+      .from("recall_bots")
+      .update({
+        status: "skipped_no_leader",
+        error_message:
+          botRecord.error_message ||
+          "Ninguém entrou na reunião durante a janela de espera — o bot saiu sozinho.",
+      })
+      .eq("id", botRecord.id);
+    return;
+  }
+
+  // Havia gente na sala e nenhum deles era o líder. Remove + mark.
   console.log(`Bot ${botId}: leader NOT detected after grace period — removing bot`);
 
   const leaveResponse = await fetch(`https://us-west-2.recall.ai/api/v1/bot/${botId}/leave/`, {
@@ -355,14 +376,18 @@ async function checkLeaderPresence(
 
   console.log(`Bot ${botId}: leave response: ${leaveResponse.status}`);
 
+  const seen = participants.map((p: any) => p.name ?? p.email ?? "?").join(", ");
+
   await supabaseAdmin
     .from("recall_bots")
     .update({
       status: "skipped_no_leader",
-      error_message: "Líder não detectado na reunião — bot removido automaticamente",
+      error_message:
+        `Líder não detectado na reunião — bot removido. Participantes vistos: ${seen}`.slice(0, 500),
     })
     .eq("id", botRecord.id);
 }
+
 
 // ── Fetch transcript via Recall API v1 bot retrieve → media_shortcuts ──────
 
