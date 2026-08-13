@@ -78,12 +78,12 @@ Deno.serve(async (req) => {
     // bloqueado mesmo liderando time em workspace enterprise+beta.
     const { data: ownedWorkspaces } = await supabaseAdmin
       .from("workspaces")
-      .select("plan_tier, is_beta_user")
+      .select("id, plan_tier, is_beta_user, paid_seats, grandfather_until")
       .eq("owner_id", userId);
 
     const { data: ledTeams } = await supabaseAdmin
       .from("teams")
-      .select("workspaces(plan_tier, is_beta_user)")
+      .select("workspaces(id, plan_tier, is_beta_user, paid_seats, grandfather_until)")
       .eq("leader_user_id", userId);
 
     // Caps por plano. Pro/Business/Enterprise = bot ilimitado.
@@ -138,6 +138,51 @@ Deno.serve(async (req) => {
         });
       }
     }
+
+    // ── Pricing v4: teto de horas de bot por workspace ───────────────────────
+    // Grátis: 4h/mês. Pago: 8h + 4h por assento pago. Beta/grandfathered: sem teto.
+    const anyCandidate = candidates as Array<Record<string, any>>;
+    const isGrandfathered = anyCandidate.some(
+      (c) => c?.grandfather_until && new Date(c.grandfather_until) >= new Date(new Date().toDateString()),
+    );
+    if (!isBeta && !isGrandfathered) {
+      const paidSeats = anyCandidate.reduce(
+        (acc, c) => Math.max(acc, Number(c?.paid_seats ?? 0) || 0),
+        0,
+      );
+      const hoursCap = paidSeats > 0 ? 8 + paidSeats * 4 : 4;
+      const workspaceIds = anyCandidate.map((c) => c?.id).filter(Boolean) as string[];
+
+      const startOfMonthHours = new Date();
+      startOfMonthHours.setDate(1);
+      startOfMonthHours.setHours(0, 0, 0, 0);
+
+      let usageQuery = supabaseAdmin
+        .from("bot_usage_events")
+        .select("machine_minutes")
+        .gte("created_at", startOfMonthHours.toISOString());
+      usageQuery = workspaceIds.length > 0
+        ? usageQuery.in("workspace_id", workspaceIds)
+        : usageQuery.eq("user_id", userId);
+
+      const { data: usageRows } = await usageQuery;
+      const hoursUsed =
+        ((usageRows ?? []).reduce((sum: number, r: any) => sum + Number(r.machine_minutes ?? 0), 0)) / 60;
+
+      if (hoursUsed >= hoursCap) {
+        return new Response(
+          JSON.stringify({
+            error: `Limite de ${hoursCap}h de transcrição com bot atingido este mês (${hoursUsed.toFixed(1)}h usadas). Adicione assentos ou um pacote de horas para continuar. Uploads e notas seguem liberados.`,
+            code: "recall_hours_cap",
+            hours_used: Number(hoursUsed.toFixed(2)),
+            hours_cap: hoursCap,
+          }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+    }
+
+
 
     // Check if bot already scheduled for this meeting (by meeting_id or meeting_url).
     // Estados "finais sem sucesso" (skipped_no_leader, error, unrecoverable, done)

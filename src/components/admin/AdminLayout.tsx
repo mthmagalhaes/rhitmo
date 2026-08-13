@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Users,
   Building2,
+  Coins,
   LogOut,
   ShieldCheck,
 } from 'lucide-react';
@@ -24,6 +25,7 @@ const TABS: Array<{ value: AdminTab; icon: React.ElementType; label: string }> =
   { value: 'overview', icon: LayoutDashboard, label: 'Visão geral' },
   { value: 'users', icon: Users, label: 'Pessoas' },
   { value: 'workspaces', icon: Building2, label: 'Empresas' },
+  { value: 'costs', icon: Coins, label: 'Custos' },
 ];
 
 export const AdminLayout = ({ children, activeTab, onTabChange }: AdminLayoutProps) => {

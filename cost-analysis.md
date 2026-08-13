@@ -319,7 +319,31 @@ Quanto mais perto de 100%, menos bot ocioso pago. Metas: <70% investigar auto-le
 
 ---
 
-## 11. Notas Técnicas
+## 11. Pricing v4 — assento previsível + teto de horas (Ago/2026)
+
+Modelo em vigor, calibrado com o custo real de **$0.72/h de bot** (~R$ 4,20/h a 5,80).
+
+| Item | Valor |
+|---|---|
+| Grátis | 3 assentos, **4 h de bot/mês por workspace** |
+| Pago (mensal) | **R$ 59,90 por assento** além dos 3 grátis |
+| Pago (anual) | R$ 47,90/assento/mês (R$ 574,80/ano) — 20% off |
+| Horas incluídas no pago | **8 h base + 4 h por assento pago** |
+| Pacote extra | 5 h por R$ 39 |
+| Hora avulsa | R$ 8 |
+
+Margem por assento pago (R$ 59,90 com 4 h atribuíveis ≈ R$ 16,80 de Recall): **~70%**. O pacote extra (R$ 7,80/h) e a hora avulsa (R$ 8) ficam acima do custo (R$ 4,20/h), então excedente não corrói margem.
+
+**Enforcement:** `schedule-recall-bot` bloqueia novo bot com `403 recall_hours_cap` quando as horas do mês (soma de `bot_usage_events.machine_minutes` do workspace) atingem o teto. Beta e workspaces grandfathered ficam sem teto. Uploads, notas e Slack seguem liberados — o teto vale só para o bot.
+
+**Medição:** `bot_usage_events` (populada pelo `recall-webhook` com a janela real de gravação) alimenta o relatório da aba **Custos** no `/admin`, com horas, razão transcrição/machine e custo em USD/BRL por usuário e workspace.
+
+**Retenção:** cron diário `purge-recall-recordings-daily` (03:45 UTC) apaga no Recall a mídia de bots com mais de **90 dias** (`recall_bots.media_purged_at`). Contém o storage cumulativo — as transcrições já vivem no nosso banco, então nada é perdido para o líder.
+
+---
+
+## 12. Notas Técnicas
+
 
 - **Embeddings:** O schema possui coluna `feedbacks.embedding` (pgvector) mas nenhuma Edge Function popula embeddings atualmente. Custo futuro estimado: ~$0.00002/nota via `text-embedding-3-small`.
 - **Layer 2 (Compressor):** Implementado como JavaScript puro (substring/filtragem), sem chamada LLM — custo zero.
