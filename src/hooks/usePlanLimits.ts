@@ -4,24 +4,30 @@ import { supabase } from '@/integrations/supabase/client';
 import { useEffectiveUser } from './useEffectiveUser';
 
 /**
- * Pricing v3 — Modelo Windmill (single plan, per-seat)
+ * Pricing v4 — assento + teto de horas de bot (calibrado pelo custo real
+ * do Recall: US$0,72/h ≈ R$4,20/h).
  *
- * - Líder + 3 liderados grátis para sempre.
- * - Recall com cap de 6h/mês/workspace no tier gratuito.
- * - A partir do 4º liderado: R$ 49,90/mês (ou R$ 502,80/ano com 16% off),
- *   destrava Recall ilimitado para o workspace inteiro.
- * - Workspaces criados antes do roll-out ganham `grandfather_until` =
- *   2026-11-08 e nesse período recebem seats ilimitados + Recall ilimitado.
- *
- * `plan_tier` permanece na tabela só para compat com workspaces legados;
- * todo o gating real vem de `paid_seats + grandfather_until`.
+ * - Grátis: líder + 3 liderados, 4h de bot por mês por workspace.
+ * - Pago: R$ 59,90/mês por assento (R$ 47,90 no anual), assentos ilimitados,
+ *   8h de bot por workspace + 4h por assento pago.
+ * - Excedente: pacote de 5h (R$ 39) ou hora avulsa (R$ 8).
+ * - Upload manual e Granola continuam livres em qualquer plano.
+ * - Workspaces beta/grandfathered mantêm assentos e Recall ilimitados até a
+ *   data já combinada.
  */
 
 export const FREE_SEATS = 3;
-export const FREE_RECALL_CAP_HOURS = 6;
-export const SEAT_PRICE_MONTHLY_BRL = 49.9;
-export const SEAT_PRICE_ANNUAL_BRL = 478.8; // R$ 39,90/mês × 12 — 20% off vs anual full; equivalente 16% off vs 12 × R$49,90
-export const ANNUAL_DISCOUNT_PERCENT = 16;
+export const FREE_RECALL_CAP_HOURS = 4;
+export const PAID_BASE_RECALL_HOURS = 8;
+export const RECALL_HOURS_PER_PAID_SEAT = 4;
+export const SEAT_PRICE_MONTHLY_BRL = 59.9;
+export const SEAT_PRICE_ANNUAL_MONTHLY_BRL = 47.9;
+export const SEAT_PRICE_ANNUAL_BRL = 574.8; // 12 × R$ 47,90
+export const ANNUAL_DISCOUNT_PERCENT = 20;
+export const EXTRA_HOURS_PACK_HOURS = 5;
+export const EXTRA_HOURS_PACK_BRL = 39;
+export const EXTRA_HOUR_BRL = 8;
+export const RECALL_COST_BRL_PER_HOUR = 4.2;
 
 export type SeatCycle = 'monthly' | 'annual';
 
