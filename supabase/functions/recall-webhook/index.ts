@@ -765,12 +765,12 @@ async function findAllMeetingMembers(
     try {
       const { data: valid } = await supabaseAdmin
         .from("team_members")
-        .select("id, user_id, archived_at")
+        .select("id, linked_user_id, archived_at")
         .in("id", Array.from(memberIds))
         .is("archived_at", null);
       const allowed = new Set(
         (valid ?? [])
-          .filter((m: { user_id?: string | null }) => m.user_id !== userId)
+          .filter((m: { linked_user_id?: string | null }) => m.linked_user_id !== userId)
           .map((m: { id: string }) => m.id),
       );
       for (const id of Array.from(memberIds)) {
