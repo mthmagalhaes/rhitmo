@@ -734,13 +734,14 @@ async function findAllMeetingMembers(
       if (teamIds.length > 0) {
         const { data: members } = await supabaseAdmin
           .from("team_members")
-          .select("id, name, email, user_id, archived_at")
+          .select("id, name, email, linked_user_id, archived_at")
           .in("team_id", teamIds)
           .is("archived_at", null);
-        // Nunca casar o participante com o cadastro do próprio líder:
-        // isso gerava uma anotação duplicada ("Liderado removido") por reunião.
+        // Nunca casar o participante com o cadastro que representa o próprio
+        // líder (linked_user_id = ele mesmo): isso gerava uma anotação
+        // duplicada ("Liderado removido") por reunião.
         const eligible = (members ?? []).filter(
-          (m: { user_id?: string | null }) => m.user_id !== userId,
+          (m: { linked_user_id?: string | null }) => m.linked_user_id !== userId,
         );
         const matched = matchMembersToParticipants(participants, eligible);
         const beforeCount = memberIds.size;
