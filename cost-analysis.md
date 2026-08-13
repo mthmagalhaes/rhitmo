@@ -138,10 +138,10 @@ O Recall.ai cobra **três componentes** por bot (confirmado na fatura V1R4A6KP-0
 | Mentor Chat L1 (gpt-4o-mini) | 60 × $0.000048 | $0.003 |
 | Mentor Chat L3 (Lovable AI) | 60 × $0.00 | $0.00 |
 | Análise de notas (gpt-4o-mini) | 80 × $0.00063 | $0.050 |
-| **Recall.ai Bot (machine + transcription)** | **20h × $0.45** | **$9.00** |
+| **Recall.ai (machine + transcription + storage)** | **20h × $0.72** | **$14.44** |
 | Meu Rhitmo (Lovable AI) | 300 × $0.00 | $0.00 |
 | Lovable AI (classify, review, brief) | — | $0.00 |
-| **TOTAL** | | **$9.06** |
+| **TOTAL** | | **$14.49** |
 
 ---
 
