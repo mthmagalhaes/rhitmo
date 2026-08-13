@@ -505,6 +505,10 @@ async function handleBotDone(
     botRecord.meeting_url as string | null,
   );
 
+  // Medição de uso: janela real de gravação (base do relatório de custos do admin).
+  const recordingWindow = await fetchRecordingWindow(botId, recallApiKey);
+  const durationSeconds = recordingWindow?.durationSeconds ?? null;
+
   // Save full transcript to feedbacks (no truncation — leaders/members read this directly)
   const createdIds: { memberId: string; transcriptId: string; feedbackId: string }[] = [];
 
@@ -516,6 +520,7 @@ async function handleBotDone(
       formattedTranscript,
       formattedTranscript,
       meetingTitle,
+      durationSeconds,
     );
     if (created) {
       createdIds.push({ memberId, ...created });
@@ -530,6 +535,7 @@ async function handleBotDone(
         manager_id: botRecord.user_id,
         member_id: null,
         transcript: formattedTranscript,
+        duration_seconds: durationSeconds,
         processing_status: "completed",
         leader_notes: `Transcrição automática via Recall.ai — ${meetingTitle}`,
       })
@@ -552,6 +558,14 @@ async function handleBotDone(
       meeting_transcript_id: createdIds[0]?.transcriptId || null,
     })
     .eq("id", botRecord.id);
+
+  await recordBotUsage(supabaseAdmin, {
+    botRecord,
+    botExternalId: botId,
+    meetingTitle,
+    window: recordingWindow,
+    hasTranscript: true,
+  });
 
   console.log(`Bot ${botId} done — ${createdIds.length} feedback(s) created`);
 
