@@ -78,12 +78,12 @@ Deno.serve(async (req) => {
     // bloqueado mesmo liderando time em workspace enterprise+beta.
     const { data: ownedWorkspaces } = await supabaseAdmin
       .from("workspaces")
-      .select("plan_tier, is_beta_user")
+      .select("id, plan_tier, is_beta_user, paid_seats, grandfather_until")
       .eq("owner_id", userId);
 
     const { data: ledTeams } = await supabaseAdmin
       .from("teams")
-      .select("workspaces(plan_tier, is_beta_user)")
+      .select("workspaces(id, plan_tier, is_beta_user, paid_seats, grandfather_until)")
       .eq("leader_user_id", userId);
 
     // Caps por plano. Pro/Business/Enterprise = bot ilimitado.
