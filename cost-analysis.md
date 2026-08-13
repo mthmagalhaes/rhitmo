@@ -12,7 +12,7 @@
 |---|---|---|
 | **chat-mentor Layer 3** (Resposta RAG) | gpt-4o → $0.026/msg | gemini-2.5-flash (Lovable AI) → **$0.00** |
 | **meu-rhitmo** (chat do liderado) | gpt-4o → $0.017/msg | gemini-2.5-flash (Lovable AI) → **$0.00** |
-| **Transcrição de reunião** | Whisper (upload manual) $0.006/min | **Recall.ai Bot** (automático) → **~$0.40-0.50/hora** (machine + transcription) |
+| **Transcrição de reunião** | Whisper (upload manual) $0.006/min | **Recall.ai Bot** (automático) → **~$0.72/hora** (machine + transcription + storage, fatura real Jul/26) |
 | **generate-review, classify-note, generate-brief, analyze-job-crafting** | Lovable AI → $0.00 | Sem mudança → $0.00 |
 
 **Resultado:** custo variável de LLM caiu **~98%**. O driver de custo agora é exclusivamente o Recall.ai (machine time + transcrição).
