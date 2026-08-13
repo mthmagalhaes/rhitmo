@@ -218,7 +218,12 @@ export const usePlanLimits = () => {
 
     const unlocked = isBeta || isGrandfathered;
     const totalSeats = unlocked ? Infinity : FREE_SEATS + paidSeats;
-    const recallUnlimited = unlocked || paidSeats > 0;
+    // Pricing v4: horas de bot com teto por workspace (nunca ilimitado no pago).
+    const recallUnlimited = unlocked;
+    const recallCapHours =
+      paidSeats > 0
+        ? PAID_BASE_RECALL_HOURS + paidSeats * RECALL_HOURS_PER_PAID_SEAT
+        : FREE_RECALL_CAP_HOURS;
 
     return {
       freeSeats: FREE_SEATS,
@@ -227,7 +232,7 @@ export const usePlanLimits = () => {
       maxTeams: Infinity,
       maxReviews: Infinity,
       maxMentorMessages: Infinity,
-      maxRecordingHours: recallUnlimited ? Infinity : FREE_RECALL_CAP_HOURS,
+      maxRecordingHours: recallUnlimited ? Infinity : recallCapHours,
       maxBotMeetings: Infinity,
       ...ALL_CAPABILITIES,
       planName: 'Rhitmo',
