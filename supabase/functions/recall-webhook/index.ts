@@ -208,8 +208,11 @@ Deno.serve(async (req) => {
     // never showed up to a meeting we transcribed proactively).
     if (event === "bot.done" && botRecord.leader_email && !botRecord.leader_detected) {
       const triggerSource = (botRecord.trigger_source as string) || "auto_calendar";
+      // Manual e resgate (líder chegou atrasado) são ações confiáveis: nunca descartam.
+      const trusted = triggerSource !== "auto_calendar";
       try {
-        await checkLeaderPresence(supabaseAdmin, botRecord, botId, RECALL_API_KEY, triggerSource === "manual");
+        await checkLeaderPresence(supabaseAdmin, botRecord, botId, RECALL_API_KEY, trusted);
+
       } catch (e) {
         console.error(`Final leader presence check failed for bot ${botId}:`, e);
       }
