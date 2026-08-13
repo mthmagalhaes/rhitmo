@@ -143,6 +143,63 @@ export type Database = {
         }
         Relationships: []
       }
+      bot_usage_events: {
+        Row: {
+          created_at: string
+          estimated_cost_brl: number
+          estimated_cost_usd: number
+          fx_rate: number
+          id: string
+          machine_minutes: number
+          meeting_title: string | null
+          member_id: string | null
+          recall_bot_external_id: string | null
+          recall_bot_id: string | null
+          recording_ended_at: string | null
+          recording_started_at: string | null
+          source: string
+          transcription_minutes: number
+          user_id: string
+          workspace_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          estimated_cost_brl?: number
+          estimated_cost_usd?: number
+          fx_rate?: number
+          id?: string
+          machine_minutes?: number
+          meeting_title?: string | null
+          member_id?: string | null
+          recall_bot_external_id?: string | null
+          recall_bot_id?: string | null
+          recording_ended_at?: string | null
+          recording_started_at?: string | null
+          source?: string
+          transcription_minutes?: number
+          user_id: string
+          workspace_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          estimated_cost_brl?: number
+          estimated_cost_usd?: number
+          fx_rate?: number
+          id?: string
+          machine_minutes?: number
+          meeting_title?: string | null
+          member_id?: string | null
+          recall_bot_external_id?: string | null
+          recall_bot_id?: string | null
+          recording_ended_at?: string | null
+          recording_started_at?: string | null
+          source?: string
+          transcription_minutes?: number
+          user_id?: string
+          workspace_id?: string | null
+        }
+        Relationships: []
+      }
       chat_threads: {
         Row: {
           created_at: string
@@ -3319,6 +3376,22 @@ export type Database = {
       admin_cohort_workspaces: {
         Args: { p_cohort_month: string }
         Returns: Json
+      }
+      admin_cost_report: {
+        Args: { p_month?: string }
+        Returns: {
+          ai_cost_usd: number
+          bot_hours: number
+          meetings: number
+          recall_cost_usd: number
+          total_cost_usd: number
+          transcription_hours: number
+          user_email: string
+          user_id: string
+          user_name: string
+          workspace_id: string
+          workspace_name: string
+        }[]
       }
       admin_funnel_metrics: { Args: never; Returns: Json }
       admin_revenue_metrics: { Args: never; Returns: Json }
