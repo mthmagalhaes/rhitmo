@@ -1,8 +1,8 @@
 # Rhitmo — Auditoria de Custos Operacionais por Líder Ativo
 
-> Gerado em: 15/04/2026  
+> Gerado em: 15/04/2026 · Revisado em: 13/08/2026 com a fatura real do Recall.ai (V1R4A6KP-0006, Jul/2026)  
 > Câmbio utilizado: USD 1 = BRL 5,80  
-> Atualização: migração para Lovable AI Gateway (Gemini) + Recall.ai Bot + otimizações de custo
+> Atualização: custo efetivo do Recall corrigido de $0.45/h para **$0.72/h** (machine time $0.50/h + transcrição + storage)
 
 ---
 
