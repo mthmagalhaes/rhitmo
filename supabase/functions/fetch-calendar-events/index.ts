@@ -532,7 +532,8 @@ Deno.serve(async (req) => {
             },
             body: JSON.stringify({
               meeting_url: meeting.meet_link,
-              join_at: joinAt,
+              // Sem join_at no resgate: o bot entra imediatamente.
+              ...(joinAtEffective ? { join_at: joinAtEffective } : {}),
               bot_name: "Rhitmo",
               chat: {
                 // Apenas 1 mensagem ao entrar. NÃO usar on_participant_join — ele
@@ -553,10 +554,13 @@ Deno.serve(async (req) => {
                   },
                 },
               },
+              // Janelas generosas: 1:1 que começa 10min atrasada é o caso normal,
+              // não a exceção. Antes eram 300/180/300, o que matava o bot antes
+              // de o líder entrar (incidente 12-13/08).
               automatic_leave: {
-                waiting_room_timeout: 300,
-                in_call_not_recording_timeout: 180,
-                noone_joined_timeout: 300,
+                waiting_room_timeout: 900,
+                in_call_not_recording_timeout: 600,
+                noone_joined_timeout: 900,
               },
             }),
           });
@@ -571,9 +575,11 @@ Deno.serve(async (req) => {
               recall_bot_id: recallData.id,
               meeting_url: meeting.meet_link,
               status: "scheduled",
-              scheduled_at: joinAt,
+              scheduled_at: joinAtEffective ?? new Date().toISOString(),
               leader_email: authUser.email || null,
+              trigger_source: rescueRejoin ? "auto_calendar_rescue" : "auto_calendar",
             });
+
 
             autoScheduled.push(meeting.id);
             console.log(`[sync] Auto-scheduled bot for meeting ${meeting.id}: ${recallData.id}`);
