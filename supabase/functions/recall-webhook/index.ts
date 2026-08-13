@@ -734,9 +734,16 @@ async function findAllMeetingMembers(
       if (teamIds.length > 0) {
         const { data: members } = await supabaseAdmin
           .from("team_members")
-          .select("id, name, email")
-          .in("team_id", teamIds);
-        const matched = matchMembersToParticipants(participants, members ?? []);
+          .select("id, name, email, linked_user_id, archived_at")
+          .in("team_id", teamIds)
+          .is("archived_at", null);
+        // Nunca casar o participante com o cadastro que representa o próprio
+        // líder (linked_user_id = ele mesmo): isso gerava uma anotação
+        // duplicada ("Liderado removido") por reunião.
+        const eligible = (members ?? []).filter(
+          (m: { linked_user_id?: string | null }) => m.linked_user_id !== userId,
+        );
+        const matched = matchMembersToParticipants(participants, eligible);
         const beforeCount = memberIds.size;
         for (const id of matched) memberIds.add(id);
         if (matched.length > 0) {
@@ -752,8 +759,34 @@ async function findAllMeetingMembers(
     memberIds.add(fallbackMemberId);
   }
 
+  // Sanitiza a união final: descarta cadastros arquivados ou que representam
+  // o próprio líder, independentemente de qual caminho os trouxe.
+  if (memberIds.size > 0) {
+    try {
+      const { data: valid } = await supabaseAdmin
+        .from("team_members")
+        .select("id, linked_user_id, archived_at")
+        .in("id", Array.from(memberIds))
+        .is("archived_at", null);
+      const allowed = new Set(
+        (valid ?? [])
+          .filter((m: { linked_user_id?: string | null }) => m.linked_user_id !== userId)
+          .map((m: { id: string }) => m.id),
+      );
+      for (const id of Array.from(memberIds)) {
+        if (!allowed.has(id)) {
+          console.log(`[findAllMeetingMembers] descartando member ${id} (arquivado ou é o próprio líder)`);
+          memberIds.delete(id);
+        }
+      }
+    } catch (e) {
+      console.error("[findAllMeetingMembers] sanitização falhou:", e);
+    }
+  }
+
   return Array.from(memberIds);
 }
+
 
 // ── Helper: janela real de gravação (para medir horas de bot) ──────────────
 
