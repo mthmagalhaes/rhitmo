@@ -712,6 +712,112 @@ async function findAllMeetingMembers(
   return Array.from(memberIds);
 }
 
+// ── Helper: janela real de gravação (para medir horas de bot) ──────────────
+
+interface RecordingWindow {
+  startedAt: string | null;
+  endedAt: string | null;
+  durationSeconds: number | null;
+}
+
+async function fetchRecordingWindow(
+  botId: string,
+  recallApiKey: string,
+): Promise<RecordingWindow | null> {
+  try {
+    const resp = await fetch(`https://us-west-2.recall.ai/api/v1/bot/${botId}/`, {
+      headers: { Authorization: `Token ${recallApiKey}` },
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const rec = (data.recordings ?? [])[0];
+    const startedAt = rec?.started_at ?? null;
+    const endedAt = rec?.ended_at ?? null;
+    if (!startedAt || !endedAt) return { startedAt, endedAt, durationSeconds: null };
+    const ms = new Date(endedAt).getTime() - new Date(startedAt).getTime();
+    if (!Number.isFinite(ms) || ms <= 0) return { startedAt, endedAt, durationSeconds: null };
+    return { startedAt, endedAt, durationSeconds: Math.round(ms / 1000) };
+  } catch (e) {
+    console.warn(`Bot ${botId}: fetchRecordingWindow failed:`, e);
+    return null;
+  }
+}
+
+// ── Helper: registra o uso do bot (horas + custo estimado) ─────────────────
+
+async function recordBotUsage(
+  supabaseAdmin: any,
+  args: {
+    botRecord: Record<string, unknown>;
+    botExternalId: string;
+    meetingTitle: string;
+    window: RecordingWindow | null;
+    hasTranscript: boolean;
+  },
+): Promise<void> {
+  const { botRecord, botExternalId, meetingTitle, window, hasTranscript } = args;
+  const seconds = window?.durationSeconds ?? 0;
+  if (seconds <= 0) {
+    console.warn(`Bot ${botExternalId}: sem janela de gravação — uso não medido.`);
+    return;
+  }
+
+  const machineMinutes = Math.round((seconds / 60) * 100) / 100;
+  const transcriptionMinutes = hasTranscript ? machineMinutes : 0;
+  const costUsd = estimateRecallCostUsd({ machineMinutes, transcriptionMinutes });
+
+  // Workspace do líder (dono, HR admin ou líder de time no workspace).
+  let workspaceId: string | null = null;
+  try {
+    const { data: team } = await supabaseAdmin
+      .from("teams")
+      .select("workspace_id")
+      .eq("leader_user_id", botRecord.user_id as string)
+      .limit(1)
+      .maybeSingle();
+    workspaceId = team?.workspace_id ?? null;
+    if (!workspaceId) {
+      const { data: ws } = await supabaseAdmin
+        .from("workspaces")
+        .select("id")
+        .eq("owner_id", botRecord.user_id as string)
+        .limit(1)
+        .maybeSingle();
+      workspaceId = ws?.id ?? null;
+    }
+  } catch (e) {
+    console.warn("recordBotUsage: workspace lookup failed:", e);
+  }
+
+  const { error } = await supabaseAdmin.from("bot_usage_events").upsert(
+    {
+      user_id: botRecord.user_id,
+      workspace_id: workspaceId,
+      member_id: botRecord.member_id ?? null,
+      recall_bot_id: botRecord.id,
+      recall_bot_external_id: botExternalId,
+      meeting_title: meetingTitle,
+      recording_started_at: window?.startedAt ?? null,
+      recording_ended_at: window?.endedAt ?? null,
+      machine_minutes: machineMinutes,
+      transcription_minutes: transcriptionMinutes,
+      estimated_cost_usd: costUsd,
+      estimated_cost_brl: usdToBrl(costUsd),
+      fx_rate: USD_BRL,
+      source: "recall",
+    },
+    { onConflict: "recall_bot_id" },
+  );
+
+  if (error) {
+    console.error("recordBotUsage: insert failed:", error);
+  } else {
+    console.log(
+      `Bot ${botExternalId}: uso registrado — ${machineMinutes} min, US$${costUsd.toFixed(4)}`,
+    );
+  }
+}
+
 // ── Helper: Create meeting_transcript + feedback for a member ──────────────
 
 async function createTranscriptAndFeedback(
@@ -721,6 +827,7 @@ async function createTranscriptAndFeedback(
   fullTranscript: string,
   truncatedContent: string,
   meetingTitle: string,
+  durationSeconds: number | null = null,
 ): Promise<{ transcriptId: string; feedbackId: string } | null> {
   const { data: mt, error: mtError } = await supabaseAdmin
     .from("meeting_transcripts")
@@ -728,6 +835,7 @@ async function createTranscriptAndFeedback(
       manager_id: managerId,
       member_id: memberId,
       transcript: fullTranscript,
+      duration_seconds: durationSeconds,
       processing_status: "completed",
       leader_notes: `Transcrição automática via Recall.ai — ${meetingTitle}`,
     })
