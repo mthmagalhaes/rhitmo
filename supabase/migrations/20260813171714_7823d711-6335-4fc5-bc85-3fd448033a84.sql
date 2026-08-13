@@ -1,0 +1,2 @@
+ALTER TABLE public.recall_bots ADD COLUMN IF NOT EXISTS media_purged_at TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS recall_bots_media_purge_idx ON public.recall_bots (created_at) WHERE media_purged_at IS NULL;

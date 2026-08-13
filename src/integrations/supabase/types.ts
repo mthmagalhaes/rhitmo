@@ -2301,6 +2301,7 @@ export type Database = {
           leader_check_due_at: string | null
           leader_detected: boolean
           leader_email: string | null
+          media_purged_at: string | null
           meeting_id: string | null
           meeting_transcript_id: string | null
           meeting_url: string
@@ -2323,6 +2324,7 @@ export type Database = {
           leader_check_due_at?: string | null
           leader_detected?: boolean
           leader_email?: string | null
+          media_purged_at?: string | null
           meeting_id?: string | null
           meeting_transcript_id?: string | null
           meeting_url: string
@@ -2345,6 +2347,7 @@ export type Database = {
           leader_check_due_at?: string | null
           leader_detected?: boolean
           leader_email?: string | null
+          media_purged_at?: string | null
           meeting_id?: string | null
           meeting_transcript_id?: string | null
           meeting_url?: string
