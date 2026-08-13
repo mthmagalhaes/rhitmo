@@ -3853,6 +3853,10 @@ export type Database = {
         Args: { _member_id: string }
         Returns: boolean
       }
+      is_workspace_participant: {
+        Args: { _workspace_id: string }
+        Returns: boolean
+      }
       list_workspace_hr_admins: {
         Args: { _workspace_id: string }
         Returns: {
@@ -3913,6 +3917,10 @@ export type Database = {
       member_acknowledge_review: {
         Args: { p_review_id: string }
         Returns: undefined
+      }
+      member_belongs_to_workspace: {
+        Args: { _member_id: string; _workspace_id: string }
+        Returns: boolean
       }
       member_view_review: { Args: { p_review_id: string }; Returns: undefined }
       move_to_dlq: {
