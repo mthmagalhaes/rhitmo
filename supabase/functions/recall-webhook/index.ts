@@ -148,11 +148,25 @@ Deno.serve(async (req) => {
         statusCode === "bot_kicked_from_waiting_room";
 
       const finalStatus = isFatal || isKickedFromWaitingRoom ? "error" : newStatus;
-      const errorMessage = isFatal
-        ? `Bot falhou: ${subCode || statusCode || "erro desconhecido"}`
-        : isKickedFromWaitingRoom
-        ? "Host rejeitou o bot na sala de espera. Tente enviar de novo após aceitar."
-        : null;
+
+      // Mensagens honestas por motivo real de saída. Antes tudo virava
+      // "Líder não detectado", o que escondia timeout de sala vazia.
+      const EXIT_REASONS: Record<string, string> = {
+        bot_kicked_from_waiting_room:
+          "Host não admitiu o bot na sala de espera. Aceite o bot e clique em Enviar agora.",
+        bot_never_admitted:
+          "O bot ficou 15 min na sala de espera sem ser admitido e saiu sozinho.",
+        noone_joined:
+          "Ninguém entrou na reunião nos primeiros 15 min — o bot saiu sozinho.",
+        everyone_left:
+          "Todos saíram da reunião — o bot encerrou a gravação.",
+        meeting_not_started:
+          "A reunião não chegou a começar dentro da janela de espera.",
+      };
+
+      const reasonKey = subCode || statusCode || "";
+      const errorMessage = EXIT_REASONS[reasonKey] ??
+        (isFatal ? `Bot falhou: ${reasonKey || "erro desconhecido"}` : null);
 
       await supabaseAdmin
         .from("recall_bots")
@@ -163,6 +177,7 @@ Deno.serve(async (req) => {
         .eq("id", botRecord.id);
 
       console.log(`Bot ${botId} status: ${event} → ${finalStatus}${subCode ? ` (sub_code=${subCode})` : ""}`);
+
     }
 
 
@@ -193,8 +208,11 @@ Deno.serve(async (req) => {
     // never showed up to a meeting we transcribed proactively).
     if (event === "bot.done" && botRecord.leader_email && !botRecord.leader_detected) {
       const triggerSource = (botRecord.trigger_source as string) || "auto_calendar";
+      // Manual e resgate (líder chegou atrasado) são ações confiáveis: nunca descartam.
+      const trusted = triggerSource !== "auto_calendar";
       try {
-        await checkLeaderPresence(supabaseAdmin, botRecord, botId, RECALL_API_KEY, triggerSource === "manual");
+        await checkLeaderPresence(supabaseAdmin, botRecord, botId, RECALL_API_KEY, trusted);
+
       } catch (e) {
         console.error(`Final leader presence check failed for bot ${botId}:`, e);
       }
@@ -330,7 +348,28 @@ async function checkLeaderPresence(
     console.warn(`Bot ${botId}: recording-duration safety check failed:`, e);
   }
 
-  // Auto-calendar bot, no real recording: leader never showed up. Remove + mark.
+  // Se o resolver não conseguiu listar NINGUÉM, o motivo não foi "líder ausente"
+  // e sim sala vazia / bot não admitido. Marcamos com a mensagem honesta e não
+  // fingimos que houve detecção de participantes.
+  if (participants.length === 0) {
+    console.warn(`Bot ${botId}: nenhum participante visível — encerrando como sala vazia`);
+    await fetch(`https://us-west-2.recall.ai/api/v1/bot/${botId}/leave/`, {
+      method: "POST",
+      headers: { Authorization: `Token ${recallApiKey}` },
+    });
+    await supabaseAdmin
+      .from("recall_bots")
+      .update({
+        status: "skipped_no_leader",
+        error_message:
+          botRecord.error_message ||
+          "Ninguém entrou na reunião durante a janela de espera — o bot saiu sozinho.",
+      })
+      .eq("id", botRecord.id);
+    return;
+  }
+
+  // Havia gente na sala e nenhum deles era o líder. Remove + mark.
   console.log(`Bot ${botId}: leader NOT detected after grace period — removing bot`);
 
   const leaveResponse = await fetch(`https://us-west-2.recall.ai/api/v1/bot/${botId}/leave/`, {
@@ -340,14 +379,18 @@ async function checkLeaderPresence(
 
   console.log(`Bot ${botId}: leave response: ${leaveResponse.status}`);
 
+  const seen = participants.map((p: any) => p.name ?? p.email ?? "?").join(", ");
+
   await supabaseAdmin
     .from("recall_bots")
     .update({
       status: "skipped_no_leader",
-      error_message: "Líder não detectado na reunião — bot removido automaticamente",
+      error_message:
+        `Líder não detectado na reunião — bot removido. Participantes vistos: ${seen}`.slice(0, 500),
     })
     .eq("id", botRecord.id);
 }
+
 
 // ── Fetch transcript via Recall API v1 bot retrieve → media_shortcuts ──────
 
