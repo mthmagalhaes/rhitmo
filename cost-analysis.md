@@ -238,7 +238,8 @@ Quanto mais perto de 100%, menos bot ocioso pago. Metas: <70% investigar auto-le
 | ✅ Auto-leave timeouts (waiting room, idle, alone) | ~10-20% | **Implementado** |
 | ✅ Detecção de presença do líder | ~10-15% | **Implementado** |
 | ✅ Correção do `setTimeout` no webhook | Funcional | **Implementado** |
-| Limitar reuniões com bot por plano (ex: 15/mês no Pro) | Controla teto de custo | Pendente |
+| **Teto de horas de bot por plano** (12h Pro / 24h Business) | Impede prejuízo em power user | **Pendente — prioridade 1** |
+| **Política de retenção/expurgo de gravações** | ~16% da conta (storage cumulativo) | **Pendente — prioridade 2** |
 | Reduzir duração mínima de gravação (ignorar <5min) | ~5-10% do Recall.ai | Pendente |
 | Negociar volume com Recall.ai | ~10-30% no componente | Requer escala |
 
