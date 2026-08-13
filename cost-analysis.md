@@ -324,7 +324,8 @@ Quanto mais perto de 100%, menos bot ocioso pago. Metas: <70% investigar auto-le
 - **Embeddings:** O schema possui coluna `feedbacks.embedding` (pgvector) mas nenhuma Edge Function popula embeddings atualmente. Custo futuro estimado: ~$0.00002/nota via `text-embedding-3-small`.
 - **Layer 2 (Compressor):** Implementado como JavaScript puro (substring/filtragem), sem chamada LLM — custo zero.
 - **Whisper (transcribe-audio):** Ainda ativo como fallback para uploads manuais de áudio. Custo: $0.006/min. Fluxo principal agora é via Recall.ai Bot.
-- **Recall.ai billing:** Dois componentes — **Machine Time** (tempo do bot na chamada, ~$0.25-0.35/h) e **Transcription** ($0.15/h). Machine time é cobrado desde `joining_call` até `done`, incluindo sala de espera.
+- **Recall.ai billing (fatura Jul/2026):** Três componentes — **Bot Recording Hours** ($0.50/h, cobrado de `joining_call` até `done`, incluindo sala de espera), **Real-time Transcription** ($0.15/h gravada) e **Storage and Playback** ($0.0000694444/unidade, cumulativo). Custo efetivo combinado: **$0.72 por hora de bot**.
+- **Razão transcrição/machine time:** KPI mensal de eficiência. Jul/2026 = 70,4%. Abaixo de 70% indica bot ocioso demais (sala de espera, reunião sem gravação).
 - **Recall.ai provider:** `recallai_streaming` com `mode: prioritize_accuracy` e `language_code: auto`. Detecta PT-BR, EN e ES automaticamente.
 - **Auto-leave configurado:** `waiting_room_timeout: 120s`, `in_call_not_recording_timeout: 180s`, `noone_joined_timeout: 300s`.
 - **Resend:** Dentro do free tier (3k emails/mês). Acima disso: ~$0.001/email.
