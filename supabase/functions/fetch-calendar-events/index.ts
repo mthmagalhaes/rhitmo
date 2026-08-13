@@ -412,14 +412,23 @@ Deno.serve(async (req) => {
         const joinAt = new Date(new Date(meeting.start_time).getTime() - 2 * 60 * 1000).toISOString();
         const newJoinMs = new Date(joinAt).getTime();
 
+        // Quando o bot saiu sozinho por sala vazia e a reunião ainda está
+        // rolando (líder chegou atrasado), reentramos uma única vez com
+        // join imediato em vez de deixar a 1:1 sem gravação.
+        let joinAtEffective: string | null = joinAt;
+        let rescueRejoin = false;
+
         // Dedup by meeting_id (with drift detection)
-        const { data: existingByMeetingId } = await supabaseAdmin
+        const { data: existingRows } = await supabaseAdmin
           .from("recall_bots")
-          .select("id, recall_bot_id, status, scheduled_at")
+          .select("id, recall_bot_id, status, scheduled_at, trigger_source, created_at")
           .eq("user_id", userId)
           .eq("meeting_id", meeting.id)
           .not("status", "eq", "error")
-          .maybeSingle();
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        const existingByMeetingId = existingRows?.[0];
 
         if (existingByMeetingId) {
           // ── Drift detection ──
@@ -434,6 +443,17 @@ Deno.serve(async (req) => {
             : null;
           const driftMin = oldMs ? Math.abs(newJoinMs - oldMs) / 60_000 : 0;
           const meetingStillFuture = new Date(meeting.start_time).getTime() > Date.now() - 5 * 60 * 1000;
+
+          // Reunião ainda em andamento? (do horário de início até o fim, com
+          // fallback de 60min quando o Google não devolve end_time)
+          const startMs = new Date(meeting.start_time).getTime();
+          const endMs = meeting.end_time
+            ? new Date(meeting.end_time).getTime()
+            : startMs + 60 * 60 * 1000;
+          const nowMs = Date.now();
+          const meetingOngoing = nowMs >= startMs && nowMs <= endMs;
+
+          const alreadyRescued = existingByMeetingId.trigger_source === "auto_calendar_rescue";
 
           if (reschedulable && oldMs && driftMin > 5 && meetingStillFuture) {
             console.log(`[sync] Drift on meeting ${meeting.id}: bot was ${existingByMeetingId.scheduled_at}, should be ${joinAt} (drift=${Math.round(driftMin)}min). Cancelling old bot.`);
@@ -453,6 +473,14 @@ Deno.serve(async (req) => {
               })
               .eq("id", existingByMeetingId.id);
             // Fall through to create new bot below.
+          } else if (
+            existingByMeetingId.status === "skipped_no_leader" &&
+            meetingOngoing &&
+            !alreadyRescued
+          ) {
+            rescueRejoin = true;
+            joinAtEffective = null; // entra agora
+            console.log(`[sync] Rescue rejoin for meeting ${meeting.id}: bot anterior saiu por sala vazia e a reunião ainda está em andamento.`);
           } else {
             continue;
           }
@@ -462,21 +490,24 @@ Deno.serve(async (req) => {
         // IMPORTANT: skipped_no_leader and error MUST block re-scheduling within the
         // meeting window — otherwise we spawn a fresh bot every minute the cron runs,
         // which is what caused the "ghost bots" incident on 13/05.
-        const { data: existingByUrl } = await supabaseAdmin
-          .from("recall_bots")
-          .select("id, attempt_count")
-          .eq("user_id", userId)
-          .eq("meeting_url", meeting.meet_link)
-          .not("status", "eq", "done")
-          .not("status", "eq", "error")
-          .gte("scheduled_at", new Date(newJoinMs - 30 * 60 * 1000).toISOString())
-          .lte("scheduled_at", new Date(newJoinMs + 30 * 60 * 1000).toISOString())
-          .maybeSingle();
+        if (!rescueRejoin) {
+          const { data: existingByUrl } = await supabaseAdmin
+            .from("recall_bots")
+            .select("id, attempt_count")
+            .eq("user_id", userId)
+            .eq("meeting_url", meeting.meet_link)
+            .not("status", "eq", "done")
+            .not("status", "eq", "error")
+            .gte("scheduled_at", new Date(newJoinMs - 30 * 60 * 1000).toISOString())
+            .lte("scheduled_at", new Date(newJoinMs + 30 * 60 * 1000).toISOString())
+            .maybeSingle();
 
-        if (existingByUrl) {
-          console.log(`[sync] Bot already exists in window for URL ${meeting.meet_link}, skipping`);
-          continue;
+          if (existingByUrl) {
+            console.log(`[sync] Bot already exists in window for URL ${meeting.meet_link}, skipping`);
+            continue;
+          }
         }
+
 
         // Hard cap: max 2 attempts for the same meeting_id within 24h
         const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
