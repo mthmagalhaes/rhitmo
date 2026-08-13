@@ -262,20 +262,20 @@ Quanto mais perto de 100%, menos bot ocioso pago. Metas: <70% investigar auto-le
 
 ---
 
-## 9. Break-Even por Plano (cenário otimizado)
+## 9. Break-Even por Plano (cenário otimizado, custo real $0.72/h)
 
 | Plano | Custo fixo rateado (10 líderes) | Custo variável | Custo total/líder | Receita | Lucro/líder |
 |---|---|---|---|---|---|
-| Pro | ~R$17,40 | R$14,56 | R$31,96 | R$49 | **R$17,04 (34,8%)** |
-| Business | ~R$17,40 | R$29,00 | R$46,40 | R$69 | **R$22,60 (32,8%)** |
+| Pro | ~R$17,40 | R$23,16 | R$40,56 | R$49 | **R$8,44 (17,2%)** |
+| Business | ~R$17,40 | R$46,36 | R$63,76 | R$69 | **R$5,24 (7,6%)** |
 
-> Com otimizações ativas, a operação é lucrativa a partir de ~7 líderes Pro.
+> Com o custo real, o break-even só existe **no cenário otimizado**. Em uso pleno (10h/20h) o Business é negativo. A operação continua lucrativa a partir de ~7 líderes Pro, mas com folga bem menor do que a estimada antes.
 
 ---
 
 ## 10. Projeção de Escala — 50 e 100 Líderes Ativos (cenário otimizado)
 
-> Premissas: custo fixo de R$174/mês (~$30 USD × 5.80), mix de 70% Pro + 30% Business, cenário otimizado de uso. Stripe: 3,99% + R$0,39/transação.
+> Premissas: custo fixo de R$174/mês (~$30 USD × 5.80), mix de 70% Pro + 30% Business, cenário otimizado de uso (55% das horas), Recall a $0.72/h. Stripe: 3,99% + R$0,39/transação.
 
 ### 50 líderes (35 Pro + 15 Business)
 
@@ -284,13 +284,13 @@ Quanto mais perto de 100%, menos bot ocioso pago. Metas: <70% investigar auto-le
 | **Receita bruta** | (35 × R$49) + (15 × R$69) | **R$2.750/mês** |
 | Stripe (taxas) | ~4,5% médio | -R$123,75 |
 | **Receita líquida** | | **R$2.626,25** |
-| Custo variável Pro | 35 × R$14,56 | R$509,60 |
-| Custo variável Business | 15 × R$29,00 | R$435,00 |
-| **Total custo variável** | | **R$944,60** |
+| Custo variável Pro | 35 × R$23,16 | R$810,60 |
+| Custo variável Business | 15 × R$46,36 | R$695,40 |
+| **Total custo variável** | | **R$1.506,00** |
 | Custo fixo plataforma | | R$174,00 |
-| **Custo total** | | **R$1.118,60** |
-| **Lucro líquido mensal** | | **R$1.507,65** |
-| **Margem líquida** | | **54,8%** |
+| **Custo total** | | **R$1.680,00** |
+| **Lucro líquido mensal** | | **R$946,25** |
+| **Margem líquida** | | **34,4%** |
 
 ### 100 líderes (70 Pro + 30 Business)
 
@@ -299,23 +299,23 @@ Quanto mais perto de 100%, menos bot ocioso pago. Metas: <70% investigar auto-le
 | **Receita bruta** | (70 × R$49) + (30 × R$69) | **R$5.500/mês** |
 | Stripe (taxas) | ~4,5% médio | -R$247,50 |
 | **Receita líquida** | | **R$5.252,50** |
-| Custo variável Pro | 70 × R$14,56 | R$1.019,20 |
-| Custo variável Business | 30 × R$29,00 | R$870,00 |
-| **Total custo variável** | | **R$1.889,20** |
+| Custo variável Pro | 70 × R$23,16 | R$1.621,20 |
+| Custo variável Business | 30 × R$46,36 | R$1.390,80 |
+| **Total custo variável** | | **R$3.012,00** |
 | Custo fixo plataforma | | R$174,00 |
-| **Custo total** | | **R$2.063,20** |
-| **Lucro líquido mensal** | | **R$3.189,30** |
-| **Margem líquida** | | **60,7%** |
+| **Custo total** | | **R$3.186,00** |
+| **Lucro líquido mensal** | | **R$2.066,50** |
+| **Margem líquida** | | **37,6%** |
 
 ### Resumo visual
 
 | Escala | Receita bruta | Custo total | Lucro líquido | Margem |
 |---|---|---|---|---|
-| **10 líderes** | R$550 | R$488 | **R$62** | 11,3% |
-| **50 líderes** | R$2.750 | R$1.119 | **R$1.508** | 54,8% |
-| **100 líderes** | R$5.500 | R$2.063 | **R$3.189** | 60,7% |
+| **10 líderes** (7 Pro + 3 Business) | R$550 | R$475 | **~R$50** | 9,1% |
+| **50 líderes** | R$2.750 | R$1.680 | **R$946** | 34,4% |
+| **100 líderes** | R$5.500 | R$3.186 | **R$2.067** | 37,6% |
 
-> A margem melhora significativamente com escala. Com otimizações e negociação de volume com Recall.ai, a margem em 100 líderes pode ultrapassar 65%.
+> Com o custo real, a margem em escala cai de ~60% para ~37%. As duas alavancas que devolvem margem são **teto de horas por plano** e **negociação de volume com o Recall** (o preço de $0.50/h já é `prepaid_commit`; volume maior tende a reduzir). Uma terceira alavanca é reprecificar o Business, que hoje só se sustenta em uso moderado.
 
 ---
 
