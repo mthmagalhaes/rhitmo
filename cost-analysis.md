@@ -47,18 +47,21 @@
 | **generate-brief** (brief pré-reunião) | gemini-3-flash-preview | $0.00 |
 | **analyze-job-crafting** (perfil de trabalho) | gemini-3-flash-preview | $0.00 |
 
-### 2.3 Recall.ai (transcrição automática de reunião) — ATUALIZADO
+### 2.3 Recall.ai — REVISADO com fatura real (Jul/2026)
 
-O Recall.ai cobra **dois componentes** por bot:
+O Recall.ai cobra **três componentes** por bot (confirmado na fatura V1R4A6KP-0006):
 
 | Componente | Descrição | Custo |
 |---|---|---|
-| **Bot Machine Time** | Tempo total do bot na chamada (da entrada até saída). Inclui sala de espera. | **~$0.25–0.35/hora** |
-| **Transcription** | Transcrição via `recallai_streaming` (mode: prioritize_accuracy, language: auto) | **$0.15/hora** |
-| **Storage** | Retenção de mídia/recordings | Incluso no free tier (consultar limites) |
+| **Bot Recording Hours** (machine time) | Tempo total do bot na chamada, da entrada até a saída. Inclui sala de espera. | **$0.50/hora** |
+| **Real-time Transcription** | Transcrição via `recallai_streaming` (mode: prioritize_accuracy, language: auto) | **$0.15/hora gravada** |
+| **Storage and Playback** | Retenção de mídia/recordings. **Não é grátis** e é cumulativo. | **$0.0000694444/unidade** (~16% da conta em Jul/26) |
 
-> **Custo efetivo por reunião de 30min:** ~$0.20–0.25 (machine time + transcription)
-> **Custo efetivo por hora de reunião:** ~$0.40–0.50
+> **Custo efetivo por hora de bot (fatura real Jul/2026):** **$0.72/h**
+> **Custo efetivo por reunião de 30min:** ~$0.36
+> Detalhamento em §6. O modelo anterior ($0.45/h) subestimava o custo em ~60%.
+
+
 
 #### Otimizações implementadas (15/04/2026)
 
