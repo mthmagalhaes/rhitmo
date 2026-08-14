@@ -61,7 +61,7 @@ const translations = {
     
     // Journey (Meet Ana — Windmill style)
     journeyOverline: "Como funciona",
-    journeyTitle: "Conheça a Ana.\nA jornada dela com a Rhitmo.",
+    journeyTitle: "Conheça a Ana,\ne a jornada dela com a Rhitmo.",
     journeySubtitle: "Do primeiro dia até a primeira avaliação formal, a Rhitmo trabalha em background pra você liderar melhor.",
     journeyActs: [
       { tag: "SEMANA 1", label: "Onboarding", title: "Ana entra no time", body: "Antes do líder lembrar, a Rhitmo manda um check-in. O líder vê o gap antes da próxima 1:1, e quem vem depois ganha o walkthrough no dia um.", mock: "slackDM" as const },
