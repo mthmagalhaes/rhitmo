@@ -165,7 +165,7 @@ All colors MUST be HSL.
     --info-strong:        202 89% 60%;
 
     --border:  240 10% 20%;    /* #2e2e3a */
-    --input:   240 10% 20%;
+    --input:   240  8% 40%;    /* controle de formulário ≥3:1 no escuro */
     --ring:    263 86% 76%;
 
     /* ── Shadows (dark) ── */
