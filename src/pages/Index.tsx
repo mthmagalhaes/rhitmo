@@ -626,7 +626,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
         </div>
       </div>
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-8">
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-8">
         {/* ═══ 1. ACCOUNT SETUP ═══ */}
         <AccountSetupBento
           workspaceId={workspace?.id ?? null}
@@ -644,7 +644,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
 
         {/* ═══ 3. HISTÓRICO DO MENTOR ═══ */}
         <MentorHistoryCard onOpenMentor={handleOpenMentor} />
-      </main>
+      </section>
 
       {/* ═══ DIALOGS ═══ */}
       <NewNoteDialog open={dialogOpen} onOpenChange={setDialogOpen} workspaceId={workspace?.id} />
