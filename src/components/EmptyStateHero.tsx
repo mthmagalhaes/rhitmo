@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { WaveGlyph } from '@/components/brand/WaveGlyph';
 
 interface EmptyStateHeroProps {
   icon: LucideIcon;
