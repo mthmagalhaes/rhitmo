@@ -436,7 +436,7 @@ export const NewCompanyWizard = ({ open, onOpenChange, users }: Props) => {
                         {teams.length > 1 && (
                           <Button
                             variant="ghost"
-                            size="icon"
+                            size="icon" aria-label="Remover"
                             onClick={() => setTeams(teams.filter((_, i) => i !== idx))}
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />

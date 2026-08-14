@@ -65,7 +65,7 @@ export const TeamMemberCard = ({ member, teamName, onClick, onEdit, pendingInvit
         {onEdit && (
           <Button
             variant="ghost"
-            size="icon"
+            size="icon" aria-label="Configurações do liderado"
             className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
             onClick={(e) => {
               e.stopPropagation();

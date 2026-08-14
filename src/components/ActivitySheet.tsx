@@ -223,7 +223,7 @@ export function ActivitySheet({
                 )}
                 <Button
                   variant="ghost"
-                  size="icon"
+                  size="icon" aria-label="Dispensar aviso"
                   className="h-7 w-7 text-muted-foreground hover:text-foreground"
                   onClick={() => dismissNudge.mutate(nudge.id)}
                 >

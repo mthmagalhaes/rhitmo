@@ -108,7 +108,7 @@ export function ReviewCommentsSection({ reviewId }: ReviewCommentsSectionProps) 
                 {comment.user_id === user?.id && (
                   <Button
                     variant="ghost"
-                    size="icon"
+                    size="icon" aria-label="Excluir comentário"
                     className="h-6 w-6"
                     onClick={() => deleteMutation.mutate(comment.id)}
                     disabled={deleteMutation.isPending}
@@ -143,7 +143,7 @@ export function ReviewCommentsSection({ reviewId }: ReviewCommentsSectionProps) 
           }}
         />
         <Button
-          size="icon"
+          size="icon" aria-label="Enviar comentário"
           className="shrink-0 rounded-xl h-auto"
           onClick={handleSubmit}
           disabled={!newComment.trim() || addMutation.isPending}

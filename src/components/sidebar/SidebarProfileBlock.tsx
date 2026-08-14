@@ -64,7 +64,7 @@ export function SidebarProfileBlock({ memberId, name, avatarUrl, onOpenProfileSe
       {profileTrigger}
       <Button
         variant="ghost"
-        size="icon"
+        size="icon" aria-label="Alternar tema"
         className="h-7 w-7 rounded-lg text-sidebar-foreground/70 hover:text-sidebar-foreground"
         onClick={() => setTheme(isDark ? 'light' : 'dark')}
         title={isDark ? 'Light' : 'Dark'}

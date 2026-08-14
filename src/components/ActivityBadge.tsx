@@ -42,7 +42,7 @@ export function ActivityBadge({ onClick }: ActivityBadgeProps) {
   return (
     <Button
       variant="ghost"
-      size="icon"
+      size="icon" aria-label="Abrir notificações"
       className="relative h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent"
       onClick={onClick}
       title="Atividade"
