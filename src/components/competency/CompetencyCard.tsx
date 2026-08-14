@@ -69,7 +69,7 @@ export const CompetencyCard = ({
 
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-destructive">
+            <Button variant="ghost" size="icon" aria-label="Ativar ou desativar competência" className="h-9 w-9 text-muted-foreground hover:text-destructive">
               <Power className="h-4 w-4" />
             </Button>
           </AlertDialogTrigger>

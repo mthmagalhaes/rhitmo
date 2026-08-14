@@ -29,7 +29,7 @@ export function BiasAlert({ detectedWords, suggestions, explanation, onDismiss, 
             </p>
           </div>
         </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onDismiss}>
+        <Button variant="ghost" size="icon" aria-label="Dispensar alerta de viés" className="h-7 w-7 shrink-0" onClick={onDismiss}>
           <X className="h-4 w-4" />
         </Button>
       </div>

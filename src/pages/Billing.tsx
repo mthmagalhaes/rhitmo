@@ -153,7 +153,7 @@ function InvoicesSection({ invoices, isLoading }: { invoices: Invoice[]; isLoadi
                 <InvoiceStatusBadge status={inv.status} />
               </div>
               {inv.invoice_pdf && (
-                <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 rounded-xl" asChild>
+                <Button variant="ghost" size="icon" aria-label="Baixar fatura" className="h-9 w-9 shrink-0 rounded-xl" asChild>
                   <a href={inv.invoice_pdf} target="_blank" rel="noopener noreferrer">
                     <Download className="h-4 w-4" />
                   </a>

@@ -25,7 +25,7 @@ export function BiasSuggestionsPanel({ matches, onApply, onApplyAll, onDismiss }
             {matches.length} {matches.length === 1 ? 'termo com possível viés' : 'termos com possível viés'}
           </p>
         </div>
-        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={onDismiss}>
+        <Button variant="ghost" size="icon" aria-label="Dispensar sugestões de viés" className="h-6 w-6 shrink-0" onClick={onDismiss}>
           <X className="h-3.5 w-3.5" />
         </Button>
       </div>

@@ -230,7 +230,7 @@ export function MemberProfileSheet({
                 {/* Admin actions */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="rounded-xl shrink-0" disabled={acting}>
+                    <Button variant="ghost" size="icon" aria-label="Mais ações" className="rounded-xl shrink-0" disabled={acting}>
                       {acting ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
                     </Button>
                   </DropdownMenuTrigger>

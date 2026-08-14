@@ -597,7 +597,7 @@ function TranscriptChat({ feedbackId }: { feedbackId: string }) {
           className="min-h-[40px] max-h-32 text-sm resize-none"
           rows={1}
         />
-        <Button onClick={send} disabled={!input.trim() || loading} size="icon">
+        <Button onClick={send} disabled={!input.trim() || loading} size="icon" aria-label="Enviar pergunta">
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         </Button>
       </div>

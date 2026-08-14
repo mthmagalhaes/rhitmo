@@ -602,12 +602,12 @@ export const AdminUsers = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-0.5">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startImpersonation(user.user_id, user.email)} title="Impersonar">
+                          <Button variant="ghost" size="icon" aria-label="Ver detalhes" className="h-8 w-8" onClick={() => startImpersonation(user.user_id, user.email)} title="Impersonar">
                             <Eye className="h-4 w-4 text-primary" />
                           </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" title="Mais ações">
+                              <Button variant="ghost" size="icon" aria-label="Mais ações" className="h-8 w-8" title="Mais ações">
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
@@ -698,7 +698,7 @@ export const AdminUsers = () => {
               <Label className="text-xs text-muted-foreground">ID do sistema</Label>
               <div className="flex items-center gap-2 mt-1">
                 <code className="flex-1 text-xs bg-muted px-2 py-1.5 rounded font-mono break-all">{editForm.user_id}</code>
-                <Button variant="outline" size="icon" onClick={() => copyToClipboard(editForm.user_id, 'ID')}>
+                <Button variant="outline" size="icon" aria-label="Copiar" onClick={() => copyToClipboard(editForm.user_id, 'ID')}>
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
