@@ -1,4 +1,4 @@
-// Insight Card — o "AI-Native moment" do Diário v2.
+// Insight Card — o "AI-Native moment" de Anotações & Evidências v2.
 // Calcula gaps de cobertura (liderados sem nota há +14 dias) a partir do
 // dataset que a página já carrega. Sem edge function, sem IA — pura agregação
 // determinística (calibrada com health-status-logic: 7 / 8-14 / +14).
@@ -110,7 +110,7 @@ export function DiaryCoverageInsight({ members, onCreateNoteFor }: DiaryCoverage
     );
   }
 
-  if (dismissed) return null;
+  if (dismissed || gaps.length === 0) return null;
 
   const top = gaps.slice(0, 3);
   const rest = gaps.length - top.length;
