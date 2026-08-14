@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { WaveGlyph } from '@/components/brand/WaveGlyph';
 
 interface EmptyStateHeroProps {
   icon: LucideIcon;
@@ -41,14 +42,7 @@ export function EmptyStateHero({
         className
       )}
     >
-      <div
-        className={cn(
-          'rounded-2xl bg-primary/10 flex items-center justify-center mb-6',
-          compact ? 'w-12 h-12' : 'w-16 h-16'
-        )}
-      >
-        <Icon className={cn('text-primary', compact ? 'w-6 h-6' : 'w-8 h-8')} />
-      </div>
+      <WaveGlyph icon={Icon} size={compact ? 'sm' : 'md'} className="mb-6" />
       <h2
         className={cn(
           'font-serif font-bold tracking-tight text-foreground mb-3',

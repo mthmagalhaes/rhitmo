@@ -214,7 +214,7 @@ export function SarahJourneySection({ lang, copy }: Props) {
   return (
     <section className="py-28 px-6 bg-white">
       <div className="max-w-5xl mx-auto">
-        <p className="inline-flex items-center gap-3 text-[11px] uppercase tracking-[0.28em] text-slate-500 font-semibold mb-6">
+        <p className="inline-flex items-center gap-3 text-[11px] uppercase font-mono tracking-[0.25em] text-slate-500 font-semibold mb-6">
           <span className="h-px w-8 bg-slate-300" aria-hidden="true" />
           {copy.overline}
         </p>

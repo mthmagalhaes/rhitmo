@@ -36,8 +36,8 @@ All colors MUST be HSL.
     --primary-300: 262 83% 76%;
     --primary-400: 262 83% 66%;
     --primary-500: 262 83% 58%;   /* = --primary */
-    --primary-600: 262 75% 50%;
-    --primary-700: 262 70% 42%;
+    --primary-600: 261 71% 45%;   /* #5B21C4 — link */
+    --primary-700: 259 70% 42%;   /* #4F20B6 — link hover */
     --primary-800: 262 65% 32%;
     --primary-900: 262 60% 22%;
 
@@ -46,7 +46,7 @@ All colors MUST be HSL.
     --secondary-foreground: 0  0% 100%;
 
     /* ── Muted — superfícies neutras quentes ── */
-    --muted:              38 20% 91%;   /* creme levemente mais escuro */
+    --muted:              42 22% 91%;   /* #EDEAE3 creme levemente mais escuro */
     --muted-foreground:   255 12% 46%; /* #6B6784 */
 
     /* ── Accent — tint roxo leve ── */
@@ -54,18 +54,18 @@ All colors MUST be HSL.
     --accent-foreground:  262  72% 45%;
 
     /* ── Semânticas ── */
-    --success:            161 73% 33%;  /* #059669 */
+    --success:            160 73% 33%;  /* #179268 */
     --success-foreground:   0  0% 100%;
-    --warning:             38 92% 50%;  /* #D97706 */
+    --warning:             38 93% 50%;  /* #F59E0B */
     --warning-foreground:   0  0% 100%;
-    --destructive:          0 72% 51%;  /* #DC2626 */
+    --destructive:          0 73% 52%;  /* #DE2C2C */
     --destructive-foreground: 0 0% 100%;
-    --info:               199 89% 48%;  /* #0EA5E9 */
+    --info:               202 89% 48%;  /* #0E9AE8 */
     --info-foreground:      0  0% 100%;
 
     /* ── Borders / inputs ── */
-    --border:  38 18% 84%;  /* #E8E5DF — quente, não azulado */
-    --input:   38 18% 84%;
+    --border:  40 18% 83%;  /* #DCD7CD — quente, não azulado */
+    --input:   40 18% 83%;
     --ring:   262 83% 58%;
 
     /* ── Radius base ── */
@@ -91,15 +91,15 @@ All colors MUST be HSL.
     --sidebar-primary-foreground:  0  0% 100%;
     --sidebar-accent:            262 100% 97%;
     --sidebar-accent-foreground: 262  72% 45%;
-    --sidebar-border:             38 18% 88%;
+    --sidebar-border:             40 18% 87%;
     --sidebar-ring:              262 83% 58%;
     --sidebar:                   210 40% 98%;
 
     /* ── Charts ── */
     --chart-1: 262 83% 58%;
-    --chart-2: 199 89% 48%;
-    --chart-3: 161 73% 33%;
-    --chart-4:  38 92% 50%;
+    --chart-2: 202 89% 48%;
+    --chart-3: 160 73% 33%;
+    --chart-4:  38 93% 50%;
     --chart-5: 258 52% 15%;
 
     /* ── Fonts ── */
@@ -147,13 +147,13 @@ All colors MUST be HSL.
     --accent:             263 30% 20%;
     --accent-foreground:  263 86% 76%;
 
-    --success:            161 73% 38%;
+    --success:            160 73% 42%;
     --success-foreground: 240 10% 11%;
     --warning:             38 92% 55%;
     --warning-foreground: 240 10% 11%;
-    --destructive:          0 72% 55%;
+    --destructive:          0 73% 58%;
     --destructive-foreground: 250 10% 95%;
-    --info:               199 89% 52%;
+    --info:               202 89% 56%;
     --info-foreground:    240 10% 11%;
 
     --border:  240 10% 20%;    /* #2e2e3a */
@@ -186,8 +186,8 @@ All colors MUST be HSL.
 
     /* ── Charts (dark) ── */
     --chart-1: 263 86% 76%;
-    --chart-2: 199 89% 52%;
-    --chart-3: 161 73% 38%;
+    --chart-2: 202 89% 56%;
+    --chart-3: 160 73% 42%;
     --chart-4:  38 92% 55%;
     --chart-5: 250 10% 95%;
   }

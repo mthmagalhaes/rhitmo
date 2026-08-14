@@ -27,6 +27,7 @@ import {
   AlertTriangle,
   X,
 } from 'lucide-react';
+import { ConnectorFrame } from '@/components/brand/ConnectorFrame';
 import { useNoteTaker } from '@/hooks/useNoteTaker';
 import { useLeaderMembers } from '@/hooks/useLeaderMembers';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -65,9 +66,9 @@ export function GranolaConnectorCard() {
     <>
       <Card className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
         <CardHeader className="flex flex-row items-start gap-3 space-y-0">
-          <div className="rounded-xl bg-primary/10 p-2">
+          <ConnectorFrame>
             <NotebookPen className="w-5 h-5 text-primary" />
-          </div>
+          </ConnectorFrame>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <CardTitle className="text-base font-serif tracking-tight">Granola</CardTitle>

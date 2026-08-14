@@ -118,7 +118,7 @@ export function getDiarySourceMeta(
       label: 'Bot',
       icon: Bot,
       badgeClass:
-        'bg-indigo-50 text-indigo-800 border-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-200 dark:border-indigo-900',
+        'bg-primary/10 text-primary border-primary/20',
     };
   }
   if (effective === 'transcription') {
@@ -136,14 +136,14 @@ export function getDiarySourceMeta(
           label: 'Transcrição',
           icon: FileText,
           badgeClass:
-            'bg-amber-50 text-amber-800 border-amber-100 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-900',
+            'bg-warning/10 text-warning border-warning/20',
         }
       : {
           kind: 'upload',
           label: 'Upload',
           icon: Upload,
           badgeClass:
-            'bg-sky-50 text-sky-800 border-sky-100 dark:bg-sky-950/40 dark:text-sky-200 dark:border-sky-900',
+            'bg-info/10 text-info border-info/20',
         };
   }
   if (effective === 'granola') {
@@ -152,7 +152,7 @@ export function getDiarySourceMeta(
       label: 'Granola',
       icon: NotebookPen,
       badgeClass:
-        'bg-lime-50 text-lime-800 border-lime-100 dark:bg-lime-950/40 dark:text-lime-200 dark:border-lime-900',
+        'bg-success/10 text-success border-success/20',
     };
   }
   if (effective === 'slack' || effective === 'slack_activity_rollup' || effective === 'slack_ambient') {
@@ -161,7 +161,7 @@ export function getDiarySourceMeta(
       label: 'Slack',
       icon: SlackIcon,
       badgeClass:
-        'bg-emerald-50 text-emerald-800 border-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-200 dark:border-emerald-900',
+        'bg-secondary/10 text-foreground border-border',
     };
   }
   // Nota manual real (curta, sem padrão de fala).
@@ -169,6 +169,6 @@ export function getDiarySourceMeta(
     kind: 'manual',
     label: 'Nota',
     icon: PenLine,
-    badgeClass: 'bg-muted text-foreground/70 border-border',
+    badgeClass: 'bg-muted text-muted-foreground border-border',
   };
 }
