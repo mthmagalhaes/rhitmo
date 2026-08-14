@@ -44,7 +44,7 @@ const SUMMARY_TOOL = {
   function: {
     name: "save_structured_summary",
     description:
-      "Salva o resumo estruturado da transcrição da reunião 1:1 para exibir no Diário de Bordo.",
+      "Salva o resumo estruturado da transcrição da reunião 1:1 para exibir em Anotações & Evidências.",
     parameters: {
       type: "object",
       required: ["tldr", "topics", "decisions", "action_items", "sentiment"],

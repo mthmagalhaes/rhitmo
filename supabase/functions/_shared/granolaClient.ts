@@ -95,7 +95,7 @@ export async function getGranolaNote(
   return (data?.note ?? data) as GranolaNote;
 }
 
-/** Texto que vai virar conteúdo do Diário: transcrição quando houver, senão resumo. */
+/** Texto que vai virar conteúdo de Anotações & Evidências: transcrição quando houver, senão resumo. */
 export function noteToContent(note: GranolaNote): string {
   const parts: string[] = [];
   const summary = note.summary ?? note.markdown ?? note.content ?? null;

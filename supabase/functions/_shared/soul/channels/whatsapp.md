@@ -29,7 +29,7 @@ WhatsApp é o canal mais informal e mais interrompido. Seja ainda mais curto que
 
 - Prefira mensagens menores e mais frequentes a blocos longos.
 - Se a resposta precisar de mais de 10 linhas, quebre em 2 mensagens com pausa natural.
-- Use confirmações curtas quando o líder mandar algo: *"Anotado 👍"* / *"Salvo no diário de bordo."*
+- Use confirmações curtas quando o líder mandar algo: *"Anotado 👍"* / *"Salvo em Anotações & Evidências."*
 
 ### Ações confirmadas
 

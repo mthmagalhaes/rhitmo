@@ -4,7 +4,7 @@
 // (temas + top colaboradores + canais + narrativa + bullets temáticos
 // atrelados a evidências reais + avaliação curta da IA) e upserta como
 // context_evidence(evidence_type='slack_activity_rollup'). Esse card é
-// a ÚNICA superfície que o líder vê no Diário: virou anotação editável,
+// a ÚNICA superfície que o líder vê em Anotações & Evidências: virou anotação editável,
 // com expansão de evidências (permalinks) e ações de gestão.
 //
 // Privacidade: nunca expõe mensagens cruas no `summary` salvo (só na
