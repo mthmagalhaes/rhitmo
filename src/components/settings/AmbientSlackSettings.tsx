@@ -95,10 +95,10 @@ export function AmbientSlackSettings({ variant = 'card' }: Props) {
         <div className="flex-1 min-w-0">
           <Label htmlFor="rollup-frequency" className="text-sm font-medium flex items-center gap-1.5">
             <CalendarClock className="h-3.5 w-3.5 text-muted-foreground" />
-            Frequência do resumo no Diário
+            Frequência do resumo em Anotações & Evidências
           </Label>
           <p className="text-xs text-muted-foreground mt-1">
-            Define a cadência com que a Rhitmo entrega o resumo do Slack no seu Diário de Bordo.
+            Define a cadência com que a Rhitmo entrega o resumo do Slack em Anotações & Evidências.
             Em "Desligado", os sinais continuam alimentando o Mentor, mas nenhum card é gerado.
           </p>
         </div>

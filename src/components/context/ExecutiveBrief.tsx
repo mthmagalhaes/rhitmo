@@ -177,7 +177,7 @@ export function ExecutiveBrief({
               Sem sinais nos últimos {windowDays} dias
             </p>
             <p className="text-[13px] text-muted-foreground max-w-sm mx-auto">
-              Quando houver notas no diário, 1:1s, kudos, metas ou respostas de Pulse,
+              Quando houver anotações, 1:1s, kudos, metas ou respostas de Pulse,
               o Briefing aparece aqui automaticamente.
             </p>
           </div>

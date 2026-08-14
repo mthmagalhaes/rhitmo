@@ -28,7 +28,7 @@ const DEFAULT_META: SourceMeta = {
 
 const MAP: Record<string, SourceMeta> = {
   feedbacks: {
-    label: 'Diário',
+    label: 'Anotações',
     icon: FileText,
     badgeClass: 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200',
   },

@@ -110,19 +110,19 @@ const SCREENS: Screen[] = [
   {
     id: 'diario',
     icon: NotebookPen,
-    title: 'Diário de bordo',
+    title: 'Anotações & Evidências',
     route: '/lider/diario',
     description:
       'Onde ficam as notas, uploads de transcrição e transcrições do bot. É a base de evidências das avaliações.',
     mock: (
-      <MockCard title="Diário (exemplo)">
+      <MockCard title="Anotações & Evidências (exemplo)">
         <div className="space-y-2">
           <MockRow name="Alinhamento semanal" meta="Transcrição do bot · 12/05/2026" right="Ana" />
           <MockRow name="Upload de transcrição" meta="Upload do líder · 05/05/2026" right="Bruno" />
           <MockRow name="Nota rápida" meta="Anotação manual · 02/05/2026" right="Ana" />
         </div>
         <p className="pt-3 text-xs text-muted-foreground">
-          Os títulos acima são fictícios. O RH não acessa o diário real de nenhum líder.
+          Os títulos acima são fictícios. O RH não acessa as anotações reais de nenhum líder.
         </p>
       </MockCard>
     ),

@@ -89,7 +89,7 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
           toast({
             title: msg.transcribed ? 'Transcrição salva como nota!' : 'Gravação enviada!',
             description: msg.transcribed
-              ? 'A transcrição foi adicionada ao diário de bordo.'
+              ? 'A transcrição foi adicionada a Anotações & Evidências.'
               : 'O áudio está sendo processado.',
           });
           break;
@@ -371,7 +371,7 @@ export const MeetingRecorder = ({ open, onOpenChange, memberId, memberName }: Me
                 <div>
                   <p className="font-semibold text-foreground">Transcrição salva!</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    O áudio foi transcrito e adicionado como nota ao diário de bordo.
+                    O áudio foi transcrito e adicionado como nota em Anotações & Evidências.
                   </p>
                 </div>
               </div>

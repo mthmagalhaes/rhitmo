@@ -291,7 +291,7 @@ export default function LiderMentor() {
   const scopeLabels: Record<ContextScope, string> = {
     geral: 'Chat geral',
     tudo: 'Tudo do liderado',
-    notas: 'Apenas notas/diário',
+    notas: 'Apenas notas e evidências',
   };
 
   // (chatMemberId/chatFeedbacks moved to /lider/mentor/:threadId)
@@ -522,7 +522,7 @@ export default function LiderMentor() {
                         <p>{scopeLabels[s]}</p>
                         <p className="text-[11px] text-muted-foreground">
                           {s === 'tudo' && 'RAG completo: notas, 1:1s, pulse, PDI.'}
-                          {s === 'notas' && 'Apenas anotações do diário.'}
+                          {s === 'notas' && 'Apenas anotações e evidências.'}
                           {s === 'geral' && 'Sem contexto específico do liderado.'}
                         </p>
                       </button>
