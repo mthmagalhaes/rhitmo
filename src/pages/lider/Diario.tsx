@@ -1,4 +1,4 @@
-// Diário de Bordo — visão cross-member AI-Native.
+// Anotações & Evidências — visão cross-member AI-Native.
 // Página única com anotações (notas do líder + resumos semanais do Slack como
 // anotações enriquecidas). Filtros via URL; chip "Slack" isola rollups.
 import { useMemo, useState } from 'react';
