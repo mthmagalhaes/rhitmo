@@ -298,7 +298,7 @@ export const AICompetencyDialog = ({
                     <Button
                       type="button"
                       variant="ghost"
-                      size="icon"
+                      size="icon" aria-label="Remover"
                       onClick={() => removeCompetency(idx)}
                       className="flex-shrink-0 text-muted-foreground hover:text-destructive"
                     >

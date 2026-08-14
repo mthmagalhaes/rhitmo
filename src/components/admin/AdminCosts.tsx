@@ -103,7 +103,7 @@ export const AdminCosts = () => {
                 ))}
               </SelectContent>
             </Select>
-            <Button variant="outline" size="icon" className="rounded-xl" onClick={() => refetch()}>
+            <Button variant="outline" size="icon" aria-label="Atualizar dados" className="rounded-xl" onClick={() => refetch()}>
               <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
             </Button>
             <Button variant="outline" className="rounded-xl gap-2" onClick={handleExport} disabled={!rows.length}>

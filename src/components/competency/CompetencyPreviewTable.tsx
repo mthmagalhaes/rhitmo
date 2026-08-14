@@ -30,7 +30,7 @@ export const CompetencyPreviewTable = ({ competencies }: { competencies: Compete
   if (!competencies.length) return null;
 
   return (
-    <div className="bg-white/80 rounded-3xl shadow-sm overflow-hidden">
+    <div className="bg-card rounded-3xl shadow-sm overflow-hidden">
       <Button
         variant="ghost"
         className="w-full justify-between px-6 py-4 h-auto text-left"

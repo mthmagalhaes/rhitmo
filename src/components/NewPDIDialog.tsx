@@ -126,7 +126,7 @@ export function NewPDIDialog({ open, onOpenChange, memberId }: NewPDIDialogProps
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-foreground">Objetivo {index + 1}</span>
                 {items.length > 1 && (
-                  <Button variant="ghost" size="icon" onClick={() => removeItem(index)} className="h-8 w-8">
+                  <Button variant="ghost" size="icon" aria-label="Remover item" onClick={() => removeItem(index)} className="h-8 w-8">
                     <Trash2 className="h-4 w-4 text-muted-foreground" />
                   </Button>
                 )}

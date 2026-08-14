@@ -63,7 +63,7 @@ export default function LiderContexto() {
   };
 
   return (
-    <main className="min-h-[calc(100svh-3rem)] bg-background">
+    <section className="min-h-[calc(100svh-3rem)] bg-background">
       <div data-tour="context-feed" className="max-w-3xl mx-auto px-6 lg:px-8 py-6 space-y-6">
         <header>
           <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground mb-2">
@@ -175,6 +175,6 @@ export default function LiderContexto() {
           </TabsContent>
         </Tabs>
       </div>
-    </main>
+    </section>
   );
 }

@@ -148,7 +148,7 @@ function PendingInviteAutoLinker({ user, onLinked }: { user: { id: string; email
   }, [attemptAutoLink]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+    <div className="flex min-h-dvh items-center justify-center bg-background p-4">
       <div className="max-w-md text-center space-y-6">
         <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
           <Loader2 className="h-8 w-8 text-primary animate-spin" />
@@ -457,7 +457,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
 
   if (authLoading || linkedMemberLoading || roleLoading || loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex min-h-dvh items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -508,7 +508,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
   const dateLocale = getDateLocale();
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-dvh bg-background pb-20">
       {/* ═══ HERO STRIP ═══ */}
       <div className="relative bg-primary/5 border-b border-border/50 overflow-hidden">
         <div className="absolute inset-0 flex items-end">
@@ -626,7 +626,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
         </div>
       </div>
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-8">
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-8">
         {/* ═══ 1. ACCOUNT SETUP ═══ */}
         <AccountSetupBento
           workspaceId={workspace?.id ?? null}
@@ -644,7 +644,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
 
         {/* ═══ 3. HISTÓRICO DO MENTOR ═══ */}
         <MentorHistoryCard onOpenMentor={handleOpenMentor} />
-      </main>
+      </section>
 
       {/* ═══ DIALOGS ═══ */}
       <NewNoteDialog open={dialogOpen} onOpenChange={setDialogOpen} workspaceId={workspace?.id} />

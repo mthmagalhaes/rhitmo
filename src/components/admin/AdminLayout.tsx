@@ -46,7 +46,7 @@ export const AdminLayout = ({ children, activeTab, onTabChange }: AdminLayoutPro
     'Admin';
 
   return (
-    <div className="flex min-h-screen w-full bg-background">
+    <div className="flex min-h-dvh w-full bg-background">
       <aside className="w-60 bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex flex-col">
         <div className="px-4 pt-5 pb-3 flex items-center gap-2">
           <RhitmoLogo size="sm" className="text-primary" />

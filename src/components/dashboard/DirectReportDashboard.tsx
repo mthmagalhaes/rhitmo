@@ -456,7 +456,7 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-dvh bg-background pb-20">
       {/* ═══ HERO STRIP ═══ */}
       <div className="relative bg-primary/5 border-b border-border/50 overflow-hidden">
         <div className="absolute inset-0 flex items-end">
@@ -484,7 +484,7 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
       </div>
 
       {/* Tabs */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-8">
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           {/* TabsList hidden — navigation moved to sidebar */}
 
@@ -1105,7 +1105,7 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
             </div>
           </TabsContent>
         </Tabs>
-      </main>
+      </section>
 
       {/* ═══ Dialog: Editar Rhitmo Sync ═══ */}
       <Dialog open={syncDialogOpen} onOpenChange={setSyncDialogOpen}>

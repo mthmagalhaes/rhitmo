@@ -189,7 +189,7 @@ export function TemplateMarketplace({ open, onOpenChange, frameworkId, workspace
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {selectedTemplate ? (
-              <Button variant="ghost" size="icon" className="h-7 w-7 -ml-1" onClick={() => setSelectedTemplate(null)}>
+              <Button variant="ghost" size="icon" aria-label="Voltar" className="h-7 w-7 -ml-1" onClick={() => setSelectedTemplate(null)}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
             ) : (

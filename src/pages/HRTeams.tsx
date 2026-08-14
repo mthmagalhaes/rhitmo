@@ -117,7 +117,7 @@ const HRTeams = () => {
       </div>
         {/* Search */}
         <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar líder por nome ou email..."
             value={search}
@@ -134,9 +134,9 @@ const HRTeams = () => {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="bg-white/80 rounded-3xl shadow-sm p-12 text-center">
-            <Users className="h-10 w-10 text-gray-500 mx-auto mb-3" />
-            <p className="text-sm text-gray-500">
+          <div className="bg-card rounded-3xl shadow-sm p-12 text-center">
+            <Users className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">
               {search
                 ? `Nenhum líder encontrado para "${search}"`
                 : 'Nenhum líder cadastrado'}
@@ -147,12 +147,12 @@ const HRTeams = () => {
             {filtered.map((leader) => (
               <div
                 key={leader.leader_id}
-                className="bg-white/80 rounded-3xl shadow-sm p-6 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                className="bg-card rounded-3xl shadow-sm p-6 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
               >
                 <div className="flex items-center justify-between">
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-base font-semibold tracking-tight text-gray-900">
+                      <h3 className="text-base font-semibold tracking-tight text-foreground">
                         {leader.leader_name}
                       </h3>
                       {leader.days_since_last_feedback >= 60 && (
@@ -168,17 +168,17 @@ const HRTeams = () => {
                         </TooltipProvider>
                       )}
                     </div>
-                    <p className="text-sm text-gray-500">{leader.leader_email}</p>
+                    <p className="text-sm text-muted-foreground">{leader.leader_email}</p>
                     <div className="flex items-center gap-4 pt-1">
-                      <span className="text-xs text-gray-500 flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
                         <Users className="h-3.5 w-3.5" />
                         {leader.total_members} liderado{leader.total_members !== 1 ? 's' : ''}
                       </span>
-                      <span className="text-xs text-gray-500 flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
                         <FileText className="h-3.5 w-3.5" />
                         {leader.feedbacks_last_30d} feedback{leader.feedbacks_last_30d !== 1 ? 's' : ''} (30d)
                       </span>
-                      <span className="text-xs text-gray-500 flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
                         Atividade: {activityBadge(leader.days_since_last_feedback)}
                       </span>
                     </div>
@@ -215,19 +215,19 @@ const HRTeams = () => {
               ))
             ) : teamMembers.length === 0 ? (
               <div className="text-center py-8">
-                <Users className="h-8 w-8 text-gray-500 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">Nenhum liderado cadastrado</p>
+                <Users className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">Nenhum liderado cadastrado</p>
               </div>
             ) : (
               teamMembers.map((member) => (
                 <div
                   key={member.id}
-                  className="border border-gray-100 rounded-2xl p-4 space-y-2"
+                  className="border border-border rounded-2xl p-4 space-y-2"
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium text-sm text-gray-900">{member.name}</p>
-                      <p className="text-xs text-gray-500">{member.email ?? member.role}</p>
+                      <p className="font-medium text-sm text-foreground">{member.name}</p>
+                      <p className="text-xs text-muted-foreground">{member.email ?? member.role}</p>
                     </div>
                     <TooltipProvider>
                       <Tooltip>
@@ -250,11 +250,11 @@ const HRTeams = () => {
                       </Tooltip>
                     </TooltipProvider>
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-gray-500">
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
                       Feedback:{' '}
                       {member.last_feedback_at ? (
-                        <span className="text-gray-700">
+                        <span className="text-foreground">
                           {formatDistanceToNow(new Date(member.last_feedback_at), {
                             addSuffix: true,
                             locale: ptBR,

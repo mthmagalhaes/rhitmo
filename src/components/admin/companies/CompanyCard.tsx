@@ -15,7 +15,7 @@ const segmentColors: Record<string, string> = {
   paid: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400',
   beta: 'bg-blue-500/15 text-blue-700 dark:text-blue-400',
   trial: 'bg-amber-500/15 text-amber-700 dark:text-amber-400',
-  internal: 'bg-slate-500/15 text-slate-700 dark:text-slate-500',
+  internal: 'bg-muted text-muted-foreground',
   test: 'bg-fuchsia-500/15 text-fuchsia-700 dark:text-fuchsia-400',
 };
 

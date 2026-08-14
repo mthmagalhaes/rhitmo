@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 
 export default function AdminLogsPage() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <div className="border-b border-border px-6 py-3 flex items-center gap-3">
         <Button variant="ghost" size="sm" asChild className="rounded-xl gap-2">
           <Link to="/admin">

@@ -70,7 +70,7 @@ const HRDashboard = () => {
   const hasNoAlerts = noFeedback === 0 && noReview === 0 && pdiPct >= 50 && biasCount === 0;
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-dvh bg-background pb-20">
       {/* ═══ HERO STRIP ═══ */}
       <div className="relative bg-primary/5 border-b border-border/50 overflow-hidden">
         <div className="absolute inset-0 flex items-end">

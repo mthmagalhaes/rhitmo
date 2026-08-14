@@ -146,7 +146,7 @@ const ExamplesField = ({ control, levelIndex }: { control: any; levelIndex: numb
               {...control.register(`levels.${levelIndex}.examples.${i}`)}
               placeholder={`Exemplo ${i + 1}`}
             />
-            <Button type="button" variant="ghost" size="icon" onClick={() => remove(i)} className="flex-shrink-0">
+            <Button type="button" variant="ghost" size="icon" aria-label="Remover exemplo" onClick={() => remove(i)} className="flex-shrink-0">
               <X className="h-4 w-4" />
             </Button>
           </div>

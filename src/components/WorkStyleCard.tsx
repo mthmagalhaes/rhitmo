@@ -50,11 +50,11 @@ export const styleConfig = {
   feedback_style: {
     direct: { label: 'Direto ao Ponto', icon: Zap, color: 'bg-red-500/10 text-red-700 dark:text-red-400' },
     empathetic: { label: 'Empático / Sanduíche', icon: Heart, color: 'bg-pink-500/10 text-pink-700 dark:text-pink-400' },
-    written: { label: 'Por Escrito Primeiro', icon: FileText, color: 'bg-slate-500/10 text-slate-700 dark:text-slate-500' }
+    written: { label: 'Por Escrito Primeiro', icon: FileText, color: 'bg-muted text-muted-foreground' }
   },
   recognition_style: {
     public: { label: 'Reconhecimento Público', icon: Megaphone, color: 'bg-green-500/10 text-green-700 dark:text-green-400' },
-    private: { label: 'Reconhecimento Privado', icon: Lock, color: 'bg-gray-500/10 text-gray-600 dark:text-gray-500' }
+    private: { label: 'Reconhecimento Privado', icon: Lock, color: 'bg-muted text-muted-foreground' }
   },
   motivators: {
     autonomy: { label: 'Autonomia', icon: Compass, color: 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400' },

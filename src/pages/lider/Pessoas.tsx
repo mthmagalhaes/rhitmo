@@ -766,7 +766,7 @@ function TeamsTab({ onNewTeam, workspaceId }: { onNewTeam: () => void; workspace
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg">
+                        <Button variant="ghost" size="icon" aria-label="Mais ações" className="h-7 w-7 rounded-lg">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -980,7 +980,7 @@ function InviteRowMenu({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
+          <Button variant="ghost" size="icon" aria-label="Mais ações" className="h-8 w-8 rounded-lg">
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>

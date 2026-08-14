@@ -40,7 +40,7 @@ export default function LiderAvaliacoes() {
         onSelect={goToMember}
       />
 
-      <main data-tour="reviews-list" className="flex-1 overflow-y-auto">
+      <section data-tour="reviews-list" className="flex-1 overflow-y-auto">
         {selected ? (
           <ReviewsMemberDetail
             member={selected}
@@ -86,7 +86,7 @@ export default function LiderAvaliacoes() {
             />
           </div>
         )}
-      </main>
+      </section>
 
       {workspace?.id && (
         <CreateFormalReviewDialog

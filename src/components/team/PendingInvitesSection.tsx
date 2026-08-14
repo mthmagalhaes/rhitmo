@@ -154,7 +154,7 @@ export const PendingInvitesSection = ({ workspaceId, compact = false }: PendingI
                 </span>
                 <Button
                   variant="ghost"
-                  size="icon"
+                  size="icon" aria-label="Reenviar convite"
                   className="h-6 w-6 shrink-0"
                   onClick={() => handleResend(invite)}
                   disabled={resending === invite.id}

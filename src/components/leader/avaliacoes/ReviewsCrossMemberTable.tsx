@@ -279,7 +279,7 @@ export function ReviewsCrossMemberTable({
                       <DropdownMenuTrigger asChild>
                         <Button
                           variant="ghost"
-                          size="icon"
+                          size="icon" aria-label="Mais ações"
                           className="h-7 w-7"
                           onClick={(e) => e.stopPropagation()}
                         >

@@ -161,7 +161,7 @@ export const GoalCard = ({ goal, onEdit, onDelete, onComplete, onReactivate }: G
             {isActive && (
               <Button
                 variant="ghost"
-                size="icon"
+                size="icon" aria-label="Concluir objetivo"
                 onClick={() => onComplete(goal.id)}
                 className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950"
                 title="Marcar como concluída"
@@ -172,7 +172,7 @@ export const GoalCard = ({ goal, onEdit, onDelete, onComplete, onReactivate }: G
             {isHistory && onReactivate && (
               <Button
                 variant="ghost"
-                size="icon"
+                size="icon" aria-label="Reabrir objetivo"
                 onClick={() => onReactivate(goal)}
                 className="h-8 w-8 text-primary hover:text-primary/80"
                 title="Reativar meta"
@@ -182,7 +182,7 @@ export const GoalCard = ({ goal, onEdit, onDelete, onComplete, onReactivate }: G
             )}
             <Button
               variant="ghost"
-              size="icon"
+              size="icon" aria-label="Editar objetivo"
               onClick={() => onEdit(goal)}
               className="h-8 w-8"
               title="Editar meta"
@@ -191,7 +191,7 @@ export const GoalCard = ({ goal, onEdit, onDelete, onComplete, onReactivate }: G
             </Button>
             <Button
               variant="ghost"
-              size="icon"
+              size="icon" aria-label="Excluir objetivo"
               onClick={() => setShowDeleteDialog(true)}
               className="h-8 w-8 text-destructive hover:text-destructive"
               title="Excluir meta"

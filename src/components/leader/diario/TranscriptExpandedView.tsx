@@ -66,7 +66,7 @@ interface Props {
 
 const sentimentLabel: Record<string, { label: string; tone: string }> = {
   positive:  { label: 'Tom positivo',    tone: 'bg-emerald-500/10 text-emerald-700 border-emerald-200' },
-  neutral:   { label: 'Tom neutro',      tone: 'bg-slate-500/10 text-slate-700 border-slate-200' },
+  neutral:   { label: 'Tom neutro',      tone: 'bg-muted text-muted-foreground border-border' },
   concerned: { label: 'Sinais de preocupação', tone: 'bg-amber-500/10 text-amber-800 border-amber-200' },
   tense:     { label: 'Conversa tensa',  tone: 'bg-rose-500/10 text-rose-700 border-rose-200' },
 };
@@ -278,7 +278,7 @@ export function TranscriptExpandedView({ feedbackId, content, structuredSummary,
             {turns.map((t, i) => (
               <div key={i} className="flex gap-2.5">
                 <div
-                  className="shrink-0 h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-medium text-white"
+                  className="shrink-0 h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-medium text-primary-foreground"
                   style={{ background: colorForSpeaker(t.speaker) }}
                   title={t.speaker}
                 >
@@ -597,7 +597,7 @@ function TranscriptChat({ feedbackId }: { feedbackId: string }) {
           className="min-h-[40px] max-h-32 text-sm resize-none"
           rows={1}
         />
-        <Button onClick={send} disabled={!input.trim() || loading} size="icon">
+        <Button onClick={send} disabled={!input.trim() || loading} size="icon" aria-label="Enviar pergunta">
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         </Button>
       </div>
@@ -615,7 +615,7 @@ const participationLabel: Record<NonNullable<PersonalLens['participation']>, { l
   active:         { label: 'Participou ativamente',     tone: 'bg-emerald-500/10 text-emerald-700 border-emerald-200' },
   passive:        { label: 'Participação pontual',      tone: 'bg-sky-500/10 text-sky-700 border-sky-200' },
   mentioned_only: { label: 'Foi mencionada(o), sem falar', tone: 'bg-amber-500/10 text-amber-800 border-amber-200' },
-  absent:         { label: 'Sem participação registrada',  tone: 'bg-slate-500/10 text-slate-700 border-slate-200' },
+  absent:         { label: 'Sem participação registrada',  tone: 'bg-muted text-muted-foreground border-border' },
 };
 
 function PersonalLensBlock({

@@ -39,8 +39,8 @@ export const CompetencyCard = ({
         isDragging ? 'opacity-60 shadow-lg scale-[1.02]' : ''
       } ${
         isActive
-          ? 'bg-white/80 border-l-4 border-violet-500'
-          : 'bg-white/40 border-l-4 border-muted opacity-60'
+          ? 'bg-card border-l-4 border-primary'
+          : 'bg-muted/40 border-l-4 border-border'
       }`}
     >
       <button
@@ -69,7 +69,7 @@ export const CompetencyCard = ({
 
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-destructive">
+            <Button variant="ghost" size="icon" aria-label="Ativar ou desativar competência" className="h-9 w-9 text-muted-foreground hover:text-destructive">
               <Power className="h-4 w-4" />
             </Button>
           </AlertDialogTrigger>

@@ -89,7 +89,7 @@ export default function HRRitmo() {
   });
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-dvh">
       {/* Header */}
       <div className="border-b border-border/40 bg-gradient-to-b from-muted/40 to-transparent">
         <div className="max-w-6xl mx-auto px-6 py-10 sm:py-12">

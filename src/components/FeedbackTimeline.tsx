@@ -311,7 +311,7 @@ export const FeedbackTimeline = ({ feedbacks, onDelete, onToggleVisibility }: Fe
                       <DropdownMenuTrigger asChild>
                         <Button 
                           variant="ghost" 
-                          size="icon" 
+                          size="icon" aria-label="Mais ações" 
                           className="h-7 w-7 text-muted-foreground sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                           onClick={(e) => e.stopPropagation()}
                         >

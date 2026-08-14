@@ -294,7 +294,7 @@ const CompetencyFramework = () => {
                       )}
                     </div>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8"
+                      <Button variant="ghost" size="icon" aria-label="Excluir" className="h-8 w-8"
                         onClick={() => setDeletingRoleId(role.role_id)}>
                         <Trash2 className="h-4 w-4 text-muted-foreground" />
                       </Button>
@@ -383,7 +383,7 @@ const CompetencyFramework = () => {
                       </div>
                       <div className="flex gap-1">
                         {fullComp && (
-                          <Button variant="ghost" size="icon" className="h-8 w-8"
+                          <Button variant="ghost" size="icon" aria-label="Editar" className="h-8 w-8"
                             onClick={() => setEditingComp(fullComp)}>
                             <Pencil className="h-4 w-4 text-muted-foreground" />
                           </Button>

@@ -234,7 +234,7 @@ export function OneByOneWizard({ open, onOpenChange, workspaceId, workspaceName 
                     <Input value={m.name} onChange={(e) => setMembers(prev => prev.map((x, i) => i === idx ? { ...x, name: e.target.value } : x))} placeholder="Nome completo" className="h-8 rounded-lg text-sm" />
                     <Input value={m.email} onChange={(e) => setMembers(prev => prev.map((x, i) => i === idx ? { ...x, email: e.target.value.toLowerCase().trim() } : x))} placeholder="email@empresa.com" type="email" className="h-8 rounded-lg text-sm" />
                   </div>
-                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setMembers(prev => prev.filter((_, i) => i !== idx))}>
+                  <Button type="button" variant="ghost" size="icon" aria-label="Remover" className="h-8 w-8 shrink-0" onClick={() => setMembers(prev => prev.filter((_, i) => i !== idx))}>
                     <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
                   </Button>
                 </div>

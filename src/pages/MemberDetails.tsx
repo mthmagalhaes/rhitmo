@@ -431,7 +431,7 @@ const MemberDetails = () => {
     
     if (!config) {
       return (
-        <Badge variant="secondary" className="gap-2 py-2 px-3 bg-gray-500/10 text-gray-600 dark:text-gray-500">
+        <Badge variant="secondary" className="gap-2 py-2 px-3 bg-muted text-muted-foreground">
           <HelpCircle className="h-4 w-4" />
           {key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ')}
         </Badge>
@@ -448,13 +448,13 @@ const MemberDetails = () => {
   };
 
   if (authLoading || loading) {
-    return <div className="flex min-h-screen items-center justify-center bg-background">
+    return <div className="flex min-h-dvh items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>;
   }
   if (!user) return null;
   if (!member) {
-    return <div className="flex min-h-screen items-center justify-center bg-background">
+    return <div className="flex min-h-dvh items-center justify-center bg-background">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Membro não encontrado</h1>
           <Button onClick={() => navigate(home)}>Voltar ao início</Button>
@@ -468,8 +468,8 @@ const MemberDetails = () => {
   
   const completedAt = (member.work_style_data as any)?.completed_at;
 
-  return <div className="min-h-screen bg-background pb-20">
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+  return <div className="min-h-dvh bg-background pb-20">
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
         {/* Breadcrumb e ações */}
         <div className="flex items-center justify-between mb-6">
           <Button variant="ghost" onClick={() => navigate('/')} className="gap-2 -ml-3">
@@ -642,7 +642,7 @@ const MemberDetails = () => {
                                     const config = styleConfig.motivators?.[motivator as keyof typeof styleConfig.motivators];
                                     if (!config) {
                                       return (
-                                        <Badge key={motivator} variant="secondary" className="gap-2 py-2 px-3 bg-gray-500/10 text-gray-700 dark:text-gray-500">
+                                        <Badge key={motivator} variant="secondary" className="gap-2 py-2 px-3 bg-muted text-muted-foreground">
                                           <HelpCircle className="h-4 w-4" />
                                           {motivator.charAt(0).toUpperCase() + motivator.slice(1)}
                                         </Badge>
@@ -916,7 +916,7 @@ const MemberDetails = () => {
             <PerformanceReviewList memberId={member.id} memberName={member.name} onCreateReview={() => setFormalReviewOpen(true)} />
           </TabsContent>
         </Tabs>
-      </main>
+      </section>
 
       <NewNoteDialog 
         open={dialogOpen} 

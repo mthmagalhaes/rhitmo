@@ -395,7 +395,7 @@ export default function RhitmoSync() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
+      <div className="min-h-dvh bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
           <p className="mt-4 text-muted-foreground">Carregando...</p>
@@ -407,7 +407,7 @@ export default function RhitmoSync() {
   // Membro não encontrado
   if (notFound) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
+      <div className="min-h-dvh bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
         <Card className="max-w-md w-full p-8 text-center space-y-4 rounded-2xl">
           <div className="text-5xl">🔍</div>
           <h1 className="text-xl font-bold tracking-tight">Link inválido</h1>
@@ -422,7 +422,7 @@ export default function RhitmoSync() {
   // Liderado não vinculado: precisa aceitar o convite primeiro
   if (notLinked) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
+      <div className="min-h-dvh bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
         <Card className="max-w-md w-full p-8 text-center space-y-5 rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
           <div className="text-5xl">🔐</div>
           <div className="space-y-2">
@@ -470,7 +470,7 @@ export default function RhitmoSync() {
   // Completed state
   if (completed) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
+      <div className="min-h-dvh bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
         <Card className="max-w-md w-full p-8 text-center space-y-6">
           <div className="text-6xl">🎧</div>
           <div className="flex justify-center">
@@ -499,7 +499,7 @@ export default function RhitmoSync() {
   const isLastStep = currentStep === steps.length - 1;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted flex flex-col">
+    <div className="min-h-dvh bg-gradient-to-b from-background to-muted flex flex-col">
       {/* Header */}
       <div className="p-4 sm:p-6 text-center border-b bg-card">
         <h1 className="text-2xl sm:text-3xl font-bold text-primary">🎵 Rhitmo Sync</h1>

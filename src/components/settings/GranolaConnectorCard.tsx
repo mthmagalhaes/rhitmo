@@ -183,7 +183,7 @@ export function GranolaConnectorCard() {
                     </div>
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size="icon" aria-label="Descartar nota"
                       className="h-6 w-6 shrink-0"
                       title="Descartar nota"
                       onClick={() => dismiss.mutate(note.id)}
