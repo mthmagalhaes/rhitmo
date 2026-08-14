@@ -1,5 +1,5 @@
 // Sprint 20 — /lider/avaliacoes redesenhado como master-detail nativo.
-// - Sidebar fixa 260px (MemberMasterList) — igual /lider/1on1s e /lider/diario
+// - Sidebar fixa 260px (MemberMasterList) — igual /lider/1on1s e /lider/diario (Anotações & Evidências)
 // - Detalhe do liderado ocupa a área principal com Rhitmo Formal em primeiro plano
 // - Sem sheet lateral; deep-link via /lider/avaliacoes/:memberId
 // - Empty state (nenhum liderado escolhido) exibe visão cross-member do time
@@ -65,7 +65,7 @@ export default function LiderAvaliacoes() {
                   Ciclos formais do time
                 </h1>
                 <p className="text-base text-muted-foreground mt-3 leading-relaxed">
-                  Estado do Rhitmo Formal e do Acompanhamento Mensal em uma única visão.
+                  Estado do Rhitmo Formal e do Acompanhamento Mensal em uma única visão a partir de Anotações & Evidências.
                   Escolha um liderado à esquerda para abrir o ciclo dele em tela cheia.
                 </p>
               </div>

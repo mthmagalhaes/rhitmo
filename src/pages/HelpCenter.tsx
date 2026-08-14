@@ -110,7 +110,7 @@ const leaderCards: FeatureCard[] = [
       'Conecte seu Google Calendar em Configurações → Integrações.',
       'O Rhitmo detecta reuniões 1:1 e associa ao membro correto.',
       'Antes da reunião, um briefing IA é gerado com resumo de notas recentes.',
-      'Após a reunião, registre suas observações como notas em Anotações & Evidências.',
+      'Após a reunião, registre suas observações em Anotações & Evidências.',
     ],
   },
   {
@@ -164,7 +164,7 @@ const leaderCards: FeatureCard[] = [
       'O bot entra por volta de 2 minutos antes do horário e aparece na sala como um participante chamado "Rhitmo".',
       'Se a reunião tiver sala de espera, alguém precisa admitir o bot. Ele aguarda até 10 minutos.',
       'Funciona com links de Google Meet, Zoom e Teams presentes no evento da agenda.',
-      'Ao fim, a transcrição com os nomes dos participantes vira uma nota em Anotações & Evidências de cada liderado presente.',
+      'Ao fim, a transcrição com os nomes dos participantes vira uma nova entrada em Anotações & Evidências de cada liderado presente.',
       'A IA gera resumo, tópicos, sentimento e coaching tips em cima dessa transcrição.',
       'Você pode chamar o bot manualmente a qualquer momento no ícone de microfone do card "Próximas 1:1s", inclusive com a reunião já em andamento.',
     ],
