@@ -88,7 +88,7 @@ export default function GoogleCalendarCallback() {
   }, [searchParams, navigate, home]);
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-dvh bg-background flex items-center justify-center p-6 relative overflow-hidden">
       {/* Rhythm Wave decorativa */}
       <div className="absolute inset-0 opacity-30 pointer-events-none">
         <RhythmWave />

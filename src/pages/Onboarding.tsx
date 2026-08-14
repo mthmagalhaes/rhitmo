@@ -362,7 +362,7 @@ export default function Onboarding() {
   // Loading state
   if (authLoading || memberLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
+      <div className="min-h-dvh bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
           <p className="mt-4 text-muted-foreground">Carregando...</p>
@@ -374,7 +374,7 @@ export default function Onboarding() {
   // AI Analyzing state - tela especial de loading
   if (analyzingWithAI) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
+      <div className="min-h-dvh bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
         <Card className="max-w-md w-full p-8 text-center space-y-6">
           <div className="flex justify-center">
             <div className="relative">
@@ -404,7 +404,7 @@ export default function Onboarding() {
   // Completed state
   if (completed) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
+      <div className="min-h-dvh bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
         <Card className="max-w-md w-full p-8 text-center space-y-6">
           <div className="text-6xl">🎉</div>
           <div className="flex justify-center">
@@ -431,7 +431,7 @@ export default function Onboarding() {
   // Loading: ainda buscando vínculo do liderado
   if (authLoading || memberLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
+      <div className="min-h-dvh bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
         <Card className="max-w-md w-full p-8 text-center space-y-4">
           <Loader2 className="h-10 w-10 text-primary animate-spin mx-auto" />
           <p className="text-sm text-muted-foreground">Carregando seu perfil…</p>
@@ -443,7 +443,7 @@ export default function Onboarding() {
   // Sem vínculo: usuário autenticado mas não é liderado neste workspace
   if (!memberData) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
+      <div className="min-h-dvh bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
         <Card className="max-w-md w-full p-8 text-center space-y-4">
           <div className="text-5xl">🤔</div>
           <h1 className="text-xl font-bold">Não encontramos seu cadastro</h1>
@@ -463,7 +463,7 @@ export default function Onboarding() {
   const isLastStep = currentStep === steps.length - 1;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted flex flex-col">
+    <div className="min-h-dvh bg-gradient-to-b from-background to-muted flex flex-col">
       {/* Header */}
       <div className="p-4 sm:p-6 text-center border-b bg-card">
         <RhitmoLogo size="md" className="mx-auto mb-2" />

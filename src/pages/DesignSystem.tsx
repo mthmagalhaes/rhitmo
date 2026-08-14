@@ -61,7 +61,7 @@ export default function DesignSystem() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       {/* Hero */}
       <section className="px-8 pt-12 pb-10">
         <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground mb-3 font-medium">Design System</p>

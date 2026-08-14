@@ -10,7 +10,7 @@ interface LegalPageLayoutProps {
 
 export function LegalPageLayout({ children }: LegalPageLayoutProps) {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-dvh bg-background text-foreground">
       {/* Header */}
       <header className="border-b border-border">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">

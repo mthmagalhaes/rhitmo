@@ -456,7 +456,7 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-dvh bg-background pb-20">
       {/* ═══ HERO STRIP ═══ */}
       <div className="relative bg-primary/5 border-b border-border/50 overflow-hidden">
         <div className="absolute inset-0 flex items-end">

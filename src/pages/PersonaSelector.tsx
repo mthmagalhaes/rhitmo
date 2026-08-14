@@ -75,7 +75,7 @@ export default function PersonaSelector() {
   }[lang];
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-dvh bg-background flex flex-col">
       <header className="border-b">
         <div className="max-w-6xl mx-auto px-6 lg:px-8 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 text-foreground">

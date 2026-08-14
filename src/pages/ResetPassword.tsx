@@ -66,7 +66,7 @@ const ResetPassword = () => {
   };
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-dvh">
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-[hsl(var(--background))]">
         <div className="absolute inset-0 flex flex-col justify-center">
           <RhythmWave variant="auth" className="opacity-100" />

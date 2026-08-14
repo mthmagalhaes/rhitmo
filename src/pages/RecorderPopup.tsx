@@ -303,7 +303,7 @@ export default function RecorderPopup() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+    <div className="min-h-dvh bg-background flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-sm space-y-6">
         {/* Header */}
         <div className="text-center space-y-1">

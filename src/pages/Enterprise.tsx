@@ -101,7 +101,7 @@ const Enterprise = () => {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: "linear-gradient(180deg, #f8fafc 0%, #ffffff 50%)" }}>
+    <div className="min-h-dvh" style={{ background: "linear-gradient(180deg, #f8fafc 0%, #ffffff 50%)" }}>
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b" style={{ backgroundColor: "rgba(248,250,252,0.95)", backdropFilter: "blur(8px)" }}>
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">

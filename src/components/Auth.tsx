@@ -237,7 +237,7 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
   const emailReadOnly = isInviteFlow && !!defaultEmail;
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-dvh">
       {/* LEFT SIDE: Branded Rhythm Wave */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-[hsl(var(--background))]">
         <div className="absolute inset-0 flex flex-col justify-center">

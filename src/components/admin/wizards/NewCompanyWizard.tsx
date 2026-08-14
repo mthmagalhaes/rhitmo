@@ -239,7 +239,7 @@ export const NewCompanyWizard = ({ open, onOpenChange, users }: Props) => {
 
   return (
     <Dialog open={open} onOpenChange={(v) => (v ? onOpenChange(true) : close())}>
-      <DialogContent className="max-w-none w-screen h-screen p-0 rounded-none border-0 flex flex-col">
+      <DialogContent className="max-w-none w-screen h-dvh p-0 rounded-none border-0 flex flex-col">
         <header className="flex items-center px-6 py-4 border-b">
           <h2 className="text-sm font-semibold tracking-tight">Nova empresa</h2>
         </header>

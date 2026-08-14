@@ -142,7 +142,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         />
       )}
 
-      <div className="min-h-screen flex w-full">
+      <div className="min-h-dvh flex w-full">
         <AppSidebar />
         <SidebarInset className="flex-1">
           <header className="flex h-14 items-center gap-4 border-b px-4 lg:hidden bg-card">

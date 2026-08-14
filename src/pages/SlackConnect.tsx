@@ -86,7 +86,7 @@ export default function SlackConnect() {
 
   if (authLoading || (status === 'loading' && state)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-dvh flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
           <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
           <p className="text-muted-foreground">Vinculando sua conta Slack...</p>
@@ -99,7 +99,7 @@ export default function SlackConnect() {
     return (
       <>
         <SlackPrivacyOnboarding open={showPrivacy} onOpenChange={setShowPrivacy} />
-        <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="min-h-dvh flex items-center justify-center bg-background">
           <div className="text-center space-y-6 max-w-md px-6">
             <div className="h-16 w-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto">
               <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
@@ -124,7 +124,7 @@ export default function SlackConnect() {
   if (status === 'error') {
     const isExpired = errorCode === 'state_expired';
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-dvh flex items-center justify-center bg-background">
         <div className="text-center space-y-6 max-w-md px-6">
           <div className="h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
             <XCircle className="h-8 w-8 text-destructive" />
@@ -155,7 +155,7 @@ export default function SlackConnect() {
 
   // no-state
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="min-h-dvh flex items-center justify-center bg-background">
       <div className="text-center space-y-6 max-w-md px-6">
         <MessageSquare className="h-10 w-10 text-muted-foreground mx-auto" />
         <div>

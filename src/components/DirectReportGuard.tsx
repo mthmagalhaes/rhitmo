@@ -56,7 +56,7 @@ export function DirectReportGuard({ children }: DirectReportGuardProps) {
 
   if (loading || adminLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-dvh flex items-center justify-center bg-background">
         <div className="text-center max-w-sm mx-auto px-6">
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
           <p className="mt-4 text-muted-foreground">Carregando...</p>

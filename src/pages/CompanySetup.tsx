@@ -55,12 +55,12 @@ export default function CompanySetup() {
 
   const workspaceNames = useMemo(() => workspace?.name ? [workspace.name] : [], [workspace]);
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">Carregando…</div>;
+  if (loading) return <div className="min-h-dvh flex items-center justify-center text-sm text-muted-foreground">Carregando…</div>;
   if (!isHRAdmin && !isWorkspaceOwner && !isSuperAdmin) return <Navigate to="/" replace />;
-  if (!workspaceId || !workspace) return <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">Workspace não encontrado.</div>;
+  if (!workspaceId || !workspace) return <div className="min-h-dvh flex items-center justify-center text-sm text-muted-foreground">Workspace não encontrado.</div>;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <div className="max-w-5xl mx-auto px-6 lg:px-8 py-10 space-y-8">
         {/* Header */}
         <header className="space-y-2">

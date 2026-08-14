@@ -15,7 +15,7 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-6">
+    <div className="flex min-h-dvh items-center justify-center bg-background px-6">
       <div className="w-full max-w-md text-center">
         <div className="mb-8 flex justify-center">
           <RhitmoLogo className="h-10 w-auto" />
