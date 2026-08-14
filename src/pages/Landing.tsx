@@ -66,7 +66,7 @@ const translations = {
     journeyActs: [
       { tag: "SEMANA 1", label: "Onboarding", title: "Ana entra no time", body: "Antes do líder lembrar, a Rhitmo manda um check-in. O líder vê o gap antes da próxima 1:1, e quem vem depois ganha o walkthrough no dia um.", mock: "slackDM" as const },
       { tag: "TODA SEMANA", label: "1:1s", title: "1:1s que se preparam sozinhas", body: "Sem 'então… do que a gente fala?'. A Rhitmo monta a pauta a partir do trabalho real da semana, das anotações e evidências enviadas...e a Ana adiciona o que importa pra ela.", mock: "oneOnOne" as const },
-      { tag: "MEMÓRIA", label: "Diário", title: "A memória que líder bom não tem tempo de manter", body: "Toda conversa de corredor, feedback difícil, destaque ou padrão preocupante vira uma nota privada em Anotações & Evidências da Ana. Quando chega a 1:1, a avaliação ou o recap trimestral, nada se perde. A Rhitmo lembra por você.", mock: "journal" as const },
+      { tag: "MEMÓRIA", label: "Evidências", title: "A memória que líder bom não tem tempo de manter", body: "Toda conversa de corredor, feedback difícil, destaque ou padrão preocupante vira uma nota privada em Anotações & Evidências da Ana. Quando chega a 1:1, a avaliação ou o recap trimestral, nada se perde. A Rhitmo lembra por você.", mock: "journal" as const },
       { tag: "FIM DO TRI", label: "Review", title: "Avaliações que nascem prontas", body: "A Rhitmo escreve o draft da review a partir de evidência real. O líder revisa em vez de reconstruir o trimestre de memória, e a Ana vê o quarter inteiro sem surpresa.", mock: "review" as const },
     ],
     // Video
@@ -1231,14 +1231,14 @@ const Landing = () => {
               </div>
             </div>
 
-            {/* Floating Diário de Bordo mini-card */}
+            {/* Floating Anotações & Evidências mini-card */}
             <div className="hidden md:block absolute -bottom-8 -left-4 bg-white p-4 rounded-2xl shadow-xl shadow-slate-300/40 border border-slate-100 w-64">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">
                   <BookOpen className="h-3.5 w-3.5 text-indigo-600" />
                 </div>
                 <div>
-                  <p className="font-serif text-[13px] font-bold tracking-tight text-slate-900 leading-none">Diário de Bordo</p>
+                  <p className="font-serif text-[13px] font-bold tracking-tight text-slate-900 leading-none">Anotações &amp; Evidências</p>
                   <p className="text-[10px] text-slate-500 mt-0.5">5 registros · Joana Silva</p>
                 </div>
               </div>
