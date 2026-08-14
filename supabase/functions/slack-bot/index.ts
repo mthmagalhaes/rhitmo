@@ -2334,7 +2334,7 @@ async function processInteraction(body: string, timestamp: string, signature: st
       const slackUserInfo = await slackApi('users.info', { user: slackUserId });
       const senderName = slackUserInfo.ok ? (slackUserInfo.user?.real_name || slackUserInfo.user?.name || 'alguém') : 'alguém';
 
-      // Kudos PRIVADO: DM ao liderado (se conectado) + registro no Diário de Bordo
+      // Kudos PRIVADO: DM ao liderado (se conectado) + registro em Anotações & Evidências
       const { data: linkedTM } = await supabase
         .from('team_members')
         .select('linked_user_id')
