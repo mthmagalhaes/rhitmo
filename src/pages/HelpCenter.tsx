@@ -43,6 +43,7 @@ const leaderCards: FeatureCard[] = [
   },
   {
     id: 'l-notes',
+    icon: NotebookPen,
     title: 'Anotações & Evidências',
     subtitle: 'Registre notas inteligentes com IA',
     steps: [
