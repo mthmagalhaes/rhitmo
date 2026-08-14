@@ -49,7 +49,7 @@ const HEALTH_CLASSES: Record<'fresh' | 'warm' | 'cold', string> = {
 };
 
 function getHealth(lastFeedbackIso: string): keyof typeof HEALTH_CLASSES {
-  const days = differenceInDays(new Date(), new Date(lastFeedbackIso));
+  const days = differenceInDays(new Date(), new Date(lastFeedbackIso || new Date()));
   if (days <= 7) return 'fresh';
   if (days <= 14) return 'warm';
   return 'cold';
