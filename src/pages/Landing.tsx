@@ -778,7 +778,7 @@ const PricingSection = ({
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center space-y-4 mb-10">
-          <p className="inline-flex items-center gap-3 text-[11px] uppercase tracking-[0.28em] text-slate-500 font-semibold">
+          <p className="inline-flex items-center gap-3 text-[11px] uppercase font-mono tracking-[0.25em] text-slate-500 font-semibold">
             <span className="h-px w-8 bg-slate-300" aria-hidden="true" />
             {lang === 'pt' ? 'Plano' : 'Plan'}
           </p>
@@ -1294,7 +1294,7 @@ const Landing = () => {
         <div className="max-w-5xl mx-auto">
           {/* Header — alinhado à esquerda, editorial */}
           <div className="max-w-3xl mb-20">
-            <p className="inline-flex items-center gap-3 text-[11px] uppercase tracking-[0.28em] text-slate-500 font-semibold mb-6">
+            <p className="inline-flex items-center gap-3 text-[11px] uppercase font-mono tracking-[0.25em] text-slate-500 font-semibold mb-6">
               <span className="h-px w-8 bg-slate-300" aria-hidden="true" />
               {t.numbersOverline}
             </p>
@@ -1365,7 +1365,7 @@ const Landing = () => {
           {/* Leaders */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-16 items-center">
             <div className="space-y-6">
-              <span className="inline-flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.28em] text-indigo-700">
+              <span className="inline-flex items-center gap-3 text-[11px] font-semibold uppercase font-mono tracking-[0.25em] text-indigo-700">
                 <span className="h-px w-8 bg-indigo-300" aria-hidden="true" />
                 <Zap className="h-3 w-3" /> {t.forLeaders}
               </span>
@@ -1385,7 +1385,7 @@ const Landing = () => {
           {/* Reports */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-16 items-center">
             <div className="md:order-2 space-y-6">
-              <span className="inline-flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-700">
+              <span className="inline-flex items-center gap-3 text-[11px] font-semibold uppercase font-mono tracking-[0.25em] text-emerald-700">
                 <span className="h-px w-8 bg-emerald-300" aria-hidden="true" />
                 <Heart className="h-3 w-3" /> {t.forReports}
               </span>
@@ -1403,7 +1403,7 @@ const Landing = () => {
           {/* HR */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-16 items-center">
             <div className="space-y-6">
-              <span className="inline-flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-700">
+              <span className="inline-flex items-center gap-3 text-[11px] font-semibold uppercase font-mono tracking-[0.25em] text-slate-700">
                 <span className="h-px w-8 bg-slate-300" aria-hidden="true" />
                 <BarChart className="h-3 w-3" /> {t.forHR}
               </span>
@@ -1428,7 +1428,7 @@ const Landing = () => {
       <section id="faq" className="py-20 px-6 bg-white">
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-12">
-            <p className="inline-flex items-center gap-3 text-[11px] uppercase tracking-[0.28em] text-slate-500 font-semibold mb-4">
+            <p className="inline-flex items-center gap-3 text-[11px] uppercase font-mono tracking-[0.25em] text-slate-500 font-semibold mb-4">
               <span className="h-px w-8 bg-slate-300" aria-hidden="true" />
               FAQ
             </p>
