@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { User, CreditCard, Plug, LifeBuoy, Slack, Calendar, Pencil, Loader2, Link as LinkIcon, Unlink, Check, Shield } from 'lucide-react';
+import { ConnectorFrame } from '@/components/brand/ConnectorFrame';
 import { Badge } from '@/components/ui/badge';
 import { useSlackConnection } from '@/hooks/useSlackConnection';
 import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
@@ -120,7 +121,7 @@ function IntegrationsTab() {
           return (
             <Card key={it.title} className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
               <CardHeader className="flex flex-row items-start gap-3 space-y-0">
-                <div className="rounded-xl bg-primary/10 p-2"><it.icon className="w-5 h-5 text-primary" /></div>
+                <ConnectorFrame><it.icon className="w-5 h-5 text-primary" /></ConnectorFrame>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <CardTitle className="text-base font-serif tracking-tight">{it.title}</CardTitle>
