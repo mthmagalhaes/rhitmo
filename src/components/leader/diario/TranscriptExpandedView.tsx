@@ -1,4 +1,4 @@
-// Granola-style expanded view for meeting transcripts in the Diário de Bordo.
+// Granola-style expanded view for meeting transcripts in Anotações & Evidências.
 //
 // Three tabs:
 //   • Resumo      → structured_summary (TL;DR, topics, decisions, action items)
