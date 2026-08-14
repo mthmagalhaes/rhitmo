@@ -17,7 +17,7 @@ export interface SlackCommand {
 export const SLACK_COMMANDS: SlackCommand[] = [
   { cmd: '/rhitmo',     desc: 'Menu principal com todas as ações',                privacy: 'menu',    audience: 'all' },
   { cmd: '/nota',       desc: 'Registrar observação privada sobre um liderado',   privacy: 'private', audience: 'leader' },
-  { cmd: '/kudos',      desc: 'Reconhecimento privado (DM + Diário de Bordo)',     privacy: 'private', audience: 'leader' },
+  { cmd: '/kudos',      desc: 'Reconhecimento privado (DM + Anotações & Evidências)',     privacy: 'private', audience: 'leader' },
   { cmd: '/brief',      desc: 'Resumo consolidado pré-1:1 de um liderado',        privacy: 'private', audience: 'leader' },
   { cmd: '/mentor',     desc: 'Chat IA contextual com a Rhitmo',                  privacy: 'private', audience: 'leader' },
   { cmd: '/meu-pdi',    desc: 'Ver seu plano de desenvolvimento (liderados)',     privacy: 'private', audience: 'member' },
