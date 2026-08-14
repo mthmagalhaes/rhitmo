@@ -49,7 +49,7 @@ export function SlackSignalsTriage() {
   if (evidences.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed bg-muted/20 p-8 text-center space-y-2">
-        <Slack className="h-6 w-6 mx-auto text-muted-foreground/70" />
+        <Slack className="h-6 w-6 mx-auto text-muted-foreground" />
         <p className="text-sm font-medium text-foreground">Nenhum sinal pendente</p>
         <p className="text-xs text-muted-foreground max-w-md mx-auto">
           A Rhitmo aprova automaticamente sinais de alta confiança. O que sobra aqui são casos ambíguos pra você revisar.

@@ -150,7 +150,7 @@ export default function PersonaSelector() {
               <Link to="/#pricing" className="text-foreground hover:text-primary underline-offset-4 hover:underline font-medium">
                 {t.seePricing}
               </Link>
-              <span className="mx-2 text-muted-foreground/50">·</span>
+              <span className="mx-2 text-muted-foreground">·</span>
               {t.footer}{' '}
               <Link to="/auth" className="text-primary hover:underline font-medium">
                 {t.footerCta}

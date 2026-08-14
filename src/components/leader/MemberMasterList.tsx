@@ -87,7 +87,7 @@ function InnerList({
         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           Liderados
         </p>
-        <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+        <p className="text-[11px] text-muted-foreground mt-0.5">
           {filtered.length} {filtered.length === 1 ? 'pessoa' : 'pessoas'}
         </p>
       </div>
@@ -123,7 +123,7 @@ function InnerList({
           </div>
         ) : filtered.length === 0 ? (
           <div className="px-4 py-10 text-center">
-            <Users className="h-6 w-6 text-muted-foreground/40 mx-auto mb-3" />
+            <Users className="h-6 w-6 text-muted-foreground mx-auto mb-3" />
             <p className="text-xs text-muted-foreground">
               {members.length === 0
                 ? 'Nenhum liderado cadastrado ainda.'

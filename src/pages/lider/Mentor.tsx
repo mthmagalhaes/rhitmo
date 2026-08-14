@@ -617,7 +617,7 @@ export default function LiderMentor() {
             <p className="text-sm text-muted-foreground py-4">Carregando…</p>
           ) : threads.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border p-8 text-center">
-              <MessageSquare className="h-6 w-6 mx-auto mb-2 text-muted-foreground/60" />
+              <MessageSquare className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
                 Nenhuma conversa ainda. Faça uma pergunta acima para começar.
               </p>
@@ -637,7 +637,7 @@ export default function LiderMentor() {
                       }}
                       className="flex-1 min-w-0 flex items-center gap-3 text-left"
                     >
-                      {t.is_pinned ? <Pin className="h-4 w-4 text-primary fill-primary shrink-0" /> : <MessageSquare className="h-4 w-4 text-muted-foreground/70 shrink-0" />}
+                      {t.is_pinned ? <Pin className="h-4 w-4 text-primary fill-primary shrink-0" /> : <MessageSquare className="h-4 w-4 text-muted-foreground shrink-0" />}
                       <div className="flex-1 min-w-0">
                         {editingThreadId === t.id ? (
                           <Input

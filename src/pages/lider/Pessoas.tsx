@@ -454,7 +454,7 @@ function PeopleListTab({ onNewMember }: { onNewMember: () => void }) {
           </div>
         ) : filtered.length === 0 ? (
           <div className="px-5 py-12 text-center">
-            <Users className="h-6 w-6 text-muted-foreground/40 mx-auto mb-3" />
+            <Users className="h-6 w-6 text-muted-foreground mx-auto mb-3" />
             <p className="text-sm text-muted-foreground">
               {members.length === 0
                 ? 'Nenhum liderado cadastrado ainda.'
@@ -532,7 +532,7 @@ function PeopleListTab({ onNewMember }: { onNewMember: () => void }) {
                             locale: ptBR,
                           })}
                         </div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
+                        <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
                       </button>
                     </div>
                   </li>

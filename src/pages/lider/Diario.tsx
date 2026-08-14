@@ -398,7 +398,7 @@ export default function LiderDiario() {
         </div>
       ) : items.length === 0 ? (
         <Card className="p-10 text-center rounded-2xl border-dashed bg-transparent">
-          <Inbox className="h-7 w-7 text-muted-foreground/50 mx-auto mb-3" />
+          <Inbox className="h-7 w-7 text-muted-foreground mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">
             {feedbacks.length === 0
               ? 'Você ainda não tem anotações no período selecionado.'
@@ -450,7 +450,7 @@ function FeedSection({
     <section>
       <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-2.5">
         {title}{' '}
-        <span className="text-muted-foreground/60 font-normal normal-case tracking-normal">
+        <span className="text-muted-foreground font-normal normal-case tracking-normal">
           · {items.length}
         </span>
       </h2>

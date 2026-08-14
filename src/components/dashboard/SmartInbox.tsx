@@ -106,7 +106,7 @@ export function SmartInbox({ workspaceId }: SmartInboxProps) {
                     'h-4 w-4',
                     item.tone === 'primary' && 'text-primary',
                     item.tone === 'amber' && 'text-amber-500',
-                    item.tone === 'muted' && 'text-muted-foreground/60',
+                    item.tone === 'muted' && 'text-muted-foreground',
                   )}
                 />
                 {interactive && <ChevronRight className="h-3 w-3 ml-auto text-muted-foreground" />}

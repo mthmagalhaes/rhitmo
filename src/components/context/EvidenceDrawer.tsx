@@ -86,7 +86,7 @@ export function EvidenceDrawer() {
 
           {!isLoading && (isError || !evidence) && (
             <div className="flex flex-col items-center justify-center text-center py-12 text-muted-foreground">
-              <AlertCircle className="h-8 w-8 mb-3 text-muted-foreground/60" />
+              <AlertCircle className="h-8 w-8 mb-3 text-muted-foreground" />
               <p className="text-sm font-medium text-foreground/80">Evidência não disponível</p>
               <p className="text-xs mt-1 max-w-xs">
                 A referência citada pela IA pode ter sido removida ou você não tem permissão para visualizá-la.

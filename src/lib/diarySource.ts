@@ -118,7 +118,7 @@ export function getDiarySourceMeta(
       label: 'Bot',
       icon: Bot,
       badgeClass:
-        'bg-primary/10 text-primary border-primary/20',
+        'bg-primary/10 text-primary-700 border-primary/25',
     };
   }
   if (effective === 'transcription') {
@@ -136,14 +136,14 @@ export function getDiarySourceMeta(
           label: 'Transcrição',
           icon: FileText,
           badgeClass:
-            'bg-warning/10 text-warning border-warning/20',
+            'bg-warning/10 text-warning-strong border-warning/25',
         }
       : {
           kind: 'upload',
           label: 'Upload',
           icon: Upload,
           badgeClass:
-            'bg-info/10 text-info border-info/20',
+            'bg-info/10 text-info-strong border-info/25',
         };
   }
   if (effective === 'granola') {
@@ -152,7 +152,7 @@ export function getDiarySourceMeta(
       label: 'Granola',
       icon: NotebookPen,
       badgeClass:
-        'bg-success/10 text-success border-success/20',
+        'bg-success/10 text-success-strong border-success/25',
     };
   }
   if (effective === 'slack' || effective === 'slack_activity_rollup' || effective === 'slack_ambient') {

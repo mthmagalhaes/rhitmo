@@ -47,25 +47,29 @@ All colors MUST be HSL.
 
     /* ── Muted — superfícies neutras quentes ── */
     --muted:              42 22% 91%;   /* #EDEAE3 creme levemente mais escuro */
-    --muted-foreground:   255 12% 46%; /* #6B6784 */
+    --muted-foreground:   255 12% 42%; /* #655E78 — AA sobre superfície muted */
 
     /* ── Accent — tint roxo leve ── */
     --accent:             262 100% 97%; /* #F3F0FF */
     --accent-foreground:  262  72% 45%;
 
     /* ── Semânticas ── */
-    --success:            160 73% 33%;  /* #179268 */
+    --success:            160 76% 28%;  /* #117E59 — AA com texto branco */
     --success-foreground:   0  0% 100%;
-    --warning:             38 93% 50%;  /* #F59E0B */
-    --warning-foreground:   0  0% 100%;
+    --success-strong:     160 76% 28%;  /* texto/ícone sobre fundo claro */
+    --warning:             38 93% 50%;  /* #F59E0B — superfície da marca */
+    --warning-foreground: 258 52% 15%;  /* tinta escura: 8.2:1 */
+    --warning-strong:      32 95% 33%;  /* #A45904 — texto/ícone sobre claro */
     --destructive:          0 73% 52%;  /* #DE2C2C */
     --destructive-foreground: 0 0% 100%;
-    --info:               202 89% 48%;  /* #0E9AE8 */
+    --destructive-strong:   0 73% 47%;
+    --info:               202 90% 36%;  /* #0972AE */
     --info-foreground:      0  0% 100%;
+    --info-strong:        202 90% 36%;
 
     /* ── Borders / inputs ── */
     --border:  40 18% 83%;  /* #DCD7CD — quente, não azulado */
-    --input:   40 18% 83%;
+    --input:   40 12% 50%;  /* #8F8578 — controle de formulário ≥3:1 */
     --ring:   262 83% 58%;
 
     /* ── Radius base ── */
@@ -97,8 +101,8 @@ All colors MUST be HSL.
 
     /* ── Charts ── */
     --chart-1: 262 83% 58%;
-    --chart-2: 202 89% 48%;
-    --chart-3: 160 73% 33%;
+    --chart-2: 202 90% 36%;
+    --chart-3: 160 76% 28%;
     --chart-4:  38 93% 50%;
     --chart-5: 258 52% 15%;
 
@@ -149,15 +153,19 @@ All colors MUST be HSL.
 
     --success:            160 73% 42%;
     --success-foreground: 240 10% 11%;
+    --success-strong:     160 73% 46%;
     --warning:             38 92% 55%;
     --warning-foreground: 240 10% 11%;
-    --destructive:          0 73% 58%;
-    --destructive-foreground: 250 10% 95%;
+    --warning-strong:      38 92% 58%;
+    --destructive:          0 80% 68%;
+    --destructive-foreground: 240 10% 11%;
+    --destructive-strong:   0 80% 68%;
     --info:               202 89% 56%;
     --info-foreground:    240 10% 11%;
+    --info-strong:        202 89% 60%;
 
     --border:  240 10% 20%;    /* #2e2e3a */
-    --input:   240 10% 20%;
+    --input:   240  8% 45%;    /* controle de formulário ≥3:1 no escuro */
     --ring:    263 86% 76%;
 
     /* ── Shadows (dark) ── */

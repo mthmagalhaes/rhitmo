@@ -513,7 +513,7 @@ const ImagePlaceholder = ({
   label: string;
 }) => <div className="w-full h-full bg-muted/50 flex items-center justify-center">
     <div className="text-center space-y-2 px-4">
-      <ImageIcon className="h-10 w-10 mx-auto text-muted-foreground/50" />
+      <ImageIcon className="h-10 w-10 mx-auto text-muted-foreground" />
       <p className="text-sm text-muted-foreground">{label}</p>
     </div>
   </div>;
@@ -696,7 +696,7 @@ const HRRiskMockup = () => (
     <div className="px-5 py-3 border-t bg-slate-50/60 grid grid-cols-3 gap-4">
       <div>
         <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Saúde geral</div>
-        <div className="text-base font-bold text-slate-900">82<span className="text-xs text-slate-400">/100</span></div>
+        <div className="text-base font-bold text-slate-900">82<span className="text-xs text-slate-500">/100</span></div>
       </div>
       <div>
         <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Cobertura</div>
@@ -1115,7 +1115,7 @@ const Landing = () => {
                 {t.seePlans}
               </a>
             </div>
-            <p className="text-xs text-slate-400 pt-2">
+            <p className="text-xs text-slate-500 pt-2">
               {lang === 'pt' ? 'Sem cartão de crédito para começar. Cancele quando quiser.' : 'No credit card to start. Cancel anytime.'}
             </p>
           </div>
@@ -1129,7 +1129,7 @@ const Landing = () => {
                   <span className="w-2.5 h-2.5 rounded-full bg-slate-200" />
                   <span className="w-2.5 h-2.5 rounded-full bg-slate-200" />
                   <span className="w-2.5 h-2.5 rounded-full bg-slate-200" />
-                  <div className="ml-3 text-[11px] text-slate-400 font-medium">rhitmo.co · Pessoas · Joana Silva</div>
+                  <div className="ml-3 text-[11px] text-slate-500 font-medium">rhitmo.co · Pessoas · Joana Silva</div>
                 </div>
 
                 {/* Sheet header — creme */}
@@ -1162,7 +1162,7 @@ const Landing = () => {
                           <CheckCircle2 className="h-2.5 w-2.5" /> 6 confirmados
                         </span>
                       </div>
-                      <div className="text-[11px] text-slate-400">6 mensais no histórico</div>
+                      <div className="text-[11px] text-slate-500">6 mensais no histórico</div>
                     </div>
                   </div>
 
@@ -1179,7 +1179,7 @@ const Landing = () => {
                   {/* Current month placeholder */}
                   <div className="border border-dashed border-slate-200 rounded-2xl px-4 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Clock className="h-3.5 w-3.5 text-slate-400" />
+                      <Clock className="h-3.5 w-3.5 text-slate-500" />
                       <span className="text-[13px] font-semibold text-slate-700">Junho de 2026</span>
                     </div>
                     <span className="text-[10px] font-medium text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded-full">Mês em curso</span>
@@ -1199,18 +1199,18 @@ const Landing = () => {
 
                     <div className="px-4 py-4 space-y-3.5 relative">
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 mb-1">1. Mandou bem</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 mb-1">1. Mandou bem</p>
                         <p className="text-[13px] text-slate-700 leading-snug">Liderou a refatoração do fechamento contábil sem travar o time.</p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 mb-1">2. Atenção</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 mb-1">2. Atenção</p>
                         <p className="text-[13px] text-slate-700 leading-snug">Solicitou auxílio para destravar sprints de conciliação bancária e contas a pagar.</p>
                         <span className="inline-flex items-center gap-1.5 mt-2 text-[10px] text-slate-500 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-full">
                           <FileText className="h-2.5 w-2.5" /> Anotação · 27/05
                         </span>
                       </div>
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 mb-1">3. Padrão do mês</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 mb-1">3. Padrão do mês</p>
                         <p className="text-[13px] text-slate-700 leading-snug">Foco em execução financeira e busca proativa por desbloqueio.</p>
                       </div>
                       <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-white to-transparent pointer-events-none" />
@@ -1228,18 +1228,18 @@ const Landing = () => {
                 </div>
                 <div>
                   <p className="font-serif text-[13px] font-bold tracking-tight text-slate-900 leading-none">Diário de Bordo</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">5 registros · Joana Silva</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">5 registros · Joana Silva</p>
                 </div>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-[11px]">
-                  <Lock className="h-2.5 w-2.5 text-slate-400 shrink-0" />
-                  <span className="text-slate-400">08/06</span>
+                  <Lock className="h-2.5 w-2.5 text-slate-500 shrink-0" />
+                  <span className="text-slate-500">08/06</span>
                   <span className="text-slate-700 truncate">Alinhamento Operações</span>
                 </div>
                 <div className="flex items-center gap-2 text-[11px]">
-                  <Lock className="h-2.5 w-2.5 text-slate-400 shrink-0" />
-                  <span className="text-slate-400">27/05</span>
+                  <Lock className="h-2.5 w-2.5 text-slate-500 shrink-0" />
+                  <span className="text-slate-500">27/05</span>
                   <span className="text-slate-700 truncate">sync · automações financeiro</span>
                 </div>
               </div>
@@ -1300,9 +1300,9 @@ const Landing = () => {
             </p>
             <h2 className="font-serif text-5xl md:text-7xl font-bold tracking-tight leading-[1.02] text-slate-900">
               <span className="block">{lang === 'pt' ? 'Não é promessa.' : 'Not a promise.'}</span>
-              <span className="block italic text-slate-400 font-normal">{lang === 'pt' ? 'São números.' : 'These are numbers.'}</span>
+              <span className="block italic text-slate-500 font-normal">{lang === 'pt' ? 'São números.' : 'These are numbers.'}</span>
             </h2>
-            <p className="text-base text-slate-400 mt-6 max-w-xl">
+            <p className="text-base text-slate-500 mt-6 max-w-xl">
               {lang === 'pt' ? "\n" : 'Every number here has a source. No hype, no roadmap.'}
             </p>
           </div>
@@ -1310,7 +1310,7 @@ const Landing = () => {
           {/* Stat-hero — Produtividade */}
           <div className="border-t border-slate-200 pt-12 pb-20">
             <div className="flex items-center gap-4 mb-10">
-              <span className="font-mono text-[11px] tracking-[0.25em] text-slate-400">01 / {lang === 'pt' ? 'AGILIDADE' : 'PRODUCTIVITY'}</span>
+              <span className="font-mono text-[11px] tracking-[0.25em] text-slate-500">01 / {lang === 'pt' ? 'AGILIDADE' : 'PRODUCTIVITY'}</span>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-10 lg:gap-16 items-center">
               <div className="lg:col-span-3 font-serif font-bold tracking-tight text-slate-900 leading-[0.9] flex items-baseline gap-4 md:gap-8">
@@ -1324,7 +1324,7 @@ const Landing = () => {
                     ? <>Redigir uma avaliação de desempenho consome em média <span className="text-slate-900 font-medium">4 horas por liderado</span>. Com Rhitmo, o draft sai pronto em <span className="text-slate-900 font-medium">2 minutos</span> a partir do contexto já capturado.</>
                     : <>Writing a performance review takes on average <span className="text-slate-900 font-medium">4 hours per report</span>. With Rhitmo, the draft is ready in <span className="text-slate-900 font-medium">2 minutes</span> from context already captured.</>}
                 </p>
-                <p className="text-xs text-slate-400 font-mono tracking-wide">{lang === 'pt' ? "\n" : 'Source: Gallup, 2024 · Rhitmo benchmark'}</p>
+                <p className="text-xs text-slate-500 font-mono tracking-wide">{lang === 'pt' ? "\n" : 'Source: Gallup, 2024 · Rhitmo benchmark'}</p>
               </div>
             </div>
           </div>
@@ -1332,24 +1332,24 @@ const Landing = () => {
           {/* Stats 2 + 3 — supporting evidence */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-slate-200 border-t border-slate-200">
             <div className="bg-white pt-12 pb-4 md:pr-10">
-              <span className="font-mono text-[11px] tracking-[0.25em] text-slate-400 block mb-8">02 / {lang === 'pt' ? 'EQUIDADE' : 'EQUITY'}</span>
+              <span className="font-mono text-[11px] tracking-[0.25em] text-slate-500 block mb-8">02 / {lang === 'pt' ? 'EQUIDADE' : 'EQUITY'}</span>
               <div className="font-serif text-7xl md:text-8xl font-bold tracking-tight text-slate-900 mb-6">38×</div>
               <p className="text-base text-slate-600 leading-relaxed mb-4 max-w-sm">
                 {lang === 'pt'
                   ? <>Mulheres recebem <span className="text-slate-900 font-medium">38× mais feedback sobre personalidade</span> do que homens. Rhitmo detecta e sinaliza antes da publicação.</>
                   : <>Women receive <span className="text-slate-900 font-medium">38× more personality feedback</span> than men. Rhitmo detects and flags before you publish.</>}
               </p>
-              <p className="text-xs text-slate-400 font-mono tracking-wide">{lang === 'pt' ? "Fonte: Language Bias in performance feedback, 2024\n\n" : 'Source: Stanford VMware Women\'s Leadership Lab'}</p>
+              <p className="text-xs text-slate-500 font-mono tracking-wide">{lang === 'pt' ? "Fonte: Language Bias in performance feedback, 2024\n\n" : 'Source: Stanford VMware Women\'s Leadership Lab'}</p>
             </div>
             <div className="bg-white pt-12 pb-4 md:pl-10">
-              <span className="font-mono text-[11px] tracking-[0.25em] text-slate-400 block mb-8">03 / {lang === 'pt' ? 'RETENÇÃO' : 'SAVINGS'}</span>
+              <span className="font-mono text-[11px] tracking-[0.25em] text-slate-500 block mb-8">03 / {lang === 'pt' ? 'RETENÇÃO' : 'SAVINGS'}</span>
               <div className="font-serif text-7xl md:text-8xl font-bold tracking-tight text-slate-900 mb-6">3x</div>
               <p className="text-base text-slate-600 leading-relaxed mb-4 max-w-sm">
                 {lang === 'pt'
                   ? <>Times que entendem o que é esperado têm <span className="text-slate-900 font-medium">3× mais chance de permanecer na empresa</span>. Feedback vago não é só injusto, mas muito caro. Rhitmo transforma o dia a dia em clareza acionável.</>
                   : <>Traditional reviews cost up to <span className="text-slate-900 font-medium">$35M/year</span> in large companies. Rhitmo cuts that by 60% while keeping precision.</>}
               </p>
-              <p className="text-xs text-slate-400 font-mono tracking-wide">{lang === 'pt' ? 'Fonte: Deloitte, Reinventing Performance Management' : 'Source: Deloitte, Reinventing Performance Management'}</p>
+              <p className="text-xs text-slate-500 font-mono tracking-wide">{lang === 'pt' ? 'Fonte: Deloitte, Reinventing Performance Management' : 'Source: Deloitte, Reinventing Performance Management'}</p>
             </div>
           </div>
         </div>
@@ -1459,7 +1459,7 @@ const Landing = () => {
         <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-10">
           <div className="col-span-2">
             <RhitmoLogo size="sm" className="text-slate-900" />
-            <p className="mt-4 text-sm text-slate-400 max-w-xs leading-relaxed">
+            <p className="mt-4 text-sm text-slate-500 max-w-xs leading-relaxed">
               {lang === 'pt'
                 ? 'O parceiro AI-nativo de liderança que transforma conversas em avaliações de desempenho prontas.'
                 : 'The AI-native leadership partner that turns conversations into ready-made performance reviews.'}
@@ -1483,7 +1483,7 @@ const Landing = () => {
             </ul>
           </div>
         </div>
-        <div className="max-w-7xl mx-auto mt-16 pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 text-[11px] font-medium text-slate-400">
+        <div className="max-w-7xl mx-auto mt-16 pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 text-[11px] font-medium text-slate-500">
           <span>{t.footerRights}</span>
           <div className="flex gap-6 uppercase tracking-[0.2em] font-bold">
             <span>SOC 2 Type II</span>

@@ -168,13 +168,13 @@ export const UpcomingMeetingsCard = () => {
           </div>
         </div>
         <div className="flex-1 flex flex-col items-center justify-center text-center py-6">
-          <CalendarOff className="h-9 w-9 text-muted-foreground/30 mb-3" />
+          <CalendarOff className="h-9 w-9 text-muted-foreground mb-3" />
           {hasEvents ? (
             <>
               <p className="text-sm text-muted-foreground mb-1">
                 {syncDebug.events_found} eventos encontrados, mas nenhum com liderados cadastrados
               </p>
-              <p className="text-xs text-muted-foreground/70">
+              <p className="text-xs text-muted-foreground">
                 Verifique se os e-mails dos liderados estão cadastrados corretamente no time
               </p>
             </>
@@ -373,7 +373,7 @@ export const UpcomingMeetingsCard = () => {
                     // No bot — auto on: pendente; auto off: botão "Transcrever".
                     if (autoTranscribe) {
                       return (
-                        <span className="flex items-center gap-1 text-xs text-muted-foreground/60 font-medium">
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
                           <Sparkles className="h-3.5 w-3.5" />
                           Pendente
                         </span>

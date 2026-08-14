@@ -170,7 +170,7 @@ export const PerformanceReviewList = ({ memberId, memberName, onCreateReview }: 
                   <span className={cn("text-[12px] font-semibold uppercase tracking-[0.14em]", meta.tone)}>
                     {meta.label}
                   </span>
-                  <span className="text-[11px] text-muted-foreground/70 font-medium">
+                  <span className="text-[11px] text-muted-foreground font-medium">
                     · {items.length}
                   </span>
                 </CollapsibleTrigger>
@@ -190,7 +190,7 @@ export const PerformanceReviewList = ({ memberId, memberName, onCreateReview }: 
                         <span className="text-xs text-muted-foreground hidden sm:inline">
                           {getPeriodLabel(review)}
                         </span>
-                        <span className="text-xs text-muted-foreground/70 hidden md:flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground hidden md:flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
                           {new Date(review.created_at).toLocaleDateString('pt-BR')}
                         </span>

@@ -48,7 +48,7 @@ function JourneyMock({ kind, lang }: { kind: MockKind; lang: Lang }) {
             <div className="flex items-center gap-1.5">
               <span className="text-[12px] font-semibold text-slate-900">Rhitmo</span>
               <span className="text-[9px] px-1 py-px rounded bg-slate-100 text-slate-500 font-semibold">APP</span>
-              <span className="text-[10px] text-slate-400">{lang === "pt" ? "seg 09:02" : "Mon 9:02"}</span>
+              <span className="text-[10px] text-slate-500">{lang === "pt" ? "seg 09:02" : "Mon 9:02"}</span>
             </div>
           </div>
         </div>
@@ -62,7 +62,7 @@ function JourneyMock({ kind, lang }: { kind: MockKind; lang: Lang }) {
           <div>
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] font-semibold text-slate-900">Ana</span>
-              <span className="text-[10px] text-slate-400">{lang === "pt" ? "seg 09:04" : "Mon 9:04"}</span>
+              <span className="text-[10px] text-slate-500">{lang === "pt" ? "seg 09:04" : "Mon 9:04"}</span>
             </div>
             <p className="text-[11px] text-slate-600 leading-snug mt-0.5">
               {lang === "pt"
@@ -81,9 +81,9 @@ function JourneyMock({ kind, lang }: { kind: MockKind; lang: Lang }) {
         <div className="flex items-center gap-2 mb-1">
           <div className="w-7 h-7 rounded-lg bg-rose-50 flex items-center justify-center text-[11px]">🎯</div>
           <span className="text-[12px] font-semibold text-slate-900">{lang === "pt" ? "Pauta da 1:1 — Ana / José" : "1:1 Agenda — Ana / Matheus"}</span>
-          <Lock className="ml-auto w-3 h-3 text-slate-400" />
+          <Lock className="ml-auto w-3 h-3 text-slate-500" />
         </div>
-        <p className="text-[10px] text-slate-400 mb-3">{lang === "pt" ? "Auto-gerada · 14/mar" : "Auto-generated · Mar 14"}</p>
+        <p className="text-[10px] text-slate-500 mb-3">{lang === "pt" ? "Auto-gerada · 14/mar" : "Auto-generated · Mar 14"}</p>
         <div className="space-y-2">
           {[
             lang === "pt" ? "Follow-up nos playbooks da área" : "Follow up on design-system walkthrough",
@@ -132,7 +132,7 @@ function JourneyMock({ kind, lang }: { kind: MockKind; lang: Lang }) {
             <Lock className="w-2.5 h-2.5" /> {lang === "pt" ? "privado" : "private"}
           </span>
         </div>
-        <p className="text-[10px] text-slate-400 mb-3 ml-9 -mt-1">
+        <p className="text-[10px] text-slate-500 mb-3 ml-9 -mt-1">
           {lang === "pt" ? "6 registros · Ana Souza" : "6 entries · Ana Souza"}
         </p>
         <div className="flex flex-wrap gap-1 mb-3 pb-3 border-b border-slate-100">
@@ -142,15 +142,15 @@ function JourneyMock({ kind, lang }: { kind: MockKind; lang: Lang }) {
             </span>
           ))}
         </div>
-        <p className="text-[9px] uppercase tracking-[0.15em] text-slate-400 font-semibold mb-2">
+        <p className="text-[9px] uppercase tracking-[0.15em] text-slate-500 font-semibold mb-2">
           {lang === "pt" ? "Esta semana · 2" : "This week · 2"}
         </p>
         <div className="space-y-2">
           {notes.map((n, i) => (
             <div key={i} className="flex items-center gap-2">
-              <Lock className="w-2.5 h-2.5 text-slate-300 shrink-0" />
-              <Calendar className="w-2.5 h-2.5 text-slate-400 shrink-0" />
-              <span className="text-[10px] text-slate-400 shrink-0">{n.date}</span>
+              <Lock className="w-2.5 h-2.5 text-slate-500 shrink-0" />
+              <Calendar className="w-2.5 h-2.5 text-slate-500 shrink-0" />
+              <span className="text-[10px] text-slate-500 shrink-0">{n.date}</span>
               <div className="w-4 h-4 rounded-full bg-gradient-to-br from-orange-300 to-orange-400 shrink-0" />
               <span className="text-[11px] text-slate-700 truncate flex-1">{n.title}</span>
               <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full bg-slate-50 border border-slate-100 text-slate-500 shrink-0">
@@ -285,7 +285,7 @@ export function SarahJourneySection({ lang, copy }: Props) {
                 className={`flex items-center gap-2 transition-all rounded-full text-[12px] font-medium ${
                   active
                     ? "bg-slate-900 text-white pl-2.5 pr-4 py-1.5"
-                    : "border border-slate-200 text-slate-400 hover:text-slate-700 hover:border-slate-300 w-8 h-8 justify-center"
+                    : "border border-slate-200 text-slate-500 hover:text-slate-700 hover:border-slate-300 w-8 h-8 justify-center"
                 }`}
                 aria-label={`${i + 1} ${a.label}`}
               >

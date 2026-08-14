@@ -44,7 +44,8 @@ export default {
         },
         destructive: {
           DEFAULT:    "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))"
+          foreground: "hsl(var(--destructive-foreground))",
+          strong:     "hsl(var(--destructive-strong))"
         },
         muted: {
           DEFAULT:    "hsl(var(--muted))",
@@ -56,15 +57,18 @@ export default {
         },
         success: {
           DEFAULT:    "hsl(var(--success))",
-          foreground: "hsl(var(--success-foreground))"
+          foreground: "hsl(var(--success-foreground))",
+          strong:     "hsl(var(--success-strong))"
         },
         warning: {
           DEFAULT:    "hsl(var(--warning))",
-          foreground: "hsl(var(--warning-foreground))"
+          foreground: "hsl(var(--warning-foreground))",
+          strong:     "hsl(var(--warning-strong))"
         },
         info: {
           DEFAULT:    "hsl(var(--info))",
-          foreground: "hsl(var(--info-foreground))"
+          foreground: "hsl(var(--info-foreground))",
+          strong:     "hsl(var(--info-strong))"
         },
         popover: {
           DEFAULT:    "hsl(var(--popover))",

@@ -188,7 +188,7 @@ const HRDashboard = () => {
         {/* ═══ ATIVIDADE DOS LÍDERES — Sprint 1.5: nomes + avatares (sem UUIDs) ═══ */}
         <section>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-4">
-            Atividade dos Líderes <span className="text-muted-foreground/50 ml-1">(últimos 30d)</span>
+            Atividade dos Líderes <span className="text-muted-foreground ml-1">(últimos 30d)</span>
           </p>
           <div className="bg-card rounded-2xl border border-border shadow-sm p-6">
             {isLoading ? (

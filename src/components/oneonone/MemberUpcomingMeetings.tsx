@@ -72,7 +72,7 @@ export function MemberUpcomingMeetings({ memberId, memberName }: MemberUpcomingM
     return (
       <Card className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-4">
         <div className="flex items-center gap-2.5">
-          <Calendar className="h-4 w-4 text-muted-foreground/60" />
+          <Calendar className="h-4 w-4 text-muted-foreground" />
           <p className="text-xs text-muted-foreground">
             Nenhuma 1:1 agendada com {memberName.split(' ')[0]} nas próximas 48h.
           </p>
