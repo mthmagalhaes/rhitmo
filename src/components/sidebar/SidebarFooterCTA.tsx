@@ -42,7 +42,7 @@ export function SidebarFooterCTA({ persona }: Props) {
         {persona === 'leader' ? t('nav.cta.pergunte_mentor') : t('nav.cta.meu_rhitmo')}
       </span>
       {persona === 'direct_report' && (
-        <Lock className="h-3 w-3 text-muted-foreground/70 shrink-0" />
+        <Lock className="h-3 w-3 text-muted-foreground shrink-0" />
       )}
     </button>
   );

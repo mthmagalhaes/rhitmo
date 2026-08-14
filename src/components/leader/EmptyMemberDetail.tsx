@@ -17,7 +17,7 @@ export function EmptyMemberDetail({
     <div className="h-full min-h-[60vh] flex items-center justify-center px-6">
       <div className="text-center max-w-xs">
         <Icon
-          className="h-10 w-10 mx-auto mb-4 text-muted-foreground/40"
+          className="h-10 w-10 mx-auto mb-4 text-muted-foreground"
           strokeWidth={1.5}
         />
         <h2 className="font-serif text-lg font-bold tracking-tight mb-1.5">

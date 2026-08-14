@@ -431,7 +431,7 @@ const MemberDetails = () => {
     
     if (!config) {
       return (
-        <Badge variant="secondary" className="gap-2 py-2 px-3 bg-gray-500/10 text-gray-600 dark:text-gray-400">
+        <Badge variant="secondary" className="gap-2 py-2 px-3 bg-gray-500/10 text-gray-600 dark:text-gray-500">
           <HelpCircle className="h-4 w-4" />
           {key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ')}
         </Badge>
@@ -642,7 +642,7 @@ const MemberDetails = () => {
                                     const config = styleConfig.motivators?.[motivator as keyof typeof styleConfig.motivators];
                                     if (!config) {
                                       return (
-                                        <Badge key={motivator} variant="secondary" className="gap-2 py-2 px-3 bg-gray-500/10 text-gray-700 dark:text-gray-400">
+                                        <Badge key={motivator} variant="secondary" className="gap-2 py-2 px-3 bg-gray-500/10 text-gray-700 dark:text-gray-500">
                                           <HelpCircle className="h-4 w-4" />
                                           {motivator.charAt(0).toUpperCase() + motivator.slice(1)}
                                         </Badge>

@@ -238,7 +238,7 @@ export function AppSidebar() {
             >
               <Search className="h-3.5 w-3.5" />
               <span className="flex-1 text-left">{t('nav.quick.search', 'Buscar')}</span>
-              <kbd className="hidden sm:inline text-[10px] font-mono text-muted-foreground/70 border border-border/40 rounded px-1 py-0.5">
+              <kbd className="hidden sm:inline text-[10px] font-mono text-muted-foreground border border-border/40 rounded px-1 py-0.5">
                 ⌘K
               </kbd>
             </button>

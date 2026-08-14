@@ -781,7 +781,7 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
                     </div>
                   ) : sharedReviews.length === 0 ? (
                     <Card className="p-8 text-center rounded-2xl border-0 shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
-                      <FileText className="h-8 w-8 mx-auto mb-3 text-muted-foreground/30" />
+                      <FileText className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
                       <p className="text-sm text-muted-foreground">
                         {t('directReport.noSharedReviews')}
                       </p>

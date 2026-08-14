@@ -57,7 +57,7 @@ function EvidenceChips({ ids }: { ids: string[] }) {
         </button>
       ))}
       {ids.length > 3 && (
-        <span className="text-[10px] text-muted-foreground/70">+{ids.length - 3}</span>
+        <span className="text-[10px] text-muted-foreground">+{ids.length - 3}</span>
       )}
     </span>
   );
@@ -72,17 +72,17 @@ function BriefBlock({ spec, items }: { spec: BlockSpec; items: BriefItem[] }) {
         <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
           {spec.label}
         </h3>
-        <span className="text-[10px] text-muted-foreground/60">
+        <span className="text-[10px] text-muted-foreground">
           {items.length === 0 ? 'sem sinais' : `${items.length}`}
         </span>
       </div>
       {items.length === 0 ? (
-        <p className="text-[13px] text-muted-foreground/60 italic pl-5">—</p>
+        <p className="text-[13px] text-muted-foreground italic pl-5">—</p>
       ) : (
         <ul className="space-y-1.5 pl-5">
           {items.map((it, i) => (
             <li key={i} className="text-[14px] text-foreground leading-relaxed">
-              <span className="text-muted-foreground/50 mr-2">·</span>
+              <span className="text-muted-foreground mr-2">·</span>
               {it.text}
               <EvidenceChips ids={it.evidence_ids} />
             </li>
@@ -120,7 +120,7 @@ export function ExecutiveBrief({
               Briefing Executivo
             </p>
             {brief && (
-              <p className="text-[11px] text-muted-foreground/70 truncate">
+              <p className="text-[11px] text-muted-foreground truncate">
                 {brief.evidence_count} {brief.evidence_count === 1 ? 'evidência' : 'evidências'} ·
                 gerado {formatDistanceToNow(new Date(brief.generated_at), { addSuffix: true, locale: ptBR })}
               </p>
@@ -172,7 +172,7 @@ export function ExecutiveBrief({
           </div>
         ) : !brief || total === 0 ? (
           <div className="py-8 text-center">
-            <Sparkles className="h-7 w-7 mx-auto text-muted-foreground/40 mb-3" strokeWidth={1.5} />
+            <Sparkles className="h-7 w-7 mx-auto text-muted-foreground mb-3" strokeWidth={1.5} />
             <p className="text-sm font-medium text-foreground mb-1">
               Sem sinais nos últimos {windowDays} dias
             </p>

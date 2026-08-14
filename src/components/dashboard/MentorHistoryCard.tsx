@@ -122,7 +122,7 @@ export function MentorHistoryCard({ onOpenMentor }: Props) {
                       )}
                     </p>
                   </div>
-                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0" />
+                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
                 </button>
               </li>
             ))}

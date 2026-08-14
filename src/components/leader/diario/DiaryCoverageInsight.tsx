@@ -121,7 +121,7 @@ export function DiaryCoverageInsight({ members, onCreateNoteFor }: DiaryCoverage
         type="button"
         onClick={handleDismiss}
         aria-label="Dispensar insight"
-        className="absolute top-3 right-3 text-muted-foreground/60 hover:text-foreground transition-colors rounded-md p-1 hover:bg-muted/60"
+        className="absolute top-3 right-3 text-muted-foreground hover:text-foreground transition-colors rounded-md p-1 hover:bg-muted/60"
       >
         <X className="h-3.5 w-3.5" />
       </button>

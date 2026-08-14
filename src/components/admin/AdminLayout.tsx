@@ -97,7 +97,7 @@ export const AdminLayout = ({ children, activeTab, onTabChange }: AdminLayoutPro
           >
             <LogOut className="h-3.5 w-3.5" /> Sair
           </Button>
-          <p className="px-2 pt-1 text-[10px] text-muted-foreground/70">
+          <p className="px-2 pt-1 text-[10px] text-muted-foreground">
             Logs: <a href="/admin/logs" className="underline hover:text-foreground">/admin/logs</a>
           </p>
         </div>

@@ -89,13 +89,13 @@ export function WorkspaceSwitcher({ onOpenInvite }: WorkspaceSwitcherProps) {
         <p className="font-semibold truncate text-sidebar-foreground leading-tight">
           {current?.name ?? 'Workspace'}
           {showModeChip && chipText && (
-            <span className="ml-1.5 text-[10px] uppercase tracking-wide text-muted-foreground/70 font-medium">
+            <span className="ml-1.5 text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
               · {chipText}
             </span>
           )}
         </p>
       </div>
-      <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+      <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
     </button>
   );
 

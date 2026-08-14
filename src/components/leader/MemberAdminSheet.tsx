@@ -484,7 +484,7 @@ export function MemberAdminSheet({
                         <Icon className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
                         <span className="text-foreground/90">{s.label}</span>
                       </span>
-                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/60 group-hover:text-foreground transition-colors" />
+                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
                     </button>
                   );
                 })}

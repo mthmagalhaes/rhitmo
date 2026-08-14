@@ -52,7 +52,7 @@ export function ThreadsList({ persona }: Props) {
 
   return (
     <div className="px-2 pt-3">
-      <p className="px-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70 mb-1">
+      <p className="px-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
         {heading}
       </p>
       <ul className="space-y-0.5">
@@ -79,7 +79,7 @@ export function ThreadsList({ persona }: Props) {
                   'hover:bg-sidebar-accent/40 transition-colors text-left',
                 )}
               >
-                <MessageSquare className="h-3 w-3 shrink-0 text-muted-foreground/60 group-hover:text-primary" />
+                <MessageSquare className="h-3 w-3 shrink-0 text-muted-foreground group-hover:text-primary" />
                 <span className="truncate flex-1">{t.title}</span>
                 {isSlack && (
                   <span className="text-[9px] uppercase tracking-wider text-primary/70 font-semibold shrink-0">

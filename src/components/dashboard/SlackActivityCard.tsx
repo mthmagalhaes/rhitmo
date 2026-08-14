@@ -149,7 +149,7 @@ export function SlackActivityCard({ memberId }: { memberId: string }) {
           )}
 
           {data?.occurred_at && (
-            <p className="text-[10px] text-muted-foreground/60">
+            <p className="text-[10px] text-muted-foreground">
               Atualizado {formatDistanceToNow(new Date(data.occurred_at), { addSuffix: true, locale: ptBR })}
             </p>
           )}

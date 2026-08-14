@@ -152,7 +152,7 @@ export default function SlackChannels() {
             </div>
           ) : filtered.length === 0 ? (
             <div className="rounded-3xl border border-border/60 bg-card p-12 text-center">
-              <Hash className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
+              <Hash className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
                 {search ? 'Nenhum canal encontrado.' : 'Nenhum canal neste filtro.'}
               </p>

@@ -309,7 +309,7 @@ export function FormalReviewSheet({
                   {memberData?.name}
                 </span>
                 {memberData?.role && (
-                  <span className="text-muted-foreground/60">{memberData.role}</span>
+                  <span className="text-muted-foreground">{memberData.role}</span>
                 )}
                 {review.period_start && review.period_end && (
                   <span className="flex items-center gap-1.5">

@@ -117,7 +117,7 @@ const HRTeams = () => {
       </div>
         {/* Search */}
         <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
           <Input
             placeholder="Buscar líder por nome ou email..."
             value={search}
@@ -135,8 +135,8 @@ const HRTeams = () => {
           </div>
         ) : filtered.length === 0 ? (
           <div className="bg-white/80 rounded-3xl shadow-sm p-12 text-center">
-            <Users className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-            <p className="text-sm text-gray-400">
+            <Users className="h-10 w-10 text-gray-500 mx-auto mb-3" />
+            <p className="text-sm text-gray-500">
               {search
                 ? `Nenhum líder encontrado para "${search}"`
                 : 'Nenhum líder cadastrado'}
@@ -215,8 +215,8 @@ const HRTeams = () => {
               ))
             ) : teamMembers.length === 0 ? (
               <div className="text-center py-8">
-                <Users className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                <p className="text-sm text-gray-400">Nenhum liderado cadastrado</p>
+                <Users className="h-8 w-8 text-gray-500 mx-auto mb-2" />
+                <p className="text-sm text-gray-500">Nenhum liderado cadastrado</p>
               </div>
             ) : (
               teamMembers.map((member) => (

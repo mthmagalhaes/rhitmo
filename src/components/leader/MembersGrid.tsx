@@ -203,7 +203,7 @@ export function MembersGrid({
         </div>
       ) : filtered.length === 0 ? (
         <div className="rounded-2xl bg-card border border-dashed border-border p-10 text-center">
-          <Users className="h-7 w-7 text-muted-foreground/40 mx-auto mb-3" />
+          <Users className="h-7 w-7 text-muted-foreground mx-auto mb-3" />
           <p className="text-sm text-muted-foreground mb-4">
             {members.length === 0
               ? t('membersGrid.empty', 'Nenhum liderado cadastrado ainda.')

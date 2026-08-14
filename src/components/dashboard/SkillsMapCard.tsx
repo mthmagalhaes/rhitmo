@@ -62,7 +62,7 @@ export default function SkillsMapCard({ aiAnalysis, memberId, onReanalyze, isRea
       {/* Empty state */}
       {!aiAnalysis ? (
         <div className="text-center py-8">
-          <Compass className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
+          <Compass className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
           <p className="text-sm font-medium mb-1 text-foreground">{t('skillsMap.analysisNotAvailable')}</p>
           <p className="text-xs text-muted-foreground mb-4 max-w-xs mx-auto">
             {t('skillsMap.completeProfile')}
