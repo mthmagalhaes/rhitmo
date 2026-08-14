@@ -999,6 +999,17 @@ const Landing = () => {
     <div className="bg-white text-slate-900 antialiased">
       <Helmet>
         <link rel="canonical" href="https://rhitmo.co/" />
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: t.faqItems.map((item) => ({
+              "@type": "Question",
+              name: item.q,
+              acceptedAnswer: { "@type": "Answer", text: item.a },
+            })),
+          })}
+        </script>
       </Helmet>
 
       {/* Scoped CSS — iridescent surface + post-its */}
