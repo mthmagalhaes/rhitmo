@@ -181,7 +181,7 @@ export function SlackRollupFeedItem({ item, onCopyToMember }: Props) {
     onSuccess: () => {
       setConfirmDelete(false);
       qc.invalidateQueries({ queryKey: ['diario-slack-rollups'] });
-      toast({ title: 'Resumo removido do diário' });
+      toast({ title: 'Resumo removido de Anotações & Evidências' });
     },
     onError: (e: Error) =>
       toast({ title: 'Erro ao remover', description: e.message, variant: 'destructive' }),
