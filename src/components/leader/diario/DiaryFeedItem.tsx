@@ -348,7 +348,7 @@ export function DiaryFeedItem({ item }: DiaryFeedItemProps) {
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              size="icon" aria-label="Mais ações"
+              size="icon"
               className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
               onClick={(e) => e.stopPropagation()}
               aria-label="Ações da anotação"
