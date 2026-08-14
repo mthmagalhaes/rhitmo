@@ -34,8 +34,8 @@ import { formatDistanceToNow, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 /**
- * Conector BYOK do Granola: o líder cola a Personal API key da própria conta
- * e a Rhitmo importa as notas para o Diário de Bordo. Nenhuma chave volta
+  * Conector BYOK do Granola: o líder cola a Personal API key da própria conta
+  * e a Rhitmo importa as notas para Anotações & Evidências. Nenhuma chave volta
  * para o browser depois de salva.
  */
 export function GranolaConnectorCard() {
@@ -83,7 +83,7 @@ export function GranolaConnectorCard() {
               )}
             </div>
             <CardDescription className="text-xs mt-1">
-              Importe as notas do seu Granola direto para o Diário, sem precisar do bot na reunião.
+              Importe as notas do seu Granola direto para Anotações & Evidências, sem precisar do bot na reunião.
             </CardDescription>
             {isConnected && (
               <p className="text-[10px] text-muted-foreground mt-1">
@@ -220,7 +220,7 @@ export function GranolaConnectorCard() {
           <SheetHeader>
             <SheetTitle className="font-serif tracking-tight">Conectar o Granola</SheetTitle>
             <SheetDescription>
-              A Rhitmo lê as suas notas do Granola e transforma em evidência no Diário de Bordo.
+              A Rhitmo lê as suas notas do Granola e transforma em evidência em Anotações & Evidências.
             </SheetDescription>
           </SheetHeader>
 

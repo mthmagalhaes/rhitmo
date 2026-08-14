@@ -1,4 +1,4 @@
-// Barra de filtros do Diário v2 — substitui a master list lateral.
+// Barra de filtros de Anotações & Evidências v2 — substitui a master list lateral.
 // Estado vive na URL (member, team, period, q, tags, source, from, to, sort).
 import { Search, CalendarIcon, X, Bot, FileText, PenLine, NotebookPen } from 'lucide-react';
 import { format } from 'date-fns';

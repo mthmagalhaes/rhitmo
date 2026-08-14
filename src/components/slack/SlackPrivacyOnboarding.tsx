@@ -73,7 +73,7 @@ export function SlackPrivacyOnboarding({ open, onOpenChange }: SlackPrivacyOnboa
                 <p className="font-semibold text-sm tracking-tight">Reconhecimento sempre privado</p>
                 <p className="text-xs text-muted-foreground leading-relaxed mt-1">
                   <code className="bg-muted px-1.5 py-0.5 rounded text-[11px] font-mono">/kudos</code>{' '}
-                  vira DM direta para o liderado e entra no Diário de Bordo dele. Nunca expõe nada em canal público.
+                  vira DM direta para o liderado e entra em Anotações & Evidências dele. Nunca expõe nada em canal público.
                 </p>
               </div>
             </div>

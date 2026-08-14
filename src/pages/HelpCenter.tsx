@@ -44,7 +44,7 @@ const leaderCards: FeatureCard[] = [
   {
     id: 'l-notes',
     icon: NotebookPen,
-    title: 'Diário de Bordo',
+    title: 'Anotações & Evidências',
     subtitle: 'Registre notas inteligentes com IA',
     steps: [
       'Clique em "Nova Nota" no perfil de um membro.',
@@ -110,7 +110,7 @@ const leaderCards: FeatureCard[] = [
       'Conecte seu Google Calendar em Configurações → Integrações.',
       'O Rhitmo detecta reuniões 1:1 e associa ao membro correto.',
       'Antes da reunião, um briefing IA é gerado com resumo de notas recentes.',
-      'Após a reunião, registre suas observações como notas no diário.',
+      'Após a reunião, registre suas observações em Anotações & Evidências.',
     ],
   },
   {
@@ -150,7 +150,7 @@ const leaderCards: FeatureCard[] = [
       'Deu certo quando o card fica verde e mostra o e-mail conectado.',
       'A partir daí a agenda sincroniza sozinha a cada 15 minutos e suas 1:1s aparecem no card "Próximas 1:1s" na Início.',
       'Antes de cada 1:1, a Rhitmo prepara um brief com o contexto recente daquele liderado.',
-      'Para desconectar, volte em Configurações → Integrações e clique em "Desconectar". As notas já registradas continuam no Diário.',
+      'Para desconectar, volte em Configurações → Integrações e clique em "Desconectar". As notas já registradas continuam em Anotações & Evidências.',
     ],
   },
   {
@@ -164,7 +164,7 @@ const leaderCards: FeatureCard[] = [
       'O bot entra por volta de 2 minutos antes do horário e aparece na sala como um participante chamado "Rhitmo".',
       'Se a reunião tiver sala de espera, alguém precisa admitir o bot. Ele aguarda até 10 minutos.',
       'Funciona com links de Google Meet, Zoom e Teams presentes no evento da agenda.',
-      'Ao fim, a transcrição com os nomes dos participantes vira uma nota no Diário de Bordo de cada liderado presente.',
+      'Ao fim, a transcrição com os nomes dos participantes vira uma nova entrada em Anotações & Evidências de cada liderado presente.',
       'A IA gera resumo, tópicos, sentimento e coaching tips em cima dessa transcrição.',
       'Você pode chamar o bot manualmente a qualquer momento no ícone de microfone do card "Próximas 1:1s", inclusive com a reunião já em andamento.',
     ],

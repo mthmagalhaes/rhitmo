@@ -319,7 +319,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
     if (!content.trim()) {
       toast({
         title: "Campo obrigatório",
-        description: "Por favor, adicione o conteúdo da nota.",
+        description: "Por favor, adicione o conteúdo para Anotações & Evidências.",
         variant: "destructive"
       });
       return;

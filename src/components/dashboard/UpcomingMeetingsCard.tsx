@@ -55,10 +55,10 @@ export const UpcomingMeetingsCard = () => {
           <Calendar className="h-7 w-7 text-primary" />
         </div>
         <h3 className="text-lg font-semibold tracking-tight text-foreground mb-2">
-          Próximas 1:1s
+          Próximas 1:1s e Preparação Automatizada
         </h3>
         <p className="text-sm text-muted-foreground mb-5 max-w-[240px]">
-          Conecte o Google Calendar para ver suas próximas reuniões com liderados
+          Conecte o Google Calendar para ver suas próximas reuniões com liderados e gerar evidências automáticas.
         </p>
         <Button
           onClick={connectCalendar}

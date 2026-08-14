@@ -1,4 +1,4 @@
-// Helper para classificar a origem de um item do Diário (feedbacks.source)
+// Helper para classificar a origem de um item de Anotações & Evidências (feedbacks.source)
 // e renderizar um chip visual consistente, do mesmo tamanho dos chips de tag.
 //
 // REGRA DO SISTEMA: a verdade canônica vive no Postgres

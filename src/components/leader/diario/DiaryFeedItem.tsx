@@ -1,4 +1,4 @@
-// Item do feed cross-member do Diário v2.
+// Item do feed cross-member de Anotações & Evidências v2.
 // Linha compacta colapsável + menu "⋯" com ações: renomear, editar,
 // copiar para outro liderado, copiar texto, abrir nota, excluir.
 import { useState, useRef } from 'react';

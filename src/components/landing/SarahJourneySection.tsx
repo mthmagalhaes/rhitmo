@@ -126,7 +126,7 @@ function JourneyMock({ kind, lang }: { kind: MockKind; lang: Lang }) {
             <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
           </div>
           <span className="text-[12px] font-semibold text-slate-900">
-            {lang === "pt" ? "Diário de Bordo" : "Captain's Log"}
+            {lang === "pt" ? "Anotações & Evidências" : "Captain's Log"}
           </span>
           <span className="ml-auto inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 font-semibold">
             <Lock className="w-2.5 h-2.5" /> {lang === "pt" ? "privado" : "private"}
