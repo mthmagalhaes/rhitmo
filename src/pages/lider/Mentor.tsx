@@ -299,7 +299,7 @@ export default function LiderMentor() {
 
   return (
     <div className="flex h-[calc(100svh-3rem)] overflow-hidden bg-background">
-      <main className="flex-1 min-w-0 overflow-y-auto">
+      <section className="flex-1 min-w-0 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-6 lg:px-8 py-8">
         {/* ── Header ─────────────────────────────────────────────── */}
         <header className="mb-6">
@@ -686,7 +686,7 @@ export default function LiderMentor() {
           )}
         </section>
         </div>
-      </main>
+      </section>
 
       <aside className="hidden lg:block w-[340px] shrink-0 border-l border-border/40 bg-muted/30 overflow-y-auto">
         <div className="px-5 py-8">
