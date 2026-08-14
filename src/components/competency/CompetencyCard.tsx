@@ -39,8 +39,8 @@ export const CompetencyCard = ({
         isDragging ? 'opacity-60 shadow-lg scale-[1.02]' : ''
       } ${
         isActive
-          ? 'bg-white/80 border-l-4 border-violet-500'
-          : 'bg-white/40 border-l-4 border-muted opacity-60'
+          ? 'bg-card border-l-4 border-primary'
+          : 'bg-muted/40 border-l-4 border-border'
       }`}
     >
       <button

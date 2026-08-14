@@ -82,7 +82,7 @@ export const BiasDetectionPanel = ({ biasAlert, wordCount }: BiasDetectionPanelP
           {parsed.flags.map((flag, index) => (
             <div key={index}>
               {index > 0 && <Separator className="my-3 bg-amber-200/60" />}
-              <div className="bg-white border-l-2 border-amber-400 rounded-r-xl p-3 space-y-2">
+              <div className="bg-card border-l-2 border-warning rounded-r-xl p-3 space-y-2">
                 <div className="bg-amber-50 rounded px-2 py-1 inline-block">
                   <p className="text-sm text-amber-900 font-medium italic">"{flag.phrase}"</p>
                 </div>

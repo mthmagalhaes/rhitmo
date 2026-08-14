@@ -72,7 +72,7 @@ const SEGMENT_STYLES: Record<string, string> = {
   beta: 'bg-violet-500/10 text-violet-600 border-violet-500/30',
   paid: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30',
   trial: 'bg-amber-500/10 text-amber-600 border-amber-500/30',
-  internal: 'bg-slate-500/10 text-slate-600 border-slate-500/30',
+  internal: 'bg-muted text-muted-foreground border-border',
   test: 'bg-pink-500/10 text-pink-600 border-pink-500/30',
 };
 

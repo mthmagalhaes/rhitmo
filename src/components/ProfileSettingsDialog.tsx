@@ -139,7 +139,7 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
                 size="lg"
               />
               <div className="absolute inset-0 rounded-full bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <span className="text-white text-xs font-medium">{t('common.edit')}</span>
+                <span className="text-primary-foreground text-xs font-medium">{t('common.edit')}</span>
               </div>
             </button>
             <button
