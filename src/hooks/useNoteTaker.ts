@@ -80,7 +80,7 @@ export function useNoteTaker(provider: NoteTakerProvider = 'granola') {
     mutationFn: () => invokeNoteTaker({ action: 'disconnect', provider }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey });
-      toast({ title: 'Desconectado', description: 'As notas já importadas continuam no Diário.' });
+      toast({ title: 'Desconectado', description: 'As notas já importadas continuam em Anotações & Evidências.' });
     },
     onError: (e: Error) =>
       toast({ title: 'Erro ao desconectar', description: e.message, variant: 'destructive' }),
@@ -123,7 +123,7 @@ export function useNoteTaker(provider: NoteTakerProvider = 'granola') {
       qc.invalidateQueries({ queryKey: pendingKey });
       qc.invalidateQueries({ queryKey });
       qc.invalidateQueries({ queryKey: ['feedbacks'] });
-      toast({ title: 'Nota atribuída', description: 'Ela já aparece no Diário de Bordo do liderado.' });
+      toast({ title: 'Nota atribuída', description: 'Ela já aparece em Anotações & Evidências do liderado.' });
     },
     onError: (e: Error) =>
       toast({ title: 'Não foi possível atribuir', description: e.message, variant: 'destructive' }),
