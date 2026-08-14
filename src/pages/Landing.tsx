@@ -141,7 +141,7 @@ const translations = {
     pulseForever: "· para sempre",
     pulseCTA: "Começar grátis",
     pulseFeatures: [
-      "Diário de bordo ilimitado",
+      "Anotações & Evidências ilimitado",
       "Mentor AI — até 20 conversas por mês",
       "1 avaliação com IA por mês",
       "Notas e registros ilimitados",
@@ -156,7 +156,7 @@ const translations = {
       {
         groupLabel: "Ciclo de Performance",
         items: [
-          { label: "Diário de bordo + resumo mensal automático", isNew: true },
+          { label: "Anotações & Evidências + resumo mensal automático", isNew: true },
           { label: "Acompanhamento trimestral guiado por IA", isNew: true },
           { label: "Avaliações formais com evidências citadas" },
         ],
