@@ -521,7 +521,7 @@ export function SlackRollupFeedItem({ item, onCopyToMember }: Props) {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir este resumo?</AlertDialogTitle>
             <AlertDialogDescription>
-              O resumo some do seu Diário. As mensagens originais no Slack não são afetadas,
+              O resumo some de Anotações & Evidências. As mensagens originais no Slack não são afetadas,
               e a Rhitmo continua usando os sinais brutos como contexto do Mentor.
             </AlertDialogDescription>
           </AlertDialogHeader>

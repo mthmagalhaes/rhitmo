@@ -184,7 +184,7 @@ export const PendingTranscriptsCard = () => {
                       <AlertDialogHeader>
                         <AlertDialogTitle>Reprocessar transcrição?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Vamos baixar a transcrição novamente da Recall e tentar distribuí-la para todos os liderados detectados na reunião (por nome). Isso pode criar novas anotações no diário de bordo de cada liderado identificado.
+                          Vamos baixar a transcrição novamente da Recall e tentar distribuí-la para todos os liderados detectados na reunião (por nome). Isso pode criar novas anotações em Anotações & Evidências de cada liderado identificado.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>

@@ -104,7 +104,7 @@ export default function HRRitmo() {
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
             Cobertura e cadência das 1:1s em {workspaceName}. Aqui você vê quem está mantendo o ritmo
-            e onde falta acompanhamento — sem acessar o conteúdo privado dos diários dos líderes.
+            e onde falta acompanhamento — sem acessar o conteúdo privado das anotações dos líderes.
           </p>
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <Badge variant="outline" className="gap-1 rounded-xl text-[11px]">

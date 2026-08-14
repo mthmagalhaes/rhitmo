@@ -5,7 +5,7 @@ import { useEvidenceResolver, type EvidenceRef } from '@/hooks/useEvidenceResolv
 
 interface Props {
   evidence: EvidenceRef[] | null | undefined;
-  /** Function to scroll/open the evidence in context (e.g., Diário de Bordo). */
+  /** Function to scroll/open the evidence in context (e.g., Anotações & Evidências). */
   onOpen?: (ref: { type: 'feedback' | 'meeting'; id: string }) => void;
 }
 

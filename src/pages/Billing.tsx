@@ -40,7 +40,7 @@ const FEATURE_GROUPS = [
   {
     label: 'Ciclo de Performance',
     items: [
-      'Diário de bordo + resumo mensal automático',
+      'Anotações & Evidências + resumo mensal automático',
       'Acompanhamento trimestral guiado por IA',
       'Avaliações formais com evidências citadas',
       'Pulse Surveys e leitura de pulso do time',

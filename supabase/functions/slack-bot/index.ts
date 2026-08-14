@@ -1190,7 +1190,7 @@ async function handleNotaCommand(payload: Record<string, string>, persona: Perso
   };
 }
 
-// /kudos é PRIVADO: DM ao liderado + registro como nota de reconhecimento no Diário.
+// /kudos é PRIVADO: DM ao liderado + registro como nota de reconhecimento em Anotações & Evidências.
 // Não posta nada no canal — Brasil tem cultura de baixo conforto com elogio público.
 async function handleKudosCommand(payload: Record<string, string>, persona: PersonaResult): Promise<{ ephemeral: Record<string, unknown>; dmTo?: { slackUserId: string; blocks: unknown[] }; saveAs?: { managerId: string; memberId: string; message: string } }> {
   if (persona.persona === 'unauthenticated') {
@@ -1237,14 +1237,14 @@ async function handleKudosCommand(payload: Record<string, string>, persona: Pers
         slackUserId: integ.slack_user_id,
         blocks: [
           { type: 'section', text: { type: 'mrkdwn', text: `👏 *${senderName} reconheceu seu trabalho:*\n\n${message}` } },
-          { type: 'context', elements: [{ type: 'mrkdwn', text: 'Esta mensagem é privada. Também ficou registrada no seu Diário de Bordo.' }] },
+          { type: 'context', elements: [{ type: 'mrkdwn', text: 'Esta mensagem é privada. Também ficou registrada em Anotações & Evidências.' }] },
         ],
       };
     }
   }
 
   return {
-    ephemeral: { text: `✅ Kudos privado enviado para *${result.name}*${dmTo ? ' por DM' : ''} e registrado no Diário de Bordo.` },
+    ephemeral: { text: `✅ Kudos privado enviado para *${result.name}*${dmTo ? ' por DM' : ''} e registrado em Anotações & Evidências.` },
     dmTo,
     saveAs: { managerId: persona.userId!, memberId: result.id, message },
   };
@@ -1849,7 +1849,7 @@ async function processCommand(body: string, timestamp: string, signature: string
       if (result.dmTo) {
         await slackApi('chat.postMessage', { channel: result.dmTo.slackUserId, blocks: result.dmTo.blocks });
       }
-      // Registra como nota de reconhecimento no Diário de Bordo do liderado
+      // Registra como nota de reconhecimento no Anotações & Evidências do liderado
       if (result.saveAs) {
         await supabase.from('feedbacks').insert({
           manager_id: result.saveAs.managerId,
@@ -2334,7 +2334,7 @@ async function processInteraction(body: string, timestamp: string, signature: st
       const slackUserInfo = await slackApi('users.info', { user: slackUserId });
       const senderName = slackUserInfo.ok ? (slackUserInfo.user?.real_name || slackUserInfo.user?.name || 'alguém') : 'alguém';
 
-      // Kudos PRIVADO: DM ao liderado (se conectado) + registro no Diário de Bordo
+      // Kudos PRIVADO: DM ao liderado (se conectado) + registro em Anotações & Evidências
       const { data: linkedTM } = await supabase
         .from('team_members')
         .select('linked_user_id')
@@ -2351,7 +2351,7 @@ async function processInteraction(body: string, timestamp: string, signature: st
             channel: integ.slack_user_id,
             blocks: [
               { type: 'section', text: { type: 'mrkdwn', text: `👏 *${senderName} reconheceu seu trabalho:*\n\n${kudosText}` } },
-              { type: 'context', elements: [{ type: 'mrkdwn', text: 'Esta mensagem é privada. Também ficou registrada no seu Diário de Bordo.' }] },
+              { type: 'context', elements: [{ type: 'mrkdwn', text: 'Esta mensagem é privada. Também ficou registrada em Anotações & Evidências.' }] },
             ],
           });
     }
@@ -2406,7 +2406,7 @@ async function processInteraction(body: string, timestamp: string, signature: st
       // Confirma para quem enviou
       await slackApi('chat.postMessage', {
         channel: slackUserId,
-        text: `✅ Kudos privado enviado para *${result.name}* e registrado no Diário de Bordo.`,
+        text: `✅ Kudos privado enviado para *${result.name}* e registrado em Anotações & Evidências.`,
       });
     }
   }

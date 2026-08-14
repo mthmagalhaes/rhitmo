@@ -115,7 +115,7 @@ export function LeaderTour({ autoStart = true, onClose }: LeaderTourProps) {
           popover: {
             title: 'Bem-vindo ao Rhitmo',
             description:
-              'Aqui ficam suas áreas: 1:1s, Diário, Pessoas e Avaliações. Tudo organizado em volta dos seus liderados.',
+              'Aqui ficam suas áreas: 1:1s, Anotações & Evidências, Pessoas e Avaliações. Tudo organizado em volta dos seus liderados.',
             side: 'right',
             align: 'start',
             onNextClick: () => {
@@ -127,9 +127,9 @@ export function LeaderTour({ autoStart = true, onClose }: LeaderTourProps) {
         {
           element: '[data-tour="member-list"]',
           popover: {
-            title: 'Diário de bordo',
+            title: 'Anotações & Evidências',
             description:
-              'Cada liderado tem um diário privado seu. Cole transcrições do Meet, Tactiq ou Fireflies e a Rhitmo extrai feedback, ações e padrões automaticamente.',
+              'Cada liderado tem um espaço privado de anotações e evidências. Cole transcrições do Meet, Tactiq ou Fireflies e a Rhitmo extrai feedback, ações e padrões automaticamente.',
             side: 'right',
             align: 'start',
             onNextClick: () => {

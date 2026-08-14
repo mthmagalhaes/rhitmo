@@ -1,4 +1,4 @@
-// Sincronização de notas de note taker (Granola) → Diário de Bordo.
+// Sincronização de notas de note taker (Granola) → Anotações & Evidências.
 //
 // Usado tanto pelo cron (`sync-note-taker`) quanto pelo "sincronizar agora"
 // da tela de Conectores (`note-taker-connect`).
