@@ -810,7 +810,7 @@ const MemberDetails = () => {
             </TabsTrigger>
             <TabsTrigger value="diary" className="flex items-center gap-2">
               <BookOpen className="h-4 w-4" />
-              Diário de Bordo
+              Anotações & Evidências
             </TabsTrigger>
             <TabsTrigger value="rhitmo" id="rhitmo-tab-trigger" className="flex items-center gap-2">
               <Music className="h-4 w-4" />

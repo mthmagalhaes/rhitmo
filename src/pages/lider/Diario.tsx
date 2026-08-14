@@ -329,7 +329,7 @@ export default function LiderDiario() {
     <div className="max-w-5xl mx-auto px-6 lg:px-8 py-6 space-y-5">
       {/* Header */}
       <header className="min-w-0">
-        <h1 className="font-serif text-2xl font-bold tracking-tight">Diário de Bordo</h1>
+        <h1 className="font-serif text-2xl font-bold tracking-tight">Anotações & Evidências</h1>
         <p className="text-sm text-muted-foreground mt-1 inline-flex items-center gap-1.5">
           <Lock className="h-3 w-3" />
           Suas evidências privadas sobre o time, em um só lugar.
