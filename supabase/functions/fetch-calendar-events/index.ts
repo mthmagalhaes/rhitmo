@@ -343,6 +343,10 @@ Deno.serve(async (req) => {
       const meetLink = extractMeetLink(event);
       const matchedMembersArr = [...matchedSet.values()];
       const isMultiMember = matchedMembersArr.length > 1;
+      // 1:1 = exatamente um humano além do líder. Qualquer outra composição é
+      // reunião de time (ainda que só um dos presentes seja liderado).
+      const meetingType = humanOthers.length === 1 ? "1on1" : "team";
+
 
       for (const member of matchedMembersArr) {
         // Se reagendamento (start_time mudou > 15min) e brief já foi enviado,
