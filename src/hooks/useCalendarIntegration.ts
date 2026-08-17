@@ -12,6 +12,8 @@ interface UpcomingMeeting {
   member_id: string;
   member_name: string;
   member_role: string;
+  meeting_type?: string | null;
+  attendee_count?: number | null;
 }
 
 interface RecallBot {
@@ -164,7 +166,7 @@ export const useCalendarIntegration = () => {
   });
 
   const scheduleBot = useMutation({
-    mutationFn: async (params: { meeting_id: string; meeting_url: string; member_id: string; start_time: string; trigger_source?: 'manual' | 'manual_retroactive' }) => {
+    mutationFn: async (params: { meeting_id?: string | null; meeting_url: string; member_id?: string | null; start_time: string; trigger_source?: 'manual' | 'manual_retroactive' }) => {
       const { trigger_source = 'manual', ...rest } = params;
       const { data, error } = await supabase.functions.invoke('schedule-recall-bot', {
         body: { ...rest, trigger_source },
