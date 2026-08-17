@@ -1,0 +1,1 @@
+ALTER TABLE public.upcoming_meetings ADD COLUMN IF NOT EXISTS meeting_type text NOT NULL DEFAULT '1on1';

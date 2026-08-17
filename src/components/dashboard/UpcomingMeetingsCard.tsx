@@ -9,6 +9,7 @@ import { Calendar, CalendarOff, ExternalLink, FileText, ChevronDown, Mic, Loader
 import { format, isToday, isTomorrow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
+import { AdHocBotDialog } from '@/components/dashboard/AdHocBotDialog';
 
 const getTimeBadge = (startTime: string) => {
   try {
@@ -46,6 +47,16 @@ export const UpcomingMeetingsCard = () => {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
   const [schedulingMeetingId, setSchedulingMeetingId] = useState<string | null>(null);
+
+  const sendAdHocBot = ({ meeting_url, member_id }: { meeting_url: string; member_id: string | null }) => {
+    scheduleBot.mutate({
+      meeting_url,
+      member_id,
+      meeting_id: null,
+      start_time: new Date().toISOString(),
+      trigger_source: 'manual_retroactive',
+    });
+  };
 
   // Not connected state
   if (!checkingConnection && !isConnected) {
@@ -183,6 +194,14 @@ export const UpcomingMeetingsCard = () => {
               Nenhuma reunião nas próximas 48h
             </p>
           )}
+          <div className="mt-4">
+            <AdHocBotDialog
+              onSubmit={sendAdHocBot}
+              isPending={scheduleBot.isPending}
+              disabled={!canScheduleBot}
+              disabledReason="Limite de reuniões com bot atingido."
+            />
+          </div>
         </div>
       </div>
     );
@@ -225,12 +244,20 @@ export const UpcomingMeetingsCard = () => {
           <Sparkles className="h-3.5 w-3.5 text-primary" />
           <span className="text-xs font-medium text-muted-foreground">Transcrição automática</span>
         </div>
-        <Switch
-          checked={autoTranscribe}
-          onCheckedChange={(checked) => toggleAutoTranscribe.mutate(checked)}
-          disabled={toggleAutoTranscribe.isPending}
-          className="scale-90"
-        />
+        <div className="flex items-center gap-3">
+          <AdHocBotDialog
+            onSubmit={sendAdHocBot}
+            isPending={scheduleBot.isPending}
+            disabled={!canScheduleBot}
+            disabledReason="Limite de reuniões com bot atingido."
+          />
+          <Switch
+            checked={autoTranscribe}
+            onCheckedChange={(checked) => toggleAutoTranscribe.mutate(checked)}
+            disabled={toggleAutoTranscribe.isPending}
+            className="scale-90"
+          />
+        </div>
       </div>
 
       <div className="space-y-1">
@@ -281,6 +308,12 @@ export const UpcomingMeetingsCard = () => {
                       className={`text-xs border rounded-full px-2.5 py-0.5 ${badge.className}`}
                     >
                       {badge.label}
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] rounded-full px-2 py-0.5 text-muted-foreground border-border"
+                    >
+                      {meeting.meeting_type === 'team' ? 'Equipe' : '1:1'}
                     </Badge>
                   </div>
                   <p className="text-sm font-semibold text-foreground truncate">
