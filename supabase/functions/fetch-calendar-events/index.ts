@@ -377,9 +377,11 @@ Deno.serve(async (req) => {
           start_time: startTime,
           end_time: endTime || null,
           meet_link: meetLink,
+          meeting_type: meetingType,
           attendees: JSON.stringify(humanOthers.map((a) => a.email)),
           synced_at: new Date().toISOString(),
         };
+
         if (resetBrief) upsertPayload.brief_dm_sent_at = null;
 
         const { data: upserted } = await supabaseAdmin
