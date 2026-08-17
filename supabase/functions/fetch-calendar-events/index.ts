@@ -298,12 +298,11 @@ Deno.serve(async (req) => {
         return true;
       });
 
-      // Group meeting (>3 outros humanos) → claramente grupo grande, skip.
-      // Antes era >2, mas 1:1 com 2 liderados (skip-level/mentoria conjunta) é legítimo.
-      if (humanOthers.length > 3) {
+      // Guarda-chuva: all-hands / webinar (>15 humanos) nunca entra, mesmo com liderados.
+      if (humanOthers.length > 15) {
         eventsSkippedGroup++;
         if (eventsSkippedGroup <= 5) {
-          console.log(`[sync] Skipping group event "${event.summary}" (${humanOthers.length} other attendees)`);
+          console.log(`[sync] Skipping large event "${event.summary}" (${humanOthers.length} other attendees)`);
         }
         continue;
       }
@@ -330,15 +329,16 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Mais de 3 liderados na mesma reunião → grupo disfarçado, skip.
-      // Até 3: trata como 1:1 multi-membro e cria uma linha por liderado
-      // (skip-level, mentoria conjunta, pair). Bot é deduplicado por meeting_url
-      // mais abaixo, então só um bot será criado.
-      if (matchedSet.size > 3) {
+      // Mais de 5 liderados na mesma reunião → cerimônia de time grande, skip.
+      // Até 5: registra uma linha por liderado (1:1, skip-level, reunião de time
+      // recorrente). O bot é deduplicado por meeting_url mais abaixo, então
+      // uma reunião de time gera um único bot e N anotações.
+      if (matchedSet.size > 5) {
         eventsSkippedMultipleMembers++;
-        console.log(`[sync] Skipping event "${event.summary}" — ${matchedSet.size} distinct members matched (>3)`);
+        console.log(`[sync] Skipping event "${event.summary}" — ${matchedSet.size} distinct members matched (>5)`);
         continue;
       }
+
 
       const meetLink = extractMeetLink(event);
       const matchedMembersArr = [...matchedSet.values()];
