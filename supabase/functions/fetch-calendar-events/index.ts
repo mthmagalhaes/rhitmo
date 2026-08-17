@@ -245,6 +245,8 @@ Deno.serve(async (req) => {
       member_id: string;
       member_name: string;
       member_role: string;
+      meeting_type: string;
+      attendee_count: number;
     }> = [];
 
     let eventsSkippedNoAttendees = 0;
@@ -399,6 +401,8 @@ Deno.serve(async (req) => {
           member_id: member.id,
           member_name: member.name,
           member_role: member.role,
+          meeting_type: meetingType,
+          attendee_count: humanOthers.length,
         });
       }
     }
