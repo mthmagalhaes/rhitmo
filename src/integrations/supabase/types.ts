@@ -3109,6 +3109,7 @@ export type Database = {
           google_event_id: string
           id: string
           meet_link: string | null
+          meeting_type: string
           member_id: string | null
           start_time: string
           synced_at: string | null
@@ -3124,6 +3125,7 @@ export type Database = {
           google_event_id: string
           id?: string
           meet_link?: string | null
+          meeting_type?: string
           member_id?: string | null
           start_time: string
           synced_at?: string | null
@@ -3139,6 +3141,7 @@ export type Database = {
           google_event_id?: string
           id?: string
           meet_link?: string | null
+          meeting_type?: string
           member_id?: string | null
           start_time?: string
           synced_at?: string | null
