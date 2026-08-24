@@ -211,16 +211,25 @@ Deno.serve(async (req) => {
     // Fallback dedup by meeting_url — só bloqueia se já existe bot VIVO.
     // Bots em estado terminal (skipped_no_leader, error, done, unrecoverable) são histórico,
     // e o líder pode (e deve poder) reenviar manualmente.
+    // Sem filtro por user_id: em reunião de equipe, vários líderes do mesmo
+    // workspace apontam pra mesma sala — um único bot atende todo mundo e evita
+    // fila de pedidos de entrada no Meet.
     const { data: existingByUrl } = await supabaseAdmin
       .from("recall_bots")
-      .select("id, status")
-      .eq("user_id", userId)
+      .select("id, status, user_id")
       .eq("meeting_url", meeting_url)
       .in("status", LIVE_STATUSES)
+      .limit(1)
       .maybeSingle();
 
     if (existingByUrl) {
-      return new Response(JSON.stringify({ error: "Bot already scheduled for this meeting URL", bot: existingByUrl }), {
+      const sameUser = existingByUrl.user_id === userId;
+      return new Response(JSON.stringify({
+        error: sameUser
+          ? "Bot já agendado para esta reunião."
+          : "Já existe um bot do Rhitmo nesta sala (enviado por outro líder). A transcrição será feita uma única vez.",
+        bot: { id: existingByUrl.id, status: existingByUrl.status },
+      }), {
         status: 409,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
