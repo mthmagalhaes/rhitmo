@@ -14,10 +14,11 @@ Concordo com sua leitura. Hoje a sincronização agenda bot automaticamente para
 
 ## Detalhes técnicos
 
-- `supabase/functions/fetch-calendar-events/index.ts`: no laço de auto-schedule, pular quando `meeting.meeting_type !== '1on1'`; manter o upsert em `upcoming_meetings` inalterado.
+- `supabase/functions/fetch-calendar-events/index.ts`: no laço de auto-schedule, agendar quando `meeting_type === '1on1'` OU quando o líder marcou o evento (`auto_transcribe_opt_in = true` na linha de `upcoming_meetings`); caso contrário, pular. O upsert em `upcoming_meetings` segue inalterado e preserva o opt-in existente.
+- Migração pequena: coluna `auto_transcribe_opt_in boolean not null default false` em `upcoming_meetings` (o líder liga por reunião no card).
 - Dedup por sala: consultar `recall_bots` por `meeting_url` com status vivo (`scheduled`, `joining`, `in_waiting_room`, `recording`, ...) unindo pelos `user_id` do workspace; aplicar tanto em `fetch-calendar-events` quanto em `schedule-recall-bot` (hoje o dedup é apenas `eq('user_id', userId)`).
-- `UpcomingMeetingsCard.tsx`: para `meeting_type === 'team'`, tooltip do microfone explica que bot em reunião de equipe é sob demanda; sem mudança de layout.
-- Sem migração de banco: `meeting_type` e `attendee_count` já existem.
+- `UpcomingMeetingsCard.tsx`: para `meeting_type === 'team'`, exibir o toggle "Transcrever quando começar" + microfone "Transcrever agora", com tooltip explicando que em reunião de equipe o bot só entra por escolha do líder.
+- `AdHocBotDialog.tsx` permanece como está.
 
 ## Fora de escopo
 
