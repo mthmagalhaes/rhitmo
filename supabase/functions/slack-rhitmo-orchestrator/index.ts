@@ -1,11 +1,13 @@
 // ============================================================================
 // Sprint 11.3 — Rhitmo Orchestrator
 // Cron-driven proactive Slack DMs:
-//   1) Leader 1:1 prep (~18h before meeting; fallback: any 1:1 in next 20h not yet notified)
-//   2) Direct report Pulse alerts (status='pending', not yet DM'd)
+//   1) Direct report Pulse alerts (status='pending', not yet DM'd)
+//
+// Proactive 1:1 prep DMs were removed — agendas are generated on demand only
+// (/rhitmo command, DM to Rhitmo, or the brief button inside the platform).
 //
 // Reuses SLACK_BOT_TOKEN and the same Slack API pattern as slack-bot/index.ts.
-// Idempotency is enforced via brief_dm_sent_at / dm_sent_at columns.
+// Idempotency is enforced via the dm_sent_at column.
 // ============================================================================
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
@@ -22,7 +24,6 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
 );
 
-const MAX_BRIEFS_PER_RUN = 100;
 const MAX_PULSES_PER_RUN = 100;
 
 // ── Slack API helper (mirrors slack-bot/index.ts) ───────────
@@ -47,31 +48,6 @@ async function slackApi(method: string, body: Record<string, unknown>) {
   }
 }
 
-// ── Friendly date formatting (pt-BR) ────────────────────────
-function formatMeetingTime(iso: string): { context: string; relative: string } {
-  const start = new Date(iso);
-  const diffMin = Math.round((start.getTime() - Date.now()) / 60000);
-  const diffH = Math.round(diffMin / 60);
-
-  const dateFmt = new Intl.DateTimeFormat('pt-BR', {
-    weekday: 'long',
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'America/Sao_Paulo',
-  }).format(start);
-
-  let relative: string;
-  if (diffMin < 1) relative = 'agora';
-  else if (diffMin < 60) relative = `em ${diffMin} min`;
-  else if (diffH >= 18 && diffH <= 30) relative = 'amanhã';
-  else relative = `em ${diffH}h`;
-
-  return { context: `📅 ${dateFmt}`, relative };
-}
-
-
 // ── Pulse type → human label ────────────────────────────────
 function pulseTypeLabel(type: string | null | undefined): string {
   if (!type) return 'um tema rápido';
@@ -89,32 +65,6 @@ function pulseTypeLabel(type: string | null | undefined): string {
 }
 
 // ── Block Kit builders ──────────────────────────────────────
-function buildBriefDmBlocks(memberName: string, meetingId: string, memberId: string, startTime: string) {
-  const { context, relative } = formatMeetingTime(startTime);
-  return [
-    {
-      type: 'section',
-      text: {
-        type: 'mrkdwn',
-        text: `👋 Olá! Vi que você tem uma 1:1 com *${memberName}* ${relative}.\nQuer que eu puxe o *Context Graph* dele e monte uma sugestão de pauta?`,
-      },
-    },
-    { type: 'context', elements: [{ type: 'mrkdwn', text: context }] },
-    {
-      type: 'actions',
-      elements: [
-        {
-          type: 'button',
-          style: 'primary',
-          text: { type: 'plain_text', text: '🧠 Gerar Pauta' },
-          action_id: 'prep_1on1_brief',
-          value: `${meetingId}:${memberId}`,
-        },
-      ],
-    },
-  ];
-}
-
 function buildPulseDmBlocks(pulseId: string, type: string | null) {
   const label = pulseTypeLabel(type);
   return [
@@ -145,92 +95,6 @@ function buildPulseDmBlocks(pulseId: string, type: string | null) {
       ],
     },
   ];
-}
-
-// ── Routine 1: 1:1 prep DMs ─────────────────────────────────
-async function runBriefRoutine(): Promise<{ sent: number; errors: number }> {
-  let sent = 0;
-  let errors = 0;
-
-  // upcoming_meetings.user_id is the LEADER (per fetch-calendar-events insert).
-  // Window strategy: ideal send is ~18h before the 1:1 (16h–20h band). For meetings
-  // closer than 16h that were never notified, we fall back to "send now" so last-minute
-  // events still receive a brief. Idempotency is preserved by brief_dm_sent_at IS NULL.
-  const nowIso = new Date().toISOString();
-  const nowPlus20 = new Date(Date.now() + 20 * 60 * 60 * 1000).toISOString();
-
-  const { data: meetings, error } = await supabase
-    .from('upcoming_meetings')
-    .select(`
-      id,
-      user_id,
-      member_id,
-      title,
-      start_time,
-      brief_dm_sent_at,
-      team_members:member_id ( id, name )
-    `)
-    .gte('start_time', nowIso)
-    .lte('start_time', nowPlus20)
-    .is('brief_dm_sent_at', null)
-    .not('member_id', 'is', null)
-    .order('start_time', { ascending: true })
-    .limit(MAX_BRIEFS_PER_RUN);
-
-  if (error) {
-    console.error('[ORCHESTRATOR] briefs query error:', error.message);
-    return { sent, errors: 1 };
-  }
-  if (!meetings || meetings.length === 0) {
-    console.log('[ORCHESTRATOR] No 1:1s in window.');
-    return { sent, errors };
-  }
-
-  // Resolve leader Slack IDs in one batch
-  const leaderUserIds = [...new Set(meetings.map((m: any) => m.user_id).filter(Boolean))];
-  const { data: integrations } = await supabase
-    .from('slack_integrations')
-    .select('user_id, slack_user_id')
-    .in('user_id', leaderUserIds);
-
-  const slackByUserId = new Map<string, string>();
-  for (const row of integrations ?? []) {
-    if (row.user_id && row.slack_user_id) slackByUserId.set(row.user_id, row.slack_user_id);
-  }
-
-  for (const meeting of meetings as any[]) {
-    try {
-      const slackUserId = slackByUserId.get(meeting.user_id);
-      const memberName = meeting.team_members?.name;
-      if (!slackUserId || !memberName) continue;
-
-      const blocks = buildBriefDmBlocks(memberName, meeting.id, meeting.member_id, meeting.start_time);
-      const result = await slackApi('chat.postMessage', {
-        channel: slackUserId,
-        text: `Lembrete: 1:1 com ${memberName} chegando.`,
-        blocks,
-      });
-
-      if (!result.ok) {
-        errors++;
-        continue; // do not mark as sent; retry next tick
-      }
-
-      const { error: updErr } = await supabase
-        .from('upcoming_meetings')
-        .update({ brief_dm_sent_at: new Date().toISOString() })
-        .eq('id', meeting.id);
-      if (updErr) {
-        console.error('[ORCHESTRATOR] mark brief_dm_sent_at failed for', meeting.id, updErr.message);
-      }
-      sent++;
-    } catch (err) {
-      errors++;
-      console.error('[ORCHESTRATOR] brief row error:', err);
-    }
-  }
-
-  return { sent, errors };
 }
 
 // ── Routine 2: Pulse DMs ────────────────────────────────────
@@ -343,15 +207,7 @@ Deno.serve(async (req) => {
   const startedAt = Date.now();
   console.log('[ORCHESTRATOR] Starting run');
 
-  let briefs = { sent: 0, errors: 0 };
   let pulses = { sent: 0, errors: 0 };
-
-  try {
-    briefs = await runBriefRoutine();
-  } catch (err) {
-    console.error('[ORCHESTRATOR] briefs routine threw:', err);
-    briefs.errors++;
-  }
 
   try {
     pulses = await runPulseRoutine();
@@ -362,15 +218,15 @@ Deno.serve(async (req) => {
 
   const elapsedMs = Date.now() - startedAt;
   console.log(
-    `[ORCHESTRATOR] Done in ${elapsedMs}ms — briefs sent=${briefs.sent} err=${briefs.errors} | pulses sent=${pulses.sent} err=${pulses.errors}`,
+    `[ORCHESTRATOR] Done in ${elapsedMs}ms — pulses sent=${pulses.sent} err=${pulses.errors}`,
   );
 
   return new Response(
     JSON.stringify({
       ok: true,
       elapsed_ms: elapsedMs,
-      processed: { briefs: briefs.sent, pulses: pulses.sent },
-      errors: { briefs: briefs.errors, pulses: pulses.errors },
+      processed: { pulses: pulses.sent },
+      errors: { pulses: pulses.errors },
     }),
     { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 },
   );
