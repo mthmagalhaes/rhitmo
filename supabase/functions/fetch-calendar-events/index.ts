@@ -247,6 +247,7 @@ Deno.serve(async (req) => {
       member_role: string;
       meeting_type: string;
       attendee_count: number;
+      auto_transcribe_opt_in: boolean;
     }> = [];
 
     let eventsSkippedNoAttendees = 0;
