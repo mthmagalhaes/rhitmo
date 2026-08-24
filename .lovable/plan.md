@@ -6,7 +6,7 @@ Concordo com sua leitura. Hoje a sincronização agenda bot automaticamente para
 
 1. **Auto-transcrição só em 1:1.** A sincronização de agenda continua registrando reuniões de time (elas seguem aparecendo em "Próximas 1:1s" com o chip `Equipe`), mas o bot automático só é agendado quando `meeting_type = '1on1'` (exatamente um humano além do líder).
 
-2. **Reunião de time vira opt-in.** No card, a reunião de equipe mostra o botão "Chamar bot agora" (já existe) — o líder decide caso a caso. Nada é enviado sem clique.
+2. **Reunião de time vira opt-in, com controle na plataforma.** No card "Próximas 1:1s", toda reunião de equipe mostra um botão claro de "Transcrever esta reunião" (envio imediato via microfone) e, para reuniões futuras, um toggle "Transcrever quando começar" que marca aquele evento para receber bot automático na próxima sincronização. Continua existindo "Chamar bot em outra reunião" para colar um link avulso. Nada é enviado sem escolha do líder.
 
 3. **Anti-colisão entre líderes.** Antes de enviar bot (automático ou manual), checar se já existe bot vivo para a mesma `meeting_url` de qualquer usuário do mesmo workspace. Se existir, não envia um segundo — a transcrição é compartilhada em vez de duplicar solicitações de entrada na mesma sala.
 
@@ -14,10 +14,11 @@ Concordo com sua leitura. Hoje a sincronização agenda bot automaticamente para
 
 ## Detalhes técnicos
 
-- `supabase/functions/fetch-calendar-events/index.ts`: no laço de auto-schedule, pular quando `meeting.meeting_type !== '1on1'`; manter o upsert em `upcoming_meetings` inalterado.
+- `supabase/functions/fetch-calendar-events/index.ts`: no laço de auto-schedule, agendar quando `meeting_type === '1on1'` OU quando o líder marcou o evento (`auto_transcribe_opt_in = true` na linha de `upcoming_meetings`); caso contrário, pular. O upsert em `upcoming_meetings` segue inalterado e preserva o opt-in existente.
+- Migração pequena: coluna `auto_transcribe_opt_in boolean not null default false` em `upcoming_meetings` (o líder liga por reunião no card).
 - Dedup por sala: consultar `recall_bots` por `meeting_url` com status vivo (`scheduled`, `joining`, `in_waiting_room`, `recording`, ...) unindo pelos `user_id` do workspace; aplicar tanto em `fetch-calendar-events` quanto em `schedule-recall-bot` (hoje o dedup é apenas `eq('user_id', userId)`).
-- `UpcomingMeetingsCard.tsx`: para `meeting_type === 'team'`, tooltip do microfone explica que bot em reunião de equipe é sob demanda; sem mudança de layout.
-- Sem migração de banco: `meeting_type` e `attendee_count` já existem.
+- `UpcomingMeetingsCard.tsx`: para `meeting_type === 'team'`, exibir o toggle "Transcrever quando começar" + microfone "Transcrever agora", com tooltip explicando que em reunião de equipe o bot só entra por escolha do líder.
+- `AdHocBotDialog.tsx` permanece como está.
 
 ## Fora de escopo
 
