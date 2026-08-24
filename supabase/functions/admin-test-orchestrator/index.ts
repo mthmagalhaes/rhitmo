@@ -1,10 +1,8 @@
 // ============================================================================
 // admin-test-orchestrator — smoke test ponta-a-ponta do Slack orchestrator
 //
-// Permite que o líder (ou super_admin) dispare AGORA um brief DM de teste,
-// ignorando a janela 12-36h. Reusa a mesma Block Kit / Slack API do
-// slack-rhitmo-orchestrator. Se o líder não tem reunião agendada, envia um
-// "ping" DM informando que o orquestrador está online.
+// Permite que o líder (ou super_admin) valide AGORA se o bot consegue lhe
+// enviar DMs. Envia apenas um "ping" — DMs proativas de pauta foram removidas.
 // ============================================================================
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
@@ -36,41 +34,13 @@ async function slackApi(method: string, body: Record<string, unknown>) {
   }
 }
 
-function buildBriefDmBlocks(memberName: string, meetingId: string, memberId: string) {
-  return [
-    {
-      type: 'section',
-      text: {
-        type: 'mrkdwn',
-        text: `🧪 *Teste do orquestrador da Rhitmo*\n\n👋 Esse é o brief que você receberia automaticamente antes da 1:1 com *${memberName}*.\nQuer que eu monte uma sugestão de pauta agora?`,
-      },
-    },
-    {
-      type: 'context',
-      elements: [{ type: 'mrkdwn', text: '⚙️ Disparado manualmente em /lider/configuracoes' }],
-    },
-    {
-      type: 'actions',
-      elements: [
-        {
-          type: 'button',
-          style: 'primary',
-          text: { type: 'plain_text', text: '🧠 Gerar Pauta' },
-          action_id: 'prep_1on1_brief',
-          value: `${meetingId}:${memberId}`,
-        },
-      ],
-    },
-  ];
-}
-
 function buildPingBlocks() {
   return [
     {
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: '🧪 *Teste do orquestrador da Rhitmo*\n\n✅ O orquestrador está online e consegue te enviar DMs.\n\nVocê ainda não tem uma 1:1 agendada nas próximas 20h, por isso não há brief para gerar agora. Assim que tiver, você receberá automaticamente ~18h antes.',
+        text: '🧪 *Teste do orquestrador da Rhitmo*\n\n✅ O orquestrador está online e consegue te enviar DMs.\n\nPara gerar a pauta de uma 1:1, use o comando `/rhitmo` ou me mande uma mensagem por aqui.',
       },
     },
     {
@@ -146,29 +116,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Próxima reunião na janela de 20h (mesma do orquestrador real)
-    const nowIso = new Date().toISOString();
-    const nowPlus20 = new Date(Date.now() + 20 * 60 * 60 * 1000).toISOString();
-    const { data: meeting } = await supabase
-      .from('upcoming_meetings')
-      .select('id, member_id, title, start_time, team_members:member_id ( name )')
-      .eq('user_id', targetUserId)
-      .gte('start_time', nowIso)
-      .lte('start_time', nowPlus20)
-      .not('member_id', 'is', null)
-      .order('start_time', { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    const memberName = (meeting as any)?.team_members?.name;
-    const blocks =
-      meeting && memberName
-        ? buildBriefDmBlocks(memberName, (meeting as any).id, (meeting as any).member_id)
-        : buildPingBlocks();
+    const blocks = buildPingBlocks();
 
     const result = await slackApi('chat.postMessage', {
       channel: slackUserId,
-      text: meeting ? `Teste: brief de 1:1 com ${memberName}` : 'Teste do orquestrador Rhitmo',
+      text: 'Teste do orquestrador Rhitmo',
       blocks,
     });
 
@@ -187,10 +139,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         ok: true,
         sent_to_slack_user: slackUserId,
-        scenario: meeting ? 'brief' : 'ping',
-        member_name: memberName ?? null,
-        meeting_id: (meeting as any)?.id ?? null,
-        start_time: (meeting as any)?.start_time ?? null,
+        scenario: 'ping',
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
