@@ -390,7 +390,7 @@ Deno.serve(async (req) => {
         const { data: upserted } = await supabaseAdmin
           .from("upcoming_meetings")
           .upsert(upsertPayload, { onConflict: "user_id,google_event_id,member_id" })
-          .select("id")
+          .select("id, auto_transcribe_opt_in")
           .single();
 
         matchedMeetings.push({
@@ -404,6 +404,7 @@ Deno.serve(async (req) => {
           member_role: member.role,
           meeting_type: meetingType,
           attendee_count: humanOthers.length,
+          auto_transcribe_opt_in: Boolean(upserted?.auto_transcribe_opt_in),
         });
       }
     }
