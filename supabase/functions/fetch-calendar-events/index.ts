@@ -247,6 +247,7 @@ Deno.serve(async (req) => {
       member_role: string;
       meeting_type: string;
       attendee_count: number;
+      auto_transcribe_opt_in: boolean;
     }> = [];
 
     let eventsSkippedNoAttendees = 0;
@@ -389,7 +390,7 @@ Deno.serve(async (req) => {
         const { data: upserted } = await supabaseAdmin
           .from("upcoming_meetings")
           .upsert(upsertPayload, { onConflict: "user_id,google_event_id,member_id" })
-          .select("id")
+          .select("id, auto_transcribe_opt_in")
           .single();
 
         matchedMeetings.push({
@@ -403,6 +404,7 @@ Deno.serve(async (req) => {
           member_role: member.role,
           meeting_type: meetingType,
           attendee_count: humanOthers.length,
+          auto_transcribe_opt_in: Boolean(upserted?.auto_transcribe_opt_in),
         });
       }
     }
@@ -417,6 +419,16 @@ Deno.serve(async (req) => {
 
       for (const meeting of matchedMeetings) {
         if (!meeting.meet_link || !meeting.id) continue;
+
+        // Bot automático é só para 1:1. Reunião de equipe (alinhamento semanal,
+        // ritual de time) só recebe bot quando o líder liga explicitamente o
+        // opt-in daquela reunião no card. Antes, cada líder presente na mesma
+        // sala disparava o próprio bot → 5-6 pedidos de entrada na mesma call.
+        if (meeting.meeting_type !== "1on1" && !meeting.auto_transcribe_opt_in) {
+          console.log(`[sync] Skipping auto-bot for team meeting ${meeting.id} (sem opt-in do líder)`);
+          continue;
+        }
+
 
         // Join 2 minutes before meeting start
         const joinAt = new Date(new Date(meeting.start_time).getTime() - 2 * 60 * 1000).toISOString();
@@ -500,20 +512,22 @@ Deno.serve(async (req) => {
         // IMPORTANT: skipped_no_leader and error MUST block re-scheduling within the
         // meeting window — otherwise we spawn a fresh bot every minute the cron runs,
         // which is what caused the "ghost bots" incident on 13/05.
+        // Sem filtro de user_id: se OUTRO líder já mandou bot pra mesma sala,
+        // não mandamos um segundo (evita fila de pedidos de entrada no Meet).
         if (!rescueRejoin) {
           const { data: existingByUrl } = await supabaseAdmin
             .from("recall_bots")
-            .select("id, attempt_count")
-            .eq("user_id", userId)
+            .select("id, user_id, attempt_count")
             .eq("meeting_url", meeting.meet_link)
             .not("status", "eq", "done")
             .not("status", "eq", "error")
             .gte("scheduled_at", new Date(newJoinMs - 30 * 60 * 1000).toISOString())
             .lte("scheduled_at", new Date(newJoinMs + 30 * 60 * 1000).toISOString())
+            .limit(1)
             .maybeSingle();
 
           if (existingByUrl) {
-            console.log(`[sync] Bot already exists in window for URL ${meeting.meet_link}, skipping`);
+            console.log(`[sync] Bot already exists in window for URL ${meeting.meet_link} (user ${existingByUrl.user_id}), skipping`);
             continue;
           }
         }

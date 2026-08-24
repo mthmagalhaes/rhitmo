@@ -14,6 +14,7 @@ interface UpcomingMeeting {
   member_role: string;
   meeting_type?: string | null;
   attendee_count?: number | null;
+  auto_transcribe_opt_in?: boolean | null;
 }
 
 interface RecallBot {
@@ -149,6 +150,32 @@ export const useCalendarIntegration = () => {
     },
   });
 
+  // Opt-in de transcrição automática por reunião (usado em reuniões de equipe,
+  // que não recebem bot automático por padrão).
+  const toggleMeetingOptIn = useMutation({
+    mutationFn: async ({ meetingId, enabled }: { meetingId: string; enabled: boolean }) => {
+      const supabaseAny = supabase as any;
+      const { error } = await supabaseAny
+        .from('upcoming_meetings')
+        .update({ auto_transcribe_opt_in: enabled })
+        .eq('id', meetingId);
+      if (error) throw error;
+      return enabled;
+    },
+    onSuccess: (enabled) => {
+      queryClient.invalidateQueries({ queryKey: ['calendar-upcoming-meetings'] });
+      toast({
+        title: enabled ? 'Transcrição agendada' : 'Transcrição desativada',
+        description: enabled
+          ? 'O Rhitmo vai entrar nesta reunião quando ela começar.'
+          : 'O bot não entrará automaticamente nesta reunião.',
+      });
+    },
+    onError: () => {
+      toast({ title: 'Erro', description: 'Não foi possível alterar a transcrição desta reunião.', variant: 'destructive' });
+    },
+  });
+
   // Fetch recall bot statuses for upcoming meetings
   const { data: recallBots = [] } = useQuery({
     queryKey: ['recall-bots', user?.id],
@@ -233,6 +260,7 @@ export const useCalendarIntegration = () => {
     connectCalendar,
     disconnectCalendar,
     toggleAutoTranscribe,
+    toggleMeetingOptIn,
     scheduleBot,
     getBotStatus,
     recallBots,

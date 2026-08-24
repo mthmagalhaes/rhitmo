@@ -38,6 +38,7 @@ export const UpcomingMeetingsCard = () => {
     disconnectCalendar,
     autoTranscribe,
     toggleAutoTranscribe,
+    toggleMeetingOptIn,
     scheduleBot,
     getBotStatus,
     syncDebug,
@@ -315,7 +316,27 @@ export const UpcomingMeetingsCard = () => {
                     >
                       {meeting.meeting_type === 'team' ? 'Equipe' : '1:1'}
                     </Badge>
+                    {/* Reunião de equipe não recebe bot automático: o líder decide. */}
+                    {meeting.meeting_type === 'team' && meeting.meet_link && meeting.id && (
+                      <span
+                        className="flex items-center gap-1.5"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Switch
+                          checked={!!meeting.auto_transcribe_opt_in}
+                          onCheckedChange={(checked) =>
+                            toggleMeetingOptIn.mutate({ meetingId: meeting.id!, enabled: checked })
+                          }
+                          aria-label="Transcrever esta reunião de equipe"
+                          className="scale-75 origin-left"
+                        />
+                        <span className="text-[10px] text-muted-foreground">
+                          {meeting.auto_transcribe_opt_in ? 'Transcrever' : 'Sem bot'}
+                        </span>
+                      </span>
+                    )}
                   </div>
+
                   <p className="text-sm font-semibold text-foreground truncate">
                     {meeting.member_name}
                   </p>
