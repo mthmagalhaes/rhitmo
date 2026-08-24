@@ -512,20 +512,22 @@ Deno.serve(async (req) => {
         // IMPORTANT: skipped_no_leader and error MUST block re-scheduling within the
         // meeting window — otherwise we spawn a fresh bot every minute the cron runs,
         // which is what caused the "ghost bots" incident on 13/05.
+        // Sem filtro de user_id: se OUTRO líder já mandou bot pra mesma sala,
+        // não mandamos um segundo (evita fila de pedidos de entrada no Meet).
         if (!rescueRejoin) {
           const { data: existingByUrl } = await supabaseAdmin
             .from("recall_bots")
-            .select("id, attempt_count")
-            .eq("user_id", userId)
+            .select("id, user_id, attempt_count")
             .eq("meeting_url", meeting.meet_link)
             .not("status", "eq", "done")
             .not("status", "eq", "error")
             .gte("scheduled_at", new Date(newJoinMs - 30 * 60 * 1000).toISOString())
             .lte("scheduled_at", new Date(newJoinMs + 30 * 60 * 1000).toISOString())
+            .limit(1)
             .maybeSingle();
 
           if (existingByUrl) {
-            console.log(`[sync] Bot already exists in window for URL ${meeting.meet_link}, skipping`);
+            console.log(`[sync] Bot already exists in window for URL ${meeting.meet_link} (user ${existingByUrl.user_id}), skipping`);
             continue;
           }
         }
