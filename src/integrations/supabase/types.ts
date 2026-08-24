@@ -3102,6 +3102,7 @@ export type Database = {
       upcoming_meetings: {
         Row: {
           attendees: Json | null
+          auto_transcribe_opt_in: boolean
           brief_cache: Json | null
           brief_dm_sent_at: string | null
           brief_generated_at: string | null
@@ -3118,6 +3119,7 @@ export type Database = {
         }
         Insert: {
           attendees?: Json | null
+          auto_transcribe_opt_in?: boolean
           brief_cache?: Json | null
           brief_dm_sent_at?: string | null
           brief_generated_at?: string | null
@@ -3134,6 +3136,7 @@ export type Database = {
         }
         Update: {
           attendees?: Json | null
+          auto_transcribe_opt_in?: boolean
           brief_cache?: Json | null
           brief_dm_sent_at?: string | null
           brief_generated_at?: string | null
