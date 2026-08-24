@@ -260,6 +260,7 @@ export const useCalendarIntegration = () => {
     connectCalendar,
     disconnectCalendar,
     toggleAutoTranscribe,
+    toggleMeetingOptIn,
     scheduleBot,
     getBotStatus,
     recallBots,
