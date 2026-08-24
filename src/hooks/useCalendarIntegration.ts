@@ -14,6 +14,7 @@ interface UpcomingMeeting {
   member_role: string;
   meeting_type?: string | null;
   attendee_count?: number | null;
+  auto_transcribe_opt_in?: boolean | null;
 }
 
 interface RecallBot {
