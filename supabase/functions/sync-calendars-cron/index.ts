@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
 
   const { data: tokens, error: tokensError } = await admin
     .from("google_calendar_tokens")
-    .select("user_id, email")
+    .select("user_id, calendar_email")
     .eq("auto_transcribe", true);
 
   if (tokensError) {
