@@ -38,6 +38,7 @@ export const UpcomingMeetingsCard = () => {
     disconnectCalendar,
     autoTranscribe,
     toggleAutoTranscribe,
+    toggleMeetingOptIn,
     scheduleBot,
     getBotStatus,
     syncDebug,
