@@ -420,6 +420,16 @@ Deno.serve(async (req) => {
       for (const meeting of matchedMeetings) {
         if (!meeting.meet_link || !meeting.id) continue;
 
+        // Bot automático é só para 1:1. Reunião de equipe (alinhamento semanal,
+        // ritual de time) só recebe bot quando o líder liga explicitamente o
+        // opt-in daquela reunião no card. Antes, cada líder presente na mesma
+        // sala disparava o próprio bot → 5-6 pedidos de entrada na mesma call.
+        if (meeting.meeting_type !== "1on1" && !meeting.auto_transcribe_opt_in) {
+          console.log(`[sync] Skipping auto-bot for team meeting ${meeting.id} (sem opt-in do líder)`);
+          continue;
+        }
+
+
         // Join 2 minutes before meeting start
         const joinAt = new Date(new Date(meeting.start_time).getTime() - 2 * 60 * 1000).toISOString();
         const newJoinMs = new Date(joinAt).getTime();
