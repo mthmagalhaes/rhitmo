@@ -52,11 +52,11 @@ Deno.serve(async (req) => {
       });
       const text = await resp.text();
       results.push({ user_id: t.user_id, ok: resp.ok, detail: resp.ok ? undefined : text.slice(0, 200) });
-      if (!resp.ok) console.error(`[sync-cron] ${t.email} failed (${resp.status}): ${text.slice(0, 200)}`);
+      if (!resp.ok) console.error(`[sync-cron] ${t.calendar_email} failed (${resp.status}): ${text.slice(0, 200)}`);
     } catch (e) {
       const detail = e instanceof Error ? e.message : String(e);
       results.push({ user_id: t.user_id, ok: false, detail });
-      console.error(`[sync-cron] ${t.email} threw: ${detail}`);
+      console.error(`[sync-cron] ${t.calendar_email} threw: ${detail}`);
     }
   }
 
