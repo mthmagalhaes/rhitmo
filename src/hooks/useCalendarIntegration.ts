@@ -154,12 +154,17 @@ export const useCalendarIntegration = () => {
   // que não recebem bot automático por padrão).
   const toggleMeetingOptIn = useMutation({
     mutationFn: async ({ meetingId, enabled }: { meetingId: string; enabled: boolean }) => {
+      if (!user?.id) throw new Error('Sessão não encontrada');
       const supabaseAny = supabase as any;
-      const { error } = await supabaseAny
+      const { data, error } = await supabaseAny
         .from('upcoming_meetings')
         .update({ auto_transcribe_opt_in: enabled })
-        .eq('id', meetingId);
+        .eq('id', meetingId)
+        .eq('user_id', user.id)
+        .select('id')
+        .maybeSingle();
       if (error) throw error;
+      if (!data) throw new Error('Reunião não encontrada ou sem permissão para alteração');
       return enabled;
     },
     onSuccess: (enabled) => {
