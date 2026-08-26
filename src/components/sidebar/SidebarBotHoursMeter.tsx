@@ -38,7 +38,7 @@ export function SidebarBotHoursMeter() {
         <Clock className={cn('h-3.5 w-3.5 shrink-0', tone.text)} />
         {data.unlimited ? (
           <span className="text-sidebar-foreground/70 truncate">
-            {fmt(data.hoursUsed)} usadas · sem teto
+            {fmt(data.hoursUsed)} usadas · sem limite mensal
           </span>
         ) : (
           <span className={cn('truncate', tone.text)}>
