@@ -245,7 +245,11 @@ export function AppSidebar() {
           </div>
         )}
 
+        {/* Bot hours meter — leaders only, expanded sidebar only */}
+        {open && persona === 'leader' && <SidebarBotHoursMeter />}
+
         {/* Profile block — avatar opens personal profile dialog */}
+
         {open && effectiveUserId && (
           <SidebarProfileBlock
             memberId={effectiveUserId}
