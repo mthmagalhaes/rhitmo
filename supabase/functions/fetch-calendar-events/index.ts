@@ -635,7 +635,10 @@ Deno.serve(async (req) => {
           const recallData = await recallResponse.json();
 
           if (recallResponse.ok && recallData.id) {
-            await supabaseAdmin.from("recall_bots").insert({
+            // O índice único parcial (meeting_url, scheduled_at) é a trava real
+            // contra dois líderes agendando bot pra mesma sala com segundos de
+            // diferença — a checagem por URL acima perde essa corrida.
+            const { error: insertErr } = await supabaseAdmin.from("recall_bots").insert({
               user_id: userId,
               meeting_id: meeting.id,
               member_id: meeting.member_id,
@@ -647,10 +650,25 @@ Deno.serve(async (req) => {
               trigger_source: rescueRejoin ? "auto_calendar_rescue" : "auto_calendar",
             });
 
+            if (insertErr) {
+              // 23505 = outro líder ganhou a corrida. Cancelamos o bot que
+              // acabamos de criar pra não aparecerem dois na sala.
+              console.warn(`[sync] Insert do bot recusado (${insertErr.code}): ${insertErr.message}. Cancelando ${recallData.id}.`);
+              try {
+                await fetch(`https://us-west-2.recall.ai/api/v1/bot/${recallData.id}/`, {
+                  method: "DELETE",
+                  headers: { Authorization: `Token ${RECALL_API_KEY}` },
+                });
+              } catch (e) {
+                console.warn(`[sync] Falha ao cancelar bot duplicado:`, e);
+              }
+              continue;
+            }
 
             autoScheduled.push(meeting.id);
             console.log(`[sync] Auto-scheduled bot for meeting ${meeting.id}: ${recallData.id}`);
           } else {
+
             // Falha na API do Recall (ex.: insufficient_credit_balance). Persistimos
             // a linha com status=error para o card "Próximas 1:1s" mostrar o motivo
             // em vez do bot simplesmente não aparecer (incidente 15/07 → 07/08).
