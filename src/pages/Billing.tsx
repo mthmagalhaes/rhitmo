@@ -514,7 +514,10 @@ export const BillingContent = () => {
         </CardContent>
       </Card>
 
+      <BotHoursSection />
+
       {hasPaidSubscription && <InvoicesSection invoices={invoicesData ?? []} isLoading={invoicesLoading} />}
+
 
       {hasPaidSubscription && !isCancelScheduled && (
         <AlertDialog>
