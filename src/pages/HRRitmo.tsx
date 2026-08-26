@@ -13,6 +13,8 @@ interface LeaderRhythm {
   leader_id: string;
   leader_name: string | null;
   leader_email: string | null;
+  teams: { id: string; name: string }[] | null;
+  team_count: number;
   total_members: number;
   members_with_recent_1on1: number;
   last_feedback_at: string | null;
@@ -155,6 +157,11 @@ export default function HRRitmo() {
                 {selected.leader_name || selected.leader_email}
               </h2>
               <p className="text-sm text-muted-foreground">{selected.leader_email}</p>
+              {(selected.teams?.length ?? 0) > 0 && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Times: {selected.teams!.map((t) => t.name).join(' · ')}
+                </p>
+              )}
             </div>
 
             {loadingDetail ? (
@@ -224,6 +231,19 @@ export default function HRRitmo() {
                     {l.leader_name || l.leader_email}
                   </p>
                   <p className="text-xs text-muted-foreground truncate">{l.leader_email}</p>
+
+                  {(l.teams?.length ?? 0) > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {l.teams!.map((t) => (
+                        <span
+                          key={t.id}
+                          className="rounded-lg bg-muted px-2 py-0.5 text-[11px] text-muted-foreground"
+                        >
+                          {t.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
                   <div className="mt-4 flex items-baseline gap-2">
                     <span className={cn('text-3xl font-bold tracking-tight', coverageTone(pct))}>
