@@ -13,6 +13,8 @@ interface LeaderRhythm {
   leader_id: string;
   leader_name: string | null;
   leader_email: string | null;
+  teams: { id: string; name: string }[] | null;
+  team_count: number;
   total_members: number;
   members_with_recent_1on1: number;
   last_feedback_at: string | null;
