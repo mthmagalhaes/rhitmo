@@ -713,7 +713,7 @@ const HRRiskMockup = () => (
 // ============== PRICING SECTION (Windmill v3 — single card per-seat) ==============
 // Pricing v3 — 08/05/2026: 1 plano único.
 // Líder + 3 liderados grátis. R$ 49,90/liderado a partir do 4º.
-// Anual: R$ 39,90/liderado/mês (cobrado anualmente, 16% off).
+// Anual: R$ 39,90/liderado/mês (cobrado anualmente, 20% off).
 
 type SeatCycle = 'monthly' | 'annual';
 
@@ -733,8 +733,8 @@ const PricingSection = ({
   const headlineSub =
     cycle === 'annual'
       ? lang === 'pt'
-        ? 'Cobrado anualmente (R$ 478,80/liderado/ano). 16% off.'
-        : 'Billed annually (R$ 478.80/seat/year). 16% off.'
+        ? 'Cobrado anualmente (R$ 478,80/liderado/ano). 20% off.'
+        : 'Billed annually (R$ 478.80/seat/year). 20% off.'
       : lang === 'pt'
       ? 'Cobrado mensalmente. Cancele quando quiser.'
       : 'Billed monthly. Cancel anytime.';
@@ -744,7 +744,7 @@ const PricingSection = ({
       ? [
           { title: 'Mentor AI ilimitado', desc: 'Seu Chief of Staff conversacional, 24/7, com memória do time.' },
           { title: '1:1s', desc: 'Brief automático antes, pauta gerada a partir do contexto histórico com a pessoa liderada.' },
-          { title: 'Transcrição de reunião ilimitada', desc: 'Transcrição que vira anotação automaticamente e você pode focar em conversas profundas ao invés de anotar.' },
+          { title: 'Transcrição de reunião automática', desc: 'Cada liderado pago inclui uma franquia generosa de horas de bot por mês, com horas extras disponíveis quando precisar. A transcrição vira anotação sozinha e você foca na conversa.' },
           { title: 'Slack', desc: 'Tenha Rhitmo conectado com seu Slack para lembretes, briefs e chat onde você já passa maior parte do tempo.' },
           { title: 'Detecção de viés nas evidências e avaliações de desempenho', desc: 'Identifique e aprenda a corrigir eventuais vieses e injustiças que você pode estar comentendo' },
           
@@ -752,7 +752,7 @@ const PricingSection = ({
       : [
           { title: 'Unlimited Mentor AI', desc: 'Your conversational Chief of Staff, 24/7, with team memory.' },
           { title: '1:1s, Pulse, IDP and 360°', desc: 'The full people management cycle in one place.' },
-          { title: 'Unlimited meeting transcription', desc: 'Bot joins meetings, transcribes and turns it into evidence automatically.' },
+          { title: 'Automatic meeting transcription', desc: 'Every paid seat includes a generous monthly bot-hour allowance, with extra hours available when you need them. The bot joins, transcribes and turns it into evidence automatically.' },
           { title: 'Bidirectional Slack', desc: 'Rhitmo pulls context and delivers briefs by DM, no tab switching.' },
           { title: 'Real-time bias detection', desc: 'Reviews 38× less biased, right inside the editor.' },
           
@@ -804,7 +804,7 @@ const PricingSection = ({
               <TabsTrigger value="annual" className="rounded-full px-5 h-9 data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2">
                 {lang === 'pt' ? 'Anual' : 'Annual'}
                 <span className="bg-primary/15 text-primary text-[10px] font-semibold rounded-full px-2 py-0.5">
-                  −16%
+                  −20%
                 </span>
               </TabsTrigger>
             </TabsList>

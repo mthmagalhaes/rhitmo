@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
     }
 
     // ── Pricing v4: teto de horas de bot por workspace ───────────────────────
-    // Grátis: 4h/mês. Pago: 8h + 4h por assento pago. Beta/grandfathered: sem teto.
+    // Grátis: 4h/mês. Pago: 4h por assento pago (sem piso fixo). Beta/grandfathered: sem teto.
     const anyCandidate = candidates as Array<Record<string, any>>;
     const isGrandfathered = anyCandidate.some(
       (c) => c?.grandfather_until && new Date(c.grandfather_until) >= new Date(new Date().toDateString()),
@@ -150,7 +150,7 @@ Deno.serve(async (req) => {
         (acc, c) => Math.max(acc, Number(c?.paid_seats ?? 0) || 0),
         0,
       );
-      const hoursCap = paidSeats > 0 ? 8 + paidSeats * 4 : 4;
+      const hoursCap = paidSeats > 0 ? paidSeats * 4 : 4;
       const workspaceIds = anyCandidate.map((c) => c?.id).filter(Boolean) as string[];
 
       const startOfMonthHours = new Date();
