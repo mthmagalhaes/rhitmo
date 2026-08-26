@@ -13,6 +13,7 @@ import { useSlackConnection } from '@/hooks/useSlackConnection';
 import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
 import { AmbientSlackSettings } from '@/components/settings/AmbientSlackSettings';
 import { GranolaConnectorCard } from '@/components/settings/GranolaConnectorCard';
+import { BotHoursCard } from '@/components/settings/BotHoursCard';
 import { SlackHealthPanel } from '@/components/leader/settings/SlackHealthPanel';
 
 import { AccessTab } from '@/components/settings/AccessTab';
@@ -102,6 +103,7 @@ function IntegrationsTab() {
         </div>
         <div className="grid gap-4 md:grid-cols-2 items-start">
           <GranolaConnectorCard />
+          <BotHoursCard />
         </div>
         <p className="text-xs text-muted-foreground">
           Já usa um note taker? Conecte e a Rhitmo dispensa o bot nessas reuniões.

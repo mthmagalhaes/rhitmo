@@ -1,5 +1,4 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { ConnectorFrame } from '@/components/brand/ConnectorFrame';
 import { Clock, Loader2 } from 'lucide-react';
@@ -56,13 +55,14 @@ export function BotHoursCard() {
               </span>
               <span className="text-[11px] text-muted-foreground">{Math.round(data.percent)}%</span>
             </div>
-            <Progress
-              value={data.percent}
-              className="h-2"
-              indicatorClassName={
-                data.percent >= 100 ? 'bg-destructive' : data.percent >= 80 ? 'bg-amber-500' : undefined
-              }
-            />
+            <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  data.percent >= 100 ? 'bg-destructive' : data.percent >= 80 ? 'bg-amber-500' : 'bg-primary'
+                }`}
+                style={{ width: `${Math.max(2, data.percent)}%` }}
+              />
+            </div>
             {data.percent >= 100 ? (
               <p className="text-xs text-destructive">
                 Limite de {fmt(data.hoursCap)} atingido. O bot não entra em novas reuniões até você adicionar
