@@ -33,7 +33,7 @@ import { Check, CreditCard, Loader2, AlertTriangle, Download, RotateCcw, Crown, 
 // ============================================================================
 // PRICING v3 — Modelo Windmill (single plan, per-seat)
 // Líder + 3 liderados grátis. R$49,90/liderado a partir do 4º.
-// Anual com 16% off (R$502,80/liderado/ano).
+// Anual com 20% off (R$478,80/liderado/ano).
 // ============================================================================
 
 const FEATURE_GROUPS = [
@@ -59,7 +59,7 @@ const FEATURE_GROUPS = [
     label: 'Integrações & Recall',
     items: [
       'Slack bidirecional e DMs proativas da Rhy',
-      'Recall.ai com transcrição e diarização (ilimitado em planos pagos)',
+      'Recall.ai com transcrição e diarização (4h de bot por liderado pago, por mês)',
       'Google Calendar com bot automático em 1:1s',
       'Chrome Extension para captura de reuniões',
     ],
@@ -105,7 +105,7 @@ function GrandfatherBanner({ grandfatherUntil }: { grandfatherUntil: string }) {
       </AlertTitle>
       <AlertDescription className="text-purple-800 dark:text-purple-300 mt-1">
         Todo o seu workspace está liberado <strong>sem cobrança até {formatDatePtBR(grandfatherUntil)}</strong>{' '}
-        ({daysLeft} {daysLeft === 1 ? 'dia restante' : 'dias restantes'}). Liderados ilimitados e Recall ilimitado, sem
+        ({daysLeft} {daysLeft === 1 ? 'dia restante' : 'dias restantes'}). Liderados ilimitados e horas de bot liberadas, sem
         cartão. Depois dessa data, o plano padrão é <strong>líder + 3 liderados grátis</strong> e R$ 49,90/liderado adicional —
         nada é cobrado retroativamente e seus dados continuam intocados.
       </AlertDescription>

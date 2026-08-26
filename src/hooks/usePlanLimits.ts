@@ -8,8 +8,8 @@ import { useEffectiveUser } from './useEffectiveUser';
  * do Recall: US$0,72/h ≈ R$4,20/h).
  *
  * - Grátis: líder + 3 liderados, 4h de bot por mês por workspace.
- * - Pago: R$ 59,90/mês por assento (R$ 47,90 no anual), assentos ilimitados,
- *   8h de bot por workspace + 4h por assento pago.
+ * - Pago: R$ 49,90/mês por assento (R$ 39,90 no anual), assentos ilimitados,
+ *   4h de bot por assento pago (sem piso fixo por workspace).
  * - Excedente: pacote de 5h (R$ 39) ou hora avulsa (R$ 8).
  * - Upload manual e Granola continuam livres em qualquer plano.
  * - Workspaces beta/grandfathered mantêm assentos e Recall ilimitados até a
@@ -18,11 +18,10 @@ import { useEffectiveUser } from './useEffectiveUser';
 
 export const FREE_SEATS = 3;
 export const FREE_RECALL_CAP_HOURS = 4;
-export const PAID_BASE_RECALL_HOURS = 8;
 export const RECALL_HOURS_PER_PAID_SEAT = 4;
-export const SEAT_PRICE_MONTHLY_BRL = 59.9;
-export const SEAT_PRICE_ANNUAL_MONTHLY_BRL = 47.9;
-export const SEAT_PRICE_ANNUAL_BRL = 574.8; // 12 × R$ 47,90
+export const SEAT_PRICE_MONTHLY_BRL = 49.9;
+export const SEAT_PRICE_ANNUAL_MONTHLY_BRL = 39.9;
+export const SEAT_PRICE_ANNUAL_BRL = 478.8; // 12 × R$ 39,90
 export const ANNUAL_DISCOUNT_PERCENT = 20;
 export const EXTRA_HOURS_PACK_HOURS = 5;
 export const EXTRA_HOURS_PACK_BRL = 39;
@@ -221,9 +220,7 @@ export const usePlanLimits = () => {
     // Pricing v4: horas de bot com teto por workspace (nunca ilimitado no pago).
     const recallUnlimited = unlocked;
     const recallCapHours =
-      paidSeats > 0
-        ? PAID_BASE_RECALL_HOURS + paidSeats * RECALL_HOURS_PER_PAID_SEAT
-        : FREE_RECALL_CAP_HOURS;
+      paidSeats > 0 ? paidSeats * RECALL_HOURS_PER_PAID_SEAT : FREE_RECALL_CAP_HOURS;
 
     return {
       freeSeats: FREE_SEATS,
