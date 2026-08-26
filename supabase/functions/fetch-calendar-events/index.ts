@@ -413,9 +413,52 @@ Deno.serve(async (req) => {
 
     console.log(`[sync] Results: ${matchedMeetings.length} matched, ${eventsSkippedNoAttendees} no attendees, ${eventsSkippedNoMatch} no member match, ${eventsSkippedGroup} group, ${eventsSkippedMultipleMembers} multi-member`);
 
+    // ── Varredura de bots obsoletos ──
+    // Bot agendado sob regras antigas (ou antes de o líder desligar o opt-in)
+    // continuava vivo no Recall e entrava na sala mesmo quando a reunião hoje
+    // é de equipe sem opt-in. Foi o incidente de 26/08 (dois bots na mesma
+    // call "Faster: Checkpoint"). Aqui cancelamos antes de agendar qualquer coisa.
+    if (RECALL_API_KEY) {
+      const { data: staleBots } = await supabaseAdmin
+        .from("recall_bots")
+        .select("id, recall_bot_id, meeting_id, upcoming_meetings!inner(meeting_type, auto_transcribe_opt_in, start_time)")
+        .eq("user_id", userId)
+        .eq("status", "scheduled")
+        .gte("scheduled_at", new Date().toISOString());
+
+      for (const b of staleBots ?? []) {
+        const m = (b as unknown as {
+          upcoming_meetings: { meeting_type: string; auto_transcribe_opt_in: boolean };
+        }).upcoming_meetings;
+        if (!m) continue;
+        const shouldCancel = m.meeting_type !== "1on1" && !m.auto_transcribe_opt_in;
+        if (!shouldCancel) continue;
+
+        try {
+          await fetch(`https://us-west-2.recall.ai/api/v1/bot/${b.recall_bot_id}/`, {
+            method: "DELETE",
+            headers: { Authorization: `Token ${RECALL_API_KEY}` },
+          });
+        } catch (e) {
+          console.warn(`[sync] Falha ao cancelar bot obsoleto ${b.recall_bot_id}:`, e);
+        }
+
+        await supabaseAdmin
+          .from("recall_bots")
+          .update({
+            status: "cancelled",
+            error_message: "Bot cancelado: reunião de equipe sem opt-in de transcrição.",
+          })
+          .eq("id", b.id);
+
+        console.log(`[sync] Cancelado bot obsoleto ${b.recall_bot_id} (reunião de equipe sem opt-in)`);
+      }
+    }
+
     // ── Auto-schedule Recall bots (2 min before meeting) ──
     if (autoTranscribe && RECALL_API_KEY) {
       const autoScheduled: string[] = [];
+
 
       for (const meeting of matchedMeetings) {
         if (!meeting.meet_link || !meeting.id) continue;
