@@ -1,15 +1,28 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Calendar, CalendarOff, ExternalLink, FileText, ChevronDown, Mic, Loader2, CheckCircle2, Sparkles, RefreshCw, AlertTriangle, Clock } from 'lucide-react';
+import { Calendar, CalendarOff, ExternalLink, FileText, ChevronDown, Mic, MicOff, Loader2, CheckCircle2, Sparkles, RefreshCw, AlertTriangle, Clock } from 'lucide-react';
 import { format, isToday, isTomorrow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { AdHocBotDialog } from '@/components/dashboard/AdHocBotDialog';
+import { safeFunctionInvoke } from '@/lib/supabaseSafe';
+import { useToast } from '@/hooks/use-toast';
+
+const LIVE_BOT_STATUSES = [
+  'scheduled',
+  'joining',
+  'in_waiting_room',
+  'recording',
+  'in_call_recording',
+  'in_call_not_recording',
+];
+
 
 const getTimeBadge = (startTime: string) => {
   try {
@@ -48,6 +61,29 @@ export const UpcomingMeetingsCard = () => {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
   const [schedulingMeetingId, setSchedulingMeetingId] = useState<string | null>(null);
+  const [dismissingBotId, setDismissingBotId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const dismissBot = async (botId: string) => {
+    setDismissingBotId(botId);
+    try {
+      await safeFunctionInvoke('dismiss-recall-bot', { bot_id: botId });
+      toast({ title: 'Bot removido da reunião' });
+      queryClient.invalidateQueries({ queryKey: ['recall-bots'] });
+    } catch (err) {
+      console.error('[UpcomingMeetingsCard] dismiss failed', err);
+      toast({
+        title: 'Não consegui remover o bot',
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive',
+      });
+    } finally {
+      setDismissingBotId(null);
+    }
+  };
+
+
 
   const sendAdHocBot = ({ meeting_url, member_id }: { meeting_url: string; member_id: string | null }) => {
     scheduleBot.mutate({
@@ -452,7 +488,28 @@ export const UpcomingMeetingsCard = () => {
                       </button>
                     );
                   })()}
+                  {/* Tirar o bot da sala — o líder quase nunca é o organizador
+                      do Meet, então não consegue remover o bot por lá. */}
+                  {bot?.id && LIVE_BOT_STATUSES.includes(bot.status) && (
+                    <button
+                      className="h-8 w-8 rounded-lg bg-muted/60 flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!confirm('Tirar o bot da Rhitmo desta reunião? A transcrição é interrompida.')) return;
+                        dismissBot(bot.id);
+                      }}
+                      disabled={dismissingBotId === bot.id}
+                      title="Tirar bot da reunião"
+                    >
+                      {dismissingBotId === bot.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <MicOff className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  )}
                   {/* Botão discreto "Chamar bot agora" — sempre visível como fallback,
+
                       exceto quando bot já está gravando/transcrito. */}
                   {meeting.meet_link &&
                     bot?.status !== 'recording' &&
