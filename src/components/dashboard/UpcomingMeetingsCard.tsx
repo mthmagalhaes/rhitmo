@@ -1,15 +1,28 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Calendar, CalendarOff, ExternalLink, FileText, ChevronDown, Mic, Loader2, CheckCircle2, Sparkles, RefreshCw, AlertTriangle, Clock } from 'lucide-react';
+import { Calendar, CalendarOff, ExternalLink, FileText, ChevronDown, Mic, MicOff, Loader2, CheckCircle2, Sparkles, RefreshCw, AlertTriangle, Clock } from 'lucide-react';
 import { format, isToday, isTomorrow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { AdHocBotDialog } from '@/components/dashboard/AdHocBotDialog';
+import { safeFunctionInvoke } from '@/lib/supabaseSafe';
+import { useToast } from '@/hooks/use-toast';
+
+const LIVE_BOT_STATUSES = [
+  'scheduled',
+  'joining',
+  'in_waiting_room',
+  'recording',
+  'in_call_recording',
+  'in_call_not_recording',
+];
+
 
 const getTimeBadge = (startTime: string) => {
   try {
