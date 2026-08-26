@@ -37,6 +37,8 @@ import { WorkspaceSwitcher } from '@/components/sidebar/WorkspaceSwitcher';
 
 import { SidebarFooterCTA } from '@/components/sidebar/SidebarFooterCTA';
 import { SidebarProfileBlock } from '@/components/sidebar/SidebarProfileBlock';
+import { SidebarBotHoursMeter } from '@/components/sidebar/SidebarBotHoursMeter';
+
 import { GlobalSearchDialog } from '@/components/sidebar/GlobalSearchDialog';
 import { MentorChat } from '@/components/MentorChat';
 import { NewMemberDialog } from '@/components/NewMemberDialog';
