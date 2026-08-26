@@ -29,6 +29,28 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Check, CreditCard, Loader2, AlertTriangle, Download, RotateCcw, Crown, Sparkles } from 'lucide-react';
+import { BotHoursCard } from '@/components/settings/BotHoursCard';
+import { useBotHoursUsage } from '@/hooks/useBotHoursUsage';
+
+const BotHoursSection = () => {
+  const { data } = useBotHoursUsage();
+  const needsMore = !!data && !data.unlimited && data.percent >= 80;
+
+  return (
+    <div className="space-y-2">
+      <BotHoursCard />
+      {needsMore && (
+        <p className="text-sm text-center text-muted-foreground">
+          Precisa de mais horas?{' '}
+          <a href="mailto:matheus@rhitmo.co" className="font-medium text-primary hover:underline">
+            Fale com a gente
+          </a>
+        </p>
+      )}
+    </div>
+  );
+};
+
 
 // ============================================================================
 // PRICING v3 — Modelo Windmill (single plan, per-seat)
