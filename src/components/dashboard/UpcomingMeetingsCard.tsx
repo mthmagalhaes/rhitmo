@@ -452,7 +452,28 @@ export const UpcomingMeetingsCard = () => {
                       </button>
                     );
                   })()}
+                  {/* Tirar o bot da sala — o líder quase nunca é o organizador
+                      do Meet, então não consegue remover o bot por lá. */}
+                  {bot?.id && LIVE_BOT_STATUSES.includes(bot.status) && (
+                    <button
+                      className="h-8 w-8 rounded-lg bg-muted/60 flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!confirm('Tirar o bot da Rhitmo desta reunião? A transcrição é interrompida.')) return;
+                        dismissBot(bot.id);
+                      }}
+                      disabled={dismissingBotId === bot.id}
+                      title="Tirar bot da reunião"
+                    >
+                      {dismissingBotId === bot.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <MicOff className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  )}
                   {/* Botão discreto "Chamar bot agora" — sempre visível como fallback,
+
                       exceto quando bot já está gravando/transcrito. */}
                   {meeting.meet_link &&
                     bot?.status !== 'recording' &&
