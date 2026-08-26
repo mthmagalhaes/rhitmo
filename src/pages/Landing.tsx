@@ -135,45 +135,6 @@ const translations = {
     perCyclePeriodAnnual: "/ano",
     equivPerMonthLabel: "Equivale a",
     perMonthShort: "/mês",
-    // Pulse
-    pulseSubtitle: "Para o líder que quer começar a registrar e desenvolver seu time.",
-    pulseFree: "Grátis",
-    pulseForever: "· para sempre",
-    pulseCTA: "Começar grátis",
-    pulseFeatures: [
-      "Anotações & Evidências ilimitado",
-      "Mentor AI — até 20 conversas por mês",
-      "1 avaliação com IA por mês",
-      "Notas e registros ilimitados",
-      "Até 2 liderados diretos",
-    ],
-    // Pro
-    proSubtitle: "Para líderes que querem operar no rítmo certo: liderados ilimitados, com IA em todas as etapas.",
-    proNote: "Cobrança única por ciclo · cancele a qualquer momento",
-    proCTA: "Começar agora",
-    proBadge: "Mais popular",
-    proFeatures: [
-      {
-        groupLabel: "Ciclo de Performance",
-        items: [
-          { label: "Anotações & Evidências + resumo mensal automático", isNew: true },
-          { label: "Acompanhamento trimestral guiado por IA", isNew: true },
-          { label: "Avaliações formais com evidências citadas" },
-        ],
-      },
-      {
-        groupLabel: "Ferramentas de Apoio",
-        items: [
-          { label: "Transcrição automática de reuniões — 30h/mês" },
-          { label: "Pre-meeting briefs com contexto histórico" },
-          { label: "Detecção de viés em tempo real" },
-          { label: "Mentor AI ilimitado" },
-          { label: "Time acessa feedbacks e metas em tempo real" },
-          { label: "Analytics completo · Times ilimitados" },
-          { label: "Liderados ilimitados" },
-        ],
-      },
-    ],
     // Chat mockup
     mentorChatLabel: "Liderada: Maria Santos",
     chatQuestion: "Como dar feedback sobre atrasos sem desmotivar?",
@@ -192,7 +153,6 @@ const translations = {
     launchDisclaimer: "Preço de lançamento garantido enquanto sua assinatura estiver ativa.",
     pricingAnchor: "Comece grátis. Escale quando fizer sentido.",
     pricingTrustLine: "Sem cartão de crédito para começar · Cancele quando quiser · Preço de lançamento garantido enquanto sua assinatura estiver ativa",
-    proSocialProof: "Usado por líderes de times de tecnologia, saúde e serviços no Brasil",
     enterpriseFloor: "A partir de 50 colaboradores · mínimo R$ 750/mês",
     newBadge: "Novo",
     // Enterprise / Corporate
@@ -261,7 +221,7 @@ const translations = {
       { q: "Como Rhitmo detecta viés nas evidências e avaliação formal de desempenho?", a: "Quando você digita uma review ou um feedback, a Rhitmo destaca em tempo real linguagem tendenciosa: viés de gênero (\"agressiva\" vs. \"assertiva\"), viés de personalidade (foco em \"como é\" em vez de \"o que fez\"), generalizações como \"sempre\" e \"nunca\", e ataques à pessoa em vez do comportamento." },
       
       { q: "O que dá pra fazer só pelo Slack?", a: "Praticamente tudo o que importa no dia a dia: receber briefs de 1:1, gerar pauta, conversar com a Rhitmo em DM como se fosse o seu assistente de liderança, registrar uma observação rápida sobre alguém. Para quem vive no Slack, dá pra usar a Rhitmo quase sempre sem precisar abrir a plataforma." },
-      { q: "Como funciona a transcrição automática das reuniões?", a: "Um bot entra na sua Meet, Zoom ou Teams, transcreve e devolve as anotações estruturadas sem você precisar digitar nada durante a conversa. A transcrição bruta fica visível apenas para você, líder; o liderado vê só o que for explicitamente compartilhado. O plano Pro inclui 30 horas de transcrição por mês." },
+      { q: "Como funciona a transcrição automática das reuniões?", a: "Um bot entra na sua Meet, Zoom ou Teams, transcreve e devolve as anotações estruturadas sem você precisar digitar nada durante a conversa. A transcrição bruta fica visível apenas para você, líder; o liderado vê só o que for explicitamente compartilhado. Cada liderado pago inclui uma franquia mensal de horas de bot, com pacotes extras disponíveis se precisar de mais." },
       { q: "Quanto tempo até eu ver valor?", a: "O onboarding leva poucos minutos e você já pode ir registrando anotações, fazer uploads de transcrições antigas ou configurar para Rhitmo transcrever suas futuras reuniões e já ter evidências suficientes para gerar as primeiras avaliações, que podem ser semanais, mensais, trimestrais ou anuais, você escolhe. Você percebe que precisava disso antes quando a review sai pronta em 2 minutos em vez das horas que custavam antes." },
       { q: "Privacidade, LGPD e segurança dos dados?", a: "Suas notas como líder são privadas por padrão; compartilhar é uma ação explícita e visível. Aplicamos Row-Level Security por cadeia de liderança, então dados de um time nunca vazam para outro. Seguimos LGPD, você pode exportar e excluir o histórico a qualquer momento, e a assinatura pode ser cancelada quando quiser sem reter seus dados." },
     ],
@@ -345,43 +305,6 @@ const translations = {
     perCyclePeriodAnnual: "/year",
     equivPerMonthLabel: "Equivalent to",
     perMonthShort: "/mo",
-    pulseSubtitle: "For the leader who wants to start tracking and developing their team.",
-    pulseFree: "Free",
-    pulseForever: "· forever",
-    pulseCTA: "Get started free",
-    pulseFeatures: [
-      "Unlimited journal",
-      "Mentor AI — up to 20 conversations per month",
-      "1 AI review per month",
-      "Unlimited notes and records",
-      "Up to 2 direct reports",
-    ],
-    proSubtitle: "For leaders who want to operate at the right rhythm: unlimited direct reports, AI at every step.",
-    proNote: "One charge per cycle · cancel anytime",
-    proCTA: "Get started",
-    proBadge: "Most popular",
-    proFeatures: [
-      {
-        groupLabel: "Performance Cycle",
-        items: [
-          { label: "Journal + automatic monthly recap", isNew: true },
-          { label: "Quarterly AI-guided performance reviews", isNew: true },
-          { label: "Formal reviews with cited evidence" },
-        ],
-      },
-      {
-        groupLabel: "Support Tools",
-        items: [
-          { label: "Automatic meeting transcription — 30h/month" },
-          { label: "Pre-meeting briefs with historical context" },
-          { label: "Real-time bias detection" },
-          { label: "Unlimited Mentor AI" },
-          { label: "Your team accesses feedback and goals in real time" },
-          { label: "Full analytics · Unlimited teams" },
-          { label: "Unlimited direct reports" },
-        ],
-      },
-    ],
     mentorChatLabel: "Direct report: Maria Santos",
     chatQuestion: "How to give feedback about tardiness without demotivating?",
     chatAnswer: "Based on Maria's profile, I suggest an empathetic approach. Start by acknowledging her positive contributions...",
@@ -397,7 +320,6 @@ const translations = {
     launchDisclaimer: "Launch price guaranteed while your subscription is active.",
     pricingAnchor: "Start free. Scale when it makes sense.",
     pricingTrustLine: "No credit card to start · Cancel anytime · Launch price guaranteed while your subscription is active",
-    proSocialProof: "Used by leaders in tech, healthcare, and services teams in Brazil",
     enterpriseFloor: "Starting at 50 employees · minimum R$ 750/month",
     newBadge: "New",
     enterpriseNav: "Enterprise",
@@ -464,7 +386,7 @@ const translations = {
       { q: "How does Rhitmo detect bias while I write?", a: "As you type a review or feedback, Rhitmo highlights biased language in real time: gender bias (\"aggressive\" vs. \"assertive\"), personality bias (focusing on \"who they are\" instead of \"what they did\"), generalizations like \"always\" and \"never\", and attacks on the person rather than the behavior. It's not a post-hoc audit, it's prevention at the moment of writing." },
       
       { q: "What can I actually do from Slack alone?", a: "Almost everything that matters day to day: receive 1:1 briefs, generate an agenda, chat with Rhitmo in DM like your leadership assistant, log a quick note about someone. If you live in Slack, you can use Rhitmo most of the time without opening the platform." },
-      { q: "How does automatic meeting transcription work?", a: "A bot joins your Meet, Zoom or Teams call, transcribes it and gives back structured notes — you don't type during the conversation. The raw transcript stays visible only to you, the leader; the report only sees what you explicitly share. The Pro plan includes 30 hours of transcription per month." },
+      { q: "How does automatic meeting transcription work?", a: "A bot joins your Meet, Zoom or Teams call, transcribes it and gives back structured notes — you don't type during the conversation. The raw transcript stays visible only to you, the leader; the report only sees what you explicitly share. Every paid seat includes a monthly bot-hour allowance, with extra packs available if you need more." },
       { q: "How long until I see value?", a: "Onboarding takes under 5 minutes. The first 1:1 briefs land within the first week, as Rhitmo learns your routine. The big payoff happens at the end of the quarter, when a review comes out in 2 minutes instead of the 4 hours it used to take." },
       { q: "Privacy, GDPR/LGPD and data security?", a: "Your notes as a leader are private by default; sharing is an explicit, visible action. We enforce Row-Level Security along the leadership chain, so one team's data never leaks to another. We're LGPD compliant, you can export and delete your history at any time, and you can cancel the subscription whenever without us holding your data." },
     ],
