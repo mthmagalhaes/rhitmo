@@ -157,6 +157,11 @@ export default function HRRitmo() {
                 {selected.leader_name || selected.leader_email}
               </h2>
               <p className="text-sm text-muted-foreground">{selected.leader_email}</p>
+              {(selected.teams?.length ?? 0) > 0 && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Times: {selected.teams!.map((t) => t.name).join(' · ')}
+                </p>
+              )}
             </div>
 
             {loadingDetail ? (
