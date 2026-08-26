@@ -737,7 +737,7 @@ const PricingSection = ({
         <div className="bg-card rounded-[40px] border border-border/40 shadow-sm p-8 md:p-12">
           <div className="flex flex-col items-start gap-2 mb-8">
             <div className="inline-flex items-center rounded-full bg-primary/10 px-6 py-2.5 text-xl md:text-2xl font-semibold text-primary">
-              {lang === 'pt' ? 'Primeiros 3 usuários grátis' : 'First 3 users free'}
+              {lang === 'pt' ? 'Líder + 3 liderados grátis' : 'You + 3 direct reports free'}
             </div>
             <p className="text-sm text-muted-foreground pl-1">
               {lang === 'pt' ? 'Teste a Rhitmo sem compromisso' : 'Try Rhitmo with no commitment'}
