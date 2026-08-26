@@ -37,6 +37,8 @@ import { WorkspaceSwitcher } from '@/components/sidebar/WorkspaceSwitcher';
 
 import { SidebarFooterCTA } from '@/components/sidebar/SidebarFooterCTA';
 import { SidebarProfileBlock } from '@/components/sidebar/SidebarProfileBlock';
+import { SidebarBotHoursMeter } from '@/components/sidebar/SidebarBotHoursMeter';
+
 import { GlobalSearchDialog } from '@/components/sidebar/GlobalSearchDialog';
 import { MentorChat } from '@/components/MentorChat';
 import { NewMemberDialog } from '@/components/NewMemberDialog';
@@ -245,7 +247,11 @@ export function AppSidebar() {
           </div>
         )}
 
+        {/* Bot hours meter — leaders only, expanded sidebar only */}
+        {open && persona === 'leader' && <SidebarBotHoursMeter />}
+
         {/* Profile block — avatar opens personal profile dialog */}
+
         {open && effectiveUserId && (
           <SidebarProfileBlock
             memberId={effectiveUserId}

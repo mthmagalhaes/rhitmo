@@ -666,7 +666,7 @@ const PricingSection = ({
       ? [
           { title: 'Mentor AI ilimitado', desc: 'Seu Chief of Staff conversacional, 24/7, com memória do time.' },
           { title: '1:1s', desc: 'Brief automático antes, pauta gerada a partir do contexto histórico com a pessoa liderada.' },
-          { title: 'Transcrição de reunião automática', desc: 'Cada liderado pago inclui uma franquia generosa de horas de bot por mês, com horas extras disponíveis quando precisar. A transcrição vira anotação sozinha e você foca na conversa.' },
+          { title: 'Transcrição de reunião automática', desc: 'Cada liderado pago inclui 4h de bot por mês, com horas extras disponíveis quando precisar. A transcrição vira anotação sozinha e você foca na conversa.' },
           { title: 'Slack', desc: 'Tenha Rhitmo conectado com seu Slack para lembretes, briefs e chat onde você já passa maior parte do tempo.' },
           { title: 'Detecção de viés nas evidências e avaliações de desempenho', desc: 'Identifique e aprenda a corrigir eventuais vieses e injustiças que você pode estar comentendo' },
           
@@ -674,7 +674,7 @@ const PricingSection = ({
       : [
           { title: 'Unlimited Mentor AI', desc: 'Your conversational Chief of Staff, 24/7, with team memory.' },
           { title: '1:1s, Pulse, IDP and 360°', desc: 'The full people management cycle in one place.' },
-          { title: 'Automatic meeting transcription', desc: 'Every paid seat includes a generous monthly bot-hour allowance, with extra hours available when you need them. The bot joins, transcribes and turns it into evidence automatically.' },
+          { title: 'Automatic meeting transcription', desc: 'Every paid seat includes 4 bot-hours per month, with extra hours available when you need them. The bot joins, transcribes and turns it into evidence automatically.' },
           { title: 'Bidirectional Slack', desc: 'Rhitmo pulls context and delivers briefs by DM, no tab switching.' },
           { title: 'Real-time bias detection', desc: 'Reviews 38× less biased, right inside the editor.' },
           
