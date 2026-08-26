@@ -227,6 +227,19 @@ export default function HRRitmo() {
                   </p>
                   <p className="text-xs text-muted-foreground truncate">{l.leader_email}</p>
 
+                  {(l.teams?.length ?? 0) > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {l.teams!.map((t) => (
+                        <span
+                          key={t.id}
+                          className="rounded-lg bg-muted px-2 py-0.5 text-[11px] text-muted-foreground"
+                        >
+                          {t.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
                   <div className="mt-4 flex items-baseline gap-2">
                     <span className={cn('text-3xl font-bold tracking-tight', coverageTone(pct))}>
                       {pct}%
