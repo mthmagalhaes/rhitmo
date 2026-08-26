@@ -3536,6 +3536,15 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_bot_hours_usage: {
+        Args: never
+        Returns: {
+          hours_cap: number
+          hours_used: number
+          paid_seats: number
+          unlimited: boolean
+        }[]
+      }
       get_hr_all_members: {
         Args: {
           _has_pdi?: boolean
