@@ -37,7 +37,7 @@ export function BotHoursCard() {
           <div className="h-2 rounded-full bg-muted animate-pulse" />
         ) : data.unlimited ? (
           <p className="text-sm text-muted-foreground">
-            {fmt(data.hoursUsed)} usadas este mês. Seu workspace está sem teto de horas.
+            {fmt(data.hoursUsed)} usadas este mês. Seu workspace não tem limite mensal de horas.
           </p>
         ) : (
           <>
