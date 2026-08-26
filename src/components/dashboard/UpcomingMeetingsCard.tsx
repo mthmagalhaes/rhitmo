@@ -61,6 +61,29 @@ export const UpcomingMeetingsCard = () => {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
   const [schedulingMeetingId, setSchedulingMeetingId] = useState<string | null>(null);
+  const [dismissingBotId, setDismissingBotId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const dismissBot = async (botId: string) => {
+    setDismissingBotId(botId);
+    try {
+      await safeFunctionInvoke('dismiss-recall-bot', { bot_id: botId });
+      toast({ title: 'Bot removido da reunião' });
+      queryClient.invalidateQueries({ queryKey: ['recall-bots'] });
+    } catch (err) {
+      console.error('[UpcomingMeetingsCard] dismiss failed', err);
+      toast({
+        title: 'Não consegui remover o bot',
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive',
+      });
+    } finally {
+      setDismissingBotId(null);
+    }
+  };
+
+
 
   const sendAdHocBot = ({ meeting_url, member_id }: { meeting_url: string; member_id: string | null }) => {
     scheduleBot.mutate({
