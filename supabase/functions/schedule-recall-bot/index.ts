@@ -372,11 +372,27 @@ Deno.serve(async (req) => {
 
     if (insertError) {
       console.error("Insert error:", insertError);
+      // 23505 = índice único parcial (meeting_url, scheduled_at): outro líder
+      // agendou pra mesma sala nos mesmos segundos. Cancela o bot recém-criado.
+      if (insertError.code === "23505") {
+        try {
+          await fetch(`https://us-west-2.recall.ai/api/v1/bot/${recallData.id}/`, {
+            method: "DELETE",
+            headers: { Authorization: `Token ${RECALL_API_KEY}` },
+          });
+        } catch (e) {
+          console.warn("Falha ao cancelar bot duplicado:", e);
+        }
+        return new Response(JSON.stringify({
+          error: "Já existe um bot do Rhitmo nesta sala. A transcrição será feita uma única vez.",
+        }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
       return new Response(JSON.stringify({ error: "Bot scheduled but failed to save record" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     console.log(`Bot scheduled: ${recallData.id} for meeting ${meeting_id || meeting_url} (provider: recallai_streaming/auto)`);
 
