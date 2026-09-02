@@ -48,6 +48,10 @@ export const loadLiderContexto = () => import('@/pages/lider/Contexto');
 export const loadLiderMentor = () => import('@/pages/lider/Mentor');
 export const loadLiderMentorThread = () => import('@/pages/lider/MentorThread');
 
+export const loadV2Layout = () => import('@/pages/v2/V2Layout');
+export const loadV2Conectores = () => import('@/pages/v2/Conectores');
+export const loadV2Billing = () => import('@/pages/v2/Billing');
+
 export const loadLideradoInicio = () => import('@/pages/liderado/Inicio');
 export const loadLideradoCompass = () => import('@/pages/liderado/Compass');
 export const loadLideradoOneOnOnes = () => import('@/pages/liderado/OneOnOnes');
@@ -94,6 +98,9 @@ export const LiderObjetivos = lazy(loadLiderObjetivos);
 export const LiderPessoas = lazy(loadLiderPessoas);
 export const LiderConfiguracoes = lazy(loadLiderConfiguracoes);
 export const LiderContexto = lazy(loadLiderContexto);
+export const V2Layout = lazy(loadV2Layout);
+export const V2Conectores = lazy(loadV2Conectores);
+export const V2Billing = lazy(loadV2Billing);
 export const LiderMentor = lazy(loadLiderMentor);
 export const LiderMentorThread = lazy(loadLiderMentorThread);
 

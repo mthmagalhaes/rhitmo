@@ -7,7 +7,7 @@ import { useBotHoursUsage } from '@/hooks/useBotHoursUsage';
  * A ligação com o Stripe entra na fase seguinte.
  */
 export default function V2Billing() {
-  const usage = useBotHoursUsage();
+  const { data: usage, isLoading } = useBotHoursUsage();
 
   return (
     <div className="space-y-6">
@@ -44,7 +44,7 @@ export default function V2Billing() {
               Para reuniões em que ninguém está gravando. Ativável por assento, cancelável a
               qualquer momento.
             </p>
-            {!usage.isLoading && (
+            {!isLoading && usage && (
               <p className="mt-3 text-xs text-muted-foreground">
                 Uso atual: {usage.hoursUsed.toFixed(1)}h de {usage.hoursCap}h disponíveis.
               </p>
