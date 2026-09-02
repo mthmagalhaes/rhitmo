@@ -120,7 +120,7 @@ export function isTranscriptLike(
   content: string | null | undefined,
 ): boolean {
   const effective = detectEffectiveSource(source, content);
-  return effective === 'recall_bot' || effective === 'transcription' || effective === 'granola';
+  return effective === 'recall_bot' || effective === 'transcription' || isNoteTakerSource(effective);
 }
 
 export function getDiarySourceMeta(
@@ -163,10 +163,10 @@ export function getDiarySourceMeta(
             'bg-info/10 text-info-strong border-info/25',
         };
   }
-  if (effective === 'granola') {
+  if (isNoteTakerSource(effective)) {
     return {
-      kind: 'granola',
-      label: 'Granola',
+      kind: 'note_taker',
+      label: NOTE_TAKER_LABELS[effective],
       icon: NotebookPen,
       badgeClass:
         'bg-success/10 text-success-strong border-success/25',
