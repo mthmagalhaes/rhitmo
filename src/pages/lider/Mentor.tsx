@@ -178,7 +178,7 @@ export default function LiderMentor() {
   const handleSubmit = () => {
     const text = input.trim();
     if (!text && !attachment) return;
-    if (mode === 'member' && !selectedMember) return;
+    
     const currentAttachment = attachment;
     setInput('');
     setAttachment(null);
