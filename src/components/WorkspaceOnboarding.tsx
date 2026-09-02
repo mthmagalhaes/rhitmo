@@ -82,18 +82,8 @@ export function WorkspaceOnboarding({ userId, userMetadata, onComplete }: Worksp
           (user.user_metadata?.display_name as string | undefined) ||
           undefined;
 
-        supabase.functions.invoke('send-transactional-email', {
-          body: {
-            templateName: 'leader-welcome',
-            recipientEmail: user.email,
-            idempotencyKey: `leader-welcome-${userId}`,
-            templateData: {
-              leaderName,
-              workspaceName: workspaceName.trim(),
-              dashboardUrl: 'https://rhitmo.co/dashboard',
-              isFounderProgram,
-            }
-          }
+        supabase.functions.invoke('notify-leader-welcome', {
+          body: { workspaceId: workspace.id }
         }).catch((err) => {
           console.error('Falha ao enviar leader-welcome (não crítico):', err);
         });

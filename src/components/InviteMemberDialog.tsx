@@ -92,17 +92,8 @@ export const InviteMemberDialog = ({
         (user?.user_metadata?.display_name as string | undefined) ||
         undefined;
 
-      const { error } = await supabase.functions.invoke('send-transactional-email', {
-        body: {
-          templateName: 'member-welcome',
-          recipientEmail: member.email,
-          idempotencyKey: `invite-${member.id}-${member.invite_token}`,
-          templateData: {
-            memberName: member.name,
-            leaderName,
-            syncUrl: `${APP_URL}/invite?code=${member.invite_token}`,
-          },
-        },
+      const { error } = await supabase.functions.invoke('send-member-invite', {
+        body: { memberId: member.id, useInviteLink: true },
       });
 
       if (error) throw error;

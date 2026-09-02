@@ -378,16 +378,8 @@ const MemberDetails = () => {
       const {
         data: inviteData,
         error: inviteError
-      } = await supabase.functions.invoke('send-transactional-email', {
-        body: {
-          templateName: 'sync-invite',
-          recipientEmail: member.email,
-          idempotencyKey: `sync-invite-resend-${member.id}-${Date.now()}`,
-          templateData: {
-            memberName: member.name,
-            syncUrl,
-          }
-        }
+      } = await supabase.functions.invoke('send-sync-invite', {
+        body: { memberId: member.id }
       });
       if (inviteError) throw inviteError;
       toast({

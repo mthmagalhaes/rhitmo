@@ -225,18 +225,8 @@ export function FormalReviewSheet({
       setShareDialogOpen(false);
       onSent?.();
       // Fire-and-forget email notification via transactional system
-      supabase.functions.invoke('send-transactional-email', {
-        body: {
-          templateName: 'review-shared',
-          recipientEmail: (review as any)?.team_members?.email,
-          idempotencyKey: `review-shared-${reviewId}`,
-          templateData: {
-            memberName: (review as any)?.team_members?.name,
-            managerName: 'Seu líder',
-            periodLabel: (review as any)?.title,
-            reviewLink: `${window.location.origin}/review/${reviewId}`,
-          }
-        }
+      supabase.functions.invoke('notify-review-shared', {
+        body: { reviewId }
       }).catch(err => console.error('Email notification failed:', err));
     },
     onError: (error: any) => {

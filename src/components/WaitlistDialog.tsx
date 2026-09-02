@@ -63,34 +63,10 @@ export const WaitlistDialog = ({ open, onOpenChange }: WaitlistDialogProps) => {
       });
 
       // Notificar admin de forma assíncrona (fire-and-forget) via transactional email
-      supabase.functions.invoke('send-transactional-email', {
-        body: {
-          templateName: 'admin-new-lead',
-          recipientEmail: 'matheus@rhitmo.co',
-          idempotencyKey: `admin-lead-${email}-${Date.now()}`,
-          templateData: {
-            leadEmail: email,
-            leadName: name || null,
-            leadPhone: phone || null,
-            leadTeamSize: teamSize || null,
-          }
-        }
+      supabase.functions.invoke('notify-waitlist-signup', {
+        body: { email }
       }).catch((err) => {
-        console.error('Falha ao notificar admin (não crítico):', err);
-      });
-
-      // Enviar confirmação para o lead (fire-and-forget)
-      supabase.functions.invoke('send-transactional-email', {
-        body: {
-          templateName: 'waitlist-confirmation',
-          recipientEmail: email,
-          idempotencyKey: `waitlist-confirm-${email}-${Date.now()}`,
-          templateData: {
-            leadName: name || null,
-          }
-        }
-      }).catch((err) => {
-        console.error('Falha ao enviar confirmação ao lead (não crítico):', err);
+        console.error('Falha ao notificar entrada na waitlist (não crítico):', err);
       });
       
       // Reset form and close

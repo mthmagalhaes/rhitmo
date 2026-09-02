@@ -25,13 +25,8 @@ export function useResendRhitmoSync() {
     }
     setPending(true);
     try {
-      const { error } = await supabase.functions.invoke('send-transactional-email', {
-        body: {
-          templateName: 'sync-invite',
-          recipientEmail: target.email,
-          idempotencyKey: `sync-invite-resend-${target.id}-${Date.now()}`,
-          templateData: { memberName: target.name, syncUrl: buildSyncUrl(target.id) },
-        },
+      const { error } = await supabase.functions.invoke('send-sync-invite', {
+        body: { memberId: target.id },
       });
       if (error) throw error;
       return true;
@@ -54,13 +49,8 @@ export function useResendRhitmoSync() {
           continue;
         }
         try {
-          const { error } = await supabase.functions.invoke('send-transactional-email', {
-            body: {
-              templateName: 'sync-invite',
-              recipientEmail: t.email,
-              idempotencyKey: `sync-invite-resend-${t.id}-${Date.now()}`,
-              templateData: { memberName: t.name, syncUrl: buildSyncUrl(t.id) },
-            },
+          const { error } = await supabase.functions.invoke('send-sync-invite', {
+            body: { memberId: t.id },
           });
           if (error) throw error;
           sent++;
