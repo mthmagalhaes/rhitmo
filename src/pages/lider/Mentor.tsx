@@ -311,42 +311,33 @@ export default function LiderMentor() {
             Olá, {userName.split(' ')[0]} — o que você quer entender hoje?
           </h1>
           <p className="mt-2 text-[15px] text-muted-foreground max-w-2xl leading-relaxed">
-            Sua copiloto de liderança. Reflita sobre você ou analise um liderado com contexto completo.
+            Sua copiloto de liderança. Escolha um liderado no campo abaixo para analisar com
+            contexto completo, ou pergunte direto para refletir sobre você.
           </p>
 
-          {/* Mode toggle: Coach vs Member */}
-          <div className="mt-5 inline-flex items-center gap-1 rounded-2xl bg-muted/50 p-1 border border-border/40">
-            <button
-              type="button"
-              onClick={() => {
-                setMode('coach');
-                setSelectedMember(null);
-                setScope('geral');
-              }}
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[12.5px] font-medium transition-all',
-                mode === 'coach'
-                  ? 'bg-background text-foreground shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              Conversar comigo (coach)
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('member')}
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[12.5px] font-medium transition-all',
-                mode === 'member'
-                  ? 'bg-background text-foreground shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <Users className="h-3.5 w-3.5" />
-              Analisar um liderado
-            </button>
+          {/* Linha de contexto — reflete o único seletor (no composer) */}
+          <div className="mt-4 inline-flex items-center gap-2 text-[12.5px] text-muted-foreground">
+            {selectedMember ? (
+              <>
+                <MemberAvatar
+                  memberId={selectedMember.id}
+                  memberName={selectedMember.name}
+                  avatarUrl={selectedMember.avatar}
+                  size="sm"
+                />
+                <span>
+                  Falando sobre <span className="font-medium text-foreground">{selectedMember.name}</span>
+                  {selectedMember.role ? ` · ${selectedMember.role}` : ''}
+                </span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>Conversa sobre sua liderança</span>
+              </>
+            )}
           </div>
+
         </header>
 
         {/* ── Composer ───────────────────────────────────────────── */}
