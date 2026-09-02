@@ -17,6 +17,10 @@ import {
 
 interface EmailChangeEmailProps {
   siteName: string
+  // oldEmail é o endereço atual (HookData.OldEmail). No fanout seguro de
+  // email_change, `email` é o destinatário (NOVO), então a linha "de" precisa
+  // renderizar oldEmail para ler "de ANTIGO para NOVO".
+  oldEmail: string
   email: string
   newEmail: string
   confirmationUrl: string
@@ -24,6 +28,7 @@ interface EmailChangeEmailProps {
 
 export const EmailChangeEmail = ({
   siteName,
+  oldEmail,
   email,
   newEmail,
   confirmationUrl,
@@ -39,8 +44,8 @@ export const EmailChangeEmail = ({
         <Heading style={h1}>Confirme a alteração do email</Heading>
         <Text style={text}>
           Você solicitou a alteração do seu email no Rhitmo de{' '}
-          <Link href={`mailto:${email}`} style={link}>
-            {email}
+          <Link href={`mailto:${oldEmail || email}`} style={link}>
+            {oldEmail || email}
           </Link>{' '}
           para{' '}
           <Link href={`mailto:${newEmail}`} style={link}>
@@ -48,6 +53,7 @@ export const EmailChangeEmail = ({
           </Link>
           .
         </Text>
+
         <Text style={text}>
           Clique no botão abaixo para confirmar esta alteração:
         </Text>

@@ -2,7 +2,6 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { emit } from "../_shared/emit.ts";
 import { createLogger, getOrCreateRequestId } from "../_shared/logger.ts";
-import { flag } from "../_shared/featureFlags.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,10 +16,8 @@ const handler = async (req: Request): Promise<Response> => {
   const requestId = getOrCreateRequestId(req);
   const log = createLogger({ functionName: 'notify-review-shared', requestId });
 
-  // Onda 4.5: USE_EVENT_BUS_FOR_REVIEW_SHARED (default true)
-  // = true  → email vai pelo bus (template review-shared via send-transactional-email)
-  // = false → mantém Resend direto (rollback de emergência)
-  const useEventBus = flag('USE_EVENT_BUS_FOR_REVIEW_SHARED', true);
+  // O e-mail sempre sai pelo bus de eventos (template review-shared),
+  // entregue pela infraestrutura de e-mail gerenciada da Lovable.
 
   try {
     const { reviewId } = await req.json();
@@ -84,8 +81,7 @@ const handler = async (req: Request): Promise<Response> => {
     });
     const reviewLink = `https://rhitmo.co/review/${reviewId}`;
 
-    const channels: Array<'inapp' | 'slack' | 'email'> = ['inapp', 'slack'];
-    if (useEventBus) channels.push('email');
+    const channels: Array<'inapp' | 'slack' | 'email'> = ['inapp', 'slack', 'email'];
 
     await emit(supabaseAdmin, {
       type: 'review.shared',
@@ -107,39 +103,10 @@ const handler = async (req: Request): Promise<Response> => {
       },
     });
 
-    // Rollback path — mantém Resend direto se a flag estiver desligada.
-    let emailId: string | null = null;
-    if (!useEventBus) {
-      const resendApiKey = Deno.env.get('RESEND_API_KEY');
-      if (!resendApiKey) {
-        throw new Error('RESEND_API_KEY não configurada (flag USE_EVENT_BUS_FOR_REVIEW_SHARED=false)');
-      }
-      const resendResponse = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${resendApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: 'Rhitmo <noreply@rhitmo.co>',
-          to: [member.email],
-          subject: `${managerName} compartilhou sua avaliação de desempenho`,
-          html: `<p>Olá ${member.name}, ${managerName} compartilhou sua avaliação. <a href="${reviewLink}">Ver avaliação</a></p>`,
-        }),
-      });
-      if (!resendResponse.ok) {
-        const errorData = await resendResponse.json();
-        throw new Error(`Resend API error: ${JSON.stringify(errorData)}`);
-      }
-      const emailData = await resendResponse.json();
-      emailId = emailData.id;
-      log.info('email_sent_legacy', { resend_id: emailData.id });
-    } else {
-      log.info('email_via_bus', { event_type: 'review.shared' });
-    }
+    log.info('email_via_bus', { event_type: 'review.shared' });
 
     return new Response(
-      JSON.stringify({ success: true, emailId, requestId, channel: useEventBus ? 'bus' : 'resend' }),
+      JSON.stringify({ success: true, requestId, channel: 'bus' }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'x-request-id': requestId } }
     );
   } catch (error: any) {

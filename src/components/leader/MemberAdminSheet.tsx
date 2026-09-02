@@ -234,13 +234,8 @@ export function MemberAdminSheet({
     }
     setResendingSync(true);
     try {
-      const { error } = await supabase.functions.invoke('send-transactional-email', {
-        body: {
-          templateName: 'sync-invite',
-          recipientEmail: member.email,
-          idempotencyKey: `sync-invite-resend-${member.id}-${Date.now()}`,
-          templateData: { memberName: member.name, syncUrl },
-        },
+      const { error } = await supabase.functions.invoke('send-sync-invite', {
+        body: { memberId: member.id },
       });
       if (error) throw error;
       toast.success(`Pesquisa enviada para ${member.email}`);

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { sendAppEmail } from '../_shared/appEmail.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -68,30 +69,23 @@ const handler = async (req: Request): Promise<Response> => {
     const managerEmail = authUser.user.email;
 
     // Use transactional email system
-    const { error: emailError } = await supabaseAdmin.functions.invoke('send-transactional-email', {
-      body: {
-        templateName: 'review-acknowledged',
-        recipientEmail: managerEmail,
-        idempotencyKey: `review-ack-${reviewId}`,
-        templateData: {
-          managerName,
-          memberName: member.name,
-          acknowledgedDate: review.acknowledged_at
-            ? new Date(review.acknowledged_at).toLocaleDateString('pt-BR', {
-                day: '2-digit', month: 'long', year: 'numeric',
-                hour: '2-digit', minute: '2-digit',
-              })
-            : 'agora',
-        }
+    const emailResult = await sendAppEmail('review-acknowledged', managerEmail, {
+      idempotencyKey: `review-ack-${reviewId}`,
+      templateData: {
+        managerName,
+        memberName: member.name,
+        acknowledgedDate: review.acknowledged_at
+          ? new Date(review.acknowledged_at).toLocaleDateString('pt-BR', {
+              day: '2-digit', month: 'long', year: 'numeric',
+              hour: '2-digit', minute: '2-digit',
+            })
+          : 'agora',
       }
     });
 
-    if (emailError) {
-      console.error('❌ Erro ao enviar email transacional:', emailError);
-      throw emailError;
-    }
-
-    console.log('✅ Email de confirmação enfileirado para o líder');
+    console.log(emailResult.sent
+      ? '✅ Email de confirmação enviado para o líder'
+      : '⚠️ Destinatário suprimido — email não enviado');
 
     return new Response(
       JSON.stringify({ success: true }),

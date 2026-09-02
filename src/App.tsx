@@ -45,7 +45,6 @@ import {
   DirectReportReviewView,
   SlackConnect,
   DesignSystem,
-  Unsubscribe,
   RecorderPopup,
   Enterprise,
   ResetPassword,
@@ -226,8 +225,6 @@ const App = () => (
               <Route path="/hr/competency-framework" element={<AppLayout><HRAdminGuard><CompetencyFramework /></HRAdminGuard></AppLayout>} />
 
 
-              {/* Unsubscribe */}
-              <Route path="/unsubscribe" element={Public(<Unsubscribe />)} />
 
               {/* CATCH-ALL */}
               <Route path="*" element={<NotFound />} />

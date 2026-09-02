@@ -57,6 +57,12 @@ function makeMockSupabase(opts: {
         return Promise.resolve({ error: opts.invokeError ? { message: opts.invokeError } : null });
       },
     },
+    // Substitui o envio gerenciado (sendAppEmail) no ambiente de teste.
+    sendAppEmail: (templateName: string, recipientEmail: string, options: any) => {
+      calls.invokes.push({ fn: "app-email", body: { templateName, recipientEmail, ...options } });
+      if (opts.invokeError) return Promise.reject(new Error(opts.invokeError));
+      return Promise.resolve({ sent: true });
+    },
     auth: {
       admin: {
         getUserById: (_id: string) => Promise.resolve({
@@ -88,10 +94,14 @@ async function dispatchEvent(supabase: any, ev: EventRow): Promise<{ ok: boolean
           recipientEmail = userInfo?.user?.email ?? undefined;
         }
         if (!recipientEmail) { errors.push("email: missing recipient (no payload.recipient_email and target_user has no email)"); continue; }
-        const { error } = await supabase.functions.invoke("send-transactional-email", {
-          body: { templateName, recipientEmail, idempotencyKey: `event-${ev.id}-email`, templateData: ev.payload },
-        });
-        if (error) errors.push(`email: ${(error as any)?.message ?? error}`);
+        try {
+          await supabase.sendAppEmail(templateName, recipientEmail, {
+            idempotencyKey: `event-${ev.id}-email`,
+            templateData: ev.payload,
+          });
+        } catch (e) {
+          errors.push(`email: ${(e as Error).message}`);
+        }
       } else if (channel === "slack") {
         const { error } = await supabase.rpc("enqueue_email", {
           queue_name: "slack_outbound",
@@ -138,13 +148,13 @@ Deno.test("inapp sem target_user_id reporta erro descritivo", async () => {
   assert(r.error?.includes("missing target_user_id"));
 });
 
-Deno.test("multi-canal email+inapp invoca send-transactional-email + insert", async () => {
+Deno.test("multi-canal email+inapp envia e-mail gerenciado + insert", async () => {
   const { supabase, calls } = makeMockSupabase();
   const r = await dispatchEvent(supabase, baseEv({ channels: ["inapp", "email"] }));
   assertEquals(r.ok, true);
   assertEquals(calls.notificationsInsert.length, 1);
   assertEquals(calls.invokes.length, 1);
-  assertEquals(calls.invokes[0].fn, "send-transactional-email");
+  assertEquals(calls.invokes[0].fn, "app-email");
   assertEquals(calls.invokes[0].body.templateName, "feedback-shared");
   assertEquals(calls.invokes[0].body.recipientEmail, "test@example.com");
 });

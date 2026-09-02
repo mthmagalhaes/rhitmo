@@ -6,6 +6,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendAppEmail } from "../_shared/appEmail.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,8 +20,8 @@ const BATCH_SIZE = 50;
 const MAX_ATTEMPTS = 3;
 
 // Onda 4.5 — mapeamento canônico de event_type → template transacional.
-// Quando o canal "email" é despachado, esses templates são usados pelo
-// `process-email-queue` via `send-transactional-email`.
+// Quando o canal "email" é despachado, o template é renderizado e enviado
+// pela infraestrutura de e-mail gerenciada da Lovable.
 const EVENT_EMAIL_TEMPLATE: Record<string, string> = {
   "feedback.shared": "feedback-shared",
   "review.shared": "review-shared",
@@ -59,7 +60,7 @@ async function dispatchEvent(
         });
         if (error) errors.push(`inapp: ${error.message}`);
       } else if (channel === "email") {
-        // Onda 4.5: invoca send-transactional-email diretamente.
+        // Renderiza e envia pelo e-mail gerenciado da Lovable.
         // Resolve email do destinatário e mapeia evento → template.
         const templateName = EVENT_EMAIL_TEMPLATE[ev.event_type];
         if (!templateName) {
@@ -76,15 +77,14 @@ async function dispatchEvent(
           errors.push("email: missing recipient (no payload.recipient_email and target_user has no email)");
           continue;
         }
-        const { error } = await supabase.functions.invoke("send-transactional-email", {
-          body: {
-            templateName,
-            recipientEmail,
+        try {
+          await sendAppEmail(templateName, recipientEmail, {
             idempotencyKey: `event-${ev.id}-email`,
             templateData: ev.payload,
-          },
-        });
-        if (error) errors.push(`email: ${(error as any)?.message ?? error}`);
+          });
+        } catch (e) {
+          errors.push(`email: ${(e as Error).message}`);
+        }
       } else if (channel === "slack") {
         // enqueue slack via existing pgmq queue
         const { error } = await supabase.rpc("enqueue_email", {

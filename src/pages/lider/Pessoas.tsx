@@ -830,13 +830,8 @@ function ResendInviteButton({ memberId, memberName, memberEmail, isBounced }: { 
       const { data: { user } } = await supabase.auth.getUser();
       const leaderName = (user?.user_metadata?.full_name as string | undefined) ?? user?.email?.split('@')[0] ?? '';
       const syncUrl = `${window.location.origin}/sync/${memberId}`;
-      const { error } = await supabase.functions.invoke('send-transactional-email', {
-        body: {
-          templateName: 'member-welcome',
-          recipientEmail: memberEmail,
-          idempotencyKey: `member-welcome-${memberId}-resend-${Date.now()}`,
-          templateData: { memberName, leaderName, teamName: '', syncUrl },
-        },
+      const { error } = await supabase.functions.invoke('send-member-invite', {
+        body: { memberId },
       });
       if (error) throw error;
       trackFunnel('invite_resent', { memberId, payload: { wasBounced: isBounced } });

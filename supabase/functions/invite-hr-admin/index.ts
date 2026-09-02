@@ -6,6 +6,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { findUserByEmail } from '../_shared/findUserByEmail.ts';
+import { sendAppEmail } from '../_shared/appEmail.ts';
 
 
 const corsHeaders = {
@@ -73,7 +74,7 @@ serve(async (req) => {
 
     if (action === 'resend') {
       // Reenvia gerando um novo link de invite + dispara e-mail transacional próprio.
-      // `generateLink` apenas cria a URL — precisamos enviar o e-mail nós mesmos via send-transactional-email.
+      // `generateLink` apenas cria a URL — o e-mail é enviado pelo helper de e-mails do app.
       const { data: link, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
         type: 'invite',
         email: normalizedEmail,
@@ -85,19 +86,14 @@ serve(async (req) => {
 
       if (!actionLink) throw new Error('Não foi possível gerar o link de convite');
 
-      const { error: sendError } = await supabaseAdmin.functions.invoke('send-transactional-email', {
-        body: {
-          templateName: 'hr-admin-welcome',
-          recipientEmail: normalizedEmail,
-          idempotencyKey: `hr-admin-resend-${targetUserId ?? normalizedEmail}-${Date.now()}`,
-          templateData: {
-            adminName: name ?? null,
-            workspaceName: ws.name,
-            dashboardUrl: actionLink,
-          },
+      await sendAppEmail('hr-admin-welcome', normalizedEmail, {
+        idempotencyKey: `hr-admin-resend-${targetUserId ?? normalizedEmail}-${Date.now()}`,
+        templateData: {
+          adminName: name ?? null,
+          workspaceName: ws.name,
+          dashboardUrl: actionLink,
         },
       });
-      if (sendError) throw new Error(`Falha ao enviar e-mail: ${sendError.message}`);
       resent = true;
     } else if (!targetUserId) {
       // Cria conta + envia convite com redirect para /hr.

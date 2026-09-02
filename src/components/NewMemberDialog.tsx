@@ -193,18 +193,8 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
         const selectedTeam = teams.find(t => t.id === teamId);
         const teamName = selectedTeam?.name || '';
 
-        const { error: inviteError } = await supabase.functions.invoke('send-transactional-email', {
-          body: { 
-            templateName: 'member-welcome',
-            recipientEmail: email.trim(),
-            idempotencyKey: `member-welcome-${newMember.id}`,
-            templateData: {
-              memberName: name.trim(),
-              leaderName,
-              teamName,
-              syncUrl,
-            }
-          }
+        const { error: inviteError } = await supabase.functions.invoke('send-member-invite', {
+          body: { memberId: newMember.id }
         });
 
         if (inviteError) {
