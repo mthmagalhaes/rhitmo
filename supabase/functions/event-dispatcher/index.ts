@@ -60,7 +60,7 @@ async function dispatchEvent(
         });
         if (error) errors.push(`inapp: ${error.message}`);
       } else if (channel === "email") {
-        // Onda 4.5: invoca send-transactional-email diretamente.
+        // Renderiza e envia pelo e-mail gerenciado da Lovable.
         // Resolve email do destinatário e mapeia evento → template.
         const templateName = EVENT_EMAIL_TEMPLATE[ev.event_type];
         if (!templateName) {
