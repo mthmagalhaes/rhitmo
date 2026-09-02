@@ -964,6 +964,8 @@ ${contextLines}`;
           firstName,
         },
         appendices: [
+          intentBlock,
+          attachmentBlock,
           contextModeInstruction,
           timeWindowBlock,
           evidenceBlock,
@@ -982,6 +984,8 @@ ${contextLines}`;
           managerFirstName,
         },
         appendices: [
+          intentBlock,
+          attachmentBlock,
           contextModeInstruction,
           objectivesSection,
           formatWorkStyle(workStyleData),
@@ -1064,7 +1068,11 @@ Com base neste resumo, dê sugestões práticas de liderança, identifique ponto
       ? 'https://ai.gateway.lovable.dev/v1/chat/completions'
       : 'https://api.openai.com/v1/chat/completions';
     const apiKey = useGateway ? lovableApiKey : openAIApiKey;
-    const modelName = useGateway ? 'google/gemini-3-flash-preview' : 'gpt-4o-mini';
+    // Escalonamento de modelo: análise profunda merece o modelo mais capaz;
+    // small talk e edições rápidas usam o flash.
+    const modelName = useGateway
+      ? (intent === 'deep_analysis' ? 'google/gemini-3.1-pro-preview' : 'google/gemini-3.7-flash')
+      : 'gpt-4o-mini';
 
     console.log(`Calling ${modelName} via ${useGateway ? 'Lovable AI Gateway' : 'OpenAI'}, context length:`, systemPrompt.length, 'history messages:', (conversationHistory || []).length);
 
@@ -1082,7 +1090,7 @@ Com base neste resumo, dê sugestões práticas de liderança, identifique ponto
         body: JSON.stringify({
           model: modelName,
           messages: apiMessages,
-          max_tokens: 2500,
+          max_tokens: intent === 'deep_analysis' ? 3000 : intent === 'small_talk' ? 300 : 1200,
         }),
         signal: controller.signal,
       });
