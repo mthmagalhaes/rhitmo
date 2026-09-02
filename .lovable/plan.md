@@ -4,6 +4,15 @@ Pivot completo do modelo: o plano base deixa de comprar minuto de máquina e pas
 
 Construção como **novo sistema paralelo** (rotas `/v2/*` sob uma flag de workspace), reaproveitando tudo que já existe no backend. A plataforma atual continua intacta e funcional durante toda a migração.
 
+## Novo projeto ou mesmo projeto?
+
+Recomendação: **mesmo projeto**, com o v2 em rotas próprias. Um projeto novo teria backend novo — outro banco, outro Auth, outros webhooks de Stripe, Slack, Google Calendar e Recall — e os dados que dão valor à Rhitmo (evidências, transcrições, sinais de rede, avaliações, embeddings) ficariam do lado velho. Você acabaria mantendo duas plataformas de verdade e migrando dados no fim, que é exatamente o risco que queremos evitar.
+
+Ficando no mesmo projeto você ganha o efeito de "começar do zero" onde ele importa (telas, navegação, pricing, onboarding) sem repagar o que já está pronto e testado (RLS, Soul da IA, conectores, e-mail, Slack, cron).
+
+Projeto novo só se valeria a pena em dois cenários: se o v2 fosse para outro público com outro domínio e outra marca, ou se você quisesse descartar a base de dados atual. Nenhum dos dois é o caso aqui.
+
+
 ## Estado atual verificado
 
 - Nenhuma assinatura ativa (`subscriptions`: 0 active). Mudar preço agora não quebra ninguém pagante.
