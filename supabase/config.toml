@@ -89,6 +89,17 @@ project_id = "lybkgujyezzzvbzypxed"
     verify_jwt = true
   [functions.preview-transactional-email]
     verify_jwt = false
+  [functions.send-sync-invite]
+    verify_jwt = true
+  [functions.send-member-invite]
+    verify_jwt = true
+  [functions.notify-leader-welcome]
+    verify_jwt = true
+  [functions.notify-sync-completed]
+    verify_jwt = false
+  [functions.notify-waitlist-signup]
+    verify_jwt = false
+
   [functions.handle-email-unsubscribe]
     verify_jwt = false
   [functions.handle-email-suppression]
