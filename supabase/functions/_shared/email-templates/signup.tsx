@@ -11,7 +11,6 @@ import {
   Html,
   Link,
   Preview,
-  Section,
   Text,
 } from 'npm:@react-email/components@0.0.22'
 
@@ -28,37 +27,34 @@ export const SignupEmail = ({
   recipient,
   confirmationUrl,
 }: SignupEmailProps) => (
-  <Html lang="pt-BR" dir="ltr">
-    <Head />
-    <Preview>Bem-vindo ao Rhitmo! Confirme seu email para começar.</Preview>
+  <Html lang="en" dir="ltr">
+    <Head>
+      <style>{darkModeCss}</style>
+    </Head>
+    <Preview>Confirm your email for {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Section style={logoSection}>
-          <Text style={logoText}>🎵 <strong>Rhitmo</strong></Text>
-        </Section>
-        <Heading style={h1}>Bem-vindo ao Rhitmo! 👋</Heading>
+        <Heading style={h1}>Confirm your email</Heading>
         <Text style={text}>
-          Estamos felizes em ter você por aqui. Confirme seu email para começar a usar o{' '}
+          Thanks for signing up for{' '}
           <Link href={siteUrl} style={link}>
-            <strong>Rhitmo</strong>
+            <strong>{siteName}</strong>
           </Link>
-          .
+          !
         </Text>
         <Text style={text}>
-          Seu email:{' '}
+          Please confirm your email address (
           <Link href={`mailto:${recipient}`} style={link}>
             {recipient}
           </Link>
+          ) by clicking the button below:
         </Text>
-        <Section style={buttonSection}>
-          <Button style={button} href={confirmationUrl}>
-            Confirmar meu email ✓
-          </Button>
-        </Section>
+        <Button className="dm-btn" style={button} href={confirmationUrl}>
+          Verify Email
+        </Button>
         <Text style={footer}>
-          Se você não criou uma conta no Rhitmo, pode ignorar este email com segurança.
+          If you didn't create an account, you can safely ignore this email.
         </Text>
-        <Text style={brand}>Rhitmo • Gestão de Performance Contínua</Text>
       </Container>
     </Body>
   </Html>
@@ -66,34 +62,36 @@ export const SignupEmail = ({
 
 export default SignupEmail
 
-const main = { backgroundColor: '#ffffff', fontFamily: "'Inter', Arial, sans-serif" }
-const container = { padding: '40px 25px', maxWidth: '600px', margin: '0 auto' }
-const logoSection = { textAlign: 'center' as const, marginBottom: '30px' }
-const logoText = { fontSize: '28px', color: '#7C3AED', margin: '0' }
+const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
+const container = { padding: '20px 25px' }
 const h1 = {
-  fontSize: '24px',
+  fontSize: '22px',
   fontWeight: 'bold' as const,
-  color: '#1A1035',
+  color: '#000000',
   margin: '0 0 20px',
-  letterSpacing: '-0.02em',
 }
 const text = {
-  fontSize: '15px',
-  color: '#6B6784',
-  lineHeight: '1.6',
-  margin: '0 0 20px',
+  fontSize: '14px',
+  color: '#55575d',
+  lineHeight: '1.5',
+  margin: '0 0 25px',
 }
-const link = { color: '#7C3AED', textDecoration: 'underline' }
-const buttonSection = { textAlign: 'center' as const, margin: '30px 0' }
+const link = { color: 'inherit', textDecoration: 'underline' }
 const button = {
-  backgroundColor: '#7C3AED',
+  backgroundColor: '#000000',
   color: '#ffffff',
-  fontSize: '15px',
-  fontWeight: '600' as const,
-  borderRadius: '12px',
-  padding: '14px 28px',
+  fontSize: '14px',
+  border: '1px solid #000000',
+  borderRadius: '8px',
+  padding: '12px 20px',
   textDecoration: 'none',
-  display: 'inline-block',
 }
-const footer = { fontSize: '13px', color: '#999999', margin: '30px 0 0' }
-const brand = { fontSize: '12px', color: '#c4c0d0', textAlign: 'center' as const, margin: '20px 0 0' }
+const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
+// Rendered as a text child, which React may HTML-escape: keep this CSS free of >, &, and quotes.
+const darkModeCss = `
+  @media (prefers-color-scheme: dark) {
+    .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
+  }
+  [data-ogsc] .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
+  [data-ogsb] .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
+`

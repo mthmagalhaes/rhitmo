@@ -10,7 +10,6 @@ import {
   Heading,
   Html,
   Preview,
-  Section,
   Text,
 } from 'npm:@react-email/components@0.0.22'
 
@@ -23,27 +22,25 @@ export const RecoveryEmail = ({
   siteName,
   confirmationUrl,
 }: RecoveryEmailProps) => (
-  <Html lang="pt-BR" dir="ltr">
-    <Head />
-    <Preview>Redefinir sua senha no Rhitmo</Preview>
+  <Html lang="en" dir="ltr">
+    <Head>
+      <style>{darkModeCss}</style>
+    </Head>
+    <Preview>Reset your password for {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Section style={logoSection}>
-          <Text style={logoText}>🎵 <strong>Rhitmo</strong></Text>
-        </Section>
-        <Heading style={h1}>Redefinir sua senha</Heading>
+        <Heading style={h1}>Reset your password</Heading>
         <Text style={text}>
-          Recebemos um pedido para redefinir sua senha no Rhitmo. Clique no botão abaixo para escolher uma nova senha.
+          We received a request to reset your password for {siteName}. Click
+          the button below to choose a new password.
         </Text>
-        <Section style={buttonSection}>
-          <Button style={button} href={confirmationUrl}>
-            Redefinir Senha
-          </Button>
-        </Section>
+        <Button className="dm-btn" style={button} href={confirmationUrl}>
+          Reset Password
+        </Button>
         <Text style={footer}>
-          Se você não solicitou esta redefinição, pode ignorar este email. Sua senha permanecerá a mesma.
+          If you didn't request a password reset, you can safely ignore this
+          email. Your password will not be changed.
         </Text>
-        <Text style={brand}>Rhitmo • Gestão de Performance Contínua</Text>
       </Container>
     </Body>
   </Html>
@@ -51,33 +48,35 @@ export const RecoveryEmail = ({
 
 export default RecoveryEmail
 
-const main = { backgroundColor: '#ffffff', fontFamily: "'Inter', Arial, sans-serif" }
-const container = { padding: '40px 25px', maxWidth: '600px', margin: '0 auto' }
-const logoSection = { textAlign: 'center' as const, marginBottom: '30px' }
-const logoText = { fontSize: '28px', color: '#7C3AED', margin: '0' }
+const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
+const container = { padding: '20px 25px' }
 const h1 = {
-  fontSize: '24px',
+  fontSize: '22px',
   fontWeight: 'bold' as const,
-  color: '#1A1035',
+  color: '#000000',
   margin: '0 0 20px',
-  letterSpacing: '-0.02em',
 }
 const text = {
-  fontSize: '15px',
-  color: '#6B6784',
-  lineHeight: '1.6',
-  margin: '0 0 20px',
+  fontSize: '14px',
+  color: '#55575d',
+  lineHeight: '1.5',
+  margin: '0 0 25px',
 }
-const buttonSection = { textAlign: 'center' as const, margin: '30px 0' }
 const button = {
-  backgroundColor: '#7C3AED',
+  backgroundColor: '#000000',
   color: '#ffffff',
-  fontSize: '15px',
-  fontWeight: '600' as const,
-  borderRadius: '12px',
-  padding: '14px 28px',
+  fontSize: '14px',
+  border: '1px solid #000000',
+  borderRadius: '8px',
+  padding: '12px 20px',
   textDecoration: 'none',
-  display: 'inline-block',
 }
-const footer = { fontSize: '13px', color: '#999999', margin: '30px 0 0' }
-const brand = { fontSize: '12px', color: '#c4c0d0', textAlign: 'center' as const, margin: '20px 0 0' }
+const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
+// Rendered as a text child, which React may HTML-escape: keep this CSS free of >, &, and quotes.
+const darkModeCss = `
+  @media (prefers-color-scheme: dark) {
+    .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
+  }
+  [data-ogsc] .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
+  [data-ogsb] .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
+`

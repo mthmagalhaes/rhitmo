@@ -11,12 +11,16 @@ import {
   Html,
   Link,
   Preview,
-  Section,
   Text,
 } from 'npm:@react-email/components@0.0.22'
 
 interface EmailChangeEmailProps {
   siteName: string
+  // oldEmail is the user's current address (HookData.OldEmail). For the
+  // NEW-recipient half of a secure email_change fanout, `email` equals the
+  // recipient (NEW), so the "from" line must render oldEmail to read
+  // "from OLD to NEW" instead of "from NEW to NEW".
+  oldEmail: string
   email: string
   newEmail: string
   confirmationUrl: string
@@ -24,42 +28,39 @@ interface EmailChangeEmailProps {
 
 export const EmailChangeEmail = ({
   siteName,
-  email,
+  oldEmail,
   newEmail,
   confirmationUrl,
 }: EmailChangeEmailProps) => (
-  <Html lang="pt-BR" dir="ltr">
-    <Head />
-    <Preview>Confirme a alteração do seu email no Rhitmo</Preview>
+  <Html lang="en" dir="ltr">
+    <Head>
+      <style>{darkModeCss}</style>
+    </Head>
+    <Preview>Confirm your email change for {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Section style={logoSection}>
-          <Text style={logoText}>🎵 <strong>Rhitmo</strong></Text>
-        </Section>
-        <Heading style={h1}>Confirme a alteração do email</Heading>
+        <Heading style={h1}>Confirm your email change</Heading>
         <Text style={text}>
-          Você solicitou a alteração do seu email no Rhitmo de{' '}
-          <Link href={`mailto:${email}`} style={link}>
-            {email}
+          You requested to change your email address for {siteName} from{' '}
+          <Link href={`mailto:${oldEmail}`} style={link}>
+            {oldEmail}
           </Link>{' '}
-          para{' '}
+          to{' '}
           <Link href={`mailto:${newEmail}`} style={link}>
             {newEmail}
           </Link>
           .
         </Text>
         <Text style={text}>
-          Clique no botão abaixo para confirmar esta alteração:
+          Click the button below to confirm this change:
         </Text>
-        <Section style={buttonSection}>
-          <Button style={button} href={confirmationUrl}>
-            Confirmar Alteração
-          </Button>
-        </Section>
+        <Button className="dm-btn" style={button} href={confirmationUrl}>
+          Confirm Email Change
+        </Button>
         <Text style={footer}>
-          Se você não solicitou esta alteração, proteja sua conta imediatamente.
+          If you didn't request this change, please secure your account
+          immediately.
         </Text>
-        <Text style={brand}>Rhitmo • Gestão de Performance Contínua</Text>
       </Container>
     </Body>
   </Html>
@@ -67,34 +68,36 @@ export const EmailChangeEmail = ({
 
 export default EmailChangeEmail
 
-const main = { backgroundColor: '#ffffff', fontFamily: "'Inter', Arial, sans-serif" }
-const container = { padding: '40px 25px', maxWidth: '600px', margin: '0 auto' }
-const logoSection = { textAlign: 'center' as const, marginBottom: '30px' }
-const logoText = { fontSize: '28px', color: '#7C3AED', margin: '0' }
+const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
+const container = { padding: '20px 25px' }
 const h1 = {
-  fontSize: '24px',
+  fontSize: '22px',
   fontWeight: 'bold' as const,
-  color: '#1A1035',
+  color: '#000000',
   margin: '0 0 20px',
-  letterSpacing: '-0.02em',
 }
 const text = {
-  fontSize: '15px',
-  color: '#6B6784',
-  lineHeight: '1.6',
-  margin: '0 0 20px',
+  fontSize: '14px',
+  color: '#55575d',
+  lineHeight: '1.5',
+  margin: '0 0 25px',
 }
-const link = { color: '#7C3AED', textDecoration: 'underline' }
-const buttonSection = { textAlign: 'center' as const, margin: '30px 0' }
+const link = { color: 'inherit', textDecoration: 'underline' }
 const button = {
-  backgroundColor: '#7C3AED',
+  backgroundColor: '#000000',
   color: '#ffffff',
-  fontSize: '15px',
-  fontWeight: '600' as const,
-  borderRadius: '12px',
-  padding: '14px 28px',
+  fontSize: '14px',
+  border: '1px solid #000000',
+  borderRadius: '8px',
+  padding: '12px 20px',
   textDecoration: 'none',
-  display: 'inline-block',
 }
-const footer = { fontSize: '13px', color: '#999999', margin: '30px 0 0' }
-const brand = { fontSize: '12px', color: '#c4c0d0', textAlign: 'center' as const, margin: '20px 0 0' }
+const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
+// Rendered as a text child, which React may HTML-escape: keep this CSS free of >, &, and quotes.
+const darkModeCss = `
+  @media (prefers-color-scheme: dark) {
+    .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
+  }
+  [data-ogsc] .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
+  [data-ogsb] .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
+`
