@@ -52,6 +52,7 @@ export type Mode =
 const MODE_BLOCKS: Record<Mode, string[]> = {
   "leader-member": [
     "00-identity.md",
+    "09-response-contract.md",
     "01-guardrails.md",
     "02-analysis-matrix.md",
     "03-tone-and-format.md",
@@ -62,6 +63,7 @@ const MODE_BLOCKS: Record<Mode, string[]> = {
   ],
   "leader-self": [
     "00-identity.md",
+    "09-response-contract.md",
     "01-guardrails.md",
     "03-tone-and-format.md",
     "07-memory.md",
@@ -69,6 +71,7 @@ const MODE_BLOCKS: Record<Mode, string[]> = {
   ],
   "member-self": [
     "00-identity.md",
+    "09-response-contract.md",
     "01-guardrails.md",
     "03-tone-and-format.md",
     "05-citations.md",

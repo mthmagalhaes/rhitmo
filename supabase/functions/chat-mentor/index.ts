@@ -919,6 +919,41 @@ ${ctxEvidenceNote}
 
 ${contextLines}`;
 
+    // ============================================
+    // CLASSIFICADOR DE INTENÇÃO (heurístico, sem custo de LLM)
+    // Define o contrato de resposta e o modelo usado.
+    // ============================================
+    const rawQuestion = typeof question === 'string' ? question : (imageContent?.textMessage || '');
+    const q = rawQuestion.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const wordCount = q.trim().split(/\s+/).filter(Boolean).length;
+
+    type Intent = 'small_talk' | 'draft_message' | 'edit_previous' | 'deep_analysis' | 'quick_question';
+    let intent: Intent = 'quick_question';
+
+    if (/\b(oi|ola|opa|bom dia|boa tarde|boa noite|valeu|obrigad|tudo bem)\b/.test(q) && wordCount <= 6) {
+      intent = 'small_talk';
+    } else if (/\b(encurta|resume isso|mais curto|muda o tom|reescreve|refaz|tira o|menos formal|mais formal|deixa mais)\b/.test(q) && wordCount <= 25) {
+      intent = 'edit_previous';
+    } else if (/\b(sugira|sugere|sugestao|escreve|escreva|redija|manda|mensagem|texto pra|como eu falo|como falo|o que eu digo|o que digo|como respondo)\b/.test(q)) {
+      intent = 'draft_message';
+    } else if (/\b(analise|analisa|analisar|diagnostico|panorama|como ela esta|como ele esta|avalia|avaliacao|leitura completa|padrao|padroes|visao geral)\b/.test(q) || wordCount > 120) {
+      intent = 'deep_analysis';
+    }
+
+    const INTENT_INSTRUCTION: Record<Intent, string> = {
+      small_talk: `## INTENÇÃO DETECTADA: SMALL TALK\n\nResponda em 1 ou 2 linhas, conversacional. Sem seções, sem bullets, sem Síntese Honesta.`,
+      draft_message: `## INTENÇÃO DETECTADA: PEDIDO DE MENSAGEM PRONTA\n\nDevolva **apenas o texto da mensagem**, em prosa corrida, na voz do líder, pronto para copiar e colar no Slack/WhatsApp.\n\nPROIBIDO nesta resposta: seções com emoji, títulos, bullets, blockquote de "Sugestão para WhatsApp", rótulos de diagnóstico dentro da mensagem, citações [doc:UUID] e a seção 🎯 Síntese Honesta.\n\nNo máximo UMA linha antes do texto explicando a escolha de tom — e só se acrescentar algo que a mensagem não mostra.`,
+      edit_previous: `## INTENÇÃO DETECTADA: EDIÇÃO DO ARTEFATO ANTERIOR\n\nReescreva apenas o último texto que você produziu, aplicando o ajuste pedido. Não reabra a análise, não reintroduza seções, não adicione contexto novo.`,
+      deep_analysis: `## INTENÇÃO DETECTADA: ANÁLISE PROFUNDA\n\nAqui o formato completo é permitido: seções com emoji e 🎯 Síntese Honesta ao final. Ancore cada ponto em evidência datada com [doc:UUID].`,
+      quick_question: `## INTENÇÃO DETECTADA: PERGUNTA PONTUAL\n\nResponda com 1 parágrafo direto + no máximo 3 bullets. Sem seções com emoji, sem 🎯 Síntese Honesta. Se achar que uma leitura completa ajudaria, ofereça em uma linha no final em vez de despejá-la.`,
+    };
+
+    const intentBlock = INTENT_INSTRUCTION[intent];
+
+    const attachmentBlock = imageContent?.isImage
+      ? `## ANEXO ENVIADO NESTE TURNO\n\nO líder anexou uma imagem/documento. Ela é a **fonte primária** desta resposta: leia o conteúdo do anexo e responda ancorado nele, citando o que está ali (nomes, frases, datas). O histórico de notas serve apenas como reforço. Nunca ignore o anexo nem responda de forma genérica quando houver um.`
+      : '';
+
     let composedPrompt: string;
     if (mode === 'member_self') {
       composedPrompt = await composeSystemPrompt({
@@ -929,6 +964,8 @@ ${contextLines}`;
           firstName,
         },
         appendices: [
+          intentBlock,
+          attachmentBlock,
           contextModeInstruction,
           timeWindowBlock,
           evidenceBlock,
@@ -947,6 +984,8 @@ ${contextLines}`;
           managerFirstName,
         },
         appendices: [
+          intentBlock,
+          attachmentBlock,
           contextModeInstruction,
           objectivesSection,
           formatWorkStyle(workStyleData),
@@ -1029,7 +1068,11 @@ Com base neste resumo, dê sugestões práticas de liderança, identifique ponto
       ? 'https://ai.gateway.lovable.dev/v1/chat/completions'
       : 'https://api.openai.com/v1/chat/completions';
     const apiKey = useGateway ? lovableApiKey : openAIApiKey;
-    const modelName = useGateway ? 'google/gemini-3-flash-preview' : 'gpt-4o-mini';
+    // Escalonamento de modelo: análise profunda merece o modelo mais capaz;
+    // small talk e edições rápidas usam o flash.
+    const modelName = useGateway
+      ? (intent === 'deep_analysis' ? 'google/gemini-3.1-pro-preview' : 'google/gemini-3.7-flash')
+      : 'gpt-4o-mini';
 
     console.log(`Calling ${modelName} via ${useGateway ? 'Lovable AI Gateway' : 'OpenAI'}, context length:`, systemPrompt.length, 'history messages:', (conversationHistory || []).length);
 
@@ -1047,7 +1090,7 @@ Com base neste resumo, dê sugestões práticas de liderança, identifique ponto
         body: JSON.stringify({
           model: modelName,
           messages: apiMessages,
-          max_tokens: 2500,
+          max_tokens: intent === 'deep_analysis' ? 3000 : intent === 'small_talk' ? 300 : 1200,
         }),
         signal: controller.signal,
       });
@@ -1113,7 +1156,9 @@ Com base neste resumo, dê sugestões práticas de liderança, identifique ponto
 
     // Post-validation: in member mode, if context exists but the response has no [doc:UUID]
     // citations, prepend a warning header so the leader knows to verify.
-    if ((mode === 'member' || mode === 'member_self') && contextLines && !contextLines.startsWith('(Contexto histórico')) {
+    // Artefatos (mensagem pronta, edição, small talk) não devem carregar citações.
+    const expectsCitations = intent === 'deep_analysis' || intent === 'quick_question';
+    if (expectsCitations && (mode === 'member' || mode === 'member_self') && contextLines && !contextLines.startsWith('(Contexto histórico')) {
       const hasCitation = /\[doc:[0-9a-fA-F-]{8,}\]/.test(mentorResponse);
       if (!hasCitation) {
         mentorResponse = `> ⚠️ _Resposta sem citações — verifique antes de agir._\n\n${mentorResponse}`;

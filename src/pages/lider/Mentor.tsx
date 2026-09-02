@@ -66,7 +66,8 @@ export default function LiderMentor() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const [mode, setMode] = useState<'coach' | 'member'>('coach');
+  // Modo é derivado do único seletor de liderado (no composer):
+  // sem liderado = coach (sobre o líder); com liderado = análise do liderado.
   const [selectedMember, setSelectedMember] = useState<LeaderMemberRow | null>(null);
   const [scope, setScope] = useState<ContextScope>('geral');
   const [input, setInput] = useState('');
@@ -133,6 +134,24 @@ export default function LiderMentor() {
     return members.filter((m) => m.name.toLowerCase().includes(q));
   }, [members, memberQuery]);
 
+  /** Detecta menção a um liderado no texto digitado (quando nenhum foi escolhido). */
+  const suggestedMember = useMemo(() => {
+    const text = input.trim().toLowerCase();
+    if (text.length < 3) return null;
+    const normalize = (s: string) =>
+      s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const haystack = normalize(text);
+    return (
+      members.find((m) => {
+        const first = normalize(m.name.split(' ')[0] || '');
+        if (first.length < 3) return false;
+        return new RegExp(`\\b${first}\\b`).test(haystack);
+      }) ?? null
+    );
+  }, [input, members]);
+
+
+
   const userName =
     user?.user_metadata?.full_name ||
     user?.user_metadata?.name ||
@@ -177,7 +196,7 @@ export default function LiderMentor() {
   const handleSubmit = () => {
     const text = input.trim();
     if (!text && !attachment) return;
-    if (mode === 'member' && !selectedMember) return;
+    
     const currentAttachment = attachment;
     setInput('');
     setAttachment(null);
@@ -311,42 +330,33 @@ export default function LiderMentor() {
             Olá, {userName.split(' ')[0]} — o que você quer entender hoje?
           </h1>
           <p className="mt-2 text-[15px] text-muted-foreground max-w-2xl leading-relaxed">
-            Sua copiloto de liderança. Reflita sobre você ou analise um liderado com contexto completo.
+            Sua copiloto de liderança. Escolha um liderado no campo abaixo para analisar com
+            contexto completo, ou pergunte direto para refletir sobre você.
           </p>
 
-          {/* Mode toggle: Coach vs Member */}
-          <div className="mt-5 inline-flex items-center gap-1 rounded-2xl bg-muted/50 p-1 border border-border/40">
-            <button
-              type="button"
-              onClick={() => {
-                setMode('coach');
-                setSelectedMember(null);
-                setScope('geral');
-              }}
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[12.5px] font-medium transition-all',
-                mode === 'coach'
-                  ? 'bg-background text-foreground shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              Conversar comigo (coach)
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('member')}
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[12.5px] font-medium transition-all',
-                mode === 'member'
-                  ? 'bg-background text-foreground shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <Users className="h-3.5 w-3.5" />
-              Analisar um liderado
-            </button>
+          {/* Linha de contexto — reflete o único seletor (no composer) */}
+          <div className="mt-4 inline-flex items-center gap-2 text-[12.5px] text-muted-foreground">
+            {selectedMember ? (
+              <>
+                <MemberAvatar
+                  memberId={selectedMember.id}
+                  memberName={selectedMember.name}
+                  avatarUrl={selectedMember.avatar}
+                  size="sm"
+                />
+                <span>
+                  Falando sobre <span className="font-medium text-foreground">{selectedMember.name}</span>
+                  {selectedMember.role ? ` · ${selectedMember.role}` : ''}
+                </span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>Conversa sobre sua liderança</span>
+              </>
+            )}
           </div>
+
         </header>
 
         {/* ── Composer ───────────────────────────────────────────── */}
@@ -381,16 +391,31 @@ export default function LiderMentor() {
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             placeholder={
-              mode === 'coach'
-                ? 'Reflita sobre sua liderança… (Ctrl+V para colar imagem)'
-                : selectedMember
+              selectedMember
                 ? `Pergunte sobre ${selectedMember.name.split(' ')[0]}… (Ctrl+V para colar imagem)`
-                : 'Selecione um liderado para começar a análise…'
+                : 'Pergunte qualquer coisa ou escolha um liderado abaixo… (Ctrl+V para colar imagem)'
             }
             rows={2}
-            disabled={(mode === 'member' && !selectedMember) || isExtractingFile}
+            disabled={isExtractingFile}
             className="w-full bg-transparent border-0 outline-none text-[15px] text-foreground placeholder:text-muted-foreground resize-none min-h-[64px] max-h-[200px] px-5 pt-4 pb-2 focus:ring-0 disabled:opacity-50"
           />
+
+          {/* Sugestão de contexto: a pergunta cita um liderado, mas nenhum foi escolhido */}
+          {!selectedMember && suggestedMember && (
+            <div className="px-5 pb-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedMember(suggestedMember);
+                  setScope('tudo');
+                }}
+                className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-2.5 py-1 text-[12px] text-primary hover:bg-primary/10 transition-colors"
+              >
+                <Users className="h-3.5 w-3.5" />
+                Falar sobre {suggestedMember.name.split(' ')[0]}?
+              </button>
+            </div>
+          )}
 
 
           <div className="flex items-center justify-between gap-2 px-3 py-2 border-t border-border/40 flex-wrap">
@@ -418,7 +443,7 @@ export default function LiderMentor() {
                       <Users className="h-3.5 w-3.5" />
                     )}
                     <span className="font-medium">
-                      {selectedMember ? selectedMember.name : 'Liderado'}
+                      {selectedMember ? selectedMember.name : 'Rhitmo (sobre você)'}
                     </span>
                     <ChevronDown className="h-3 w-3 opacity-60" />
                   </button>
@@ -449,9 +474,9 @@ export default function LiderMentor() {
                           <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
                         </div>
                         <div className="flex-1">
-                          <p className="font-medium">Chat geral</p>
+                          <p className="font-medium">Rhitmo (sobre você)</p>
                           <p className="text-[11px] text-muted-foreground">
-                            Sem contexto de liderado
+                            Coach de liderança, sem contexto de liderado
                           </p>
                         </div>
                       </button>
@@ -553,7 +578,7 @@ export default function LiderMentor() {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={isExtractingFile || (mode === 'member' && !selectedMember)}
+                disabled={isExtractingFile}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
                 title="Anexar imagem, PDF, Word, TXT ou Markdown"
               >
@@ -565,7 +590,7 @@ export default function LiderMentor() {
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={(!input.trim() && !attachment) || isExtractingFile || (mode === 'member' && !selectedMember)}
+              disabled={(!input.trim() && !attachment) || isExtractingFile}
               className="h-9 w-9 rounded-full flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               aria-label="Enviar"
             >

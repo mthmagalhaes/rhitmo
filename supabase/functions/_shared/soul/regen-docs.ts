@@ -16,6 +16,7 @@ const FILES = [
   "06-identity-protocol.md",
   "07-memory.md",
   "08-disc-calibration.md",
+  "09-response-contract.md",
   "modes/leader-member.md",
   "modes/leader-self.md",
   "modes/member-self.md",
