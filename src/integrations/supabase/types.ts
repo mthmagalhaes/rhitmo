@@ -3483,21 +3483,12 @@ export type Database = {
         Args: { p_member_id: string }
         Returns: undefined
       }
-      delete_email: {
-        Args: { message_id: number; queue_name: string }
-        Returns: boolean
-      }
       detect_feedback_source: {
         Args: { _content: string; _current: string }
         Returns: string
       }
       dismiss_recall_bot: { Args: { _bot_id: string }; Returns: boolean }
       effective_user_id: { Args: never; Returns: string }
-      email_queue_dispatch: { Args: never; Returns: undefined }
-      enqueue_email: {
-        Args: { payload: Json; queue_name: string }
-        Returns: number
-      }
       expire_stale_slack_conversations: { Args: never; Returns: number }
       get_account_context: {
         Args: { p_user_email?: string; p_user_id: string }
@@ -3938,15 +3929,6 @@ export type Database = {
         Returns: boolean
       }
       member_view_review: { Args: { p_review_id: string }; Returns: undefined }
-      move_to_dlq: {
-        Args: {
-          dlq_name: string
-          message_id: number
-          payload: Json
-          source_queue: string
-        }
-        Returns: number
-      }
       network_debug_stats: {
         Args: { _window_days?: number; _workspace_id: string }
         Returns: Json
@@ -3991,14 +3973,6 @@ export type Database = {
         }
       }
       prune_graph_events_raw: { Args: never; Returns: number }
-      read_email_batch: {
-        Args: { batch_size: number; queue_name: string; vt: number }
-        Returns: {
-          message: Json
-          msg_id: number
-          read_ct: number
-        }[]
-      }
       rebuild_slack_cron_jobs: {
         Args: {
           p_anon_key: string
