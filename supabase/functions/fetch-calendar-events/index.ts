@@ -419,11 +419,14 @@ Deno.serve(async (req) => {
     // é de equipe sem opt-in. Foi o incidente de 26/08 (dois bots na mesma
     // call "Faster: Checkpoint"). Aqui cancelamos antes de agendar qualquer coisa.
     if (RECALL_API_KEY) {
+      // Só varremos bots criados automaticamente pela sincronização. Bot pedido
+      // à mão pelo líder ("Transcrever") é escolha explícita e nunca é cancelado aqui.
       const { data: staleBots } = await supabaseAdmin
         .from("recall_bots")
-        .select("id, recall_bot_id, meeting_id, upcoming_meetings!inner(meeting_type, auto_transcribe_opt_in, start_time)")
+        .select("id, recall_bot_id, meeting_id, trigger_source, upcoming_meetings!inner(meeting_type, auto_transcribe_opt_in, start_time)")
         .eq("user_id", userId)
         .eq("status", "scheduled")
+        .in("trigger_source", ["auto_calendar", "auto_calendar_rescue"])
         .gte("scheduled_at", new Date().toISOString());
 
       for (const b of staleBots ?? []) {
@@ -433,6 +436,7 @@ Deno.serve(async (req) => {
         if (!m) continue;
         const shouldCancel = m.meeting_type !== "1on1" && !m.auto_transcribe_opt_in;
         if (!shouldCancel) continue;
+
 
         try {
           await fetch(`https://us-west-2.recall.ai/api/v1/bot/${b.recall_bot_id}/`, {
