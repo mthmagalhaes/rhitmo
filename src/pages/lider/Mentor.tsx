@@ -543,7 +543,7 @@ export default function LiderMentor() {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={isExtractingFile || (mode === 'member' && !selectedMember)}
+                disabled={isExtractingFile}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
                 title="Anexar imagem, PDF, Word, TXT ou Markdown"
               >
