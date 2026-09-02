@@ -15,7 +15,7 @@ export type DiarySourceKind =
   | 'upload'
   | 'transcription_upload'
   | 'slack'
-  | 'granola'
+  | 'note_taker'
   | 'manual';
 
 export interface DiarySourceMeta {
@@ -24,6 +24,23 @@ export interface DiarySourceMeta {
   icon: LucideIcon | typeof SlackIcon;
   /** Tailwind classes para o chip (badge soft, semantic-friendly). */
   badgeClass: string;
+}
+
+/** Note takers pessoais (BYOK) — o `source` gravado é o id do provedor. */
+const NOTE_TAKER_LABELS: Record<string, string> = {
+  granola: 'Granola',
+  fireflies: 'Fireflies.ai',
+};
+
+export function isNoteTakerSource(source: string | null | undefined): boolean {
+  return !!source && source in NOTE_TAKER_LABELS;
+}
+
+/** Selo de fidelidade da matéria-prima importada. */
+export function fidelityLabel(fidelity: string | null | undefined): string | null {
+  if (fidelity === 'transcript') return 'Fala literal';
+  if (fidelity === 'summary') return 'Resumo do provedor';
+  return null;
 }
 
 // Padrões heurísticos — espelham `public.detect_feedback_source` no DB.
