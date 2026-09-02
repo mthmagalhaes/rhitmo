@@ -73,11 +73,11 @@ Enquanto o gate não for atendido, a prioridade de execução é **Fase 0 → Fa
 - Botão "Rhitmo escreve o primeiro rascunho" em todos os tipos de avaliação (manager, self, upwards, peer), com progresso e cancelamento.
 - Reusa `generate-formal-review` com parametrização por tipo; rascunho entra no editor Tiptap com citações auditáveis, nunca publicado automaticamente.
 
-### Fase 4 — Windmill: indicação de pares por ONA
+### Fase 4 — Windmill: indicação de pares por ONA (bloqueada pelo gate)
 - Nova página `/v2/pares`: grafo de colaboradores do ciclo a partir de `team_network_edges`/`network_signals`.
 - Limite de indicações por ciclo e aprovação do líder antes de disparar; convites reusam `peer_feedback_requests` e `review_peers`.
 
-### Fase 5 — Windmill: pesquisas de engajamento
+### Fase 5 — Windmill: pesquisas de engajamento (bloqueada pelo gate)
 - Construtor de perguntas (escala, eNPS, múltipla escolha, sim/não, texto) sobre `pulse_surveys`, com nova tabela de definição de pesquisa e respostas.
 - Envio por Slack e in-app; resultado agregado na visão BP/RH e como evidência no contexto do liderado.
 
