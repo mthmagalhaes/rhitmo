@@ -114,7 +114,7 @@ export default function LiderDiario() {
     queryFn: async () => {
       let q = supabase
         .from('feedbacks')
-        .select('id, member_id, title, content, tags, visibility, occurred_at, created_at, source, structured_summary, personal_lens')
+        .select('id, member_id, title, content, tags, visibility, occurred_at, created_at, source, source_fidelity, structured_summary, personal_lens')
         .eq('manager_id', effectiveUserId!)
         .order('occurred_at', { ascending: false })
         .limit(200);
@@ -172,7 +172,7 @@ export default function LiderDiario() {
         const effective = detectEffectiveSource(fb.source, fb.content);
         if (source === 'recall_bot' && effective !== 'recall_bot') return false;
         if (source === 'transcription' && effective !== 'transcription') return false;
-        if (source === 'granola' && effective !== 'granola') return false;
+        if (source === 'note_taker' && !isNoteTakerSource(effective)) return false;
         if (source === 'manual' && effective !== 'manual') return false;
         if (source === 'slack') return false; // rollups Slack são incluídos abaixo.
       }

@@ -25,7 +25,7 @@ export type DiarySource =
   | 'all'
   | 'recall_bot'
   | 'transcription'
-  | 'granola'
+  | 'note_taker'
   | 'slack'
   | 'manual';
 
@@ -182,9 +182,9 @@ export function DiaryFilters({
                   <FileText className="h-3.5 w-3.5" /> Upload / Transcrição
                 </span>
               </SelectItem>
-              <SelectItem value="granola">
+              <SelectItem value="note_taker">
                 <span className="inline-flex items-center gap-1.5">
-                  <NotebookPen className="h-3.5 w-3.5" /> Granola
+                  <NotebookPen className="h-3.5 w-3.5" /> Note taker (Granola, Fireflies)
                 </span>
               </SelectItem>
               <SelectItem value="slack">
