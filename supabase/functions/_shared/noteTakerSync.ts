@@ -1,18 +1,20 @@
-// Sincronização de notas de note taker (Granola) → Anotações & Evidências.
+// Sincronização de notas de note taker pessoal → Anotações & Evidências.
 //
 // Usado tanto pelo cron (`sync-note-taker`) quanto pelo "sincronizar agora"
 // da tela de Conectores (`note-taker-connect`).
+//
+// O provedor concreto (Granola, Fireflies, ...) vem do registro em
+// `notetakers/index.ts`; este arquivo não conhece nenhuma API externa.
 
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { decryptApiKey } from "./noteTakerCrypto.ts";
+import { getProvider } from "./notetakers/index.ts";
 import {
-  getGranolaNote,
-  listGranolaNotes,
-  noteEmails,
-  noteToContent,
   toIsoOrNull,
-  type GranolaNote,
-} from "./granolaClient.ts";
+  type FullNote,
+  type NoteAttendee,
+  type NoteFidelity,
+} from "./notetakers/types.ts";
 
 export interface SyncResult {
   imported: number;
@@ -41,10 +43,14 @@ async function loadMembers(supabase: SupabaseClient, userId: string) {
 }
 
 function matchMembers(
-  note: GranolaNote,
+  note: FullNote,
   members: Array<{ id: string; name: string; email: string | null }>,
 ): string[] {
-  const emails = new Set(noteEmails(note));
+  const emails = new Set(
+    note.attendees
+      .map((a) => (a.email ?? "").trim().toLowerCase())
+      .filter((e) => e.length > 3),
+  );
   const byEmail = members
     .filter((m) => m.email && emails.has(m.email.toLowerCase()))
     .map((m) => m.id);
@@ -61,19 +67,6 @@ function matchMembers(
     .map((m) => m.id);
 }
 
-function noteAttendees(note: GranolaNote) {
-  const raw = [...(note.people ?? []), ...(note.attendees ?? [])];
-  const seen = new Set<string>();
-  const out: Array<{ name: string | null; email: string | null }> = [];
-  for (const p of raw) {
-    const key = (p?.email ?? p?.name ?? "").toLowerCase();
-    if (!key || seen.has(key)) continue;
-    seen.add(key);
-    out.push({ name: p?.name ?? null, email: p?.email ?? null });
-  }
-  return out;
-}
-
 /**
  * Grava a nota como evidência de um liderado e dispara o pipeline de resumo.
  * Reutilizado pela sincronização e pela atribuição manual de notas pendentes.
@@ -88,7 +81,8 @@ export async function ingestNoteForMember(
     title: string;
     content: string;
     occurredAt: string;
-    attendees?: Array<{ name: string | null; email: string | null }>;
+    fidelity?: NoteFidelity;
+    attendees?: NoteAttendee[];
   },
   supabaseUrl: string,
   serviceKey: string,
@@ -101,6 +95,7 @@ export async function ingestNoteForMember(
       content: params.content,
       title: params.title,
       source: params.provider,
+      source_fidelity: params.fidelity ?? "summary",
       type: "neutral",
       visibility: "private_leader",
       occurred_at: params.occurredAt,
@@ -156,6 +151,12 @@ export async function syncNoteTakerConnection(
 ): Promise<SyncResult> {
   const result: SyncResult = { imported: 0, skipped: 0, unmatched: 0 };
 
+  const provider = getProvider(connection.provider);
+  if (!provider) {
+    result.error = `Provedor não suportado: ${connection.provider}`;
+    return result;
+  }
+
   let apiKey: string;
   try {
     apiKey = await decryptApiKey(connection.api_key_ciphertext);
@@ -180,7 +181,7 @@ export async function syncNoteTakerConnection(
   let pages = 0;
   try {
     do {
-      const page = await listGranolaNotes(apiKey, {
+      const page = await provider.listNotes(apiKey, {
         createdAfter: connection.last_synced_at,
         cursor,
         limit: 20,
@@ -198,15 +199,20 @@ export async function syncNoteTakerConnection(
           .maybeSingle();
         if (existing) {
           result.skipped += 1;
-          if (listed.created_at) bumpWatermark(listed.created_at);
+          if (listed.createdAt) bumpWatermark(listed.createdAt);
           continue;
         }
 
-        const full = (await getGranolaNote(apiKey, listed.id)) ?? listed;
-        const content = noteToContent(full);
-        const occurredAt = full.created_at ?? listed.created_at ?? new Date().toISOString();
-        const title = full.title ?? listed.title ?? "Reunião (Granola)";
-        const attendees = noteAttendees(full);
+        const full: FullNote = (await provider.getNote(apiKey, listed.id)) ?? {
+          ...listed,
+          content: "",
+          fidelity: provider.defaultFidelity,
+          attendees: [],
+        };
+        const content = full.content;
+        const occurredAt = full.createdAt ?? listed.createdAt ?? new Date().toISOString();
+        const title = full.title ?? listed.title ?? `Reunião (${provider.label})`;
+        const attendees = full.attendees;
 
         if (content.length < MIN_CONTENT_LEN) {
           result.skipped += 1;
@@ -252,6 +258,7 @@ export async function syncNoteTakerConnection(
               title,
               content,
               occurredAt,
+              fidelity: full.fidelity,
               attendees,
             },
             supabaseUrl,
@@ -299,12 +306,11 @@ export async function syncNoteTakerConnection(
   return result;
 }
 
-async function currentImported(supabase: SupabaseClient, id: string): Promise<number> {
+async function currentImported(supabase: SupabaseClient, connectionId: string): Promise<number> {
   const { data } = await supabase
     .from("leader_note_taker_connections")
     .select("notes_imported")
-    .eq("id", id)
+    .eq("id", connectionId)
     .maybeSingle();
-  return data?.notes_imported ?? 0;
+  return Number((data as { notes_imported?: number } | null)?.notes_imported ?? 0);
 }
-

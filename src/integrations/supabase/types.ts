@@ -886,6 +886,7 @@ export type Database = {
           personal_lens: Json | null
           sentiment: string | null
           source: string
+          source_fidelity: string | null
           structured_summary: Json | null
           summary: string | null
           tags: string[] | null
@@ -911,6 +912,7 @@ export type Database = {
           personal_lens?: Json | null
           sentiment?: string | null
           source?: string
+          source_fidelity?: string | null
           structured_summary?: Json | null
           summary?: string | null
           tags?: string[] | null
@@ -936,6 +938,7 @@ export type Database = {
           personal_lens?: Json | null
           sentiment?: string | null
           source?: string
+          source_fidelity?: string | null
           structured_summary?: Json | null
           summary?: string | null
           tags?: string[] | null
@@ -2550,6 +2553,60 @@ export type Database = {
           },
         ]
       }
+      seat_addons: {
+        Row: {
+          addon_type: string
+          billing_cycle: string
+          created_at: string
+          id: string
+          included_hours: number
+          member_id: string | null
+          status: string
+          stripe_subscription_item_id: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          addon_type?: string
+          billing_cycle?: string
+          created_at?: string
+          id?: string
+          included_hours?: number
+          member_id?: string | null
+          status?: string
+          stripe_subscription_item_id?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          addon_type?: string
+          billing_cycle?: string
+          created_at?: string
+          id?: string
+          included_hours?: number
+          member_id?: string | null
+          status?: string
+          stripe_subscription_item_id?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seat_addons_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seat_addons_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       slack_ambient_evidence: {
         Row: {
           attribution: string
@@ -3312,6 +3369,7 @@ export type Database = {
       }
       workspaces: {
         Row: {
+          bot_trial_hours_used: number
           client_account: string | null
           created_at: string
           customer_segment: string | null
@@ -3328,9 +3386,11 @@ export type Database = {
           paid_seats: number
           plan_tier: string
           seat_cycle: string
+          ui_version: string
           updated_at: string
         }
         Insert: {
+          bot_trial_hours_used?: number
           client_account?: string | null
           created_at?: string
           customer_segment?: string | null
@@ -3347,9 +3407,11 @@ export type Database = {
           paid_seats?: number
           plan_tier?: string
           seat_cycle?: string
+          ui_version?: string
           updated_at?: string
         }
         Update: {
+          bot_trial_hours_used?: number
           client_account?: string | null
           created_at?: string
           customer_segment?: string | null
@@ -3366,6 +3428,7 @@ export type Database = {
           paid_seats?: number
           plan_tier?: string
           seat_cycle?: string
+          ui_version?: string
           updated_at?: string
         }
         Relationships: []
@@ -3530,9 +3593,11 @@ export type Database = {
       get_bot_hours_usage: {
         Args: never
         Returns: {
+          addon_hours: number
           hours_cap: number
           hours_used: number
           paid_seats: number
+          trial_hours_remaining: number
           unlimited: boolean
         }[]
       }

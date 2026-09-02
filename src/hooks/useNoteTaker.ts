@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { noteTakerProvider, type NoteTakerProviderId } from '@/lib/noteTakerProviders';
 
-export type NoteTakerProvider = 'granola';
+export type NoteTakerProvider = NoteTakerProviderId;
 
 export interface NoteTakerConnection {
   id: string;
@@ -47,6 +48,7 @@ async function invokeNoteTaker(body: Record<string, unknown>) {
  */
 export function useNoteTaker(provider: NoteTakerProvider = 'granola') {
   const qc = useQueryClient();
+  const providerLabel = noteTakerProvider(provider).label;
   const queryKey = ['note-taker-connection', provider];
   const pendingKey = ['note-taker-pending', provider];
 
@@ -70,7 +72,7 @@ export function useNoteTaker(provider: NoteTakerProvider = 'granola') {
       invokeNoteTaker({ action: 'connect', provider, api_key: apiKey }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey });
-      toast({ title: 'Granola conectado', description: 'Vamos importar suas próximas notas automaticamente.' });
+      toast({ title: `${providerLabel} conectado`, description: 'Vamos importar suas próximas notas automaticamente.' });
     },
     onError: (e: Error) =>
       toast({ title: 'Não foi possível conectar', description: e.message, variant: 'destructive' }),

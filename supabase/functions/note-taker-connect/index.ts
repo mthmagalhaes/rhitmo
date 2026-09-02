@@ -10,7 +10,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { decryptApiKey, encryptApiKey } from "../_shared/noteTakerCrypto.ts";
-import { getGranolaNote, noteToContent, verifyGranolaKey } from "../_shared/granolaClient.ts";
+import { getProvider, NOTE_TAKER_PROVIDER_IDS } from "../_shared/notetakers/index.ts";
 import { ingestNoteForMember, syncNoteTakerConnection } from "../_shared/noteTakerSync.ts";
 
 const corsHeaders = {
@@ -21,7 +21,7 @@ const corsHeaders = {
 
 const BodySchema = z.object({
   action: z.enum(["connect", "disconnect", "sync", "list_pending", "assign", "dismiss"]),
-  provider: z.literal("granola").default("granola"),
+  provider: z.enum(NOTE_TAKER_PROVIDER_IDS).default("granola"),
   api_key: z.string().min(10).max(500).optional(),
   note_id: z.string().uuid().optional(),
   member_id: z.string().uuid().optional(),
@@ -56,6 +56,9 @@ Deno.serve(async (req) => {
     }
     const { action, provider } = parsed.data;
 
+    const providerImpl = getProvider(provider);
+    if (!providerImpl) return json({ error: `Provedor não suportado: ${provider}` }, 400);
+
     if (action === "disconnect") {
       await admin
         .from("leader_note_taker_connections")
@@ -69,7 +72,7 @@ Deno.serve(async (req) => {
       const apiKey = parsed.data.api_key?.trim();
       if (!apiKey) return json({ error: "api_key é obrigatório" }, 400);
 
-      const check = await verifyGranolaKey(apiKey);
+      const check = await providerImpl.verifyKey(apiKey);
       if (!check.ok) return json({ error: check.message }, 400);
 
       const { error } = await admin
@@ -153,9 +156,11 @@ Deno.serve(async (req) => {
       if (!member) return json({ error: "Liderado inválido" }, 403);
 
       const apiKey = await decryptApiKey(connection.api_key_ciphertext);
-      const full = await getGranolaNote(apiKey, note.external_note_id);
-      if (!full) return json({ error: "A nota não está mais disponível no Granola" }, 404);
-      const content = noteToContent(full);
+      const full = await providerImpl.getNote(apiKey, note.external_note_id);
+      if (!full) {
+        return json({ error: `A nota não está mais disponível no ${providerImpl.label}` }, 404);
+      }
+      const content = full.content;
       if (!content) return json({ error: "Nota sem conteúdo para importar" }, 400);
 
       const ingest = await ingestNoteForMember(
@@ -165,9 +170,10 @@ Deno.serve(async (req) => {
           provider,
           externalNoteId: note.external_note_id,
           memberId,
-          title: note.title ?? full.title ?? "Reunião (Granola)",
+          title: note.title ?? full.title ?? `Reunião (${providerImpl.label})`,
           content,
           occurredAt: note.note_created_at ?? new Date().toISOString(),
+          fidelity: full.fidelity,
           attendees: (note.attendees as Array<{ name: string | null; email: string | null }>) ?? [],
         },
         supabaseUrl,
