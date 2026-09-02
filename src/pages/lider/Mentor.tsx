@@ -69,7 +69,6 @@ export default function LiderMentor() {
   // Modo é derivado do único seletor de liderado (no composer):
   // sem liderado = coach (sobre o líder); com liderado = análise do liderado.
   const [selectedMember, setSelectedMember] = useState<LeaderMemberRow | null>(null);
-  const [selectedMember, setSelectedMember] = useState<LeaderMemberRow | null>(null);
   const [scope, setScope] = useState<ContextScope>('geral');
   const [input, setInput] = useState('');
   // (modal state removed — chat now lives at /lider/mentor/:threadId)
