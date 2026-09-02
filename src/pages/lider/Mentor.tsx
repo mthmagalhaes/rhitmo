@@ -373,14 +373,12 @@ export default function LiderMentor() {
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             placeholder={
-              mode === 'coach'
-                ? 'Reflita sobre sua liderança… (Ctrl+V para colar imagem)'
-                : selectedMember
+              selectedMember
                 ? `Pergunte sobre ${selectedMember.name.split(' ')[0]}… (Ctrl+V para colar imagem)`
-                : 'Selecione um liderado para começar a análise…'
+                : 'Pergunte qualquer coisa ou escolha um liderado abaixo… (Ctrl+V para colar imagem)'
             }
             rows={2}
-            disabled={(mode === 'member' && !selectedMember) || isExtractingFile}
+            disabled={isExtractingFile}
             className="w-full bg-transparent border-0 outline-none text-[15px] text-foreground placeholder:text-muted-foreground resize-none min-h-[64px] max-h-[200px] px-5 pt-4 pb-2 focus:ring-0 disabled:opacity-50"
           />
 
