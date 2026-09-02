@@ -439,9 +439,9 @@ export default function LiderMentor() {
                           <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
                         </div>
                         <div className="flex-1">
-                          <p className="font-medium">Chat geral</p>
+                          <p className="font-medium">Rhitmo (sobre você)</p>
                           <p className="text-[11px] text-muted-foreground">
-                            Sem contexto de liderado
+                            Coach de liderança, sem contexto de liderado
                           </p>
                         </div>
                       </button>
