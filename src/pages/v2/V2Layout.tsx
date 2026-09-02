@@ -29,7 +29,7 @@ export default function V2Layout() {
     );
   }
 
-  if (!isV2) return <Navigate to="/lider/inicio" replace />;
+  if (!isV2 && !previewOverride) return <Navigate to="/lider/inicio" replace />;
 
   return (
     <div className="min-h-dvh bg-background">
