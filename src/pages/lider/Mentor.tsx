@@ -66,7 +66,9 @@ export default function LiderMentor() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const [mode, setMode] = useState<'coach' | 'member'>('coach');
+  // Modo é derivado do único seletor de liderado (no composer):
+  // sem liderado = coach (sobre o líder); com liderado = análise do liderado.
+  const [selectedMember, setSelectedMember] = useState<LeaderMemberRow | null>(null);
   const [selectedMember, setSelectedMember] = useState<LeaderMemberRow | null>(null);
   const [scope, setScope] = useState<ContextScope>('geral');
   const [input, setInput] = useState('');
