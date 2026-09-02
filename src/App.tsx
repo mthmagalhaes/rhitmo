@@ -164,7 +164,7 @@ const App = () => (
               <Route path="/lider/mentor/:threadId" element={Leader(<LiderMentorThread />)} />
 
               {/* ── Rhitmo v2 (conector-first), atrás da flag ui_version ── */}
-              <Route path="/v2" element={Public(<V2Layout />)}>
+              <Route path="/v2" element={Leader(<V2Layout />)}>
                 <Route index element={<Navigate to="/v2/conectores" replace />} />
                 <Route path="conectores" element={<V2Conectores />} />
                 <Route path="billing" element={<V2Billing />} />
