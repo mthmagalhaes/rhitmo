@@ -382,6 +382,23 @@ export default function LiderMentor() {
             className="w-full bg-transparent border-0 outline-none text-[15px] text-foreground placeholder:text-muted-foreground resize-none min-h-[64px] max-h-[200px] px-5 pt-4 pb-2 focus:ring-0 disabled:opacity-50"
           />
 
+          {/* Sugestão de contexto: a pergunta cita um liderado, mas nenhum foi escolhido */}
+          {!selectedMember && suggestedMember && (
+            <div className="px-5 pb-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedMember(suggestedMember);
+                  setScope('tudo');
+                }}
+                className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-2.5 py-1 text-[12px] text-primary hover:bg-primary/10 transition-colors"
+              >
+                <Users className="h-3.5 w-3.5" />
+                Falar sobre {suggestedMember.name.split(' ')[0]}?
+              </button>
+            </div>
+          )}
+
 
           <div className="flex items-center justify-between gap-2 px-3 py-2 border-t border-border/40 flex-wrap">
             <div className="flex items-center gap-1.5 flex-wrap">
