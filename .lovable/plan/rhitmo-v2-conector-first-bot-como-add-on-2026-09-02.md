@@ -54,15 +54,30 @@ Grandfathering de 12 meses para quem já usa, comunicando queda de preço e não
 - Nova `/v2/billing`: seletor de assentos, toggle de bot por liderado, uso de horas por assento, aviso em 80%.
 - `schedule-recall-bot` passa a checar add-on do assento (ou trial) antes de agendar; mensagem de bloqueio oferece ativar o add-on ou conectar note taker.
 
-### Fase 3 — Windmill: Auto Draft
+## Gate entre Fase 2 e Fase 3 (BLOQUEIO)
+
+As Fases 3, 4 e 5 estão **bloqueadas**. Nada de Auto Draft, ONA/pares ou pesquisas de engajamento começa antes de Fase 0, Fase 1 e Fase 2 estarem no ar, nessa ordem, e o gate abaixo ser avaliado com dado real.
+
+Motivo: ONA (Sprint 14) e pesquisas de engajamento (Sprint 9) já existiram no produto e foram removidas como código órfão em agosto por uso zero, inclusive dentro da Faster, que é o usuário mais cativo da Rhitmo. Reconstruir sem responder por que desta vez seria diferente repete o mesmo padrão.
+
+Para destravar, os **dois** critérios precisam ser atendidos (não um):
+
+a) **Sinal de adoção medido:** taxa de conexão de note taker ≥ 40% entre os novos líderes que passarem pela Fase 1, medida pelo evento `note_taker_connected` em `onboarding_funnel_events` (a métrica de decisão que a própria Fase 1 define).
+
+b) **Resposta escrita ao "por que agora":** um novo arquivo de plano registrando explicitamente o que mudou no contexto atual da Rhitmo que não era verdade quando essas mesmas telas foram construídas e depois removidas. "Porque o Windmill tem" não é resposta válida. A resposta precisa nomear o gatilho de uso, quem puxa a feature e o que ela substitui no fluxo atual.
+
+Enquanto o gate não for atendido, a prioridade de execução é **Fase 0 → Fase 1 → Fase 2**, sem pular para frente. As fases abaixo ficam documentadas como intenção, não como trabalho autorizado.
+
+### Fase 3 — Windmill: Auto Draft (bloqueada pelo gate)
+
 - Botão "Rhitmo escreve o primeiro rascunho" em todos os tipos de avaliação (manager, self, upwards, peer), com progresso e cancelamento.
 - Reusa `generate-formal-review` com parametrização por tipo; rascunho entra no editor Tiptap com citações auditáveis, nunca publicado automaticamente.
 
-### Fase 4 — Windmill: indicação de pares por ONA
+### Fase 4 — Windmill: indicação de pares por ONA (bloqueada pelo gate)
 - Nova página `/v2/pares`: grafo de colaboradores do ciclo a partir de `team_network_edges`/`network_signals`.
 - Limite de indicações por ciclo e aprovação do líder antes de disparar; convites reusam `peer_feedback_requests` e `review_peers`.
 
-### Fase 5 — Windmill: pesquisas de engajamento
+### Fase 5 — Windmill: pesquisas de engajamento (bloqueada pelo gate)
 - Construtor de perguntas (escala, eNPS, múltipla escolha, sim/não, texto) sobre `pulse_surveys`, com nova tabela de definição de pesquisa e respostas.
 - Envio por Slack e in-app; resultado agregado na visão BP/RH e como evidência no contexto do liderado.
 
