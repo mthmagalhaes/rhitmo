@@ -555,7 +555,7 @@ export default function LiderMentor() {
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={(!input.trim() && !attachment) || isExtractingFile || (mode === 'member' && !selectedMember)}
+              disabled={(!input.trim() && !attachment) || isExtractingFile}
               className="h-9 w-9 rounded-full flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               aria-label="Enviar"
             >
