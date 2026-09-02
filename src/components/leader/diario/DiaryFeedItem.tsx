@@ -66,7 +66,7 @@ import { getTagColor, getTagEmoji, getTagLabel, VALID_TAGS } from '@/lib/tagConf
 import { supabase } from '@/integrations/supabase/client';
 import { useLeaderMembers } from '@/hooks/useLeaderMembers';
 import { TranscriptExpandedView } from './TranscriptExpandedView';
-import { getDiarySourceMeta, isTranscriptLike } from '@/lib/diarySource';
+import { getDiarySourceMeta, isTranscriptLike, fidelityLabel } from '@/lib/diarySource';
 
 export interface FeedItem {
   id: string;
@@ -81,6 +81,7 @@ export interface FeedItem {
   occurred_at: string;
   created_at: string;
   source?: string | null;
+  source_fidelity?: string | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   structured_summary?: any | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -129,6 +130,8 @@ export function DiaryFeedItem({ item }: DiaryFeedItemProps) {
   const sourceMeta = getDiarySourceMeta(item.source, item.content);
   // Omitimos o chip "Nota" (caso dominante) para evitar ruído visual.
   const showSourceChip = sourceMeta && sourceMeta.kind !== 'manual';
+  // Fidelidade da matéria-prima importada por note taker (fala literal x resumo).
+  const fidelity = sourceMeta?.kind === 'note_taker' ? fidelityLabel(item.source_fidelity) : null;
 
   const openEdit = () => {
     setEditTitle(item.title || '');
@@ -340,6 +343,14 @@ export function DiaryFeedItem({ item }: DiaryFeedItemProps) {
             >
               <sourceMeta.icon className="h-3 w-3" />
               {sourceMeta.label}
+            </span>
+          )}
+          {fidelity && (
+            <span
+              className="hidden md:inline-flex items-center text-[11px] rounded-md px-1.5 py-0.5 border border-border bg-muted text-muted-foreground shrink-0"
+              title={`Fidelidade da matéria-prima: ${fidelity}`}
+            >
+              {fidelity}
             </span>
           )}
         </button>
