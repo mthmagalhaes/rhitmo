@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
     // Fetch ALL feedbacks in period (full content, not preview)
     const { data: feedbacks } = await supabase
       .from("feedbacks")
-      .select("id, content, type, sentiment, tags, occurred_at, summary")
+      .select("id, content, type, sentiment, tags, occurred_at, summary, source, source_fidelity")
       .eq("member_id", member.id)
       .gte("occurred_at", periodStart)
       .lte("occurred_at", periodEnd)
@@ -210,7 +210,15 @@ Deno.serve(async (req) => {
       evidenceText += "\n## 📝 ANOTAÇÕES E FEEDBACKS DO LÍDER:\n\n";
       feedbacks.forEach((f, idx) => {
         const date = new Date(f.occurred_at).toLocaleDateString("pt-BR");
-        evidenceText += `[Anotação ${idx + 1} - ${date}] [doc_id: ${f.id}] Tipo: ${f.type}\n`;
+        // Fidelidade da matéria-prima: fala literal (transcrição) vs resumo do provedor.
+        const fidelity = (f as { source_fidelity?: string | null }).source_fidelity;
+        const fidelityLabel =
+          fidelity === "transcript"
+            ? " Fidelidade: fala literal"
+            : fidelity === "summary"
+              ? " Fidelidade: resumo do provedor (parafraseie, não cite como fala literal)"
+              : "";
+        evidenceText += `[Anotação ${idx + 1} - ${date}] [doc_id: ${f.id}] Tipo: ${f.type}${fidelityLabel}\n`;
         evidenceText += `${f.content}\n`;
         if (f.tags && f.tags.length > 0) evidenceText += `Tags: ${f.tags.join(", ")}\n`;
         if (f.summary) evidenceText += `Resumo: ${f.summary}\n`;
