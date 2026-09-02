@@ -1,7 +1,6 @@
 // Boas-vindas ao líder logo após a criação do workspace.
 // Destinatário = e-mail da conta autenticada que criou o workspace.
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts'
-import { createClient } from 'npm:@supabase/supabase-js@2'
 import { sendAppEmail } from '../_shared/appEmail.ts'
 import { adminClient, corsHeaders, getCallerId, json } from '../_shared/memberEmailAccess.ts'
 
