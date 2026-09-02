@@ -88,6 +88,21 @@ Deno.serve(async (req) => {
           { onConflict: "user_id,provider" },
         );
       if (error) throw error;
+
+      // Métrica de adoção de conectores (Fase 1). Nunca bloqueia o connect.
+      const { data: ws } = await admin
+        .from("workspaces")
+        .select("id")
+        .eq("owner_id", user.id)
+        .maybeSingle();
+      const { error: funnelError } = await admin.from("onboarding_funnel_events").insert({
+        event_type: "note_taker_connected",
+        user_id: user.id,
+        workspace_id: ws?.id ?? null,
+        payload: { provider },
+      });
+      if (funnelError) console.warn("funnel note_taker_connected:", funnelError.message);
+
       return json({ ok: true });
     }
 
