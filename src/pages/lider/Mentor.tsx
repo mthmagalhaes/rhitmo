@@ -134,6 +134,24 @@ export default function LiderMentor() {
     return members.filter((m) => m.name.toLowerCase().includes(q));
   }, [members, memberQuery]);
 
+  /** Detecta menção a um liderado no texto digitado (quando nenhum foi escolhido). */
+  const suggestedMember = useMemo(() => {
+    const text = input.trim().toLowerCase();
+    if (text.length < 3) return null;
+    const normalize = (s: string) =>
+      s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const haystack = normalize(text);
+    return (
+      members.find((m) => {
+        const first = normalize(m.name.split(' ')[0] || '');
+        if (first.length < 3) return false;
+        return new RegExp(`\\b${first}\\b`).test(haystack);
+      }) ?? null
+    );
+  }, [input, members]);
+
+
+
   const userName =
     user?.user_metadata?.full_name ||
     user?.user_metadata?.name ||
