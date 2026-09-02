@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
     // Fetch ALL feedbacks in period (full content, not preview)
     const { data: feedbacks } = await supabase
       .from("feedbacks")
-      .select("id, content, type, sentiment, tags, occurred_at, summary")
+      .select("id, content, type, sentiment, tags, occurred_at, summary, source, source_fidelity")
       .eq("member_id", member.id)
       .gte("occurred_at", periodStart)
       .lte("occurred_at", periodEnd)
