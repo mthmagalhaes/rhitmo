@@ -116,16 +116,12 @@ Deno.serve(async (req) => {
         const { data: leader } = await adminClient.auth.admin.getUserById(leaderId);
         const leaderEmail = leader?.user?.email;
         if (leaderEmail) {
-          await adminClient.functions.invoke('send-transactional-email', {
-            body: {
-              templateName: 'member-conversation-request',
-              recipientEmail: leaderEmail,
-              idempotencyKey: `conv-${body.memberId}-${Date.now()}`,
-              templateData: {
-                memberName: body.memberName || member.name,
-                topic: body.topic,
-                memberUrl: `${Deno.env.get('PUBLIC_APP_URL') ?? 'https://rhitmo.co'}/member/${body.memberId}`,
-              },
+          await sendAppEmail('member-conversation-request', leaderEmail, {
+            idempotencyKey: `conv-${body.memberId}-${Date.now()}`,
+            templateData: {
+              memberName: body.memberName || member.name,
+              topic: body.topic,
+              memberUrl: `${Deno.env.get('PUBLIC_APP_URL') ?? 'https://rhitmo.co'}/member/${body.memberId}`,
             },
           });
         }

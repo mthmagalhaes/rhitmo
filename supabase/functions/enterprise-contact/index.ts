@@ -79,20 +79,16 @@ serve(async (req: Request) => {
 
     // Send notification email via transactional system
     try {
-      await supabase.functions.invoke('send-transactional-email', {
-        body: {
-          templateName: 'enterprise-lead',
-          recipientEmail: 'matheus@rhitmo.co',
-          idempotencyKey: `enterprise-lead-${email}-${Date.now()}`,
-          templateData: {
-            leadName: full_name.trim(),
-            leadEmail: email.trim(),
-            leadCompany: company.trim(),
-            leadJobTitle: job_title.trim(),
-            leadCompanySize: company_size,
-            leadPhone: phone?.trim() || '',
-            leadMessage: message?.trim() || '',
-          },
+      await sendAppEmail('enterprise-lead', 'matheus@rhitmo.co', {
+        idempotencyKey: `enterprise-lead-${email}-${Date.now()}`,
+        templateData: {
+          leadName: full_name.trim(),
+          leadEmail: email.trim(),
+          leadCompany: company.trim(),
+          leadJobTitle: job_title.trim(),
+          leadCompanySize: company_size,
+          leadPhone: phone?.trim() || '',
+          leadMessage: message?.trim() || '',
         },
       });
     } catch (emailErr) {

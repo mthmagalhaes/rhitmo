@@ -196,17 +196,14 @@ serve(async (req) => {
 
         const cfg = templateMap[p.role];
 
-        const { error: emailErr } = await supabaseAdmin.functions.invoke('send-transactional-email', {
-          body: {
-            templateName: cfg.templateName,
-            recipientEmail: p.email,
+        try {
+          await sendAppEmail(cfg.templateName, p.email, {
             idempotencyKey: `dispatch-invite-${workspace_id}-${p.user_id}-${Date.now()}`,
             templateData: cfg.data,
-          },
-        });
-
-        if (emailErr) {
-          results.push({ email: p.email, status: 'error', message: emailErr.message || 'Falha ao enfileirar email' });
+          });
+        } catch (emailErr) {
+          const msg = emailErr instanceof Error ? emailErr.message : String(emailErr);
+          results.push({ email: p.email, status: 'error', message: msg || 'Falha ao enviar email' });
           continue;
         }
 

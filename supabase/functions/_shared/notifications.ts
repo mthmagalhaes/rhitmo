@@ -101,21 +101,7 @@ async function sendEmail(
   templateName: string,
   templateData: Record<string, unknown>,
 ): Promise<void> {
-  // Use the existing send-transactional-email infra (queue-based)
-  const url = `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-transactional-email`;
-  await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-    },
-    body: JSON.stringify({
-      to,
-      template_name: templateName,
-      template_data: templateData,
-      purpose: 'transactional',
-    }),
-  });
+  await sendAppEmail(templateName, to, { templateData });
 }
 
 async function sendSlack(
