@@ -408,7 +408,7 @@ export default function LiderMentor() {
                       <Users className="h-3.5 w-3.5" />
                     )}
                     <span className="font-medium">
-                      {selectedMember ? selectedMember.name : 'Liderado'}
+                      {selectedMember ? selectedMember.name : 'Rhitmo (sobre você)'}
                     </span>
                     <ChevronDown className="h-3 w-3 opacity-60" />
                   </button>
