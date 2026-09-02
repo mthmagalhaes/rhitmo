@@ -15,8 +15,13 @@ const NAV = [
  */
 export default function V2Layout() {
   const { isV2, isLoading } = useUiVersion();
+  const { isRealAdmin, loading: adminLoading } = useAdmin();
+  const [searchParams] = useSearchParams();
+  // Prévia interna: super admin (ou ?preview=1) enxerga o v2 sem ligar a flag
+  // do workspace, para revisar as telas antes do rollout.
+  const previewOverride = isRealAdmin || searchParams.get('preview') === '1';
 
-  if (isLoading) {
+  if (isLoading || adminLoading) {
     return (
       <div className="min-h-dvh flex items-center justify-center bg-background">
         <div className="h-8 w-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
