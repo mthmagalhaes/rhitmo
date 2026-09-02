@@ -886,6 +886,7 @@ export type Database = {
           personal_lens: Json | null
           sentiment: string | null
           source: string
+          source_fidelity: string | null
           structured_summary: Json | null
           summary: string | null
           tags: string[] | null
@@ -911,6 +912,7 @@ export type Database = {
           personal_lens?: Json | null
           sentiment?: string | null
           source?: string
+          source_fidelity?: string | null
           structured_summary?: Json | null
           summary?: string | null
           tags?: string[] | null
@@ -936,6 +938,7 @@ export type Database = {
           personal_lens?: Json | null
           sentiment?: string | null
           source?: string
+          source_fidelity?: string | null
           structured_summary?: Json | null
           summary?: string | null
           tags?: string[] | null
