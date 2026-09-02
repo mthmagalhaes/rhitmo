@@ -1,4 +1,5 @@
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
+import { sendAppEmail } from './appEmail.ts';
 
 export type NotificationType =
   | 'weekly_summary'
