@@ -1,6 +1,7 @@
-import { NavLink, Outlet, Navigate } from 'react-router-dom';
+import { NavLink, Outlet, Navigate, useSearchParams } from 'react-router-dom';
 import { Plug, Receipt, Sparkles } from 'lucide-react';
 import { useUiVersion } from '@/hooks/useUiVersion';
+import { useAdmin } from '@/hooks/useAdmin';
 import { cn } from '@/lib/utils';
 
 const NAV = [
