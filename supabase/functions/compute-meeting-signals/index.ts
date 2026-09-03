@@ -162,7 +162,7 @@ Deno.serve(async (req) => {
           },
         },
       ],
-      tool_choice: { type: "function", function: { name: "report_sentiment" } },
+      toolName: "report_sentiment",
     });
     for (const r of sentimentResult.participants ?? []) {
       sentiments[r.name?.trim() ?? ""] = {
