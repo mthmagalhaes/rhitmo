@@ -67,13 +67,15 @@ export const useV2BotSeats = () => {
         trialHoursTotal,
         trialHoursRemaining: Math.max(trialHoursTotal - trialHoursUsed, 0),
         seats: rows.map((r) => {
-          const hoursCap = Number(r.hours_cap ?? 0);
-          const hoursUsed = Number(r.hours_used ?? 0);
+          const basis = (r.basis as V2BotSeat['basis']) ?? 'none';
+          // No trial, o consumo é do workspace inteiro: mostramos a barra do trial.
+          const hoursCap = basis === 'trial' ? trialHoursTotal : Number(r.hours_cap ?? 0);
+          const hoursUsed = basis === 'trial' ? trialHoursUsed : Number(r.hours_used ?? 0);
           return {
             memberId: r.member_id as string,
             memberName: (r.member_name as string) ?? 'Liderado',
             hasAddon: !!r.has_addon,
-            basis: (r.basis as V2BotSeat['basis']) ?? 'none',
+            basis,
             hoursCap,
             hoursUsed,
             percent: hoursCap <= 0 ? 100 : Math.min(100, (hoursUsed / hoursCap) * 100),
