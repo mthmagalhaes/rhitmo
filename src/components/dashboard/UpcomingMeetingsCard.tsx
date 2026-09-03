@@ -275,27 +275,34 @@ export const UpcomingMeetingsCard = () => {
         </div>
       </div>
 
-      {/* Auto-transcribe toggle */}
-      <div className="flex items-center justify-between px-1 py-2 mb-2">
-        <div className="flex items-center gap-1.5">
-          <Sparkles className="h-3.5 w-3.5 text-primary" />
-          <span className="text-xs font-medium text-muted-foreground">Transcrição automática</span>
+      {/* Auto-transcribe: rótulo + toggle juntos; ação avulsa separada à direita. */}
+      <div className="flex items-start justify-between gap-4 px-1 py-2 mb-2">
+        <div className="flex items-start gap-2.5">
+          <Sparkles className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+          <div className="min-w-0">
+            <div className="flex items-center gap-2.5">
+              <span className="text-xs font-medium text-foreground">Transcrição automática</span>
+              <Switch
+                checked={autoTranscribe}
+                onCheckedChange={(checked) => toggleAutoTranscribe.mutate(checked)}
+                disabled={toggleAutoTranscribe.isPending}
+                aria-label="Transcrição automática das 1:1s da agenda"
+                className="scale-90 origin-left"
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              O bot entra sozinho nas suas 1:1s da agenda.
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <AdHocBotDialog
-            onSubmit={sendAdHocBot}
-            isPending={scheduleBot.isPending}
-            disabled={!canScheduleBot}
-            disabledReason="Limite de reuniões com bot atingido."
-          />
-          <Switch
-            checked={autoTranscribe}
-            onCheckedChange={(checked) => toggleAutoTranscribe.mutate(checked)}
-            disabled={toggleAutoTranscribe.isPending}
-            className="scale-90"
-          />
-        </div>
+        <AdHocBotDialog
+          onSubmit={sendAdHocBot}
+          isPending={scheduleBot.isPending}
+          disabled={!canScheduleBot}
+          disabledReason="Limite de reuniões com bot atingido."
+        />
       </div>
+
 
       <div className="space-y-1">
         {visibleMeetings.map((meeting, index) => {
@@ -357,6 +364,11 @@ export const UpcomingMeetingsCard = () => {
                       <span
                         className="flex items-center gap-1.5"
                         onClick={(e) => e.stopPropagation()}
+                        title={
+                          meeting.auto_transcribe_opt_in
+                            ? 'O bot vai transcrever esta reunião de equipe.'
+                            : 'Reuniões de equipe não recebem bot automático. Ative para transcrever esta.'
+                        }
                       >
                         <Switch
                           checked={!!meeting.auto_transcribe_opt_in}
@@ -367,10 +379,11 @@ export const UpcomingMeetingsCard = () => {
                           className="scale-75 origin-left"
                         />
                         <span className="text-[10px] text-muted-foreground">
-                          {meeting.auto_transcribe_opt_in ? 'Transcrever' : 'Sem bot'}
+                          {meeting.auto_transcribe_opt_in ? 'Transcrever esta' : 'Sem bot'}
                         </span>
                       </span>
                     )}
+
                   </div>
 
                   <p className="text-sm font-semibold text-foreground truncate">
@@ -567,6 +580,12 @@ export const UpcomingMeetingsCard = () => {
         })}
       </div>
 
+      {upcomingMeetings.some((m) => m.meeting_type === 'team') && (
+        <p className="mt-3 px-1 text-[11px] text-muted-foreground">
+          Reuniões de equipe precisam ser ativadas uma a uma.
+        </p>
+      )}
+
       {hasMore && (
         <button
           onClick={() => setExpanded(!expanded)}
@@ -576,6 +595,7 @@ export const UpcomingMeetingsCard = () => {
           {expanded ? 'Mostrar menos' : `Ver mais ${upcomingMeetings.length - VISIBLE_COUNT}`}
         </button>
       )}
+
     </div>
   );
 };
