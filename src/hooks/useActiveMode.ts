@@ -103,7 +103,7 @@ if (typeof window !== 'undefined') {
  */
 export function useActiveMode() {
   const { id: userId } = useEffectiveUser();
-  const { isTeamLeader, isHRAdmin, isWorkspaceOwner, isLinkedMember } = useAccount();
+  const { loading: accountLoading, isTeamLeader, isHRAdmin, isWorkspaceOwner, isLinkedMember } = useAccount();
 
   // canSeeLeader = "lidera ao menos um time" (vem do RPC
   // get_account_context.is_team_leader). Independe de papel HR/Owner — um HR
