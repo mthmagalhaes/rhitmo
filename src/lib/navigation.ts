@@ -76,7 +76,12 @@ export const DIRECT_REPORT_NAV_ITEMS: NavItem[] = [
 
 export type SidebarPersona = 'leader' | 'hr_admin' | 'direct_report';
 
-export type ActiveMode = 'leader' | 'company';
+/**
+ * `member` existe porque uma mesma pessoa pode liderar times e, ao mesmo
+ * tempo, ser liderada por outra (ex.: gerente que reporta ao C-Level).
+ * O modo é só de navegação — nunca altera RLS ou escopo de dados.
+ */
+export type ActiveMode = 'leader' | 'company' | 'member';
 
 export interface PersonaOpts {
   isLinkedMember: boolean;
@@ -91,17 +96,22 @@ export interface PersonaOpts {
    */
   isTeamLeader?: boolean;
   /**
-   * For users that hold both leader and owner/HR roles, indicates which
-   * "view" they're actively using. Defaults to 'leader'.
+   * For users that hold more than one hat (leader / Owner-HR / liderado),
+   * indicates which "view" they're actively using. Defaults to 'leader'.
    */
   activeMode?: ActiveMode;
 }
 
 export function resolvePersona(opts: PersonaOpts): SidebarPersona {
-  if (opts.isLinkedMember && !opts.isLeader && !opts.isHRAdmin) return 'direct_report';
-
   const hasLeaderAccess = opts.isTeamLeader ?? (opts.isLeader && !opts.isHRAdmin);
   const hasCompanyAccess = !!opts.isHRAdmin || !!opts.isWorkspaceOwner;
+  const hasMemberAccess = !!opts.isLinkedMember;
+
+  // Liderado puro: sem time liderado e sem acesso de empresa.
+  if (hasMemberAccess && !hasLeaderAccess && !hasCompanyAccess) return 'direct_report';
+
+  // Multi-chapéu que escolheu explicitamente a visão de liderado.
+  if (hasMemberAccess && opts.activeMode === 'member') return 'direct_report';
 
   // Multi-role (líder de time + Owner/HR): activeMode decide.
   if (hasLeaderAccess && hasCompanyAccess) {
