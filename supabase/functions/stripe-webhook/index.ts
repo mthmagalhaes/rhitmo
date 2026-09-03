@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   V2_ADDON_INCLUDED_HOURS,
+  V2_SEAT_PRICE_IDS,
   cycleFromV2Price,
   isV2BotAddonPrice,
   isV2SeatPrice,
