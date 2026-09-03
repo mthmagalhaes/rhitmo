@@ -68,7 +68,8 @@ export function WorkspaceSwitcher({ onOpenInvite }: WorkspaceSwitcherProps) {
 
   const current = workspaces.find((w) => w.id === workspaceId) ?? workspaces[0] ?? null;
   const hasMultiple = workspaces.length > 1;
-  const modeLabel = activeMode === 'company' ? 'Empresa' : 'Minha equipe';
+  const modeLabel =
+    activeMode === 'company' ? 'Empresa' : activeMode === 'member' ? 'Liderado' : 'Minha equipe';
   const showModeChip = canSwitch || (isHRAdmin && current);
   const chipText = canSwitch ? modeLabel : isHRAdmin ? 'RH' : null;
 
