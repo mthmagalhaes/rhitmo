@@ -25,6 +25,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { useLinkedMember } from '@/hooks/useLinkedMember';
+import { usePersona } from '@/hooks/usePersona';
 import { useUserRole } from '@/hooks/useUserRole';
 import DirectReportDashboard from '@/components/dashboard/DirectReportDashboard';
 import { supabase } from '@/integrations/supabase/client';
