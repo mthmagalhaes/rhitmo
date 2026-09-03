@@ -47,13 +47,18 @@ export const AdHocBotDialog = ({ onSubmit, isPending, disabled, disabledReason }
         <button
           type="button"
           disabled={disabled}
-          title={disabled ? disabledReason : 'Colar um link de reunião e enviar o bot agora'}
-          className="text-xs font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1 disabled:opacity-50"
+          title={
+            disabled
+              ? disabledReason
+              : 'Reunião fora da agenda ou já em andamento? Cole o link e o bot entra agora.'
+          }
+          className="shrink-0 h-8 px-3 rounded-xl border border-border/60 bg-muted/40 text-xs font-medium text-foreground hover:bg-muted transition-colors flex items-center gap-1.5 disabled:opacity-50"
         >
-          <Mic className="h-3 w-3" />
+          <Mic className="h-3.5 w-3.5 text-primary" />
           Chamar bot em outra reunião
         </button>
       </DialogTrigger>
+
       <DialogContent className="rounded-3xl sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Chamar bot em outra reunião</DialogTitle>
