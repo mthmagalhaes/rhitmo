@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAccount } from '@/contexts/AccountContext';
 import { useAdmin } from '@/hooks/useAdmin';
 import { Loader2 } from 'lucide-react';
-import { getHomeRoute } from '@/lib/navigation';
+import { getHomeRoute, resolvePersona } from '@/lib/navigation';
 import { useActiveMode } from '@/hooks/useActiveMode';
 
 interface DirectReportGuardProps {
@@ -16,6 +16,8 @@ export function DirectReportGuard({ children }: DirectReportGuardProps) {
   const { isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, isTeamLeader, needsOnboarding, loading } = useAccount();
   const { isAdmin, loading: adminLoading } = useAdmin();
   const { mode: activeMode } = useActiveMode();
+  const personaOpts = { isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, isTeamLeader, activeMode };
+  const persona = resolvePersona(personaOpts);
 
   useEffect(() => {
     if (location.pathname === '/onboarding') return;
@@ -28,27 +30,29 @@ export function DirectReportGuard({ children }: DirectReportGuardProps) {
 
     if (loading) return;
 
-    // Linked members needing onboarding go through wizard.
-    if (isLinkedMember && needsOnboarding) {
+    // Só quem está de fato na visão de liderado passa pelo wizard. Um líder
+    // que também é liderado de outra pessoa não pode ser sequestrado pelo
+    // onboarding ao abrir /lider/*.
+    if (persona === 'direct_report' && needsOnboarding) {
       navigate('/onboarding', { replace: true });
       return;
     }
 
     // Smart redirect from legacy /dashboard → role-based home.
     if (location.pathname === '/dashboard') {
-      navigate(
-        getHomeRoute({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, isTeamLeader, activeMode }),
-        { replace: true },
-      );
+      navigate(getHomeRoute(personaOpts), { replace: true });
     }
   }, [
     loading,
     adminLoading,
     isAdmin,
+    persona,
     isLinkedMember,
     isLeader,
     isHRAdmin,
     isWorkspaceOwner,
+    isTeamLeader,
+    activeMode,
     needsOnboarding,
     location.pathname,
     navigate,
