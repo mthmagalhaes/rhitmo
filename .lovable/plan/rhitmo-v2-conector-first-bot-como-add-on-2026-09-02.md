@@ -22,16 +22,21 @@ Projeto novo só se valeria a pena em dois cenários: se o v2 fosse para outro p
 - Base para ONA já existe: `network_signals`, `team_network_edges`, `peer_feedback_requests`, `review_peers`, RPC `get_team_pulse`.
 - `pulse_surveys` existe (21 colunas) e alimenta `ctx_evidence_from_pulse_survey`.
 
-## Modelo comercial novo
+## Modelo comercial novo (preço final)
 
 | | Grátis | Rhitmo (assento) | Add-on Bot |
 |---|---|---|---|
-| Preço | R$ 0 | R$ 29,90/assento/mês | por assento, com horas inclusas |
-| Assentos | líder + 3 liderados | ilimitados | ativado individualmente |
-| Bot | 5h de trial única (vitalícia, não mensal) | 0h inclusas | horas do add-on |
+| Preço | R$ 0 | R$ 10/assento/mês | R$ 19,90/assento/mês |
+| Assentos | líder + 3 liderados | ilimitados | ativado individualmente por assento |
+| Bot | 5h de trial única (vitalícia, não mensal) | 0h inclusas | 4h/mês por assento |
 | Conectores, Anotações & Evidências, briefs, avaliação, Mentor | sim | sim | — |
 
+Total de referência: assento com bot ativo = R$ 10 + R$ 19,90 = **R$ 29,90/assento/mês**. Esse R$ 29,90 é o total combinado, não o preço do assento — não confundir com o rascunho anterior, em que R$ 29,90 era o assento sozinho. Ponto de comunicação: queda de ~40% frente aos R$ 49,90/assento hoje em produção.
+
+Unit economics: sem add-on, o custo por assento é só IA (centavos), margem altíssima. Com add-on, o custo é 4h × R$ 4,20 = R$ 16,80, margem de ~15,6% sobre os R$ 19,90 do add-on isoladamente. 5h dariam prejuízo; 4h é o breakeven com margem positiva.
+
 Grandfathering de 12 meses para quem já usa, comunicando queda de preço e não perda de produto.
+
 
 ## Fases
 
@@ -49,7 +54,8 @@ Grandfathering de 12 meses para quem já usa, comunicando queda de preço e não
 - Métrica de decisão: % de novos líderes que conectam note taker próprio (evento em `onboarding_funnel_events`).
 
 ### Fase 2 — Preço e add-on
-- Novos preços no Stripe: assento R$ 29,90 mensal e anual; add-on de bot por assento.
+- Dois SKUs novos no Stripe: **assento R$ 10/mês** (mensal e anual) e **add-on de bot R$ 19,90/mês por assento, com 4h/mês inclusas**.
+
 - `create-checkout-session` ganha line item de add-on com quantidade = assentos com bot ativo; `stripe-webhook` sincroniza `seat_addons`.
 - Nova `/v2/billing`: seletor de assentos, toggle de bot por liderado, uso de horas por assento, aviso em 80%.
 - `schedule-recall-bot` passa a checar add-on do assento (ou trial) antes de agendar; mensagem de bloqueio oferece ativar o add-on ou conectar note taker.
