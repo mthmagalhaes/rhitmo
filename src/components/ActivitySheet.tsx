@@ -7,7 +7,7 @@ import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useLinkedMember } from '@/hooks/useLinkedMember';
+import { usePersona } from '@/hooks/usePersona';
 import { useNavigate } from 'react-router-dom';
 import {
   Sheet,
@@ -84,7 +84,7 @@ export function ActivitySheet({
 }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { isLinkedMember } = useLinkedMember();
+  const isMemberView = usePersona() === 'direct_report';
   const [tab, setTab] = useState('all');
 
   // ── Queries (leaders only for now) ──
@@ -99,7 +99,7 @@ export function ActivitySheet({
         .limit(30);
       return (data as unknown as SyncNotification[]) || [];
     },
-    enabled: open && !isLinkedMember,
+    enabled: open && !isMemberView,
   });
 
   const { data: nudges = [] } = useQuery({
@@ -113,7 +113,7 @@ export function ActivitySheet({
         .limit(30);
       return (data as Nudge[]) || [];
     },
-    enabled: open && !isLinkedMember,
+    enabled: open && !isMemberView,
   });
 
   // ── Merge into unified timeline ──
@@ -339,7 +339,7 @@ export function ActivitySheet({
           </SheetDescription>
 
           {/* Tab filters — leaders */}
-          {!isLinkedMember && (
+          {!isMemberView && (
             <Tabs value={tab} onValueChange={setTab} className="mt-3">
               <TabsList className="h-8">
                 <TabsTrigger value="all" className="text-xs px-3 h-6">
@@ -357,7 +357,7 @@ export function ActivitySheet({
         </SheetHeader>
 
         <ScrollArea className="flex-1">
-          {isLinkedMember ? (
+          {isMemberView ? (
             // Direct report placeholder
             <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
               <Bell className="h-8 w-8 mb-3 opacity-30" />
