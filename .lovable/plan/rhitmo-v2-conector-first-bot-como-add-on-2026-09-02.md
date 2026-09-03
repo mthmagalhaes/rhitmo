@@ -54,7 +54,8 @@ Grandfathering de 12 meses para quem já usa, comunicando queda de preço e não
 - Métrica de decisão: % de novos líderes que conectam note taker próprio (evento em `onboarding_funnel_events`).
 
 ### Fase 2 — Preço e add-on
-- Novos preços no Stripe: assento R$ 29,90 mensal e anual; add-on de bot por assento.
+- Dois SKUs novos no Stripe: **assento R$ 10/mês** (mensal e anual) e **add-on de bot R$ 19,90/mês por assento, com 4h/mês inclusas**.
+
 - `create-checkout-session` ganha line item de add-on com quantidade = assentos com bot ativo; `stripe-webhook` sincroniza `seat_addons`.
 - Nova `/v2/billing`: seletor de assentos, toggle de bot por liderado, uso de horas por assento, aviso em 80%.
 - `schedule-recall-bot` passa a checar add-on do assento (ou trial) antes de agendar; mensagem de bloqueio oferece ativar o add-on ou conectar note taker.
