@@ -1,0 +1,1 @@
+ALTER TABLE public.seat_addons ALTER COLUMN included_hours SET DEFAULT 4;
