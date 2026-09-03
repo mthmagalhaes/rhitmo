@@ -204,8 +204,14 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ url: session.url, seats: seatsToPay, seat_cycle: seatCycle }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({
+        url: session.url,
+        seats: seatsToPay,
+        seat_cycle: seatCycle,
+        bot_addon_seats: botSeats,
+        ui_version: isV2 ? "v2" : "v1",
+      }),
+
     );
   } catch (err) {
     console.error("Error:", err);
