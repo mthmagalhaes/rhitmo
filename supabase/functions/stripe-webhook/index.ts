@@ -261,9 +261,11 @@ Deno.serve(async (req) => {
           break;
         }
 
-        const priceId = sub.items?.data?.[0]?.price?.id;
+        const seatItemU = pickSeatItem(sub.items?.data ?? []);
+        const priceId = seatItemU?.price?.id;
         const planTier = PRICE_TO_PLAN[priceId] || "pro";
-        const quantity = sub.items?.data?.[0]?.quantity || 1;
+        const quantity = seatItemU?.quantity || 1;
+
 
         const { error: subError } = await supabaseAdmin
           .from("subscriptions")
