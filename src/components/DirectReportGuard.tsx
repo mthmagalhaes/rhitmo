@@ -15,9 +15,12 @@ export function DirectReportGuard({ children }: DirectReportGuardProps) {
   const location = useLocation();
   const { isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, isTeamLeader, needsOnboarding, loading } = useAccount();
   const { isAdmin, loading: adminLoading } = useAdmin();
-  const { mode: activeMode } = useActiveMode();
+  const { mode: activeMode, availableModes } = useActiveMode();
   const personaOpts = { isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, isTeamLeader, activeMode };
   const persona = resolvePersona(personaOpts);
+  // Multi-chapéu: quem também lidera time ou tem visão de empresa não pode ser
+  // sequestrado pelo wizard ao espiar a própria visão de liderado.
+  const isMultiHat = availableModes.length > 1;
 
   useEffect(() => {
     if (location.pathname === '/onboarding') return;
@@ -30,13 +33,13 @@ export function DirectReportGuard({ children }: DirectReportGuardProps) {
 
     if (loading) return;
 
-    // Só quem está de fato na visão de liderado passa pelo wizard. Um líder
-    // que também é liderado de outra pessoa não pode ser sequestrado pelo
-    // onboarding ao abrir /lider/*.
-    if (persona === 'direct_report' && needsOnboarding) {
+    // Só o liderado puro passa obrigatoriamente pelo wizard.
+    if (persona === 'direct_report' && needsOnboarding && !isMultiHat) {
       navigate('/onboarding', { replace: true });
       return;
     }
+
+
 
     // Smart redirect from legacy /dashboard → role-based home.
     if (location.pathname === '/dashboard') {
