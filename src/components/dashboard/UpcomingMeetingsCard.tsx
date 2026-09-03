@@ -275,27 +275,34 @@ export const UpcomingMeetingsCard = () => {
         </div>
       </div>
 
-      {/* Auto-transcribe toggle */}
-      <div className="flex items-center justify-between px-1 py-2 mb-2">
-        <div className="flex items-center gap-1.5">
-          <Sparkles className="h-3.5 w-3.5 text-primary" />
-          <span className="text-xs font-medium text-muted-foreground">Transcrição automática</span>
+      {/* Auto-transcribe: rótulo + toggle juntos; ação avulsa separada à direita. */}
+      <div className="flex items-start justify-between gap-4 px-1 py-2 mb-2">
+        <div className="flex items-start gap-2.5">
+          <Sparkles className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+          <div className="min-w-0">
+            <div className="flex items-center gap-2.5">
+              <span className="text-xs font-medium text-foreground">Transcrição automática</span>
+              <Switch
+                checked={autoTranscribe}
+                onCheckedChange={(checked) => toggleAutoTranscribe.mutate(checked)}
+                disabled={toggleAutoTranscribe.isPending}
+                aria-label="Transcrição automática das 1:1s da agenda"
+                className="scale-90 origin-left"
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              O bot entra sozinho nas suas 1:1s da agenda.
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <AdHocBotDialog
-            onSubmit={sendAdHocBot}
-            isPending={scheduleBot.isPending}
-            disabled={!canScheduleBot}
-            disabledReason="Limite de reuniões com bot atingido."
-          />
-          <Switch
-            checked={autoTranscribe}
-            onCheckedChange={(checked) => toggleAutoTranscribe.mutate(checked)}
-            disabled={toggleAutoTranscribe.isPending}
-            className="scale-90"
-          />
-        </div>
+        <AdHocBotDialog
+          onSubmit={sendAdHocBot}
+          isPending={scheduleBot.isPending}
+          disabled={!canScheduleBot}
+          disabledReason="Limite de reuniões com bot atingido."
+        />
       </div>
+
 
       <div className="space-y-1">
         {visibleMeetings.map((meeting, index) => {
