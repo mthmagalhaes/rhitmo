@@ -91,6 +91,9 @@ const PRICE_TO_PLAN: Record<string, string> = {
   // === Per-seat (Windmill v3) ===
   [SEAT_PRICE_MONTHLY]: "pro",
   [SEAT_PRICE_ANNUAL]: "pro",
+  // === Rhitmo v2 (assento R$10 + add-on bot R$19,90) ===
+  [V2_SEAT_PRICE_IDS.monthly]: "pro",
+  [V2_SEAT_PRICE_IDS.annual]: "pro",
   // === Legacy Pro (mantido só para webhooks tardios) ===
   "price_1TNNnEIF4fHxJpjHA4cMp1tm": "pro",
   "price_1TNNnXIF4fHxJpjH6uHkOIIJ": "pro",
@@ -107,8 +110,15 @@ const PRICE_TO_PLAN: Record<string, string> = {
 function priceToCycle(priceId: string | undefined): "monthly" | "annual" | null {
   if (priceId === SEAT_PRICE_MONTHLY) return "monthly";
   if (priceId === SEAT_PRICE_ANNUAL) return "annual";
-  return null;
+  return cycleFromV2Price(priceId);
 }
+
+/** Item do assento: ignora o line item do add-on de bot. */
+// deno-lint-ignore no-explicit-any
+function pickSeatItem(items: any[]): any | undefined {
+  return items.find((i) => !isV2BotAddonPrice(i?.price?.id)) ?? items[0];
+}
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
