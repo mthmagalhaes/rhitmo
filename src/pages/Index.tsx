@@ -185,6 +185,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
   // Persona resolvida (considera o modo ativo): líder que também é liderado
   // só cai no dashboard de liderado quando escolhe esse modo.
   const persona = usePersona();
+  const { availableModes } = useActiveMode();
   const { canAddMember, limits } = usePlanLimits();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
