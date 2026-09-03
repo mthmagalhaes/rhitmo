@@ -13,6 +13,8 @@ const LeaderTour = lazy(() =>
 import { useAuth } from '@/hooks/useAuth';
 import { useAccount } from '@/contexts/AccountContext';
 import { AccountLoadFailed, AccountLoadingSlow, AccountLoadingDelayedBanner } from '@/components/AccountLoadFailed';
+import { RoleContextBanner } from '@/components/layout/RoleContextBanner';
+import { useRoleTheme } from '@/hooks/useRoleTheme';
 import { getSignupPersona, clearSignupPersona } from '@/lib/signupPersona';
 
 import { useQueryClient } from '@tanstack/react-query';
@@ -32,6 +34,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     refetchWorkspace,
   } = useAccount();
   const queryClient = useQueryClient();
+  // Tema por papel (líder ↔ liderado) aplicado no <html data-role>.
+  const roleTheme = useRoleTheme();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [tourRunning, setTourRunning] = useState(false);
 
@@ -159,7 +163,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           )}
           
-          <main className="flex-1" id="main-content">
+          {showActivity && <RoleContextBanner />}
+
+          <main key={roleTheme} className="flex-1 role-transition" id="main-content">
             <Suspense fallback={<RouteSkeleton />}>
               {children}
             </Suspense>

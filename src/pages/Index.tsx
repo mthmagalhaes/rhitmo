@@ -26,6 +26,7 @@ import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { useLinkedMember } from '@/hooks/useLinkedMember';
 import { usePersona } from '@/hooks/usePersona';
+import { useActiveMode } from '@/hooks/useActiveMode';
 import { useUserRole } from '@/hooks/useUserRole';
 import DirectReportDashboard from '@/components/dashboard/DirectReportDashboard';
 import { supabase } from '@/integrations/supabase/client';
@@ -185,6 +186,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
   // Persona resolvida (considera o modo ativo): líder que também é liderado
   // só cai no dashboard de liderado quando escolhe esse modo.
   const persona = usePersona();
+  const { availableModes } = useActiveMode();
   const { canAddMember, limits } = usePlanLimits();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
@@ -470,7 +472,8 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
   if (!user) return null;
 
   if (persona === 'direct_report' && linkedMember) {
-    if (needsOnboarding) return <Navigate to="/onboarding" replace />;
+    // Multi-chapéu (líder que também é liderado) não é obrigado ao wizard.
+    if (needsOnboarding && availableModes.length <= 1) return <Navigate to="/onboarding" replace />;
     return <DirectReportDashboard linkedMember={linkedMember} activeTab={activeTab} />;
   }
 
