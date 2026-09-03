@@ -1,4 +1,82 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  V2_ADDON_INCLUDED_HOURS,
+  V2_SEAT_PRICE_IDS,
+  cycleFromV2Price,
+  isV2BotAddonPrice,
+  isV2SeatPrice,
+} from "../_shared/stripeV2.ts";
+
+/**
+ * Backstop: reconcilia `seat_addons` com a quantidade de add-ons de bot
+ * presentes na assinatura Stripe. O toggle-seat-addon é o caminho normal,
+ * mas mudanças feitas direto no Stripe também precisam refletir aqui.
+ */
+async function syncV2SeatAddons(
+  admin: SupabaseClient,
+  workspaceId: string,
+  // deno-lint-ignore no-explicit-any
+  items: any[],
+) {
+  const hasV2Seat = items.some((i) => isV2SeatPrice(i?.price?.id));
+  const addonItem = items.find((i) => isV2BotAddonPrice(i?.price?.id));
+  if (!hasV2Seat && !addonItem) return; // assinatura v1: não mexe em nada
+
+  const targetQty = addonItem?.quantity ?? 0;
+  const cycle = cycleFromV2Price(addonItem?.price?.id) ??
+    cycleFromV2Price(items.find((i) => isV2SeatPrice(i?.price?.id))?.price?.id) ??
+    "monthly";
+
+  const { data: active, error } = await admin
+    .from("seat_addons")
+    .select("id, member_id, created_at")
+    .eq("workspace_id", workspaceId)
+    .eq("addon_type", "bot")
+    .eq("status", "active")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("[syncV2SeatAddons] select error", error);
+    return;
+  }
+
+  const rows = active ?? [];
+
+  if (rows.length > targetQty) {
+    // Sobra local: cancela as linhas mais recentes.
+    const toCancel = rows.slice(targetQty).map((r) => r.id);
+    const { error: cancelErr } = await admin
+      .from("seat_addons")
+      .update({ status: "canceled", stripe_subscription_item_id: null })
+      .in("id", toCancel);
+    if (cancelErr) console.error("[syncV2SeatAddons] cancel error", cancelErr);
+  } else if (rows.length < targetQty) {
+    // Falta local (add-on adicionado direto no Stripe): cria linhas sem
+    // membro atribuído, para o líder alocar depois em /v2/billing.
+    const missing = Array.from({ length: targetQty - rows.length }, () => ({
+      workspace_id: workspaceId,
+      member_id: null,
+      addon_type: "bot",
+      status: "active",
+      billing_cycle: cycle,
+      included_hours: V2_ADDON_INCLUDED_HOURS,
+      stripe_subscription_item_id: addonItem?.id ?? null,
+    }));
+    const { error: insErr } = await admin.from("seat_addons").insert(missing);
+    if (insErr) console.error("[syncV2SeatAddons] insert error", insErr);
+  }
+
+  if (targetQty > 0 && addonItem?.id) {
+    const { error: itemErr } = await admin
+      .from("seat_addons")
+      .update({ stripe_subscription_item_id: addonItem.id, billing_cycle: cycle })
+      .eq("workspace_id", workspaceId)
+      .eq("addon_type", "bot")
+      .eq("status", "active");
+    if (itemErr) console.error("[syncV2SeatAddons] item update error", itemErr);
+  }
+}
+
 
 // Mapeamento de price IDs Stripe → tier no DB.
 // IMPORTANTE: preços "business" são mantidos APENAS para grandfathering de
@@ -14,6 +92,9 @@ const PRICE_TO_PLAN: Record<string, string> = {
   // === Per-seat (Windmill v3) ===
   [SEAT_PRICE_MONTHLY]: "pro",
   [SEAT_PRICE_ANNUAL]: "pro",
+  // === Rhitmo v2 (assento R$10 + add-on bot R$19,90) ===
+  [V2_SEAT_PRICE_IDS.monthly]: "pro",
+  [V2_SEAT_PRICE_IDS.annual]: "pro",
   // === Legacy Pro (mantido só para webhooks tardios) ===
   "price_1TNNnEIF4fHxJpjHA4cMp1tm": "pro",
   "price_1TNNnXIF4fHxJpjH6uHkOIIJ": "pro",
@@ -30,8 +111,15 @@ const PRICE_TO_PLAN: Record<string, string> = {
 function priceToCycle(priceId: string | undefined): "monthly" | "annual" | null {
   if (priceId === SEAT_PRICE_MONTHLY) return "monthly";
   if (priceId === SEAT_PRICE_ANNUAL) return "annual";
-  return null;
+  return cycleFromV2Price(priceId);
 }
+
+/** Item do assento: ignora o line item do add-on de bot. */
+// deno-lint-ignore no-explicit-any
+function pickSeatItem(items: any[]): any | undefined {
+  return items.find((i) => !isV2BotAddonPrice(i?.price?.id)) ?? items[0];
+}
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -126,9 +214,11 @@ Deno.serve(async (req) => {
         );
         const sub = await subRes.json();
 
-        const priceId = sub.items?.data?.[0]?.price?.id;
+        const seatItem = pickSeatItem(sub.items?.data ?? []);
+        const priceId = seatItem?.price?.id;
         const planTier = PRICE_TO_PLAN[priceId] || "pro";
-        const quantity = sub.items?.data?.[0]?.quantity || 1;
+        const quantity = seatItem?.quantity || 1;
+
 
         // Upsert subscription
         const { error: subError } = await supabaseAdmin
@@ -167,7 +257,10 @@ Deno.serve(async (req) => {
           .eq("id", workspaceId);
 
         if (wsError) console.error("Update workspace error:", wsError);
+
+        await syncV2SeatAddons(supabaseAdmin, workspaceId, sub.items?.data ?? []);
         break;
+
       }
 
       case "customer.subscription.updated": {
@@ -179,9 +272,11 @@ Deno.serve(async (req) => {
           break;
         }
 
-        const priceId = sub.items?.data?.[0]?.price?.id;
+        const seatItemU = pickSeatItem(sub.items?.data ?? []);
+        const priceId = seatItemU?.price?.id;
         const planTier = PRICE_TO_PLAN[priceId] || "pro";
-        const quantity = sub.items?.data?.[0]?.quantity || 1;
+        const quantity = seatItemU?.quantity || 1;
+
 
         const { error: subError } = await supabaseAdmin
           .from("subscriptions")
@@ -214,8 +309,11 @@ Deno.serve(async (req) => {
           .eq("id", workspaceId);
 
         if (wsError) console.error("Update workspace error:", wsError);
+
+        await syncV2SeatAddons(supabaseAdmin, workspaceId, sub.items?.data ?? []);
         break;
       }
+
 
       case "customer.subscription.deleted": {
         const sub = event.data.object;
@@ -236,8 +334,17 @@ Deno.serve(async (req) => {
           .eq("id", workspaceId);
 
         if (wsError) console.error("Update workspace error:", wsError);
+
+        // Assinatura cancelada: nenhum add-on continua ativo.
+        const { error: addonErr } = await supabaseAdmin
+          .from("seat_addons")
+          .update({ status: "canceled", stripe_subscription_item_id: null })
+          .eq("workspace_id", workspaceId)
+          .eq("status", "active");
+        if (addonErr) console.error("Cancel seat_addons error:", addonErr);
         break;
       }
+
 
       case "invoice.payment_failed": {
         const invoice = event.data.object;

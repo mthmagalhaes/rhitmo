@@ -1,4 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  V2_SEAT_PRICE_IDS,
+  V2_BOT_ADDON_PRICE_IDS,
+} from "../_shared/stripeV2.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,6 +14,9 @@ const corsHeaders = {
 // Pricing v3 — Modelo Windmill (single plan, per-seat)
 // Líder + 3 liderados grátis. R$ 49,90/mês ou R$ 478,80/ano por seat adicional.
 // Workspaces grandfathered (grandfather_until >= hoje) NÃO podem abrir checkout.
+//
+// Pricing v2 (workspaces com ui_version = 'v2'): assento R$ 10,00/mês sem bot,
+// + add-on de bot R$ 19,90/mês por assento (4h/mês). Ver _shared/stripeV2.ts.
 // ============================================================================
 const FREE_SEATS = 3;
 
@@ -19,6 +26,7 @@ const SEAT_PRICE_IDS: Record<"monthly" | "annual", string> = {
 };
 
 type SeatCycle = keyof typeof SEAT_PRICE_IDS;
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -68,7 +76,7 @@ Deno.serve(async (req) => {
     // Workspace do usuário (Owner)
     const { data: workspace, error: wsError } = await supabaseAdmin
       .from("workspaces")
-      .select("id, grandfather_until, paid_seats")
+      .select("id, grandfather_until, paid_seats, ui_version")
       .eq("owner_id", user.id)
       .maybeSingle();
 
@@ -143,10 +151,20 @@ Deno.serve(async (req) => {
       seatsToPay,
     });
 
+    const isV2 = ((workspace as any).ui_version as string | null) === "v2";
+    const seatPriceId = isV2 ? V2_SEAT_PRICE_IDS[seatCycle] : SEAT_PRICE_IDS[seatCycle];
+
+    // Add-on de bot: só existe no v2. quantity = assentos que já vão ativar bot
+    // no momento do checkout (0 é válido → nenhum line item de add-on).
+    const rawBotSeats = Number(body.botSeats ?? 0);
+    const botSeats = isV2 && Number.isFinite(rawBotSeats)
+      ? Math.max(0, Math.min(Math.floor(rawBotSeats), seatsToPay))
+      : 0;
+
     const params = new URLSearchParams({
       mode: "subscription",
       customer: customerId,
-      "line_items[0][price]": SEAT_PRICE_IDS[seatCycle],
+      "line_items[0][price]": seatPriceId,
       "line_items[0][quantity]": String(seatsToPay),
       allow_promotion_codes: "true",
       success_url: "https://rhitmo.co/billing?success=true",
@@ -154,9 +172,18 @@ Deno.serve(async (req) => {
       "metadata[workspace_id]": workspace.id,
       "metadata[seat_cycle]": seatCycle,
       "metadata[paid_seats]": String(seatsToPay),
+      "metadata[ui_version]": isV2 ? "v2" : "v1",
+      "metadata[bot_addon_seats]": String(botSeats),
       "subscription_data[metadata][workspace_id]": workspace.id,
       "subscription_data[metadata][seat_cycle]": seatCycle,
+      "subscription_data[metadata][ui_version]": isV2 ? "v2" : "v1",
     });
+
+    if (botSeats > 0) {
+      params.set("line_items[1][price]", V2_BOT_ADDON_PRICE_IDS[seatCycle]);
+      params.set("line_items[1][quantity]", String(botSeats));
+    }
+
 
     const sessionRes = await fetch("https://api.stripe.com/v1/checkout/sessions", {
       method: "POST",
@@ -177,9 +204,16 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ url: session.url, seats: seatsToPay, seat_cycle: seatCycle }),
+      JSON.stringify({
+        url: session.url,
+        seats: seatsToPay,
+        seat_cycle: seatCycle,
+        bot_addon_seats: botSeats,
+        ui_version: isV2 ? "v2" : "v1",
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
+
   } catch (err) {
     console.error("Error:", err);
     return new Response(JSON.stringify({ error: "Internal server error" }), {
