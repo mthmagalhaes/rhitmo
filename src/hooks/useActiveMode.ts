@@ -80,7 +80,7 @@ if (typeof window !== 'undefined') {
     if (!e.key || !e.key.startsWith(STORAGE_PREFIX)) return;
     const uid = e.key.slice(STORAGE_PREFIX.length);
     const next = e.newValue;
-    if (next === 'leader' || next === 'company') {
+    if (next === 'leader' || next === 'company' || next === 'member') {
       if (modeByUser.get(uid) !== next) {
         modeByUser.set(uid, next);
         emit();
