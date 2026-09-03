@@ -203,9 +203,11 @@ Deno.serve(async (req) => {
         );
         const sub = await subRes.json();
 
-        const priceId = sub.items?.data?.[0]?.price?.id;
+        const seatItem = pickSeatItem(sub.items?.data ?? []);
+        const priceId = seatItem?.price?.id;
         const planTier = PRICE_TO_PLAN[priceId] || "pro";
-        const quantity = sub.items?.data?.[0]?.quantity || 1;
+        const quantity = seatItem?.quantity || 1;
+
 
         // Upsert subscription
         const { error: subError } = await supabaseAdmin
