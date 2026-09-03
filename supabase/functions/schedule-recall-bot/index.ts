@@ -78,12 +78,12 @@ Deno.serve(async (req) => {
     // bloqueado mesmo liderando time em workspace enterprise+beta.
     const { data: ownedWorkspaces } = await supabaseAdmin
       .from("workspaces")
-      .select("id, plan_tier, is_beta_user, paid_seats, grandfather_until")
+      .select("id, plan_tier, is_beta_user, paid_seats, grandfather_until, ui_version, bot_trial_hours_used")
       .eq("owner_id", userId);
 
     const { data: ledTeams } = await supabaseAdmin
       .from("teams")
-      .select("workspaces(id, plan_tier, is_beta_user, paid_seats, grandfather_until)")
+      .select("workspaces(id, plan_tier, is_beta_user, paid_seats, grandfather_until, ui_version, bot_trial_hours_used)")
       .eq("leader_user_id", userId);
 
     // Caps por plano. Pro/Business/Enterprise = bot ilimitado.
@@ -185,14 +185,14 @@ Deno.serve(async (req) => {
     );
     const maxBotMeetings = isBeta ? Infinity : bestCap;
 
-    if (maxBotMeetings === 0) {
+    if (!v2Workspace && maxBotMeetings === 0) {
       return new Response(JSON.stringify({ error: "Seu plano não inclui transcrição com bot. Faça upgrade para Pro." }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (maxBotMeetings !== Infinity) {
+    if (!v2Workspace && maxBotMeetings !== Infinity) {
       // Count bots scheduled this month
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
@@ -219,7 +219,7 @@ Deno.serve(async (req) => {
     const isGrandfathered = anyCandidate.some(
       (c) => c?.grandfather_until && new Date(c.grandfather_until) >= new Date(new Date().toDateString()),
     );
-    if (!isBeta && !isGrandfathered) {
+    if (!v2Workspace && !isBeta && !isGrandfathered) {
       const paidSeats = anyCandidate.reduce(
         (acc, c) => Math.max(acc, Number(c?.paid_seats ?? 0) || 0),
         0,
