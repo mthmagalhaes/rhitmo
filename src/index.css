@@ -200,6 +200,88 @@ All colors MUST be HSL.
     --chart-5: 250 10% 95%;
   }
 
+  /* ── Tema por papel: visão de Liderado ──────────────────────────────────
+     A mesma pessoa pode ser líder e liderada. Quando ela troca para a visão
+     de liderado, o app inteiro muda de família cromática (roxo → verde-azulado)
+     para que o contexto seja óbvio em 1 segundo. Só tokens semânticos são
+     reapontados — nenhum componente conhece a cor. */
+  [data-role='member'] {
+    --primary:            174 72% 32%;   /* #178c7f */
+    --primary-foreground:   0  0% 100%;
+
+    --primary-50:  172 60% 96%;
+    --primary-100: 172 58% 90%;
+    --primary-200: 173 55% 80%;
+    --primary-300: 173 52% 66%;
+    --primary-400: 174 60% 46%;
+    --primary-500: 174 72% 32%;
+    --primary-600: 175 74% 27%;
+    --primary-700: 176 76% 22%;
+    --primary-800: 177 70% 17%;
+    --primary-900: 178 64% 13%;
+
+    --accent:             172 60% 96%;
+    --accent-foreground:  176 76% 22%;
+    --ring:               174 72% 32%;
+
+    --shadow-purple:    0 10px 30px -8px hsl(174 72% 32% / 0.32);
+    --shadow-purple-lg: 0 20px 50px -12px hsl(174 72% 32% / 0.36);
+
+    --sidebar-primary:           174 72% 32%;
+    --sidebar-primary-foreground:  0  0% 100%;
+    --sidebar-accent:            172 60% 96%;
+    --sidebar-accent-foreground: 176 76% 22%;
+    --sidebar-ring:              174 72% 32%;
+
+    --chart-1: 174 72% 32%;
+  }
+
+  .dark[data-role='member'],
+  .dark [data-role='member'] {
+    --primary:            172 62% 58%;
+    --primary-foreground: 178 64% 10%;
+
+    --primary-50:  177 30% 16%;
+    --primary-100: 177 34% 22%;
+    --primary-200: 176 42% 30%;
+    --primary-300: 174 52% 42%;
+    --primary-400: 173 58% 50%;
+    --primary-500: 172 62% 58%;
+    --primary-600: 172 66% 66%;
+    --primary-700: 172 70% 74%;
+    --primary-800: 172 74% 84%;
+    --primary-900: 172 80% 92%;
+
+    --accent:             176 30% 20%;
+    --accent-foreground:  172 62% 58%;
+    --ring:               172 62% 58%;
+
+    --shadow-purple:    0 10px 30px -8px hsl(172 62% 58% / 0.25);
+    --shadow-purple-lg: 0 20px 50px -12px hsl(172 62% 58% / 0.3);
+
+    --sidebar-primary:             172 62% 58%;
+    --sidebar-primary-foreground:  178 64% 10%;
+    --sidebar-accent:              176 30% 20%;
+    --sidebar-accent-foreground:   172 62% 58%;
+    --sidebar-ring:                172 62% 58%;
+
+    --chart-1: 172 62% 58%;
+  }
+
+  /* Fade curto ao alternar de papel: o olho registra a troca de ambiente. */
+  @keyframes role-fade-in {
+    from { opacity: 0; transform: translateY(2px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .role-transition {
+    animation: role-fade-in 220ms ease-out;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .role-transition { animation: none; }
+  }
+
+
+
   /* ── Reset base para tipografia ── */
   * {
     @apply border-border;
