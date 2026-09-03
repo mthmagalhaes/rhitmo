@@ -211,8 +211,9 @@ Deno.serve(async (req) => {
         bot_addon_seats: botSeats,
         ui_version: isV2 ? "v2" : "v1",
       }),
-
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
+
   } catch (err) {
     console.error("Error:", err);
     return new Response(JSON.stringify({ error: "Internal server error" }), {
