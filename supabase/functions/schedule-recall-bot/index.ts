@@ -78,12 +78,12 @@ Deno.serve(async (req) => {
     // bloqueado mesmo liderando time em workspace enterprise+beta.
     const { data: ownedWorkspaces } = await supabaseAdmin
       .from("workspaces")
-      .select("id, plan_tier, is_beta_user, paid_seats, grandfather_until")
+      .select("id, plan_tier, is_beta_user, paid_seats, grandfather_until, ui_version, bot_trial_hours_used")
       .eq("owner_id", userId);
 
     const { data: ledTeams } = await supabaseAdmin
       .from("teams")
-      .select("workspaces(id, plan_tier, is_beta_user, paid_seats, grandfather_until)")
+      .select("workspaces(id, plan_tier, is_beta_user, paid_seats, grandfather_until, ui_version, bot_trial_hours_used)")
       .eq("leader_user_id", userId);
 
     // Caps por plano. Pro/Business/Enterprise = bot ilimitado.
@@ -104,21 +104,95 @@ Deno.serve(async (req) => {
         .filter(Boolean) as Array<{ plan_tier: string | null; is_beta_user: boolean | null }>),
     ];
 
+    // ── Rhitmo v2: teto por LIDERADO (add-on de bot ou trial vitalício) ──────
+    // Workspaces v1 não passam por aqui e mantêm exatamente a lógica anterior.
+    const v2Workspace = (candidates as Array<Record<string, any>>).find(
+      (c) => c?.ui_version === "v2",
+    );
+
+    if (v2Workspace) {
+      const V2_TRIAL_HOURS = 5;
+      const V2_ADDON_HOURS = 4;
+      const workspaceId = v2Workspace.id as string;
+
+      const { data: addonRow } = member_id
+        ? await supabaseAdmin
+          .from("seat_addons")
+          .select("id, included_hours")
+          .eq("workspace_id", workspaceId)
+          .eq("member_id", member_id)
+          .eq("addon_type", "bot")
+          .eq("status", "active")
+          .limit(1)
+          .maybeSingle()
+        : { data: null };
+
+      let hoursCap: number;
+      let hoursUsed: number;
+      let basis: "addon" | "trial";
+
+      if (addonRow) {
+        basis = "addon";
+        hoursCap = Number(addonRow.included_hours ?? V2_ADDON_HOURS) || V2_ADDON_HOURS;
+
+        const startOfCycle = new Date();
+        startOfCycle.setDate(1);
+        startOfCycle.setHours(0, 0, 0, 0);
+
+        const { data: usageRows } = await supabaseAdmin
+          .from("bot_usage_events")
+          .select("machine_minutes")
+          .eq("workspace_id", workspaceId)
+          .eq("member_id", member_id)
+          .gte("created_at", startOfCycle.toISOString());
+
+        hoursUsed =
+          ((usageRows ?? []).reduce((sum: number, r: any) => sum + Number(r.machine_minutes ?? 0), 0)) /
+          60;
+      } else {
+        basis = "trial";
+        hoursCap = V2_TRIAL_HOURS;
+        hoursUsed = Number(v2Workspace.bot_trial_hours_used ?? 0) || 0;
+      }
+
+      const hoursRemaining = Math.max(hoursCap - hoursUsed, 0);
+
+      if (hoursRemaining <= 0) {
+        const message = basis === "addon"
+          ? `As ${hoursCap}h de bot do add-on deste liderado acabaram neste ciclo (${
+            hoursUsed.toFixed(1)
+          }h usadas). Você pode esperar a renovação do ciclo ou conectar um note taker (Granola ou Fireflies) para esta reunião não depender do bot.`
+          : "Este liderado não tem bot disponível: as 5h de teste gratuito do workspace já foram usadas e não há add-on de bot ativo para ele. Dois caminhos: ativar o add-on de bot (R$ 19,90/mês, 4h) para este liderado em Assinatura, ou conectar um note taker (Granola ou Fireflies) para que esta reunião não precise do bot.";
+
+        return new Response(
+          JSON.stringify({
+            error: message,
+            code: basis === "addon" ? "v2_addon_hours_cap" : "v2_no_bot_available",
+            basis,
+            hours_used: Number(hoursUsed.toFixed(2)),
+            hours_cap: hoursCap,
+          }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+    }
+
     const isBeta = candidates.some((c) => c?.is_beta_user === true);
+
     const bestCap = candidates.reduce(
       (acc, c) => Math.max(acc, BOT_CAPS[c?.plan_tier ?? "pulse"] ?? 0),
       0,
     );
     const maxBotMeetings = isBeta ? Infinity : bestCap;
 
-    if (maxBotMeetings === 0) {
+    if (!v2Workspace && maxBotMeetings === 0) {
       return new Response(JSON.stringify({ error: "Seu plano não inclui transcrição com bot. Faça upgrade para Pro." }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (maxBotMeetings !== Infinity) {
+    if (!v2Workspace && maxBotMeetings !== Infinity) {
       // Count bots scheduled this month
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
@@ -145,7 +219,7 @@ Deno.serve(async (req) => {
     const isGrandfathered = anyCandidate.some(
       (c) => c?.grandfather_until && new Date(c.grandfather_until) >= new Date(new Date().toDateString()),
     );
-    if (!isBeta && !isGrandfathered) {
+    if (!v2Workspace && !isBeta && !isGrandfathered) {
       const paidSeats = anyCandidate.reduce(
         (acc, c) => Math.max(acc, Number(c?.paid_seats ?? 0) || 0),
         0,

@@ -3866,6 +3866,19 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_v2_bot_seats: {
+        Args: { p_workspace_id: string }
+        Returns: {
+          basis: string
+          has_addon: boolean
+          hours_cap: number
+          hours_used: number
+          member_id: string
+          member_name: string
+          trial_hours_total: number
+          trial_hours_used: number
+        }[]
+      }
       get_workspace_people: {
         Args: { p_workspace_id: string }
         Returns: {
