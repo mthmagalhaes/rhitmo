@@ -323,8 +323,17 @@ Deno.serve(async (req) => {
           .eq("id", workspaceId);
 
         if (wsError) console.error("Update workspace error:", wsError);
+
+        // Assinatura cancelada: nenhum add-on continua ativo.
+        const { error: addonErr } = await supabaseAdmin
+          .from("seat_addons")
+          .update({ status: "canceled", stripe_subscription_item_id: null })
+          .eq("workspace_id", workspaceId)
+          .eq("status", "active");
+        if (addonErr) console.error("Cancel seat_addons error:", addonErr);
         break;
       }
+
 
       case "invoice.payment_failed": {
         const invoice = event.data.object;
