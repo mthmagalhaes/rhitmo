@@ -127,23 +127,32 @@ export function useActiveMode() {
     m === 'leader' ? canSeeLeader : m === 'company' ? canSeeCompany : canSeeMember;
 
   // Hidrata o store a partir do localStorage assim que conhecemos o userId.
+  // IMPORTANTE: enquanto o AccountContext carrega, os flags de papel ainda são
+  // falsos (isTeamLeader/isLinkedMember). Normalizar aqui descartaria o modo
+  // 'member' salvo e jogaria o usuário de volta pra visão de líder a cada
+  // reload. Por isso só validamos depois que o contexto resolve.
   const key = userId ?? '__anon__';
-  if (!modeByUser.has(key)) {
-    const stored = readStored(userId);
-    const valid = stored && isAllowed(stored);
-    modeByUser.set(key, valid ? (stored as ActiveMode) : defaultMode);
-  } else {
-    // Se o modo armazenado deixou de ser válido (papéis mudaram), normaliza.
-    const current = modeByUser.get(key)!;
-    if (!isAllowed(current)) {
-      modeByUser.set(key, defaultMode);
+  const stored = readStored(userId);
+  if (!accountLoading) {
+    if (!modeByUser.has(key)) {
+      const valid = stored && isAllowed(stored);
+      modeByUser.set(key, valid ? (stored as ActiveMode) : defaultMode);
+    } else {
+      // Se o modo armazenado deixou de ser válido (papéis mudaram), normaliza.
+      const current = modeByUser.get(key)!;
+      if (!isAllowed(current)) {
+        modeByUser.set(key, defaultMode);
+      }
     }
   }
 
+  // Enquanto carrega, o valor persistido é a melhor aposta (otimista).
+  const fallbackMode: ActiveMode = accountLoading ? (stored ?? defaultMode) : defaultMode;
+
   const mode = useSyncExternalStore(
     subscribe,
-    () => getSnapshot(userId, defaultMode),
-    () => defaultMode,
+    () => getSnapshot(userId, fallbackMode),
+    () => fallbackMode,
   );
 
   const setMode = useCallback(
