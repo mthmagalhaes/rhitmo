@@ -298,8 +298,11 @@ Deno.serve(async (req) => {
           .eq("id", workspaceId);
 
         if (wsError) console.error("Update workspace error:", wsError);
+
+        await syncV2SeatAddons(supabaseAdmin, workspaceId, sub.items?.data ?? []);
         break;
       }
+
 
       case "customer.subscription.deleted": {
         const sub = event.data.object;
