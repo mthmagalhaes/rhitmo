@@ -1,4 +1,81 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  V2_ADDON_INCLUDED_HOURS,
+  cycleFromV2Price,
+  isV2BotAddonPrice,
+  isV2SeatPrice,
+} from "../_shared/stripeV2.ts";
+
+/**
+ * Backstop: reconcilia `seat_addons` com a quantidade de add-ons de bot
+ * presentes na assinatura Stripe. O toggle-seat-addon é o caminho normal,
+ * mas mudanças feitas direto no Stripe também precisam refletir aqui.
+ */
+async function syncV2SeatAddons(
+  admin: SupabaseClient,
+  workspaceId: string,
+  // deno-lint-ignore no-explicit-any
+  items: any[],
+) {
+  const hasV2Seat = items.some((i) => isV2SeatPrice(i?.price?.id));
+  const addonItem = items.find((i) => isV2BotAddonPrice(i?.price?.id));
+  if (!hasV2Seat && !addonItem) return; // assinatura v1: não mexe em nada
+
+  const targetQty = addonItem?.quantity ?? 0;
+  const cycle = cycleFromV2Price(addonItem?.price?.id) ??
+    cycleFromV2Price(items.find((i) => isV2SeatPrice(i?.price?.id))?.price?.id) ??
+    "monthly";
+
+  const { data: active, error } = await admin
+    .from("seat_addons")
+    .select("id, member_id, created_at")
+    .eq("workspace_id", workspaceId)
+    .eq("addon_type", "bot")
+    .eq("status", "active")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("[syncV2SeatAddons] select error", error);
+    return;
+  }
+
+  const rows = active ?? [];
+
+  if (rows.length > targetQty) {
+    // Sobra local: cancela as linhas mais recentes.
+    const toCancel = rows.slice(targetQty).map((r) => r.id);
+    const { error: cancelErr } = await admin
+      .from("seat_addons")
+      .update({ status: "canceled", stripe_subscription_item_id: null })
+      .in("id", toCancel);
+    if (cancelErr) console.error("[syncV2SeatAddons] cancel error", cancelErr);
+  } else if (rows.length < targetQty) {
+    // Falta local (add-on adicionado direto no Stripe): cria linhas sem
+    // membro atribuído, para o líder alocar depois em /v2/billing.
+    const missing = Array.from({ length: targetQty - rows.length }, () => ({
+      workspace_id: workspaceId,
+      member_id: null,
+      addon_type: "bot",
+      status: "active",
+      billing_cycle: cycle,
+      included_hours: V2_ADDON_INCLUDED_HOURS,
+      stripe_subscription_item_id: addonItem?.id ?? null,
+    }));
+    const { error: insErr } = await admin.from("seat_addons").insert(missing);
+    if (insErr) console.error("[syncV2SeatAddons] insert error", insErr);
+  }
+
+  if (targetQty > 0 && addonItem?.id) {
+    const { error: itemErr } = await admin
+      .from("seat_addons")
+      .update({ stripe_subscription_item_id: addonItem.id, billing_cycle: cycle })
+      .eq("workspace_id", workspaceId)
+      .eq("addon_type", "bot")
+      .eq("status", "active");
+    if (itemErr) console.error("[syncV2SeatAddons] item update error", itemErr);
+  }
+}
+
 
 // Mapeamento de price IDs Stripe → tier no DB.
 // IMPORTANTE: preços "business" são mantidos APENAS para grandfathering de
