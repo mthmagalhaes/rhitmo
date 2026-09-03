@@ -57,6 +57,7 @@ export function DirectReportGuard({ children }: DirectReportGuardProps) {
     isTeamLeader,
     activeMode,
     needsOnboarding,
+    isMultiHat,
     location.pathname,
     navigate,
   ]);
