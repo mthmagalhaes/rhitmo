@@ -66,19 +66,21 @@ Deno.serve(async (req) => {
     );
 
     // ---- Ownership chain: owner do workspace OU HR Admin do workspace ----
-    const workspace = await safeMaybeQuery<{ id: string; owner_id: string }>(
-      admin.from("workspaces").select("id, owner_id").eq("id", workspace_id).maybeSingle(),
+    const workspace = await safeMaybeQuery<
+      { id: string; owner_id: string; hr_admin_ids: string[] | null }
+    >(
+      admin
+        .from("workspaces")
+        .select("id, owner_id, hr_admin_ids")
+        .eq("id", workspace_id)
+        .maybeSingle(),
     );
     if (!workspace) return json({ error: "Workspace não encontrado" }, 404);
 
-    let allowed = workspace.owner_id === user.id;
-    if (!allowed) {
-      const { data: isHr } = await admin.rpc("is_hr_admin_of_workspace", {
-        _workspace_id: workspace_id,
-      });
-      allowed = isHr === true;
-    }
+    const allowed = workspace.owner_id === user.id ||
+      (workspace.hr_admin_ids ?? []).includes(user.id);
     if (!allowed) return json({ error: "Sem permissão neste workspace" }, 403);
+
 
     // O liderado precisa pertencer ao workspace
     const member = await safeMaybeQuery<{ id: string }>(
