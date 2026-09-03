@@ -208,10 +208,10 @@ export default function V2Billing() {
                       )}
                     </div>
                   </div>
-                  {seat.hoursCap > 0 && (
+                  {seat.basis === 'addon' && seat.hoursCap > 0 && (
                     <Progress
                       value={seat.percent}
-                      className={cn('mt-3 h-1.5', TONE_BAR[tone])}
+                      className={cn('mt-3 h-1.5 bg-muted', TONE_BAR[tone])}
                     />
                   )}
                 </div>
