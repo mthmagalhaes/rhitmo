@@ -364,6 +364,11 @@ export const UpcomingMeetingsCard = () => {
                       <span
                         className="flex items-center gap-1.5"
                         onClick={(e) => e.stopPropagation()}
+                        title={
+                          meeting.auto_transcribe_opt_in
+                            ? 'O bot vai transcrever esta reunião de equipe.'
+                            : 'Reuniões de equipe não recebem bot automático. Ative para transcrever esta.'
+                        }
                       >
                         <Switch
                           checked={!!meeting.auto_transcribe_opt_in}
@@ -374,10 +379,11 @@ export const UpcomingMeetingsCard = () => {
                           className="scale-75 origin-left"
                         />
                         <span className="text-[10px] text-muted-foreground">
-                          {meeting.auto_transcribe_opt_in ? 'Transcrever' : 'Sem bot'}
+                          {meeting.auto_transcribe_opt_in ? 'Transcrever esta' : 'Sem bot'}
                         </span>
                       </span>
                     )}
+
                   </div>
 
                   <p className="text-sm font-semibold text-foreground truncate">
