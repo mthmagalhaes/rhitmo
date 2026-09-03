@@ -72,6 +72,7 @@ export function WorkspaceSwitcher({ onOpenInvite }: WorkspaceSwitcherProps) {
     activeMode === 'company' ? 'Empresa' : activeMode === 'member' ? 'Liderado' : 'Minha equipe';
   const showModeChip = canSwitch || (isHRAdmin && current);
   const chipText = canSwitch ? modeLabel : isHRAdmin ? 'RH' : null;
+  const ModeIcon = activeMode === 'company' ? Shield : activeMode === 'member' ? UserCircle : Users;
 
   const trigger = (
     <button
@@ -89,16 +90,18 @@ export function WorkspaceSwitcher({ onOpenInvite }: WorkspaceSwitcherProps) {
       <div className="flex-1 min-w-0">
         <p className="font-semibold truncate text-sidebar-foreground leading-tight">
           {current?.name ?? 'Workspace'}
-          {showModeChip && chipText && (
-            <span className="ml-1.5 text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
-              · {chipText}
-            </span>
-          )}
         </p>
+        {showModeChip && chipText && (
+          <span className="mt-0.5 inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+            <ModeIcon className="h-2.5 w-2.5" />
+            {chipText}
+          </span>
+        )}
       </div>
       <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
     </button>
   );
+
 
   return (
     <DropdownMenu>
