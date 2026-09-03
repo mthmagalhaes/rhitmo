@@ -2,7 +2,7 @@ import { useCallback, useSyncExternalStore } from 'react';
 import { useAccount } from '@/contexts/AccountContext';
 import { useEffectiveUser } from './useEffectiveUser';
 
-export type ActiveMode = 'leader' | 'company';
+export type ActiveMode = 'leader' | 'company' | 'member';
 
 const STORAGE_PREFIX = 'rhitmo:active-mode:';
 
@@ -15,7 +15,7 @@ function readStored(userId: string | null): ActiveMode | null {
   if (!key) return null;
   try {
     const v = window.localStorage.getItem(key);
-    return v === 'leader' || v === 'company' ? v : null;
+    return v === 'leader' || v === 'company' || v === 'member' ? v : null;
   } catch {
     return null;
   }
@@ -103,32 +103,39 @@ if (typeof window !== 'undefined') {
  */
 export function useActiveMode() {
   const { id: userId } = useEffectiveUser();
-  const { isTeamLeader, isHRAdmin, isWorkspaceOwner } = useAccount();
+  const { isTeamLeader, isHRAdmin, isWorkspaceOwner, isLinkedMember } = useAccount();
 
   // canSeeLeader = "lidera ao menos um time" (vem do RPC
   // get_account_context.is_team_leader). Independe de papel HR/Owner — um HR
   // Admin que também lidera um time deve ver os dois modos.
   const canSeeLeader = isTeamLeader;
   const canSeeCompany = isHRAdmin || isWorkspaceOwner;
+  // canSeeMember = "é liderado de alguém" — só vira um modo à parte quando a
+  // pessoa também tem chapéu de líder ou de empresa; liderado puro já cai
+  // direto na persona direct_report.
+  const canSeeMember = isLinkedMember && (canSeeLeader || canSeeCompany);
 
   const availableModes: ActiveMode[] = [];
   if (canSeeLeader) availableModes.push('leader');
   if (canSeeCompany) availableModes.push('company');
+  if (canSeeMember) availableModes.push('member');
   if (availableModes.length === 0) availableModes.push('leader');
 
-  const defaultMode: ActiveMode = availableModes.includes('leader') ? 'leader' : 'company';
+  const defaultMode: ActiveMode = availableModes.includes('leader') ? 'leader' : availableModes[0];
+
+  const isAllowed = (m: ActiveMode) =>
+    m === 'leader' ? canSeeLeader : m === 'company' ? canSeeCompany : canSeeMember;
 
   // Hidrata o store a partir do localStorage assim que conhecemos o userId.
   const key = userId ?? '__anon__';
   if (!modeByUser.has(key)) {
     const stored = readStored(userId);
-    const valid = stored && (stored === 'leader' ? canSeeLeader : canSeeCompany);
+    const valid = stored && isAllowed(stored);
     modeByUser.set(key, valid ? (stored as ActiveMode) : defaultMode);
   } else {
     // Se o modo armazenado deixou de ser válido (papéis mudaram), normaliza.
     const current = modeByUser.get(key)!;
-    const stillValid = current === 'leader' ? canSeeLeader : canSeeCompany;
-    if (!stillValid) {
+    if (!isAllowed(current)) {
       modeByUser.set(key, defaultMode);
     }
   }
@@ -141,11 +148,12 @@ export function useActiveMode() {
 
   const setMode = useCallback(
     (next: ActiveMode) => {
-      const allowed = next === 'leader' ? canSeeLeader : canSeeCompany;
+      const allowed =
+        next === 'leader' ? canSeeLeader : next === 'company' ? canSeeCompany : canSeeMember;
       if (!allowed) return;
       writeMode(userId, next);
     },
-    [userId, canSeeLeader, canSeeCompany],
+    [userId, canSeeLeader, canSeeCompany, canSeeMember],
   );
 
   return {

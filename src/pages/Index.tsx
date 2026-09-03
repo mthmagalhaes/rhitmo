@@ -25,6 +25,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { useLinkedMember } from '@/hooks/useLinkedMember';
+import { usePersona } from '@/hooks/usePersona';
 import { useUserRole } from '@/hooks/useUserRole';
 import DirectReportDashboard from '@/components/dashboard/DirectReportDashboard';
 import { supabase } from '@/integrations/supabase/client';
@@ -181,6 +182,9 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
   const { id: effectiveUserId, email: effectiveEmail, isImpersonating } = useEffectiveUser();
   const { linkedMember, isLinkedMember, needsOnboarding, isLoading: linkedMemberLoading } = useLinkedMember();
   const { isLeader, isHRAdmin, loading: roleLoading } = useUserRole();
+  // Persona resolvida (considera o modo ativo): líder que também é liderado
+  // só cai no dashboard de liderado quando escolhe esse modo.
+  const persona = usePersona();
   const { canAddMember, limits } = usePlanLimits();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
@@ -465,9 +469,9 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
 
   if (!user) return null;
 
-  if (isLinkedMember && !isLeader && !isHRAdmin) {
+  if (persona === 'direct_report' && linkedMember) {
     if (needsOnboarding) return <Navigate to="/onboarding" replace />;
-    return <DirectReportDashboard linkedMember={linkedMember!} activeTab={activeTab} />;
+    return <DirectReportDashboard linkedMember={linkedMember} activeTab={activeTab} />;
   }
 
   if (!isLeader && !isHRAdmin && !isLinkedMember) {

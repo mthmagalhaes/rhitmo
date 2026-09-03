@@ -46,26 +46,10 @@ export function useLinkedMember() {
         throw new Error('No active session — will retry');
       }
 
-      // LEADER GUARD: owners/leaders are never linked members
-      const [ownerCheck, leaderCheck] = await Promise.all([
-        supabase
-          .from('workspaces')
-          .select('id')
-          .eq('owner_id', effectiveUserId)
-          .eq('is_active', true)
-          .limit(1)
-          .maybeSingle(),
-        supabase
-          .from('teams')
-          .select('id')
-          .eq('leader_user_id', effectiveUserId)
-          .limit(1)
-          .maybeSingle(),
-      ]);
+      // Sem "leader guard": uma mesma pessoa pode liderar times e, ao mesmo
+      // tempo, ser liderada por outra. Quem decide qual visão exibir é a
+      // persona resolvida (`usePersona`), não a existência do vínculo.
 
-      if (ownerCheck.data || leaderCheck.data) {
-        return null;
-      }
       
       const { data, error } = await supabase
         .from('team_members')

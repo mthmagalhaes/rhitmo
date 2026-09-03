@@ -2,19 +2,21 @@ import { Bell } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { useLinkedMember } from '@/hooks/useLinkedMember';
+import { usePersona } from '@/hooks/usePersona';
 
 interface ActivityBadgeProps {
   onClick: () => void;
 }
 
 export function ActivityBadge({ onClick }: ActivityBadgeProps) {
-  const { isLinkedMember } = useLinkedMember();
+  // Visão ativa decide o conteúdo: um líder que também é liderado vê a caixa
+  // de líder enquanto estiver no modo líder.
+  const isMemberView = usePersona() === 'direct_report';
 
   const { data: unreadCount = 0 } = useQuery({
-    queryKey: ['activity-unread-count', isLinkedMember],
+    queryKey: ['activity-unread-count', isMemberView],
     queryFn: async () => {
-      if (isLinkedMember) {
+      if (isMemberView) {
         // Direct reports: placeholder — 0 for now
         return 0;
       }

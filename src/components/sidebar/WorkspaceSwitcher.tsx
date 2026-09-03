@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ChevronsUpDown, Building2, Check, Settings, LifeBuoy, UserPlus, Sparkles, Shield, Users } from 'lucide-react';
+import { ChevronsUpDown, Building2, Check, Settings, LifeBuoy, UserPlus, Sparkles, Shield, Users, UserCircle } from 'lucide-react';
 import { useOnboardingTour } from '@/hooks/useOnboardingTour';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
@@ -33,7 +33,7 @@ export function WorkspaceSwitcher({ onOpenInvite }: WorkspaceSwitcherProps) {
   const navigate = useNavigate();
   const { id: userId } = useEffectiveUser();
   const { workspaceId, isHRAdmin, isLeader, isLinkedMember, isWorkspaceOwner, isTeamLeader } = useAccount();
-  const { mode: activeMode, setMode, canSwitch } = useActiveMode();
+  const { mode: activeMode, setMode, canSwitch, availableModes } = useActiveMode();
   const { reset: resetTour, isLeader: tourCanRun } = useOnboardingTour();
 
   const persona = resolvePersona({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, isTeamLeader, activeMode });
@@ -68,7 +68,8 @@ export function WorkspaceSwitcher({ onOpenInvite }: WorkspaceSwitcherProps) {
 
   const current = workspaces.find((w) => w.id === workspaceId) ?? workspaces[0] ?? null;
   const hasMultiple = workspaces.length > 1;
-  const modeLabel = activeMode === 'company' ? 'Empresa' : 'Minha equipe';
+  const modeLabel =
+    activeMode === 'company' ? 'Empresa' : activeMode === 'member' ? 'Liderado' : 'Minha equipe';
   const showModeChip = canSwitch || (isHRAdmin && current);
   const chipText = canSwitch ? modeLabel : isHRAdmin ? 'RH' : null;
 
@@ -106,28 +107,45 @@ export function WorkspaceSwitcher({ onOpenInvite }: WorkspaceSwitcherProps) {
         {canSwitch && (
           <>
             <DropdownMenuLabel className="text-xs">Modo</DropdownMenuLabel>
-            <DropdownMenuItem
-              onSelect={() => {
-                setMode('leader');
-                navigate('/lider/inicio');
-              }}
-              className="flex items-center gap-2"
-            >
-              <Users className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="flex-1 truncate">Minha equipe</span>
-              {activeMode === 'leader' && <Check className="h-3.5 w-3.5 text-primary" />}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={() => {
-                setMode('company');
-                navigate('/hr');
-              }}
-              className="flex items-center gap-2"
-            >
-              <Shield className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="flex-1 truncate">Empresa</span>
-              {activeMode === 'company' && <Check className="h-3.5 w-3.5 text-primary" />}
-            </DropdownMenuItem>
+            {availableModes.includes('leader') && (
+              <DropdownMenuItem
+                onSelect={() => {
+                  setMode('leader');
+                  navigate('/lider/inicio');
+                }}
+                className="flex items-center gap-2"
+              >
+                <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="flex-1 truncate">Minha equipe</span>
+                {activeMode === 'leader' && <Check className="h-3.5 w-3.5 text-primary" />}
+              </DropdownMenuItem>
+            )}
+            {availableModes.includes('company') && (
+              <DropdownMenuItem
+                onSelect={() => {
+                  setMode('company');
+                  navigate('/hr');
+                }}
+                className="flex items-center gap-2"
+              >
+                <Shield className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="flex-1 truncate">Empresa</span>
+                {activeMode === 'company' && <Check className="h-3.5 w-3.5 text-primary" />}
+              </DropdownMenuItem>
+            )}
+            {availableModes.includes('member') && (
+              <DropdownMenuItem
+                onSelect={() => {
+                  setMode('member');
+                  navigate('/liderado/inicio');
+                }}
+                className="flex items-center gap-2"
+              >
+                <UserCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="flex-1 truncate">Sou liderado</span>
+                {activeMode === 'member' && <Check className="h-3.5 w-3.5 text-primary" />}
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
           </>
         )}
