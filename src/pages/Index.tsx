@@ -470,7 +470,8 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
   if (!user) return null;
 
   if (persona === 'direct_report' && linkedMember) {
-    if (needsOnboarding) return <Navigate to="/onboarding" replace />;
+    // Multi-chapéu (líder que também é liderado) não é obrigado ao wizard.
+    if (needsOnboarding && availableModes.length <= 1) return <Navigate to="/onboarding" replace />;
     return <DirectReportDashboard linkedMember={linkedMember} activeTab={activeTab} />;
   }
 
