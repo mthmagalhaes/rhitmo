@@ -13,6 +13,8 @@ const LeaderTour = lazy(() =>
 import { useAuth } from '@/hooks/useAuth';
 import { useAccount } from '@/contexts/AccountContext';
 import { AccountLoadFailed, AccountLoadingSlow, AccountLoadingDelayedBanner } from '@/components/AccountLoadFailed';
+import { RoleContextBanner } from '@/components/layout/RoleContextBanner';
+import { useRoleTheme } from '@/hooks/useRoleTheme';
 import { getSignupPersona, clearSignupPersona } from '@/lib/signupPersona';
 
 import { useQueryClient } from '@tanstack/react-query';
