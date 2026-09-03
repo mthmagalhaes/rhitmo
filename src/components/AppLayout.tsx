@@ -34,6 +34,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     refetchWorkspace,
   } = useAccount();
   const queryClient = useQueryClient();
+  // Tema por papel (líder ↔ liderado) aplicado no <html data-role>.
+  const roleTheme = useRoleTheme();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [tourRunning, setTourRunning] = useState(false);
 
