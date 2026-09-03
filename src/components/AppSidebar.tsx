@@ -70,16 +70,25 @@ export function AppSidebar() {
 
   // Sincroniza modo ativo com a rota: se a pessoa cair direto em /hr/* (link,
   // refresh, redirect) o chip e o menu devem refletir "Empresa"; em /lider/*
-  // devem refletir "Minha equipe". Sem isso, o switcher mostra um modo e a
-  // tela mostra outro contexto.
+  // devem refletir "Minha equipe"; em /liderado/* devem refletir "Liderado".
+  // ATENÇÃO: `/liderado` começa com `/lider` — a checagem do liderado precisa
+  // vir primeiro e a do líder precisa exigir a barra final. Sem isso, trocar
+  // para "Sou liderado" era desfeito no mesmo tick e o guard devolvia o
+  // usuário para /lider/inicio.
   useEffect(() => {
     if (!availableModes || availableModes.length < 2) return;
-    if (location.pathname.startsWith('/hr') && activeMode !== 'company' && availableModes.includes('company')) {
+    const path = location.pathname;
+    const isMemberRoute = path === '/liderado' || path.startsWith('/liderado/');
+    const isLeaderRoute = !isMemberRoute && (path === '/lider' || path.startsWith('/lider/'));
+    if (path.startsWith('/hr') && activeMode !== 'company' && availableModes.includes('company')) {
       setMode('company');
-    } else if (location.pathname.startsWith('/lider') && activeMode !== 'leader' && availableModes.includes('leader')) {
+    } else if (isMemberRoute && activeMode !== 'member' && availableModes.includes('member')) {
+      setMode('member');
+    } else if (isLeaderRoute && activeMode !== 'leader' && availableModes.includes('leader')) {
       setMode('leader');
     }
   }, [location.pathname, activeMode, availableModes, setMode]);
+
 
   const persona = resolvePersona({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, isTeamLeader, activeMode });
   const navItems =
