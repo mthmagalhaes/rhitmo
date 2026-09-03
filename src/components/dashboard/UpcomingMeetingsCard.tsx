@@ -580,6 +580,12 @@ export const UpcomingMeetingsCard = () => {
         })}
       </div>
 
+      {upcomingMeetings.some((m) => m.meeting_type === 'team') && (
+        <p className="mt-3 px-1 text-[11px] text-muted-foreground">
+          Reuniões de equipe precisam ser ativadas uma a uma.
+        </p>
+      )}
+
       {hasMore && (
         <button
           onClick={() => setExpanded(!expanded)}
@@ -589,6 +595,7 @@ export const UpcomingMeetingsCard = () => {
           {expanded ? 'Mostrar menos' : `Ver mais ${upcomingMeetings.length - VISIBLE_COUNT}`}
         </button>
       )}
+
     </div>
   );
 };
