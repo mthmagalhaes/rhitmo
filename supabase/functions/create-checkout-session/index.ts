@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     // Workspace do usuário (Owner)
     const { data: workspace, error: wsError } = await supabaseAdmin
       .from("workspaces")
-      .select("id, grandfather_until, paid_seats")
+      .select("id, grandfather_until, paid_seats, ui_version")
       .eq("owner_id", user.id)
       .maybeSingle();
 
