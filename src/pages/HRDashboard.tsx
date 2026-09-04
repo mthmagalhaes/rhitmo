@@ -7,9 +7,10 @@ import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
-  Users, AlertCircle, CheckCircle, Bell, Target, ShieldAlert,
+  Users, AlertCircle, CheckCircle, Bell, ShieldAlert,
   ShieldCheck, Activity
 } from 'lucide-react';
+
 import { HRAutoAlertsSection } from '@/components/hr/HRAutoAlertsSection';
 import { MonthlyReportButton } from '@/components/hr/MonthlyReportButton';
 
@@ -62,12 +63,12 @@ const HRDashboard = () => {
   const noFeedback = metrics?.members_without_recent_feedback ?? 0;
   const noReview = metrics?.members_without_recent_review ?? 0;
   const totalMembers = metrics?.total_members ?? 0;
-  const pdiPct = metrics?.pdi_coverage_percentage ?? 0;
   const biasCount = metrics?.bias_detected_last_7d ?? 0;
   const membersAtRisk = metrics?.members_at_risk ?? noFeedback;
   const coveragePct = metrics?.coverage_percentage
     ?? (totalMembers > 0 ? Math.round(((totalMembers - noFeedback) / totalMembers) * 100) : 0);
-  const hasNoAlerts = noFeedback === 0 && noReview === 0 && pdiPct >= 50 && biasCount === 0;
+  const hasNoAlerts = noFeedback === 0 && noReview === 0 && biasCount === 0;
+
 
   return (
     <div className="min-h-dvh bg-background pb-20">
@@ -153,13 +154,8 @@ const HRDashboard = () => {
                     {noReview} liderado{noReview > 1 ? 's' : ''} elegíve{noReview > 1 ? 'is' : 'l'} sem avaliação recente
                   </div>
                 )}
-                {pdiPct < 50 && (
-                  <div className="flex items-center gap-2 text-amber-700 bg-amber-50 dark:bg-amber-950/20 rounded-xl px-4 py-2 text-sm">
-                    <Target className="h-4 w-4 flex-shrink-0" />
-                    Apenas {pdiPct}% dos liderados têm PDI definido
-                  </div>
-                )}
                 {biasCount > 0 && (
+
                   <div className="flex items-center gap-2 text-primary bg-primary/5 rounded-xl px-4 py-2 text-sm">
                     <ShieldAlert className="h-4 w-4 flex-shrink-0" />
                     {biasCount} detecção{biasCount > 1 ? 'ões' : ''} de viés nos últimos 7 dias

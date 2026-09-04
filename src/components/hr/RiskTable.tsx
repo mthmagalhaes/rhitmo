@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertTriangle, Clock, FileText } from 'lucide-react';
+import { AlertTriangle, Clock } from 'lucide-react';
 
 interface AtRiskMember {
   member_id: string;
