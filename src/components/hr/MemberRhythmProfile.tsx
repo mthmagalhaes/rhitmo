@@ -39,8 +39,8 @@ interface Profile {
     status: 'draft' | 'shared' | 'acknowledged';
     evidence_count: number | null;
   }[];
-  has_active_plan: boolean;
 }
+
 
 const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '—');
 
@@ -155,10 +155,8 @@ export function MemberRhythmProfile({ workspaceId, memberId, onBack, onOpenPrevi
           </div>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Badge variant="outline" className="rounded-xl text-[11px]">
-            {data.has_active_plan ? 'PDI ativo' : 'Sem PDI ativo'}
-          </Badge>
           <Button variant="outline" size="sm" className="rounded-xl gap-2" onClick={onOpenPreview}>
+
             <MonitorPlay className="h-4 w-4" /> Ver as telas do líder
           </Button>
         </div>

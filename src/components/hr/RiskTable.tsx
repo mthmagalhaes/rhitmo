@@ -8,8 +8,8 @@ interface AtRiskMember {
   member_role: string;
   leader_name: string;
   days_since_feedback: number;
-  has_pdi: boolean;
 }
+
 
 interface RiskTableProps {
   members: AtRiskMember[];
