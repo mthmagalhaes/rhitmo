@@ -1271,7 +1271,15 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
             </div>
           </div>
 
+          {syncError && (
+            <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3">
+              <p className="text-xs font-medium text-destructive">Não foi possível salvar</p>
+              <p className="mt-1 text-xs text-destructive/90 break-words">{syncError}</p>
+            </div>
+          )}
+
           <div className="flex justify-end gap-3 mt-4">
+
             <Button variant="outline" onClick={() => setSyncDialogOpen(false)} disabled={syncSaving}>
               {t('common.cancel')}
             </Button>
