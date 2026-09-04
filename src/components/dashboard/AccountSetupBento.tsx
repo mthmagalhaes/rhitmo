@@ -1,10 +1,12 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Slack, UserPlus, Hash, CalendarDays, Check, X } from 'lucide-react';
+import { Slack, UserPlus, Hash, CalendarDays, Check, X, NotebookPen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSlackConnection } from '@/hooks/useSlackConnection';
 import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
 import { useSlackChannels } from '@/hooks/useSlackChannels';
+import { useAnyNoteTakerConnection } from '@/hooks/useNoteTaker';
+import { useUiVersion } from '@/hooks/useUiVersion';
 import { cn } from '@/lib/utils';
 
 interface Props {
