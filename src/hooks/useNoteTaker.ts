@@ -162,3 +162,30 @@ export function useNoteTaker(provider: NoteTakerProvider = 'granola') {
   };
 }
 
+
+/**
+ * Existe alguma conexão de note taker (qualquer provedor) para o líder atual?
+ * Usado no checklist de primeiro acesso.
+ */
+export function useAnyNoteTakerConnection() {
+  const { data, isLoading } = useQuery({
+    queryKey: ['note-taker-connection', 'any'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('leader_note_taker_connections')
+        .select('provider')
+        .limit(1);
+      if (error) throw error;
+      return data ?? [];
+    },
+    staleTime: 30_000,
+  });
+
+  const provider = (data?.[0]?.provider as NoteTakerProvider | undefined) ?? null;
+  return {
+    isConnected: !!provider,
+    provider,
+    label: provider ? noteTakerProvider(provider).label : null,
+    isLoading,
+  };
+}
