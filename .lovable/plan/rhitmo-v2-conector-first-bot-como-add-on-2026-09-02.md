@@ -1,6 +1,6 @@
 # Rhitmo v2: conector-first, bot como add-on
 
-Pivot completo do modelo: o plano base deixa de comprar minuto de máquina e passa a ler o que a empresa já captura. O bot vira add-on por assento. Em paralelo, sobem três capacidades no estilo Windmill (Auto Draft, indicação de pares por ONA, pesquisas de engajamento).
+Pivot completo do modelo: o plano base deixa de comprar minuto de máquina e passa a ler o que a empresa já captura. O bot vira add-on por assento. Depois disso, e só depois, sobem quatro pilares no estilo Windmill (Auto Draft, Calibrações, ONA passivo, pesquisas de engajamento), cada um com sua própria condição de liberação.
 
 Construção como **novo sistema paralelo** (rotas `/v2/*` sob uma flag de workspace), reaproveitando tudo que já existe no backend. A plataforma atual continua intacta e funcional durante toda a migração.
 
