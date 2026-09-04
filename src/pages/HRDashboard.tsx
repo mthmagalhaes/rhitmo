@@ -28,8 +28,8 @@ interface Metrics {
   members_without_recent_review: number;
   sync_completed_count: number;
   reviews_last_90_days: number;
-  pdi_coverage_percentage: number;
   bias_detected_last_7d: number;
+
   members_at_risk?: number;
   coverage_percentage?: number;
   notes_per_leader_last_30d: LeaderActivity[];
@@ -107,7 +107,7 @@ const HRDashboard = () => {
         {/* ═══ MÉTRICAS — Sprint 1.6: 5 → 3 KPIs (Cobertura, Maturidade, Risco) ═══ */}
         <section>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-4">Métricas-chave</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <MetricCard
               icon={<Activity className={`h-5 w-5 ${coveragePct >= 70 ? 'text-emerald-500' : coveragePct >= 40 ? 'text-amber-500' : 'text-destructive'}`} />}
               label="Cobertura (notas 30d)"
@@ -117,16 +117,6 @@ const HRDashboard = () => {
               valueClass={coveragePct >= 70 ? 'text-emerald-600' : coveragePct >= 40 ? 'text-amber-600' : 'text-destructive'}
               hint={`${totalMembers - noFeedback} de ${totalMembers} liderados com nota recente`}
               onClick={() => navigate('/hr/members?filter=no_recent_feedback')}
-            />
-            <MetricCard
-              icon={<Target className={`h-5 w-5 ${pdiPct >= 50 ? 'text-emerald-500' : 'text-amber-500'}`} />}
-              label="Maturidade (PDI ativo)"
-              value={pdiPct}
-              loading={isLoading}
-              suffix="%"
-              valueClass={pdiPct >= 50 ? 'text-emerald-600' : 'text-amber-600'}
-              hint="Liderados com PDI definido"
-              onClick={() => navigate('/hr/members?filter=no_pdi')}
             />
             <MetricCard
               icon={membersAtRisk > 0
@@ -140,6 +130,7 @@ const HRDashboard = () => {
               onClick={() => navigate('/hr/members?filter=at_risk')}
             />
           </div>
+
         </section>
 
         {/* ═══ PONTOS DE ATENÇÃO ═══ */}

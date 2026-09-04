@@ -76,12 +76,7 @@ export function RiskTable({ members, isLoading }: RiskTableProps) {
                     </p>
                   </div>
                   <div className="flex items-center gap-2 ml-3 shrink-0">
-                    {!m.has_pdi && (
-                      <Badge variant="outline" className="text-xs gap-1 rounded-lg">
-                        <FileText className="h-3 w-3" />
-                        Sem PDI
-                      </Badge>
-                    )}
+
                     <Badge className={`text-xs gap-1 rounded-lg border-0 ${severity.color}`}>
                       <Clock className="h-3 w-3" />
                       {m.days_since_feedback === 999 ? 'Nunca' : `${m.days_since_feedback}d`}
