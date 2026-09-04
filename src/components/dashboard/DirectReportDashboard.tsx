@@ -194,14 +194,14 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
       const wsd = linkedMember.work_style_data as any;
       const um = linkedMember.user_manual as any;
       setSyncForm({
-        chronotype: linkedMember.chronotype || '',
+        chronotype: normalizeSyncValue(linkedMember.chronotype, LEGACY_CHRONOTYPE),
         work_environment: wsd?.work_environment || '',
         energy_drains: um?.energy_drainers || wsd?.energy_drains || '',
         energy_sources: um?.energy_boosters || wsd?.energy_sources || '',
         stress_signs: um?.stress_signs || wsd?.stress_signs || '',
         support_needed: um?.bad_day_support || wsd?.support_needed || '',
-        feedback_style: linkedMember.feedback_style || '',
-        recognition_style: linkedMember.recognition_style || '',
+        feedback_style: normalizeSyncValue(linkedMember.feedback_style, LEGACY_FEEDBACK_STYLE),
+        recognition_style: normalizeSyncValue(linkedMember.recognition_style, LEGACY_RECOGNITION_STYLE),
         motivators: (Array.isArray(linkedMember.motivators) && linkedMember.motivators.length > 0
           ? linkedMember.motivators as string[]
           : wsd?.motivators || []),
