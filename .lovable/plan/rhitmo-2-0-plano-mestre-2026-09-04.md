@@ -12,6 +12,20 @@ Inspiração declarada: Windmill (gowindmill.com, US$ 12M seed, 100+ clientes), 
 
 ICP permanece genérico, todos os setores. Decisão explícita de **não** estreitar para tech-first — por isso GitHub e Linear não entram na fila de conectores.
 
+## Autoavaliação — as quatro camadas do context graph
+
+A Windmill descreve o problema como uma camada de contexto em quatro andares. É uma boa régua para medir a Rhitmo sem autoengano:
+
+| Camada | O que é | Rhitmo hoje |
+|---|---|---|
+| Pessoas | Quem trabalha aqui e quem trabalha com quem — estrutura formal e a rede real de colaboração | **Fraco.** Temos times e liderados; não temos a rede real. É exatamente o que o pilar ONA passivo resolveria, quando destravado. |
+| Evidências | O que de fato aconteceu, ligado às pessoas certas | **Forte.** Feedbacks, 1:1s, transcrições, conectores de note taker, Anotações & Evidências com citação auditável. |
+| Padrões | O que é "bom" naquele papel: rubrica, metas, valores | **Parcial.** O framework de competências existe, mas não é usado por toda avaliação; boa parte das avaliações não ancora numa rubrica explícita. |
+| Percepções | O que humanos informados observam: notas, 1:1s, feedback do líder | **Forte.** É a base do produto desde o começo. |
+
+Benchmark de preço, como contexto de mercado e não como decisão: a Windmill cobra US$ 10/usuário/mês com tudo incluso e dá os **10 primeiros usuários grátis para sempre**. Registrado para comparação; ver "Descartado por agora".
+
+
 ## Status — o que já está no ar (verificado no projeto, não estimado)
 
 - **Fases 0, 1 e 2 do modelo conector-first completas**: fundação de dados e flag de versão, conectores de note taker Granola e Fireflies (conexão, sincronização, card em configurações), pricing de R$ 10 por assento/mês com add-on de bot de R$ 19,90/mês (4h), checkout, webhook de assinatura, enforcement de horas no agendamento do bot e tela de billing do v2.
