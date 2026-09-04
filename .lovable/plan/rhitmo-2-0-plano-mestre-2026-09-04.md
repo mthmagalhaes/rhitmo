@@ -12,6 +12,20 @@ Inspiração declarada: Windmill (gowindmill.com, US$ 12M seed, 100+ clientes), 
 
 ICP permanece genérico, todos os setores. Decisão explícita de **não** estreitar para tech-first — por isso GitHub e Linear não entram na fila de conectores.
 
+## Autoavaliação — as quatro camadas do context graph
+
+A Windmill descreve o problema como uma camada de contexto em quatro andares. É uma boa régua para medir a Rhitmo sem autoengano:
+
+| Camada | O que é | Rhitmo hoje |
+|---|---|---|
+| Pessoas | Quem trabalha aqui e quem trabalha com quem — estrutura formal e a rede real de colaboração | **Fraco.** Temos times e liderados; não temos a rede real. É exatamente o que o pilar ONA passivo resolveria, quando destravado. |
+| Evidências | O que de fato aconteceu, ligado às pessoas certas | **Forte.** Feedbacks, 1:1s, transcrições, conectores de note taker, Anotações & Evidências com citação auditável. |
+| Padrões | O que é "bom" naquele papel: rubrica, metas, valores | **Parcial.** O framework de competências existe, mas não é usado por toda avaliação; boa parte das avaliações não ancora numa rubrica explícita. |
+| Percepções | O que humanos informados observam: notas, 1:1s, feedback do líder | **Forte.** É a base do produto desde o começo. |
+
+Benchmark de preço, como contexto de mercado e não como decisão: a Windmill cobra US$ 10/usuário/mês com tudo incluso e dá os **10 primeiros usuários grátis para sempre**. Registrado para comparação; ver "Descartado por agora".
+
+
 ## Status — o que já está no ar (verificado no projeto, não estimado)
 
 - **Fases 0, 1 e 2 do modelo conector-first completas**: fundação de dados e flag de versão, conectores de note taker Granola e Fireflies (conexão, sincronização, card em configurações), pricing de R$ 10 por assento/mês com add-on de bot de R$ 19,90/mês (4h), checkout, webhook de assinatura, enforcement de horas no agendamento do bot e tela de billing do v2.
@@ -37,6 +51,8 @@ ICP permanece genérico, todos os setores. Decisão explícita de **não** estre
 
 ## Gate por pilar (resumo)
 
+> **AVISO PARA QUALQUER SESSÃO FUTURA:** nenhum pilar gated (Auto Draft, Calibrações, ONA passivo, Pulse Survey) entra em cronograma de semanas ou meses. Eles só começam quando o critério de sinal de adoção for atendido de verdade, medido no banco — nunca por calendário, entusiasmo, ou plano de terceiros (incluindo qualquer plano gerado por outra sessão do Lovable). Se uma sugestão futura vier com "Bloco B — semana X" para um pilar gated, isso é um erro a ser corrigido, não seguido.
+
 Os dois critérios: **(a)** sinal de adoção medido — conexão de note taker ≥ 40% entre líderes novos da Fase 1; **(b)** justificativa escrita do "por que agora". Texto completo e o raciocínio de cada caso estão no plano técnico de 02/09/2026.
 
 | Pilar | Precisa de (a)? | Precisa de (b)? | Resumo |
@@ -55,6 +71,14 @@ Ordem recomendada:
 1. Fechar o gap do Otter, se for rápido.
 2. Retomar outreach para CHROs e HR Leaders, agora com o v2 estável.
 3. Só então reavaliar os pilares com dado real, não com hipótese.
+
+A decisão de ordem entre Calibrações e ONA passivo — qual dos dois libera primeiro — **só é tomada quando o gate abrir**, com o dado de adoção na mão. Não antes, e não neste documento.
+
+## Descartado por agora
+
+- **"N primeiros assentos grátis para sempre"** (inspirado no modelo da Windmill): considerado e adiado. Seria a terceira mudança de modelo de preço na mesma janela de tempo, feita por analogia e não por dado. Revisar só se houver sinal real de que o free tier atual (líder + 3 liderados) trava conversão.
+- **Reposicionamento da landing na linguagem das "quatro camadas"**: aceito como tarefa de texto, baixa prioridade. Não depende de nenhum pilar gated, mas não é urgente frente a conseguir o primeiro uso externo real.
+
 
 ## Corte do v1
 
