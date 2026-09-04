@@ -3,7 +3,7 @@
 // Sprint 14: aba "Rede" lista sinais derivados do grafo (ONA).
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Layers, Loader2, Slack } from 'lucide-react';
+import { Layers, Loader2, Network, Slack } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -16,13 +16,15 @@ import { SourceFilterChips, SOURCE_KEYS, type SourceKey } from '@/components/con
 import { SlackSignalsTriage } from '@/components/context/SlackSignalsTriage';
 import { DebugContextoBanner } from '@/components/context/DebugContextoBanner';
 import { useEvidence } from '@/hooks/useEvidence';
+import { NetworkTab } from '@/components/context/NetworkTab';
+
 
 export default function LiderContexto() {
   const { workspaceId } = useAccount();
   const [searchParams, setSearchParams] = useSearchParams();
   const memberParam = searchParams.get('member');
   const rawTab = searchParams.get('tab');
-  const tabParam = rawTab === 'slack' ? 'slack' : 'evidencias';
+  const tabParam = rawTab === 'slack' || rawTab === 'rede' ? rawTab : 'evidencias';
   const { data: pendingSlackCount = 0 } = useEvidencePendingCount();
 
   const [memberId, setMemberId] = useState<string | null>(memberParam);
@@ -101,8 +103,11 @@ export default function LiderContexto() {
               <Layers className="h-3.5 w-3.5" />
               Evidências
             </TabsTrigger>
-            {/* Rhitmo Lean: aba "Rede" (ONA) removida — network_signals sem dados.
-                ?tab=rede cai no feed de evidências. */}
+            <TabsTrigger value="rede" className="rounded-lg gap-1.5">
+              <Network className="h-3.5 w-3.5" />
+              Rede
+            </TabsTrigger>
+
 
 
             <TabsTrigger value="slack" className="rounded-lg gap-1.5">
@@ -169,10 +174,14 @@ export default function LiderContexto() {
             )}
           </TabsContent>
 
+          <TabsContent value="rede" className="mt-5">
+            <NetworkTab />
+          </TabsContent>
 
           <TabsContent value="slack" className="mt-5">
             <SlackSignalsTriage />
           </TabsContent>
+
         </Tabs>
       </div>
     </section>
