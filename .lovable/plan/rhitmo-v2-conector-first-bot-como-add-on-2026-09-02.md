@@ -53,6 +53,8 @@ Grandfathering de 12 meses para quem já usa, comunicando queda de preço e não
 - Nova página `/v2/conectores`: estado visível por conector (conectado, última sync, erro acionável), fila de notas sem liderado e chip de origem.
 - Métrica de decisão: % de novos líderes que conectam note taker próprio (evento em `onboarding_funnel_events`).
 
+**Decisão de ICP (set/2026):** o ICP da Rhitmo permanece **genérico, qualquer setor**. A hipótese de estreitar para tech-first foi avaliada e descartada. Consequência direta na fila de conectores: **não** entram GitHub, Linear ou equivalentes de engenharia por enquanto — eles só fariam sentido num ICP tech-first. A fila segue sendo note takers (Granola, Fireflies, Otter) + Slack + Calendar, que atendem qualquer setor.
+
 ### Fase 2 — Preço e add-on
 - Dois SKUs novos no Stripe: **assento R$ 10/mês** (mensal e anual) e **add-on de bot R$ 19,90/mês por assento, com 4h/mês inclusas**.
 
@@ -60,32 +62,57 @@ Grandfathering de 12 meses para quem já usa, comunicando queda de preço e não
 - Nova `/v2/billing`: seletor de assentos, toggle de bot por liderado, uso de horas por assento, aviso em 80%.
 - `schedule-recall-bot` passa a checar add-on do assento (ou trial) antes de agendar; mensagem de bloqueio oferece ativar o add-on ou conectar note taker.
 
-## Gate entre Fase 2 e Fase 3 (BLOQUEIO)
+## Gate depois da Fase 2 (o que pode avançar, e sob qual condição)
 
-As Fases 3, 4 e 5 estão **bloqueadas**. Nada de Auto Draft, ONA/pares ou pesquisas de engajamento começa antes de Fase 0, Fase 1 e Fase 2 estarem no ar, nessa ordem, e o gate abaixo ser avaliado com dado real.
+Nada depois da Fase 2 começa antes de Fase 0, Fase 1 e Fase 2 estarem no ar, nessa ordem. Além disso, cada pilar tem uma condição própria. O gate **não é mais único para todos**: ele diferencia território novo de reconstrução do que já falhou.
 
-Motivo: ONA (Sprint 14) e pesquisas de engajamento (Sprint 9) já existiram no produto e foram removidas como código órfão em agosto por uso zero, inclusive dentro da Faster, que é o usuário mais cativo da Rhitmo. Reconstruir sem responder por que desta vez seria diferente repete o mesmo padrão.
+Os dois critérios em jogo são:
 
-Para destravar, os **dois** critérios precisam ser atendidos (não um):
+**(a) Sinal de adoção medido** — taxa de conexão de note taker ≥ 40% entre os novos líderes que passarem pela Fase 1, medida pelo evento `note_taker_connected` em `onboarding_funnel_events` (a métrica de decisão que a própria Fase 1 define).
 
-a) **Sinal de adoção medido:** taxa de conexão de note taker ≥ 40% entre os novos líderes que passarem pela Fase 1, medida pelo evento `note_taker_connected` em `onboarding_funnel_events` (a métrica de decisão que a própria Fase 1 define).
+**(b) Justificativa escrita do "por que agora"** — um novo arquivo de plano nomeando o gatilho de uso, quem puxa a feature e o que ela substitui no fluxo atual. "Porque o Windmill tem" não é resposta válida.
 
-b) **Resposta escrita ao "por que agora":** um novo arquivo de plano registrando explicitamente o que mudou no contexto atual da Rhitmo que não era verdade quando essas mesmas telas foram construídas e depois removidas. "Porque o Windmill tem" não é resposta válida. A resposta precisa nomear o gatilho de uso, quem puxa a feature e o que ela substitui no fluxo atual.
+| Pilar | Precisa de (a)? | Precisa de (b)? | Por quê |
+|---|---|---|---|
+| Auto Draft | sim | não | Território novo; nunca existiu e nunca falhou. |
+| Calibrações | sim | não | Território novo; nunca existiu na Rhitmo. |
+| ONA passivo | sim | **não** | O mecanismo mudou (ver abaixo); a resposta ao "por que desta vez" já está registrada neste documento. |
+| Pulse Survey | sim | **sim** | Mecanismo inalterado: continua sendo coleta ativa, exatamente o que já falhou. |
 
-Enquanto o gate não for atendido, a prioridade de execução é **Fase 0 → Fase 1 → Fase 2**, sem pular para frente. As fases abaixo ficam documentadas como intenção, não como trabalho autorizado.
+### Por que ONA e Pulse têm tratamento diferente, se morreram juntos
 
-### Fase 3 — Windmill: Auto Draft (bloqueada pelo gate)
+ONA (Sprint 14) e pesquisas de engajamento (Sprint 9) foram removidas como código órfão em agosto por uso zero, inclusive dentro da Faster, o usuário mais cativo da Rhitmo. A causa raiz nos dois casos foi a mesma: **ambos exigiam que alguém parasse para preencher algo** — indicação manual de pares num caso, resposta de pesquisa no outro. Ninguém preencheu.
+
+O ONA reconstruído **não pede nada a ninguém**. Ele observa sozinho quem já conversa com quem, a partir de sinais que já existem em produção: o Slack Ambient Mode (já no ar) e os conectores de note taker Granola/Fireflies entregues na Fase 1. Não há formulário, não há indicação manual, não há convite a responder. Como o mecanismo é genuinamente diferente do que falhou, o critério (b) já está satisfeito por este parágrafo — nenhuma sessão futura precisa reabrir a discussão nem escrever outro documento. O ONA continua esperando apenas o sinal de adoção (a).
+
+O Pulse Survey continua atrás dos **dois** critérios porque nada mudou no mecanismo dele: ainda é perguntar ativamente e esperar resposta. Se um dia alguém propuser uma versão **passiva** de Pulse (por exemplo, inferir sentimento a partir do tom das mensagens no Slack em vez de perguntar), isso conta como justificativa nova e reabre a conversa. Não é o que está decidido agora.
+
+Enquanto (a) não for medido, a prioridade de execução é **Fase 0 → Fase 1 → Fase 2**, sem pular para frente. Os pilares abaixo ficam documentados como intenção, não como trabalho autorizado.
+
+### Pilar — Auto Draft (aguarda sinal de adoção)
 
 - Botão "Rhitmo escreve o primeiro rascunho" em todos os tipos de avaliação (manager, self, upwards, peer), com progresso e cancelamento.
 - Reusa `generate-formal-review` com parametrização por tipo; rascunho entra no editor Tiptap com citações auditáveis, nunca publicado automaticamente.
 
-### Fase 4 — Windmill: indicação de pares por ONA (bloqueada pelo gate)
-- Nova página `/v2/pares`: grafo de colaboradores do ciclo a partir de `team_network_edges`/`network_signals`.
-- Limite de indicações por ciclo e aprovação do líder antes de disparar; convites reusam `peer_feedback_requests` e `review_peers`.
+### Pilar — Calibrações (aguarda sinal de adoção)
 
-### Fase 5 — Windmill: pesquisas de engajamento (bloqueada pelo gate)
+Território novo no roadmap, sequenciado depois do conector-first validado. É o que transforma evidência acumulada em decisão coletiva de gente:
+
+- **Comitê de calibração:** sessão com um grupo de líderes, cada liderado apresentado com as evidências reais já citáveis (feedbacks, 1:1s, avaliações), e registro da decisão calibrada.
+- **9-box com dado real:** posicionamento derivado das evidências e avaliações existentes, não de digitação manual do gestor.
+- **Pré-leitura com flags de viés por gestor:** antes do comitê, cada líder recebe o retrato do próprio padrão (severidade, recência, halo, viés de gênero/tempo de casa) usando o motor de bias detection já existente.
+
+Reusa `performance_reviews`, `ctx_evidence` e o bias engine; nada disso exige coleta ativa nova.
+
+### Pilar — ONA passivo (aguarda apenas o sinal de adoção)
+- Grafo de colaboração inferido de sinais passivos: Slack Ambient Mode e notas dos conectores da Fase 1, sobre `team_network_edges`/`network_signals`.
+- Nova página `/v2/rede`: quem trabalha com quem, intensidade e mudanças recentes, sem pedir input a ninguém.
+- Alimenta o brief de 1:1 e, quando houver ciclo de avaliação, sugere pares automaticamente para o líder apenas aprovar (nunca o liderado indicando manualmente).
+
+### Pilar — Pesquisas de engajamento / Pulse (aguarda os dois critérios)
 - Construtor de perguntas (escala, eNPS, múltipla escolha, sim/não, texto) sobre `pulse_surveys`, com nova tabela de definição de pesquisa e respostas.
 - Envio por Slack e in-app; resultado agregado na visão BP/RH e como evidência no contexto do liderado.
+
 
 ### Fase 6 — Corte do v1
 Só depois que o v2 estiver completo e usado: promover `/v2/*` para as rotas principais e remover as telas antigas equivalentes.
