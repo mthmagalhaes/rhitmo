@@ -6,8 +6,8 @@ export interface V2BotSeat {
   memberId: string;
   memberName: string;
   hasAddon: boolean;
-  /** 'addon' = 4h/ciclo, 'trial' = trial vitalício do workspace, 'none' = sem bot */
-  basis: 'addon' | 'trial' | 'none';
+  /** 'grandfathered' = sem teto (plano legado), 'addon' = 4h/ciclo, 'trial' = trial vitalício do workspace, 'none' = sem bot */
+  basis: 'grandfathered' | 'addon' | 'trial' | 'none';
   hoursCap: number;
   hoursUsed: number;
   percent: number;
@@ -18,6 +18,9 @@ export interface V2BotSeatsData {
   trialHoursUsed: number;
   trialHoursTotal: number;
   trialHoursRemaining: number;
+  /** Workspace de plano legado: sem teto de horas até a data abaixo. */
+  isGrandfathered: boolean;
+  grandfatherUntil: string | null;
   seats: V2BotSeat[];
 }
 
@@ -48,6 +51,8 @@ export const useV2BotSeats = () => {
           trialHoursUsed: 0,
           trialHoursTotal: 5,
           trialHoursRemaining: 5,
+          isGrandfathered: false,
+          grandfatherUntil: null,
           seats: [],
         };
       }
@@ -60,12 +65,16 @@ export const useV2BotSeats = () => {
       const rows = (data ?? []) as Array<Record<string, any>>;
       const trialHoursUsed = Number(rows[0]?.trial_hours_used ?? 0);
       const trialHoursTotal = Number(rows[0]?.trial_hours_total ?? 5);
+      const isGrandfathered = !!rows[0]?.is_grandfathered;
+      const grandfatherUntil = (rows[0]?.grandfather_until as string | null) ?? null;
 
       return {
         workspaceId,
         trialHoursUsed,
         trialHoursTotal,
         trialHoursRemaining: Math.max(trialHoursTotal - trialHoursUsed, 0),
+        isGrandfathered,
+        grandfatherUntil,
         seats: rows.map((r) => {
           const basis = (r.basis as V2BotSeat['basis']) ?? 'none';
           // No trial, o consumo é do workspace inteiro: mostramos a barra do trial.
