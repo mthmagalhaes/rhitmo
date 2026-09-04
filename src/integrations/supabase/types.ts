@@ -200,6 +200,111 @@ export type Database = {
         }
         Relationships: []
       }
+      calibration_decisions: {
+        Row: {
+          ai_suggested_classification: string | null
+          classification: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          id: string
+          loss_risk: string | null
+          member_id: string
+          merit_recommendation: string | null
+          note: string | null
+          promotion_recommendation: string | null
+          session_id: string
+          updated_at: string
+        }
+        Insert: {
+          ai_suggested_classification?: string | null
+          classification?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          id?: string
+          loss_risk?: string | null
+          member_id: string
+          merit_recommendation?: string | null
+          note?: string | null
+          promotion_recommendation?: string | null
+          session_id: string
+          updated_at?: string
+        }
+        Update: {
+          ai_suggested_classification?: string | null
+          classification?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          id?: string
+          loss_risk?: string | null
+          member_id?: string
+          merit_recommendation?: string | null
+          note?: string | null
+          promotion_recommendation?: string | null
+          session_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calibration_decisions_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calibration_decisions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "calibration_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      calibration_sessions: {
+        Row: {
+          closed_at: string | null
+          created_at: string
+          cycle_label: string
+          id: string
+          leader_user_id: string
+          notes: string | null
+          period_end: string
+          period_start: string
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string
+          cycle_label: string
+          id?: string
+          leader_user_id: string
+          notes?: string | null
+          period_end: string
+          period_start: string
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string
+          cycle_label?: string
+          id?: string
+          leader_user_id?: string
+          notes?: string | null
+          period_end?: string
+          period_start?: string
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       chat_threads: {
         Row: {
           created_at: string
@@ -3512,6 +3617,10 @@ export type Database = {
         Args: { _workspace_id?: string }
         Returns: Json
       }
+      can_access_calibration_session: {
+        Args: { _session_id: string }
+        Returns: boolean
+      }
       can_update_own_sync: { Args: { member_id: string }; Returns: boolean }
       can_view_network_pair: {
         Args: {
@@ -3549,6 +3658,10 @@ export type Database = {
       detect_feedback_source: {
         Args: { _content: string; _current: string }
         Returns: string
+      }
+      detect_network_signals: {
+        Args: { _window_days?: number }
+        Returns: number
       }
       dismiss_recall_bot: { Args: { _bot_id: string }; Returns: boolean }
       effective_user_id: { Args: never; Returns: string }
@@ -3599,6 +3712,38 @@ export type Database = {
           paid_seats: number
           trial_hours_remaining: number
           unlimited: boolean
+        }[]
+      }
+      get_calibration_grid: {
+        Args: {
+          _period_end: string
+          _period_start: string
+          _session_id?: string
+        }
+        Returns: {
+          ai_classification: string
+          ai_next_action_key: string
+          ai_turnover_risk: string
+          decision_classification: string
+          decision_confirmed_at: string
+          decision_loss_risk: string
+          decision_merit: string
+          decision_note: string
+          decision_promotion: string
+          evolution_vs_previous: string
+          feedbacks_count: number
+          last_review_classification: string
+          last_review_loss_risk: string
+          last_review_merit: string
+          last_review_promotion: string
+          meetings_count: number
+          member_id: string
+          member_name: string
+          member_role: string
+          monthly_confirmed_count: number
+          quarterly_confirmed_count: number
+          team_id: string
+          team_name: string
         }[]
       }
       get_hr_all_members: {
@@ -3827,6 +3972,20 @@ export type Database = {
           leader_name: string
           member_name: string
           team_name: string
+        }[]
+      }
+      get_team_network: {
+        Args: { _window_days?: number }
+        Returns: {
+          a_is_report: boolean
+          b_is_report: boolean
+          event_count: number
+          last_event_at: string
+          member_a_id: string
+          member_a_name: string
+          member_b_id: string
+          member_b_name: string
+          weight_total: number
         }[]
       }
       get_team_pulse: {
@@ -4073,6 +4232,7 @@ export type Database = {
         }
         Returns: Json
       }
+      rebuild_team_network: { Args: { _window_days?: number }; Returns: number }
       rls_check_member_access: {
         Args: { _member_team_id: string }
         Returns: boolean

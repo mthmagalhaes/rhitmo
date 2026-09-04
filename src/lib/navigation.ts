@@ -2,6 +2,7 @@ import {
   Calendar,
   BookOpen,
   ClipboardList,
+  Scale,
   Home,
   FileText,
   Users,
@@ -31,6 +32,7 @@ export const LEADER_NAV_ITEMS: NavItem[] = [
   { id: 'pessoas', labelKey: 'nav.lider.pessoas', icon: Users, to: '/lider/pessoas' },
   { id: 'diario', labelKey: 'nav.lider.diario', icon: BookOpen, to: '/lider/diario' },
   { id: 'avaliacoes', labelKey: 'nav.lider.avaliacoes', icon: ClipboardList, to: '/lider/avaliacoes' },
+  { id: 'calibracao', labelKey: 'nav.lider.calibracao', icon: Scale, to: '/lider/calibracao' },
 ];
 
 
