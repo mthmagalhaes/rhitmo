@@ -1,10 +1,12 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Slack, UserPlus, Hash, CalendarDays, Check, X } from 'lucide-react';
+import { Slack, UserPlus, Hash, CalendarDays, Check, X, NotebookPen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSlackConnection } from '@/hooks/useSlackConnection';
 import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
 import { useSlackChannels } from '@/hooks/useSlackChannels';
+import { useAnyNoteTakerConnection } from '@/hooks/useNoteTaker';
+import { useUiVersion } from '@/hooks/useUiVersion';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -14,7 +16,7 @@ interface Props {
 }
 
 interface SetupCard {
-  id: 'slack' | 'invite' | 'channels' | 'calendar';
+  id: 'notetaker' | 'slack' | 'invite' | 'channels' | 'calendar';
   icon: React.ComponentType<{ className?: string }>;
   title: string;
   pendingDescription: string;
@@ -31,6 +33,8 @@ export function AccountSetupBento({ workspaceId, memberCount, onOpenInvite }: Pr
   const slack = useSlackConnection();
   const calendar = useCalendarIntegration();
   const channelsQuery = useSlackChannels();
+  const noteTaker = useAnyNoteTakerConnection();
+  const { isV2 } = useUiVersion();
 
   const dismissKey = workspaceId ? `rhitmo:home:account-setup-dismissed:${workspaceId}` : null;
   const [dismissed, setDismissed] = useState(false);
@@ -47,6 +51,21 @@ export function AccountSetupBento({ workspaceId, memberCount, onOpenInvite }: Pr
 
   const cards: SetupCard[] = useMemo(
     () => [
+      {
+        id: 'notetaker',
+        icon: NotebookPen,
+        title: 'Conectar seu note taker',
+        pendingDescription:
+          'Já usa Granola ou Fireflies? Suas notas viram evidência aqui, sem outro bot na reunião.',
+        doneDescription: noteTaker.label
+          ? `${noteTaker.label} conectado.`
+          : 'Note taker conectado.',
+        done: noteTaker.isConnected,
+        loading: noteTaker.isLoading,
+        onAction: () =>
+          navigate(isV2 ? '/v2/conectores' : '/lider/configuracoes?tab=integracoes'),
+        actionLabel: 'Conectar',
+      },
       {
         id: 'slack',
         icon: Slack,
@@ -108,6 +127,10 @@ export function AccountSetupBento({ workspaceId, memberCount, onOpenInvite }: Pr
       calendar.checkingConnection,
       calendar.connectionData,
       calendar.connectCalendar,
+      noteTaker.isConnected,
+      noteTaker.isLoading,
+      noteTaker.label,
+      isV2,
       navigate,
     ]
   );
@@ -138,7 +161,7 @@ export function AccountSetupBento({ workspaceId, memberCount, onOpenInvite }: Pr
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {cards.map((card) => {
           const Icon = card.icon;
           return (

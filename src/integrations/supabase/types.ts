@@ -3773,6 +3773,18 @@ export type Database = {
           visibility: string
         }[]
       }
+      get_note_taker_adoption: {
+        Args: { _days?: number }
+        Returns: {
+          connected_at: string
+          leader_email: string
+          leader_since: string
+          leader_user_id: string
+          notes_imported: number
+          provider: string
+          workspace_name: string
+        }[]
+      }
       get_review_evidence: {
         Args: { _member_id: string; _period_end: string; _period_start: string }
         Returns: {

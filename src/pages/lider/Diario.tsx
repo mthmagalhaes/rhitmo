@@ -76,7 +76,7 @@ export default function LiderDiario() {
   const tagsParam = searchParams.get('tags') ?? '';
   const selectedTags = tagsParam ? tagsParam.split(',').filter(Boolean) : [];
   const sourceParam = searchParams.get('source');
-  const source = ((['recall_bot', 'transcription', 'slack', 'manual'].includes(sourceParam ?? '')
+  const source = ((['recall_bot', 'transcription', 'slack', 'manual', 'note_taker'].includes(sourceParam ?? '')
     ? sourceParam
     : 'all') as DiarySource);
   const sort = (searchParams.get('sort') as SortOrder) || 'newest';

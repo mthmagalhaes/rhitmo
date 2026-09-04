@@ -5,6 +5,7 @@ import {
   Users,
   Building2,
   Coins,
+  Plug,
   LogOut,
   ShieldCheck,
 } from 'lucide-react';
@@ -25,6 +26,7 @@ const TABS: Array<{ value: AdminTab; icon: React.ElementType; label: string }> =
   { value: 'overview', icon: LayoutDashboard, label: 'Visão geral' },
   { value: 'users', icon: Users, label: 'Pessoas' },
   { value: 'workspaces', icon: Building2, label: 'Empresas' },
+  { value: 'adoption', icon: Plug, label: 'Adoção' },
   { value: 'costs', icon: Coins, label: 'Custos' },
 ];
 

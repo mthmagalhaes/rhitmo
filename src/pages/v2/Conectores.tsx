@@ -1,6 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { NoteTakerConnectorCard } from '@/components/settings/NoteTakerConnectorCard';
-import { NOTE_TAKER_PROVIDERS } from '@/lib/noteTakerProviders';
+import { NOTE_TAKER_PROVIDERS, NOTE_TAKER_NO_CONNECTOR_NOTE } from '@/lib/noteTakerProviders';
 
 /**
  * Conectores como produto: a Rhitmo lê o que a empresa já captura.
@@ -29,8 +29,7 @@ export default function V2Conectores() {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Não usa nenhum deles? O bot da Rhitmo continua disponível como add-on, e o Magic Paste
-        aceita qualquer transcrição colada.
+        {NOTE_TAKER_NO_CONNECTOR_NOTE} O bot da Rhitmo também continua disponível como add-on.
       </p>
     </div>
   );

@@ -12,7 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { useSlackConnection } from '@/hooks/useSlackConnection';
 import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
 import { AmbientSlackSettings } from '@/components/settings/AmbientSlackSettings';
-import { GranolaConnectorCard } from '@/components/settings/GranolaConnectorCard';
+import { NoteTakerConnectorCard } from '@/components/settings/NoteTakerConnectorCard';
+import { NOTE_TAKER_PROVIDERS, NOTE_TAKER_NO_CONNECTOR_NOTE } from '@/lib/noteTakerProviders';
 import { BotHoursCard } from '@/components/settings/BotHoursCard';
 import { SlackHealthPanel } from '@/components/leader/settings/SlackHealthPanel';
 
@@ -102,11 +103,14 @@ function IntegrationsTab() {
           </h2>
         </div>
         <div className="grid gap-4 md:grid-cols-2 items-start">
-          <GranolaConnectorCard />
+          {NOTE_TAKER_PROVIDERS.map((p) => (
+            <NoteTakerConnectorCard key={p.id} provider={p.id} />
+          ))}
           <BotHoursCard />
         </div>
         <p className="text-xs text-muted-foreground">
-          Já usa um note taker? Conecte e a Rhitmo dispensa o bot nessas reuniões.
+          Já usa um note taker? Conecte e a Rhitmo dispensa o bot nessas reuniões.{' '}
+          {NOTE_TAKER_NO_CONNECTOR_NOTE}
         </p>
       </section>
 

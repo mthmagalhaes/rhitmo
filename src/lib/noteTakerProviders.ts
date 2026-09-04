@@ -44,6 +44,14 @@ export const NOTE_TAKER_PROVIDERS: NoteTakerProviderMeta[] = [
   },
 ];
 
+/**
+ * Otter (e qualquer note taker sem API pública de leitura) não tem conector e
+ * não terá: o caminho suportado é colar a transcrição (Magic Paste).
+ * Texto único, usado na tela de conectores e nas configurações.
+ */
+export const NOTE_TAKER_NO_CONNECTOR_NOTE =
+  'Usa Otter, Tactiq, Zoom AI ou outro? Eles não abrem uma forma de a Rhitmo ler suas notas, então o caminho é colar a transcrição em Anotações & Evidências. Funciona igual e não custa nada.';
+
 export function noteTakerProvider(id: NoteTakerProviderId): NoteTakerProviderMeta {
   return NOTE_TAKER_PROVIDERS.find((p) => p.id === id) ?? NOTE_TAKER_PROVIDERS[0];
 }
