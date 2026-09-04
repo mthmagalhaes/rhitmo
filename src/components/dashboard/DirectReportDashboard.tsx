@@ -1199,9 +1199,9 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
               <Select value={syncForm.chronotype} onValueChange={(v) => setSyncForm(prev => ({ ...prev, chronotype: v }))}>
                 <SelectTrigger><SelectValue placeholder={t('directReport.syncDialog.selectPlaceholder')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="madrugador">{t('directReport.syncDialog.earlyBird')}</SelectItem>
-                  <SelectItem value="comercial">{t('directReport.syncDialog.commercial')}</SelectItem>
-                  <SelectItem value="noturno">{t('directReport.syncDialog.nightOwl')}</SelectItem>
+                  <SelectItem value="morning">{t('directReport.syncDialog.earlyBird')}</SelectItem>
+                  <SelectItem value="commercial">{t('directReport.syncDialog.commercial')}</SelectItem>
+                  <SelectItem value="night">{t('directReport.syncDialog.nightOwl')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
