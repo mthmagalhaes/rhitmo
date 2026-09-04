@@ -768,6 +768,18 @@ const PricingSection = ({
               ? 'Para cada usuário adicional após o 3º.'
               : 'For each additional user after the 3rd.'}
           </p>
+          <p className="text-xs text-muted-foreground mt-1">{headlineSub}</p>
+
+          {/* Add-on opcional (não é um segundo plano) */}
+          <div className="mt-6 rounded-3xl bg-muted/50 p-5">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              {addOn.label}
+            </span>
+            <p className="mt-2 font-medium text-foreground">{addOn.title}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{addOn.desc}</p>
+          </div>
+
+
 
           <Button
             className="w-full min-h-[52px] mt-8 rounded-full text-base bg-primary text-primary-foreground hover:bg-primary/90"
