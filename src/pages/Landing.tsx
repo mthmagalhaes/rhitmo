@@ -633,9 +633,9 @@ const HRRiskMockup = () => (
 );
 
 // ============== PRICING SECTION (Windmill v3 — single card per-seat) ==============
-// Pricing v3 — 08/05/2026: 1 plano único.
-// Líder + 3 liderados grátis. R$ 49,90/liderado a partir do 4º.
-// Anual: R$ 39,90/liderado/mês (cobrado anualmente, 20% off).
+// Pricing v2 (conector-first) — 09/2026: 1 plano único.
+// Líder + 3 liderados grátis. R$ 10/assento a partir do 4º (R$ 8 no anual, 20% off).
+// Bot de reunião é add-on opcional: R$ 19,90/mês (4h). Trial vitalício de 5h.
 
 type SeatCycle = 'monthly' | 'annual';
 
@@ -650,23 +650,36 @@ const PricingSection = ({
 }) => {
   const [cycle, setCycle] = useState<SeatCycle>('annual');
 
-  const headlinePrice = cycle === 'annual' ? 'R$ 39,90' : 'R$ 49,90';
+  const headlinePrice = cycle === 'annual' ? 'R$ 8' : 'R$ 10';
   const headlineSuffix = lang === 'pt' ? '/liderado / mês' : '/seat / month';
   const headlineSub =
     cycle === 'annual'
       ? lang === 'pt'
-        ? 'Cobrado anualmente (R$ 478,80/liderado/ano). 20% off.'
-        : 'Billed annually (R$ 478.80/seat/year). 20% off.'
+        ? 'Cobrado anualmente (R$ 96/liderado/ano). 20% off.'
+        : 'Billed annually (R$ 96/seat/year). 20% off.'
       : lang === 'pt'
       ? 'Cobrado mensalmente. Cancele quando quiser.'
       : 'Billed monthly. Cancel anytime.';
+
+  const addOn =
+    lang === 'pt'
+      ? {
+          label: 'Add-on opcional',
+          title: 'Bot de reunião — R$ 19,90/mês',
+          desc: 'Inclui 4h de gravação e transcrição por mês. Ative só para quem precisa, cancele quando quiser. Sem o add-on, o assento não inclui horas de bot.',
+        }
+      : {
+          label: 'Optional add-on',
+          title: 'Meeting bot — R$ 19.90/month',
+          desc: 'Includes 4 hours of recording and transcription per month. Enable it only for who needs it, cancel anytime. Without the add-on, the seat includes no bot hours.',
+        };
 
   const features =
     lang === 'pt'
       ? [
           { title: 'Mentor AI ilimitado', desc: 'Seu Chief of Staff conversacional, 24/7, com memória do time.' },
           { title: '1:1s', desc: 'Brief automático antes, pauta gerada a partir do contexto histórico com a pessoa liderada.' },
-          { title: 'Transcrição de reunião automática', desc: 'Cada liderado pago inclui 4h de bot por mês, com horas extras disponíveis quando precisar. A transcrição vira anotação sozinha e você foca na conversa.' },
+          { title: 'Transcrição de reunião automática', desc: 'Três caminhos: add-on de bot por R$ 19,90/mês (4h), trial vitalício de 5h grátis para experimentar, ou conecte seu próprio note taker (Granola, Fireflies) sem custo adicional.' },
           { title: 'Slack', desc: 'Tenha Rhitmo conectado com seu Slack para lembretes, briefs e chat onde você já passa maior parte do tempo.' },
           { title: 'Detecção de viés nas evidências e avaliações de desempenho', desc: 'Identifique e aprenda a corrigir eventuais vieses e injustiças que você pode estar comentendo' },
           
@@ -674,11 +687,12 @@ const PricingSection = ({
       : [
           { title: 'Unlimited Mentor AI', desc: 'Your conversational Chief of Staff, 24/7, with team memory.' },
           { title: '1:1s, Pulse, IDP and 360°', desc: 'The full people management cycle in one place.' },
-          { title: 'Automatic meeting transcription', desc: 'Every paid seat includes 4 bot-hours per month, with extra hours available when you need them. The bot joins, transcribes and turns it into evidence automatically.' },
+          { title: 'Automatic meeting transcription', desc: 'Three paths: the bot add-on at R$ 19.90/month (4 hours), a lifetime 5-hour free trial to try it out, or connect your own note taker (Granola, Fireflies) at no extra cost.' },
           { title: 'Bidirectional Slack', desc: 'Rhitmo pulls context and delivers briefs by DM, no tab switching.' },
           { title: 'Real-time bias detection', desc: 'Reviews 38× less biased, right inside the editor.' },
           
         ];
+
 
   const enterpriseBullets =
     lang === 'pt'
