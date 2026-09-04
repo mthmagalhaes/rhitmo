@@ -51,6 +51,8 @@ Benchmark de preço, como contexto de mercado e não como decisão: a Windmill c
 
 ## Gate por pilar (resumo)
 
+> **AVISO PARA QUALQUER SESSÃO FUTURA:** nenhum pilar gated (Auto Draft, Calibrações, ONA passivo, Pulse Survey) entra em cronograma de semanas ou meses. Eles só começam quando o critério de sinal de adoção for atendido de verdade, medido no banco — nunca por calendário, entusiasmo, ou plano de terceiros (incluindo qualquer plano gerado por outra sessão do Lovable). Se uma sugestão futura vier com "Bloco B — semana X" para um pilar gated, isso é um erro a ser corrigido, não seguido.
+
 Os dois critérios: **(a)** sinal de adoção medido — conexão de note taker ≥ 40% entre líderes novos da Fase 1; **(b)** justificativa escrita do "por que agora". Texto completo e o raciocínio de cada caso estão no plano técnico de 02/09/2026.
 
 | Pilar | Precisa de (a)? | Precisa de (b)? | Resumo |
@@ -69,6 +71,14 @@ Ordem recomendada:
 1. Fechar o gap do Otter, se for rápido.
 2. Retomar outreach para CHROs e HR Leaders, agora com o v2 estável.
 3. Só então reavaliar os pilares com dado real, não com hipótese.
+
+A decisão de ordem entre Calibrações e ONA passivo — qual dos dois libera primeiro — **só é tomada quando o gate abrir**, com o dado de adoção na mão. Não antes, e não neste documento.
+
+## Descartado por agora
+
+- **"N primeiros assentos grátis para sempre"** (inspirado no modelo da Windmill): considerado e adiado. Seria a terceira mudança de modelo de preço na mesma janela de tempo, feita por analogia e não por dado. Revisar só se houver sinal real de que o free tier atual (líder + 3 liderados) trava conversão.
+- **Reposicionamento da landing na linguagem das "quatro camadas"**: aceito como tarefa de texto, baixa prioridade. Não depende de nenhum pilar gated, mas não é urgente frente a conseguir o primeiro uso externo real.
+
 
 ## Corte do v1
 
