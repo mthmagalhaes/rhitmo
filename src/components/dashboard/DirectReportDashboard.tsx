@@ -358,50 +358,95 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
 
   const handleSaveSync = async () => {
     setSyncSaving(true);
+    setSyncError(null);
     try {
       const existingWsd = (linkedMember.work_style_data as Record<string, unknown>) || {};
       const existingUm = (linkedMember.user_manual as Record<string, unknown>) || {};
-      const { error } = await supabase
-        .from('team_members')
-        .update({
-          chronotype: syncForm.chronotype || null,
-          feedback_style: syncForm.feedback_style || null,
-          recognition_style: syncForm.recognition_style || null,
+      const payload = {
+        chronotype: syncForm.chronotype || null,
+        feedback_style: syncForm.feedback_style || null,
+        recognition_style: syncForm.recognition_style || null,
+        motivators: syncForm.motivators.length > 0 ? syncForm.motivators : null,
+        user_manual: {
+          ...existingUm,
+          energy_drainers: syncForm.energy_drains || null,
+          energy_boosters: syncForm.energy_sources || null,
+          stress_signs: syncForm.stress_signs || null,
+          bad_day_support: syncForm.support_needed || null,
+          skill_goal: syncForm.skill_goal || null,
+        },
+        work_style_data: {
+          ...existingWsd,
+          work_environment: syncForm.work_environment || null,
+          energy_drains: syncForm.energy_drains || null,
+          energy_sources: syncForm.energy_sources || null,
+          stress_signs: syncForm.stress_signs || null,
+          support_needed: syncForm.support_needed || null,
           motivators: syncForm.motivators.length > 0 ? syncForm.motivators : null,
-          user_manual: {
-            ...existingUm,
-            energy_drainers: syncForm.energy_drains || null,
-            energy_boosters: syncForm.energy_sources || null,
-            stress_signs: syncForm.stress_signs || null,
-            bad_day_support: syncForm.support_needed || null,
-            skill_goal: syncForm.skill_goal || null,
-          },
-          work_style_data: {
-            ...existingWsd,
-            work_environment: syncForm.work_environment || null,
-            energy_drains: syncForm.energy_drains || null,
-            energy_sources: syncForm.energy_sources || null,
-            stress_signs: syncForm.stress_signs || null,
-            support_needed: syncForm.support_needed || null,
-            motivators: syncForm.motivators.length > 0 ? syncForm.motivators : null,
-            skill_goal: syncForm.skill_goal || null,
-          },
-        })
-        .eq('id', linkedMember.id);
+          skill_goal: syncForm.skill_goal || null,
+        },
+      };
 
-      if (error) throw error;
+      // Sessão válida antes de gravar (evita 401 com token expirado).
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        await supabase.auth.refreshSession();
+      }
+
+      const runUpdate = async () =>
+        await supabase
+          .from('team_members')
+          .update(payload)
+          .eq('id', linkedMember.id)
+          .select('id, updated_at');
+
+      let { data, error } = await runUpdate();
+
+      // Token expirado: renova a sessão e tenta uma única vez.
+      if (error && (error.code === 'PGRST301' || /jwt/i.test(error.message || ''))) {
+        await supabase.auth.refreshSession();
+        ({ data, error } = await runUpdate());
+      }
+
+      if (error) {
+        console.error('[Rhitmo Sync] save failed', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          memberId: linkedMember.id,
+          userId: user?.id,
+        });
+        setSyncError(`${error.code ?? 'erro'}: ${error.message}${error.details ? ` — ${error.details}` : ''}${error.hint ? ` (${error.hint})` : ''}`);
+        toast.error(`${t('directReport.toast.errorSave')} — ${error.message}`);
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        console.error('[Rhitmo Sync] update matched 0 rows', {
+          memberId: linkedMember.id,
+          userId: user?.id,
+        });
+        setSyncError('Nenhum cadastro foi atualizado (0 linhas). Provável bloqueio de permissão na sua linha.');
+        toast.error(t('directReport.toast.errorSave'));
+        return;
+      }
 
       console.log('[Rhitmo Sync] Updated successfully for member:', linkedMember.id);
       toast.success(t('directReport.toast.syncUpdated'));
       setSyncDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ['linked-member'] });
+      queryClient.invalidateQueries({ queryKey: ['account-context'] });
     } catch (err) {
-      console.error('Error saving sync:', err);
-      toast.error(t('directReport.toast.errorSave'));
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('[Rhitmo Sync] unexpected error', err);
+      setSyncError(message);
+      toast.error(`${t('directReport.toast.errorSave')} — ${message}`);
     } finally {
       setSyncSaving(false);
     }
   };
+
 
   const handleReanalyze = async () => {
     if (!linkedMember || !user) return;
