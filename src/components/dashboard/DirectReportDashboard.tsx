@@ -1263,8 +1263,8 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
               <Select value={syncForm.recognition_style} onValueChange={(v) => setSyncForm(prev => ({ ...prev, recognition_style: v }))}>
                 <SelectTrigger><SelectValue placeholder={t('directReport.syncDialog.selectPlaceholder')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="publico">{t('directReport.syncDialog.recognitionPublic')}</SelectItem>
-                  <SelectItem value="privado">{t('directReport.syncDialog.recognitionPrivate')}</SelectItem>
+                  <SelectItem value="public">{t('directReport.syncDialog.recognitionPublic')}</SelectItem>
+                  <SelectItem value="private">{t('directReport.syncDialog.recognitionPrivate')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
