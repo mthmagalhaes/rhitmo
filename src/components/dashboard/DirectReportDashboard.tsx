@@ -101,6 +101,35 @@ const RECOGNITION_STYLE_KEYS: Record<string, string> = {
   'learning': 'directReport.recognitionStyle.learning',
 };
 
+// Valores aceitos pelas constraints do banco (team_members_*_check).
+// O modal antigo gravava rótulos em português, que violavam a constraint.
+const LEGACY_CHRONOTYPE: Record<string, string> = {
+  madrugador: 'morning',
+  early_bird: 'morning',
+  comercial: 'commercial',
+  noturno: 'night',
+  night_owl: 'night',
+};
+
+const LEGACY_FEEDBACK_STYLE: Record<string, string> = {
+  direto: 'direct',
+  empatico: 'empathetic',
+  escrito: 'written',
+};
+
+const LEGACY_RECOGNITION_STYLE: Record<string, string> = {
+  publico: 'public',
+  privado: 'private',
+};
+
+function normalizeSyncValue(
+  value: string | null | undefined,
+  map: Record<string, string>,
+): string {
+  if (!value) return '';
+  return map[value] ?? value;
+}
+
 const CHRONOTYPE_CONTEXT_KEYS: Record<string, string> = {
   'early_bird': 'directReport.chronotypeContext.earlyBird',
   'madrugador': 'directReport.chronotypeContext.earlyBird',
