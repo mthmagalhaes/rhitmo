@@ -1,46 +1,77 @@
-# Migrar Faster, Fapeduca e FAP para o v2 sem regressão
+# Rhitmo 2.0 — o "Windmill brasileiro", a partir de onde estamos
 
-Os três workspaces reais têm grandfather válido até 08/11/2026 e hoje, no v1, não têm nenhum teto de horas de bot. O caminho v2 atual só conhece dois cenários (add-on de 4h ou trial vitalício de 5h), então migrar antes de criar o caminho "sem teto" bloquearia os 26 líderes do Faster. A ordem abaixo cria o caminho primeiro e só depois migra.
+Li as nove páginas da Windmill (home, science, pricing, customers, integrations, agents e os três posts). Abaixo: o que dá para copiar da tese deles, o que já temos, e a ordem de execução.
 
-## Confirmação antes de migrar
+## 1. Projeto novo? Não
 
-Levantamento já feito no banco:
+A resposta continua a mesma, e agora com mais força: o ativo da Rhitmo é exatamente o que a Windmill chama de **graph** — pessoas, evidências, padrões e percepções acumuladas. Isso vive no banco atual (evidências citáveis, transcrições, avaliações, embeddings, Slack, calendário, Stripe, crons). Projeto novo significa banco novo: você jogaria fora o único ativo que não se recompra.
 
-| Workspace | Membros ativos | Grandfather até |
-|---|---|---|
-| Faster | 26 | 2026-11-08 |
-| Fapeduca | 2 | 2026-11-08 |
-| FAP - Faculdade Baixo Parnaíba | 2 | 2026-11-08 |
+O que dá vontade de "começar do zero" é a interface, e isso já está resolvido pelas rotas `/v2/*` com o shell próprio (`V2Layout`) atrás da flag `ui_version`.
 
-Ficam em v1, sem toque: Iugu, Teste, 4Tax, Ricardo Luiz piccoli (0 membros) e os dois legados (Faster (legado), Workspace de Douglas (legado)) — no total 6 workspaces sem membros ativos.
+## 2. O que a Windmill ensina (leitura das páginas)
 
-## Passo 1 — Caminho "sem teto" no agendamento do bot
+**A tese central:** "AI já é inteligente o bastante para decisões de gente. O que falta é contexto." Eles vendem uma **camada de contexto em quatro andares**:
 
-Em `supabase/functions/schedule-recall-bot/index.ts`, dentro do bloco v2 (a partir da linha ~113): antes de consultar add-on ou trial, verificar se `grandfather_until` do workspace v2 é uma data futura. Se for, o bloco inteiro é ignorado (sem cálculo de horas, sem bloqueio) — mesmo resultado que o workspace tem hoje no v1. Quando o grandfather estiver vencido ou nulo, a lógica de add-on/trial roda exatamente como está.
+1. **Pessoas** — quem trabalha aqui e quem trabalha com quem (org chart + rede real)
+2. **Evidências** — o que de fato aconteceu, puxado das ferramentas de trabalho
+3. **Padrões** — o que é "bom" naquele papel (rubrica, metas, valores)
+4. **Percepções** — o que humanos informados acham (1:1s, notas, feedback)
 
-O campo `grandfather_until` já vem no select da linha 81/86, então não é preciso mudar a consulta.
+Sem os quatro, o retrato é incompleto. **Rhitmo hoje tem 2 e 4 fortes, 3 parcial (competências) e 1 fraco (rede quase inexistente).**
 
-## Passo 2 — Mostrar isso na tela de assinatura v2
+**Preço:** 10 primeiros usuários grátis para sempre, depois US$ 10/usuário/mês, tudo incluído. Nosso R$ 10/assento é equivalente relativo, mas o gancho deles é melhor: grátis de verdade até 10 pessoas, sem pedir cartão.
 
-- Ampliar a função de banco `get_v2_bot_seats` com uma base nova, `grandfathered`, retornada quando o workspace tem grandfather válido, junto com a data de validade. Isso é mudança de função, então entra como migração.
-- `src/hooks/useV2BotSeats.ts`: aceitar a base `grandfathered` no tipo `V2BotSeat` e expor `grandfatherUntil` no retorno.
-- `src/pages/v2/Billing.tsx`: quando a base for `grandfathered`, o card de cada liderado mostra "Sem teto até 08/11/2026 · plano legado" no lugar da barra de progresso, e o card do add-on troca a linha do trial por um aviso de que o workspace está sem teto até a data e o add-on só passa a valer depois disso.
+**Produto:** cinco superfícies — Avaliações, 1:1s, Feedback Contínuo, Calibrações, Pulse. Nós temos as três primeiras; Calibrações e Pulse estão gated no nosso roadmap.
 
-Não existe hoje mini-indicador de horas na barra lateral do v2 (a única tela que consome esses dados é `/v2/billing`), então não há segundo ponto para ajustar.
+**Distribuição:** o agente ("Windy") mora no Slack e puxa feedback sozinho; e servidor MCP para funcionar dentro de Claude/Cursor/ChatGPT. Nós temos o Slack; MCP não temos.
 
-## Passo 3 — Migração dos dados
+**Prova:** números de caso concretos (83% menos horas, 93% de satisfação, 8 dias de ciclo, check-in de <4 min) e depoimentos curtos em mural. Nossa landing não tem nenhum número real de cliente.
 
-Um `UPDATE` (dado, não schema) definindo `ui_version = 'v2'` apenas para os três IDs listados acima, referenciados por id para não depender de acento no nome. Nenhum outro workspace é tocado.
+**Post "Calibrations"**: o valor não é a reunião, é o **pré-read** que a IA gera 48h antes — notas que não batem com o texto, gestor que deu 4 para todo mundo, avaliação com evidência fina, score de acionabilidade de 1 a 5. Depois, sandbox com 9-box, tabela e distribuição.
 
-## Verificação
+**Post "Org chart is a lie"**: ONA passivo — hubs, brokers, periféricos; detectar quem está saindo da rede antes de pedir demissão. Confirma nossa decisão de ONA por observação, sem formulário.
 
-- Simular agendamento de bot para um líder do Faster: nenhum bloqueio de teto.
-- `/v2/billing` de um workspace grandfathered: aviso "sem teto" com a data, sem barra de 4h.
-- Conferir no banco que só três linhas mudaram para v2.
-- Build e checagem de tipos limpos.
+**Post do seed**: US$ 12M, posicionamento "apostar em pessoas", clientes AI-forward.
 
-## Detalhes técnicos
+## 3. A leitura honesta: onde a Rhitmo se diferencia
 
-- Comparação de data igual à já usada no arquivo: `new Date(grandfather_until) >= new Date(new Date().toDateString())`.
-- A migração de `get_v2_bot_seats` mantém assinatura e colunas atuais, apenas acrescenta as colunas `is_grandfathered` / `grandfather_until` e o valor `grandfathered` em `basis`.
-- O `UPDATE` roda pela ferramenta de dados, não como migração de schema.
+Copiar a Windmill inteira é perder — eles são tech-first, integram GitHub/Linear/Cursor, e nosso ICP é genérico e brasileiro. Os três eixos onde ganhamos:
+
+- **Português e realidade brasileira** (tom, LGPD, ciclo de avaliação, PDI, ferramenta de RH local).
+- **A conversa é o dado principal**, não o commit. Aqui o trabalho aparece em reunião, não em ticket. Nosso investimento em transcrição/note taker é o equivalente certo do "GitHub" deles.
+- **Espelho para o líder**, não painel para o RH. A Windmill vende para o RH rodar ciclo; a Rhitmo treina o líder no dia a dia.
+
+## 4. Ordem de execução proposta
+
+**Bloco A — Fechar o que está pela metade (semana 1-2)**
+- Conector Otter (único gap declarado da Fase 1).
+- Grátis de verdade: alinhar o plano gratuito ao gancho da Windmill (primeiros N assentos sem cartão) e refletir na landing.
+- Landing com números reais assim que houver dois depoimentos da Faster.
+
+**Bloco B — Camada 1 do graph: a rede (semana 3-5)**
+Hoje é o andar mais fraco e é o que destrava Calibrações, ONA e sugestão de pares. Reaproveita `team_network_edges` / `network_signals`, alimentado por Slack Ambient + notas dos conectores + calendário. Entrega visível: página `/v2/rede` com hubs, pontes e quem está se isolando.
+
+**Bloco C — Pré-read de calibração (semana 6-8)**
+O maior valor por esforço de todo o roadmap, porque reusa `performance_reviews`, `ctx_evidence` e o motor de viés que já existem. Entrega: relatório gerado antes do comitê com nota que não bate com o texto, gestor fora da curva, evidência fina e score de acionabilidade. Sem sandbox colaborativo, sem 9-box em tempo real — isso fica para depois de validado.
+
+**Bloco D — Auto Draft em todos os tipos de avaliação**
+Já parcialmente pronto via `generate-formal-review`; falta parametrizar por tipo e expor o botão.
+
+**Bloco E — MCP e agente**
+Só depois de B e C, e só se houver pedido real.
+
+Pulse continua atrás dos dois critérios. Nada do bloco B/C entra antes do bloco A fechado.
+
+## 5. Detalhes técnicos
+
+- Nada disso exige tabela nova além de definição de calibração (sessão, participantes, itens do pré-read) quando o bloco C começar; rede e avaliações já têm schema.
+- Toda tabela nova sai com `GRANT` + RLS por `leader_user_id`/workspace, e funções em `plpgsql` `SECURITY DEFINER`, conforme o padrão do projeto.
+- Edge functions previstas: nova `notetakers/otter.ts` (bloco A), nova `compute-network-graph` ou extensão de `compute-meeting-signals` (bloco B), nova `generate-calibration-preread` reusando o motor de viés (bloco C).
+- Frontend: tudo dentro de `src/pages/v2/*` no shell existente, com `max-w-5xl`, Lora/Inter e cantos `rounded-2xl`/`3xl`.
+- Prompts sempre em `supabase/functions/_shared/soul/*.md`, nunca inline.
+
+## 6. Decisões que preciso de você
+
+1. Confirmar o gancho de preço: mantemos R$ 10/assento desde o primeiro, ou copiamos "primeiros 10 grátis para sempre"?
+2. Bloco B (rede) antes do bloco C (calibração), ou o contrário? Minha recomendação é rede primeiro, porque calibração fica mais forte com ela.
+3. O bloco A deve incluir a reescrita de posicionamento da landing na linha da "camada de contexto em quatro andares", ou fica para depois?
