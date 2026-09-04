@@ -19,6 +19,10 @@ export interface NetworkEdge {
   last_event_at: string | null;
   a_is_report: boolean;
   b_is_report: boolean;
+  a_team_id: string | null;
+  a_team_name: string | null;
+  b_team_id: string | null;
+  b_team_name: string | null;
 }
 
 export interface NetworkSignal {
@@ -36,6 +40,20 @@ export function useTeamNetwork(windowDays: NetworkWindow = 30) {
     queryKey: ['team-network', windowDays],
     queryFn: async () => {
       const data = await safeRpc<NetworkEdge[]>('get_team_network', {
+        _window_days: windowDays,
+      });
+      return data ?? [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/** Rede do workspace inteiro — só HR Admin, Owner e Super Admin. */
+export function useWorkspaceNetwork(windowDays: NetworkWindow = 30) {
+  return useQuery({
+    queryKey: ['workspace-network', windowDays],
+    queryFn: async () => {
+      const data = await safeRpc<NetworkEdge[]>('get_workspace_network', {
         _window_days: windowDays,
       });
       return data ?? [];
