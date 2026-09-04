@@ -3978,7 +3978,11 @@ export type Database = {
         Args: { _window_days?: number }
         Returns: {
           a_is_report: boolean
+          a_team_id: string
+          a_team_name: string
           b_is_report: boolean
+          b_team_id: string
+          b_team_name: string
           event_count: number
           last_event_at: string
           member_a_id: string
@@ -4050,6 +4054,24 @@ export type Database = {
           member_name: string
           trial_hours_total: number
           trial_hours_used: number
+        }[]
+      }
+      get_workspace_network: {
+        Args: { _window_days?: number }
+        Returns: {
+          a_is_report: boolean
+          a_team_id: string
+          a_team_name: string
+          b_is_report: boolean
+          b_team_id: string
+          b_team_name: string
+          event_count: number
+          last_event_at: string
+          member_a_id: string
+          member_a_name: string
+          member_b_id: string
+          member_b_name: string
+          weight_total: number
         }[]
       }
       get_workspace_people: {
