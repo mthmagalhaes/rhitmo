@@ -114,7 +114,7 @@ Reusa `performance_reviews`, `ctx_evidence` e o bias engine; nada disso exige co
 - Envio por Slack e in-app; resultado agregado na visão BP/RH e como evidência no contexto do liderado.
 
 
-### Fase 6 — Corte do v1
+### Corte do v1 (última etapa)
 Só depois que o v2 estiver completo e usado: promover `/v2/*` para as rotas principais e remover as telas antigas equivalentes.
 
 ## Detalhes técnicos
