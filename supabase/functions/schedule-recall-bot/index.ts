@@ -110,7 +110,11 @@ Deno.serve(async (req) => {
       (c) => c?.ui_version === "v2",
     );
 
-    if (v2Workspace) {
+    // Grandfather ainda válido = sem teto, igual ao que o workspace já tinha no v1.
+    const v2Grandfathered = !!v2Workspace?.grandfather_until &&
+      new Date(v2Workspace.grandfather_until as string) >= new Date(new Date().toDateString());
+
+    if (v2Workspace && !v2Grandfathered) {
       const V2_TRIAL_HOURS = 5;
       const V2_ADDON_HOURS = 4;
       const workspaceId = v2Workspace.id as string;
