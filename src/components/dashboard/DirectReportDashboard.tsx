@@ -101,6 +101,35 @@ const RECOGNITION_STYLE_KEYS: Record<string, string> = {
   'learning': 'directReport.recognitionStyle.learning',
 };
 
+// Valores aceitos pelas constraints do banco (team_members_*_check).
+// O modal antigo gravava rótulos em português, que violavam a constraint.
+const LEGACY_CHRONOTYPE: Record<string, string> = {
+  madrugador: 'morning',
+  early_bird: 'morning',
+  comercial: 'commercial',
+  noturno: 'night',
+  night_owl: 'night',
+};
+
+const LEGACY_FEEDBACK_STYLE: Record<string, string> = {
+  direto: 'direct',
+  empatico: 'empathetic',
+  escrito: 'written',
+};
+
+const LEGACY_RECOGNITION_STYLE: Record<string, string> = {
+  publico: 'public',
+  privado: 'private',
+};
+
+function normalizeSyncValue(
+  value: string | null | undefined,
+  map: Record<string, string>,
+): string {
+  if (!value) return '';
+  return map[value] ?? value;
+}
+
 const CHRONOTYPE_CONTEXT_KEYS: Record<string, string> = {
   'early_bird': 'directReport.chronotypeContext.earlyBird',
   'madrugador': 'directReport.chronotypeContext.earlyBird',
@@ -194,14 +223,14 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
       const wsd = linkedMember.work_style_data as any;
       const um = linkedMember.user_manual as any;
       setSyncForm({
-        chronotype: linkedMember.chronotype || '',
+        chronotype: normalizeSyncValue(linkedMember.chronotype, LEGACY_CHRONOTYPE),
         work_environment: wsd?.work_environment || '',
         energy_drains: um?.energy_drainers || wsd?.energy_drains || '',
         energy_sources: um?.energy_boosters || wsd?.energy_sources || '',
         stress_signs: um?.stress_signs || wsd?.stress_signs || '',
         support_needed: um?.bad_day_support || wsd?.support_needed || '',
-        feedback_style: linkedMember.feedback_style || '',
-        recognition_style: linkedMember.recognition_style || '',
+        feedback_style: normalizeSyncValue(linkedMember.feedback_style, LEGACY_FEEDBACK_STYLE),
+        recognition_style: normalizeSyncValue(linkedMember.recognition_style, LEGACY_RECOGNITION_STYLE),
         motivators: (Array.isArray(linkedMember.motivators) && linkedMember.motivators.length > 0
           ? linkedMember.motivators as string[]
           : wsd?.motivators || []),
@@ -1170,9 +1199,9 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
               <Select value={syncForm.chronotype} onValueChange={(v) => setSyncForm(prev => ({ ...prev, chronotype: v }))}>
                 <SelectTrigger><SelectValue placeholder={t('directReport.syncDialog.selectPlaceholder')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="madrugador">{t('directReport.syncDialog.earlyBird')}</SelectItem>
-                  <SelectItem value="comercial">{t('directReport.syncDialog.commercial')}</SelectItem>
-                  <SelectItem value="noturno">{t('directReport.syncDialog.nightOwl')}</SelectItem>
+                  <SelectItem value="morning">{t('directReport.syncDialog.earlyBird')}</SelectItem>
+                  <SelectItem value="commercial">{t('directReport.syncDialog.commercial')}</SelectItem>
+                  <SelectItem value="night">{t('directReport.syncDialog.nightOwl')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1222,9 +1251,9 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
               <Select value={syncForm.feedback_style} onValueChange={(v) => setSyncForm(prev => ({ ...prev, feedback_style: v }))}>
                 <SelectTrigger><SelectValue placeholder={t('directReport.syncDialog.selectPlaceholder')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="direto">{t('directReport.syncDialog.feedbackDirect')}</SelectItem>
-                  <SelectItem value="empatico">{t('directReport.syncDialog.feedbackEmpathetic')}</SelectItem>
-                  <SelectItem value="escrito">{t('directReport.syncDialog.feedbackWritten')}</SelectItem>
+                  <SelectItem value="direct">{t('directReport.syncDialog.feedbackDirect')}</SelectItem>
+                  <SelectItem value="empathetic">{t('directReport.syncDialog.feedbackEmpathetic')}</SelectItem>
+                  <SelectItem value="written">{t('directReport.syncDialog.feedbackWritten')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1234,8 +1263,8 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
               <Select value={syncForm.recognition_style} onValueChange={(v) => setSyncForm(prev => ({ ...prev, recognition_style: v }))}>
                 <SelectTrigger><SelectValue placeholder={t('directReport.syncDialog.selectPlaceholder')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="publico">{t('directReport.syncDialog.recognitionPublic')}</SelectItem>
-                  <SelectItem value="privado">{t('directReport.syncDialog.recognitionPrivate')}</SelectItem>
+                  <SelectItem value="public">{t('directReport.syncDialog.recognitionPublic')}</SelectItem>
+                  <SelectItem value="private">{t('directReport.syncDialog.recognitionPrivate')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
