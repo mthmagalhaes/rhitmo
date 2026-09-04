@@ -117,7 +117,7 @@ const HRDashboard = () => {
               suffix="%"
               valueClass={coveragePct >= 70 ? 'text-emerald-600' : coveragePct >= 40 ? 'text-amber-600' : 'text-destructive'}
               hint={`${totalMembers - noFeedback} de ${totalMembers} liderados com nota recente`}
-              onClick={() => navigate('/hr/members?filter=no_recent_feedback')}
+              onClick={() => navigate('/hr/pessoas')}
             />
             <MetricCard
               icon={membersAtRisk > 0
@@ -128,7 +128,7 @@ const HRDashboard = () => {
               loading={isLoading}
               valueClass={membersAtRisk > 0 ? 'text-destructive' : 'text-emerald-600'}
               hint={membersAtRisk > 0 ? 'Sem nota há 30+ dias' : 'Nenhum liderado em risco'}
-              onClick={() => navigate('/hr/members?filter=at_risk')}
+              onClick={() => navigate('/hr/pessoas')}
             />
           </div>
 
