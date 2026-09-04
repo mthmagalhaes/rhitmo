@@ -1251,9 +1251,9 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
               <Select value={syncForm.feedback_style} onValueChange={(v) => setSyncForm(prev => ({ ...prev, feedback_style: v }))}>
                 <SelectTrigger><SelectValue placeholder={t('directReport.syncDialog.selectPlaceholder')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="direto">{t('directReport.syncDialog.feedbackDirect')}</SelectItem>
-                  <SelectItem value="empatico">{t('directReport.syncDialog.feedbackEmpathetic')}</SelectItem>
-                  <SelectItem value="escrito">{t('directReport.syncDialog.feedbackWritten')}</SelectItem>
+                  <SelectItem value="direct">{t('directReport.syncDialog.feedbackDirect')}</SelectItem>
+                  <SelectItem value="empathetic">{t('directReport.syncDialog.feedbackEmpathetic')}</SelectItem>
+                  <SelectItem value="written">{t('directReport.syncDialog.feedbackWritten')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
