@@ -16,7 +16,7 @@ interface Props {
 }
 
 interface SetupCard {
-  id: 'slack' | 'invite' | 'channels' | 'calendar';
+  id: 'notetaker' | 'slack' | 'invite' | 'channels' | 'calendar';
   icon: React.ComponentType<{ className?: string }>;
   title: string;
   pendingDescription: string;
@@ -33,6 +33,8 @@ export function AccountSetupBento({ workspaceId, memberCount, onOpenInvite }: Pr
   const slack = useSlackConnection();
   const calendar = useCalendarIntegration();
   const channelsQuery = useSlackChannels();
+  const noteTaker = useAnyNoteTakerConnection();
+  const { isV2 } = useUiVersion();
 
   const dismissKey = workspaceId ? `rhitmo:home:account-setup-dismissed:${workspaceId}` : null;
   const [dismissed, setDismissed] = useState(false);
