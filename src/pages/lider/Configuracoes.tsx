@@ -103,11 +103,14 @@ function IntegrationsTab() {
           </h2>
         </div>
         <div className="grid gap-4 md:grid-cols-2 items-start">
-          <GranolaConnectorCard />
+          {NOTE_TAKER_PROVIDERS.map((p) => (
+            <NoteTakerConnectorCard key={p.id} provider={p.id} />
+          ))}
           <BotHoursCard />
         </div>
         <p className="text-xs text-muted-foreground">
-          Já usa um note taker? Conecte e a Rhitmo dispensa o bot nessas reuniões.
+          Já usa um note taker? Conecte e a Rhitmo dispensa o bot nessas reuniões.{' '}
+          {NOTE_TAKER_NO_CONNECTOR_NOTE}
         </p>
       </section>
 
