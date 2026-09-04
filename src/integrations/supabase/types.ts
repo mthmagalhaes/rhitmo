@@ -3870,9 +3870,11 @@ export type Database = {
         Args: { p_workspace_id: string }
         Returns: {
           basis: string
+          grandfather_until: string
           has_addon: boolean
           hours_cap: number
           hours_used: number
+          is_grandfathered: boolean
           member_id: string
           member_name: string
           trial_hours_total: number

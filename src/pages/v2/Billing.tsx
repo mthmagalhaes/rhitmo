@@ -16,7 +16,14 @@ import { cn } from '@/lib/utils';
  * R$ 19,90/mês por assento, com 4h de bot inclusas.
  */
 
+function formatDate(value: string | null) {
+  if (!value) return '';
+  const [y, m, d] = value.slice(0, 10).split('-');
+  return `${d}/${m}/${y}`;
+}
+
 function toneFor(seat: V2BotSeat) {
+  if (seat.basis === 'grandfathered') return 'neutral' as const;
   if (seat.basis === 'none' || seat.hoursCap <= 0) return 'danger' as const;
   if (seat.percent >= 100) return 'danger' as const;
   if (seat.percent >= 80) return 'warning' as const;
@@ -127,7 +134,13 @@ export default function V2Billing() {
               Inclui 4h de bot por ciclo. Ative só para quem precisa gravar reuniões sem note taker.
               Total combinado: R$ 29,90 por assento.
             </p>
-            {!isLoading && data && (
+            {!isLoading && data?.isGrandfathered && (
+              <p className="mt-3 text-xs text-muted-foreground">
+                Plano legado: seu workspace está sem teto de horas de bot até{' '}
+                {formatDate(data.grandfatherUntil)}. O add-on só passa a valer depois dessa data.
+              </p>
+            )}
+            {!isLoading && data && !data.isGrandfathered && (
               <p className="mt-3 text-xs text-muted-foreground">
                 Trial vitalício do workspace: {data.trialHoursRemaining.toFixed(1)}h restantes de{' '}
                 {data.trialHoursTotal}h.
@@ -181,6 +194,11 @@ export default function V2Billing() {
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{seat.memberName}</p>
                       <p className={cn('mt-0.5 text-xs', TONE_TEXT[tone])}>
+                        {seat.basis === 'grandfathered' && (
+                          <>
+                            Sem teto até {formatDate(data.grandfatherUntil)} · plano legado
+                          </>
+                        )}
                         {seat.basis === 'addon' && (
                           <>Add-on ativo · {seat.hoursUsed.toFixed(1)}h de {seat.hoursCap}h neste ciclo</>
                         )}
