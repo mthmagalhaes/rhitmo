@@ -221,7 +221,7 @@ const translations = {
       { q: "Como Rhitmo detecta viés nas evidências e avaliação formal de desempenho?", a: "Quando você digita uma review ou um feedback, a Rhitmo destaca em tempo real linguagem tendenciosa: viés de gênero (\"agressiva\" vs. \"assertiva\"), viés de personalidade (foco em \"como é\" em vez de \"o que fez\"), generalizações como \"sempre\" e \"nunca\", e ataques à pessoa em vez do comportamento." },
       
       { q: "O que dá pra fazer só pelo Slack?", a: "Praticamente tudo o que importa no dia a dia: receber briefs de 1:1, gerar pauta, conversar com a Rhitmo em DM como se fosse o seu assistente de liderança, registrar uma observação rápida sobre alguém. Para quem vive no Slack, dá pra usar a Rhitmo quase sempre sem precisar abrir a plataforma." },
-      { q: "Como funciona a transcrição automática das reuniões?", a: "Um bot entra na sua Meet, Zoom ou Teams, transcreve e devolve as anotações estruturadas sem você precisar digitar nada durante a conversa. A transcrição bruta fica visível apenas para você, líder; o liderado vê só o que for explicitamente compartilhado. Cada liderado pago inclui uma franquia mensal de horas de bot, com pacotes extras disponíveis se precisar de mais." },
+      { q: "Como funciona a transcrição automática das reuniões?", a: "Um bot entra na sua Meet, Zoom ou Teams, transcreve e devolve as anotações estruturadas sem você precisar digitar nada durante a conversa. A transcrição bruta fica visível apenas para você, líder; o liderado vê só o que for explicitamente compartilhado. O bot é um add-on opcional de R$ 19,90/mês (4h por mês) — o assento não inclui horas de bot. Você pode experimentar com o trial vitalício de 5h grátis ou, se já usa Granola ou Fireflies, conectar seu próprio note taker sem custo adicional." },
       { q: "Quanto tempo até eu ver valor?", a: "O onboarding leva poucos minutos e você já pode ir registrando anotações, fazer uploads de transcrições antigas ou configurar para Rhitmo transcrever suas futuras reuniões e já ter evidências suficientes para gerar as primeiras avaliações, que podem ser semanais, mensais, trimestrais ou anuais, você escolhe. Você percebe que precisava disso antes quando a review sai pronta em 2 minutos em vez das horas que custavam antes." },
       { q: "Privacidade, LGPD e segurança dos dados?", a: "Suas notas como líder são privadas por padrão; compartilhar é uma ação explícita e visível. Aplicamos Row-Level Security por cadeia de liderança, então dados de um time nunca vazam para outro. Seguimos LGPD, você pode exportar e excluir o histórico a qualquer momento, e a assinatura pode ser cancelada quando quiser sem reter seus dados." },
     ],
@@ -386,7 +386,7 @@ const translations = {
       { q: "How does Rhitmo detect bias while I write?", a: "As you type a review or feedback, Rhitmo highlights biased language in real time: gender bias (\"aggressive\" vs. \"assertive\"), personality bias (focusing on \"who they are\" instead of \"what they did\"), generalizations like \"always\" and \"never\", and attacks on the person rather than the behavior. It's not a post-hoc audit, it's prevention at the moment of writing." },
       
       { q: "What can I actually do from Slack alone?", a: "Almost everything that matters day to day: receive 1:1 briefs, generate an agenda, chat with Rhitmo in DM like your leadership assistant, log a quick note about someone. If you live in Slack, you can use Rhitmo most of the time without opening the platform." },
-      { q: "How does automatic meeting transcription work?", a: "A bot joins your Meet, Zoom or Teams call, transcribes it and gives back structured notes — you don't type during the conversation. The raw transcript stays visible only to you, the leader; the report only sees what you explicitly share. Every paid seat includes a monthly bot-hour allowance, with extra packs available if you need more." },
+      { q: "How does automatic meeting transcription work?", a: "A bot joins your Meet, Zoom or Teams call, transcribes it and gives back structured notes — you don't type during the conversation. The raw transcript stays visible only to you, the leader; the report only sees what you explicitly share. The bot is an optional add-on at R$ 19.90/month (4 hours per month) — seats include no bot hours. You can try it with the lifetime 5-hour free trial, or connect your own note taker (Granola, Fireflies) at no extra cost." },
       { q: "How long until I see value?", a: "Onboarding takes under 5 minutes. The first 1:1 briefs land within the first week, as Rhitmo learns your routine. The big payoff happens at the end of the quarter, when a review comes out in 2 minutes instead of the 4 hours it used to take." },
       { q: "Privacy, GDPR/LGPD and data security?", a: "Your notes as a leader are private by default; sharing is an explicit, visible action. We enforce Row-Level Security along the leadership chain, so one team's data never leaks to another. We're LGPD compliant, you can export and delete your history at any time, and you can cancel the subscription whenever without us holding your data." },
     ],
@@ -633,9 +633,9 @@ const HRRiskMockup = () => (
 );
 
 // ============== PRICING SECTION (Windmill v3 — single card per-seat) ==============
-// Pricing v3 — 08/05/2026: 1 plano único.
-// Líder + 3 liderados grátis. R$ 49,90/liderado a partir do 4º.
-// Anual: R$ 39,90/liderado/mês (cobrado anualmente, 20% off).
+// Pricing v2 (conector-first) — 09/2026: 1 plano único.
+// Líder + 3 liderados grátis. R$ 10/assento a partir do 4º (R$ 8 no anual, 20% off).
+// Bot de reunião é add-on opcional: R$ 19,90/mês (4h). Trial vitalício de 5h.
 
 type SeatCycle = 'monthly' | 'annual';
 
@@ -650,23 +650,36 @@ const PricingSection = ({
 }) => {
   const [cycle, setCycle] = useState<SeatCycle>('annual');
 
-  const headlinePrice = cycle === 'annual' ? 'R$ 39,90' : 'R$ 49,90';
+  const headlinePrice = cycle === 'annual' ? 'R$ 8' : 'R$ 10';
   const headlineSuffix = lang === 'pt' ? '/liderado / mês' : '/seat / month';
   const headlineSub =
     cycle === 'annual'
       ? lang === 'pt'
-        ? 'Cobrado anualmente (R$ 478,80/liderado/ano). 20% off.'
-        : 'Billed annually (R$ 478.80/seat/year). 20% off.'
+        ? 'Cobrado anualmente (R$ 96/liderado/ano). 20% off.'
+        : 'Billed annually (R$ 96/seat/year). 20% off.'
       : lang === 'pt'
       ? 'Cobrado mensalmente. Cancele quando quiser.'
       : 'Billed monthly. Cancel anytime.';
+
+  const addOn =
+    lang === 'pt'
+      ? {
+          label: 'Add-on opcional',
+          title: 'Bot de reunião — R$ 19,90/mês',
+          desc: 'Inclui 4h de gravação e transcrição por mês. Ative só para quem precisa, cancele quando quiser. Sem o add-on, o assento não inclui horas de bot.',
+        }
+      : {
+          label: 'Optional add-on',
+          title: 'Meeting bot — R$ 19.90/month',
+          desc: 'Includes 4 hours of recording and transcription per month. Enable it only for who needs it, cancel anytime. Without the add-on, the seat includes no bot hours.',
+        };
 
   const features =
     lang === 'pt'
       ? [
           { title: 'Mentor AI ilimitado', desc: 'Seu Chief of Staff conversacional, 24/7, com memória do time.' },
           { title: '1:1s', desc: 'Brief automático antes, pauta gerada a partir do contexto histórico com a pessoa liderada.' },
-          { title: 'Transcrição de reunião automática', desc: 'Cada liderado pago inclui 4h de bot por mês, com horas extras disponíveis quando precisar. A transcrição vira anotação sozinha e você foca na conversa.' },
+          { title: 'Transcrição de reunião automática', desc: 'Três caminhos: add-on de bot por R$ 19,90/mês (4h), trial vitalício de 5h grátis para experimentar, ou conecte seu próprio note taker (Granola, Fireflies) sem custo adicional.' },
           { title: 'Slack', desc: 'Tenha Rhitmo conectado com seu Slack para lembretes, briefs e chat onde você já passa maior parte do tempo.' },
           { title: 'Detecção de viés nas evidências e avaliações de desempenho', desc: 'Identifique e aprenda a corrigir eventuais vieses e injustiças que você pode estar comentendo' },
           
@@ -674,11 +687,12 @@ const PricingSection = ({
       : [
           { title: 'Unlimited Mentor AI', desc: 'Your conversational Chief of Staff, 24/7, with team memory.' },
           { title: '1:1s, Pulse, IDP and 360°', desc: 'The full people management cycle in one place.' },
-          { title: 'Automatic meeting transcription', desc: 'Every paid seat includes 4 bot-hours per month, with extra hours available when you need them. The bot joins, transcribes and turns it into evidence automatically.' },
+          { title: 'Automatic meeting transcription', desc: 'Three paths: the bot add-on at R$ 19.90/month (4 hours), a lifetime 5-hour free trial to try it out, or connect your own note taker (Granola, Fireflies) at no extra cost.' },
           { title: 'Bidirectional Slack', desc: 'Rhitmo pulls context and delivers briefs by DM, no tab switching.' },
           { title: 'Real-time bias detection', desc: 'Reviews 38× less biased, right inside the editor.' },
           
         ];
+
 
   const enterpriseBullets =
     lang === 'pt'
@@ -754,6 +768,18 @@ const PricingSection = ({
               ? 'Para cada usuário adicional após o 3º.'
               : 'For each additional user after the 3rd.'}
           </p>
+          <p className="text-xs text-muted-foreground mt-1">{headlineSub}</p>
+
+          {/* Add-on opcional (não é um segundo plano) */}
+          <div className="mt-6 rounded-3xl bg-muted/50 p-5">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              {addOn.label}
+            </span>
+            <p className="mt-2 font-medium text-foreground">{addOn.title}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{addOn.desc}</p>
+          </div>
+
+
 
           <Button
             className="w-full min-h-[52px] mt-8 rounded-full text-base bg-primary text-primary-foreground hover:bg-primary/90"
