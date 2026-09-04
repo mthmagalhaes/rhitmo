@@ -8,6 +8,7 @@ import {
   Users,
   LayoutDashboard,
   Activity,
+  Network,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -46,6 +47,8 @@ export const HR_ADMIN_NAV_ITEMS: NavItem[] = [
   { id: 'members', labelKey: 'nav.hr.members', icon: Users, to: '/hr/pessoas' },
   // Visão BP: cobertura e cadência das 1:1s por líder (só metadados, nunca conteúdo).
   { id: 'ritmo', labelKey: 'nav.hr.ritmo', icon: Activity, to: '/hr/ritmo' },
+  // Mapa de colaboração da empresa (ONA passivo).
+  { id: 'rede', labelKey: 'nav.hr.rede', icon: Network, to: '/hr/rede' },
   // Analytics de RH continua acessível por /hr/analytics, fora do menu principal.
 ];
 

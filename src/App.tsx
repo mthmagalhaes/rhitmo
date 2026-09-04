@@ -37,6 +37,7 @@ import {
   HRPessoas,
   HRAnalytics,
   HRRitmo,
+  HRRede,
   TermsOfService,
   PrivacyPolicy,
   DirectReportReviewView,
@@ -227,6 +228,7 @@ const App = () => (
               <Route path="/hr/analytics" element={<AppLayout><HRAdminGuard><HRAnalytics /></HRAdminGuard></AppLayout>} />
               <Route path="/hr/members" element={<Navigate to="/hr/pessoas" replace />} />
               <Route path="/hr/ritmo" element={<AppLayout><HRAdminGuard><HRRitmo /></HRAdminGuard></AppLayout>} />
+              <Route path="/hr/rede" element={<AppLayout><HRAdminGuard><HRRede /></HRAdminGuard></AppLayout>} />
               <Route path="/hr/pessoas" element={<AppLayout><HRAdminGuard><HRPessoas /></HRAdminGuard></AppLayout>} />
               <Route path="/hr/competency-framework" element={<Navigate to="/hr" replace />} />
 
