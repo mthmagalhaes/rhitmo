@@ -34,9 +34,6 @@ import {
   AdminLogs,
   BriefPage,
   HRDashboard,
-  CompetencyFramework,
-  HRTeams,
-  HRMembers,
   HRPessoas,
   HRAnalytics,
   HRRitmo,
@@ -54,7 +51,6 @@ import {
   LiderOneOnOnes,
   LiderDiario,
   LiderAvaliacoes,
-  // LiderObjetivos, // oculto — rota desativada, dados intactos
   LiderPessoas,
   LiderConfiguracoes,
   LiderContexto,
@@ -64,9 +60,7 @@ import {
   V2Conectores,
   V2Billing,
   LideradoInicio,
-  LideradoCompass,
   LideradoOneOnOnes,
-  LideradoPDI,
   LideradoAvaliacoes,
   LideradoMeuRhitmo,
   LideradoConfiguracoes,
@@ -155,7 +149,7 @@ const App = () => (
               <Route path="/lider/pulse/:id" element={<Navigate to="/lider/inicio" replace />} />
               <Route path="/lider/avaliacoes" element={Leader(<LiderAvaliacoes />)} />
               <Route path="/lider/avaliacoes/:memberId" element={Leader(<LiderAvaliacoes />)} />
-              {/* <Route path="/lider/objetivos" element={Leader(<LiderObjetivos />)} /> oculto — feature pausada */}
+              <Route path="/lider/objetivos" element={<Navigate to="/lider/pessoas" replace />} />
               <Route path="/lider/pessoas" element={Leader(<LiderPessoas />)} />
               <Route path="/lider/pessoas-v2" element={<Navigate to="/lider/pessoas" replace />} />
               <Route path="/lider/configuracoes" element={Leader(<LiderConfiguracoes />)} />
@@ -172,10 +166,10 @@ const App = () => (
 
               {/* ── Direct report routes (/liderado/*) ── */}
               <Route path="/liderado/inicio" element={DirectReport(<LideradoInicio />)} />
-              <Route path="/liderado/compass" element={DirectReport(<LideradoCompass />)} />
+              <Route path="/liderado/compass" element={<Navigate to="/liderado/inicio" replace />} />
               <Route path="/liderado/1on1s" element={DirectReport(<LideradoOneOnOnes />)} />
               <Route path="/liderado/pulse" element={<Navigate to="/liderado/inicio" replace />} />
-              <Route path="/liderado/pdi" element={DirectReport(<LideradoPDI />)} />
+              <Route path="/liderado/pdi" element={<Navigate to="/liderado/inicio" replace />} />
               <Route path="/liderado/avaliacoes" element={DirectReport(<LideradoAvaliacoes />)} />
               <Route path="/liderado/meu-rhitmo" element={DirectReport(<LideradoMeuRhitmo />)} />
               <Route path="/liderado/configuracoes" element={DirectReport(<LideradoConfiguracoes />)} />
@@ -222,17 +216,17 @@ const App = () => (
 
               {/* Workspace admin (Owner OR HR Admin) — /hr/* kept for backwards-compat deep links */}
               <Route path="/workspace" element={<Navigate to="/hr" replace />} />
-              <Route path="/workspace/teams" element={<Navigate to="/hr/teams" replace />} />
-              <Route path="/workspace/people" element={<Navigate to="/hr/members" replace />} />
+              <Route path="/workspace/teams" element={<Navigate to="/hr/pessoas" replace />} />
+              <Route path="/workspace/people" element={<Navigate to="/hr/pessoas" replace />} />
               <Route path="/workspace/analytics" element={<Navigate to="/hr/analytics" replace />} />
-              <Route path="/workspace/competencies" element={<Navigate to="/hr/competency-framework" replace />} />
+              <Route path="/workspace/competencies" element={<Navigate to="/hr" replace />} />
               <Route path="/hr" element={<AppLayout><HRAdminGuard><HRDashboard /></HRAdminGuard></AppLayout>} />
-              <Route path="/hr/teams" element={<AppLayout><HRAdminGuard><HRTeams /></HRAdminGuard></AppLayout>} />
+              <Route path="/hr/teams" element={<Navigate to="/hr/pessoas" replace />} />
               <Route path="/hr/analytics" element={<AppLayout><HRAdminGuard><HRAnalytics /></HRAdminGuard></AppLayout>} />
-              <Route path="/hr/members" element={<AppLayout><HRAdminGuard><HRMembers /></HRAdminGuard></AppLayout>} />
+              <Route path="/hr/members" element={<Navigate to="/hr/pessoas" replace />} />
               <Route path="/hr/ritmo" element={<AppLayout><HRAdminGuard><HRRitmo /></HRAdminGuard></AppLayout>} />
               <Route path="/hr/pessoas" element={<AppLayout><HRAdminGuard><HRPessoas /></HRAdminGuard></AppLayout>} />
-              <Route path="/hr/competency-framework" element={<AppLayout><HRAdminGuard><CompetencyFramework /></HRAdminGuard></AppLayout>} />
+              <Route path="/hr/competency-framework" element={<Navigate to="/hr" replace />} />
 
 
 

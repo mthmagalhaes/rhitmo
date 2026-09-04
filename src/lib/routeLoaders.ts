@@ -19,9 +19,6 @@ export const loadAdmin = () => import('@/pages/Admin');
 export const loadAdminLogs = () => import('@/pages/AdminLogs');
 export const loadBriefPage = () => import('@/pages/BriefPage');
 export const loadHRDashboard = () => import('@/pages/HRDashboard');
-export const loadCompetencyFramework = () => import('@/pages/CompetencyFramework');
-export const loadHRTeams = () => import('@/pages/HRTeams');
-export const loadHRMembers = () => import('@/pages/HRMembers');
 export const loadHRPessoas = () => import('@/pages/HRPessoas');
 export const loadHRAnalytics = () => import('@/pages/HRAnalytics');
 export const loadHRRitmo = () => import('@/pages/HRRitmo');
@@ -41,7 +38,6 @@ export const loadLiderInicio = () => import('@/pages/lider/Inicio');
 export const loadLiderOneOnOnes = () => import('@/pages/lider/OneOnOnes');
 export const loadLiderDiario = () => import('@/pages/lider/Diario');
 export const loadLiderAvaliacoes = () => import('@/pages/lider/Avaliacoes');
-export const loadLiderObjetivos = () => import('@/pages/lider/Objetivos');
 export const loadLiderPessoas = () => import('@/pages/lider/Pessoas');
 export const loadLiderConfiguracoes = () => import('@/pages/lider/Configuracoes');
 export const loadLiderContexto = () => import('@/pages/lider/Contexto');
@@ -53,9 +49,7 @@ export const loadV2Conectores = () => import('@/pages/v2/Conectores');
 export const loadV2Billing = () => import('@/pages/v2/Billing');
 
 export const loadLideradoInicio = () => import('@/pages/liderado/Inicio');
-export const loadLideradoCompass = () => import('@/pages/liderado/Compass');
 export const loadLideradoOneOnOnes = () => import('@/pages/liderado/OneOnOnes');
-export const loadLideradoPDI = () => import('@/pages/liderado/PDI');
 export const loadLideradoAvaliacoes = () => import('@/pages/liderado/Avaliacoes');
 export const loadLideradoMeuRhitmo = () => import('@/pages/liderado/MeuRhitmo');
 export const loadLideradoConfiguracoes = () => import('@/pages/liderado/Configuracoes');
@@ -72,9 +66,6 @@ export const Admin = lazy(loadAdmin);
 export const AdminLogs = lazy(loadAdminLogs);
 export const BriefPage = lazy(loadBriefPage);
 export const HRDashboard = lazy(loadHRDashboard);
-export const CompetencyFramework = lazy(loadCompetencyFramework);
-export const HRTeams = lazy(loadHRTeams);
-export const HRMembers = lazy(loadHRMembers);
 export const HRPessoas = lazy(loadHRPessoas);
 export const HRAnalytics = lazy(loadHRAnalytics);
 export const HRRitmo = lazy(loadHRRitmo);
@@ -94,7 +85,6 @@ export const LiderInicio = lazy(loadLiderInicio);
 export const LiderOneOnOnes = lazy(loadLiderOneOnOnes);
 export const LiderDiario = lazy(loadLiderDiario);
 export const LiderAvaliacoes = lazy(loadLiderAvaliacoes);
-export const LiderObjetivos = lazy(loadLiderObjetivos);
 export const LiderPessoas = lazy(loadLiderPessoas);
 export const LiderConfiguracoes = lazy(loadLiderConfiguracoes);
 export const LiderContexto = lazy(loadLiderContexto);
@@ -105,9 +95,7 @@ export const LiderMentor = lazy(loadLiderMentor);
 export const LiderMentorThread = lazy(loadLiderMentorThread);
 
 export const LideradoInicio = lazy(loadLideradoInicio);
-export const LideradoCompass = lazy(loadLideradoCompass);
 export const LideradoOneOnOnes = lazy(loadLideradoOneOnOnes);
-export const LideradoPDI = lazy(loadLideradoPDI);
 export const LideradoAvaliacoes = lazy(loadLideradoAvaliacoes);
 export const LideradoMeuRhitmo = lazy(loadLideradoMeuRhitmo);
 export const LideradoConfiguracoes = lazy(loadLideradoConfiguracoes);
@@ -119,27 +107,21 @@ const PREFETCH_MAP: Record<string, () => Promise<unknown>> = {
   '/lider/1on1s': loadLiderOneOnOnes,
   '/lider/diario': loadLiderDiario,
   '/lider/avaliacoes': loadLiderAvaliacoes,
-  '/lider/objetivos': loadLiderObjetivos,
   '/lider/pessoas': loadLiderPessoas,
   '/lider/configuracoes': loadLiderConfiguracoes,
   '/lider/contexto': loadLiderContexto,
   '/lider/mentor': loadLiderMentor,
 
   '/liderado/inicio': loadLideradoInicio,
-  '/liderado/compass': loadLideradoCompass,
   '/liderado/1on1s': loadLideradoOneOnOnes,
-  '/liderado/pdi': loadLideradoPDI,
   '/liderado/avaliacoes': loadLideradoAvaliacoes,
   '/liderado/meu-rhitmo': loadLideradoMeuRhitmo,
   '/liderado/configuracoes': loadLideradoConfiguracoes,
 
   '/hr': loadHRDashboard,
-  '/hr/teams': loadHRTeams,
-  '/hr/members': loadHRMembers,
   '/hr/pessoas': loadHRPessoas,
   '/hr/analytics': loadHRAnalytics,
   '/hr/ritmo': loadHRRitmo,
-  '/hr/competency-framework': loadCompetencyFramework,
 
   '/admin': loadAdmin,
   '/design-system': loadDesignSystem,
