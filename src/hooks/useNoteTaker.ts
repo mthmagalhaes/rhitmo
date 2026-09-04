@@ -49,6 +49,7 @@ async function invokeNoteTaker(body: Record<string, unknown>) {
  */
 export function useNoteTaker(provider: NoteTakerProvider = 'granola') {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const providerLabel = noteTakerProvider(provider).label;
   const queryKey = ['note-taker-connection', provider];
   const pendingKey = ['note-taker-pending', provider];
@@ -100,10 +101,16 @@ export function useNoteTaker(provider: NoteTakerProvider = 'granola') {
       toast({
         title: imported > 0 ? `${imported} nota(s) importada(s)` : 'Tudo em dia',
         description:
-          unmatched > 0
-            ? `${unmatched} nota(s) aguardando você indicar o liderado.`
-            : 'Nenhuma nota nova para importar.',
+          imported > 0
+            ? unmatched > 0
+              ? `Abrindo Anotações & Evidências. ${unmatched} nota(s) ainda aguardam você indicar o liderado.`
+              : 'Abrindo Anotações & Evidências para você ver o que entrou.'
+            : unmatched > 0
+              ? `${unmatched} nota(s) aguardando você indicar o liderado.`
+              : 'Nenhuma nota nova para importar.',
       });
+      // Valor visível na hora: leva o líder direto ao que acabou de entrar.
+      if (imported > 0) navigate('/lider/diario?source=note_taker&period=30d');
     },
     onError: (e: Error) =>
       toast({ title: 'Falha na sincronização', description: e.message, variant: 'destructive' }),
