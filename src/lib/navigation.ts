@@ -8,6 +8,7 @@ import {
   Users,
   LayoutDashboard,
   Activity,
+  Network,
   type LucideIcon,
 } from 'lucide-react';
 

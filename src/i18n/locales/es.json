@@ -1323,7 +1323,10 @@
       "pulse_desc": "Las Pulse Surveys conversacionales llegan pronto."
     },
     "convidar_membros": "Invitar miembros",
-    "skip_to_content": "Saltar al contenido"
+    "skip_to_content": "Saltar al contenido",
+    "hr": {
+      "rede": "Red"
+    }
   },
   "membersGrid": {
     "defaultTitle": "Selecciona un liderado",

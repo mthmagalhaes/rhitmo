@@ -1323,7 +1323,10 @@
       "pulse_desc": "Conversational Pulse Surveys are on the way."
     },
     "convidar_membros": "Invite members",
-    "skip_to_content": "Skip to content"
+    "skip_to_content": "Skip to content",
+    "hr": {
+      "rede": "Network"
+    }
   },
   "membersGrid": {
     "defaultTitle": "Select a direct report",
