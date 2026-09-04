@@ -206,10 +206,6 @@ export default function HRRitmo() {
                   </button>
                 ))}
               </div>
-
-                  </button>
-                ))}
-              </div>
             )}
           </div>
         ) : (leaders?.length ?? 0) === 0 ? (
