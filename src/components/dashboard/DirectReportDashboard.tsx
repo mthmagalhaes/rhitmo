@@ -165,6 +165,8 @@ export default function DirectReportDashboard({ linkedMember, activeTab: activeT
   }, [activeTabProp]);
   const [syncDialogOpen, setSyncDialogOpen] = useState(false);
   const [syncSaving, setSyncSaving] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
   const [isReanalyzing, setIsReanalyzing] = useState(false);
   const [selectedReview, setSelectedReview] = useState<any>(null);
   const [showPDIDialog, setShowPDIDialog] = useState(false);
