@@ -132,4 +132,4 @@ Design: Creme/Bento mantido, `max-w-5xl`, Lora nos títulos e Inter no corpo, ca
 - API de note taker instável: Magic Paste segue como plano B e o add-on de bot como rede de segurança.
 - Qualidade desigual de entrada: nível de fidelidade explícito na citação.
 - Percepção de downgrade: grandfathering de 12 meses e comunicação de queda de preço.
-- Código duplicado durante o paralelo: mitigado pela Fase 6 com data alvo definida ao fim da Fase 5.
+- Código duplicado durante o paralelo: mitigado pelo corte do v1, com data alvo definida quando o último pilar liberado entrar no ar.
