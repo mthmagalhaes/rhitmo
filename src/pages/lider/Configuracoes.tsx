@@ -12,7 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { useSlackConnection } from '@/hooks/useSlackConnection';
 import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
 import { AmbientSlackSettings } from '@/components/settings/AmbientSlackSettings';
-import { GranolaConnectorCard } from '@/components/settings/GranolaConnectorCard';
+import { NoteTakerConnectorCard } from '@/components/settings/NoteTakerConnectorCard';
+import { NOTE_TAKER_PROVIDERS, NOTE_TAKER_NO_CONNECTOR_NOTE } from '@/lib/noteTakerProviders';
 import { BotHoursCard } from '@/components/settings/BotHoursCard';
 import { SlackHealthPanel } from '@/components/leader/settings/SlackHealthPanel';
 
