@@ -52,6 +52,21 @@ export function AccountSetupBento({ workspaceId, memberCount, onOpenInvite }: Pr
   const cards: SetupCard[] = useMemo(
     () => [
       {
+        id: 'notetaker',
+        icon: NotebookPen,
+        title: 'Conectar seu note taker',
+        pendingDescription:
+          'Já usa Granola ou Fireflies? Suas notas viram evidência aqui, sem outro bot na reunião.',
+        doneDescription: noteTaker.label
+          ? `${noteTaker.label} conectado.`
+          : 'Note taker conectado.',
+        done: noteTaker.isConnected,
+        loading: noteTaker.isLoading,
+        onAction: () =>
+          navigate(isV2 ? '/v2/conectores' : '/lider/configuracoes?tab=integracoes'),
+        actionLabel: 'Conectar',
+      },
+      {
         id: 'slack',
         icon: Slack,
         title: 'Conectar Slack',
