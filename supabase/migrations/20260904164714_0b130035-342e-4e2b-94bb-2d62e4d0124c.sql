@@ -1,0 +1,1 @@
+ALTER TABLE public.workspaces ALTER COLUMN ui_version SET DEFAULT 'v2';
