@@ -7,9 +7,10 @@ import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
-  Users, AlertCircle, CheckCircle, Bell, Target, ShieldAlert,
+  Users, AlertCircle, CheckCircle, Bell, ShieldAlert,
   ShieldCheck, Activity
 } from 'lucide-react';
+
 import { HRAutoAlertsSection } from '@/components/hr/HRAutoAlertsSection';
 import { MonthlyReportButton } from '@/components/hr/MonthlyReportButton';
 
@@ -28,8 +29,8 @@ interface Metrics {
   members_without_recent_review: number;
   sync_completed_count: number;
   reviews_last_90_days: number;
-  pdi_coverage_percentage: number;
   bias_detected_last_7d: number;
+
   members_at_risk?: number;
   coverage_percentage?: number;
   notes_per_leader_last_30d: LeaderActivity[];
@@ -62,12 +63,12 @@ const HRDashboard = () => {
   const noFeedback = metrics?.members_without_recent_feedback ?? 0;
   const noReview = metrics?.members_without_recent_review ?? 0;
   const totalMembers = metrics?.total_members ?? 0;
-  const pdiPct = metrics?.pdi_coverage_percentage ?? 0;
   const biasCount = metrics?.bias_detected_last_7d ?? 0;
   const membersAtRisk = metrics?.members_at_risk ?? noFeedback;
   const coveragePct = metrics?.coverage_percentage
     ?? (totalMembers > 0 ? Math.round(((totalMembers - noFeedback) / totalMembers) * 100) : 0);
-  const hasNoAlerts = noFeedback === 0 && noReview === 0 && pdiPct >= 50 && biasCount === 0;
+  const hasNoAlerts = noFeedback === 0 && noReview === 0 && biasCount === 0;
+
 
   return (
     <div className="min-h-dvh bg-background pb-20">
@@ -107,7 +108,7 @@ const HRDashboard = () => {
         {/* ═══ MÉTRICAS — Sprint 1.6: 5 → 3 KPIs (Cobertura, Maturidade, Risco) ═══ */}
         <section>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-4">Métricas-chave</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <MetricCard
               icon={<Activity className={`h-5 w-5 ${coveragePct >= 70 ? 'text-emerald-500' : coveragePct >= 40 ? 'text-amber-500' : 'text-destructive'}`} />}
               label="Cobertura (notas 30d)"
@@ -117,16 +118,6 @@ const HRDashboard = () => {
               valueClass={coveragePct >= 70 ? 'text-emerald-600' : coveragePct >= 40 ? 'text-amber-600' : 'text-destructive'}
               hint={`${totalMembers - noFeedback} de ${totalMembers} liderados com nota recente`}
               onClick={() => navigate('/hr/members?filter=no_recent_feedback')}
-            />
-            <MetricCard
-              icon={<Target className={`h-5 w-5 ${pdiPct >= 50 ? 'text-emerald-500' : 'text-amber-500'}`} />}
-              label="Maturidade (PDI ativo)"
-              value={pdiPct}
-              loading={isLoading}
-              suffix="%"
-              valueClass={pdiPct >= 50 ? 'text-emerald-600' : 'text-amber-600'}
-              hint="Liderados com PDI definido"
-              onClick={() => navigate('/hr/members?filter=no_pdi')}
             />
             <MetricCard
               icon={membersAtRisk > 0
@@ -140,6 +131,7 @@ const HRDashboard = () => {
               onClick={() => navigate('/hr/members?filter=at_risk')}
             />
           </div>
+
         </section>
 
         {/* ═══ PONTOS DE ATENÇÃO ═══ */}
@@ -162,13 +154,8 @@ const HRDashboard = () => {
                     {noReview} liderado{noReview > 1 ? 's' : ''} elegíve{noReview > 1 ? 'is' : 'l'} sem avaliação recente
                   </div>
                 )}
-                {pdiPct < 50 && (
-                  <div className="flex items-center gap-2 text-amber-700 bg-amber-50 dark:bg-amber-950/20 rounded-xl px-4 py-2 text-sm">
-                    <Target className="h-4 w-4 flex-shrink-0" />
-                    Apenas {pdiPct}% dos liderados têm PDI definido
-                  </div>
-                )}
                 {biasCount > 0 && (
+
                   <div className="flex items-center gap-2 text-primary bg-primary/5 rounded-xl px-4 py-2 text-sm">
                     <ShieldAlert className="h-4 w-4 flex-shrink-0" />
                     {biasCount} detecção{biasCount > 1 ? 'ões' : ''} de viés nos últimos 7 dias

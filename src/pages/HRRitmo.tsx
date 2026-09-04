@@ -32,8 +32,8 @@ interface MemberRhythm {
   feedback_count_90d: number;
   review_status: 'none' | 'draft' | 'shared' | 'acknowledged';
   last_review_at: string | null;
-  has_active_plan: boolean;
 }
+
 
 const fmt = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString('pt-BR') : '—';
@@ -172,19 +172,18 @@ export default function HRRitmo() {
               <p className="text-sm text-muted-foreground">Nenhum liderado ativo neste time.</p>
             ) : (
               <div className="rounded-2xl border border-border/50 bg-card shadow-[0_2px_20px_rgba(0,0,0,0.04)] overflow-hidden">
-                <div className="hidden sm:grid grid-cols-[1.4fr_1fr_0.8fr_1fr_0.8fr] gap-3 px-5 py-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground border-b border-border/40">
+                <div className="hidden sm:grid grid-cols-[1.4fr_1fr_0.8fr_1fr] gap-3 px-5 py-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground border-b border-border/40">
                   <span>Liderado</span>
                   <span>Último registro</span>
                   <span>90 dias</span>
                   <span>Avaliação formal</span>
-                  <span>PDI</span>
                 </div>
                 {members!.map((m) => (
                   <button
                     key={m.member_id}
                     type="button"
                     onClick={() => setSelectedMemberId(m.member_id)}
-                    className="w-full text-left grid sm:grid-cols-[1.4fr_1fr_0.8fr_1fr_0.8fr] gap-1 sm:gap-3 px-5 py-3 border-b border-border/30 last:border-0 text-sm transition-colors hover:bg-muted/40"
+                    className="w-full text-left grid sm:grid-cols-[1.4fr_1fr_0.8fr_1fr] gap-1 sm:gap-3 px-5 py-3 border-b border-border/30 last:border-0 text-sm transition-colors hover:bg-muted/40"
                   >
                     <div className="min-w-0">
                       <p className="font-medium truncate">{m.member_name}</p>
@@ -203,9 +202,6 @@ export default function HRRitmo() {
                     <span className="text-xs sm:text-sm text-muted-foreground">
                       {REVIEW_LABEL[m.review_status]}
                       {m.last_review_at ? ` · ${fmt(m.last_review_at)}` : ''}
-                    </span>
-                    <span className="text-xs sm:text-sm text-muted-foreground">
-                      {m.has_active_plan ? 'Ativo' : '—'}
                     </span>
                   </button>
                 ))}
