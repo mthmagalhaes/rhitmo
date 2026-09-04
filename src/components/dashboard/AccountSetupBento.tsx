@@ -127,6 +127,10 @@ export function AccountSetupBento({ workspaceId, memberCount, onOpenInvite }: Pr
       calendar.checkingConnection,
       calendar.connectionData,
       calendar.connectCalendar,
+      noteTaker.isConnected,
+      noteTaker.isLoading,
+      noteTaker.label,
+      isV2,
       navigate,
     ]
   );
