@@ -1285,14 +1285,11 @@
       "diario": "Notes & Evidence",
       "avaliacoes": "Reviews",
       "contexto": "Context",
-      "configuracoes": "Settings",
-      "objetivos": "Goals"
+      "configuracoes": "Settings"
     },
     "liderado": {
       "inicio": "Home",
-      "compass": "Career Compass",
       "um_pra_um": "Upcoming 1:1s",
-      "pdi": "My PDI",
       "avaliacoes": "Reviews I received",
       "configuracoes": "Settings"
     },

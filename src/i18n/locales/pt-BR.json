@@ -1285,23 +1285,18 @@
       "diario": "Anotações & Evidências",
       "avaliacoes": "Avaliações",
       "contexto": "Contexto",
-      "configuracoes": "Configurações",
-      "objetivos": "Objetivos"
+      "configuracoes": "Configurações"
     },
     "liderado": {
       "inicio": "Início",
-      "compass": "Career Compass",
       "um_pra_um": "Próximas 1:1s",
-      "pdi": "Meu PDI",
       "avaliacoes": "Avaliações que recebi",
       "configuracoes": "Configurações"
     },
     "hr": {
       "overview": "Visão geral",
       "members": "Pessoas",
-      "teams": "Times",
       "analytics": "Analytics",
-      "framework": "Frameworks",
       "ritmo": "Rhitmo"
     },
     "cta": {
