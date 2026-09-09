@@ -72,6 +72,8 @@ export default function LiderAvaliacoes() {
               </div>
             </section>
 
+            <CalibrationEntryCard workspaceId={workspace?.id ?? null} />
+
             <ReviewsCrossMemberTable
               members={members}
               teams={teams}
