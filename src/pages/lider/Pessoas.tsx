@@ -431,9 +431,9 @@ function PeopleListTab({ onNewMember }: { onNewMember: () => void }) {
       )}
 
       {/* Tabela densa */}
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
+      <div className="rounded-2xl border border-border/50 bg-card overflow-x-auto shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
         {/* Header row */}
-        <div className="grid grid-cols-[28px_minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1fr)_140px_24px] gap-4 px-5 py-2.5 bg-muted/30 border-b border-border/40 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        <div className="grid min-w-[700px] grid-cols-[28px_minmax(200px,2.4fr)_minmax(130px,1.4fr)_minmax(110px,1fr)_minmax(120px,140px)_24px] gap-4 px-5 py-2.5 bg-muted/30 border-b border-border/40 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           <div className="flex items-center">
             <Checkbox
               checked={allVisibleSelected ? true : (someVisibleSelected ? 'indeterminate' : false)}
@@ -473,7 +473,7 @@ function PeopleListTab({ onNewMember }: { onNewMember: () => void }) {
                   <li key={m.id} className={cn('border-b border-border/30 last:border-b-0', isArchived && 'opacity-60')}>
                     <div
                       className={cn(
-                        'group grid grid-cols-[28px_minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1fr)_140px_24px] gap-4 px-5 py-2.5 items-center transition-colors',
+                        'group grid min-w-[700px] grid-cols-[28px_minmax(200px,2.4fr)_minmax(130px,1.4fr)_minmax(110px,1fr)_minmax(120px,140px)_24px] gap-4 px-5 py-2.5 items-center transition-colors',
                         isSelected ? 'bg-primary/5' : 'hover:bg-muted/40',
                       )}
                     >
@@ -513,19 +513,41 @@ function PeopleListTab({ onNewMember }: { onNewMember: () => void }) {
                               </TooltipContent>
                             </Tooltip>
                           </div>
-                          <span className="text-[13px] font-medium text-foreground truncate">
-                            {m.name}
-                          </span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-[13px] font-medium text-foreground truncate">
+                                {m.name}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                              <p className="text-xs max-w-xs">{m.name}</p>
+                            </TooltipContent>
+                          </Tooltip>
                           {isArchived && (
                             <Badge variant="outline" className="text-[10px] h-4 px-1.5 ml-1">Arquivado</Badge>
                           )}
                         </div>
-                        <div className="text-[13px] text-muted-foreground truncate">
-                          {m.role || '—'}
-                        </div>
-                        <div className="text-[13px] text-muted-foreground truncate">
-                          {teamName}
-                        </div>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="text-[13px] text-muted-foreground truncate">
+                              {m.role || '—'}
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            <p className="text-xs max-w-xs">{m.role || '—'}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="text-[13px] text-muted-foreground truncate">
+                              {teamName}
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            <p className="text-xs max-w-xs">{teamName}</p>
+                          </TooltipContent>
+                        </Tooltip>
+
                         <div className="text-[12px] text-muted-foreground truncate">
                           {formatDistanceToNow(new Date(m.last_feedback_date), {
                             addSuffix: true,

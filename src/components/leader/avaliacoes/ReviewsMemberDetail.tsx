@@ -153,6 +153,7 @@ export function ReviewsMemberDetail({ member, onCreateFormal, onClose }: Props) 
           memberId={member.id}
           memberName={member.name}
           onCreateReview={onCreateFormal}
+          showCreateButton={false}
         />
       </section>
 

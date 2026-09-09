@@ -30,15 +30,14 @@ export interface UseLeaderMembersOptions {
   includeArchived?: boolean;
 }
 
-export function useLeaderMembers(opts: UseLeaderMembersOptions = {}) {
-  const { includeArchived = false } = opts;
-  const { id: effectiveUserId } = useEffectiveUser();
+// ── Query factories compartilhadas ──────────────────────────────────────────
+// Exportadas para que o prefetch de rota (hover no menu) use exatamente as
+// mesmas chaves e funções do hook — sem duplicar lógica nem chave de cache.
+const LEADER_STALE_TIME = 5 * 60_000;
 
-  // Leader-only scope: resolve workspace strictly via teams.leader_user_id.
-  // Owners that don't lead any team see an empty /lider/* view here —
-  // full workspace visibility lives in /workspace/* (HRAdminGuard).
-  const { data: workspace, isLoading: workspaceLoading } = useQuery({
-    queryKey: ['workspace-leader-scope', effectiveUserId],
+export function leaderWorkspaceQuery(effectiveUserId: string | null | undefined) {
+  return {
+    queryKey: ['workspace-leader-scope', effectiveUserId] as const,
     queryFn: async () => {
       if (!effectiveUserId) return null;
       const { data: leaderTeam } = await supabase
@@ -56,35 +55,41 @@ export function useLeaderMembers(opts: UseLeaderMembersOptions = {}) {
         .maybeSingle();
       return (ws as Workspace | null) ?? null;
     },
-    enabled: !!effectiveUserId,
-    staleTime: 30_000,
-    placeholderData: keepPreviousData,
-  });
+    staleTime: LEADER_STALE_TIME,
+  };
+}
 
-  const { data: teams = [], isLoading: teamsLoading } = useQuery({
-    queryKey: ['teams-leader-scope', workspace?.id, effectiveUserId],
+export function leaderTeamsQuery(
+  workspaceId: string | null | undefined,
+  effectiveUserId: string | null | undefined,
+) {
+  return {
+    queryKey: ['teams-leader-scope', workspaceId, effectiveUserId] as const,
     queryFn: async () => {
-      if (!workspace || !effectiveUserId) return [];
+      if (!workspaceId || !effectiveUserId) return [] as Team[];
       const { data, error } = await supabase
         .from('teams')
         .select('*')
-        .eq('workspace_id', workspace.id)
+        .eq('workspace_id', workspaceId)
         .eq('leader_user_id', effectiveUserId)
         .order('name');
       if (error) throw error;
       return (data ?? []) as Team[];
     },
-    enabled: !!workspace && !!effectiveUserId,
-    staleTime: 30_000,
-    placeholderData: keepPreviousData,
-  });
+    staleTime: LEADER_STALE_TIME,
+  };
+}
 
-  const teamIds = teams.map((t) => t.id);
-
-  const { data: members = [], isLoading: membersLoading } = useQuery({
-    queryKey: ['team-members-leader-scope', workspace?.id, teamIds, includeArchived],
+export function leaderMembersQuery(
+  workspaceId: string | null | undefined,
+  teamIds: string[],
+  effectiveUserId: string | null | undefined,
+  includeArchived: boolean,
+) {
+  return {
+    queryKey: ['team-members-leader-scope', workspaceId, teamIds, includeArchived] as const,
     queryFn: async () => {
-      if (!workspace || teamIds.length === 0) return [];
+      if (!workspaceId || teamIds.length === 0) return [] as LeaderMemberRow[];
       // Defense-in-depth: inner-join + re-filter por leader_user_id.
       // A RLS de team_members libera leitura para Owners/HR Admins do workspace
       // (rls_check_member_read_access), então .in('team_id', teamIds) por si só
@@ -120,11 +125,36 @@ export function useLeaderMembers(opts: UseLeaderMembersOptions = {}) {
         } as LeaderMemberRow;
       });
     },
-    enabled: !!workspace && teamIds.length > 0,
-    staleTime: 30_000,
+    staleTime: LEADER_STALE_TIME,
+  };
+}
+
+export function useLeaderMembers(opts: UseLeaderMembersOptions = {}) {
+  const { includeArchived = false } = opts;
+  const { id: effectiveUserId } = useEffectiveUser();
+
+  // Leader-only scope: resolve workspace strictly via teams.leader_user_id.
+  // Owners that don't lead any team see an empty /lider/* view here —
+  // full workspace visibility lives in /workspace/* (HRAdminGuard).
+  const { data: workspace, isLoading: workspaceLoading } = useQuery({
+    ...leaderWorkspaceQuery(effectiveUserId),
+    enabled: !!effectiveUserId,
     placeholderData: keepPreviousData,
   });
 
+  const { data: teams = [], isLoading: teamsLoading } = useQuery({
+    ...leaderTeamsQuery(workspace?.id, effectiveUserId),
+    enabled: !!workspace && !!effectiveUserId,
+    placeholderData: keepPreviousData,
+  });
+
+  const teamIds = teams.map((t) => t.id);
+
+  const { data: members = [], isLoading: membersLoading } = useQuery({
+    ...leaderMembersQuery(workspace?.id, teamIds, effectiveUserId, includeArchived),
+    enabled: !!workspace && teamIds.length > 0,
+    placeholderData: keepPreviousData,
+  });
 
   return {
     workspace: workspace ?? null,
@@ -133,3 +163,4 @@ export function useLeaderMembers(opts: UseLeaderMembersOptions = {}) {
     isLoading: workspaceLoading || teamsLoading || membersLoading,
   };
 }
+

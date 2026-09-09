@@ -36,12 +36,16 @@ export default function LiderAvaliacoes() {
 
   return (
     <div className="flex h-[calc(100svh-3rem)] overflow-hidden">
-      <MemberMasterList
-        selectedMemberId={selected?.id ?? null}
-        onSelect={goToMember}
-      />
+      {/* Lista lateral só na tela de um liderado — na visão geral a tabela
+          já é a lista (evita duplicar a mesma informação na mesma tela). */}
+      {selected && (
+        <MemberMasterList
+          selectedMemberId={selected.id}
+          onSelect={goToMember}
+        />
+      )}
 
-      <section data-tour="reviews-list" className="flex-1 overflow-y-auto">
+      <section data-tour="reviews-list" className="flex-1 min-w-0 overflow-y-auto">
         {selected ? (
           <ReviewsMemberDetail
             member={selected}
@@ -67,7 +71,7 @@ export default function LiderAvaliacoes() {
                 </h1>
                 <p className="text-base text-muted-foreground mt-3 leading-relaxed">
                   Estado do Rhitmo Formal e do Acompanhamento Mensal em uma única visão a partir de Anotações & Evidências.
-                  Escolha um liderado à esquerda para abrir o ciclo dele em tela cheia.
+                  Escolha um liderado na tabela abaixo para abrir o ciclo dele em tela cheia.
                 </p>
               </div>
             </section>

@@ -28,6 +28,8 @@ interface PerformanceReviewListProps {
   memberId: string;
   memberName: string;
   onCreateReview?: () => void;
+  /** Esconde o botão do cabeçalho quando a tela já tem o CTA principal no banner. */
+  showCreateButton?: boolean;
 }
 
 type ReviewStatus = 'draft' | 'shared' | 'acknowledged';
@@ -44,7 +46,7 @@ function statusOf(r: PerformanceReview): ReviewStatus {
   return 'draft';
 }
 
-export const PerformanceReviewList = ({ memberId, memberName, onCreateReview }: PerformanceReviewListProps) => {
+export const PerformanceReviewList = ({ memberId, memberName, onCreateReview, showCreateButton = true }: PerformanceReviewListProps) => {
   const [selectedReview, setSelectedReview] = useState<PerformanceReview | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -136,10 +138,12 @@ export const PerformanceReviewList = ({ memberId, memberName, onCreateReview }: 
             Você escolhe o período, revisa, calibra e compartilha com o liderado.
           </p>
         </div>
-        <Button onClick={() => onCreateReview?.()} className="gap-2">
-          <FileText className="h-4 w-4" />
-          Novo Rhitmo Formal
-        </Button>
+        {showCreateButton && (
+          <Button onClick={() => onCreateReview?.()} className="gap-2">
+            <FileText className="h-4 w-4" />
+            Novo Rhitmo Formal
+          </Button>
+        )}
       </div>
 
       {reviews.length === 0 ? (
@@ -148,13 +152,10 @@ export const PerformanceReviewList = ({ memberId, memberName, onCreateReview }: 
             <FileText className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">Nenhum Rhitmo Formal ainda</h3>
             <p className="text-sm text-muted-foreground mb-4 max-w-md">
-              Crie o primeiro Rhitmo Formal para {memberName}. A IA monta o rascunho a partir
-              das evidências do período escolhido e você calibra antes de compartilhar.
+              Ainda não existe um Rhitmo Formal para {memberName}. Ao criar o primeiro, a IA
+              monta o rascunho a partir das evidências do período escolhido e você calibra
+              antes de compartilhar.
             </p>
-            <Button onClick={() => onCreateReview?.()} className="gap-2">
-              <FileText className="h-4 w-4" />
-              Criar primeiro Rhitmo Formal
-            </Button>
           </CardContent>
         </Card>
       ) : (

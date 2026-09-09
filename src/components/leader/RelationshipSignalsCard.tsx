@@ -51,20 +51,48 @@ function deltaDirection(current: number | null | undefined, baseline: number | n
   return diff > 0 ? 'up' : 'down';
 }
 
-function DeltaIcon({ dir }: { dir: ReturnType<typeof deltaDirection> }) {
-  if (dir === 'up') return <TrendingUp className="h-3 w-3 text-emerald-600" />;
-  if (dir === 'down') return <TrendingDown className="h-3 w-3 text-amber-600" />;
+/**
+ * Polaridade por métrica: a seta indica APENAS variação em relação ao baseline
+ * pessoal. A cor só vira verde/âmbar quando "subir" (ou "descer") tem, de fato,
+ * leitura de melhora para aquela métrica. Métricas ambíguas ficam neutras.
+ */
+type MetricPolarity = 'higher-better' | 'lower-better' | 'neutral';
+
+function DeltaIcon({
+  dir,
+  polarity = 'neutral',
+}: {
+  dir: ReturnType<typeof deltaDirection>;
+  polarity?: MetricPolarity;
+}) {
   if (dir === 'flat') return <Minus className="h-3 w-3 text-muted-foreground" />;
-  return null;
+  if (dir !== 'up' && dir !== 'down') return null;
+  const good =
+    polarity === 'neutral'
+      ? null
+      : (polarity === 'higher-better' && dir === 'up') ||
+        (polarity === 'lower-better' && dir === 'down');
+  const cls =
+    good === null
+      ? 'text-muted-foreground'
+      : good
+        ? 'text-emerald-600'
+        : 'text-amber-600';
+  const Icon = dir === 'up' ? TrendingUp : TrendingDown;
+  return <Icon className={`h-3 w-3 ${cls}`} />;
 }
 
-function sentimentColor(label: string | null): string {
-  if (!label) return 'text-muted-foreground';
+
+function sentimentBadge(label: string | null): string {
+  if (!label) return 'text-muted-foreground border-border';
   const l = label.toLowerCase();
-  if (l.includes('positiv')) return 'text-emerald-700 dark:text-emerald-400';
-  if (l.includes('negativ') || l.includes('tens')) return 'text-rose-700 dark:text-rose-400';
-  return 'text-muted-foreground';
+  if (l.includes('positiv'))
+    return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30';
+  if (l.includes('negativ') || l.includes('tens'))
+    return 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30';
+  return 'bg-muted text-muted-foreground border-border';
 }
+
 
 export function RelationshipSignalsCard({ memberId, memberName }: RelationshipSignalsCardProps) {
   const { data: rows, isLoading } = useQuery({
@@ -180,28 +208,46 @@ export function RelationshipSignalsCard({ memberId, memberName }: RelationshipSi
                   value={latest.talk_pct != null ? `${Math.round(latest.talk_pct)}%` : '—'}
                   baseline={latest.baseline_talk_pct != null ? `~${Math.round(latest.baseline_talk_pct)}%` : null}
                   dir={deltaDirection(latest.talk_pct, latest.baseline_talk_pct)}
+                  polarity="neutral"
+                  hint="Quanto da conversa foi da pessoa nesta sessão, comparado com a média dela. Nem mais nem menos é melhor por si só."
                 />
                 <Metric
                   label="Perguntas"
                   value={String(latest.questions_asked ?? 0)}
                   baseline={latest.baseline_questions != null ? `~${Math.round(latest.baseline_questions)}` : null}
                   dir={deltaDirection(latest.questions_asked, latest.baseline_questions)}
+                  polarity="higher-better"
                   icon={<MessageCircleQuestion className="h-3 w-3" />}
+                  hint="Perguntas feitas nesta sessão, comparadas com a média da pessoa. Mais perguntas costuma indicar mais engajamento."
                 />
                 <Metric
                   label="Palavras/turno"
                   value={latest.avg_turn_words != null ? Math.round(latest.avg_turn_words).toString() : '—'}
                   baseline={latest.baseline_avg_turn_words != null ? `~${Math.round(latest.baseline_avg_turn_words)}` : null}
                   dir={deltaDirection(latest.avg_turn_words, latest.baseline_avg_turn_words)}
+                  polarity="neutral"
+                  hint="Tamanho médio das falas nesta sessão, comparado com a média da pessoa. Respostas mais longas ou mais curtas apenas indicam mudança de ritmo."
                 />
-                <Metric
-                  label="Tom"
-                  value={latest.sentiment_label ?? '—'}
-                  baseline={null}
-                  dir={deltaDirection(latest.sentiment_score, latest.baseline_sentiment)}
-                  valueClassName={sentimentColor(latest.sentiment_label)}
-                />
+                <div className="space-y-0.5">
+                  <div className="text-[11px] text-muted-foreground">Tom</div>
+                  <div className="flex items-baseline gap-1.5">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge
+                          variant="outline"
+                          className={`text-[11px] h-5 cursor-help ${sentimentBadge(latest.sentiment_label)}`}
+                        >
+                          {latest.sentiment_label ?? '—'}
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs text-xs leading-relaxed">
+                        Classificação do tom desta sessão. Não é uma variação: mudanças de tom aparecem em "O que mudou".
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </div>
               </div>
+
 
               {latest.sentiment_summary && (
                 <p className="text-xs text-muted-foreground italic leading-relaxed pt-1 border-t border-border/50">
@@ -262,6 +308,8 @@ function Metric({
   dir,
   icon,
   valueClassName,
+  polarity = 'neutral',
+  hint,
 }: {
   label: string;
   value: string;
@@ -269,7 +317,10 @@ function Metric({
   dir: ReturnType<typeof deltaDirection>;
   icon?: React.ReactNode;
   valueClassName?: string;
+  polarity?: MetricPolarity;
+  hint?: string;
 }) {
+  const arrow = <DeltaIcon dir={dir} polarity={polarity} />;
   return (
     <div className="space-y-0.5">
       <div className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
@@ -280,12 +331,22 @@ function Metric({
         <span className={`text-base font-semibold tracking-tight ${valueClassName ?? 'text-foreground'}`}>
           {value}
         </span>
-        <DeltaIcon dir={dir} />
+        {hint && arrow ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="cursor-help inline-flex">{arrow}</span>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs text-xs leading-relaxed">{hint}</TooltipContent>
+          </Tooltip>
+        ) : (
+          arrow
+        )}
         {baseline && <span className="text-[10px] text-muted-foreground">{baseline}</span>}
       </div>
     </div>
   );
 }
+
 
 function Sparkline({ values }: { values: number[] }) {
   if (values.length < 2) return null;
