@@ -299,6 +299,18 @@ export function CalibrationGrid({ session, rows, readOnly, onSave, saving }: Pro
                   </div>
                 )}
 
+                <Button
+                  asChild
+                  size="sm"
+                  variant="outline"
+                  className="rounded-xl w-full"
+                >
+                  <Link to={`/lider/avaliacoes/${detail.member_id}`}>
+                    <FileText className="h-3.5 w-3.5 mr-1.5" />
+                    Ver a avaliação formal desta pessoa
+                  </Link>
+                </Button>
+
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-2">
                     Observação da calibração
