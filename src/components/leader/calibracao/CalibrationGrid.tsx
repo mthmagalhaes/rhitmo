@@ -3,6 +3,7 @@
 // Nada entra no histórico sem confirmação explícita.
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { Check, Sparkles, AlertTriangle, FileText, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -298,6 +299,18 @@ export function CalibrationGrid({ session, rows, readOnly, onSave, saving }: Pro
                     <p className="text-sm">{classLabel(detail.last_review_classification)}</p>
                   </div>
                 )}
+
+                <Button
+                  asChild
+                  size="sm"
+                  variant="outline"
+                  className="rounded-xl w-full"
+                >
+                  <Link to={`/lider/avaliacoes/${detail.member_id}`}>
+                    <FileText className="h-3.5 w-3.5 mr-1.5" />
+                    Ver a avaliação formal desta pessoa
+                  </Link>
+                </Button>
 
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-2">

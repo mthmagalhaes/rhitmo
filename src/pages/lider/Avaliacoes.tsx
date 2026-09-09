@@ -12,6 +12,7 @@ import { MemberMasterList } from '@/components/leader/MemberMasterList';
 import { ReviewsCoverageInsight } from '@/components/leader/avaliacoes/ReviewsCoverageInsight';
 import { ReviewsCrossMemberTable } from '@/components/leader/avaliacoes/ReviewsCrossMemberTable';
 import { ReviewsMemberDetail } from '@/components/leader/avaliacoes/ReviewsMemberDetail';
+import { CalibrationEntryCard } from '@/components/leader/avaliacoes/CalibrationEntryCard';
 import { CreateFormalReviewDialog } from '@/components/review/CreateFormalReviewDialog';
 import { useState } from 'react';
 import type { LeaderMemberRow } from '@/hooks/useLeaderMembers';
@@ -70,6 +71,8 @@ export default function LiderAvaliacoes() {
                 </p>
               </div>
             </section>
+
+            <CalibrationEntryCard workspaceId={workspace?.id ?? null} />
 
             <ReviewsCrossMemberTable
               members={members}
