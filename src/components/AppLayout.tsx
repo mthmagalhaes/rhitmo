@@ -148,7 +148,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
       <div className="min-h-dvh flex w-full">
         <AppSidebar />
-        <SidebarInset className="flex-1">
+        <SidebarInset className="flex-1 min-w-0">
           <header className="flex h-14 items-center gap-4 border-b px-4 lg:hidden bg-card">
             <SidebarTrigger data-tour="sidebar" />
             <span className="font-semibold text-foreground flex-1">Rhitmo</span>
@@ -165,7 +165,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           
           {showActivity && <RoleContextBanner />}
 
-          <main key={roleTheme} className="flex-1 role-transition" id="main-content">
+          <main key={roleTheme} className="flex-1 min-w-0 role-transition" id="main-content">
             <Suspense fallback={<RouteSkeleton />}>
               {children}
             </Suspense>

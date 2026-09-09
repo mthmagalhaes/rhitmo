@@ -172,8 +172,8 @@ export function ReviewsCrossMemberTable({
         </div>
 
         {/* Tabela — Formal-first: Últ. Formal antes de Últ. Mensal */}
-        <div className="rounded-3xl border bg-card overflow-hidden shadow-[0_2px_28px_rgba(0,0,0,0.04)]">
-          <div className="grid grid-cols-[1.4fr_0.9fr_1fr_1fr_0.9fr_1.1fr_auto] gap-3 px-4 py-2.5 text-[11px] uppercase tracking-wider text-muted-foreground border-b bg-muted/20">
+        <div className="rounded-3xl border bg-card overflow-x-auto shadow-[0_2px_28px_rgba(0,0,0,0.04)]">
+          <div className="grid min-w-[860px] grid-cols-[minmax(200px,2.2fr)_minmax(110px,1fr)_minmax(90px,0.9fr)_minmax(130px,1.2fr)_minmax(110px,1fr)_minmax(130px,1.2fr)_auto] gap-3 px-4 py-2.5 text-[11px] uppercase tracking-wider text-muted-foreground border-b bg-muted/20">
             <div>Liderado</div>
             <div>Time</div>
             <div>Últ. Formal</div>
@@ -203,18 +203,25 @@ export function ReviewsCrossMemberTable({
                   key={m.id}
                   onClick={() => onOpenMember(m)}
                   className={cn(
-                    "w-full text-left grid grid-cols-[1.4fr_0.9fr_1fr_1fr_0.9fr_1.1fr_auto] gap-3 items-center px-4 py-2.5 border-b last:border-b-0 hover:bg-muted/40 hover:opacity-100 transition-all",
+                    "w-full text-left grid min-w-[860px] grid-cols-[minmax(200px,2.2fr)_minmax(110px,1fr)_minmax(90px,0.9fr)_minmax(130px,1.2fr)_minmax(110px,1fr)_minmax(130px,1.2fr)_auto] gap-3 items-center px-4 py-2.5 border-b last:border-b-0 hover:bg-muted/40 hover:opacity-100 transition-all",
                     isOk && "opacity-60",
                   )}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <MemberAvatar memberId={m.id} memberName={m.name} avatarUrl={m.avatar} size="sm" />
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium truncate">{m.name}</div>
-                      {m.role && (
-                        <div className="text-xs text-muted-foreground truncate">{m.role}</div>
-                      )}
-                    </div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium truncate">{m.name}</div>
+                          {m.role && (
+                            <div className="text-xs text-muted-foreground truncate">{m.role}</div>
+                          )}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="text-xs">
+                        {m.name}{m.role ? ` · ${m.role}` : ''}
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
                   <div className="text-sm text-muted-foreground truncate">
                     {m.team_id ? teamById[m.team_id] ?? '—' : '—'}

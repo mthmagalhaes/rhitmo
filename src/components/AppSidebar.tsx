@@ -44,6 +44,8 @@ import { MentorChat } from '@/components/MentorChat';
 import { NewMemberDialog } from '@/components/NewMemberDialog';
 import { cn } from '@/lib/utils';
 import { prefetchRoute } from '@/lib/routeLoaders';
+import { prefetchRouteData } from '@/lib/routeDataPrefetch';
+import { useQueryClient } from '@tanstack/react-query';
 
 export function AppSidebar() {
   const { t } = useTranslation();
@@ -51,6 +53,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const { isAdmin } = useAdmin();
   const { id: effectiveUserId, isImpersonating } = useEffectiveUser();
@@ -181,8 +184,14 @@ export function AppSidebar() {
                     to={item.to}
                     end
                     aria-label={item.ariaLabel ?? t(item.labelKey)}
-                    onMouseEnter={() => prefetchRoute(item.to)}
-                    onFocus={() => prefetchRoute(item.to)}
+                    onMouseEnter={() => {
+                      prefetchRoute(item.to);
+                      prefetchRouteData(queryClient, item.to, effectiveUserId);
+                    }}
+                    onFocus={() => {
+                      prefetchRoute(item.to);
+                      prefetchRouteData(queryClient, item.to, effectiveUserId);
+                    }}
                     className={cn(
                       'rounded-xl tracking-tight font-medium transition-colors',
                       'text-sidebar-foreground/75 hover:text-sidebar-foreground hover:bg-sidebar-accent/40',

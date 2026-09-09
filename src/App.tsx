@@ -71,13 +71,19 @@ import {
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 60_000,
-      gcTime: 10 * 60_000,
+      // Navegação entre páginas na mesma sessão deve ser instantânea: dados já
+      // buscados continuam válidos por 5 min e ficam em cache por 30 min, e a
+      // remontagem da tela não dispara refetch (a revalidação acontece só
+      // quando o dado fica realmente velho ou após invalidação explícita).
+      staleTime: 5 * 60_000,
+      gcTime: 30 * 60_000,
+      refetchOnMount: false,
       refetchOnWindowFocus: false,
       retry: 1,
     },
   },
 });
+
 
 const PublicFallback = () => (
   <div className="min-h-dvh flex items-center justify-center bg-background">
