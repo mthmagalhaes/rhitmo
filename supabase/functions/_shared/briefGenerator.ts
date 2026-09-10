@@ -440,6 +440,13 @@ Conecte os tópicos com padrões já observados nas últimas 1:1s e na memória 
 Se um tópico já aparece pela 3ª reunião seguida sem resolução, sinalize explicitamente no coaching_reminder.
 Baseie-se APENAS no contexto fornecido. Se não há histórico, sugira tópicos genéricos de 1:1 (check-in de bem-estar, alinhamento de prioridades).`;
 
+  // Prompt vive na alma (soul/modes/one-on-one-draft.md) — nunca inline.
+  const systemPrompt = await composeSystemPrompt({
+    mode: 'one-on-one-draft',
+    channel: 'document',
+    vars: { memberName, memberRole },
+  });
+
   const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
     headers: {
