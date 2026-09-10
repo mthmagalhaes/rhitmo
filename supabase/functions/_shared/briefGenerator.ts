@@ -1,7 +1,7 @@
 // Shared brief generator — used by /brief web (generate-brief) and Slack
 // "Gerar Pauta" button (slack-bot:prep_1on1_brief). Keeps a single source of
 // truth for AI brief content + cache to avoid drift between surfaces.
-import { RHITMO_IDENTITY, GUARDRAILS_PROMPT } from "./rhitmo-constitution.ts";
+import { composeSystemPrompt } from "./soul/loader.ts";
 
 export interface BriefData {
   suggested_agenda: { topic: string; rationale: string }[];

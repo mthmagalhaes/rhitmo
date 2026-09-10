@@ -29,7 +29,7 @@ function readDoc(relPath: string): string {
   return stripped;
 }
 
-export type Channel = "web" | "slack" | "whatsapp";
+export type Channel = "web" | "slack" | "whatsapp" | "document";
 
 export type Mode =
   | "leader-member"
@@ -39,7 +39,9 @@ export type Mode =
   | "one-on-one-prep"
   | "self-review"
   | "monthly-recap"
-  | "quarterly-recap";
+  | "quarterly-recap"
+  | "formal-review-draft"
+  | "one-on-one-draft";
 
 // Variáveis opcionais reconhecidas pelos modos novos (v2 da alma):
 //   sessionSummary, sessionCount, pendingActions,
@@ -114,12 +116,29 @@ const MODE_BLOCKS: Record<Mode, string[]> = {
     "08-disc-calibration.md",
     "modes/quarterly-recap.md",
   ],
+  // Rhitmo 2.0 — Bloco 3 (Auto Draft): rascunhos sob demanda do líder.
+  "formal-review-draft": [
+    "00-identity.md",
+    "01-guardrails.md",
+    "02-analysis-matrix.md",
+    "03-tone-and-format.md",
+    "05-citations.md",
+    "modes/formal-review-draft.md",
+  ],
+  "one-on-one-draft": [
+    "00-identity.md",
+    "01-guardrails.md",
+    "03-tone-and-format.md",
+    "05-citations.md",
+    "modes/one-on-one-draft.md",
+  ],
 };
 
 const CHANNEL_BLOCK: Record<Channel, string> = {
   web: "channels/web.md",
   slack: "channels/slack.md",
   whatsapp: "channels/whatsapp.md",
+  document: "channels/document.md",
 };
 
 export interface ComposeOptions {

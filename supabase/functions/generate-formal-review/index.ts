@@ -1,5 +1,6 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { RHITMO_IDENTITY, GUARDRAILS_PROMPT } from "../_shared/rhitmo-constitution.ts";
+import { RHITMO_IDENTITY } from "../_shared/rhitmo-constitution.ts";
+import { composeSystemPrompt } from "../_shared/soul/loader.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -340,119 +341,102 @@ Deno.serve(async (req) => {
       evidenceText += "\n## ⚠️ ALERTA DE EVIDÊNCIA BAIXA\nEsta review está sendo gerada com pouca evidência crua (menos de 3 itens entre anotações, 1:1s, pulses, peer e 360°). Os recaps confirmados pelo líder estão presentes, mas é recomendado que o líder confirme cuidadosamente antes de compartilhar. Reflita esse alerta no rodapé da review.\n";
     }
 
+    // ============ REDE DE COLABORAÇÃO (ONA passivo) ============
+    // Padrão agregado apenas: com quem a pessoa trabalha de fato e sinais
+    // ativos. NUNCA conteúdo de mensagem.
+    try {
+      const { data: edges } = await supabase
+        .from("team_network_edges")
+        .select("member_a_id, member_b_id, weight_total")
+        .eq("window_days", 30)
+        .or(`member_a_id.eq.${member.id},member_b_id.eq.${member.id}`)
+        .order("weight_total", { ascending: false })
+        .limit(5);
+
+      const peerIds = (edges ?? [])
+        .map((e: any) => (e.member_a_id === member.id ? e.member_b_id : e.member_a_id))
+        .filter(Boolean);
+
+      let networkText = "";
+      if (peerIds.length > 0) {
+        const { data: peers } = await supabase
+          .from("team_members")
+          .select("id, name")
+          .in("id", peerIds);
+        const names = (peers ?? []).map((p: any) => p.name).filter(Boolean).slice(0, 4);
+        if (names.length > 0) {
+          networkText += `Colaboração real nos últimos 30 dias (intensidade agregada, sem conteúdo de mensagem): ${names.join(", ")}.\n`;
+        }
+      }
+
+      const { data: signals } = await supabase
+        .from("network_signals")
+        .select("signal_type, severity, detected_at")
+        .eq("member_id", member.id)
+        .is("acknowledged_at", null)
+        .order("detected_at", { ascending: false })
+        .limit(3);
+
+      if (signals && signals.length > 0) {
+        networkText += `Sinais de rede ativos: ${signals
+          .map((s: any) => `${s.signal_type} (${s.severity}, ${new Date(s.detected_at).toLocaleDateString("pt-BR")})`)
+          .join("; ")}.\n`;
+      }
+
+      if (networkText) {
+        evidenceText += "\n## 🕸️ REDE DE COLABORAÇÃO (padrão agregado, não é evidência de desempenho isolada):\n\n" + networkText + "\n";
+      }
+    } catch (err) {
+      console.warn("[generate-formal-review] network context skipped:", err);
+    }
+
+    // ============ DECISÕES DE CALIBRAÇÃO CONFIRMADAS ============
+    try {
+      const { data: decisions } = await supabase
+        .from("calibration_decisions")
+        .select("classification, promotion_recommendation, loss_risk, merit_recommendation, note, confirmed_at, calibration_sessions!inner(cycle_label, period_start, period_end)")
+        .eq("member_id", member.id)
+        .not("confirmed_at", "is", null)
+        .order("confirmed_at", { ascending: false })
+        .limit(2);
+
+      const relevant = (decisions ?? []).filter((d: any) => {
+        const s = d.calibration_sessions;
+        return s && s.period_end >= periodStart && s.period_start <= periodEnd;
+      });
+
+      if (relevant.length > 0) {
+        evidenceText += "\n## ⚖️ DECISÕES DE CALIBRAÇÃO CONFIRMADAS PELO LÍDER (o Bloco 6 deve ser coerente com elas):\n\n";
+        relevant.forEach((d: any) => {
+          const s = d.calibration_sessions;
+          evidenceText += `**Ciclo ${s.cycle_label}** (confirmada em ${new Date(d.confirmed_at).toLocaleDateString("pt-BR")})\n`;
+          if (d.classification) evidenceText += `Desempenho decidido: ${d.classification}\n`;
+          if (d.promotion_recommendation) evidenceText += `Promoção decidida: ${d.promotion_recommendation}\n`;
+          if (d.merit_recommendation) evidenceText += `Mérito decidido: ${d.merit_recommendation}\n`;
+          if (d.loss_risk) evidenceText += `Risco de perda: ${d.loss_risk}\n`;
+          if (d.note) evidenceText += `Nota da calibração: ${d.note}\n`;
+          evidenceText += "\n";
+        });
+      }
+    } catch (err) {
+      console.warn("[generate-formal-review] calibration context skipped:", err);
+    }
+
     const memberName = member.name;
     const firstName = memberName.split(" ")[0];
     const periodLabel = `de ${new Date(periodStart).toLocaleDateString("pt-BR")} a ${new Date(periodEnd).toLocaleDateString("pt-BR")}`;
 
-    const systemPrompt = `# RHITMO - GERADOR DE AVALIAÇÃO FORMAL DE DESEMPENHO v3
-
-## IDENTIDADE
-${RHITMO_IDENTITY}
-
-## REGRAS DE OURO
-${GUARDRAILS_PROMPT}
-
-## MISSÃO
-Gerar um RASCUNHO de avaliação formal de desempenho para **${memberName}** (${member.role || "cargo não definido"}).
-Período: ${periodLabel}.
-
-## CRÍTICO - FORMATO DE OUTPUT
-- Retorne APENAS Markdown puro, sem explicações antes ou depois.
-- NÃO use code fences (\`\`\`md, \`\`\`markdown ou \`\`\`).
-- NÃO use HTML (sem <div>, <span>, <table>, etc.).
-- Comece DIRETAMENTE com "## 📋 Visão geral do período".
-- Cite SEMPRE a fonte de cada afirmação entre parênteses em itálico **com a data completa no formato DD/MM/AAAA**, ex: *(fonte: Anotação 12/03/2026)* ou *(1:1 de 15/02/2026)* ou *(Trimestral Q1 2026)* ou *(Mensal de fev/2026)*. NUNCA abrevie data como "12/mar" — sempre DD/MM/AAAA. O frontend transforma isso em pílula visual automaticamente.
-- ADICIONALMENTE, para cada anotação ou 1:1 citado que tenha um \`[doc_id: <UUID>]\` no contexto de evidências abaixo, anexe ao final da frase a referência estruturada no formato \`[doc:<UUID>]\` (sem parênteses, sem itálico). Exemplo: "Entregou o redesign do checkout. *(fonte: Anotação 12/03/2026)* [doc:8af1b2c3-...]". Use APENAS UUIDs que apareceram em \`doc_id\` — nunca invente.
-
-## ESTRUTURA OBRIGATÓRIA — 7 BLOCOS NA ORDEM EXATA
-
-### Bloco 1 — Visão geral do período (NARRATIVO, não lista)
-
-## 📋 Visão geral do período
-
-Parágrafo único de 3 a 5 linhas descrevendo o arco do colaborador no período. Conte a história — não liste fatos. Evite bullets.
-
-### Bloco 2 — Principais contribuições (3 a 5 itens, ordenados por impacto)
-
-## 🏆 Principais contribuições
-
-### Nome curto da entrega
-Descrição da entrega + impacto concreto. *(fonte: Anotação 12/03/2026)*
-
-### Outra entrega
-Descrição + impacto. *(fonte: 1:1 de 06/03/2026)*
-
-Repetir o padrão "### título / parágrafo" 3 a 5 vezes, sempre com fonte ao final no formato DD/MM/AAAA.
-
-### Bloco 3 — Padrões observados (vindos dos trimestrais quando existirem)
-
-## 📈 Padrões observados
-
-### ✅ Padrão positivo recorrente
-O que se repetiu de bom + frequência. *(Trimestral Q1 2026)*
-
-### ⚠️ Padrão de atenção recorrente
-O que se repetiu de preocupante + frequência. *(Mensal de fev/2026)*
-
-### Bloco 4 — Pontos de desenvolvimento (linguagem CUIDADOSA — vai passar por bias detection)
-
-## 🎯 Pontos de desenvolvimento
-
-### Nome da área
-Descrição construtiva, factual, sem rótulos de personalidade ou comparações. *(1:1 de 15/02/2026)*
-
-Repetir 1 a 3 áreas.
-
-### Bloco 5 — Avaliação por dimensões (4 dimensões fixas)
-
-## 📊 Avaliação por dimensões
-
-**O que entregou** — Resultados concretos e action items do período. *(fonte)*
-
-**Como trabalhou** — Comportamentos observados em feedbacks e 1:1s. *(fonte)*
-
-**Como cresceu** — Evolução vs ciclo anterior, comparado aos acompanhamentos. *(fonte)*
-
-**Onde precisa evoluir** — Padrões de atenção que se repetiram nos resumos mensais. *(fonte)*
-
-Use SEMPRE o padrão "**Label** — Texto. *(fonte)*" em parágrafos separados, NÃO em lista.
-
-### Bloco 6 — Classificação, promoção e mérito (IA SUGERE com justificativa de 1 linha)
-
-## ⚖️ Classificação, promoção e mérito
-
-**Desempenho:** Dentro do esperado / Subindo a barra / Acima do esperado / Precisa subir
-> Justificativa em uma linha baseada nos padrões observados.
-
-**Promoção:** Não neste ciclo / Em 1-2 ciclos / Pronta agora
-> Justificativa em uma linha. Se "Pronta agora", indique também o risco de perda (Baixo/Médio/Alto).
-
-**Mérito:** Sem ajuste / Somente inflação / Inflação + mérito
-> Justificativa em uma linha conectando à classificação.
-
-_O gestor confirma estas escolhas na aba Calibração antes de compartilhar com o liderado._
-
-### Bloco 7 — Próximos passos (UMA ação principal para o próximo ciclo)
-
-## ➡️ Próximos passos
-
-- Ação principal de desenvolvimento para o próximo ciclo, conectada à classificação acima.
-- Acompanhamento sugerido (1:1 quinzenal, projeto X, etc.).
-
-## REGRAS CRÍTICAS
-
-1. **Anti-Alucinação**: Use APENAS as evidências fornecidas. Sempre cite a fonte ao final de cada afirmação no formato *(fonte: ...)* ou *(Trimestral ...)* ou *(Mensal de ...)* ou *(1:1 de ...)*.
-2. **NÃO invente** fatos, comportamentos, entregas ou situações não documentados.
-3. **Se houver poucas evidências em algum bloco**, escreva "Sem evidência suficiente neste período" em vez de inventar.
-4. **Tom**: Profissional, construtivo, respeitoso. No bloco 4, evite rótulos de personalidade ("é tímida", "é agressivo"), comparações ("melhor que X") e generalizações ("sempre", "nunca").
-5. **Tamanho total**: 350-600 palavras.
-6. **Foco em ${memberName}**: Analise APENAS ações de ${firstName}. Ignore ações de outras pessoas mencionadas.
-7. **APENAS Markdown**. Sem HTML. Sem tabelas em pipe. Sem code fences no output.
-8. **HIERARQUIA DE EVIDÊNCIAS (RAG completo)**: A **base** da review são as evidências cruas (anotações, 1:1s, sinais de contexto, pulses, peer feedback e 360°). Os recaps confirmados pelo líder ("CALIBRAÇÕES JÁ CONFIRMADAS PELO LÍDER") são uma **camada de ancoragem/triangulação** — use-os para validar padrões dos blocos 3, 5 e 6, mas NUNCA como única fonte. Sempre que possível, ancore a afirmação em uma evidência crua específica via \`[doc:UUID]\`. Se o recap diz uma coisa e a evidência crua mostra outra, prevalece a evidência crua e mencione a divergência no Bloco 4.
-9. **Citação de 360°**: Quando uma afirmação se apoiar em autoavaliação, par ou upwards, identifique a fonte no parêntese com data completa: *(autoavaliação de DD/MM/AAAA)*, *(par anônimo, DD/MM/AAAA)* ou *(upwards de DD/MM/AAAA)* — além do \`[doc:UUID]\`. NUNCA omita o ano.
-10. **Bloco 6 — sugestões da IA**: Sempre proponha um valor concreto para Desempenho, Promoção e Mérito. Se não houver evidência suficiente, sugira o conservador ("Dentro do esperado", "Não neste ciclo", "Somente inflação") e justifique.
-11. **Emojis nos títulos**: Mantenha EXATAMENTE os emojis indicados em cada bloco (📋 🏆 📈 🎯 📊 ⚖️ ➡️). Não substitua nem omita.
-12. **Alerta de evidência baixa**: Se o contexto trouxer "⚠️ ALERTA DE EVIDÊNCIA BAIXA", adicione UM parágrafo final em itálico recomendando que o líder confirme cuidadosamente antes de compartilhar.`;
+    // Prompt vive na alma (soul/modes/formal-review-draft.md) — nunca inline.
+    const systemPrompt = await composeSystemPrompt({
+      mode: "formal-review-draft",
+      channel: "document",
+      vars: {
+        memberName,
+        firstName,
+        memberRole: member.role || "cargo não definido",
+        periodLabel,
+      },
+    });
 
     const userPrompt = `EVIDÊNCIAS DO PERÍODO:
 - Cruas: ${feedbackCount} anotações, ${meetingCount} 1:1s, ${ctxCount} sinais de contexto, ${pulseCount} pulses, ${peerCount} peer feedbacks, ${reviews360Count} reviews 360°
