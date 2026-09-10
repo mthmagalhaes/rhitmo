@@ -25,9 +25,12 @@ const FILES = [
   "modes/pulse-survey.md",
   "modes/quarterly-recap.md",
   "modes/self-review.md",
+  "modes/formal-review-draft.md",
+  "modes/one-on-one-draft.md",
   "channels/web.md",
   "channels/slack.md",
   "channels/whatsapp.md",
+  "channels/document.md",
 ];
 
 const BASE = new URL("./", import.meta.url);

@@ -75,10 +75,38 @@ const BriefPage = () => {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
 
+  // Auto Draft (Rhitmo 2.0 — Bloco 3): a pauta só é escrita quando o líder
+  // pede. Ao abrir a tela carregamos apenas a reunião e um rascunho já salvo.
+  const generateDraft = async (force = false) => {
+    if (!meetingId) return;
+    setError('');
+    setGenerating(true);
+    try {
+      const { data: fnData, error: fnError } = await supabase.functions.invoke('generate-brief', {
+        body: { meetingId, force },
+      });
+      if (fnError) {
+        console.error('Brief generation error:', fnError);
+        setError('Erro ao gerar o rascunho da pauta. Tente novamente.');
+        return;
+      }
+      if (fnData?.brief) {
+        setBrief(fnData.brief);
+        if (fnData.member_name) setMemberName(fnData.member_name);
+        if (fnData.member_id) setMemberId(fnData.member_id);
+      }
+    } catch (e) {
+      console.error(e);
+      setError('Erro inesperado ao gerar o rascunho.');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   useEffect(() => {
     if (!user || !meetingId) return;
 
-    const fetchMeetingAndBrief = async () => {
+    const fetchMeeting = async () => {
       setLoading(true);
       try {
         const { data: mtg, error: mtgErr } = await supabase
@@ -107,42 +135,18 @@ const BriefPage = () => {
         }
 
         const mtgAny = mtg as any;
-        if (mtgAny.brief_cache && mtgAny.brief_generated_at) {
-          const generatedAt = new Date(mtgAny.brief_generated_at);
-          if (generatedAt > new Date(Date.now() - 30 * 60 * 1000)) {
-            setBrief(mtgAny.brief_cache as BriefData);
-            setLoading(false);
-            return;
-          }
+        if (mtgAny.brief_cache) {
+          setBrief(mtgAny.brief_cache as BriefData);
         }
-
-        setLoading(false);
-        setGenerating(true);
-        const { data: fnData, error: fnError } = await supabase.functions.invoke('generate-brief', {
-          body: { meetingId },
-        });
-
-        if (fnError) {
-          console.error('Brief generation error:', fnError);
-          setError('Erro ao gerar o brief. Tente novamente.');
-          setGenerating(false);
-          return;
-        }
-        if (fnData?.brief) {
-          setBrief(fnData.brief);
-          if (fnData.member_name) setMemberName(fnData.member_name);
-          if (fnData.member_id) setMemberId(fnData.member_id);
-        }
-        setGenerating(false);
       } catch (e) {
         console.error(e);
         setError('Erro inesperado.');
+      } finally {
         setLoading(false);
-        setGenerating(false);
       }
     };
 
-    fetchMeetingAndBrief();
+    fetchMeeting();
   }, [user, meetingId]);
 
   const matched = useMemo(() => (brief ? matchPendingToAgenda(brief) : null), [brief]);
@@ -159,7 +163,7 @@ const BriefPage = () => {
     );
   }
 
-  if (error) {
+  if (error && !meeting) {
     return (
       <div className="max-w-2xl mx-auto p-4 sm:p-6">
         <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4 gap-2 rounded-xl">
@@ -218,18 +222,59 @@ const BriefPage = () => {
         </div>
       </div>
 
+      {error && (
+        <p className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+          {error}
+        </p>
+      )}
+
       {/* Generating state */}
       {generating && !brief && (
         <div className="rounded-2xl bg-card border border-border/50 shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-8">
           <div className="flex flex-col items-center justify-center gap-4">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <div className="text-center">
-              <p className="text-sm font-medium text-foreground">Preparando seu brief...</p>
+              <p className="text-sm font-medium text-foreground">Escrevendo o rascunho da pauta...</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Analisando histórico e pendências com IA
+                Olhando o que mudou desde a última conversa
               </p>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Auto Draft sob demanda: nada é escrito antes do líder pedir */}
+      {!generating && !brief && (
+        <div className="rounded-2xl bg-card border border-border/50 shadow-[0_2px_20px_rgba(0,0,0,0.04)] p-8 text-center">
+          <p className="text-sm font-medium text-foreground">
+            A Rhitmo pode escrever o primeiro rascunho da pauta
+          </p>
+          <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">
+            Com base no que mudou desde a última conversa: pendências abertas, evidências novas e
+            padrões de colaboração. Você edita antes da reunião.
+          </p>
+          <Button className="mt-4 rounded-xl gap-2" onClick={() => generateDraft(false)}>
+            <PenSquare className="h-4 w-4" />
+            Gerar rascunho da pauta
+          </Button>
+        </div>
+      )}
+
+      {brief && (
+        <div className="flex items-center justify-between gap-3 rounded-2xl bg-muted/40 px-4 py-3">
+          <p className="text-xs text-muted-foreground">
+            Rascunho da Rhitmo. Revise e ajuste antes da conversa.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-xl gap-2 shrink-0"
+            disabled={generating}
+            onClick={() => generateDraft(true)}
+          >
+            {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <PenSquare className="h-4 w-4" />}
+            Gerar novamente
+          </Button>
         </div>
       )}
 

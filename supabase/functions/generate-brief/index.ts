@@ -39,7 +39,7 @@ serve(async (req) => {
       });
     }
 
-    const { meetingId } = await req.json();
+    const { meetingId, force } = await req.json();
     if (!meetingId) {
       return new Response(JSON.stringify({ error: "meetingId is required" }), {
         status: 400,
@@ -55,6 +55,7 @@ serve(async (req) => {
         user.id,
         adminClient,
         Deno.env.get("LOVABLE_API_KEY"),
+        { force: force === true },
       );
       return new Response(
         JSON.stringify({

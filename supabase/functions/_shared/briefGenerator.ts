@@ -1,7 +1,7 @@
 // Shared brief generator — used by /brief web (generate-brief) and Slack
 // "Gerar Pauta" button (slack-bot:prep_1on1_brief). Keeps a single source of
 // truth for AI brief content + cache to avoid drift between surfaces.
-import { RHITMO_IDENTITY, GUARDRAILS_PROMPT } from "./rhitmo-constitution.ts";
+import { composeSystemPrompt } from "./soul/loader.ts";
 
 export interface BriefData {
   suggested_agenda: { topic: string; rationale: string }[];
@@ -99,6 +99,7 @@ export async function generateBriefForMeeting(
   expectedUserId: string,
   adminClient: any,
   lovableApiKey: string | undefined,
+  opts: { force?: boolean } = {},
 ): Promise<BriefResult> {
   // 1. Fetch meeting (full row — caller already authorized)
   const { data: meeting, error: meetingErr } = await adminClient
@@ -128,7 +129,7 @@ export async function generateBriefForMeeting(
   const memberRole = member?.role ?? '';
 
   // 3. Cache (30 min)
-  if (meeting.brief_cache && meeting.brief_generated_at) {
+  if (!opts.force && meeting.brief_cache && meeting.brief_generated_at) {
     const generatedAt = new Date(meeting.brief_generated_at).getTime();
     if (generatedAt > Date.now() - 30 * 60 * 1000) {
       return {
@@ -439,6 +440,13 @@ Conecte os tópicos com padrões já observados nas últimas 1:1s e na memória 
 Se um tópico já aparece pela 3ª reunião seguida sem resolução, sinalize explicitamente no coaching_reminder.
 Baseie-se APENAS no contexto fornecido. Se não há histórico, sugira tópicos genéricos de 1:1 (check-in de bem-estar, alinhamento de prioridades).`;
 
+  // Prompt vive na alma (soul/modes/one-on-one-draft.md) — nunca inline.
+  const systemPrompt = await composeSystemPrompt({
+    mode: 'one-on-one-draft',
+    channel: 'document',
+    vars: { memberName, memberRole },
+  });
+
   const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -448,7 +456,7 @@ Baseie-se APENAS no contexto fornecido. Se não há histórico, sugira tópicos 
     body: JSON.stringify({
       model: 'google/gemini-2.5-flash',
       messages: [
-        { role: 'system', content: RHITMO_IDENTITY + '\n' + GUARDRAILS_PROMPT },
+        { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
       tools: [
