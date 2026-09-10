@@ -163,7 +163,7 @@ const BriefPage = () => {
     );
   }
 
-  if (error) {
+  if (error && !meeting) {
     return (
       <div className="max-w-2xl mx-auto p-4 sm:p-6">
         <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4 gap-2 rounded-xl">
