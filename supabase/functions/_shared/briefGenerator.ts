@@ -99,6 +99,7 @@ export async function generateBriefForMeeting(
   expectedUserId: string,
   adminClient: any,
   lovableApiKey: string | undefined,
+  opts: { force?: boolean } = {},
 ): Promise<BriefResult> {
   // 1. Fetch meeting (full row — caller already authorized)
   const { data: meeting, error: meetingErr } = await adminClient
@@ -128,7 +129,7 @@ export async function generateBriefForMeeting(
   const memberRole = member?.role ?? '';
 
   // 3. Cache (30 min)
-  if (meeting.brief_cache && meeting.brief_generated_at) {
+  if (!opts.force && meeting.brief_cache && meeting.brief_generated_at) {
     const generatedAt = new Date(meeting.brief_generated_at).getTime();
     if (generatedAt > Date.now() - 30 * 60 * 1000) {
       return {
@@ -448,7 +449,7 @@ Baseie-se APENAS no contexto fornecido. Se não há histórico, sugira tópicos 
     body: JSON.stringify({
       model: 'google/gemini-2.5-flash',
       messages: [
-        { role: 'system', content: RHITMO_IDENTITY + '\n' + GUARDRAILS_PROMPT },
+        { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
       tools: [
