@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   BookOpen, Rocket, Users, Sparkles, FileText, Search, Check,
   NotebookPen, MessageSquare, BarChart3, CalendarCheck, Award,
@@ -19,6 +19,7 @@ import { RhythmWave } from '@/components/RhythmWave';
 import { WaveDivider } from '@/components/WaveDivider';
 import { useUserRole } from '@/hooks/useUserRole';
 import { SLACK_COMMANDS } from '@/lib/slackCommands';
+import { useOnboardingTour } from '@/hooks/useOnboardingTour';
 
 interface FeatureCard {
   id: string;
@@ -360,6 +361,14 @@ export const HelpCenterContent = () => {
   const [search, setSearch] = useState('');
   const [openCardId, setOpenCardId] = useState<string | undefined>(undefined);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { variant: tourVariant, reset: resetTour } = useOnboardingTour();
+
+  const handleReplayTour = async () => {
+    await resetTour();
+    const tourHome = tourVariant === 'hr' ? '/hr' : '/lider/inicio';
+    navigate(`${tourHome}?startTour=1`);
+  };
 
   useEffect(() => {
     const hash = location.hash.replace('#', '');
@@ -411,14 +420,22 @@ export const HelpCenterContent = () => {
           <p className="text-muted-foreground max-w-xl">
             Tudo o que você precisa saber para dominar a gestão contínua de performance — do primeiro login às avaliações formais.
           </p>
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar no guia..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 rounded-xl"
-            />
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="relative max-w-md flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar no guia..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10 rounded-xl"
+              />
+            </div>
+            {tourVariant && (
+              <Button variant="outline" className="rounded-xl gap-2 shrink-0" onClick={handleReplayTour}>
+                <Sparkles className="h-4 w-4" />
+                Refazer o tour guiado
+              </Button>
+            )}
           </div>
         </div>
       </div>

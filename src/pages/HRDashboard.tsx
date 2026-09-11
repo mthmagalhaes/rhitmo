@@ -13,6 +13,7 @@ import {
 
 import { HRAutoAlertsSection } from '@/components/hr/HRAutoAlertsSection';
 import { MonthlyReportButton } from '@/components/hr/MonthlyReportButton';
+import { HRSetupChecklist } from '@/components/hr/HRSetupChecklist';
 
 interface LeaderActivity {
   manager_id: string;
@@ -77,7 +78,7 @@ const HRDashboard = () => {
         <div className="absolute inset-0 flex items-end">
           <RhythmWave variant="hero" className="opacity-60" />
         </div>
-        <div className="relative max-w-6xl mx-auto px-6 py-10 sm:py-12">
+        <div data-tour="hr-overview" className="relative max-w-6xl mx-auto px-6 py-10 sm:py-12">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary mb-3">Painel de Liderança</p>
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground font-serif">Visão Geral</h1>
           <p className="text-sm text-muted-foreground mt-2">{workspaceName}</p>
@@ -98,6 +99,7 @@ const HRDashboard = () => {
 
         {!isPreview && (
           <>
+            <HRSetupChecklist workspaceId={workspaceId} leaderCount={metrics?.total_leaders ?? 0} />
             <section className="flex items-center justify-end gap-3">
               <MonthlyReportButton workspaceId={workspaceId} />
             </section>

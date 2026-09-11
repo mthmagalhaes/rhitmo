@@ -642,7 +642,7 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
         />
 
         {/* ═══ 2. PRÓXIMAS 1:1s ═══ */}
-        <section className="mb-12">
+        <section className="mb-12" data-tour="upcoming-1on1s">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-4">
             Próximas 1:1s
           </p>
@@ -650,7 +650,9 @@ const Index = ({ activeTab }: { activeTab?: string }) => {
         </section>
 
         {/* ═══ 3. HISTÓRICO DO MENTOR ═══ */}
-        <MentorHistoryCard onOpenMentor={handleOpenMentor} />
+        <div data-tour="mentor-entry">
+          <MentorHistoryCard onOpenMentor={handleOpenMentor} />
+        </div>
       </section>
 
       {/* ═══ DIALOGS ═══ */}

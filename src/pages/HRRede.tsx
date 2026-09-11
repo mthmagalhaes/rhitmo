@@ -39,7 +39,7 @@ export default function HRRede() {
   }, [edges, teamFilter]);
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+    <div data-tour="hr-network" className="max-w-5xl mx-auto px-4 py-6 space-y-6">
       <header className="space-y-1">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">

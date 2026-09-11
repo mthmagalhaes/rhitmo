@@ -44,8 +44,10 @@ export function WorkspaceSwitcher({ onOpenInvite }: WorkspaceSwitcherProps) {
 
   const handleReplayTour = async () => {
     await resetTour();
-    if (window.location.pathname !== '/lider/inicio') {
-      navigate('/lider/inicio?startTour=1');
+    // Cada papel volta para a sua casa antes de o tour começar.
+    const tourHome = persona === 'hr_admin' ? '/hr' : '/lider/inicio';
+    if (window.location.pathname !== tourHome) {
+      navigate(`${tourHome}?startTour=1`);
     } else {
       window.dispatchEvent(new CustomEvent('rhitmo:start-tour'));
     }

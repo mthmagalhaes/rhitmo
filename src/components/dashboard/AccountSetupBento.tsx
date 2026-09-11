@@ -167,6 +167,7 @@ export function AccountSetupBento({ workspaceId, memberCount, onOpenInvite }: Pr
           return (
             <div
               key={card.id}
+              data-tour={card.id === 'notetaker' ? 'notetaker-card' : undefined}
               className={cn(
                 'group relative flex flex-col rounded-2xl border border-border/50 bg-card p-5',
                 'shadow-[0_2px_20px_rgba(0,0,0,0.04)] transition-all',

@@ -94,7 +94,7 @@ export default function HRRitmo() {
     <div className="min-h-dvh">
       {/* Header */}
       <div className="border-b border-border/40 bg-gradient-to-b from-muted/40 to-transparent">
-        <div className="max-w-6xl mx-auto px-6 py-10 sm:py-12">
+        <div data-tour="hr-ritmo" className="max-w-6xl mx-auto px-6 py-10 sm:py-12">
           <div className="flex items-center gap-2 mb-3">
             <span className="h-px w-6 bg-primary/50" />
             <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
