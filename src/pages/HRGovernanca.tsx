@@ -106,7 +106,7 @@ export default function HRGovernanca() {
   const exportPeople = async () => {
     setExporting(true);
     const { data, error } = await supabase.rpc('get_workspace_people', {
-      _workspace_id: workspaceId,
+      p_workspace_id: workspaceId,
     });
     setExporting(false);
     if (error) {

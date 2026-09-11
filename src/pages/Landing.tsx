@@ -1440,7 +1440,7 @@ const Landing = () => {
             <ul className="space-y-3 text-sm text-slate-500">
               <li><Link to="/terms-of-service" className="hover:text-slate-900 transition-colors">{t.footerTerms}</Link></li>
               <li><Link to="/privacy-policy" className="hover:text-slate-900 transition-colors">{t.footerPrivacy}</Link></li>
-              <li><Link to="/confianca" className="hover:text-slate-900 transition-colors">{lang === 'pt' ? 'Confiança e Segurança' : lang === 'es' ? 'Confianza y Seguridad' : 'Trust & Security'}</Link></li>
+              <li><Link to="/confianca" className="hover:text-slate-900 transition-colors">{lang === 'pt' ? 'Confiança e Segurança' : 'Trust & Security'}</Link></li>
               <li><Link to="/auth" className="hover:text-slate-900 transition-colors">{t.footerLogin}</Link></li>
             </ul>
           </div>
@@ -1450,7 +1450,7 @@ const Landing = () => {
           <div className="flex gap-6 uppercase tracking-[0.2em] font-bold">
             <span>LGPD</span>
             <Link to="/confianca" className="hover:text-slate-900 transition-colors">
-              {lang === 'pt' ? 'Confiança' : lang === 'es' ? 'Confianza' : 'Trust'}
+              {lang === 'pt' ? 'Confiança' : 'Trust'}
             </Link>
           </div>
         </div>
