@@ -7,9 +7,10 @@ import { HRAdminWorkspaceOnboarding } from '@/components/HRAdminWorkspaceOnboard
 import { ActivityBadge } from '@/components/ActivityBadge';
 import { ActivitySheet } from '@/components/ActivitySheet';
 // driver.js is only needed when the guided tour runs — keep it lazy.
-const LeaderTour = lazy(() =>
-  import('@/components/onboarding/LeaderTour').then((m) => ({ default: m.LeaderTour }))
+const GuidedTour = lazy(() =>
+  import('@/components/onboarding/GuidedTour').then((m) => ({ default: m.GuidedTour }))
 );
+import { useOnboardingTour } from '@/hooks/useOnboardingTour';
 import { useAuth } from '@/hooks/useAuth';
 import { useAccount } from '@/contexts/AccountContext';
 import { AccountLoadFailed, AccountLoadingSlow, AccountLoadingDelayedBanner } from '@/components/AccountLoadFailed';
@@ -38,6 +39,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const roleTheme = useRoleTheme();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [tourRunning, setTourRunning] = useState(false);
+  const {
+    variant: tourVariant,
+    shouldShowTour,
+    markComplete: markTourComplete,
+    registerAttempt: registerTourAttempt,
+  } = useOnboardingTour();
 
   // Listen to URL ?startTour=1 and `rhitmo:start-tour` event from anywhere in the app.
   useEffect(() => {
@@ -52,6 +59,20 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     window.addEventListener('rhitmo:start-tour', handler);
     return () => window.removeEventListener('rhitmo:start-tour', handler);
   }, []);
+
+  // Auto-start: primeira visita de líder/RH ganha o tour sozinho, com um
+  // respiro para a tela terminar de montar. Reoferecido no máximo 2 vezes.
+  useEffect(() => {
+    if (tourRunning || !shouldShowTour || !tourVariant) return;
+    if (accountLoading || authLoading) return;
+    if (needsWorkspaceSetup || needsHRAdminWorkspaceSetup) return;
+    const timer = window.setTimeout(() => {
+      void registerTourAttempt();
+      setTourRunning(true);
+    }, 1400);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldShowTour, tourVariant, accountLoading, authLoading, tourRunning]);
 
   // Read persona intent (set during signup persona selector or OAuth round-trip).
   // Uses sessionStorage with localStorage fallback — see src/lib/signupPersona.ts.
@@ -180,9 +201,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         />
       )}
 
-      {tourRunning && (
+      {tourRunning && tourVariant && (
         <Suspense fallback={null}>
-          <LeaderTour autoStart onClose={() => setTourRunning(false)} />
+          <GuidedTour
+            variant={tourVariant}
+            autoStart
+            onComplete={() => void markTourComplete()}
+            onClose={() => setTourRunning(false)}
+          />
         </Suspense>
       )}
 

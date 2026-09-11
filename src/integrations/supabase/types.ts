@@ -3393,7 +3393,10 @@ export type Database = {
         Row: {
           created_at: string | null
           hide_slack_privacy_tips: boolean | null
+          hr_tour_attempts: number
+          hr_tour_completed_at: string | null
           id: string
+          onboarding_tour_attempts: number
           onboarding_tour_completed_at: string | null
           theme_preference: string
           updated_at: string | null
@@ -3402,7 +3405,10 @@ export type Database = {
         Insert: {
           created_at?: string | null
           hide_slack_privacy_tips?: boolean | null
+          hr_tour_attempts?: number
+          hr_tour_completed_at?: string | null
           id?: string
+          onboarding_tour_attempts?: number
           onboarding_tour_completed_at?: string | null
           theme_preference?: string
           updated_at?: string | null
@@ -3411,7 +3417,10 @@ export type Database = {
         Update: {
           created_at?: string | null
           hide_slack_privacy_tips?: boolean | null
+          hr_tour_attempts?: number
+          hr_tour_completed_at?: string | null
           id?: string
+          onboarding_tour_attempts?: number
           onboarding_tour_completed_at?: string | null
           theme_preference?: string
           updated_at?: string | null

@@ -138,7 +138,7 @@ export default function HRGovernanca() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6">
+    <div data-tour="hr-governance" className="max-w-5xl mx-auto p-6 space-y-6">
       <header>
         <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
           Governança de dados
