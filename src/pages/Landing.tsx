@@ -55,9 +55,44 @@ const translations = {
     getStarted: "Começar grátis",
     toggleTheme: "Alternar tema",
     // Hero
-    heroTitle: "Nunca mais escreva uma avaliação de desempenho do zero.",
-    heroSubtitle: "O que levava 2 horas agora leva poucos minutos. Rhitmo é a plataforma AI-first feita para líderes que transforma anotações, conversas e sinais em avaliações de performance justas e prontas.",
+    heroTitle: "Sua liderança já tem um histórico. A Rhitmo transforma ele em decisões.",
+    heroSubtitle: "A Rhitmo parte das conversas que já acontecem no seu time. Ela guarda quem trabalha com quem, junta as evidências do dia a dia, mostra os padrões que se repetem e devolve pauta de 1:1, rascunho de avaliação e alerta de risco com a fonte sempre à vista.",
     seePlans: "Preços",
+
+    // Quatro camadas
+    layersOverline: "Como a Rhitmo funciona",
+    layersTitle: "Quatro camadas, uma sequência só.",
+    layersSubtitle: "Nada disso é módulo separado. Uma camada alimenta a próxima, e é por isso que a última entrega vem com evidência anexada.",
+    layers: [
+      {
+        n: "01",
+        tag: "Pessoas",
+        title: "Quem é quem no seu time",
+        body: "Liderados, times, cargos e o que se espera de cada nível. É a base que permite comparar o observado com o esperado, em vez de comparar pessoas entre si.",
+        example: "Exemplo: a régua de competências do cargo entra no rascunho da avaliação.",
+      },
+      {
+        n: "02",
+        tag: "Evidências",
+        title: "O que de fato aconteceu",
+        body: "Anotações de 1:1, notas importadas do seu note taker, feedbacks registrados, sinais de trabalho no Slack e participação em reuniões. Nada é inventado e tudo fica com data.",
+        example: "Exemplo: você cola a nota do Granola ou Fireflies e ela vira evidência datada.",
+      },
+      {
+        n: "03",
+        tag: "Padrões",
+        title: "O que se repete ao longo do tempo",
+        body: "Ritmo das conversas, temas recorrentes, colaboração entre áreas e riscos que crescem devagar. A Rhitmo enxerga o que só aparece quando você olha três meses de uma vez.",
+        example: "Exemplo: o mapa de colaboração mostra quem trabalha junto, nunca o conteúdo da conversa.",
+      },
+      {
+        n: "04",
+        tag: "Percepções",
+        title: "O que fazer com isso, hoje",
+        body: "Pauta da próxima 1:1, rascunho de avaliação formal, pré-leitura de calibração e sinais de atenção. Cada afirmação vem com a evidência que a sustenta, e você decide o que fica.",
+        example: "Exemplo: cada trecho do rascunho aponta para a anotação que o originou.",
+      },
+    ],
     
     // Journey (Meet Ana — Windmill style)
     journeyOverline: "Como funciona",
