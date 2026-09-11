@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Activity,
   Network,
+  ShieldCheck,
   type LucideIcon,
 } from 'lucide-react';
 
