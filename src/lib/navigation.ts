@@ -49,6 +49,8 @@ export const HR_ADMIN_NAV_ITEMS: NavItem[] = [
   { id: 'ritmo', labelKey: 'nav.hr.ritmo', icon: Activity, to: '/hr/ritmo' },
   // Mapa de colaboração da empresa (ONA passivo).
   { id: 'rede', labelKey: 'nav.hr.rede', icon: Network, to: '/hr/rede' },
+  // Registro de acessos, prazo de guarda e exportação/exclusão de dados.
+  { id: 'governanca', labelKey: 'nav.hr.governanca', icon: ShieldCheck, to: '/hr/governanca' },
   // Analytics de RH continua acessível por /hr/analytics, fora do menu principal.
 ];
 

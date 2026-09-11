@@ -215,6 +215,7 @@ const App = () => (
               <Route path="/review/:reviewId" element={Public(<DirectReportReviewView />)} />
               <Route path="/terms-of-service" element={Public(<TermsOfService />)} />
               <Route path="/privacy-policy" element={Public(<PrivacyPolicy />)} />
+              <Route path="/confianca" element={Public(<TrustCenter />)} />
               <Route path="/enterprise" element={Public(<Enterprise />)} />
               <Route path="/reset-password" element={Public(<ResetPassword />)} />
               <Route path="/auth/google/callback" element={Public(<GoogleCalendarCallback />)} />
@@ -237,6 +238,7 @@ const App = () => (
               <Route path="/hr/members" element={<Navigate to="/hr/pessoas" replace />} />
               <Route path="/hr/ritmo" element={<AppLayout><HRAdminGuard><HRRitmo /></HRAdminGuard></AppLayout>} />
               <Route path="/hr/rede" element={<AppLayout><HRAdminGuard><HRRede /></HRAdminGuard></AppLayout>} />
+              <Route path="/hr/governanca" element={<AppLayout><HRAdminGuard><HRGovernanca /></HRAdminGuard></AppLayout>} />
               <Route path="/hr/pessoas" element={<AppLayout><HRAdminGuard><HRPessoas /></HRAdminGuard></AppLayout>} />
               <Route path="/hr/competency-framework" element={<Navigate to="/hr" replace />} />
 
