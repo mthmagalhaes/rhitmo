@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -88,6 +88,17 @@ export function MemberProfileSheet({
 }: MemberProfileSheetProps) {
   const qc = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
+  // Registro de auditoria: RH abriu a ficha de uma pessoa.
+  useEffect(() => {
+    if (!open || !memberId || !workspaceId) return;
+    void supabase.rpc('log_access_event', {
+      _workspace_id: workspaceId,
+      _action: 'view_member_profile',
+      _resource_type: 'team_member',
+      _resource_id: memberId,
+      _member_id: memberId,
+    });
+  }, [open, memberId, workspaceId]);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [acting, setActing] = useState(false);
 
