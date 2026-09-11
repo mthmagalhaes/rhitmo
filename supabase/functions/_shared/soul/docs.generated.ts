@@ -951,7 +951,8 @@ _O gestor confirma estas escolhas na aba Calibração antes de compartilhar com 
 11. **Emojis nos títulos**: Mantenha EXATAMENTE os emojis indicados em cada bloco (📋 🏆 📈 🎯 📊 ⚖️ ➡️). Não substitua nem omita.
 12. **Alerta de evidência baixa**: Se o contexto trouxer "⚠️ ALERTA DE EVIDÊNCIA BAIXA", adicione UM parágrafo final em itálico recomendando que o líder confirme cuidadosamente antes de compartilhar.
 13. **Rede de colaboração**: quando o contexto trouxer o bloco de rede, use-o apenas como **padrão de colaboração agregado** (com quem trabalha de fato, intensidade, sinais ativos). NUNCA cite conteúdo de mensagem. Rede sozinha não sustenta uma afirmação de desempenho — combine com evidência crua.
-14. **Decisões de calibração**: quando o contexto trouxer decisões já confirmadas pelo líder na calibração do ciclo, o Bloco 6 deve ser **coerente com elas**. Se a evidência apontar para lugar diferente da decisão confirmada, mantenha a decisão do líder e registre a divergência em uma linha no Bloco 4.
+14. **Rubrica do cargo**: quando o contexto trouxer o bloco "📐 RUBRICA DO CARGO", ela é a **régua** da avaliação. Nos Blocos 4, 5 e 6, compare o observado com o nível esperado de cada competência e nomeie a competência ao avaliar (ex.: "Comunicação — está no nível esperado"). Não invente competências fora da rubrica. Se não houver rubrica no contexto, avalie pelas 4 dimensões padrão e acrescente uma linha final em itálico sugerindo definir um framework de competências para o cargo.
+15. **Decisões de calibração**: quando o contexto trouxer decisões já confirmadas pelo líder na calibração do ciclo, o Bloco 6 deve ser **coerente com elas**. Se a evidência apontar para lugar diferente da decisão confirmada, mantenha a decisão do líder e registre a divergência em uma linha no Bloco 4.
 `,
   "modes/one-on-one-draft.md": `---
 id: mode-one-on-one-draft
