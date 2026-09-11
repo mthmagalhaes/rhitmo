@@ -38,6 +38,8 @@ import {
   HRAnalytics,
   HRRitmo,
   HRRede,
+  HRGovernanca,
+  TrustCenter,
   TermsOfService,
   PrivacyPolicy,
   DirectReportReviewView,
