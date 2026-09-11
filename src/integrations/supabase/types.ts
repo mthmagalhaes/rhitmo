@@ -4281,6 +4281,7 @@ export type Database = {
           weight_total: number
         }[]
       }
+      normalize_attendees: { Args: { _att: Json }; Returns: Json }
       open_or_resume_slack_conversation: {
         Args: {
           p_intent?: string
