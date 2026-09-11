@@ -422,6 +422,49 @@ Deno.serve(async (req) => {
       console.warn("[generate-formal-review] calibration context skipped:", err);
     }
 
+    // ============ RUBRICA DO CARGO (framework de competências) ============
+    // Toda avaliação ancora numa rubrica explícita quando o cargo tem framework.
+    let hasRubric = false;
+    try {
+      if ((review as any).job_role_id) {
+        const { data: roleComps } = await supabase
+          .from("role_competencies")
+          .select("expected_level, is_required, weight, competencies!inner(id, name, description)")
+          .eq("job_role_id", (review as any).job_role_id);
+
+        if (roleComps && roleComps.length > 0) {
+          const compIds = roleComps.map((rc: any) => rc.competencies?.id).filter(Boolean);
+          const { data: levelDescs } = await supabase
+            .from("competency_level_descriptions")
+            .select("competency_id, seniority_level, description")
+            .in("competency_id", compIds);
+
+          let rubricText = "";
+          roleComps.forEach((rc: any) => {
+            const c = rc.competencies;
+            if (!c) return;
+            const expected = rc.expected_level ?? null;
+            const desc = (levelDescs ?? []).find(
+              (l: any) => l.competency_id === c.id && String(l.seniority_level) === String(expected),
+            );
+            rubricText += `**${c.name}**${expected ? ` — nível esperado: ${expected}` : ""}${rc.is_required ? " (obrigatória)" : ""}\n`;
+            if (c.description) rubricText += `${c.description}\n`;
+            if (desc?.description) rubricText += `Esperado neste nível: ${desc.description}\n`;
+            rubricText += "\n";
+          });
+
+          if (rubricText) {
+            hasRubric = true;
+            evidenceText +=
+              "\n## 📐 RUBRICA DO CARGO (o que é 'bom' neste papel — use como régua dos Blocos 4, 5 e 6):\n\n" +
+              rubricText;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("[generate-formal-review] rubric context skipped:", err);
+    }
+
     const memberName = member.name;
     const firstName = memberName.split(" ")[0];
     const periodLabel = `de ${new Date(periodStart).toLocaleDateString("pt-BR")} a ${new Date(periodEnd).toLocaleDateString("pt-BR")}`;

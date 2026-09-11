@@ -77,9 +77,32 @@ Deno.serve(async (req) => {
     }
   }
 
-  console.log(`purge-recall-recordings: ${purged} expurgados, ${failed} falhas, cutoff ${cutoff}`);
+  // Prazo de guarda por empresa: apaga o texto das transcrições vencidas
+  // conforme `workspaces.transcript_retention_days` (padrão 365 dias).
+  let transcriptsPurged = 0;
+  const { data: retentionRows, error: retentionError } = await supabaseAdmin.rpc(
+    "purge_expired_transcripts",
+    { _limit: 500 },
+  );
+  if (retentionError) {
+    console.warn("purge: retenção de transcrições falhou:", retentionError.message);
+  } else {
+    for (const row of (retentionRows ?? []) as Array<{ workspace_id: string; retention_days: number; purged: number }>) {
+      transcriptsPurged += row.purged;
+      await supabaseAdmin.from("access_audit_log").insert({
+        workspace_id: row.workspace_id,
+        action: "purge_transcripts",
+        resource_type: "meeting_transcripts",
+        metadata: { retention_days: row.retention_days, purged: row.purged },
+      });
+    }
+  }
 
-  return new Response(JSON.stringify({ purged, failed, cutoff }), {
+  console.log(
+    `purge-recall-recordings: ${purged} mídias expurgadas, ${failed} falhas, ${transcriptsPurged} transcrições limpas, cutoff ${cutoff}`,
+  );
+
+  return new Response(JSON.stringify({ purged, failed, transcripts_purged: transcriptsPurged, cutoff }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });
