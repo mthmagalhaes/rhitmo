@@ -6,7 +6,7 @@ import { ProfileSettingsDialog } from '@/components/ProfileSettingsDialog';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { User, CreditCard, Plug, LifeBuoy, Slack, Calendar, Pencil, Loader2, Link as LinkIcon, Unlink, Check, Shield } from 'lucide-react';
+import { User, CreditCard, Plug, LifeBuoy, Slack, Calendar, Pencil, Loader2, Link as LinkIcon, Unlink, Check, Shield, ShieldCheck } from 'lucide-react';
 import { ConnectorFrame } from '@/components/brand/ConnectorFrame';
 import { Badge } from '@/components/ui/badge';
 import { useSlackConnection } from '@/hooks/useSlackConnection';
@@ -18,6 +18,7 @@ import { BotHoursCard } from '@/components/settings/BotHoursCard';
 import { SlackHealthPanel } from '@/components/leader/settings/SlackHealthPanel';
 
 import { AccessTab } from '@/components/settings/AccessTab';
+import { SecurityTab } from '@/components/settings/SecurityTab';
 
 function ProfileTab() {
   const [open, setOpen] = useState(false);
@@ -211,6 +212,7 @@ export default function LiderConfiguracoes() {
       hidden: !canManageAccess,
       content: <AccessTab />,
     },
+    { value: 'seguranca', label: 'Segurança', icon: ShieldCheck, content: <SecurityTab /> },
     { value: 'ajuda', label: 'Ajuda', icon: LifeBuoy, content: <HelpCenterContent /> },
   ];
   return (

@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_audit_log: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_user_id: string
+          created_at: string
+          id: string
+          member_id: string | null
+          metadata: Json
+          resource_id: string | null
+          resource_type: string
+          workspace_id: string
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_user_id: string
+          created_at?: string
+          id?: string
+          member_id?: string | null
+          metadata?: Json
+          resource_id?: string | null
+          resource_type: string
+          workspace_id: string
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_user_id?: string
+          created_at?: string
+          id?: string
+          member_id?: string | null
+          metadata?: Json
+          resource_id?: string | null
+          resource_type?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       admin_impersonation: {
         Row: {
           admin_user_id: string
@@ -3491,6 +3530,7 @@ export type Database = {
           paid_seats: number
           plan_tier: string
           seat_cycle: string
+          transcript_retention_days: number
           ui_version: string
           updated_at: string
         }
@@ -3512,6 +3552,7 @@ export type Database = {
           paid_seats?: number
           plan_tier?: string
           seat_cycle?: string
+          transcript_retention_days?: number
           ui_version?: string
           updated_at?: string
         }
@@ -3533,6 +3574,7 @@ export type Database = {
           paid_seats?: number
           plan_tier?: string
           seat_cycle?: string
+          transcript_retention_days?: number
           ui_version?: string
           updated_at?: string
         }
@@ -4147,6 +4189,17 @@ export type Database = {
           status: string
           user_id: string
         }[]
+      }
+      log_access_event: {
+        Args: {
+          _action: string
+          _member_id?: string
+          _metadata?: Json
+          _resource_id?: string
+          _resource_type: string
+          _workspace_id: string
+        }
+        Returns: undefined
       }
       manage_hr_admin: {
         Args: { _action: string; _user_id: string; _workspace_id: string }

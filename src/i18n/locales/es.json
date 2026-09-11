@@ -1325,7 +1325,8 @@
     "convidar_membros": "Invitar miembros",
     "skip_to_content": "Saltar al contenido",
     "hr": {
-      "rede": "Red"
+      "rede": "Red",
+      "governanca": "Gobernanza"
     }
   },
   "membersGrid": {

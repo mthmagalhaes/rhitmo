@@ -1,7 +1,9 @@
 // Mapa de colaboração da empresa inteira (ONA) — visão de RH.
 // Restrito a HR Admin, Owner e Super Admin pela própria consulta no banco.
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Network } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useHRAdmin } from '@/components/HRAdminGuard';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useWorkspaceNetwork, type NetworkWindow } from '@/hooks/useTeamNetwork';
 import { NetworkExplorer } from '@/components/network/NetworkExplorer';
@@ -10,6 +12,17 @@ export default function HRRede() {
   const [windowDays, setWindowDays] = useState<NetworkWindow>(30);
   const [teamFilter, setTeamFilter] = useState<string>('all');
   const { data: edges = [], isLoading } = useWorkspaceNetwork(windowDays);
+  const { workspaceId } = useHRAdmin();
+
+  // Registro de auditoria: alguém abriu o mapa de colaboração da empresa.
+  useEffect(() => {
+    if (!workspaceId) return;
+    void supabase.rpc('log_access_event', {
+      _workspace_id: workspaceId,
+      _action: 'view_network',
+      _resource_type: 'network',
+    });
+  }, [workspaceId]);
 
   const teams = useMemo(() => {
     const map = new Map<string, string>();
