@@ -266,9 +266,44 @@ const translations = {
     signIn: "Sign in",
     getStarted: "Get started free",
     toggleTheme: "Toggle theme",
-    heroTitle: "Never write a performance review from scratch again.",
-    heroSubtitle: "What took 4 hours now takes 2 minutes. Rhitmo is the only AI-native leadership partner that turns your conversations into ready-made reviews.",
+    heroTitle: "Your leadership already has a track record. Rhitmo turns it into decisions.",
+    heroSubtitle: "Rhitmo starts from the conversations your team already has. It keeps who works with whom, gathers day-to-day evidence, surfaces the patterns that repeat, and hands back 1:1 agendas, review drafts and risk signals with the source always in sight.",
     seePlans: "Pricing",
+
+    // Four layers
+    layersOverline: "How Rhitmo works",
+    layersTitle: "Four layers, one sequence.",
+    layersSubtitle: "These are not separate modules. Each layer feeds the next, which is why the final output always arrives with its evidence attached.",
+    layers: [
+      {
+        n: "01",
+        tag: "People",
+        title: "Who is who on your team",
+        body: "Reports, teams, roles and what each level is expected to deliver. This is the base that lets you compare what was observed with what was expected, instead of comparing people with each other.",
+        example: "Example: the role's competency rubric goes into the review draft.",
+      },
+      {
+        n: "02",
+        tag: "Evidence",
+        title: "What actually happened",
+        body: "1:1 notes, notes imported from your note taker, recorded feedback, work signals in Slack and meeting participation. Nothing is invented and everything carries a date.",
+        example: "Example: paste a Granola or Fireflies note and it becomes dated evidence.",
+      },
+      {
+        n: "03",
+        tag: "Patterns",
+        title: "What repeats over time",
+        body: "Conversation cadence, recurring themes, cross-team collaboration and risks that grow slowly. Rhitmo sees what only shows up when you look at three months at once.",
+        example: "Example: the collaboration map shows who works together, never what was said.",
+      },
+      {
+        n: "04",
+        tag: "Insights",
+        title: "What to do about it, today",
+        body: "The next 1:1 agenda, the formal review draft, the calibration pre-read and attention signals. Every claim carries the evidence behind it, and you decide what stays.",
+        example: "Example: each passage in the draft points back to the note it came from.",
+      },
+    ],
     
     // Journey (Meet Ana — Windmill style)
     journeyOverline: "How it works",
