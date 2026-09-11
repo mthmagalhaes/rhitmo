@@ -144,19 +144,19 @@ const translations = {
     uspCTA: "Ver Rhitmo em Ação",
     // Leaders
     forLeaders: "Para Líderes",
-    leadersTitle: "Automatize o operacional. Lidere com confiança.",
-    leadersP1: "Rhitmo transforma anotações soltas em avaliações de desempenho completas. Sem gastar 4 horas copiando e colando de planilhas. 30 segundos e você tem um draft pronto.",
-    leadersP2: "Insights automáticos decodificam o estilo de trabalho de cada liderado. Esqueceu a 1:1 de janeiro? A IA lembra. Tudo vira evidência na hora da review.",
+    leadersTitle: "Você lidera. A Rhitmo guarda a evidência.",
+    leadersP1: "Cada 1:1, nota importada e conversa registrada vira evidência datada no lugar certo. Quando chega a hora de preparar a próxima conversa ou escrever a avaliação, o material já está reunido e você revisa em vez de reconstruir o trimestre de memória.",
+    leadersP2: "A pauta da 1:1 e o rascunho da avaliação saem quando você pede, com a fonte anexada em cada trecho. Você continua dono do texto e da decisão.",
     // Reports
     forReports: "Para Pessoas Lideradas",
-    reportsTitle: "Avaliações justas. Carreira sem surpresas.",
-    reportsP1: "Mulheres recebem 38x mais feedback negativo que homens. Rhitmo detecta viés e garante que todas as suas entregas sejam lembradas. Baseado em fatos, não na memória recente do gestor.",
-    reportsP2: "Receba planos de desenvolvimento personalizados com o caminho exato para o próximo nível. A avaliação vira alavanca, não burocracia.",
+    reportsTitle: "Sem surpresa no fim do ciclo.",
+    reportsP1: "O que você entregou ao longo do trimestre fica registrado com data, não depende da memória recente de quem avalia. A avaliação chega apoiada em fatos que você reconhece.",
+    reportsP2: "Anotações privadas do líder continuam privadas. O que é compartilhado com você aparece marcado como tal, e você vê exatamente o que foi compartilhado.",
     // HR
     forHR: "Para RH",
-    hrTitle: "Escale a cultura. Elimine o gargalo operacional.",
-    hrP1: "Seus gestores gastavam muitas horas para elaborar review mal feitas. Com Rhitmo, eles levam 2 minutos para avaliações mais justas. Isso são centenas de horas devolvidas por ciclo de avaliação, sem perder qualidade.",
-    hrP2: "Além disso, todo líder tem um coaching de liderança personalizado. RH possui visibilidade total de métricas de saúde dos times.",
+    hrTitle: "Enxergue os padrões antes que virem problema.",
+    hrP1: "Ritmo de conversas por time, cobertura de 1:1s, colaboração entre áreas e sinais de atenção que crescem devagar. O RH acompanha a saúde da liderança sem precisar ler anotação de ninguém.",
+    hrP2: "Ciclos de avaliação e calibração ficam apoiados na mesma base de evidência. Registro de acessos, prazo de guarda e exportação ficam na área de Governança.",
     // Pricing
     pricingTitle: "Simples. Transparente.",
     pricingSubtitle: "Sem plano mensal. A mudança de cultura na liderança exige no mínimo 90 dias de consistência.",
