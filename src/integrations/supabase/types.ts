@@ -4308,6 +4308,14 @@ export type Database = {
         }
       }
       prune_graph_events_raw: { Args: never; Returns: number }
+      purge_expired_transcripts: {
+        Args: { _limit?: number }
+        Returns: {
+          purged: number
+          retention_days: number
+          workspace_id: string
+        }[]
+      }
       rebuild_slack_cron_jobs: {
         Args: {
           p_anon_key: string
