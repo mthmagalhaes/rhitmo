@@ -1318,6 +1318,42 @@ const Landing = () => {
         }}
       />
 
+      {/* ============== QUATRO CAMADAS ============== */}
+      <section id="camadas" className="py-20 px-6 bg-white">
+        <div className="max-w-5xl mx-auto">
+          <div className="max-w-3xl mb-14">
+            <p className="inline-flex items-center gap-3 text-[11px] uppercase font-mono tracking-[0.25em] text-slate-500 font-semibold mb-6">
+              <span className="h-px w-8 bg-slate-300" aria-hidden="true" />
+              {t.layersOverline}
+            </p>
+            <h2 className="font-serif text-4xl md:text-6xl font-bold tracking-tight leading-[1.05] text-slate-900">
+              {t.layersTitle}
+            </h2>
+            <p className="text-lg text-slate-500 mt-6 max-w-2xl leading-relaxed">
+              {t.layersSubtitle}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {t.layers.map((layer) => (
+              <article
+                key={layer.n}
+                className="rounded-3xl border border-slate-100 bg-white p-7 shadow-[0_2px_20px_rgba(0,0,0,0.04)] transition-transform hover:-translate-y-1"
+              >
+                <div className="flex items-center gap-3 mb-5">
+                  <span className="font-mono text-[11px] tracking-[0.25em] text-slate-400">{layer.n}</span>
+                  <span className="text-[11px] font-semibold uppercase font-mono tracking-[0.2em] text-indigo-700">{layer.tag}</span>
+                </div>
+                <h3 className="font-serif text-2xl font-bold tracking-tight text-slate-900 leading-snug">
+                  {layer.title}
+                </h3>
+                <p className="text-base text-slate-500 leading-relaxed mt-3">{layer.body}</p>
+                <p className="text-sm text-slate-400 mt-5 pt-4 border-t border-slate-100">{layer.example}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
 
 
       {/* ============== NUMBERS — EDITORIAL ============== */}
