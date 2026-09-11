@@ -55,9 +55,44 @@ const translations = {
     getStarted: "Começar grátis",
     toggleTheme: "Alternar tema",
     // Hero
-    heroTitle: "Nunca mais escreva uma avaliação de desempenho do zero.",
-    heroSubtitle: "O que levava 2 horas agora leva poucos minutos. Rhitmo é a plataforma AI-first feita para líderes que transforma anotações, conversas e sinais em avaliações de performance justas e prontas.",
+    heroTitle: "Sua liderança já tem um histórico. A Rhitmo transforma ele em decisões.",
+    heroSubtitle: "A Rhitmo parte das conversas que já acontecem no seu time. Ela guarda quem trabalha com quem, junta as evidências do dia a dia, mostra os padrões que se repetem e devolve pauta de 1:1, rascunho de avaliação e alerta de risco com a fonte sempre à vista.",
     seePlans: "Preços",
+
+    // Quatro camadas
+    layersOverline: "Como a Rhitmo funciona",
+    layersTitle: "Quatro camadas, uma sequência só.",
+    layersSubtitle: "Nada disso é módulo separado. Uma camada alimenta a próxima, e é por isso que a última entrega vem com evidência anexada.",
+    layers: [
+      {
+        n: "01",
+        tag: "Pessoas",
+        title: "Quem é quem no seu time",
+        body: "Liderados, times, cargos e o que se espera de cada nível. É a base que permite comparar o observado com o esperado, em vez de comparar pessoas entre si.",
+        example: "Exemplo: a régua de competências do cargo entra no rascunho da avaliação.",
+      },
+      {
+        n: "02",
+        tag: "Evidências",
+        title: "O que de fato aconteceu",
+        body: "Anotações de 1:1, notas importadas do seu note taker, feedbacks registrados, sinais de trabalho no Slack e participação em reuniões. Nada é inventado e tudo fica com data.",
+        example: "Exemplo: você cola a nota do Granola ou Fireflies e ela vira evidência datada.",
+      },
+      {
+        n: "03",
+        tag: "Padrões",
+        title: "O que se repete ao longo do tempo",
+        body: "Ritmo das conversas, temas recorrentes, colaboração entre áreas e riscos que crescem devagar. A Rhitmo enxerga o que só aparece quando você olha três meses de uma vez.",
+        example: "Exemplo: o mapa de colaboração mostra quem trabalha junto, nunca o conteúdo da conversa.",
+      },
+      {
+        n: "04",
+        tag: "Percepções",
+        title: "O que fazer com isso, hoje",
+        body: "Pauta da próxima 1:1, rascunho de avaliação formal, pré-leitura de calibração e sinais de atenção. Cada afirmação vem com a evidência que a sustenta, e você decide o que fica.",
+        example: "Exemplo: cada trecho do rascunho aponta para a anotação que o originou.",
+      },
+    ],
     
     // Journey (Meet Ana — Windmill style)
     journeyOverline: "Como funciona",
@@ -109,19 +144,19 @@ const translations = {
     uspCTA: "Ver Rhitmo em Ação",
     // Leaders
     forLeaders: "Para Líderes",
-    leadersTitle: "Automatize o operacional. Lidere com confiança.",
-    leadersP1: "Rhitmo transforma anotações soltas em avaliações de desempenho completas. Sem gastar 4 horas copiando e colando de planilhas. 30 segundos e você tem um draft pronto.",
-    leadersP2: "Insights automáticos decodificam o estilo de trabalho de cada liderado. Esqueceu a 1:1 de janeiro? A IA lembra. Tudo vira evidência na hora da review.",
+    leadersTitle: "Você lidera. A Rhitmo guarda a evidência.",
+    leadersP1: "Cada 1:1, nota importada e conversa registrada vira evidência datada no lugar certo. Quando chega a hora de preparar a próxima conversa ou escrever a avaliação, o material já está reunido e você revisa em vez de reconstruir o trimestre de memória.",
+    leadersP2: "A pauta da 1:1 e o rascunho da avaliação saem quando você pede, com a fonte anexada em cada trecho. Você continua dono do texto e da decisão.",
     // Reports
     forReports: "Para Pessoas Lideradas",
-    reportsTitle: "Avaliações justas. Carreira sem surpresas.",
-    reportsP1: "Mulheres recebem 38x mais feedback negativo que homens. Rhitmo detecta viés e garante que todas as suas entregas sejam lembradas. Baseado em fatos, não na memória recente do gestor.",
-    reportsP2: "Receba planos de desenvolvimento personalizados com o caminho exato para o próximo nível. A avaliação vira alavanca, não burocracia.",
+    reportsTitle: "Sem surpresa no fim do ciclo.",
+    reportsP1: "O que você entregou ao longo do trimestre fica registrado com data, não depende da memória recente de quem avalia. A avaliação chega apoiada em fatos que você reconhece.",
+    reportsP2: "Anotações privadas do líder continuam privadas. O que é compartilhado com você aparece marcado como tal, e você vê exatamente o que foi compartilhado.",
     // HR
     forHR: "Para RH",
-    hrTitle: "Escale a cultura. Elimine o gargalo operacional.",
-    hrP1: "Seus gestores gastavam muitas horas para elaborar review mal feitas. Com Rhitmo, eles levam 2 minutos para avaliações mais justas. Isso são centenas de horas devolvidas por ciclo de avaliação, sem perder qualidade.",
-    hrP2: "Além disso, todo líder tem um coaching de liderança personalizado. RH possui visibilidade total de métricas de saúde dos times.",
+    hrTitle: "Enxergue os padrões antes que virem problema.",
+    hrP1: "Ritmo de conversas por time, cobertura de 1:1s, colaboração entre áreas e sinais de atenção que crescem devagar. O RH acompanha a saúde da liderança sem precisar ler anotação de ninguém.",
+    hrP2: "Ciclos de avaliação e calibração ficam apoiados na mesma base de evidência. Registro de acessos, prazo de guarda e exportação ficam na área de Governança.",
     // Pricing
     pricingTitle: "Simples. Transparente.",
     pricingSubtitle: "Sem plano mensal. A mudança de cultura na liderança exige no mínimo 90 dias de consistência.",
@@ -231,9 +266,44 @@ const translations = {
     signIn: "Sign in",
     getStarted: "Get started free",
     toggleTheme: "Toggle theme",
-    heroTitle: "Never write a performance review from scratch again.",
-    heroSubtitle: "What took 4 hours now takes 2 minutes. Rhitmo is the only AI-native leadership partner that turns your conversations into ready-made reviews.",
+    heroTitle: "Your leadership already has a track record. Rhitmo turns it into decisions.",
+    heroSubtitle: "Rhitmo starts from the conversations your team already has. It keeps who works with whom, gathers day-to-day evidence, surfaces the patterns that repeat, and hands back 1:1 agendas, review drafts and risk signals with the source always in sight.",
     seePlans: "Pricing",
+
+    // Four layers
+    layersOverline: "How Rhitmo works",
+    layersTitle: "Four layers, one sequence.",
+    layersSubtitle: "These are not separate modules. Each layer feeds the next, which is why the final output always arrives with its evidence attached.",
+    layers: [
+      {
+        n: "01",
+        tag: "People",
+        title: "Who is who on your team",
+        body: "Reports, teams, roles and what each level is expected to deliver. This is the base that lets you compare what was observed with what was expected, instead of comparing people with each other.",
+        example: "Example: the role's competency rubric goes into the review draft.",
+      },
+      {
+        n: "02",
+        tag: "Evidence",
+        title: "What actually happened",
+        body: "1:1 notes, notes imported from your note taker, recorded feedback, work signals in Slack and meeting participation. Nothing is invented and everything carries a date.",
+        example: "Example: paste a Granola or Fireflies note and it becomes dated evidence.",
+      },
+      {
+        n: "03",
+        tag: "Patterns",
+        title: "What repeats over time",
+        body: "Conversation cadence, recurring themes, cross-team collaboration and risks that grow slowly. Rhitmo sees what only shows up when you look at three months at once.",
+        example: "Example: the collaboration map shows who works together, never what was said.",
+      },
+      {
+        n: "04",
+        tag: "Insights",
+        title: "What to do about it, today",
+        body: "The next 1:1 agenda, the formal review draft, the calibration pre-read and attention signals. Every claim carries the evidence behind it, and you decide what stays.",
+        example: "Example: each passage in the draft points back to the note it came from.",
+      },
+    ],
     
     // Journey (Meet Ana — Windmill style)
     journeyOverline: "How it works",
@@ -283,17 +353,17 @@ const translations = {
     uspText3: "Record your 1:1s. Rhitmo transcribes, analyzes, and logs everything automatically. You never forget what was said.",
     uspCTA: "See Rhitmo in Action",
     forLeaders: "For Leaders",
-    leadersTitle: "Automate the busywork. Lead with confidence.",
-    leadersP1: "Rhitmo turns scattered notes into complete performance reviews. No more spending 4 hours copy-pasting from spreadsheets. 30 seconds and you have a ready draft.",
-    leadersP2: "Automatic insights decode each report's work style. Forgot the January 1:1? The AI remembers. Everything becomes evidence at review time.",
+    leadersTitle: "You lead. Rhitmo keeps the evidence.",
+    leadersP1: "Every 1:1, imported note and recorded conversation becomes dated evidence in the right place. When it's time to prep the next conversation or write the review, the material is already gathered and you review instead of rebuilding the quarter from memory.",
+    leadersP2: "The 1:1 agenda and the review draft are generated when you ask, with the source attached to each passage. You stay the owner of the text and the decision.",
     forReports: "For Direct Reports",
-    reportsTitle: "Fair reviews. No career surprises.",
-    reportsP1: "Women receive 38x more negative feedback than men. Rhitmo detects bias and ensures all your contributions are remembered. Based on facts, not your manager's recent memory.",
-    reportsP2: "Get personalized development plans with the exact path to the next level. Reviews become a lever, not bureaucracy.",
+    reportsTitle: "No surprises at the end of the cycle.",
+    reportsP1: "What you delivered through the quarter is recorded with a date, not left to your manager's recent memory. Your review arrives grounded in facts you recognize.",
+    reportsP2: "Your manager's private notes stay private. Anything shared with you is marked as shared, and you see exactly what was shared.",
     forHR: "For HR",
-    hrTitle: "Scale the culture. Eliminate the operational bottleneck.",
-    hrP1: "Your managers spend 4h per review. With Rhitmo, it's 2 minutes. That's hundreds of hours returned per review cycle, without losing quality.",
-    hrP2: "Personalized coaching in the flow of work, full visibility into team health metrics. Measurable ROI, not consulting promises.",
+    hrTitle: "See the patterns before they become problems.",
+    hrP1: "Conversation cadence per team, 1:1 coverage, cross-team collaboration and attention signals that grow slowly. HR follows leadership health without reading anyone's notes.",
+    hrP2: "Review and calibration cycles rest on the same evidence base. Access logs, retention periods and exports live in the Governance area.",
     pricingTitle: "Simple. Transparent.",
     pricingSubtitle: "No monthly plan. Building a real feedback culture requires at least 90 days of consistency.",
     pricingTooltip: "Why no monthly plan? Behavioral science shows leadership culture only takes hold after 90 days of consistent practice. We bill by value cycle — not by month.",
@@ -1248,6 +1318,42 @@ const Landing = () => {
         }}
       />
 
+      {/* ============== QUATRO CAMADAS ============== */}
+      <section id="camadas" className="py-20 px-6 bg-white">
+        <div className="max-w-5xl mx-auto">
+          <div className="max-w-3xl mb-14">
+            <p className="inline-flex items-center gap-3 text-[11px] uppercase font-mono tracking-[0.25em] text-slate-500 font-semibold mb-6">
+              <span className="h-px w-8 bg-slate-300" aria-hidden="true" />
+              {t.layersOverline}
+            </p>
+            <h2 className="font-serif text-4xl md:text-6xl font-bold tracking-tight leading-[1.05] text-slate-900">
+              {t.layersTitle}
+            </h2>
+            <p className="text-lg text-slate-500 mt-6 max-w-2xl leading-relaxed">
+              {t.layersSubtitle}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {t.layers.map((layer) => (
+              <article
+                key={layer.n}
+                className="rounded-3xl border border-slate-100 bg-white p-7 shadow-[0_2px_20px_rgba(0,0,0,0.04)] transition-transform hover:-translate-y-1"
+              >
+                <div className="flex items-center gap-3 mb-5">
+                  <span className="font-mono text-[11px] tracking-[0.25em] text-slate-400">{layer.n}</span>
+                  <span className="text-[11px] font-semibold uppercase font-mono tracking-[0.2em] text-indigo-700">{layer.tag}</span>
+                </div>
+                <h3 className="font-serif text-2xl font-bold tracking-tight text-slate-900 leading-snug">
+                  {layer.title}
+                </h3>
+                <p className="text-base text-slate-500 leading-relaxed mt-3">{layer.body}</p>
+                <p className="text-sm text-slate-400 mt-5 pt-4 border-t border-slate-100">{layer.example}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
 
 
       {/* ============== NUMBERS — EDITORIAL ============== */}
