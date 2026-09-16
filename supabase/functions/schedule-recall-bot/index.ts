@@ -450,22 +450,31 @@ Deno.serve(async (req) => {
 
     if (insertError) {
       console.error("Insert error:", insertError);
+
+      // Sem registro no banco não existe trava de duplicidade: cliques seguintes
+      // criariam um bot novo a cada vez. Então SEMPRE cancelamos o bot que
+      // acabou de ser criado na Recall antes de devolver o erro.
+      try {
+        await fetch(`https://us-west-2.recall.ai/api/v1/bot/${recallData.id}/`, {
+          method: "DELETE",
+          headers: { Authorization: `Token ${RECALL_API_KEY}` },
+        });
+      } catch (e) {
+        console.warn("Falha ao cancelar bot órfão:", e);
+      }
+
       // 23505 = índice único parcial (meeting_url, scheduled_at): outro líder
-      // agendou pra mesma sala nos mesmos segundos. Cancela o bot recém-criado.
+      // agendou pra mesma sala nos mesmos segundos.
       if (insertError.code === "23505") {
-        try {
-          await fetch(`https://us-west-2.recall.ai/api/v1/bot/${recallData.id}/`, {
-            method: "DELETE",
-            headers: { Authorization: `Token ${RECALL_API_KEY}` },
-          });
-        } catch (e) {
-          console.warn("Falha ao cancelar bot duplicado:", e);
-        }
         return new Response(JSON.stringify({
           error: "Já existe um bot do Rhitmo nesta sala. A transcrição será feita uma única vez.",
         }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-      return new Response(JSON.stringify({ error: "Bot scheduled but failed to save record" }), {
+
+      return new Response(JSON.stringify({
+        error:
+          "Não consegui registrar o bot desta reunião. Ele foi cancelado e não ficou ninguém na sala. Tente de novo em alguns segundos.",
+      }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
