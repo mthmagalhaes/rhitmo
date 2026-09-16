@@ -580,13 +580,17 @@ async function handleBotDone(
 
   console.log(`Found ${memberIds.length} member(s) for this meeting`);
 
-  // Resolve meeting title from upcoming_meetings (fallback to default)
-  const meetingTitle = await resolveMeetingTitle(
-    supabaseAdmin,
-    botRecord.user_id as string,
-    botRecord.meeting_id as string | null,
-    botRecord.meeting_url as string | null,
-  );
+  // Resolve meeting title from upcoming_meetings (fallback to default).
+  // O resgate manual pode informar o título explicitamente (reunião ad-hoc,
+  // sem evento de calendário correspondente).
+  const meetingTitle = titleOverride?.trim()
+    ? titleOverride.trim().slice(0, 120)
+    : await resolveMeetingTitle(
+      supabaseAdmin,
+      botRecord.user_id as string,
+      botRecord.meeting_id as string | null,
+      botRecord.meeting_url as string | null,
+    );
 
   // Medição de uso: janela real de gravação (base do relatório de custos do admin).
   const recordingWindow = await fetchRecordingWindow(botId, recallApiKey);
