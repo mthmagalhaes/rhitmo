@@ -28,8 +28,13 @@ Deno.serve(async (req) => {
     // can spoof bot.done events, trigger transcript reprocessing, and waste
     // AI credits. Recall.ai uses Svix headers: webhook-id / -timestamp / -signature.
     const rawBody = await req.text();
+    // Gatilho interno (resgate manual de reunião perdida): autenticado pelo
+    // service role key. Usado por `recover-recall-bot` para reprocessar um bot
+    // que já gravou mas cujo registro não existia quando o webhook chegou.
+    const internalKey = req.headers.get("x-internal-key");
+    const isInternalTrigger = !!internalKey && internalKey === SUPABASE_SERVICE_ROLE_KEY;
     const webhookSecret = Deno.env.get("RECALL_WEBHOOK_SECRET");
-    if (webhookSecret) {
+    if (webhookSecret && !isInternalTrigger) {
       const sigHeader = req.headers.get("webhook-signature");
       const msgId = req.headers.get("webhook-id");
       const msgTs = req.headers.get("webhook-timestamp");
