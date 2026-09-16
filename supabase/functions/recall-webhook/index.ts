@@ -257,7 +257,18 @@ Deno.serve(async (req) => {
 
     // When bot is done, fetch transcript via API v1 bot retrieve endpoint
     if ((event === "bot.done" || event === "bot.recording_done") && botRecord.status !== "done") {
-      await handleBotDone(supabaseAdmin, botRecord, botId, RECALL_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      const titleOverride = isInternalTrigger && typeof body.internal?.title_override === "string"
+        ? (body.internal.title_override as string)
+        : null;
+      await handleBotDone(
+        supabaseAdmin,
+        botRecord,
+        botId,
+        RECALL_API_KEY,
+        SUPABASE_URL,
+        SUPABASE_SERVICE_ROLE_KEY,
+        titleOverride,
+      );
     }
 
     return new Response(JSON.stringify({ ok: true }), {
