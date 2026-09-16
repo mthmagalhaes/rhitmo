@@ -1,0 +1,2 @@
+ALTER TABLE public.recall_bots DROP CONSTRAINT IF EXISTS recall_bots_trigger_source_check;
+ALTER TABLE public.recall_bots ADD CONSTRAINT recall_bots_trigger_source_check CHECK (trigger_source = ANY (ARRAY['auto_calendar'::text, 'manual'::text, 'manual_retroactive'::text]));
