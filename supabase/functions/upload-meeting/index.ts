@@ -147,8 +147,19 @@ serve(async (req) => {
       );
     }
 
+    // SECURITY: the storage folder name IS the ownership boundary for this
+    // bucket (RLS policies match folder[1] against auth.uid() / leader_user_id).
+    // Never write outside an authenticated user's own folder, and never create
+    // an untraceable "anonymous" folder.
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Autenticação obrigatória para enviar gravações.' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Upload file to storage
-    const folder = userId || 'anonymous';
+    const folder = userId;
     const timestamp = Date.now();
     const fileName = (file as File).name || '';
     let ext = 'webm';
