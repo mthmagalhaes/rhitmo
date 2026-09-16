@@ -523,6 +523,7 @@ async function handleBotDone(
   recallApiKey: string,
   supabaseUrl: string,
   serviceRoleKey: string,
+  titleOverride: string | null = null,
 ) {
   // Skip processing only for AUTO_CALENDAR bots whose leader was absent
   // (manual bots are always processed — leader explicitly clicked Transcribe).
