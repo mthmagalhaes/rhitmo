@@ -123,7 +123,30 @@ Deno.serve(async (req) => {
 
     if (findError || !botRecord) {
       console.log(`Bot ${botId} not found in our records, ignoring`);
-      return new Response(JSON.stringify({ ok: true }), {
+      // Registra o órfão em vez de perder a reunião em silêncio: um bot que
+      // gravou mas nunca foi salvo (falha no INSERT) pode ser resgatado depois
+      // via `recover-recall-bot` usando este log.
+      if (event === "bot.done" || event === "bot.recording_done") {
+        try {
+          await supabaseAdmin.from("function_logs").insert({
+            request_id: crypto.randomUUID(),
+            function_name: "recall-webhook",
+            level: "warn",
+            event: "orphan_bot_done",
+            metadata: {
+              recall_bot_id: botId,
+              webhook_event: event,
+              meeting_url: body.data?.bot?.meeting_url ?? null,
+              recoverable: true,
+            },
+            error_message:
+              "Bot concluiu a gravação mas não existe registro em recall_bots — reunião recuperável via recover-recall-bot.",
+          });
+        } catch (e) {
+          console.error("failed to log orphan bot:", e);
+        }
+      }
+      return new Response(JSON.stringify({ ok: true, orphan: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
