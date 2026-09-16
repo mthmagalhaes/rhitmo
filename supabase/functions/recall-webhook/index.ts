@@ -28,8 +28,13 @@ Deno.serve(async (req) => {
     // can spoof bot.done events, trigger transcript reprocessing, and waste
     // AI credits. Recall.ai uses Svix headers: webhook-id / -timestamp / -signature.
     const rawBody = await req.text();
+    // Gatilho interno (resgate manual de reunião perdida): autenticado pelo
+    // service role key. Usado por `recover-recall-bot` para reprocessar um bot
+    // que já gravou mas cujo registro não existia quando o webhook chegou.
+    const internalKey = req.headers.get("x-internal-key");
+    const isInternalTrigger = !!internalKey && internalKey === SUPABASE_SERVICE_ROLE_KEY;
     const webhookSecret = Deno.env.get("RECALL_WEBHOOK_SECRET");
-    if (webhookSecret) {
+    if (webhookSecret && !isInternalTrigger) {
       const sigHeader = req.headers.get("webhook-signature");
       const msgId = req.headers.get("webhook-id");
       const msgTs = req.headers.get("webhook-timestamp");
@@ -118,7 +123,30 @@ Deno.serve(async (req) => {
 
     if (findError || !botRecord) {
       console.log(`Bot ${botId} not found in our records, ignoring`);
-      return new Response(JSON.stringify({ ok: true }), {
+      // Registra o órfão em vez de perder a reunião em silêncio: um bot que
+      // gravou mas nunca foi salvo (falha no INSERT) pode ser resgatado depois
+      // via `recover-recall-bot` usando este log.
+      if (event === "bot.done" || event === "bot.recording_done") {
+        try {
+          await supabaseAdmin.from("function_logs").insert({
+            request_id: crypto.randomUUID(),
+            function_name: "recall-webhook",
+            level: "warn",
+            event: "orphan_bot_done",
+            metadata: {
+              recall_bot_id: botId,
+              webhook_event: event,
+              meeting_url: body.data?.bot?.meeting_url ?? null,
+              recoverable: true,
+            },
+            error_message:
+              "Bot concluiu a gravação mas não existe registro em recall_bots — reunião recuperável via recover-recall-bot.",
+          });
+        } catch (e) {
+          console.error("failed to log orphan bot:", e);
+        }
+      }
+      return new Response(JSON.stringify({ ok: true, orphan: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -229,7 +257,18 @@ Deno.serve(async (req) => {
 
     // When bot is done, fetch transcript via API v1 bot retrieve endpoint
     if ((event === "bot.done" || event === "bot.recording_done") && botRecord.status !== "done") {
-      await handleBotDone(supabaseAdmin, botRecord, botId, RECALL_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      const titleOverride = isInternalTrigger && typeof body.internal?.title_override === "string"
+        ? (body.internal.title_override as string)
+        : null;
+      await handleBotDone(
+        supabaseAdmin,
+        botRecord,
+        botId,
+        RECALL_API_KEY,
+        SUPABASE_URL,
+        SUPABASE_SERVICE_ROLE_KEY,
+        titleOverride,
+      );
     }
 
     return new Response(JSON.stringify({ ok: true }), {
@@ -484,6 +523,7 @@ async function handleBotDone(
   recallApiKey: string,
   supabaseUrl: string,
   serviceRoleKey: string,
+  titleOverride: string | null = null,
 ) {
   // Skip processing only for AUTO_CALENDAR bots whose leader was absent
   // (manual bots are always processed — leader explicitly clicked Transcribe).
@@ -540,13 +580,17 @@ async function handleBotDone(
 
   console.log(`Found ${memberIds.length} member(s) for this meeting`);
 
-  // Resolve meeting title from upcoming_meetings (fallback to default)
-  const meetingTitle = await resolveMeetingTitle(
-    supabaseAdmin,
-    botRecord.user_id as string,
-    botRecord.meeting_id as string | null,
-    botRecord.meeting_url as string | null,
-  );
+  // Resolve meeting title from upcoming_meetings (fallback to default).
+  // O resgate manual pode informar o título explicitamente (reunião ad-hoc,
+  // sem evento de calendário correspondente).
+  const meetingTitle = titleOverride?.trim()
+    ? titleOverride.trim().slice(0, 120)
+    : await resolveMeetingTitle(
+      supabaseAdmin,
+      botRecord.user_id as string,
+      botRecord.meeting_id as string | null,
+      botRecord.meeting_url as string | null,
+    );
 
   // Medição de uso: janela real de gravação (base do relatório de custos do admin).
   const recordingWindow = await fetchRecordingWindow(botId, recallApiKey);
