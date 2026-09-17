@@ -681,8 +681,9 @@ function TeamsTab({ onNewTeam, workspaceId }: { onNewTeam: () => void; workspace
   }, [teams, query]);
 
   const refresh = () => {
-    qc.invalidateQueries({ queryKey: ['workspace-teams-detail', workspaceId] });
-    qc.invalidateQueries({ queryKey: ['teams'] });
+    // Centralizado: com staleTime de 5 min e refetchOnMount desligado, uma
+    // invalidação incompleta deixava a lista de times desatualizada.
+    invalidateLeaderPeople(qc);
     qc.invalidateQueries({ queryKey: ['team-members'] });
   };
 
