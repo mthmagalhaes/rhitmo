@@ -105,7 +105,7 @@ export function HRSetupChecklist({ workspaceId, leaderCount }: Props) {
         actionLabel: 'Ver',
       },
     ],
-    [leaderCount, slack.isConnected, retentionSet, visitedRitmo, navigate],
+    [leaderCount, slack, retentionSet, visitedRitmo, navigate],
   );
 
   const allDone = items.every((i) => i.isDone);
