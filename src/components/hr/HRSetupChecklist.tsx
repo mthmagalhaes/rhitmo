@@ -76,7 +76,9 @@ export function HRSetupChecklist({ workspaceId, leaderCount }: Props) {
         pending: 'Lembretes e pautas chegam onde a liderança já trabalha.',
         done: 'Slack conectado.',
         isDone: !!slack.isConnected,
-        action: () => navigate('/lider/configuracoes?tab=integracoes'),
+        // /lider/configuracoes é bloqueado pelo RoleRouteGuard para quem é só
+        // HR Admin — o passo nunca saía de "pendente". Inicia o OAuth direto.
+        action: () => slack.connectSlack(),
         actionLabel: 'Conectar',
       },
       {
