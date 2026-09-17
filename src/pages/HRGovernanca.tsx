@@ -121,9 +121,10 @@ export default function HRGovernanca() {
     downloadCsv(
       `rhitmo-pessoas-${new Date().toISOString().slice(0, 10)}`,
       rows.map((r) => ({
-        nome: String(r.name ?? r.member_name ?? ''),
+        // O RPC devolve `full_name` e `roles: string[]` (não `name`/`role`).
+        nome: String(r.full_name ?? ''),
         email: String(r.email ?? ''),
-        cargo: String(r.role ?? ''),
+        cargo: Array.isArray(r.roles) ? (r.roles as string[]).join(', ') : '',
         time: String(r.team_name ?? ''),
         situacao: String(r.invite_status ?? ''),
       })),
