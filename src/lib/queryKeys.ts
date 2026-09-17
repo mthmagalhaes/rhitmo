@@ -5,6 +5,8 @@ import type { QueryClient } from '@tanstack/react-query';
 
 const LEADER_PEOPLE_KEYS = new Set<string>([
   'team-members-leader-scope',
+  'teams-leader-scope',
+  'workspace-leader-scope',
   'workspace-teams-detail',
   'teams',
   'pending-invites',
