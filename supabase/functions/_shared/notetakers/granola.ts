@@ -16,15 +16,24 @@ import {
 } from "./types.ts";
 
 function toFullNote(note: GranolaNote): FullNote {
+  const { content, fidelity } = noteToContent(note);
   return {
     id: String(note.id),
     title: note.title ?? null,
     createdAt: toIsoOrNull(note.created_at),
-    content: noteToContent(note),
-    fidelity: note.transcript ? "transcript" : "summary",
-    attendees: dedupeAttendees([...(note.people ?? []), ...(note.attendees ?? [])]),
+    content,
+    fidelity,
+    attendees: dedupeAttendees(
+      [
+        ...(note.people ?? []),
+        ...(note.attendees ?? []),
+        ...(note.calendar_event?.invitees ?? []),
+      ].map((p) => ({ name: p?.name ?? null, email: p?.email ?? null })),
+    ),
   };
 }
+
+
 
 export const granolaProvider: NoteTakerProvider = {
   id: "granola",

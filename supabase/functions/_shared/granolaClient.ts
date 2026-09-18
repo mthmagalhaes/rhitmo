@@ -8,18 +8,33 @@
 
 const GRANOLA_API = "https://public-api.granola.ai";
 
+export interface GranolaTranscriptSegment {
+  text?: string | null;
+  start_time?: string | null;
+  speaker?: { source?: string | null; attribution?: string | null } | null;
+}
+
 export interface GranolaNote {
   id: string;
   title?: string | null;
   created_at?: string | null;
   summary?: string | null;
+  summary_text?: string | null;
+  summary_markdown?: string | null;
+  private_notes_markdown?: string | null;
   markdown?: string | null;
   content?: string | null;
-  transcript?: string | null;
+  /** Lista de trechos de fala; em notas antigas pode vir como texto corrido. */
+  transcript?: string | GranolaTranscriptSegment[] | null;
+  owner?: { name?: string | null; email?: string | null } | null;
   people?: Array<{ name?: string | null; email?: string | null }> | null;
   attendees?: Array<{ name?: string | null; email?: string | null }> | null;
+  calendar_event?: {
+    invitees?: Array<{ name?: string | null; email?: string | null }> | null;
+  } | null;
   [key: string]: unknown;
 }
+
 
 export interface GranolaListResult {
   notes: GranolaNote[];
@@ -95,21 +110,88 @@ export async function getGranolaNote(
   return (data?.note ?? data) as GranolaNote;
 }
 
-/** Texto que vai virar conteúdo de Anotações & Evidências: transcrição quando houver, senão resumo. */
-export function noteToContent(note: GranolaNote): string {
-  const parts: string[] = [];
-  const summary = note.summary ?? note.markdown ?? note.content ?? null;
-  if (summary) parts.push(String(summary).trim());
-  if (note.transcript) {
-    parts.push("\n---\n\n**Transcrição**\n");
-    parts.push(String(note.transcript).trim());
+/** Primeiro nome do dono da nota, usado para rotular os trechos "me". */
+function ownerLabel(note: GranolaNote): string {
+  const name = (note.owner?.name ?? "").trim();
+  return name || "Eu";
+}
+
+/**
+ * Converte a transcrição do Granola (lista de trechos com `speaker`) em
+ * "Nome: fala" linha a linha. Notas antigas que vierem como texto corrido
+ * continuam funcionando.
+ */
+export function transcriptLines(note: GranolaNote): string[] {
+  const raw = note.transcript;
+  if (!raw) return [];
+  if (typeof raw === "string") {
+    const text = raw.trim();
+    return text ? [text] : [];
   }
-  return parts.join("\n").trim();
+  if (!Array.isArray(raw)) return [];
+
+  const me = ownerLabel(note);
+  const lines: string[] = [];
+  let lastWho: string | null = null;
+
+  for (const seg of raw) {
+    const text = (seg?.text ?? "").trim();
+    if (!text) continue;
+    const attribution = (seg?.speaker?.attribution ?? "").trim();
+    const who = !attribution
+      ? null
+      : attribution.toLowerCase() === "me"
+        ? me
+        : attribution.toLowerCase() === "them"
+          ? "Participante"
+          : attribution;
+
+    if (who && who !== lastWho) {
+      lines.push(`${who}: ${text}`);
+      lastWho = who;
+    } else {
+      lines.push(text);
+    }
+  }
+  return lines;
+}
+
+/** Texto que vai virar conteúdo de Anotações & Evidências: resumo do Granola + fala literal. */
+export function noteToContent(note: GranolaNote): {
+  content: string;
+  fidelity: "transcript" | "summary";
+} {
+  const parts: string[] = [];
+  const summary =
+    note.summary_markdown ??
+    note.summary_text ??
+    note.summary ??
+    note.markdown ??
+    note.content ??
+    null;
+  if (summary) parts.push(String(summary).trim());
+
+  const privateNotes = (note.private_notes_markdown ?? "").trim();
+  if (privateNotes) parts.push(`\n**Notas do líder**\n${privateNotes}`);
+
+  const lines = transcriptLines(note);
+  if (lines.length > 0) {
+    parts.push("\n---\n\n**Transcrição**\n");
+    parts.push(lines.join("\n"));
+    return { content: parts.join("\n").trim(), fidelity: "transcript" };
+  }
+
+  return { content: parts.join("\n").trim(), fidelity: "summary" };
 }
 
 export function noteEmails(note: GranolaNote): string[] {
-  const people = [...(note.people ?? []), ...(note.attendees ?? [])];
+  const people = [
+    ...(note.people ?? []),
+    ...(note.attendees ?? []),
+    ...(note.calendar_event?.invitees ?? []),
+  ];
   return people
     .map((p) => (p?.email ?? "").trim().toLowerCase())
     .filter((e) => e.length > 3);
 }
+
