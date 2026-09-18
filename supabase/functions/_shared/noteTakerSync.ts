@@ -214,7 +214,10 @@ export async function syncNoteTakerConnection(
         const title = full.title ?? listed.title ?? `Reunião (${provider.label})`;
         const attendees = full.attendees;
 
-        if (content.length < MIN_CONTENT_LEN) {
+        // Conteúdo ilegível (ex.: transcrição que não foi normalizada) nunca
+        // vira evidência silenciosamente.
+        const unreadable = content.includes("[object Object]");
+        if (content.length < MIN_CONTENT_LEN || unreadable) {
           result.skipped += 1;
           await supabase.from("note_taker_synced_notes").insert({
             user_id: connection.user_id,
@@ -222,9 +225,15 @@ export async function syncNoteTakerConnection(
             external_note_id: listed.id,
             title,
             note_created_at: occurredAt,
-            status: "dismissed",
+            // Ilegível fica pendente (dá para reprocessar); nota curta demais
+            // continua descartada.
+            status: unreadable ? "pending" : "dismissed",
             attendees,
           });
+          if (unreadable) {
+            result.unmatched += 1;
+            console.warn(`nota ${listed.id} com conteúdo ilegível; marcada como pendente`);
+          }
           bumpWatermark(occurredAt);
           continue;
         }

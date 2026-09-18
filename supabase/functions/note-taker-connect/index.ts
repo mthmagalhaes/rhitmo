@@ -20,12 +20,22 @@ const corsHeaders = {
 };
 
 const BodySchema = z.object({
-  action: z.enum(["connect", "disconnect", "sync", "list_pending", "assign", "dismiss"]),
+  action: z.enum([
+    "connect",
+    "disconnect",
+    "sync",
+    "list_pending",
+    "assign",
+    "dismiss",
+    "reprocess",
+  ]),
   provider: z.enum(NOTE_TAKER_PROVIDER_IDS).default("granola"),
   api_key: z.string().min(10).max(500).optional(),
   note_id: z.string().uuid().optional(),
   member_id: z.string().uuid().optional(),
 });
+
+
 
 
 function json(body: unknown, status = 200) {
@@ -128,6 +138,54 @@ Deno.serve(async (req) => {
       if (error) throw error;
       return json({ ok: true, pending: data ?? [] });
     }
+
+    // Reprocessa notas já importadas: rebusca o conteúdo no provedor,
+    // regrava a anotação e refaz o resumo. Usado para consertar notas
+    // importadas antes da correção de formato.
+    if (action === "reprocess") {
+      const apiKey = await decryptApiKey(connection.api_key_ciphertext);
+      const { data: notes } = await admin
+        .from("note_taker_synced_notes")
+        .select("id, external_note_id, feedback_id")
+        .eq("user_id", user.id)
+        .eq("provider", provider)
+        .eq("status", "imported")
+        .not("feedback_id", "is", null)
+        .limit(100);
+
+      let fixed = 0;
+      let failed = 0;
+      for (const n of notes ?? []) {
+        // O id externo de notas atribuídas é "<noteId>:<memberId>".
+        const externalId = String(n.external_note_id).split(":")[0];
+        const full = await providerImpl.getNote(apiKey, externalId);
+        if (!full || full.content.length < 50 || full.content.includes("[object Object]")) {
+          failed += 1;
+          continue;
+        }
+        const { error: upErr } = await admin
+          .from("feedbacks")
+          .update({ content: full.content, source_fidelity: full.fidelity })
+          .eq("id", n.feedback_id)
+          .eq("manager_id", user.id);
+        if (upErr) {
+          failed += 1;
+          continue;
+        }
+        fixed += 1;
+        fetch(`${supabaseUrl}/functions/v1/summarize-transcript`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
+          body: JSON.stringify({ feedbackId: n.feedback_id }),
+        }).catch((e) => console.error("summarize-transcript trigger failed", e));
+      }
+
+      return json({ ok: true, fixed, failed });
+    }
+
+
+
+
 
     if (action === "dismiss") {
       if (!parsed.data.note_id) return json({ error: "note_id é obrigatório" }, 400);
