@@ -327,6 +327,7 @@ export const UpcomingMeetingsCard = () => {
 
           const triggerBot = (retroactive: boolean) => {
             if (!canScheduleBot) return;
+            if (!billingGate.ensure('send_bot')) return;
             setSchedulingMeetingId(meeting.id);
             scheduleBot.mutate({
               meeting_id: meeting.id,
