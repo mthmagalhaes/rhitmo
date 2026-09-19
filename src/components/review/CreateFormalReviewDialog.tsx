@@ -75,6 +75,9 @@ export function CreateFormalReviewDialog({
 
   const createMutation = useMutation({
     mutationFn: async () => {
+      if (!billingGate.ensure('generate_review')) {
+        throw new Error('Assinatura necessária');
+      }
       if (!enforceLimit(reviewCount, limits.maxReviews, 'avaliações formais')) {
         throw new Error('Limite atingido');
       }
