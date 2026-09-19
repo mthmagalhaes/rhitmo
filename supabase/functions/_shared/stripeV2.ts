@@ -1,12 +1,13 @@
 /**
- * Preços Rhitmo v2 (live, BRL) e helpers Stripe compartilhados.
+ * Preços Rhitmo (live, BRL) e helpers Stripe compartilhados.
  *
- * Modelo comercial v2:
- *  - Assento: R$ 10,00/mês (R$ 96,00/ano), sem bot incluso.
- *  - Add-on Bot: R$ 19,90/mês (R$ 190,80/ano) por assento, inclui 4h de bot/mês.
+ * Modelo comercial v3 (09/2026):
+ *  - Assento: R$ 10,00/mês (R$ 96,00/ano) — cobrado para TODO mundo, inclusive o líder.
+ *  - Add-on Bot do LÍDER: R$ 29,90/mês (R$ 287,04/ano), inclui 6h de bot/ciclo.
+ *  - Entrada: 14 dias de teste sem cartão (workspaces.trial_ends_at).
  *
- * Workspaces com `ui_version = 'v1'` continuam usando os preços legados —
- * nada aqui altera o comportamento deles.
+ * Workspaces com `billing_model = 'legacy'` mantêm o add-on antigo por liderado
+ * (R$ 19,90 / 4h) e o plano "líder + 3 grátis".
  */
 
 export const V2_SEAT_PRICE_IDS = {
@@ -14,12 +15,20 @@ export const V2_SEAT_PRICE_IDS = {
   annual: "price_1UBQJBIF4fHxJpjH24Oz1jCh",
 } as const;
 
+/** Add-on atual: bot do líder, 6h por ciclo. */
 export const V2_BOT_ADDON_PRICE_IDS = {
+  monthly: "price_1UHUfsIF4fHxJpjH7DPp50TN",
+  annual: "price_1UHUglIF4fHxJpjHWn4xjTim",
+} as const;
+
+/** Add-on antigo (por liderado, 4h) — reconhecido para assinaturas vigentes. */
+export const LEGACY_BOT_ADDON_PRICE_IDS = {
   monthly: "price_1UBQHmIF4fHxJpjHJwdAr0Jg",
   annual: "price_1UBQKeIF4fHxJpjHQl72KrZw",
 } as const;
 
-export const V2_ADDON_INCLUDED_HOURS = 4;
+export const V2_ADDON_INCLUDED_HOURS = 6;
+export const LEGACY_ADDON_INCLUDED_HOURS = 4;
 
 export type BillingCycle = "monthly" | "annual";
 
@@ -30,15 +39,25 @@ export function isV2SeatPrice(priceId?: string | null): boolean {
 export function isV2BotAddonPrice(priceId?: string | null): boolean {
   return (
     priceId === V2_BOT_ADDON_PRICE_IDS.monthly ||
-    priceId === V2_BOT_ADDON_PRICE_IDS.annual
+    priceId === V2_BOT_ADDON_PRICE_IDS.annual ||
+    priceId === LEGACY_BOT_ADDON_PRICE_IDS.monthly ||
+    priceId === LEGACY_BOT_ADDON_PRICE_IDS.annual
   );
 }
 
 export function cycleFromV2Price(priceId?: string | null): BillingCycle | null {
-  if (priceId === V2_SEAT_PRICE_IDS.monthly || priceId === V2_BOT_ADDON_PRICE_IDS.monthly) {
+  if (
+    priceId === V2_SEAT_PRICE_IDS.monthly ||
+    priceId === V2_BOT_ADDON_PRICE_IDS.monthly ||
+    priceId === LEGACY_BOT_ADDON_PRICE_IDS.monthly
+  ) {
     return "monthly";
   }
-  if (priceId === V2_SEAT_PRICE_IDS.annual || priceId === V2_BOT_ADDON_PRICE_IDS.annual) {
+  if (
+    priceId === V2_SEAT_PRICE_IDS.annual ||
+    priceId === V2_BOT_ADDON_PRICE_IDS.annual ||
+    priceId === LEGACY_BOT_ADDON_PRICE_IDS.annual
+  ) {
     return "annual";
   }
   return null;
