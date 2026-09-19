@@ -8,6 +8,11 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useLeaderMembers } from '@/hooks/useLeaderMembers';
 import {
@@ -19,7 +24,7 @@ import { CalibrationGrid } from '@/components/leader/calibracao/CalibrationGrid'
 export default function LiderCalibracao() {
   const { toast } = useToast();
   const { workspace } = useLeaderMembers();
-  const { sessions, createSession, closeSession, updateNotes } =
+  const { sessions, createSession, closeSession, reopenSession, updateNotes } =
     useCalibrationSessions(workspace?.id ?? null);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -176,19 +181,53 @@ export default function LiderCalibracao() {
               >
                 Salvar ata
               </Button>
-              {!readOnly && (
+              {readOnly ? (
                 <Button
+                  variant="outline"
                   className="rounded-xl"
-                  disabled={closeSession.isPending}
+                  disabled={reopenSession.isPending}
                   onClick={() =>
-                    closeSession.mutate(session.id, {
-                      onSuccess: () => toast({ title: 'Calibração fechada' }),
+                    reopenSession.mutate(session.id, {
+                      onSuccess: () => toast({ title: 'Calibração reaberta' }),
                     })
                   }
                 >
-                  Fechar calibração
+                  Reabrir calibração
                 </Button>
+              ) : (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button className="rounded-xl" disabled={closeSession.isPending}>
+                      Fechar calibração
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="rounded-2xl">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="font-serif tracking-tight">
+                        Fechar a calibração de {session.cycle_label}?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        A ata fica travada para edição e as decisões passam a valer como
+                        histórico do ciclo. Você pode reabrir depois se precisar ajustar.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="rounded-xl"
+                        onClick={() =>
+                          closeSession.mutate(session.id, {
+                            onSuccess: () => toast({ title: 'Calibração fechada' }),
+                          })
+                        }
+                      >
+                        Fechar calibração
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               )}
+
             </div>
           </div>
         </>
