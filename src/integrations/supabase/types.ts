@@ -4107,6 +4107,21 @@ export type Database = {
           trial_hours_used: number
         }[]
       }
+      get_workspace_activation: {
+        Args: { _days?: number }
+        Returns: {
+          is_active: boolean
+          last_activity_at: string
+          leaders: number
+          leaders_asked_rhitmo: number
+          leaders_with_connector: number
+          members: number
+          notes_from_connector: number
+          notes_total: number
+          workspace_id: string
+          workspace_name: string
+        }[]
+      }
       get_workspace_network: {
         Args: { _window_days?: number }
         Returns: {
