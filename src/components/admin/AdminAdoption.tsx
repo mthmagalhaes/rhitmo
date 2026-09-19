@@ -18,6 +18,20 @@ interface AdoptionRow {
   notes_imported: number | null;
 }
 
+interface ActivationRow {
+  workspace_id: string;
+  workspace_name: string | null;
+  is_active: boolean | null;
+  leaders: number;
+  leaders_with_connector: number;
+  members: number;
+  notes_total: number;
+  notes_from_connector: number;
+  leaders_asked_rhitmo: number;
+  last_activity_at: string | null;
+}
+
+
 const RANGES = [
   { days: 30, label: '30 dias' },
   { days: 90, label: '90 dias' },
@@ -48,10 +62,22 @@ export const AdminAdoption = () => {
     },
   });
 
+  // Ativação por empresa: mostra se o produto está sendo exercitado de verdade
+  // (notas entrando, conector ligado, líder perguntando à Rhitmo).
+  const { data: activation = [], isLoading: loadingActivation, error: activationError } = useQuery({
+    queryKey: ['workspace-activation', days],
+    queryFn: async (): Promise<ActivationRow[]> => {
+      const { data, error } = await supabase.rpc('get_workspace_activation' as never, { _days: days } as never);
+      if (error) throw error;
+      return (data ?? []) as unknown as ActivationRow[];
+    },
+  });
+
   const total = data.length;
   const connected = data.filter((r) => !!r.provider).length;
   const pct = total > 0 ? Math.round((connected / total) * 100) : 0;
   const gateOpen = total > 0 && pct >= TARGET_PCT;
+
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
@@ -171,6 +197,72 @@ export const AdminAdoption = () => {
           )}
         </CardContent>
       </Card>
+
+      <Card className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
+        <CardHeader>
+          <CardTitle className="font-serif text-base tracking-tight">Ativação por empresa</CardTitle>
+          <CardDescription className="text-xs">
+            Uso real no período: notas registradas, quanto vem de conector e quantos líderes já
+            perguntaram algo à Rhitmo.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {activationError ? (
+            <p className="text-sm text-destructive">
+              Não foi possível carregar: {(activationError as Error).message}
+            </p>
+          ) : loadingActivation ? (
+            <p className="text-sm text-muted-foreground">Carregando…</p>
+          ) : activation.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhuma empresa com pessoas cadastradas.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
+                    <th className="py-2 pr-4 font-medium">Empresa</th>
+                    <th className="py-2 pr-4 font-medium">Líderes</th>
+                    <th className="py-2 pr-4 font-medium">Com conector</th>
+                    <th className="py-2 pr-4 font-medium">Liderados</th>
+                    <th className="py-2 pr-4 font-medium">Notas</th>
+                    <th className="py-2 pr-4 font-medium">De conector</th>
+                    <th className="py-2 pr-4 font-medium">Perguntou à Rhitmo</th>
+                    <th className="py-2 pr-4 font-medium">Última atividade</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activation.map((row) => (
+                    <tr key={row.workspace_id} className="border-t border-border/40">
+                      <td className="py-2 pr-4">
+                        <span className="inline-flex items-center gap-2">
+                          {row.workspace_name ?? '—'}
+                          {row.is_active === false && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground">
+                              inativa
+                            </Badge>
+                          )}
+                        </span>
+                      </td>
+                      <td className="py-2 pr-4 text-muted-foreground">{row.leaders}</td>
+                      <td className="py-2 pr-4 text-muted-foreground">
+                        {row.leaders_with_connector}/{row.leaders}
+                      </td>
+                      <td className="py-2 pr-4 text-muted-foreground">{row.members}</td>
+                      <td className="py-2 pr-4 text-muted-foreground">{row.notes_total}</td>
+                      <td className="py-2 pr-4 text-muted-foreground">{row.notes_from_connector}</td>
+                      <td className="py-2 pr-4 text-muted-foreground">
+                        {row.leaders_asked_rhitmo}/{row.leaders}
+                      </td>
+                      <td className="py-2 pr-4 text-muted-foreground">{fmt(row.last_activity_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
+
   );
 };
