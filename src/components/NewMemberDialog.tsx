@@ -82,6 +82,7 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!billingGate.ensure('create_member')) return;
     setErrors({});
 
     // Validação
