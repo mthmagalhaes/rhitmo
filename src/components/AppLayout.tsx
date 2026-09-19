@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAccount } from '@/contexts/AccountContext';
 import { AccountLoadFailed, AccountLoadingSlow, AccountLoadingDelayedBanner } from '@/components/AccountLoadFailed';
 import { RoleContextBanner } from '@/components/layout/RoleContextBanner';
+import { TrialBanner } from '@/components/billing/TrialBanner';
 import { useRoleTheme } from '@/hooks/useRoleTheme';
 import { getSignupPersona, clearSignupPersona } from '@/lib/signupPersona';
 
