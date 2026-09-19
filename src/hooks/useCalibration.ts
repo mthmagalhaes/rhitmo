@@ -83,12 +83,14 @@ export function useCalibrationSessions(workspaceId?: string | null) {
   const qc = useQueryClient();
 
   const sessions = useQuery({
-    queryKey: ['calibration-sessions', effectiveUserId],
+    queryKey: ['calibration-sessions', effectiveUserId, workspaceId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('calibration_sessions')
         .select('*')
         .order('period_start', { ascending: false });
+      if (workspaceId) q = q.eq('workspace_id', workspaceId);
+      const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as CalibrationSession[];
     },
@@ -102,12 +104,20 @@ export function useCalibrationSessions(workspaceId?: string | null) {
         throw new Error('Workspace não resolvido para esta sessão.');
       }
       const base = currentCyclePeriod();
+      const cycleLabel = input?.cycle_label ?? base.cycle_label;
+
+      // Uma calibração por ciclo: se já existe uma do mesmo período, reabre em vez de duplicar.
+      const existing = (sessions.data ?? []).find(
+        (s) => s.cycle_label === cycleLabel && s.workspace_id === workspaceId,
+      );
+      if (existing) return existing;
+
       const { data, error } = await supabase
         .from('calibration_sessions')
         .insert({
           workspace_id: workspaceId,
           leader_user_id: effectiveUserId,
-          cycle_label: input?.cycle_label ?? base.cycle_label,
+          cycle_label: cycleLabel,
           period_start: input?.period_start ?? base.period_start,
           period_end: input?.period_end ?? base.period_end,
         })
@@ -134,6 +144,19 @@ export function useCalibrationSessions(workspaceId?: string | null) {
     },
   });
 
+  const reopenSession = useMutation({
+    mutationFn: async (sessionId: string) => {
+      const { error } = await supabase
+        .from('calibration_sessions')
+        .update({ status: 'open', closed_at: null })
+        .eq('id', sessionId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['calibration-sessions'] });
+    },
+  });
+
   const updateNotes = useMutation({
     mutationFn: async ({ sessionId, notes }: { sessionId: string; notes: string }) => {
       const { error } = await supabase
@@ -147,8 +170,9 @@ export function useCalibrationSessions(workspaceId?: string | null) {
     },
   });
 
-  return { sessions, createSession, closeSession, updateNotes };
+  return { sessions, createSession, closeSession, reopenSession, updateNotes };
 }
+
 
 export function useCalibrationGrid(session: CalibrationSession | null) {
   return useQuery({
