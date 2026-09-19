@@ -8,21 +8,16 @@ import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { useV2BotSeats, type V2BotSeat } from '@/hooks/useV2BotSeats';
+import { useBillingStatus } from '@/hooks/useBillingStatus';
+import { useLeaderBotAddon, type LeaderBotAddon } from '@/hooks/useLeaderBotAddon';
 import { cn } from '@/lib/utils';
 
 /**
- * Assinatura v2: assento base R$ 10/mês (sem bot) + add-on de bot
- * R$ 19,90/mês por assento, com 4h de bot inclusas.
+ * Assinatura v3: todo assento custa R$ 10/mês (R$ 8 no anual), líder incluído.
+ * O bot de reunião é um add-on do líder: R$ 29,90/mês com 6h por ciclo.
  */
 
-function formatDate(value: string | null) {
-  if (!value) return '';
-  const [y, m, d] = value.slice(0, 10).split('-');
-  return `${d}/${m}/${y}`;
-}
-
-function toneFor(seat: V2BotSeat) {
+function toneFor(seat: LeaderBotAddon) {
   if (seat.basis === 'grandfathered') return 'neutral' as const;
   if (seat.basis === 'none' || seat.hoursCap <= 0) return 'danger' as const;
   if (seat.percent >= 100) return 'danger' as const;
@@ -43,25 +38,28 @@ const TONE_BAR = {
 } as const;
 
 export default function V2Billing() {
-  const { data, isLoading, toggle } = useV2BotSeats();
+  const { data: billing, isLoading: billingLoading } = useBillingStatus();
+  const { data: leaders, isLoading, toggle } = useLeaderBotAddon();
   const { toast } = useToast();
   const [needsSubscription, setNeedsSubscription] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [pendingMember, setPendingMember] = useState<string | null>(null);
+  const [pendingLeader, setPendingLeader] = useState<string | null>(null);
 
-  const handleToggle = async (seat: V2BotSeat, next: boolean) => {
-    setPendingMember(seat.memberId);
+  const seats = Math.max(1, billing?.seatCount ?? 1);
+
+  const handleToggle = async (seat: LeaderBotAddon, next: boolean) => {
+    setPendingLeader(seat.leaderUserId);
     try {
       await toggle.mutateAsync({
-        memberId: seat.memberId,
+        leaderUserId: seat.leaderUserId,
         action: next ? 'activate' : 'deactivate',
       });
       setNeedsSubscription(null);
       toast({
-        title: next ? 'Add-on de bot ativado' : 'Add-on de bot desativado',
+        title: next ? 'Bot de reunião ativado' : 'Bot de reunião desativado',
         description: next
-          ? `${seat.memberName} passa a ter 4h de bot por ciclo.`
-          : `${seat.memberName} não terá mais horas de bot no próximo ciclo.`,
+          ? `${seat.leaderName} passa a ter 6h de bot por ciclo.`
+          : `${seat.leaderName} não terá mais horas de bot no próximo ciclo.`,
       });
     } catch (err) {
       const code = (err as Error & { code?: string }).code;
@@ -75,15 +73,15 @@ export default function V2Billing() {
         variant: 'destructive',
       });
     } finally {
-      setPendingMember(null);
+      setPendingLeader(null);
     }
   };
 
-  const handleCheckout = async () => {
+  const handleCheckout = async (withAddon = false) => {
     setCheckoutLoading(true);
     try {
       const { data: session, error } = await supabase.functions.invoke('create-checkout-session', {
-        body: { seatCycle: 'monthly', seats: Math.max(1, data?.seats.length ?? 1) },
+        body: { seatCycle: 'monthly', seats, botAddon: withAddon },
       });
       if (error) throw error;
       if (!session?.url) throw new Error('Sem URL de checkout');
@@ -101,6 +99,32 @@ export default function V2Billing() {
 
   return (
     <div className="space-y-6">
+      {!billingLoading && billing && !billing.hasSubscription && (
+        <Alert className="rounded-2xl">
+          <AlertTitle>
+            {billing.trialActive
+              ? `Teste gratuito · ${billing.daysLeft} ${billing.daysLeft === 1 ? 'dia restante' : 'dias restantes'}`
+              : 'Teste encerrado'}
+          </AlertTitle>
+          <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span>
+              {billing.trialActive
+                ? 'Tudo liberado durante o teste, sem cartão. Assine quando quiser para não perder o ritmo.'
+                : 'A leitura continua liberada, mas criar liderado, enviar o bot, gerar avaliação e perguntar à Rhitmo pedem assinatura.'}
+            </span>
+            <Button
+              size="sm"
+              className="rounded-xl"
+              onClick={() => handleCheckout(false)}
+              disabled={checkoutLoading}
+            >
+              {checkoutLoading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              Assinar {seats} {seats === 1 ? 'assento' : 'assentos'}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2">
         <Card className="rounded-3xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
           <CardContent className="p-6">
@@ -112,10 +136,12 @@ export default function V2Billing() {
               R$ 10
               <span className="ml-1 text-sm font-normal text-muted-foreground">/assento/mês</span>
             </p>
+            <p className="mt-1 text-xs text-muted-foreground">R$ 8 por assento no plano anual.</p>
             <ul className="mt-4 space-y-1.5 text-sm text-muted-foreground">
+              <li>Todo mundo tem assento: líder e liderados</li>
               <li>Conectores de note taker e Magic Paste</li>
               <li>Anotações &amp; Evidências com origem e data</li>
-              <li>Pautas de 1:1, avaliação formal e Mentor</li>
+              <li>Pautas de 1:1, avaliação formal e Pergunte à Rhitmo</li>
             </ul>
           </CardContent>
         </Card>
@@ -124,40 +150,34 @@ export default function V2Billing() {
           <CardContent className="p-6">
             <div className="flex items-center gap-2">
               <h2 className="font-serif text-xl font-bold tracking-tight">Bot de reunião</h2>
-              <Badge variant="outline" className="text-[10px]">Add-on</Badge>
+              <Badge variant="outline" className="text-[10px]">Add-on do líder</Badge>
             </div>
             <p className="mt-2 text-3xl font-bold tracking-tight">
-              R$ 19,90
-              <span className="ml-1 text-sm font-normal text-muted-foreground">/assento/mês</span>
+              R$ 29,90
+              <span className="ml-1 text-sm font-normal text-muted-foreground">/líder/mês</span>
             </p>
             <p className="mt-4 text-sm text-muted-foreground">
-              Inclui 4h de bot por ciclo. Ative só para quem precisa gravar reuniões sem note taker.
-              Total combinado: R$ 29,90 por assento.
+              Inclui 6h de bot por ciclo, usadas nas reuniões de qualquer liderado do time. Só o
+              líder precisa do add-on. Sem ele, a reunião ainda pode ser capturada por um note taker
+              conectado.
             </p>
-            {!isLoading && data?.isGrandfathered && (
-              <p className="mt-3 text-xs text-muted-foreground">
-                Plano legado: seu workspace está sem teto de horas de bot até{' '}
-                {formatDate(data.grandfatherUntil)}. O add-on só passa a valer depois dessa data.
-              </p>
-            )}
-            {!isLoading && data && !data.isGrandfathered && (
-              <p className="mt-3 text-xs text-muted-foreground">
-                Trial vitalício do workspace: {data.trialHoursRemaining.toFixed(1)}h restantes de{' '}
-                {data.trialHoursTotal}h.
-              </p>
-            )}
           </CardContent>
         </Card>
       </div>
 
       {needsSubscription && (
         <Alert className="rounded-2xl">
-          <AlertTitle>Assine o assento primeiro</AlertTitle>
+          <AlertTitle>Assine os assentos primeiro</AlertTitle>
           <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <span>{needsSubscription}</span>
-            <Button size="sm" className="rounded-xl" onClick={handleCheckout} disabled={checkoutLoading}>
+            <Button
+              size="sm"
+              className="rounded-xl"
+              onClick={() => handleCheckout(true)}
+              disabled={checkoutLoading}
+            >
               {checkoutLoading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-              Assinar assentos
+              Assinar com o bot
             </Button>
           </AlertDescription>
         </Alert>
@@ -165,68 +185,62 @@ export default function V2Billing() {
 
       <Card className="rounded-3xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
         <CardContent className="p-6">
-          <h2 className="font-serif text-xl font-bold tracking-tight">Bot por liderado</h2>
+          <h2 className="font-serif text-xl font-bold tracking-tight">Bot de reunião do líder</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Sem add-on, o liderado usa as horas do trial único do workspace. Quando o trial acaba, a
-            reunião ainda pode ser capturada por um note taker conectado.
+            Ative para quem precisa gravar reuniões sem note taker. As horas valem para todas as
+            reuniões dos liderados desse líder.
           </p>
 
           <div className="mt-5 space-y-3">
             {isLoading && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> Carregando liderados…
+                <Loader2 className="h-4 w-4 animate-spin" /> Carregando líderes…
               </div>
             )}
 
-            {!isLoading && data?.seats.length === 0 && (
-              <p className="text-sm text-muted-foreground">Nenhum liderado neste workspace ainda.</p>
+            {!isLoading && leaders?.length === 0 && (
+              <p className="text-sm text-muted-foreground">Nenhum líder com time neste workspace.</p>
             )}
 
-            {data?.seats.map((seat) => {
+            {leaders?.map((seat) => {
               const tone = toneFor(seat);
               const remaining = Math.max(seat.hoursCap - seat.hoursUsed, 0);
               return (
                 <div
-                  key={seat.memberId}
+                  key={seat.leaderUserId}
                   className="rounded-2xl border bg-card/50 p-4 shadow-[0_2px_20px_rgba(0,0,0,0.03)]"
                 >
                   <div className="flex items-center justify-between gap-4">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{seat.memberName}</p>
+                      <p className="truncate text-sm font-medium">{seat.leaderName}</p>
                       <p className={cn('mt-0.5 text-xs', TONE_TEXT[tone])}>
-                        {seat.basis === 'grandfathered' && (
-                          <>
-                            Sem teto até {formatDate(data.grandfatherUntil)} · plano legado
-                          </>
-                        )}
+                        {seat.basis === 'grandfathered' && <>Plano legado · sem teto de horas</>}
                         {seat.basis === 'addon' && (
                           <>Add-on ativo · {seat.hoursUsed.toFixed(1)}h de {seat.hoursCap}h neste ciclo</>
                         )}
                         {seat.basis === 'trial' && (
-                          <>Trial · {remaining.toFixed(1)}h vitalícias restantes</>
+                          <>Teste de 14 dias · {remaining.toFixed(1)}h restantes</>
                         )}
                         {seat.basis === 'none' && (
-                          <>
-                            Sem bot disponível · ative o add-on ou conecte um note taker
-                          </>
+                          <>Sem bot disponível · ative o add-on ou conecte um note taker</>
                         )}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       {seat.basis === 'none' && <Plug className="h-4 w-4 text-muted-foreground" />}
                       {seat.hasAddon && <Bot className="h-4 w-4 text-primary" />}
-                      {pendingMember === seat.memberId ? (
+                      {pendingLeader === seat.leaderUserId ? (
                         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                       ) : (
                         <Switch
                           checked={seat.hasAddon}
                           onCheckedChange={(next) => handleToggle(seat, next)}
-                          aria-label={`Add-on de bot para ${seat.memberName}`}
+                          aria-label={`Add-on de bot para ${seat.leaderName}`}
                         />
                       )}
                     </div>
                   </div>
-                  {seat.basis === 'addon' && seat.hoursCap > 0 && (
+                  {(seat.basis === 'addon' || seat.basis === 'trial') && seat.hoursCap > 0 && (
                     <Progress
                       value={seat.percent}
                       className={cn('mt-3 h-1.5 bg-muted', TONE_BAR[tone])}
