@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Paperclip, Plus, MessageSquare, Pencil, Trash2, FileText, X, Sparkles, ArrowUp, Square, ChevronLeft, Menu, Copy, Pin } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useBillingGate } from '@/hooks/useBillingGate';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -205,6 +206,7 @@ export const MentorChat = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
+  const billingGate = useBillingGate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { canSendMentorMessage, mentorMessagesRemaining, limits } = usePlanLimits();
@@ -422,6 +424,7 @@ export const MentorChat = ({
     let finalMessage = messageToSend || input;
     if (!finalMessage.trim() && !attachment) return;
     if (isLoading || !effectiveUserId) return;
+    if (!billingGate.ensure('ask_rhitmo')) return;
 
     if (!canSendMentorMessage) {
       toast({

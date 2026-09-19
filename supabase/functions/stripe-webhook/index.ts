@@ -42,24 +42,34 @@ async function syncV2SeatAddons(
 
   const rows = active ?? [];
 
-  if (rows.length > targetQty) {
+  // v3: o add-on é do LÍDER (quantidade 1). Sem líder informado, cai no owner.
+  const { data: ws } = await admin
+    .from("workspaces")
+    .select("billing_model, owner_id")
+    .eq("id", workspaceId)
+    .maybeSingle();
+  const isV3 = (ws?.billing_model ?? "legacy") === "v3";
+  const effectiveTarget = isV3 ? Math.min(targetQty, 1) : targetQty;
+
+  if (rows.length > effectiveTarget) {
     // Sobra local: cancela as linhas mais recentes.
-    const toCancel = rows.slice(targetQty).map((r) => r.id);
+    const toCancel = rows.slice(effectiveTarget).map((r) => r.id);
     const { error: cancelErr } = await admin
       .from("seat_addons")
       .update({ status: "canceled", stripe_subscription_item_id: null })
       .in("id", toCancel);
     if (cancelErr) console.error("[syncV2SeatAddons] cancel error", cancelErr);
-  } else if (rows.length < targetQty) {
+  } else if (rows.length < effectiveTarget) {
     // Falta local (add-on adicionado direto no Stripe): cria linhas sem
-    // membro atribuído, para o líder alocar depois em /v2/billing.
-    const missing = Array.from({ length: targetQty - rows.length }, () => ({
+    // dono atribuído (v2) ou já no líder/owner (v3).
+    const missing = Array.from({ length: effectiveTarget - rows.length }, () => ({
       workspace_id: workspaceId,
       member_id: null,
+      leader_user_id: isV3 ? ws?.owner_id ?? null : null,
       addon_type: "bot",
       status: "active",
       billing_cycle: cycle,
-      included_hours: V2_ADDON_INCLUDED_HOURS,
+      included_hours: isV3 ? 6 : V2_ADDON_INCLUDED_HOURS,
       stripe_subscription_item_id: addonItem?.id ?? null,
     }));
     const { error: insErr } = await admin.from("seat_addons").insert(missing);

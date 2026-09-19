@@ -2704,6 +2704,7 @@ export type Database = {
           created_at: string
           id: string
           included_hours: number
+          leader_user_id: string | null
           member_id: string | null
           status: string
           stripe_subscription_item_id: string | null
@@ -2716,6 +2717,7 @@ export type Database = {
           created_at?: string
           id?: string
           included_hours?: number
+          leader_user_id?: string | null
           member_id?: string | null
           status?: string
           stripe_subscription_item_id?: string | null
@@ -2728,6 +2730,7 @@ export type Database = {
           created_at?: string
           id?: string
           included_hours?: number
+          leader_user_id?: string | null
           member_id?: string | null
           status?: string
           stripe_subscription_item_id?: string | null
@@ -3522,6 +3525,7 @@ export type Database = {
       }
       workspaces: {
         Row: {
+          billing_model: string
           bot_trial_hours_used: number
           client_account: string | null
           created_at: string
@@ -3540,10 +3544,12 @@ export type Database = {
           plan_tier: string
           seat_cycle: string
           transcript_retention_days: number
+          trial_ends_at: string | null
           ui_version: string
           updated_at: string
         }
         Insert: {
+          billing_model?: string
           bot_trial_hours_used?: number
           client_account?: string | null
           created_at?: string
@@ -3562,10 +3568,12 @@ export type Database = {
           plan_tier?: string
           seat_cycle?: string
           transcript_retention_days?: number
+          trial_ends_at?: string | null
           ui_version?: string
           updated_at?: string
         }
         Update: {
+          billing_model?: string
           bot_trial_hours_used?: number
           client_account?: string | null
           created_at?: string
@@ -3584,6 +3592,7 @@ export type Database = {
           plan_tier?: string
           seat_cycle?: string
           transcript_retention_days?: number
+          trial_ends_at?: string | null
           ui_version?: string
           updated_at?: string
         }
@@ -3754,6 +3763,20 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_billing_status: {
+        Args: { p_workspace_id: string }
+        Returns: {
+          billing_model: string
+          days_left: number
+          has_subscription: boolean
+          is_grandfathered: boolean
+          locked: boolean
+          seat_count: number
+          trial_active: boolean
+          trial_ends_at: string
+          workspace_id: string
+        }[]
+      }
       get_bot_hours_usage: {
         Args: never
         Returns: {
@@ -3904,6 +3927,17 @@ export type Database = {
           role_id: string
           role_level: string
           role_title: string
+        }[]
+      }
+      get_leader_bot_addon: {
+        Args: { p_workspace_id: string }
+        Returns: {
+          basis: string
+          has_addon: boolean
+          hours_cap: number
+          hours_used: number
+          leader_name: string
+          leader_user_id: string
         }[]
       }
       get_leaders_at_risk: {

@@ -76,14 +76,17 @@ Deno.serve(async (req) => {
     // possui E os que ele lidera. Antes olhávamos só owner_id primeiro, então
     // um líder com workspace legado "pulse" (ex.: Douglas / Tharyane) era
     // bloqueado mesmo liderando time em workspace enterprise+beta.
+    const WS_FIELDS =
+      "id, plan_tier, is_beta_user, paid_seats, grandfather_until, ui_version, bot_trial_hours_used, billing_model, trial_ends_at";
+
     const { data: ownedWorkspaces } = await supabaseAdmin
       .from("workspaces")
-      .select("id, plan_tier, is_beta_user, paid_seats, grandfather_until, ui_version, bot_trial_hours_used")
+      .select(WS_FIELDS)
       .eq("owner_id", userId);
 
     const { data: ledTeams } = await supabaseAdmin
       .from("teams")
-      .select("workspaces(id, plan_tier, is_beta_user, paid_seats, grandfather_until, ui_version, bot_trial_hours_used)")
+      .select(`workspaces(${WS_FIELDS})`)
       .eq("leader_user_id", userId);
 
     // Caps por plano. Pro/Business/Enterprise = bot ilimitado.
@@ -104,10 +107,116 @@ Deno.serve(async (req) => {
         .filter(Boolean) as Array<{ plan_tier: string | null; is_beta_user: boolean | null }>),
     ];
 
-    // ── Rhitmo v2: teto por LIDERADO (add-on de bot ou trial vitalício) ──────
+    // ── Rhitmo v3: bolsa de horas por LÍDER (add-on de bot ou teste de 14 dias) ──
+    const v3Workspace = (candidates as Array<Record<string, any>>).find(
+      (c) => c?.billing_model === "v3",
+    );
+
+    if (v3Workspace) {
+      const V3_ADDON_HOURS = 6;
+      const V3_TRIAL_HOURS = 6;
+      const workspaceId = v3Workspace.id as string;
+
+      const grandfathered = !!v3Workspace.grandfather_until &&
+        new Date(v3Workspace.grandfather_until as string) >= new Date(new Date().toDateString());
+
+      if (!grandfathered) {
+        const { data: addonRow } = await supabaseAdmin
+          .from("seat_addons")
+          .select("id, included_hours")
+          .eq("workspace_id", workspaceId)
+          .eq("leader_user_id", userId)
+          .eq("addon_type", "bot")
+          .eq("status", "active")
+          .limit(1)
+          .maybeSingle();
+
+        const trialEndsAt = v3Workspace.trial_ends_at
+          ? new Date(v3Workspace.trial_ends_at as string)
+          : null;
+        const trialActive = !!trialEndsAt && trialEndsAt.getTime() > Date.now();
+
+        if (!addonRow && !trialActive) {
+          return new Response(
+            JSON.stringify({
+              error:
+                "O teste de 14 dias terminou e não há add-on de bot ativo. Ative o bot de reunião do líder (R$ 29,90/mês, 6h) em Assinatura, ou conecte um note taker (Granola ou Fireflies) para esta reunião não depender do bot.",
+              code: "v3_no_bot_available",
+              basis: "none",
+            }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+
+        const basis: "addon" | "trial" = addonRow ? "addon" : "trial";
+        const hoursCap = addonRow
+          ? Number(addonRow.included_hours ?? V3_ADDON_HOURS) || V3_ADDON_HOURS
+          : V3_TRIAL_HOURS;
+
+        // Janela: ciclo mensal (add-on) ou período do teste (trial).
+        const windowStart = addonRow
+          ? (() => {
+            const d = new Date();
+            d.setDate(1);
+            d.setHours(0, 0, 0, 0);
+            return d;
+          })()
+          : new Date(trialEndsAt!.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+        // Horas do líder = soma dos liderados dos times que ele lidera.
+        const { data: leaderTeams } = await supabaseAdmin
+          .from("teams")
+          .select("id")
+          .eq("workspace_id", workspaceId)
+          .eq("leader_user_id", userId);
+
+        const teamIds = (leaderTeams ?? []).map((t: any) => t.id);
+        let hoursUsed = 0;
+        if (teamIds.length > 0) {
+          const { data: leaderMembers } = await supabaseAdmin
+            .from("team_members")
+            .select("id")
+            .in("team_id", teamIds);
+          const memberIds = (leaderMembers ?? []).map((m: any) => m.id);
+          if (memberIds.length > 0) {
+            const { data: usageRows } = await supabaseAdmin
+              .from("bot_usage_events")
+              .select("machine_minutes")
+              .eq("workspace_id", workspaceId)
+              .in("member_id", memberIds)
+              .gte("created_at", windowStart.toISOString());
+            hoursUsed = ((usageRows ?? []).reduce(
+              (sum: number, r: any) => sum + Number(r.machine_minutes ?? 0),
+              0,
+            )) / 60;
+          }
+        }
+
+        if (hoursCap - hoursUsed <= 0) {
+          return new Response(
+            JSON.stringify({
+              error: basis === "addon"
+                ? `As ${hoursCap}h de bot do seu add-on acabaram neste ciclo (${
+                  hoursUsed.toFixed(1)
+                }h usadas). Espere a renovação do ciclo ou conecte um note taker (Granola ou Fireflies) para esta reunião.`
+                : `As ${hoursCap}h de bot do teste de 14 dias acabaram (${
+                  hoursUsed.toFixed(1)
+                }h usadas). Ative o bot de reunião do líder (R$ 29,90/mês, 6h) em Assinatura, ou conecte um note taker.`,
+              code: basis === "addon" ? "v3_addon_hours_cap" : "v3_trial_hours_cap",
+              basis,
+              hours_used: Number(hoursUsed.toFixed(2)),
+              hours_cap: hoursCap,
+            }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+      }
+    }
+
+    // ── Rhitmo v2 legado: teto por LIDERADO (add-on de bot ou trial vitalício) ──
     // Workspaces v1 não passam por aqui e mantêm exatamente a lógica anterior.
     const v2Workspace = (candidates as Array<Record<string, any>>).find(
-      (c) => c?.ui_version === "v2",
+      (c) => c?.ui_version === "v2" && c?.billing_model !== "v3",
     );
 
     // Grandfather ainda válido = sem teto, igual ao que o workspace já tinha no v1.

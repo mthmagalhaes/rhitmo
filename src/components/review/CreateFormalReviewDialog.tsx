@@ -17,6 +17,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, Calendar as CalendarIcon, FileText, Award, MessageSquare, Monitor } from 'lucide-react';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useBillingGate } from '@/hooks/useBillingGate';
 import { useToast } from '@/hooks/use-toast';
 import { useEnforcedLimits } from '@/hooks/useEnforcedLimits';
 import { cn } from '@/lib/utils';
@@ -38,6 +39,7 @@ export function CreateFormalReviewDialog({
 }: CreateFormalReviewDialogProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const billingGate = useBillingGate();
   const { reviewCount, limits, enforceLimit } = useEnforcedLimits();
 
   const [periodType, setPeriodType] = useState<'last_month' | 'last_quarter' | 'custom'>('last_quarter');
@@ -75,6 +77,9 @@ export function CreateFormalReviewDialog({
 
   const createMutation = useMutation({
     mutationFn: async () => {
+      if (!billingGate.ensure('generate_review')) {
+        throw new Error('Assinatura necessária');
+      }
       if (!enforceLimit(reviewCount, limits.maxReviews, 'avaliações formais')) {
         throw new Error('Limite atingido');
       }

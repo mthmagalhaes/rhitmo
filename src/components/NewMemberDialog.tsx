@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useBillingGate } from '@/hooks/useBillingGate';
 import { useToast } from '@/hooks/use-toast';
 import { useEnforcedLimits } from '@/hooks/useEnforcedLimits';
 import { supabase } from '@/integrations/supabase/client';
@@ -41,6 +42,7 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
+  const billingGate = useBillingGate();
   const { hasSync, memberCount, limits, enforceLimit } = useEnforcedLimits();
 
   // Desabilitar convite se plano não tem Sync
@@ -82,6 +84,7 @@ export const NewMemberDialog = ({ open, onOpenChange, workspaceId, onSuccess }: 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!billingGate.ensure('create_member')) return;
     setErrors({});
 
     // Validação

@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     // Workspace do usuário (Owner)
     const { data: workspace, error: wsError } = await supabaseAdmin
       .from("workspaces")
-      .select("id, grandfather_until, paid_seats, ui_version")
+      .select("id, grandfather_until, paid_seats, ui_version, billing_model")
       .eq("owner_id", user.id)
       .maybeSingle();
 
@@ -102,7 +102,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Calcular seats pagos = total de liderados − 3 free (mínimo 1 para checkout)
+    const isLegacyBilling = ((workspace as any).billing_model as string | null) !== "v3";
+
+    // Assentos: no modelo v3 TODO mundo paga (liderados + o próprio líder).
+    // No legado, mantém líder + 3 liderados grátis.
     const { count: memberCount, error: countErr } = await supabaseAdmin
       .from("team_members")
       .select("*", { count: "exact", head: true })
@@ -114,7 +117,9 @@ Deno.serve(async (req) => {
 
     const total = memberCount ?? 0;
     const requestedSeats: number | undefined = body.seats;
-    const seatsToPay = Math.max(1, requestedSeats ?? (total - FREE_SEATS));
+    const defaultSeats = isLegacyBilling ? total - FREE_SEATS : total + 1;
+    const seatsToPay = Math.max(1, requestedSeats ?? defaultSeats);
+
 
     const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 
@@ -151,14 +156,20 @@ Deno.serve(async (req) => {
       seatsToPay,
     });
 
+    // Preço por assento: modelo v3 e workspaces v2 usam R$ 10/mês (R$ 8 anual).
     const isV2 = ((workspace as any).ui_version as string | null) === "v2";
-    const seatPriceId = isV2 ? V2_SEAT_PRICE_IDS[seatCycle] : SEAT_PRICE_IDS[seatCycle];
+    const useV2Seat = !isLegacyBilling || isV2;
+    const seatPriceId = useV2Seat ? V2_SEAT_PRICE_IDS[seatCycle] : SEAT_PRICE_IDS[seatCycle];
 
-    // Add-on de bot: só existe no v2. quantity = assentos que já vão ativar bot
-    // no momento do checkout (0 é válido → nenhum line item de add-on).
+    // Add-on de bot: no v3 é UM por líder (quantidade 1). No legado, N por liderado.
     const rawBotSeats = Number(body.botSeats ?? 0);
-    const botSeats = isV2 && Number.isFinite(rawBotSeats)
-      ? Math.max(0, Math.min(Math.floor(rawBotSeats), seatsToPay))
+    const wantsAddon = body.botAddon === true || (Number.isFinite(rawBotSeats) && rawBotSeats > 0);
+    const botSeats = !useV2Seat
+      ? 0
+      : isLegacyBilling
+      ? Math.max(0, Math.min(Math.floor(rawBotSeats || 0), seatsToPay))
+      : wantsAddon
+      ? 1
       : 0;
 
     const params = new URLSearchParams({
@@ -173,10 +184,12 @@ Deno.serve(async (req) => {
       "metadata[seat_cycle]": seatCycle,
       "metadata[paid_seats]": String(seatsToPay),
       "metadata[ui_version]": isV2 ? "v2" : "v1",
+      "metadata[billing_model]": isLegacyBilling ? "legacy" : "v3",
       "metadata[bot_addon_seats]": String(botSeats),
       "subscription_data[metadata][workspace_id]": workspace.id,
       "subscription_data[metadata][seat_cycle]": seatCycle,
       "subscription_data[metadata][ui_version]": isV2 ? "v2" : "v1",
+      "subscription_data[metadata][billing_model]": isLegacyBilling ? "legacy" : "v3",
     });
 
     if (botSeats > 0) {

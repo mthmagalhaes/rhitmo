@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { AdHocBotDialog } from '@/components/dashboard/AdHocBotDialog';
 import { safeFunctionInvoke } from '@/lib/supabaseSafe';
 import { useToast } from '@/hooks/use-toast';
+import { useBillingGate } from '@/hooks/useBillingGate';
 
 const LIVE_BOT_STATUSES = [
   'scheduled',
@@ -64,6 +65,7 @@ export const UpcomingMeetingsCard = () => {
   const [dismissingBotId, setDismissingBotId] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const billingGate = useBillingGate();
 
   const dismissBot = async (botId: string) => {
     setDismissingBotId(botId);
@@ -327,6 +329,7 @@ export const UpcomingMeetingsCard = () => {
 
           const triggerBot = (retroactive: boolean) => {
             if (!canScheduleBot) return;
+            if (!billingGate.ensure('send_bot')) return;
             setSchedulingMeetingId(meeting.id);
             scheduleBot.mutate({
               meeting_id: meeting.id,

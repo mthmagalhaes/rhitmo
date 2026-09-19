@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAccount } from '@/contexts/AccountContext';
 import { AccountLoadFailed, AccountLoadingSlow, AccountLoadingDelayedBanner } from '@/components/AccountLoadFailed';
 import { RoleContextBanner } from '@/components/layout/RoleContextBanner';
+import { TrialBanner } from '@/components/billing/TrialBanner';
 import { useRoleTheme } from '@/hooks/useRoleTheme';
 import { getSignupPersona, clearSignupPersona } from '@/lib/signupPersona';
 
@@ -185,6 +186,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           )}
           
           {showActivity && <RoleContextBanner />}
+
+          <TrialBanner />
+
 
           <main key={roleTheme} className="flex-1 min-w-0 role-transition" id="main-content">
             <Suspense fallback={<RouteSkeleton />}>
