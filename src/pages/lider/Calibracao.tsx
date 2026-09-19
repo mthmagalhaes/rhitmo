@@ -8,6 +8,11 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useLeaderMembers } from '@/hooks/useLeaderMembers';
 import {
@@ -19,7 +24,7 @@ import { CalibrationGrid } from '@/components/leader/calibracao/CalibrationGrid'
 export default function LiderCalibracao() {
   const { toast } = useToast();
   const { workspace } = useLeaderMembers();
-  const { sessions, createSession, closeSession, updateNotes } =
+  const { sessions, createSession, closeSession, reopenSession, updateNotes } =
     useCalibrationSessions(workspace?.id ?? null);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
