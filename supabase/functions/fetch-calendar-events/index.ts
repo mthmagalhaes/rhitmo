@@ -116,17 +116,20 @@ Deno.serve(async (req) => {
     let accessToken = tokenData.access_token;
     const autoTranscribe = tokenData.auto_transcribe === true;
 
-    // ── Refresh if expired ──
-    if (tokenData.token_expiry && new Date(tokenData.token_expiry) < new Date()) {
+    const reconnectResponse = (message: string) =>
+      new Response(JSON.stringify({ error: message, needs_reconnect: true }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+
+    // Troca o refresh_token por um novo access_token. Retorna null quando o
+    // Google recusa (consentimento revogado, senha trocada) — nesse caso o
+    // registro é apagado para o app pedir reconexão em vez de repetir o erro.
+    const refreshAccessToken = async (): Promise<string | null> => {
       if (!tokenData.refresh_token) {
         await supabaseAdmin.from("google_calendar_tokens").delete().eq("user_id", userId);
-        return new Response(JSON.stringify({ error: "Token expired, please reconnect" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return null;
       }
-
-      console.log(`[sync] Refreshing expired token for user ${userId}`);
 
       const refreshResponse = await fetch("https://oauth2.googleapis.com/token", {
         method: "POST",
@@ -139,30 +142,34 @@ Deno.serve(async (req) => {
         }),
       });
 
-      const refreshData = await refreshResponse.json();
+      const refreshData = await refreshResponse.json().catch(() => ({}));
 
       if (!refreshResponse.ok || !refreshData.access_token) {
-        console.error("[sync] Refresh failed:", refreshData);
+        console.error("[sync] Refresh failed:", JSON.stringify(refreshData).slice(0, 300));
         await supabaseAdmin.from("google_calendar_tokens").delete().eq("user_id", userId);
-        return new Response(JSON.stringify({ error: "Token refresh failed, please reconnect" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return null;
       }
 
-      accessToken = refreshData.access_token;
-      const newExpiry = new Date(Date.now() + refreshData.expires_in * 1000).toISOString();
-
+      const newExpiry = new Date(Date.now() + (refreshData.expires_in ?? 3600) * 1000).toISOString();
       await supabaseAdmin
         .from("google_calendar_tokens")
         .update({
-          access_token: accessToken,
+          access_token: refreshData.access_token,
           token_expiry: newExpiry,
           updated_at: new Date().toISOString(),
         })
         .eq("user_id", userId);
 
       console.log(`[sync] Token refreshed successfully`);
+      return refreshData.access_token as string;
+    };
+
+    // ── Refresh if expired ──
+    if (tokenData.token_expiry && new Date(tokenData.token_expiry) < new Date()) {
+      console.log(`[sync] Refreshing expired token for user ${userId}`);
+      const refreshed = await refreshAccessToken();
+      if (!refreshed) return reconnectResponse("Token expirado. Reconecte o Google Calendar.");
+      accessToken = refreshed;
     }
 
     // ── Fetch Google Calendar events (next 48h) with pagination ──
@@ -171,6 +178,7 @@ Deno.serve(async (req) => {
 
     const allEvents: Array<Record<string, unknown>> = [];
     let pageToken: string | null = null;
+    let retriedAfter401 = false;
 
     do {
       const calParams = new URLSearchParams({
@@ -189,7 +197,26 @@ Deno.serve(async (req) => {
 
       if (!eventsResponse.ok) {
         const errText = await eventsResponse.text();
+
+        // 401/403 com token inválido: o token_expiry salvo pode estar errado.
+        // Tenta renovar uma única vez antes de desistir; se falhar, o registro
+        // já foi apagado e devolvemos "precisa reconectar".
+        if ((eventsResponse.status === 401 || eventsResponse.status === 403) && !retriedAfter401) {
+          retriedAfter401 = true;
+          console.warn(`[sync] Calendar returned ${eventsResponse.status}; attempting token refresh`);
+          const refreshed = await refreshAccessToken();
+          if (!refreshed) {
+            return reconnectResponse("Acesso ao Google Calendar expirou. Reconecte sua agenda.");
+          }
+          accessToken = refreshed;
+          continue;
+        }
+
         console.error("[sync] Calendar API error:", errText);
+        if (eventsResponse.status === 401 || eventsResponse.status === 403) {
+          await supabaseAdmin.from("google_calendar_tokens").delete().eq("user_id", userId);
+          return reconnectResponse("Acesso ao Google Calendar expirou. Reconecte sua agenda.");
+        }
         return new Response(JSON.stringify({ error: "Failed to fetch calendar events" }), {
           status: 502,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
