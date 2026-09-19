@@ -18,6 +18,20 @@ interface AdoptionRow {
   notes_imported: number | null;
 }
 
+interface ActivationRow {
+  workspace_id: string;
+  workspace_name: string | null;
+  is_active: boolean | null;
+  leaders: number;
+  leaders_with_connector: number;
+  members: number;
+  notes_total: number;
+  notes_from_connector: number;
+  leaders_asked_rhitmo: number;
+  last_activity_at: string | null;
+}
+
+
 const RANGES = [
   { days: 30, label: '30 dias' },
   { days: 90, label: '90 dias' },
