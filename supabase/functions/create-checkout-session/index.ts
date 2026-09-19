@@ -76,9 +76,49 @@ Deno.serve(async (req) => {
     // Workspace do usuário (Owner)
     const { data: workspace, error: wsError } = await supabaseAdmin
       .from("workspaces")
-      .select("id, grandfather_until, paid_seats, ui_version")
+      .select("id, grandfather_until, paid_seats, ui_version, billing_model")
       .eq("owner_id", user.id)
       .maybeSingle();
+
+    if (wsError || !workspace) {
+      return new Response(JSON.stringify({ error: "Workspace not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Bloquear checkout se workspace está em período grandfathered
+    const grandfatherUntil = (workspace as any).grandfather_until as string | null;
+    const isGrandfathered = !!grandfatherUntil && new Date(grandfatherUntil) >= new Date(new Date().toDateString());
+    if (isGrandfathered) {
+      return new Response(
+        JSON.stringify({
+          blocked: true,
+          reason: "grandfathered",
+          grandfather_until: grandfatherUntil,
+          message: `Você é Early Adopter até ${grandfatherUntil}. Nada a pagar.`,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const isLegacyBilling = ((workspace as any).billing_model as string | null) !== "v3";
+
+    // Assentos: no modelo v3 TODO mundo paga (liderados + o próprio líder).
+    // No legado, mantém líder + 3 liderados grátis.
+    const { count: memberCount, error: countErr } = await supabaseAdmin
+      .from("team_members")
+      .select("*", { count: "exact", head: true })
+      .eq("workspace_id", workspace.id);
+
+    if (countErr) {
+      console.error("Count members error:", countErr);
+    }
+
+    const total = memberCount ?? 0;
+    const requestedSeats: number | undefined = body.seats;
+    const defaultSeats = isLegacyBilling ? total - FREE_SEATS : total + 1;
+    const seatsToPay = Math.max(1, requestedSeats ?? defaultSeats);
 
     if (wsError || !workspace) {
       return new Response(JSON.stringify({ error: "Workspace not found" }), {
