@@ -76,14 +76,17 @@ Deno.serve(async (req) => {
     // possui E os que ele lidera. Antes olhávamos só owner_id primeiro, então
     // um líder com workspace legado "pulse" (ex.: Douglas / Tharyane) era
     // bloqueado mesmo liderando time em workspace enterprise+beta.
+    const WS_FIELDS =
+      "id, plan_tier, is_beta_user, paid_seats, grandfather_until, ui_version, bot_trial_hours_used, billing_model, trial_ends_at";
+
     const { data: ownedWorkspaces } = await supabaseAdmin
       .from("workspaces")
-      .select("id, plan_tier, is_beta_user, paid_seats, grandfather_until, ui_version, bot_trial_hours_used")
+      .select(WS_FIELDS)
       .eq("owner_id", userId);
 
     const { data: ledTeams } = await supabaseAdmin
       .from("teams")
-      .select("workspaces(id, plan_tier, is_beta_user, paid_seats, grandfather_until, ui_version, bot_trial_hours_used)")
+      .select(`workspaces(${WS_FIELDS})`)
       .eq("leader_user_id", userId);
 
     // Caps por plano. Pro/Business/Enterprise = bot ilimitado.
