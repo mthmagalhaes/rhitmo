@@ -422,6 +422,7 @@ export const MentorChat = ({
     let finalMessage = messageToSend || input;
     if (!finalMessage.trim() && !attachment) return;
     if (isLoading || !effectiveUserId) return;
+    if (!billingGate.ensure('ask_rhitmo')) return;
 
     if (!canSendMentorMessage) {
       toast({
