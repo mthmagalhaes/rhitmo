@@ -62,10 +62,22 @@ export const AdminAdoption = () => {
     },
   });
 
+  // Ativação por empresa: mostra se o produto está sendo exercitado de verdade
+  // (notas entrando, conector ligado, líder perguntando à Rhitmo).
+  const { data: activation = [], isLoading: loadingActivation, error: activationError } = useQuery({
+    queryKey: ['workspace-activation', days],
+    queryFn: async (): Promise<ActivationRow[]> => {
+      const { data, error } = await supabase.rpc('get_workspace_activation' as never, { _days: days } as never);
+      if (error) throw error;
+      return (data ?? []) as unknown as ActivationRow[];
+    },
+  });
+
   const total = data.length;
   const connected = data.filter((r) => !!r.provider).length;
   const pct = total > 0 ? Math.round((connected / total) * 100) : 0;
   const gateOpen = total > 0 && pct >= TARGET_PCT;
+
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
