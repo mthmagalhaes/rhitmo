@@ -186,6 +186,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           
           {showActivity && <RoleContextBanner />}
 
+          <TrialBanner />
+
+
           <main key={roleTheme} className="flex-1 min-w-0 role-transition" id="main-content">
             <Suspense fallback={<RouteSkeleton />}>
               {children}
