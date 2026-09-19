@@ -120,41 +120,6 @@ Deno.serve(async (req) => {
     const defaultSeats = isLegacyBilling ? total - FREE_SEATS : total + 1;
     const seatsToPay = Math.max(1, requestedSeats ?? defaultSeats);
 
-    if (wsError || !workspace) {
-      return new Response(JSON.stringify({ error: "Workspace not found" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Bloquear checkout se workspace está em período grandfathered
-    const grandfatherUntil = (workspace as any).grandfather_until as string | null;
-    const isGrandfathered = !!grandfatherUntil && new Date(grandfatherUntil) >= new Date(new Date().toDateString());
-    if (isGrandfathered) {
-      return new Response(
-        JSON.stringify({
-          blocked: true,
-          reason: "grandfathered",
-          grandfather_until: grandfatherUntil,
-          message: `Você é Early Adopter até ${grandfatherUntil}. Nada a pagar.`,
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Calcular seats pagos = total de liderados − 3 free (mínimo 1 para checkout)
-    const { count: memberCount, error: countErr } = await supabaseAdmin
-      .from("team_members")
-      .select("*", { count: "exact", head: true })
-      .eq("workspace_id", workspace.id);
-
-    if (countErr) {
-      console.error("Count members error:", countErr);
-    }
-
-    const total = memberCount ?? 0;
-    const requestedSeats: number | undefined = body.seats;
-    const seatsToPay = Math.max(1, requestedSeats ?? (total - FREE_SEATS));
 
     const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 
