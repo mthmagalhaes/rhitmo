@@ -704,10 +704,10 @@ const HRRiskMockup = () => (
   </div>
 );
 
-// ============== PRICING SECTION (Windmill v3 — single card per-seat) ==============
-// Pricing v2 (conector-first) — 09/2026: 1 plano único.
-// Líder + 3 liderados grátis. R$ 10/assento a partir do 4º (R$ 8 no anual, 20% off).
-// Bot de reunião é add-on opcional: R$ 19,90/mês (4h). Trial vitalício de 5h.
+// ============== PRICING SECTION (v3 — todo assento pago) ==============
+// Pricing v3 — 09/2026: 1 plano único, teste de 14 dias sem cartão.
+// Todo assento custa R$ 10/mês (R$ 8 no anual), líder incluído.
+// Bot de reunião é add-on do LÍDER: R$ 29,90/mês, com 6h por ciclo.
 
 type SeatCycle = 'monthly' | 'annual';
 
@@ -723,11 +723,11 @@ const PricingSection = ({
   const [cycle, setCycle] = useState<SeatCycle>('annual');
 
   const headlinePrice = cycle === 'annual' ? 'R$ 8' : 'R$ 10';
-  const headlineSuffix = lang === 'pt' ? '/liderado / mês' : '/seat / month';
+  const headlineSuffix = lang === 'pt' ? '/pessoa / mês' : '/seat / month';
   const headlineSub =
     cycle === 'annual'
       ? lang === 'pt'
-        ? 'Cobrado anualmente (R$ 96/liderado/ano). 20% off.'
+        ? 'Cobrado anualmente (R$ 96/pessoa/ano). 20% off.'
         : 'Billed annually (R$ 96/seat/year). 20% off.'
       : lang === 'pt'
       ? 'Cobrado mensalmente. Cancele quando quiser.'
@@ -737,13 +737,13 @@ const PricingSection = ({
     lang === 'pt'
       ? {
           label: 'Add-on opcional',
-          title: 'Bot de reunião — R$ 19,90/mês',
-          desc: 'Inclui 4h de gravação e transcrição por mês. Ative só para quem precisa, cancele quando quiser. Sem o add-on, o assento não inclui horas de bot.',
+          title: 'Bot de reunião — R$ 29,90/mês por líder',
+          desc: 'Inclui 6h de gravação e transcrição por ciclo, válidas para as reuniões de todo o time do líder. Só o líder precisa do add-on. Sem ele, você ainda pode conectar seu próprio note taker sem custo.',
         }
       : {
           label: 'Optional add-on',
-          title: 'Meeting bot — R$ 19.90/month',
-          desc: 'Includes 4 hours of recording and transcription per month. Enable it only for who needs it, cancel anytime. Without the add-on, the seat includes no bot hours.',
+          title: 'Meeting bot — R$ 29.90/month per leader',
+          desc: 'Includes 6 hours of recording and transcription per cycle, covering every meeting in that leader\'s team. Only the leader needs the add-on. Without it, you can still connect your own note taker at no cost.',
         };
 
   const features =
