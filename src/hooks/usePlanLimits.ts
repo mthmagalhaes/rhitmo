@@ -222,10 +222,13 @@ export const usePlanLimits = () => {
     // v3: sem teto de assentos por plano grátis; a trava pós-teste é o useBillingGate.
     const unlocked = isBeta || isGrandfathered || isV3;
     const totalSeats = unlocked ? Infinity : FREE_SEATS + paidSeats;
-    // Pricing v4: horas de bot com teto por workspace (nunca ilimitado no pago).
-    const recallUnlimited = unlocked;
-    const recallCapHours =
-      paidSeats > 0 ? paidSeats * RECALL_HOURS_PER_PAID_SEAT : FREE_RECALL_CAP_HOURS;
+    // v3: horas de bot vêm do add-on do líder (get_leader_bot_addon).
+    const recallUnlimited = isV3
+      ? myAddon?.basis === 'grandfathered'
+      : isBeta || isGrandfathered;
+    const recallCapHours = isV3
+      ? myAddon?.hoursCap ?? 0
+      : paidSeats > 0 ? paidSeats * RECALL_HOURS_PER_PAID_SEAT : FREE_RECALL_CAP_HOURS;
 
     return {
       freeSeats: FREE_SEATS,
