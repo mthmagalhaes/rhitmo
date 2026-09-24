@@ -1922,6 +1922,7 @@ export type Database = {
       note_taker_synced_notes: {
         Row: {
           attendees: Json
+          auto_assigned: boolean
           created_at: string
           external_note_id: string
           feedback_id: string | null
@@ -1930,11 +1931,13 @@ export type Database = {
           note_created_at: string | null
           provider: string
           status: string
+          suggested_member_id: string | null
           title: string | null
           user_id: string
         }
         Insert: {
           attendees?: Json
+          auto_assigned?: boolean
           created_at?: string
           external_note_id: string
           feedback_id?: string | null
@@ -1943,11 +1946,13 @@ export type Database = {
           note_created_at?: string | null
           provider?: string
           status?: string
+          suggested_member_id?: string | null
           title?: string | null
           user_id: string
         }
         Update: {
           attendees?: Json
+          auto_assigned?: boolean
           created_at?: string
           external_note_id?: string
           feedback_id?: string | null
@@ -1956,6 +1961,7 @@ export type Database = {
           note_created_at?: string | null
           provider?: string
           status?: string
+          suggested_member_id?: string | null
           title?: string | null
           user_id?: string
         }
