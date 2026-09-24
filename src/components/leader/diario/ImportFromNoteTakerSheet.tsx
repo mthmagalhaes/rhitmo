@@ -231,6 +231,14 @@ function ConnectedList({
           presetMemberId={presetMemberId}
           busy={busyId === n.id}
           onDismiss={() => nt.dismiss.mutate(n.id)}
+          onMove={(memberId) => {
+            setBusyId(n.id);
+            nt.reassign.mutate({ noteId: n.id, memberId }, { onSettled: () => setBusyId(null) });
+          }}
+          onRemove={() => {
+            setBusyId(n.id);
+            nt.remove.mutate(n.id, { onSettled: () => setBusyId(null) });
+          }}
           onImport={(memberId) => {
             setBusyId(n.id);
             nt.assign.mutate(
