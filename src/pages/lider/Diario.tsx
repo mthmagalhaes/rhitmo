@@ -5,7 +5,8 @@ import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { isToday, isThisWeek, subDays, startOfISOWeek, formatISO } from 'date-fns';
-import { Lock, PenSquare, Inbox } from 'lucide-react';
+import { Lock, PenSquare, Inbox, Download } from 'lucide-react';
+import { ImportFromNoteTakerSheet, PendingNotesBanner } from '@/components/leader/diario/ImportFromNoteTakerSheet';
 import type { DateRange } from 'react-day-picker';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -321,6 +322,7 @@ export default function LiderDiario() {
     queryClient.invalidateQueries({ queryKey: ['team-members'] });
   };
 
+  const [importOpen, setImportOpen] = useState(false);
   const presetMember = presetMemberId ? memberById.get(presetMemberId) : undefined;
   const total = items.length;
   const selectedMemberName =
@@ -336,6 +338,8 @@ export default function LiderDiario() {
           Suas evidências privadas sobre o time, em um só lugar.
         </p>
       </header>
+
+      <PendingNotesBanner onOpen={() => setImportOpen(true)} />
 
       {/* Insight Card */}
       {members.length > 0 && (
@@ -354,6 +358,11 @@ export default function LiderDiario() {
                 }.`}
           </p>
         </div>
+        <div className="flex gap-2 shrink-0">
+        <Button variant="outline" onClick={() => setImportOpen(true)} className="rounded-xl gap-2">
+          <Download className="h-4 w-4" />
+          Importar
+        </Button>
         <Button
           onClick={() => {
             setPresetMemberId(undefined);
@@ -366,6 +375,7 @@ export default function LiderDiario() {
           <PenSquare className="h-4 w-4" />
           Nova nota
         </Button>
+        </div>
       </div>
 
       {/* Filtros */}
@@ -421,6 +431,20 @@ export default function LiderDiario() {
           )}
         </div>
       )}
+
+      <ImportFromNoteTakerSheet
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        members={members.map((m) => ({ id: m.id, name: m.name, email: (m as { email?: string | null }).email ?? null }))}
+        presetMemberId={memberId !== 'all' ? memberId : undefined}
+        onPasteInstead={() => {
+          setImportOpen(false);
+          setPresetMemberId(memberId !== 'all' ? memberId : undefined);
+          setPrefillContent(undefined);
+          setPrefillTitle(undefined);
+          setNoteDialogOpen(true);
+        }}
+      />
 
       <NewNoteDialog
         open={noteDialogOpen}

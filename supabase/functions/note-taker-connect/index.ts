@@ -28,6 +28,7 @@ const BodySchema = z.object({
     "assign",
     "dismiss",
     "reprocess",
+    "list_recent",
   ]),
   provider: z.enum(NOTE_TAKER_PROVIDER_IDS).default("granola"),
   api_key: z.string().min(10).max(500).optional(),
@@ -137,6 +138,27 @@ Deno.serve(async (req) => {
         .limit(50);
       if (error) throw error;
       return json({ ok: true, pending: data ?? [] });
+    }
+
+    // Notas recentes (qualquer status) para o painel "Importar" do diário.
+    // Sincroniza antes para a conversa que acabou de terminar já aparecer.
+    if (action === "list_recent") {
+      try {
+        await syncNoteTakerConnection(admin, connection, supabaseUrl, serviceKey);
+      } catch (e) {
+        console.warn("list_recent sync failed", (e as Error).message);
+      }
+      const since = new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString();
+      const { data, error } = await admin
+        .from("note_taker_synced_notes")
+        .select("id, external_note_id, title, note_created_at, attendees, status, member_id")
+        .eq("user_id", user.id)
+        .eq("provider", provider)
+        .gte("note_created_at", since)
+        .order("note_created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return json({ ok: true, notes: data ?? [] });
     }
 
     // Reprocessa notas já importadas: rebusca o conteúdo no provedor,
