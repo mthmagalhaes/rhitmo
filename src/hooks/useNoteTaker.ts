@@ -212,6 +212,8 @@ export function useNoteTaker(provider: NoteTakerProvider = 'granola') {
     sync,
     assign,
     dismiss,
+    reassign,
+    remove,
     useRecent,
   };
 }

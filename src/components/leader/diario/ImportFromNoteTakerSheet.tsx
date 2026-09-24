@@ -4,7 +4,7 @@
 import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Check, ClipboardPaste, Download, Inbox, Loader2, Plug, X } from 'lucide-react';
+import { Check, ClipboardPaste, Download, Inbox, Loader2, Plug, Sparkles, Trash2, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -26,18 +26,57 @@ interface Member {
   email?: string | null;
 }
 
-/** Sugere o liderado pelo e-mail dos convidados ou pelo primeiro nome no título. */
+function norm(s: string) {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+/** Sugere o liderado: sugestão do servidor, e-mail dos convidados ou nome/apelido ("Yas" → Yasmin). */
 function suggestMember(note: RecentNote, members: Member[]): string | undefined {
+  if (note.suggested_member_id && members.some((m) => m.id === note.suggested_member_id)) {
+    return note.suggested_member_id;
+  }
   const emails = new Set(
     (note.attendees ?? []).map((a) => (a.email ?? '').toLowerCase()).filter(Boolean),
   );
   const byEmail = members.find((m) => m.email && emails.has(m.email.toLowerCase()));
   if (byEmail) return byEmail.id;
-  const hay = `${note.title ?? ''} ${(note.attendees ?? []).map((a) => a.name ?? '').join(' ')}`.toLowerCase();
-  return members.find((m) => {
-    const first = m.name.split(/\s+/)[0]?.toLowerCase();
-    return first && first.length > 2 && hay.includes(first);
-  })?.id;
+  const tokens = norm(
+    `${note.title ?? ''} ${(note.attendees ?? []).map((a) => a.name ?? '').join(' ')}`,
+  )
+    .split(/[^a-z0-9]+/)
+    .filter((t) => t.length >= 3);
+  const hits = members.filter((m) => {
+    const first = norm(m.name.split(/\s+/)[0] ?? '');
+    return first.length >= 3 && tokens.some((t) => first.startsWith(t));
+  });
+  return hits[0]?.id;
+}
+
+function MemberSelect({
+  members,
+  value,
+  onChange,
+  placeholder,
+}: {
+  members: Member[];
+  value?: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className="h-9 flex-1 rounded-xl">
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        {members.map((m) => (
+          <SelectItem key={m.id} value={m.id}>
+            {m.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
 }
 
 function NoteRow({
@@ -46,6 +85,8 @@ function NoteRow({
   presetMemberId,
   onImport,
   onDismiss,
+  onMove,
+  onRemove,
   busy,
 }: {
   note: RecentNote;
@@ -53,11 +94,14 @@ function NoteRow({
   presetMemberId?: string;
   onImport: (memberId: string) => void;
   onDismiss: () => void;
+  onMove: (memberId: string) => void;
+  onRemove: () => void;
   busy: boolean;
 }) {
   const [memberId, setMemberId] = useState<string | undefined>(
     presetMemberId ?? suggestMember(note, members),
   );
+  const [fixing, setFixing] = useState(false);
   const imported = note.status === 'imported';
   const owner = imported ? members.find((m) => m.id === note.member_id)?.name : undefined;
   const date = note.note_created_at
@@ -72,10 +116,22 @@ function NoteRow({
           <p className="text-xs text-muted-foreground">{date}</p>
         </div>
         {imported ? (
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-            <Check className="h-3 w-3" />
-            {owner ? `Em ${owner.split(' ')[0]}` : 'Importada'}
-          </span>
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+              {note.auto_assigned ? <Sparkles className="h-3 w-3" /> : <Check className="h-3 w-3" />}
+              {owner ? `Em ${owner.split(' ')[0]}` : 'Importada'}
+              {note.auto_assigned ? ' · automática' : ''}
+            </span>
+            {note.feedback_id && (
+              <button
+                type="button"
+                onClick={() => setFixing((v) => !v)}
+                className="text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+              >
+                {fixing ? 'Fechar' : 'Corrigir'}
+              </button>
+            )}
+          </div>
         ) : (
           <button
             type="button"
@@ -89,18 +145,12 @@ function NoteRow({
       </div>
       {!imported && (
         <div className="mt-3 flex gap-2">
-          <Select value={memberId} onValueChange={setMemberId}>
-            <SelectTrigger className="h-9 flex-1 rounded-xl">
-              <SelectValue placeholder="De quem é esta conversa?" />
-            </SelectTrigger>
-            <SelectContent>
-              {members.map((m) => (
-                <SelectItem key={m.id} value={m.id}>
-                  {m.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <MemberSelect
+            members={members}
+            value={memberId}
+            onChange={setMemberId}
+            placeholder="De quem é esta conversa?"
+          />
           <Button
             size="sm"
             className="h-9 rounded-xl"
@@ -108,6 +158,26 @@ function NoteRow({
             onClick={() => memberId && onImport(memberId)}
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Importar'}
+          </Button>
+        </div>
+      )}
+      {imported && fixing && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <MemberSelect
+            members={members.filter((m) => m.id !== note.member_id)}
+            value={undefined}
+            onChange={(v) => onMove(v)}
+            placeholder="Mover para…"
+          />
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-9 gap-1 rounded-xl text-destructive hover:text-destructive"
+            disabled={busy}
+            onClick={onRemove}
+          >
+            <Trash2 className="h-4 w-4" />
+            Tirar da Rhitmo
           </Button>
         </div>
       )}
