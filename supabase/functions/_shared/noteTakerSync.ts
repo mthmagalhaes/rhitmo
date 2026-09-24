@@ -313,6 +313,7 @@ export async function syncNoteTakerConnection(
               occurredAt,
               fidelity: full.fidelity,
               attendees,
+              autoAssigned: true,
             },
             supabaseUrl,
             serviceKey,
@@ -336,7 +337,7 @@ export async function syncNoteTakerConnection(
 
         bumpWatermark(occurredAt);
       }
-    } while (cursor && pages < 5);
+    } while (cursor && pages < 10);
   } catch (e) {
     result.error = (e as Error).message;
   }
@@ -345,10 +346,10 @@ export async function syncNoteTakerConnection(
     last_error: result.error ?? null,
     notes_imported: (await currentImported(supabase, connection.id)) + result.imported,
   };
-  if (!result.error) {
-    // Sem erro: avança a janela. Usa a nota mais recente vista (ou agora,
-    // quando nada novo apareceu) para não pular notas atrasadas.
-    update.last_synced_at = watermark ?? new Date().toISOString();
+  const prev = connection.last_synced_at ? new Date(connection.last_synced_at).getTime() : 0;
+  if (!result.error && watermark && new Date(watermark).getTime() > prev) {
+    // Só avança com nota nova real; nunca para "agora".
+    update.last_synced_at = watermark;
   }
 
   await supabase
