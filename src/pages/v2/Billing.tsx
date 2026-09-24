@@ -102,8 +102,43 @@ export default function V2Billing() {
     }
   };
 
+  const [portalLoading, setPortalLoading] = useState(false);
+  const handleManage = async () => {
+    setPortalLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-portal-session');
+      if (error) throw error;
+      if (!data?.url) throw new Error((data as { error?: string })?.error || 'Sem URL do portal');
+      window.location.href = data.url;
+    } catch (err) {
+      toast({
+        title: 'Não foi possível abrir o portal',
+        description: (err as Error).message || 'Tente novamente ou fale com support@rhitmo.co',
+        variant: 'destructive',
+      });
+    } finally {
+      setPortalLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {billing?.hasSubscription && (
+        <Card className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
+          <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <p className="font-serif font-bold tracking-tight">Gerenciar assinatura</p>
+              <p className="text-sm text-muted-foreground">
+                Trocar cartão, ver faturas, mudar para anual ou cancelar.
+              </p>
+            </div>
+            <Button variant="outline" className="rounded-xl" onClick={handleManage} disabled={portalLoading}>
+              {portalLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Abrir portal de cobrança
+            </Button>
+          </CardContent>
+        </Card>
+      )}
       {!billingLoading && billing && billing.billingModel === 'v3' && !billing.hasSubscription && (
         <Alert className="rounded-2xl">
           <AlertTitle>
