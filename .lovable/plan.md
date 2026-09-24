@@ -16,7 +16,6 @@ O líder não deveria precisar lembrar de importar. Toda conversa gravada no Gra
 - Se o palpite for ambíguo (duas pessoas possíveis), a nota não entra sozinha: fica esperando o líder com a sugestão já marcada.
 
 ### 3. O líder vê o resultado, não o trabalho
-- Na tela de Início, um aviso curto: "3 conversas novas do Granola entraram esta semana" com os nomes, e "1 esperando você dizer de quem é" quando houver.
 - Nas notas que entraram sozinhas, um selo "Importada automaticamente" com opção de mover para outro liderado ou tirar da Rhitmo, caso o palpite esteja errado.
 - As notas importadas já contam como evidência nas avaliações, pautas de 1:1 e no Pergunte à Rhitmo (já funciona hoje; nada muda para o líder).
 
