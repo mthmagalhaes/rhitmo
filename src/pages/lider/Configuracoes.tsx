@@ -1,6 +1,8 @@
 import { useAccount } from '@/contexts/AccountContext';
 import { PageTabs, type PageTab } from '@/components/PageTabs';
 import { BillingContent } from '@/pages/Billing';
+import V2Billing from '@/pages/v2/Billing';
+import { useBillingStatus } from '@/hooks/useBillingStatus';
 import { HelpCenterContent } from '@/pages/HelpCenter';
 import { ProfileSettingsDialog } from '@/components/ProfileSettingsDialog';
 import { useState } from 'react';
@@ -200,10 +202,12 @@ function IntegrationsTab() {
 export default function LiderConfiguracoes() {
   const { isHRAdmin, isWorkspaceOwner } = useAccount();
   const canManageAccess = isHRAdmin || isWorkspaceOwner;
+  const { data: billingStatus } = useBillingStatus();
+  const billingTab = billingStatus?.billingModel === 'v3' ? <V2Billing /> : <BillingContent />;
 
   const tabs: PageTab[] = [
     { value: 'perfil', label: 'Perfil', icon: User, content: <ProfileTab /> },
-    { value: 'faturamento', label: 'Faturamento', icon: CreditCard, content: <BillingContent /> },
+    { value: 'faturamento', label: 'Faturamento', icon: CreditCard, content: billingTab },
     { value: 'integracoes', label: 'Conectores', icon: Plug, content: <IntegrationsTab /> },
     {
       value: 'acessos',

@@ -12,11 +12,11 @@ const corsHeaders = {
 
 // ============================================================================
 // Pricing v3 — Modelo Windmill (single plan, per-seat)
-// Líder + 3 liderados grátis. R$ 49,90/mês ou R$ 478,80/ano por seat adicional.
+// LEGADO: líder + 3 liderados grátis. R$ 49,90/mês ou R$ 478,80/ano por seat adicional.
 // Workspaces grandfathered (grandfather_until >= hoje) NÃO podem abrir checkout.
 //
 // Pricing v2 (workspaces com ui_version = 'v2'): assento R$ 10,00/mês sem bot,
-// + add-on de bot R$ 19,90/mês por assento (4h/mês). Ver _shared/stripeV2.ts.
+// Modelo v3 (billing_model=v3): todo assento R$ 10 (líder incluído) + add-on do líder R$ 29,90/6h. Ver _shared/stripeV2.ts.
 // ============================================================================
 const FREE_SEATS = 3;
 
