@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffectiveUser } from './useEffectiveUser';
 import { useBillingStatus } from './useBillingStatus';
+import { useLeaderBotAddon } from './useLeaderBotAddon';
 
 /**
  * Pricing v4 — assento + teto de horas de bot (calibrado pelo custo real
@@ -77,6 +78,8 @@ export const usePlanLimits = () => {
   const user = effectiveUserId ? { id: effectiveUserId } : null;
   const { data: billing } = useBillingStatus();
   const isV3 = billing?.billingModel === 'v3';
+  const { data: leaderAddons } = useLeaderBotAddon() as { data?: import('./useLeaderBotAddon').LeaderBotAddon[] };
+  const myAddon = leaderAddons?.find((a) => a.leaderUserId === effectiveUserId);
 
   const { data: workspace, isLoading: workspaceLoading } = useQuery({
     queryKey: ['workspace-plan', user?.id],
@@ -210,7 +213,7 @@ export const usePlanLimits = () => {
   });
 
   const isBeta = !!workspace?.is_beta_user;
-  const recordingHoursUsed = recordingSecondsUsed / 3600;
+  const recordingHoursUsed = isV3 && myAddon ? myAddon.hoursUsed : recordingSecondsUsed / 3600;
 
   const limits = useMemo<PlanLimits>(() => {
     const tier = (workspace?.plan_tier as 'pulse' | 'pro' | 'business') || 'pulse';
@@ -248,7 +251,7 @@ export const usePlanLimits = () => {
       recallUnlimited,
       seatCycle,
     };
-  }, [workspace, isBeta, isV3]);
+  }, [workspace, isBeta, isV3, myAddon]);
 
   const isLoading =
     workspaceLoading || memberLoading || reviewLoading || teamLoading || mentorLoading || recordingLoading || botLoading;
