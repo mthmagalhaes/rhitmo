@@ -282,10 +282,11 @@ export async function syncNoteTakerConnection(
           continue;
         }
 
-        const matched = matchMembers(full, members);
+        const match = matchMembers(full, members);
+        const matched = match.ids;
 
         if (matched.length === 0) {
-          // Fica pendente: o líder decide de quem é na tela de Conectores.
+          // Fica pendente com a sugestão (quando houver); o líder confirma.
           await supabase.from("note_taker_synced_notes").insert({
             user_id: connection.user_id,
             provider: connection.provider,
@@ -294,6 +295,7 @@ export async function syncNoteTakerConnection(
             note_created_at: occurredAt,
             status: "pending",
             attendees,
+            suggested_member_id: match.suggested,
           });
           result.unmatched += 1;
           bumpWatermark(occurredAt);
