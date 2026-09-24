@@ -115,6 +115,7 @@ export async function ingestNoteForMember(
     occurredAt: string;
     fidelity?: NoteFidelity;
     attendees?: NoteAttendee[];
+    autoAssigned?: boolean;
   },
   supabaseUrl: string,
   serviceKey: string,
@@ -151,6 +152,7 @@ export async function ingestNoteForMember(
       note_created_at: params.occurredAt,
       status: "imported",
       attendees: params.attendees ?? [],
+      auto_assigned: params.autoAssigned ?? false,
     },
     { onConflict: "user_id,provider,external_note_id" },
   );
@@ -180,6 +182,7 @@ export async function syncNoteTakerConnection(
   },
   supabaseUrl: string,
   serviceKey: string,
+  opts: { lookbackHours?: number } = {},
 ): Promise<SyncResult> {
   const result: SyncResult = { imported: 0, skipped: 0, unmatched: 0 };
 
@@ -199,9 +202,10 @@ export async function syncNoteTakerConnection(
 
   const members = await loadMembers(supabase, connection.user_id);
 
-  // Marca d'água: só avança até a nota mais recente que conseguimos processar,
-  // e apenas se o ciclo terminar sem erro. Assim uma falha no meio não faz
-  // a janela pular notas que nunca foram lidas.
+  // Marca d'água: só avança quando chega nota de verdade e o ciclo termina
+  // sem erro. A consulta sempre olha para trás com margem (lookback), porque
+  // o provedor carimba a nota com o horário de INÍCIO da reunião: uma conversa
+  // que termina depois da última rodada fica com data anterior ao ponteiro.
   let watermark: string | null = null;
   const bumpWatermark = (value: string) => {
     const iso = toIsoOrNull(value);
@@ -209,12 +213,20 @@ export async function syncNoteTakerConnection(
     if (!watermark || new Date(iso) > new Date(watermark)) watermark = iso;
   };
 
+  const lookbackMs = (opts.lookbackHours ?? 48) * 3600 * 1000;
+  const base = connection.last_synced_at
+    ? Math.min(new Date(connection.last_synced_at).getTime(), Date.now())
+    : null;
+  const createdAfter = base !== null && !Number.isNaN(base)
+    ? new Date(base - lookbackMs).toISOString()
+    : null;
+
   let cursor: string | null = null;
   let pages = 0;
   try {
     do {
       const page = await provider.listNotes(apiKey, {
-        createdAfter: connection.last_synced_at,
+        createdAfter,
         cursor,
         limit: 20,
       });
