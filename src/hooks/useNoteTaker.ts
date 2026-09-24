@@ -23,6 +23,10 @@ export interface PendingNote {
   attendees: Array<{ name: string | null; email: string | null }> | null;
 }
 
+export interface RecentNote extends PendingNote {
+  status: 'pending' | 'imported' | 'dismissed' | string;
+  member_id: string | null;
+}
 
 async function invokeNoteTaker(body: Record<string, unknown>) {
   const { data, error } = await supabase.functions.invoke('note-taker-connect', { body });
@@ -133,6 +137,8 @@ export function useNoteTaker(provider: NoteTakerProvider = 'granola') {
       qc.invalidateQueries({ queryKey: pendingKey });
       qc.invalidateQueries({ queryKey });
       qc.invalidateQueries({ queryKey: ['feedbacks'] });
+      qc.invalidateQueries({ queryKey: ['note-taker-recent', provider] });
+      qc.invalidateQueries({ queryKey: ['diario-feedbacks'] });
       toast({ title: 'Nota atribuída', description: 'Ela já aparece em Anotações & Evidências do liderado.' });
     },
     onError: (e: Error) =>
@@ -141,10 +147,27 @@ export function useNoteTaker(provider: NoteTakerProvider = 'granola') {
 
   const dismiss = useMutation({
     mutationFn: (noteId: string) => invokeNoteTaker({ action: 'dismiss', provider, note_id: noteId }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: pendingKey }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: pendingKey });
+      qc.invalidateQueries({ queryKey: ['note-taker-recent', provider] });
+    },
     onError: (e: Error) =>
       toast({ title: 'Erro ao descartar', description: e.message, variant: 'destructive' }),
   });
+
+  const recentKey = ['note-taker-recent', provider];
+  const useRecent = (enabled: boolean) =>
+    useQuery({
+      queryKey: recentKey,
+      enabled: enabled && !!connection,
+      queryFn: async (): Promise<RecentNote[]> => {
+        const data = await invokeNoteTaker({ action: 'list_recent', provider });
+        qc.invalidateQueries({ queryKey: pendingKey });
+        return (data?.notes as RecentNote[]) ?? [];
+      },
+      staleTime: 0,
+      refetchOnMount: 'always',
+    });
 
   const authError = /chave|api key|401|403/i.test(connection?.last_error ?? '');
 
@@ -159,6 +182,7 @@ export function useNoteTaker(provider: NoteTakerProvider = 'granola') {
     sync,
     assign,
     dismiss,
+    useRecent,
   };
 }
 

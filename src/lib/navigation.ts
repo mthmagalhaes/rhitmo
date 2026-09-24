@@ -10,6 +10,7 @@ import {
   Activity,
   Network,
   ShieldCheck,
+  Plug,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -35,6 +36,7 @@ export const LEADER_NAV_ITEMS: NavItem[] = [
   { id: 'diario', labelKey: 'nav.lider.diario', icon: BookOpen, to: '/lider/diario' },
   { id: 'avaliacoes', labelKey: 'nav.lider.avaliacoes', icon: ClipboardList, to: '/lider/avaliacoes' },
   { id: 'calibracao', labelKey: 'nav.lider.calibracao', icon: Scale, to: '/lider/calibracao' },
+  { id: 'conectores', labelKey: 'nav.lider.conectores', icon: Plug, to: '/lider/conectores' },
 ];
 
 

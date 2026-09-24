@@ -164,6 +164,7 @@ const App = () => (
               <Route path="/lider/pessoas" element={Leader(<LiderPessoas />)} />
               <Route path="/lider/pessoas-v2" element={<Navigate to="/lider/pessoas" replace />} />
               <Route path="/lider/configuracoes" element={Leader(<LiderConfiguracoes />)} />
+              <Route path="/lider/conectores" element={Leader(<div className="max-w-5xl mx-auto px-6 lg:px-8 py-6"><V2Conectores /></div>)} />
               <Route path="/lider/contexto" element={Leader(<LiderContexto />)} />
               <Route path="/lider/mentor" element={Leader(<LiderMentor />)} />
               <Route path="/lider/mentor/:threadId" element={Leader(<LiderMentorThread />)} />
