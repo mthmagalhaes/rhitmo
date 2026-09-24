@@ -159,8 +159,8 @@ const translations = {
     hrP2: "Ciclos de avaliação e calibração ficam apoiados na mesma base de evidência. Registro de acessos, prazo de guarda e exportação ficam na área de Governança.",
     // Pricing
     pricingTitle: "Simples. Transparente.",
-    pricingSubtitle: "Sem plano mensal. A mudança de cultura na liderança exige no mínimo 90 dias de consistência.",
-    pricingTooltip: "Por que não temos plano mensal? Porque a ciência comportamental mostra que cultura de feedback só se firma após 90 dias de prática consistente. Cobramos pelo ciclo de valor — não pelo mês.",
+    pricingSubtitle: "Um preço por pessoa, mensal ou anual. Teste 14 dias sem cartão.",
+    pricingTooltip: "Todo assento custa R$ 10/mês (R$ 8 no anual), líder incluído. O bot de reunião é um add-on opcional do líder.",
     cycleQuarterly: "Trimestral",
     cycleSemiannual: "Semestral",
     cycleAnnual: "Anual",
@@ -365,8 +365,8 @@ const translations = {
     hrP1: "Conversation cadence per team, 1:1 coverage, cross-team collaboration and attention signals that grow slowly. HR follows leadership health without reading anyone's notes.",
     hrP2: "Review and calibration cycles rest on the same evidence base. Access logs, retention periods and exports live in the Governance area.",
     pricingTitle: "Simple. Transparent.",
-    pricingSubtitle: "No monthly plan. Building a real feedback culture requires at least 90 days of consistency.",
-    pricingTooltip: "Why no monthly plan? Behavioral science shows leadership culture only takes hold after 90 days of consistent practice. We bill by value cycle — not by month.",
+    pricingSubtitle: "One price per seat, monthly or annual. 14-day trial, no card.",
+    pricingTooltip: "Every seat is R$ 10/month (R$ 8 annually), leader included. The meeting bot is an optional leader add-on.",
     cycleQuarterly: "Quarterly",
     cycleSemiannual: "Semiannual",
     cycleAnnual: "Annual",
@@ -389,7 +389,7 @@ const translations = {
     footerPrivacy: "Privacy Policy",
     launchBadge: "Launch Price",
     launchDisclaimer: "Launch price guaranteed while your subscription is active.",
-    pricingAnchor: "Start free. Scale when it makes sense.",
+    pricingAnchor: "14-day trial, no card. Scale when it makes sense.",
     pricingTrustLine: "No credit card to start · Cancel anytime · Launch price guaranteed while your subscription is active",
     enterpriseFloor: "Starting at 50 employees · minimum R$ 750/month",
     newBadge: "New",
@@ -758,10 +758,10 @@ const PricingSection = ({
         ]
       : [
           { title: 'Unlimited Mentor AI', desc: 'Your conversational Chief of Staff, 24/7, with team memory.' },
-          { title: '1:1s, Pulse, IDP and 360°', desc: 'The full people management cycle in one place.' },
+          { title: '1:1s', desc: 'Automatic brief beforehand, agenda built from your history with each report.' },
           { title: 'Automatic meeting transcription', desc: 'Three paths: the leader bot add-on at R$ 29.90/month (6 hours per cycle), the 14-day trial with everything unlocked, or connect your own note taker (Granola, Fireflies) at no extra cost.' },
-          { title: 'Bidirectional Slack', desc: 'Rhitmo pulls context and delivers briefs by DM, no tab switching.' },
-          { title: 'Real-time bias detection', desc: 'Reviews 38× less biased, right inside the editor.' },
+          { title: 'Slack', desc: 'Rhitmo connected to your Slack for reminders, briefs and chat where you already spend most of your time.' },
+          { title: 'Bias detection in evidence and performance reviews', desc: 'Spot and learn to fix biases and unfairness you may be introducing.' },
           
         ];
 

@@ -65,8 +65,17 @@ export function BotHoursCard() {
             </div>
             {data.percent >= 100 ? (
               <p className="text-xs text-destructive">
-                Limite de {fmt(data.hoursCap)} atingido. O bot não entra em novas reuniões até você adicionar
-                assentos ou um pacote de horas. Uploads e notas seguem liberados.
+                {data.isV3
+                  ? data.hoursCap <= 0
+                    ? 'Sem horas de bot disponíveis. Ative o bot de reunião do líder (R$ 29,90/mês, 6h) em Faturamento ou conecte um note taker. Uploads e notas seguem liberados.'
+                    : `Limite de ${fmt(data.hoursCap)} atingido. O bot não entra em novas reuniões até o próximo ciclo. Uploads e notas seguem liberados.`
+                  : `Limite de ${fmt(data.hoursCap)} atingido. O bot não entra em novas reuniões até você adicionar assentos ou um pacote de horas. Uploads e notas seguem liberados.`}
+              </p>
+            ) : data.isV3 ? (
+              <p className="text-[11px] text-muted-foreground">
+                {data.basis === 'trial'
+                  ? '6h de bot liberadas durante o teste de 14 dias.'
+                  : 'O bot de reunião do líder inclui 6h por ciclo para as reuniões de todo o time.'}
               </p>
             ) : data.percent >= 80 ? (
               <p className="text-xs text-amber-600">

@@ -2,11 +2,13 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffectiveUser } from './useEffectiveUser';
+import { useBillingStatus } from './useBillingStatus';
 
 /**
  * Pricing v4 — assento + teto de horas de bot (calibrado pelo custo real
  * do Recall: US$0,72/h ≈ R$4,20/h).
  *
+ * LEGADO (billing_model='legacy'). Modelo v3 = todo assento pago, ver useBillingStatus.
  * - Grátis: líder + 3 liderados, 4h de bot por mês por workspace.
  * - Pago: R$ 49,90/mês por assento (R$ 39,90 no anual), assentos ilimitados,
  *   4h de bot por assento pago (sem piso fixo por workspace).
@@ -73,6 +75,8 @@ const ALL_CAPABILITIES = {
 export const usePlanLimits = () => {
   const { id: effectiveUserId } = useEffectiveUser();
   const user = effectiveUserId ? { id: effectiveUserId } : null;
+  const { data: billing } = useBillingStatus();
+  const isV3 = billing?.billingModel === 'v3';
 
   const { data: workspace, isLoading: workspaceLoading } = useQuery({
     queryKey: ['workspace-plan', user?.id],
@@ -215,7 +219,8 @@ export const usePlanLimits = () => {
     const paidSeats: number = (workspace as any)?.paid_seats ?? 0;
     const seatCycle: SeatCycle = ((workspace as any)?.seat_cycle as SeatCycle) || 'monthly';
 
-    const unlocked = isBeta || isGrandfathered;
+    // v3: sem teto de assentos por plano grátis; a trava pós-teste é o useBillingGate.
+    const unlocked = isBeta || isGrandfathered || isV3;
     const totalSeats = unlocked ? Infinity : FREE_SEATS + paidSeats;
     // Pricing v4: horas de bot com teto por workspace (nunca ilimitado no pago).
     const recallUnlimited = unlocked;
@@ -240,14 +245,14 @@ export const usePlanLimits = () => {
       recallUnlimited,
       seatCycle,
     };
-  }, [workspace, isBeta]);
+  }, [workspace, isBeta, isV3]);
 
   const isLoading =
     workspaceLoading || memberLoading || reviewLoading || teamLoading || mentorLoading || recordingLoading || botLoading;
 
   const seatsUsed = memberCount;
   const seatsAvailable = limits.maxMembers === Infinity ? Infinity : Math.max(0, limits.maxMembers - seatsUsed);
-  const needsSeatPurchase = !limits.isBetaUser && !limits.isGrandfathered && seatsUsed >= FREE_SEATS + limits.paidSeats;
+  const needsSeatPurchase = !isV3 && !limits.isBetaUser && !limits.isGrandfathered && seatsUsed >= FREE_SEATS + limits.paidSeats;
 
   return {
     limits,

@@ -22,10 +22,10 @@ export default function PersonaSelector() {
       back: 'Voltar para a página inicial',
       title: 'Como você quer começar?',
       subtitle: 'Escolha o ponto de entrada para configurarmos seu workspace corretamente.',
-      leaderBadge: 'Comece grátis',
+      leaderBadge: '14 dias grátis',
       leaderTitle: 'Sou Líder de time',
       leaderDesc:
-        'Crie seu workspace agora. Os 3 primeiros usuários são grátis, com Mentor AI ilimitado, 1:1s, Pulse, PDI, 360° e transcrição de reuniões. Pague só a partir do 4º liderado.',
+        'Crie seu workspace agora. Teste por 14 dias com tudo liberado, sem cartão: Mentor AI, 1:1s, avaliações e transcrição de reuniões. Depois, R$ 10 por pessoa/mês (R$ 8 no anual).',
       leaderCta: 'Começar como Líder',
       hrTitle: 'Sou RH / People Admin',
       hrDesc:
@@ -40,10 +40,10 @@ export default function PersonaSelector() {
       back: 'Back to homepage',
       title: 'How do you want to start?',
       subtitle: 'Choose your entry point so we can configure your workspace correctly.',
-      leaderBadge: 'Start free',
+      leaderBadge: '14-day free trial',
       leaderTitle: "I'm a Team Leader",
       leaderDesc:
-        'Spin up your workspace now. First 3 users are free, with unlimited Mentor AI, 1:1s, Pulse, IDP, 360° and meeting transcription. Pay only from the 4th seat onward.',
+        'Spin up your workspace now. Try everything free for 14 days, no card: Mentor AI, 1:1s, reviews and meeting transcription. Then R$ 10 per seat/month (R$ 8 annually).',
       leaderCta: 'Start as Leader',
       hrTitle: "I'm HR / People Admin",
       hrDesc:
@@ -58,10 +58,10 @@ export default function PersonaSelector() {
       back: 'Volver al inicio',
       title: '¿Cómo quieres empezar?',
       subtitle: 'Elige el punto de entrada para configurar tu workspace correctamente.',
-      leaderBadge: 'Empieza gratis',
+      leaderBadge: '14 días gratis',
       leaderTitle: 'Soy Líder de equipo',
       leaderDesc:
-        'Crea tu workspace ahora. Los 3 primeros usuarios son gratis, con Mentor AI ilimitado, 1:1s, Pulse, PDI, 360° y transcripción de reuniones. Paga solo a partir del 4º colaborador.',
+        'Crea tu workspace ahora. Prueba todo gratis por 14 días, sin tarjeta: Mentor AI, 1:1s, evaluaciones y transcripción de reuniones. Después, R$ 10 por persona/mes (R$ 8 anual).',
       leaderCta: 'Empezar como Líder',
       hrTitle: 'Soy RH / People Admin',
       hrDesc:

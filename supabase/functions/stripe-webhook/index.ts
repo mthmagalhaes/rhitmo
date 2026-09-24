@@ -102,7 +102,7 @@ const PRICE_TO_PLAN: Record<string, string> = {
   // === Per-seat (Windmill v3) ===
   [SEAT_PRICE_MONTHLY]: "pro",
   [SEAT_PRICE_ANNUAL]: "pro",
-  // === Rhitmo v2 (assento R$10 + add-on bot R$19,90) ===
+  // === Rhitmo v2/v3 (assento R$10; add-on v3 do líder R$29,90/6h, legado R$19,90/4h) ===
   [V2_SEAT_PRICE_IDS.monthly]: "pro",
   [V2_SEAT_PRICE_IDS.annual]: "pro",
   // === Legacy Pro (mantido só para webhooks tardios) ===
