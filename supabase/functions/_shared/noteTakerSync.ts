@@ -42,10 +42,41 @@ async function loadMembers(supabase: SupabaseClient, userId: string) {
   return (members ?? []) as Array<{ id: string; name: string; email: string | null }>;
 }
 
-function matchMembers(
-  note: FullNote,
-  members: Array<{ id: string; name: string; email: string | null }>,
+function normalize(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+/** Nomes ("Yasmin", "Yas", "Gabi") citados no texto → ids dos liderados. */
+function membersByName(
+  text: string,
+  members: Array<{ id: string; name: string }>,
 ): string[] {
+  const tokens = new Set(
+    normalize(text).split(/[^a-z0-9]+/).filter((t) => t.length >= 3),
+  );
+  if (tokens.size === 0) return [];
+  return members
+    .filter((m) => {
+      const first = normalize(m.name.split(/\s+/)[0] ?? "");
+      if (first.length < 3) return false;
+      for (const t of tokens) {
+        if (t === first || (t.length >= 3 && first.startsWith(t))) return true;
+      }
+      return false;
+    })
+    .map((m) => m.id);
+}
+
+/**
+ * Decide o dono da nota.
+ * - e-mail dos convidados: pode atribuir a vários (reunião com mais de um liderado)
+ * - nome/apelido no título ou no começo do texto: atribui só com um único candidato;
+ *   ambíguo vira sugestão e a nota fica esperando o líder.
+ */
+export function matchMembers(
+  note: { title: string | null; content?: string; attendees: NoteAttendee[] },
+  members: Array<{ id: string; name: string; email: string | null }>,
+): { ids: string[]; suggested: string | null } {
   const emails = new Set(
     note.attendees
       .map((a) => (a.email ?? "").trim().toLowerCase())
@@ -54,17 +85,18 @@ function matchMembers(
   const byEmail = members
     .filter((m) => m.email && emails.has(m.email.toLowerCase()))
     .map((m) => m.id);
-  if (byEmail.length > 0) return byEmail;
+  if (byEmail.length > 0) return { ids: byEmail, suggested: null };
 
-  // Fallback: nome do liderado citado no título da nota ("1:1 Camila").
-  const title = (note.title ?? "").toLowerCase();
-  if (!title) return [];
-  return members
-    .filter((m) => {
-      const first = m.name.split(/\s+/)[0]?.toLowerCase();
-      return first && first.length > 2 && title.includes(first);
-    })
-    .map((m) => m.id);
+  const byTitle = membersByName(
+    `${note.title ?? ""} ${note.attendees.map((a) => a.name ?? "").join(" ")}`,
+    members,
+  );
+  if (byTitle.length === 1) return { ids: byTitle, suggested: null };
+  if (byTitle.length > 1) return { ids: [], suggested: byTitle[0] };
+
+  const byContent = membersByName((note.content ?? "").slice(0, 600), members);
+  if (byContent.length === 1) return { ids: byContent, suggested: null };
+  return { ids: [], suggested: byContent[0] ?? null };
 }
 
 /**
