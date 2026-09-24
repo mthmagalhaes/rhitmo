@@ -29,6 +29,8 @@ const BodySchema = z.object({
     "dismiss",
     "reprocess",
     "list_recent",
+    "reassign",
+    "remove",
   ]),
   provider: z.enum(NOTE_TAKER_PROVIDER_IDS).default("granola"),
   api_key: z.string().min(10).max(500).optional(),
@@ -130,7 +132,7 @@ Deno.serve(async (req) => {
     if (action === "list_pending") {
       const { data, error } = await admin
         .from("note_taker_synced_notes")
-        .select("id, external_note_id, title, note_created_at, attendees")
+        .select("id, external_note_id, title, note_created_at, attendees, suggested_member_id")
         .eq("user_id", user.id)
         .eq("provider", provider)
         .eq("status", "pending")
@@ -141,24 +143,83 @@ Deno.serve(async (req) => {
     }
 
     // Notas recentes (qualquer status) para o painel "Importar" do diário.
-    // Sincroniza antes para a conversa que acabou de terminar já aparecer.
+    // Varre os últimos 14 dias no provedor antes, para nenhuma conversa faltar.
     if (action === "list_recent") {
       try {
-        await syncNoteTakerConnection(admin, connection, supabaseUrl, serviceKey);
+        await syncNoteTakerConnection(admin, connection, supabaseUrl, serviceKey, {
+          lookbackHours: 14 * 24,
+        });
       } catch (e) {
         console.warn("list_recent sync failed", (e as Error).message);
       }
       const since = new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString();
       const { data, error } = await admin
         .from("note_taker_synced_notes")
-        .select("id, external_note_id, title, note_created_at, attendees, status, member_id")
+        .select(
+          "id, external_note_id, title, note_created_at, attendees, status, member_id, feedback_id, auto_assigned, suggested_member_id",
+        )
         .eq("user_id", user.id)
         .eq("provider", provider)
+        .in("status", ["pending", "imported", "dismissed"])
         .gte("note_created_at", since)
         .order("note_created_at", { ascending: false })
-        .limit(50);
+        .limit(80);
       if (error) throw error;
       return json({ ok: true, notes: data ?? [] });
+    }
+
+    // Corrigir um palpite: mover a nota para outro liderado, ou tirá-la da Rhitmo.
+    if (action === "reassign" || action === "remove") {
+      const noteId = parsed.data.note_id;
+      if (!noteId) return json({ error: "note_id é obrigatório" }, 400);
+      const { data: row } = await admin
+        .from("note_taker_synced_notes")
+        .select("id, feedback_id, status")
+        .eq("id", noteId)
+        .eq("user_id", user.id)
+        .eq("provider", provider)
+        .maybeSingle();
+      if (!row || row.status !== "imported" || !row.feedback_id) {
+        return json({ error: "Nota não encontrada" }, 404);
+      }
+
+      if (action === "remove") {
+        const { error } = await admin
+          .from("feedbacks")
+          .delete()
+          .eq("id", row.feedback_id)
+          .eq("manager_id", user.id);
+        if (error) throw error;
+        await admin
+          .from("note_taker_synced_notes")
+          .update({ status: "dismissed", feedback_id: null })
+          .eq("id", row.id);
+        return json({ ok: true });
+      }
+
+      const memberId = parsed.data.member_id;
+      if (!memberId) return json({ error: "member_id é obrigatório" }, 400);
+      const { data: teams } = await admin.from("teams").select("id").eq("leader_user_id", user.id);
+      const teamIds = (teams ?? []).map((t: { id: string }) => t.id);
+      const { data: member } = await admin
+        .from("team_members")
+        .select("id")
+        .eq("id", memberId)
+        .in("team_id", teamIds.length > 0 ? teamIds : ["00000000-0000-0000-0000-000000000000"])
+        .maybeSingle();
+      if (!member) return json({ error: "Liderado inválido" }, 403);
+
+      const { error } = await admin
+        .from("feedbacks")
+        .update({ member_id: memberId })
+        .eq("id", row.feedback_id)
+        .eq("manager_id", user.id);
+      if (error) throw error;
+      await admin
+        .from("note_taker_synced_notes")
+        .update({ member_id: memberId, auto_assigned: false })
+        .eq("id", row.id);
+      return json({ ok: true });
     }
 
     // Reprocessa notas já importadas: rebusca o conteúdo no provedor,

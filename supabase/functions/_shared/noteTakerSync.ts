@@ -42,10 +42,41 @@ async function loadMembers(supabase: SupabaseClient, userId: string) {
   return (members ?? []) as Array<{ id: string; name: string; email: string | null }>;
 }
 
-function matchMembers(
-  note: FullNote,
-  members: Array<{ id: string; name: string; email: string | null }>,
+function normalize(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+/** Nomes ("Yasmin", "Yas", "Gabi") citados no texto → ids dos liderados. */
+function membersByName(
+  text: string,
+  members: Array<{ id: string; name: string }>,
 ): string[] {
+  const tokens = new Set(
+    normalize(text).split(/[^a-z0-9]+/).filter((t) => t.length >= 3),
+  );
+  if (tokens.size === 0) return [];
+  return members
+    .filter((m) => {
+      const first = normalize(m.name.split(/\s+/)[0] ?? "");
+      if (first.length < 3) return false;
+      for (const t of tokens) {
+        if (t === first || (t.length >= 3 && first.startsWith(t))) return true;
+      }
+      return false;
+    })
+    .map((m) => m.id);
+}
+
+/**
+ * Decide o dono da nota.
+ * - e-mail dos convidados: pode atribuir a vários (reunião com mais de um liderado)
+ * - nome/apelido no título ou no começo do texto: atribui só com um único candidato;
+ *   ambíguo vira sugestão e a nota fica esperando o líder.
+ */
+export function matchMembers(
+  note: { title: string | null; content?: string; attendees: NoteAttendee[] },
+  members: Array<{ id: string; name: string; email: string | null }>,
+): { ids: string[]; suggested: string | null } {
   const emails = new Set(
     note.attendees
       .map((a) => (a.email ?? "").trim().toLowerCase())
@@ -54,17 +85,18 @@ function matchMembers(
   const byEmail = members
     .filter((m) => m.email && emails.has(m.email.toLowerCase()))
     .map((m) => m.id);
-  if (byEmail.length > 0) return byEmail;
+  if (byEmail.length > 0) return { ids: byEmail, suggested: null };
 
-  // Fallback: nome do liderado citado no título da nota ("1:1 Camila").
-  const title = (note.title ?? "").toLowerCase();
-  if (!title) return [];
-  return members
-    .filter((m) => {
-      const first = m.name.split(/\s+/)[0]?.toLowerCase();
-      return first && first.length > 2 && title.includes(first);
-    })
-    .map((m) => m.id);
+  const byTitle = membersByName(
+    `${note.title ?? ""} ${note.attendees.map((a) => a.name ?? "").join(" ")}`,
+    members,
+  );
+  if (byTitle.length === 1) return { ids: byTitle, suggested: null };
+  if (byTitle.length > 1) return { ids: [], suggested: byTitle[0] };
+
+  const byContent = membersByName((note.content ?? "").slice(0, 600), members);
+  if (byContent.length === 1) return { ids: byContent, suggested: null };
+  return { ids: [], suggested: byContent[0] ?? null };
 }
 
 /**
@@ -83,6 +115,7 @@ export async function ingestNoteForMember(
     occurredAt: string;
     fidelity?: NoteFidelity;
     attendees?: NoteAttendee[];
+    autoAssigned?: boolean;
   },
   supabaseUrl: string,
   serviceKey: string,
@@ -119,6 +152,7 @@ export async function ingestNoteForMember(
       note_created_at: params.occurredAt,
       status: "imported",
       attendees: params.attendees ?? [],
+      auto_assigned: params.autoAssigned ?? false,
     },
     { onConflict: "user_id,provider,external_note_id" },
   );
@@ -148,6 +182,7 @@ export async function syncNoteTakerConnection(
   },
   supabaseUrl: string,
   serviceKey: string,
+  opts: { lookbackHours?: number } = {},
 ): Promise<SyncResult> {
   const result: SyncResult = { imported: 0, skipped: 0, unmatched: 0 };
 
@@ -167,9 +202,10 @@ export async function syncNoteTakerConnection(
 
   const members = await loadMembers(supabase, connection.user_id);
 
-  // Marca d'água: só avança até a nota mais recente que conseguimos processar,
-  // e apenas se o ciclo terminar sem erro. Assim uma falha no meio não faz
-  // a janela pular notas que nunca foram lidas.
+  // Marca d'água: só avança quando chega nota de verdade e o ciclo termina
+  // sem erro. A consulta sempre olha para trás com margem (lookback), porque
+  // o provedor carimba a nota com o horário de INÍCIO da reunião: uma conversa
+  // que termina depois da última rodada fica com data anterior ao ponteiro.
   let watermark: string | null = null;
   const bumpWatermark = (value: string) => {
     const iso = toIsoOrNull(value);
@@ -177,12 +213,20 @@ export async function syncNoteTakerConnection(
     if (!watermark || new Date(iso) > new Date(watermark)) watermark = iso;
   };
 
+  const lookbackMs = (opts.lookbackHours ?? 48) * 3600 * 1000;
+  const base = connection.last_synced_at
+    ? Math.min(new Date(connection.last_synced_at).getTime(), Date.now())
+    : null;
+  const createdAfter = base !== null && !Number.isNaN(base)
+    ? new Date(base - lookbackMs).toISOString()
+    : null;
+
   let cursor: string | null = null;
   let pages = 0;
   try {
     do {
       const page = await provider.listNotes(apiKey, {
-        createdAfter: connection.last_synced_at,
+        createdAfter,
         cursor,
         limit: 20,
       });
@@ -238,10 +282,11 @@ export async function syncNoteTakerConnection(
           continue;
         }
 
-        const matched = matchMembers(full, members);
+        const match = matchMembers(full, members);
+        const matched = match.ids;
 
         if (matched.length === 0) {
-          // Fica pendente: o líder decide de quem é na tela de Conectores.
+          // Fica pendente com a sugestão (quando houver); o líder confirma.
           await supabase.from("note_taker_synced_notes").insert({
             user_id: connection.user_id,
             provider: connection.provider,
@@ -250,6 +295,7 @@ export async function syncNoteTakerConnection(
             note_created_at: occurredAt,
             status: "pending",
             attendees,
+            suggested_member_id: match.suggested,
           });
           result.unmatched += 1;
           bumpWatermark(occurredAt);
@@ -269,6 +315,7 @@ export async function syncNoteTakerConnection(
               occurredAt,
               fidelity: full.fidelity,
               attendees,
+              autoAssigned: true,
             },
             supabaseUrl,
             serviceKey,
@@ -292,7 +339,7 @@ export async function syncNoteTakerConnection(
 
         bumpWatermark(occurredAt);
       }
-    } while (cursor && pages < 5);
+    } while (cursor && pages < 10);
   } catch (e) {
     result.error = (e as Error).message;
   }
@@ -301,10 +348,10 @@ export async function syncNoteTakerConnection(
     last_error: result.error ?? null,
     notes_imported: (await currentImported(supabase, connection.id)) + result.imported,
   };
-  if (!result.error) {
-    // Sem erro: avança a janela. Usa a nota mais recente vista (ou agora,
-    // quando nada novo apareceu) para não pular notas atrasadas.
-    update.last_synced_at = watermark ?? new Date().toISOString();
+  const prev = connection.last_synced_at ? new Date(connection.last_synced_at).getTime() : 0;
+  if (!result.error && watermark && new Date(watermark).getTime() > prev) {
+    // Só avança com nota nova real; nunca para "agora".
+    update.last_synced_at = watermark;
   }
 
   await supabase

@@ -21,11 +21,14 @@ export interface PendingNote {
   title: string | null;
   note_created_at: string | null;
   attendees: Array<{ name: string | null; email: string | null }> | null;
+  suggested_member_id?: string | null;
 }
 
 export interface RecentNote extends PendingNote {
   status: 'pending' | 'imported' | 'dismissed' | string;
   member_id: string | null;
+  feedback_id?: string | null;
+  auto_assigned?: boolean;
 }
 
 async function invokeNoteTaker(body: Record<string, unknown>) {
@@ -155,6 +158,33 @@ export function useNoteTaker(provider: NoteTakerProvider = 'granola') {
       toast({ title: 'Erro ao descartar', description: e.message, variant: 'destructive' }),
   });
 
+  const refreshAfterFix = () => {
+    qc.invalidateQueries({ queryKey: ['note-taker-recent', provider] });
+    qc.invalidateQueries({ queryKey: ['feedbacks'] });
+    qc.invalidateQueries({ queryKey: ['diario-feedbacks'] });
+  };
+
+  const reassign = useMutation({
+    mutationFn: (vars: { noteId: string; memberId: string }) =>
+      invokeNoteTaker({ action: 'reassign', provider, note_id: vars.noteId, member_id: vars.memberId }),
+    onSuccess: () => {
+      refreshAfterFix();
+      toast({ title: 'Nota movida', description: 'Agora ela conta como evidência do liderado certo.' });
+    },
+    onError: (e: Error) =>
+      toast({ title: 'Não foi possível mover', description: e.message, variant: 'destructive' }),
+  });
+
+  const remove = useMutation({
+    mutationFn: (noteId: string) => invokeNoteTaker({ action: 'remove', provider, note_id: noteId }),
+    onSuccess: () => {
+      refreshAfterFix();
+      toast({ title: 'Nota retirada da Rhitmo', description: 'Ela continua no seu note taker.' });
+    },
+    onError: (e: Error) =>
+      toast({ title: 'Não foi possível retirar', description: e.message, variant: 'destructive' }),
+  });
+
   const recentKey = ['note-taker-recent', provider];
   const useRecent = (enabled: boolean) =>
     useQuery({
@@ -182,6 +212,8 @@ export function useNoteTaker(provider: NoteTakerProvider = 'granola') {
     sync,
     assign,
     dismiss,
+    reassign,
+    remove,
     useRecent,
   };
 }
