@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { V2_SEAT_PRICE_IDS, isV2SeatPrice } from "../_shared/stripeV2.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -51,7 +52,7 @@ Deno.serve(async (req) => {
     // Resolver workspace: via owner_id (user JWT) ou via workspace_id (service role)
     let workspaceQuery = supabaseAdmin
       .from("workspaces")
-      .select("id, grandfather_until, paid_seats, seat_cycle");
+      .select("id, grandfather_until, paid_seats, seat_cycle, billing_model, ui_version");
 
     if (isServiceRole) {
       const wsId = body.workspace_id as string | undefined;
@@ -124,7 +125,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    const itemId = stripeSub.items?.data?.[0]?.id;
+    const isV3 = (workspace as any).billing_model === "v3";
+    const legacySeatIds = Object.values(SEAT_PRICE_IDS) as string[];
+    // Nunca mexer no item do add-on de bot: localizar o item de assento.
+    const seatItem = (stripeSub.items?.data ?? []).find(
+      (i: any) => isV2SeatPrice(i.price?.id) || legacySeatIds.includes(i.price?.id),
+    ) ?? stripeSub.items?.data?.[0];
+    const itemId = seatItem?.id;
     if (!itemId) {
       return new Response(JSON.stringify({ error: "No subscription item found" }), {
         status: 400,
@@ -137,10 +144,13 @@ Deno.serve(async (req) => {
       .from("team_members")
       .select("*", { count: "exact", head: true })
       .eq("workspace_id", workspace.id);
-    const seatsToPay = Math.max(1, (memberCount ?? 0) - FREE_SEATS);
+    // v3: todo assento é pago (liderados + líder). Legado: líder + 3 grátis.
+    const seatsToPay = isV3
+      ? Math.max(1, (memberCount ?? 0) + 1)
+      : Math.max(1, (memberCount ?? 0) - FREE_SEATS);
 
     // Determinar price (mantém o atual em sync_seats; troca em change_cycle)
-    let targetPriceId = stripeSub.items?.data?.[0]?.price?.id as string;
+    let targetPriceId = seatItem?.price?.id as string;
     let targetCycle: SeatCycle =
       ((workspace as any).seat_cycle as SeatCycle) || "monthly";
 
@@ -151,7 +161,8 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      targetPriceId = SEAT_PRICE_IDS[newCycleRaw];
+      const usesV2Seat = isV3 || isV2SeatPrice(seatItem?.price?.id);
+      targetPriceId = usesV2Seat ? V2_SEAT_PRICE_IDS[newCycleRaw] : SEAT_PRICE_IDS[newCycleRaw];
       targetCycle = newCycleRaw;
     }
 
