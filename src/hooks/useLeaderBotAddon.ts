@@ -35,7 +35,7 @@ export const useLeaderBotAddon = () => {
         const hoursUsed = Number(r.hours_used ?? 0);
         return {
           leaderUserId: r.leader_user_id as string,
-          leaderName: (r.name as string) ?? 'Líder',
+          leaderName: (r.leader_name as string) || (r.name as string) || 'Líder',
           hasAddon: !!r.has_addon,
           basis: (r.basis as LeaderBotAddon['basis']) ?? 'none',
           hoursCap,

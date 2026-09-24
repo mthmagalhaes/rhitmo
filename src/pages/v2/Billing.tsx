@@ -81,7 +81,12 @@ export default function V2Billing() {
     setCheckoutLoading(true);
     try {
       const { data: session, error } = await supabase.functions.invoke('create-checkout-session', {
-        body: { seatCycle: 'monthly', seats, botAddon: withAddon },
+        // Legacy workspaces: let the server apply its free-seat rule instead of quoting v3 seats.
+        body: {
+          seatCycle: 'monthly',
+          ...(billing?.billingModel === 'v3' ? { seats } : {}),
+          botAddon: withAddon,
+        },
       });
       if (error) throw error;
       if (!session?.url) throw new Error('Sem URL de checkout');
@@ -99,7 +104,7 @@ export default function V2Billing() {
 
   return (
     <div className="space-y-6">
-      {!billingLoading && billing && !billing.hasSubscription && (
+      {!billingLoading && billing && billing.billingModel === 'v3' && !billing.hasSubscription && (
         <Alert className="rounded-2xl">
           <AlertTitle>
             {billing.trialActive
