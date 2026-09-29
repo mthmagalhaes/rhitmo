@@ -78,7 +78,10 @@ export const usePlanLimits = () => {
   const user = effectiveUserId ? { id: effectiveUserId } : null;
   const { data: billing } = useBillingStatus();
   const isV3 = billing?.billingModel === 'v3';
-  const { data: leaderAddons } = useLeaderBotAddon() as { data?: import('./useLeaderBotAddon').LeaderBotAddon[] };
+  const { data: leaderAddons, isLoading: addonLoading } = useLeaderBotAddon() as {
+    data?: import('./useLeaderBotAddon').LeaderBotAddon[];
+    isLoading: boolean;
+  };
   const myAddon = leaderAddons?.find((a) => a.leaderUserId === effectiveUserId);
 
   const { data: workspace, isLoading: workspaceLoading } = useQuery({
@@ -226,9 +229,10 @@ export const usePlanLimits = () => {
     const unlocked = isBeta || isGrandfathered || isV3;
     const totalSeats = unlocked ? Infinity : FREE_SEATS + paidSeats;
     // v3: horas de bot vêm do add-on do líder (get_leader_bot_addon).
-    const recallUnlimited = isV3
-      ? myAddon?.basis === 'grandfathered'
-      : isBeta || isGrandfathered;
+    // Beta/grandfathered continuam ilimitados. Sem linha do add-on (carregando
+    // ou usuário fora do RPC) não bloqueia no cliente: o servidor aplica o teto.
+    const recallUnlimited =
+      isBeta || isGrandfathered || (isV3 && (!myAddon || myAddon.basis === 'grandfathered'));
     const recallCapHours = isV3
       ? myAddon?.hoursCap ?? 0
       : paidSeats > 0 ? paidSeats * RECALL_HOURS_PER_PAID_SEAT : FREE_RECALL_CAP_HOURS;
