@@ -1,4 +1,5 @@
 import { Card, CardContent } from '@/components/ui/card';
+import { useBillingStatus } from '@/hooks/useBillingStatus';
 import { NoteTakerConnectorCard } from '@/components/settings/NoteTakerConnectorCard';
 import { NOTE_TAKER_PROVIDERS, NOTE_TAKER_NO_CONNECTOR_NOTE } from '@/lib/noteTakerProviders';
 
@@ -7,8 +8,15 @@ import { NOTE_TAKER_PROVIDERS, NOTE_TAKER_NO_CONNECTOR_NOTE } from '@/lib/noteTa
  * O bot deixa de ser o motor e vira conveniência paga.
  */
 export default function V2Conectores() {
+  const { data: billing } = useBillingStatus();
+  const inTrial = billing?.billingModel === 'v3' && billing.trialActive && !billing.hasSubscription;
   return (
     <div className="space-y-6">
+      {inTrial && (
+        <div className="rounded-2xl bg-primary/10 p-4 text-sm text-foreground">
+          <span className="font-semibold">Já usa Granola?</span> Conecte abaixo e suas conversas viram evidência sem gastar as 6h de bot do seu teste.
+        </div>
+      )}
       <Card className="rounded-3xl border-none bg-muted/40 shadow-none">
         <CardContent className="p-6">
           <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Conectores</p>

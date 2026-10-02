@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkV3BotEntitlement } from "../_shared/botEntitlement.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -487,7 +488,20 @@ Deno.serve(async (req) => {
     }
 
     // ── Auto-schedule Recall bots (2 min before meeting) ──
+    // Mesma regra do envio manual: sem teste ativo/add-on ou sem horas, não
+    // agenda bot automático (antes este caminho ignorava o teto do v3).
+    let botBlockedReason: string | null = null;
     if (autoTranscribe && RECALL_API_KEY) {
+      const ent = await checkV3BotEntitlement(supabaseAdmin, userId);
+      if (ent.applies && !ent.allowed) botBlockedReason = ent.code ?? "v3_no_bot_available";
+      const ids = matchedMeetings.map((m) => m.id).filter(Boolean);
+      if (ids.length > 0) {
+        await supabaseAdmin.from("upcoming_meetings").update({ bot_blocked_reason: botBlockedReason }).in("id", ids);
+      }
+      if (botBlockedReason) console.log(`[sync] Bot automático bloqueado para ${userId}: ${botBlockedReason}`);
+    }
+
+    if (autoTranscribe && RECALL_API_KEY && !botBlockedReason) {
       const autoScheduled: string[] = [];
 
 
@@ -659,6 +673,9 @@ Deno.serve(async (req) => {
                 waiting_room_timeout: 900,
                 in_call_not_recording_timeout: 600,
                 noone_joined_timeout: 900,
+                // 15 min de silêncio contínuo = só bots na sala. Corta custo
+                // de reunião que acabou mas ficou com outro note taker aberto.
+                silence_detection: { timeout: 900, activate_after: 600 },
               },
             }),
           });
@@ -781,6 +798,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         meetings: matchedMeetings,
+        bot_blocked_reason: botBlockedReason,
         debug: {
           events_found: allEvents.length,
           matched: matchedMeetings.length,

@@ -6,6 +6,7 @@ import {
   matchMembersToParticipants,
   type RecallParticipant,
 } from "../_shared/recallParticipants.ts";
+import { checkV3BotEntitlement } from "../_shared/botEntitlement.ts";
 import { estimateRecallCostUsd, usdToBrl, USD_BRL } from "../_shared/recallPricing.ts";
 
 const corsHeaders = {
@@ -935,6 +936,33 @@ async function recordBotUsage(
     console.log(
       `Bot ${botExternalId}: uso registrado — ${machineMinutes} min, US$${costUsd.toFixed(4)}`,
     );
+    await maybeNudgeBotHours80(supabaseAdmin, botRecord.user_id as string);
+  }
+}
+
+// Aviso único por janela quando o líder passa de 80% da bolsa de horas.
+async function maybeNudgeBotHours80(supabaseAdmin: any, userId: string): Promise<void> {
+  try {
+    const ent = await checkV3BotEntitlement(supabaseAdmin, userId);
+    if (!ent.applies || !Number.isFinite(ent.hoursCap) || ent.hoursCap <= 0) return;
+    if (ent.hoursUsed / ent.hoursCap < 0.8) return;
+    const since = ent.basis === "addon"
+      ? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
+      : new Date(Date.now() - 14 * 86400000).toISOString();
+    const { data: existing } = await supabaseAdmin
+      .from("leader_nudges").select("id")
+      .eq("leader_id", userId).eq("nudge_type", "bot_hours_80")
+      .gte("created_at", since).limit(1);
+    if (existing && existing.length > 0) return;
+    await supabaseAdmin.from("leader_nudges").insert({
+      leader_id: userId,
+      nudge_type: "bot_hours_80",
+      severity: "warning",
+      action_url: "/lider/conectores",
+      message: `Você já usou ${ent.hoursUsed.toFixed(1)}h das ${ent.hoursCap}h de bot. Já usa Granola? Conecte e transcreva sem gastar horas, ou ative o bot de reunião em Assinatura.`,
+    });
+  } catch (e) {
+    console.warn("maybeNudgeBotHours80 failed:", e);
   }
 }
 

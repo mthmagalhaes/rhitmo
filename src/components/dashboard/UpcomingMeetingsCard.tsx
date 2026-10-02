@@ -56,6 +56,7 @@ export const UpcomingMeetingsCard = () => {
     scheduleBot,
     getBotStatus,
     syncDebug,
+    botBlockedReason,
     refetchMeetings,
   } = useCalendarIntegration();
   const { canScheduleBot, botMeetingCount, limits } = usePlanLimits();
@@ -305,6 +306,20 @@ export const UpcomingMeetingsCard = () => {
         />
       </div>
 
+
+      {botBlockedReason && (
+        <div className="mb-3 rounded-2xl bg-muted/40 p-3 text-sm">
+          <p className="font-medium text-foreground">Sem horas de bot: o bot não vai entrar sozinho nas próximas 1:1s.</p>
+          <p className="text-muted-foreground mt-0.5">
+            {botBlockedReason === 'v3_addon_hours_cap'
+              ? 'As horas deste ciclo acabaram.'
+              : botBlockedReason === 'v3_trial_hours_cap'
+              ? 'As 6h do teste foram usadas.'
+              : 'O teste terminou e não há add-on de bot ativo.'}{' '}
+            Já usa Granola? <a href="/lider/conectores" className="text-primary hover:underline">Conecte</a> e transcreva sem gastar horas, ou ative o bot em <a href="/lider/configuracoes?tab=plano" className="text-primary hover:underline">Assinatura</a>.
+          </p>
+        </div>
+      )}
 
       <div className="space-y-1">
         {visibleMeetings.map((meeting, index) => {

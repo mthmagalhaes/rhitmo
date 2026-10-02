@@ -32,6 +32,7 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
   const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resending, setResending] = useState(false);
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -47,7 +48,7 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email: unconfirmedEmail,
-        options: { emailRedirectTo: `${window.location.origin}/dashboard` },
+        options: { emailRedirectTo: `${window.location.origin}/auth` },
       });
       if (error) throw error;
       toast({
@@ -167,7 +168,7 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`
+          emailRedirectTo: `${window.location.origin}/auth`
         }
       });
       if (error) throw error;
@@ -190,10 +191,9 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
       trackSignupConversion(email);
       trackFunnel('leader_signup_completed', { payload: { persona: persona ?? 'unknown' } });
 
-      toast({
-        title: t('auth.accountCreated'),
-        description: t('auth.accountCreatedDesc')
-      });
+      setAwaitingConfirmation(email);
+      setUnconfirmedEmail(email);
+      setResendCooldown(60);
     } catch (error: any) {
       // Mensagens mais claras pros erros mais comuns do Supabase
       const raw = String(error?.message ?? '');
@@ -326,9 +326,65 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
             </div>
           )}
           
+          {awaitingConfirmation && (
+            <div className="space-y-5 rounded-3xl bg-card p-6 shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
+              <div className="flex items-center gap-3">
+                <MailCheck className="h-6 w-6 text-primary" />
+                <h2 className="text-xl font-bold tracking-tight text-foreground">Confira seu e-mail</h2>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Enviamos um link para <span className="font-medium text-foreground">{awaitingConfirmation}</span>. Clique nele e você entra direto na Rhitmo, sem precisar fazer login de novo. Se não aparecer, olhe em Promoções ou Spam.
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <Button asChild variant="outline" className="rounded-xl">
+                  <a href="https://mail.google.com/mail/u/0/#search/rhitmo" target="_blank" rel="noopener noreferrer">Abrir Gmail</a>
+                </Button>
+                <Button asChild variant="outline" className="rounded-xl">
+                  <a href="https://outlook.office.com/mail/" target="_blank" rel="noopener noreferrer">Abrir Outlook</a>
+                </Button>
+              </div>
+              <Button className="w-full rounded-xl" onClick={handleResendVerification} disabled={resending || resendCooldown > 0}>
+                {resending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {resendCooldown > 0 ? `Reenviar link em ${resendCooldown}s` : 'Reenviar link'}
+              </Button>
+              <button
+                type="button"
+                className="w-full text-sm text-primary hover:underline font-medium"
+                onClick={() => { setAwaitingConfirmation(null); setUnconfirmedEmail(null); setPassword(''); setConfirmPassword(''); }}
+              >
+                Usei o e-mail errado
+              </button>
+            </div>
+          )}
+
           {/* Signup Form */}
-          {!isForgotPassword && isSignUp ? (
+          {awaitingConfirmation ? null : !isForgotPassword && isSignUp ? (
             <form onSubmit={handleSignUp} className="space-y-6">
+              <Button 
+                type="button" 
+                className="w-full rounded-xl h-12 font-bold text-base" 
+                onClick={handleGoogleSignIn}
+                disabled={loading}
+              >
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                </svg>
+                Continuar com Google
+              </Button>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    ou com e-mail
+                  </span>
+                </div>
+              </div>
+              
               <div className="space-y-2">
                 <Label htmlFor="email">{t('common.email')}</Label>
                 <Input 
@@ -371,37 +427,12 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
                   minLength={6} 
                 />
               </div>
-              <Button type="submit" className="w-full h-12 rounded-xl font-bold text-base" disabled={loading}>
+              <Button type="submit" variant="outline" className="w-full h-12 rounded-xl font-semibold text-base" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {t('auth.createAccount')}
               </Button>
               
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">
-                    {t('auth.orContinueWith')}
-                  </span>
-                </div>
-              </div>
-              
-              <Button 
-                type="button" 
-                variant="outline" 
-                className="w-full rounded-xl h-12" 
-                onClick={handleGoogleSignIn}
-                disabled={loading}
-              >
-                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                </svg>
-                {t('auth.signInWithGoogle')}
-              </Button>
+
               
               {isInviteFlow && (
                 <div className="text-center pt-4">
