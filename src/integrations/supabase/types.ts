@@ -3309,10 +3309,35 @@ export type Database = {
           },
         ]
       }
+      trial_email_log: {
+        Row: {
+          id: string
+          sent_at: string
+          template: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          id?: string
+          sent_at?: string
+          template: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          id?: string
+          sent_at?: string
+          template?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       upcoming_meetings: {
         Row: {
           attendees: Json | null
           auto_transcribe_opt_in: boolean
+          bot_blocked_reason: string | null
           brief_cache: Json | null
           brief_dm_sent_at: string | null
           brief_generated_at: string | null
@@ -3330,6 +3355,7 @@ export type Database = {
         Insert: {
           attendees?: Json | null
           auto_transcribe_opt_in?: boolean
+          bot_blocked_reason?: string | null
           brief_cache?: Json | null
           brief_dm_sent_at?: string | null
           brief_generated_at?: string | null
@@ -3347,6 +3373,7 @@ export type Database = {
         Update: {
           attendees?: Json | null
           auto_transcribe_opt_in?: boolean
+          bot_blocked_reason?: string | null
           brief_cache?: Json | null
           brief_dm_sent_at?: string | null
           brief_generated_at?: string | null
@@ -3638,6 +3665,14 @@ export type Database = {
       }
       admin_funnel_metrics: { Args: never; Returns: Json }
       admin_revenue_metrics: { Args: never; Returns: Json }
+      admin_unconfirmed_signups: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          user_id: string
+        }[]
+      }
       admin_workspace_access_audit: {
         Args: { p_workspace_id: string }
         Returns: {
