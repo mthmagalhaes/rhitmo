@@ -259,6 +259,7 @@ export const useCalendarIntegration = () => {
     autoTranscribe,
     upcomingMeetings,
     syncDebug,
+    botBlockedReason,
     loadingMeetings,
     isSyncing,
     isSyncError,
