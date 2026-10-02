@@ -24,6 +24,7 @@ import { template as feedbackShared } from './feedback-shared.tsx'
 import { template as trialFirstEvidence } from './trial-first-evidence.tsx'
 import { template as trialEnding4d } from './trial-ending-4d.tsx'
 import { template as trialLastDay } from './trial-last-day.tsx'
+import { template as contentLeadWelcome } from './content-lead-welcome.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'sync-invite': syncInvite,
@@ -38,6 +39,7 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'sync-completed': syncCompleted,
   'weekly-summary': weeklySummary,
   'feedback-shared': feedbackShared,
+  'content-lead-welcome': contentLeadWelcome,
   'trial-first-evidence': trialFirstEvidence,
   'trial-ending-4d': trialEnding4d,
   'trial-last-day': trialLastDay,

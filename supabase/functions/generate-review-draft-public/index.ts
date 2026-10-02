@@ -67,9 +67,7 @@ Deno.serve(async (req) => {
     await admin.from("public_ai_usage").insert({ email: "-", ip_hash: ipHash, tool: "review_generator" });
     return json({ draft: draft.trim() });
   } catch (e) {
-    const gw = gatewayErrorResponse(e, corsHeaders);
-    if (gw) return gw;
     console.error("generate-review-draft-public error", e);
-    return json({ error: "Não consegui gerar agora. Tente de novo em instantes." }, 500);
+    return gatewayErrorResponse(e, corsHeaders);
   }
 });
