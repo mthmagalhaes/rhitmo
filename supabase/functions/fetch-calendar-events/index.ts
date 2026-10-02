@@ -798,6 +798,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         meetings: matchedMeetings,
+        bot_blocked_reason: botBlockedReason,
         debug: {
           events_found: allEvents.length,
           matched: matchedMeetings.length,

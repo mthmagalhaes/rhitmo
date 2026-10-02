@@ -67,6 +67,7 @@ export const useCalendarIntegration = () => {
       }
       return {
         meetings: (data?.meetings || []) as UpcomingMeeting[],
+        botBlockedReason: (data?.bot_blocked_reason ?? null) as string | null,
         debug: data?.debug as { events_found: number; matched: number; no_attendees: number; no_match: number; team_members_loaded: number } | undefined,
       };
     },
@@ -77,6 +78,7 @@ export const useCalendarIntegration = () => {
 
   const upcomingMeetings = calendarData?.meetings ?? [];
   const syncDebug = calendarData?.debug;
+  const botBlockedReason = calendarData?.botBlockedReason ?? null;
 
   const connectCalendar = async () => {
     const { data, error } = await supabase.functions.invoke('google-calendar-oauth', {
