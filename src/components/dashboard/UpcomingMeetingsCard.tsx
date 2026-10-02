@@ -316,7 +316,7 @@ export const UpcomingMeetingsCard = () => {
               : botBlockedReason === 'v3_trial_hours_cap'
               ? 'As 6h do teste foram usadas.'
               : 'O teste terminou e não há add-on de bot ativo.'}{' '}
-            Já usa Granola? <a href="/v2/conectores" className="text-primary hover:underline" onClick={(e) => e.stopPropagation()}>Conecte</a> e transcreva sem gastar horas, ou ative o bot em <a href="/lider/configuracoes?tab=plano" className="text-primary hover:underline">Assinatura</a>.
+            Já usa Granola? <a href="/lider/conectores" className="text-primary hover:underline">Conecte</a> e transcreva sem gastar horas, ou ative o bot em <a href="/lider/configuracoes?tab=plano" className="text-primary hover:underline">Assinatura</a>.
           </p>
         </div>
       )}
