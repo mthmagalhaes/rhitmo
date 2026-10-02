@@ -1,7 +1,7 @@
 // Catálogo de note takers pessoais (BYOK) suportados pela Rhitmo.
 // Espelha `supabase/functions/_shared/notetakers/index.ts`.
 
-export type NoteTakerProviderId = 'granola' | 'fireflies';
+export type NoteTakerProviderId = 'granola' | 'fireflies' | 'tldv' | 'fathom';
 
 export interface NoteTakerProviderMeta {
   id: NoteTakerProviderId;
@@ -39,6 +39,32 @@ export const NOTE_TAKER_PROVIDERS: NoteTakerProviderMeta[] = [
     steps: [
       'No Fireflies, abra Settings → Developer Settings.',
       'Copie a sua API key pessoal (ou gere uma nova).',
+      'Cole a chave abaixo. Ela fica criptografada e nunca é exibida de novo.',
+    ],
+  },
+  {
+    id: 'tldv',
+    label: 'tl;dv',
+    description:
+      'Importe as transcrições do tl;dv. Exige plano pago do tl;dv para gerar a chave.',
+    fidelity: 'transcript',
+    keyPlaceholder: 'API key do tl;dv',
+    steps: [
+      'No tl;dv, abra Settings → Personal Settings → API Keys.',
+      'Crie uma chave nova (disponível nos planos pagos do tl;dv).',
+      'Cole a chave abaixo. Ela fica criptografada e nunca é exibida de novo.',
+    ],
+  },
+  {
+    id: 'fathom',
+    label: 'Fathom',
+    description:
+      'Traga resumo e transcrição das reuniões gravadas pelo Fathom.',
+    fidelity: 'transcript',
+    keyPlaceholder: 'API key do Fathom',
+    steps: [
+      'No Fathom, abra Settings → API Access.',
+      'Gere uma chave nova e copie.',
       'Cole a chave abaixo. Ela fica criptografada e nunca é exibida de novo.',
     ],
   },
