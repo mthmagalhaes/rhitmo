@@ -5,11 +5,15 @@
 
 import { granolaProvider } from "./granola.ts";
 import { firefliesProvider } from "./fireflies.ts";
+import { tldvProvider } from "./tldv.ts";
+import { fathomProvider } from "./fathom.ts";
 import type { NoteTakerProvider } from "./types.ts";
 
 export const NOTE_TAKER_PROVIDERS = {
   granola: granolaProvider,
   fireflies: firefliesProvider,
+  tldv: tldvProvider,
+  fathom: fathomProvider,
 } as const satisfies Record<string, NoteTakerProvider>;
 
 export type NoteTakerProviderId = keyof typeof NOTE_TAKER_PROVIDERS;

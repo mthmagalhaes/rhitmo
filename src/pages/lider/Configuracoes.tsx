@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useAccount } from '@/contexts/AccountContext';
 import { PageTabs, type PageTab } from '@/components/PageTabs';
 import { BillingContent } from '@/pages/Billing';
@@ -98,6 +99,10 @@ function IntegrationsTab() {
   ];
   return (
     <div className="space-y-8">
+      <Link to="/lider/conectores" className="flex items-center justify-between rounded-2xl bg-primary/10 p-4 text-sm hover:bg-primary/15">
+        <span><span className="font-semibold">Central de Conectores:</span> Granola, Fireflies, tl;dv, Fathom, Google Agenda e Slack num só lugar.</span>
+        <span className="font-medium text-primary">Abrir</span>
+      </Link>
       <section className="space-y-3">
         <div className="flex items-center gap-3">
           <span className="h-px w-6 bg-border" aria-hidden />

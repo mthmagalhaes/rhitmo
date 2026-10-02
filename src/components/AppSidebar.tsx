@@ -9,6 +9,7 @@ import { useAccount } from '@/contexts/AccountContext';
 import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { useActiveMode } from '@/hooks/useActiveMode';
+import { useConnectorHealth } from '@/hooks/useConnectorHealth';
 
 
 import {
@@ -94,6 +95,7 @@ export function AppSidebar() {
 
 
   const persona = resolvePersona({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, isTeamLeader, activeMode });
+  const { needsAttention: connectorAlerts } = useConnectorHealth(persona === 'leader');
   const navItems =
     persona === 'leader'
       ? LEADER_NAV_ITEMS
@@ -204,6 +206,12 @@ export function AppSidebar() {
                   >
                     <Icon className="h-3.5 w-3.5" />
                     <span>{t(item.labelKey)}</span>
+                    {item.id === 'conectores' && connectorAlerts > 0 && (
+                      <span
+                        className="ml-auto h-1.5 w-1.5 rounded-full bg-destructive"
+                        aria-label={`${connectorAlerts} conexão(ões) precisam de atenção`}
+                      />
+                    )}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>

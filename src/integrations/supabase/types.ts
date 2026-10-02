@@ -541,6 +541,27 @@ export type Database = {
         }
         Relationships: []
       }
+      connector_interest: {
+        Row: {
+          connector_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          connector_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          connector_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       context_briefs: {
         Row: {
           conversations: Json
