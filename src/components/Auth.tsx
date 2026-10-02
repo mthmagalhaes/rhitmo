@@ -343,7 +343,7 @@ export const Auth = ({ defaultMode = 'login', defaultEmail = '', isInviteFlow = 
                   <a href="https://outlook.office.com/mail/" target="_blank" rel="noopener noreferrer">Abrir Outlook</a>
                 </Button>
               </div>
-              <Button className="w-full rounded-xl" onClick={handleResend} disabled={resending || resendCooldown > 0}>
+              <Button className="w-full rounded-xl" onClick={handleResendVerification} disabled={resending || resendCooldown > 0}>
                 {resending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {resendCooldown > 0 ? `Reenviar link em ${resendCooldown}s` : 'Reenviar link'}
               </Button>
