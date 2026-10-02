@@ -121,7 +121,7 @@ export default function GeradorAvaliacao() {
                   </Button>
                 )}
               </div>
-              <div className="prose prose-sm mt-4 max-w-none prose-headings:font-serif prose-headings:tracking-tight">
+              <div className="mt-4 space-y-3 text-sm leading-relaxed [&_h2]:mt-5 [&_h2]:font-serif [&_h2]:text-lg [&_h2]:font-bold [&_h2]:tracking-tight [&_ul]:list-disc [&_ul]:pl-5">
                 <ReactMarkdown>{unlocked ? draft : preview}</ReactMarkdown>
               </div>
               {!unlocked && <div className="mt-2 h-16 rounded-b-2xl bg-gradient-to-b from-transparent to-card" aria-hidden />}

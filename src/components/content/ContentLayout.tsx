@@ -46,7 +46,7 @@ export function TrialCta({ title, body }: { title?: string; body?: string }) {
       <p className="mt-3 max-w-2xl text-sm leading-relaxed opacity-80 md:text-base">
         {body ?? 'A Rhitmo importa as notas das suas 1:1s, organiza por pessoa e prepara pauta e rascunho de avaliação com a fonte de cada frase.'}
       </p>
-      <Button asChild size="lg" variant="secondary" className="mt-6 rounded-xl">
+      <Button asChild size="lg" className="mt-6 rounded-xl bg-background text-foreground hover:bg-background/90">
         <Link to={TRIAL_URL}>Testar 14 dias grátis, sem cartão</Link>
       </Button>
     </section>
