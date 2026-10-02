@@ -95,6 +95,7 @@ export function AppSidebar() {
 
 
   const persona = resolvePersona({ isLinkedMember, isLeader, isHRAdmin, isWorkspaceOwner, isTeamLeader, activeMode });
+  const { needsAttention: connectorAlerts } = useConnectorHealth(persona === 'leader');
   const navItems =
     persona === 'leader'
       ? LEADER_NAV_ITEMS
