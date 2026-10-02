@@ -83,6 +83,10 @@ export const SlackConnect = lazy(loadSlackConnect);
 export const DesignSystem = lazy(loadDesignSystem);
 export const RecorderPopup = lazy(loadRecorderPopup);
 export const Enterprise = lazy(loadEnterprise);
+export const Recursos = lazy(() => import('@/pages/content/Recursos'));
+export const Guia = lazy(() => import('@/pages/content/Guia'));
+export const ModeloAvaliacao = lazy(() => import('@/pages/content/ModeloAvaliacao'));
+export const GeradorAvaliacao = lazy(() => import('@/pages/content/GeradorAvaliacao'));
 export const ResetPassword = lazy(loadResetPassword);
 export const GoogleCalendarCallback = lazy(loadGoogleCalendarCallback);
 

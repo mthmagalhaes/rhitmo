@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { UnconfirmedSignupsCard } from './UnconfirmedSignupsCard';
+import { ContentLeadsCard } from './ContentLeadsCard';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -463,6 +464,7 @@ export const AdminUsers = () => {
         <h1 className="font-serif text-2xl font-bold tracking-tight">Pessoas</h1>
         <p className="text-sm text-muted-foreground">Usuários, convites e governança de acesso.</p>
       </header>
+      <ContentLeadsCard />
       <UnconfirmedSignupsCard />
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>

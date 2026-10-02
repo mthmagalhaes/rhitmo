@@ -1057,6 +1057,7 @@ const Landing = () => {
             <a href="#impacto" className="px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">{t.featuresNav}</a>
             <a href="#pricing" className="px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">{t.pricingNav}</a>
             <a href="#faq" className="px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">{t.faqNav}</a>
+            <Link to="/recursos" className="px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">{lang === 'pt' ? 'Recursos' : 'Resources'}</Link>
             <div className="w-px h-5 bg-slate-200 mx-2" />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -1539,6 +1540,8 @@ const Landing = () => {
               <li><a href="#pricing" className="hover:text-slate-900 transition-colors">{t.pricingNav}</a></li>
               <li><a href="#faq" className="hover:text-slate-900 transition-colors">{t.faqNav}</a></li>
               <li><Link to="/enterprise" className="hover:text-slate-900 transition-colors">{t.enterpriseNav}</Link></li>
+              <li><Link to="/recursos" className="hover:text-slate-900 transition-colors">{lang === 'pt' ? 'Recursos grátis' : 'Free resources'}</Link></li>
+              <li><Link to="/ferramentas/gerador-avaliacao-desempenho" className="hover:text-slate-900 transition-colors">{lang === 'pt' ? 'Gerador de avaliação' : 'Review generator'}</Link></li>
             </ul>
           </div>
           <div>

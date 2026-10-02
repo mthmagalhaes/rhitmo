@@ -27,6 +27,7 @@ const FILES = [
   "modes/self-review.md",
   "modes/formal-review-draft.md",
   "modes/one-on-one-draft.md",
+  "modes/public-review-generator.md",
   "channels/web.md",
   "channels/slack.md",
   "channels/whatsapp.md",

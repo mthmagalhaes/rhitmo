@@ -47,6 +47,10 @@ import {
   DesignSystem,
   RecorderPopup,
   Enterprise,
+  Recursos,
+  Guia,
+  ModeloAvaliacao,
+  GeradorAvaliacao,
   ResetPassword,
   GoogleCalendarCallback,
   SlackChannels,
@@ -218,6 +222,10 @@ const App = () => (
               <Route path="/privacy-policy" element={Public(<PrivacyPolicy />)} />
               <Route path="/confianca" element={Public(<TrustCenter />)} />
               <Route path="/enterprise" element={Public(<Enterprise />)} />
+              <Route path="/recursos" element={Public(<Recursos />)} />
+              <Route path="/guias/:slug" element={Public(<Guia />)} />
+              <Route path="/modelos/avaliacao-de-desempenho" element={Public(<ModeloAvaliacao />)} />
+              <Route path="/ferramentas/gerador-avaliacao-desempenho" element={Public(<GeradorAvaliacao />)} />
               <Route path="/reset-password" element={Public(<ResetPassword />)} />
               <Route path="/auth/google/callback" element={Public(<GoogleCalendarCallback />)} />
 

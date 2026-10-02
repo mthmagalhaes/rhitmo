@@ -25,13 +25,13 @@ const AdminNewLeadEmail = ({ leadEmail, leadName, leadPhone, leadTeamSize }: Adm
         </Section>
         <Heading style={h1}>🚀 Novo Lead!</Heading>
         <Text style={text}>
-          Um novo interessado acabou de se cadastrar na lista de espera.
+          Um novo interessado acabou de chegar.
         </Text>
         <Section style={infoSection}>
           <Text style={infoItem}>📧 <strong>Email:</strong> {leadEmail || '-'}</Text>
           {leadName && <Text style={infoItem}>👤 <strong>Nome:</strong> {leadName}</Text>}
           {leadPhone && <Text style={infoItem}>📱 <strong>Telefone:</strong> {leadPhone}</Text>}
-          {leadTeamSize && <Text style={infoItem}>👥 <strong>Tamanho do time:</strong> {leadTeamSize}</Text>}
+          {leadTeamSize && <Text style={infoItem}>👥 <strong>Origem / detalhe:</strong> {leadTeamSize}</Text>}
         </Section>
         <Section style={buttonSection}>
           <Button style={button} href="https://rhitmo.co/admin">

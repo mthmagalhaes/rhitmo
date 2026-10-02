@@ -41,7 +41,8 @@ export type Mode =
   | "monthly-recap"
   | "quarterly-recap"
   | "formal-review-draft"
-  | "one-on-one-draft";
+  | "one-on-one-draft"
+  | "public-review-generator";
 
 // Variáveis opcionais reconhecidas pelos modos novos (v2 da alma):
 //   sessionSummary, sessionCount, pendingActions,
@@ -52,6 +53,10 @@ export type Mode =
 
 /** Ordem canônica dos blocos base por modo. NÃO mudar sem atualizar snapshot. */
 const MODE_BLOCKS: Record<Mode, string[]> = {
+  "public-review-generator": [
+    "01-guardrails.md",
+    "modes/public-review-generator.md",
+  ],
   "leader-member": [
     "00-identity.md",
     "09-response-contract.md",

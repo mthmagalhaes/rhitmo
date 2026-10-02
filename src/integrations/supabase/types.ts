@@ -562,6 +562,39 @@ export type Database = {
         }
         Relationships: []
       }
+      content_leads: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string
+          id: string
+          ip_hash: string | null
+          name: string
+          source: string
+          utm: Json | null
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          ip_hash?: string | null
+          name: string
+          source: string
+          utm?: Json | null
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          ip_hash?: string | null
+          name?: string
+          source?: string
+          utm?: Json | null
+        }
+        Relationships: []
+      }
       context_briefs: {
         Row: {
           conversations: Json
@@ -2273,6 +2306,30 @@ export type Database = {
           },
         ]
       }
+      public_ai_usage: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          ip_hash: string
+          tool: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          ip_hash: string
+          tool: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          ip_hash?: string
+          tool?: string
+        }
+        Relationships: []
+      }
       pulse_surveys: {
         Row: {
           anonymity: string
@@ -3667,6 +3724,17 @@ export type Database = {
       admin_cohort_workspaces: {
         Args: { p_cohort_month: string }
         Returns: Json
+      }
+      admin_content_leads: {
+        Args: never
+        Returns: {
+          company: string
+          created_at: string
+          email: string
+          id: string
+          name: string
+          source: string
+        }[]
       }
       admin_cost_report: {
         Args: { p_month?: string }

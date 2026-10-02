@@ -10,6 +10,12 @@ A Rhitmo é um "Service-as-Software" para liderança: importa anotações de reu
 - [Enterprise](/enterprise): Plano corporativo, SSO, HR Dashboard e integração com HRIS.
 - [Sign in](/auth): Login para líderes, liderados e administradores de RH.
 - [Get started](/auth/start): Cadastro com seleção de persona (líder ou HR Admin).
+- [Recursos](/recursos): Guias, modelos e ferramentas grátis para líderes e RH.
+- [Gerador de avaliação de desempenho](/ferramentas/gerador-avaliacao-desempenho): Ferramenta grátis com IA.
+- [Modelo de avaliação de desempenho](/modelos/avaliacao-de-desempenho): Modelo pronto com roteiro de 1:1.
+- [Guia: avaliação de desempenho](/guias/avaliacao-de-desempenho)
+- [Guia: reunião one on one](/guias/reuniao-one-on-one)
+- [Guia: PDI](/guias/pdi-plano-de-desenvolvimento-individual)
 
 ## Optional
 
