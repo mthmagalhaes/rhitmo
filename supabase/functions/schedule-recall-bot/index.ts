@@ -384,7 +384,7 @@ Deno.serve(async (req) => {
         waiting_room_timeout: 600,
         in_call_not_recording_timeout: 180,
         noone_joined_timeout: 300,
-        everyone_left_timeout: { timeout: 120, activate_after: 60 },
+        silence_detection: { timeout: 900, activate_after: 600 },
       },
     };
     if (joinAt) recallPayload.join_at = joinAt;
