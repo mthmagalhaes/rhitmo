@@ -1,0 +1,3 @@
+
+[functions.trial-drip-cron]
+  verify_jwt = false

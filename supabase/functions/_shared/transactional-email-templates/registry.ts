@@ -21,6 +21,9 @@ import { template as waitlistConfirmation } from './waitlist-confirmation.tsx'
 import { template as syncCompleted } from './sync-completed.tsx'
 import { template as weeklySummary } from './weekly-summary.tsx'
 import { template as feedbackShared } from './feedback-shared.tsx'
+import { template as trialFirstEvidence } from './trial-first-evidence.tsx'
+import { template as trialEnding4d } from './trial-ending-4d.tsx'
+import { template as trialLastDay } from './trial-last-day.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'sync-invite': syncInvite,
@@ -35,4 +38,7 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'sync-completed': syncCompleted,
   'weekly-summary': weeklySummary,
   'feedback-shared': feedbackShared,
+  'trial-first-evidence': trialFirstEvidence,
+  'trial-ending-4d': trialEnding4d,
+  'trial-last-day': trialLastDay,
 }
