@@ -63,8 +63,9 @@ function useInterest() {
       if (!u.user) throw new Error('Sessão expirada');
       const { error } = await supabase
         .from('connector_interest' as never)
-        .upsert({ user_id: u.user.id, connector_id: connectorId } as never, { onConflict: 'user_id,connector_id' } as never);
-      if (error) throw error;
+        .insert({ user_id: u.user.id, connector_id: connectorId } as never);
+      // 23505 = já registrado antes; tratar como sucesso.
+      if (error && error.code !== '23505') throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['connector-interest'] });
