@@ -640,7 +640,7 @@ interface TeamRow {
   leader_invite_pending: boolean;
 }
 
-function TeamsTab({ onNewTeam, workspaceId }: { onNewTeam: () => void; workspaceId: string | null }) {
+export function TeamsTab({ onNewTeam, workspaceId }: { onNewTeam: () => void; workspaceId: string | null }) {
   const qc = useQueryClient();
   const [editTeam, setEditTeam] = useState<TeamRow | null>(null);
   const [deleteTeam, setDeleteTeam] = useState<TeamRow | null>(null);
@@ -1312,7 +1312,13 @@ export default function LiderPessoas() {
         />
       ),
     },
-    // Aba "Times" removida — gestão de times mora em /workspace/teams.
+    {
+      value: 'times',
+      label: 'Times',
+      icon: Users,
+      hidden: !canManageTeams,
+      content: <TeamsTab onNewTeam={() => setNewTeamOpen(true)} workspaceId={workspaceId} />,
+    },
 
     {
       value: 'analytics',
@@ -1361,11 +1367,11 @@ export default function LiderPessoas() {
           workspaceId={workspace.id}
         />
       )}
-      {workspace && canManageTeams && (
+      {(workspace?.id || workspaceId) && canManageTeams && (
         <NewTeamDialog
           open={newTeamOpen}
           onOpenChange={setNewTeamOpen}
-          workspaceId={workspace.id}
+          workspaceId={(workspace?.id || workspaceId)!}
         />
       )}
       <BulkOnboardDialog
