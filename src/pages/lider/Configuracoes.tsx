@@ -111,7 +111,7 @@ function IntegrationsTab() {
           </h2>
         </div>
         <div className="grid gap-4 md:grid-cols-2 items-start">
-          {NOTE_TAKER_PROVIDERS.map((p) => (
+          {NOTE_TAKER_PROVIDERS.filter((p) => p.id !== 'google_meet').map((p) => (
             <NoteTakerConnectorCard key={p.id} provider={p.id} />
           ))}
           <BotHoursCard />
