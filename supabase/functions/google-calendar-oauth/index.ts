@@ -326,6 +326,7 @@ Deno.serve(async (req) => {
       const supabaseAdmin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
       await supabaseAdmin.from("google_calendar_tokens").delete().eq("user_id", userId);
+      await supabaseAdmin.from("leader_note_taker_connections").delete().eq("user_id", userId).eq("provider", "google_meet");
       await supabaseAdmin.from("upcoming_meetings").delete().eq("user_id", userId);
 
       return new Response(JSON.stringify({ success: true }), {

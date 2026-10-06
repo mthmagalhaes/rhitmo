@@ -34,6 +34,7 @@ function useStatuses(): Record<string, Status> {
   const fireflies = useNoteTaker('fireflies');
   const tldv = useNoteTaker('tldv');
   const fathom = useNoteTaker('fathom');
+  const meet = useNoteTaker('google_meet');
   const cal = useCalendarIntegration();
   const slack = useSlackConnection();
   const nt = (h: ReturnType<typeof useNoteTaker>): Status =>
@@ -43,6 +44,7 @@ function useStatuses(): Record<string, Status> {
     fireflies: nt(fireflies),
     tldv: nt(tldv),
     fathom: nt(fathom),
+    google_meet: nt(meet),
     google_calendar: cal.checkingConnection ? 'loading' : cal.isConnected ? 'connected' : 'available',
     slack: slack.isLoading ? 'loading' : slack.isConnected ? 'connected' : 'available',
   };
@@ -138,6 +140,21 @@ function DetailSheet({
               {entry.note && <p className="rounded-xl bg-muted/50 p-3 text-xs text-muted-foreground">{entry.note}</p>}
 
               {entry.kind === 'byok' && entry.providerId && <NoteTakerConnectorCard provider={entry.providerId} />}
+
+              {entry.kind === 'google_meet' && (
+                status === 'connected' || status === 'error' ? (
+                  <NoteTakerConnectorCard provider="google_meet" />
+                ) : (
+                  <div className="space-y-3">
+                    <ol className="list-decimal space-y-1 pl-4 text-sm text-muted-foreground">
+                      <li>Autorize a leitura das transcrições do Meet. A Rhitmo não acessa seu Drive.</li>
+                      <li>Nas reuniões, ative a transcrição do Meet.</li>
+                      <li>Ao fim da reunião, a transcrição entra em Anotações & Evidências.</li>
+                    </ol>
+                    <Button className="rounded-xl" onClick={() => cal.connectCalendar({ withMeet: true })}>Conectar com Google</Button>
+                  </div>
+                )
+              )}
 
               {entry.kind === 'google_calendar' && (
                 status === 'connected' ? (

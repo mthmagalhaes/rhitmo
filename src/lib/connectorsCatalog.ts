@@ -5,7 +5,7 @@
 import type { NoteTakerProviderId } from '@/lib/noteTakerProviders';
 
 export type ConnectorCategory = 'note_takers' | 'agenda' | 'comunicacao';
-export type ConnectorKind = 'byok' | 'google_calendar' | 'slack' | 'coming_soon';
+export type ConnectorKind = 'byok' | 'google_meet' | 'google_calendar' | 'slack' | 'coming_soon';
 
 export interface ConnectorEntry {
   id: string;
@@ -39,9 +39,9 @@ export const CONNECTORS: ConnectorEntry[] = [
     tagline: 'Transcrições do tl;dv direto em Anotações & Evidências.', note: 'Exige plano pago do tl;dv.' },
   { id: 'fathom', label: 'Fathom', mono: 'Fa', category: 'note_takers', kind: 'byok', providerId: 'fathom', tag: 'Novo', savesBotHours: true,
     tagline: 'Resumo e transcrição das reuniões gravadas pelo Fathom.' },
-  { id: 'google_meet', label: 'Gemini no Google Meet', mono: 'Me', category: 'note_takers', kind: 'coming_soon', tag: 'Beta', savesBotHours: true,
-    tagline: 'As anotações automáticas do Gemini viram evidência, sem nenhum app extra.',
-    note: 'Exige Google Workspace com Gemini ativo. Em liberação com o Google.' },
+  { id: 'google_meet', label: 'Google Meet', mono: 'Me', category: 'note_takers', kind: 'google_meet', providerId: 'google_meet', tag: 'Beta', savesBotHours: true,
+    tagline: 'As transcrições do próprio Meet viram evidência e são atribuídas ao liderado.',
+    note: 'A transcrição precisa estar ativada na reunião (Google Workspace pago). Beta: liberado para contas de teste enquanto o Google revisa o acesso.' },
   { id: 'google_calendar', label: 'Google Agenda', mono: 'Ag', category: 'agenda', kind: 'google_calendar',
     tagline: 'Sincroniza suas 1:1s e prepara a pauta antes de cada conversa.' },
   { id: 'zoom', label: 'Zoom', mono: 'Zm', category: 'agenda', kind: 'coming_soon',
