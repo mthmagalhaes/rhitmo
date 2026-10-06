@@ -9,7 +9,8 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
-import { decryptApiKey, encryptApiKey } from "../_shared/noteTakerCrypto.ts";
+import { encryptApiKey } from "../_shared/noteTakerCrypto.ts";
+import { resolveNoteTakerCredential } from "../_shared/noteTakerCredential.ts";
 import { getProvider, NOTE_TAKER_PROVIDER_IDS } from "../_shared/notetakers/index.ts";
 import { ingestNoteForMember, syncNoteTakerConnection } from "../_shared/noteTakerSync.ts";
 
@@ -82,6 +83,9 @@ Deno.serve(async (req) => {
     }
 
     if (action === "connect") {
+      if (provider === "google_meet") {
+        return json({ error: "O Google Meet conecta pelo login Google, não por chave." }, 400);
+      }
       const apiKey = parsed.data.api_key?.trim();
       if (!apiKey) return json({ error: "api_key é obrigatório" }, 400);
 
@@ -226,7 +230,7 @@ Deno.serve(async (req) => {
     // regrava a anotação e refaz o resumo. Usado para consertar notas
     // importadas antes da correção de formato.
     if (action === "reprocess") {
-      const apiKey = await decryptApiKey(connection.api_key_ciphertext);
+      const apiKey = await resolveNoteTakerCredential(admin, connection);
       const { data: notes } = await admin
         .from("note_taker_synced_notes")
         .select("id, external_note_id, feedback_id")
@@ -311,7 +315,7 @@ Deno.serve(async (req) => {
         .maybeSingle();
       if (!member) return json({ error: "Liderado inválido" }, 403);
 
-      const apiKey = await decryptApiKey(connection.api_key_ciphertext);
+      const apiKey = await resolveNoteTakerCredential(admin, connection);
       const full = await providerImpl.getNote(apiKey, note.external_note_id);
       if (!full) {
         return json({ error: `A nota não está mais disponível no ${providerImpl.label}` }, 404);

@@ -290,7 +290,7 @@ export function ImportFromNoteTakerSheet({
             />
           ) : (
             <div className="space-y-3">
-              {NOTE_TAKER_PROVIDERS.map((p) => (
+              {NOTE_TAKER_PROVIDERS.filter((p) => p.id !== 'google_meet').map((p) => (
                 <NoteTakerConnectorCard key={p.id} provider={p.id} />
               ))}
             </div>

@@ -80,9 +80,10 @@ export const useCalendarIntegration = () => {
   const syncDebug = calendarData?.debug;
   const botBlockedReason = calendarData?.botBlockedReason ?? null;
 
-  const connectCalendar = async () => {
+  const connectCalendar = async (opts?: { withMeet?: boolean } | unknown) => {
+    const withMeet = !!(opts && typeof opts === 'object' && (opts as { withMeet?: boolean }).withMeet === true);
     const { data, error } = await supabase.functions.invoke('google-calendar-oauth', {
-      body: { action: 'authorize' },
+      body: { action: 'authorize', with_meet: withMeet },
     });
 
     // Surface the real edge-function error message when available, instead of a generic toast.

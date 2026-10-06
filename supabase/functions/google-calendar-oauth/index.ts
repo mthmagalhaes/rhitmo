@@ -37,11 +37,13 @@ Deno.serve(async (req) => {
   }
 
   let action = url.searchParams.get("action");
+  let withMeet = url.searchParams.get("with_meet") === "1";
 
   if (!action && req.method === "POST") {
     try {
       const body = await req.json();
       action = body.action;
+      withMeet = withMeet || body.with_meet === true;
     } catch {
       // ignore parse errors
     }
@@ -103,7 +105,11 @@ Deno.serve(async (req) => {
         client_id: GOOGLE_CLIENT_ID,
         redirect_uri: GOOGLE_REDIRECT_URI,
         response_type: "code",
-        scope: "https://www.googleapis.com/auth/calendar.readonly",
+        // Meet: só transcrições nativas do Meet (sem acesso ao Drive).
+        scope: withMeet
+          ? "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/meetings.space.readonly"
+          : "https://www.googleapis.com/auth/calendar.readonly",
+        include_granted_scopes: "true",
         access_type: "offline",
         prompt: "consent",
         state: stateToken,
@@ -254,10 +260,30 @@ Deno.serve(async (req) => {
         return new Response("Failed to save tokens", { status: 500, headers: corsHeaders });
       }
 
+      // Escopo do Meet concedido → ativa o conector Google Meet (note taker).
+      const grantedScopes = String(tokens.scope ?? "");
+      const meetGranted = grantedScopes.includes("meetings.space.readonly");
+      if (meetGranted) {
+        const { error: meetErr } = await supabaseAdmin
+          .from("leader_note_taker_connections")
+          .upsert(
+            {
+              user_id: trustedUserId,
+              provider: "google_meet",
+              api_key_ciphertext: "google_oauth",
+              account_label: calendarEmail,
+              last_error: null,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "user_id,provider" },
+          );
+        if (meetErr) console.error("Failed to enable google_meet connector:", meetErr);
+      }
+
       // POST → retorna JSON pro front decidir navegação
       if (isPost) {
         return new Response(
-          JSON.stringify({ success: true, calendar_email: calendarEmail }),
+          JSON.stringify({ success: true, calendar_email: calendarEmail, meet: meetGranted }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -300,6 +326,7 @@ Deno.serve(async (req) => {
       const supabaseAdmin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
       await supabaseAdmin.from("google_calendar_tokens").delete().eq("user_id", userId);
+      await supabaseAdmin.from("leader_note_taker_connections").delete().eq("user_id", userId).eq("provider", "google_meet");
       await supabaseAdmin.from("upcoming_meetings").delete().eq("user_id", userId);
 
       return new Response(JSON.stringify({ success: true }), {

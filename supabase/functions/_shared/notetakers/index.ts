@@ -7,6 +7,7 @@ import { granolaProvider } from "./granola.ts";
 import { firefliesProvider } from "./fireflies.ts";
 import { tldvProvider } from "./tldv.ts";
 import { fathomProvider } from "./fathom.ts";
+import { googleMeetProvider } from "./googleMeet.ts";
 import type { NoteTakerProvider } from "./types.ts";
 
 export const NOTE_TAKER_PROVIDERS = {
@@ -14,6 +15,7 @@ export const NOTE_TAKER_PROVIDERS = {
   fireflies: firefliesProvider,
   tldv: tldvProvider,
   fathom: fathomProvider,
+  google_meet: googleMeetProvider,
 } as const satisfies Record<string, NoteTakerProvider>;
 
 export type NoteTakerProviderId = keyof typeof NOTE_TAKER_PROVIDERS;

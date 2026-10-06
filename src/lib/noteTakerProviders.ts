@@ -1,7 +1,7 @@
 // Catálogo de note takers pessoais (BYOK) suportados pela Rhitmo.
 // Espelha `supabase/functions/_shared/notetakers/index.ts`.
 
-export type NoteTakerProviderId = 'granola' | 'fireflies' | 'tldv' | 'fathom';
+export type NoteTakerProviderId = 'granola' | 'fireflies' | 'tldv' | 'fathom' | 'google_meet';
 
 export interface NoteTakerProviderMeta {
   id: NoteTakerProviderId;
@@ -66,6 +66,19 @@ export const NOTE_TAKER_PROVIDERS: NoteTakerProviderMeta[] = [
       'No Fathom, abra Settings → API Access.',
       'Gere uma chave nova e copie.',
       'Cole a chave abaixo. Ela fica criptografada e nunca é exibida de novo.',
+    ],
+  },
+  {
+    id: 'google_meet',
+    label: 'Google Meet',
+    description:
+      'As transcrições que o próprio Google Meet gera viram evidência, sem bot e sem app extra.',
+    fidelity: 'transcript',
+    keyPlaceholder: '',
+    steps: [
+      'Clique em Conectar com Google e autorize a leitura das transcrições do Meet.',
+      'Nas suas reuniões, ative a transcrição do Meet (Atividades → Transcrição).',
+      'Quando a reunião termina, a Rhitmo importa a transcrição e atribui ao liderado.',
     ],
   },
 ];
