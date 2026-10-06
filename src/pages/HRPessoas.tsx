@@ -277,7 +277,7 @@ export default function HRPessoas() {
       setConfirmDelete(null);
       refresh();
     } catch (err) {
-      toast.error(`Falha ao remover: ${err instanceof Error ? err.message : String(err)}`);
+      toast.error(`Falha ao remover: ${(err as { message?: string })?.message ?? String(err)}`);
     } finally {
       setActingId(null);
     }

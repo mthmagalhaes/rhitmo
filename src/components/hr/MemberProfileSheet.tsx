@@ -184,7 +184,7 @@ export function MemberProfileSheet({
       setConfirmDelete(false);
       onOpenChange(false);
     } catch (err) {
-      toast.error(`Falha ao remover: ${err instanceof Error ? err.message : String(err)}`);
+      toast.error(`Falha ao remover: ${(err as { message?: string })?.message ?? String(err)}`);
     } finally {
       setActing(false);
     }
