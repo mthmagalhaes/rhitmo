@@ -7,7 +7,7 @@
 // `notetakers/index.ts`; este arquivo não conhece nenhuma API externa.
 
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { decryptApiKey } from "./noteTakerCrypto.ts";
+import { resolveNoteTakerCredential } from "./noteTakerCredential.ts";
 import { getProvider } from "./notetakers/index.ts";
 import {
   toIsoOrNull,
@@ -194,9 +194,10 @@ export async function syncNoteTakerConnection(
 
   let apiKey: string;
   try {
-    apiKey = await decryptApiKey(connection.api_key_ciphertext);
+    apiKey = await resolveNoteTakerCredential(supabase, connection);
   } catch (e) {
-    result.error = `Falha ao ler a chave armazenada: ${(e as Error).message}`;
+    result.error = (e as Error).message;
+    await supabase.from("leader_note_taker_connections").update({ last_error: result.error }).eq("id", connection.id);
     return result;
   }
 
