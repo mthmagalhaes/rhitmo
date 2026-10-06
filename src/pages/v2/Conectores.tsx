@@ -1,3 +1,4 @@
+import { ConnectorLogo } from '@/components/brand/ConnectorLogo';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -96,8 +97,8 @@ function Tile({ entry, status, onOpen }: { entry: ConnectorEntry; status: Status
       className="group flex h-full flex-col rounded-2xl bg-card p-4 text-left shadow-[0_2px_20px_rgba(0,0,0,0.04)] transition-all hover:-translate-y-1 hover:shadow-[0_8px_30px_rgba(0,0,0,0.07)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted font-serif text-sm font-bold tracking-tight text-foreground">
-          {entry.mono}
+        <span className={`flex h-12 w-12 items-center justify-center rounded-2xl border border-border/60 bg-white p-2.5 shadow-[0_2px_10px_rgba(0,0,0,0.05)] ${entry.kind === 'coming_soon' ? 'opacity-60 grayscale' : ''}`}>
+          <ConnectorLogo id={entry.id} fallback={entry.mono} />
         </span>
         <StatusBadge status={status} entry={entry} />
       </div>
@@ -127,7 +128,7 @@ function DetailSheet({
           <>
             <SheetHeader>
               <div className="flex items-center gap-3">
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-muted font-serif font-bold">{entry.mono}</span>
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-border/60 bg-white p-2.5 shadow-[0_2px_10px_rgba(0,0,0,0.05)]"><ConnectorLogo id={entry.id} fallback={entry.mono} /></span>
                 <div>
                   <SheetTitle className="font-serif tracking-tight">{entry.label}</SheetTitle>
                   <p className="text-xs text-muted-foreground">{CATEGORY_LABEL[entry.category]}</p>
