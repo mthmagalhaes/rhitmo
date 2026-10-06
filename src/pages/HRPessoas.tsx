@@ -7,6 +7,8 @@ import { NewMemberDialog } from '@/components/NewMemberDialog';
 import { BulkOnboardDialog } from '@/components/admin/BulkOnboardDialog';
 import { EditMemberDialog } from '@/components/EditMemberDialog';
 import { MemberProfileSheet } from '@/components/hr/MemberProfileSheet';
+import { NewTeamDialog } from '@/components/NewTeamDialog';
+import { TeamsTab } from '@/pages/lider/Pessoas';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -121,6 +123,7 @@ function InviteHRAdminDialog({
 
 export default function HRPessoas() {
   const { workspaceId, workspaceName } = useHRAdmin();
+  const [teamDialogOpen, setTeamDialogOpen] = useState(false);
   const queryClient = useQueryClient();
   const { data: people = [], isLoading, error: peopleError, refetch } = useWorkspacePeople(workspaceId);
   const { resend: resendSync, pending: syncPending } = useResendRhitmoSync();
@@ -559,6 +562,17 @@ export default function HRPessoas() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Times */}
+      <section className="space-y-3 pt-4">
+        <h2 className="text-xl font-bold tracking-tight">Times</h2>
+        <TeamsTab onNewTeam={() => setTeamDialogOpen(true)} workspaceId={workspaceId} />
+      </section>
+      <NewTeamDialog
+        open={teamDialogOpen}
+        onOpenChange={(o) => { setTeamDialogOpen(o); if (!o) { refresh(); queryClient.invalidateQueries({ queryKey: ['workspace-teams-detail', workspaceId] }); } }}
+        workspaceId={workspaceId}
+      />
 
       {/* Dialogs */}
       <NewMemberDialog
