@@ -17,7 +17,7 @@ const PrivacyPolicy = () => {
         <meta property="og:url" content="https://rhitmo.co/privacy-policy" />
       </Helmet>
       <h1 className="text-4xl font-bold tracking-tight mb-2">Política de Privacidade</h1>
-      <p className="text-sm text-muted-foreground mb-8">Última atualização: 18 de março de 2026</p>
+      <p className="text-sm text-muted-foreground mb-8">Última atualização: 6 de outubro de 2026</p>
 
       <div className="space-y-6 text-base leading-relaxed text-foreground">
         <p>
@@ -91,7 +91,7 @@ const PrivacyPolicy = () => {
           <li>Melhorar e personalizar sua experiência</li>
           <li>Prevenir fraudes e garantir segurança</li>
           <li>Cumprir obrigações legais e regulatórias</li>
-          <li>Treinar e aprimorar modelos de inteligência artificial (de forma agregada e anonimizada)</li>
+          <li>Não usamos seus dados para treinar modelos de inteligência artificial</li>
         </ul>
 
         <h2 className="text-2xl font-semibold mt-8 mb-4">3. Compartilhamento de Dados</h2>
@@ -105,13 +105,48 @@ const PrivacyPolicy = () => {
           <li>Localização: Estados Unidos</li>
           <li>Garantias: Cláusulas contratuais padrão (SCC) e certificação SOC 2 Type II</li>
         </ul>
-
-        <p className="mt-4"><strong>OpenAI (processamento de IA):</strong></p>
+        <p className="mt-4"><strong>Provedores de IA (Lovable AI Gateway, Google Gemini e OpenAI):</strong></p>
         <ul className="list-disc ml-6 space-y-2">
-          <li>Finalidade: Transcrição de reuniões (Whisper API) e assistente de IA (GPT)</li>
+          <li>Finalidade: resumos, análise de notas e transcrições, assistente "Pergunte à Rhitmo" e rascunhos de avaliações</li>
           <li>Localização: Estados Unidos</li>
-          <li>Dados compartilhados: Áudio de reuniões, mensagens da Rhitmo</li>
-          <li>Garantias: Cláusulas de proteção de dados e política de não-treinamento em dados de clientes</li>
+          <li>Dados compartilhados: textos de notas, transcrições e mensagens enviadas ao assistente</li>
+          <li>Seus dados não são usados para treinar modelos de IA desses provedores</li>
+        </ul>
+
+        <p className="mt-4"><strong>Recall.ai (bot de gravação e transcrição):</strong></p>
+        <ul className="list-disc ml-6 space-y-2">
+          <li>Finalidade: entrar nas reuniões agendadas pelo líder, gravar e transcrever a conversa</li>
+          <li>Localização: Estados Unidos</li>
+          <li>Dados compartilhados: áudio, vídeo, nomes dos participantes e link da reunião</li>
+          <li>Gravações mantidas por até 90 dias</li>
+        </ul>
+
+        <p className="mt-4"><strong>Google (Agenda, Meet e login):</strong></p>
+        <ul className="list-disc ml-6 space-y-2">
+          <li><strong>Google Agenda (somente leitura):</strong> lemos os eventos futuros para listar suas 1:1s e agendar o bot de transcrição</li>
+          <li><strong>Google Meet (somente leitura):</strong> lemos apenas as transcrições geradas pelo próprio Google Meet nas reuniões do líder (nomes dos participantes, falas e horários) para criar notas em Anotações & Evidências</li>
+          <li>Não lemos arquivos do seu Google Drive nem do Gmail</li>
+          <li><strong>Login com Google:</strong> usamos nome, e-mail e foto do perfil para criar sua conta</li>
+          <li>Você pode revogar o acesso a qualquer momento nas configurações da Rhitmo ou em myaccount.google.com/permissions</li>
+          <li>O uso e a transferência de informações recebidas das APIs do Google seguem a <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer">Google API Services User Data Policy</a>, incluindo os requisitos de Limited Use. Dados do Google não são vendidos, não são usados para publicidade, não são usados para treinar modelos de IA e só são lidos por pessoas com sua autorização, por segurança ou por obrigação legal</li>
+        </ul>
+
+        <p className="mt-4"><strong>Slack:</strong></p>
+        <ul className="list-disc ml-6 space-y-2">
+          <li>Finalidade: comandos, mensagens diretas e notificações da Rhitmo no Slack, quando o workspace conecta o app</li>
+          <li>Lemos apenas o que você envia diretamente para a Rhitmo</li>
+        </ul>
+
+        <p className="mt-4"><strong>Note takers conectados pelo líder (Granola, Fireflies, tl;dv, Fathom):</strong></p>
+        <ul className="list-disc ml-6 space-y-2">
+          <li>Finalidade: importar notas e transcrições de reuniões para Anotações & Evidências</li>
+          <li>Acesso feito com a chave fornecida pelo próprio líder, armazenada criptografada, e removível a qualquer momento</li>
+        </ul>
+
+        <p className="mt-4"><strong>Envio de e-mails:</strong></p>
+        <ul className="list-disc ml-6 space-y-2">
+          <li>Finalidade: e-mails de conta, convites e avisos do Serviço</li>
+          <li>Dados compartilhados: nome e e-mail</li>
         </ul>
 
         <p className="mt-4"><strong>Stripe (processamento de pagamentos):</strong></p>
@@ -125,9 +160,9 @@ const PrivacyPolicy = () => {
         <h3 className="text-xl font-medium mt-6 mb-3">3.2 Compartilhamento Dentro do Workspace</h3>
         <p>Dados inseridos na plataforma (feedbacks, notas, PDIs) são compartilhados dentro do seu workspace conforme as permissões configuradas:</p>
         <ul className="list-disc ml-6 space-y-2">
-          <li>Líderes têm acesso aos dados de seus liderados</li>
+          <li>Líderes têm acesso aos dados de seus liderados; transcrições brutas de reuniões são visíveis apenas ao líder</li>
           <li>HR Admins (plano Business) têm acesso a métricas agregadas do workspace</li>
-          <li>Liderados têm acesso aos seus próprios dados através do portal "Meu Rhitmo"</li>
+          <li>Liderados veem apenas o que o líder compartilhar explicitamente e seus próprios dados no portal "Meu Rhitmo"</li>
         </ul>
 
         <h3 className="text-xl font-medium mt-6 mb-3">3.3 Exigências Legais</h3>
@@ -137,10 +172,10 @@ const PrivacyPolicy = () => {
         <p>Não vendemos, alugamos ou comercializamos seus dados pessoais para terceiros.</p>
 
         <h2 className="text-2xl font-semibold mt-8 mb-4">4. Transferência Internacional de Dados</h2>
-        <p>Alguns de nossos provedores de serviços estão localizados nos Estados Unidos (Supabase, OpenAI, Stripe). A transferência de dados para esses países é realizada com base em:</p>
+        <p>Alguns de nossos provedores de serviços estão localizados nos Estados Unidos (Supabase, Google, OpenAI, Recall.ai, Slack, Stripe e os note takers conectados). A transferência de dados para esses países é realizada com base em:</p>
         <ul className="list-disc ml-6 space-y-2">
           <li>Cláusulas Contratuais Padrão (SCC) aprovadas pela Comissão Europeia</li>
-          <li>Certificações de segurança (SOC 2, ISO 27001, PCI-DSS)</li>
+          <li>Certificações de segurança mantidas pelos próprios provedores</li>
           <li>Compromissos contratuais de proteção de dados</li>
         </ul>
         <p>Você tem o direito de obter informações sobre as garantias adotadas para a transferência internacional de seus dados.</p>
@@ -148,12 +183,12 @@ const PrivacyPolicy = () => {
         <h2 className="text-2xl font-semibold mt-8 mb-4">5. Retenção de Dados</h2>
 
         <h3 className="text-xl font-medium mt-6 mb-3">5.1 Dados de Conta Ativa</h3>
-        <p>Mantemos seus dados enquanto sua conta estiver ativa e por quanto tempo for necessário para fornecer o Serviço.</p>
+        <p>Mantemos seus dados enquanto sua conta estiver ativa e por quanto tempo for necessário para fornecer o Serviço. Gravações do bot de transcrição são mantidas por até 90 dias. Transcrições e notas importadas seguem a regra de retenção da conta, e o RH pode definir uma retenção própria para a empresa.</p>
 
         <h3 className="text-xl font-medium mt-6 mb-3">5.2 Dados Após Cancelamento</h3>
         <p>Após o cancelamento da assinatura:</p>
         <ul className="list-disc ml-6 space-y-2">
-          <li><strong>Plano Pulse:</strong> Dados mantidos indefinidamente (plano gratuito)</li>
+          <li><strong>Contas legadas do plano gratuito:</strong> Dados mantidos enquanto a conta existir, podendo ser excluídos a pedido</li>
           <li><strong>Planos pagos:</strong> Dados mantidos por 90 dias após cancelamento, permitindo reativação. Após esse período, dados são excluídos ou anonimizados, exceto quando exigido por lei.</li>
         </ul>
 
