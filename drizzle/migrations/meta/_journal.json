@@ -15,6 +15,13 @@
       "when": 1791297187191,
       "tag": "0001_fix_member_delete_and_self_link",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791386202000,
+      "tag": "0002_fix_delete_archived_member_owner",
+      "breakpoints": true
     }
   ]
 }
