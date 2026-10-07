@@ -11,12 +11,16 @@ import { clearSignupPersona } from '@/lib/signupPersona';
 interface WorkspaceOnboardingProps {
   userId: string;
   userMetadata?: { assigned_plan?: string };
+  email?: string | null;
+  createdAt?: string | null;
   onComplete: () => void;
 }
 
-export function WorkspaceOnboarding({ userId, userMetadata, onComplete }: WorkspaceOnboardingProps) {
+export function WorkspaceOnboarding({ userId, userMetadata, email, createdAt, onComplete }: WorkspaceOnboardingProps) {
   const [workspaceName, setWorkspaceName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showInviteHelp, setShowInviteHelp] = useState(false);
+  const isReturning = !!createdAt && Date.now() - new Date(createdAt).getTime() > 24 * 60 * 60 * 1000;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,7 +28,7 @@ export function WorkspaceOnboarding({ userId, userMetadata, onComplete }: Worksp
     if (!workspaceName.trim()) {
       toast({
         title: 'Nome obrigatório',
-        description: 'Por favor, insira o nome do seu workspace.',
+        description: 'Por favor, insira o nome da sua empresa.',
         variant: 'destructive',
       });
       return;
@@ -90,7 +94,7 @@ export function WorkspaceOnboarding({ userId, userMetadata, onComplete }: Worksp
       }
 
       toast({
-        title: 'Workspace criado!',
+        title: 'Empresa criada!',
         description: 'Seu ambiente está pronto para uso.',
       });
 
@@ -101,7 +105,7 @@ export function WorkspaceOnboarding({ userId, userMetadata, onComplete }: Worksp
     } catch (error: any) {
       console.error('Erro ao criar workspace:', error);
       toast({
-        title: 'Erro ao criar workspace',
+        title: 'Erro ao criar empresa',
         description: error.message || 'Tente novamente.',
         variant: 'destructive',
       });
@@ -118,18 +122,25 @@ export function WorkspaceOnboarding({ userId, userMetadata, onComplete }: Worksp
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle className="text-2xl">Bem-vindo ao Rhitmo! 🚀</DialogTitle>
+          <DialogTitle className="text-2xl font-serif font-bold tracking-tight">
+            {isReturning ? 'Sua conta não está ligada a nenhuma empresa' : 'Bem-vindo à Rhitmo'}
+          </DialogTitle>
           <DialogDescription className="text-base">
-            Vamos configurar seu ambiente. Qual o nome da sua empresa ou time?
+            {isReturning
+              ? 'No momento, esta conta não faz parte de nenhuma empresa na Rhitmo. Você pode criar uma nova, pedir um convite ou entrar com outra conta.'
+              : 'Vamos configurar seu ambiente. Qual o nome da sua empresa?'}
           </DialogDescription>
+          {email && (
+            <p className="text-xs text-muted-foreground pt-1">Conectado como <span className="font-medium text-foreground">{email}</span></p>
+          )}
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           <div className="space-y-2">
-            <Label htmlFor="workspace-name">Nome do Workspace</Label>
+            <Label htmlFor="workspace-name">Nome da empresa</Label>
             <Input
               id="workspace-name"
-              placeholder="Ex: Marketing Squad"
+              placeholder="Ex: Nordvale Logística"
               value={workspaceName}
               onChange={(e) => setWorkspaceName(e.target.value)}
               disabled={isLoading}
@@ -137,17 +148,37 @@ export function WorkspaceOnboarding({ userId, userMetadata, onComplete }: Worksp
             />
           </div>
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button type="submit" className="w-full rounded-xl" disabled={isLoading}>
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Criando...
               </>
             ) : (
-              'Criar e Começar'
+              'Criar minha empresa'
             )}
           </Button>
         </form>
+
+        <div className="mt-2 space-y-2 border-t border-border/60 pt-4">
+          <Button type="button" variant="ghost" className="w-full rounded-xl" onClick={() => setShowInviteHelp((v) => !v)}>
+            Fui convidado por alguém
+          </Button>
+          {showInviteHelp && (
+            <p className="rounded-xl bg-muted/50 p-3 text-xs leading-relaxed text-muted-foreground">
+              Peça para seu líder ou para o RH da sua empresa enviar um novo convite para{' '}
+              <span className="font-medium text-foreground">{email || 'este e-mail'}</span>. Ao abrir o link do convite, você entra direto no time certo.
+            </p>
+          )}
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full rounded-xl text-muted-foreground"
+            onClick={async () => { await supabase.auth.signOut(); window.location.href = '/auth'; }}
+          >
+            Entrar com outra conta
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
