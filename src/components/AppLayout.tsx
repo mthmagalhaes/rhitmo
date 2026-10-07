@@ -164,11 +164,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <WorkspaceOnboarding 
           userId={user.id}
           userMetadata={user.user_metadata}
+          email={user.email}
+          createdAt={user.created_at}
           onComplete={handleWorkspaceComplete}
         />
       )}
 
-      <div className="min-h-dvh flex w-full">
+      <div className={`min-h-dvh flex w-full ${needsWorkspaceSetup || needsHRAdminWorkspaceSetup ? 'blur-sm pointer-events-none select-none' : ''}`} aria-hidden={needsWorkspaceSetup || needsHRAdminWorkspaceSetup || undefined}>
         <AppSidebar />
         <SidebarInset className="flex-1 min-w-0">
           <header className="flex h-14 items-center gap-4 border-b px-4 lg:hidden bg-card">
