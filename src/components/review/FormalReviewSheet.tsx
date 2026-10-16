@@ -10,6 +10,9 @@ import {
   SheetFooter,
 } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CultureGuidedPanel } from '@/components/review/CultureGuidedPanel';
+import { ReviewMirrorPanel, type MirrorResult, type MirrorFinding } from '@/components/review/ReviewMirrorPanel';
+import { Compass, ScanSearch } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Label } from '@/components/ui/label';
@@ -106,6 +109,8 @@ export function FormalReviewSheet({
   const [editMode, setEditMode] = useState(false);
   const [coachingOpen, setCoachingOpen] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [mirrorRunning, setMirrorRunning] = useState(false);
+  const [mirrorResult, setMirrorResult] = useState<MirrorResult | null>(null);
 
   // Persist coaching tip open/closed per review
   useEffect(() => {
@@ -165,6 +170,8 @@ export function FormalReviewSheet({
   useEffect(() => {
     if (!review) return;
     setDraftText(review.content || '');
+    setMirrorResult((review as any).mirror_findings ?? null);
+    if ((review as any).authoring_mode === 'culture_guided' && !(review as any).content?.startsWith('##')) setActiveTab('culture');
 
     if (review.competency_evaluations && Array.isArray(review.competency_evaluations)) {
       setCompetencyEvaluations(review.competency_evaluations as unknown as CompetencyEvaluation[]);
@@ -202,6 +209,62 @@ export function FormalReviewSheet({
       toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
     },
   });
+
+  const isCultureGuided = (review as any)?.authoring_mode === 'culture_guided';
+  const openFindings = (mirrorResult?.findings ?? []).filter((f) => !f.dismissed).length;
+
+  const invokeMirror = async (body: Record<string, unknown>) => {
+    const { data, error } = await supabase.functions.invoke('review-mirror', { body });
+    if (error) {
+      let msg = error.message;
+      try { msg = (await (error as any).context?.json())?.error ?? msg; } catch { /* noop */ }
+      throw new Error(msg);
+    }
+    return data as MirrorResult;
+  };
+
+  const runMirror = async (): Promise<MirrorResult | null> => {
+    if (!reviewId) return null;
+    setMirrorRunning(true);
+    try {
+      const res = await invokeMirror({ reviewId, content: draftText });
+      setMirrorResult(res);
+      return res;
+    } catch (e: any) {
+      toast({ title: 'Não foi possível revisar', description: e.message, variant: 'destructive' });
+      return null;
+    } finally {
+      setMirrorRunning(false);
+    }
+  };
+
+  const dismissFinding = async (index: number) => {
+    if (!reviewId) return;
+    setMirrorResult((prev) => prev ? { ...prev, findings: prev.findings.map((f, i) => i === index ? { ...f, dismissed: true } : f) } : prev);
+    try { await invokeMirror({ reviewId, dismissIndex: index }); } catch { /* registro best-effort */ }
+  };
+
+  const applySuggestion = (f: MirrorFinding) => {
+    if (f.excerpt && draftText.includes(f.excerpt)) {
+      setDraftText(draftText.replace(f.excerpt, f.suggestion));
+      setMirrorResult((prev) => prev ? { ...prev, findings: prev.findings.map((x) => x === f ? { ...x, dismissed: true } : x) } : prev);
+      toast({ title: 'Trecho atualizado', description: 'Lembre de salvar o rascunho.' });
+    } else {
+      toast({ title: 'Trecho não encontrado no texto', description: 'Ajuste manualmente no editor.' });
+    }
+  };
+
+  // Espelho roda automaticamente ao compartilhar: avisa, não bloqueia.
+  const handleShareClick = async () => {
+    const res = await runMirror();
+    const pending = (res?.findings ?? []).filter((f) => !f.dismissed && f.severity !== 'low').length;
+    if (pending > 0) {
+      setActiveTab('mirror');
+      toast({ title: `O Espelho encontrou ${pending} ponto(s) para revisar`, description: 'Revise ou ignore os alertas e clique em compartilhar de novo.' });
+      return;
+    }
+    setShareDialogOpen(true);
+  };
 
   // Send/share to member
   const sendMutation = useMutation({
@@ -337,7 +400,13 @@ export function FormalReviewSheet({
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
           <div className="px-6 pt-4">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className={`grid w-full ${isCultureGuided ? 'grid-cols-5' : 'grid-cols-4'}`}>
+              {isCultureGuided && (
+                <TabsTrigger value="culture" className="gap-1.5">
+                  <Compass className="h-3.5 w-3.5" />
+                  Cultura
+                </TabsTrigger>
+              )}
               <TabsTrigger value="draft" className="gap-1.5">
                 <FileText className="h-3.5 w-3.5" />
                 {t('review.tabs.draft', 'Rascunho Geral')}
@@ -350,8 +419,46 @@ export function FormalReviewSheet({
                 <Scale className="h-3.5 w-3.5" />
                 {t('review.tabs.calibration', 'Calibração')}
               </TabsTrigger>
+              <TabsTrigger value="mirror" className="gap-1.5">
+                <ScanSearch className="h-3.5 w-3.5" />
+                Espelho{openFindings > 0 ? ` (${openFindings})` : ''}
+              </TabsTrigger>
             </TabsList>
           </div>
+
+          {isCultureGuided && (
+            <TabsContent value="culture" className="flex-1 px-6 mt-4 min-h-0">
+              <ScrollArea className="h-[calc(100vh-280px)]">
+                <div className="pr-4 pb-6">
+                  <CultureGuidedPanel
+                    reviewId={reviewId!}
+                    versionId={(review as any).org_context_version_id ?? null}
+                    readOnly={!!review.shared_with_member}
+                    onAssembled={(content) => {
+                      setDraftText(content);
+                      queryClient.invalidateQueries({ queryKey: ['formal-review', reviewId] });
+                      setActiveTab('draft');
+                    }}
+                  />
+                </div>
+              </ScrollArea>
+            </TabsContent>
+          )}
+
+          <TabsContent value="mirror" className="flex-1 px-6 mt-4 min-h-0">
+            <ScrollArea className="h-[calc(100vh-280px)]">
+              <div className="pr-4 pb-6">
+                <ReviewMirrorPanel
+                  result={mirrorResult}
+                  running={mirrorRunning}
+                  readOnly={!!review.shared_with_member}
+                  onRun={() => runMirror()}
+                  onDismiss={dismissFinding}
+                  onApplySuggestion={applySuggestion}
+                />
+              </div>
+            </ScrollArea>
+          </TabsContent>
 
           {/* Draft tab */}
           <TabsContent value="draft" className="flex-1 px-6 mt-4 min-h-0">
@@ -606,7 +713,7 @@ export function FormalReviewSheet({
                 Salvar Rascunho
               </Button>
               {!review.shared_with_member ? (
-                <Button onClick={() => setShareDialogOpen(true)}>
+                <Button onClick={handleShareClick} disabled={mirrorRunning}>
                   <Share2 className="mr-2 h-4 w-4" />
                   Compartilhar com Liderado
                 </Button>
