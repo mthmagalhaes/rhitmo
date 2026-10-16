@@ -130,6 +130,9 @@ const MODE_BLOCKS: Record<Mode, string[]> = {
     "05-citations.md",
     "modes/formal-review-draft.md",
   ],
+  "org-context-extraction": ["00-identity.md","01-guardrails.md","modes/org-context-extraction.md"],
+  "culture-guided-item": ["00-identity.md","01-guardrails.md","02-analysis-matrix.md","05-citations.md","modes/culture-guided-item.md"],
+  "review-mirror": ["00-identity.md","01-guardrails.md","02-analysis-matrix.md","modes/review-mirror.md"],
   "one-on-one-draft": [
     "00-identity.md",
     "01-guardrails.md",
