@@ -1,6 +1,7 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { RHITMO_IDENTITY } from "../_shared/rhitmo-constitution.ts";
 import { composeSystemPrompt } from "../_shared/soul/loader.ts";
+import { loadPublishedOrgContext, orgContextToPrompt } from "../_shared/orgContext.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -55,7 +56,7 @@ Deno.serve(async (req) => {
     // Fetch review with member info AND ownership chain
     const { data: review, error: reviewError } = await supabase
       .from("performance_reviews")
-      .select("*, team_members!performance_reviews_member_id_fkey(id, name, role, work_style_data, feedback_style, recognition_style, chronotype, motivators, teams!inner(leader_user_id, workspaces!inner(owner_id)))")
+      .select("*, team_members!performance_reviews_member_id_fkey(id, name, role, work_style_data, feedback_style, recognition_style, chronotype, motivators, teams!inner(leader_user_id, workspace_id, workspaces!inner(owner_id)))")
       .eq("id", reviewId)
       .single();
 
@@ -465,6 +466,19 @@ Deno.serve(async (req) => {
       console.warn("[generate-formal-review] rubric context skipped:", err);
     }
 
+    // ============ CULTURA E RÉGUA DA EMPRESA (publicada pelo RH) ============
+    // Referência adicional; não muda a estrutura de 7 blocos. Sem versão publicada = comportamento antigo.
+    let orgContextVersionId: string | null = null;
+    try {
+      const orgCtx = await loadPublishedOrgContext(supabase, team?.workspace_id);
+      if (orgCtx) {
+        orgContextVersionId = orgCtx.versionId;
+        evidenceText += "\n## 🏢 CULTURA E RÉGUA DA EMPRESA (referência para os Blocos 4, 5 e 6; use os nomes de nível da régua da empresa no Bloco 6 quando existirem):\n\n" + orgContextToPrompt(orgCtx);
+      }
+    } catch (err) {
+      console.warn("[generate-formal-review] org context skipped:", err);
+    }
+
     const memberName = member.name;
     const firstName = memberName.split(" ")[0];
     const periodLabel = `de ${new Date(periodStart).toLocaleDateString("pt-BR")} a ${new Date(periodEnd).toLocaleDateString("pt-BR")}`;
@@ -642,6 +656,7 @@ ${hasProfile ? profileContext : "⚠️ O perfil Rhitmo Sync deste liderado aind
       evidence_count: totalEvidence,
       updated_at: new Date().toISOString(),
     };
+    if (orgContextVersionId) updatePayload.org_context_version_id = orgContextVersionId;
     if (coachingTip) {
       updatePayload.coaching_tip = coachingTip;
     }

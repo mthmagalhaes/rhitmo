@@ -2108,6 +2108,177 @@ export type Database = {
         }
         Relationships: []
       }
+      org_context_documents: {
+        Row: {
+          created_at: string
+          error: string | null
+          extracted_text: string | null
+          file_path: string | null
+          id: string
+          mime: string | null
+          processed_at: string | null
+          status: string
+          title: string
+          uploaded_by: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          extracted_text?: string | null
+          file_path?: string | null
+          id?: string
+          mime?: string | null
+          processed_at?: string | null
+          status?: string
+          title: string
+          uploaded_by?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          extracted_text?: string | null
+          file_path?: string | null
+          id?: string
+          mime?: string | null
+          processed_at?: string | null
+          status?: string
+          title?: string
+          uploaded_by?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_context_documents_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_context_items: {
+        Row: {
+          category_label: string | null
+          created_at: string
+          description: string | null
+          edited_manually: boolean
+          examples: Json
+          id: string
+          kind: string
+          parent_id: string | null
+          position: number
+          source_document_id: string | null
+          source_excerpt: string | null
+          title: string
+          updated_at: string
+          version_id: string
+          workspace_id: string
+        }
+        Insert: {
+          category_label?: string | null
+          created_at?: string
+          description?: string | null
+          edited_manually?: boolean
+          examples?: Json
+          id?: string
+          kind?: string
+          parent_id?: string | null
+          position?: number
+          source_document_id?: string | null
+          source_excerpt?: string | null
+          title: string
+          updated_at?: string
+          version_id: string
+          workspace_id: string
+        }
+        Update: {
+          category_label?: string | null
+          created_at?: string
+          description?: string | null
+          edited_manually?: boolean
+          examples?: Json
+          id?: string
+          kind?: string
+          parent_id?: string | null
+          position?: number
+          source_document_id?: string | null
+          source_excerpt?: string | null
+          title?: string
+          updated_at?: string
+          version_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_context_items_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "org_context_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_context_items_source_document_id_fkey"
+            columns: ["source_document_id"]
+            isOneToOne: false
+            referencedRelation: "org_context_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_context_items_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "org_context_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_context_items_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_context_versions: {
+        Row: {
+          created_at: string
+          id: string
+          published_at: string | null
+          published_by: string | null
+          status: string
+          version: number
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          published_at?: string | null
+          published_by?: string | null
+          status?: string
+          version: number
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          published_at?: string | null
+          published_by?: string | null
+          status?: string
+          version?: number
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_context_versions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       peer_feedback_requests: {
         Row: {
           created_at: string
@@ -2217,6 +2388,7 @@ export type Database = {
         Row: {
           acknowledged_at: string | null
           author_user_id: string | null
+          authoring_mode: string
           classification: string | null
           coaching_tip: string | null
           competency_evaluations: Json | null
@@ -2229,6 +2401,9 @@ export type Database = {
           member_id: string
           member_viewed_at: string | null
           merit_recommendation: string | null
+          mirror_checked_at: string | null
+          mirror_findings: Json | null
+          org_context_version_id: string | null
           period_end: string | null
           period_start: string | null
           period_type: string
@@ -2242,6 +2417,7 @@ export type Database = {
         Insert: {
           acknowledged_at?: string | null
           author_user_id?: string | null
+          authoring_mode?: string
           classification?: string | null
           coaching_tip?: string | null
           competency_evaluations?: Json | null
@@ -2254,6 +2430,9 @@ export type Database = {
           member_id: string
           member_viewed_at?: string | null
           merit_recommendation?: string | null
+          mirror_checked_at?: string | null
+          mirror_findings?: Json | null
+          org_context_version_id?: string | null
           period_end?: string | null
           period_start?: string | null
           period_type?: string
@@ -2267,6 +2446,7 @@ export type Database = {
         Update: {
           acknowledged_at?: string | null
           author_user_id?: string | null
+          authoring_mode?: string
           classification?: string | null
           coaching_tip?: string | null
           competency_evaluations?: Json | null
@@ -2279,6 +2459,9 @@ export type Database = {
           member_id?: string
           member_viewed_at?: string | null
           merit_recommendation?: string | null
+          mirror_checked_at?: string | null
+          mirror_findings?: Json | null
+          org_context_version_id?: string | null
           period_end?: string | null
           period_start?: string | null
           period_type?: string
@@ -2302,6 +2485,13 @@ export type Database = {
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "performance_reviews_org_context_version_id_fkey"
+            columns: ["org_context_version_id"]
+            isOneToOne: false
+            referencedRelation: "org_context_versions"
             referencedColumns: ["id"]
           },
         ]
@@ -2649,6 +2839,104 @@ export type Database = {
             foreignKeyName: "review_comments_review_id_fkey"
             columns: ["review_id"]
             isOneToOne: false
+            referencedRelation: "performance_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      review_culture_items: {
+        Row: {
+          citations: Json
+          created_at: string
+          final_level: string | null
+          final_text: string | null
+          id: string
+          item_kind: string
+          item_title: string
+          level_justification: string | null
+          org_item_id: string | null
+          position: number
+          review_id: string
+          status: string
+          suggested_level: string | null
+          suggested_text: string | null
+          updated_at: string
+        }
+        Insert: {
+          citations?: Json
+          created_at?: string
+          final_level?: string | null
+          final_text?: string | null
+          id?: string
+          item_kind?: string
+          item_title: string
+          level_justification?: string | null
+          org_item_id?: string | null
+          position?: number
+          review_id: string
+          status?: string
+          suggested_level?: string | null
+          suggested_text?: string | null
+          updated_at?: string
+        }
+        Update: {
+          citations?: Json
+          created_at?: string
+          final_level?: string | null
+          final_text?: string | null
+          id?: string
+          item_kind?: string
+          item_title?: string
+          level_justification?: string | null
+          org_item_id?: string | null
+          position?: number
+          review_id?: string
+          status?: string
+          suggested_level?: string | null
+          suggested_text?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_culture_items_org_item_id_fkey"
+            columns: ["org_item_id"]
+            isOneToOne: false
+            referencedRelation: "org_context_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_culture_items_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "performance_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      review_mirror_checks: {
+        Row: {
+          checked_at: string
+          checked_by: string | null
+          findings: Json
+          review_id: string
+        }
+        Insert: {
+          checked_at?: string
+          checked_by?: string | null
+          findings?: Json
+          review_id: string
+        }
+        Update: {
+          checked_at?: string
+          checked_by?: string | null
+          findings?: Json
+          review_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_mirror_checks_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: true
             referencedRelation: "performance_reviews"
             referencedColumns: ["id"]
           },
@@ -3811,6 +4099,7 @@ export type Database = {
         Args: { _session_id: string }
         Returns: boolean
       }
+      can_manage_review: { Args: { _review_id: string }; Returns: boolean }
       can_update_own_sync: { Args: { member_id: string }; Returns: boolean }
       can_view_network_pair: {
         Args: {
@@ -4342,6 +4631,10 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       is_admin_user: { Args: { _user_id: string }; Returns: boolean }
       is_hr_admin_of_workspace: {
+        Args: { _workspace_id: string }
+        Returns: boolean
+      }
+      is_leader_in_workspace: {
         Args: { _workspace_id: string }
         Returns: boolean
       }
