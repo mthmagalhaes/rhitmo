@@ -2913,6 +2913,35 @@ export type Database = {
           },
         ]
       }
+      review_mirror_checks: {
+        Row: {
+          checked_at: string
+          checked_by: string | null
+          findings: Json
+          review_id: string
+        }
+        Insert: {
+          checked_at?: string
+          checked_by?: string | null
+          findings?: Json
+          review_id: string
+        }
+        Update: {
+          checked_at?: string
+          checked_by?: string | null
+          findings?: Json
+          review_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_mirror_checks_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: true
+            referencedRelation: "performance_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       review_peers: {
         Row: {
           completed_at: string | null

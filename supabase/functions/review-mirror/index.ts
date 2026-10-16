@@ -38,10 +38,11 @@ Deno.serve(async (req) => {
 
     // Registrar "ignorar" de um alerta (o líder decide sempre).
     if (dismissIndex !== undefined) {
-      const mf = review.mirror_findings ?? { findings: [] };
-      if (mf.findings?.[dismissIndex]) mf.findings[dismissIndex].dismissed = true;
-      await admin.from("performance_reviews").update({ mirror_findings: mf }).eq("id", reviewId);
-      return json(mf);
+      const { data: row } = await admin.from("review_mirror_checks").select("findings, checked_at").eq("review_id", reviewId).maybeSingle();
+      const findings = (row?.findings ?? []) as any[];
+      if (findings[dismissIndex]) findings[dismissIndex].dismissed = true;
+      await admin.from("review_mirror_checks").update({ findings }).eq("review_id", reviewId);
+      return json({ findings, checked_at: row?.checked_at });
     }
 
     const text = (content ?? review.content ?? "").toString().replace(/<[^>]+>/g, " ").trim();
@@ -90,7 +91,8 @@ Deno.serve(async (req) => {
     });
     const out = toolArgs(ai) ?? { findings: [] };
     const result = { findings: (out.findings ?? []).slice(0, 10), checked_at: new Date().toISOString() };
-    await admin.from("performance_reviews").update({ mirror_findings: result, mirror_checked_at: result.checked_at }).eq("id", reviewId);
+    // Tabela separada: liderado lê avaliações compartilhadas, mas nunca o Espelho.
+    await admin.from("review_mirror_checks").upsert({ review_id: reviewId, findings: result.findings, checked_at: result.checked_at, checked_by: u.user.id });
     return json(result);
   } catch (e: any) {
     console.error("[review-mirror]", e);

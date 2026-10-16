@@ -171,7 +171,6 @@ export function FormalReviewSheet({
   useEffect(() => {
     if (!review) return;
     setDraftText(review.content || '');
-    setMirrorResult((review as any).mirror_findings ?? null);
     if ((review as any).authoring_mode === 'culture_guided' && !(review as any).content?.startsWith('##')) setActiveTab('culture');
 
     if (review.competency_evaluations && Array.isArray(review.competency_evaluations)) {
@@ -210,6 +209,13 @@ export function FormalReviewSheet({
       toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
     },
   });
+
+  useEffect(() => {
+    if (!open || !reviewId) return;
+    setMirrorResult(null); setMirrorCheckedText(null);
+    supabase.from('review_mirror_checks').select('findings, checked_at').eq('review_id', reviewId).maybeSingle()
+      .then(({ data }) => { if (data) setMirrorResult({ findings: data.findings as unknown as MirrorFinding[], checked_at: data.checked_at }); });
+  }, [open, reviewId]);
 
   const isCultureGuided = (review as any)?.authoring_mode === 'culture_guided';
   const openFindings = (mirrorResult?.findings ?? []).filter((f) => !f.dismissed).length;
