@@ -3,9 +3,9 @@
 // ou disparar um convite avulso. Resolve a confusão de 3 entradas paralelas
 // que travou o Guto (Faster Ops).
 import { useMemo, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Building2, Sparkles, FileSpreadsheet, UserPlus, Users, UserCog } from 'lucide-react';
+import { Building2, Sparkles, FileSpreadsheet, UserPlus, Users, UserCog, Compass } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAccount } from '@/contexts/AccountContext';
 import { useAdmin } from '@/hooks/useAdmin';
@@ -110,6 +110,17 @@ export default function CompanySetup() {
             <Button size="sm" variant="outline" className="w-full rounded-xl">Convidar líder</Button>
           </Card>
         </div>
+
+        <Link to="/hr/contexto-empresa" className="block">
+          <Card className="p-5 rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] border-border/50 hover:-translate-y-1 transition-transform flex items-center gap-4">
+            <Compass className="h-5 w-5 text-primary shrink-0" />
+            <div className="flex-1">
+              <h3 className="font-semibold">Cultura e régua da empresa</h3>
+              <p className="text-xs text-muted-foreground">Envie os materiais da empresa e defina valores, comportamentos e régua usados nas avaliações.</p>
+            </div>
+            <Button size="sm" variant="outline" className="rounded-xl">Abrir</Button>
+          </Card>
+        </Link>
       </div>
 
       <OneByOneWizard open={wizardOpen} onOpenChange={setWizardOpen} workspaceId={workspaceId} workspaceName={workspace.name} />
