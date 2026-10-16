@@ -12,11 +12,12 @@ async function loadPdfjs() {
 }
 
 // Supported file types
-type FileType = 'pdf' | 'docx' | 'txt' | 'md' | 'image';
+type FileType = 'pdf' | 'docx' | 'pptx' | 'txt' | 'md' | 'image';
 
 export const SUPPORTED_MIME_TYPES: Record<string, FileType> = {
   'application/pdf': 'pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
   'text/plain': 'txt',
   'text/markdown': 'md',
   'image/png': 'image',
@@ -24,7 +25,7 @@ export const SUPPORTED_MIME_TYPES: Record<string, FileType> = {
   'image/webp': 'image',
 };
 
-export const SUPPORTED_EXTENSIONS = ['pdf', 'docx', 'txt', 'md', 'png', 'jpg', 'jpeg', 'webp'] as const;
+export const SUPPORTED_EXTENSIONS = ['pdf', 'docx', 'pptx', 'txt', 'md', 'png', 'jpg', 'jpeg', 'webp'] as const;
 
 /**
  * Detects file type by MIME type first, with fallback to extension
@@ -91,6 +92,25 @@ async function extractFromDocx(file: File): Promise<string> {
 }
 
 /**
+ * Extract text from PowerPoint (.pptx) by reading slide XML (<a:t> runs).
+ */
+async function extractFromPptx(file: File): Promise<string> {
+  const { default: JSZip } = await import('jszip');
+  const zip = await JSZip.loadAsync(await file.arrayBuffer());
+  const slideNames = Object.keys(zip.files)
+    .filter((n) => /^ppt\/slides\/slide\d+\.xml$/.test(n))
+    .sort((a, b) => Number(a.match(/(\d+)/)![1]) - Number(b.match(/(\d+)/)![1]));
+  const decode = (t: string) => t.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+  const out: string[] = [];
+  for (const [idx, name] of slideNames.entries()) {
+    const xml = await zip.file(name)!.async('string');
+    const paras = xml.split(/<\/a:p>/).map((p) => [...p.matchAll(/<a:t>([^<]*)<\/a:t>/g)].map((m) => decode(m[1])).join('')).filter(Boolean);
+    if (paras.length) out.push(`--- Slide ${idx + 1} ---\n${paras.join('\n')}`);
+  }
+  return out.join('\n\n');
+}
+
+/**
  * Convert file to base64
  */
 function fileToBase64(file: File): Promise<string> {
@@ -142,6 +162,8 @@ export async function extractTextFromFile(file: File): Promise<string> {
         return await extractFromPdf(file);
       case 'docx':
         return await extractFromDocx(file);
+      case 'pptx':
+        return await extractFromPptx(file);
       case 'txt':
       case 'md':
         return await extractFromText(file);
