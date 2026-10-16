@@ -111,6 +111,7 @@ export function FormalReviewSheet({
   const [regenerating, setRegenerating] = useState(false);
   const [mirrorRunning, setMirrorRunning] = useState(false);
   const [mirrorResult, setMirrorResult] = useState<MirrorResult | null>(null);
+  const [mirrorCheckedText, setMirrorCheckedText] = useState<string | null>(null);
 
   // Persist coaching tip open/closed per review
   useEffect(() => {
@@ -229,6 +230,7 @@ export function FormalReviewSheet({
     try {
       const res = await invokeMirror({ reviewId, content: draftText });
       setMirrorResult(res);
+      setMirrorCheckedText(draftText);
       return res;
     } catch (e: any) {
       toast({ title: 'Não foi possível revisar', description: e.message, variant: 'destructive' });
@@ -256,7 +258,8 @@ export function FormalReviewSheet({
 
   // Espelho roda automaticamente ao compartilhar: avisa, não bloqueia.
   const handleShareClick = async () => {
-    const res = await runMirror();
+    // Texto já revisado e sem mudanças: respeita o que o líder ignorou, não revisa de novo.
+    const res = mirrorCheckedText === draftText && mirrorResult ? mirrorResult : await runMirror();
     const pending = (res?.findings ?? []).filter((f) => !f.dismissed && f.severity !== 'low').length;
     if (pending > 0) {
       setActiveTab('mirror');
