@@ -14,7 +14,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, Calendar as CalendarIcon, FileText, Award, MessageSquare, Monitor } from 'lucide-react';
+import { Loader2, Calendar as CalendarIcon, FileText, Award, MessageSquare, Monitor, Compass, Sparkles } from 'lucide-react';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useBillingGate } from '@/hooks/useBillingGate';
@@ -47,6 +47,26 @@ export function CreateFormalReviewDialog({
   const [customEnd, setCustomEnd] = useState<Date>();
   const [includeDraft, setIncludeDraft] = useState(true);
   const [includeCompetencies, setIncludeCompetencies] = useState(true);
+  const [authoringMode, setAuthoringMode] = useState<'full_draft' | 'culture_guided'>('full_draft');
+
+  // Cultura e régua publicadas pelo RH. Sem versão publicada, só o rascunho completo é oferecido.
+  const { data: publishedCulture } = useQuery({
+    queryKey: ['org-context-published', workspaceId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('org_context_versions')
+        .select('id, version')
+        .eq('workspace_id', workspaceId)
+        .eq('status', 'published')
+        .order('version', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: open && !!workspaceId,
+  });
+  const cultureAvailable = !!publishedCulture;
+  const effectiveMode = cultureAvailable ? authoringMode : 'full_draft';
 
   const periodDates = useMemo(() => {
     const now = new Date();
@@ -98,11 +118,12 @@ export function CreateFormalReviewDialog({
         .insert({
           member_id: member.id,
           title: `Avaliação Formal — ${periodLabel}`,
-          content: '_Gerando com IA..._',
           period_type: 'formal',
           period_start: periodDates.start.toISOString(),
           period_end: periodDates.end.toISOString(),
           evidence_count: evidence?.total_evidence_count || 0,
+          authoring_mode: effectiveMode,
+          content: effectiveMode === 'culture_guided' ? '_Preparando a avaliação guiada pela cultura..._' : '_Gerando com IA..._',
         })
         .select()
         .single();
@@ -115,6 +136,22 @@ export function CreateFormalReviewDialog({
       toast({ title: 'Avaliação criada! Gerando com IA...' });
       onOpenChange(false);
       onReviewCreated?.(review.id);
+
+      if (effectiveMode === 'culture_guided') {
+        try {
+          const init = await supabase.functions.invoke('culture-review-assist', { body: { action: 'init', reviewId: review.id } });
+          if (init.error) throw init.error;
+          queryClient.invalidateQueries({ queryKey: ['review-culture-items', review.id] });
+          const sug = await supabase.functions.invoke('culture-review-assist', { body: { action: 'suggest_all', reviewId: review.id } });
+          if (sug.error) throw sug.error;
+          queryClient.invalidateQueries({ queryKey: ['review-culture-items', review.id] });
+          queryClient.invalidateQueries({ queryKey: ['formal-review', review.id] });
+        } catch (err) {
+          console.error('Erro na avaliação guiada:', err);
+          toast({ title: 'Não conseguimos gerar as sugestões', description: 'Você pode pedir de novo em cada item.', variant: 'destructive' });
+        }
+        return;
+      }
 
       // Call AI generation asynchronously
       try {
@@ -137,7 +174,7 @@ export function CreateFormalReviewDialog({
     },
   });
 
-  const canCreate = evidence && evidence.total_evidence_count > 0 && (includeDraft || includeCompetencies);
+  const canCreate = evidence && evidence.total_evidence_count > 0 && (effectiveMode === 'culture_guided' || includeDraft || includeCompetencies);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -255,7 +292,36 @@ export function CreateFormalReviewDialog({
             </Card>
           ) : null}
 
+          {/* Como quer escrever? */}
+          <div className="space-y-3">
+            <Label>Como quer escrever?</Label>
+            <div className="grid sm:grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setAuthoringMode('full_draft')}
+                className={cn('text-left rounded-xl border p-3 transition-colors', effectiveMode === 'full_draft' ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/40')}
+              >
+                <div className="flex items-center gap-1.5 text-sm font-medium"><Sparkles className="h-3.5 w-3.5" /> Rascunho completo</div>
+                <p className="text-xs text-muted-foreground mt-1">A Rhitmo escreve a avaliação inteira e você edita.</p>
+              </button>
+              <button
+                type="button"
+                disabled={!cultureAvailable}
+                onClick={() => setAuthoringMode('culture_guided')}
+                className={cn('text-left rounded-xl border p-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed', effectiveMode === 'culture_guided' ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/40')}
+              >
+                <div className="flex items-center gap-1.5 text-sm font-medium"><Compass className="h-3.5 w-3.5" /> Guiado pela cultura</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {cultureAvailable
+                    ? 'Para cada valor da empresa, a Rhitmo sugere texto e nível. Você decide item a item.'
+                    : 'Disponível quando o RH publicar os valores e a régua da empresa.'}
+                </p>
+              </button>
+            </div>
+          </div>
+
           {/* Options */}
+          {effectiveMode === 'full_draft' && (
           <div className="space-y-3">
             <Label>O que incluir na avaliação?</Label>
             <div className="space-y-3">
@@ -295,6 +361,8 @@ export function CreateFormalReviewDialog({
               </div>
             </div>
           </div>
+
+          )}
 
           {/* Actions */}
           <div className="flex justify-end gap-2">
