@@ -1,0 +1,26 @@
+import { assertEquals } from "jsr:@std/assert@1";
+import { assessableItems, scaleLevels, type OrgContext } from "./orgContext.ts";
+
+const ctx: OrgContext = {
+  versionId: "v1",
+  version: 1,
+  items: [
+    { id: "val1", kind: "value", category_label: null, parent_id: null, title: "Dono do resultado", description: null, examples: null, position: 1 },
+    { id: "beh1", kind: "behavior", category_label: null, parent_id: "val1", title: "Entrega o que promete", description: null, examples: null, position: 2 },
+    { id: "beh2", kind: "behavior", category_label: null, parent_id: null, title: "Pede ajuda cedo", description: null, examples: null, position: 3 },
+    { id: "s1", kind: "scale_level", category_label: null, parent_id: null, title: "Precisa subir", description: null, examples: null, position: 4 },
+    { id: "s2", kind: "scale_level", category_label: null, parent_id: null, title: "Acima", description: null, examples: null, position: 5 },
+    { id: "c1", kind: "custom", category_label: "Liderança", parent_id: null, title: "Forma pessoas", description: null, examples: null, position: 6 },
+  ],
+};
+
+Deno.test("guided path: one card per value, loose behavior and extra; linked behaviors stay inside their value", () => {
+  const items = assessableItems(ctx);
+  assertEquals(items.map((i) => i.id), ["val1", "beh2", "c1"]);
+  assertEquals(items[0].behaviors.map((b) => b.id), ["beh1"]);
+});
+
+Deno.test("company scale levels come from the published version in order", () => {
+  assertEquals(scaleLevels(ctx), ["Precisa subir", "Acima"]);
+  assertEquals(scaleLevels(null), []);
+});
