@@ -42,7 +42,10 @@ export type Mode =
   | "quarterly-recap"
   | "formal-review-draft"
   | "one-on-one-draft"
-  | "public-review-generator";
+  | "public-review-generator"
+  | "org-context-extraction"
+  | "culture-guided-item"
+  | "review-mirror";
 
 // Variáveis opcionais reconhecidas pelos modos novos (v2 da alma):
 //   sessionSummary, sessionCount, pendingActions,
