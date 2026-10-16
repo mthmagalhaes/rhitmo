@@ -10,7 +10,8 @@ import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Check, Loader2, RefreshCw, SkipForward, FileText, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { renderWithCitations } from '@/lib/markdownCitations';
+import ReactMarkdown from 'react-markdown';
+import { citationMarkdownComponents } from '@/lib/markdownCitations';
 
 interface CultureItem {
   id: string;
@@ -189,7 +190,7 @@ function CultureCard({
       ) : editing ? (
         <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={6} className="rounded-xl" />
       ) : (
-        <div className="text-sm leading-relaxed text-foreground/90">{renderWithCitations(text)}</div>
+        <div className="text-sm leading-relaxed text-foreground/90"><ReactMarkdown components={citationMarkdownComponents as any}>{text}</ReactMarkdown></div>
       )}
 
       <div className="flex flex-wrap items-center gap-2">
