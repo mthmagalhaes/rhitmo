@@ -15,7 +15,6 @@ const LEADER_ROUTES = new Set([
   '/lider/1on1s',
   '/lider/diario',
   '/lider/avaliacoes',
-  '/lider/calibracao',
   '/lider/pessoas',
   '/lider/contexto',
 ]);

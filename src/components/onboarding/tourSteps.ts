@@ -63,9 +63,9 @@ export const LEADER_TOUR_STEPS: TourStepDef[] = [
   {
     route: '/lider/avaliacoes',
     anchor: '[data-tour="reviews-list"]',
-    title: 'Avaliações e calibração',
+    title: 'Avaliações do time',
     description:
-      'A avaliação já chega escrita a partir das evidências do trimestre, e a calibração compara critérios entre líderes.',
+      'A avaliação já chega escrita a partir das evidências do período. Você revisa, ajusta e decide.',
     side: 'right',
     align: 'start',
   },
