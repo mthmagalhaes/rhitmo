@@ -25,7 +25,7 @@ export function SidebarBotHoursMeter() {
   return (
     <button
       type="button"
-      onClick={() => navigate('/lider/configuracoes?tab=integracoes')}
+      onClick={() => navigate('/lider/conectores')}
       className={cn(
         'w-full mx-2 px-3 py-2 rounded-xl text-left',
         'hover:bg-sidebar-accent/40 transition-colors',

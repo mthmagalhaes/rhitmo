@@ -17,6 +17,9 @@ import { useSlackConnection } from '@/hooks/useSlackConnection';
 import { NoteTakerConnectorCard } from '@/components/settings/NoteTakerConnectorCard';
 import { NOTE_TAKER_NO_CONNECTOR_NOTE } from '@/lib/noteTakerProviders';
 import { CONNECTORS, CATEGORY_LABEL, type ConnectorCategory, type ConnectorEntry } from '@/lib/connectorsCatalog';
+import { AmbientSlackSettings } from '@/components/settings/AmbientSlackSettings';
+import { SlackHealthPanel } from '@/components/leader/settings/SlackHealthPanel';
+import { BotHoursCard } from '@/components/settings/BotHoursCard';
 
 type Filter = 'all' | 'connected' | ConnectorCategory;
 type Status = 'connected' | 'available' | 'soon' | 'error' | 'loading';
@@ -171,11 +174,10 @@ function DetailSheet({
               {entry.kind === 'slack' && (
                 status === 'connected' ? (
                   <div className="space-y-3">
-                    <p className="text-sm">Slack conectado. Ajustes finos ficam em Configurações.</p>
-                    <div className="flex gap-2">
-                      <Button asChild variant="outline" className="rounded-xl"><Link to="/lider/configuracoes?tab=integracoes">Ajustes</Link></Button>
-                      <Button variant="ghost" className="rounded-xl" disabled={slack.isDisconnecting} onClick={() => slack.disconnectSlack()}>Desconectar</Button>
-                    </div>
+                    <p className="text-sm">Slack conectado.</p>
+                    <Button variant="outline" className="rounded-xl" disabled={slack.isDisconnecting} onClick={() => slack.disconnectSlack()}>Desconectar</Button>
+                    <AmbientSlackSettings variant="embedded" />
+                    <SlackHealthPanel />
                   </div>
                 ) : (
                   <Button className="rounded-xl" onClick={() => slack.connectSlack()}>Conectar Slack</Button>
@@ -258,6 +260,8 @@ export default function V2Conectores() {
           <span><span className="font-semibold">Já usa um note taker?</span> Conecte e suas conversas viram evidência sem gastar as 6h de bot do seu teste.</span>
         </div>
       )}
+
+      <div className="max-w-md"><BotHoursCard /></div>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center">
         <div className="relative md:w-72">
