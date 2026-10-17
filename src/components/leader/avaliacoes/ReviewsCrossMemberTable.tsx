@@ -204,7 +204,7 @@ export function ReviewsCrossMemberTable({
                   onClick={() => onOpenMember(m)}
                   className={cn(
                     "w-full text-left grid min-w-[860px] grid-cols-[minmax(200px,2.2fr)_minmax(110px,1fr)_minmax(90px,0.9fr)_minmax(130px,1.2fr)_minmax(110px,1fr)_minmax(130px,1.2fr)_auto] gap-3 items-center px-4 py-2.5 border-b last:border-b-0 hover:bg-muted/40 hover:opacity-100 transition-all",
-                    isOk && "opacity-60",
+                    isOk && "[&>div:not(:nth-last-child(2))]:opacity-60",
                   )}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
@@ -266,19 +266,28 @@ export function ReviewsCrossMemberTable({
                       </TooltipContent>
                     </Tooltip>
                   </div>
-                  <div className="text-sm">
+                  <div className="text-sm flex items-center gap-1">
+                    <Button
+                      size="sm"
+                      variant={nextAction === 'none' ? 'outline' : 'default'}
+                      className="h-7 rounded-full text-xs gap-1 px-2.5"
+                      onClick={(e) => { e.stopPropagation(); onCreateFormal(m); }}
+                    >
+                      <Sparkles className="h-3 w-3" /> Nova formal
+                    </Button>
                     {nextAction === 'monthly' && (
-                      <span className="inline-flex items-center gap-1.5 text-primary">
-                        <Music className="h-3.5 w-3.5" /> Gerar Mensal
-                      </span>
-                    )}
-                    {nextAction === 'formal' && (
-                      <span className="inline-flex items-center gap-1.5 text-primary">
-                        <Sparkles className="h-3.5 w-3.5" /> Nova Formal
-                      </span>
-                    )}
-                    {nextAction === 'none' && (
-                      <span className="text-muted-foreground">Em dia</span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="icon" variant="ghost" aria-label="Gerar Mensal"
+                            className="h-7 w-7"
+                            onClick={(e) => { e.stopPropagation(); onOpenMember(m, 'monthly'); }}
+                          >
+                            <Music className="h-3.5 w-3.5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent className="text-xs">Gerar Mensal</TooltipContent>
+                      </Tooltip>
                     )}
                   </div>
                   <div className="flex items-center gap-1">
