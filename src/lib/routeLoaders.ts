@@ -42,7 +42,6 @@ export const loadLiderInicio = () => import('@/pages/lider/Inicio');
 export const loadLiderOneOnOnes = () => import('@/pages/lider/OneOnOnes');
 export const loadLiderDiario = () => import('@/pages/lider/Diario');
 export const loadLiderAvaliacoes = () => import('@/pages/lider/Avaliacoes');
-export const loadLiderCalibracao = () => import('@/pages/lider/Calibracao');
 export const loadLiderPessoas = () => import('@/pages/lider/Pessoas');
 export const loadLiderConfiguracoes = () => import('@/pages/lider/Configuracoes');
 export const loadLiderContexto = () => import('@/pages/lider/Contexto');
@@ -98,7 +97,6 @@ export const LiderInicio = lazy(loadLiderInicio);
 export const LiderOneOnOnes = lazy(loadLiderOneOnOnes);
 export const LiderDiario = lazy(loadLiderDiario);
 export const LiderAvaliacoes = lazy(loadLiderAvaliacoes);
-export const LiderCalibracao = lazy(loadLiderCalibracao);
 export const LiderPessoas = lazy(loadLiderPessoas);
 export const LiderConfiguracoes = lazy(loadLiderConfiguracoes);
 export const LiderContexto = lazy(loadLiderContexto);
@@ -121,7 +119,6 @@ const PREFETCH_MAP: Record<string, () => Promise<unknown>> = {
   '/lider/1on1s': loadLiderOneOnOnes,
   '/lider/diario': loadLiderDiario,
   '/lider/avaliacoes': loadLiderAvaliacoes,
-  '/lider/calibracao': loadLiderCalibracao,
   '/lider/pessoas': loadLiderPessoas,
   '/lider/configuracoes': loadLiderConfiguracoes,
   '/lider/contexto': loadLiderContexto,

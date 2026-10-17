@@ -59,7 +59,6 @@ import {
   LiderOneOnOnes,
   LiderDiario,
   LiderAvaliacoes,
-  LiderCalibracao,
   LiderPessoas,
   LiderConfiguracoes,
   LiderContexto,
@@ -164,7 +163,7 @@ const App = () => (
               <Route path="/lider/pulse/:id" element={<Navigate to="/lider/inicio" replace />} />
               <Route path="/lider/avaliacoes" element={Leader(<LiderAvaliacoes />)} />
               <Route path="/lider/avaliacoes/:memberId" element={Leader(<LiderAvaliacoes />)} />
-              <Route path="/lider/calibracao" element={Leader(<LiderCalibracao />)} />
+              <Route path="/lider/calibracao" element={<Navigate to="/lider/avaliacoes" replace />} />
               <Route path="/lider/objetivos" element={<Navigate to="/lider/pessoas" replace />} />
               <Route path="/lider/pessoas" element={Leader(<LiderPessoas />)} />
               <Route path="/lider/pessoas-v2" element={<Navigate to="/lider/pessoas" replace />} />

@@ -20,6 +20,8 @@ import { useRoleTheme } from '@/hooks/useRoleTheme';
 import { getSignupPersona, clearSignupPersona } from '@/lib/signupPersona';
 
 import { useQueryClient } from '@tanstack/react-query';
+import { useLocation } from 'react-router-dom';
+import { motion, useReducedMotion } from 'framer-motion';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
@@ -36,6 +38,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     refetchWorkspace,
   } = useAccount();
   const queryClient = useQueryClient();
+  const location = useLocation();
+  const reduceMotion = useReducedMotion();
+  // Só a seção (ex.: /lider/avaliacoes) dispara a entrada; subrotas cuidam do próprio deslize.
+  const sectionKey = location.pathname.split('/').slice(0, 3).join('/');
   // Tema por papel (líder ↔ liderado) aplicado no <html data-role>.
   const roleTheme = useRoleTheme();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -194,7 +200,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
           <main key={roleTheme} className="flex-1 min-w-0 role-transition" id="main-content">
             <Suspense fallback={<RouteSkeleton />}>
-              {children}
+              <motion.div
+                key={sectionKey}
+                initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
+                className="min-w-0"
+              >
+                {children}
+              </motion.div>
             </Suspense>
           </main>
         </SidebarInset>
