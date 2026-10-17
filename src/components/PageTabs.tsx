@@ -2,6 +2,8 @@ import { useSearchParams } from 'react-router-dom';
 import { ReactNode } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import { motion, useReducedMotion } from 'framer-motion';
+import { useId } from 'react';
 import type { LucideIcon } from 'lucide-react';
 
 export interface PageTab {
@@ -38,6 +40,8 @@ export function PageTabs({
   className,
 }: PageTabsProps) {
   const [searchParams, setSearchParams] = useSearchParams();
+  const reduce = useReducedMotion();
+  const indicatorId = useId();
   const visible = tabs.filter((t) => !t.hidden);
   const fallback = defaultValue ?? visible[0]?.value;
   const active = (syncParam ? searchParams.get(syncParam) : null) ?? fallback;
@@ -69,11 +73,16 @@ export function PageTabs({
                 className={cn(
                   'relative h-10 rounded-none border-0 bg-transparent px-3 text-sm font-medium text-muted-foreground',
                   'data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none',
-                  'after:absolute after:inset-x-2 after:-bottom-px after:h-[2px] after:rounded-full after:bg-transparent',
-                  'data-[state=active]:after:bg-primary',
                   'transition-colors hover:text-foreground'
                 )}
               >
+                {valid === t.value && (
+                  <motion.span
+                    layoutId={`tab-indicator-${indicatorId}`}
+                    className="absolute inset-x-2 -bottom-px h-[2px] rounded-full bg-primary"
+                    transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 500, damping: 40 }}
+                  />
+                )}
                 {Icon && <Icon className="w-4 h-4 mr-2" />}
                 {t.label}
                 {typeof t.count === 'number' && (
@@ -89,7 +98,14 @@ export function PageTabs({
       </div>
       {visible.map((t) => (
         <TabsContent key={t.value} value={t.value} className="mt-0 focus-visible:outline-none">
-          {t.content}
+          <motion.div
+            key={valid}
+            initial={reduce ? false : { opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+          >
+            {t.content}
+          </motion.div>
         </TabsContent>
       ))}
     </Tabs>
