@@ -29,6 +29,7 @@ interface Props {
   members: LeaderMemberRow[];
   teams: Team[];
   summaryByMember: Map<string, MemberReviewsSummary>;
+  loading?: boolean;
   onOpenMember: (m: LeaderMemberRow, initialTab?: 'monthly' | 'formal') => void;
   onCreateFormal: (m: LeaderMemberRow) => void;
 }
@@ -72,6 +73,7 @@ export function ReviewsCrossMemberTable({
   summaryByMember,
   onOpenMember,
   onCreateFormal,
+  loading = false,
 }: Props) {
   const [query, setQuery] = useState('');
   const [teamId, setTeamId] = useState<string>('all');
@@ -165,7 +167,7 @@ export function ReviewsCrossMemberTable({
                 className="h-8 rounded-full text-xs"
                 onClick={() => setChip(key as ChipFilter)}
               >
-                {label} <span className="ml-1 opacity-70">{count}</span>
+                {label} {!loading && <span className="ml-1 opacity-70">{count}</span>}
               </Button>
             ))}
           </div>
@@ -183,7 +185,18 @@ export function ReviewsCrossMemberTable({
             <div />
           </div>
 
-          {filtered.length === 0 ? (
+          {loading ? (
+            <div className="divide-y min-w-[860px]" aria-busy="true">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3 px-4 py-3 animate-pulse">
+                  <div className="h-8 w-8 rounded-full bg-muted/70" />
+                  <div className="h-3.5 w-40 rounded bg-muted/60" />
+                  <div className="h-3 w-20 rounded bg-muted/40 ml-auto" />
+                  <div className="h-7 w-28 rounded-xl bg-muted/40" />
+                </div>
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="px-4 py-10 text-center text-sm text-muted-foreground">
               Nenhum liderado para os filtros atuais.
             </div>

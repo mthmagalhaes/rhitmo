@@ -18,9 +18,10 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 export default function LiderAvaliacoes() {
   const navigate = useNavigate();
   const { memberId: routeMemberId } = useParams<{ memberId?: string }>();
-  const { members, teams, workspace } = useLeaderMembers();
+  const { members, teams, workspace, isLoading: membersLoading } = useLeaderMembers();
   const memberIds = useMemo(() => members.map((m) => m.id), [members]);
-  const { summaryByMember } = useTeamReviewsSummary(memberIds);
+  const { summaryByMember, isLoading: summaryLoading } = useTeamReviewsSummary(memberIds);
+  const tableLoading = membersLoading || (memberIds.length > 0 && summaryLoading);
   const reduce = useReducedMotion();
 
   const [formalMember, setFormalMember] = useState<LeaderMemberRow | null>(null);
@@ -110,13 +111,14 @@ export default function LiderAvaliacoes() {
                 summaryByMember={summaryByMember}
                 onOpenMember={goToMember}
                 onCreateFormal={(m) => setFormalMember(m)}
+                loading={tableLoading}
               />
 
-              <ReviewsCoverageInsight
+              {!tableLoading && <ReviewsCoverageInsight
                 members={members}
                 summaryByMember={summaryByMember}
                 onPickMember={goToMember}
-              />
+              />}
             </motion.div>
           )}
         </AnimatePresence>
