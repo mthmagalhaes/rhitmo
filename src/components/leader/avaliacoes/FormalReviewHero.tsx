@@ -101,7 +101,7 @@ export function FormalReviewHero({
             className="rounded-2xl h-12 px-6 gap-2 shadow-[0_8px_24px_-8px_hsl(var(--primary)/0.5)]"
           >
             <Sparkles className="h-4 w-4" />
-            Novo Rhitmo Formal
+            Nova avaliação formal
             <ArrowRight className="h-4 w-4 opacity-80" />
           </Button>
         </div>

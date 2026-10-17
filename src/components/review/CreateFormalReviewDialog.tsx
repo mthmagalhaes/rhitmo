@@ -174,7 +174,7 @@ export function CreateFormalReviewDialog({
     },
   });
 
-  const canCreate = evidence && evidence.total_evidence_count > 0 && (effectiveMode === 'culture_guided' || includeDraft || includeCompetencies);
+  const canCreate = evidence && evidence.total_evidence_count > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -320,48 +320,10 @@ export function CreateFormalReviewDialog({
             </div>
           </div>
 
-          {/* Options */}
           {effectiveMode === 'full_draft' && (
-          <div className="space-y-3">
-            <Label>O que incluir na avaliação?</Label>
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <Checkbox
-                  id="draft"
-                  checked={includeDraft}
-                  onCheckedChange={(c) => setIncludeDraft(c as boolean)}
-                  className="mt-0.5"
-                />
-                <label htmlFor="draft" className="cursor-pointer space-y-0.5">
-                  <div className="flex items-center gap-1.5">
-                    <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-sm font-medium">Rascunho Geral</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    IA analisa todas evidências e gera texto livre com pontos fortes, áreas de desenvolvimento e próximos passos
-                  </p>
-                </label>
-              </div>
-              <div className="flex items-start gap-3">
-                <Checkbox
-                  id="competencies"
-                  checked={includeCompetencies}
-                  onCheckedChange={(c) => setIncludeCompetencies(c as boolean)}
-                  className="mt-0.5"
-                />
-                <label htmlFor="competencies" className="cursor-pointer space-y-0.5">
-                  <div className="flex items-center gap-1.5">
-                    <Award className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-sm font-medium">Avaliação de Competências</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    IA avalia cada competência do cargo com base em evidências e fornece justificativas
-                  </p>
-                </label>
-              </div>
-            </div>
-          </div>
-
+            <p className="text-xs text-muted-foreground rounded-xl bg-muted/40 px-3 py-2">
+              A Rhitmo analisa entregas e evidências do período{publishedCulture ? ' e usa a cultura e a régua da empresa como referência' : ''}. Você revisa tudo antes de compartilhar.
+            </p>
           )}
 
           {/* Actions */}
