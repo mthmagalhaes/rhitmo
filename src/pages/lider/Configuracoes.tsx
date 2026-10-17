@@ -208,12 +208,13 @@ export default function LiderConfiguracoes() {
   const { isHRAdmin, isWorkspaceOwner } = useAccount();
   const canManageAccess = isHRAdmin || isWorkspaceOwner;
   const { data: billingStatus } = useBillingStatus();
+  const [params] = useSearchParams();
   const billingTab = billingStatus?.billingModel === 'v3' ? <V2Billing /> : <BillingContent />;
+  if (params.get('tab') === 'integracoes') return <Navigate to="/lider/conectores" replace />;
 
   const tabs: PageTab[] = [
     { value: 'perfil', label: 'Perfil', icon: User, content: <ProfileTab /> },
     { value: 'faturamento', label: 'Faturamento', icon: CreditCard, content: billingTab },
-    { value: 'integracoes', label: 'Conectores', icon: Plug, content: <IntegrationsTab /> },
     {
       value: 'acessos',
       label: 'Acessos',
