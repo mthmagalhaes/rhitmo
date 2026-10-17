@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { useAccount } from '@/contexts/AccountContext';
 import { PageTabs, type PageTab } from '@/components/PageTabs';
 import { BillingContent } from '@/pages/Billing';
@@ -9,16 +9,7 @@ import { ProfileSettingsDialog } from '@/components/ProfileSettingsDialog';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { User, CreditCard, Plug, LifeBuoy, Slack, Calendar, Pencil, Loader2, Link as LinkIcon, Unlink, Check, Shield, ShieldCheck } from 'lucide-react';
-import { ConnectorFrame } from '@/components/brand/ConnectorFrame';
-import { Badge } from '@/components/ui/badge';
-import { useSlackConnection } from '@/hooks/useSlackConnection';
-import { useCalendarIntegration } from '@/hooks/useCalendarIntegration';
-import { AmbientSlackSettings } from '@/components/settings/AmbientSlackSettings';
-import { NoteTakerConnectorCard } from '@/components/settings/NoteTakerConnectorCard';
-import { NOTE_TAKER_PROVIDERS, NOTE_TAKER_NO_CONNECTOR_NOTE } from '@/lib/noteTakerProviders';
-import { BotHoursCard } from '@/components/settings/BotHoursCard';
-import { SlackHealthPanel } from '@/components/leader/settings/SlackHealthPanel';
+import { User, CreditCard, LifeBuoy, Pencil, Shield, ShieldCheck } from 'lucide-react';
 
 import { AccessTab } from '@/components/settings/AccessTab';
 import { SecurityTab } from '@/components/settings/SecurityTab';
@@ -55,151 +46,6 @@ function ProfileTab() {
         </CardContent>
       </Card>
       <ProfileSettingsDialog open={open} onOpenChange={setOpen} />
-    </div>
-  );
-}
-
-type IntegrationItem = {
-  icon: typeof Slack;
-  title: string;
-  desc: string;
-  connected: boolean;
-  loading: boolean;
-  meta?: string | null;
-  onConnect: () => void;
-  onDisconnect?: () => void;
-  disconnecting?: boolean;
-};
-
-function IntegrationsTab() {
-  const slack = useSlackConnection();
-  const cal = useCalendarIntegration();
-  const items: IntegrationItem[] = [
-    {
-      icon: Slack,
-      title: 'Slack',
-      desc: 'Receba briefs e capture feedbacks direto do Slack.',
-      connected: slack.isConnected,
-      loading: slack.isLoading,
-      meta: slack.slackUserId ? `ID: ${slack.slackUserId}` : null,
-      onConnect: slack.connectSlack,
-      onDisconnect: slack.disconnectSlack,
-      disconnecting: slack.isDisconnecting,
-    },
-    {
-      icon: Calendar,
-      title: 'Google Calendar',
-      desc: 'Sincronize 1:1s e acione transcrição automática.',
-      connected: cal.isConnected,
-      loading: cal.checkingConnection,
-      meta: cal.connectionData?.calendar_email ?? null,
-      onConnect: cal.connectCalendar,
-      onDisconnect: cal.disconnectCalendar,
-    },
-  ];
-  return (
-    <div className="space-y-8">
-      <Link to="/lider/conectores" className="flex items-center justify-between rounded-2xl bg-primary/10 p-4 text-sm hover:bg-primary/15">
-        <span><span className="font-semibold">Central de Conectores:</span> Granola, Fireflies, tl;dv, Fathom, Google Agenda e Slack num só lugar.</span>
-        <span className="font-medium text-primary">Abrir</span>
-      </Link>
-      <section className="space-y-3">
-        <div className="flex items-center gap-3">
-          <span className="h-px w-6 bg-border" aria-hidden />
-          <h2 className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            Captura de reuniões
-          </h2>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 items-start">
-          {NOTE_TAKER_PROVIDERS.filter((p) => p.id !== 'google_meet').map((p) => (
-            <NoteTakerConnectorCard key={p.id} provider={p.id} />
-          ))}
-          <BotHoursCard />
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Já usa um note taker? Conecte e a Rhitmo dispensa o bot nessas reuniões.{' '}
-          {NOTE_TAKER_NO_CONNECTOR_NOTE}
-        </p>
-      </section>
-
-      <section className="space-y-3">
-        <div className="flex items-center gap-3">
-          <span className="h-px w-6 bg-border" aria-hidden />
-          <h2 className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            Agenda e comunicação
-          </h2>
-        </div>
-      <div data-tour="integrations" className="grid gap-4 md:grid-cols-2 items-start">
-        {items.map((it) => {
-          const isSlack = it.title === 'Slack';
-          return (
-            <Card key={it.title} className="rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
-              <CardHeader className="flex flex-row items-start gap-3 space-y-0">
-                <ConnectorFrame><it.icon className="w-5 h-5 text-primary" /></ConnectorFrame>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <CardTitle className="text-base font-serif tracking-tight">{it.title}</CardTitle>
-                    {it.loading ? (
-                      <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                    ) : it.connected ? (
-                      <Badge className="text-[10px] px-1.5 py-0 bg-green-500/10 text-green-600 border-green-500/20 hover:bg-green-500/10">
-                        <Check className="h-3 w-3 mr-0.5" /> Conectado
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Disponível</Badge>
-                    )}
-                  </div>
-                  <CardDescription className="text-xs mt-1">{it.desc}</CardDescription>
-                  {it.title === 'Google Calendar' && (
-                    <a
-                      href="/lider/configuracoes?tab=ajuda#l-calendar"
-                      className="text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors mt-1 inline-block"
-                    >
-                      Como funciona (passo a passo e solução de problemas)
-                    </a>
-                  )}
-                  {it.connected && it.meta && (
-                    <p className="text-[10px] text-muted-foreground truncate mt-1">{it.meta}</p>
-                  )}
-                </div>
-
-              </CardHeader>
-              <CardContent>
-                {it.connected ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full rounded-xl text-xs"
-                    onClick={() => it.onDisconnect?.()}
-                    disabled={it.disconnecting || !it.onDisconnect}
-                  >
-                    {it.disconnecting ? (
-                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                    ) : (
-                      <Unlink className="h-3 w-3 mr-1" />
-                    )}
-                    Desconectar
-                  </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    className="w-full rounded-xl text-xs"
-                    onClick={it.onConnect}
-                    disabled={it.loading}
-                  >
-                    {it.loading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <LinkIcon className="h-3 w-3 mr-1" />}
-                    Conectar
-                  </Button>
-                )}
-                {isSlack && it.connected && <AmbientSlackSettings variant="embedded" />}
-                {isSlack && it.connected && <SlackHealthPanel />}
-              </CardContent>
-
-            </Card>
-          );
-        })}
-      </div>
-      </section>
     </div>
   );
 }
