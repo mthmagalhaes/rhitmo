@@ -6,6 +6,9 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Check, ClipboardPaste, Download, Inbox, Loader2, Plug, Sparkles, Trash2, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
@@ -197,6 +200,12 @@ function ConnectedList({
   const nt = useNoteTaker(provider);
   const { data: notes = [], isFetching } = nt.useRecent(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const reduce = useReducedMotion();
+  const qc = useQueryClient();
+  // Reconfere as notas sem dono uma vez ao abrir o painel (não a cada refetch).
+  useEffect(() => {
+    qc.invalidateQueries({ queryKey: ['note-taker-pending', provider] });
+  }, [qc, provider]);
   const visible = useMemo(() => notes.filter((n) => n.status !== 'dismissed'), [notes]);
 
   if (isFetching && notes.length === 0) {
@@ -223,7 +232,15 @@ function ConnectedList({
       {isFetching && (
         <p className="text-xs text-muted-foreground">Atualizando…</p>
       )}
+      <AnimatePresence initial={false}>
       {visible.map((n) => (
+        <motion.div
+          key={n.id}
+          layout={!reduce}
+          exit={reduce ? { opacity: 0 } : { opacity: 0, x: 40, height: 0, marginTop: 0 }}
+          transition={{ duration: reduce ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
+          style={{ overflow: 'hidden' }}
+        >
         <NoteRow
           key={n.id}
           note={n}
@@ -247,7 +264,9 @@ function ConnectedList({
             );
           }}
         />
+        </motion.div>
       ))}
+      </AnimatePresence>
     </div>
   );
 }
