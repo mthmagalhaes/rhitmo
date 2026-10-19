@@ -224,6 +224,7 @@ export function FormalReviewSheet({
   }, [open, reviewId]);
 
   const isCultureGuided = (review as any)?.authoring_mode === 'culture_guided';
+  const isPlaceholder = /^_(Preparando|Gerando)/.test((draftText || '').trim());
   const openFindings = (mirrorResult?.findings ?? []).filter((f) => !f.dismissed).length;
 
   const invokeMirror = async (body: Record<string, unknown>) => {
@@ -513,7 +514,7 @@ export function FormalReviewSheet({
                   />
                 )}
                 {!editMode && draftText.startsWith('_Preparando') && (
-                  <p className="text-sm text-muted-foreground">As sugestões da cultura estão na aba ao lado. Depois de revisar, clique em "Montar documento".</p>
+                  <RhitmoThinking steps={['Esperando as sugestões da cultura...', 'Juntando valores e comportamentos...', 'Montando o documento...']} />
                 )}
 
                 {/* Legacy HTML banner */}
@@ -625,95 +626,6 @@ export function FormalReviewSheet({
             </ScrollArea>
           </TabsContent>
 
-          {/* Competencies tab */}
-          <TabsContent value="competencies" className="flex-1 px-6 mt-4 min-h-0">
-            <ScrollArea className="h-[calc(100vh-280px)]">
-              <div className="space-y-4 pr-4">
-                {competencyEvaluations.length === 0 ? (
-                  <Card>
-                    <CardContent className="pt-6 pb-6 text-center">
-                      <Award className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                      <p className="text-sm text-muted-foreground">
-                        Nenhuma competência definida para este cargo.
-                        <br />
-                        Defina competências no Framework de Competências.
-                      </p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  competencyEvaluations.map((evaluation) => {
-                    const comp = (competencies as any[])?.find(
-                      (c: any) => c.competency_id === evaluation.competency_id
-                    );
-
-                    return (
-                      <Card key={evaluation.competency_id}>
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-base">{evaluation.competency_name}</CardTitle>
-                          {comp?.description && (
-                            <p className="text-sm text-muted-foreground">{comp.description}</p>
-                          )}
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div>
-                            <Label className="text-sm mb-3 block">Avaliação</Label>
-                            <RadioGroup
-                              value={evaluation.rating}
-                              onValueChange={(v) => updateRating(evaluation.competency_id, v)}
-                              className="flex flex-wrap gap-4"
-                            >
-                              {Object.entries(ratingLabels).map(([value, label]) => (
-                                <div key={value} className="flex items-center space-x-2">
-                                  <RadioGroupItem
-                                    value={value}
-                                    id={`${evaluation.competency_id}-${value}`}
-                                  />
-                                  <Label
-                                    htmlFor={`${evaluation.competency_id}-${value}`}
-                                    className="text-sm font-normal cursor-pointer"
-                                  >
-                                    {label}
-                                  </Label>
-                                </div>
-                              ))}
-                            </RadioGroup>
-                          </div>
-                          <div>
-                            <Label className="text-sm mb-2 block">Comentário / Justificativa</Label>
-                            <textarea
-                              value={evaluation.comment}
-                              onChange={(e) => updateComment(evaluation.competency_id, e.target.value)}
-                              placeholder="Adicione evidências ou contexto para esta avaliação..."
-                              rows={3}
-                              className="flex min-h-[80px] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                            />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })
-                )}
-              </div>
-            </ScrollArea>
-          </TabsContent>
-
-          {/* Calibration tab */}
-          <TabsContent value="calibration" className="flex-1 px-6 mt-4 min-h-0">
-            <ScrollArea className="h-[calc(100vh-280px)]">
-              <div className="pr-4 pb-4">
-                <ReviewCalibrationPanel
-                  reviewId={reviewId}
-                  initial={{
-                    classification: ((review as any).classification ?? null) as RecapClassification | null,
-                    promotion_recommendation: ((review as any).promotion_recommendation ?? null) as PromotionRecommendation | null,
-                    loss_risk: ((review as any).loss_risk ?? null) as LossRisk | null,
-                    merit_recommendation: ((review as any).merit_recommendation ?? null) as MeritRecommendation | null,
-                  }}
-                  disabled={!!review.acknowledged_at}
-                />
-              </div>
-            </ScrollArea>
-          </TabsContent>
         </Tabs>
 
         {/* Footer */}
