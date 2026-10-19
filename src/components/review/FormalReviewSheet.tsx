@@ -143,6 +143,11 @@ export function FormalReviewSheet({
       return data;
     },
     enabled: open && !!reviewId,
+    // Enquanto o rascunho completo está sendo gerado, recarrega até chegar.
+    refetchInterval: (q) => {
+      const d = q.state.data as any;
+      return d && d.authoring_mode !== 'culture_guided' && String(d.content ?? '').startsWith('_Gerando') ? 4000 : false;
+    },
   });
 
   // Fetch competencies for the job role if available
