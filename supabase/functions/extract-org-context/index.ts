@@ -103,10 +103,7 @@ Deno.serve(async (req) => {
       },
       required: ["title"],
     };
-    const aiData = await callAI({
-      model: "google/gemini-2.5-pro",
-      messages: [{ role: "system", content: systemPrompt }, { role: "user", content: material }],
-      tools: [{
+    const extractTools = [{
         type: "function",
         function: {
           name: "save_org_context",
@@ -122,7 +119,11 @@ Deno.serve(async (req) => {
             required: ["values", "behaviors", "scale_levels", "extras"],
           },
         },
-      }],
+      }];
+    const aiData = await callAI({
+      model: "google/gemini-2.5-pro",
+      messages: [{ role: "system", content: systemPrompt }, { role: "user", content: material }],
+      tools: extractTools,
       tool_choice: { type: "function", function: { name: "save_org_context" } },
     });
     const out = toolArgs(aiData);
@@ -139,9 +140,14 @@ Deno.serve(async (req) => {
           { role: "system", content: systemPrompt },
           { role: "user", content: `${material}\n\n---\nValores já identificados:\n${valueList}\n\nAgora desdobre SOMENTE os comportamentos de cada valor (um item por atitude, com value_title exato) e a régua de desempenho, se existir no material. Devolva values e extras vazios.` },
         ],
-        tools: aiData && (arguments as any) ? undefined : undefined,
-      }).catch(() => null);
-      void retry;
+        tools: extractTools,
+        tool_choice: { type: "function", function: { name: "save_org_context" } },
+      });
+      const extra = toolArgs(retry);
+      if (extra) {
+        if (needBehaviors && extra.behaviors?.length) out.behaviors = extra.behaviors;
+        if (needScale && extra.scale_levels?.length) out.scale_levels = extra.scale_levels;
+      }
     }
 
     const draft = await ensureDraft(admin, workspaceId);
@@ -176,17 +182,19 @@ Deno.serve(async (req) => {
     };
 
     for (const v of out.values ?? []) {
-      await upsert("value", { ...v, description: [v.description, v.in_practice ? `Na prática: ${v.in_practice}` : ""].filter(Boolean).join(" ") });
+      await upsert("value", { ...v, description: v.description || v.in_practice || null });
     }
     for (const b of out.behaviors ?? []) {
-      const parent = b.value_title ? byKey.get(`value:${norm(b.value_title)}`) : null;
+      const valueTitles = [...byKey.values()].filter((e: any) => e.kind === "value").map((e: any) => e.title);
+      const matched = matchValueTitle(valueTitles, b.value_title);
+      const parent = matched ? byKey.get(`value:${norm(matched)}`) : null;
       const examples: Record<string, string> = {};
       if (b.above) examples.above = b.above;
       if (b.expected) examples.expected = b.expected;
       if (b.below) examples.below = b.below;
       await upsert("behavior", b, { parent_id: parent?.id ?? null, examples });
     }
-    for (const s of out.scale_levels ?? []) await upsert("scale_level", s);
+    for (const s of sortScaleLevels(out.scale_levels ?? [])) await upsert("scale_level", s);
     for (const e of out.extras ?? []) await upsert("custom", e, { category_label: e.category });
 
     await admin.from("org_context_documents").update({ processed_at: new Date().toISOString(), status: "ready" }).in("id", docs.map((d: any) => d.id));
