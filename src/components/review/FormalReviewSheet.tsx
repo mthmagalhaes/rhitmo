@@ -415,7 +415,7 @@ export function FormalReviewSheet({
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
           <div className="px-6 pt-4">
-            <TabsList className={`grid w-full ${isCultureGuided ? 'grid-cols-5' : 'grid-cols-4'}`}>
+            <TabsList className={`grid w-full ${isCultureGuided ? 'grid-cols-3' : 'grid-cols-2'}`}>
               {isCultureGuided && (
                 <TabsTrigger value="culture" className="gap-1.5">
                   <Compass className="h-3.5 w-3.5" />
@@ -426,14 +426,6 @@ export function FormalReviewSheet({
                 <FileText className="h-3.5 w-3.5" />
                 {t('review.tabs.draft', 'Rascunho Geral')}
               </TabsTrigger>
-              <TabsTrigger value="competencies" className="gap-1.5">
-                <Award className="h-3.5 w-3.5" />
-                {t('review.tabs.competencies', 'Competências')}
-              </TabsTrigger>
-              <TabsTrigger value="calibration" className="gap-1.5">
-                <Scale className="h-3.5 w-3.5" />
-                {t('review.tabs.calibration', 'Calibração')}
-              </TabsTrigger>
               <TabsTrigger value="mirror" className="gap-1.5">
                 <ScanSearch className="h-3.5 w-3.5" />
                 Espelho{openFindings > 0 ? ` (${openFindings})` : ''}
@@ -442,17 +434,19 @@ export function FormalReviewSheet({
           </div>
 
           {isCultureGuided && (
-            <TabsContent value="culture" className="flex-1 px-6 mt-4 min-h-0">
+            <TabsContent value="culture" forceMount className="flex-1 px-6 mt-4 min-h-0 data-[state=inactive]:hidden">
               <ScrollArea className="h-[calc(100vh-280px)]">
                 <div className="pr-4 pb-6">
                   <CultureGuidedPanel
                     reviewId={reviewId!}
                     versionId={(review as any).org_context_version_id ?? null}
                     readOnly={!!review.shared_with_member}
-                    onAssembled={(content) => {
+                    needsAssembly={isPlaceholder}
+                    onAssembled={async (content, advance) => {
                       setDraftText(content);
+                      await supabase.from('performance_reviews').update({ content }).eq('id', reviewId!);
                       queryClient.invalidateQueries({ queryKey: ['formal-review', reviewId] });
-                      setActiveTab('draft');
+                      if (advance) setActiveTab('draft');
                     }}
                   />
                 </div>
@@ -467,6 +461,7 @@ export function FormalReviewSheet({
                   result={mirrorResult}
                   running={mirrorRunning}
                   readOnly={!!review.shared_with_member}
+                  waiting={isPlaceholder}
                   onRun={() => runMirror()}
                   onDismiss={dismissFinding}
                   onApplySuggestion={applySuggestion}
