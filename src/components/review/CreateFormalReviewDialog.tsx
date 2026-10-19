@@ -133,7 +133,8 @@ export function CreateFormalReviewDialog({
     },
     onSuccess: async (review) => {
       queryClient.invalidateQueries({ queryKey: ['performance-reviews'] });
-      toast({ title: 'Avaliação criada! Gerando com IA...' });
+      const memberName = member?.name ?? '';
+      toast({ title: 'A Rhitmo começou a preparar a avaliação', description: 'Pode sair desta tela, avisamos quando estiver pronta.' });
       onOpenChange(false);
       onReviewCreated?.(review.id);
 
@@ -146,9 +147,10 @@ export function CreateFormalReviewDialog({
           if (sug.error) throw sug.error;
           queryClient.invalidateQueries({ queryKey: ['review-culture-items', review.id] });
           queryClient.invalidateQueries({ queryKey: ['formal-review', review.id] });
+          toast({ title: `Avaliação de ${memberName} pronta para revisar`, description: 'Abra em Avaliações para aceitar ou ajustar cada item.' });
         } catch (err) {
           console.error('Erro na avaliação guiada:', err);
-          toast({ title: 'Não conseguimos gerar as sugestões', description: 'Você pode pedir de novo em cada item.', variant: 'destructive' });
+          toast({ title: 'Não conseguimos gerar as sugestões', description: 'Abra a avaliação e clique em "Tentar novamente".', variant: 'destructive' });
         }
         return;
       }
@@ -160,6 +162,8 @@ export function CreateFormalReviewDialog({
         });
         if (error) throw error;
         queryClient.invalidateQueries({ queryKey: ['formal-review', review.id] });
+        queryClient.invalidateQueries({ queryKey: ['performance-reviews'] });
+        toast({ title: `Avaliação de ${memberName} pronta para revisar` });
       } catch (err) {
         console.error('Erro ao gerar com IA:', err);
         toast({

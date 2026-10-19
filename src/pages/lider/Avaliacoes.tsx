@@ -11,6 +11,8 @@ import { ReviewsCoverageInsight } from '@/components/leader/avaliacoes/ReviewsCo
 import { ReviewsCrossMemberTable } from '@/components/leader/avaliacoes/ReviewsCrossMemberTable';
 import { ReviewsMemberDetail } from '@/components/leader/avaliacoes/ReviewsMemberDetail';
 import { CreateFormalReviewDialog } from '@/components/review/CreateFormalReviewDialog';
+import { FormalReviewSheet } from '@/components/review/FormalReviewSheet';
+import { useQueryClient } from '@tanstack/react-query';
 import type { LeaderMemberRow } from '@/hooks/useLeaderMembers';
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -25,6 +27,8 @@ export default function LiderAvaliacoes() {
   const reduce = useReducedMotion();
 
   const [formalMember, setFormalMember] = useState<LeaderMemberRow | null>(null);
+  const [openReviewId, setOpenReviewId] = useState<string | null>(null);
+  const qc = useQueryClient();
   const scrollRef = useRef<HTMLElement>(null);
   const savedScroll = useRef(0);
 
@@ -134,7 +138,16 @@ export default function LiderAvaliacoes() {
               : null
           }
           workspaceId={workspace.id}
-          onReviewCreated={() => setFormalMember(null)}
+          onReviewCreated={(id) => { setFormalMember(null); setOpenReviewId(id); }}
+        />
+      )}
+
+      {openReviewId && (
+        <FormalReviewSheet
+          open
+          onOpenChange={(o) => { if (!o) setOpenReviewId(null); }}
+          reviewId={openReviewId}
+          onSent={() => qc.invalidateQueries({ queryKey: ['performance-reviews'] })}
         />
       )}
     </div>

@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CultureGuidedPanel } from '@/components/review/CultureGuidedPanel';
+import { RhitmoThinking } from '@/components/ai/RhitmoThinking';
 import { ReviewMirrorPanel, type MirrorResult, type MirrorFinding } from '@/components/review/ReviewMirrorPanel';
 import { Compass, ScanSearch } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -143,6 +144,11 @@ export function FormalReviewSheet({
       return data;
     },
     enabled: open && !!reviewId,
+    // Enquanto o rascunho completo está sendo gerado, recarrega até chegar.
+    refetchInterval: (q) => {
+      const d = q.state.data as any;
+      return d && d.authoring_mode !== 'culture_guided' && String(d.content ?? '').startsWith('_Gerando') ? 4000 : false;
+    },
   });
 
   // Fetch competencies for the job role if available
@@ -345,8 +351,8 @@ export function FormalReviewSheet({
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent side="right" className="sm:max-w-3xl w-full p-0 flex flex-col">
-          <div className="flex-1 flex items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <div className="flex-1 flex items-center justify-center p-8">
+            <RhitmoThinking className="w-full max-w-md" hint={null} title="Abrindo a avaliação" steps={['Carregando a avaliação...']} />
           </div>
         </SheetContent>
       </Sheet>
@@ -500,6 +506,19 @@ export function FormalReviewSheet({
                       </CollapsibleContent>
                     </div>
                   </Collapsible>
+                )}
+
+                {!editMode && draftText.startsWith('_Gerando') && (
+                  <RhitmoThinking
+                    steps={[
+                      `Buscando anotações e 1:1s de ${(review.team_members as any)?.name ?? 'quem você avalia'}...`,
+                      'Cruzando evidências do período...',
+                      'Escrevendo o rascunho com citações...',
+                    ]}
+                  />
+                )}
+                {!editMode && draftText.startsWith('_Preparando') && (
+                  <p className="text-sm text-muted-foreground">As sugestões da cultura estão na aba ao lado. Depois de revisar, clique em "Montar documento".</p>
                 )}
 
                 {/* Legacy HTML banner */}
