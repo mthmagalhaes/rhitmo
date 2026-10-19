@@ -103,6 +103,23 @@ export function CultureGuidedPanel({
     return () => clearTimeout(t);
   }, [pendingSuggestions]);
 
+  const assemble = async (advance: boolean) => {
+    const data = await invoke({ action: 'assemble', reviewId });
+    await onAssembled(data.content, advance);
+  };
+
+  // Monta o Rascunho Geral sozinho assim que as sugestões ficam prontas.
+  const autoTried = useRef(false);
+  const hasSuggestions = items.some((i) => i.suggested_text || i.final_text);
+  useEffect(() => {
+    if (readOnly || !needsAssembly || autoTried.current || isLoading) return;
+    if (items.length === 0 || pendingSuggestions > 0 || !hasSuggestions) return;
+    autoTried.current = true;
+    setBusy('assemble');
+    assemble(false).catch(() => { /* usuário pode montar pelo botão */ }).finally(() => setBusy(null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsAssembly, items.length, pendingSuggestions, hasSuggestions, isLoading, readOnly]);
+
   if (isLoading) return <RhitmoThinking hint={null} title="Abrindo os itens da cultura" steps={['Carregando...']} />;
 
   if (items.length === 0) {
@@ -167,13 +184,12 @@ export function CultureGuidedPanel({
 
       {!readOnly && (
         <div className="sticky bottom-0 bg-background/95 backdrop-blur py-3 flex justify-end">
-          <Button className="rounded-xl" disabled={busy === 'assemble' || reviewed === 0} onClick={() => run('assemble', async () => {
-            const data = await invoke({ action: 'assemble', reviewId });
-            onAssembled(data.content);
-            toast({ title: 'Documento montado', description: 'Complete visão geral, desenvolvimento e próximos passos no editor.' });
+          <Button className="rounded-xl" disabled={busy === 'assemble' || pendingSuggestions > 0 || !hasSuggestions} onClick={() => run('assemble', async () => {
+            await assemble(true);
+            toast({ title: 'Documento atualizado', description: 'Complete visão geral, desenvolvimento e próximos passos no editor.' });
           })}>
             {busy === 'assemble' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileText className="h-4 w-4 mr-2" />}
-            Montar documento
+            Avançar para Rascunho Geral →
           </Button>
         </div>
       )}
