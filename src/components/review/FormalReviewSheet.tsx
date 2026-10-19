@@ -508,6 +508,19 @@ export function FormalReviewSheet({
                   </Collapsible>
                 )}
 
+                {!editMode && draftText.startsWith('_Gerando') && (
+                  <RhitmoThinking
+                    steps={[
+                      `Buscando anotações e 1:1s de ${(review.team_members as any)?.name ?? 'quem você avalia'}...`,
+                      'Cruzando evidências do período...',
+                      'Escrevendo o rascunho com citações...',
+                    ]}
+                  />
+                )}
+                {!editMode && draftText.startsWith('_Preparando') && (
+                  <p className="text-sm text-muted-foreground">As sugestões da cultura estão na aba ao lado. Depois de revisar, clique em "Montar documento".</p>
+                )}
+
                 {/* Legacy HTML banner */}
                 {isLegacyHtmlContent(draftText) && !editMode && (
                   <div className="rounded-xl border border-amber-200 bg-amber-50/80 dark:border-amber-800 dark:bg-amber-950/20 p-4 flex items-start gap-3">
