@@ -214,7 +214,9 @@ function CultureCard({
         {badge && <Badge variant={badge.variant}>{badge.label}</Badge>}
       </div>
 
-      {!item.suggested_text && item.status === 'pending' ? (
+      {busy ? (
+        <RhitmoThinking compact hint={null} title="Reescrevendo este item" steps={['Relendo as evidências...', 'Escrevendo nova sugestão...']} stepMs={3000} />
+      ) : !item.suggested_text && item.status === 'pending' ? (
         <div className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" /> A Rhitmo está lendo as evidências…</div>
       ) : editing ? (
         <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={6} className="rounded-xl" />
