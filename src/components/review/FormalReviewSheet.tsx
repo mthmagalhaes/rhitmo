@@ -238,7 +238,7 @@ export function FormalReviewSheet({
   };
 
   const runMirror = async (): Promise<MirrorResult | null> => {
-    if (!reviewId) return null;
+    if (!reviewId || isPlaceholder) return null;
     setMirrorRunning(true);
     try {
       const res = await invokeMirror({ reviewId, content: draftText });

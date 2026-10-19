@@ -43,12 +43,14 @@ export function CultureGuidedPanel({
   reviewId,
   versionId,
   readOnly,
+  needsAssembly,
   onAssembled,
 }: {
   reviewId: string;
   versionId: string | null;
   readOnly: boolean;
-  onAssembled: (content: string) => void;
+  needsAssembly?: boolean;
+  onAssembled: (content: string, advance: boolean) => void | Promise<void>;
 }) {
   const qc = useQueryClient();
   const { toast } = useToast();
