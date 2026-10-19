@@ -8,6 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Calendar, FileText, Eye, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ReviewViewDialog } from "./ReviewViewDialog";
+import { FormalReviewSheet } from "@/components/review/FormalReviewSheet";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +23,8 @@ interface PerformanceReview {
   created_at: string;
   shared_with_member?: boolean;
   acknowledged_at?: string | null;
+  review_type?: string | null;
+  authoring_mode?: string | null;
 }
 
 interface PerformanceReviewListProps {
@@ -40,6 +43,12 @@ const STATUS_META: Record<ReviewStatus, { label: string; defaultOpen: boolean; t
   acknowledged: { label: 'Confirmada',   defaultOpen: false, tone: 'text-muted-foreground' },
 };
 
+/** Avaliação formal escrita pelo líder: abre o painel completo de revisão. */
+function isLeaderFormal(r: PerformanceReview): boolean {
+  if (r.review_type && r.review_type !== 'manager') return false;
+  return r.period_type === 'formal' || r.authoring_mode === 'culture_guided';
+}
+
 function statusOf(r: PerformanceReview): ReviewStatus {
   if (r.acknowledged_at) return 'acknowledged';
   if (r.shared_with_member) return 'shared';
@@ -56,7 +65,7 @@ export const PerformanceReviewList = ({ memberId, memberName, onCreateReview, sh
     queryFn: async () => {
       const { data, error } = await supabase
         .from('performance_reviews')
-        .select('id, title, content, coaching_tip, period_type, period_start, period_end, created_at, shared_with_member, acknowledged_at')
+        .select('id, title, content, coaching_tip, period_type, period_start, period_end, created_at, shared_with_member, acknowledged_at, review_type, authoring_mode')
         .eq('member_id', memberId)
         .order('created_at', { ascending: false });
 
@@ -211,7 +220,16 @@ export const PerformanceReviewList = ({ memberId, memberName, onCreateReview, sh
         </div>
       )}
 
-      {selectedReview && (
+      {selectedReview && isLeaderFormal(selectedReview) && (
+        <FormalReviewSheet
+          open
+          onOpenChange={(open) => !open && setSelectedReview(null)}
+          reviewId={selectedReview.id}
+          onSent={() => queryClient.invalidateQueries({ queryKey: ['performance-reviews', memberId] })}
+        />
+      )}
+
+      {selectedReview && !isLeaderFormal(selectedReview) && (
         <ReviewViewDialog
           open={!!selectedReview}
           onOpenChange={(open) => !open && setSelectedReview(null)}
