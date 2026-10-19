@@ -12,6 +12,7 @@ import { Check, Loader2, RefreshCw, SkipForward, FileText, Sparkles } from 'luci
 import { useToast } from '@/hooks/use-toast';
 import ReactMarkdown from 'react-markdown';
 import { citationMarkdownComponents } from '@/lib/markdownCitations';
+import { RhitmoThinking } from '@/components/ai/RhitmoThinking';
 
 interface CultureItem {
   id: string;
@@ -89,22 +90,37 @@ export function CultureGuidedPanel({
   };
 
   const reviewed = items.filter((i) => ['accepted', 'edited', 'skipped'].includes(i.status)).length;
-  const pendingSuggestions = items.filter((i) => !i.suggested_text).length;
+  const pendingSuggestions = items.filter((i) => !i.suggested_text && i.status === 'pending').length;
 
-  if (isLoading) return <div className="py-10 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+  // Se as sugestões não avançarem em 90s, mostra erro claro com "Tentar novamente".
+  const [stalled, setStalled] = useState(false);
+  useEffect(() => {
+    setStalled(false);
+    if (pendingSuggestions === 0) return;
+    const t = setTimeout(() => setStalled(true), 90_000);
+    return () => clearTimeout(t);
+  }, [pendingSuggestions]);
+
+  if (isLoading) return <RhitmoThinking hint={null} title="Abrindo os itens da cultura" steps={['Carregando...']} />;
 
   if (items.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed p-6 text-center space-y-3">
-        <p className="text-sm text-muted-foreground">Ainda não há itens da cultura nesta avaliação.</p>
-        {!readOnly && (
-          <Button size="sm" className="rounded-xl" disabled={busy === 'init'} onClick={() => run('init', async () => {
-            await invoke({ action: 'init', reviewId });
-            await invoke({ action: 'suggest_all', reviewId });
-          })}>
-            {busy === 'init' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
-            Preparar itens da cultura
-          </Button>
+        {busy === 'init' ? (
+          <RhitmoThinking className="text-left" steps={['Lendo os valores e a régua da empresa...', 'Buscando anotações e 1:1s...', 'Escrevendo as sugestões...']} />
+        ) : (
+          <>
+            <p className="text-sm text-muted-foreground">Ainda não há itens da cultura nesta avaliação.</p>
+            {!readOnly && (
+              <Button size="sm" className="rounded-xl" onClick={() => run('init', async () => {
+                await invoke({ action: 'init', reviewId });
+                await invoke({ action: 'suggest_all', reviewId });
+              })}>
+                <Sparkles className="h-4 w-4 mr-2" />
+                Preparar itens da cultura
+              </Button>
+            )}
+          </>
         )}
       </div>
     );
@@ -115,12 +131,25 @@ export function CultureGuidedPanel({
       <div className="rounded-2xl bg-muted/40 p-4 space-y-2">
         <div className="flex items-center justify-between text-sm">
           <span className="font-medium">{reviewed} de {items.length} itens revisados</span>
-          {pendingSuggestions > 0 && (
-            <span className="text-xs text-muted-foreground flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> {pendingSuggestions} sugestão(ões) a caminho</span>
-          )}
         </div>
         <Progress value={items.length ? (reviewed / items.length) * 100 : 0} />
       </div>
+
+      {pendingSuggestions > 0 && (
+        <RhitmoThinking
+          error={stalled ? 'As sugestões estão demorando mais que o normal. Você pode pedir de novo, os itens já prontos são mantidos.' : null}
+          onRetry={() => { setStalled(false); run('retry', () => invoke({ action: 'suggest_all', reviewId })); }}
+          steps={[
+            'Buscando anotações e 1:1s do período...',
+            'Lendo os valores e a régua da empresa...',
+            `Escrevendo ${pendingSuggestions} sugestão(ões)...`,
+          ]}
+        />
+      )}
+
+      {busy === 'assemble' && (
+        <RhitmoThinking steps={['Juntando os itens revisados...', 'Montando o documento...']} stepMs={2500} />
+      )}
 
       {items.map((it) => (
         <CultureCard
