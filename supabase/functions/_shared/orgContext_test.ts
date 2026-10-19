@@ -24,3 +24,15 @@ Deno.test("company scale levels come from the published version in order", () =>
   assertEquals(scaleLevels(ctx), ["Precisa subir", "Acima"]);
   assertEquals(scaleLevels(null), []);
 });
+
+import { matchValueTitle, sortScaleLevels } from "./orgContext.ts";
+Deno.test("comportamento liga ao valor por título tolerante", () => {
+  const vals = ["Integridade", "Parceria", "Eficiência"];
+  assertEquals(matchValueTitle(vals, "eficiencia"), "Eficiência");
+  assertEquals(matchValueTitle(vals, "Valor: Parceria"), "Parceria");
+  assertEquals(matchValueTitle(vals, "Tenacidade"), null);
+});
+Deno.test("régua ordena do mais baixo ao mais alto", () => {
+  const r = sortScaleLevels([{ title: "Supera", order: 4 }, { title: "Não atende", order: 1 }, { title: "Atende", order: 3 }, { title: "Parcial", order: 2 }]);
+  assertEquals(r.map((x) => x.title), ["Não atende", "Parcial", "Atende", "Supera"]);
+});
