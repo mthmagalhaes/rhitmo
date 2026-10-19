@@ -999,7 +999,7 @@ Você recebe materiais internos de uma empresa (apresentações, políticas, fra
 2. **Comportamentos** — comportamentos observáveis esperados. Ligue cada comportamento ao valor a que pertence (pelo nome exato do valor) quando o material deixar isso claro. Quando houver, traga exemplos de "acima do esperado", "esperado" e "abaixo do esperado".
 3. **Régua** — a escala de avaliação da empresa (níveis de desempenho, do mais baixo ao mais alto), com a definição de cada nível. Se o material trouxer regras de promoção ou mérito, inclua como níveis/descrição.
 
-Se o material trouxer outras categorias claramente da empresa (ex.: "Princípios de liderança", "Competências técnicas"), devolva-as como **extras**, com o nome da categoria.
+Não crie categorias extras: devolva **extras** sempre vazio. Se o material trouxer dimensões de performance, princípios ou competências, transforme o que for atitude observável em comportamento do valor mais próximo (value_title exato); o que não couber em nenhum valor, ignore.
 
 ## REGRAS
 

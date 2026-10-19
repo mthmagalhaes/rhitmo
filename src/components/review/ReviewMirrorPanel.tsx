@@ -33,15 +33,24 @@ const SEV: Record<MirrorFinding['severity'], { label: string; variant: 'destruct
 const UUID_RE = /^[0-9a-f-]{32,36}$/i;
 
 export function ReviewMirrorPanel({
-  result, running, readOnly, onRun, onDismiss, onApplySuggestion,
+  result, running, readOnly, onRun, onDismiss, onApplySuggestion, waiting,
 }: {
   result: MirrorResult | null;
   running: boolean;
   readOnly: boolean;
+  waiting?: boolean;
   onRun: () => void;
   onDismiss: (index: number) => void;
   onApplySuggestion: (finding: MirrorFinding) => void;
 }) {
+  if (waiting) {
+    return (
+      <div className="rounded-2xl bg-muted/40 p-4 space-y-1">
+        <p className="text-sm font-semibold tracking-tight">Aguardando o documento ficar pronto</p>
+        <p className="text-xs text-muted-foreground">O Espelho revisa o texto final da avaliação. Assim que o Rascunho Geral for montado, você pode revisar aqui.</p>
+      </div>
+    );
+  }
   const open = (result?.findings ?? []).map((f, i) => ({ f, i })).filter(({ f }) => !f.dismissed);
   const dismissed = (result?.findings ?? []).filter((f) => f.dismissed).length;
 
