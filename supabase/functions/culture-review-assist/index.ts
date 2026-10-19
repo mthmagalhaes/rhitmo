@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
     const ctx = review.org_context_version_id
       ? await (async () => {
         const { data: items } = await admin.from("org_context_items")
-          .select("id, kind, category_label, parent_id, title, description, examples, position").eq("version_id", review.org_context_version_id).order("position");
+          .select("id, kind, category_label, parent_id, title, description, examples, position").eq("version_id", review.org_context_version_id).neq("kind", "custom").order("position");
         return items?.length ? { versionId: review.org_context_version_id, version: 0, items } : null;
       })()
       : await loadPublishedOrgContext(admin, workspaceId);

@@ -184,8 +184,6 @@ export default function HRContextoEmpresa() {
   const behaviors = items.filter((i) => i.kind === 'behavior');
   const looseBehaviors = behaviors.filter((b) => !b.parent_id || !values.some((v) => v.id === b.parent_id));
   const scale = items.filter((i) => i.kind === 'scale_level');
-  const custom = items.filter((i) => i.kind === 'custom');
-  const customCats = [...new Set(custom.map((c) => c.category_label || 'Outros'))];
   const editable = !!draft;
 
   return (
@@ -308,22 +306,6 @@ export default function HRContextoEmpresa() {
               ))}
             </Group>
 
-            {customCats.map((cat) => (
-              <Group key={cat} title={cat} onAdd={() => addItem('custom', { category_label: cat })} editable={editable}>
-                {custom.filter((c) => (c.category_label || 'Outros') === cat).map((c) => (
-                  <ItemRow key={c.id} item={c} editable={editable} onSave={updateItem} onDelete={deleteItem} />
-                ))}
-              </Group>
-            ))}
-
-            {(editable || !published) && (
-              <Button variant="outline" className="rounded-xl" onClick={() => {
-                const name = window.prompt('Nome da nova categoria (ex.: Princípios de liderança)');
-                if (name?.trim()) addItem('custom', { category_label: name.trim() });
-              }}>
-                <Plus className="h-4 w-4 mr-2" /> Nova categoria da empresa
-              </Button>
-            )}
           </div>
         )}
       </section>

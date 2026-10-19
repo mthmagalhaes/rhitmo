@@ -1,6 +1,6 @@
 // Caminho "Guiado pela cultura": um cartão por valor/comportamento da empresa.
 // A Rhitmo sugere texto + nível da régua; o líder aceita, edita, regenera ou pula.
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';

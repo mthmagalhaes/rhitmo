@@ -195,7 +195,7 @@ Deno.serve(async (req) => {
       await upsert("behavior", b, { parent_id: parent?.id ?? null, examples });
     }
     for (const s of sortScaleLevels(out.scale_levels ?? [])) await upsert("scale_level", s);
-    for (const e of out.extras ?? []) await upsert("custom", e, { category_label: e.category });
+    // Itens extras ("custom") aposentados: a cultura usa só valores, comportamentos e régua.
 
     await admin.from("org_context_documents").update({ processed_at: new Date().toISOString(), status: "ready" }).in("id", docs.map((d: any) => d.id));
     return json({ versionId: draft.id, ...stats });

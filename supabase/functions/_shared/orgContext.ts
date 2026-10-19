@@ -34,6 +34,7 @@ export async function loadPublishedOrgContext(supabase: any, workspaceId: string
     .from("org_context_items")
     .select("id, kind, category_label, parent_id, title, description, examples, position")
     .eq("version_id", v.id)
+    .neq("kind", "custom") // itens extras da empresa foram aposentados: só valores, comportamentos e régua
     .order("position", { ascending: true });
   if (!items || items.length === 0) return null;
   return { versionId: v.id, version: v.version, items };
@@ -84,7 +85,6 @@ export function assessableItems(ctx: OrgContext): (OrgContextItem & { behaviors:
   return [
     ...values.map((v) => ({ ...v, behaviors: behaviors.filter((b) => b.parent_id === v.id) })),
     ...loose.map((b) => ({ ...b, behaviors: [] })),
-    ...ctx.items.filter((i) => i.kind === "custom").map((c) => ({ ...c, behaviors: [] })),
   ];
 }
 
