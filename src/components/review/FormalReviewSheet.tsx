@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CultureGuidedPanel } from '@/components/review/CultureGuidedPanel';
+import { RhitmoThinking } from '@/components/ai/RhitmoThinking';
 import { ReviewMirrorPanel, type MirrorResult, type MirrorFinding } from '@/components/review/ReviewMirrorPanel';
 import { Compass, ScanSearch } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -350,8 +351,8 @@ export function FormalReviewSheet({
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent side="right" className="sm:max-w-3xl w-full p-0 flex flex-col">
-          <div className="flex-1 flex items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <div className="flex-1 flex items-center justify-center p-8">
+            <RhitmoThinking className="w-full max-w-md" hint={null} title="Abrindo a avaliação" steps={['Carregando a avaliação...']} />
           </div>
         </SheetContent>
       </Sheet>
