@@ -5,7 +5,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
 import { composeSystemPrompt } from "../_shared/soul/loader.ts";
-import { callAI, toolArgs } from "../_shared/orgContext.ts";
+import { callAI, toolArgs, matchValueTitle, sortScaleLevels } from "../_shared/orgContext.ts";
 
 const Body = z.object({
   action: z.enum(["ensure_draft", "extract", "publish"]),
@@ -103,10 +103,7 @@ Deno.serve(async (req) => {
       },
       required: ["title"],
     };
-    const aiData = await callAI({
-      model: "google/gemini-2.5-pro",
-      messages: [{ role: "system", content: systemPrompt }, { role: "user", content: material }],
-      tools: [{
+    const extractTools = [{
         type: "function",
         function: {
           name: "save_org_context",
@@ -115,18 +112,43 @@ Deno.serve(async (req) => {
             type: "object",
             properties: {
               values: { type: "array", items: { ...itemSchema, properties: { ...itemSchema.properties, in_practice: { type: "string" } } } },
-              behaviors: { type: "array", items: { ...itemSchema, properties: { ...itemSchema.properties, value_title: { type: "string" }, above: { type: "string" }, expected: { type: "string" }, below: { type: "string" } } } },
-              scale_levels: { type: "array", items: itemSchema },
+              behaviors: { type: "array", description: "Um item por atitude observável. Nunca deixe vazio se o material descreve atitudes sob os valores.", items: { ...itemSchema, properties: { ...itemSchema.properties, value_title: { type: "string" }, above: { type: "string" }, expected: { type: "string" }, below: { type: "string" } } } },
+              scale_levels: { type: "array", description: "Níveis da régua de desempenho, com order 1 = mais baixo.", items: { ...itemSchema, properties: { ...itemSchema.properties, order: { type: "number" } } } },
               extras: { type: "array", items: { ...itemSchema, properties: { ...itemSchema.properties, category: { type: "string" } }, required: ["title", "category"] } },
             },
             required: ["values", "behaviors", "scale_levels", "extras"],
           },
         },
-      }],
+      }];
+    const aiData = await callAI({
+      model: "google/gemini-2.5-pro",
+      messages: [{ role: "system", content: systemPrompt }, { role: "user", content: material }],
+      tools: extractTools,
       tool_choice: { type: "function", function: { name: "save_org_context" } },
     });
     const out = toolArgs(aiData);
     if (!out) throw new Error("A IA não retornou uma estrutura válida.");
+
+    // Segunda passada focada quando a IA trouxe valores mas não desdobrou comportamentos/régua.
+    const needBehaviors = (out.values?.length ?? 0) > 0 && (out.behaviors?.length ?? 0) === 0;
+    const needScale = (out.scale_levels?.length ?? 0) === 0;
+    if (needBehaviors || needScale) {
+      const valueList = (out.values ?? []).map((v: any) => `- ${v.title}`).join("\n");
+      const retry = await callAI({
+        model: "google/gemini-2.5-pro",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `${material}\n\n---\nValores já identificados:\n${valueList}\n\nAgora desdobre SOMENTE os comportamentos de cada valor (um item por atitude, com value_title exato) e a régua de desempenho, se existir no material. Devolva values e extras vazios.` },
+        ],
+        tools: extractTools,
+        tool_choice: { type: "function", function: { name: "save_org_context" } },
+      });
+      const extra = toolArgs(retry);
+      if (extra) {
+        if (needBehaviors && extra.behaviors?.length) out.behaviors = extra.behaviors;
+        if (needScale && extra.scale_levels?.length) out.scale_levels = extra.scale_levels;
+      }
+    }
 
     const draft = await ensureDraft(admin, workspaceId);
     const { data: existing } = await admin.from("org_context_items").select("id, kind, title, edited_manually, position, category_label").eq("version_id", draft.id);
@@ -160,17 +182,19 @@ Deno.serve(async (req) => {
     };
 
     for (const v of out.values ?? []) {
-      await upsert("value", { ...v, description: [v.description, v.in_practice ? `Na prática: ${v.in_practice}` : ""].filter(Boolean).join(" ") });
+      await upsert("value", { ...v, description: v.description || v.in_practice || null });
     }
     for (const b of out.behaviors ?? []) {
-      const parent = b.value_title ? byKey.get(`value:${norm(b.value_title)}`) : null;
+      const valueTitles = [...byKey.values()].filter((e: any) => e.kind === "value").map((e: any) => e.title);
+      const matched = matchValueTitle(valueTitles, b.value_title);
+      const parent = matched ? byKey.get(`value:${norm(matched)}`) : null;
       const examples: Record<string, string> = {};
       if (b.above) examples.above = b.above;
       if (b.expected) examples.expected = b.expected;
       if (b.below) examples.below = b.below;
       await upsert("behavior", b, { parent_id: parent?.id ?? null, examples });
     }
-    for (const s of out.scale_levels ?? []) await upsert("scale_level", s);
+    for (const s of sortScaleLevels(out.scale_levels ?? [])) await upsert("scale_level", s);
     for (const e of out.extras ?? []) await upsert("custom", e, { category_label: e.category });
 
     await admin.from("org_context_documents").update({ processed_at: new Date().toISOString(), status: "ready" }).in("id", docs.map((d: any) => d.id));

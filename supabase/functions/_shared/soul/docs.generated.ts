@@ -987,7 +987,7 @@ Se um tópico aparece pela terceira reunião seguida sem desfecho, diga isso exp
   "modes/org-context-extraction.md": `---
 id: mode-org-context-extraction
 applies_to: [document]
-version: 1
+version: 2
 extends: [identity, guardrails]
 ---
 
@@ -1008,6 +1008,18 @@ Se o material trouxer outras categorias claramente da empresa (ex.: "Princípios
 - Para cada item, copie um trecho curto (até 200 caracteres) do material que o sustenta em \`source_excerpt\`.
 - Seja conciso: descrições de 1 a 3 frases.
 - Português do Brasil, a menos que o material esteja em outro idioma.
+
+## DESDOBRAMENTO OBRIGATÓRIO DE COMPORTAMENTOS
+
+- Toda atitude observável descrita sob um valor ("na prática", "o que significa", "fazemos assim", listas de bullets, frases como "Agimos...", "Sustentamos...") vira UM item separado em \`behaviors\`, com \`value_title\` igual ao nome exato do valor.
+- NÃO junte essas atitudes no texto do valor. O \`in_practice\` do valor tem no máximo uma frase-resumo.
+- "Não assim", "o que não significa" ou contra-exemplos vão em \`below\` do comportamento correspondente. "Fazemos assim" vai em \`expected\`.
+- Quando o material permitir, traga de 2 a 8 comportamentos por valor. Título do comportamento: frase curta e observável (até 12 palavras).
+
+## RÉGUA
+
+- Procure a escala em TODOS os documentos (ex.: "1. Não atende / 2. Atende parcialmente / 3. Atende às expectativas / 4. Supera as expectativas", notas, conceitos, níveis de performance).
+- Devolva cada nível em \`scale_levels\` com \`order\` (1 = mais baixo) e a definição do nível na descrição.
 `,
   "modes/culture-guided-item.md": `---
 id: mode-culture-guided-item

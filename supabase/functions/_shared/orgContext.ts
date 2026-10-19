@@ -141,3 +141,26 @@ export function toolArgs(aiData: any): any {
   if (!call) return null;
   try { return JSON.parse(call.function.arguments); } catch { return null; }
 }
+
+// ---- Extração: helpers puros (testáveis) ----
+const normTitle = (s: string) => (s ?? "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
+
+/** Acha o valor-pai pelo título: exato normalizado, depois "contém" em qualquer direção. */
+export function matchValueTitle(valueTitles: string[], wanted: string | null | undefined): string | null {
+  if (!wanted) return null;
+  const w = normTitle(wanted);
+  if (!w) return null;
+  const exact = valueTitles.find((t) => normTitle(t) === w);
+  if (exact) return exact;
+  const partial = valueTitles.filter((t) => { const n = normTitle(t); return n && (w.includes(n) || n.includes(w)); });
+  return partial.length === 1 ? partial[0] : null;
+}
+
+/** Ordena níveis da régua do mais baixo ao mais alto usando `order` quando vier. */
+export function sortScaleLevels<T extends { order?: number | null }>(levels: T[]): T[] {
+  return levels.map((l, i) => ({ l, i })).sort((a, b) => {
+    const ao = typeof a.l.order === "number" ? a.l.order : Number.MAX_SAFE_INTEGER;
+    const bo = typeof b.l.order === "number" ? b.l.order : Number.MAX_SAFE_INTEGER;
+    return ao - bo || a.i - b.i;
+  }).map((x) => x.l);
+}
