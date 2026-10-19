@@ -5,7 +5,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
 import { composeSystemPrompt } from "../_shared/soul/loader.ts";
-import { callAI, toolArgs } from "../_shared/orgContext.ts";
+import { callAI, toolArgs, matchValueTitle, sortScaleLevels } from "../_shared/orgContext.ts";
 
 const Body = z.object({
   action: z.enum(["ensure_draft", "extract", "publish"]),
@@ -115,8 +115,8 @@ Deno.serve(async (req) => {
             type: "object",
             properties: {
               values: { type: "array", items: { ...itemSchema, properties: { ...itemSchema.properties, in_practice: { type: "string" } } } },
-              behaviors: { type: "array", items: { ...itemSchema, properties: { ...itemSchema.properties, value_title: { type: "string" }, above: { type: "string" }, expected: { type: "string" }, below: { type: "string" } } } },
-              scale_levels: { type: "array", items: itemSchema },
+              behaviors: { type: "array", description: "Um item por atitude observável. Nunca deixe vazio se o material descreve atitudes sob os valores.", items: { ...itemSchema, properties: { ...itemSchema.properties, value_title: { type: "string" }, above: { type: "string" }, expected: { type: "string" }, below: { type: "string" } } } },
+              scale_levels: { type: "array", description: "Níveis da régua de desempenho, com order 1 = mais baixo.", items: { ...itemSchema, properties: { ...itemSchema.properties, order: { type: "number" } } } },
               extras: { type: "array", items: { ...itemSchema, properties: { ...itemSchema.properties, category: { type: "string" } }, required: ["title", "category"] } },
             },
             required: ["values", "behaviors", "scale_levels", "extras"],
@@ -127,6 +127,22 @@ Deno.serve(async (req) => {
     });
     const out = toolArgs(aiData);
     if (!out) throw new Error("A IA não retornou uma estrutura válida.");
+
+    // Segunda passada focada quando a IA trouxe valores mas não desdobrou comportamentos/régua.
+    const needBehaviors = (out.values?.length ?? 0) > 0 && (out.behaviors?.length ?? 0) === 0;
+    const needScale = (out.scale_levels?.length ?? 0) === 0;
+    if (needBehaviors || needScale) {
+      const valueList = (out.values ?? []).map((v: any) => `- ${v.title}`).join("\n");
+      const retry = await callAI({
+        model: "google/gemini-2.5-pro",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `${material}\n\n---\nValores já identificados:\n${valueList}\n\nAgora desdobre SOMENTE os comportamentos de cada valor (um item por atitude, com value_title exato) e a régua de desempenho, se existir no material. Devolva values e extras vazios.` },
+        ],
+        tools: aiData && (arguments as any) ? undefined : undefined,
+      }).catch(() => null);
+      void retry;
+    }
 
     const draft = await ensureDraft(admin, workspaceId);
     const { data: existing } = await admin.from("org_context_items").select("id, kind, title, edited_manually, position, category_label").eq("version_id", draft.id);
