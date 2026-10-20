@@ -438,8 +438,8 @@ export function FormalReviewSheet({
           </div>
 
           {isCultureGuided && (
-            <TabsContent value="culture" forceMount className="flex-1 px-6 mt-4 min-h-0 data-[state=inactive]:hidden">
-              <ScrollArea className="h-[calc(100vh-280px)]">
+            <TabsContent value="culture" forceMount className="flex-1 px-6 mt-4 min-h-0 overflow-hidden data-[state=inactive]:hidden">
+              <ScrollArea className="h-full">
                 <div className="pr-4 pb-6">
                   <CultureGuidedPanel
                     reviewId={reviewId!}
@@ -458,8 +458,8 @@ export function FormalReviewSheet({
             </TabsContent>
           )}
 
-          <TabsContent value="mirror" className="flex-1 px-6 mt-4 min-h-0">
-            <ScrollArea className="h-[calc(100vh-280px)]">
+          <TabsContent value="mirror" className="flex-1 px-6 mt-4 min-h-0 overflow-hidden data-[state=inactive]:hidden">
+            <ScrollArea className="h-full">
               <div className="pr-4 pb-6">
                 <ReviewMirrorPanel
                   result={mirrorResult}
@@ -475,8 +475,8 @@ export function FormalReviewSheet({
           </TabsContent>
 
           {/* Draft tab */}
-          <TabsContent value="draft" className="flex-1 px-6 mt-4 min-h-0">
-            <ScrollArea className="h-[calc(100vh-280px)]">
+          <TabsContent value="draft" className="flex-1 px-6 mt-4 min-h-0 overflow-hidden data-[state=inactive]:hidden">
+            <ScrollArea className="h-full">
               <div className="space-y-3 pr-4 pb-6">
                 {/* Coaching tip — collapsible, persisted per review */}
                 {review.coaching_tip && (
