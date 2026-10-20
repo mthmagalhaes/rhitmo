@@ -9,7 +9,8 @@ import {
   DialogTitle as SheetTitle,
   DialogFooter as SheetFooter,
 } from '@/components/ui/dialog';
-import { markdownToEditorHtml, editorHtmlToMarkdown, normalizeReviewHeadings } from '@/lib/reviewMarkdown';
+import { markdownToEditorHtml, editorHtmlToMarkdown, normalizeReviewHeadings, looksLikeHtml, normalizeLegacyReviewHtml } from '@/lib/reviewMarkdown';
+import DOMPurify from 'dompurify';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,

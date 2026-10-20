@@ -33,3 +33,9 @@ describe('italic level', () => {
     expect(normalizeReviewHeadings(s)).toBe('### Parceria — _Atende as expectativas_\n\nNo período avaliado, Laís demonstrou parceria ao manter alinhamento frequente.');
   });
 });
+
+import { normalizeLegacyReviewHtml as nl, looksLikeHtml as lh } from './reviewMarkdown';
+test('legacy html: lone bold paragraph becomes heading, empty p removed', () => {
+  expect(nl('<p><strong>Entregas</strong></p><p></p><p>Texto</p>')).toBe('<h3>Entregas</h3><p>Texto</p>');
+  expect(lh('## Título\n\nTexto')).toBe(false);
+});

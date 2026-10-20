@@ -13,6 +13,7 @@ import { CitationCounterProvider } from '@/components/context/CitationCounterPro
 import { marked } from 'marked';
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import DOMPurify from 'dompurify';
+import { normalizeLegacyReviewHtml } from '@/lib/reviewMarkdown';
 import { useQueryClient } from "@tanstack/react-query";
 
 interface PerformanceReview {
