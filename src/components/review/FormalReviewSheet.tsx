@@ -3,12 +3,13 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-} from '@/components/ui/sheet';
+  Dialog as Sheet,
+  DialogContent as SheetContent,
+  DialogHeader as SheetHeader,
+  DialogTitle as SheetTitle,
+  DialogFooter as SheetFooter,
+} from '@/components/ui/dialog';
+import { markdownToEditorHtml, editorHtmlToMarkdown } from '@/lib/reviewMarkdown';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CultureGuidedPanel } from '@/components/review/CultureGuidedPanel';
 import { RhitmoThinking } from '@/components/ai/RhitmoThinking';
@@ -109,6 +110,7 @@ export function FormalReviewSheet({
   const [activeTab, setActiveTab] = useState('draft');
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [editorHtml, setEditorHtml] = useState('');
   const [coachingOpen, setCoachingOpen] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [mirrorRunning, setMirrorRunning] = useState(false);
@@ -352,7 +354,7 @@ export function FormalReviewSheet({
   if (isLoading) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="right" className="sm:max-w-3xl w-full p-0 flex flex-col">
+        <SheetContent className="max-w-[1200px] w-[94vw] h-[92vh] p-0 gap-0 flex flex-col rounded-3xl overflow-hidden">
           <div className="flex-1 flex items-center justify-center p-8">
             <RhitmoThinking className="w-full max-w-md" hint={null} title="Abrindo a avaliação" steps={['Carregando a avaliação...']} />
           </div>
@@ -367,7 +369,7 @@ export function FormalReviewSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="sm:max-w-3xl w-full p-0 flex flex-col">
+      <SheetContent className="max-w-[1200px] w-[94vw] h-[92vh] p-0 gap-0 flex flex-col rounded-3xl overflow-hidden">
         {/* Header */}
         <SheetHeader className="px-6 pt-6 pb-4 border-b space-y-3">
           <div className="flex items-center justify-between">
@@ -576,7 +578,10 @@ export function FormalReviewSheet({
                     size="sm"
                     variant="outline"
                     className="gap-1.5 shrink-0"
-                    onClick={() => setEditMode((m) => !m)}
+                    onClick={() => {
+                      if (!editMode) setEditorHtml(markdownToEditorHtml(draftText));
+                      setEditMode((m) => !m);
+                    }}
                   >
                     {editMode ? (
                       <>
@@ -617,8 +622,11 @@ export function FormalReviewSheet({
                   </div>
                 ) : (
                   <RichTextEditor
-                    content={draftText}
-                    onChange={setDraftText}
+                    content={editorHtml}
+                    onChange={(html) => {
+                      setEditorHtml(html);
+                      setDraftText(editorHtmlToMarkdown(html));
+                    }}
                     placeholder="Digite a avaliação geral do liderado no período..."
                     minHeight="400px"
                   />
