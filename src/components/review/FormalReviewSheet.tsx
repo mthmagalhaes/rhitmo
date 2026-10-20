@@ -371,11 +371,45 @@ export function FormalReviewSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="max-w-[1200px] w-[94vw] h-[92vh] p-0 gap-0 flex flex-col rounded-3xl overflow-hidden">
         {/* Header */}
-        <SheetHeader className="px-6 pt-6 pb-4 border-b space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <SheetTitle className="text-xl tracking-tight">Avaliação Formal</SheetTitle>
-              <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">
+        <SheetHeader className="px-6 pt-6 pb-4 pr-14 border-b space-y-3">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                {renaming ? (
+                  <form
+                    className="flex items-center gap-2"
+                    onSubmit={(e) => { e.preventDefault(); renameMutation.mutate(titleDraft.trim()); }}
+                  >
+                    <Input
+                      autoFocus
+                      value={titleDraft}
+                      onChange={(e) => setTitleDraft(e.target.value)}
+                      className="h-9 w-[320px] max-w-full rounded-xl"
+                      onKeyDown={(e) => { if (e.key === 'Escape') setRenaming(false); }}
+                    />
+                    <Button type="submit" size="sm" disabled={!titleDraft.trim() || renameMutation.isPending}>
+                      {renameMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}
+                    </Button>
+                    <Button type="button" size="sm" variant="ghost" onClick={() => setRenaming(false)}>Cancelar</Button>
+                  </form>
+                ) : (
+                  <SheetTitle className="text-xl tracking-tight">{(review as any).title || 'Avaliação Formal'}</SheetTitle>
+                )}
+                {review.acknowledged_at ? (
+                  <Badge className="gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800">
+                    <CheckCircle2 className="w-3 h-3" /> Confirmada
+                  </Badge>
+                ) : review.shared_with_member ? (
+                  <Badge className="gap-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800">
+                    <Send className="w-3 h-3" /> Enviada
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="gap-1">
+                    <FileText className="w-3 h-3" /> Rascunho
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground flex-wrap">
                 <span className="flex items-center gap-1.5">
                   <User className="h-3.5 w-3.5" />
                   {memberData?.name}
@@ -393,24 +427,27 @@ export function FormalReviewSheet({
                 )}
               </div>
             </div>
-            <div className="flex flex-col items-end gap-1">
-              {review.acknowledged_at && (
-                <Badge className="gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800">
-                  <CheckCircle2 className="w-3 h-3" />
-                  Confirmada
-                </Badge>
+            <div className="flex items-center gap-2 flex-wrap">
+              {!renaming && (
+                <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { setTitleDraft((review as any).title || ''); setRenaming(true); }}>
+                  <Pencil className="h-4 w-4" /> Renomear
+                </Button>
               )}
-              {review.shared_with_member && !review.acknowledged_at && (
-                <Badge className="gap-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800">
-                  <Send className="w-3 h-3" />
-                  Enviada
-                </Badge>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExportPdf} disabled={isPlaceholder}>
+                <Printer className="h-4 w-4" /> Exportar PDF
+              </Button>
+              {review.shared_with_member && (
+                <Button variant="outline" size="sm" className="gap-1.5" onClick={() => unshareMutation.mutate()} disabled={unshareMutation.isPending}>
+                  {unshareMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <EyeOff className="h-4 w-4" />}
+                  Revogar acesso
+                </Button>
               )}
-              {!review.shared_with_member && (
-                <Badge variant="secondary" className="gap-1">
-                  <FileText className="w-3 h-3" />
-                  Rascunho
-                </Badge>
+              {!review.shared_with_member && !(review as any).acknowledged_at && (
+                <DeleteDraftReviewButton
+                  reviewId={reviewId}
+                  label={(review as any).title}
+                  onDeleted={() => { onOpenChange(false); onSent?.(); }}
+                />
               )}
             </div>
           </div>
