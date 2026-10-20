@@ -27,8 +27,8 @@ function normalizeReviewHeadings(md: string): string {
     const rel = body.slice(from).search(/[.:]\s+\S/);
     if (rel < 0) return line;
     const cut = from + rel;
-    const title = body.slice(0, cut).trim();
-    const rest = body.slice(cut + 1).trim();
+    const title = body.slice(0, cut).trim() + (m![1].slice(1));
+    const rest = body.slice(cut + m![1].length).trim();
     return title && rest ? `${hashes} ${title}\n\n${rest}` : line;
   });
 }

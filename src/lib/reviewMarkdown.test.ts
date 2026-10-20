@@ -27,3 +27,9 @@ describe('normalizeReviewHeadings', () => {
   it('keeps short heading', () => { expect(normalizeReviewHeadings('## Visão geral')).toBe('## Visão geral'); });
   it('is idempotent', () => { const a = normalizeReviewHeadings(long); expect(normalizeReviewHeadings(a)).toBe(a); });
 });
+describe('italic level', () => {
+  it('splits after italic level', () => {
+    const s = '### Parceria — _Atende as expectativas._ No período avaliado, Laís demonstrou parceria ao manter alinhamento frequente.';
+    expect(normalizeReviewHeadings(s)).toBe('### Parceria — _Atende as expectativas_\n\nNo período avaliado, Laís demonstrou parceria ao manter alinhamento frequente.');
+  });
+});

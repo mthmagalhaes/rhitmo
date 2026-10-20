@@ -35,11 +35,12 @@ export function normalizeReviewHeadings(md: string): string {
     if (body.length <= 90) return line;
     const dash = body.search(/\s[—–-]\s/);
     const from = dash >= 0 ? dash + 3 : 0;
-    const rel = body.slice(from).search(/[.:]\s+\S/);
+    const m = /([.:][_*]*)\s+\S/.exec(body.slice(from));
+    const rel = m ? m.index : -1;
     if (rel < 0) return line;
     const cut = from + rel;
-    const title = body.slice(0, cut).trim();
-    const rest = body.slice(cut + 1).trim();
+    const title = body.slice(0, cut).trim() + (m![1].slice(1));
+    const rest = body.slice(cut + m![1].length).trim();
     if (!title || !rest) return line;
     return `${hashes} ${title}\n\n${rest}`;
   });
