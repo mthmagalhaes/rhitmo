@@ -10,6 +10,10 @@ import {
   DialogFooter as SheetFooter,
 } from '@/components/ui/dialog';
 import { markdownToEditorHtml, editorHtmlToMarkdown, normalizeReviewHeadings } from '@/lib/reviewMarkdown';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CultureGuidedPanel } from '@/components/review/CultureGuidedPanel';
 import { RhitmoThinking } from '@/components/ai/RhitmoThinking';
