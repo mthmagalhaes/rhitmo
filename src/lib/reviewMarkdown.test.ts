@@ -1,3 +1,4 @@
+// @ts-nocheck — run with: bun test src/lib/reviewMarkdown.test.ts
 import { describe, it, expect } from 'bun:test';
 import { markdownToEditorHtml, editorHtmlToMarkdown } from './reviewMarkdown';
 
