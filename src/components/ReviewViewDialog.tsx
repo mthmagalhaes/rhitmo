@@ -324,7 +324,7 @@ export const ReviewViewDialog = ({
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+          <DialogHeader className="pr-10">
             <DialogTitle className="flex items-center justify-between">
               {editing ? "Editar Avaliação" : review.title}
               <div className="flex gap-2">

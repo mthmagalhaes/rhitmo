@@ -214,6 +214,7 @@ export const PerformanceReviewList = ({ memberId, memberName, onCreateReview, sh
                         {status === 'draft' && isLeaderFormal(review) && (
                           <DeleteDraftReviewButton
                             reviewId={review.id}
+                            label={review.title}
                             variant="icon"
                             className="opacity-0 group-hover/row:opacity-100 focus:opacity-100 shrink-0"
                             onDeleted={() => setSelectedReview((s) => (s?.id === review.id ? null : s))}

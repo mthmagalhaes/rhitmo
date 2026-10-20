@@ -40,7 +40,11 @@ import {
   Eye,
   AlertCircle,
   RefreshCw,
+  Printer,
+  EyeOff,
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { printReview } from '@/lib/printReview';
 import ReactMarkdown from 'react-markdown';
 import { citationMarkdownComponents } from '@/lib/markdownCitations';
 import { CitationCounterProvider } from '@/components/context/CitationCounterProvider';
@@ -116,6 +120,8 @@ export function FormalReviewSheet({
   const [mirrorRunning, setMirrorRunning] = useState(false);
   const [mirrorResult, setMirrorResult] = useState<MirrorResult | null>(null);
   const [mirrorCheckedText, setMirrorCheckedText] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
 
   // Persist coaching tip open/closed per review
   useEffect(() => {
@@ -339,6 +345,41 @@ export function FormalReviewSheet({
     },
   });
 
+  const renameMutation = useMutation({
+    mutationFn: async (title: string) => {
+      const { error } = await supabase
+        .from('performance_reviews')
+        .update({ title, updated_at: new Date().toISOString() })
+        .eq('id', reviewId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setRenaming(false);
+      queryClient.invalidateQueries({ queryKey: ['formal-review', reviewId] });
+      queryClient.invalidateQueries({ queryKey: ['performance-reviews'] });
+      queryClient.invalidateQueries({ queryKey: ['team-performance-reviews'] });
+      toast({ title: 'Nome atualizado' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Erro ao renomear', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const handleExportPdf = () => {
+    if (!review) return;
+    const md = review.team_members as any;
+    const period = review.period_start && review.period_end
+      ? `${format(new Date(review.period_start), 'dd/MM/yyyy', { locale: ptBR })} a ${format(new Date(review.period_end), 'dd/MM/yyyy', { locale: ptBR })}`
+      : undefined;
+    const ok = printReview({
+      title: (review as any).title || 'Avaliação Formal',
+      content: draftText || (review as any).content || '',
+      memberName: md?.name,
+      periodText: period,
+    });
+    if (!ok) toast({ title: 'Não foi possível abrir a impressão', description: 'Libere pop-ups para este site.', variant: 'destructive' });
+  };
+
   const updateRating = (compId: string, rating: string) => {
     setCompetencyEvaluations((prev) =>
       prev.map((e) => (e.competency_id === compId ? { ...e, rating: rating as any } : e))
@@ -371,11 +412,45 @@ export function FormalReviewSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="max-w-[1200px] w-[94vw] h-[92vh] p-0 gap-0 flex flex-col rounded-3xl overflow-hidden">
         {/* Header */}
-        <SheetHeader className="px-6 pt-6 pb-4 border-b space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <SheetTitle className="text-xl tracking-tight">Avaliação Formal</SheetTitle>
-              <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">
+        <SheetHeader className="px-6 pt-6 pb-4 pr-14 border-b space-y-3">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                {renaming ? (
+                  <form
+                    className="flex items-center gap-2"
+                    onSubmit={(e) => { e.preventDefault(); renameMutation.mutate(titleDraft.trim()); }}
+                  >
+                    <Input
+                      autoFocus
+                      value={titleDraft}
+                      onChange={(e) => setTitleDraft(e.target.value)}
+                      className="h-9 w-[320px] max-w-full rounded-xl"
+                      onKeyDown={(e) => { if (e.key === 'Escape') setRenaming(false); }}
+                    />
+                    <Button type="submit" size="sm" disabled={!titleDraft.trim() || renameMutation.isPending}>
+                      {renameMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}
+                    </Button>
+                    <Button type="button" size="sm" variant="ghost" onClick={() => setRenaming(false)}>Cancelar</Button>
+                  </form>
+                ) : (
+                  <SheetTitle className="text-xl tracking-tight">{(review as any).title || 'Avaliação Formal'}</SheetTitle>
+                )}
+                {review.acknowledged_at ? (
+                  <Badge className="gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800">
+                    <CheckCircle2 className="w-3 h-3" /> Confirmada
+                  </Badge>
+                ) : review.shared_with_member ? (
+                  <Badge className="gap-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800">
+                    <Send className="w-3 h-3" /> Enviada
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="gap-1">
+                    <FileText className="w-3 h-3" /> Rascunho
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground flex-wrap">
                 <span className="flex items-center gap-1.5">
                   <User className="h-3.5 w-3.5" />
                   {memberData?.name}
@@ -393,24 +468,27 @@ export function FormalReviewSheet({
                 )}
               </div>
             </div>
-            <div className="flex flex-col items-end gap-1">
-              {review.acknowledged_at && (
-                <Badge className="gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800">
-                  <CheckCircle2 className="w-3 h-3" />
-                  Confirmada
-                </Badge>
+            <div className="flex items-center gap-2 flex-wrap">
+              {!renaming && (
+                <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { setTitleDraft((review as any).title || ''); setRenaming(true); }}>
+                  <Pencil className="h-4 w-4" /> Renomear
+                </Button>
               )}
-              {review.shared_with_member && !review.acknowledged_at && (
-                <Badge className="gap-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800">
-                  <Send className="w-3 h-3" />
-                  Enviada
-                </Badge>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExportPdf} disabled={isPlaceholder}>
+                <Printer className="h-4 w-4" /> Exportar PDF
+              </Button>
+              {review.shared_with_member && (
+                <Button variant="outline" size="sm" className="gap-1.5" onClick={() => unshareMutation.mutate()} disabled={unshareMutation.isPending}>
+                  {unshareMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <EyeOff className="h-4 w-4" />}
+                  Revogar acesso
+                </Button>
               )}
-              {!review.shared_with_member && (
-                <Badge variant="secondary" className="gap-1">
-                  <FileText className="w-3 h-3" />
-                  Rascunho
-                </Badge>
+              {!review.shared_with_member && !(review as any).acknowledged_at && (
+                <DeleteDraftReviewButton
+                  reviewId={reviewId}
+                  label={(review as any).title}
+                  onDeleted={() => { onOpenChange(false); onSent?.(); }}
+                />
               )}
             </div>
           </div>
@@ -438,8 +516,8 @@ export function FormalReviewSheet({
           </div>
 
           {isCultureGuided && (
-            <TabsContent value="culture" forceMount className="flex-1 px-6 mt-4 min-h-0 data-[state=inactive]:hidden">
-              <ScrollArea className="h-[calc(100vh-280px)]">
+            <TabsContent value="culture" forceMount className="flex-1 px-6 mt-4 min-h-0 overflow-hidden data-[state=inactive]:hidden">
+              <ScrollArea className="h-full">
                 <div className="pr-4 pb-6">
                   <CultureGuidedPanel
                     reviewId={reviewId!}
@@ -458,8 +536,8 @@ export function FormalReviewSheet({
             </TabsContent>
           )}
 
-          <TabsContent value="mirror" className="flex-1 px-6 mt-4 min-h-0">
-            <ScrollArea className="h-[calc(100vh-280px)]">
+          <TabsContent value="mirror" className="flex-1 px-6 mt-4 min-h-0 overflow-hidden data-[state=inactive]:hidden">
+            <ScrollArea className="h-full">
               <div className="pr-4 pb-6">
                 <ReviewMirrorPanel
                   result={mirrorResult}
@@ -475,8 +553,8 @@ export function FormalReviewSheet({
           </TabsContent>
 
           {/* Draft tab */}
-          <TabsContent value="draft" className="flex-1 px-6 mt-4 min-h-0">
-            <ScrollArea className="h-[calc(100vh-280px)]">
+          <TabsContent value="draft" className="flex-1 px-6 mt-4 min-h-0 overflow-hidden data-[state=inactive]:hidden">
+            <ScrollArea className="h-full">
               <div className="space-y-3 pr-4 pb-6">
                 {/* Coaching tip — collapsible, persisted per review */}
                 {review.coaching_tip && (
@@ -644,46 +722,27 @@ export function FormalReviewSheet({
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Fechar
               </Button>
-              {!review.shared_with_member && !(review as any).acknowledged_at && (
-                <DeleteDraftReviewButton
-                  reviewId={reviewId}
-                  onDeleted={() => { onOpenChange(false); onSent?.(); }}
-                />
-              )}
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => saveDraftMutation.mutate()}
-                disabled={saveDraftMutation.isPending}
-              >
-                {saveDraftMutation.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="mr-2 h-4 w-4" />
-                )}
-                Salvar Rascunho
-              </Button>
-              {!review.shared_with_member ? (
+            {!review.shared_with_member && (
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => saveDraftMutation.mutate()}
+                  disabled={saveDraftMutation.isPending}
+                >
+                  {saveDraftMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  Salvar Rascunho
+                </Button>
                 <Button onClick={handleShareClick} disabled={mirrorRunning}>
                   <Share2 className="mr-2 h-4 w-4" />
                   Compartilhar com Liderado
                 </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  onClick={() => unshareMutation.mutate()}
-                  disabled={unshareMutation.isPending}
-                >
-                  {unshareMutation.isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Share2 className="mr-2 h-4 w-4" />
-                  )}
-                  Remover Compartilhamento
-                </Button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </SheetFooter>
 

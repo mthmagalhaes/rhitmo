@@ -17,9 +17,11 @@ interface Props {
   variant?: 'button' | 'icon';
   className?: string;
   onDeleted?: () => void;
+  /** Título mostrado na confirmação, para evitar excluir o rascunho errado. */
+  label?: string | null;
 }
 
-export function DeleteDraftReviewButton({ reviewId, variant = 'button', className, onDeleted }: Props) {
+export function DeleteDraftReviewButton({ reviewId, variant = 'button', className, onDeleted, label }: Props) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const qc = useQueryClient();
@@ -76,7 +78,7 @@ export function DeleteDraftReviewButton({ reviewId, variant = 'button', classNam
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir este rascunho?</AlertDialogTitle>
+            <AlertDialogTitle>{label ? `Excluir "${label}"?` : 'Excluir este rascunho?'}</AlertDialogTitle>
             <AlertDialogDescription>
               Esta ação não pode ser desfeita. O liderado nunca viu este rascunho.
             </AlertDialogDescription>
