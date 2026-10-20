@@ -278,16 +278,12 @@ export function FormalReviewSheet({
     }
   };
 
-  // Espelho roda automaticamente ao compartilhar: avisa, não bloqueia.
+  // Espelho roda uma vez ao compartilhar: avisa, nunca bloqueia.
+  const [mirrorWarnCount, setMirrorWarnCount] = useState(0);
   const handleShareClick = async () => {
-    // Texto já revisado e sem mudanças: respeita o que o líder ignorou, não revisa de novo.
-    const res = mirrorCheckedText === draftText && mirrorResult ? mirrorResult : await runMirror();
+    const res = mirrorResult ?? await runMirror();
     const pending = (res?.findings ?? []).filter((f) => !f.dismissed && f.severity !== 'low').length;
-    if (pending > 0) {
-      setActiveTab('mirror');
-      toast({ title: `O Espelho encontrou ${pending} ponto(s) para revisar`, description: 'Revise ou ignore os alertas e clique em compartilhar de novo.' });
-      return;
-    }
+    if (pending > 0) { setMirrorWarnCount(pending); return; }
     setShareDialogOpen(true);
   };
 
@@ -309,6 +305,7 @@ export function FormalReviewSheet({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['formal-review', reviewId] });
       queryClient.invalidateQueries({ queryKey: ['performance-reviews'] });
+      queryClient.invalidateQueries({ queryKey: ['team-performance-reviews'] });
       toast({ title: `Avaliação compartilhada com ${(review as any)?.team_members?.name || 'liderado'}!` });
       setShareDialogOpen(false);
       onSent?.();
@@ -745,6 +742,21 @@ export function FormalReviewSheet({
             )}
           </div>
         </SheetFooter>
+
+        <AlertDialog open={mirrorWarnCount > 0} onOpenChange={(o) => { if (!o) setMirrorWarnCount(0); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>O Espelho tem {mirrorWarnCount} ponto(s) em aberto</AlertDialogTitle>
+              <AlertDialogDescription>
+                Os alertas são só sugestões. Você pode revisar antes ou compartilhar agora com o texto atual, incluindo as sugestões que já aceitou.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => { setMirrorWarnCount(0); setActiveTab('mirror'); }}>Revisar no Espelho</AlertDialogCancel>
+              <AlertDialogAction onClick={() => { setMirrorWarnCount(0); setShareDialogOpen(true); }}>Compartilhar mesmo assim</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <ShareReviewDialog
           open={shareDialogOpen}
