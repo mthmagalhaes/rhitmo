@@ -16,9 +16,22 @@ export function isHtml(text: string): boolean {
   return /^\s*<(p|h[1-6]|ul|ol|div|blockquote)[\s>]/i.test(text || '');
 }
 
+// Legacy reviews were stored as HTML (sometimes with stray tags mid-text).
+export function looksLikeHtml(text: string): boolean {
+  return isHtml(text) || /<\/(p|h[1-6]|li|ul|ol|strong|em)>/i.test(text || '');
+}
+
+// Legacy HTML: lone bold paragraphs become headings; empty paragraphs removed.
+export function normalizeLegacyReviewHtml(html: string): string {
+  if (!html) return html;
+  return html
+    .replace(/<p>\s*(?:<br\s*\/?>|&nbsp;|\s)*<\/p>/gi, '')
+    .replace(/<p>\s*<strong>([^<]{1,120})<\/strong>\s*:?\s*<\/p>/gi, '<h3>$1</h3>');
+}
+
 export function markdownToEditorHtml(md: string): string {
   if (!md) return '';
-  if (isHtml(md)) return md;
+  if (looksLikeHtml(md)) return normalizeLegacyReviewHtml(md);
   return marked.parse(normalizeReviewHeadings(md), { async: false, gfm: true, breaks: false }) as string;
 }
 

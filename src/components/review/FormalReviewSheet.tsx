@@ -692,11 +692,15 @@ export function FormalReviewSheet({
                         prose-blockquote:text-muted-foreground prose-blockquote:not-italic prose-blockquote:text-xs
                         prose-blockquote:my-1.5 prose-blockquote:font-normal"
                     >
+                      {looksLikeHtml(draftText) ? (
+                        <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(normalizeLegacyReviewHtml(draftText)) }} />
+                      ) : (
                       <CitationCounterProvider>
                         <ReactMarkdown components={{ em: EvidenceTag, ...citationMarkdownComponents }}>
                           {normalizeReviewHeadings(draftText) || '_Sem conteúdo ainda._'}
                         </ReactMarkdown>
                       </CitationCounterProvider>
+                      )}
                     </div>
                   </div>
                 ) : (
