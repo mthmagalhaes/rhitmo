@@ -46,7 +46,7 @@ export function DeleteDraftReviewButton({ reviewId, variant = 'button', classNam
     setOpen(false);
     toast({ title: 'Rascunho excluído' });
     qc.invalidateQueries({ queryKey: ['performance-reviews'] });
-    qc.invalidateQueries({ queryKey: ['team-reviews-summary'] });
+    qc.invalidateQueries({ queryKey: ['team-performance-reviews'] });
     qc.removeQueries({ queryKey: ['formal-review', reviewId] });
     onDeleted?.();
   };
