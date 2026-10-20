@@ -29,6 +29,7 @@ const FILES = [
   "modes/one-on-one-draft.md",
   "modes/org-context-extraction.md",
   "modes/culture-guided-item.md",
+  "modes/culture-guided-assemble.md",
   "modes/review-mirror.md",
   "modes/public-review-generator.md",
   "channels/web.md",
