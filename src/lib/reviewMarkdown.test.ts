@@ -17,3 +17,13 @@ describe('review markdown round-trip', () => {
     expect(back).toMatch(/^\*\s+item um/m);
   });
 });
+
+import { normalizeReviewHeadings } from './reviewMarkdown';
+describe('normalizeReviewHeadings', () => {
+  const long = '### Parceria — Atende as expectativas. No período avaliado, Laís demonstrou parceria ao manter alinhamento [doc:1234abcd-0000-1111-2222-333344445555].';
+  it('splits long heading', () => {
+    expect(normalizeReviewHeadings(long)).toBe('### Parceria — Atende as expectativas\n\nNo período avaliado, Laís demonstrou parceria ao manter alinhamento [doc:1234abcd-0000-1111-2222-333344445555].');
+  });
+  it('keeps short heading', () => { expect(normalizeReviewHeadings('## Visão geral')).toBe('## Visão geral'); });
+  it('is idempotent', () => { const a = normalizeReviewHeadings(long); expect(normalizeReviewHeadings(a)).toBe(a); });
+});

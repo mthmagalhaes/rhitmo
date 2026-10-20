@@ -19,10 +19,28 @@ export function isHtml(text: string): boolean {
 export function markdownToEditorHtml(md: string): string {
   if (!md) return '';
   if (isHtml(md)) return md;
-  return marked.parse(md, { async: false, gfm: true, breaks: false }) as string;
+  return marked.parse(normalizeReviewHeadings(md), { async: false, gfm: true, breaks: false }) as string;
 }
 
 export function editorHtmlToMarkdown(html: string): string {
   if (!html || html === '<p></p>') return '';
   return td.turndown(html).replace(/\n{3,}/g, '\n\n').trim();
+}
+
+// Split headings where the AI glued the paragraph onto the title line
+// ("### Valor — Nível. Texto corrido...") into heading + paragraph. Idempotent.
+export function normalizeReviewHeadings(md: string): string {
+  if (!md) return md;
+  return md.replace(/^(#{2,4})[ \t]+(.+)$/gm, (line, hashes: string, body: string) => {
+    if (body.length <= 90) return line;
+    const dash = body.search(/\s[—–-]\s/);
+    const from = dash >= 0 ? dash + 3 : 0;
+    const rel = body.slice(from).search(/[.:]\s+\S/);
+    if (rel < 0) return line;
+    const cut = from + rel;
+    const title = body.slice(0, cut).trim();
+    const rest = body.slice(cut + 1).trim();
+    if (!title || !rest) return line;
+    return `${hashes} ${title}\n\n${rest}`;
+  });
 }

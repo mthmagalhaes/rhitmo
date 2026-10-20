@@ -9,7 +9,7 @@ import {
   DialogTitle as SheetTitle,
   DialogFooter as SheetFooter,
 } from '@/components/ui/dialog';
-import { markdownToEditorHtml, editorHtmlToMarkdown } from '@/lib/reviewMarkdown';
+import { markdownToEditorHtml, editorHtmlToMarkdown, normalizeReviewHeadings } from '@/lib/reviewMarkdown';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CultureGuidedPanel } from '@/components/review/CultureGuidedPanel';
 import { RhitmoThinking } from '@/components/ai/RhitmoThinking';
@@ -693,7 +693,7 @@ export function FormalReviewSheet({
                     >
                       <CitationCounterProvider>
                         <ReactMarkdown components={{ em: EvidenceTag, ...citationMarkdownComponents }}>
-                          {draftText || '_Sem conteúdo ainda._'}
+                          {normalizeReviewHeadings(draftText) || '_Sem conteúdo ainda._'}
                         </ReactMarkdown>
                       </CitationCounterProvider>
                     </div>
