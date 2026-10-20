@@ -1061,6 +1061,8 @@ Este rascunho segue TODA a estrutura e regras do modo de avaliação formal acim
 ### Nome do valor — Nível da régua
 Texto do valor.
 
+O título (\`### Nome do valor — Nível\`) fica SOZINHO na linha; o texto vai sempre no parágrafo seguinte, nunca na mesma linha do título.
+
 Repita para cada valor revisado, na ordem recebida. Use o texto e o nível do líder como base: pode polir a redação, mas **mantenha o sentido, o nível e as citações** (fontes e \`[doc:UUID]\`). Não acrescente valores que não foram enviados.
 - Os demais blocos (visão geral, contribuições, padrões, desenvolvimento, classificação, próximos passos) devem ser escritos de verdade, com base nas evidências, e coerentes com os níveis dados nos valores. Nunca deixe instruções como "complete esta seção".
 - No Bloco 6, a classificação de desempenho deve refletir o conjunto dos níveis dos valores.

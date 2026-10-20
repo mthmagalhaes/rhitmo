@@ -18,6 +18,21 @@ const Body = z.object({
 });
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+function normalizeReviewHeadings(md: string): string {
+  return md.replace(/^(#{2,4})[ \t]+(.+)$/gm, (line, hashes: string, body: string) => {
+    if (body.length <= 90) return line;
+    const dash = body.search(/\s[—–-]\s/);
+    const from = dash >= 0 ? dash + 3 : 0;
+    const m = /([.:][_*]*)\s+\S/.exec(body.slice(from));
+    const rel = m ? m.index : -1;
+    if (rel < 0) return line;
+    const cut = from + rel;
+    const title = body.slice(0, cut).trim() + (m![1].slice(1));
+    const rest = body.slice(cut + m![1].length).trim();
+    return title && rest ? `${hashes} ${title}\n\n${rest}` : line;
+  });
+}
 const fmt = (d: string) => new Date(d).toLocaleDateString("pt-BR");
 
 Deno.serve(async (req) => {
@@ -76,6 +91,7 @@ Deno.serve(async (req) => {
         messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
       });
       let md: string = (ai?.choices?.[0]?.message?.content ?? "").trim().replace(/^```(?:markdown)?\s*/i, "").replace(/```\s*$/, "").trim();
+      md = normalizeReviewHeadings(md);
       if (!md) throw Object.assign(new Error("A Rhitmo não conseguiu montar o documento. Tente novamente."), { status: 502 });
       await admin.from("performance_reviews").update({ content: md, updated_at: new Date().toISOString() }).eq("id", reviewId);
       return json({ content: md });
