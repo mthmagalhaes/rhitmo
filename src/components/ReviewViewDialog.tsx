@@ -13,6 +13,7 @@ import { CitationCounterProvider } from '@/components/context/CitationCounterPro
 import { marked } from 'marked';
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import DOMPurify from 'dompurify';
+import { normalizeLegacyReviewHtml } from '@/lib/reviewMarkdown';
 import { useQueryClient } from "@tanstack/react-query";
 
 interface PerformanceReview {
@@ -476,7 +477,7 @@ export const ReviewViewDialog = ({
           ) : (
 <div className="prose prose-sm max-w-none dark:prose-invert prose-p:mb-4 prose-p:leading-relaxed prose-headings:mb-3 prose-headings:mt-6 prose-ul:my-4 prose-ol:my-4">
               {review.content.includes('</') ? (
-                <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(review.content) }} />
+                <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(normalizeLegacyReviewHtml(review.content)) }} />
               ) : (
                 <CitationCounterProvider>
                   <ReactMarkdown components={citationMarkdownComponents}>{review.content}</ReactMarkdown>

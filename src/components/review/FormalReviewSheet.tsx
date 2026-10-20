@@ -9,7 +9,8 @@ import {
   DialogTitle as SheetTitle,
   DialogFooter as SheetFooter,
 } from '@/components/ui/dialog';
-import { markdownToEditorHtml, editorHtmlToMarkdown, normalizeReviewHeadings } from '@/lib/reviewMarkdown';
+import { markdownToEditorHtml, editorHtmlToMarkdown, normalizeReviewHeadings, looksLikeHtml, normalizeLegacyReviewHtml } from '@/lib/reviewMarkdown';
+import DOMPurify from 'dompurify';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -692,11 +693,15 @@ export function FormalReviewSheet({
                         prose-blockquote:text-muted-foreground prose-blockquote:not-italic prose-blockquote:text-xs
                         prose-blockquote:my-1.5 prose-blockquote:font-normal"
                     >
+                      {looksLikeHtml(draftText) ? (
+                        <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(normalizeLegacyReviewHtml(draftText)) }} />
+                      ) : (
                       <CitationCounterProvider>
                         <ReactMarkdown components={{ em: EvidenceTag, ...citationMarkdownComponents }}>
                           {normalizeReviewHeadings(draftText) || '_Sem conteúdo ainda._'}
                         </ReactMarkdown>
                       </CitationCounterProvider>
+                      )}
                     </div>
                   </div>
                 ) : (

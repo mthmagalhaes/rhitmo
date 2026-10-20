@@ -1,7 +1,7 @@
 // Exporta uma avaliação para PDF via diálogo de impressão do navegador.
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import { normalizeReviewHeadings } from './reviewMarkdown';
+import { normalizeReviewHeadings, looksLikeHtml, normalizeLegacyReviewHtml } from './reviewMarkdown';
 
 const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -11,7 +11,7 @@ export function printReview(opts: { title: string; content: string; memberName?:
   if (!w) return false;
   // Citações [doc:UUID] não fazem sentido no papel.
   const cleaned = normalizeReviewHeadings(opts.content).replace(/\s*\[doc:[0-9a-f-]{8,}\]/gi, '');
-  const raw = cleaned.includes('</') ? cleaned : (marked.parse(cleaned) as string);
+  const raw = looksLikeHtml(cleaned) ? normalizeLegacyReviewHtml(cleaned) : (marked.parse(cleaned, { gfm: true, breaks: false }) as string);
   const body = DOMPurify.sanitize(raw);
   w.document.write(`<!DOCTYPE html><html><head><title>${esc(opts.title)}</title>
 <style>
