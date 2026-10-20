@@ -1,7 +1,7 @@
 // Exporta uma avaliação para PDF via diálogo de impressão do navegador.
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import { normalizeReviewHeadings } from './reviewMarkdown';
+import { normalizeReviewHeadings, looksLikeHtml, normalizeLegacyReviewHtml } from './reviewMarkdown';
 
 const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');

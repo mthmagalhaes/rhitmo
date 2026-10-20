@@ -35,7 +35,7 @@ describe('italic level', () => {
 });
 
 import { normalizeLegacyReviewHtml as nl, looksLikeHtml as lh } from './reviewMarkdown';
-test('legacy html: lone bold paragraph becomes heading, empty p removed', () => {
+it('legacy html: lone bold paragraph becomes heading, empty p removed', () => {
   expect(nl('<p><strong>Entregas</strong></p><p></p><p>Texto</p>')).toBe('<h3>Entregas</h3><p>Texto</p>');
   expect(lh('## Título\n\nTexto')).toBe(false);
 });
