@@ -9,6 +9,7 @@ import { Calendar, FileText, Eye, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ReviewViewDialog } from "./ReviewViewDialog";
 import { FormalReviewSheet } from "@/components/review/FormalReviewSheet";
+import { DeleteDraftReviewButton } from "@/components/review/DeleteDraftReviewButton";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 
@@ -209,6 +210,14 @@ export const PerformanceReviewList = ({ memberId, memberName, onCreateReview, sh
                             <Eye className="h-3 w-3" />
                             Visível
                           </Badge>
+                        )}
+                        {status === 'draft' && isLeaderFormal(review) && (
+                          <DeleteDraftReviewButton
+                            reviewId={review.id}
+                            variant="icon"
+                            className="opacity-0 group-hover/row:opacity-100 focus:opacity-100 shrink-0"
+                            onDeleted={() => setSelectedReview((s) => (s?.id === review.id ? null : s))}
+                          />
                         )}
                       </button>
                     ))}

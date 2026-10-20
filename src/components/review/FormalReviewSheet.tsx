@@ -44,6 +44,7 @@ import ReactMarkdown from 'react-markdown';
 import { citationMarkdownComponents } from '@/lib/markdownCitations';
 import { CitationCounterProvider } from '@/components/context/CitationCounterProvider';
 import { ShareReviewDialog } from './ShareReviewDialog';
+import { DeleteDraftReviewButton } from './DeleteDraftReviewButton';
 import { ReviewCalibrationPanel, type PromotionRecommendation, type LossRisk, type MeritRecommendation } from './ReviewCalibrationPanel';
 import type { RecapClassification } from '@/lib/recapActions';
 import { format } from 'date-fns';
@@ -631,9 +632,17 @@ export function FormalReviewSheet({
         {/* Footer */}
         <SheetFooter className="px-6 py-4 border-t">
           <div className="flex justify-between w-full">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Fechar
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Fechar
+              </Button>
+              {!review.shared_with_member && !(review as any).acknowledged_at && (
+                <DeleteDraftReviewButton
+                  reviewId={reviewId}
+                  onDeleted={() => { onOpenChange(false); onSent?.(); }}
+                />
+              )}
+            </div>
             <div className="flex gap-2">
               <Button
                 variant="outline"

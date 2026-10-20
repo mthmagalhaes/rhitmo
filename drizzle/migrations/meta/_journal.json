@@ -36,6 +36,13 @@
       "when": 1792191216292,
       "tag": "0004_review_mirror_checks_private",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792513993916,
+      "tag": "0005_formal_review_delete_drafts_only",
+      "breakpoints": true
     }
   ]
 }
