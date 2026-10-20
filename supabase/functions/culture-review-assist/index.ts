@@ -54,18 +54,29 @@ Deno.serve(async (req) => {
     }
 
     if (action === "assemble") {
-      const { data: cards } = await admin.from("review_culture_items").select("*").eq("review_id", reviewId).order("position");
+      const { data: cards } = await admin.from("review_culture_items").select("*").eq("review_id", reviewId).neq("item_kind", "custom").order("position");
       const used = (cards ?? []).filter((c: any) => c.status !== "skipped" && (c.final_text || c.suggested_text));
       if (!used.length) return json({ error: "Revise ao menos um item antes de montar o documento." }, 400);
       const member = review.team_members;
-      let md = `## 📋 Visão geral do período\n\nAvaliação de ${member.name} de ${fmt(review.period_start)} a ${fmt(review.period_end)}, guiada pelos valores e comportamentos da empresa. Complete esta visão geral com o arco do período.\n\n`;
-      md += `## 🧭 Valores e comportamentos da empresa\n\n`;
-      for (const c of used) {
+      const firstName = member.name.split(" ")[0];
+      const periodLabel = `de ${fmt(review.period_start)} a ${fmt(review.period_end)}`;
+      const evidence = await loadPeriodEvidence(admin, member.id, review.period_start, review.period_end);
+      const valuesText = used.map((c: any) => {
         const level = c.final_level || c.suggested_level;
-        md += `### ${c.item_title}${level ? ` — ${level}` : ""}\n${(c.final_text || c.suggested_text || "").trim()}\n\n`;
-      }
-      md += `## 🎯 Pontos de desenvolvimento\n\nDescreva 1 a 3 áreas de desenvolvimento com base nos itens acima.\n\n`;
-      md += `## ➡️ Próximos passos\n\n- Ação principal de desenvolvimento para o próximo ciclo.\n`;
+        return `### ${c.item_title}${level ? ` — ${level}` : ""}\n${(c.final_text || c.suggested_text || "").trim()}`;
+      }).join("\n\n");
+      const systemPrompt = await composeSystemPrompt({
+        mode: "culture-guided-assemble", channel: "document",
+        vars: { memberName: member.name, firstName, memberRole: member.role || "cargo não definido", periodLabel },
+      });
+      const lowEvidence = evidence.count < 3 ? "\n\n⚠️ ALERTA DE EVIDÊNCIA BAIXA" : "";
+      const userPrompt = `VALORES REVISADOS PELO LÍDER:\n${valuesText}\n\nEVIDÊNCIAS DO PERÍODO (${evidence.count}):\n${evidence.text || "Nenhuma evidência registrada."}${lowEvidence}`;
+      const ai = await callAI({
+        model: "google/gemini-2.5-flash",
+        messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
+      });
+      let md: string = (ai?.choices?.[0]?.message?.content ?? "").trim().replace(/^```(?:markdown)?\s*/i, "").replace(/```\s*$/, "").trim();
+      if (!md) throw Object.assign(new Error("A Rhitmo não conseguiu montar o documento. Tente novamente."), { status: 502 });
       await admin.from("performance_reviews").update({ content: md, updated_at: new Date().toISOString() }).eq("id", reviewId);
       return json({ content: md });
     }

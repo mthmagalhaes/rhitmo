@@ -59,7 +59,8 @@ export function CultureGuidedPanel({
   const { data: items = [], isLoading } = useQuery({
     queryKey: ['review-culture-items', reviewId],
     queryFn: async () => {
-      const { data, error } = await supabase.from('review_culture_items').select('*').eq('review_id', reviewId).order('position');
+      // Itens extras da empresa ('custom') foram aposentados: só valores e comportamentos.
+      const { data, error } = await supabase.from('review_culture_items').select('*').eq('review_id', reviewId).neq('item_kind', 'custom').order('position');
       if (error) throw error;
       return (data ?? []) as CultureItem[];
     },
