@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
       : await loadPublishedOrgContext(admin, workspaceId);
     if (!ctx) return json({ error: "Cultura da empresa indisponível." }, 400);
 
-    let q = admin.from("review_culture_items").select("*").eq("review_id", reviewId);
+    let q = admin.from("review_culture_items").select("*").eq("review_id", reviewId).neq("item_kind", "custom");
     if (action === "suggest") {
       if (!itemId) return json({ error: "itemId é obrigatório" }, 400);
       q = q.eq("id", itemId);
