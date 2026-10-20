@@ -40,7 +40,11 @@ import {
   Eye,
   AlertCircle,
   RefreshCw,
+  Printer,
+  EyeOff,
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { printReview } from '@/lib/printReview';
 import ReactMarkdown from 'react-markdown';
 import { citationMarkdownComponents } from '@/lib/markdownCitations';
 import { CitationCounterProvider } from '@/components/context/CitationCounterProvider';
@@ -116,6 +120,8 @@ export function FormalReviewSheet({
   const [mirrorRunning, setMirrorRunning] = useState(false);
   const [mirrorResult, setMirrorResult] = useState<MirrorResult | null>(null);
   const [mirrorCheckedText, setMirrorCheckedText] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
 
   // Persist coaching tip open/closed per review
   useEffect(() => {
@@ -338,6 +344,41 @@ export function FormalReviewSheet({
       toast({ title: 'Erro ao remover compartilhamento', description: error.message, variant: 'destructive' });
     },
   });
+
+  const renameMutation = useMutation({
+    mutationFn: async (title: string) => {
+      const { error } = await supabase
+        .from('performance_reviews')
+        .update({ title, updated_at: new Date().toISOString() })
+        .eq('id', reviewId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setRenaming(false);
+      queryClient.invalidateQueries({ queryKey: ['formal-review', reviewId] });
+      queryClient.invalidateQueries({ queryKey: ['performance-reviews'] });
+      queryClient.invalidateQueries({ queryKey: ['team-performance-reviews'] });
+      toast({ title: 'Nome atualizado' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Erro ao renomear', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const handleExportPdf = () => {
+    if (!review) return;
+    const md = review.team_members as any;
+    const period = review.period_start && review.period_end
+      ? `${format(new Date(review.period_start), 'dd/MM/yyyy', { locale: ptBR })} a ${format(new Date(review.period_end), 'dd/MM/yyyy', { locale: ptBR })}`
+      : undefined;
+    const ok = printReview({
+      title: (review as any).title || 'Avaliação Formal',
+      content: draftText || (review as any).content || '',
+      memberName: md?.name,
+      periodText: period,
+    });
+    if (!ok) toast({ title: 'Não foi possível abrir a impressão', description: 'Libere pop-ups para este site.', variant: 'destructive' });
+  };
 
   const updateRating = (compId: string, rating: string) => {
     setCompetencyEvaluations((prev) =>
@@ -681,46 +722,27 @@ export function FormalReviewSheet({
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Fechar
               </Button>
-              {!review.shared_with_member && !(review as any).acknowledged_at && (
-                <DeleteDraftReviewButton
-                  reviewId={reviewId}
-                  onDeleted={() => { onOpenChange(false); onSent?.(); }}
-                />
-              )}
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => saveDraftMutation.mutate()}
-                disabled={saveDraftMutation.isPending}
-              >
-                {saveDraftMutation.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="mr-2 h-4 w-4" />
-                )}
-                Salvar Rascunho
-              </Button>
-              {!review.shared_with_member ? (
+            {!review.shared_with_member && (
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => saveDraftMutation.mutate()}
+                  disabled={saveDraftMutation.isPending}
+                >
+                  {saveDraftMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  Salvar Rascunho
+                </Button>
                 <Button onClick={handleShareClick} disabled={mirrorRunning}>
                   <Share2 className="mr-2 h-4 w-4" />
                   Compartilhar com Liderado
                 </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  onClick={() => unshareMutation.mutate()}
-                  disabled={unshareMutation.isPending}
-                >
-                  {unshareMutation.isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Share2 className="mr-2 h-4 w-4" />
-                  )}
-                  Remover Compartilhamento
-                </Button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </SheetFooter>
 
