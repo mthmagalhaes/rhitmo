@@ -43,6 +43,13 @@
       "when": 1792513993916,
       "tag": "0005_formal_review_delete_drafts_only",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792601693940,
+      "tag": "0006_review_signal_items",
+      "breakpoints": true
     }
   ]
 }
