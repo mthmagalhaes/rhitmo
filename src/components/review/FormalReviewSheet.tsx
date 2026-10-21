@@ -20,7 +20,7 @@ import { CultureGuidedPanel } from '@/components/review/CultureGuidedPanel';
 import { RhitmoThinking } from '@/components/ai/RhitmoThinking';
 import { ReviewMirrorPanel, type MirrorResult, type MirrorFinding } from '@/components/review/ReviewMirrorPanel';
 import { Compass, ScanSearch } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Compass, ScanSearch, Radio } from 'lucide-react';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';

@@ -187,7 +187,7 @@ export function CultureGuidedPanel({
         <div className="sticky bottom-0 bg-background/95 backdrop-blur py-3 flex justify-end">
           <Button className="rounded-xl" disabled={busy === 'assemble' || pendingSuggestions > 0 || !hasSuggestions} onClick={() => run('assemble', async () => {
             await assemble(true);
-            toast({ title: 'Documento atualizado', description: 'Complete visão geral, desenvolvimento e próximos passos no editor.' });
+            toast({ title: 'Cultura pronta', description: 'Agora revise os sinais do Slack e da rede.' });
           })}>
             {busy === 'assemble' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileText className="h-4 w-4 mr-2" />}
             Avançar para Sinais & Rede →
