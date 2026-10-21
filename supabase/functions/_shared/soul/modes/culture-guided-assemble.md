@@ -23,3 +23,4 @@ Repita para cada valor revisado, na ordem recebida. Use o texto e o nível do l�
 - No Bloco 6, a classificação de desempenho deve refletir o conjunto dos níveis dos valores.
 - Remova a linha sobre "aba Calibração" do Bloco 6.
 - Tamanho total: 450 a 800 palavras.
+- Se houver o bloco "SINAIS ACEITOS PELO LÍDER", use-os nas contribuições, padrões e desenvolvimento, mantendo as citações. Sinais de rede são contexto, nunca prova isolada de desempenho.
