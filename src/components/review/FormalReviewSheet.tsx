@@ -499,11 +499,17 @@ export function FormalReviewSheet({
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
           <div className="px-6 pt-4">
-            <TabsList className={`grid w-full ${isCultureGuided ? 'grid-cols-3' : 'grid-cols-2'}`}>
+            <TabsList className={`grid w-full ${isCultureGuided ? 'grid-cols-4' : 'grid-cols-2'}`}>
               {isCultureGuided && (
                 <TabsTrigger value="culture" className="gap-1.5">
                   <Compass className="h-3.5 w-3.5" />
                   Cultura
+                </TabsTrigger>
+              )}
+              {isCultureGuided && (
+                <TabsTrigger value="signals" className="gap-1.5">
+                  <Radio className="h-3.5 w-3.5" />
+                  Sinais & Rede
                 </TabsTrigger>
               )}
               <TabsTrigger value="draft" className="gap-1.5">
@@ -526,6 +532,25 @@ export function FormalReviewSheet({
                     versionId={(review as any).org_context_version_id ?? null}
                     readOnly={!!review.shared_with_member}
                     needsAssembly={isPlaceholder}
+                    onAssembled={async (content, advance) => {
+                      setDraftText(content);
+                      await supabase.from('performance_reviews').update({ content }).eq('id', reviewId!);
+                      queryClient.invalidateQueries({ queryKey: ['formal-review', reviewId] });
+                      if (advance) setActiveTab('signals');
+                    }}
+                  />
+                </div>
+              </ScrollArea>
+            </TabsContent>
+          )}
+
+          {isCultureGuided && (
+            <TabsContent value="signals" className="flex-1 px-6 mt-4 min-h-0 overflow-hidden data-[state=inactive]:hidden">
+              <ScrollArea className="h-full">
+                <div className="pr-4 pb-6">
+                  <SignalsGuidedPanel
+                    reviewId={reviewId!}
+                    readOnly={!!review.shared_with_member}
                     onAssembled={async (content, advance) => {
                       setDraftText(content);
                       await supabase.from('performance_reviews').update({ content }).eq('id', reviewId!);

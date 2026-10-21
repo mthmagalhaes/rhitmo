@@ -190,7 +190,7 @@ export function CultureGuidedPanel({
             toast({ title: 'Documento atualizado', description: 'Complete visão geral, desenvolvimento e próximos passos no editor.' });
           })}>
             {busy === 'assemble' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileText className="h-4 w-4 mr-2" />}
-            Avançar para Rascunho Geral →
+            Avançar para Sinais & Rede →
           </Button>
         </div>
       )}
