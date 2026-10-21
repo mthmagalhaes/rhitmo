@@ -8,11 +8,11 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
 import { composeSystemPrompt } from "../_shared/soul/loader.ts";
 import {
-  assessableItems, callAI, loadPeriodEvidence, loadPublishedOrgContext, loadReviewWithAccess, orgContextToPrompt, scaleLevels, toolArgs,
+  assessableItems, callAI, loadPeriodEvidence, loadPeriodSignals, loadPublishedOrgContext, loadReviewWithAccess, orgContextToPrompt, scaleLevels, toolArgs,
 } from "../_shared/orgContext.ts";
 
 const Body = z.object({
-  action: z.enum(["init", "suggest", "suggest_all", "assemble"]),
+  action: z.enum(["init", "suggest", "suggest_all", "assemble", "signals_init", "signals_suggest"]),
   reviewId: z.string().uuid(),
   itemId: z.string().uuid().optional(),
 });
@@ -32,6 +32,13 @@ function normalizeReviewHeadings(md: string): string {
     const rest = body.slice(cut + m![1].length).trim();
     return title && rest ? `${hashes} ${title}\n\n${rest}` : line;
   });
+}
+const SIGNAL_LABEL: Record<string, string> = { delivery: "Entrega", unblock: "Bloqueio", recognition: "Reconhecimento", network: "Rede" };
+/** Sem cartões aceitos = string vazia (prompt idêntico ao anterior). */
+export function buildSignalsBlock(cards: any[]): string {
+  const used = cards.filter((c) => (c.status === "accepted" || c.status === "edited") && (c.final_text || c.suggested_text));
+  if (!used.length) return "";
+  return `\n\nSINAIS ACEITOS PELO LÍDER (Slack e rede):\n${used.map((c) => `- [${SIGNAL_LABEL[c.kind] ?? c.kind}] ${c.title}: ${(c.final_text || c.suggested_text).trim()}`).join("\n")}`;
 }
 const fmt = (d: string) => new Date(d).toLocaleDateString("pt-BR");
 
@@ -68,6 +75,52 @@ Deno.serve(async (req) => {
       return json({ count: rows.length });
     }
 
+    if (action === "signals_init" || action === "signals_suggest") {
+      const member = review.team_members;
+      const firstName = member.name.split(" ")[0];
+      const periodLabel = `de ${fmt(review.period_start)} a ${fmt(review.period_end)}`;
+      const sig = await loadPeriodSignals(admin, member.id, review.period_start, review.period_end);
+      let target: any = null;
+      if (action === "signals_suggest") {
+        if (!itemId) return json({ error: "itemId é obrigatório" }, 400);
+        const { data } = await admin.from("review_signal_items").select("*").eq("id", itemId).eq("review_id", reviewId).maybeSingle();
+        if (!data) return json({ error: "Cartão não encontrado" }, 404);
+        target = data;
+      }
+      if (!sig.count && !sig.network) {
+        if (action === "signals_init") await admin.from("review_signal_items").delete().eq("review_id", reviewId).eq("status", "pending");
+        return json({ count: 0, empty: true });
+      }
+      const systemPrompt = await composeSystemPrompt({
+        mode: "culture-guided-signals", channel: "document",
+        vars: { memberName: member.name, firstName, memberRole: member.role || "cargo não definido", periodLabel },
+      });
+      const focus = target ? `\n\nREESCREVA APENAS UM cartão do tipo "${target.kind}" (atual: "${target.title}: ${target.final_text || target.suggested_text || ""}"). Devolva exatamente 1 cartão.` : "";
+      const userPrompt = `SINAIS DO SLACK (${sig.count}):\n${sig.text || "Nenhum."}\n\nREDE DE COLABORAÇÃO:\n${sig.network || "Sem dados."}${focus}`;
+      const ai = await callAI({
+        model: "google/gemini-2.5-flash",
+        messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
+        tools: [{ type: "function", function: { name: "signal_cards", parameters: { type: "object", properties: { cards: { type: "array", items: { type: "object", properties: {
+          kind: { type: "string", enum: ["delivery", "unblock", "recognition", "network"] }, title: { type: "string" }, text: { type: "string" }, doc_ids: { type: "array", items: { type: "string" } },
+        }, required: ["kind", "title", "text"] } } }, required: ["cards"] } } }],
+        tool_choice: { type: "function", function: { name: "signal_cards" } },
+      });
+      const cards: any[] = (toolArgs(ai)?.cards ?? []).filter((c: any) => c?.title && c?.text).slice(0, 8);
+      const now = new Date().toISOString();
+      if (target) {
+        const c = cards[0];
+        if (!c) throw new Error("IA não retornou sugestão");
+        await admin.from("review_signal_items").update({ title: c.title, suggested_text: c.text, final_text: null, doc_ids: c.doc_ids ?? [], status: "pending", updated_at: now }).eq("id", target.id);
+        return json({ updated: 1 });
+      }
+      // Recriar só os cartões ainda não revisados; os aceitos/editados/omitidos ficam.
+      await admin.from("review_signal_items").delete().eq("review_id", reviewId).eq("status", "pending");
+      const { count: kept } = await admin.from("review_signal_items").select("id", { count: "exact", head: true }).eq("review_id", reviewId);
+      const rows = cards.map((c, i) => ({ review_id: reviewId, kind: c.kind, title: c.title, suggested_text: c.text, doc_ids: c.doc_ids ?? [], position: (kept ?? 0) + i }));
+      if (rows.length) await admin.from("review_signal_items").insert(rows);
+      return json({ count: rows.length });
+    }
+
     if (action === "assemble") {
       const { data: cards } = await admin.from("review_culture_items").select("*").eq("review_id", reviewId).neq("item_kind", "custom").order("position");
       const used = (cards ?? []).filter((c: any) => c.status !== "skipped" && (c.final_text || c.suggested_text));
@@ -85,7 +138,9 @@ Deno.serve(async (req) => {
         vars: { memberName: member.name, firstName, memberRole: member.role || "cargo não definido", periodLabel },
       });
       const lowEvidence = evidence.count < 3 ? "\n\n⚠️ ALERTA DE EVIDÊNCIA BAIXA" : "";
-      const userPrompt = `VALORES REVISADOS PELO LÍDER:\n${valuesText}\n\nEVIDÊNCIAS DO PERÍODO (${evidence.count}):\n${evidence.text || "Nenhuma evidência registrada."}${lowEvidence}`;
+      const { data: sigCards } = await admin.from("review_signal_items").select("kind, title, suggested_text, final_text, status").eq("review_id", reviewId).in("status", ["accepted", "edited"]).order("position");
+      const signalsBlock = buildSignalsBlock(sigCards ?? []);
+      const userPrompt = `VALORES REVISADOS PELO LÍDER:\n${valuesText}\n\nEVIDÊNCIAS DO PERÍODO (${evidence.count}):\n${evidence.text || "Nenhuma evidência registrada."}${lowEvidence}${signalsBlock}`;
       const ai = await callAI({
         model: "google/gemini-2.5-flash",
         messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
