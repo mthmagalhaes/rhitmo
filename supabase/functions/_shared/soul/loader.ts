@@ -46,6 +46,7 @@ export type Mode =
   | "org-context-extraction"
   | "culture-guided-item"
   | "culture-guided-assemble"
+  | "culture-guided-signals"
   | "review-mirror";
 
 // Variáveis opcionais reconhecidas pelos modos novos (v2 da alma):
@@ -137,6 +138,7 @@ const MODE_BLOCKS: Record<Mode, string[]> = {
   "org-context-extraction": ["00-identity.md","01-guardrails.md","modes/org-context-extraction.md"],
   "culture-guided-item": ["00-identity.md","01-guardrails.md","02-analysis-matrix.md","05-citations.md","modes/culture-guided-item.md"],
   "culture-guided-assemble": ["00-identity.md","01-guardrails.md","02-analysis-matrix.md","03-tone-and-format.md","05-citations.md","modes/formal-review-draft.md","modes/culture-guided-assemble.md"],
+  "culture-guided-signals": ["00-identity.md","01-guardrails.md","05-citations.md","modes/culture-guided-signals.md"],
   "review-mirror": ["00-identity.md","01-guardrails.md","02-analysis-matrix.md","modes/review-mirror.md"],
   "one-on-one-draft": [
     "00-identity.md",

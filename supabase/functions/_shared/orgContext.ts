@@ -122,6 +122,34 @@ export async function loadPeriodEvidence(supabase: any, memberId: string, start:
   return { text, count: (feedbacks?.length ?? 0) + (meetings?.length ?? 0) };
 }
 
+/** Sinais do Slack (resumidos, com doc_id) + rede de colaboração do período. Só padrão agregado, nunca DM. */
+export async function loadPeriodSignals(supabase: any, memberId: string, start: string, end: string) {
+  const fmt = (d: string) => new Date(d).toLocaleDateString("pt-BR");
+  const [{ data: ev }, { data: edges }, { data: signals }] = await Promise.all([
+    supabase.from("context_evidence").select("id, evidence_type, occurred_at, title, summary, leader_edited_summary")
+      .eq("member_id", memberId).eq("source_table", "slack_ambient_evidence").is("deleted_at", null)
+      .gte("occurred_at", start).lte("occurred_at", end).order("occurred_at", { ascending: false }).limit(120),
+    supabase.from("team_network_edges").select("member_a_id, member_b_id, weight_total")
+      .or(`member_a_id.eq.${memberId},member_b_id.eq.${memberId}`).order("weight_total", { ascending: false }).limit(5),
+    supabase.from("network_signals").select("signal_type, severity, detected_at")
+      .eq("member_id", memberId).gte("detected_at", start).lte("detected_at", end).order("detected_at", { ascending: false }).limit(5),
+  ]);
+  let text = "";
+  for (const e of ev ?? []) {
+    const body = (e.leader_edited_summary || e.summary || e.title || "").toString().slice(0, 300);
+    if (body) text += `- [doc_id: ${e.id}] ${e.evidence_type === "slack_activity_rollup" ? "Resumo semanal" : "Sinal"} ${fmt(e.occurred_at)}: ${body}\n`;
+  }
+  let network = "";
+  const peerIds = [...new Set((edges ?? []).map((e: any) => (e.member_a_id === memberId ? e.member_b_id : e.member_a_id)).filter(Boolean))];
+  if (peerIds.length) {
+    const { data: peers } = await supabase.from("team_members").select("id, name").in("id", peerIds);
+    const names = (peers ?? []).map((p: any) => p.name).filter(Boolean);
+    if (names.length) network += `Colaboração mais intensa (agregado): ${names.join(", ")}.\n`;
+  }
+  if (signals?.length) network += `Sinais de rede: ${signals.map((s: any) => `${s.signal_type} (${s.severity}, ${fmt(s.detected_at)})`).join("; ")}.\n`;
+  return { text, network, count: (ev?.length ?? 0) };
+}
+
 export async function callAI(body: Record<string, unknown>) {
   const key = Deno.env.get("LOVABLE_API_KEY");
   if (!key) throw new Error("LOVABLE_API_KEY não configurada");

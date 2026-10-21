@@ -2986,6 +2986,56 @@ export type Database = {
           },
         ]
       }
+      review_signal_items: {
+        Row: {
+          created_at: string
+          doc_ids: Json
+          final_text: string | null
+          id: string
+          kind: string
+          position: number
+          review_id: string
+          status: string
+          suggested_text: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          doc_ids?: Json
+          final_text?: string | null
+          id?: string
+          kind?: string
+          position?: number
+          review_id: string
+          status?: string
+          suggested_text?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          doc_ids?: Json
+          final_text?: string | null
+          id?: string
+          kind?: string
+          position?: number
+          review_id?: string
+          status?: string
+          suggested_text?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_signal_items_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "performance_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rhitmo_sync_notifications: {
         Row: {
           change_summary: string
