@@ -10,6 +10,7 @@ import { composeSystemPrompt } from "../_shared/soul/loader.ts";
 import {
   assessableItems, callAI, loadPeriodEvidence, loadPeriodSignals, loadPublishedOrgContext, loadReviewWithAccess, orgContextToPrompt, scaleLevels, toolArgs,
 } from "../_shared/orgContext.ts";
+import { buildSignalsBlock } from "./signals.ts";
 
 const Body = z.object({
   action: z.enum(["init", "suggest", "suggest_all", "assemble", "signals_init", "signals_suggest"]),
@@ -32,13 +33,6 @@ function normalizeReviewHeadings(md: string): string {
     const rest = body.slice(cut + m![1].length).trim();
     return title && rest ? `${hashes} ${title}\n\n${rest}` : line;
   });
-}
-const SIGNAL_LABEL: Record<string, string> = { delivery: "Entrega", unblock: "Bloqueio", recognition: "Reconhecimento", network: "Rede" };
-/** Sem cartões aceitos = string vazia (prompt idêntico ao anterior). */
-export function buildSignalsBlock(cards: any[]): string {
-  const used = cards.filter((c) => (c.status === "accepted" || c.status === "edited") && (c.final_text || c.suggested_text));
-  if (!used.length) return "";
-  return `\n\nSINAIS ACEITOS PELO LÍDER (Slack e rede):\n${used.map((c) => `- [${SIGNAL_LABEL[c.kind] ?? c.kind}] ${c.title}: ${(c.final_text || c.suggested_text).trim()}`).join("\n")}`;
 }
 const fmt = (d: string) => new Date(d).toLocaleDateString("pt-BR");
 
