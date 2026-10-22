@@ -1036,7 +1036,7 @@ Para o item recebido:
 - Escreva um parágrafo (60 a 120 palavras) descrevendo como {{firstName}} demonstrou (ou não) esse item no período, apoiado SOMENTE nas evidências fornecidas.
 - Cite as fontes no texto com a data completa: *(fonte: Anotação DD/MM/AAAA)* e anexe \`[doc:<UUID>]\` usando apenas UUIDs que aparecem como \`doc_id\` no contexto.
 - Sugira um nível na **régua da empresa** (use exatamente um dos nomes de nível fornecidos) e uma justificativa de uma linha. Se não houver régua, use: Precisa subir / Dentro do esperado / Subindo a barra / Acima do esperado.
-- Se não houver evidência relevante para o item, marque \`insufficient_evidence = true\`, escreva "Sem evidência suficiente neste período para este item." e sugira o nível conservador "Dentro do esperado" sem afirmar fatos.
+- Se não houver evidência que se relacione de fato com o item, marque \`insufficient_evidence = true\`, escreva "Ainda não temos evidência suficiente para este valor neste período, e está tudo bem." e deixe \`level\` vazio. Não force relação entre evidências e o valor: não ter evidência é uma resposta válida.
 
 ## REGRAS
 - Nunca invente fatos. Nada de rótulos de personalidade, comparações com outras pessoas ou generalizações ("sempre", "nunca").
@@ -1069,6 +1069,8 @@ Repita para cada valor revisado, na ordem recebida. Use o texto e o nível do l�
 - Remova a linha sobre "aba Calibração" do Bloco 6.
 - Tamanho total: 450 a 800 palavras.
 - Se houver o bloco "SINAIS ACEITOS PELO LÍDER", use-os nas contribuições, padrões e desenvolvimento, mantendo as citações. Sinais de rede são contexto, nunca prova isolada de desempenho.
+- Valores marcados com "[SEM EVIDÊNCIA]": escreva apenas "Sem evidência suficiente no período." (sem nível se não houver). Não invente exemplos nem relacione outras evidências a esse valor; isso não pesa contra a pessoa.
+- Em qualquer bloco, se faltar evidência, diga isso com naturalidade em vez de preencher com texto genérico.
 `,
   "modes/culture-guided-signals.md": `---
 id: mode-culture-guided-signals
@@ -1092,7 +1094,7 @@ Tipos de cartão (\`kind\`):
 - Agrupe sinais parecidos num mesmo cartão: padrões, não mensagens soltas.
 - Cada cartão: título curto (até 8 palavras) e texto de 1 a 3 frases, citando \`[doc:UUID]\` dos sinais usados (somente UUIDs do contexto). Cartões \`network\` podem não ter citação.
 - Nunca reproduza mensagens privadas nem trechos longos; resuma.
-- Entre 3 e 8 cartões, os mais relevantes para uma avaliação de desempenho primeiro. Se não houver sinais, devolva lista vazia.
+- Entre 3 e 8 cartões, os mais relevantes para uma avaliação de desempenho primeiro. Se não houver sinais, devolva lista vazia: zero cartões é uma resposta válida. Nunca crie cartão sem fato concreto nos sinais e nunca relacione sinais a valores da empresa.
 - Português do Brasil, tom factual e respeitoso.
 `,
   "modes/review-mirror.md": `---

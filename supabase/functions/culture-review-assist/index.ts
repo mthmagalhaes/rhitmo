@@ -125,6 +125,8 @@ Deno.serve(async (req) => {
       const evidence = await loadPeriodEvidence(admin, member.id, review.period_start, review.period_end);
       const valuesText = used.map((c: any) => {
         const level = c.final_level || c.suggested_level;
+        const noEvidence = c.status === "insufficient" && !c.final_text;
+        if (noEvidence) return `### ${c.item_title}${level ? ` — ${level}` : ""}\n[SEM EVIDÊNCIA] Sem evidência suficiente no período.`;
         return `### ${c.item_title}${level ? ` — ${level}` : ""}\n${(c.final_text || c.suggested_text || "").trim()}`;
       }).join("\n\n");
       const systemPrompt = await composeSystemPrompt({
@@ -205,8 +207,8 @@ Deno.serve(async (req) => {
       const out = toolArgs(ai);
       if (!out) throw new Error("IA não retornou sugestão");
       await admin.from("review_culture_items").update({
-        suggested_text: out.text,
-        suggested_level: out.level,
+        suggested_text: out.insufficient_evidence ? "Ainda não temos evidência suficiente para este valor neste período, e está tudo bem." : out.text,
+        suggested_level: out.insufficient_evidence ? null : out.level,
         level_justification: out.justification,
         citations: out.doc_ids ?? [],
         status: card.status === "pending" && out.insufficient_evidence ? "insufficient" : card.status,

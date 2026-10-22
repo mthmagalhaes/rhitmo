@@ -20,5 +20,5 @@ Tipos de cartão (`kind`):
 - Agrupe sinais parecidos num mesmo cartão: padrões, não mensagens soltas.
 - Cada cartão: título curto (até 8 palavras) e texto de 1 a 3 frases, citando `[doc:UUID]` dos sinais usados (somente UUIDs do contexto). Cartões `network` podem não ter citação.
 - Nunca reproduza mensagens privadas nem trechos longos; resuma.
-- Entre 3 e 8 cartões, os mais relevantes para uma avaliação de desempenho primeiro. Se não houver sinais, devolva lista vazia.
+- Entre 3 e 8 cartões, os mais relevantes para uma avaliação de desempenho primeiro. Se não houver sinais, devolva lista vazia: zero cartões é uma resposta válida. Nunca crie cartão sem fato concreto nos sinais e nunca relacione sinais a valores da empresa.
 - Português do Brasil, tom factual e respeitoso.
