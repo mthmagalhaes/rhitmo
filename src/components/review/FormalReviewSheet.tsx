@@ -240,6 +240,22 @@ export function FormalReviewSheet({
 
   const isCultureGuided = (review as any)?.authoring_mode === 'culture_guided';
   const isPlaceholder = /^_(Preparando|Gerando)/.test((draftText || '').trim());
+  // Passos obrigatórios na primeira vez: 0 = só Cultura, 1 = + Sinais, 2 = tudo livre.
+  const stepKey = reviewId ? `guided-step-${reviewId}` : null;
+  const [guidedStep, setGuidedStep] = useState<number | null>(null);
+  useEffect(() => {
+    if (!review || !stepKey || guidedStep !== null) return;
+    const stored = Number(localStorage.getItem(stepKey) ?? NaN);
+    const content = String((review as any).content ?? '').trim();
+    const hasRealDraft = !!content && !/^_(Preparando|Gerando)/.test(content);
+    const opened = !isCultureGuided || !!review.shared_with_member || (hasRealDraft && !(stored >= 0 && stored < 2)) ? 2 : (stored >= 0 ? stored : 0);
+    setGuidedStep(opened);
+  }, [review, stepKey, guidedStep, isCultureGuided]);
+  const advanceStep = (n: number) => {
+    setGuidedStep((s) => Math.max(s ?? 0, n));
+    if (stepKey) localStorage.setItem(stepKey, String(n));
+  };
+  const step = guidedStep ?? 2;
   const openFindings = (mirrorResult?.findings ?? []).filter((f) => !f.dismissed).length;
 
   const invokeMirror = async (body: Record<string, unknown>) => {
