@@ -6,3 +6,4 @@
 - Company culture/scale (values, behaviors, rating scale) lives only in `org_context_*` versions and is read via `supabase/functions/_shared/orgContext.ts`; reviews store the version used — why: editing the scale must never rewrite past reviews.
 - Review Mirror findings live in `review_mirror_checks`, never on `performance_reviews` — why: members can read shared reviews and must not see the Mirror.
 - Culture-guided review signal cards (Slack/ONA) live only in `review_signal_items`, never on `performance_reviews`; assembly includes only accepted/edited cards — why: members must not see raw signals and an empty signal set keeps the prompt unchanged.
+- Product analytics events go only through `src/lib/productAnalytics.ts` (PostHog, no autocapture/recording, IDs and roles only — never note, review or transcript content) — why: one privacy-safe choke point for telemetry.

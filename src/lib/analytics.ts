@@ -2,6 +2,7 @@
  * Google Ads conversion tracking + Onboarding funnel telemetry.
  */
 import { supabase } from '@/integrations/supabase/client';
+import { capture } from '@/lib/productAnalytics';
 
 declare global {
   interface Window {
@@ -87,6 +88,7 @@ interface FunnelEventPayload {
  * userId is auto-resolved from the current session when available.
  */
 export function trackFunnel(event: FunnelEvent, opts: FunnelEventPayload = {}) {
+  capture(event, { workspace_id: opts.workspaceId ?? null });
   try {
     void supabase.auth.getUser().then(({ data }) => {
       const userId = data?.user?.id ?? null;

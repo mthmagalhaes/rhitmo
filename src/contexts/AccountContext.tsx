@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { identify, resetIdentity } from '@/lib/productAnalytics';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useImpersonation } from '@/hooks/useImpersonation';
@@ -134,6 +135,18 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (contextError) trackFunnel('account_load_failed', { payload: { message: String(contextError) } });
   }, [contextError]);
+
+  // Product analytics identity (skip while impersonating to avoid mixing users)
+  useEffect(() => {
+    if (!user?.id) { resetIdentity(); return; }
+    if (isImpersonating || loading || !data) return;
+    identify(user.id, {
+      role: data.role ?? 'user',
+      workspace_id: data.workspace_id ?? null,
+      is_team_leader: !!data.is_team_leader,
+      is_linked_member: !!data.linked_member,
+    });
+  }, [user?.id, isImpersonating, loading, data]);
 
   const value = useMemo<AccountContextValue>(() => {
     const role: AccountRole = loading ? 'leader' : (data?.role ?? 'user');

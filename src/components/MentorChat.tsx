@@ -1,3 +1,4 @@
+import { capture } from '@/lib/productAnalytics';
 import { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -498,6 +499,7 @@ export const MentorChat = ({
     if (!finalMessage.trim() && !attachment) return;
     if (isLoading || !effectiveUserId) return;
     if (!billingGate.ensure('ask_rhitmo')) return;
+    capture('mentor_message_sent', { has_attachment: !!attachment });
 
     if (!canSendMentorMessage) {
       toast({

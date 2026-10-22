@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { PageviewTracker } from "@/lib/productAnalytics";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { AuthProvider } from "./contexts/AuthContext";
 import { AccountProvider } from "./contexts/AccountContext";
@@ -132,6 +133,7 @@ const App = () => (
       <EvidenceDrawer />
       <AuthEventProvider>
         <BrowserRouter>
+          <PageviewTracker />
           <Routes>
               {/* Landing */}
               <Route path="/" element={<Landing />} />
