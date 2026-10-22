@@ -19,7 +19,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CultureGuidedPanel } from '@/components/review/CultureGuidedPanel';
 import { RhitmoThinking } from '@/components/ai/RhitmoThinking';
 import { ReviewMirrorPanel, type MirrorResult, type MirrorFinding } from '@/components/review/ReviewMirrorPanel';
-import { Compass, ScanSearch, Radio, Lock } from 'lucide-react';
+import { Compass, ScanSearch, Radio, Lock, Info } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
+// Mesmo visual da leitura, reaproveitado no editor para "editar como se lê".
+const READING_PROSE = `prose prose-sm max-w-none dark:prose-invert
+  prose-headings:tracking-tight prose-headings:font-semibold
+  prose-h2:text-base prose-h2:mt-7 prose-h2:mb-3 prose-h2:pb-2 prose-h2:border-b prose-h2:border-border/60
+  prose-h3:text-sm prose-h3:mt-4 prose-h3:mb-1 prose-h3:text-foreground
+  prose-p:text-sm prose-p:leading-relaxed prose-p:text-foreground/85 prose-p:my-2
+  prose-strong:text-foreground prose-strong:font-semibold
+  prose-li:text-sm prose-li:my-1 prose-li:text-foreground/85 prose-ul:my-2 prose-ol:my-2`;
 import { SignalsGuidedPanel } from '@/components/review/SignalsGuidedPanel';
 import { Button } from '@/components/ui/button';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
@@ -124,6 +134,7 @@ export function FormalReviewSheet({
   const [coachingOpen, setCoachingOpen] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [mirrorRunning, setMirrorRunning] = useState(false);
+  const [assembling, setAssembling] = useState(false);
   const [mirrorResult, setMirrorResult] = useState<MirrorResult | null>(null);
   const [mirrorCheckedText, setMirrorCheckedText] = useState<string | null>(null);
   const [renaming, setRenaming] = useState(false);
@@ -569,8 +580,11 @@ export function FormalReviewSheet({
                   <SignalsGuidedPanel
                     reviewId={reviewId!}
                     readOnly={!!review.shared_with_member}
+                    onAssembleStart={() => { setAssembling(true); advanceStep(2); setActiveTab('draft'); }}
+                    onAssembleFailed={() => { setAssembling(false); setActiveTab('signals'); }}
                     onAssembled={async (content, advance) => {
                       setDraftText(content);
+                      setAssembling(false);
                       await supabase.from('performance_reviews').update({ content }).eq('id', reviewId!);
                       queryClient.invalidateQueries({ queryKey: ['formal-review', reviewId] });
                       if (advance) { advanceStep(2); setActiveTab('draft'); }
@@ -601,6 +615,9 @@ export function FormalReviewSheet({
           <TabsContent value="draft" className="flex-1 px-6 mt-4 min-h-0 overflow-hidden data-[state=inactive]:hidden">
             <ScrollArea className="h-full">
               <div className="space-y-3 pr-4 pb-6">
+                {assembling && (
+                  <RhitmoThinking steps={['Juntando cultura e sinais aceitos...', 'Montando o documento...', 'Revisando o texto final...']} stepMs={2500} />
+                )}
                 {/* Coaching tip — collapsible, persisted per review */}
                 {review.coaching_tip && (
                   <Collapsible open={coachingOpen} onOpenChange={toggleCoaching}>
@@ -748,15 +765,17 @@ export function FormalReviewSheet({
                     </div>
                   </div>
                 ) : (
-                  <RichTextEditor
-                    content={editorHtml}
-                    onChange={(html) => {
-                      setEditorHtml(html);
-                      setDraftText(editorHtmlToMarkdown(html));
-                    }}
-                    placeholder="Digite a avaliação geral do liderado no período..."
-                    minHeight="400px"
-                  />
+                  <div className={`rounded-xl bg-card [&_.ProseMirror]:px-5 [&_.ProseMirror]:py-4 [&>div>div:first-child]:sticky [&>div>div:first-child]:top-0 [&>div>div:first-child]:z-10 ${READING_PROSE}`}>
+                    <RichTextEditor
+                      content={editorHtml}
+                      onChange={(html) => {
+                        setEditorHtml(html);
+                        setDraftText(editorHtmlToMarkdown(html));
+                      }}
+                      placeholder="Digite a avaliação geral do liderado no período..."
+                      minHeight="400px"
+                    />
+                  </div>
                 )}
               </div>
             </ScrollArea>
@@ -786,10 +805,35 @@ export function FormalReviewSheet({
                   )}
                   Salvar Rascunho
                 </Button>
-                <Button onClick={handleShareClick} disabled={mirrorRunning}>
-                  <Share2 className="mr-2 h-4 w-4" />
-                  Compartilhar com Liderado
-                </Button>
+                {isCultureGuided && step < 2 ? (
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      aria-disabled="true"
+                      onClick={(e) => e.preventDefault()}
+                      className="opacity-50 cursor-not-allowed saturate-50 hover:bg-primary hover:translate-y-0 shadow-none"
+                    >
+                      <Lock className="mr-2 h-4 w-4" />
+                      Compartilhar com Liderado
+                    </Button>
+                    <TooltipProvider delayDuration={100}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button type="button" aria-label="Por que não posso compartilhar?" className="rounded-full p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                            <Info className="h-4 w-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-[260px] text-xs">
+                          Conclua as etapas Cultura e Sinais &amp; Rede para chegar ao Rascunho Geral antes de compartilhar com o liderado.
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                ) : (
+                  <Button onClick={handleShareClick} disabled={mirrorRunning}>
+                    <Share2 className="mr-2 h-4 w-4" />
+                    Compartilhar com Liderado
+                  </Button>
+                )}
               </div>
             )}
           </div>
