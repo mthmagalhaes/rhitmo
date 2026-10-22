@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { PenSquare, Loader2, Upload, CalendarIcon, X, Eye, Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VoiceInput } from './VoiceInput';
-import { extractTextFromFile, isFileSupported } from '@/lib/fileParser';
+import { extractTextFromFile, extractFromImageWithMeta, isFileSupported } from '@/lib/fileParser';
 import { cleanTranscriptText } from '@/lib/textSanitizer';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { useEditor } from '@tiptap/react';
@@ -88,6 +88,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [sharedMemberIds, setSharedMemberIds] = useState<string[]>([]);
   const [occurredAt, setOccurredAt] = useState<Date | undefined>(undefined);
+  const [suggestedDate, setSuggestedDate] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
@@ -156,6 +157,7 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
     setSelectedMemberIds([]);
     setSharedMemberIds([]);
     setOccurredAt(undefined);
+    setSuggestedDate(null);
     setTags([]);
     setTitle('');
     setIsDragging(false);
@@ -265,7 +267,18 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
     setIsProcessingFile(true);
 
     try {
-      const extractedText = await extractTextFromFile(file);
+      let extractedText: string;
+      if (file.type.startsWith('image/')) {
+        const meta = await extractFromImageWithMeta(file);
+        extractedText = meta.text;
+        if (meta.occurredAt) {
+          const [y, m, d] = meta.occurredAt.split('-').map(Number);
+          const dt = new Date(y, m - 1, d, 12);
+          if (!isNaN(dt.getTime()) && dt.getTime() <= Date.now() + 86400000) setSuggestedDate(dt);
+        }
+      } else {
+        extractedText = await extractTextFromFile(file);
+      }
        const cleanedText = cleanTranscriptText(extractedText);
        setContent(cleanedText);
       
@@ -640,6 +653,15 @@ export const NewNoteDialog = ({ open, onOpenChange, selectedMemberId, memberName
                   ? "⚠️ Campo obrigatório - selecione quando o fato aconteceu"
                   : "Selecione quando o fato aconteceu"}
             </p>
+            {suggestedDate && (!occurredAt || occurredAt.toDateString() !== suggestedDate.toDateString()) && (
+              <button
+                type="button"
+                onClick={() => { setOccurredAt(suggestedDate); setSuggestedDate(null); }}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-primary/20 bg-primary/5 px-2.5 py-1 text-xs text-primary hover:bg-primary/10 transition-colors"
+              >
+                Data vista no print: {format(suggestedDate, "dd/MM/yyyy")} · usar?
+              </button>
+            )}
           </div>
           
           <div className="space-y-2">
