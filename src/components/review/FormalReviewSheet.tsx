@@ -562,10 +562,11 @@ export function FormalReviewSheet({
                     readOnly={!!review.shared_with_member}
                     needsAssembly={isPlaceholder}
                     onAssembled={async (content, advance) => {
+                      if (advance) { advanceStep(1); setActiveTab('signals'); }
+                      if (content == null) return;
                       setDraftText(content);
                       await supabase.from('performance_reviews').update({ content }).eq('id', reviewId!);
                       queryClient.invalidateQueries({ queryKey: ['formal-review', reviewId] });
-                      if (advance) { advanceStep(1); setActiveTab('signals'); }
                     }}
                   />
                 </div>

@@ -51,7 +51,7 @@ export function CultureGuidedPanel({
   versionId: string | null;
   readOnly: boolean;
   needsAssembly?: boolean;
-  onAssembled: (content: string, advance: boolean) => void | Promise<void>;
+  onAssembled: (content: string | null, advance: boolean) => void | Promise<void>;
 }) {
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -190,8 +190,9 @@ export function CultureGuidedPanel({
 
       {!readOnly && (
         <div className="sticky bottom-0 bg-background/95 backdrop-blur py-3 flex justify-end">
-          <Button className="rounded-xl" disabled={busy === 'assemble' || pendingSuggestions > 0 || !hasSuggestions} onClick={() => run('assemble', async () => {
-            await assemble(true);
+          <Button className="rounded-xl" disabled={busy === 'assemble' || pendingSuggestions > 0 || !hasSuggestions} onClick={() => run('advance', async () => {
+            // Montagem do documento acontece uma vez só, ao sair de Sinais & Rede.
+            await onAssembled(null, true);
             toast({ title: 'Cultura pronta', description: 'Agora revise os sinais do Slack e da rede.' });
           })}>
             {busy === 'assemble' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileText className="h-4 w-4 mr-2" />}
