@@ -11,6 +11,15 @@ const td = new TurndownService({
 });
 // Keep citation markers literal (turndown would escape the brackets).
 td.escape = ((s: string) => s) as any;
+td.addRule('citation', {
+  filter: (node: any) => node.nodeName === 'SPAN' && node.getAttribute?.('data-citation'),
+  replacement: (_c: string, node: any) => `[doc:${node.getAttribute('data-citation')}]`,
+});
+
+const CITE_RE = /\[doc:([0-9a-f-]{8,})\]/gi;
+function citationsToSpans(html: string): string {
+  return html.replace(CITE_RE, (_m, id) => `<span data-citation="${id}">evidência</span>`);
+}
 
 export function isHtml(text: string): boolean {
   return /^\s*<(p|h[1-6]|ul|ol|div|blockquote)[\s>]/i.test(text || '');
@@ -31,8 +40,8 @@ export function normalizeLegacyReviewHtml(html: string): string {
 
 export function markdownToEditorHtml(md: string): string {
   if (!md) return '';
-  if (looksLikeHtml(md)) return normalizeLegacyReviewHtml(md);
-  return marked.parse(normalizeReviewHeadings(md), { async: false, gfm: true, breaks: false }) as string;
+  if (looksLikeHtml(md)) return citationsToSpans(normalizeLegacyReviewHtml(md));
+  return citationsToSpans(marked.parse(normalizeReviewHeadings(md), { async: false, gfm: true, breaks: false }) as string);
 }
 
 export function editorHtmlToMarkdown(html: string): string {
